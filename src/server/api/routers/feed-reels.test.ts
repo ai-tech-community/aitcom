@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as FeedPosts from "@/server/communities/feed-posts";
 
 const hooks = {
-  videosOn: true,
   community: { id: "c-1" } as { id: string } | undefined,
   membership: undefined as { role: string } | undefined,
   membershipLookups: 0,
@@ -40,9 +39,6 @@ vi.mock("@/server/better-auth", () => ({
   auth: { api: { getSession: async () => null } },
 }));
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => payload }));
-vi.mock("@/lib/community-videos-flag", () => ({
-  isCommunityVideosEnabled: () => hooks.videosOn,
-}));
 vi.mock("@/server/communities/feed-posts", async (importOriginal) => ({
   ...(await importOriginal<typeof FeedPosts>()),
   decorateFeedPosts: vi.fn(async (_db, _p, posts: object[]) =>
@@ -76,7 +72,6 @@ const hiddenVideo = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  hooks.videosOn = true;
   hooks.community = { id: "c-1" };
   hooks.membership = undefined;
   hooks.membershipLookups = 0;
@@ -132,17 +127,6 @@ describe("feed.getReels", () => {
     });
     expect(hooks.membershipLookups).toBe(1);
     expect(page.notice).toBe("unavailable");
-  });
-
-  it("returns nothing while the videos flag is off", async () => {
-    hooks.videosOn = false;
-    const page = await caller(null).feed.getReels({
-      communitySlug: "town",
-      startAtPostId: 7,
-    });
-    expect(page).toEqual({ items: [], nextCursor: null, notice: null });
-    expect(payload.findByID).not.toHaveBeenCalled();
-    expect(payload.find).not.toHaveBeenCalled();
   });
 
   it("says not found for an unknown community", async () => {

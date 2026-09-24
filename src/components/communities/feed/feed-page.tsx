@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Clapperboard, Loader2, LogIn } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { isCommunityVideosEnabled } from "@/lib/community-videos-flag";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
@@ -123,12 +122,11 @@ export function FeedPage({
  */
 function ReelsEntry({ slug }: { slug: string }) {
   const t = useTranslations("communities.reels");
-  const enabled = isCommunityVideosEnabled();
-  const { data } = api.feed.getReels.useQuery(
-    { communitySlug: slug, limit: 1 },
-    { enabled },
-  );
-  if (!enabled || !data?.items.length) return null;
+  const { data } = api.feed.getReels.useQuery({
+    communitySlug: slug,
+    limit: 1,
+  });
+  if (!data?.items.length) return null;
   return (
     <div className="flex justify-end">
       <Button asChild variant="outline" size="sm">

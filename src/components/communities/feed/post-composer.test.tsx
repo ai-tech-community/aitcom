@@ -7,7 +7,6 @@ import { PostComposer } from "./post-composer";
 import type { VideoPostState } from "./use-video-post";
 
 const m = vi.hoisted(() => ({
-  videosOn: true,
   videoState: { step: "idle" } as VideoPostState,
   post: vi.fn(),
   reset: vi.fn(),
@@ -15,10 +14,6 @@ const m = vi.hoisted(() => ({
   cancel: vi.fn(),
   createPost: vi.fn(),
   toastSuccess: vi.fn(),
-}));
-
-vi.mock("@/lib/community-videos-flag", () => ({
-  isCommunityVideosEnabled: () => m.videosOn,
 }));
 
 vi.mock("./use-video-post", () => ({
@@ -84,7 +79,6 @@ function pickVideo(input: HTMLInputElement) {
 const postButton = () => screen.getByRole("button", { name: "Post" });
 
 beforeEach(() => {
-  m.videosOn = true;
   m.videoState = { step: "idle" };
   m.post.mockResolvedValue(true);
 });
@@ -95,14 +89,6 @@ afterEach(() => {
 });
 
 describe("PostComposer video", () => {
-  it("hides Add video while the feature is off", () => {
-    m.videosOn = false;
-    renderComposer();
-    expect(
-      screen.queryByRole("button", { name: "Add video" }),
-    ).not.toBeInTheDocument();
-  });
-
   it("posts the picked clip with the caption, visibility and topic", async () => {
     const { videoInput } = renderComposer();
     pickVideo(videoInput());

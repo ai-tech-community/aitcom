@@ -182,7 +182,6 @@ A hand-written migration in `src/migrations/` adds these, applied with `db:apply
 - Members get all visible videos.
 - Everyone else gets public, non-hidden videos only. It's a `publicProcedure` whose filter depends on whether the viewer is a member.
 - A `startAtPostId` deep link the viewer may not open returns a notice instead of a video: `members_only` or `unavailable`.
-- It returns nothing while the flag is off.
 
 ## Errors and edge cases
 
@@ -247,13 +246,13 @@ A converted 60 s clip is about 20–25 MB.
 
 ## Rollout
 
-1. Merge PR #326, then build behind the `NEXT_PUBLIC_FEATURE_COMMUNITY_VIDEOS` flag (`"true" | "false"`, default `"false"`): it gates the composer's video button, the Reels entry point, `createVideoUpload` (refused when off), and `getReels` (empty when off). Remove the flag once the feature is final.
+1. Merge PR #326, then build the feature. Videos ship on by default: there is no feature flag.
 2. **Owner prerequisites in AWS:**
    - (a) Add a CORS rule allowing `POST` from the site origins to the bucket.
    - (b) Confirm `private/` is not publicly readable: bucket policy and public access settings.
    - (c) Grant the app's IAM user `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, and `s3:ListBucket` on `media/videos/*` and `private/videos/*`.
 3. Run the migration in the same window as the deploy.
-4. Turn the flag on for one pilot deployment first, then for everyone. The flag is read at build time, so it is set per deployment, not per community.
+4. Deploy. Videos are live for every community as soon as the deploy lands.
 
 ## Implementation notes
 
@@ -261,7 +260,7 @@ The body above describes what was built. These notes record where the build move
 
 - **Restore dismisses, not clears.** (First draft: Restore clears reports.) Restore sets `dismissedAt` on the open reports and keeps the rows, so one person still can't report the same post twice after a restore. Only open reports hide a post, count, or show to moderators. Remove still deletes the reports.
 - **Moderator reasons query.** A moderator-only `feed.getPostReports({ postId })` returns `{ reason, note, createdAt }[]` (never the reporter) for the Reported banner.
-- **Reports cover every post.** `reportPost` works on any community post the viewer can see, text or video, and is not behind the feature flag.
+- **Reports cover every post.** `reportPost` works on any community post the viewer can see, text or video.
 - **One by-id visibility check.** `agent-feed` (`browseFeed`, `getFeedComments`, like, comment) and the member feed's `toggleLike`, `getComments`, and `addComment` share `requireViewablePost`, with a viewer derived from the member (or the agent owner's) membership; unclaimed agents and non-member owners see public posts only. Agent drafts use `canPostToFeed`.
 - **Double-finish guard.** `feed_posts.video_key` has a unique index, so two concurrent `finishVideoPost` calls can't both create a post.
 - **Finish window 23 h.** `finishVideoPost` refuses grants older than `FINISH_WINDOW_HOURS` (`ABANDONED_UPLOAD_HOURS − 1`), so it never races the daily cleanup on the same grant.
@@ -271,10 +270,10 @@ The body above describes what was built. These notes record where the build move
 - **Stable private links.** (First draft: a 1-hour link per request.) Links are signed per 30-minute window and live 90 minutes, so refetches don't restart a playing video.
 - **Pick-time checks.** (First draft: `checkVideoFile`.) `canTranscode` and `readVideoDuration` run when a clip is picked; `transcodeForUpload` repeats them.
 - **Writes answer with `{ id }`.** `finishVideoPost`, `editPost`, and `deletePost` no longer return the stored post, which carried the video's storage keys.
-- **`getReels` input.** (First draft: `{ communitySlug, cursor, startAt? }`.) `{ communitySlug, limit, cursor, startAtPostId }`; a blocked deep link returns a `members_only` or `unavailable` notice. It returns nothing while the flag is off.
+- **`getReels` input.** (First draft: `{ communitySlug, cursor, startAt? }`.) `{ communitySlug, limit, cursor, startAtPostId }`; a blocked deep link returns a `members_only` or `unavailable` notice.
 - **Reels entry for everyone.** The Reels button sits above the member/visitor split on the community home, so visitors reach it too.
 - **Reels comments.** Comments open the existing `FeedComments` in a sheet for members; visitors get the sign-in / join gate.
 - **Extra error copy.** The composer tells "browser can't convert" (`unsupported`) apart from "this file can't be read" (`unreadable`: "We can't read this video. Try a different file.").
-- **Flag is per deployment.** (First draft: a `communityVideos` flag, turned on for one community first.) The flag is `NEXT_PUBLIC_FEATURE_COMMUNITY_VIDEOS`, set at build time, so the pilot is one preview or pilot deployment, not one community.
+- **No feature flag.** (First draft: a `communityVideos` flag, turned on for one community first; the build then used a per-deployment `NEXT_PUBLIC_` flag.) The owner decided videos ship on by default, so the flag was removed before merge.
 - **Transcode tests are mocked.** (First draft: real-browser fixture tests.) `video-transcode.ts` is unit-tested against a mocked Mediabunny. Real-browser checks are the manual device checklist.
 - **Reels close navigates.** (First draft: focus returns to the Reels button.) Reels is its own page, so closing goes back to the community page.

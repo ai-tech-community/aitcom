@@ -25,7 +25,6 @@ import {
   requireViewablePost,
 } from "@/server/communities/feed-posts";
 import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
-import { isCommunityVideosEnabled } from "@/lib/community-videos-flag";
 import { getVideoStorage } from "@/server/media/video-storage";
 import {
   feedViewerFor,
@@ -258,9 +257,6 @@ export const feedRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      if (!isCommunityVideosEnabled()) {
-        return { items: [], nextCursor: null, notice: null };
-      }
       const community = await ctx.db.query.communities.findFirst({
         where: and(
           eq(communities.slug, input.communitySlug),
@@ -358,9 +354,6 @@ export const feedRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!isCommunityVideosEnabled()) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
       const community = await requireFeedPoster(
         ctx.db,
         input.communitySlug,

@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import Image from "next/image";
 import { Film, ImagePlus, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { isCommunityVideosEnabled } from "@/lib/community-videos-flag";
 import type { VideoVisibility } from "@/lib/video-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
@@ -199,7 +198,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
             </Button>
           )}
 
-          {isCommunityVideosEnabled() && !imageUrl && !videoFile ? (
+          {!imageUrl && !videoFile ? (
             <Button
               type="button"
               variant="ghost"

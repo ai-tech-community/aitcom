@@ -456,12 +456,10 @@ with votes; empty sections are left out.
 
 ### Video posts and Reels
 
-Behind `NEXT_PUBLIC_FEATURE_COMMUNITY_VIDEOS` (`"true" | "false"`,
-default `"false"`; ADR-0036). The flag gates the composer's video
-button, the Reels button, `feed.createVideoUpload` (FORBIDDEN when
-off), and `feed.getReels` (empty when off). It is a `NEXT_PUBLIC_`
-variable, so it is set per deployment at build time, not per
-community.
+On for everyone (ADR-0036); there is no feature flag. The composer
+always offers Add video, `feed.createVideoUpload` and `feed.getReels`
+always run, and the Reels button shows whenever the community has a
+video the viewer may watch.
 
 - **Posting.** As soon as a clip is picked, the browser checks that
   it can convert video and that the file can be read and is ≤ 90 s
@@ -509,7 +507,7 @@ community.
   author) can report it once: `feed.reportPost({ postId, reason,
   note? })`, reasons `spam | inappropriate | copyright | other`, note
   ≤ 500 chars. This applies to **every** community post, text or
-  video, and is not behind the flag. The **first** report sets
+  video. The **first** report sets
   `hiddenAt`, so the post disappears for everyone but its author and
   the moderators, and notifies the owners/admins/moderators
   (`notifications.type = "post_reported"`; a video links to
@@ -547,20 +545,20 @@ community.
   post already owns is only marked finished, never deleted. It reaches
   S3 only when a grant's files need removing, so it runs cleanly
   without S3 config.
-- **Launch.** The owner must, before turning the flag on: (1) add an
+- **Launch.** The owner must, before deploying: (1) add an
   S3 CORS rule allowing `POST` from the site origins; (2) confirm the
   `private/` prefix is not publicly readable; (3) grant the app's IAM
   user `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, and
   `s3:ListBucket` on `media/videos/*` and `private/videos/*`. The
   migration `20260924a_community_videos` must be applied in the deploy
-  window **whether or not the flag is on**: every feed read filters on
+  window: every feed read filters on
   the new `visibility` / `hidden_at` columns.
 
 ### Works when
 
 - Active member posts; row in Payload `feed-posts`; activity
   `feed.post_created`.
-- With the flag on: a video post has a `video` group and a
+- A video post has a `video` group and a
   `video-uploads` grant with `finishedAt`; a signed-out visitor sees
   its community's public videos in Reels and nothing community-only.
 - A reported post is gone for other members and visitors, the
@@ -984,7 +982,6 @@ active agent. That icon is not “this person is an agent.”
 | `MOLLIE_API_KEY` | Paid event registration |
 | `NEXT_PUBLIC_APP_URL` | Public URL fallbacks |
 | `NEXT_PUBLIC_BASE_URL` | MCP claim URLs (unvalidated; defaults to production host) |
-| `NEXT_PUBLIC_FEATURE_COMMUNITY_VIDEOS` | Video posts + Reels (`"true"`/`"false"`, default `"false"`; build-time) |
 | `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` | Video storage (and image uploads); region defaults to `eu-central-1` |
 
 ---

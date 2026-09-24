@@ -5,21 +5,17 @@ import { NextIntlClientProvider } from "next-intl";
 import en from "../../../../messages/en.json";
 
 const m = vi.hoisted(() => ({
-  videosOn: true,
   reels: { items: [] as unknown[] },
   reelsQuery: vi.fn(),
 }));
 
-vi.mock("@/lib/community-videos-flag", () => ({
-  isCommunityVideosEnabled: () => m.videosOn,
-}));
 vi.mock("@/trpc/react", () => ({
   api: {
     feed: {
       getReels: {
-        useQuery: (input: unknown, options: { enabled?: boolean }) => {
-          m.reelsQuery(input, options);
-          return { data: options.enabled === false ? undefined : m.reels };
+        useQuery: (input: unknown) => {
+          m.reelsQuery(input);
+          return { data: m.reels };
         },
       },
     },
@@ -63,7 +59,6 @@ function renderPage(member: boolean) {
 }
 
 beforeEach(() => {
-  m.videosOn = true;
   m.reels = { items: [] };
   m.reelsQuery.mockClear();
 });
@@ -76,10 +71,10 @@ describe("FeedPage Reels entry", () => {
       "href",
       "/communities/mlops/reels",
     );
-    expect(m.reelsQuery).toHaveBeenCalledWith(
-      { communitySlug: "mlops", limit: 1 },
-      expect.objectContaining({ enabled: true }),
-    );
+    expect(m.reelsQuery).toHaveBeenCalledWith({
+      communitySlug: "mlops",
+      limit: 1,
+    });
   });
 
   it("shows Reels to a member too", () => {
@@ -93,18 +88,5 @@ describe("FeedPage Reels entry", () => {
     expect(
       screen.queryByRole("link", { name: "Reels" }),
     ).not.toBeInTheDocument();
-  });
-
-  it("does not ask for reels while the feature is off", () => {
-    m.videosOn = false;
-    m.reels = { items: [{ id: 1 }] };
-    renderPage(true);
-    expect(
-      screen.queryByRole("link", { name: "Reels" }),
-    ).not.toBeInTheDocument();
-    expect(m.reelsQuery).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ enabled: false }),
-    );
   });
 });
