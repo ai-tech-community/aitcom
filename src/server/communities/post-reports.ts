@@ -19,6 +19,8 @@ export type ReportDeps = {
   notifyModerators: (input: {
     communityId: string;
     postId: number;
+    /** A video post, so the notice can open it on its reel. */
+    isVideo: boolean;
   }) => Promise<void>;
   now?: () => Date;
   log?: (message: string, detail: unknown) => void;
@@ -141,6 +143,7 @@ export async function reportPost(
       await deps.notifyModerators({
         communityId: post.communityId,
         postId: post.id,
+        isVideo: Boolean(post.video?.key),
       });
     } catch (error) {
       (deps.log ?? console.error)(

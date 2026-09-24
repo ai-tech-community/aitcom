@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const hooks = {
   membership: undefined as { role: string } | undefined,
   post: null as Record<string, unknown> | null,
+  community: undefined as { slug: string; name: string } | undefined,
+  moderators: [] as { userId: string }[],
+  inserted: [] as unknown[],
 };
 
 const payload = {
@@ -19,8 +22,16 @@ vi.mock("@/server/db", () => ({
   db: {
     query: {
       communityMemberships: { findFirst: async () => hooks.membership },
-      communities: { findFirst: async () => undefined },
+      communities: { findFirst: async () => hooks.community },
     },
+    select: () => ({
+      from: () => ({ where: async () => hooks.moderators }),
+    }),
+    insert: () => ({
+      values: async (rows: unknown[]) => {
+        hooks.inserted.push(...rows);
+      },
+    }),
   },
 }));
 vi.mock("@/env", () => ({
@@ -61,6 +72,9 @@ const communityPost = (over: Record<string, unknown> = {}) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   hooks.membership = undefined;
+  hooks.community = undefined;
+  hooks.moderators = [];
+  hooks.inserted = [];
   hooks.post = communityPost();
   payload.findByID.mockImplementation(async () => {
     if (!hooks.post) throw Object.assign(new Error("nf"), { status: 404 });
@@ -112,6 +126,14 @@ describe("feed.getPostReports", () => {
     expect(payload.find).not.toHaveBeenCalled();
   });
 
+  it("refuses a plain member before saying whether the post was deleted", async () => {
+    hooks.membership = { role: "member" };
+    hooks.post = communityPost({ isDeleted: true });
+    await expect(
+      caller().feed.getPostReports({ postId: 5 }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
   it("says not found for a deleted or missing post", async () => {
     hooks.membership = { role: "admin" };
     hooks.post = communityPost({ isDeleted: true });
@@ -147,5 +169,44 @@ describe("feed.getPostReports", () => {
         },
       }),
     );
+  });
+});
+
+describe("feed.reportPost moderator notice", () => {
+  beforeEach(() => {
+    hooks.membership = { role: "member" };
+    hooks.community = { slug: "makers", name: "Makers" };
+    hooks.moderators = [{ userId: "mod-1" }];
+    payload.count.mockResolvedValue({ totalDocs: 1 });
+    payload.create.mockResolvedValue({});
+  });
+
+  it("links a reported video to its reel", async () => {
+    hooks.post = communityPost({
+      hiddenAt: null,
+      reportCount: 0,
+      video: { key: "k.mp4", thumbnailKey: "k.jpg" },
+    });
+    await caller().feed.reportPost({ postId: 5, reason: "spam" });
+    expect(hooks.inserted).toEqual([
+      expect.objectContaining({
+        userId: "mod-1",
+        type: "post_reported",
+        metadata: { postId: 5, path: "/communities/makers/reels?v=5" },
+      }),
+    ]);
+    expect((hooks.inserted[0] as { content: string }).content).toContain(
+      "(/communities/makers/reels?v=5)",
+    );
+  });
+
+  it("links a reported text post to the community page", async () => {
+    hooks.post = communityPost({ hiddenAt: null, reportCount: 0 });
+    await caller().feed.reportPost({ postId: 5, reason: "spam" });
+    expect(hooks.inserted).toEqual([
+      expect.objectContaining({
+        metadata: { postId: 5, path: "/communities/makers" },
+      }),
+    ]);
   });
 });

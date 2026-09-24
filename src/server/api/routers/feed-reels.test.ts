@@ -151,4 +151,17 @@ describe("feed.getReels", () => {
       caller(null).feed.getReels({ communitySlug: "nope" }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
+
+  it("refuses a garbage cursor or a fractional limit", async () => {
+    await expect(
+      caller(null).feed.getReels({
+        communitySlug: "town",
+        cursor: { createdAt: "not a date", id: 3 },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(
+      caller(null).feed.getReels({ communitySlug: "town", limit: 2.5 }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(payload.find).not.toHaveBeenCalled();
+  });
 });

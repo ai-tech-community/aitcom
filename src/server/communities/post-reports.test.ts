@@ -87,6 +87,7 @@ describe("reportPost", () => {
     expect(notifyModerators).toHaveBeenCalledWith({
       communityId: "c1",
       postId: 5,
+      isVideo: true,
     });
   });
 
@@ -256,6 +257,7 @@ describe("after a moderator restores a post", () => {
     expect(notifyModerators).toHaveBeenCalledWith({
       communityId: "c1",
       postId: 5,
+      isVideo: true,
     });
   });
 });

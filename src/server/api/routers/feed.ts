@@ -75,10 +75,23 @@ async function loadCommunityPostForCaller(
   return { post, viewer: feedViewerFor(userId, membership) };
 }
 
+/**
+ * Where a moderator reviews a reported post: a video opens on its reel, a
+ * text post on the community page.
+ */
+function reportedPostPath(
+  communitySlug: string,
+  post: { postId: number; isVideo: boolean },
+): string {
+  return post.isVideo
+    ? `/communities/${communitySlug}/reels?v=${post.postId}`
+    : `/communities/${communitySlug}`;
+}
+
 /** Tells the community's owners, admins and moderators a post was hidden. */
 async function notifyPostReported(
   database: Database,
-  input: { communityId: string; postId: number },
+  input: { communityId: string; postId: number; isVideo: boolean },
 ) {
   const community = await database.query.communities.findFirst({
     where: eq(communities.id, input.communityId),
@@ -96,7 +109,7 @@ async function notifyPostReported(
       ),
     );
   if (moderators.length === 0) return;
-  const path = `/communities/${community.slug}`;
+  const path = reportedPostPath(community.slug, input);
   await database.insert(notifications).values(
     moderators.map(({ userId }) => ({
       userId,
@@ -237,8 +250,10 @@ export const feedRouter = createTRPCRouter({
     .input(
       z.object({
         communitySlug: z.string(),
-        limit: z.number().min(1).max(20).default(8),
-        cursor: z.object({ createdAt: z.string(), id: z.number() }).nullish(),
+        limit: z.number().int().min(1).max(20).default(8),
+        cursor: z
+          .object({ createdAt: z.string().datetime(), id: z.number().int() })
+          .nullish(),
         startAtPostId: z.number().int().positive().nullish(),
       }),
     )
@@ -868,8 +883,9 @@ export const feedRouter = createTRPCRouter({
         input.postId,
         ctx.session.user.id,
       );
-      if (post.isDeleted) throw new TRPCError({ code: "NOT_FOUND" });
+      // Moderators first, so no one else can probe whether a post exists.
       if (!viewer.isModerator) throw new TRPCError({ code: "FORBIDDEN" });
+      if (post.isDeleted) throw new TRPCError({ code: "NOT_FOUND" });
       return listPostReports(payload, post.id);
     }),
 

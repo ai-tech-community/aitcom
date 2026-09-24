@@ -19,6 +19,9 @@ type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
 export type FeedMemberRole = CommunityRole;
 
+/** Neutral on purpose: the same refusal covers reading, posting, and acting. */
+const NOT_A_MEMBER = "Must be an active community member";
+
 /**
  * The community behind a feed, for an active member only. Feeds are
  * members-only: anyone else gets FORBIDDEN, an unknown slug NOT_FOUND.
@@ -54,7 +57,7 @@ export async function requireActiveFeedMember(
   if (!membership) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Must be a community member to view the feed",
+      message: NOT_A_MEMBER,
     });
   }
   return {
@@ -107,7 +110,7 @@ export async function requireViewablePost(
   if (options.requireMembership && !membership) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Must be an active community member",
+      message: NOT_A_MEMBER,
     });
   }
   const viewer = userId ? feedViewerFor(userId, membership) : OUTSIDE_VIEWER;
