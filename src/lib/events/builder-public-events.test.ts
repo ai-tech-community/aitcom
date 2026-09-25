@@ -14,6 +14,7 @@ const MIGRATION = join(
   dir,
   "../../migrations/20260925a_builder_public_events.ts",
 );
+const TEDAI_MIGRATION = join(dir, "../../migrations/20260925b_tedai_vienna.ts");
 const MIGRATION_INDEX = join(dir, "../../migrations/index.ts");
 const EVENTS_PAGE = join(dir, "../../app/[locale]/events/page.tsx");
 
@@ -122,5 +123,33 @@ describe("builder public events", () => {
     const page = readFileSync(EVENTS_PAGE, "utf8");
     expect(page).toContain('collection: "events"');
     expect(page).toMatch(/isPast\s*\?\s*"-date"\s*:\s*"date"/);
+  });
+
+  it("registers a follow-up migration that upserts tedai-2026 only", () => {
+    const tedai = BUILDER_PUBLIC_EVENTS.find(
+      (event) => event.slug === "tedai-2026",
+    );
+    expect(tedai).toMatchObject({
+      title: "TEDAI 2026",
+      date: "2026-10-28",
+      city: "Vienna",
+      country: "Austria",
+      location: "Vienna",
+      timezone: "Europe/Vienna",
+      url: "https://tedai-vienna.ted.com/",
+    });
+
+    const migration = readFileSync(TEDAI_MIGRATION, "utf8");
+    const index = readFileSync(MIGRATION_INDEX, "utf8");
+    const prior = index.indexOf("20260925a_builder_public_events");
+    const followUp = index.indexOf("20260925b_tedai_vienna");
+    expect(prior).toBeGreaterThan(-1);
+    expect(followUp).toBeGreaterThan(prior);
+    expect(migration).toContain('const TEDAI_SLUG = "tedai-2026"');
+    expect(migration).toContain("upsertBuilderEvent");
+    expect(migration).toContain("BUILDER_PUBLIC_EVENTS");
+    expect(migration).not.toMatch(
+      /clinical|turku|max_attendees|image_id|"price"/i,
+    );
   });
 });

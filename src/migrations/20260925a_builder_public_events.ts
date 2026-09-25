@@ -23,7 +23,7 @@ const keptSlugs = sql.join(
 
 const SEEDED_AT = BUILDER_PUBLIC_EVENTS_SEEDED_AT;
 
-async function upsertBuilderEvent(
+export async function upsertBuilderEvent(
   db: MigrateUpArgs["db"],
   event: BuilderPublicEvent,
 ): Promise<void> {
