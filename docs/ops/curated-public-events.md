@@ -22,6 +22,20 @@ substitute for the CMS chrome.
   place are sourced. Hollow rows are omitted. Never invent attendance,
   RSVP, spots-left, end dates, or "Online" as a city.
 - Detail routes stay at `/events/[slug]`.
+- Default upcoming sort is `date` ascending, so a published row shows in start-date order.
+
+## Landing a row on `/events` (fat CMS)
+
+Staff-cleared events belong in Payload `events`, `status = published` and
+`_status = published`, with `discovery_source` other than `luma`. Migration
+`20260925a_builder_public_events` upserts the 25 Sep 2026 ops batch (The AI
+Conference, World Summit AI Amsterdam, AI Engineer New York, NVIDIA GTC
+Berlin, TEDAI Vienna) and soft-retires a still-published Turku row
+(`status = cancelled`, `review_status = archived`). No attendance, RSVP,
+price, or image. Production applies unrecorded migrations during the Vercel
+build, so www `/en/events` shows them after that deploy. The static guide at
+`/events/world-summit-ai-amsterdam-2026` still wins over the CMS detail route
+for that slug.
 
 ## Parked curated row shape (unused by `/events`)
 
