@@ -31,7 +31,12 @@ describe("builder public events", () => {
     ]);
     const dates = BUILDER_PUBLIC_EVENTS.map((event) => event.date);
     expect([...dates].sort()).toEqual(dates);
-    expect(dates[0] < dates[1]).toBe(true);
+    const first = dates[0];
+    const second = dates[1];
+    if (first === undefined || second === undefined) {
+      throw new Error("builder events are missing start dates");
+    }
+    expect(first < second).toBe(true);
   });
 
   it("uses only the cleared facts and omits attendance, price, and images", () => {
