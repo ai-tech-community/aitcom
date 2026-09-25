@@ -111,6 +111,7 @@ import * as migration_20260924a_community_videos from "./20260924a_community_vid
 import * as migration_20260924b_startup_country from "./20260924b_startup_country";
 import * as migration_20260924c_startup_role_search from "./20260924c_startup_role_search";
 import * as migration_20260925a_builder_public_events from "./20260925a_builder_public_events";
+import * as migration_20260925b_tedai_vienna from "./20260925b_tedai_vienna";
 
 export const migrations = [
   {
@@ -677,5 +678,10 @@ export const migrations = [
     up: migration_20260925a_builder_public_events.up,
     down: migration_20260925a_builder_public_events.down,
     name: "20260925a_builder_public_events",
+  },
+  {
+    up: migration_20260925b_tedai_vienna.up,
+    down: migration_20260925b_tedai_vienna.down,
+    name: "20260925b_tedai_vienna",
   },
 ];
