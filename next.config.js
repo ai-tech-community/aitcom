@@ -134,6 +134,11 @@ const config = {
         hostname: "avatars.githubusercontent.com",
       },
       {
+        // LinkedIn sign-in profile photos
+        protocol: "https",
+        hostname: "media.licdn.com",
+      },
+      {
         protocol: "https",
         hostname: `${process.env.S3_BUCKET}.s3.${process.env.S3_REGION ?? "eu-central-1"}.amazonaws.com`,
       },
