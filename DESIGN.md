@@ -20,6 +20,7 @@ colors:
   chart-3: "oklch(0.398 0.07 227.392)"
   chart-4: "oklch(0.828 0.189 84.429)"
   chart-5: "oklch(0.769 0.188 70.08)"
+  night-sky: "oklch(0.9 0.035 262)"
 typography:
   display:
     fontFamily: "Geist Sans, ui-sans-serif, system-ui, sans-serif"
@@ -67,6 +68,13 @@ components:
   button-primary:
     backgroundColor: "{colors.signal-orange}"
     textColor: "{colors.on-accent}"
+    typography: "{typography.body}"
+    rounded: "{rounded.md}"
+    padding: "8px 16px"
+    height: "36px"
+  button-ink:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.surface}"
     typography: "{typography.body}"
     rounded: "{rounded.md}"
     padding: "8px 16px"
@@ -154,6 +162,9 @@ A near-monochrome canvas of true white through ink, lit by a single warm orange.
 - **Charts 1–5** (`oklch(0.646 0.222 41.116)` orange, `oklch(0.6 0.118 184.704)` teal, `oklch(0.398 0.07 227.392)` deep blue, `oklch(0.828 0.189 84.429)` yellow, `oklch(0.769 0.188 70.08)` amber): Reserved for data visualization (Recharts) only. **Never** borrow chart colors into UI chrome — that's how a clean palette turns into confetti.
 - **Heat 1–3** (`--heat-1/2/3`, a contained success-green intensity ramp light→mid→dark; brightened in dark mode): the one sanctioned heatmap ramp, used **only** by the hackathon team-heatmap (`cell-heat.ts`) to encode claimed → completed → verified as data intensity. A documented exception to the Chart-Containment Rule — like the chart hues, these tokens never appear in UI chrome.
 
+### Illustration (the town square only)
+- **Night Sky** (`--night-sky`, `bg-night-sky`; light `oklch(0.9 0.035 262)`, dark `oklch(0.25 0.05 264)`): the cool dusk tint behind the homepage town square's rooftops when a visitor turns night on. Cool blue-grey on purpose — never warm (No-Cream Rule), never orange (One Voice Rule). It fades in with the night level, only above the street and right of the hero copy's keep-clear zone, so it never sits under text. Lit windows and stars stay legible on it in both themes (ink on the light tint, near-white on the dark one). Like the chart hues, it never appears in UI chrome.
+
 ### Status (semantic — meaning, not decoration)
 A fixed four-color vocabulary. Each is WCAG AA verified both as colored text on white (≥4.5:1) and as white-on-solid-fill, with brighter dark-mode tones (≥7:1 on the dark surface). Each has a paired `-foreground` token (white in light mode, near-black in dark) for solid fills. Available as Tailwind utilities: `bg-success`/`text-success`/`border-success` (and `warning`/`info`/`destructive`), plus the soft pattern `bg-success/15 text-success`.
 - **Success** (`oklch(0.52 0.14 150)`): completed, verified, passed, healthy, online.
@@ -167,7 +178,7 @@ A fixed four-color vocabulary. Each is WCAG AA verified both as colored text on 
 **The Pair-With-A-Cue Rule.** Status is never communicated by color alone (8% of men can't distinguish red/green). Every status color ships with an icon, label, or shape — a check for success, an alert glyph for warning, etc.
 
 ### Named Rules
-**The One Voice Rule.** Signal Orange appears on ≤10% of any given screen. It marks the single most important action or the active state — nothing else. If two things on a screen are orange, one of them is wrong.
+**The One Voice Rule.** Signal Orange appears on ≤10% of any given screen. It marks the single most important action or the active state — nothing else. If two things on a screen are orange, one of them is wrong. When a screen's main actions are equal peers there is no single most important action: render them all as Ink buttons and spend no orange on them.
 
 **The No-Cream Rule.** The body background is pure white (`oklch(1 0 0)`) or true dark (`oklch(0.145 0 0)`). Never a warm-tinted near-white. The instant a surface drifts toward cream/sand/parchment, it reads as a generic AI-generated landing page — the exact anti-reference.
 
@@ -213,6 +224,7 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 ### Buttons
 - **Shape:** Gently rounded (`rounded-md`, 8px). Default height 36px (`h-9`), with `xs/sm/lg` and square `icon` sizes.
 - **Primary:** Signal Orange fill, white text (`bg-primary text-primary-foreground`), padding 8px 16px. Hover darkens to 90% (`hover:bg-primary/90`).
+- **Ink** (`variant="ink"`): solid foreground fill, background-coloured text (`bg-foreground text-background`, hover to 85%); inverts in dark mode automatically. Use it when a surface offers **two or more equal-weight paths** and none of them is *the* single most important action — e.g. the homepage hero's "Explore communities" (members) and "Host your community" (organizers), which the product treats as equal ways in. Ranking one of them orange would tell half the audience they are secondary. Rule of thumb: one clear next step → **Primary**; several peer paths → all **Ink**, same size; never mix one Primary with Ink peers in the same group.
 - **Secondary:** Surface-muted fill, strong-text (`bg-secondary`), hover to 80%.
 - **Outline:** White background, hairline border, `shadow-xs`; hover fills with `accent` (surface-muted) and accent-foreground.
 - **Ghost:** No fill at rest; hover fills with `accent`. For low-emphasis and icon actions.
@@ -269,7 +281,7 @@ The consistency debt was largely hand-rolled re-implementations. Reach for these
 
 ### Do:
 - **Do** keep the body background pure white (`oklch(1 0 0)`) or true dark (`oklch(0.145 0 0)`). Carry warmth through copy, imagery, and the accent — never a tinted cream surface.
-- **Do** ration Signal Orange to ≤10% of a screen (the One Voice Rule). One primary action, one active state.
+- **Do** ration Signal Orange to ≤10% of a screen (the One Voice Rule). At most one primary action, one active state; equal peer actions use the Ink button instead.
 - **Do** use the monospace `/ LABEL` as the one consistent section marker, and only there.
 - **Do** define surfaces with full hairline borders and tonal layering; reserve shadows for floating or responding elements.
 - **Do** pair every status color with a non-color cue (icon, label, pattern) — leaderboards, validation, charts, agent-vs-human.

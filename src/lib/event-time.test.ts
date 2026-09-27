@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   upcomingEvents,
+  upcomingEventsQueryFloor,
   DEFAULT_EVENT_TIMEZONE,
   eventWallTimeToUtc,
   formatEventIsoWithOffset,
   formatEventTimeRange,
+  formatEventShortWhen,
   formatEventWhenText,
   formatInstantInZone,
   getTimeZoneAbbreviation,
@@ -397,5 +399,57 @@ describe("upcomingEvents", () => {
 
   it("drops rows without a usable date", () => {
     expect(upcomingEvents([{ date: "soon" }], now)).toEqual([]);
+  });
+});
+
+describe("formatEventShortWhen", () => {
+  it("renders a compact English day with the start time", () => {
+    expect(
+      formatEventShortWhen(
+        { date: "2026-10-10T00:00:00.000Z", startTime: "19:00" },
+        "en",
+      ),
+    ).toBe("Sat 10 Oct · 19:00");
+  });
+
+  it("renders Dutch without locale punctuation", () => {
+    expect(
+      formatEventShortWhen({ date: "2026-10-10", startTime: "19:00" }, "nl"),
+    ).toBe("za 10 okt · 19:00");
+  });
+
+  it("omits the time when there is no start time", () => {
+    expect(
+      formatEventShortWhen({ date: "2026-10-10", startTime: null }, "en"),
+    ).toBe("Sat 10 Oct");
+  });
+
+  it("falls back to the raw date for a corrupt row", () => {
+    expect(
+      formatEventShortWhen({ date: "garbage", startTime: null }, "en"),
+    ).toBe("garbage");
+  });
+});
+
+describe("upcomingEventsQueryFloor", () => {
+  it("keeps an event that is still today in its zone after 00:00 UTC", () => {
+    // 23:30 in Amsterdam on 10 Oct is already 21:30 UTC; a Tokyo event on
+    // 11 Oct stored as local midnight is 10 Oct 15:00 UTC.
+    const now = new Date("2026-10-10T21:30:00.000Z");
+    const amsterdamToday = {
+      date: "2026-10-10T00:00:00.000Z",
+      timezone: "Europe/Amsterdam",
+    };
+    const floor = upcomingEventsQueryFloor(now);
+    expect(amsterdamToday.date >= now.toISOString()).toBe(false); // old query
+    expect(amsterdamToday.date >= floor).toBe(true);
+    expect(upcomingEvents([amsterdamToday], now)).toEqual([amsterdamToday]);
+  });
+
+  it("still excludes events that are over everywhere", () => {
+    const now = new Date("2026-10-10T12:00:00.000Z");
+    const past = { date: "2026-10-09T00:00:00.000Z", timezone: "UTC" };
+    expect(past.date >= upcomingEventsQueryFloor(now)).toBe(true);
+    expect(upcomingEvents([past], now)).toEqual([]);
   });
 });

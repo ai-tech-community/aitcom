@@ -94,9 +94,7 @@ export default async function LocaleLayout({
                     <Navbar initialUser={initialUser} />
                     <InboxProvider>
                       <SpaceWindowProvider>
-                        <main className="to-background flex-1 bg-linear-to-b from-orange-50/60 via-amber-50/30">
-                          {children}
-                        </main>
+                        <main className="flex-1">{children}</main>
                         <Footer />
                         <SessionChrome initialUser={initialUser} />
                       </SpaceWindowProvider>

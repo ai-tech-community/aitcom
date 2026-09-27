@@ -19,6 +19,9 @@ import { Switch } from "@/components/ui/switch";
 import { BuildingModal } from "@/components/community/building-modal";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Loader2, Plus } from "lucide-react";
+import { useCreateCommunityDeepLink } from "./use-create-community-deep-link";
+
+const SIGN_IN_INTENT = "Sign in to create a community";
 
 export function CreateCommunityDialog() {
   const t = useTranslations("communities.create");
@@ -33,6 +36,9 @@ export function CreateCommunityDialog() {
     "open" | "invite_only" | "approval_required"
   >("open");
   const [isListed, setIsListed] = useState(true);
+
+  // `/communities?create=1` opens this dialog (sign-in first for guests).
+  useCreateCommunityDeepLink(() => setOpen(true), SIGN_IN_INTENT);
 
   const mutation = api.communities.create.useMutation({
     onSuccess: (community) => {
@@ -65,9 +71,7 @@ export function CreateCommunityDialog() {
       <Button
         size="sm"
         className="font-mono text-xs"
-        onClick={() =>
-          requireAuth(() => setOpen(true), "Sign in to create a community")
-        }
+        onClick={() => requireAuth(() => setOpen(true), SIGN_IN_INTENT)}
       >
         <Plus className="mr-1.5 h-3.5 w-3.5" />
         {t("title")}

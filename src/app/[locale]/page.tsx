@@ -1,10 +1,17 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight } from "lucide-react";
-import { AsciiLandscape } from "@/components/ascii-landscape";
-import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
 import { SectionLabel as UiSectionLabel } from "@/components/ui/section-label";
+import { Button } from "@/components/ui/button";
+import { HomeHeroPlaza } from "@/components/home/town-square/home-hero-plaza";
+import type { NoticeBoardContent } from "@/components/home/town-square/town-square-scene";
+import { CREATE_COMMUNITY_HREF } from "@/components/communities/create-community-link";
+import {
+  formatEventShortWhen,
+  upcomingEvents,
+  upcomingEventsQueryFloor,
+} from "@/lib/event-time";
 import { Badge } from "@/components/ui/badge";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
@@ -19,6 +26,7 @@ import { getSession } from "@/server/better-auth/server";
 import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
 import { FeaturedCommunities } from "@/components/home/featured-communities";
 import { HomeCrawlDoors } from "@/components/home/home-crawl-doors";
+import { WhatWeDo } from "@/components/home/what-we-do/what-we-do";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -30,18 +38,6 @@ const typeLabels: Record<string, string> = {
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function GridMarkers() {
-  return (
-    <div className="flex w-full justify-between">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className="text-border font-mono text-sm select-none">
-          +
-        </span>
-      ))}
-    </div>
-  );
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -60,7 +56,7 @@ function StatItem({ label, value }: { label: string; value: string }) {
       <span className="text-muted-foreground font-mono text-xs tracking-wider sm:text-xs">
         {label}:
       </span>
-      <span className="text-primary font-mono text-xs font-semibold tracking-wider sm:text-xs">
+      <span className="text-foreground font-mono text-xs font-semibold tracking-wider sm:text-xs">
         {value}
       </span>
     </div>
@@ -86,11 +82,12 @@ export default async function Home() {
   ]);
 
   const payload = await getPayloadClient();
-  const { docs: events } = await payload.find({
+  const { docs: eventCandidates } = await payload.find({
     collection: "events",
     where: {
       status: { equals: "published" },
-      date: { greater_than_equal: new Date().toISOString() },
+      // Wide floor; upcomingEvents() below applies the per-zone "today".
+      date: { greater_than_equal: upcomingEventsQueryFloor() },
       // Discovered (Luma) events are "scheduled around, not attended
       // through" (CONTEXT.md [[discovered-event]]) — keep them out of
       // hub-wide public attend-through surfaces like this upcoming-events
@@ -98,10 +95,40 @@ export default async function Home() {
       discoverySource: { not_equals: "luma" },
     },
     sort: "date",
-    limit: 5,
+    // Headroom for the past-two-days rows the floor lets through.
+    limit: 20,
     locale: locale as "en" | "nl",
     draft: false,
   });
+  const events = upcomingEvents(eventCandidates).slice(0, 5);
+
+  // The town-square notice board shows the real next event, or a calm
+  // "being planned" line — never blank, never invented.
+  const nextEvent = events[0];
+  const boardLabel = t("hero.board.label");
+  const nextWhen = nextEvent ? formatEventShortWhen(nextEvent, locale) : "";
+  const noticeBoard: NoticeBoardContent = nextEvent
+    ? {
+        kind: "event",
+        label: boardLabel,
+        title: nextEvent.title,
+        when: nextWhen,
+      }
+    : {
+        kind: "empty",
+        label: boardLabel,
+        message: t("hero.board.empty"),
+      };
+  // The art is aria-hidden; this link carries the board's content.
+  const boardLink = nextEvent
+    ? {
+        href: `/events/${nextEvent.slug}`,
+        label: `${boardLabel}: ${nextEvent.title}, ${nextWhen}`,
+      }
+    : {
+        href: "/events",
+        label: `${t("hero.board.empty")} ${t("events.viewAll")}`,
+      };
 
   const { docs: featuredSponsors } = await payload.find({
     collection: "sponsors",
@@ -176,20 +203,21 @@ export default async function Home() {
             "The home for AI communities. Host yours, onboard your people, and grow together.",
         }}
       />
-      {/* Hero with ASCII Landscape */}
-      <section className="relative min-h-[50vh] overflow-hidden sm:min-h-[70vh]">
-        <AsciiLandscape />
-        <div className="relative z-10 px-4 pt-8 pb-6 sm:px-12 sm:pt-16 sm:pb-12">
-          <GridMarkers />
-          <div className="mt-4 space-y-0 sm:mt-8">
-            <HeroTitle greeting="Welcome to" title={t("hero.title")} />
-          </div>
-          <p className="text-muted-foreground mt-4 max-w-175 text-sm leading-relaxed sm:mt-8 sm:text-xl">
-            {t("hero.description")}
-          </p>
-          <GridMarkers />
+      {/* Hero: the town square */}
+      <HomeHeroPlaza board={noticeBoard} boardLink={boardLink}>
+        <HeroTitle title={t("hero.title")} tagline={t("hero.subtitle")} />
+        <p className="text-muted-foreground mt-5 max-w-xl text-base leading-relaxed text-pretty sm:text-lg">
+          {t("hero.description")}
+        </p>
+        <div className="mt-8 grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
+          <Button asChild variant="ink" size="lg">
+            <Link href="/communities">{t("hero.cta")}</Link>
+          </Button>
+          <Button asChild variant="ink" size="lg">
+            <Link href={CREATE_COMMUNITY_HREF}>{t("hero.host")}</Link>
+          </Button>
         </div>
-      </section>
+      </HomeHeroPlaza>
 
       {/* Stats Ticker */}
       <div className="border-border grid grid-cols-2 gap-y-1 border-y px-4 py-3 sm:flex sm:items-center sm:gap-y-0 sm:overflow-x-auto sm:px-0 sm:py-2.5">
@@ -207,11 +235,7 @@ export default async function Home() {
 
       <HomeCrawlDoors t={doors} signedIn={!!session?.user} />
 
-      {/* Featured Section */}
-      <section className="px-6 py-12 sm:px-12">
-        <SectionLabel>/ {t("features.title").toUpperCase()}</SectionLabel>
-        <FeatureModals />
-      </section>
+      <WhatWeDo />
 
       {/* Events Feed */}
       <section className="px-6 py-12 sm:px-12">
