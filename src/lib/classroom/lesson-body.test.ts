@@ -72,6 +72,14 @@ describe("prependEmbedBlock", () => {
     expect(out).toEqual(root([embedBlockNode(YT, "id1")]));
   });
 
+  it.each([{ root: "x" }, { root: 7 }, { root: ["x"] }])(
+    "replaces a corrupt root ($root) with a fresh one",
+    (b) => {
+      const out = prependEmbedBlock(b, YT, "id1");
+      expect(out).toEqual(root([embedBlockNode(YT, "id1")]));
+    },
+  );
+
   it("does not mutate its input", () => {
     const input = root([para("notes")]);
     const copy = JSON.parse(JSON.stringify(input));

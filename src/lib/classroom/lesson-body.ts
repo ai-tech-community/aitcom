@@ -69,13 +69,12 @@ export function prependEmbedBlock(
   const copy = parsed
     ? (JSON.parse(JSON.stringify(parsed)) as { root?: Record<string, unknown> })
     : {};
-  const rootNode: Record<string, unknown> = copy.root ?? {
-    type: "root",
-    format: "",
-    indent: 0,
-    version: 1,
-    direction: null,
-  };
+  // A corrupt stored root (string, number, array) is replaced, not kept:
+  // one bad row must not abort a whole data migration.
+  const rootNode: Record<string, unknown> =
+    copy.root && typeof copy.root === "object" && !Array.isArray(copy.root)
+      ? copy.root
+      : { type: "root", format: "", indent: 0, version: 1, direction: null };
   const children = Array.isArray(rootNode.children) ? rootNode.children : [];
   rootNode.children = [embedBlockNode(url, id), ...children];
   return { root: rootNode };
