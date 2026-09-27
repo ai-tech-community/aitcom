@@ -118,11 +118,13 @@ export function CourseBuilder({
 
   if (query.isLoading) return <BuilderSkeleton />;
 
-  if (query.isError && query.error.data?.code !== "NOT_FOUND") {
-    return <ErrorState onRetry={() => void query.refetch()} />;
-  }
-
+  // Once loaded, the workspace stays mounted even if a background refetch
+  // (window focus) fails: unmounting it would drop the author's draft and turn
+  // off the leave-page guard. Only a failed first load is an error screen.
   if (!query.data) {
+    if (query.isError && query.error.data?.code !== "NOT_FOUND") {
+      return <ErrorState onRetry={() => void query.refetch()} />;
+    }
     return (
       <EmptyState
         title={t("courseNotFound")}

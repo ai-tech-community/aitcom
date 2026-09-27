@@ -1,14 +1,50 @@
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// course-builder.tsx wires live tRPC queries, navigation and the course view;
-// this test only covers the pure save-state combiner, so keep those out.
-vi.mock("@/trpc/react", () => ({ api: {} }));
-vi.mock("@/i18n/navigation", () => ({ Link: () => null }));
+import en from "../../../../messages/en.json";
+
+type QueryState = {
+  data: unknown;
+  isLoading: boolean;
+  isError: boolean;
+  error: { data?: { code?: string } } | null;
+  refetch: () => void;
+};
+
+const trpc = vi.hoisted(() => ({
+  query: null as unknown as QueryState,
+  mutateAsync: vi.fn(),
+}));
+
+vi.mock("@/trpc/react", () => ({
+  api: {
+    useUtils: () => ({
+      classrooms: { get: { invalidate: vi.fn(), setData: vi.fn() } },
+    }),
+    classrooms: {
+      get: { useQuery: () => trpc.query },
+      update: { useMutation: () => ({ mutateAsync: trpc.mutateAsync }) },
+    },
+  },
+}));
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+}));
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
+}));
 vi.mock("@/components/classroom/course-view", () => ({
   CourseView: () => null,
 }));
 
-import { combineSaveStates, type PaneSaveState } from "./course-builder";
+import {
+  CourseBuilder,
+  combineSaveStates,
+  type PaneSaveState,
+} from "./course-builder";
 
 function pane(
   status: PaneSaveState["status"],
@@ -18,7 +54,7 @@ function pane(
     status,
     savedAt,
     retry: vi.fn().mockResolvedValue(undefined),
-    flush: vi.fn().mockResolvedValue(undefined),
+    flush: vi.fn().mockResolvedValue(status),
   };
 }
 
@@ -63,5 +99,77 @@ describe("combineSaveStates", () => {
     await combineSaveStates([failed, fine]).retry();
     expect(failed.retry).toHaveBeenCalledTimes(1);
     expect(fine.retry).not.toHaveBeenCalled();
+  });
+});
+
+const courseData = {
+  course: {
+    id: 7,
+    slug: "intro-1",
+    title: "Intro to agents",
+    summary: null,
+    coverImageUrl: null,
+    isPublic: false,
+    status: "draft",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  },
+  lessons: [],
+  modules: [],
+};
+
+function renderBuilder() {
+  render(
+    <NextIntlClientProvider locale="en" messages={en}>
+      <CourseBuilder slug="hub" courseSlug="intro-1" />
+    </NextIntlClientProvider>,
+  );
+}
+
+describe("CourseBuilder loading states", () => {
+  beforeEach(() => {
+    trpc.mutateAsync.mockReset();
+  });
+
+  it("keeps the workspace when a background refetch fails", () => {
+    trpc.query = {
+      data: courseData,
+      isLoading: false,
+      isError: true,
+      error: { data: { code: "INTERNAL_SERVER_ERROR" } },
+      refetch: vi.fn(),
+    };
+    renderBuilder();
+    expect(screen.getByLabelText("Course title")).toHaveValue(
+      "Intro to agents",
+    );
+    expect(screen.queryByText("Couldn't load this")).toBeNull();
+  });
+
+  it("shows an error with retry when the first load fails", () => {
+    trpc.query = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: { data: { code: "INTERNAL_SERVER_ERROR" } },
+      refetch: vi.fn(),
+    };
+    renderBuilder();
+    expect(screen.getByText("Couldn't load this")).toBeInTheDocument();
+    screen.getByRole("button", { name: "Retry" }).click();
+    expect(trpc.query.refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("says the course is missing when it was not found", () => {
+    trpc.query = {
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: { data: { code: "NOT_FOUND" } },
+      refetch: vi.fn(),
+    };
+    renderBuilder();
+    expect(
+      screen.getByText("We couldn't find this course."),
+    ).toBeInTheDocument();
   });
 });
