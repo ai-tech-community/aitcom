@@ -31,6 +31,10 @@ const fake = vi.hoisted(() => ({
   queryError: false,
   restoreFails: false,
   calls: { restore: 0, dismiss: 0 },
+  /** Mutations sent but not settled; drives the hooks' isPending. */
+  inflight: 0,
+  /** When set, the server answers only once this promise resolves. */
+  hold: null as Promise<void> | null,
   listeners: new Set<() => void>(),
 }));
 
@@ -84,12 +88,16 @@ vi.mock("@/trpc/react", async () => {
   const mutation =
     (name: "dismiss" | "restore" | "noop") =>
     (options: Options = {}) => ({
-      isPending: false,
+      // Shared across mutations; enough for a switch that sends one at a time.
+      isPending: useSyncExternalStore(subscribe, () => fake.inflight > 0),
       mutate: () => {
+        if (name === "noop") return;
+        fake.calls[name] += 1;
+        fake.inflight += 1;
+        emit();
         void (async () => {
           const context = await options.onMutate?.();
-          if (name === "noop") return;
-          fake.calls[name] += 1;
+          if (fake.hold) await fake.hold;
           if (name === "restore" && fake.restoreFails) {
             options.onError?.(new Error("nope"), undefined, context);
           } else {
@@ -97,6 +105,8 @@ vi.mock("@/trpc/react", async () => {
             options.onSuccess?.();
           }
           await options.onSettled?.();
+          fake.inflight -= 1;
+          emit();
         })();
       },
     });
@@ -199,6 +209,8 @@ beforeEach(() => {
   fake.queryError = false;
   fake.restoreFails = false;
   fake.calls = { restore: 0, dismiss: 0 };
+  fake.inflight = 0;
+  fake.hold = null;
   fake.listeners.clear();
   toastError.mockReset();
   window.sessionStorage.clear();
@@ -243,6 +255,77 @@ describe("getting-started checklist setting", () => {
 
     await waitFor(() => expect(pill()).toBeInTheDocument());
     expect(window.sessionStorage.getItem(HIDE_FOR_VISIT_KEY)).toBeNull();
+  });
+
+  it("shows the switch off, with the reason, when hidden only for this visit", async () => {
+    seed({ dismissed: false });
+    window.sessionStorage.setItem(HIDE_FOR_VISIT_KEY, "1");
+    await renderSettings();
+
+    expect(pill()).toBeNull();
+    expect(toggle()).toHaveAttribute("aria-checked", "false");
+    expect(toggle()).toHaveAccessibleDescription(
+      en.onboarding.setting.hiddenForVisit,
+    );
+  });
+
+  it("turning it on after 'Hide until next visit' shows the pill without a server call", async () => {
+    seed({ dismissed: false });
+    window.sessionStorage.setItem(HIDE_FOR_VISIT_KEY, "1");
+    await renderSettings();
+    fireEvent.click(toggle());
+
+    await waitFor(() => expect(pill()).toBeInTheDocument());
+    expect(fake.calls).toEqual({ restore: 0, dismiss: 0 });
+    expect(toggle()).toHaveAttribute("aria-checked", "true");
+    expect(window.sessionStorage.getItem(HIDE_FOR_VISIT_KEY)).toBeNull();
+  });
+
+  it("follows 'Hide until next visit' chosen in the pill", async () => {
+    seed({ dismissed: false });
+    await renderSettings();
+    fireEvent.click(pill()!);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Hide until next visit" }),
+    );
+
+    await waitFor(() => expect(pill()).toBeNull());
+    expect(toggle()).toHaveAttribute("aria-checked", "false");
+    expect(fake.calls).toEqual({ restore: 0, dismiss: 0 });
+  });
+
+  it("keeps focus on the switch and stays enabled while saving", async () => {
+    let release!: () => void;
+    fake.hold = new Promise((resolve) => (release = resolve));
+    await renderSettings();
+    toggle().focus();
+    fireEvent.click(toggle());
+
+    await waitFor(() => expect(toggle()).toHaveAttribute("aria-busy", "true"));
+    expect(toggle()).toBeEnabled();
+    expect(toggle()).toHaveFocus();
+
+    await act(async () => release());
+    await waitFor(() => expect(toggle()).not.toHaveAttribute("aria-busy"));
+    expect(toggle()).toHaveFocus();
+    expect(toggle()).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("ignores a second change while the first is still saving", async () => {
+    let release!: () => void;
+    fake.hold = new Promise((resolve) => (release = resolve));
+    await renderSettings();
+    fireEvent.click(toggle());
+    await waitFor(() => expect(toggle()).toHaveAttribute("aria-busy", "true"));
+
+    fireEvent.click(toggle());
+    fireEvent.click(toggle());
+    expect(fake.calls).toEqual({ restore: 1, dismiss: 0 });
+
+    await act(async () => release());
+    await waitFor(() => expect(pill()).toBeInTheDocument());
+    expect(fake.calls).toEqual({ restore: 1, dismiss: 0 });
+    expect(toggle()).toHaveAttribute("aria-checked", "true");
   });
 
   it("turning it off records Don't show again and hides the reminder", async () => {

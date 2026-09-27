@@ -13,18 +13,21 @@ import {
   presentChecklistSetting,
   type ChecklistSettingView,
 } from "./checklist-setting-view";
+import { clearHiddenForVisit, useHiddenForVisit } from "./use-hidden-for-visit";
 import { useOnboardingDismissal } from "./use-onboarding-dismissal";
 
 /**
  * Member settings: turn the getting-started checklist (dashboard card and
- * floating reminder) back on after "Don't show again", or off from here.
- * Reads the shared onboarding.getStatus cache, so the switch, the card and
- * the reminder always agree.
+ * floating reminder) back on after "Don't show again" or "Hide until next
+ * visit", or off from here. Reads the shared onboarding.getStatus cache and
+ * the same visit flag as the reminder, so the switch, the card and the
+ * reminder always agree.
  */
 export function ChecklistSetting() {
   const t = useTranslations("onboarding.setting");
   const status = api.onboarding.getStatus.useQuery();
   const { dismiss, restore, isPending } = useOnboardingDismissal();
+  const [hiddenForVisit] = useHiddenForVisit();
   const headingId = useId();
 
   return (
@@ -40,9 +43,11 @@ export function ChecklistSetting() {
           />
         ) : (
           <ChecklistSettingRow
-            view={presentChecklistSetting(status.data)}
+            view={presentChecklistSetting(status.data, { hiddenForVisit })}
             pending={isPending}
-            onChange={(on) => (on ? restore() : dismiss())}
+            onDismiss={dismiss}
+            onRestore={restore}
+            onUnhide={clearHiddenForVisit}
           />
         )}
       </div>
@@ -53,16 +58,30 @@ export function ChecklistSetting() {
 function ChecklistSettingRow({
   view,
   pending,
-  onChange,
+  onDismiss,
+  onRestore,
+  onUnhide,
 }: {
   view: ChecklistSettingView;
   pending: boolean;
-  onChange: (showing: boolean) => void;
+  onDismiss: () => void;
+  onRestore: () => void;
+  onUnhide: () => void;
 }) {
   const t = useTranslations("onboarding.setting");
   const switchId = useId();
   const hintId = useId();
   const finished = view.kind === "finished";
+
+  // While a save is in flight the switch stays enabled (disabling it would
+  // drop keyboard and screen-reader focus to <body>); extra changes are
+  // ignored instead and aria-busy tells assistive tech why.
+  const onCheckedChange = (on: boolean) => {
+    if (pending || view.kind !== "switch") return;
+    if (!on) onDismiss();
+    else if (view.turnOn === "unhide") onUnhide();
+    else onRestore();
+  };
 
   return (
     <div className="border-border flex items-start justify-between gap-4 rounded border px-3 py-3">
@@ -74,7 +93,11 @@ function ChecklistSettingRow({
           id={hintId}
           className="text-muted-foreground mt-1 max-w-prose text-xs leading-relaxed"
         >
-          {finished ? t("finished") : t("hint")}
+          {finished
+            ? t("finished")
+            : view.hiddenForVisit
+              ? t("hiddenForVisit")
+              : t("hint")}
         </p>
       </div>
       <Switch
@@ -82,8 +105,9 @@ function ChecklistSettingRow({
         aria-describedby={hintId}
         className="mt-0.5"
         checked={view.kind === "switch" && view.showing}
-        disabled={finished || pending}
-        onCheckedChange={onChange}
+        aria-busy={pending || undefined}
+        disabled={finished}
+        onCheckedChange={onCheckedChange}
       />
     </div>
   );
