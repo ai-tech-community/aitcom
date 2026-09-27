@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/article-editor/rich-text-editor";
 import { classroomEditorExtensions } from "./materials/embed-node";
-import { stripEmptyEmbeds } from "@/lib/classroom/lesson-body";
+import { stripIncompleteMaterials } from "@/lib/classroom/lesson-body";
 import { ExamEditor, type ExamDraft } from "./exam-editor";
 import type { ExamQuestion } from "@/lib/classroom";
 import { Pencil, Trash2, Plus, X } from "lucide-react";
@@ -290,7 +290,7 @@ function LessonRow({
             update.mutate({
               lessonId: lesson.id,
               title: title.trim(),
-              body: stripEmptyEmbeds(body),
+              body: stripIncompleteMaterials(body),
               resources: resources.filter(
                 (r) => r.label.trim() && r.url.trim(),
               ),
@@ -392,7 +392,7 @@ export function LessonEditor({
             add.mutate({
               courseId,
               title: title.trim(),
-              body: stripEmptyEmbeds(body) ?? undefined,
+              body: stripIncompleteMaterials(body) ?? undefined,
               resources: resources.filter(
                 (r) => r.label.trim() && r.url.trim(),
               ),

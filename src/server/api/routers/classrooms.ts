@@ -38,6 +38,11 @@ import {
 } from "@/lib/classroom";
 import { awardXp, awardBadge, XP_AMOUNTS } from "@/lib/gamification";
 import { invalidEmbedUrls } from "@/lib/classroom/lesson-body";
+import { mayUploadMaterials } from "@/server/classroom/hosted-files";
+import {
+  assertLessonMaterials,
+  loadMaterialsManifest,
+} from "@/server/classroom/lesson-materials";
 
 /** Resolve community id + the caller's active role (null if not an active member). */
 async function resolveCommunityAndRole(
@@ -361,6 +366,18 @@ export const classroomsRouter = createTRPCRouter({
         ? lessons
         : lessons.map((l) => ({ ...l, examQuestions: undefined }));
 
+      // Hosted files used by any lesson, as this viewer may see them. No
+      // links here: a file card asks for one only when it is used.
+      const materials = await loadMaterialsManifest(payload, {
+        courseId: course.id,
+        bodies: lessons.map((l) => l.body),
+        viewer: access,
+      });
+      const viewerCanUpload =
+        userId && isAuthor
+          ? await mayUploadMaterials(ctx.db, course.communityId, userId)
+          : false;
+
       return {
         course,
         lessons: safeLessons,
@@ -371,6 +388,8 @@ export const classroomsRouter = createTRPCRouter({
         attempts,
         certificateIssuedAt,
         passedCourse,
+        materials,
+        viewerCanUpload,
       };
     }),
 
@@ -555,6 +574,7 @@ export const classroomsRouter = createTRPCRouter({
       }
 
       assertLessonBodyEmbeds(input.body);
+      await assertLessonMaterials(payload, input.courseId, input.body);
       const lesson = await payload.create({
         collection: "lessons",
         data: {
@@ -635,6 +655,7 @@ export const classroomsRouter = createTRPCRouter({
       }
 
       assertLessonBodyEmbeds(input.body);
+      await assertLessonMaterials(payload, course.id, input.body);
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
       if (input.body !== undefined) data.body = input.body;

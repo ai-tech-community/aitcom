@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
+import type { Where } from "payload";
 
 import { canUploadMaterials } from "@/lib/classroom";
 import { mayDownloadMaterial } from "@/lib/classroom/material-access";
@@ -84,6 +85,20 @@ const FAILURE = {
   deleted: "deleted",
 } as const;
 const HIDDEN_FAILURES = [FAILURE.cancelled, FAILURE.deleted];
+
+/**
+ * Matches the files that still exist as far as people are concerned: every
+ * record except a cancelled or deleted upload kept only for accounting. The
+ * author's file list and the lesson manifest both use it, so a file the
+ * author deleted shows as removed in lessons, not as failed.
+ */
+export const EXISTING_MATERIAL: Where = {
+  or: [
+    { status: { not_equals: "failed" } },
+    { failureReason: { exists: false } },
+    { failureReason: { not_in: HIDDEN_FAILURES } },
+  ],
+};
 
 function toCourseMaterial(m: HostedMaterial): CourseMaterial {
   return {
@@ -420,16 +435,7 @@ export async function listCourseMaterials(
   const { docs } = await deps.payload.find({
     collection: "hosted-materials",
     where: {
-      and: [
-        { course: { equals: input.courseId } },
-        {
-          or: [
-            { status: { not_equals: "failed" } },
-            { failureReason: { exists: false } },
-            { failureReason: { not_in: HIDDEN_FAILURES } },
-          ],
-        },
-      ],
+      and: [{ course: { equals: input.courseId } }, EXISTING_MATERIAL],
     },
     sort: "-createdAt",
     pagination: false,
