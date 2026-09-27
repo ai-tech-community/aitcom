@@ -544,8 +544,14 @@ describe("Awesome AI OSS site integration", () => {
   });
 
   it("is hard-linked from /en crawl doors and the Investigations index", () => {
-    const homepage = readFileSync(HOME_FILE, "utf8");
-    expect(homepage).toContain("HomeCrawlDoors");
+    // The page hands its sections to HomeSections, which mounts the doors.
+    expect(readFileSync(HOME_FILE, "utf8")).toContain("<HomeSections");
+    expect(
+      readFileSync(
+        join(dirname(HOME_FILE), "../../components/home/home-sections.tsx"),
+        "utf8",
+      ),
+    ).toContain("<HomeCrawlDoors");
 
     expect(HOME_CRAWL_DOORS.map((door) => door.href)).toContain(
       AWESOME_AI_OSS_PATH,

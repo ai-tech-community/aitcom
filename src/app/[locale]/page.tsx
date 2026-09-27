@@ -9,6 +9,7 @@ import {
   completeUpcomingCandidates,
   formatEventShortWhen,
   pastEvents,
+  pastEventsQueryCeiling,
   upcomingEvents,
   upcomingEventsQueryFloor,
 } from "@/lib/event-time";
@@ -22,19 +23,12 @@ import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import { getSession } from "@/server/better-auth/server";
 import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
-import { FeaturedCommunities } from "@/components/home/featured-communities/featured-communities";
-import { HomeCrawlDoors } from "@/components/home/home-crawl-doors";
-import { WhatWeDo } from "@/components/home/what-we-do/what-we-do";
-import { UpcomingEvents } from "@/components/home/upcoming-events/upcoming-events";
-import { toUpcomingEventInput } from "@/components/home/upcoming-events/to-upcoming-event-input";
+import { toEventRowInput } from "@/components/home/event-rows/to-event-row-input";
 import { loadEventHostNames } from "@/server/events/event-hosts-queries";
-import {
-  RECENT_GATHERINGS_SHOWN,
-  RecentGatherings,
-} from "@/components/home/recent-gatherings/recent-gatherings";
-import { HomeSponsors } from "@/components/home/sponsors/home-sponsors";
+import { RECENT_GATHERINGS_SHOWN } from "@/components/home/recent-gatherings/recent-gatherings";
+import { HomeStats } from "@/components/home/home-stats";
+import { HomeSections } from "@/components/home/home-sections";
 import { toHomeSponsor } from "@/components/home/sponsors/home-sponsor";
-import { HomeClosingSquare } from "@/components/home/closing-square/home-closing-square";
 
 /**
  * Rows fetched for the upcoming-events block. The block shows 5; the rest
@@ -51,19 +45,6 @@ const UPCOMING_EVENT_CANDIDATES = 50;
  */
 const RECENT_EVENT_CANDIDATES = 12;
 
-function StatItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-1.5 px-3 py-1 sm:gap-2 sm:px-6 sm:py-0">
-      <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase sm:text-xs">
-        {label}:
-      </span>
-      <span className="text-foreground font-mono text-xs font-semibold tracking-wider sm:text-xs">
-        {value}
-      </span>
-    </div>
-  );
-}
-
 export async function generateMetadata(): Promise<Metadata> {
   return {
     ...buildOgMeta(
@@ -75,52 +56,69 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [locale, t, session, doors, stats] = await Promise.all([
+  const [locale, t, session] = await Promise.all([
     getLocale(),
     getTranslations(),
     getSession(),
-    getTranslations("hubDoors"),
-    getTranslations("homeStats"),
   ]);
 
   const payload = await getPayloadClient();
-  const { docs: eventCandidates } = await payload.find({
-    collection: "events",
-    where: {
-      status: { equals: "published" },
-      // Wide floor; upcomingEvents() below applies the per-zone "today".
-      date: { greater_than_equal: upcomingEventsQueryFloor() },
-      // Discovered (Luma) events are "scheduled around, not attended
-      // through" (CONTEXT.md [[discovered-event]]) — keep them out of
-      // hub-wide public attend-through surfaces like this upcoming-events
-      // block; they stay in the conflict corpus (corpus.ts untouched).
-      discoverySource: { not_equals: "luma" },
-    },
-    sort: "date",
-    // Headroom for the past-two-days rows the floor lets through and for
-    // completeUpcomingCandidates(), which drops the last fetched days of a
-    // full page so ranking by start instant cannot skip an unfetched event.
-    limit: UPCOMING_EVENT_CANDIDATES,
-    locale: locale as "en" | "nl",
-    draft: false,
-  });
-  // Proof for "Recently on the square": the latest gatherings that took
-  // place, with the same filters as the upcoming list. `date` is the
-  // event-local midnight, so every event that is over has `date < now`;
-  // pastEvents() drops the ones still running today.
-  const { docs: recentCandidates } = await payload.find({
-    collection: "events",
-    where: {
-      status: { equals: "published" },
-      date: { less_than: new Date().toISOString() },
-      discoverySource: { not_equals: "luma" },
-    },
-    sort: "-date",
-    limit: RECENT_EVENT_CANDIDATES,
-    locale: locale as "en" | "nl",
-    draft: false,
-  });
-  const recentEvents = pastEvents(recentCandidates).slice(
+  const now = new Date();
+  // Independent reads, fetched together: upcoming events, recent past
+  // events and the featured sponsors.
+  const [
+    { docs: eventCandidates },
+    { docs: recentCandidates },
+    { docs: featuredSponsors },
+  ] = await Promise.all([
+    payload.find({
+      collection: "events",
+      where: {
+        status: { equals: "published" },
+        // Wide floor; upcomingEvents() below applies the per-zone "today".
+        date: { greater_than_equal: upcomingEventsQueryFloor(now) },
+        // Discovered (Luma) events are "scheduled around, not attended
+        // through" (CONTEXT.md [[discovered-event]]) — keep them out of
+        // hub-wide public attend-through surfaces like this upcoming-events
+        // block; they stay in the conflict corpus (corpus.ts untouched).
+        discoverySource: { not_equals: "luma" },
+      },
+      sort: "date",
+      // Headroom for the past-two-days rows the floor lets through and for
+      // completeUpcomingCandidates(), which drops the last fetched days of a
+      // full page so ranking by start instant cannot skip an unfetched event.
+      limit: UPCOMING_EVENT_CANDIDATES,
+      locale: locale as "en" | "nl",
+      draft: false,
+    }),
+    // Proof for "Recently on the square": the latest gatherings that took
+    // place, with the same filters as the upcoming list. The wide ceiling
+    // mirrors the upcoming floor (an event far east of UTC can be over
+    // while its stored date is still ahead of now); pastEvents() below
+    // does the exact filtering.
+    payload.find({
+      collection: "events",
+      where: {
+        status: { equals: "published" },
+        date: { less_than: pastEventsQueryCeiling(now) },
+        discoverySource: { not_equals: "luma" },
+      },
+      sort: "-date",
+      limit: RECENT_EVENT_CANDIDATES,
+      locale: locale as "en" | "nl",
+      draft: false,
+    }),
+    payload.find({
+      collection: "sponsors",
+      where: {
+        status: { equals: "active" },
+        featured: { equals: true },
+      },
+      limit: 20,
+      depth: 1,
+    }),
+  ]);
+  const recentEvents = pastEvents(recentCandidates, now).slice(
     0,
     RECENT_GATHERINGS_SHOWN,
   );
@@ -129,6 +127,7 @@ export default async function Home() {
   // events drop out, so the list and the notice board agree on "next up".
   const events = upcomingEvents(
     completeUpcomingCandidates(eventCandidates, UPCOMING_EVENT_CANDIDATES),
+    now,
   ).slice(0, 5);
 
   // The town-square notice board shows the real next event, or a calm
@@ -158,16 +157,6 @@ export default async function Home() {
         href: "/events",
         label: `${t("hero.board.empty")} ${t("events.viewAll")}`,
       };
-
-  const { docs: featuredSponsors } = await payload.find({
-    collection: "sponsors",
-    where: {
-      status: { equals: "active" },
-      featured: { equals: true },
-    },
-    limit: 20,
-    depth: 1,
-  });
 
   // Fetch real counts for stats ticker
   const [memberCount, eventCount, sponsorCount] = await Promise.all([
@@ -207,10 +196,10 @@ export default async function Home() {
   ]);
 
   const upcomingEventRows = events.map((event) =>
-    toUpcomingEventInput(event, hostNames),
+    toEventRowInput(event, hostNames),
   );
   const recentEventRows = recentEvents.map((event) =>
-    toUpcomingEventInput(event, hostNames),
+    toEventRowInput(event, hostNames),
   );
 
   const workshopCount = await payload
@@ -260,32 +249,25 @@ export default async function Home() {
         </div>
       </HomeHeroPlaza>
 
-      {/* Stats Ticker */}
-      <div className="border-border grid grid-cols-2 gap-y-1 border-y px-4 py-3 sm:flex sm:items-center sm:gap-y-0 sm:overflow-x-auto sm:px-0 sm:py-2.5">
-        <StatItem label={stats("communities")} value={String(communityCount)} />
-        {/* Counts public roster profiles only, not every member. */}
-        <StatItem label={stats("profiles")} value={String(memberCount)} />
-        <StatItem label={stats("events")} value={String(eventCount)} />
-        <StatItem label={stats("workshops")} value={String(workshopCount)} />
-        <StatItem label={stats("hackathons")} value={String(hackathonCount)} />
-        <StatItem label={stats("sponsors")} value={String(sponsorCount)} />
-      </div>
+      <HomeStats
+        counts={{
+          communities: communityCount,
+          profiles: memberCount,
+          events: eventCount,
+          workshops: workshopCount,
+          hackathons: hackathonCount,
+          sponsors: sponsorCount,
+        }}
+      />
 
-      {featuredCommunities.length > 0 ? (
-        <FeaturedCommunities communities={featuredCommunities} />
-      ) : null}
-
-      <UpcomingEvents events={upcomingEventRows} />
-
-      <HomeCrawlDoors t={doors} signedIn={!!session?.user} />
-
-      <WhatWeDo />
-
-      <RecentGatherings events={recentEventRows} />
-
-      <HomeSponsors sponsors={featuredSponsors.map(toHomeSponsor)} />
-
-      <HomeClosingSquare />
+      <HomeSections
+        featuredCommunities={featuredCommunities}
+        upcomingEvents={upcomingEventRows}
+        recentEvents={recentEventRows}
+        sponsors={featuredSponsors.map(toHomeSponsor)}
+        signedIn={!!session?.user}
+        now={now}
+      />
     </>
   );
 }

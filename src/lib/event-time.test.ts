@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   pastEvents,
+  pastEventsQueryCeiling,
   upcomingEvents,
   upcomingEventsQueryFloor,
   DEFAULT_EVENT_TIMEZONE,
@@ -732,6 +733,45 @@ describe("pastEvents", () => {
 
   it("drops rows without a usable date", () => {
     expect(pastEvents([{ date: "long ago" }], now)).toEqual([]);
+  });
+});
+
+describe("pastEventsQueryCeiling", () => {
+  it("keeps an event far east of UTC that is over though its date is ahead of now", () => {
+    // 20:00 UTC on 27 Sep is already 10:00 on 28 Sep in Kiritimati (UTC+14).
+    const now = new Date("2026-09-27T20:00:00.000Z");
+    const kiritimati = {
+      id: "kir",
+      date: "2026-09-28T00:00:00.000Z",
+      startTime: "06:00",
+      endTime: "08:00",
+      timezone: "Pacific/Kiritimati",
+    };
+    const ceiling = pastEventsQueryCeiling(now);
+    expect(kiritimati.date < now.toISOString()).toBe(false); // old query
+    expect(kiritimati.date < ceiling).toBe(true);
+    expect(pastEvents([kiritimati], now)).toEqual([kiritimati]);
+  });
+
+  it("lets through rows that pastEvents then drops because they are not over", () => {
+    const now = new Date("2026-09-27T20:00:00.000Z");
+    const tomorrow = { date: "2026-09-28T00:00:00.000Z", timezone: "UTC" };
+    const running = {
+      date: "2026-09-27T00:00:00.000Z",
+      startTime: "19:00",
+      endTime: "21:00",
+      timezone: "UTC",
+    };
+    const ceiling = pastEventsQueryCeiling(now);
+    expect(tomorrow.date < ceiling).toBe(true);
+    expect(running.date < ceiling).toBe(true);
+    expect(pastEvents([tomorrow, running], now)).toEqual([]);
+  });
+
+  it("is exactly two days after now", () => {
+    expect(pastEventsQueryCeiling(new Date("2026-09-27T20:00:00.000Z"))).toBe(
+      "2026-09-29T20:00:00.000Z",
+    );
   });
 });
 

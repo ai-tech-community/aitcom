@@ -410,6 +410,18 @@ export function upcomingEventsQueryFloor(now: Date = new Date()): string {
   return new Date(now.getTime() - 2 * DAY_MS).toISOString();
 }
 
+/**
+ * Upper bound for a database query whose rows are then passed through
+ * `pastEvents` — the mirror of `upcomingEventsQueryFloor`. `date` is the
+ * event-local calendar day, so an event east of UTC (up to UTC+14) can be
+ * over while its stored date is still ahead of `now`; comparing
+ * `date < now` would hide it for hours after it ended. Two days ahead
+ * covers every zone; `pastEvents` does the exact filtering.
+ */
+export function pastEventsQueryCeiling(now: Date = new Date()): string {
+  return new Date(now.getTime() + 2 * DAY_MS).toISOString();
+}
+
 interface UpcomingCandidate {
   id?: string | number | null;
   date: string;
