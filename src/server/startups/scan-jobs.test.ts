@@ -203,6 +203,73 @@ describe("listingsFromJobsUrl", () => {
     expect(listings[0]?.descriptionText).not.toMatch(/<p>/i);
   });
 
+  it("reads Ginmon cards from the jobs index and ignores the Offene Stellen CTA", async () => {
+    const fixture = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../lib/investigations/fixtures/ginmon-careers-jobs.html",
+      ),
+      "utf8",
+    );
+    const fromIndex = await listingsFromJobsUrl(
+      "https://www.ginmon.de/careers/jobs",
+      async (url) => {
+        if (url === "https://www.ginmon.de/careers/jobs") {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: fixture,
+          };
+        }
+        if (url.includes("initiativbewerbung-finanzen")) {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: "<h1>Initiativbewerbung (m/w/d)</h1><article><p>Bewirb dich initiativ in Finanzen, IT, Fintech oder Asset Management und erzähl uns, wo du einsteigen willst.</p></article>",
+          };
+        }
+        return { ok: false, status: 404, contentType: "text/html", text: "" };
+      },
+    );
+    expect(fromIndex.map((row) => row.title)).toEqual([
+      "Product Manager (m/w/d) – Wealth Management Platform Ginmon",
+      "Product Manager (m/w/d) – Digital Wealth Management (apeiron)",
+      "Business Development Representative (m/w/d)",
+      "Werkstudent Finance & Controlling (m/w/d)",
+      "Initiativbewerbung – Finanzen | IT | Fintech | Asset Management (m/w/d)",
+      "Working Student Software Engineering (m/f/d)",
+    ]);
+    expect(fromIndex.map((row) => row.title)).not.toContain("Offene Stellen");
+
+    const fromLanding = await listingsFromJobsUrl(
+      "https://www.ginmon.de/careers",
+      async (url) => {
+        if (url === "https://www.ginmon.de/careers") {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: `<h1>Werde Teil unseres Teams</h1><a href="./careers/jobs">Offene Stellen</a>`,
+          };
+        }
+        if (url === "https://www.ginmon.de/careers/jobs") {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: fixture,
+          };
+        }
+        return { ok: false, status: 404, contentType: "text/html", text: "" };
+      },
+    );
+    expect(fromLanding.map((row) => row.title)).toEqual(
+      fromIndex.map((row) => row.title),
+    );
+  });
+
   it("does not invent a JD when the posting page has no sourced text", async () => {
     const listings = await listingsFromJobsUrl(
       "https://example.com/careers",

@@ -121,6 +121,65 @@ describe("startupRoleJsonLd", () => {
     ).not.toContain("2026-09-20");
   });
 
+  it("soft-omits JobPosting for board titles and careers-index URLs", () => {
+    expect(
+      startupRoleJsonLd(
+        sampleRole({
+          startupSlug: "ginmon",
+          startupName: "Ginmon",
+          title: "Offene Stellen",
+          sourceUrl: "https://www.ginmon.de/careers/jobs",
+          postedAt: "2026-03-01T00:00:00.000Z",
+          descriptionText: "Ab sofort suchen wir",
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      startupRoleJsonLd(
+        sampleRole({
+          title: "Ab sofort suchen wir",
+          sourceUrl: "https://www.ginmon.de/careers/jobs/product-manager",
+          postedAt: "2026-03-01",
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      startupRoleJsonLd(
+        sampleRole({
+          title: "Open Positions",
+          sourceUrl: "https://example.com/jobs/platform-engineer",
+          postedAt: "2026-03-01",
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      startupRoleJsonLd(
+        sampleRole({
+          title: "Working Student Software Engineering (m/f/d)",
+          sourceUrl: "https://www.ginmon.de/careers/jobs",
+          postedAt: "2026-03-01",
+        }),
+      ),
+    ).toBeNull();
+
+    const card = startupRoleJsonLd(
+      sampleRole({
+        startupSlug: "ginmon",
+        startupName: "Ginmon",
+        title: "Working Student Software Engineering (m/f/d)",
+        sourceUrl:
+          "https://ginmon.recruitee.com/o/working-student-software-engineering-mfd",
+        postedAt: "2026-03-01",
+        location: "Frankfurt am Main, Hessen, Deutschland",
+      }),
+    );
+    expect(card?.["@type"]).toBe("JobPosting");
+    expect(card?.title).toBe("Working Student Software Engineering (m/f/d)");
+    expect(card?.url).toBe(
+      "https://ginmon.recruitee.com/o/working-student-software-engineering-mfd",
+    );
+  });
+
   it("emits PostalAddress parts from a sourced place string and invents nothing else", () => {
     const data = startupRoleJsonLd(
       sampleRole({

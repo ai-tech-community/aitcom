@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,6 +10,7 @@ import {
   extractListingsFromCareersHtml,
   greenhouseTokenFromGhJid,
   htmlToPlainText,
+  isPublishableJobTitle,
   mergePostingIntoListing,
   parseAshbyJobs,
   parseGreenhouseJobs,
@@ -675,5 +679,141 @@ describe("startup role slugs and jobs query", () => {
       null,
     );
     expect(byWorkType).toHaveLength(0);
+  });
+});
+
+const GINMON_JOBS_FIXTURE = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "fixtures/ginmon-careers-jobs.html",
+  ),
+  "utf8",
+);
+
+/**
+ * Card headings on https://www.ginmon.de/careers/jobs, captured 2026-09-27.
+ * The first h4 includes the trailing token "Ginmon" as published on the board.
+ */
+const GINMON_LIVE_TITLES = [
+  "Product Manager (m/w/d) – Wealth Management Platform Ginmon",
+  "Product Manager (m/w/d) – Digital Wealth Management (apeiron)",
+  "Business Development Representative (m/w/d)",
+  "Werkstudent Finance & Controlling (m/w/d)",
+  "Initiativbewerbung – Finanzen | IT | Fintech | Asset Management (m/w/d)",
+  "Working Student Software Engineering (m/f/d)",
+] as const;
+
+describe("board titles are not jobs", () => {
+  it("rejects listing H1s and generic board labels", () => {
+    for (const title of [
+      "Offene Stellen",
+      "Offene Positionen",
+      "Stellenangebote",
+      "Aktuelle Stellen",
+      "Ab sofort suchen wir",
+      "Open Positions",
+      "Current openings",
+      "We are now looking for",
+      "We're hiring",
+      "Vacatures",
+    ]) {
+      expect(isPublishableJobTitle(title)).toBe(false);
+    }
+    expect(
+      isPublishableJobTitle("Working Student Software Engineering (m/f/d)"),
+    ).toBe(true);
+    expect(
+      isPublishableJobTitle(
+        "Product Manager (m/w/d) – Wealth Management Platform Ginmon",
+      ),
+    ).toBe(true);
+
+    expect(
+      extractJobPostingFromHtml(
+        "<h1>Offene Stellen</h1><p>Ab sofort suchen wir</p>",
+        "https://www.ginmon.de/careers/jobs",
+      ),
+    ).toBeNull();
+    expect(
+      extractJobPostingFromHtml(
+        "<h1>We are now looking for</h1>",
+        "https://www.ginmon.de/en/careers/jobs",
+      ),
+    ).toBeNull();
+    expect(
+      extractJobPostingFromHtml(
+        "<h1>Team Leader iOS</h1><article><p>Lead the iOS team and ship the next release of the wallet.</p></article>",
+        "https://example.com/jobs/team-leader-ios",
+      )?.title,
+    ).toBe("Team Leader iOS");
+  });
+
+  it("does not treat a jobs-index CTA as an opening", () => {
+    const listings = extractListingsFromCareersHtml(
+      `<h1>Werde Teil unseres Teams</h1>
+       <a href="./careers/jobs"><p>Offene Stellen</p></a>
+       <a href="/en/careers/jobs">Zu den Jobs</a>
+       <a href="/karriere/stellen">Stellenangebote</a>`,
+      "https://www.ginmon.de/careers",
+    );
+    expect(listings).toEqual([]);
+  });
+
+  it("reads Ginmon Recruitee cards and drops the board headline", () => {
+    const listings = extractListingsFromCareersHtml(
+      GINMON_JOBS_FIXTURE,
+      "https://www.ginmon.de/careers/jobs",
+    );
+    expect(listings.map((row) => row.title)).toEqual([...GINMON_LIVE_TITLES]);
+    expect(listings.map((row) => row.sourceUrl)).toEqual([
+      "https://ginmon.recruitee.com/o/product-manager-mwd-wealth-management-platform-ginmon",
+      "https://ginmon.recruitee.com/o/product-manager-mwd-digital-wealth-management-apeiron",
+      "https://ginmon.recruitee.com/o/business-development-representative-mwd",
+      "https://ginmon.recruitee.com/o/werkstudent-finance-controlling-mwd",
+      "https://ginmon.recruitee.com/o/initiativbewerbung-finanzen-it-fintech-asset-management-mwd",
+      "https://ginmon.recruitee.com/o/working-student-software-engineering-mfd",
+    ]);
+    expect(
+      listings.every(
+        (row) => row.location === "Frankfurt am Main, Hessen, Deutschland",
+      ),
+    ).toBe(true);
+    expect(listings.map((row) => row.title)).not.toContain("Offene Stellen");
+    expect(listings.map((row) => row.title)).not.toContain(
+      "Ab sofort suchen wir",
+    );
+    expect(listings.map((row) => row.title)).not.toContain(
+      "WealthTech Solutions",
+    );
+    expect(listings.map((row) => row.title)).not.toContain("IT");
+  });
+});
+
+describe("Ginmon open-role repair", () => {
+  it("closes the index row and upserts the six live offer URLs", async () => {
+    const migration = readFileSync(
+      join(process.cwd(), "src/migrations/20260927d_ginmon_open_roles.ts"),
+      "utf8",
+    );
+    expect(migration).toContain("'offene stellen'");
+    expect(migration).toContain("\"status\" = 'closed'");
+    expect(migration).toContain("ginmon.de/careers/jobs");
+    for (const title of GINMON_LIVE_TITLES) {
+      expect(migration).toContain(title);
+    }
+    expect(migration).toContain(
+      "https://ginmon.recruitee.com/o/working-student-software-engineering-mfd",
+    );
+    expect(migration).toContain('"open_role_count"');
+
+    const { migrations } = await import("@/migrations");
+    const names = migrations.map((entry) => entry.name);
+    const at = names.indexOf("20260927d_ginmon_open_roles");
+    expect(at).toBeGreaterThan(
+      names.indexOf("20260927c_onboarding_dismissed_at"),
+    );
+    expect(names.lastIndexOf("20260927d_ginmon_open_roles")).toBe(at);
+    expect(typeof migrations[at]?.up).toBe("function");
+    expect(typeof migrations[at]?.down).toBe("function");
   });
 });
