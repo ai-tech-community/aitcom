@@ -211,6 +211,12 @@ function gather(tick: number): VignetteFrame {
 
 // ─── Build: a human and an agent stacking blocks on one workbench ───────────
 
+/** A tool rack on the workshop wall, behind the bench. */
+const RACK = [
+  "  .--------------------------.",
+  "  |  T   -o   |=|  /\\/\\  []  |",
+  "  '--------------------------'",
+];
 const BENCH = [
   "         ____________________",
   "        /                   /|",
@@ -232,6 +238,7 @@ const BUILD_CYCLE = BLOCK_TICKS * BLOCKS.length + 40;
 
 function build(tick: number): VignetteFrame {
   const c = new Canvas(W, H);
+  c.sprite(4, 0, RACK, "scenery");
   c.sprite(0, 5, BENCH, "scenery");
   c.sprite(0, 9, ["_".repeat(W)], "scenery");
   paving(c, [10]);

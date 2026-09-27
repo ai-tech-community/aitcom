@@ -51,6 +51,14 @@ describe("vignettes", () => {
     expect(frames.size).toBeGreaterThan(1);
   });
 
+  it.each(KEYS)("%s is balanced vertically in its box", (key) => {
+    const rows = flat(key, VIGNETTES[key].stillTick).split("\n");
+    const filled = rows.map((r) => r.trim() !== "");
+    const top = filled.indexOf(true);
+    const bottom = rows.length - 1 - filled.lastIndexOf(true);
+    expect(Math.abs(top - bottom)).toBeLessThanOrEqual(1);
+  });
+
   it("is deterministic", () => {
     for (const key of KEYS) expect(flat(key, 77)).toBe(flat(key, 77));
   });
