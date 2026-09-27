@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 
 const session = vi.hoisted(() => ({
-  value: { data: null as { user: { id: string } } | null, isPending: false },
+  value: {
+    data: null as { user: { id: string } } | null,
+    isPending: false,
+    error: null as Error | null,
+  },
 }));
 
 vi.mock("@/server/better-auth/client", () => ({
@@ -30,7 +34,7 @@ function renderProvider() {
 
 describe("AuthRequiredProvider", () => {
   it("returns guests to the current page by default", () => {
-    session.value = { data: null, isPending: false };
+    session.value = { data: null, isPending: false, error: null };
     renderProvider();
     act(() => captured!.promptAuth("Sign in to test"));
     expect(
@@ -39,7 +43,7 @@ describe("AuthRequiredProvider", () => {
   });
 
   it("uses an explicit return path when one is given", () => {
-    session.value = { data: null, isPending: false };
+    session.value = { data: null, isPending: false, error: null };
     renderProvider();
     const action = vi.fn();
     act(() =>
@@ -59,11 +63,11 @@ describe("AuthRequiredProvider", () => {
   });
 
   it("reports the session status", () => {
-    session.value = { data: null, isPending: true };
+    session.value = { data: null, isPending: true, error: null };
     const view = renderProvider();
     expect(captured!.authStatus).toBe("pending");
 
-    session.value = { data: null, isPending: false };
+    session.value = { data: null, isPending: false, error: null };
     view.rerender(
       <AuthRequiredProvider>
         <Capture />
@@ -71,7 +75,11 @@ describe("AuthRequiredProvider", () => {
     );
     expect(captured!.authStatus).toBe("guest");
 
-    session.value = { data: { user: { id: "u1" } }, isPending: false };
+    session.value = {
+      data: { user: { id: "u1" } },
+      isPending: false,
+      error: null,
+    };
     view.rerender(
       <AuthRequiredProvider>
         <Capture />
@@ -80,8 +88,22 @@ describe("AuthRequiredProvider", () => {
     expect(captured!.authStatus).toBe("authenticated");
   });
 
+  it("reports unknown when the session fetch failed", () => {
+    session.value = {
+      data: null,
+      isPending: false,
+      error: new Error("network"),
+    };
+    renderProvider();
+    expect(captured!.authStatus).toBe("unknown");
+  });
+
   it("runs the action directly for a signed-in user", () => {
-    session.value = { data: { user: { id: "u1" } }, isPending: false };
+    session.value = {
+      data: { user: { id: "u1" } },
+      isPending: false,
+      error: null,
+    };
     renderProvider();
     const action = vi.fn();
     act(() => captured!.requireAuth(action, "x", { returnTo: "/x" }));

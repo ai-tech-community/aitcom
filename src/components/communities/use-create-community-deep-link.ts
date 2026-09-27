@@ -8,8 +8,8 @@ import { CREATE_COMMUNITY_PARAM } from "./create-community-link";
  * Opens the create-community dialog when the page was reached through
  * `?create=1` (e.g. the homepage "Host your community" button).
  *
- * - Waits until the client session is known, so a signed-in member never
- *   sees the guest prompt.
+ * - Acts only once the session is known (not pending, not a failed fetch),
+ *   so a signed-in member never sees the guest prompt.
  * - Guests get the standard sign-in dialog; its return path keeps
  *   `?create=1`, so the dialog opens once they come back signed in.
  * - The param is removed from the URL right away (history.replaceState), so
@@ -27,7 +27,14 @@ export function useCreateCommunityDeepLink(
   });
 
   useEffect(() => {
-    if (handled.current || authStatus === "pending") return;
+    // Only act once we know who this is; a failed session fetch ("unknown")
+    // must not send a signed-in member to sign-in.
+    if (
+      handled.current ||
+      (authStatus !== "authenticated" && authStatus !== "guest")
+    ) {
+      return;
+    }
     const url = new URL(window.location.href);
     if (url.searchParams.get(CREATE_COMMUNITY_PARAM) !== "1") return;
     handled.current = true;

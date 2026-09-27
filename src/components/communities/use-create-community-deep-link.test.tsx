@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 
 const auth = vi.hoisted(() => ({
-  status: "authenticated" as "pending" | "authenticated" | "guest",
+  status: "authenticated" as "pending" | "authenticated" | "guest" | "unknown",
   requireAuth: vi.fn(),
 }));
 
@@ -84,6 +84,20 @@ describe("useCreateCommunityDeepLink", () => {
     view.rerender(<Harness open={open} />);
     expect(open).toHaveBeenCalledTimes(1);
     expect(currentUrl()).toBe("/en/communities");
+  });
+
+  it("does not act when the session fetch failed", () => {
+    auth.status = "unknown";
+    window.history.replaceState(null, "", "/en/communities?create=1");
+    const open = vi.fn();
+    const view = render(<Harness open={open} />);
+    expect(auth.requireAuth).not.toHaveBeenCalled();
+    expect(currentUrl()).toBe("/en/communities?create=1");
+
+    // A later successful refetch still honours the link.
+    auth.status = "authenticated";
+    view.rerender(<Harness open={open} />);
+    expect(open).toHaveBeenCalledTimes(1);
   });
 
   it("does nothing without the param", () => {

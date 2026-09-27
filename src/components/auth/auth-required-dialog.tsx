@@ -15,7 +15,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/server/better-auth/client";
 
-export type AuthStatus = "pending" | "authenticated" | "guest";
+/**
+ * `unknown` means the session fetch failed: we cannot tell a guest from a
+ * member, so code acting without a click must not guess.
+ */
+export type AuthStatus = "pending" | "authenticated" | "guest" | "unknown";
 
 export type AuthPromptOptions = {
   /**
@@ -41,9 +45,10 @@ type AuthRequiredContext = {
   /** Imperatively open the dialog (e.g. from a button's onClick). */
   promptAuth: (intent?: string, options?: AuthPromptOptions) => void;
   /**
-   * Whether the client session is known yet. Code that acts without a click
-   * (e.g. a deep link that opens a dialog on load) must wait for
-   * `"pending"` to resolve, or a signed-in member gets the guest prompt.
+   * Whether the client session is known. Code that acts without a click
+   * (e.g. a deep link that opens a dialog on load) must act only on
+   * `"authenticated"` or `"guest"`; `"pending"` and `"unknown"` (fetch
+   * failed) would show a signed-in member the guest prompt.
    */
   authStatus: AuthStatus;
 };
@@ -61,7 +66,9 @@ export function AuthRequiredProvider({
     ? "authenticated"
     : session.isPending
       ? "pending"
-      : "guest";
+      : session.error
+        ? "unknown"
+        : "guest";
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [intent, setIntent] = useState<string | undefined>();
