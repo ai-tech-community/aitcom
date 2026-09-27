@@ -77,18 +77,16 @@ export function stripEmptyEmbeds(body: unknown): unknown {
   const rootNode = parsed?.root as AnyNode | undefined;
   if (!rootNode || typeof rootNode !== "object" || !Array.isArray(rootNode.children))
     return body;
-  const prune = (nodes: unknown): unknown => {
-    if (!Array.isArray(nodes)) return nodes;
-    return nodes
+  const prune = (nodes: readonly unknown[]): unknown[] =>
+    nodes
       .filter((raw) => !isEmptyEmbed(raw as AnyNode))
-      .map((raw) => {
+      .map((raw: unknown) => {
         const node = raw as AnyNode;
         return node && typeof node === "object" && Array.isArray(node.children)
-          ? { ...node, children: prune(node.children) }
+          ? { ...node, children: prune(node.children as unknown[]) }
           : raw;
       });
-  };
-  return { ...parsed, root: { ...rootNode, children: prune(rootNode.children) } };
+  return { ...parsed, root: { ...rootNode, children: prune(rootNode.children as unknown[]) } };
 }
 
 export function prependEmbedBlock(

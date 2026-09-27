@@ -38,7 +38,10 @@ export type Row = {
 type Db = MigrateUpArgs["db"];
 
 /** Migrate one lesson as read by `up`'s SELECT. Exported for tests. */
-export async function applyYoutubeMigrationRow(db: Db, row: Row): Promise<void> {
+export async function applyYoutubeMigrationRow(
+  db: Db,
+  row: Row,
+): Promise<void> {
   const step = planYoutubeMigration({
     body: row.body,
     youtubeUrl: row.youtubeUrl,

@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 
@@ -7,7 +13,11 @@ import { filterSlashCommands } from "@/components/article-editor/utils";
 import en from "../../../../messages/en.json";
 import { classroomEditorExtensions } from "./embed-node";
 
-type Node = { type?: string; fields?: { blockType?: string }; children?: Node[] };
+type Node = {
+  type?: string;
+  fields?: { blockType?: string };
+  children?: Node[];
+};
 
 function hasEmbedBlock(state: unknown): boolean {
   const walk = (nodes: Node[] | undefined): boolean =>
@@ -16,7 +26,9 @@ function hasEmbedBlock(state: unknown): boolean {
         (n.type === "block" && n.fields?.blockType === "Embed") ||
         walk(n.children),
     );
-  return walk((state as { root?: { children?: Node[] } } | null)?.root?.children);
+  return walk(
+    (state as { root?: { children?: Node[] } } | null)?.root?.children,
+  );
 }
 
 describe("lesson editor: inserting an Embed", () => {
