@@ -335,6 +335,28 @@ describe.skipIf(!RUN_DB)("classroom course access [DB integration]", () => {
     });
   });
 
+  describe("learner actions on a lesson that does not exist", () => {
+    const missingLessonId = 2147483000;
+
+    it("answers an exam attempt with NOT_FOUND, like a hidden course's lesson", async () => {
+      await expect(
+        callerAs(fx.outsiderId).classrooms.submitExamAttempt({
+          lessonId: missingLessonId,
+          answers: [{ questionId: "q1", selectedIndex: 1 }],
+        }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("answers marking it complete with NOT_FOUND, like a hidden course's lesson", async () => {
+      await expect(
+        callerAs(fx.outsiderId).classrooms.markLessonComplete({
+          lessonId: missingLessonId,
+          completed: true,
+        }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+  });
+
   describe("learner actions with access", () => {
     it("an active enrolled member can still pass an exam and complete lessons", async () => {
       const caller = callerAs(fx.memberId);

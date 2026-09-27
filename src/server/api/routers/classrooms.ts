@@ -1088,11 +1088,14 @@ export const classroomsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       const payload = await getPayloadClient();
+      // A missing lesson answers like a hidden one: NOT_FOUND.
       const lesson = await payload.findByID({
         collection: "lessons",
         id: input.lessonId,
         depth: 0,
+        disableErrors: true,
       });
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND" });
       const courseId = lesson.course;
       await requireReadableCourse(ctx.db, payload, courseId, userId);
 
@@ -1161,11 +1164,14 @@ export const classroomsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       const payload = await getPayloadClient();
+      // A missing lesson answers like a hidden one: NOT_FOUND.
       const lesson = await payload.findByID({
         collection: "lessons",
         id: input.lessonId,
         depth: 0,
+        disableErrors: true,
       });
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND" });
       const courseId = lesson.course;
       await requireReadableCourse(ctx.db, payload, courseId, userId);
 
