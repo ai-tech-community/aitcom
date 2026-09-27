@@ -277,4 +277,75 @@ describe.skipIf(!RUN_DB)("classroom course access [DB integration]", () => {
       }
     });
   });
+
+  describe("classrooms.enroll", () => {
+    it("refuses an outsider on a members-only course without revealing it", async () => {
+      await expect(
+        callerAs(fx.outsiderId).classrooms.enroll({
+          courseId: fx.membersOnly.id,
+        }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("lets an outsider enroll in a public course", async () => {
+      const res = await callerAs(fx.outsiderId).classrooms.enroll({
+        courseId: fx.publicCourse.id,
+      });
+      expect(res).toEqual({ enrolled: true, already: false });
+    });
+
+    it("lets an active member enroll in a members-only course", async () => {
+      const res = await callerAs(fx.memberId).classrooms.enroll({
+        courseId: fx.membersOnly.id,
+      });
+      expect(res).toEqual({ enrolled: true, already: false });
+    });
+  });
+
+  describe("learner actions after losing access", () => {
+    beforeEach(async () => {
+      await callerAs(fx.memberId).classrooms.enroll({
+        courseId: fx.membersOnly.id,
+      });
+      await setMembershipStatus(fx.memberId, "banned");
+    });
+
+    it("refuses an exam attempt from a banned, still-enrolled member", async () => {
+      await expect(
+        callerAs(fx.memberId).classrooms.submitExamAttempt({
+          lessonId: fx.membersOnly.lessonId,
+          answers: [{ questionId: "q1", selectedIndex: 1 }],
+        }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      const { eq } = await import("drizzle-orm");
+      const attempts = await m.db
+        .select()
+        .from(m.schema.lessonExamAttempts)
+        .where(eq(m.schema.lessonExamAttempts.userId, fx.memberId));
+      expect(attempts).toHaveLength(0);
+    });
+
+    it("refuses marking a lesson complete from a banned, still-enrolled member", async () => {
+      await expect(
+        callerAs(fx.memberId).classrooms.markLessonComplete({
+          lessonId: fx.membersOnly.lessonId,
+          completed: true,
+        }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+  });
+
+  describe("learner actions with access", () => {
+    it("an active enrolled member can still pass an exam and complete lessons", async () => {
+      const caller = callerAs(fx.memberId);
+      await caller.classrooms.enroll({ courseId: fx.membersOnly.id });
+      const res = await caller.classrooms.submitExamAttempt({
+        lessonId: fx.membersOnly.lessonId,
+        answers: [{ questionId: "q1", selectedIndex: 1 }],
+      });
+      expect(res.passed).toBe(true);
+      const get = await caller.classrooms.get({ slug: fx.membersOnly.slug });
+      expect(get.completedLessonIds).toEqual([fx.membersOnly.lessonId]);
+    });
+  });
 });
