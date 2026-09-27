@@ -2410,6 +2410,7 @@
       "postEdited": "Bericht bijgewerkt",
       "postDeleted": "Bericht verwijderd",
       "postDeletedMessage": "[Dit bericht is verwijderd]",
+      "linkOpensInNewTab": "opent in een nieuw tabblad",
       "likes": "{count} likes",
       "comments": "{count} reacties",
       "showComments": "Reacties tonen",

@@ -69,7 +69,7 @@
 | `src/collections/Lessons.ts` (modify) | Add the `Embed` block; remove `youtubeUrl` (Task 5). |
 | `src/server/api/routers/classrooms.ts` (modify) | Refuse invalid Embed blocks on add/update; stop accepting `youtubeUrl` (Task 5). |
 | `src/server/api/routers/classroom-lessons.integration.test.ts` (create) | Router tests for Embed validation. |
-| `src/migrations/20260928a_lesson_youtube_to_embed.ts` (create) + `index.ts` (modify) | The data migration. |
+| `src/migrations/20260928b_lesson_youtube_to_embed.ts` (create) + `index.ts` (modify) | The data migration. |
 | `src/migrations/lesson-youtube-to-embed.integration.test.ts` (create) | Runs the migration against the test DB. |
 | `src/lib/lexical.tsx` (modify) | `blockRenderers` seam on `LexicalRenderer`. |
 | `src/lib/lexical-renderers.test.tsx` (create) | Seam tests. |
@@ -958,13 +958,13 @@ git commit -m "Classroom: Embed block in lesson bodies, checked on save"
 ### Task 3: Migrate each lesson's YouTube link into its body
 
 **Files:**
-- Create: `src/migrations/20260928a_lesson_youtube_to_embed.ts`
+- Create: `src/migrations/20260928b_lesson_youtube_to_embed.ts`
 - Modify: `src/migrations/index.ts`
 - Create: `src/migrations/lesson-youtube-to-embed.integration.test.ts`
 
 **Interfaces:**
 - Consumes: `planYoutubeMigration` (Task 2).
-- Produces: the migration `20260928a_lesson_youtube_to_embed` (`up`, `down`).
+- Produces: the migration `20260928b_lesson_youtube_to_embed` (`up`, `down`).
 
 - [ ] **Step 1: Write the failing integration test**
 
@@ -987,11 +987,11 @@ function isLocalDbConfigured(): boolean {
 }
 const RUN_DB = isLocalDbConfigured();
 
-describe.skipIf(!RUN_DB)("migration 20260928a lesson youtube → embed [DB integration]", () => {
+describe.skipIf(!RUN_DB)("migration 20260928b lesson youtube → embed [DB integration]", () => {
   type Mods = {
     db: typeof import("@/server/db").db;
     sql: typeof import("drizzle-orm").sql;
-    up: typeof import("./20260928a_lesson_youtube_to_embed").up;
+    up: typeof import("./20260928b_lesson_youtube_to_embed").up;
   };
   let m: Mods;
   const created: number[] = [];
@@ -1000,7 +1000,7 @@ describe.skipIf(!RUN_DB)("migration 20260928a lesson youtube → embed [DB integ
     const [{ db }, { sql }, migration] = await Promise.all([
       import("@/server/db"),
       import("drizzle-orm"),
-      import("./20260928a_lesson_youtube_to_embed"),
+      import("./20260928b_lesson_youtube_to_embed"),
     ]);
     m = { db, sql, up: migration.up };
   }, 120_000);
@@ -1093,7 +1093,7 @@ Run it with the DB prefix. Expected: FAIL. The migration module is not found.
 
 - [ ] **Step 2: Write the migration**
 
-`src/migrations/20260928a_lesson_youtube_to_embed.ts`:
+`src/migrations/20260928b_lesson_youtube_to_embed.ts`:
 
 ```ts
 // Classroom lesson materials, slice 1 (spec 2026-09-27 §3.4, ADR-0037):
@@ -1158,16 +1158,16 @@ export async function down(_args: MigrateDownArgs): Promise<void> {
 Register it at the end of `src/migrations/index.ts`, following the existing pattern:
 
 ```ts
-import * as migration_20260928a_lesson_youtube_to_embed from "./20260928a_lesson_youtube_to_embed";
+import * as migration_20260928b_lesson_youtube_to_embed from "./20260928b_lesson_youtube_to_embed";
 ```
 
 and the last array entry:
 
 ```ts
   {
-    up: migration_20260928a_lesson_youtube_to_embed.up,
-    down: migration_20260928a_lesson_youtube_to_embed.down,
-    name: "20260928a_lesson_youtube_to_embed",
+    up: migration_20260928b_lesson_youtube_to_embed.up,
+    down: migration_20260928b_lesson_youtube_to_embed.down,
+    name: "20260928b_lesson_youtube_to_embed",
   },
 ```
 
@@ -1183,7 +1183,7 @@ Run `SKIP_ENV_VALIDATION=1 pnpm typecheck`. Expected: clean.
 
 ```bash
 git branch --show-current
-git add src/migrations/20260928a_lesson_youtube_to_embed.ts src/migrations/index.ts src/migrations/lesson-youtube-to-embed.integration.test.ts
+git add src/migrations/20260928b_lesson_youtube_to_embed.ts src/migrations/index.ts src/migrations/lesson-youtube-to-embed.integration.test.ts
 git commit -m "Classroom: migrate each lesson's YouTube link into an Embed block"
 ```
 

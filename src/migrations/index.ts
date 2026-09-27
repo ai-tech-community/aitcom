@@ -116,7 +116,8 @@ import * as migration_20260927a_points_boosts_locked_docs_rels from "./20260927a
 import * as migration_20260927b_feed_post_counter_repair from "./20260927b_feed_post_counter_repair";
 import * as migration_20260927c_onboarding_dismissed_at from "./20260927c_onboarding_dismissed_at";
 import * as migration_20260927d_ginmon_open_roles from "./20260927d_ginmon_open_roles";
-import * as migration_20260928a_lesson_youtube_to_embed from "./20260928a_lesson_youtube_to_embed";
+import * as migration_20260928a_feed_post_link_preview from "./20260928a_feed_post_link_preview";
+import * as migration_20260928b_lesson_youtube_to_embed from "./20260928b_lesson_youtube_to_embed";
 
 export const migrations = [
   {
@@ -710,8 +711,13 @@ export const migrations = [
     name: "20260927d_ginmon_open_roles",
   },
   {
-    up: migration_20260928a_lesson_youtube_to_embed.up,
-    down: migration_20260928a_lesson_youtube_to_embed.down,
-    name: "20260928a_lesson_youtube_to_embed",
+    up: migration_20260928a_feed_post_link_preview.up,
+    down: migration_20260928a_feed_post_link_preview.down,
+    name: "20260928a_feed_post_link_preview",
+  },
+  {
+    up: migration_20260928b_lesson_youtube_to_embed.up,
+    down: migration_20260928b_lesson_youtube_to_embed.down,
+    name: "20260928b_lesson_youtube_to_embed",
   },
 ];

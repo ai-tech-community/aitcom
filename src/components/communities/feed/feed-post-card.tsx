@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
+import { firstLink } from "@/lib/links";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -21,6 +22,8 @@ import { Flag, Heart, MessageSquare, MoreHorizontal, Pin } from "lucide-react";
 import { toast } from "sonner";
 import { FeedComments } from "./feed-comments";
 import { FeedVideoPlayer, type FeedVideo } from "./feed-video-player";
+import { LinkPreviewCard } from "./link-preview-card";
+import { LinkifiedText } from "./linkified-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
 
@@ -42,6 +45,14 @@ interface FeedPost {
   topicSlug?: string | null;
   hasLiked: boolean;
   video?: FeedVideo | null;
+  /** Preview of the first link in `content`, stored when the post was saved. */
+  linkPreview?: {
+    url?: string | null;
+    title?: string | null;
+    description?: string | null;
+    imageUrl?: string | null;
+    siteName?: string | null;
+  } | null;
   /** Set when the post was reported; only its author and moderators see it. */
   hiddenAt?: string | null;
   visibility?: "community" | "public" | null;
@@ -134,6 +145,10 @@ export function FeedPostCard({
   }
 
   const initials = getInitials(post.authorName ?? "?");
+  const link = firstLink(post.content);
+  // Only a preview of the link the post shows now: never a stale one.
+  const linkPreview =
+    link && post.linkPreview?.url === link ? post.linkPreview : null;
 
   return (
     <div className="border-border space-y-3 rounded-lg border p-4">
@@ -256,7 +271,7 @@ export function FeedPostCard({
         </div>
       ) : (
         <p className="text-sm leading-relaxed whitespace-pre-wrap">
-          {post.content}
+          <LinkifiedText text={post.content} />
         </p>
       )}
 
@@ -270,6 +285,8 @@ export function FeedPostCard({
           alt="Post image"
           className="max-h-96 w-full rounded-lg object-cover"
         />
+      ) : link && !isEditing ? (
+        <LinkPreviewCard href={link} preview={linkPreview} />
       ) : null}
 
       {/* Actions */}

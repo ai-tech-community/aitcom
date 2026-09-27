@@ -7,7 +7,7 @@ import type { db as Db } from "@/server/db";
 import type {
   applyYoutubeMigrationRow as ApplyRow,
   up as Up,
-} from "./20260928a_lesson_youtube_to_embed";
+} from "./20260928b_lesson_youtube_to_embed";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -23,7 +23,7 @@ function isLocalDbConfigured(): boolean {
 const RUN_DB = isLocalDbConfigured();
 
 describe.skipIf(!RUN_DB)(
-  "migration 20260928a lesson youtube → embed [DB integration]",
+  "migration 20260928b lesson youtube → embed [DB integration]",
   () => {
     type Mods = {
       db: typeof Db;
@@ -38,7 +38,7 @@ describe.skipIf(!RUN_DB)(
       const [{ db }, { sql }, migration] = await Promise.all([
         import("@/server/db"),
         import("drizzle-orm"),
-        import("./20260928a_lesson_youtube_to_embed"),
+        import("./20260928b_lesson_youtube_to_embed"),
       ]);
       m = {
         db,

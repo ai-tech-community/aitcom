@@ -158,3 +158,85 @@ describe("FeedPostCard video and moderation", () => {
     expect(screen.queryByTestId("banner")).not.toBeInTheDocument();
   });
 });
+
+describe("FeedPostCard links", () => {
+  const LINK = "https://claude.ai/artifact/QfGAfn6EPmuJngAgwsZoa9";
+  const content = `Grok Bot cheat sheet ${LINK}`;
+
+  it("makes a link in the text clickable, opening in a new tab", () => {
+    renderCard({ content });
+    const inline = screen
+      .getAllByRole("link")
+      .find((a) => a.textContent?.startsWith(LINK));
+    expect(inline).toHaveAttribute("href", LINK);
+    expect(inline).toHaveAttribute("target", "_blank");
+    expect(inline?.getAttribute("rel")).toContain("noopener");
+    expect(inline?.getAttribute("rel")).toContain("ugc");
+    expect(screen.getByText(/Grok Bot cheat sheet/)).toBeInTheDocument();
+  });
+
+  it("shows the stored preview as a card that opens the page", () => {
+    renderCard({
+      content,
+      linkPreview: {
+        url: LINK,
+        title: "Grok Bot Cheatsheet",
+        description: "One-page reference for small business users",
+        imageUrl: "https://cdn.example.com/thumb.img",
+        siteName: "Claude",
+      },
+    });
+    const card = screen.getByRole("link", { name: /Grok Bot Cheatsheet/ });
+    expect(card).toHaveAttribute("href", LINK);
+    expect(card).toHaveAttribute("target", "_blank");
+    expect(card).toHaveTextContent("claude.ai");
+    expect(card).toHaveTextContent("One-page reference");
+    expect(card.querySelector("img")).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/thumb.img",
+    );
+  });
+
+  it("falls back to the site and address when there is no preview", () => {
+    renderCard({ content });
+    const card = screen.getByRole("link", {
+      name: /claude\.ai\/artifact\/QfGAfn6EPmuJngAgwsZoa9 \(opens/,
+    });
+    expect(card).toHaveAttribute("href", LINK);
+    expect(card.querySelector("img")).toBeNull();
+  });
+
+  it("ignores a stored preview of a link the post no longer has", () => {
+    renderCard({
+      content,
+      linkPreview: { url: "https://old.example.com/", title: "Old page" },
+    });
+    expect(screen.queryByText("Old page")).toBeNull();
+  });
+
+  it("hides the preview image when it fails to load", () => {
+    renderCard({
+      content,
+      linkPreview: {
+        url: LINK,
+        title: "Grok Bot Cheatsheet",
+        imageUrl: "https://cdn.example.com/broken.img",
+      },
+    });
+    const card = screen.getByRole("link", { name: /Grok Bot Cheatsheet/ });
+    fireEvent.error(card.querySelector("img")!);
+    expect(card.querySelector("img")).toBeNull();
+  });
+
+  it("lets attached media take the place of the link card", () => {
+    renderCard({ content, video });
+    // Only the inline link in the text: no card.
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(screen.getByTestId("player")).toBeInTheDocument();
+  });
+
+  it("shows no card for a post without a link", () => {
+    renderCard({ content: "Just words" });
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+});

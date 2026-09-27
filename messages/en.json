@@ -2410,6 +2410,7 @@
       "postEdited": "Post updated",
       "postDeleted": "Post deleted",
       "postDeletedMessage": "[This post has been deleted]",
+      "linkOpensInNewTab": "opens in a new tab",
       "likes": "{count} likes",
       "comments": "{count} comments",
       "showComments": "Show comments",

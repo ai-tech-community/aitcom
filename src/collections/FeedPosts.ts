@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
 
 import { VIDEO_VISIBILITIES, VIDEO_VISIBILITY_LABELS } from "@/lib/video-rules";
+import { linkPreviewBeforeChange } from "@/server/link-preview/link-preview-hook";
 
 export const FeedPosts: CollectionConfig = {
   slug: "feed-posts",
@@ -115,6 +116,22 @@ export const FeedPosts: CollectionConfig = {
       ],
     },
     {
+      name: "linkPreview",
+      type: "group",
+      admin: {
+        readOnly: true,
+        description:
+          "Preview of the first link in the content, read from that page when the post is saved.",
+      },
+      fields: [
+        { name: "url", type: "text" },
+        { name: "title", type: "text" },
+        { name: "description", type: "text" },
+        { name: "imageUrl", type: "text" },
+        { name: "siteName", type: "text" },
+      ],
+    },
+    {
       name: "hiddenAt",
       type: "date",
       index: true,
@@ -131,5 +148,8 @@ export const FeedPosts: CollectionConfig = {
       admin: { position: "sidebar", readOnly: true },
     },
   ],
+  hooks: {
+    beforeChange: [linkPreviewBeforeChange()],
+  },
   timestamps: true,
 };
