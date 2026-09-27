@@ -5,6 +5,7 @@ import {
   invalidEmbedUrls,
   planYoutubeMigration,
   prependEmbedBlock,
+  stripEmptyEmbeds,
 } from "./lesson-body";
 
 const YT = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
@@ -114,5 +115,60 @@ describe("planYoutubeMigration", () => {
 
   it.each([null, "", "   "])("skips an empty youtubeUrl %p", (youtubeUrl) => {
     expect(planYoutubeMigration({ ...base, youtubeUrl })).toEqual({ kind: "skip" });
+  });
+});
+
+describe("stripEmptyEmbeds", () => {
+  const empty = (url: unknown, id: string) => ({
+    type: "block",
+    version: 2,
+    format: "",
+    fields: { id, blockName: "", blockType: "Embed", url },
+  });
+
+  it("removes Embed blocks with no link, at any depth, and keeps the rest", () => {
+    const body = root([
+      para("intro"),
+      empty("", "a"),
+      embedBlockNode(YT, "b"),
+      empty("   ", "c"),
+      { type: "list", children: [{ type: "listitem", children: [empty(undefined, "d"), para("item")] }] },
+      { type: "block", fields: { blockType: "Image", url: "" } },
+    ]);
+    expect(stripEmptyEmbeds(body)).toEqual(
+      root([
+        para("intro"),
+        embedBlockNode(YT, "b"),
+        { type: "list", children: [{ type: "listitem", children: [para("item")] }] },
+        { type: "block", fields: { blockType: "Image", url: "" } },
+      ]),
+    );
+  });
+
+  it("keeps a filled-in link even if it is not embeddable (the server rejects it)", () => {
+    const body = root([embedBlockNode("https://evil.test/x", "a")]);
+    expect(stripEmptyEmbeds(body)).toEqual(body);
+  });
+
+  it("does not mutate its input", () => {
+    const input = root([empty("", "a"), para("notes")]);
+    const copy = JSON.parse(JSON.stringify(input));
+    const out = stripEmptyEmbeds(input);
+    expect(input).toEqual(copy);
+    expect(out).not.toBe(input);
+  });
+
+  it("works on a stored JSON string", () => {
+    const out = stripEmptyEmbeds(JSON.stringify(root([empty("", "a"), para("notes")])));
+    expect(out).toEqual(root([para("notes")]));
+  });
+
+  it.each([null, undefined, 7, "not json", ""])("returns %p unchanged", (input) => {
+    expect(stripEmptyEmbeds(input)).toBe(input);
+  });
+
+  it("returns a body without a root unchanged", () => {
+    const input = { notRoot: true };
+    expect(stripEmptyEmbeds(input)).toEqual(input);
   });
 });

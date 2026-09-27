@@ -60,6 +60,37 @@ export function invalidEmbedUrls(body: unknown): string[] {
   return collectEmbedUrls(body).filter((url) => resolveEmbed(url) === null);
 }
 
+function isEmptyEmbed(node: AnyNode): boolean {
+  if (node?.type !== "block" || node.fields?.blockType !== "Embed") return false;
+  const url = node.fields.url;
+  return typeof url !== "string" || url.trim() === "";
+}
+
+/**
+ * Drop Embed blocks the author inserted but never gave a link, at any
+ * depth, so an abandoned placeholder doesn't block saving the lesson. Returns
+ * a new body; input that isn't a Lexical body comes back unchanged. The
+ * server still rejects an empty Embed sent by any other client.
+ */
+export function stripEmptyEmbeds(body: unknown): unknown {
+  const parsed = parseBody(body);
+  const rootNode = parsed?.root as AnyNode | undefined;
+  if (!rootNode || typeof rootNode !== "object" || !Array.isArray(rootNode.children))
+    return body;
+  const prune = (nodes: unknown): unknown => {
+    if (!Array.isArray(nodes)) return nodes;
+    return nodes
+      .filter((raw) => !isEmptyEmbed(raw as AnyNode))
+      .map((raw) => {
+        const node = raw as AnyNode;
+        return node && typeof node === "object" && Array.isArray(node.children)
+          ? { ...node, children: prune(node.children) }
+          : raw;
+      });
+  };
+  return { ...parsed, root: { ...rootNode, children: prune(rootNode.children) } };
+}
+
 export function prependEmbedBlock(
   body: unknown,
   url: string,
