@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  createTownSquare,
+  graphemes,
+  textWidth,
+  toBoardText,
   TOWN_SQUARE_CYCLE,
   TOWN_SQUARE_STATIC_TICK,
   renderTownSquare,
@@ -184,10 +188,34 @@ describe("renderTownSquare — notice board", () => {
     expect(art).not.toContain("gemeenschap");
   });
 
-  it("keeps the orange accent to the board marker and label", () => {
+  it("keeps orange to the pin only; the label is drawn in ink", () => {
     const f = frame(TOWN_SQUARE_STATIC_TICK, DESKTOP);
-    const accent = f.layers.accent.join("").replace(/\s+/g, " ").trim();
-    expect(accent).toBe("* NEXT UP");
+    const accent = f.layers.accent.join("").replace(/\s+/g, "");
+    expect(accent).toBe("*");
+    expect(f.layers.people.join("\n")).toContain("NEXT UP");
+  });
+
+  it("exposes the board panel rectangle for an overlay link", () => {
+    const f = frame(TOWN_SQUARE_STATIC_TICK, DESKTOP);
+    expect(f.board).not.toBeNull();
+    const { x, y, w, h } = f.board!;
+    expect(f.layers.scenery[y]!.slice(x, x + w)).toMatch(/^\.-+\.$/);
+    expect(f.layers.scenery[y + h - 1]!.slice(x, x + w)).toMatch(/^'-+'$/);
+  });
+
+  it("strips emoji from titles and keeps the panel edge aligned", () => {
+    const f = frame(TOWN_SQUARE_STATIC_TICK, MOBILE, {
+      board: { ...EVENT_BOARD, title: "🚀 AI Meetup 👩🏽‍💻 🇳🇱" },
+    });
+    expect(f.boardLines).toContain("AI Meetup");
+    const { x, y, w } = f.board!;
+    for (let r = y; r < y + 6; r++) {
+      for (const layer of Object.values(f.layers)) {
+        expect(layer[r]).toHaveLength(MOBILE.cols);
+      }
+      expect(f.layers.scenery[r]![x + w - 1]).toMatch(/[|.']/);
+    }
+    expect(f.layers.people.join("")).not.toMatch(/\p{Extended_Pictographic}/u);
   });
 });
 
@@ -219,6 +247,61 @@ describe("renderTownSquare — text-safe region", () => {
     });
     for (const layer of Object.values(f.layers)) {
       expect(layer.join("").trim()).toBe("");
+    }
+  });
+});
+
+describe("createTownSquare", () => {
+  it("reuses the static rows between frames and only moves the lane", () => {
+    const scene = createTownSquare(DESKTOP.cols, DESKTOP.rows, {
+      board: EVENT_BOARD,
+      safeZone: DESKTOP_SAFE,
+    });
+    const a = scene.frame(TOWN_SQUARE_STATIC_TICK);
+    const b = scene.frame(TOWN_SQUARE_STATIC_TICK + 40);
+    const lane = new Set([
+      DESKTOP.rows - 4,
+      DESKTOP.rows - 3,
+      DESKTOP.rows - 2,
+    ]);
+    let laneChanged = false;
+    for (let y = 0; y < DESKTOP.rows; y++) {
+      const same = a.layers.people[y] === b.layers.people[y];
+      if (lane.has(y)) laneChanged ||= !same;
+    }
+    expect(laneChanged).toBe(true);
+    // Houses and the board never change between ticks.
+    expect(a.layers.scenery.slice(0, 20)).toEqual(
+      b.layers.scenery.slice(0, 20),
+    );
+    expect(a.board).toEqual(b.board);
+  });
+
+  it("matches the one-shot renderer", () => {
+    const scene = createTownSquare(MOBILE.cols, MOBILE.rows, {
+      board: EVENT_BOARD,
+    });
+    for (const tick of [0, 99, TOWN_SQUARE_STATIC_TICK, 777]) {
+      expect(flatten(scene.frame(tick))).toBe(flatten(frame(tick, MOBILE)));
+    }
+  });
+});
+
+describe("board text helpers", () => {
+  it("counts graphemes, not UTF-16 units", () => {
+    expect(graphemes("e\u0301te")).toHaveLength(3);
+    expect(textWidth("AI")).toBe(2);
+    expect(textWidth("東京")).toBe(4);
+  });
+
+  it("removes emoji and tidies spaces", () => {
+    expect(toBoardText("🚀 AI Meetup")).toBe("AI Meetup");
+    expect(toBoardText("Hack 👩🏽‍💻 night 🇳🇱!")).toBe("Hack night !");
+  });
+
+  it("wraps wide glyphs by cell width", () => {
+    for (const line of wrapText("東京 AI ミートアップ 2026", 8, 3)) {
+      expect(textWidth(line)).toBeLessThanOrEqual(8);
     }
   });
 });

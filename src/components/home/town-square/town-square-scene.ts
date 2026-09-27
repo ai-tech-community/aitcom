@@ -54,6 +54,8 @@ export interface TownSquareFrame {
   figures: FigureSnapshot[];
   /** Text lines shown on the notice board (empty when it did not fit). */
   boardLines: string[];
+  /** Board panel in cells (for an accessible overlay link), or null. */
+  board: CellRect | null;
 }
 
 // ─── Timeline ────────────────────────────────────────────────────────────────
@@ -164,9 +166,79 @@ function rand(...parts: number[]): number {
 
 const ELLIPSIS = "…";
 
+const graphemeSegmenter =
+  typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
+    ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+    : null;
+
+/** User-perceived characters, so "é" or a flag is one unit, not 2–4. */
+export function graphemes(text: string): string[] {
+  return graphemeSegmenter
+    ? Array.from(graphemeSegmenter.segment(text), (s) => s.segment)
+    : Array.from(text);
+}
+
+/** East Asian wide / fullwidth ranges render as two monospace cells. */
+function isWide(cp: number): boolean {
+  return (
+    (cp >= 0x1100 && cp <= 0x115f) ||
+    (cp >= 0x2e80 && cp <= 0xa4cf) ||
+    (cp >= 0xac00 && cp <= 0xd7a3) ||
+    (cp >= 0xf900 && cp <= 0xfaff) ||
+    (cp >= 0xfe30 && cp <= 0xfe4f) ||
+    (cp >= 0xff00 && cp <= 0xff60) ||
+    (cp >= 0xffe0 && cp <= 0xffe6) ||
+    (cp >= 0x20000 && cp <= 0x3fffd)
+  );
+}
+
+/** Monospace cells a grapheme occupies (1 or 2). */
+export function cellWidth(grapheme: string): number {
+  const cp = grapheme.codePointAt(0) ?? 0;
+  return isWide(cp) ? 2 : 1;
+}
+
+export function textWidth(text: string): number {
+  return graphemes(text).reduce((sum, g) => sum + cellWidth(g), 0);
+}
+
 /**
- * Word-wrap `text` into at most `maxLines` lines of `width` columns. Overflow
- * ends in an ellipsis; words longer than a line are hard-cut.
+ * Board text: drop emoji (their rendered width is font-dependent and would
+ * break the panel's right edge) and collapse the leftover whitespace.
+ */
+export function toBoardText(text: string): string {
+  return text
+    .replace(
+      /[\p{Extended_Pictographic}\p{Regional_Indicator}\u{1F3FB}-\u{1F3FF}\u200d\ufe0e\ufe0f\u20e3]/gu,
+      "",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Longest prefix of `text` that fits in `width` cells. */
+function cut(text: string, width: number): string {
+  let out = "";
+  let used = 0;
+  for (const g of graphemes(text)) {
+    const w = cellWidth(g);
+    if (used + w > width) break;
+    out += g;
+    used += w;
+  }
+  return out;
+}
+
+function withEllipsis(text: string, width: number): string {
+  return textWidth(text) + 1 <= width
+    ? text + ELLIPSIS
+    : cut(text, Math.max(0, width - 1)) + ELLIPSIS;
+}
+
+/**
+ * Word-wrap `text` into at most `maxLines` lines of `width` cells. Overflow
+ * ends in an ellipsis; words longer than a line are hard-cut. Widths are
+ * measured in monospace cells per grapheme.
  */
 export function wrapText(
   text: string,
@@ -180,9 +252,9 @@ export function wrapText(
   let truncated = false;
 
   for (const raw of words) {
-    const word = raw.length > width ? raw.slice(0, width) : raw;
+    const word = textWidth(raw) > width ? cut(raw, width) : raw;
     const candidate = current ? `${current} ${word}` : word;
-    if (candidate.length <= width) {
+    if (textWidth(candidate) <= width) {
       current = candidate;
       continue;
     }
@@ -198,23 +270,21 @@ export function wrapText(
     else truncated = true;
   }
   if (truncated && lines.length > 0) {
-    const last = lines[lines.length - 1]!;
-    lines[lines.length - 1] =
-      last.length + 1 <= width
-        ? last + ELLIPSIS
-        : last.slice(0, width - 1) + ELLIPSIS;
+    lines[lines.length - 1] = withEllipsis(lines[lines.length - 1]!, width);
   }
   return lines;
 }
 
 function fit(text: string, width: number): string {
   if (width <= 0) return "";
-  return text.length <= width
+  return textWidth(text) <= width
     ? text
-    : text.slice(0, Math.max(0, width - 1)) + ELLIPSIS;
+    : withEllipsis(cut(text, width), width);
 }
 
 // ─── Grid ────────────────────────────────────────────────────────────────────
+
+const LAYER_NAMES = ["scenery", "people", "accent"] as const;
 
 class Grid {
   private readonly chars: string[][];
@@ -250,11 +320,37 @@ class Grid {
     if (x < 0 || y < 0 || x >= this.cols || y >= this.rows) return;
     if (this.isSafe(x, y)) return;
     this.chars[y]![x] = ch;
+    // "" is the trailing half of a wide glyph: owned, but prints nothing.
     this.owner[y]![x] = ch === " " ? null : layer;
   }
 
+  /**
+   * Write text by grapheme. A wide glyph owns its cell and the next one is
+   * left empty ("") so the row keeps its visual width.
+   */
   text(x: number, y: number, s: string, layer: SceneLayer): void {
-    for (let i = 0; i < s.length; i++) this.put(x + i, y, s[i]!, layer);
+    let col = x;
+    for (const g of graphemes(s)) {
+      const w = cellWidth(g);
+      this.put(col, y, g, layer);
+      if (w === 2) this.put(col + 1, y, "", layer);
+      col += w;
+    }
+  }
+
+  copyRowsFrom(other: Grid, rows: readonly number[]): void {
+    for (const y of rows) {
+      this.chars[y] = [...other.chars[y]!];
+      this.owner[y] = [...other.owner[y]!];
+    }
+  }
+
+  row(y: number, layer: SceneLayer): string {
+    let out = "";
+    for (let x = 0; x < this.cols; x++) {
+      out += this.owner[y]![x] === layer ? this.chars[y]![x]! : " ";
+    }
+    return out;
   }
 
   /**
@@ -278,13 +374,7 @@ class Grid {
       accent: [],
     };
     for (let y = 0; y < this.rows; y++) {
-      for (const layer of ["scenery", "people", "accent"] as const) {
-        let row = "";
-        for (let x = 0; x < this.cols; x++) {
-          row += this.owner[y]![x] === layer ? this.chars[y]![x]! : " ";
-        }
-        out[layer].push(row);
-      }
+      for (const layer of LAYER_NAMES) out[layer].push(this.row(y, layer));
     }
     return out;
   }
@@ -451,14 +541,23 @@ function drawHouse(grid: Grid, house: House) {
   grid.text(doorX, doorTop + 1, "| |", "scenery");
 }
 
-function drawProp(grid: Grid, prop: PlacedProp, tick: number) {
+/** The moving parts of a fountain: spray and rippling water. */
+function drawFountainWater(grid: Grid, prop: PlacedProp, tick: number) {
+  const phase = Math.floor(tick / 3) % 2;
+  const [s0, s1] = FOUNTAIN_SPRAY[phase]!;
+  grid.sprite(prop.x, prop.y, [s0, s1], "scenery");
+  grid.sprite(prop.x, prop.y + 3, [FOUNTAIN_WATER[phase]!], "scenery");
+}
+
+function fountainRows(prop: PlacedProp): number[] {
+  return [prop.y, prop.y + 1, prop.y + 3];
+}
+
+/** Static parts of a prop (everything that does not move). */
+function drawProp(grid: Grid, prop: PlacedProp) {
   switch (prop.kind) {
     case "fountain": {
-      const phase = Math.floor(tick / 3) % 2;
-      const [s0, s1] = FOUNTAIN_SPRAY[phase]!;
-      grid.sprite(prop.x, prop.y, [s0, s1], "scenery");
       grid.sprite(prop.x, prop.y + 2, [FOUNTAIN_BASE[0]], "scenery");
-      grid.sprite(prop.x, prop.y + 3, [FOUNTAIN_WATER[phase]!], "scenery");
       grid.sprite(prop.x, prop.y + 4, [FOUNTAIN_BASE[2]], "scenery");
       return;
     }
@@ -475,11 +574,14 @@ function drawProp(grid: Grid, prop: PlacedProp, tick: number) {
 }
 
 function boardText(board: NoticeBoardContent, inner: number) {
-  const label = fit(board.label.toUpperCase(), inner - 2);
+  const label = fit(toBoardText(board.label).toUpperCase(), inner - 2);
   const body =
     board.kind === "event"
-      ? [...wrapText(board.title, inner, 2), fit(board.when, inner)]
-      : wrapText(board.message, inner, 3);
+      ? [
+          ...wrapText(toBoardText(board.title), inner, 2),
+          fit(toBoardText(board.when), inner),
+        ]
+      : wrapText(toBoardText(board.message), inner, 3);
   while (body.length < 3) body.push("");
   return { label, body: body.slice(0, 3) };
 }
@@ -505,8 +607,9 @@ function drawBoard(
   }
 
   const { label, body } = boardText(content, inner);
+  // Orange is the pin only; 12px orange text would fail contrast (≈2.9:1).
   grid.put(x + 2, y + 1, "*", "accent");
-  grid.text(x + 4, y + 1, label, "accent");
+  grid.text(x + 4, y + 1, label, "people");
   body.forEach((line, i) => grid.text(x + 2, y + 2 + i, line, "people"));
   return [label, ...body.filter(Boolean)];
 }
@@ -636,45 +739,124 @@ function figureSprite(f: FigureSnapshot, tick: number, index: number) {
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
+export interface TownSquareScene {
+  cols: number;
+  rows: number;
+  /** Board panel in cells, or null when it did not fit. */
+  board: CellRect | null;
+  boardLines: string[];
+  frame(tick: number): TownSquareFrame;
+}
+
+/**
+ * Build the square once for a size + data: layout and every static cell are
+ * computed here. `frame(tick)` then redraws only the rows where something
+ * moves (the walking lane and fountain water) and reuses cached strings for
+ * every other row.
+ */
+export function createTownSquare(
+  cols: number,
+  rows: number,
+  data: TownSquareData,
+): TownSquareScene {
+  const safeCols = Math.max(0, Math.floor(cols));
+  const safeRows = Math.max(0, Math.floor(rows));
+  const seed = data.seed ?? 1;
+  const base = new Grid(safeCols, safeRows, data.safeZone ?? null);
+
+  if (safeCols < 8 || safeRows < 4) {
+    const layers = base.layers();
+    return {
+      cols: safeCols,
+      rows: safeRows,
+      board: null,
+      boardLines: [],
+      frame: () => ({
+        cols: safeCols,
+        rows: safeRows,
+        layers,
+        figures: [],
+        boardLines: [],
+        board: null,
+      }),
+    };
+  }
+
+  const layout = layoutPlaza(base, seed);
+  drawPavement(base, layout.ground, seed);
+  for (const house of layout.houses) drawHouse(base, house);
+  for (const prop of layout.props) drawProp(base, prop);
+  const boardLines = layout.board
+    ? drawBoard(base, layout.board, data.board)
+    : [];
+  const board = layout.board
+    ? { x: layout.board.x, y: layout.board.y, w: layout.board.w, h: 6 }
+    : null;
+
+  const fountains = layout.props.filter((p) => p.kind === "fountain");
+  const dynamicRows = [
+    ...new Set([
+      ...Array.from(
+        { length: FIGURE_H },
+        (_, i) => layout.ground - FIGURE_H + 1 + i,
+      ),
+      ...fountains.flatMap(fountainRows),
+    ]),
+  ].filter((y) => y >= 0 && y < safeRows);
+  const dynamic = new Set(dynamicRows);
+
+  const staticLayers = base.layers();
+  const work = new Grid(safeCols, safeRows, data.safeZone ?? null);
+
+  return {
+    cols: safeCols,
+    rows: safeRows,
+    board,
+    boardLines,
+    frame(tick: number): TownSquareFrame {
+      work.copyRowsFrom(base, dynamicRows);
+      for (const f of fountains) drawFountainWater(work, f, tick);
+      const figures = figuresAt(
+        tick,
+        safeCols,
+        layout.ground,
+        layout.spots,
+        seed,
+      );
+      figures.forEach((f, i) =>
+        work.sprite(f.x, f.y, figureSprite(f, tick, i), "people"),
+      );
+
+      const layers: Record<SceneLayer, string[]> = {
+        scenery: [],
+        people: [],
+        accent: [],
+      };
+      for (let y = 0; y < safeRows; y++) {
+        for (const layer of LAYER_NAMES) {
+          layers[layer].push(
+            dynamic.has(y) ? work.row(y, layer) : staticLayers[layer][y]!,
+          );
+        }
+      }
+      return {
+        cols: safeCols,
+        rows: safeRows,
+        layers,
+        figures,
+        boardLines,
+        board,
+      };
+    },
+  };
+}
+
+/** One-shot convenience: build the square and render a single tick. */
 export function renderTownSquare(
   tick: number,
   cols: number,
   rows: number,
   data: TownSquareData,
 ): TownSquareFrame {
-  const safeCols = Math.max(0, Math.floor(cols));
-  const safeRows = Math.max(0, Math.floor(rows));
-  const seed = data.seed ?? 1;
-  const grid = new Grid(safeCols, safeRows, data.safeZone ?? null);
-
-  if (safeCols < 8 || safeRows < 4) {
-    return {
-      cols: safeCols,
-      rows: safeRows,
-      layers: grid.layers(),
-      figures: [],
-      boardLines: [],
-    };
-  }
-
-  const layout = layoutPlaza(grid, seed);
-  drawPavement(grid, layout.ground, seed);
-  for (const house of layout.houses) drawHouse(grid, house);
-  for (const prop of layout.props) drawProp(grid, prop, tick);
-  const boardLines = layout.board
-    ? drawBoard(grid, layout.board, data.board)
-    : [];
-
-  const figures = figuresAt(tick, safeCols, layout.ground, layout.spots, seed);
-  figures.forEach((f, i) =>
-    grid.sprite(f.x, f.y, figureSprite(f, tick, i), "people"),
-  );
-
-  return {
-    cols: safeCols,
-    rows: safeRows,
-    layers: grid.layers(),
-    figures,
-    boardLines,
-  };
+  return createTownSquare(cols, rows, data).frame(tick);
 }

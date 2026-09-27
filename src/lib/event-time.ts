@@ -348,6 +348,20 @@ export function formatEventIsoWithOffset(
   return `${local}${sign}${oh}:${om}`;
 }
 
+const DAY_MS = 86_400_000;
+
+/**
+ * Lower bound for a database query whose rows are then passed through
+ * `upcomingEvents`. "Today" is judged in each event's own zone (UTC−12 …
+ * UTC+14) and `date` may be stored as local midnight expressed in UTC, so
+ * comparing `date >= now` in the query would drop an event that is still
+ * happening today. Two days back covers every zone; `upcomingEvents` does
+ * the exact filtering.
+ */
+export function upcomingEventsQueryFloor(now: Date = new Date()): string {
+  return new Date(now.getTime() - 2 * DAY_MS).toISOString();
+}
+
 /**
  * Events on or after today, soonest first. "Today" is the event's own
  * calendar day in its own zone, so an evening meetup stays upcoming until

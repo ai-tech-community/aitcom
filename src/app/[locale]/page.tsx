@@ -5,10 +5,14 @@ import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
 import { SectionLabel as UiSectionLabel } from "@/components/ui/section-label";
 import { Button } from "@/components/ui/button";
-import { HomeTownSquareHero } from "@/components/home/town-square/home-town-square-hero";
+import { HomeHeroPlaza } from "@/components/home/town-square/home-hero-plaza";
 import type { NoticeBoardContent } from "@/components/home/town-square/town-square-scene";
 import { CREATE_COMMUNITY_HREF } from "@/components/communities/create-community-link";
-import { formatEventShortWhen } from "@/lib/event-time";
+import {
+  formatEventShortWhen,
+  upcomingEvents,
+  upcomingEventsQueryFloor,
+} from "@/lib/event-time";
 import { Badge } from "@/components/ui/badge";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
@@ -78,11 +82,12 @@ export default async function Home() {
   ]);
 
   const payload = await getPayloadClient();
-  const { docs: events } = await payload.find({
+  const { docs: eventCandidates } = await payload.find({
     collection: "events",
     where: {
       status: { equals: "published" },
-      date: { greater_than_equal: new Date().toISOString() },
+      // Wide floor; upcomingEvents() below applies the per-zone "today".
+      date: { greater_than_equal: upcomingEventsQueryFloor() },
       // Discovered (Luma) events are "scheduled around, not attended
       // through" (CONTEXT.md [[discovered-event]]) — keep them out of
       // hub-wide public attend-through surfaces like this upcoming-events
@@ -90,25 +95,39 @@ export default async function Home() {
       discoverySource: { not_equals: "luma" },
     },
     sort: "date",
-    limit: 5,
+    // Headroom for the past-two-days rows the floor lets through.
+    limit: 20,
     locale: locale as "en" | "nl",
     draft: false,
   });
+  const events = upcomingEvents(eventCandidates).slice(0, 5);
 
   // The town-square notice board shows the real next event, or a calm
   // "being planned" line — never blank, never invented.
   const nextEvent = events[0];
+  const boardLabel = t("hero.board.label");
+  const nextWhen = nextEvent ? formatEventShortWhen(nextEvent, locale) : "";
   const noticeBoard: NoticeBoardContent = nextEvent
     ? {
         kind: "event",
-        label: t("hero.board.label"),
+        label: boardLabel,
         title: nextEvent.title,
-        when: formatEventShortWhen(nextEvent, locale),
+        when: nextWhen,
       }
     : {
         kind: "empty",
-        label: t("hero.board.label"),
+        label: boardLabel,
         message: t("hero.board.empty"),
+      };
+  // The art is aria-hidden; this link carries the board's content.
+  const boardLink = nextEvent
+    ? {
+        href: `/events/${nextEvent.slug}`,
+        label: `${boardLabel}: ${nextEvent.title}, ${nextWhen}`,
+      }
+    : {
+        href: "/events",
+        label: `${t("hero.board.empty")} ${t("events.viewAll")}`,
       };
 
   const { docs: featuredSponsors } = await payload.find({
@@ -185,7 +204,7 @@ export default async function Home() {
         }}
       />
       {/* Hero: the town square */}
-      <HomeTownSquareHero board={noticeBoard}>
+      <HomeHeroPlaza board={noticeBoard} boardLink={boardLink}>
         <HeroTitle title={t("hero.title")} tagline={t("hero.subtitle")} />
         <p className="text-muted-foreground mt-5 max-w-xl text-base leading-relaxed text-pretty sm:text-lg">
           {t("hero.description")}
@@ -198,7 +217,7 @@ export default async function Home() {
             <Link href={CREATE_COMMUNITY_HREF}>{t("hero.host")}</Link>
           </Button>
         </div>
-      </HomeTownSquareHero>
+      </HomeHeroPlaza>
 
       {/* Stats Ticker */}
       <div className="border-border grid grid-cols-2 gap-y-1 border-y px-4 py-3 sm:flex sm:items-center sm:gap-y-0 sm:overflow-x-auto sm:px-0 sm:py-2.5">
