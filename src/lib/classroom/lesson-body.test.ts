@@ -15,7 +15,14 @@ const para = (text: string) => ({
   children: [{ type: "text", version: 1, text }],
 });
 const root = (children: unknown[]) => ({
-  root: { type: "root", format: "", indent: 0, version: 1, direction: null, children },
+  root: {
+    type: "root",
+    format: "",
+    indent: 0,
+    version: 1,
+    direction: null,
+    children,
+  },
 });
 
 describe("embedBlockNode", () => {
@@ -24,7 +31,12 @@ describe("embedBlockNode", () => {
       type: "block",
       version: 2,
       format: "",
-      fields: { id: "abc123abc123", blockName: "", blockType: "Embed", url: YT },
+      fields: {
+        id: "abc123abc123",
+        blockName: "",
+        blockType: "Embed",
+        url: YT,
+      },
     });
   });
 });
@@ -33,8 +45,19 @@ describe("collectEmbedUrls / invalidEmbedUrls", () => {
   const body = root([
     para("intro"),
     embedBlockNode(YT, "a"),
-    { type: "list", children: [{ type: "listitem", children: [embedBlockNode("https://evil.test/x", "b")] }] },
-    { type: "block", fields: { blockType: "Image", src: "https://x.test/i.png" } },
+    {
+      type: "list",
+      children: [
+        {
+          type: "listitem",
+          children: [embedBlockNode("https://evil.test/x", "b")],
+        },
+      ],
+    },
+    {
+      type: "block",
+      fields: { blockType: "Image", src: "https://x.test/i.png" },
+    },
   ]);
 
   it("finds Embed links at any depth and ignores other blocks", () => {
@@ -57,7 +80,9 @@ describe("collectEmbedUrls / invalidEmbedUrls", () => {
   );
 
   it("treats an Embed block without a string url as invalid", () => {
-    const bad = root([{ type: "block", fields: { blockType: "Embed", url: 5 } }]);
+    const bad = root([
+      { type: "block", fields: { blockType: "Embed", url: 5 } },
+    ]);
     expect(invalidEmbedUrls(bad)).toEqual([""]);
   });
 });
@@ -65,7 +90,10 @@ describe("collectEmbedUrls / invalidEmbedUrls", () => {
 describe("prependEmbedBlock", () => {
   it("puts the block first and keeps existing children", () => {
     const out = prependEmbedBlock(root([para("notes")]), YT, "id1");
-    expect(out.root.children).toEqual([embedBlockNode(YT, "id1"), para("notes")]);
+    expect(out.root.children).toEqual([
+      embedBlockNode(YT, "id1"),
+      para("notes"),
+    ]);
   });
 
   it("creates a root for an empty body", () => {
@@ -90,7 +118,11 @@ describe("prependEmbedBlock", () => {
 });
 
 describe("planYoutubeMigration", () => {
-  const base = { body: root([para("notes")]), resourceUrls: [], blockId: "id1" };
+  const base = {
+    body: root([para("notes")]),
+    resourceUrls: [],
+    blockId: "id1",
+  };
 
   it("embeds a link the registry understands", () => {
     expect(planYoutubeMigration({ ...base, youtubeUrl: ` ${YT} ` })).toEqual({
@@ -101,20 +133,35 @@ describe("planYoutubeMigration", () => {
 
   it("keeps a non-embeddable link as a resource", () => {
     expect(
-      planYoutubeMigration({ ...base, youtubeUrl: "https://zoom.us/rec/share/abc" }),
-    ).toEqual({ kind: "resource", label: "Video", url: "https://zoom.us/rec/share/abc" });
+      planYoutubeMigration({
+        ...base,
+        youtubeUrl: "https://zoom.us/rec/share/abc",
+      }),
+    ).toEqual({
+      kind: "resource",
+      label: "Video",
+      url: "https://zoom.us/rec/share/abc",
+    });
   });
 
   it("is idempotent", () => {
     const migrated = prependEmbedBlock(base.body, YT, "id1");
-    expect(planYoutubeMigration({ ...base, body: migrated, youtubeUrl: YT })).toEqual({ kind: "skip" });
     expect(
-      planYoutubeMigration({ ...base, youtubeUrl: "https://zoom.us/rec/share/abc", resourceUrls: ["https://zoom.us/rec/share/abc"] }),
+      planYoutubeMigration({ ...base, body: migrated, youtubeUrl: YT }),
+    ).toEqual({ kind: "skip" });
+    expect(
+      planYoutubeMigration({
+        ...base,
+        youtubeUrl: "https://zoom.us/rec/share/abc",
+        resourceUrls: ["https://zoom.us/rec/share/abc"],
+      }),
     ).toEqual({ kind: "skip" });
   });
 
   it.each([null, "", "   "])("skips an empty youtubeUrl %p", (youtubeUrl) => {
-    expect(planYoutubeMigration({ ...base, youtubeUrl })).toEqual({ kind: "skip" });
+    expect(planYoutubeMigration({ ...base, youtubeUrl })).toEqual({
+      kind: "skip",
+    });
   });
 });
 
@@ -132,14 +179,22 @@ describe("stripEmptyEmbeds", () => {
       empty("", "a"),
       embedBlockNode(YT, "b"),
       empty("   ", "c"),
-      { type: "list", children: [{ type: "listitem", children: [empty(undefined, "d"), para("item")] }] },
+      {
+        type: "list",
+        children: [
+          { type: "listitem", children: [empty(undefined, "d"), para("item")] },
+        ],
+      },
       { type: "block", fields: { blockType: "Image", url: "" } },
     ]);
     expect(stripEmptyEmbeds(body)).toEqual(
       root([
         para("intro"),
         embedBlockNode(YT, "b"),
-        { type: "list", children: [{ type: "listitem", children: [para("item")] }] },
+        {
+          type: "list",
+          children: [{ type: "listitem", children: [para("item")] }],
+        },
         { type: "block", fields: { blockType: "Image", url: "" } },
       ]),
     );
@@ -159,13 +214,18 @@ describe("stripEmptyEmbeds", () => {
   });
 
   it("works on a stored JSON string", () => {
-    const out = stripEmptyEmbeds(JSON.stringify(root([empty("", "a"), para("notes")])));
+    const out = stripEmptyEmbeds(
+      JSON.stringify(root([empty("", "a"), para("notes")])),
+    );
     expect(out).toEqual(root([para("notes")]));
   });
 
-  it.each([null, undefined, 7, "not json", ""])("returns %p unchanged", (input) => {
-    expect(stripEmptyEmbeds(input)).toBe(input);
-  });
+  it.each([null, undefined, 7, "not json", ""])(
+    "returns %p unchanged",
+    (input) => {
+      expect(stripEmptyEmbeds(input)).toBe(input);
+    },
+  );
 
   it("returns a body without a root unchanged", () => {
     const input = { notRoot: true };

@@ -65,7 +65,11 @@ export const Lessons: CollectionConfig = {
         features: ({ defaultFeatures }) => [
           ...defaultFeatures,
           BlocksFeature({
-            blocks: [CodeBlock({ languages: codeLanguages }), ImageBlock, EmbedBlock],
+            blocks: [
+              CodeBlock({ languages: codeLanguages }),
+              ImageBlock,
+              EmbedBlock,
+            ],
           }),
         ],
       }),

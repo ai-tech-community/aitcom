@@ -6,14 +6,38 @@ const GID = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-x";
 
 describe("resolveEmbed", () => {
   it.each([
-    [`https://www.youtube.com/watch?v=${YT}`, `https://www.youtube-nocookie.com/embed/${YT}`],
-    [`https://youtube.com/watch?v=${YT}&t=90`, `https://www.youtube-nocookie.com/embed/${YT}?start=90`],
-    [`https://m.youtube.com/watch?v=${YT}`, `https://www.youtube-nocookie.com/embed/${YT}`],
-    [`https://youtu.be/${YT}?t=42`, `https://www.youtube-nocookie.com/embed/${YT}?start=42`],
-    [`https://www.youtube.com/embed/${YT}`, `https://www.youtube-nocookie.com/embed/${YT}`],
-    [`https://www.youtube.com/shorts/${YT}`, `https://www.youtube-nocookie.com/embed/${YT}`],
-    [`https://www.youtube.com/live/${YT}`, `https://www.youtube-nocookie.com/embed/${YT}`],
-    [`https://www.youtube-nocookie.com/embed/${YT}`, `https://www.youtube-nocookie.com/embed/${YT}`],
+    [
+      `https://www.youtube.com/watch?v=${YT}`,
+      `https://www.youtube-nocookie.com/embed/${YT}`,
+    ],
+    [
+      `https://youtube.com/watch?v=${YT}&t=90`,
+      `https://www.youtube-nocookie.com/embed/${YT}?start=90`,
+    ],
+    [
+      `https://m.youtube.com/watch?v=${YT}`,
+      `https://www.youtube-nocookie.com/embed/${YT}`,
+    ],
+    [
+      `https://youtu.be/${YT}?t=42`,
+      `https://www.youtube-nocookie.com/embed/${YT}?start=42`,
+    ],
+    [
+      `https://www.youtube.com/embed/${YT}`,
+      `https://www.youtube-nocookie.com/embed/${YT}`,
+    ],
+    [
+      `https://www.youtube.com/shorts/${YT}`,
+      `https://www.youtube-nocookie.com/embed/${YT}`,
+    ],
+    [
+      `https://www.youtube.com/live/${YT}`,
+      `https://www.youtube-nocookie.com/embed/${YT}`,
+    ],
+    [
+      `https://www.youtube-nocookie.com/embed/${YT}`,
+      `https://www.youtube-nocookie.com/embed/${YT}`,
+    ],
   ])("youtube: %s", (raw, src) => {
     expect(resolveEmbed(raw)).toEqual({
       provider: "youtube",
@@ -26,10 +50,22 @@ describe("resolveEmbed", () => {
 
   it.each([
     ["https://vimeo.com/123456789", "https://player.vimeo.com/video/123456789"],
-    ["https://vimeo.com/123456789/abcdef1234", "https://player.vimeo.com/video/123456789?h=abcdef1234"],
-    ["https://player.vimeo.com/video/123456789", "https://player.vimeo.com/video/123456789"],
-    ["https://player.vimeo.com/video/123456789?h=abcdef1234", "https://player.vimeo.com/video/123456789?h=abcdef1234"],
-    ["https://player.vimeo.com/video/123456789?h=abc-def", "https://player.vimeo.com/video/123456789"],
+    [
+      "https://vimeo.com/123456789/abcdef1234",
+      "https://player.vimeo.com/video/123456789?h=abcdef1234",
+    ],
+    [
+      "https://player.vimeo.com/video/123456789",
+      "https://player.vimeo.com/video/123456789",
+    ],
+    [
+      "https://player.vimeo.com/video/123456789?h=abcdef1234",
+      "https://player.vimeo.com/video/123456789?h=abcdef1234",
+    ],
+    [
+      "https://player.vimeo.com/video/123456789?h=abc-def",
+      "https://player.vimeo.com/video/123456789",
+    ],
   ])("vimeo: %s", (raw, src) => {
     expect(resolveEmbed(raw)?.embedSrc).toBe(src);
     expect(resolveEmbed(raw)?.provider).toBe("vimeo");
@@ -51,7 +87,9 @@ describe("resolveEmbed", () => {
 
   it("google slides edit and published links", () => {
     expect(
-      resolveEmbed(`https://docs.google.com/presentation/d/${GID}/edit#slide=id.p`),
+      resolveEmbed(
+        `https://docs.google.com/presentation/d/${GID}/edit#slide=id.p`,
+      ),
     ).toEqual({
       provider: "google-slides",
       label: "Google Slides",
@@ -60,7 +98,9 @@ describe("resolveEmbed", () => {
       needsPublicSharing: true,
     });
     expect(
-      resolveEmbed(`https://docs.google.com/presentation/d/e/2PACX-${GID}/pub?start=false`),
+      resolveEmbed(
+        `https://docs.google.com/presentation/d/e/2PACX-${GID}/pub?start=false`,
+      ),
     ).toMatchObject({
       provider: "google-slides",
       embedSrc: `https://docs.google.com/presentation/d/e/2PACX-${GID}/embed?start=false&loop=false`,
@@ -68,14 +108,18 @@ describe("resolveEmbed", () => {
   });
 
   it("google docs, sheets and drive files", () => {
-    expect(resolveEmbed(`https://docs.google.com/document/d/${GID}/edit`)).toEqual({
+    expect(
+      resolveEmbed(`https://docs.google.com/document/d/${GID}/edit`),
+    ).toEqual({
       provider: "google-docs",
       label: "Google Docs",
       embedSrc: `https://docs.google.com/document/d/${GID}/preview`,
       aspect: "page",
       needsPublicSharing: true,
     });
-    expect(resolveEmbed(`https://docs.google.com/spreadsheets/d/${GID}/edit#gid=0`)).toMatchObject({
+    expect(
+      resolveEmbed(`https://docs.google.com/spreadsheets/d/${GID}/edit#gid=0`),
+    ).toMatchObject({
       provider: "google-sheets",
       embedSrc: `https://docs.google.com/spreadsheets/d/${GID}/preview`,
       aspect: "page",

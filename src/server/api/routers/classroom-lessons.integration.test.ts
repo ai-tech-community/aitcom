@@ -19,7 +19,9 @@ describe.skipIf(!RUN_DB)("classroom lesson bodies [DB integration]", () => {
     db: typeof import("@/server/db").db;
     schema: typeof import("@/server/db/schema");
     createCaller: typeof import("@/server/api/root").createCaller;
-    payload: Awaited<ReturnType<typeof import("@/server/payload").getPayloadClient>>;
+    payload: Awaited<
+      ReturnType<typeof import("@/server/payload").getPayloadClient>
+    >;
     embedBlockNode: typeof import("@/lib/classroom/lesson-body").embedBlockNode;
   };
   let m: Mods;
@@ -30,7 +32,11 @@ describe.skipIf(!RUN_DB)("classroom lesson bodies [DB integration]", () => {
 
   const body = (url: string) => ({
     root: {
-      type: "root", format: "", indent: 0, version: 1, direction: null,
+      type: "root",
+      format: "",
+      indent: 0,
+      version: 1,
+      direction: null,
       children: [m.embedBlockNode(url, "abcdefabcdef")],
     },
   });
@@ -45,7 +51,9 @@ describe.skipIf(!RUN_DB)("classroom lesson bodies [DB integration]", () => {
         import("@/lib/classroom/lesson-body"),
       ]);
     m = {
-      db, schema, createCaller,
+      db,
+      schema,
+      createCaller,
       payload: await getPayloadClient(),
       embedBlockNode: lessonBody.embedBlockNode,
     };
@@ -54,18 +62,34 @@ describe.skipIf(!RUN_DB)("classroom lesson bodies [DB integration]", () => {
   beforeEach(async () => {
     sfx = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     authorId = `lb-author-${sfx}`;
-    await m.db.insert(m.schema.user).values({ id: authorId, email: `${authorId}@example.test`, name: "Author" });
+    await m.db.insert(m.schema.user).values({
+      id: authorId,
+      email: `${authorId}@example.test`,
+      name: "Author",
+    });
     const [community] = await m.db
       .insert(m.schema.communities)
-      .values({ name: `Lessons ${sfx}`, slug: `lessons-${sfx}`, createdBy: authorId })
+      .values({
+        name: `Lessons ${sfx}`,
+        slug: `lessons-${sfx}`,
+        createdBy: authorId,
+      })
       .returning();
     communityId = community!.id;
-    await m.db.insert(m.schema.communityMemberships).values({ communityId, userId: authorId, role: "member" });
+    await m.db
+      .insert(m.schema.communityMemberships)
+      .values({ communityId, userId: authorId, role: "member" });
     const course = await m.payload.create({
       collection: "courses",
       data: {
-        title: `Course ${sfx}`, slug: `course-${sfx}`, authorId, authorName: "Author",
-        status: "published", communityId, isPublic: false, enrollmentCount: 0,
+        title: `Course ${sfx}`,
+        slug: `course-${sfx}`,
+        authorId,
+        authorName: "Author",
+        status: "published",
+        communityId,
+        isPublic: false,
+        enrollmentCount: 0,
       },
     });
     courseId = course.id;
@@ -73,10 +97,17 @@ describe.skipIf(!RUN_DB)("classroom lesson bodies [DB integration]", () => {
 
   afterEach(async () => {
     const { eq } = await import("drizzle-orm");
-    await m.payload.delete({ collection: "lessons", where: { course: { equals: courseId } } });
+    await m.payload.delete({
+      collection: "lessons",
+      where: { course: { equals: courseId } },
+    });
     await m.payload.delete({ collection: "courses", id: courseId });
-    await m.db.delete(m.schema.communityMemberships).where(eq(m.schema.communityMemberships.communityId, communityId));
-    await m.db.delete(m.schema.communities).where(eq(m.schema.communities.id, communityId));
+    await m.db
+      .delete(m.schema.communityMemberships)
+      .where(eq(m.schema.communityMemberships.communityId, communityId));
+    await m.db
+      .delete(m.schema.communities)
+      .where(eq(m.schema.communities.id, communityId));
     await m.db.delete(m.schema.user).where(eq(m.schema.user.id, authorId));
   });
 
@@ -89,20 +120,36 @@ describe.skipIf(!RUN_DB)("classroom lesson bodies [DB integration]", () => {
 
   it("stores a lesson whose Embed blocks resolve", async () => {
     const { id } = await caller().classrooms.addLesson({
-      courseId, title: "Slides", body: body("https://youtu.be/dQw4w9WgXcQ"),
+      courseId,
+      title: "Slides",
+      body: body("https://youtu.be/dQw4w9WgXcQ"),
     });
-    const saved = await m.payload.findByID({ collection: "lessons", id, depth: 0 });
+    const saved = await m.payload.findByID({
+      collection: "lessons",
+      id,
+      depth: 0,
+    });
     expect(JSON.stringify(saved.body)).toContain('"blockType":"Embed"');
   });
 
   it("refuses an Embed block the registry cannot embed, on add and on update", async () => {
     await expect(
-      caller().classrooms.addLesson({ courseId, title: "Bad", body: body("https://evil.test/x") }),
+      caller().classrooms.addLesson({
+        courseId,
+        title: "Bad",
+        body: body("https://evil.test/x"),
+      }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "INVALID_EMBED" });
 
-    const { id } = await caller().classrooms.addLesson({ courseId, title: "Ok" });
+    const { id } = await caller().classrooms.addLesson({
+      courseId,
+      title: "Ok",
+    });
     await expect(
-      caller().classrooms.updateLesson({ lessonId: id, body: body("javascript:alert(1)") }),
+      caller().classrooms.updateLesson({
+        lessonId: id,
+        body: body("javascript:alert(1)"),
+      }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "INVALID_EMBED" });
   });
 });

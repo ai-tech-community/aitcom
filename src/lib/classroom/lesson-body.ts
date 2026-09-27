@@ -61,7 +61,8 @@ export function invalidEmbedUrls(body: unknown): string[] {
 }
 
 function isEmptyEmbed(node: AnyNode): boolean {
-  if (node?.type !== "block" || node.fields?.blockType !== "Embed") return false;
+  if (node?.type !== "block" || node.fields?.blockType !== "Embed")
+    return false;
   const url = node.fields.url;
   return typeof url !== "string" || url.trim() === "";
 }
@@ -75,7 +76,11 @@ function isEmptyEmbed(node: AnyNode): boolean {
 export function stripEmptyEmbeds(body: unknown): unknown {
   const parsed = parseBody(body);
   const rootNode = parsed?.root as AnyNode | undefined;
-  if (!rootNode || typeof rootNode !== "object" || !Array.isArray(rootNode.children))
+  if (
+    !rootNode ||
+    typeof rootNode !== "object" ||
+    !Array.isArray(rootNode.children)
+  )
     return body;
   const prune = (nodes: readonly unknown[]): unknown[] =>
     nodes
@@ -86,7 +91,10 @@ export function stripEmptyEmbeds(body: unknown): unknown {
           ? { ...node, children: prune(node.children as unknown[]) }
           : raw;
       });
-  return { ...parsed, root: { ...rootNode, children: prune(rootNode.children as unknown[]) } };
+  return {
+    ...parsed,
+    root: { ...rootNode, children: prune(rootNode.children as unknown[]) },
+  };
 }
 
 export function prependEmbedBlock(
@@ -125,7 +133,10 @@ export function planYoutubeMigration(input: {
   if (!url) return { kind: "skip" };
   if (resolveEmbed(url)) {
     if (collectEmbedUrls(input.body).includes(url)) return { kind: "skip" };
-    return { kind: "embed", body: prependEmbedBlock(input.body, url, input.blockId) };
+    return {
+      kind: "embed",
+      body: prependEmbedBlock(input.body, url, input.blockId),
+    };
   }
   if (input.resourceUrls.includes(url)) return { kind: "skip" };
   return { kind: "resource", label: "Video", url };
