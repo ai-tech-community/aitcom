@@ -74,7 +74,9 @@ const PROVIDERS: readonly EmbedProvider[] = [
       else if (parts[0] === "watch") id = url.searchParams.get("v");
       else if (["embed", "shorts", "live"].includes(parts[0] ?? ""))
         id = parts[1] ?? null;
-      if (!id || !YOUTUBE_ID.test(id)) return null;
+      // "videoseries" is a playlist player (it fits the id shape); a
+      // playlist has no single video to show, so refuse it.
+      if (!id || id === "videoseries" || !YOUTUBE_ID.test(id)) return null;
       return `https://www.youtube-nocookie.com/embed/${id}${youtubeStart(url)}`;
     },
   },
@@ -86,9 +88,11 @@ const PROVIDERS: readonly EmbedProvider[] = [
     hosts: ["vimeo.com", "www.vimeo.com", "player.vimeo.com"],
     build(url) {
       const parts = segments(url);
+      // Unlisted videos carry a privacy hash: the second path segment on
+      // vimeo.com, the `h` query parameter on player links.
       const [id, hash] =
         url.hostname === "player.vimeo.com" && parts[0] === "video"
-          ? [parts[1], undefined]
+          ? [parts[1], url.searchParams.get("h") ?? undefined]
           : [parts[0], parts[1]];
       if (!id || !DIGITS.test(id)) return null;
       const h = hash && VIMEO_HASH.test(hash) ? `?h=${hash}` : "";

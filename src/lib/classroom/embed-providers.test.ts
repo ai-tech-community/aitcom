@@ -28,6 +28,8 @@ describe("resolveEmbed", () => {
     ["https://vimeo.com/123456789", "https://player.vimeo.com/video/123456789"],
     ["https://vimeo.com/123456789/abcdef1234", "https://player.vimeo.com/video/123456789?h=abcdef1234"],
     ["https://player.vimeo.com/video/123456789", "https://player.vimeo.com/video/123456789"],
+    ["https://player.vimeo.com/video/123456789?h=abcdef1234", "https://player.vimeo.com/video/123456789?h=abcdef1234"],
+    ["https://player.vimeo.com/video/123456789?h=abc-def", "https://player.vimeo.com/video/123456789"],
   ])("vimeo: %s", (raw, src) => {
     expect(resolveEmbed(raw)?.embedSrc).toBe(src);
     expect(resolveEmbed(raw)?.provider).toBe("vimeo");
@@ -121,6 +123,8 @@ describe("resolveEmbed", () => {
       `https://evil.test/?u=https://docs.google.com/presentation/d/${GID}`,
       "https://www.youtube.com/watch?v=short",
       "https://www.youtube.com/watch",
+      "https://www.youtube.com/embed/videoseries?list=PL1234567890",
+      "https://www.youtube.com/playlist?list=PL1234567890",
       "https://vimeo.com/channels/staffpicks",
       "https://www.loom.com/share/not-hex",
       "https://docs.google.com/forms/d/abc/viewform",
