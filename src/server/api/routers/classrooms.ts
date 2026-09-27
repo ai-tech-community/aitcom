@@ -400,7 +400,7 @@ export const classroomsRouter = createTRPCRouter({
         communitySlug: z.string(),
         title: z.string().min(3).max(200),
         summary: z.string().max(500).optional(),
-        status: z.enum(["draft", "published"]).default("published"),
+        status: z.enum(["draft", "published"]).default("draft"),
         coverImageUrl: z.string().url().max(1000).optional(),
       }),
     )
@@ -455,15 +455,21 @@ export const classroomsRouter = createTRPCRouter({
       return { id: course.id, slug };
     }),
 
-  /** Update own course (title/summary/status draft|published|archived). */
+  /**
+   * Update own course. Status moves only between draft and published —
+   * archiving is a moderator action (moderateArchive), and an archived course
+   * cannot be moved back by its author. expectedUpdatedAt makes a save from a
+   * stale tab fail loudly instead of overwriting newer edits.
+   */
   update: protectedProcedure
     .input(
       z.object({
         courseId: z.number(),
         title: z.string().min(3).max(200).optional(),
         summary: z.string().max(500).optional(),
-        status: z.enum(["draft", "published", "archived"]).optional(),
+        status: z.enum(["draft", "published"]).optional(),
         coverImageUrl: z.string().url().max(1000).nullable().optional(),
+        expectedUpdatedAt: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -479,20 +485,46 @@ export const classroomsRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      if (
+        input.expectedUpdatedAt !== undefined &&
+        new Date(input.expectedUpdatedAt).getTime() !==
+          new Date(course.updatedAt).getTime()
+      ) {
+        throw new TRPCError({ code: "CONFLICT", message: "COURSE_CHANGED" });
+      }
+
+      const statusChanges =
+        input.status !== undefined && input.status !== course.status;
+      if (statusChanges && course.status === "archived") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "COURSE_ARCHIVED" });
+      }
+
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
       if (input.summary !== undefined) data.summary = input.summary;
-      if (input.status !== undefined) data.status = input.status;
+      if (statusChanges) data.status = input.status;
       if (input.coverImageUrl !== undefined)
         data.coverImageUrl = input.coverImageUrl;
 
-      await payload.update({
+      const updated = await payload.update({
         collection: "courses",
         id: input.courseId,
         data,
       });
 
-      return { ok: true };
+      if (statusChanges && input.status === "published") {
+        await logActivity(ctx.db, {
+          actorId: ctx.session.user.id,
+          actorType: "member",
+          action: "course.published",
+          targetType: "courses",
+          targetId: String(course.id),
+          communityId: course.communityId,
+          metadata: { title: updated.title },
+        });
+      }
+
+      return { ok: true as const, updatedAt: updated.updatedAt };
     }),
 
   /** Add a lesson to own course. body is lexical editorState JSON. */

@@ -259,7 +259,7 @@ export function CourseEditor({
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
-  const [status, setStatus] = useState<CourseStatus>("published");
+  const [status, setStatus] = useState<CourseStatus>("draft");
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [initialized, setInitialized] = useState(false);
