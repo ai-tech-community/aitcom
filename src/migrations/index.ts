@@ -114,6 +114,7 @@ import * as migration_20260925a_builder_public_events from "./20260925a_builder_
 import * as migration_20260925b_tedai_vienna from "./20260925b_tedai_vienna";
 import * as migration_20260927a_points_boosts_locked_docs_rels from "./20260927a_points_boosts_locked_docs_rels";
 import * as migration_20260927b_feed_post_counter_repair from "./20260927b_feed_post_counter_repair";
+import * as migration_20260927c_onboarding_dismissed_at from "./20260927c_onboarding_dismissed_at";
 
 export const migrations = [
   {
@@ -695,5 +696,10 @@ export const migrations = [
     up: migration_20260927b_feed_post_counter_repair.up,
     down: migration_20260927b_feed_post_counter_repair.down,
     name: "20260927b_feed_post_counter_repair",
+  },
+  {
+    up: migration_20260927c_onboarding_dismissed_at.up,
+    down: migration_20260927c_onboarding_dismissed_at.down,
+    name: "20260927c_onboarding_dismissed_at",
   },
 ];

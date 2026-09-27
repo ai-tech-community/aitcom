@@ -164,6 +164,7 @@ export const onboardingRouter = createTRPCRouter({
         userId: memberProfiles.userId,
         onboardingIntent: memberProfiles.onboardingIntent,
         onboardingCompleted: memberProfiles.onboardingCompleted,
+        onboardingDismissedAt: memberProfiles.onboardingDismissedAt,
         displayName: memberProfiles.displayName,
         bio: memberProfiles.bio,
         skills: memberProfiles.skills,
@@ -178,15 +179,19 @@ export const onboardingRouter = createTRPCRouter({
         hasProfile: false,
         hasIntent: false,
         onboardingCompleted: false,
+        dismissed: false,
         checklist: [],
       };
     }
+
+    const dismissed = profile.onboardingDismissedAt !== null;
 
     if (profile.onboardingCompleted) {
       return {
         hasProfile: true,
         hasIntent: true,
         onboardingCompleted: true,
+        dismissed,
         checklist: [],
       };
     }
@@ -268,8 +273,26 @@ export const onboardingRouter = createTRPCRouter({
       hasProfile: true,
       hasIntent: !!profile.onboardingIntent,
       onboardingCompleted: profile.onboardingCompleted,
+      dismissed,
       checklist,
     };
+  }),
+
+  /**
+   * "Don't show again" for the getting-started checklist. Stored on the
+   * account so it holds on every device, and shared by the dashboard card
+   * and the site-wide reminder. Idempotent: COALESCE keeps the first
+   * dismissal time on repeat calls.
+   */
+  dismiss: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    await ctx.db
+      .update(memberProfiles)
+      .set({
+        onboardingDismissedAt: sql`coalesce(${memberProfiles.onboardingDismissedAt}, now())`,
+      })
+      .where(eq(memberProfiles.userId, userId));
+    return { dismissed: true };
   }),
 
   /** Complete an onboarding step (for steps that aren't auto-detected). */

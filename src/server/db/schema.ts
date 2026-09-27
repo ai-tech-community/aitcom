@@ -229,6 +229,13 @@ export const memberProfiles = appSchema.table(
     interests: d.json().$type<string[]>().default([]),
     experienceLevel: d.varchar({ length: 30 }),
     onboardingCompleted: d.boolean().default(false).notNull(),
+    /**
+     * When the member chose "don't show again" for the getting-started
+     * checklist. Null = still shown. Account-level so it holds on every
+     * device; a timestamp (not a boolean) so a later "remind me again after
+     * N days" rule needs no new column.
+     */
+    onboardingDismissedAt: d.timestamp({ withTimezone: true }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
