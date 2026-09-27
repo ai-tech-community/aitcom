@@ -3090,6 +3090,11 @@ export const communities = appSchema.table(
       .notNull()
       .default("all_members")
       .$type<"all_members" | "admins_only">(),
+    classroomUploadPolicy: d
+      .varchar({ length: 30 })
+      .notNull()
+      .default("admins_only")
+      .$type<"all_members" | "admins_only">(),
     autonomyLevel: d
       .varchar("autonomy_level", { length: 10 })
       .notNull()

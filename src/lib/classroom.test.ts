@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   courseProgressPercent,
   canCreateCourse,
+  canUploadMaterials,
   gradeExam,
   examPassed,
   stripAnswerKey,
@@ -219,5 +220,23 @@ describe("classroomStructureValid", () => {
 
   it("is valid for an empty course", () => {
     expect(classroomStructureValid([])).toBe(true);
+  });
+});
+
+describe("canUploadMaterials", () => {
+  it("under admins_only lets owners and admins upload, not moderators or members", () => {
+    expect(canUploadMaterials("admins_only", "owner")).toBe(true);
+    expect(canUploadMaterials("admins_only", "admin")).toBe(true);
+    expect(canUploadMaterials("admins_only", "moderator")).toBe(false);
+    expect(canUploadMaterials("admins_only", "member")).toBe(false);
+  });
+  it("under all_members lets any active member upload", () => {
+    for (const role of ["owner", "admin", "moderator", "member"] as const) {
+      expect(canUploadMaterials("all_members", role)).toBe(true);
+    }
+  });
+  it("never lets a non-member upload", () => {
+    expect(canUploadMaterials("all_members", null)).toBe(false);
+    expect(canUploadMaterials("admins_only", null)).toBe(false);
   });
 });

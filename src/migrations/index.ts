@@ -118,6 +118,7 @@ import * as migration_20260927c_onboarding_dismissed_at from "./20260927c_onboar
 import * as migration_20260927d_ginmon_open_roles from "./20260927d_ginmon_open_roles";
 import * as migration_20260928a_feed_post_link_preview from "./20260928a_feed_post_link_preview";
 import * as migration_20260928b_lesson_youtube_to_embed from "./20260928b_lesson_youtube_to_embed";
+import * as migration_20260928c_classroom_upload_policy from "./20260928c_classroom_upload_policy";
 
 export const migrations = [
   {
@@ -719,5 +720,10 @@ export const migrations = [
     up: migration_20260928b_lesson_youtube_to_embed.up,
     down: migration_20260928b_lesson_youtube_to_embed.down,
     name: "20260928b_lesson_youtube_to_embed",
+  },
+  {
+    up: migration_20260928c_classroom_upload_policy.up,
+    down: migration_20260928c_classroom_upload_policy.down,
+    name: "20260928c_classroom_upload_policy",
   },
 ];
