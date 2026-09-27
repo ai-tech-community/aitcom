@@ -91,14 +91,40 @@ export function fileTypeLabel(extension: string): string {
   return extension.toUpperCase();
 }
 
+const LONE_SURROGATE =
+  /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+
+/**
+ * The text with every lone surrogate replaced by U+FFFD, like
+ * `String.prototype.toWellFormed` (ES2024; not in this repo's TS lib). A
+ * file name straight from the browser can hold one, and a lone surrogate
+ * makes `encodeURIComponent` — and so the download header — throw.
+ */
+export function wellFormed(value: string): string {
+  return value.replace(LONE_SURROGATE, "\uFFFD");
+}
+
+/**
+ * Well-formed text cut to at most `max` UTF-16 units — the unit our length
+ * limits (zod, Payload `maxLength`) count — without splitting an emoji or
+ * other character outside the Basic Multilingual Plane in half.
+ */
+export function clampText(value: string, max: number): string {
+  const text = wellFormed(value);
+  if (text.length <= max) return text;
+  const last = text.charCodeAt(max - 1);
+  const splitsPair = last >= 0xd800 && last <= 0xdbff;
+  return text.slice(0, splitsPair ? max - 1 : max);
+}
+
 /** A file's default title: its name without the extension, tidied. */
 export function titleFromFileName(fileName: string): string {
-  const name = fileName.trim();
+  const name = wellFormed(fileName).trim();
   const dot = name.lastIndexOf(".");
   const base = (dot > 0 ? name.slice(0, dot) : name)
     .replace(/\s+/g, " ")
     .trim();
-  return (base || "File").slice(0, MATERIAL_TITLE_MAX);
+  return clampText(base || "File", MATERIAL_TITLE_MAX).trim();
 }
 
 const SAFE_SEGMENT = /^[A-Za-z0-9_-]+$/;
@@ -122,19 +148,20 @@ export function materialObjectKey(input: {
 }
 
 /**
- * The name a downloaded file is saved under: the title (without control
- * characters or path separators) plus the stored extension, never doubled.
+ * The name a downloaded file is saved under: the title (well-formed, without
+ * control characters or path separators) plus the stored extension, never
+ * doubled. It goes into the Content-Disposition header, so it must never
+ * hold a lone surrogate.
  */
 export function downloadFileName(title: string, ext: string): string {
-  const cleaned = Array.from(title, (ch) => {
+  const cleaned = Array.from(wellFormed(title), (ch) => {
     const code = ch.charCodeAt(0);
     return code < 32 || code === 127 || ch === "/" || ch === "\\" ? " " : ch;
   }).join("");
-  const base = cleaned
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, MATERIAL_TITLE_MAX)
-    .trim();
+  const base = clampText(
+    cleaned.replace(/\s+/g, " ").trim(),
+    MATERIAL_TITLE_MAX,
+  ).trim();
   const suffix = `.${ext}`;
   const stem = base.toLowerCase().endsWith(suffix.toLowerCase())
     ? base.slice(0, -suffix.length).trim()

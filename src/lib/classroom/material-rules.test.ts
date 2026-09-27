@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   MATERIAL_ACCEPT,
   MATERIAL_FILE_TYPES,
+  MATERIAL_TITLE_MAX,
   MAX_FILE_BYTES,
+  clampText,
   contentTypeFor,
   downloadFileName,
   fileExtensionOf,
@@ -12,9 +14,23 @@ import {
   isInlinePreviewable,
   materialObjectKey,
   titleFromFileName,
+  wellFormed,
 } from "./material-rules";
 
 const UPLOAD = "1b4e28ba-2fa1-41d2-883f-0016d3cca427";
+const EMOJI = "\u{1F600}"; // two UTF-16 units
+const LONE_HIGH = "\uD83D";
+const LONE_LOW = "\uDE00";
+
+/** True when the string survives encodeURIComponent (no lone surrogates). */
+function isWellFormed(value: string): boolean {
+  try {
+    encodeURIComponent(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 describe("fileExtensionOf", () => {
   it.each([
@@ -81,6 +97,48 @@ describe("titleFromFileName", () => {
   it("keeps at most 200 characters", () => {
     expect(titleFromFileName(`${"a".repeat(250)}.pdf`)).toHaveLength(200);
   });
+
+  it("never cuts an emoji in half at the limit", () => {
+    const title = titleFromFileName(`${"a".repeat(199)}${EMOJI}b.pdf`);
+    expect(title).toBe("a".repeat(199));
+    expect(isWellFormed(title)).toBe(true);
+  });
+
+  it("replaces a lone surrogate so the title is valid text", () => {
+    const title = titleFromFileName(`notes${LONE_HIGH}.pdf`);
+    expect(title).toBe("notes\uFFFD");
+    expect(isWellFormed(title)).toBe(true);
+  });
+});
+
+describe("wellFormed / clampText", () => {
+  it("keeps valid text, including whole emoji, unchanged", () => {
+    expect(wellFormed(`Week ${EMOJI} 1`)).toBe(`Week ${EMOJI} 1`);
+  });
+
+  it.each([
+    [`a${LONE_HIGH}b`, "a\uFFFDb"],
+    [`a${LONE_LOW}b`, "a\uFFFDb"],
+    [`${LONE_LOW}${LONE_HIGH}`, "\uFFFD\uFFFD"],
+    [`end${LONE_HIGH}`, "end\uFFFD"],
+  ])("replaces lone surrogates in %j", (input, output) => {
+    expect(wellFormed(input)).toBe(output);
+  });
+
+  it("cuts to the limit in UTF-16 units without splitting an emoji", () => {
+    expect(clampText(`ab${EMOJI}`, 3)).toBe("ab");
+    expect(clampText(`ab${EMOJI}`, 4)).toBe(`ab${EMOJI}`);
+    expect(clampText("abcdef", 3)).toBe("abc");
+  });
+
+  it("cleans lone surrogates before cutting", () => {
+    const clamped = clampText(
+      `${"a".repeat(MATERIAL_TITLE_MAX)}${LONE_HIGH}`,
+      MATERIAL_TITLE_MAX + 1,
+    );
+    expect(clamped).toBe(`${"a".repeat(MATERIAL_TITLE_MAX)}\uFFFD`);
+    expect(isWellFormed(clamped)).toBe(true);
+  });
 });
 
 describe("materialObjectKey", () => {
@@ -122,6 +180,18 @@ describe("downloadFileName", () => {
     ["a\u0007b", "csv", "a b.csv"],
   ])("%p + %s → %s", (title, ext, name) => {
     expect(downloadFileName(title, ext)).toBe(name);
+  });
+
+  it("never cuts an emoji in half at the limit", () => {
+    const name = downloadFileName(`${"a".repeat(199)}${EMOJI}`, "pdf");
+    expect(name).toBe(`${"a".repeat(199)}.pdf`);
+    expect(isWellFormed(name)).toBe(true);
+  });
+
+  it("replaces a lone surrogate so the name can be sent to the browser", () => {
+    const name = downloadFileName(`Deck ${LONE_LOW}`, "pptx");
+    expect(name).toBe("Deck \uFFFD.pptx");
+    expect(isWellFormed(name)).toBe(true);
   });
 });
 

@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   isCourseManagerRole,
+  requireEditableCourse,
   resolveCourseAccess,
   type CourseAccessMembership,
 } from "./course-access";
@@ -151,4 +152,40 @@ describe("isCourseManagerRole", () => {
       expect(isCourseManagerRole(role)).toBe(false);
     },
   );
+});
+
+describe("requireEditableCourse", () => {
+  const payloadWith = (course: unknown) => ({
+    findByID: vi.fn().mockResolvedValue(course),
+  });
+
+  it("hands the course to its author", async () => {
+    const course = { id: 12, authorId: AUTHOR };
+    const payload = payloadWith(course);
+    await expect(
+      requireEditableCourse(payload as never, 12, AUTHOR),
+    ).resolves.toBe(course);
+    expect(payload.findByID).toHaveBeenCalledWith({
+      collection: "courses",
+      id: 12,
+      depth: 0,
+      disableErrors: true,
+    });
+  });
+
+  it("refuses anyone else", async () => {
+    await expect(
+      requireEditableCourse(
+        payloadWith({ id: 12, authorId: AUTHOR }) as never,
+        12,
+        VIEWER,
+      ),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("answers NOT_FOUND for a course that does not exist", async () => {
+    await expect(
+      requireEditableCourse(payloadWith(null) as never, 12, AUTHOR),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
 });

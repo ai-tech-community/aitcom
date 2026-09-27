@@ -43,6 +43,7 @@ import { teamWorkspaceRouter } from "@/server/api/routers/team-workspace";
 import { topicsRouter } from "@/server/api/routers/topics";
 import { linksRouter } from "@/server/api/routers/links";
 import { classroomsRouter } from "@/server/api/routers/classrooms";
+import { classroomMaterialsRouter } from "@/server/api/routers/classroom-materials";
 import { spacesRouter } from "@/server/api/routers/spaces";
 import { awesomeAiOssRouter } from "@/server/api/routers/awesome-ai-oss";
 import { startupsRouter } from "@/server/api/routers/startups";
@@ -99,6 +100,7 @@ export const appRouter = createTRPCRouter({
   topics: topicsRouter,
   links: linksRouter,
   classrooms: classroomsRouter,
+  classroomMaterials: classroomMaterialsRouter,
   spaces: spacesRouter,
   awesomeAiOss: awesomeAiOssRouter,
   startups: startupsRouter,
