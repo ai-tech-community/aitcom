@@ -156,6 +156,9 @@ export function CourseView({
   }
 
   const { course } = data;
+  // Managers can open drafts and archived courses, but only a published
+  // course accepts enrollments (the server answers NOT_PUBLISHED otherwise).
+  const showEnroll = !enrolled && !previewing && course.status === "published";
   const groups = groupLessonsByModule(
     lessons.map((l) => ({
       ...l,
@@ -425,7 +428,7 @@ export function CourseView({
               )}
             </div>
 
-            {!enrolled && !previewing ? (
+            {showEnroll ? (
               <Button
                 type="button"
                 className="w-full"
@@ -449,18 +452,20 @@ export function CourseView({
             <div className="border-border bg-secondary/20 flex flex-col items-center justify-center gap-4 rounded-xl border px-6 py-16 text-center">
               <Lock className="text-muted-foreground size-8 opacity-50" />
               <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
-              <Button
-                type="button"
-                disabled={enroll.isPending}
-                onClick={() =>
-                  requireAuth(
-                    () => enroll.mutate({ courseId: course.id }),
-                    "Sign in to enroll in this course",
-                  )
-                }
-              >
-                {t("enroll")}
-              </Button>
+              {showEnroll ? (
+                <Button
+                  type="button"
+                  disabled={enroll.isPending}
+                  onClick={() =>
+                    requireAuth(
+                      () => enroll.mutate({ courseId: course.id }),
+                      "Sign in to enroll in this course",
+                    )
+                  }
+                >
+                  {t("enroll")}
+                </Button>
+              ) : null}
             </div>
           ) : !selectedLesson ? (
             <p className="text-muted-foreground py-12 text-center text-sm">
