@@ -68,6 +68,16 @@ export function publicEventPlace(
   return city && city.length > 0 ? city : null;
 }
 
+/** Online-only: the format says so, or a legacy row's location is just "Online". */
+export function isOnlineEvent(
+  event: Pick<HostedEventInput, "format" | "location">,
+): boolean {
+  return (
+    event.format === "online" ||
+    event.location?.trim().toLowerCase() === "online"
+  );
+}
+
 export function isSourcedPublicEvent(
   event: Pick<PublicEventCard, "title" | "date" | "online" | "city" | "url">,
 ): boolean {
@@ -135,8 +145,7 @@ export function publicEventFromHosted(
   if (!date || !url || !title) return null;
 
   const location = event.location?.trim() ?? "";
-  const online =
-    event.format === "online" || location.toLowerCase() === "online";
+  const online = isOnlineEvent(event);
   const cityName = event.city?.trim();
   const city = online
     ? null

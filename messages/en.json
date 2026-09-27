@@ -252,7 +252,10 @@
       "toastRegistered": "Successfully registered!",
       "toastCancelled": "Registration cancelled.",
       "toastAlreadyGoing": "Already marked as going."
-    }
+    },
+    "formatInPerson": "In person",
+    "formatHybrid": "Hybrid",
+    "hostedBy": "by {name}"
   },
   "blog": {
     "title": "Blog",

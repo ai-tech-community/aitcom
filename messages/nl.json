@@ -252,7 +252,10 @@
       "toastRegistered": "Succesvol ingeschreven!",
       "toastCancelled": "Inschrijving geannuleerd.",
       "toastAlreadyGoing": "Al gemarkeerd als aanwezig."
-    }
+    },
+    "formatInPerson": "Op locatie",
+    "formatHybrid": "Hybride",
+    "hostedBy": "door {name}"
   },
   "blog": {
     "title": "Blog",
