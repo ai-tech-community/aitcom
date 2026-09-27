@@ -101,6 +101,7 @@ export interface Config {
     courses: Course;
     lessons: Lesson;
     modules: Module;
+    'hosted-materials': HostedMaterial;
     'email-templates': EmailTemplate;
     users: User;
     'payload-kv': PayloadKv;
@@ -144,6 +145,7 @@ export interface Config {
     courses: CoursesSelect<false> | CoursesSelect<true>;
     lessons: LessonsSelect<false> | LessonsSelect<true>;
     modules: ModulesSelect<false> | ModulesSelect<true>;
+    'hosted-materials': HostedMaterialsSelect<false> | HostedMaterialsSelect<true>;
     'email-templates': EmailTemplatesSelect<false> | EmailTemplatesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -1441,6 +1443,40 @@ export interface Module {
   createdAt: string;
 }
 /**
+ * Files uploaded into classroom courses. Unfinished uploads are cleaned up daily.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hosted-materials".
+ */
+export interface HostedMaterial {
+  id: number;
+  communityId: string;
+  /**
+   * courses.id
+   */
+  course: number;
+  /**
+   * Better Auth user ID.
+   */
+  uploaderId: string;
+  kind: 'file';
+  status: 'uploading' | 'ready' | 'failed';
+  failureReason?: string | null;
+  title: string;
+  visibility: 'members' | 'preview';
+  fileName: string;
+  extension: string;
+  contentType: string;
+  /**
+   * Declared at start, replaced by the stored size at finish.
+   */
+  bytes: number;
+  storageKey: string;
+  uploadId: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Editable email templates. Use {{variable}} placeholders; unknown variables render as empty text. Variables for "event-registration-confirmation": {{name}}, {{eventTitle}}, {{eventDate}}, {{eventTime}}, {{eventLocation}}, {{eventSlug}}, {{eventUrl}}. Note: {{eventTime}} may be empty when the event has no start time set.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1626,6 +1662,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'modules';
         value: number | Module;
+      } | null)
+    | ({
+        relationTo: 'hosted-materials';
+        value: number | HostedMaterial;
       } | null)
     | ({
         relationTo: 'email-templates';
@@ -2407,6 +2447,28 @@ export interface ModulesSelect<T extends boolean = true> {
   title?: T;
   order?: T;
   summary?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hosted-materials_select".
+ */
+export interface HostedMaterialsSelect<T extends boolean = true> {
+  communityId?: T;
+  course?: T;
+  uploaderId?: T;
+  kind?: T;
+  status?: T;
+  failureReason?: T;
+  title?: T;
+  visibility?: T;
+  fileName?: T;
+  extension?: T;
+  contentType?: T;
+  bytes?: T;
+  storageKey?: T;
+  uploadId?: T;
   updatedAt?: T;
   createdAt?: T;
 }

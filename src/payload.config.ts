@@ -41,6 +41,7 @@ import { BrandAliasQueue } from "./collections/BrandAliasQueue";
 import { Courses } from "./collections/Courses";
 import { Lessons } from "./collections/Lessons";
 import { Modules } from "./collections/Modules";
+import { HostedMaterials } from "./collections/HostedMaterials";
 import { EmailTemplates } from "./collections/EmailTemplates";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
@@ -112,6 +113,7 @@ export default buildConfig({
     Courses,
     Lessons,
     Modules,
+    HostedMaterials,
     EmailTemplates,
     {
       slug: "users",
