@@ -8,6 +8,12 @@ import {
   protectedProcedure,
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
+import {
+  isCourseManagerRole,
+  loadCourseAccess,
+  requireReadableCourse,
+  resolveCourseAccess,
+} from "@/server/classroom/course-access";
 import { logActivity } from "@/server/agent/activity";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { db } from "@/server/db";
@@ -122,29 +128,41 @@ export const classroomsRouter = createTRPCRouter({
       const payload = await getPayloadClient();
       const userId = ctx.session?.user?.id;
 
-      // A course is listable if it is published-and-visible to the caller, OR
-      // the caller is its author (so creators see their own drafts/archived).
-      const visibility: Where[] = [
-        role === null
-          ? {
-              and: [
-                { status: { equals: "published" } },
-                { isPublic: { equals: true } },
-              ],
-            }
-          : { status: { equals: "published" } },
-      ];
-      if (userId) visibility.push({ authorId: { equals: userId } });
+      // The database query narrows candidates (so the 50-row page isn't
+      // filled with courses the caller can't see); the access policy is the
+      // authority on what is actually returned.
+      const candidates: Where[] = isCourseManagerRole(role)
+        ? [{ status: { exists: true } }]
+        : [
+            role === null
+              ? {
+                  and: [
+                    { status: { equals: "published" } },
+                    { isPublic: { equals: true } },
+                  ],
+                }
+              : { status: { equals: "published" } },
+          ];
+      if (userId) candidates.push({ authorId: { equals: userId } });
 
-      const { docs } = await payload.find({
+      const { docs: found } = await payload.find({
         collection: "courses",
         where: {
-          and: [{ communityId: { equals: communityId } }, { or: visibility }],
+          and: [{ communityId: { equals: communityId } }, { or: candidates }],
         },
         sort: "-enrollmentCount",
         limit: 50,
         depth: 0,
       });
+      const membership = role === null ? null : { role, active: true };
+      const docs = found.filter(
+        (c) =>
+          resolveCourseAccess({
+            course: c,
+            viewerId: userId ?? null,
+            membership,
+          }) !== "none",
+      );
 
       const courseIds = docs.map((d) => d.id);
       if (courseIds.length === 0) {
@@ -209,10 +227,10 @@ export const classroomsRouter = createTRPCRouter({
 
       const userId = ctx.session?.user?.id;
 
-      // Drafts/archived are visible only to the author.
-      if (course.status !== "published" && course.authorId !== userId) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
+      // One policy decides who may read a course (members-only, public,
+      // drafts). `none` must not reveal that the course exists.
+      const access = await loadCourseAccess(ctx.db, course, userId ?? null);
+      if (access === "none") throw new TRPCError({ code: "NOT_FOUND" });
 
       const { docs: rawLessons } = await payload.find({
         collection: "lessons",
@@ -965,6 +983,15 @@ export const classroomsRouter = createTRPCRouter({
     .input(z.object({ courseId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      const payload = await getPayloadClient();
+      // Gate before the enrollment lookup, so a viewer who lost access can't
+      // even learn that they are still enrolled.
+      const course = await requireReadableCourse(
+        ctx.db,
+        payload,
+        input.courseId,
+        userId,
+      );
       const existing = await ctx.db
         .select()
         .from(courseEnrollments)
@@ -977,12 +1004,6 @@ export const classroomsRouter = createTRPCRouter({
         .limit(1);
       if (existing.length > 0) return { enrolled: true, already: true };
 
-      const payload = await getPayloadClient();
-      const course = await payload.findByID({
-        collection: "courses",
-        id: input.courseId,
-        depth: 0,
-      });
       if (course.status !== "published")
         throw new TRPCError({ code: "FORBIDDEN", message: "NOT_PUBLISHED" });
 
@@ -1054,7 +1075,6 @@ export const classroomsRouter = createTRPCRouter({
       return { enrolled: false };
     }),
 
-  /** Toggle a lesson's completion for the caller (enrolled-only; no XP). */
   /** Grade an exam attempt server-side; on pass, complete the lesson + maybe certify. */
   submitExamAttempt: protectedProcedure
     .input(
@@ -1068,12 +1088,16 @@ export const classroomsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       const payload = await getPayloadClient();
+      // A missing lesson answers like a hidden one: NOT_FOUND.
       const lesson = await payload.findByID({
         collection: "lessons",
         id: input.lessonId,
         depth: 0,
+        disableErrors: true,
       });
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND" });
       const courseId = lesson.course;
+      await requireReadableCourse(ctx.db, payload, courseId, userId);
 
       const questions = (lesson.examQuestions ?? []) as ExamQuestion[];
       if (questions.length === 0)
@@ -1134,17 +1158,22 @@ export const classroomsRouter = createTRPCRouter({
       return { score, passed, wrongQuestionIds };
     }),
 
+  /** Toggle a lesson's completion for the caller (enrolled-only; no XP). */
   markLessonComplete: protectedProcedure
     .input(z.object({ lessonId: z.number(), completed: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       const payload = await getPayloadClient();
+      // A missing lesson answers like a hidden one: NOT_FOUND.
       const lesson = await payload.findByID({
         collection: "lessons",
         id: input.lessonId,
         depth: 0,
+        disableErrors: true,
       });
+      if (!lesson) throw new TRPCError({ code: "NOT_FOUND" });
       const courseId = lesson.course;
+      await requireReadableCourse(ctx.db, payload, courseId, userId);
 
       const examQuestions = (lesson.examQuestions ?? []) as ExamQuestion[];
       const mandatoryExam =
