@@ -28,6 +28,11 @@ const ImageBlock: Block = {
   ],
 };
 
+const EmbedBlock: Block = {
+  slug: "Embed",
+  fields: [{ name: "url", type: "text", required: true, maxLength: 2000 }],
+};
+
 export const Lessons: CollectionConfig = {
   slug: "lessons",
   admin: {
@@ -53,7 +58,6 @@ export const Lessons: CollectionConfig = {
     },
     { name: "title", type: "text", required: true, maxLength: 200 },
     { name: "order", type: "number", defaultValue: 0, index: true },
-    { name: "youtubeUrl", type: "text", maxLength: 500 },
     {
       name: "body",
       type: "richText",
@@ -61,7 +65,11 @@ export const Lessons: CollectionConfig = {
         features: ({ defaultFeatures }) => [
           ...defaultFeatures,
           BlocksFeature({
-            blocks: [CodeBlock({ languages: codeLanguages }), ImageBlock],
+            blocks: [
+              CodeBlock({ languages: codeLanguages }),
+              ImageBlock,
+              EmbedBlock,
+            ],
           }),
         ],
       }),

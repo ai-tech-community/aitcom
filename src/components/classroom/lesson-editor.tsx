@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/article-editor/rich-text-editor";
+import { classroomEditorExtensions } from "./materials/embed-node";
+import { stripEmptyEmbeds } from "@/lib/classroom/lesson-body";
 import { ExamEditor, type ExamDraft } from "./exam-editor";
 import type { ExamQuestion } from "@/lib/classroom";
 import { Pencil, Trash2, Plus, X } from "lucide-react";
@@ -22,7 +24,6 @@ interface LessonLike {
   title: string;
   order?: number | null;
   module?: number | null;
-  youtubeUrl?: string | null;
   body?: unknown;
   resources?: ResourceRow[] | null;
   examMandatory?: boolean | null;
@@ -35,6 +36,15 @@ interface ModuleLike {
   id: number;
   title: string;
   order: number;
+}
+
+/** Toast text for a failed lesson save: the router's embed refusal gets a friendly message. */
+function useLessonSaveErrorMessage() {
+  const t = useTranslations("classroom");
+  return (message: string | undefined) =>
+    message === "INVALID_EMBED"
+      ? t("embedInvalidOnSave")
+      : (message ?? t("saveFailed"));
 }
 
 /** A row-based editor for a lesson's resource links ({label,url}). */
@@ -103,8 +113,6 @@ function ResourcesEditor({
 function LessonFields({
   title,
   setTitle,
-  youtubeUrl,
-  setYoutubeUrl,
   body,
   setBody,
   resources,
@@ -115,8 +123,6 @@ function LessonFields({
 }: {
   title: string;
   setTitle: (v: string) => void;
-  youtubeUrl: string;
-  setYoutubeUrl: (v: string) => void;
   body: unknown;
   setBody: (v: unknown) => void;
   resources: ResourceRow[];
@@ -138,22 +144,13 @@ function LessonFields({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label>{t("youtubeUrl")}</Label>
-        <Input
-          value={youtubeUrl}
-          onChange={(e) => setYoutubeUrl(e.target.value)}
-          placeholder="https://youtube.com/watch?v=…"
-          maxLength={500}
-          disabled={disabled}
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
         <Label>{t("lessonBody")}</Label>
         <div className="border-border rounded-md border px-2 py-2">
           <RichTextEditor
             initialValue={body ?? null}
             onChange={setBody}
             placeholder={t("lessonBodyPlaceholder")}
+            extensions={classroomEditorExtensions}
           />
         </div>
       </div>
@@ -177,9 +174,9 @@ function LessonRow({
 }) {
   const t = useTranslations("classroom");
   const utils = api.useUtils();
+  const saveErrorMessage = useLessonSaveErrorMessage();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(lesson.title);
-  const [youtubeUrl, setYoutubeUrl] = useState(lesson.youtubeUrl ?? "");
   const [body, setBody] = useState<unknown>(lesson.body ?? null);
   const [resources, setResources] = useState<ResourceRow[]>(
     (lesson.resources ?? []).map((r) => ({ label: r.label, url: r.url })),
@@ -197,7 +194,7 @@ function LessonRow({
       setEditing(false);
       void utils.classrooms.get.invalidate();
     },
-    onError: (err) => toast.error(err.message ?? t("saveFailed")),
+    onError: (err) => toast.error(saveErrorMessage(err.message)),
   });
 
   const del = api.classrooms.deleteLesson.useMutation({
@@ -277,8 +274,6 @@ function LessonRow({
       <LessonFields
         title={title}
         setTitle={setTitle}
-        youtubeUrl={youtubeUrl}
-        setYoutubeUrl={setYoutubeUrl}
         body={body}
         setBody={setBody}
         resources={resources}
@@ -295,8 +290,7 @@ function LessonRow({
             update.mutate({
               lessonId: lesson.id,
               title: title.trim(),
-              youtubeUrl: youtubeUrl.trim() ? youtubeUrl.trim() : null,
-              body,
+              body: stripEmptyEmbeds(body),
               resources: resources.filter(
                 (r) => r.label.trim() && r.url.trim(),
               ),
@@ -336,8 +330,8 @@ export function LessonEditor({
 }) {
   const t = useTranslations("classroom");
   const utils = api.useUtils();
+  const saveErrorMessage = useLessonSaveErrorMessage();
   const [title, setTitle] = useState("");
-  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [body, setBody] = useState<unknown>(null);
   const [resources, setResources] = useState<ResourceRow[]>([]);
   const [exam, setExam] = useState<ExamDraft>({
@@ -351,7 +345,6 @@ export function LessonEditor({
     onSuccess: () => {
       toast.success(t("lessonSaved"));
       setTitle("");
-      setYoutubeUrl("");
       setBody(null);
       setResources([]);
       setExam({
@@ -362,7 +355,7 @@ export function LessonEditor({
       });
       void utils.classrooms.get.invalidate();
     },
-    onError: (err) => toast.error(err.message ?? t("saveFailed")),
+    onError: (err) => toast.error(saveErrorMessage(err.message)),
   });
 
   return (
@@ -384,8 +377,6 @@ export function LessonEditor({
         <LessonFields
           title={title}
           setTitle={setTitle}
-          youtubeUrl={youtubeUrl}
-          setYoutubeUrl={setYoutubeUrl}
           body={body}
           setBody={setBody}
           resources={resources}
@@ -401,8 +392,7 @@ export function LessonEditor({
             add.mutate({
               courseId,
               title: title.trim(),
-              youtubeUrl: youtubeUrl.trim() ? youtubeUrl.trim() : undefined,
-              body: body ?? undefined,
+              body: stripEmptyEmbeds(body) ?? undefined,
               resources: resources.filter(
                 (r) => r.label.trim() && r.url.trim(),
               ),

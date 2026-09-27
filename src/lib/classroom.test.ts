@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   courseProgressPercent,
   canCreateCourse,
-  youtubeEmbedUrl,
   gradeExam,
   examPassed,
   stripAnswerKey,
@@ -134,25 +133,6 @@ describe("canCreateCourse", () => {
   });
   it("blocks a non-member regardless of policy", () => {
     expect(canCreateCourse("all_members", null)).toBe(false);
-  });
-});
-
-describe("youtubeEmbedUrl", () => {
-  it("converts watch URLs", () => {
-    expect(youtubeEmbedUrl("https://www.youtube.com/watch?v=abc123")).toBe(
-      "https://www.youtube.com/embed/abc123",
-    );
-  });
-  it("converts youtu.be URLs", () => {
-    expect(youtubeEmbedUrl("https://youtu.be/abc123")).toBe(
-      "https://www.youtube.com/embed/abc123",
-    );
-  });
-  it("returns null for non-youtube", () => {
-    expect(youtubeEmbedUrl("https://vimeo.com/123")).toBeNull();
-  });
-  it("returns null for a malformed url", () => {
-    expect(youtubeEmbedUrl("not a url")).toBeNull();
   });
 });
 

@@ -1376,7 +1376,6 @@ export interface Lesson {
   module?: number | null;
   title: string;
   order?: number | null;
-  youtubeUrl?: string | null;
   body?: {
     root: {
       type: string;
@@ -2384,7 +2383,6 @@ export interface LessonsSelect<T extends boolean = true> {
   module?: T;
   title?: T;
   order?: T;
-  youtubeUrl?: T;
   body?: T;
   examMandatory?: T;
   examPassThreshold?: T;

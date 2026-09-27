@@ -70,24 +70,6 @@ export function coursePassed(completed: number, total: number): boolean {
   return total > 0 && completed >= total;
 }
 
-/** Convert a YouTube watch/youtu.be URL to an embed URL, or null if not YouTube/malformed. */
-export function youtubeEmbedUrl(url: string): string | null {
-  try {
-    const u = new URL(url);
-    if (u.hostname === "youtu.be") {
-      const id = u.pathname.slice(1);
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-    if (u.hostname.endsWith("youtube.com")) {
-      const id = u.searchParams.get("v");
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 /** A module's identity + ordering for grouping/reading-order purposes. */
 export type ModuleRef = {
   id: number;

@@ -20,6 +20,7 @@ type LexicalNode = {
     language?: string;
     src?: string;
     alt?: string;
+    [key: string]: unknown;
   };
 };
 
@@ -108,10 +109,21 @@ function renderText(node: LexicalNode): React.ReactNode {
   return el;
 }
 
+/** Renderers for Payload blocks this renderer doesn't know (keyed by blockType). */
+export type BlockRenderers = Record<
+  string,
+  (fields: Record<string, unknown>) => React.ReactNode
+>;
+
+type RenderContext = {
+  slugMap: Map<string, number>;
+  blockRenderers?: BlockRenderers;
+};
+
 function renderNode(
   node: LexicalNode,
   idx: number,
-  slugMap: Map<string, number>,
+  ctx: RenderContext,
 ): React.ReactNode {
   switch (node.type) {
     case "text":
@@ -180,7 +192,7 @@ function renderNode(
 
       return (
         <p key={idx} className="mb-4 leading-relaxed">
-          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
         </p>
       );
     }
@@ -197,9 +209,9 @@ function renderNode(
       };
       const text = extractPlainText(node.children ?? []);
       const baseSlug = slugify(text);
-      const count = slugMap.get(baseSlug) ?? 0;
+      const count = ctx.slugMap.get(baseSlug) ?? 0;
       const slug = count === 0 ? baseSlug : `${baseSlug}-${count}`;
-      slugMap.set(baseSlug, count + 1);
+      ctx.slugMap.set(baseSlug, count + 1);
 
       return (
         <Tag
@@ -207,7 +219,7 @@ function renderNode(
           id={slug}
           className={`group ${headingClass[node.tag ?? "h2"]}`}
         >
-          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
           <a
             href={`#${slug}`}
             aria-label="Link to this section"
@@ -229,7 +241,7 @@ function renderNode(
             : "list-disc";
       return (
         <Tag key={idx} className={`mb-4 pl-6 ${listClass}`}>
-          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
         </Tag>
       );
     }
@@ -237,7 +249,7 @@ function renderNode(
     case "listitem":
       return (
         <li key={idx} className="mb-1">
-          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
         </li>
       );
 
@@ -247,7 +259,7 @@ function renderNode(
           key={idx}
           className="border-primary/40 text-muted-foreground my-4 border-l-4 pl-4 italic"
         >
-          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
         </blockquote>
       );
 
@@ -291,7 +303,16 @@ function renderNode(
           </figure>
         );
       }
-      return null;
+      // Blocks owned by a feature (e.g. classroom Embed) — rendered only
+      // where that feature passes a renderer; ignored everywhere else.
+      const blockType = node.fields?.blockType;
+      const custom = blockType ? ctx.blockRenderers?.[blockType] : undefined;
+      if (!custom || !node.fields) return null;
+      return (
+        <React.Fragment key={idx}>
+          {custom(node.fields as Record<string, unknown>)}
+        </React.Fragment>
+      );
     }
 
     case "autolink":
@@ -306,7 +327,7 @@ function renderNode(
           rel={newTab ? "noopener noreferrer" : undefined}
           className="text-primary underline underline-offset-4 hover:opacity-80"
         >
-          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
         </a>
       );
     }
@@ -343,7 +364,7 @@ function renderNode(
       if (node.children?.length) {
         return (
           <React.Fragment key={idx}>
-            {node.children.map((c, i) => renderNode(c, i, slugMap))}
+            {node.children.map((c, i) => renderNode(c, i, ctx))}
           </React.Fragment>
         );
       }
@@ -393,7 +414,13 @@ async function HighlightedCode({
  * Renders Payload Lexical rich text JSON as React elements.
  * Pass the raw `content` field value from a Payload document.
  */
-export function LexicalRenderer({ content }: { content: unknown }) {
+export function LexicalRenderer({
+  content,
+  blockRenderers,
+}: {
+  content: unknown;
+  blockRenderers?: BlockRenderers;
+}) {
   let data = content as LexicalRoot;
 
   // Handle content stored/serialized as a JSON string
@@ -407,10 +434,13 @@ export function LexicalRenderer({ content }: { content: unknown }) {
 
   if (!data?.root?.children) return null;
 
-  const slugMap = new Map<string, number>();
+  const ctx: RenderContext = {
+    slugMap: new Map<string, number>(),
+    blockRenderers,
+  };
   return (
     <div className="text-foreground leading-7">
-      {data.root.children.map((node, i) => renderNode(node, i, slugMap))}
+      {data.root.children.map((node, i) => renderNode(node, i, ctx))}
     </div>
   );
 }
