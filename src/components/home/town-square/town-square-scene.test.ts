@@ -48,7 +48,10 @@ function flatten(f: TownSquareFrame): string {
         .map((ch, x) => {
           const accent = f.layers.accent[y]![x]!;
           const people = f.layers.people[y]![x]!;
-          return accent !== " " ? accent : people !== " " ? people : ch;
+          const far = f.layers.far[y]![x]!;
+          if (accent !== " ") return accent;
+          if (people !== " ") return people;
+          return ch !== " " ? ch : far;
         })
         .join(""),
     )
@@ -77,7 +80,7 @@ describe("renderTownSquare — frame shape", () => {
     const f = frame(TOWN_SQUARE_STATIC_TICK, DESKTOP);
     for (let y = 0; y < f.rows; y++) {
       for (let x = 0; x < f.cols; x++) {
-        const filled = (["scenery", "people", "accent"] as const).filter(
+        const filled = (["far", "scenery", "people", "accent"] as const).filter(
           (l) => f.layers[l][y]![x] !== " ",
         );
         expect(filled.length).toBeLessThanOrEqual(1);
@@ -284,6 +287,103 @@ describe("createTownSquare", () => {
     for (const tick of [0, 99, TOWN_SQUARE_STATIC_TICK, 777]) {
       expect(flatten(scene.frame(tick))).toBe(flatten(frame(tick, MOBILE)));
     }
+  });
+});
+
+describe("createTownSquare — depth", () => {
+  const sizes = [
+    ["desktop", DESKTOP, DESKTOP_SAFE],
+    ["mobile", { cols: 65, rows: 16 }, null],
+    ["tablet", { cols: 106, rows: 38 }, { x: -2, y: -2, w: 102, h: 29 }],
+  ] as const;
+
+  it.each(sizes)(
+    "grounds every building on the street (%s)",
+    (name, size, safe) => {
+      const scene = createTownSquare(size.cols, size.rows, {
+        board: EVENT_BOARD,
+        safeZone: safe,
+      });
+      const f = scene.frame(TOWN_SQUARE_STATIC_TICK);
+      // The tablet copy column is tall; no facade fits beside it there.
+      if (name !== "tablet") {
+        expect(scene.buildings.length).toBeGreaterThan(0);
+      }
+      expect(scene.street).toBeLessThan(scene.front);
+      for (const b of scene.buildings) {
+        expect(b.base).toBe(scene.street);
+        // The facade's bottom is drawn on the street row itself; a front
+        // lamp may stand before a cell or two, never most of it.
+        const base = f.layers.scenery[scene.street]!.slice(b.x, b.x + b.w);
+        const drawn = [...base].filter((c) => c === "_" || c === "|").length;
+        expect(drawn).toBeGreaterThanOrEqual(b.w - 3);
+      }
+    },
+  );
+
+  it("draws a receding side and a shadow for every building", () => {
+    const scene = createTownSquare(DESKTOP.cols, DESKTOP.rows, {
+      board: EVENT_BOARD,
+      safeZone: DESKTOP_SAFE,
+    });
+    const f = scene.frame(TOWN_SQUARE_STATIC_TICK);
+    for (const b of scene.buildings) {
+      const right = b.x + b.w - 1;
+      const side = f.layers.scenery
+        .slice(b.y - 1, scene.street + 1)
+        .map((row) => row[right + 1])
+        .join("");
+      expect(side).toMatch(/\//); // receding roof/base edges
+      expect(side).toMatch(/:/); // shaded side face
+      expect(f.layers.scenery[scene.street + 1]!.slice(b.x, right + 4)).toMatch(
+        /[:.]/,
+      );
+    }
+  });
+
+  it("puts figures on the two floor lines only", () => {
+    const scene = createTownSquare(DESKTOP.cols, DESKTOP.rows, {
+      board: EVENT_BOARD,
+    });
+    for (let tick = 0; tick < TOWN_SQUARE_CYCLE; tick += 11) {
+      for (const fig of scene.frame(tick).figures) {
+        const feet = fig.y + 2;
+        expect(fig.depth === "back" ? scene.street : scene.front).toBe(feet);
+      }
+    }
+  });
+
+  it("draws back-lane passers-by fainter than the front groups", () => {
+    const scene = createTownSquare(DESKTOP.cols, DESKTOP.rows, {
+      board: EVENT_BOARD,
+    });
+    let seen = false;
+    for (let tick = 0; tick < 800 && !seen; tick += 3) {
+      const f = scene.frame(tick);
+      for (const fig of f.figures.filter((x) => x.depth === "back")) {
+        if (fig.x < 0 || fig.x + 3 > DESKTOP.cols) continue;
+        const head = fig.kind === "agent" ? "[•]" : "o";
+        const row = fig.y;
+        if (f.layers.scenery[row]!.slice(fig.x, fig.x + 3).includes(head)) {
+          expect(f.layers.people[row]!.slice(fig.x, fig.x + 3).trim()).toBe("");
+          seen = true;
+        }
+      }
+    }
+    expect(seen).toBe(true);
+  });
+
+  it("keeps distant rooftops strictly behind (above) the street", () => {
+    const f = frame(TOWN_SQUARE_STATIC_TICK, DESKTOP, {
+      safeZone: DESKTOP_SAFE,
+    });
+    const scene = createTownSquare(DESKTOP.cols, DESKTOP.rows, {
+      board: EVENT_BOARD,
+      safeZone: DESKTOP_SAFE,
+    });
+    f.layers.far.forEach((row, y) => {
+      if (row.trim()) expect(y).toBeLessThan(scene.street);
+    });
   });
 });
 

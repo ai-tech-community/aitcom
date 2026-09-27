@@ -31,12 +31,13 @@ const SAFE_PADDING_CELLS = 2;
  * theme changes need no JS and nothing reads computed style per frame.
  */
 const LAYER_CLASS: Record<SceneLayer, string> = {
+  far: "text-muted-foreground/40",
   scenery: "text-muted-foreground/70",
   people: "text-foreground/85",
   accent: "text-primary",
 };
 
-const LAYERS: SceneLayer[] = ["scenery", "people", "accent"];
+const LAYERS: SceneLayer[] = ["far", "scenery", "people", "accent"];
 
 export interface BoardLink {
   href: string;
@@ -155,7 +156,7 @@ export function HomeHeroPlaza({
         ref={sceneRef}
         aria-hidden="true"
         data-testid="town-square-scene"
-        className="pointer-events-none relative h-44 font-mono text-[10px] leading-3 select-none sm:absolute sm:inset-0 sm:h-auto sm:[mask-image:linear-gradient(to_right,transparent,black_28%)] sm:text-xs sm:leading-[14px]"
+        className="pointer-events-none relative h-48 font-mono text-[10px] leading-3 select-none sm:absolute sm:inset-0 sm:h-auto sm:[mask-image:linear-gradient(to_right,transparent,black_28%)] sm:text-xs sm:leading-[14px]"
       >
         {LAYERS.map((layer) => (
           <pre
