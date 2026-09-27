@@ -19,6 +19,7 @@
 - Manager roles are exactly `owner`, `admin`, `moderator`. Only `status === "active"` memberships count.
 - The exam answer key (`examQuestions` with `correctIndex`) stays **author-only**. Manager access does not widen it.
 - Stage files by name (never `git add -A` / `git add .`). No `Co-Authored-By` or AI-credit lines in commits or the PR.
+- **Test database setup (once).** Never use host port 5432 for tests: on a dev machine it can be taken by an SSH tunnel to a remote database, and the test gate's "localhost" check cannot tell the difference. Instead: `pnpm dev:db`; expose the Docker Postgres on 55432 (`docker run -d --rm --name aitcom-test-pg-forward --network aitcom_default -p 127.0.0.1:55432:5432 alpine/socat tcp-listen:5432,fork,reuseaddr tcp:postgres:5432`); create an empty `aitcom_test` database (`docker exec aitcom-postgres-1 createdb -U postgres aitcom_test`); build its schema with `DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test SKIP_ENV_VALIDATION=1 pnpm exec drizzle-kit push --force` and then `PAYLOAD_PUSH=true` with the same URL for `pnpm exec tsx scripts/payload-push.ts`. Load non-secret values from `.env.docker` for the test run. Never set `PAYLOAD_PUSH` during test runs.
 - DB integration tests run only against the local Docker Postgres. Their gate refuses Neon URLs. Never point them at `.env`'s `DATABASE_URL` (that is production).
 
 ## Review Focus
@@ -598,8 +599,8 @@ describe.skipIf(!RUN_DB)("classroom course access [DB integration]", () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Start the local DB if it is not running: `pnpm dev:db`.
-Run: `RUN_DB_TESTS=1 PAYLOAD_PUSH=true DATABASE_URL=postgres://postgres:postgres@localhost:5432/aitcom pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts`
+Start the local DB if it is not running: `pnpm dev:db`. The test database must be the isolated `aitcom_test` described in Global Constraints.
+Run: `RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 NEON_LOCAL_PROXY=127.0.0.1:5433 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts`
 Expected: FAIL. At minimum these fail:
 - "hides a members-only course from signed-out visitors and outsiders" (it resolves instead of rejecting)
 - "hides a members-only course from a banned member"
@@ -686,7 +687,7 @@ Leave the `isAuthor` answer-key logic further down unchanged. It is what keeps t
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `RUN_DB_TESTS=1 PAYLOAD_PUSH=true DATABASE_URL=postgres://postgres:postgres@localhost:5432/aitcom pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts src/server/classroom/course-access.test.ts`
+Run: `RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 NEON_LOCAL_PROXY=127.0.0.1:5433 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts src/server/classroom/course-access.test.ts`
 Expected: PASS. The run must report tests executed, not skipped.
 
 - [ ] **Step 6: Typecheck and commit**
@@ -800,7 +801,7 @@ Add inside the top-level `describe` of `classroom-access.integration.test.ts`, a
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `RUN_DB_TESTS=1 PAYLOAD_PUSH=true DATABASE_URL=postgres://postgres:postgres@localhost:5432/aitcom pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts`
+Run: `RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 NEON_LOCAL_PROXY=127.0.0.1:5433 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts`
 Expected: FAIL.
 - "refuses an outsider on a members-only course" fails: the enroll succeeds.
 - Both "banned, still-enrolled" tests fail: the calls succeed.
@@ -887,7 +888,7 @@ In **`markLessonComplete`**, directly after `const courseId = lesson.course;`, a
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `RUN_DB_TESTS=1 PAYLOAD_PUSH=true DATABASE_URL=postgres://postgres:postgres@localhost:5432/aitcom pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts`
+Run: `RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 NEON_LOCAL_PROXY=127.0.0.1:5433 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts`
 Expected: PASS, with tests executed and not skipped.
 
 - [ ] **Step 5: Typecheck and commit**
@@ -959,7 +960,7 @@ Add inside the top-level `describe`:
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `RUN_DB_TESTS=1 PAYLOAD_PUSH=true DATABASE_URL=postgres://postgres:postgres@localhost:5432/aitcom pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts -t "classrooms.list"`
+Run: `RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 NEON_LOCAL_PROXY=127.0.0.1:5433 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts -t "classrooms.list"`
 Expected: FAIL on "shows moderators drafts too", because today the list shows drafts to their author only. The other cases pass.
 
 - [ ] **Step 3: Implement**
@@ -1022,7 +1023,7 @@ The rest of `list` already uses `docs` and stays as is. The listing UI already s
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `RUN_DB_TESTS=1 PAYLOAD_PUSH=true DATABASE_URL=postgres://postgres:postgres@localhost:5432/aitcom pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts`
+Run: `RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 NEON_LOCAL_PROXY=127.0.0.1:5433 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test pnpm vitest run src/server/api/routers/classroom-access.integration.test.ts`
 Expected: PASS, the whole file, executed and not skipped.
 
 - [ ] **Step 5: Update `CONTEXT.md`**
@@ -1050,7 +1051,7 @@ Run:
 pnpm typecheck
 pnpm lint
 pnpm test
-RUN_DB_TESTS=1 PAYLOAD_PUSH=true DATABASE_URL=postgres://postgres:postgres@localhost:5432/aitcom pnpm vitest run src/server/api/routers/
+RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 NEON_LOCAL_PROXY=127.0.0.1:5433 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test pnpm vitest run src/server/api/routers/
 ```
 Expected: typecheck and lint clean. `pnpm test` shows no new failures versus `origin/main` (record any pre-existing failures by name). All router integration suites pass.
 
