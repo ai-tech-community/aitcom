@@ -81,13 +81,11 @@ describe("fetchLinkPreview", () => {
   it("returns null for a non-HTML response", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response("%PDF", {
-            headers: { "content-type": "application/pdf" },
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        new Response("%PDF", {
+          headers: { "content-type": "application/pdf" },
+        }),
+      ),
     );
     await expect(
       fetchLinkPreview("https://example.com/a.pdf"),
