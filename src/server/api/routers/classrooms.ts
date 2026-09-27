@@ -9,6 +9,7 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import {
+  isCourseManagerRole,
   loadCourseAccess,
   resolveCourseAccess,
 } from "@/server/classroom/course-access";
@@ -153,9 +154,7 @@ export const classroomsRouter = createTRPCRouter({
       // The database query narrows candidates (so the 50-row page isn't
       // filled with courses the caller can't see); the access policy is the
       // authority on what is actually returned.
-      const isManagerRole =
-        role === "owner" || role === "admin" || role === "moderator";
-      const candidates: Where[] = isManagerRole
+      const candidates: Where[] = isCourseManagerRole(role)
         ? [{ status: { exists: true } }]
         : [
             role === null

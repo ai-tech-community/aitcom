@@ -31,6 +31,11 @@ const MANAGER_ROLES: ReadonlySet<CommunityRole> = new Set([
   "moderator",
 ]);
 
+/** Whether an active community role manages (sees drafts/archived of) every course. */
+export function isCourseManagerRole(role: CommunityRole | null): boolean {
+  return role !== null && MANAGER_ROLES.has(role);
+}
+
 export function resolveCourseAccess(input: {
   course: CourseAccessCourse;
   viewerId: string | null;
@@ -40,7 +45,7 @@ export function resolveCourseAccess(input: {
   if (viewerId !== null && course.authorId === viewerId) return "manager";
 
   const role = membership?.active ? membership.role : null;
-  if (role !== null && MANAGER_ROLES.has(role)) return "manager";
+  if (isCourseManagerRole(role)) return "manager";
 
   if (course.status !== "published") return "none";
   if (role !== null) return "member";

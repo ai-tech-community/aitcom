@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isCourseManagerRole,
   resolveCourseAccess,
   type CourseAccessMembership,
 } from "./course-access";
@@ -7,10 +8,7 @@ import {
 const AUTHOR = "author-1";
 const VIEWER = "viewer-1";
 
-function course(
-  status: "draft" | "published" | "archived",
-  isPublic: boolean,
-) {
+function course(status: "draft" | "published" | "archived", isPublic: boolean) {
   return { status, isPublic, authorId: AUTHOR };
 }
 const active = (role: CourseAccessMembership["role"]) => ({
@@ -107,18 +105,15 @@ describe("resolveCourseAccess", () => {
       ["signed out", null, null],
       ["signed-in non-member", VIEWER, null],
       ["banned member", VIEWER, { role: "member", active: false }],
-    ] as const)(
-      "%s: members-only published → none",
-      (_label, viewerId, m) => {
-        expect(
-          resolveCourseAccess({
-            course: course("published", false),
-            viewerId,
-            membership: m,
-          }),
-        ).toBe("none");
-      },
-    );
+    ] as const)("%s: members-only published → none", (_label, viewerId, m) => {
+      expect(
+        resolveCourseAccess({
+          course: course("published", false),
+          viewerId,
+          membership: m,
+        }),
+      ).toBe("none");
+    });
 
     it("a public draft is still hidden from visitors", () => {
       expect(
@@ -140,4 +135,20 @@ describe("resolveCourseAccess", () => {
       ).toBe("none");
     });
   });
+});
+
+describe("isCourseManagerRole", () => {
+  it.each(["owner", "admin", "moderator"] as const)(
+    "treats %s as a course manager",
+    (role) => {
+      expect(isCourseManagerRole(role)).toBe(true);
+    },
+  );
+
+  it.each(["member", null] as const)(
+    "does not treat %s as a manager",
+    (role) => {
+      expect(isCourseManagerRole(role)).toBe(false);
+    },
+  );
 });
