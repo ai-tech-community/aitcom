@@ -90,6 +90,33 @@ describe("HomeSponsors", () => {
     }
   });
 
+  it("underlines sponsor names that are links, not only bold (WCAG 1.4.1)", () => {
+    renderIn([GAMMA, ACME]);
+    const name = screen.getByRole("link", { name: "Gamma" });
+    expect(name.className).toMatch(/(^|\s)underline(\s|$)/);
+    expect(name.className).toMatch(/\bhover:decoration-2\b/);
+    // A logo link needs no underline.
+    const logo = screen.getByRole("link", { name: "Acme" });
+    expect(logo.className).not.toMatch(/(^|\s)underline(\s|$)/);
+  });
+
+  it("underlines text-only names in the row too", () => {
+    renderIn([ACME, BETA, GAMMA]);
+    expect(screen.getByRole("link", { name: "Gamma" }).className).toMatch(
+      /(^|\s)underline(\s|$)/,
+    );
+    expect(screen.getByRole("link", { name: "Acme" }).className).not.toMatch(
+      /(^|\s)underline(\s|$)/,
+    );
+  });
+
+  it("keeps the sentence whole in each language, the list in the translator's slot", () => {
+    for (const m of [en, nl]) {
+      expect(m.homeSponsors.supportedBy).toMatch(/<sponsors><\/sponsors>/);
+      expect(m.homeSponsors.supportedBy.trim()).toMatch(/\.$/);
+    }
+  });
+
   it("shows three or more sponsors as an aligned row", () => {
     renderIn([ACME, BETA, GAMMA]);
     const items = within(section()).getAllByRole("listitem");
@@ -101,7 +128,7 @@ describe("HomeSponsors", () => {
       "href",
       "https://gamma.dev/",
     );
-    expect(section().textContent).not.toContain(en.homeSponsors.supportedBy);
+    expect(section().textContent).not.toContain("supported by");
   });
 
   it("stays honest with no sponsors", () => {

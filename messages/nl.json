@@ -485,7 +485,7 @@
   },
   "homeSponsors": {
     "title": "Sponsors",
-    "supportedBy": "AIT Community wordt gesteund door",
+    "supportedBy": "AIT Community wordt gesteund door <sponsors></sponsors>.",
     "none": "Nog geen sponsors. Jouw bedrijf kan de eerste zijn.",
     "become": "Word sponsor"
   },

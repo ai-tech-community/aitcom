@@ -485,7 +485,7 @@
   },
   "homeSponsors": {
     "title": "Sponsors",
-    "supportedBy": "AIT Community is supported by",
+    "supportedBy": "AIT Community is supported by <sponsors></sponsors>.",
     "none": "No sponsors yet. Yours could be the first.",
     "become": "Become a sponsor"
   },

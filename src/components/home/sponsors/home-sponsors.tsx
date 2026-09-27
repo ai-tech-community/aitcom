@@ -5,6 +5,10 @@ import { MoreLink } from "@/components/ui/more-link";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SPONSOR_ROW_MIN, type HomeSponsor } from "./home-sponsor";
 
+/** A sponsor name that links out: underlined at rest, not by colour or weight alone. */
+const TEXT_LINK =
+  "underline decoration-1 underline-offset-4 hover:decoration-2";
+
 /** Outbound link to a sponsor's own site; only rendered when one exists. */
 function SponsorLink({
   href,
@@ -52,7 +56,9 @@ function SponsorLine({ sponsors }: { sponsors: readonly HomeSponsor[] }) {
       <SponsorLink
         key={sponsor.id}
         href={sponsor.href}
-        className={`${itemClass} decoration-1 underline-offset-4 hover:underline`}
+        // A name is only a link if it looks like one without colour
+        // (WCAG 1.4.1); a logo is plainly a picture you can click.
+        className={sponsor.logoUrl ? itemClass : `${itemClass} ${TEXT_LINK}`}
       >
         {body}
       </SponsorLink>
@@ -63,9 +69,12 @@ function SponsorLine({ sponsors }: { sponsors: readonly HomeSponsor[] }) {
     );
   });
 
+  // One whole sentence per language; the list sits where the translator
+  // put the <sponsors> tag, so word order is never glued together in code.
+  const list = format.list(names, { type: "conjunction" });
   return (
     <p className="mt-6 text-lg leading-relaxed text-pretty">
-      {t("supportedBy")} {format.list(names, { type: "conjunction" })}.
+      {t.rich("supportedBy", { sponsors: () => list })}
     </p>
   );
 }
@@ -91,7 +100,11 @@ function SponsorRow({ sponsors }: { sponsors: readonly HomeSponsor[] }) {
             {sponsor.href ? (
               <SponsorLink
                 href={sponsor.href}
-                className="inline-flex items-center"
+                className={
+                  sponsor.logoUrl
+                    ? "inline-flex items-center"
+                    : `inline-flex items-center ${TEXT_LINK}`
+                }
               >
                 {body}
               </SponsorLink>
