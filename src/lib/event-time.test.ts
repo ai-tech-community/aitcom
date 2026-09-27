@@ -7,8 +7,10 @@ import {
   eventWallTimeToUtc,
   formatEventIsoWithOffset,
   formatEventTimeRange,
+  completeUpcomingCandidates,
+  eventDayFormatter,
   eventDayParts,
-  formatEventLongDay,
+  eventEndInstant,
   formatEventShortWhen,
   formatEventWhenText,
   formatInstantInZone,
@@ -402,6 +404,212 @@ describe("upcomingEvents", () => {
   it("drops rows without a usable date", () => {
     expect(upcomingEvents([{ date: "soon" }], now)).toEqual([]);
   });
+
+  it("orders same-day events by start time, whatever the database order", () => {
+    const early = new Date("2026-10-10T06:00:00.000Z");
+    expect(
+      upcomingEvents(
+        [
+          {
+            id: 7,
+            date: "2026-10-10T00:00:00.000Z",
+            startTime: "19:00",
+            timezone: "Europe/Amsterdam",
+          },
+          {
+            id: 9,
+            date: "2026-10-10T00:00:00.000Z",
+            startTime: "10:00",
+            timezone: "Europe/Amsterdam",
+          },
+        ],
+        early,
+      ).map((event) => event.id),
+    ).toEqual([9, 7]);
+  });
+
+  it("orders by the real instant across zones", () => {
+    // 09:00 in San Francisco is 18:00 in Amsterdam: the Amsterdam 17:00 talk is first.
+    expect(
+      upcomingEvents(
+        [
+          {
+            id: "sf",
+            date: "2026-10-10",
+            startTime: "09:00",
+            timezone: "America/Los_Angeles",
+          },
+          {
+            id: "ams",
+            date: "2026-10-10",
+            startTime: "17:00",
+            timezone: "Europe/Amsterdam",
+          },
+        ],
+        new Date("2026-10-01T00:00:00.000Z"),
+      ).map((event) => event.id),
+    ).toEqual(["ams", "sf"]);
+  });
+
+  it("breaks exact ties by id, so the order is stable", () => {
+    const same = { date: "2026-10-10", startTime: "10:00", timezone: "UTC" };
+    const early = new Date("2026-10-01T00:00:00.000Z");
+    expect(
+      upcomingEvents(
+        [
+          { id: 12, ...same },
+          { id: 3, ...same },
+        ],
+        early,
+      ).map((e) => e.id),
+    ).toEqual([3, 12]);
+    expect(
+      upcomingEvents(
+        [
+          { id: 3, ...same },
+          { id: 12, ...same },
+        ],
+        early,
+      ).map((e) => e.id),
+    ).toEqual([3, 12]);
+  });
+
+  it("lets an event that has ended today yield to the next one", () => {
+    const events = [
+      {
+        id: "morning",
+        date: "2026-10-10",
+        startTime: "09:00",
+        endTime: "12:00",
+        timezone: "Europe/Amsterdam",
+      },
+      {
+        id: "evening",
+        date: "2026-10-10",
+        startTime: "19:00",
+        endTime: "21:00",
+        timezone: "Europe/Amsterdam",
+      },
+    ];
+    // 11:00 in Amsterdam: the morning session is still running.
+    expect(
+      upcomingEvents(events, new Date("2026-10-10T09:00:00.000Z")).map(
+        (e) => e.id,
+      ),
+    ).toEqual(["morning", "evening"]);
+    // 12:30 in Amsterdam: it is over.
+    expect(
+      upcomingEvents(events, new Date("2026-10-10T10:30:00.000Z")).map(
+        (e) => e.id,
+      ),
+    ).toEqual(["evening"]);
+  });
+
+  it("keeps an event without an end time for the rest of its day", () => {
+    const hack = {
+      id: "hack",
+      date: "2026-10-10",
+      startTime: "09:00",
+      timezone: "Europe/Amsterdam",
+    };
+    // 23:00 in Amsterdam.
+    expect(
+      upcomingEvents([hack], new Date("2026-10-10T21:00:00.000Z")),
+    ).toEqual([hack]);
+    // 00:30 the next day.
+    expect(
+      upcomingEvents([hack], new Date("2026-10-10T22:30:00.000Z")),
+    ).toEqual([]);
+  });
+
+  it("keeps a late event that runs past midnight until it really ends", () => {
+    const party = {
+      id: "late",
+      date: "2026-10-10",
+      startTime: "22:00",
+      endTime: "02:00",
+      timezone: "Europe/Amsterdam",
+    };
+    // 01:00 on the 11th in Amsterdam.
+    expect(
+      upcomingEvents([party], new Date("2026-10-10T23:00:00.000Z")),
+    ).toEqual([party]);
+    // 02:30 on the 11th.
+    expect(
+      upcomingEvents([party], new Date("2026-10-11T00:30:00.000Z")),
+    ).toEqual([]);
+  });
+});
+
+describe("eventEndInstant", () => {
+  it("is unknown without both a start and an end time", () => {
+    expect(
+      eventEndInstant({
+        date: "2026-10-10",
+        startTime: "09:00",
+        timezone: "UTC",
+      }),
+    ).toBeNull();
+    expect(
+      eventEndInstant({
+        date: "2026-10-10",
+        endTime: "17:00",
+        timezone: "UTC",
+      }),
+    ).toBeNull();
+  });
+
+  it("rolls an end before the start into the next day", () => {
+    expect(
+      eventEndInstant({
+        date: "2026-10-10",
+        startTime: "22:00",
+        endTime: "02:00",
+        timezone: "Europe/Amsterdam",
+      })?.toISOString(),
+    ).toBe("2026-10-11T00:00:00.000Z");
+  });
+});
+
+describe("completeUpcomingCandidates", () => {
+  const row = (id: number, date: string) => ({ id, date });
+
+  it("keeps a page that was not full", () => {
+    const rows = [row(1, "2026-10-10"), row(2, "2026-10-20")];
+    expect(completeUpcomingCandidates(rows, 5)).toEqual(rows);
+  });
+
+  it("drops the last fetched day and the two before it when the page was full", () => {
+    const rows = [
+      row(1, "2026-10-01"),
+      row(2, "2026-10-07"),
+      row(3, "2026-10-08"),
+      row(4, "2026-10-09"),
+      row(5, "2026-10-10"),
+    ];
+    expect(completeUpcomingCandidates(rows, 5).map((r) => r.id)).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it("never keeps a row that an unfetched row could start before", () => {
+    // Full page; the last day's ties may be cut. The latest kept row, late
+    // in UTC−12, must still start before an unfetched row early in UTC+14.
+    const rows = [
+      row(1, "2026-10-06"),
+      row(2, "2026-10-07"),
+      row(3, "2026-10-10"),
+    ];
+    const kept = completeUpcomingCandidates(rows, 3);
+    expect(kept.map((r) => r.id)).toEqual([1, 2]);
+    const latestKept = eventWallTimeToUtc("2026-10-07", "23:59", "Etc/GMT+12");
+    const earliestCut = eventWallTimeToUtc(
+      "2026-10-10",
+      "00:00",
+      "Pacific/Kiritimati",
+    );
+    expect(latestKept.getTime()).toBeLessThan(earliestCut.getTime());
+  });
 });
 
 describe("formatEventShortWhen", () => {
@@ -453,18 +661,28 @@ describe("eventDayParts", () => {
   });
 });
 
-describe("formatEventLongDay", () => {
-  it("writes the day out in full", () => {
-    expect(formatEventLongDay("2026-09-29T00:00:00.000Z", "en")).toBe(
-      "Tuesday, September 29, 2026",
-    );
-    expect(formatEventLongDay("2026-09-29", "nl")).toBe(
-      "dinsdag 29 september 2026",
+describe("eventDayFormatter", () => {
+  it("gives each locale and shape its own formatter", () => {
+    const short = eventDayFormatter("en", { day: "numeric", month: "short" });
+    const long = eventDayFormatter("en", { day: "numeric", month: "long" });
+    const day = new Date(Date.UTC(2026, 8, 29));
+    expect(short.format(day)).toBe("Sep 29");
+    expect(long.format(day)).toBe("September 29");
+    expect(
+      eventDayFormatter("nl", { day: "numeric", month: "long" }).format(day),
+    ).toBe("29 september");
+  });
+
+  it("reuses one formatter for the same shape, in any key order", () => {
+    expect(eventDayFormatter("en", { day: "numeric", month: "short" })).toBe(
+      eventDayFormatter("en", { month: "short", day: "numeric" }),
     );
   });
 
-  it("falls back to the raw date part for a corrupt row", () => {
-    expect(formatEventLongDay("garbage", "en")).toBe("garbage");
+  it("always renders the stored day in UTC", () => {
+    expect(
+      eventDayFormatter("en", { day: "numeric" }).resolvedOptions().timeZone,
+    ).toBe("UTC");
   });
 });
 

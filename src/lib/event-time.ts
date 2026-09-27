@@ -293,20 +293,25 @@ export function formatEventWhenText({
   return `${dayLabel}, ${startTime}${endTime ? `–${endTime}` : ""} ${abbr} (${timezone})`;
 }
 
-const shortDayFormatters = new Map<string, Intl.DateTimeFormat>();
-const longDayFormatters = new Map<string, Intl.DateTimeFormat>();
+const dayFormatters = new Map<string, Intl.DateTimeFormat>();
 
-function cachedDayFormatter(
-  cache: Map<string, Intl.DateTimeFormat>,
+/**
+ * Cached formatter for a stored calendar day. Keyed by locale AND options,
+ * so two callers asking for different shapes never share a formatter.
+ * Always UTC: the stored date is rendered as a UTC midnight, so the viewer's
+ * own zone can never shift it a day (a UTC-negative browser would).
+ */
+export function eventDayFormatter(
   locale: string,
-  options: Intl.DateTimeFormatOptions,
+  options: Omit<Intl.DateTimeFormatOptions, "timeZone">,
 ): Intl.DateTimeFormat {
-  let fmt = cache.get(locale);
+  const key = `${locale}|${JSON.stringify(
+    Object.entries(options).sort(([a], [b]) => a.localeCompare(b)),
+  )}`;
+  let fmt = dayFormatters.get(key);
   if (!fmt) {
-    // The stored calendar date is rendered as a UTC midnight, so the viewer's
-    // own zone can never shift it a day (a UTC-negative browser would).
     fmt = new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" });
-    cache.set(locale, fmt);
+    dayFormatters.set(key, fmt);
   }
   return fmt;
 }
@@ -334,7 +339,7 @@ export function eventDayParts(
 ): EventDayParts | null {
   if (!hasValidDateParts(date)) return null;
   const { y, m, d } = getDateParts(date);
-  const fmt = cachedDayFormatter(shortDayFormatters, locale, {
+  const fmt = eventDayFormatter(locale, {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -365,22 +370,6 @@ export function formatEventShortWhen(
   if (!parts) return date.split("T")[0] ?? date;
   const day = `${parts.weekday} ${parts.day} ${parts.month}`;
   return startTime ? `${day} · ${startTime}` : day;
-}
-
-/**
- * The event's calendar day written out in full for reading aloud, e.g.
- * "Tuesday, September 29, 2026" / "dinsdag 29 september 2026". Falls back to
- * the raw date part for a corrupt row.
- */
-export function formatEventLongDay(date: string, locale: string): string {
-  if (!hasValidDateParts(date)) return date.split("T")[0] ?? date;
-  const { y, m, d } = getDateParts(date);
-  return cachedDayFormatter(longDayFormatters, locale, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
 /**
@@ -421,19 +410,115 @@ export function upcomingEventsQueryFloor(now: Date = new Date()): string {
   return new Date(now.getTime() - 2 * DAY_MS).toISOString();
 }
 
+interface UpcomingCandidate {
+  id?: string | number | null;
+  date: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  timezone?: string | null;
+}
+
+function zoneOrUtc(timezone: string | null | undefined): string {
+  return isValidTimeZone(timezone) ? timezone : "UTC";
+}
+
 /**
- * Events on or after today, soonest first. "Today" is the event's own
- * calendar day in its own zone, so an evening meetup stays upcoming until
- * that day ends where it happens.
+ * When the event starts, as a real instant: its start time in its own zone,
+ * or local midnight for a date-only event. Null for a corrupt date.
  */
-export function upcomingEvents<
-  T extends { date: string; timezone?: string | null },
->(events: readonly T[], now: Date = new Date()): T[] {
-  return events
-    .filter((event) => {
-      const day = event.date.slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
-      return day >= instantToZonedDateString(now.toISOString(), event.timezone);
-    })
-    .sort((a, b) => a.date.slice(0, 10).localeCompare(b.date.slice(0, 10)));
+export function eventStartInstant(event: UpcomingCandidate): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(event.date)) return null;
+  return eventWallTimeToUtc(
+    event.date,
+    event.startTime?.trim() ? event.startTime : "00:00",
+    zoneOrUtc(event.timezone),
+  );
+}
+
+/**
+ * When the event is over, as a real instant — only when we actually know:
+ * a start and an end time. An end at or before the start runs past
+ * midnight into the next day. Null means "unknown": the event then counts
+ * as running until its own calendar day ends where it happens.
+ */
+export function eventEndInstant(event: UpcomingCandidate): Date | null {
+  if (!event.startTime || !event.endTime) return null;
+  const start = eventStartInstant(event);
+  if (!start) return null;
+  const zone = zoneOrUtc(event.timezone);
+  const end = eventWallTimeToUtc(event.date, event.endTime, zone);
+  if (end.getTime() > start.getTime()) return end;
+  const nextDay = new Date(
+    Date.UTC(
+      Number(event.date.slice(0, 4)),
+      Number(event.date.slice(5, 7)) - 1,
+      Number(event.date.slice(8, 10)) + 1,
+    ),
+  )
+    .toISOString()
+    .slice(0, 10);
+  return eventWallTimeToUtc(nextDay, event.endTime, zone);
+}
+
+function compareIds(
+  a: string | number | null | undefined,
+  b: string | number | null | undefined,
+): number {
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a ?? "").localeCompare(String(b ?? ""));
+}
+
+/**
+ * Events that are not over yet, soonest start first.
+ *
+ * - An event with a start and end time is over once its end has passed
+ *   (a late-night event past midnight stays until it really ends).
+ * - Otherwise we do not know how long it runs (there is no duration field
+ *   and a hackathon can go all day), so it stays until its own calendar day
+ *   ends where it happens. Guessing a duration would hide events that are
+ *   still running; keeping one a few hours too long only costs a line.
+ *
+ * Order is the real start instant (start time in the event's zone), then id,
+ * so two events on the same day never come back in database order.
+ */
+export function upcomingEvents<T extends UpcomingCandidate>(
+  events: readonly T[],
+  now: Date = new Date(),
+): T[] {
+  const withStart = events.flatMap((event) => {
+    const day = event.date.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return [];
+    const end = eventEndInstant(event);
+    const over = end
+      ? end.getTime() <= now.getTime()
+      : day < instantToZonedDateString(now.toISOString(), event.timezone);
+    if (over) return [];
+    const start = eventStartInstant(event);
+    return start ? [{ event, start: start.getTime() }] : [];
+  });
+  return withStart
+    .sort((a, b) => a.start - b.start || compareIds(a.event.id, b.event.id))
+    .map(({ event }) => event);
+}
+
+/**
+ * Rows of a date-sorted, limited query that are safe to rank by start
+ * instant. If the query came back full, rows past the cut may start before
+ * rows near it: ties on the last day are cut arbitrarily, and zones span
+ * UTC−12 … UTC+14, so an event two calendar days later can still start
+ * earlier in real time. Dropping the last fetched day and the two before it
+ * leaves only rows that start before anything the query left out. A short
+ * page is complete and kept whole.
+ */
+export function completeUpcomingCandidates<T extends { date: string }>(
+  rows: readonly T[],
+  limit: number,
+): T[] {
+  const last = rows[rows.length - 1];
+  if (rows.length < limit || !last) return [...rows];
+  const lastDay = last.date.slice(0, 10);
+  const cutoff = new Date(`${lastDay}T00:00:00.000Z`);
+  cutoff.setUTCDate(cutoff.getUTCDate() - 2);
+  const cutoffDay = cutoff.toISOString().slice(0, 10);
+  return rows.filter((row) => row.date.slice(0, 10) < cutoffDay);
 }

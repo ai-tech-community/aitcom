@@ -1,8 +1,4 @@
-import {
-  eventDayParts,
-  formatEventLongDay,
-  formatEventTimeRange,
-} from "@/lib/event-time";
+import { eventDayParts, formatEventTimeRange } from "@/lib/event-time";
 import { EVENT_TYPES, type EventType } from "@/lib/event-metadata";
 import {
   isOnlineEvent,
@@ -39,8 +35,6 @@ export interface UpcomingEventLabels {
   online: string;
   hybrid: string;
   inPerson: string;
-  /** Marker for the soonest event, e.g. "Next up". */
-  next: string;
   hostedBy: (name: string) => string;
 }
 
@@ -59,23 +53,28 @@ export interface UpcomingEventRow {
   dateTime: string | null;
   /** Zero-padded day of month, "05". */
   day: string;
-  /** Upper-case short month, "SEP" / "OKT". */
+  /** Short month as the locale writes it, "Sep" / "okt" (CSS upper-cases it). */
   month: string;
-  /** Upper-case short weekday, "TUE" / "DI". */
+  /** Short weekday as the locale writes it, "Tue" / "di". */
   weekday: string;
   /** Year, only when it differs from the current one. */
   year: string | null;
   /** Start time with zone abbreviation, "09:00 PDT"; null without startTime. */
   time: string | null;
-  /** "City, Country" / "Online" / "Amsterdam, Netherlands · Hybrid". */
-  place: string | null;
+  /** ["City, Country"] / ["Online"] / ["Amsterdam, Netherlands", "Hybrid"]. */
+  placeParts: string[];
   /** "by <community>", when a host community is known. */
   host: string | null;
   kind: UpcomingEventKind;
   /** The soonest event: the only row the section marks. */
   isNext: boolean;
-  /** What a screen reader says for the whole row link. */
-  accessibleName: string;
+}
+
+/** "Amsterdam, Netherlands" already names "netherlands"; so does "Singapore". */
+function endsWithPlace(city: string, country: string): boolean {
+  const c = city.toLocaleLowerCase();
+  const n = country.toLocaleLowerCase();
+  return c === n || c.endsWith(`, ${n}`);
 }
 
 function isEventType(value: string): value is EventType {
@@ -104,7 +103,7 @@ export function upcomingEventPlaceParts(
   const city = clean(event.city);
   const country = clean(event.country);
   const withCountry =
-    venue && venue === city && country && country !== city
+    venue && venue === city && country && !endsWithPlace(city, country)
       ? `${city}, ${country}`
       : venue;
   const place = publicEventPlace({ online, city: withCountry }, labels.online);
@@ -113,14 +112,6 @@ export function upcomingEventPlaceParts(
   }
   if (place) return [place];
   return event.format === "in-person" ? [labels.inPerson] : [];
-}
-
-export function upcomingEventPlace(
-  event: Pick<UpcomingEventInput, "format" | "city" | "country" | "location">,
-  labels: Pick<UpcomingEventLabels, "online" | "hybrid" | "inPerson">,
-): string | null {
-  const parts = upcomingEventPlaceParts(event, labels);
-  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 export function upcomingEventKind(
@@ -154,41 +145,27 @@ export function presentUpcomingEvents(
       timezone: event.timezone,
     });
     const placeParts = upcomingEventPlaceParts(event, labels);
-    const place = placeParts.length > 0 ? placeParts.join(" · ") : null;
     const hostName = clean(event.host);
     const host = hostName ? labels.hostedBy(hostName) : null;
     const kind = upcomingEventKind(event.type, labels);
-    const isNext = index === 0;
-    const title = event.title.trim();
-    const longDay = formatEventLongDay(event.date, locale);
 
     return {
       key: String(event.id),
       href: `/events/${event.slug}`,
-      title,
+      title: event.title.trim(),
       dateTime: parts?.iso ?? null,
       day: parts ? String(parts.day).padStart(2, "0") : "--",
-      month: parts ? parts.month.toUpperCase() : "",
-      weekday: parts ? parts.weekday.toUpperCase() : "",
+      month: parts?.month ?? "",
+      weekday: parts?.weekday ?? "",
       year:
         parts && parts.year !== now.getUTCFullYear()
           ? String(parts.year)
           : null,
       time,
-      place,
+      placeParts,
       host,
       kind,
-      isNext,
-      accessibleName: [
-        title,
-        isNext ? labels.next : null,
-        time ? `${longDay}, ${time}` : longDay,
-        ...placeParts,
-        host,
-        kind.label,
-      ]
-        .filter(Boolean)
-        .join(", "),
+      isNext: index === 0,
     };
   });
 }

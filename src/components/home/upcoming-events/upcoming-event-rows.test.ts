@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   presentUpcomingEvents,
   upcomingEventKind,
-  upcomingEventPlace,
+  upcomingEventPlaceParts,
   type UpcomingEventInput,
   type UpcomingEventLabels,
 } from "./upcoming-event-rows";
@@ -17,7 +17,6 @@ const EN: UpcomingEventLabels = {
   online: "Online",
   hybrid: "Hybrid",
   inPerson: "In person",
-  next: "Next up",
   hostedBy: (name) => `by ${name}`,
 };
 
@@ -25,9 +24,17 @@ const NL: UpcomingEventLabels = {
   ...EN,
   hybrid: "Hybride",
   inPerson: "Op locatie",
-  next: "Volgende",
   hostedBy: (name) => `door ${name}`,
 };
+
+/** The place line as the screen shows it. */
+function upcomingEventPlace(
+  event: Parameters<typeof upcomingEventPlaceParts>[0],
+  labels: Parameters<typeof upcomingEventPlaceParts>[1],
+): string | null {
+  const parts = upcomingEventPlaceParts(event, labels);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
 
 const NOW = new Date("2026-09-27T10:00:00.000Z");
 
@@ -113,8 +120,8 @@ describe("presentUpcomingEvents — when", () => {
     expect(row).toMatchObject({
       dateTime: "2026-09-29",
       day: "29",
-      month: "SEP",
-      weekday: "TUE",
+      month: "Sep",
+      weekday: "Tue",
       year: null,
       time: "09:00 PDT",
     });
@@ -126,7 +133,7 @@ describe("presentUpcomingEvents — when", () => {
     expect(new Date(CONFERENCE.date).getDate()).toBe(28);
     const [row] = present([CONFERENCE]);
     expect(row?.day).toBe("29");
-    expect(row?.weekday).toBe("TUE");
+    expect(row?.weekday).toBe("Tue");
   });
 
   it("does not move a date-only value either", () => {
@@ -135,13 +142,13 @@ describe("presentUpcomingEvents — when", () => {
     expect(row).toMatchObject({
       dateTime: "2026-10-14",
       day: "14",
-      weekday: "WED",
+      weekday: "Wed",
     });
   });
 
   it("zero-pads single-digit days", () => {
     const [row] = present([HACKATHON]);
-    expect(row).toMatchObject({ day: "05", month: "OCT", weekday: "MON" });
+    expect(row).toMatchObject({ day: "05", month: "Oct", weekday: "Mon" });
   });
 
   it("names winter and summer time in the event's zone", () => {
@@ -162,7 +169,7 @@ describe("presentUpcomingEvents — when", () => {
 
   it("adds the year only when it is not this year", () => {
     const [row] = present([{ ...CONFERENCE, date: "2027-01-08" }]);
-    expect(row).toMatchObject({ day: "08", month: "JAN", year: "2027" });
+    expect(row).toMatchObject({ day: "08", month: "Jan", year: "2027" });
   });
 
   it("degrades a corrupt date instead of throwing", () => {
@@ -172,7 +179,7 @@ describe("presentUpcomingEvents — when", () => {
 
   it("uses Dutch day and month names", () => {
     const [row] = present([HACKATHON], "nl");
-    expect(row).toMatchObject({ day: "05", month: "OKT", weekday: "MA" });
+    expect(row).toMatchObject({ day: "05", month: "okt", weekday: "ma" });
   });
 });
 
@@ -209,6 +216,38 @@ describe("upcomingEventPlace", () => {
         EN,
       ),
     ).toBe("Hybrid");
+  });
+
+  it("does not repeat a country the city already ends with", () => {
+    expect(
+      upcomingEventPlace(
+        {
+          format: "in-person",
+          city: "Amsterdam, Netherlands",
+          country: "Netherlands",
+        },
+        EN,
+      ),
+    ).toBe("Amsterdam, Netherlands");
+    expect(
+      upcomingEventPlace(
+        {
+          format: "hybrid",
+          city: "Amsterdam, the netherlands",
+          country: "The Netherlands",
+        },
+        EN,
+      ),
+    ).toBe("Amsterdam, the netherlands · Hybrid");
+  });
+
+  it("still adds a country that only looks alike", () => {
+    expect(
+      upcomingEventPlace(
+        { format: "in-person", city: "New Jersey City", country: "Jersey" },
+        EN,
+      ),
+    ).toBe("New Jersey City, Jersey");
   });
 
   it("does not repeat a country that equals the city", () => {
@@ -284,30 +323,6 @@ describe("presentUpcomingEvents — rows", () => {
     const [conference, hackathon] = present([CONFERENCE, HACKATHON], "nl");
     expect(conference?.host).toBeNull();
     expect(hackathon?.host).toBe("door AIT Community Netherlands");
-  });
-
-  it("reads aloud as title, date and time, place, kind", () => {
-    const [first, second, third] = present([
-      CONFERENCE,
-      HACKATHON,
-      ONLINE_WORKSHOP,
-    ]);
-    expect(first?.accessibleName).toBe(
-      "The AI Conference 2026, Next up, Tuesday, September 29, 2026, 09:00 PDT, San Francisco, United States, Meetup",
-    );
-    expect(second?.accessibleName).toBe(
-      "Agents Hackathon, Monday, October 5, 2026, 10:00 CEST, Utrecht, Netherlands, by AIT Community Netherlands, Hackathon",
-    );
-    expect(third?.accessibleName).toBe(
-      "Prompting workshop, Wednesday, October 14, 2026, Online, Workshop",
-    );
-  });
-
-  it("reads aloud in Dutch", () => {
-    const [row] = present([HYBRID_DEEP_DIVE], "nl");
-    expect(row?.accessibleName).toBe(
-      "RAG deep-dive, Volgende, donderdag 12 november 2026, 19:00 CET, Amsterdam, Netherlands, Hybride, Deep Dive",
-    );
   });
 
   it("returns no rows for no events", () => {

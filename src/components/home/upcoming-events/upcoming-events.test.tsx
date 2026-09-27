@@ -84,6 +84,18 @@ function section() {
   });
 }
 
+/** The accessible name Testing Library computes for one element. */
+function accessibleNameOf(target: HTMLElement): string {
+  let found = "";
+  screen.getByRole(target.getAttribute("role") ?? "link", {
+    name: (name, el) => {
+      if (el === target) found = name;
+      return el === target;
+    },
+  });
+  return found;
+}
+
 /** Every element that paints Signal Orange (text, fill or border). */
 function orangeElements(root: HTMLElement) {
   return Array.from(root.querySelectorAll("*")).filter((el) =>
@@ -105,18 +117,49 @@ describe("UpcomingEvents", () => {
     ]);
   });
 
-  it("names each row by title, day, time, place and kind", () => {
+  it("names each row by its own visible words, title first", () => {
     renderIn(EVENTS);
     expect(
       screen.getByRole("link", {
-        name: "The AI Conference 2026, Next up, Tuesday, September 29, 2026, 09:00 PDT, San Francisco, United States, Meetup",
+        name: "The AI Conference 2026, San Francisco, United States, 29 Sep, Tue, 09:00 PDT, Next up, Meetup",
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", {
-        name: "Prompting workshop, Wednesday, October 14, 2026, Online, Workshop",
+        name: "Agents Hackathon, Utrecht, Netherlands, by AIT Community Netherlands, 05 Oct, Mon, 10:00 CEST, Hackathon",
       }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: "Prompting workshop, Online, 14 Oct, Wed, Workshop",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("has no aria-label: every visible word is in the name, nothing replaced", () => {
+    renderIn(EVENTS);
+    const rows = within(within(section()).getByRole("list")).getAllByRole(
+      "link",
+    );
+    for (const row of rows) {
+      expect(row).not.toHaveAttribute("aria-label");
+      expect(row).not.toHaveAttribute("aria-labelledby");
+      const name = accessibleNameOf(row).toLowerCase();
+      // What a voice user reads off the screen, e.g. "05 OCT" or "10:00 CEST".
+      const visible = Array.from(
+        row.querySelectorAll<HTMLElement>("span, time"),
+      )
+        .filter(
+          (el) =>
+            !el.closest("[aria-hidden='true']") &&
+            !el.classList.contains("sr-only") &&
+            el.children.length === 0,
+        )
+        .map((el) => el.textContent?.trim().toLowerCase() ?? "")
+        .filter(Boolean);
+      expect(visible.length).toBeGreaterThan(3);
+      for (const words of visible) expect(name).toContain(words);
+    }
   });
 
   it("shows the date block in the event's own zone", () => {
@@ -124,7 +167,8 @@ describe("UpcomingEvents", () => {
     const first = screen.getByRole("link", { name: /^The AI Conference/ });
     const time = first.querySelector("time");
     expect(time).toHaveAttribute("dateTime", "2026-09-29");
-    expect(time?.textContent).toBe("29 SEPTUE09:00 PDT");
+    expect(time?.textContent).toBe("29 Sep, Tue, 09:00 PDT");
+    expect(time).toHaveClass("uppercase");
     expect(first.textContent).toContain("San Francisco, United States");
   });
 
@@ -171,7 +215,7 @@ describe("UpcomingEvents", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", {
-        name: "Agents Hackathon, maandag 5 oktober 2026, 10:00 CEST, Utrecht, Netherlands, door AIT Community Netherlands, Hackathon",
+        name: "Agents Hackathon, Utrecht, Netherlands, door AIT Community Netherlands, 05 okt, ma, 10:00 CEST, Hackathon",
       }),
     ).toBeInTheDocument();
     expect(screen.getByTestId("next-marker").textContent).toContain(
@@ -232,5 +276,11 @@ describe("UpcomingEvents — translations", () => {
     );
     expect(page).toContain("<UpcomingEvents events={upcomingEventRows} />");
     expect(page).not.toMatch(/typeLabels|function formatDate/);
+    // Rows come through the tested mapper and the ordering guard.
+    expect(page).toContain("toUpcomingEventInput(event, hostNames)");
+    expect(page).toContain(
+      "completeUpcomingCandidates(eventCandidates, UPCOMING_EVENT_CANDIDATES)",
+    );
+    expect(page).toContain("limit: UPCOMING_EVENT_CANDIDATES");
   });
 });

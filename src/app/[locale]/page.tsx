@@ -7,6 +7,7 @@ import { HomeHeroPlaza } from "@/components/home/town-square/home-hero-plaza";
 import type { NoticeBoardContent } from "@/components/home/town-square/town-square-scene";
 import { CREATE_COMMUNITY_HREF } from "@/components/communities/create-community-link";
 import {
+  completeUpcomingCandidates,
   formatEventShortWhen,
   upcomingEvents,
   upcomingEventsQueryFloor,
@@ -26,8 +27,16 @@ import { FeaturedCommunities } from "@/components/home/featured-communities/feat
 import { HomeCrawlDoors } from "@/components/home/home-crawl-doors";
 import { WhatWeDo } from "@/components/home/what-we-do/what-we-do";
 import { UpcomingEvents } from "@/components/home/upcoming-events/upcoming-events";
-import type { UpcomingEventInput } from "@/components/home/upcoming-events/upcoming-event-rows";
+import { toUpcomingEventInput } from "@/components/home/upcoming-events/to-upcoming-event-input";
 import { loadEventHostNames } from "@/server/events/event-hosts-queries";
+
+/**
+ * Rows fetched for the upcoming-events block. The block shows 5; the rest
+ * covers up to two days of already-past rows (the zone-safe floor) and the
+ * trailing days completeUpcomingCandidates() drops when a page comes back
+ * full.
+ */
+const UPCOMING_EVENT_CANDIDATES = 50;
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -84,12 +93,18 @@ export default async function Home() {
       discoverySource: { not_equals: "luma" },
     },
     sort: "date",
-    // Headroom for the past-two-days rows the floor lets through.
-    limit: 20,
+    // Headroom for the past-two-days rows the floor lets through and for
+    // completeUpcomingCandidates(), which drops the last fetched days of a
+    // full page so ranking by start instant cannot skip an unfetched event.
+    limit: UPCOMING_EVENT_CANDIDATES,
     locale: locale as "en" | "nl",
     draft: false,
   });
-  const events = upcomingEvents(eventCandidates).slice(0, 5);
+  // Soonest real start first (same-day events by time, then id); ended
+  // events drop out, so the list and the notice board agree on "next up".
+  const events = upcomingEvents(
+    completeUpcomingCandidates(eventCandidates, UPCOMING_EVENT_CANDIDATES),
+  ).slice(0, 5);
 
   // The town-square notice board shows the real next event, or a calm
   // "being planned" line — never blank, never invented.
@@ -165,20 +180,9 @@ export default async function Home() {
     ),
   ]);
 
-  const upcomingEventRows: UpcomingEventInput[] = events.map((event) => ({
-    id: event.id,
-    slug: event.slug,
-    title: event.title,
-    type: event.type,
-    format: event.format,
-    date: event.date,
-    startTime: event.startTime,
-    timezone: event.timezone,
-    city: event.city,
-    country: event.country,
-    location: event.location,
-    host: event.communityId ? (hostNames.get(event.communityId) ?? null) : null,
-  }));
+  const upcomingEventRows = events.map((event) =>
+    toUpcomingEventInput(event, hostNames),
+  );
 
   const workshopCount = await payload
     .find({
