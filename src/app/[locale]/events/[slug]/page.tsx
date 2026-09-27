@@ -12,18 +12,26 @@ import { EventShareRow } from "@/components/event-share-row";
 import { LexicalRenderer } from "@/lib/lexical";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
-import {
-  EVENT_FOCUS_LABELS,
-  EVENT_FORMAT_LABELS,
-  EVENT_LEVEL_LABELS,
-  EVENT_TYPE_LABELS,
-} from "@/lib/event-metadata";
+import { EVENT_FOCUS_LABELS, EVENT_LEVEL_LABELS } from "@/lib/event-metadata";
 import type { EventFocus } from "@/lib/event-metadata";
 import type { Audience } from "@/payload-types";
 import {
-  formatEventIsoWithOffset,
+  eventSchemaDates,
+  formatEventDay,
   formatEventTimeRange,
+  upcomingEventsQueryFloor,
+  upcomingFromCandidates,
 } from "@/lib/event-time";
+import {
+  eventFormatLabel,
+  eventRowKind,
+} from "@/components/events/rows/event-rows";
+import { getEventRowLabels } from "@/components/events/rows/get-event-row-labels";
+import {
+  eventDetailDay,
+  eventSummaryLine,
+  type EventDetailDay,
+} from "@/components/events/detail/event-detail-when";
 import { EventTimeDisplay } from "@/components/event-time-display";
 import { getTranslations } from "next-intl/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,25 +45,9 @@ type MediaValue =
   | null
   | undefined;
 
-const MONTH_SHORT = [
-  "JAN",
-  "FEB",
-  "MAR",
-  "APR",
-  "MAY",
-  "JUN",
-  "JUL",
-  "AUG",
-  "SEP",
-  "OCT",
-  "NOV",
-  "DEC",
-];
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
-}
+/** Related events shown; fetched with headroom for the zone-safe floor. */
+const RELATED_EVENTS_SHOWN = 3;
+const RELATED_EVENT_CANDIDATES = 24;
 
 function getMedia(media: MediaValue) {
   if (media && typeof media === "object" && "url" in media && media.url) {
@@ -117,19 +109,17 @@ export async function generateMetadata({
   const event = docs[0];
   if (!event) return {};
 
-  const typeLabel = EVENT_TYPE_LABELS[event.type] ?? event.type;
-  const description =
-    event.summary ??
-    `${typeLabel} on ${formatDate(event.date)} at ${event.location}`;
+  const summaryLine = eventSummaryLine(
+    event,
+    locale,
+    await getEventRowLabels(),
+  );
+  const description = event.summary ?? summaryLine;
 
   return {
     title: event.title,
     description,
-    ...buildOgMeta(
-      event.title,
-      description,
-      `${typeLabel} · ${formatDate(event.date)} · ${event.location}`,
-    ),
+    ...buildOgMeta(event.title, description, summaryLine),
     alternates: await localeAlternates(`/events/${slug}`),
   };
 }
@@ -142,6 +132,7 @@ export default async function EventDetailPage({
   const { slug } = await params;
   const locale = await getLocale();
   const tEvents = await getTranslations("events");
+  const labels = await getEventRowLabels();
 
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
@@ -209,10 +200,17 @@ export default async function EventDetailPage({
         ? "https://schema.org/MixedEventAttendanceMode"
         : "https://schema.org/OfflineEventAttendanceMode";
 
-  const dateObj = new Date(event.date);
-  const dateMonth = MONTH_SHORT[dateObj.getMonth()] ?? "";
-  const dateDay = dateObj.getDate();
-  const dateYear = dateObj.getFullYear();
+  const eventDay = eventDetailDay(event, locale);
+  const typeLabel = eventRowKind(event.type, labels).label;
+  const formatLabel = event.format
+    ? eventFormatLabel(event.format, labels)
+    : null;
+  const schemaDates = eventSchemaDates({
+    date: event.date,
+    startTime: event.startTime,
+    endTime: event.endTime,
+    timezone: event.timezone,
+  });
   const locationParts = [event.city, event.region, event.country].filter(
     Boolean,
   );
@@ -253,18 +251,20 @@ export default async function EventDetailPage({
     }
   }
 
-  const now = new Date().toISOString();
+  const now = new Date();
   const relatedOrConditions: Where[] = [{ type: { equals: event.type } }];
   if (event.focus) {
     relatedOrConditions.push({ focus: { equals: event.focus } });
   }
 
-  const { docs: relatedEvents } = await payload.find({
+  const { docs: relatedCandidates } = await payload.find({
     collection: "events",
     where: {
       and: [
         { status: { equals: "published" } },
-        { date: { greater_than_equal: now } },
+        // Wide floor; upcomingFromCandidates() applies each event's own
+        // "today", so an event later today is never dropped.
+        { date: { greater_than_equal: upcomingEventsQueryFloor(now) } },
         { id: { not_equals: event.id } },
         { or: relatedOrConditions },
       ],
@@ -272,8 +272,13 @@ export default async function EventDetailPage({
     sort: "date",
     locale: locale as "en" | "nl",
     depth: 1,
-    limit: 3,
+    limit: RELATED_EVENT_CANDIDATES,
   });
+  const relatedEvents = upcomingFromCandidates(
+    relatedCandidates,
+    RELATED_EVENT_CANDIDATES,
+    now,
+  ).slice(0, RELATED_EVENTS_SHOWN);
 
   // Prizes for hackathons — reuse the same labels the winners page uses.
   let prizeParts: Array<{ label: string; value: string }> = [];
@@ -485,9 +490,12 @@ export default async function EventDetailPage({
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="border-border bg-card space-y-4 rounded-lg border p-5">
             <div className="space-y-1">
-              <div className="text-muted-foreground font-mono text-xs tracking-wider">
-                {dateMonth} {dateDay}, {dateYear}
-              </div>
+              <time
+                dateTime={eventDay.dateTime ?? undefined}
+                className="text-muted-foreground block font-mono text-xs tracking-wider uppercase tabular-nums"
+              >
+                {eventDay.label}
+              </time>
               <EventTimeDisplay
                 date={event.date}
                 startTime={event.startTime ?? null}
@@ -527,7 +535,7 @@ export default async function EventDetailPage({
                     variant="outline"
                     className="rounded-md font-mono text-xs tracking-wider"
                   >
-                    {EVENT_FORMAT_LABELS[event.format] ?? event.format}
+                    {formatLabel}
                   </Badge>
                 )}
                 {priceLabel && (
@@ -576,22 +584,7 @@ export default async function EventDetailPage({
           "@type": "Event",
           name: event.title,
           description: event.summary ?? undefined,
-          startDate: event.startTime
-            ? formatEventIsoWithOffset(
-                event.date,
-                event.startTime,
-                event.timezone,
-              )
-            : event.date,
-          ...(event.endTime
-            ? {
-                endDate: formatEventIsoWithOffset(
-                  event.date,
-                  event.endTime,
-                  event.timezone,
-                ),
-              }
-            : {}),
+          ...schemaDates,
           location: {
             "@type": "Place",
             name: event.location,
@@ -654,15 +647,9 @@ export default async function EventDetailPage({
         title={event.title}
         heroImageUrl={heroImage?.url ?? null}
         heroImageAlt={heroImage?.alt ?? event.title}
-        typeLabel={EVENT_TYPE_LABELS[event.type] ?? event.type}
-        formatLabel={
-          event.format
-            ? (EVENT_FORMAT_LABELS[event.format] ?? event.format)
-            : null
-        }
-        dateMonth={dateMonth}
-        dateDay={dateDay}
-        dateYear={dateYear}
+        typeLabel={typeLabel}
+        formatLabel={formatLabel}
+        day={eventDay}
         timeLabel={formatEventTimeRange({
           date: event.date,
           startTime: event.startTime,
@@ -844,7 +831,6 @@ export default async function EventDetailPage({
                     (related.coverImage as MediaValue) ??
                       (related.image as MediaValue),
                   );
-                  const relDate = new Date(related.date);
                   return (
                     <Link
                       key={related.id}
@@ -863,11 +849,12 @@ export default async function EventDetailPage({
                         </div>
                       )}
                       <div className="space-y-2 p-3">
-                        <div className="text-muted-foreground font-mono text-xs tracking-wider">
-                          {MONTH_SHORT[relDate.getMonth()]} {relDate.getDate()},{" "}
-                          {relDate.getFullYear()}
+                        <div className="text-muted-foreground font-mono text-xs tracking-wider uppercase tabular-nums">
+                          <time dateTime={related.date.slice(0, 10)}>
+                            {formatEventDay(related.date, locale)}
+                          </time>
                           {" · "}
-                          {EVENT_TYPE_LABELS[related.type] ?? related.type}
+                          {eventRowKind(related.type, labels).label}
                         </div>
                         <div className="line-clamp-2 text-sm leading-tight font-semibold">
                           {related.title}
@@ -887,9 +874,12 @@ export default async function EventDetailPage({
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="border-border bg-card space-y-4 rounded-lg border p-5">
             <div className="space-y-1">
-              <div className="text-muted-foreground font-mono text-xs tracking-wider">
-                {dateMonth} {dateDay}, {dateYear}
-              </div>
+              <time
+                dateTime={eventDay.dateTime ?? undefined}
+                className="text-muted-foreground block font-mono text-xs tracking-wider uppercase tabular-nums"
+              >
+                {eventDay.label}
+              </time>
               <EventTimeDisplay
                 date={event.date}
                 startTime={event.startTime ?? null}
@@ -929,7 +919,7 @@ export default async function EventDetailPage({
                     variant="outline"
                     className="rounded-md font-mono text-xs tracking-wider"
                   >
-                    {EVENT_FORMAT_LABELS[event.format] ?? event.format}
+                    {formatLabel}
                   </Badge>
                 )}
                 {priceLabel && (
@@ -996,9 +986,7 @@ function EventHero({
   heroImageAlt,
   typeLabel,
   formatLabel,
-  dateMonth,
-  dateDay,
-  dateYear,
+  day,
   timeLabel,
   location,
   aitFitScore,
@@ -1008,9 +996,7 @@ function EventHero({
   heroImageAlt: string;
   typeLabel: string;
   formatLabel: string | null;
-  dateMonth: string;
-  dateDay: number;
-  dateYear: number;
+  day: EventDetailDay;
   timeLabel: string | null;
   location: string;
   aitFitScore: number | null;
@@ -1035,20 +1021,23 @@ function EventHero({
 
       <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
         <div className="flex flex-wrap items-end gap-4 sm:gap-6">
-          <div className="bg-background/95 text-foreground flex h-16 w-16 flex-col items-center justify-center rounded-lg text-center shadow-lg sm:h-20 sm:w-20">
-            <span className="font-mono text-xs tracking-wider sm:text-xs">
-              {dateMonth}
+          <time
+            dateTime={day.dateTime ?? undefined}
+            className="bg-background/95 text-foreground flex h-16 w-16 flex-col items-center justify-center rounded-lg text-center shadow-lg sm:h-20 sm:w-20"
+          >
+            <span className="font-mono text-xs tracking-wider uppercase sm:text-xs">
+              {day.month}
             </span>
-            <span className="text-2xl leading-none font-semibold sm:text-3xl">
-              {dateDay}
+            <span className="text-2xl leading-none font-semibold tabular-nums sm:text-3xl">
+              {day.day}
             </span>
-            <span className="text-muted-foreground font-mono text-xs tracking-wider sm:text-xs">
-              {dateYear}
+            <span className="text-muted-foreground font-mono text-xs tracking-wider tabular-nums sm:text-xs">
+              {day.year}
             </span>
-          </div>
+          </time>
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider text-white/80 sm:text-xs">
+            <div className="flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider text-white/80 uppercase sm:text-xs">
               <span>{typeLabel}</span>
               {formatLabel && (
                 <>

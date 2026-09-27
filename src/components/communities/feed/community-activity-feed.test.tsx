@@ -172,6 +172,46 @@ describe("CommunityActivityFeed", () => {
     expect(screen.getByText("Ann, Ben and 1 other joined")).toBeInTheDocument();
   });
 
+  it("dates an event by its own day, even for a viewer west of UTC", () => {
+    const originalTz = process.env.TZ;
+    process.env.TZ = "America/Los_Angeles";
+    try {
+      const { container } = renderFeed([
+        {
+          pinned: [],
+          nextCursor: null,
+          items: [
+            {
+              kind: "event",
+              key: "event:4",
+              at: AT,
+              event: {
+                id: 4,
+                slug: "mlops-night",
+                title: "MLOps Night",
+                type: "meetup",
+                date: "2026-10-05T00:00:00.000Z",
+                startTime: "19:00",
+                endTime: "21:00",
+                timezone: "Europe/Amsterdam",
+                location: "Amsterdam",
+              },
+            },
+          ],
+        },
+      ]);
+
+      const tile = container.querySelector("[data-activity-row] time");
+      expect(tile).toHaveAttribute("dateTime", "2026-10-05");
+      expect(tile).toHaveTextContent("Oct05");
+      expect(
+        screen.getByText("Mon 5 Oct · 19:00–21:00 CEST · Amsterdam"),
+      ).toBeInTheDocument();
+    } finally {
+      process.env.TZ = originalTz;
+    }
+  });
+
   it("teaches the first step when the community has no activity", () => {
     renderFeed([{ pinned: [], items: [], nextCursor: null }]);
     expect(screen.getByText("Nothing here yet")).toBeInTheDocument();

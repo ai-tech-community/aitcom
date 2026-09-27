@@ -304,6 +304,35 @@ describe("listingEventJsonLd", () => {
     );
   });
 
+  it("gives a timed event its start and end with the event zone's offset", () => {
+    const data = listingEventJsonLd(
+      hostedListingEvent({
+        date: "2026-10-07T00:00:00.000Z",
+        startTime: "09:00",
+        endTime: "18:00",
+        timezone: "Europe/Amsterdam",
+      }),
+      "en",
+    );
+    expect(data).toMatchObject({
+      startDate: "2026-10-07T09:00:00+02:00",
+      endDate: "2026-10-07T18:00:00+02:00",
+    });
+  });
+
+  it("keeps a date-only event a plain calendar day", () => {
+    const data = listingEventJsonLd(
+      hostedListingEvent({
+        date: "2026-10-07T00:00:00.000Z",
+        startTime: null,
+        timezone: "America/Los_Angeles",
+      }),
+      "en",
+    );
+    expect(data?.startDate).toBe("2026-10-07");
+    expect(data).not.toHaveProperty("endDate");
+  });
+
   it("falls back to the canonical www event page when sourceUrl is missing", () => {
     const data = listingEventJsonLd(
       hostedListingEvent({ sourceUrl: null }),

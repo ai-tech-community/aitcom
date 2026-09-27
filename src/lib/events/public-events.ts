@@ -1,3 +1,4 @@
+import { eventSchemaDates } from "@/lib/event-time";
 import { HUB_OPEN_HREF } from "@/lib/join-path";
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 
@@ -36,6 +37,10 @@ export type HostedEventInput = {
   title: string;
   slug?: string | null;
   date: string;
+  /** "HH:MM" wall-clock start in `timezone`; gives JSON-LD a real start. */
+  startTime?: string | null;
+  endTime?: string | null;
+  timezone?: string | null;
   format?: string | null;
   city?: string | null;
   location?: string | null;
@@ -223,15 +228,25 @@ export function listingEventJsonLd(
   locale: PublicEventLocale,
 ): Record<string, unknown> | null {
   const name = event.title.trim();
-  const startDate = toPublicEventDate(event.date);
+  const day = toPublicEventDate(event.date);
+  // With a start time: a local datetime with the event zone's offset;
+  // without one: the plain calendar day.
+  const dates = day
+    ? eventSchemaDates({
+        date: day,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        timezone: event.timezone,
+      })
+    : null;
   const url = hostedEventUrl(event, locale);
   const place = sourcedListingEventPlace(event);
-  if (!name || !startDate || !url || !place) return null;
+  if (!name || !dates || !url || !place) return null;
 
   const data: Record<string, unknown> = {
     "@type": "Event",
     name,
-    startDate,
+    ...dates,
     url,
     location: { "@type": "Place", name: place },
   };

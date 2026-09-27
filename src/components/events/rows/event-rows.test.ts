@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   presentEventRows,
   eventRowKind,
+  eventFormatLabel,
   eventRowPlaceParts,
   type EventRowInput,
   type EventRowLabels,
@@ -383,5 +384,17 @@ describe("presentEventRows — rows", () => {
 
   it("returns no rows for no events", () => {
     expect(present([])).toEqual([]);
+  });
+});
+
+describe("eventFormatLabel", () => {
+  it("names each known format in the given language", () => {
+    expect(eventFormatLabel("online", EN)).toBe("Online");
+    expect(eventFormatLabel("hybrid", NL)).toBe("Hybride");
+    expect(eventFormatLabel("in-person", NL)).toBe("Op locatie");
+  });
+
+  it("shows a legacy format as written", () => {
+    expect(eventFormatLabel("in_person_only", EN)).toBe("in person only");
   });
 });

@@ -240,7 +240,23 @@
     "editShort": "Bewerken",
     "nextUp": "Volgende",
     "placeToBeAnnounced": "Locatie volgt nog",
-    "eventCancelError": "Evenement annuleren mislukt. Misschien heeft het al plaatsgevonden."
+    "eventCancelError": "Evenement annuleren mislukt. Misschien heeft het al plaatsgevonden.",
+    "myEvents": {
+      "label": "Mijn evenementen",
+      "upcoming": "Aankomend ({count})",
+      "past": "Eerder ({count})",
+      "noUpcoming": "Geen aankomende evenementen.",
+      "noPast": "Nog geen eerdere evenementen.",
+      "browse": "Bekijk evenementen",
+      "external": "Extern",
+      "status": {
+        "registered": "Aangemeld",
+        "waitlisted": "Op wachtlijst",
+        "attended": "Bijgewoond",
+        "intent": "Ik ga",
+        "pending_payment": "Wacht op betaling"
+      }
+    }
   },
   "blog": {
     "title": "Blog",

@@ -1,25 +1,12 @@
 import { useTranslations } from "next-intl";
 import type { EventRowLabels } from "./event-rows";
+import { eventRowLabelsFrom } from "./event-row-labels";
 
 /**
- * The translated words every event row needs (types, place, "by <host>"),
- * from the `events` messages. One source, so the homepage and a community's
- * event lists can never word the same event differently.
- * Works in server and client components alike.
+ * The shared event row labels (see `eventRowLabelsFrom`) for client
+ * components and non-async server components. Async server components use
+ * `getEventRowLabels`.
  */
 export function useEventRowLabels(): EventRowLabels {
-  const t = useTranslations("events");
-  return {
-    types: {
-      workshop: t("eventTypeWorkshop"),
-      hackathon: t("eventTypeHackathon"),
-      deep_dive: t("eventTypeDeepDive"),
-      meetup: t("eventTypeMeetup"),
-    },
-    online: t("online"),
-    hybrid: t("formatHybrid"),
-    inPerson: t("formatInPerson"),
-    hostedBy: (name) => t("hostedBy", { name }),
-    placeToBeAnnounced: t("placeToBeAnnounced"),
-  };
+  return eventRowLabelsFrom(useTranslations("events"));
 }

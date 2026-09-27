@@ -37,6 +37,10 @@ import {
 } from "@/server/communities/content-visibility-queries";
 import { getPayloadClient } from "@/server/payload";
 import {
+  upcomingEventsQueryFloor,
+  upcomingFromCandidates,
+} from "@/lib/event-time";
+import {
   logActivity,
   checkEnrollmentCompletion,
 } from "@/server/agent/activity";
@@ -80,6 +84,13 @@ function getMetadataString(
 }
 
 // ── Router ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Rows fetched for browseEvents (which returns at most 20): headroom for
+ * the past-two-days rows the zone-safe floor lets through and for the
+ * trailing days upcomingFromCandidates() drops from a full page.
+ */
+const BROWSE_EVENT_CANDIDATES = 60;
 
 export const agentRouter = createTRPCRouter({
   // ═══════════════════════════════════════════════════════════════════════════
@@ -237,7 +248,7 @@ export const agentRouter = createTRPCRouter({
       requireScope(ctx.agent.scopes, "read");
 
       const payload = await getPayloadClient();
-      const now = new Date().toISOString();
+      const now = new Date();
 
       // Resolve community if scoped
       let communityId: string | undefined;
@@ -259,7 +270,9 @@ export const agentRouter = createTRPCRouter({
 
       const conditions: Where[] = [
         { status: { equals: "published" } },
-        { date: { greater_than_equal: now } },
+        // Wide floor; upcomingFromCandidates() applies each event's own
+        // "today", so an event later today is still listed.
+        { date: { greater_than_equal: upcomingEventsQueryFloor(now) } },
       ];
       if (communityId) {
         conditions.push({ communityId: { equals: communityId } });
@@ -271,13 +284,19 @@ export const agentRouter = createTRPCRouter({
           and: conditions,
         },
         sort: "date",
-        limit: input.limit,
+        limit: BROWSE_EVENT_CANDIDATES,
         locale: "en",
         draft: false,
         depth: 0,
       });
 
-      return docs.map((e) => ({
+      const upcoming = upcomingFromCandidates(
+        docs,
+        BROWSE_EVENT_CANDIDATES,
+        now,
+      ).slice(0, input.limit);
+
+      return upcoming.map((e) => ({
         id: e.id,
         title: e.title,
         type: e.type,
