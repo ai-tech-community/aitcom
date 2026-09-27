@@ -77,6 +77,32 @@ describe("homepage crawl doors", () => {
     );
     expect(homepage).toContain("HomeCrawlDoors");
     expect(homepage).toContain("hubDoors");
+    // Guest-only, keyed on the request session: crawlers (guests) keep it.
+    expect(homepage).toContain(
+      "<HomeCrawlDoors t={doors} signedIn={!!session?.user} />",
+    );
+  });
+
+  it("renders for guests (and crawlers)", () => {
+    render(<HomeCrawlDoors t={tFrom(en.hubDoors)} signedIn={false} />);
+    expect(
+      screen.getByRole("heading", { name: "/ START HERE" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(HOME_CRAWL_DOORS.length);
+  });
+
+  it("renders nothing for a signed-in member", () => {
+    const { container } = render(
+      <HomeCrawlDoors t={tFrom(en.hubDoors)} signedIn />,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("uses plain words, not protocol jargon, in EN and NL", () => {
+    for (const messages of [en.hubDoors, nl.hubDoors]) {
+      const blob = Object.values(messages).join("\n");
+      expect(blob).not.toMatch(/\bMCP\b|\bHub\b|agent-ready|registry|OSS/i);
+    }
   });
 
   it("does not invent member counts or summit registration", () => {

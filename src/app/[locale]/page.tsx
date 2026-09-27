@@ -233,7 +233,7 @@ export default async function Home() {
         <FeaturedCommunities communities={featuredCommunities} />
       ) : null}
 
-      <HomeCrawlDoors t={doors} />
+      <HomeCrawlDoors t={doors} signedIn={!!session?.user} />
 
       <WhatWeDo />
 

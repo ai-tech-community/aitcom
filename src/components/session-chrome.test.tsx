@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/dynamic", () => ({
   default: () => {
-    function LazyChrome() {
-      return <div data-testid="lazy-chrome" />;
+    function LazyChrome({ dockLeading }: { dockLeading?: React.ReactNode }) {
+      return <div data-testid="lazy-chrome">{dockLeading}</div>;
     }
     return LazyChrome;
   },
@@ -37,6 +37,9 @@ describe("SessionChrome", () => {
       </SessionProvider>,
     );
 
-    expect(screen.getAllByTestId("lazy-chrome")).toHaveLength(2);
+    // Inbox (with the getting-started reminder in its dock) + space windows.
+    const chrome = screen.getAllByTestId("lazy-chrome");
+    expect(chrome).toHaveLength(3);
+    expect(chrome[0]).toContainElement(chrome[1]!);
   });
 });

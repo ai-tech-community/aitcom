@@ -6,6 +6,7 @@ import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { useInbox } from "./inbox-provider";
 import { LIVE_BADGE_REFETCH_MS } from "./live-refetch";
+import { DOCK_HOME_ATTR } from "./corner-dock";
 
 export function InboxPill() {
   const { data: session } = authClient.useSession();
@@ -25,6 +26,7 @@ export function InboxPill() {
   return (
     <button
       type="button"
+      {...{ [DOCK_HOME_ATTR]: "" }}
       onClick={toggleList}
       className="border-border bg-background flex items-center gap-2 rounded-lg border px-4 py-2.5 shadow-lg transition-opacity hover:opacity-90"
     >

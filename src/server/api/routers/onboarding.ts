@@ -10,6 +10,7 @@ import {
   user,
 } from "@/server/db/schema";
 import { awardXp, awardBadge, XP_AMOUNTS } from "@/lib/gamification";
+import { defaultDisplayName } from "@/server/members/default-display-name";
 
 // ── Checklist Definitions ───────────────────────────────────────────────
 
@@ -164,6 +165,7 @@ export const onboardingRouter = createTRPCRouter({
         userId: memberProfiles.userId,
         onboardingIntent: memberProfiles.onboardingIntent,
         onboardingCompleted: memberProfiles.onboardingCompleted,
+        onboardingDismissedAt: memberProfiles.onboardingDismissedAt,
         displayName: memberProfiles.displayName,
         bio: memberProfiles.bio,
         skills: memberProfiles.skills,
@@ -178,15 +180,31 @@ export const onboardingRouter = createTRPCRouter({
         hasProfile: false,
         hasIntent: false,
         onboardingCompleted: false,
+        dismissed: false,
         checklist: [],
       };
     }
+
+    const dismissed = profile.onboardingDismissedAt !== null;
 
     if (profile.onboardingCompleted) {
       return {
         hasProfile: true,
         hasIntent: true,
         onboardingCompleted: true,
+        dismissed,
+        checklist: [],
+      };
+    }
+
+    // Dismissed: nothing is shown, so skip the step and auto-detect queries.
+    // This query runs on every page for signed-in members (site-wide reminder).
+    if (dismissed) {
+      return {
+        hasProfile: true,
+        hasIntent: !!profile.onboardingIntent,
+        onboardingCompleted: false,
+        dismissed: true,
         checklist: [],
       };
     }
@@ -268,8 +286,38 @@ export const onboardingRouter = createTRPCRouter({
       hasProfile: true,
       hasIntent: !!profile.onboardingIntent,
       onboardingCompleted: profile.onboardingCompleted,
+      dismissed,
       checklist,
     };
+  }),
+
+  /**
+   * "Don't show again" for the getting-started checklist. Stored on the
+   * account so it holds on every device, and shared by the dashboard card
+   * and the site-wide reminder.
+   *
+   * Upsert, because a member can be signed in without a member_profile row
+   * (the row is created best-effort at sign-up); a plain UPDATE would touch
+   * 0 rows and the reminder would come straight back. The new row gets the
+   * same default display name as sign-up. COALESCE keeps the first dismissal
+   * time on repeat calls.
+   */
+  dismiss: protectedProcedure.mutation(async ({ ctx }) => {
+    const { user: sessionUser } = ctx.session;
+    await ctx.db
+      .insert(memberProfiles)
+      .values({
+        userId: sessionUser.id,
+        displayName: defaultDisplayName(sessionUser),
+        onboardingDismissedAt: sql`now()`,
+      })
+      .onConflictDoUpdate({
+        target: memberProfiles.userId,
+        set: {
+          onboardingDismissedAt: sql`coalesce(${memberProfiles.onboardingDismissedAt}, now())`,
+        },
+      });
+    return { dismissed: true };
   }),
 
   /** Complete an onboarding step (for steps that aren't auto-detected). */
