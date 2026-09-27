@@ -1,6 +1,6 @@
 # Short video is transcoded on the device and stored in our own S3
 
-**Status:** accepted
+**Status:** accepted — scope narrowed to short video by [[adr-0037-classroom-long-form-video-is-hosted-on-mux]] (classroom long-form video uses Mux)
 
 Community short videos (feed posts and Reels mode) are converted to 720p H.264 MP4 plus a JPEG thumbnail **in the uploader's browser** using WebCodecs (via the Mediabunny library). They're uploaded **directly from the browser to our existing S3 bucket** with narrow presigned POST grants. Public videos are read by direct URL. Community-only videos live under a private prefix and are read through one-hour presigned GET links that the server issues only to members. There's no third-party video platform and no server-side transcoding.
 
