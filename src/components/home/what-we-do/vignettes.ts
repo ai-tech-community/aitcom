@@ -10,6 +10,13 @@
  * one layer. Original art drawn for AIT Community.
  */
 
+import {
+  figure as drawFigure,
+  type FigureKind,
+  type FigurePose,
+} from "@/components/ascii/figures";
+import { LayeredCanvas } from "@/components/ascii/layered-canvas";
+
 export type VignetteLayer = "scenery" | "people";
 
 export interface VignetteFrame {
@@ -31,80 +38,24 @@ export type VignetteKey = "gather" | "build" | "work" | "learn";
 const W = 44;
 const H = 11;
 
-// ─── Canvas ──────────────────────────────────────────────────────────────────
+const LAYERS: readonly VignetteLayer[] = ["scenery", "people"];
 
-class Canvas {
-  private chars: string[][];
-  private owner: (VignetteLayer | null)[][];
-
-  constructor(
-    readonly width: number,
-    readonly height: number,
-  ) {
-    this.chars = Array.from({ length: height }, () =>
-      Array<string>(width).fill(" "),
-    );
-    this.owner = Array.from({ length: height }, () =>
-      Array<VignetteLayer | null>(width).fill(null),
-    );
-  }
-
-  put(x: number, y: number, ch: string, layer: VignetteLayer) {
-    if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
-    this.chars[y]![x] = ch;
-    this.owner[y]![x] = ch === " " ? null : layer;
-  }
-
-  /**
-   * Draw lines at (x, y). Spaces outside each line's first..last glyph are
-   * transparent; spaces inside are opaque, so a thing hides what is behind.
-   */
-  sprite(x: number, y: number, lines: readonly string[], layer: VignetteLayer) {
-    lines.forEach((line, dy) => {
-      const first = line.search(/\S/);
-      if (first < 0) return;
-      const last = line.trimEnd().length - 1;
-      for (let i = first; i <= last; i++)
-        this.put(x + i, y + dy, line[i]!, layer);
-    });
-  }
-
-  frame(): VignetteFrame {
-    const out: VignetteFrame = { scenery: [], people: [] };
-    for (let y = 0; y < this.height; y++) {
-      for (const layer of ["scenery", "people"] as const) {
-        let row = "";
-        for (let x = 0; x < this.width; x++)
-          row += this.owner[y]![x] === layer ? this.chars[y]![x]! : " ";
-        out[layer].push(row);
-      }
-    }
-    return out;
+class Canvas extends LayeredCanvas<VignetteLayer> {
+  constructor(width: number, height: number) {
+    super(width, height, LAYERS);
   }
 }
 
 // ─── Figures (same sprites as the town square) ──────────────────────────────
 
-type Kind = "human" | "agent";
+type Kind = FigureKind;
 
-interface FigurePose {
-  walking?: boolean;
-  /** Arm raised on the right (waving, placing, pinning). */
-  armUp?: boolean;
-  /** Replaces the body row, e.g. a human holding an open book. */
-  body?: string;
-}
-
+/** The shared figure; agents blink now and then while standing. */
 function figure(kind: Kind, tick: number, pose: FigurePose = {}): string[] {
-  const legs = pose.walking && tick % 2 === 1 ? " |\\" : "/ \\";
-  if (kind === "agent") {
-    const blink = !pose.walking && tick % 37 === 0;
-    const head = blink ? "[-]" : "[•]";
-    return pose.armUp
-      ? [head + "/", "/| ", legs]
-      : [head, pose.body ?? "/|\\", legs];
-  }
-  return pose.armUp ? [" o/", "/| ", legs] : [" o ", pose.body ?? "/|\\", legs];
+  return drawFigure(kind, tick, {
+    ...pose,
+    blink: !pose.walking && tick % 37 === 0,
+  });
 }
 
 /**
