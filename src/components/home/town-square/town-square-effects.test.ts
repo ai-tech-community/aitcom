@@ -15,6 +15,7 @@ import {
   greetingText,
   isNight,
   nightLevel,
+  settleEffects,
   splashBurstAge,
   splashGather,
   triggerEffect,
@@ -187,5 +188,54 @@ describe("greetings", () => {
     expect(greetingText("x", 1, lines)).toBe("hello!");
     expect(greetingText("x", 2, lines)).toBe(`hi, I'm ${agentName("x")}`);
     expect(greetingText("x", 0, [])).toBe("");
+  });
+});
+
+describe("night toggled mid-transition", () => {
+  it("carries on from the current level instead of jumping", () => {
+    const dusk = triggerEffect(NO_EFFECTS, { kind: "lamp", index: 0 }, LIVE);
+    const halfway = 100 + NIGHT_FALL_TICKS / 2;
+    const before = nightLevel(dusk.lighting, halfway);
+    const dawn = triggerEffect(
+      dusk,
+      { kind: "lamp", index: 0 },
+      { tick: halfway, settled: false },
+    );
+    expect(nightLevel(dawn.lighting, halfway)).toBeCloseTo(before);
+    expect(nightLevel(dawn.lighting, halfway + 1)).toBeLessThan(before);
+
+    const again = triggerEffect(
+      dawn,
+      { kind: "lamp", index: 0 },
+      { tick: halfway + 2, settled: false },
+    );
+    const level = nightLevel(dawn.lighting, halfway + 2);
+    expect(nightLevel(again.lighting, halfway + 2)).toBeCloseTo(level);
+    expect(nightLevel(again.lighting, halfway + 3)).toBeGreaterThan(level);
+  });
+});
+
+describe("settleEffects (motion mode changed)", () => {
+  it("keeps night as a finished, clock-free state and ends the rest", () => {
+    let s = triggerEffect(NO_EFFECTS, { kind: "lamp", index: 0 }, LIVE);
+    s = triggerEffect(s, { kind: "agent", figureId: "a" }, LIVE);
+    s = triggerEffect(s, { kind: "fountain", index: 0 }, LIVE);
+    const settled = settleEffects(s);
+    expect(settled.greet ?? null).toBeNull();
+    expect(settled.splash ?? null).toBeNull();
+    expect(isNight(settled)).toBe(true);
+    // The clock just jumped back: night must not look unstarted.
+    expect(nightLevel(settled.lighting, 0)).toBe(1);
+    expect(nightLevel(settled.lighting, 10_000)).toBe(1);
+  });
+
+  it("keeps day as day", () => {
+    const dusk = triggerEffect(NO_EFFECTS, { kind: "lamp", index: 0 }, LIVE);
+    const dawn = triggerEffect(dusk, { kind: "lamp", index: 0 }, LIVE);
+    expect(nightLevel(settleEffects(dawn).lighting, 0)).toBe(0);
+  });
+
+  it("leaves an empty state alone", () => {
+    expect(settleEffects(NO_EFFECTS)).toBe(NO_EFFECTS);
   });
 });

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
-import { AsciiMotionController } from "./motion-controller";
+import { AsciiMotionController, type MotionMode } from "./motion-controller";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
@@ -22,6 +22,11 @@ export interface AsciiMotionOptions<M> {
    * (e.g. a text column the scene must keep clear of).
    */
   observe?: readonly RefObject<HTMLElement | null>[];
+  /**
+   * The motion mode changed (reduced motion toggled, scrolled off-screen,
+   * tab hidden). Runs before the next paint.
+   */
+  onModeChange?: (next: MotionMode, previous: MotionMode) => void;
 }
 
 export interface AsciiMotionHandle {
@@ -46,16 +51,25 @@ export interface AsciiMotionHandle {
  */
 export function useAsciiMotion<M>(
   ref: RefObject<HTMLElement | null>,
-  { measure, draw, frameMs, staticTick = 0, observe }: AsciiMotionOptions<M>,
+  {
+    measure,
+    draw,
+    frameMs,
+    staticTick = 0,
+    observe,
+    onModeChange,
+  }: AsciiMotionOptions<M>,
 ): AsciiMotionHandle {
   // Latest callbacks without restarting the loop on every render.
   const measureRef = useRef(measure);
   const drawRef = useRef(draw);
   const observeRef = useRef(observe);
+  const modeChangeRef = useRef(onModeChange);
   useEffect(() => {
     measureRef.current = measure;
     drawRef.current = draw;
     observeRef.current = observe;
+    modeChangeRef.current = onModeChange;
   });
 
   const measurementRef = useRef<M | null>(null);
@@ -83,6 +97,7 @@ export function useAsciiMotion<M>(
         const m = measurementRef.current;
         if (m !== null) drawRef.current(tick, m);
       },
+      onModeChange: (next, previous) => modeChangeRef.current?.(next, previous),
       scheduler: {
         request: (cb) => window.requestAnimationFrame(cb),
         cancel: (handle) => window.cancelAnimationFrame(handle),

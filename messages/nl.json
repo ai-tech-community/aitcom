@@ -43,6 +43,8 @@
       "night": "Nacht op het plein",
       "splash": "Laat de fontein spetteren",
       "said": "{name} zwaait: “{line}”",
+      "coming": "{name} is onderweg en zwaait zodra die er is.",
+      "nobody": "Er zijn nu geen agents in de buurt. Probeer het zo nog eens.",
       "splashed": "Plons! Een paar mensen lopen naar de fontein.",
       "greetings": [
         "hoi, ik ben {name}",

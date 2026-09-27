@@ -94,6 +94,18 @@ export interface TownSquareFrame {
   boardLines: string[];
   /** Board panel in cells (for an accessible overlay link), or null. */
   board: CellRect | null;
+  /** How far night has fallen, 0 (day) to 1 (night): drives the sky tint. */
+  night: number;
+}
+
+/** A target the keyboard controls can play with, and from which tick. */
+export interface SuggestedTarget {
+  target: SquareTarget;
+  /**
+   * Tick the target is on stage: the current tick, or later when the next
+   * agent is still walking in (see `suggestTarget`'s `lookahead`).
+   */
+  at: number;
 }
 
 /** A building's front face in cells; its base row is always the street. */
@@ -1296,6 +1308,17 @@ export interface TownSquareScene {
   /** Clickable props (cells), in layout order. */
   lamps: CellRect[];
   fountains: CellRect[];
+  /**
+   * What this layout has to play with at all — independent of the tick, so
+   * a control never appears or vanishes as figures come and go.
+   */
+  playable: Record<SquareTargetKind, boolean>;
+  /**
+   * The open sky: above the street and right of the copy's keep-clear
+   * zone, so a night tint here never sits under the hero text. Null when
+   * no such region exists.
+   */
+  sky: CellRect | null;
   /** Draw `tick`, with any play effects applied. */
   frame(tick: number, effects?: TownSquareEffects): TownSquareFrame;
   /** What a click on cell (col, row) would play with, if anything. */
@@ -1306,14 +1329,16 @@ export interface TownSquareScene {
     effects?: TownSquareEffects,
   ): SquareTarget | null;
   /**
-   * A sensible target for the keyboard controls ("wave to an agent" picks
-   * a gathered agent with room for a bubble), or null if there is none.
+   * A sensible target for the keyboard controls. "Wave to an agent" prefers
+   * a gathered front-line agent with room for a bubble, then any agent on
+   * stage (back street included), then — within `lookahead` ticks — the
+   * next agent to walk on. Null only when there is truly none.
    */
-  defaultTarget(
+  suggestTarget(
     kind: SquareTargetKind,
     tick: number,
-    effects?: TownSquareEffects,
-  ): SquareTarget | null;
+    options?: { effects?: TownSquareEffects; lookahead?: number },
+  ): SuggestedTarget | null;
 }
 
 const DEFAULT_GREETINGS = ["hi, I'm {name}"];
@@ -1359,6 +1384,8 @@ export function createTownSquare(
       buildings: [],
       lamps: [],
       fountains: [],
+      playable: { agent: false, lamp: false, fountain: false },
+      sky: null,
       frame: () => ({
         cols: safeCols,
         rows: safeRows,
@@ -1366,9 +1393,10 @@ export function createTownSquare(
         figures: [],
         boardLines: [],
         board: null,
+        night: 0,
       }),
       targetAt: () => null,
-      defaultTarget: () => null,
+      suggestTarget: () => null,
     };
   }
 
@@ -1471,8 +1499,47 @@ export function createTownSquare(
     return { figures, walking };
   };
 
-  const frontAgents = (figures: FigureSnapshot[]) =>
-    figures.filter((f) => f.kind === "agent" && f.depth === "front");
+  /** Agents on stage, front line first (they are the ones you notice). */
+  const agentsOnStage = (figures: FigureSnapshot[]) => [
+    ...figures.filter((f) => f.kind === "agent" && f.depth === "front"),
+    ...figures.filter((f) => f.kind === "agent" && f.depth === "back"),
+  ];
+
+  const hasRoom = (f: FigureSnapshot) =>
+    !!placeBubble(base, f, greetingText(f.id, 0, greetings), layout.board);
+
+  /** Best agent to greet at `tick`, or undefined when none is on stage. */
+  const bestAgent = (tick: number, effects: TownSquareEffects) => {
+    // Fully in view: not half off the edge, and a back-street agent not
+    // hidden behind the board or a prop — nobody could see it wave.
+    const agents = agentsOnStage(stageFigures(tick, effects).figures).filter(
+      (f) =>
+        f.x >= 0 &&
+        f.x + FIGURE_W + 1 <= safeCols &&
+        (f.depth === "front" ||
+          [0, 1, 2, 3].every((dx) => !base.isFront(f.x + dx, f.y))),
+    );
+    const score = (f: FigureSnapshot) =>
+      (f.depth === "front" ? 4 : 0) +
+      (hasRoom(f) ? 2 : 0) +
+      (f.phase === "gathered" ? 1 : 0);
+    return [...agents].sort((a, b) => score(b) - score(a) || b.x - a.x)[0];
+  };
+
+  // Passers-by always include an agent, so any square with a street to
+  // walk on has an agent to wave to sooner or later.
+  const playable = {
+    agent: layout.street - FIGURE_H + 1 >= 0,
+    lamp: lamps.length > 0,
+    fountain: fountains.length > 0,
+  };
+
+  const safe = data.safeZone ?? null;
+  const skyLeft = safe ? Math.max(0, safe.x + safe.w) : 0;
+  const sky =
+    skyLeft < safeCols && layout.street > 0
+      ? { x: skyLeft, y: 0, w: safeCols - skyLeft, h: layout.street }
+      : null;
 
   const greetingFor = (tick: number, effects: TownSquareEffects) => {
     const greet = effects.greet;
@@ -1491,6 +1558,8 @@ export function createTownSquare(
     buildings,
     lamps: lamps.map(rect),
     fountains: fountains.map(rect),
+    playable,
+    sky,
 
     frame(tick: number, effects = NO_EFFECTS): TownSquareFrame {
       const level = nightLevel(effects.lighting, tick);
@@ -1506,7 +1575,7 @@ export function createTownSquare(
       const greeting = greetingFor(tick, effects);
       const waver = greeting
         ? figures.find(
-            (f) => f.id === greeting.greet.figureId && f.depth === "front",
+            (f) => f.id === greeting.greet.figureId && f.kind === "agent",
           )
         : undefined;
       const bubble =
@@ -1602,52 +1671,55 @@ export function createTownSquare(
         figures,
         boardLines,
         board,
+        night: level,
       };
     },
 
     targetAt(col, row, tick, effects = NO_EFFECTS) {
       const { figures } = stageFigures(tick, effects);
-      for (const f of frontAgents(figures)) {
-        if (
-          contains(
-            { x: f.x, y: f.y, w: FIGURE_W, h: FIGURE_H },
-            col,
-            row,
-            HIT_PAD,
-          )
-        )
-          return { kind: "agent", figureId: f.id };
-      }
+      const agentAt = (depth: FigureDepth): SquareTarget | null => {
+        const hit = figures.find(
+          (f) =>
+            f.kind === "agent" &&
+            f.depth === depth &&
+            contains(
+              { x: f.x, y: f.y, w: FIGURE_W, h: FIGURE_H },
+              col,
+              row,
+              HIT_PAD,
+            ),
+        );
+        return hit ? { kind: "agent", figureId: hit.id } : null;
+      };
+      // Front line first; a back-street agent only wins over empty paving,
+      // never over a prop standing in front of it.
+      const front = agentAt("front");
+      if (front) return front;
       const fi = fountainBoxes.findIndex((f) => contains(f, col, row, HIT_PAD));
       if (fi >= 0) return { kind: "fountain", index: fi };
       const li = lamps.findIndex((l) => contains(l, col, row, HIT_PAD));
       if (li >= 0) return { kind: "lamp", index: li };
-      return null;
+      return agentAt("back");
     },
 
-    defaultTarget(kind, tick, effects = NO_EFFECTS) {
+    suggestTarget(kind, tick, options = {}) {
+      const effects = options.effects ?? NO_EFFECTS;
       switch (kind) {
         case "lamp":
-          return lamps.length ? { kind, index: lamps.length - 1 } : null;
+          return lamps.length
+            ? { target: { kind, index: lamps.length - 1 }, at: tick }
+            : null;
         case "fountain":
-          return fountains.length ? { kind, index: 0 } : null;
+          return fountains.length
+            ? { target: { kind, index: 0 }, at: tick }
+            : null;
         case "agent": {
-          const agents = frontAgents(stageFigures(tick, effects).figures);
-          const roomy = agents.filter((f) =>
-            placeBubble(
-              base,
-              f,
-              greetingText(f.id, 0, greetings),
-              layout.board,
-            ),
-          );
-          const pool = roomy.length ? roomy : agents;
-          const best = [...pool].sort(
-            (a, b) =>
-              Number(b.phase === "gathered") - Number(a.phase === "gathered") ||
-              b.x - a.x,
-          )[0];
-          return best ? { kind, figureId: best.id } : null;
+          const lookahead = Math.max(0, Math.floor(options.lookahead ?? 0));
+          for (let at = tick; at <= tick + lookahead; at++) {
+            const agent = bestAgent(at, effects);
+            if (agent) return { target: { kind, figureId: agent.id }, at };
+          }
+          return null;
         }
       }
     },

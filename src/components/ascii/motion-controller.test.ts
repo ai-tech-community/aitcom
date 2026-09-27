@@ -187,3 +187,39 @@ describe("AsciiMotionController", () => {
     expect(frames.pendingCount).toBe(0);
   });
 });
+
+describe("AsciiMotionController — mode changes", () => {
+  it("reports each change before the static frame is repainted", () => {
+    const frames = fakeScheduler();
+    const calls: string[] = [];
+    const controller = new AsciiMotionController({
+      frameMs: 100,
+      staticTick: 42,
+      draw: (tick) => calls.push(`draw ${tick}`),
+      onModeChange: (next, previous) => calls.push(`${previous}->${next}`),
+      scheduler: frames.scheduler,
+    });
+    controller.start();
+    calls.length = 0;
+    controller.update({ prefersReducedMotion: true });
+    expect(calls).toEqual(["animate->static", "draw 42"]);
+    controller.update({ prefersReducedMotion: false });
+    expect(calls.slice(2)).toEqual(["static->animate", "draw 42"]);
+    controller.update({ inViewport: false });
+    expect(calls.slice(4)).toEqual(["animate->paused"]);
+  });
+
+  it("stays quiet when a signal does not change the mode", () => {
+    const onModeChange = vi.fn();
+    const controller = new AsciiMotionController({
+      frameMs: 100,
+      staticTick: 0,
+      draw: vi.fn(),
+      onModeChange,
+      scheduler: fakeScheduler().scheduler,
+    });
+    controller.start();
+    controller.update({ documentVisible: true });
+    expect(onModeChange).not.toHaveBeenCalled();
+  });
+});

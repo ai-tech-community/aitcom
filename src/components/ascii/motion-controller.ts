@@ -36,6 +36,12 @@ export interface MotionControllerOptions {
   staticTick: number;
   /** Paint the scene at `tick`. Must not read layout or computed style. */
   draw: (tick: number) => void;
+  /**
+   * Called when the mode changes, before anything is repainted. Entering
+   * `static` resets the tick to `staticTick`, so state measured in ticks
+   * (e.g. effects with a start tick) must be re-based here.
+   */
+  onModeChange?: (next: MotionMode, previous: MotionMode) => void;
   scheduler: FrameScheduler;
   initialSignals?: Partial<MotionSignals>;
 }
@@ -82,9 +88,15 @@ export class AsciiMotionController {
     this.signals = { ...this.signals, ...partial };
     const next = resolveMotionMode(this.signals);
     if (next === this.mode) return;
+    const previous = this.mode;
     this.mode = next;
+    this.options.onModeChange?.(next, previous);
     if (next === "static") {
       this.tick = this.options.staticTick;
+      this.redraw();
+    } else if (previous === "static") {
+      // Leaving the still frame: repaint now with whatever onModeChange
+      // re-based, rather than waiting for the next animation frame.
       this.redraw();
     }
     this.applyMode();

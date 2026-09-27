@@ -1,40 +1,22 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent,
-  type ReactNode,
-} from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  cellAtPoint,
   gridSizeFor,
   measureCharCell,
   overlapInCells,
-  type CharCell,
 } from "@/components/ascii/measure";
-import { useAsciiMotion } from "@/components/ascii/use-ascii-motion";
 import {
-  TOWN_SQUARE_STATIC_TICK,
   createTownSquare,
   type NoticeBoardContent,
   type SceneLayer,
-  type TownSquareScene,
+  type TownSquareFrame,
 } from "./town-square-scene";
-import {
-  NO_EFFECTS,
-  type SquareTargetKind,
-  type TownSquareEffects,
-} from "./town-square-effects";
-import { useSquarePlay } from "./use-square-play";
+import { useTownSquare, type TownSquareLayout } from "./use-town-square";
 
-const FRAME_MS = 110;
 /** Breathing room (in cells) kept clear around the copy column. */
 const SAFE_PADDING_CELLS = 2;
 
@@ -52,18 +34,6 @@ const LAYER_CLASS: Record<SceneLayer, string> = {
 };
 
 const LAYERS: SceneLayer[] = ["far", "scenery", "people", "glow", "accent"];
-
-type Playable = Record<SquareTargetKind, boolean>;
-
-const NOTHING_PLAYABLE: Playable = {
-  agent: false,
-  lamp: false,
-  fountain: false,
-};
-
-function samePlayable(a: Playable, b: Playable): boolean {
-  return a.agent === b.agent && a.lamp === b.lamp && a.fountain === b.fountain;
-}
 
 export interface BoardLink {
   href: string;
@@ -119,39 +89,32 @@ export function HomeHeroPlaza({
   const sectionRef = useRef<HTMLElement>(null);
   const copyRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
+  const skyRef = useRef<HTMLDivElement>(null);
   const layerRefs = useRef<Partial<Record<SceneLayer, HTMLPreElement>>>({});
   const [boardBox, setBoardBox] = useState<BoardBox | null>(null);
-  const [playable, setPlayable] = useState<Playable>(NOTHING_PLAYABLE);
-
-  // Last measurement and last painted tick, for hit-testing and play.
-  const sceneObj = useRef<TownSquareScene | null>(null);
-  const cellSize = useRef<CharCell | null>(null);
-  const tickRef = useRef(TOWN_SQUARE_STATIC_TICK);
-  const effectsRef = useRef<TownSquareEffects>(NO_EFFECTS);
 
   const t = useTranslations("hero.play");
   const greetings = useMemo(() => t.raw("greetings") as string[], [t]);
   const messages = useMemo(
     () => ({
       said: (name: string, line: string) => t("said", { name, line }),
+      coming: (name: string) => t("coming", { name }),
+      nobody: t("nobody"),
       splashed: t("splashed"),
     }),
     [t],
   );
+  const observe = useMemo(() => [copyRef], []);
 
-  // Built once per measurement (size, keep-clear zone, data); frames only
-  // redraw the moving rows.
-  const measure = useCallback(
-    (el: HTMLElement): TownSquareScene | null => {
+  // Layout, once per size / data change: grid size, the copy's keep-clear
+  // zone, the board link and the night sky's box. Frames never read layout.
+  const build = useCallback(
+    (el: HTMLElement): TownSquareLayout | null => {
       const cell = measureCharCell(el);
       const box = el.getBoundingClientRect();
       const { cols, rows } = gridSizeFor(box, cell);
       if (cols < 8 || rows < 4) {
-        sceneObj.current = null;
         setBoardBox(null);
-        setPlayable((prev) =>
-          samePlayable(prev, NOTHING_PLAYABLE) ? prev : NOTHING_PLAYABLE,
-        );
         return null;
       }
       const copy = copyRef.current?.getBoundingClientRect();
@@ -163,16 +126,18 @@ export function HomeHeroPlaza({
         safeZone,
         greetings,
       });
-      sceneObj.current = scene;
-      cellSize.current = cell;
-      const nextPlayable: Playable = {
-        agent: !!scene.defaultTarget("agent", tickRef.current),
-        lamp: scene.lamps.length > 0,
-        fountain: scene.fountains.length > 0,
-      };
-      setPlayable((prev) =>
-        samePlayable(prev, nextPlayable) ? prev : nextPlayable,
-      );
+
+      const sky = skyRef.current;
+      if (sky) {
+        const r = scene.sky;
+        sky.hidden = !r;
+        if (r) {
+          sky.style.left = `${r.x * cell.width}px`;
+          sky.style.top = `${r.y * cell.height}px`;
+          sky.style.width = `${r.w * cell.width}px`;
+          sky.style.height = `${r.h * cell.height}px`;
+        }
+      }
 
       const section = sectionRef.current?.getBoundingClientRect();
       const next =
@@ -185,55 +150,23 @@ export function HomeHeroPlaza({
             }
           : null;
       setBoardBox((prev) => (sameBox(prev, next) ? prev : next));
-      return scene;
+      return { scene, cell };
     },
     [board, greetings],
   );
 
-  const motion = useAsciiMotion<TownSquareScene>(sceneRef, {
-    frameMs: FRAME_MS,
-    staticTick: TOWN_SQUARE_STATIC_TICK,
-    observe: [copyRef],
-    measure,
-    draw: (tick, scene) => {
-      tickRef.current = tick;
-      const frame = scene.frame(tick, effectsRef.current);
-      for (const layer of LAYERS) {
-        const pre = layerRefs.current[layer];
-        if (pre) pre.textContent = frame.layers[layer].join("\n");
-      }
-    },
-  });
-
-  const { remeasure } = motion;
-  // New board data → rebuild the scene (the hook keeps the latest measure).
-  useEffect(() => {
-    remeasure();
-  }, [measure, remeasure]);
-
-  const { night, announcement, play, playKind } = useSquarePlay({
-    effects: effectsRef,
-    motion,
-    scene: sceneObj,
-    tick: tickRef,
-    greetings,
-    messages,
-  });
-
-  const targetAt = useCallback((event: MouseEvent<HTMLElement>) => {
-    const scene = sceneObj.current;
-    const cell = cellSize.current;
-    if (!scene || !cell) return null;
-    const at = cellAtPoint(
-      event.currentTarget.getBoundingClientRect(),
-      cell,
-      event.clientX,
-      event.clientY,
-    );
-    return at
-      ? scene.targetAt(at.col, at.row, tickRef.current, effectsRef.current)
-      : null;
+  const paint = useCallback((frame: TownSquareFrame) => {
+    for (const layer of LAYERS) {
+      const pre = layerRefs.current[layer];
+      if (pre) pre.textContent = frame.layers[layer].join("\n");
+    }
+    if (skyRef.current) skyRef.current.style.opacity = String(frame.night);
   }, []);
+
+  const { playable, night, announcement, playKind, pointer } = useTownSquare(
+    sceneRef,
+    { build, paint, observe, greetings, messages },
+  );
 
   const anyPlayable = playable.agent || playable.lamp || playable.fountain;
 
@@ -252,19 +185,19 @@ export function HomeHeroPlaza({
         ref={sceneRef}
         aria-hidden="true"
         data-testid="town-square-scene"
-        // Hint only: a pointer cursor over things you can play with.
-        onPointerMove={(event) => {
-          event.currentTarget.style.cursor = targetAt(event) ? "pointer" : "";
-        }}
-        onPointerLeave={(event) => {
-          event.currentTarget.style.cursor = "";
-        }}
-        onClick={(event) => {
-          const target = targetAt(event);
-          if (target) play(target);
-        }}
+        {...pointer}
         className="relative h-48 font-mono text-[10px] leading-3 select-none sm:absolute sm:inset-0 sm:h-auto sm:[mask-image:linear-gradient(to_right,transparent,black_28%)] sm:text-xs sm:leading-[14px]"
       >
+        {/* Night sky: only above the street and right of the copy's
+            keep-clear zone (never under the hero text), soft on its left
+            edge; its opacity follows the night level. */}
+        <div
+          ref={skyRef}
+          data-testid="town-square-sky"
+          hidden
+          style={{ opacity: 0 }}
+          className="absolute bg-[linear-gradient(to_bottom,var(--color-night-sky)_0%,var(--color-night-sky)_55%,transparent_100%)] [mask-image:linear-gradient(to_right,transparent,black_14rem)]"
+        />
         {LAYERS.map((layer) => (
           <pre
             key={layer}

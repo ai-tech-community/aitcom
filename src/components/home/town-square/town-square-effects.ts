@@ -37,6 +37,11 @@ export interface GreetEffect extends Timed {
 export interface LightingEffect extends Timed {
   /** true: night is falling / has fallen; false: day is breaking. */
   night: boolean;
+  /**
+   * Night level (0..1) when this toggle happened. A toggle mid-transition
+   * carries on from here instead of jumping, so windows never flash.
+   */
+  from?: number;
 }
 
 export interface SplashEffect extends Timed {
@@ -132,8 +137,10 @@ export function nightLevel(
   if (!lighting) return 0;
   if (lighting.settled) return lighting.night ? 1 : 0;
   const a = Math.max(0, age(lighting, tick));
-  if (lighting.night) return Math.min(1, a / NIGHT_FALL_TICKS);
-  return Math.max(0, 1 - a / DAY_BREAK_TICKS);
+  // Constant speed from wherever the previous toggle left off.
+  if (lighting.night)
+    return Math.min(1, (lighting.from ?? 0) + a / NIGHT_FALL_TICKS);
+  return Math.max(0, (lighting.from ?? 1) - a / DAY_BREAK_TICKS);
 }
 
 export function isNight(effects: TownSquareEffects): boolean {
@@ -211,7 +218,11 @@ export function triggerEffect(
     case "lamp":
       return {
         ...state,
-        lighting: { ...timing, night: !isNight(state) },
+        lighting: {
+          ...timing,
+          night: !isNight(state),
+          from: nightLevel(state.lighting, tick),
+        },
       };
     case "fountain": {
       const current = state.splash;
@@ -229,6 +240,27 @@ export function triggerEffect(
       };
     }
   }
+}
+
+/**
+ * Collapse every effect to where it ends up, for a change of motion mode
+ * (reduced motion switched on or off mid-visit). Tick-based timings would
+ * otherwise be measured against a clock that just jumped: night becomes
+ * fully night or day (settled, so it holds on any clock) and the timed
+ * greet and splash are over.
+ */
+export function settleEffects(state: TownSquareEffects): TownSquareEffects {
+  const lighting = state.lighting;
+  if (!lighting && !state.greet && !state.splash) return state;
+  return lighting
+    ? {
+        lighting: {
+          night: lighting.night,
+          since: lighting.since,
+          settled: true,
+        },
+      }
+    : {};
 }
 
 /** Remove a finished effect (reduced-motion timers). Night is a toggle. */

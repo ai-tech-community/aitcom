@@ -51,7 +51,16 @@ function renderHero() {
 
 /** Give jsdom a laid-out 200×40 grid: 7.2×14px cells, copy off to the side. */
 const CELL = { width: 7.2, height: 14 };
-function stubLayout() {
+function stubLayout({
+  cols = 200,
+  rows = 40,
+  copy = null,
+}: {
+  cols?: number;
+  rows?: number;
+  /** The copy column's box; by default it sits off to the side. */
+  copy?: { left: number; top: number; width: number; height: number } | null;
+} = {}) {
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
     function (this: HTMLElement) {
       const isScene = this.dataset.testid === "town-square-scene";
@@ -62,10 +71,11 @@ function stubLayout() {
           ? {
               left: 0,
               top: 0,
-              width: 200 * CELL.width,
-              height: 40 * CELL.height,
+              // Half a cell of slack so float maths cannot drop a column.
+              width: (cols + 0.5) * CELL.width,
+              height: (rows + 0.5) * CELL.height,
             }
-          : { left: 0, top: -500, width: 10, height: 10 };
+          : (copy ?? { left: 0, top: -500, width: 10, height: 10 });
       return {
         ...r,
         x: r.left,
@@ -78,8 +88,60 @@ function stubLayout() {
   );
 }
 
+/** Drive animation frames by hand: each `advance()` is one scene tick. */
+function manualFrames() {
+  let queue: FrameRequestCallback[] = [];
+  let now = 0;
+  const request = vi.fn((cb: FrameRequestCallback) => {
+    queue.push(cb);
+    return queue.length;
+  });
+  vi.stubGlobal("requestAnimationFrame", request);
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  const flush = () => {
+    const run = queue;
+    queue = [];
+    now += 1000;
+    act(() => {
+      for (const cb of run) cb(now);
+    });
+  };
+  // The loop's first frame only records the start time.
+  return {
+    request,
+    flush,
+    advance: (ticks = 1) => {
+      for (let i = 0; i < ticks; i++) flush();
+    },
+  };
+}
+
+/** A reduced-motion media query whose answer can change mid-test. */
+function stubReducedMotion(initial: boolean) {
+  const listeners = new Set<(e: MediaQueryListEvent) => void>();
+  const mql = {
+    matches: initial,
+    addEventListener: (_: string, l: (e: MediaQueryListEvent) => void) =>
+      listeners.add(l),
+    removeEventListener: (_: string, l: (e: MediaQueryListEvent) => void) =>
+      listeners.delete(l),
+  };
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => mql),
+  );
+  return (matches: boolean) => {
+    mql.matches = matches;
+    act(() => {
+      for (const l of listeners) l({ matches } as MediaQueryListEvent);
+    });
+  };
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe("HomeHeroPlaza", () => {
@@ -150,11 +212,24 @@ describe("HomeHeroPlaza — play", () => {
     );
     act(() => screen.getByRole("button", { name: "Wave to an agent" }).click());
     expect(screen.getByRole("status").textContent).toMatch(
-      /^agent-\d+ waves: “hi, I'm agent-\d+”$/,
+      /^agent-\d+ waves: “hi, I'm agent-\d+”\u200b?$/,
     );
   });
 
+  it("announces a repeated splash again", () => {
+    stubLayout();
+    renderHero();
+    const splash = screen.getByRole("button", { name: "Splash the fountain" });
+    act(() => splash.click());
+    const first = screen.getByRole("status").textContent;
+    act(() => splash.click());
+    const second = screen.getByRole("status").textContent;
+    expect(second).not.toBe(first);
+    expect(second?.replace("\u200b", "")).toBe(first?.replace("\u200b", ""));
+  });
+
   it("maps a click on the art to the agent under the pointer", () => {
+    const frames = manualFrames();
     stubLayout();
     renderHero();
     const scene = createTownSquare(200, 40, {
@@ -162,7 +237,7 @@ describe("HomeHeroPlaza — play", () => {
       greetings: en.hero.play.greetings,
     });
     // An agent with room above it for a speech bubble.
-    const pick = scene.defaultTarget("agent", TOWN_SQUARE_STATIC_TICK);
+    const pick = scene.suggestTarget("agent", TOWN_SQUARE_STATIC_TICK)?.target;
     const agent = scene
       .frame(TOWN_SQUARE_STATIC_TICK)
       .figures.find((f) => pick?.kind === "agent" && f.id === pick.figureId)!;
@@ -172,6 +247,7 @@ describe("HomeHeroPlaza — play", () => {
       clientX: (agent.x + 1.5) * CELL.width,
       clientY: (agent.y + 0.5) * CELL.height,
     });
+    frames.flush();
     expect(art.style.cursor).toBe("pointer");
 
     fireEvent.click(art, {
@@ -187,10 +263,12 @@ describe("HomeHeroPlaza — play", () => {
   });
 
   it("does nothing for a click on empty sky", () => {
+    const frames = manualFrames();
     stubLayout();
     renderHero();
     const art = screen.getByTestId("town-square-scene");
     fireEvent.pointerMove(art, { clientX: 1430, clientY: 5 });
+    frames.flush();
     expect(art.style.cursor).toBe("");
     fireEvent.click(art, { clientX: 1430, clientY: 5 });
     expect(screen.getByRole("status")).toHaveTextContent("");
@@ -231,5 +309,133 @@ describe("HomeHeroPlaza — play", () => {
       vi.useRealTimers();
       vi.unstubAllGlobals();
     }
+  });
+
+  it("hit-tests the hover at most once per animation frame", () => {
+    const frames = manualFrames();
+    stubLayout();
+    renderHero();
+    const art = screen.getByTestId("town-square-scene");
+    frames.flush();
+    const before = frames.request.mock.calls.length;
+    for (let x = 0; x < 5; x++)
+      fireEvent.pointerMove(art, { clientX: 700 + x, clientY: 300 });
+    // One hover frame, whatever the number of moves.
+    expect(frames.request.mock.calls.length - before).toBe(1);
+  });
+});
+
+describe("HomeHeroPlaza — wave with no agent in view", () => {
+  it("waits for the next agent and says so, then it waves", () => {
+    const frames = manualFrames();
+    stubReducedMotion(false);
+    stubLayout({ cols: 40, rows: 16 });
+    renderHero();
+    const scene = createTownSquare(40, 16, {
+      board: BOARD,
+      greetings: en.hero.play.greetings,
+    });
+    const T = TOWN_SQUARE_STATIC_TICK;
+    const empty = Array.from({ length: 400 }, (_, i) => T + i).find(
+      (t) => !scene.suggestTarget("agent", t),
+    )!;
+    expect(empty).toBeDefined();
+    frames.advance(1 + (empty - T));
+
+    const wave = screen.getByRole("button", { name: "Wave to an agent" });
+    act(() => wave.click());
+    const status = screen.getByRole("status").textContent ?? "";
+    expect(status).toMatch(/^agent-\d+ is on the way and will wave/);
+
+    const next = scene.suggestTarget("agent", empty, { lookahead: 600 })!;
+    frames.advance(next.at - empty + 1);
+    const art = screen.getByTestId("town-square-scene");
+    // Front-line figures are in the people layer, back-street ones in
+    // the quieter scenery layer: the waving agent is in one of them.
+    const pres = art.querySelectorAll("pre");
+    const both = `${pres[1]!.textContent}\n${pres[2]!.textContent}`;
+    expect(both).toContain("[•]/");
+  });
+
+  it("says so kindly when there is truly nobody (reduced motion)", () => {
+    stubReducedMotion(true);
+    stubLayout({ cols: 18, rows: 16 });
+    renderHero();
+    act(() => screen.getByRole("button", { name: "Wave to an agent" }).click());
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "No agents around right now. Try again in a moment.",
+    );
+  });
+});
+
+describe("HomeHeroPlaza — reduced motion switched mid-visit", () => {
+  const glow = () =>
+    screen.getByTestId("town-square-scene").querySelectorAll("pre")[3]!
+      .textContent ?? "";
+  const sky = () => screen.getByTestId("town-square-sky");
+
+  it("keeps night as night when reduced motion is switched on", () => {
+    const frames = manualFrames();
+    const setReduced = stubReducedMotion(false);
+    stubLayout();
+    renderHero();
+    frames.advance(1);
+    const night = screen.getByRole("button", { name: "Night in the square" });
+    act(() => night.click());
+    frames.advance(5); // part-way through nightfall
+    setReduced(true); // the tick jumps back to the still frame
+    expect(night).toHaveAttribute("aria-pressed", "true");
+    expect(glow()).toContain("##");
+    expect(sky().style.opacity).toBe("1");
+  });
+
+  it("keeps night as night when reduced motion is switched off", () => {
+    const frames = manualFrames();
+    const setReduced = stubReducedMotion(true);
+    stubLayout();
+    renderHero();
+    const night = screen.getByRole("button", { name: "Night in the square" });
+    act(() => night.click());
+    expect(sky().style.opacity).toBe("1");
+    setReduced(false);
+    frames.advance(3);
+    expect(night).toHaveAttribute("aria-pressed", "true");
+    expect(glow()).toContain("##");
+    expect(sky().style.opacity).toBe("1");
+    // And the next toggle starts from full night, without a flash.
+    act(() => night.click());
+    frames.advance(2);
+    expect(Number(sky().style.opacity)).toBeGreaterThan(0.5);
+  });
+
+  it("ends a greeting instead of freezing it mid-way", () => {
+    vi.useFakeTimers();
+    const setReduced = stubReducedMotion(true);
+    stubLayout();
+    renderHero();
+    act(() => screen.getByRole("button", { name: "Wave to an agent" }).click());
+    const people = () =>
+      screen.getByTestId("town-square-scene").querySelectorAll("pre")[2]!
+        .textContent ?? "";
+    expect(people()).toMatch(/hi, I'm agent-\d+/);
+    setReduced(false);
+    expect(people()).not.toMatch(/hi, I'm agent-\d+/);
+  });
+});
+
+describe("HomeHeroPlaza — night sky", () => {
+  it("never sits under the copy column", () => {
+    stubReducedMotion(true);
+    const copy = { left: 0, top: 0, width: 700, height: 420 };
+    stubLayout({ copy });
+    renderHero();
+    const sky = screen.getByTestId("town-square-sky");
+    expect(sky.hidden).toBe(false);
+    expect(parseFloat(sky.style.left)).toBeGreaterThanOrEqual(copy.width);
+    expect(sky.style.opacity).toBe("0");
+    act(() =>
+      screen.getByRole("button", { name: "Night in the square" }).click(),
+    );
+    expect(sky.style.opacity).toBe("1");
   });
 });

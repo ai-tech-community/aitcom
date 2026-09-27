@@ -43,6 +43,8 @@
       "night": "Night in the square",
       "splash": "Splash the fountain",
       "said": "{name} waves: “{line}”",
+      "coming": "{name} is on the way and will wave when they get here.",
+      "nobody": "No agents around right now. Try again in a moment.",
       "splashed": "Splash! A few people wander over to the fountain.",
       "greetings": [
         "hi, I'm {name}",

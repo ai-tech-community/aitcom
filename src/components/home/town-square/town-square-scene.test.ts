@@ -517,20 +517,20 @@ describe("play effects", () => {
     });
 
     it("suggests a target of every kind for the keyboard controls", () => {
-      expect(scene.defaultTarget("agent", T)?.kind).toBe("agent");
-      expect(scene.defaultTarget("lamp", T)?.kind).toBe("lamp");
-      expect(scene.defaultTarget("fountain", T)?.kind).toBe("fountain");
+      expect(scene.suggestTarget("agent", T)?.target?.kind).toBe("agent");
+      expect(scene.suggestTarget("lamp", T)?.target?.kind).toBe("lamp");
+      expect(scene.suggestTarget("fountain", T)?.target?.kind).toBe("fountain");
     });
 
     it("has nothing to play with on a tiny grid", () => {
       const tiny = createTownSquare(6, 4, { board: EVENT_BOARD });
       expect(tiny.targetAt(1, 1, 0)).toBeNull();
-      expect(tiny.defaultTarget("agent", 0)).toBeNull();
+      expect(tiny.suggestTarget("agent", 0)?.target ?? null).toBeNull();
     });
   });
 
   describe("wave to an agent", () => {
-    const target = scene.defaultTarget("agent", T)!;
+    const target = scene.suggestTarget("agent", T)!.target;
     const id = target.kind === "agent" ? target.figureId : "";
     const effects = triggerEffect({}, target, live());
     const hello = `hi, I'm ${agentName(id)}`;
@@ -673,7 +673,7 @@ describe("play effects", () => {
     it("shows every effect finished in a single still frame", () => {
       let fx: TownSquareEffects = {};
       fx = triggerEffect(fx, { kind: "lamp", index: 0 }, still);
-      fx = triggerEffect(fx, scene.defaultTarget("agent", T)!, still);
+      fx = triggerEffect(fx, scene.suggestTarget("agent", T)!.target, still);
       fx = triggerEffect(fx, { kind: "fountain", index: 0 }, still);
       const f = scene.frame(T, fx);
       expect(count(f.layers.glow, "##")).toBe(
@@ -698,7 +698,7 @@ describe("play effects", () => {
         fx = triggerEffect(fx, { kind: "lamp", index: 0 }, live());
         if (sc.fountains.length)
           fx = triggerEffect(fx, { kind: "fountain", index: 0 }, live());
-        const agent = sc.defaultTarget("agent", T);
+        const agent = sc.suggestTarget("agent", T)?.target ?? null;
         if (agent) fx = triggerEffect(fx, agent, live());
         for (let tick = T; tick < T + 60; tick += 3) {
           const f = sc.frame(tick, fx);
@@ -714,7 +714,7 @@ describe("play effects", () => {
 
   describe("performance", () => {
     it("only redraws the rows an effect touches", () => {
-      const target = scene.defaultTarget("agent", T)!;
+      const target = scene.suggestTarget("agent", T)!.target;
       const fx = triggerEffect({}, target, live());
       const plain = scene.frame(T);
       const greeted = scene.frame(T, fx);
@@ -722,6 +722,85 @@ describe("play effects", () => {
       for (let y = 0; y < 10; y++) {
         expect(greeted.layers.scenery[y]).toBe(plain.layers.scenery[y]);
       }
+    });
+  });
+
+  describe("wave to an agent when none is on the front line", () => {
+    const narrow = createTownSquare(40, 16, {
+      board: EMPTY_BOARD,
+      greetings: GREETINGS,
+    });
+    // Agents fully in view (half off the edge does not count).
+    const agentsAt = (t: number) =>
+      narrow
+        .frame(t)
+        .figures.filter(
+          (f) => f.kind === "agent" && f.x >= 0 && f.x + 4 <= narrow.cols,
+        );
+    const empty = Array.from({ length: 600 }, (_, t) => t).find(
+      (t) => agentsAt(t).length === 0,
+    )!;
+    const backOnly = Array.from({ length: 600 }, (_, t) => t).find(
+      (t) =>
+        agentsAt(t).length > 0 && agentsAt(t).every((f) => f.depth === "back"),
+    );
+
+    it("is playable from the layout, whatever the tick", () => {
+      expect(empty).toBeDefined();
+      expect(narrow.playable.agent).toBe(true);
+    });
+
+    it("falls back to an agent on the back street", () => {
+      expect(backOnly).toBeDefined();
+      if (backOnly === undefined) return;
+      const s = narrow.suggestTarget("agent", backOnly);
+      expect(s?.at).toBe(backOnly);
+      const id = s?.target.kind === "agent" ? s.target.figureId : "";
+      expect(agentsAt(backOnly).find((f) => f.id === id)?.depth).toBe("back");
+    });
+
+    it("picks the next agent to walk on, and greets it when it arrives", () => {
+      expect(narrow.suggestTarget("agent", empty)).toBeNull();
+      const s = narrow.suggestTarget("agent", empty, { lookahead: 600 })!;
+      expect(s.at).toBeGreaterThan(empty);
+      const fx = triggerEffect({}, s.target, { tick: s.at, settled: false });
+      const hello = /hi, I'm agent-\d+|hello, neighbour!/;
+      expect(flatten(narrow.frame(empty, fx))).not.toMatch(hello);
+      expect(flatten(narrow.frame(s.at + 2, fx))).toMatch(/\[•\]\//);
+    });
+  });
+
+  describe("night sky", () => {
+    it("reports the night level on every frame", () => {
+      const dusk = triggerEffect({}, { kind: "lamp", index: 0 }, live());
+      expect(scene.frame(T).night).toBe(0);
+      expect(scene.frame(T + NIGHT_FALL_TICKS / 2, dusk).night).toBeCloseTo(
+        0.5,
+      );
+      expect(scene.frame(T + NIGHT_FALL_TICKS, dusk).night).toBe(1);
+    });
+
+    it("stays right of the keep-clear zone and above the street", () => {
+      const sky = scene.sky!;
+      expect(sky.x).toBeGreaterThanOrEqual(DESKTOP_SAFE.x + DESKTOP_SAFE.w);
+      expect(sky.x + sky.w).toBe(DESKTOP.cols);
+      expect(sky.y + sky.h).toBeLessThanOrEqual(scene.street);
+    });
+
+    it("spans the whole width when there is no copy beside it", () => {
+      const phone = createTownSquare(MOBILE.cols, MOBILE.rows, {
+        board: EVENT_BOARD,
+      });
+      expect(phone.sky?.x).toBe(0);
+      expect(phone.sky?.w).toBe(MOBILE.cols);
+    });
+
+    it("is absent when the copy covers the whole width", () => {
+      const covered = createTownSquare(DESKTOP.cols, DESKTOP.rows, {
+        board: EVENT_BOARD,
+        safeZone: { x: 0, y: 0, w: DESKTOP.cols, h: 10 },
+      });
+      expect(covered.sky).toBeNull();
     });
   });
 });
