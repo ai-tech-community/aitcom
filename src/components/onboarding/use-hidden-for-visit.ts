@@ -47,6 +47,21 @@ export function useHiddenForVisit(): [hidden: boolean, hide: () => void] {
   return [hidden, hide];
 }
 
+/**
+ * Forget "hide until next visit" for this browser session. Called when the
+ * member turns the checklist back on in settings: that explicit choice wins
+ * over the earlier, temporary hide.
+ */
+export function clearHiddenForVisit() {
+  memoryHidden = false;
+  try {
+    window.sessionStorage.removeItem(HIDE_FOR_VISIT_KEY);
+  } catch {
+    // Blocked storage: the in-memory flag was the only copy.
+  }
+  listeners.forEach((listener) => listener());
+}
+
 /** Test seam: forget the in-memory flag between tests. */
 export function resetHiddenForVisitForTests() {
   memoryHidden = false;

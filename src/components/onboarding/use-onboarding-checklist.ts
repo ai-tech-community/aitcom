@@ -2,15 +2,13 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
-import { useTranslations } from "next-intl";
-import { toast } from "sonner";
-
 import { api } from "@/trpc/react";
 import {
   isAwaitingCompletionSync,
   presentOnboardingChecklist,
   type OnboardingChecklistView,
 } from "./checklist-view";
+import { useOnboardingDismissal } from "./use-onboarding-dismissal";
 
 /**
  * The browser-only dismiss flag the dashboard card used before dismissal
@@ -50,7 +48,6 @@ export function useOnboardingChecklist({
   sync: OnboardingSyncPolicy;
 }): OnboardingChecklistController {
   const utils = api.useUtils();
-  const t = useTranslations("onboarding.reminder");
   const { data, isLoading } = api.onboarding.getStatus.useQuery();
 
   const refresh = useCallback(
@@ -64,26 +61,7 @@ export function useOnboardingChecklist({
   const completeMutation = api.onboarding.completeStep.useMutation({
     onSuccess: refresh,
   });
-  const dismissMutation = api.onboarding.dismiss.useMutation({
-    // Hide at once; the server write follows. Roll back if it fails so the
-    // member is not told "hidden" when the account did not record it.
-    onMutate: async () => {
-      await utils.onboarding.getStatus.cancel();
-      const previous = utils.onboarding.getStatus.getData();
-      utils.onboarding.getStatus.setData(undefined, (old) =>
-        // Same shape the server returns for a dismissed member.
-        old ? { ...old, dismissed: true, checklist: [] } : old,
-      );
-      return { previous };
-    },
-    onError: (_error, _input, context) => {
-      if (context?.previous) {
-        utils.onboarding.getStatus.setData(undefined, context.previous);
-      }
-      toast.error(t("dismissFailed"));
-    },
-    onSettled: refresh,
-  });
+  const { dismiss } = useOnboardingDismissal();
 
   // Auto-detected steps: sync at most once per mount, per policy.
   const synced = useRef(false);
@@ -110,14 +88,11 @@ export function useOnboardingChecklist({
     }
   }, []);
 
-  const { mutate: runDismiss } = dismissMutation;
-
   const { mutate: runComplete } = completeMutation;
   const completeStep = useCallback(
     (stepSlug: string) => runComplete({ stepSlug }),
     [runComplete],
   );
-  const dismiss = useCallback(() => runDismiss(), [runDismiss]);
 
   return {
     view: presentOnboardingChecklist(data),

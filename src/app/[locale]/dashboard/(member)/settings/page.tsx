@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { ConnectedIdentities } from "@/components/connected-identities";
+import { ChecklistSetting } from "@/components/onboarding/checklist-setting";
 import { SectionLabel } from "@/components/ui/section-label";
 
 export const metadata: Metadata = {
@@ -14,6 +15,7 @@ export default async function DashboardSettingsPage() {
     <div className="space-y-8">
       <SectionLabel>{t("settings")}</SectionLabel>
       <ConnectedIdentities />
+      <ChecklistSetting />
     </div>
   );
 }
