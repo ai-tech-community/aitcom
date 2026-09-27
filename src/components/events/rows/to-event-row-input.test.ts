@@ -21,9 +21,11 @@ const HOSTS = new Map([["c-nl", "AIT Community Netherlands"]]);
 
 describe("toEventRowInput", () => {
   it("copies every field the timetable reads", () => {
-    // `link` is a surface's override, not a doc field: the homepage keeps
-    // the default (the event's public page).
-    const expected: Required<Omit<EventRowInput, "link">> = {
+    // `link` and `placeToBeAnnounced` are a surface's calls, not doc
+    // fields: the homepage keeps the defaults.
+    const expected: Required<
+      Omit<EventRowInput, "link" | "placeToBeAnnounced">
+    > = {
       id: 42,
       slug: "rag-deep-dive",
       title: "RAG in production",

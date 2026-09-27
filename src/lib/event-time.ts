@@ -518,7 +518,10 @@ export function pastEvents<T extends UpcomingCandidate>(
 }
 
 /** True once the event has ended (see `upcomingEvents` for the rule). */
-function isEventOver(event: UpcomingCandidate, now: Date): boolean {
+export function isEventOver(
+  event: UpcomingCandidate,
+  now: Date = new Date(),
+): boolean {
   const end = eventEndInstant(event);
   return end
     ? end.getTime() <= now.getTime()

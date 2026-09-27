@@ -41,6 +41,12 @@ export interface EventRowInput {
   /** Name of the community hosting the event, when it has one. */
   host?: string | null;
   /**
+   * The source says the place is not known yet (a Luma event with neither a
+   * venue nor a meeting link). With no other place to show, the row says
+   * "Place to be announced" rather than nothing — or a guess.
+   */
+  placeToBeAnnounced?: boolean;
+  /**
    * Where the row goes, when it is not the public page of `slug`. `null`
    * means the row is not a link at all (a draft has no public page yet).
    * Leave it out for the default.
@@ -55,6 +61,7 @@ export interface EventRowLabels {
   hybrid: string;
   inPerson: string;
   hostedBy: (name: string) => string;
+  placeToBeAnnounced: string;
 }
 
 export interface EventRowKind {
@@ -112,8 +119,14 @@ function clean(value: string | null | undefined): string | null {
  * shows "Amsterdam, Netherlands · Hybrid" and a reader hears commas.
  */
 export function eventRowPlaceParts(
-  event: Pick<EventRowInput, "format" | "city" | "country" | "location">,
-  labels: Pick<EventRowLabels, "online" | "hybrid" | "inPerson">,
+  event: Pick<
+    EventRowInput,
+    "format" | "city" | "country" | "location" | "placeToBeAnnounced"
+  >,
+  labels: Pick<
+    EventRowLabels,
+    "online" | "hybrid" | "inPerson" | "placeToBeAnnounced"
+  >,
 ): string[] {
   // Hybrid is never "online only", whatever a legacy location says.
   const online = event.format !== "hybrid" && isOnlineEvent(event);
@@ -129,7 +142,8 @@ export function eventRowPlaceParts(
     return place ? [place, labels.hybrid] : [labels.hybrid];
   }
   if (place) return [place];
-  return event.format === "in-person" ? [labels.inPerson] : [];
+  if (event.format === "in-person") return [labels.inPerson];
+  return event.placeToBeAnnounced ? [labels.placeToBeAnnounced] : [];
 }
 
 export function eventRowKind(

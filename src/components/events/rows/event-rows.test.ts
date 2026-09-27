@@ -18,6 +18,7 @@ const EN: EventRowLabels = {
   hybrid: "Hybrid",
   inPerson: "In person",
   hostedBy: (name) => `by ${name}`,
+  placeToBeAnnounced: "Place to be announced",
 };
 
 const NL: EventRowLabels = {
@@ -25,6 +26,7 @@ const NL: EventRowLabels = {
   hybrid: "Hybride",
   inPerson: "Op locatie",
   hostedBy: (name) => `door ${name}`,
+  placeToBeAnnounced: "Locatie volgt nog",
 };
 
 /** The place line as the screen shows it. */
@@ -266,6 +268,28 @@ describe("upcomingEventPlace", () => {
         EN,
       ),
     ).toBe("Pakhuis de Zwijger");
+  });
+
+  it("says the place is to be announced only when the source says so", () => {
+    expect(
+      upcomingEventPlace(
+        { format: null, city: null, location: "TBA", placeToBeAnnounced: true },
+        EN,
+      ),
+    ).toBe("Place to be announced");
+    expect(
+      upcomingEventPlace(
+        { format: null, city: null, location: "TBA", placeToBeAnnounced: true },
+        NL,
+      ),
+    ).toBe("Locatie volgt nog");
+    // A real place always wins over the flag.
+    expect(
+      upcomingEventPlace(
+        { format: null, city: "Utrecht", placeToBeAnnounced: true },
+        EN,
+      ),
+    ).toBe("Utrecht");
   });
 
   it("says In person rather than invent a place", () => {

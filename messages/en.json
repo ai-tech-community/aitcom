@@ -124,7 +124,6 @@
     "cancelEventConfirm": "Cancel this event? All registrations will be cancelled.",
     "eventUpdated": "Event updated",
     "eventCancelled": "Event cancelled",
-    "cancelled": "CANCELLED",
     "eventApproved": "Event approved and published",
     "eventApproveError": "Failed to approve event",
     "eventRejected": "Event rejected — submitter has been notified",
@@ -239,7 +238,9 @@
     "pastSection": "Past events",
     "listsLabel": "Event lists",
     "editShort": "Edit",
-    "nextUp": "Next up"
+    "nextUp": "Next up",
+    "placeToBeAnnounced": "Place to be announced",
+    "eventCancelError": "Could not cancel the event. It may already have taken place."
   },
   "blog": {
     "title": "Blog",

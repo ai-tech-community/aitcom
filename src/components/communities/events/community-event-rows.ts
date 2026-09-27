@@ -21,6 +21,12 @@ export interface CommunityEventItem {
   timezone?: string | null;
   location: string;
   format?: string | null;
+  /**
+   * Live Luma rows only: the format the source states, null when it states
+   * none (place to be announced). `format` holds the conflict check's
+   * "online" default for those and must not be shown.
+   */
+  displayFormat?: string | null;
   city?: string | null;
   country?: string | null;
   status: string;
@@ -78,6 +84,18 @@ export function communityEventLink(
 }
 
 /**
+ * The format people should read. A live Luma row carries its stated format
+ * in `displayFormat`; a row cached before that field existed falls back to
+ * `format`. Native events have one format for everything.
+ */
+function shownFormat(event: CommunityEventItem): string | null {
+  if (event.source === "luma" && event.displayFormat !== undefined) {
+    return event.displayFormat;
+  }
+  return event.format ?? null;
+}
+
+/**
  * Community event → shared row input. The community is the host of every
  * row here, so no "by <community>" line repeats the page's own name.
  */
@@ -85,12 +103,14 @@ export function toCommunityEventRowInput(
   event: CommunityEventItem,
   context: CommunityEventContext,
 ): EventRowInput {
+  const format = shownFormat(event);
   return {
     id: event.id,
     slug: event.slug,
     title: event.title,
     type: event.type,
-    format: event.format ?? null,
+    format,
+    placeToBeAnnounced: event.source === "luma" && format === null,
     date: event.date,
     startTime: event.startTime ?? null,
     timezone: event.timezone ?? null,

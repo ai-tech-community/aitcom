@@ -23,6 +23,12 @@ export interface NormalizedEvent {
    * raw event's geo/meeting-url pair is the only reliable source.
    */
   format?: "online" | "in-person" | "hybrid";
+  /**
+   * The format as people should read it: null when the source says neither
+   * where nor how (a "TBA" event). `format` fills that gap with "online" for
+   * the conflict check; a list must not show that guess as "Online".
+   */
+  displayFormat?: "online" | "in-person" | "hybrid" | null;
   maxAttendees: number | null;
   image: string | null;
   status: string;
@@ -42,11 +48,23 @@ export interface NormalizedEvent {
  * it corpus-useful — the conservative, competition-widest default.
  */
 function deriveLumaFormat(event: LumaEvent): "online" | "in-person" | "hybrid" {
+  return knownLumaFormat(event) ?? "online";
+}
+
+/**
+ * The format the raw event actually states, or null when it states neither
+ * a physical address nor a meeting link (the place is still to be
+ * announced). What lists show; `deriveLumaFormat` adds the conflict default.
+ */
+function knownLumaFormat(
+  event: LumaEvent,
+): "online" | "in-person" | "hybrid" | null {
   const hasPhysical = Boolean(event.geo_address_json?.address);
   const hasOnline = Boolean(event.meeting_url);
   if (hasPhysical && hasOnline) return "hybrid";
   if (hasPhysical) return "in-person";
-  return "online";
+  if (hasOnline) return "online";
+  return null;
 }
 
 // Luma gives absolute instants plus the event's IANA timezone; render the
@@ -87,6 +105,7 @@ export function normalizeLumaEvent(
     timezone,
     location,
     format: deriveLumaFormat(event),
+    displayFormat: knownLumaFormat(event),
     maxAttendees: event.max_capacity,
     image: event.cover_url,
     status: "published",

@@ -107,12 +107,17 @@ export function CommunityEvents({
       toast.success(t("eventCancelled"));
       void utils.events.getCommunityEvents.invalidate();
     },
+    // A translated message, never the raw server text (the server refuses,
+    // for example, an event that already took place).
+    onError: () => toast.error(t("eventCancelError")),
   });
   const approveMutation = api.events.approveEvent.useMutation({
     onSuccess: () => {
       toast.success(t("eventApproved"));
       void utils.events.getPendingCommunityEvents.invalidate();
       void utils.events.getCommunityEvents.invalidate();
+      // A moderator can be the submitter too: keep "My submissions" true.
+      void utils.events.getMyEventSubmissions.invalidate();
     },
     onError: () => toast.error(t("eventApproveError")),
   });
@@ -120,6 +125,7 @@ export function CommunityEvents({
     onSuccess: () => {
       toast.success(t("eventRejected"));
       void utils.events.getPendingCommunityEvents.invalidate();
+      void utils.events.getMyEventSubmissions.invalidate();
     },
     onError: () => toast.error(t("eventRejectError")),
   });
@@ -148,45 +154,52 @@ export function CommunityEvents({
     if (ok) rejectMutation.mutate({ eventId, communitySlug: slug });
   }
 
-  /** Shared rows for one list, each paired with the event it came from. */
-  function rowsFor(
-    events: readonly CommunityEventItem[],
+  /**
+   * Shared rows for one list, each paired with the event it came from (the
+   * list's own type, so queue rows keep their audience). The presenter
+   * runs per event, so the pair can never drift out of step.
+   */
+  function rowsFor<T extends CommunityEventItem>(
+    events: readonly T[],
     listView: CommunityEventView,
-  ): { event: CommunityEventItem; row: EventRow }[] {
+  ): { event: T; row: EventRow }[] {
     const context: CommunityEventContext = {
       communitySlug: slug,
       view: listView,
       isAdminOrOwner,
     };
-    const rows = presentEventRows(
-      events.map((event) => toCommunityEventRowInput(event, context)),
-      { locale, labels, now },
+    return events.flatMap((event) =>
+      presentEventRows([toCommunityEventRowInput(event, context)], {
+        locale,
+        labels,
+        now,
+      }).map((row) => ({ event, row })),
     );
-    return rows.map((row, i) => ({ event: events[i]!, row }));
   }
 
-  /** Owner/admin controls on a published native event. */
-  function publishedActions(event: CommunityEventItem): ReactNode {
+  /**
+   * Owner/admin controls on the published list (published events only, so
+   * no cancelled or draft rows reach here). A past event can still be
+   * corrected (Edit, Manage) but not cancelled: it already took place, and
+   * the server refuses that too.
+   */
+  function publishedActions(
+    event: CommunityEventItem,
+    { past }: { past: boolean },
+  ): ReactNode {
     if (!isAdminOrOwner || event.source === "luma") return null;
-    if (event.status === "cancelled") return null;
     const id = event.id as number;
     return (
       <RowActions className="sm:order-6">
-        {event.type === "hackathon" &&
-        event.status !== "draft" &&
-        event.slug ? (
+        {event.type === "hackathon" && event.slug ? (
           <ManageHackathonLink href={manageHackathonHref(slug, event.slug)} />
         ) : null}
         <EditEventButton onEdit={() => openEditor({ id })} />
-        <CancelEventButton onCancel={() => void cancelEvent(id)} />
+        {past ? null : (
+          <CancelEventButton onCancel={() => void cancelEvent(id)} />
+        )}
       </RowActions>
     );
-  }
-
-  function statusFor(event: CommunityEventItem): ReactNode {
-    return hasStatusNote(event.status) ? (
-      <EventStatusNote status={event.status} />
-    ) : undefined;
   }
 
   const views: { value: CommunityEventView; label: ReactNode }[] = [
@@ -220,15 +233,17 @@ export function CommunityEvents({
       {views.length > 1 || isActiveMember ? (
         <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
           {views.length > 1 ? (
-            <SegmentedControl
-              // Long Dutch labels scroll inside the control on a phone
-              // instead of pushing the page sideways.
-              className="max-w-full max-sm:overflow-x-auto"
-              aria-label={t("listsLabel")}
-              options={views}
-              value={view}
-              onValueChange={setView}
-            />
+            // Long Dutch labels scroll on a phone instead of pushing the
+            // page sideways. The padding (with a matching negative margin)
+            // leaves room for the 3px focus ring inside the scroll box.
+            <div className="max-w-full max-sm:-m-1 max-sm:overflow-x-auto max-sm:p-1">
+              <SegmentedControl
+                aria-label={t("listsLabel")}
+                options={views}
+                value={view}
+                onValueChange={setView}
+              />
+            </div>
           ) : (
             <span />
           )}
@@ -272,8 +287,12 @@ export function CommunityEvents({
                               row={row}
                               isNext={index === 0}
                               nextLabel={t("nextUp")}
-                              status={statusFor(event)}
-                              actions={publishedActions(event)}
+                              // Members see the orange Create/Submit
+                              // button; the marker then stays ink.
+                              nextTone={isActiveMember ? "ink" : "accent"}
+                              actions={publishedActions(event, {
+                                past: false,
+                              })}
                             />
                           </li>
                         ),
@@ -300,7 +319,7 @@ export function CommunityEvents({
                             where={[...row.placeParts, row.kind.label].join(
                               " · ",
                             )}
-                            actions={publishedActions(event)}
+                            actions={publishedActions(event, { past: true })}
                           />
                         </li>
                       ))}
@@ -326,8 +345,7 @@ export function CommunityEvents({
               <EmptyNote>{t("noEventsPendingApproval")}</EmptyNote>
             ) : (
               <ol className="divide-border border-border divide-y border-y">
-                {rowsFor(events, "pending").map(({ row }, i) => {
-                  const event = events[i]!;
+                {rowsFor(events, "pending").map(({ event, row }) => {
                   return (
                     <li key={row.key}>
                       <TimetableRow
@@ -353,7 +371,9 @@ export function CommunityEvents({
                               {/* Queue rows never link (#214), so a draft
                                   hackathon's manage page needs its own
                                   control. */}
-                              {event.type === "hackathon" && isAdminOrOwner ? (
+                              {event.type === "hackathon" &&
+                              event.slug &&
+                              isAdminOrOwner ? (
                                 <ManageHackathonLink
                                   href={manageHackathonHref(slug, event.slug)}
                                 />
@@ -394,16 +414,17 @@ export function CommunityEvents({
                   <li key={row.key}>
                     <TimetableRow
                       row={row}
-                      status={statusFor(event)}
+                      status={
+                        hasStatusNote(event.status) ? (
+                          <EventStatusNote status={event.status} />
+                        ) : undefined
+                      }
                       actions={
                         event.status === "rejected" ? (
                           <RowActions className="sm:order-6">
                             <ResubmitEventButton
                               onResubmit={() =>
-                                openEditor({
-                                  id: event.id as number,
-                                  resubmit: true,
-                                })
+                                openEditor({ id: event.id, resubmit: true })
                               }
                             />
                           </RowActions>

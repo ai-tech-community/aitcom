@@ -124,7 +124,6 @@
     "cancelEventConfirm": "Dit evenement annuleren? Alle registraties worden geannuleerd.",
     "eventUpdated": "Evenement bijgewerkt",
     "eventCancelled": "Evenement geannuleerd",
-    "cancelled": "GEANNULEERD",
     "eventApproved": "Evenement goedgekeurd en gepubliceerd",
     "eventApproveError": "Goedkeuren van evenement mislukt",
     "eventRejected": "Evenement afgewezen — de indiener is op de hoogte gebracht",
@@ -239,7 +238,9 @@
     "pastSection": "Eerdere evenementen",
     "listsLabel": "Evenementlijsten",
     "editShort": "Bewerken",
-    "nextUp": "Volgende"
+    "nextUp": "Volgende",
+    "placeToBeAnnounced": "Locatie volgt nog",
+    "eventCancelError": "Evenement annuleren mislukt. Misschien heeft het al plaatsgevonden."
   },
   "blog": {
     "title": "Blog",

@@ -36,6 +36,7 @@ export function TimetableRow({
   row,
   isNext = false,
   nextLabel,
+  nextTone = "accent",
   status,
   actions,
 }: {
@@ -44,6 +45,12 @@ export function TimetableRow({
   isNext?: boolean;
   /** Words of the next marker; required when `isNext` can be true. */
   nextLabel?: string;
+  /**
+   * Colour of the marker's `*`. "accent" (Signal Orange) by default; "ink"
+   * on a screen that already spends its orange on a primary action (One
+   * Voice Rule).
+   */
+  nextTone?: "accent" | "ink";
   status?: ReactNode;
   actions?: ReactNode;
 }) {
@@ -111,7 +118,13 @@ export function TimetableRow({
               data-testid="next-marker"
               className="text-foreground font-mono text-xs font-medium tracking-wider whitespace-nowrap uppercase"
             >
-              <span aria-hidden="true" className="text-primary">
+              <span
+                aria-hidden="true"
+                data-tone={nextTone}
+                className={
+                  nextTone === "accent" ? "text-primary" : "text-foreground"
+                }
+              >
                 *
               </span>{" "}
               {nextLabel}

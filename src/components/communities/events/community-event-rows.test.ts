@@ -24,6 +24,7 @@ const EN: EventRowLabels = {
   hybrid: "Hybrid",
   inPerson: "In person",
   hostedBy: (name) => `by ${name}`,
+  placeToBeAnnounced: "Place to be announced",
 };
 
 const PUBLISHED: CommunityEventContext = {
@@ -233,5 +234,45 @@ describe("community rows through the shared presenter", () => {
     ]);
     expect(row?.placeParts).toEqual(["Keizersgracht 1, Amsterdam"]);
     expect(row?.link).toEqual({ kind: "external", href: "https://lu.ma/x" });
+  });
+
+  it("says a Luma event's place is to be announced, never a guessed Online", () => {
+    const [row] = present([
+      item("luma-tba", {
+        slug: null,
+        source: "luma",
+        lumaUrl: "https://lu.ma/tba",
+        city: null,
+        country: null,
+        location: "TBA",
+        // What normalizeLumaEvent sends for a TBA event.
+        format: "online",
+        displayFormat: null,
+      }),
+    ]);
+    expect(row?.placeParts).toEqual(["Place to be announced"]);
+  });
+
+  it("uses the stated format of a Luma event that has one", () => {
+    const [online] = present([
+      item("luma-online", {
+        slug: null,
+        source: "luma",
+        city: null,
+        country: null,
+        location: "Online",
+        format: "online",
+        displayFormat: "online",
+      }),
+    ]);
+    expect(online?.placeParts).toEqual(["Online"]);
+  });
+
+  it("never flags a native event's place as to be announced", () => {
+    const input = toCommunityEventRowInput(
+      item(7, { format: null, city: null, location: "TBA" }),
+      PUBLISHED,
+    );
+    expect(input.placeToBeAnnounced).toBe(false);
   });
 });

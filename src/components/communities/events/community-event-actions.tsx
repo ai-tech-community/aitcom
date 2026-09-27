@@ -137,11 +137,8 @@ export function ReviewButtons({
   );
 }
 
-const NOTED_STATUSES: ReadonlySet<string> = new Set([
-  "draft",
-  "rejected",
-  "cancelled",
-]);
+/** Statuses a member's own submissions can be in, before publishing. */
+const NOTED_STATUSES: ReadonlySet<string> = new Set(["draft", "rejected"]);
 
 /** Whether a row in this status carries a status note at all. */
 export function hasStatusNote(status: string): boolean {
@@ -167,13 +164,7 @@ export function EventStatusNote({ status }: { status: string }) {
             label: t("pendingApproval"),
             tone: "text-warning",
           }
-        : status === "cancelled"
-          ? {
-              icon: XCircle,
-              label: t("cancelled"),
-              tone: "text-destructive",
-            }
-          : null;
+        : null;
   if (!note) return null;
   const Icon = note.icon;
   return (

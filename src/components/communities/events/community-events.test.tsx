@@ -29,7 +29,20 @@ const m = vi.hoisted(() => ({
   refetch: vi.fn(),
   confirm: vi.fn(),
   dialogProps: [] as Record<string, unknown>[],
+  mutationOptions: {} as Record<string, MutationOptions>,
+  invalidate: {
+    published: vi.fn(),
+    pending: vi.fn(),
+    mine: vi.fn(),
+  },
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
 }));
+
+interface MutationOptions {
+  onSuccess?: () => void;
+  onError?: () => void;
+}
 
 function query(data: unknown[], state = { isLoading: false, isError: false }) {
   return {
@@ -57,16 +70,31 @@ vi.mock("@/trpc/react", () => ({
       getPendingCommunityEvents: { useQuery: () => query(m.pending) },
       getMyEventSubmissions: { useQuery: () => query(m.mine) },
       cancelEvent: {
-        useMutation: () => ({ mutate: m.cancel, isPending: false }),
+        useMutation: (options: MutationOptions) => {
+          m.mutationOptions.cancel = options;
+          return { mutate: m.cancel, isPending: false };
+        },
       },
       approveEvent: {
-        useMutation: () => ({ mutate: m.approve, isPending: false }),
+        useMutation: (options: MutationOptions) => {
+          m.mutationOptions.approve = options;
+          return { mutate: m.approve, isPending: false };
+        },
       },
       rejectEvent: {
-        useMutation: () => ({ mutate: m.reject, isPending: false }),
+        useMutation: (options: MutationOptions) => {
+          m.mutationOptions.reject = options;
+          return { mutate: m.reject, isPending: false };
+        },
       },
     },
-    useUtils: () => ({}),
+    useUtils: () => ({
+      events: {
+        getCommunityEvents: { invalidate: m.invalidate.published },
+        getPendingCommunityEvents: { invalidate: m.invalidate.pending },
+        getMyEventSubmissions: { invalidate: m.invalidate.mine },
+      },
+    }),
   },
 }));
 vi.mock("@/server/better-auth/client", () => ({
@@ -93,7 +121,9 @@ vi.mock("@/i18n/navigation", () => ({
     </a>
   ),
 }));
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("sonner", () => ({
+  toast: { success: m.toastSuccess, error: m.toastError },
+}));
 vi.mock("@/components/communities/event-form-dialog", () => ({
   EventFormDialog: (props: Record<string, unknown>) => {
     m.dialogProps.push(props);
@@ -178,6 +208,11 @@ const PUBLISHED_EVENTS = [
   }),
   ev(4, { title: "Spring meetup", date: "2026-03-12T00:00:00.000Z" }),
   ev(5, { title: "Summer meetup", date: "2026-07-02T00:00:00.000Z" }),
+  ev(6, {
+    title: "Harbour hackathon",
+    type: "hackathon",
+    date: "2025-11-08T00:00:00.000Z",
+  }),
 ];
 
 function renderEvents(locale: "en" | "nl" = "en") {
@@ -217,7 +252,20 @@ beforeEach(() => {
   m.confirm.mockReset();
   m.confirm.mockResolvedValue(true);
   m.dialogProps = [];
+  m.mutationOptions = {};
+  for (const fn of Object.values(m.invalidate)) fn.mockReset();
+  m.toastSuccess.mockReset();
+  m.toastError.mockReset();
 });
+
+/** Elements painted Signal Orange. */
+function orangeElements() {
+  return Array.from(document.body.querySelectorAll("*")).filter((el) =>
+    /(^|\s)(text|bg|border)-primary(\/\d+)?(\s|$)/.test(
+      el.getAttribute("class") ?? "",
+    ),
+  );
+}
 
 describe("CommunityEvents — the schedule everyone sees", () => {
   it("lists upcoming events soonest first, with NEXT UP on the true next", () => {
@@ -244,6 +292,7 @@ describe("CommunityEvents — the schedule everyone sees", () => {
     expect(links.map((a) => a.getAttribute("href"))).toEqual([
       "/events/event-5",
       "/events/event-4",
+      "/events/event-6",
     ]);
     expect(links[0]?.querySelector("time")?.textContent).toBe("02 Jul");
     expect(links[0]?.textContent).toContain("Amsterdam, Netherlands · Meetup");
@@ -285,14 +334,32 @@ describe("CommunityEvents — the schedule everyone sees", () => {
 
   it("spends orange only on the next marker for a guest", () => {
     renderEvents();
-    const orange = Array.from(document.body.querySelectorAll("*")).filter(
-      (el) =>
-        /(^|\s)(text|bg|border)-primary(\/\d+)?(\s|$)/.test(
-          el.getAttribute("class") ?? "",
-        ),
-    );
+    const orange = orangeElements();
     expect(orange).toHaveLength(1);
     expect(orange[0]).toHaveAttribute("aria-hidden", "true");
+    expect(orange[0]).toHaveAttribute("data-tone", "accent");
+  });
+
+  it.each(["member", "owner"] as const)(
+    "keeps the marker ink when a %s has the orange button (One Voice)",
+    (role) => {
+      asRole(role);
+      renderEvents();
+      const marker = screen.getByTestId("next-marker");
+      const star = marker.querySelector("[data-tone]");
+      expect(star).toHaveAttribute("data-tone", "ink");
+      expect(star).toHaveClass("text-foreground");
+      // The primary button is the one orange thing on screen.
+      const orange = orangeElements();
+      expect(orange).toHaveLength(1);
+      expect(orange[0]?.tagName).toBe("BUTTON");
+    },
+  );
+
+  it("shows no status notes on the published list (published only)", () => {
+    asRole("owner");
+    renderEvents();
+    expect(document.querySelector("[data-status]")).toBeNull();
   });
 
   it("gives a guest no controls and no view switch", () => {
@@ -404,15 +471,43 @@ describe("CommunityEvents — organiser controls", () => {
     expect(m.cancel).not.toHaveBeenCalled();
   });
 
-  it("keeps controls off live Luma rows, and on past events", () => {
+  it("keeps controls off live Luma rows", () => {
     asRole("owner");
     renderEvents();
     const luma = screen
       .getByRole("link", { name: /^Friday drinks/ })
       .closest("li") as HTMLElement;
     expect(within(luma).queryByRole("button")).toBeNull();
-    const past = within(pastSection()).getAllByRole("listitem")[0]!;
-    expect(within(past).getByRole("button", { name: "Edit" })).toBeVisible();
+  });
+
+  it("lets a past event be corrected, never cancelled", () => {
+    asRole("owner");
+    renderEvents();
+    const [summer, , harbour] = within(pastSection()).getAllByRole("listitem");
+    fireEvent.click(within(summer!).getByRole("button", { name: "Edit" }));
+    expect(m.dialogProps.at(-1)).toMatchObject({ mode: "edit", eventId: 5 });
+    expect(
+      within(summer!).queryByRole("button", { name: "Cancel Event" }),
+    ).toBeNull();
+    expect(
+      within(harbour!).getByRole("link", { name: "Manage" }),
+    ).toHaveAttribute(
+      "href",
+      "/communities/ai-amsterdam/events/event-6/manage",
+    );
+    expect(
+      within(pastSection()).queryByRole("button", { name: "Cancel Event" }),
+    ).toBeNull();
+  });
+
+  it("tells the organiser when cancelling fails, in their language", () => {
+    asRole("owner");
+    renderEvents("nl");
+    m.mutationOptions.cancel?.onError?.();
+    expect(m.toastError).toHaveBeenCalledWith(nl.events.eventCancelError);
+    m.mutationOptions.cancel?.onSuccess?.();
+    expect(m.toastSuccess).toHaveBeenCalledWith(nl.events.eventCancelled);
+    expect(m.invalidate.published).toHaveBeenCalledTimes(1);
   });
 
   it("keeps controls outside the row link", () => {
@@ -514,6 +609,29 @@ describe("CommunityEvents — review queue and submissions", () => {
     );
   });
 
+  it("refreshes the member's submissions after approve and reject", () => {
+    asRole("moderator");
+    renderEvents();
+    m.mutationOptions.approve?.onSuccess?.();
+    expect(m.invalidate.mine).toHaveBeenCalledTimes(1);
+    expect(m.invalidate.pending).toHaveBeenCalledTimes(1);
+    expect(m.invalidate.published).toHaveBeenCalledTimes(1);
+    m.mutationOptions.reject?.onSuccess?.();
+    expect(m.invalidate.mine).toHaveBeenCalledTimes(2);
+    expect(m.invalidate.pending).toHaveBeenCalledTimes(2);
+  });
+
+  it("offers no Manage link for a queued hackathon without a slug", () => {
+    asRole("admin");
+    m.pending = [{ ...draftHackathon, slug: "" }];
+    renderEvents();
+    fireEvent.click(
+      screen.getByRole("radio", { name: new RegExp(en.events.tabPending) }),
+    );
+    expect(screen.queryByRole("link", { name: "Manage" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+  });
+
   it("gives an admin the manage page of a draft hackathon in the queue", () => {
     asRole("admin");
     m.pending = [draftHackathon];
@@ -589,6 +707,8 @@ describe("CommunityEvents — translations and wiring", () => {
     "listsLabel",
     "editShort",
     "opensInNewTab",
+    "placeToBeAnnounced",
+    "eventCancelError",
     "cancelEvent",
     "approve",
     "reject",

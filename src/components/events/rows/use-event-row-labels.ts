@@ -20,5 +20,6 @@ export function useEventRowLabels(): EventRowLabels {
     hybrid: t("formatHybrid"),
     inPerson: t("formatInPerson"),
     hostedBy: (name) => t("hostedBy", { name }),
+    placeToBeAnnounced: t("placeToBeAnnounced"),
   };
 }

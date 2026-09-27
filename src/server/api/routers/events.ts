@@ -20,17 +20,6 @@ import { getCalendarEvents } from "@/server/luma/client";
 import { getCached, setCached } from "@/server/luma/cache";
 import { normalizeLumaEvent } from "@/server/luma/normalize";
 import type { NormalizedEvent } from "@/server/luma/normalize";
-
-/**
- * One row of a community's event list: the shared normalized shape plus the
- * city and country a native event knows (a live Luma row only has its
- * `location` text), so the list can say where it happens the same way every
- * other event list does.
- */
-type CommunityListedEvent = NormalizedEvent & {
-  city?: string | null;
-  country?: string | null;
-};
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
@@ -73,6 +62,18 @@ import {
   type ConflictCandidate,
 } from "@/server/events/conflicts/rule";
 import { suggestSlots } from "@/server/events/conflicts/suggest";
+import { assertEventCancellable } from "@/server/events/cancel-guard";
+
+/**
+ * One row of a community's event list: the shared normalized shape plus the
+ * city and country a native event knows (a live Luma row only has its
+ * `location` text), so the list can say where it happens the same way every
+ * other event list does.
+ */
+type CommunityListedEvent = NormalizedEvent & {
+  city?: string | null;
+  country?: string | null;
+};
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -838,6 +839,7 @@ export const eventsRouter = createTRPCRouter({
           message: "Event not found in this community",
         });
       }
+      assertEventCancellable(existingEvent);
 
       await payload.update({
         collection: "events",
