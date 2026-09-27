@@ -692,6 +692,16 @@ export interface FeedPost {
     bytes?: number | null;
   };
   /**
+   * Preview of the first link in the content, read from that page when the post is saved.
+   */
+  linkPreview?: {
+    url?: string | null;
+    title?: string | null;
+    description?: string | null;
+    imageUrl?: string | null;
+    siteName?: string | null;
+  };
+  /**
    * Set by the first report; cleared when a moderator restores.
    */
   hiddenAt?: string | null;
@@ -1935,6 +1945,15 @@ export interface FeedPostsSelect<T extends boolean = true> {
         width?: T;
         height?: T;
         bytes?: T;
+      };
+  linkPreview?:
+    | T
+    | {
+        url?: T;
+        title?: T;
+        description?: T;
+        imageUrl?: T;
+        siteName?: T;
       };
   hiddenAt?: T;
   reportCount?: T;

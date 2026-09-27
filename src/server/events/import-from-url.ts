@@ -1,5 +1,5 @@
 import type { getPayloadClient } from "@/server/payload";
-import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
+import { readBodyCapped, safeFetch } from "@/server/net/safe-fetch";
 import { parseEventFromHtml } from "@/lib/event-link-import";
 import type { EventFormat } from "@/lib/event-metadata";
 
@@ -8,92 +8,17 @@ type PayloadClient = Awaited<ReturnType<typeof getPayloadClient>>;
 const FETCH_TIMEOUT_MS = 8000;
 const MAX_HTML_BYTES = 2 * 1024 * 1024; // 2 MB
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
-const MAX_REDIRECTS = 5;
-
-/** Read a response body, throwing once it exceeds maxBytes (bounds memory). */
-async function readBodyCapped(
-  res: Response,
-  maxBytes: number,
-): Promise<Buffer> {
-  if (!res.body) {
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.byteLength > maxBytes) throw new Error("Response too large");
-    return buf;
-  }
-  const reader = res.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) {
-      total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel();
-        throw new Error("Response too large");
-      }
-      chunks.push(value);
-    }
-  }
-  return Buffer.concat(chunks);
-}
-
-/**
- * Fetch that re-validates EVERY hop against the SSRF guard. fetch() uses
- * redirect:"manual" so each redirect's Location is validated before we follow
- * it — preventing a public URL from redirecting into an internal host.
- *
- * Residual risk (accepted): validateWebhookUrl resolves DNS to check the IP,
- * then fetch() resolves the hostname again independently, leaving a narrow
- * TOCTOU window where a hostile low-TTL DNS server could rebind to an internal
- * IP between the two lookups. Fully closing this requires pinning the
- * connection to the validated IP (a custom undici Agent.connect.lookup), and
- * undici is not a dependency here. We accept the window because it is heavily
- * mitigated: this path is reachable only by an active community member, capped
- * at 20 imports/hour, and the guard re-runs on every redirect hop. Revisit
- * with IP-pinning if the importer is ever exposed more broadly.
- */
-async function safeFetch(url: string): Promise<Response> {
-  let current = url;
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    const guard = await validateWebhookUrl(current);
-    if (!guard.ok) {
-      throw new Error(`Refusing to fetch URL: ${guard.reason}`);
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    let res: Response;
-    try {
-      res = await fetch(current, {
-        signal: controller.signal,
-        redirect: "manual",
-        headers: { "user-agent": "aitcom-event-importer/1.0" },
-      });
-    } finally {
-      clearTimeout(timer);
-    }
-    if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get("location");
-      if (!location) {
-        throw new Error(`Redirect with no Location (status ${res.status})`);
-      }
-      current = new URL(location, current).href;
-      continue;
-    }
-    if (!res.ok) {
-      throw new Error(`Request failed with status ${res.status}`);
-    }
-    return res;
-  }
-  throw new Error("Too many redirects");
-}
+const FETCH_OPTIONS = {
+  userAgent: "aitcom-event-importer/1.0",
+  timeoutMs: FETCH_TIMEOUT_MS,
+};
 
 /**
  * Fetch an event page's HTML behind the SSRF guard. Throws on a blocked host,
  * a failed request, or a non-HTML content type.
  */
 export async function fetchEventPageHtml(url: string): Promise<string> {
-  const res = await safeFetch(url);
+  const { response: res } = await safeFetch(url, FETCH_OPTIONS);
   const contentType = res.headers.get("content-type") ?? "";
   if (!contentType.includes("text/html")) {
     throw new Error("That link is not an HTML page");
@@ -113,7 +38,7 @@ export async function ingestRemoteImage(
   alt: string,
 ): Promise<{ id: number; url: string } | null> {
   try {
-    const res = await safeFetch(url);
+    const { response: res } = await safeFetch(url, FETCH_OPTIONS);
     const contentType = res.headers.get("content-type") ?? "";
     if (!contentType.startsWith("image/")) return null;
 

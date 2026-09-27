@@ -1,4 +1,5 @@
 import type { EVENT_FORMAT_OPTIONS } from "@/lib/event-metadata";
+import { readMeta, resolveUrl } from "@/lib/html-meta";
 
 type EventFormat = (typeof EVENT_FORMAT_OPTIONS)[number];
 
@@ -41,16 +42,6 @@ export interface ParsedEventImport {
   format?: EventFormat;
   coverImageUrl?: string;
   sourceUrl: string;
-}
-
-/** Resolve a possibly-relative URL against the page's source URL. */
-function resolveUrl(raw: string | undefined, base: string): string | undefined {
-  if (!raw) return undefined;
-  try {
-    return new URL(raw, base).href;
-  } catch {
-    return undefined;
-  }
 }
 
 /** Pull the raw text of every <script type="application/ld+json"> block. */
@@ -179,31 +170,6 @@ function fromJsonLd(
       result.location ??= str(addr.streetAddress);
     }
   }
-}
-
-/** Read <meta property="og:x" content="y"> (property or name attribute). */
-function readMeta(html: string, key: string): string | undefined {
-  const re = new RegExp(
-    `<meta[^>]+(?:property|name)=["']${key}["'][^>]*content=["']([^"']*)["']`,
-    "i",
-  );
-  const m = re.exec(html);
-  if (m?.[1]) return decodeHtmlEntities(m[1].trim()) || undefined;
-  const re2 = new RegExp(
-    `<meta[^>]+content=["']([^"']*)["'][^>]*(?:property|name)=["']${key}["']`,
-    "i",
-  );
-  const m2 = re2.exec(html);
-  return m2?.[1] ? decodeHtmlEntities(m2[1].trim()) || undefined : undefined;
-}
-
-function decodeHtmlEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, "&")
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
 }
 
 function applyOpenGraphFallback(html: string, result: ParsedEventImport): void {
