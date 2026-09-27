@@ -22,6 +22,31 @@ describe("lessonHasContent", () => {
   it("tolerates a malformed body", () => {
     expect(lessonHasContent({ id: 1, title: "t", module: null, body: "nonsense" })).toBe(false);
   });
+
+  const lesson = (children: unknown[]) => ({
+    id: 1, title: "t", module: null, body: { root: { type: "root", children } },
+  });
+  it("does not throw on a null or non-object child, and treats it as no content", () => {
+    expect(lessonHasContent(lesson([null]))).toBe(false);
+    expect(lessonHasContent(lesson([42, "x", { type: "paragraph", children: [null] }]))).toBe(false);
+    expect(lessonHasContent(lesson([null, { type: "paragraph", children: [{ type: "text", text: "Hi" }] }]))).toBe(true);
+  });
+  it("treats an empty heading, quote or list item as empty", () => {
+    expect(lessonHasContent(lesson([{ type: "heading", tag: "h2", children: [] }]))).toBe(false);
+    expect(lessonHasContent(lesson([{ type: "quote", children: [{ type: "text", text: " " }] }]))).toBe(false);
+    expect(
+      lessonHasContent(lesson([{ type: "list", children: [{ type: "listitem", children: [] }] }])),
+    ).toBe(false);
+    expect(lessonHasContent(lesson([{ type: "heading", children: [{ type: "text", text: "Intro" }] }]))).toBe(true);
+  });
+  it("counts a non-text leaf block (image, divider) as content, even nested", () => {
+    expect(lessonHasContent(lesson([{ type: "horizontalrule" }]))).toBe(true);
+    expect(lessonHasContent(lesson([{ type: "paragraph", children: [{ type: "image", src: "https://i" }] }]))).toBe(true);
+  });
+  it("does not count a tab or line break as content", () => {
+    expect(lessonHasContent(lesson([{ type: "paragraph", children: [{ type: "tab", text: "\t" }] }]))).toBe(false);
+    expect(lessonHasContent(lesson([{ type: "paragraph", children: [{ type: "linebreak" }, { type: "tab" }] }]))).toBe(false);
+  });
 });
 
 describe("publishChecks", () => {
@@ -55,6 +80,12 @@ describe("publishChecks", () => {
       byId({ ...good, lessons: [{ ...good.lessons[0]!, examQuestions: [{ ...q(["a", "b"], 0), prompt: "  " }] }] })
         .quizAnswers,
     ).toMatchObject({ ok: false, lessonIds: [1] });
+  });
+  it("blocks, without throwing, when a quiz question entry is null or not an object", () => {
+    expect(byId({ ...good, lessons: [{ ...good.lessons[0]!, examQuestions: [null] }] }).quizAnswers)
+      .toMatchObject({ ok: false, lessonIds: [1] });
+    expect(byId({ ...good, lessons: [{ ...good.lessons[0]!, examQuestions: [q(["a", "b"], 0), "x"] }] }).quizAnswers)
+      .toMatchObject({ ok: false, lessonIds: [1] });
   });
   it("blocks on empty modules and names them", () => {
     const r = byId({ ...good, modules: [...good.modules, { id: 6, title: "Empty" }] });

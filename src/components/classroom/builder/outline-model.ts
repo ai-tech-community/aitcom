@@ -47,7 +47,7 @@ export function applyLessonMove(
   dest.splice(index, 0, lessonId);
 
   if (from.groupIndex === toGroupIndex && from.index === index) return null;
-  return { groups: next, move: { moduleId: target.moduleId, orderedIds: dest } };
+  return { groups: next, move: { moduleId: target.moduleId, orderedIds: [...dest] } };
 }
 
 /** One step up or down in reading order, crossing into the neighbouring module at its edge. */

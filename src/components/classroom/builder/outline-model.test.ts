@@ -47,6 +47,12 @@ describe("applyLessonMove", () => {
     expect(applyLessonMove(groups, 999, { moduleId: 10, index: 0 })).toBeNull();
     expect(applyLessonMove(groups, 1, { moduleId: 999, index: 0 })).toBeNull();
   });
+  it("returns an orderedIds array that does not alias the new groups", () => {
+    const r = applyLessonMove(groups, 1, { moduleId: 20, index: 0 })!;
+    r.move.orderedIds.push(999);
+    expect(r.groups[1]!.lessonIds).toEqual([1, 3]);
+    expect(groups[1]!.lessonIds).toEqual([3]);
+  });
   it("does not mutate its input", () => {
     const snapshot = JSON.stringify(groups);
     applyLessonMove(groups, 1, { moduleId: 20, index: 0 });

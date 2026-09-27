@@ -27,18 +27,29 @@ export type CheckResult = {
 
 type LexicalNode = { type?: unknown; text?: unknown; children?: unknown };
 
-/** True when a Lexical tree holds visible text or any non-paragraph block (embed, image, list…). */
-function nodeHasContent(node: LexicalNode): boolean {
-  if (typeof node.text === "string" && node.text.trim() !== "") return true;
-  const structural = node.type === "root" || node.type === "paragraph" || node.type === "text" || node.type === "linebreak";
-  if (typeof node.type === "string" && !structural) return true;
-  return Array.isArray(node.children) && node.children.some((c) => nodeHasContent(c as LexicalNode));
+/** Leaf nodes that only shape whitespace; on their own they are not content. */
+const WHITESPACE_LEAVES = new Set(["text", "tab", "linebreak"]);
+
+/**
+ * True when a Lexical node holds something a learner would see:
+ * - a node with children (paragraph, heading, quote, list item…) only when one of its children does;
+ * - a text leaf only when its text is not blank;
+ * - any other typed leaf (embed, image, divider…) always.
+ * Malformed entries (null, numbers, strings) count as nothing.
+ */
+function nodeHasContent(node: unknown): boolean {
+  if (!node || typeof node !== "object") return false;
+  const { type, text, children } = node as LexicalNode;
+  if (typeof text === "string" && text.trim() !== "") return true;
+  if (Array.isArray(children)) return children.some(nodeHasContent);
+  return typeof type === "string" && !WHITESPACE_LEAVES.has(type);
 }
 
-type ExamQuestion = { prompt?: unknown; options: string[]; correctIndex: number };
+type ExamQuestion = { prompt?: unknown; options?: unknown; correctIndex?: unknown };
 
-function questionsOf(lesson: ChecklistLesson): ExamQuestion[] {
-  return Array.isArray(lesson.examQuestions) ? (lesson.examQuestions as ExamQuestion[]) : [];
+/** Raw stored entries; any one may be malformed, so callers check each before use. */
+function questionsOf(lesson: ChecklistLesson): unknown[] {
+  return Array.isArray(lesson.examQuestions) ? lesson.examQuestions : [];
 }
 
 export function lessonHasContent(lesson: ChecklistLesson): boolean {
@@ -48,18 +59,24 @@ export function lessonHasContent(lesson: ChecklistLesson): boolean {
   return !!body && typeof body === "object" && !!body.root && nodeHasContent(body.root);
 }
 
-function quizValid(lesson: ChecklistLesson): boolean {
-  return questionsOf(lesson).every(
-    (q) =>
-      typeof q.prompt === "string" &&
-      q.prompt.trim() !== "" &&
-      Array.isArray(q.options) &&
-      q.options.length >= 2 &&
-      q.options.every((o) => typeof o === "string" && o.trim() !== "") &&
-      Number.isInteger(q.correctIndex) &&
-      q.correctIndex >= 0 &&
-      q.correctIndex < q.options.length,
+function questionValid(entry: unknown): boolean {
+  if (!entry || typeof entry !== "object") return false;
+  const { prompt, options, correctIndex } = entry as ExamQuestion;
+  return (
+    typeof prompt === "string" &&
+    prompt.trim() !== "" &&
+    Array.isArray(options) &&
+    options.length >= 2 &&
+    options.every((o) => typeof o === "string" && o.trim() !== "") &&
+    typeof correctIndex === "number" &&
+    Number.isInteger(correctIndex) &&
+    correctIndex >= 0 &&
+    correctIndex < options.length
   );
+}
+
+function quizValid(lesson: ChecklistLesson): boolean {
+  return questionsOf(lesson).every(questionValid);
 }
 
 export function publishChecks(input: ChecklistInput): CheckResult[] {
