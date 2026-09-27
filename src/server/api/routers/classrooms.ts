@@ -11,12 +11,12 @@ import { getPayloadClient } from "@/server/payload";
 import {
   isCourseManagerRole,
   loadCourseAccess,
+  requireReadableCourse,
   resolveCourseAccess,
 } from "@/server/classroom/course-access";
 import { logActivity } from "@/server/agent/activity";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { db } from "@/server/db";
-import type { Course } from "@/payload-types";
 import {
   communities,
   communityMemberships,
@@ -114,29 +114,6 @@ async function issueCertificateIfComplete(
       "course.complete",
     );
   }
-}
-
-/**
- * Load a course and require that the viewer may read it. A course the
- * viewer can't see is NOT_FOUND, the same answer as a course that doesn't
- * exist.
- */
-async function requireReadableCourse(
-  database: typeof db,
-  payload: Awaited<ReturnType<typeof getPayloadClient>>,
-  courseId: number,
-  viewerId: string,
-): Promise<Course> {
-  const course = await payload.findByID({
-    collection: "courses",
-    id: courseId,
-    depth: 0,
-    disableErrors: true,
-  });
-  if (!course) throw new TRPCError({ code: "NOT_FOUND" });
-  const access = await loadCourseAccess(database, course, viewerId);
-  if (access === "none") throw new TRPCError({ code: "NOT_FOUND" });
-  return course;
 }
 
 export const classroomsRouter = createTRPCRouter({
@@ -1098,7 +1075,6 @@ export const classroomsRouter = createTRPCRouter({
       return { enrolled: false };
     }),
 
-  /** Toggle a lesson's completion for the caller (enrolled-only; no XP). */
   /** Grade an exam attempt server-side; on pass, complete the lesson + maybe certify. */
   submitExamAttempt: protectedProcedure
     .input(
@@ -1179,6 +1155,7 @@ export const classroomsRouter = createTRPCRouter({
       return { score, passed, wrongQuestionIds };
     }),
 
+  /** Toggle a lesson's completion for the caller (enrolled-only; no XP). */
   markLessonComplete: protectedProcedure
     .input(z.object({ lessonId: z.number(), completed: z.boolean() }))
     .mutation(async ({ ctx, input }) => {

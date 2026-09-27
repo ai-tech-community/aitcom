@@ -1,6 +1,9 @@
+import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 import type { CommunityRole } from "@/lib/classroom";
+import type { Course } from "@/payload-types";
 import type { db } from "@/server/db";
+import type { getPayloadClient } from "@/server/payload";
 import { communities, communityMemberships } from "@/server/db/schema";
 
 /**
@@ -86,4 +89,27 @@ export async function loadCourseAccess(
   }
 
   return resolveCourseAccess({ course, viewerId, membership });
+}
+
+/**
+ * Load a course and require that the viewer may read it. A course the
+ * viewer can't see is NOT_FOUND, the same answer as a course that doesn't
+ * exist. The shared gate for every procedure that reads a course by id.
+ */
+export async function requireReadableCourse(
+  database: typeof db,
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  courseId: number,
+  viewerId: string,
+): Promise<Course> {
+  const course = await payload.findByID({
+    collection: "courses",
+    id: courseId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+  const access = await loadCourseAccess(database, course, viewerId);
+  if (access === "none") throw new TRPCError({ code: "NOT_FOUND" });
+  return course;
 }
