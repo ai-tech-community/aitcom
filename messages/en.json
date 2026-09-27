@@ -237,7 +237,11 @@
     },
     "formatInPerson": "In person",
     "formatHybrid": "Hybrid",
-    "hostedBy": "by {name}"
+    "hostedBy": "by {name}",
+    "opensInNewTab": "opens in a new tab",
+    "pastSection": "Past events",
+    "listsLabel": "Event lists",
+    "editShort": "Edit"
   },
   "blog": {
     "title": "Blog",

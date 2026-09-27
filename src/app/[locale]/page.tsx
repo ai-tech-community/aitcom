@@ -23,7 +23,7 @@ import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import { getSession } from "@/server/better-auth/server";
 import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
-import { toEventRowInput } from "@/components/home/event-rows/to-event-row-input";
+import { toEventRowInput } from "@/components/events/rows/to-event-row-input";
 import { loadEventHostNames } from "@/server/events/event-hosts-queries";
 import { RECENT_GATHERINGS_SHOWN } from "@/components/home/recent-gatherings/recent-gatherings";
 import { HomeStats } from "@/components/home/home-stats";

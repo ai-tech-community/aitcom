@@ -237,7 +237,11 @@
     },
     "formatInPerson": "Op locatie",
     "formatHybrid": "Hybride",
-    "hostedBy": "door {name}"
+    "hostedBy": "door {name}",
+    "opensInNewTab": "opent in een nieuw tabblad",
+    "pastSection": "Eerdere evenementen",
+    "listsLabel": "Evenementlijsten",
+    "editShort": "Bewerken"
   },
   "blog": {
     "title": "Blog",

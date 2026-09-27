@@ -310,12 +310,45 @@ describe("presentEventRows — rows", () => {
   });
 
   it("links each row to its event page", () => {
-    expect(present(ALL).map((r) => r.href)).toEqual([
-      "/events/the-ai-conference-2026",
-      "/events/agents-hackathon",
-      "/events/prompting-workshop",
-      "/events/rag-deep-dive",
+    expect(present(ALL).map((r) => r.link)).toEqual([
+      { kind: "internal", href: "/events/the-ai-conference-2026" },
+      { kind: "internal", href: "/events/agents-hackathon" },
+      { kind: "internal", href: "/events/prompting-workshop" },
+      { kind: "internal", href: "/events/rag-deep-dive" },
     ]);
+  });
+
+  it("keeps a link the surface chose, including none at all", () => {
+    const [external, manage, draft] = present([
+      {
+        ...CONFERENCE,
+        id: "luma-1",
+        slug: null,
+        link: { kind: "external", href: "https://lu.ma/abc" },
+      },
+      {
+        ...HACKATHON,
+        link: {
+          kind: "internal",
+          href: "/communities/ai-amsterdam/events/agents-hackathon/manage",
+        },
+      },
+      { ...CONFERENCE, id: 9, link: null },
+    ]);
+    expect(external?.link).toEqual({
+      kind: "external",
+      href: "https://lu.ma/abc",
+    });
+    expect(manage?.link).toEqual({
+      kind: "internal",
+      href: "/communities/ai-amsterdam/events/agents-hackathon/manage",
+    });
+    expect(draft?.link).toBeNull();
+  });
+
+  it("does not link a row without a slug", () => {
+    const [row] = present([{ ...CONFERENCE, slug: null }]);
+    expect(row?.link).toBeNull();
   });
 
   it("credits the host community when known", () => {

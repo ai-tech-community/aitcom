@@ -1,11 +1,11 @@
 import { useLocale, useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { SectionLabel } from "@/components/ui/section-label";
 import {
   presentEventRows,
   type EventRowInput,
-} from "@/components/home/event-rows/event-rows";
-import { useEventRowLabels } from "@/components/home/event-rows/use-event-row-labels";
+} from "@/components/events/rows/event-rows";
+import { useEventRowLabels } from "@/components/events/rows/use-event-row-labels";
+import { CompactEventRow } from "@/components/events/rows/compact-event-row";
 
 /** How many past gatherings the section shows. */
 export const RECENT_GATHERINGS_SHOWN = 3;
@@ -49,32 +49,14 @@ export function RecentGatherings({
         {t("lead")}
       </p>
       <ol className="mt-8 grid gap-x-8 gap-y-2 sm:grid-cols-3">
-        {rows.map((row) => {
-          const where = row.host ?? row.placeParts.join(" · ");
-          return (
-            <li key={row.key} className="border-border min-w-0 border-t">
-              <Link
-                href={row.href}
-                className="group focus-visible:ring-ring/50 block rounded-sm py-4 outline-none focus-visible:ring-[3px]"
-              >
-                <time
-                  dateTime={row.dateTime ?? undefined}
-                  className="text-muted-foreground block font-mono text-xs tracking-wider uppercase tabular-nums"
-                >
-                  {[row.day, row.month, row.year].filter(Boolean).join(" ")}
-                </time>
-                <span className="mt-2 block text-base leading-snug font-semibold text-pretty break-words decoration-1 underline-offset-4 group-hover:underline">
-                  {row.title}
-                </span>
-                {where ? (
-                  <span className="text-muted-foreground mt-1 block text-sm leading-snug break-words">
-                    {where}
-                  </span>
-                ) : null}
-              </Link>
-            </li>
-          );
-        })}
+        {rows.map((row) => (
+          <li key={row.key} className="border-border min-w-0 border-t">
+            <CompactEventRow
+              row={row}
+              where={row.host ?? row.placeParts.join(" · ")}
+            />
+          </li>
+        ))}
       </ol>
     </section>
   );

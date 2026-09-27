@@ -7,7 +7,7 @@ import { WhatWeDo } from "@/components/home/what-we-do/what-we-do";
 import { RecentGatherings } from "@/components/home/recent-gatherings/recent-gatherings";
 import { HomeSponsors } from "@/components/home/sponsors/home-sponsors";
 import { HomeClosingSquare } from "@/components/home/closing-square/home-closing-square";
-import type { EventRowInput } from "@/components/home/event-rows/event-rows";
+import type { EventRowInput } from "@/components/events/rows/event-rows";
 import type { HomeSponsor } from "@/components/home/sponsors/home-sponsor";
 import type { FeaturedCommunityCard } from "@/server/communities/featured";
 
