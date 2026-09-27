@@ -458,6 +458,13 @@ function isNonPostingPath(pathname: string): boolean {
   return isDirectoryJobPath(pathname) || isJobsIndexPath(pathname);
 }
 
+/** True when the URL is a careers index, not one job card. */
+export function isJobsIndexUrl(value: string | null | undefined): boolean {
+  const url = asUrl(value ?? "");
+  if (!url) return false;
+  return isJobsIndexPath(url.pathname);
+}
+
 /** Card heading when the anchor wraps title + location + department. */
 function anchorRoleFields(innerHtml: string): {
   title: string | null;

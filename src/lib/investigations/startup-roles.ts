@@ -1,4 +1,5 @@
 import { slugify } from "@/lib/text-utils";
+import { isJobsIndexUrl, isPublishableJobTitle } from "./startup-job-boards";
 import {
   defaultStartupJobsSort,
   hasStartupJobsSearch,
@@ -946,6 +947,10 @@ export function startupRoleJsonLd(
   const datePosted = sourcedIsoDate(role.postedAt);
   if (!datePosted) return null;
   const title = cleanStartupRoleTitle(role.title) ?? role.title;
+  // Board headlines and index URLs are not job cards. Soft-omit the block.
+  if (!isPublishableJobTitle(title) || isJobsIndexUrl(role.sourceUrl)) {
+    return null;
+  }
   const description = sanitizeStartupRoleDescription(role.descriptionText);
   const item: Record<string, unknown> = {
     "@type": "JobPosting",

@@ -1965,6 +1965,30 @@ describe("Startups open positions", () => {
     ]);
   });
 
+  it("soft-omits JobPosting when the row is a board title", () => {
+    const { container } = render(
+      <StartupsRolePage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        role={{
+          ...FIXTURE_ROLE,
+          startupSlug: "ginmon",
+          startupName: "Ginmon",
+          title: "Offene Stellen",
+          sourceUrl: "https://www.ginmon.de/careers/jobs",
+          postedAt: "2026-03-01T12:00:00.000Z",
+          descriptionText: "Ab sofort suchen wir",
+        }}
+      />,
+    );
+    expect(
+      container.querySelector("script[type='application/ld+json']"),
+    ).toBeNull();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Offene Stellen" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows a sourced Role Brief, copy prompt, and CV upload for Hub members", () => {
     const { container } = render(
       <StartupsRolePage
