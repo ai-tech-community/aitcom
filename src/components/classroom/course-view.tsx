@@ -52,9 +52,12 @@ interface LessonLike {
 export function CourseView({
   slug,
   courseSlug,
+  defaultPreviewing = false,
 }: {
   slug: string;
   courseSlug: string;
+  /** Open in author preview (the course builder's Preview tab). */
+  defaultPreviewing?: boolean;
 }) {
   const t = useTranslations("classroom");
   const confirm = useConfirm();
@@ -72,7 +75,7 @@ export function CourseView({
   });
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [previewing, setPreviewing] = useState(false);
+  const [previewing, setPreviewing] = useState(defaultPreviewing);
 
   const lessons = useMemo(
     () => (data?.lessons ?? []) as LessonLike[],
