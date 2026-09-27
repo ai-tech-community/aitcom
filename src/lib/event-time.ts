@@ -294,6 +294,62 @@ export function formatEventWhenText({
 }
 
 const shortDayFormatters = new Map<string, Intl.DateTimeFormat>();
+const longDayFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function cachedDayFormatter(
+  cache: Map<string, Intl.DateTimeFormat>,
+  locale: string,
+  options: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormat {
+  let fmt = cache.get(locale);
+  if (!fmt) {
+    // The stored calendar date is rendered as a UTC midnight, so the viewer's
+    // own zone can never shift it a day (a UTC-negative browser would).
+    fmt = new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" });
+    cache.set(locale, fmt);
+  }
+  return fmt;
+}
+
+/** Localised pieces of an event's calendar day, for layouts that place them apart. */
+export interface EventDayParts {
+  /** The stored event-local calendar date, YYYY-MM-DD. */
+  iso: string;
+  year: number;
+  day: number;
+  /** Short weekday without locale punctuation: "Tue" / "di". */
+  weekday: string;
+  /** Short month without locale punctuation: "Sep" / "okt". */
+  month: string;
+}
+
+/**
+ * The event's calendar day split into localised parts. Like the other display
+ * helpers here, the stored date is the event-local date and is never
+ * converted through the viewer's zone. Null for a corrupt `date` row.
+ */
+export function eventDayParts(
+  date: string,
+  locale: string,
+): EventDayParts | null {
+  if (!hasValidDateParts(date)) return null;
+  const { y, m, d } = getDateParts(date);
+  const fmt = cachedDayFormatter(shortDayFormatters, locale, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+  const parts = fmt.formatToParts(new Date(Date.UTC(y, m - 1, d)));
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    (parts.find((p) => p.type === type)?.value ?? "").replace(/\.$/, "");
+  return {
+    iso: `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+    year: y,
+    day: d,
+    weekday: get("weekday"),
+    month: get("month"),
+  };
+}
 
 /**
  * Compact, localised day + start time for tight spaces (e.g. the homepage
@@ -305,23 +361,26 @@ export function formatEventShortWhen(
   { date, startTime }: { date: string; startTime?: string | null },
   locale: string,
 ): string {
+  const parts = eventDayParts(date, locale);
+  if (!parts) return date.split("T")[0] ?? date;
+  const day = `${parts.weekday} ${parts.day} ${parts.month}`;
+  return startTime ? `${day} · ${startTime}` : day;
+}
+
+/**
+ * The event's calendar day written out in full for reading aloud, e.g.
+ * "Tuesday, September 29, 2026" / "dinsdag 29 september 2026". Falls back to
+ * the raw date part for a corrupt row.
+ */
+export function formatEventLongDay(date: string, locale: string): string {
   if (!hasValidDateParts(date)) return date.split("T")[0] ?? date;
   const { y, m, d } = getDateParts(date);
-  let fmt = shortDayFormatters.get(locale);
-  if (!fmt) {
-    fmt = new Intl.DateTimeFormat(locale, {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      timeZone: "UTC",
-    });
-    shortDayFormatters.set(locale, fmt);
-  }
-  const parts = fmt.formatToParts(new Date(Date.UTC(y, m - 1, d)));
-  const get = (type: Intl.DateTimeFormatPartTypes) =>
-    (parts.find((p) => p.type === type)?.value ?? "").replace(/\.$/, "");
-  const day = `${get("weekday")} ${get("day")} ${get("month")}`;
-  return startTime ? `${day} · ${startTime}` : day;
+  return cachedDayFormatter(longDayFormatters, locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
 /**

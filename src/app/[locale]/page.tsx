@@ -2,7 +2,6 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight } from "lucide-react";
 import { HeroTitle } from "@/components/hero-title";
-import { SectionLabel as UiSectionLabel } from "@/components/ui/section-label";
 import { Button } from "@/components/ui/button";
 import { HomeHeroPlaza } from "@/components/home/town-square/home-hero-plaza";
 import type { NoticeBoardContent } from "@/components/home/town-square/town-square-scene";
@@ -12,7 +11,6 @@ import {
   upcomingEvents,
   upcomingEventsQueryFloor,
 } from "@/lib/event-time";
-import { Badge } from "@/components/ui/badge";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
 import { communities, memberProfiles } from "@/server/db/schema";
@@ -27,18 +25,9 @@ import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
 import { FeaturedCommunities } from "@/components/home/featured-communities/featured-communities";
 import { HomeCrawlDoors } from "@/components/home/home-crawl-doors";
 import { WhatWeDo } from "@/components/home/what-we-do/what-we-do";
-
-const typeLabels: Record<string, string> = {
-  workshop: "WORKSHOP",
-  hackathon: "HACKATHON",
-  deep_dive: "DEEP-DIVE",
-  meetup: "MEETUP",
-};
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
-}
+import { UpcomingEvents } from "@/components/home/upcoming-events/upcoming-events";
+import type { UpcomingEventInput } from "@/components/home/upcoming-events/upcoming-event-rows";
+import { loadEventHostNames } from "@/server/events/event-hosts-queries";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -163,14 +152,33 @@ export default async function Home() {
       .then((r) => r.totalDocs),
   ]);
 
-  const [featuredCommunities, communityCount] = await Promise.all([
+  const [featuredCommunities, communityCount, hostNames] = await Promise.all([
     loadFeaturedCommunities(db),
     db
       .select({ value: count() })
       .from(communities)
       .where(isNull(communities.deletedAt))
       .then((r) => r[0]?.value ?? 0),
+    loadEventHostNames(
+      db,
+      events.map((event) => event.communityId),
+    ),
   ]);
+
+  const upcomingEventRows: UpcomingEventInput[] = events.map((event) => ({
+    id: event.id,
+    slug: event.slug,
+    title: event.title,
+    type: event.type,
+    format: event.format,
+    date: event.date,
+    startTime: event.startTime,
+    timezone: event.timezone,
+    city: event.city,
+    country: event.country,
+    location: event.location,
+    host: event.communityId ? (hostNames.get(event.communityId) ?? null) : null,
+  }));
 
   const workshopCount = await payload
     .find({
@@ -237,115 +245,7 @@ export default async function Home() {
 
       <WhatWeDo />
 
-      {/* Events Feed */}
-      <section className="px-6 py-12 sm:px-12">
-        <SectionLabel>/ {t("events.title").toUpperCase()}</SectionLabel>
-
-        {events.length === 0 ? (
-          <p className="text-muted-foreground mt-8 text-center font-mono text-xs tracking-wider">
-            {t("events.noEvents")}
-          </p>
-        ) : (
-          <>
-            {/* Table Header - desktop only */}
-            <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
-              <UiSectionLabel
-                as="span"
-                bordered={false}
-                className="w-32 text-xs"
-              >
-                DATE
-              </UiSectionLabel>
-              <UiSectionLabel
-                as="span"
-                bordered={false}
-                className="flex-1 text-xs"
-              >
-                NAME
-              </UiSectionLabel>
-              <UiSectionLabel as="span" bordered={false} className="text-xs">
-                TYPE
-              </UiSectionLabel>
-            </div>
-
-            {/* Event Rows */}
-            {events.map((event) => {
-              // Highlight the first hackathon, or the first event if none
-              const isHackathon = event.type === "hackathon";
-              return (
-                <Link
-                  key={event.id}
-                  href={`/events/${event.slug}`}
-                  className={`flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0 ${
-                    isHackathon
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border hover:bg-secondary/50"
-                  }`}
-                >
-                  {/* Title - first on mobile */}
-                  <span className="text-base leading-snug font-medium sm:order-2 sm:flex-1">
-                    {event.title}
-                  </span>
-
-                  {/* Date + type on mobile */}
-                  <div className="flex items-center gap-3 sm:order-1 sm:w-32">
-                    <div
-                      className={`h-2 w-2 rounded-full ${
-                        isHackathon ? "bg-primary-foreground" : "bg-foreground"
-                      }`}
-                    />
-                    <span className="font-mono text-xs sm:text-sm">
-                      {formatDate(event.date)}
-                    </span>
-                    {/* Type badge - inline on mobile */}
-                    <Badge
-                      variant="outline"
-                      className={`font-mono text-xs font-medium tracking-wider sm:hidden ${
-                        isHackathon
-                          ? "border-primary-foreground text-primary-foreground"
-                          : ""
-                      }`}
-                    >
-                      {typeLabels[event.type] ?? event.type}
-                    </Badge>
-                  </div>
-
-                  {/* Type badge - desktop only */}
-                  <Badge
-                    variant="outline"
-                    className={`hidden font-mono text-xs font-medium tracking-wider sm:order-3 sm:inline-flex ${
-                      isHackathon
-                        ? "border-primary-foreground text-primary-foreground"
-                        : ""
-                    }`}
-                  >
-                    {typeLabels[event.type] ?? event.type}
-                  </Badge>
-                  <span
-                    className={`ml-4 hidden font-mono text-lg font-light sm:order-4 sm:inline ${
-                      isHackathon
-                        ? "text-primary-foreground"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    +
-                  </span>
-                </Link>
-              );
-            })}
-
-            {/* View All link */}
-            <div className="mt-4 text-right">
-              <Link
-                href="/events"
-                className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
-              >
-                {t("events.viewAll")} →
-              </Link>
-            </div>
-          </>
-        )}
-      </section>
+      <UpcomingEvents events={upcomingEventRows} />
 
       {/* Why AI + Humans */}
       <section className="px-6 py-12 sm:px-12">

@@ -7,6 +7,8 @@ import {
   eventWallTimeToUtc,
   formatEventIsoWithOffset,
   formatEventTimeRange,
+  eventDayParts,
+  formatEventLongDay,
   formatEventShortWhen,
   formatEventWhenText,
   formatInstantInZone,
@@ -428,6 +430,41 @@ describe("formatEventShortWhen", () => {
     expect(
       formatEventShortWhen({ date: "garbage", startTime: null }, "en"),
     ).toBe("garbage");
+  });
+});
+
+describe("eventDayParts", () => {
+  it("splits the stored day into localised parts", () => {
+    expect(eventDayParts("2026-10-05T00:00:00.000Z", "en")).toEqual({
+      iso: "2026-10-05",
+      year: 2026,
+      day: 5,
+      weekday: "Mon",
+      month: "Oct",
+    });
+    expect(eventDayParts("2026-10-05", "nl")).toMatchObject({
+      weekday: "ma",
+      month: "okt",
+    });
+  });
+
+  it("returns null for a corrupt row", () => {
+    expect(eventDayParts("garbage", "en")).toBeNull();
+  });
+});
+
+describe("formatEventLongDay", () => {
+  it("writes the day out in full", () => {
+    expect(formatEventLongDay("2026-09-29T00:00:00.000Z", "en")).toBe(
+      "Tuesday, September 29, 2026",
+    );
+    expect(formatEventLongDay("2026-09-29", "nl")).toBe(
+      "dinsdag 29 september 2026",
+    );
+  });
+
+  it("falls back to the raw date part for a corrupt row", () => {
+    expect(formatEventLongDay("garbage", "en")).toBe("garbage");
   });
 });
 
