@@ -16,6 +16,13 @@ export type DetectedJobBoard = {
 const SKIP_TITLE =
   /^(careers|jobs|job openings|open roles|open jobs|view all|see all|learn more|apply|home|about|teams?)$/i;
 
+/**
+ * Board headlines and listing-page labels, not a role.
+ * DE careers pages often use these as the H1 or the button into `/careers/jobs`.
+ */
+const SKIP_BOARD_LABEL =
+  /^(?:offene\s+stellen|offene\s+positionen|offene\s+jobs|stellenangebote?|aktuelle\s+stellen(?:angebote)?|alle\s+(?:stellen|jobs)|jobs\s+(?:&|und)\s+karriere|karriere|ab\s+sofort\s+suchen\s+wir|wir\s+suchen(?:\s+dich)?|wir\s+stellen\s+ein|jetzt\s+bewerben|open\s+positions|current\s+(?:openings|opportunities)|we(?:'|’)re\s+hiring|we\s+are\s+hiring|we(?:'|’)?re\s+(?:now\s+)?looking\s+for|we\s+are\s+(?:now\s+)?looking\s+for|join\s+our\s+team|vacatures|openstaande\s+vacatures|open\s+vacatures)[.!?]?$/i;
+
 const SKIP_INDEX_TITLE =
   /^(?:explore|view|see|browse)\s+(?:all\s+|our\s+|job\s+)?(?:open\s+)?(?:roles|jobs|openings)\b/i;
 
@@ -31,14 +38,16 @@ const SKIP_GARBAGE_TITLE = /-->|^[^A-Za-z0-9]+$/;
 const SKIP_NOT_A_ROLE = /\bjoin our\b|privacy notice|^careers single cms$/i;
 
 export function isSkippedExtractedJobTitle(title: string): boolean {
+  const label = title.replace(/\s+/g, " ").trim();
   return (
-    SKIP_TITLE.test(title) ||
-    SKIP_INDEX_TITLE.test(title) ||
-    SKIP_LOCATION_INDEX_TITLE.test(title) ||
-    SKIP_URL_TITLE.test(title) ||
-    SKIP_OPEN_ROLES_CTA.test(title) ||
-    SKIP_GARBAGE_TITLE.test(title) ||
-    SKIP_NOT_A_ROLE.test(title)
+    SKIP_TITLE.test(label) ||
+    SKIP_BOARD_LABEL.test(label) ||
+    SKIP_INDEX_TITLE.test(label) ||
+    SKIP_LOCATION_INDEX_TITLE.test(label) ||
+    SKIP_URL_TITLE.test(label) ||
+    SKIP_OPEN_ROLES_CTA.test(label) ||
+    SKIP_GARBAGE_TITLE.test(label) ||
+    SKIP_NOT_A_ROLE.test(label)
   );
 }
 
@@ -423,10 +432,51 @@ export function extractJobsFromJsonLd(
 }
 
 const JOB_HREF =
-  /(?:\/jobs?\/|\/careers\/[^"'#?\s]+|\/position\/|\/openings\/|boards\.greenhouse\.io|jobs\.ashbyhq\.com|jobs\.lever\.co|apply\.workable\.com)/i;
+  /(?:\/jobs?\/|\/careers\/[^"'#?\s]+|\/position\/|\/openings\/|boards\.greenhouse\.io|jobs\.ashbyhq\.com|jobs\.lever\.co|apply\.workable\.com|recruitee\.com\/o\/[^/"'#?\s]+)/i;
 
 function isDirectoryJobPath(pathname: string): boolean {
   return /\/jobs\/(?:location|role|industry)(?:\/|$)/i.test(pathname);
+}
+
+/**
+ * A careers index (`/jobs`, `/careers/jobs`, `/en/karriere`), not one posting.
+ * Optional two-letter prefix covers localized DE/EN board URLs.
+ */
+function isJobsIndexPath(pathname: string): boolean {
+  const path = (pathname.replace(/\/+$/, "") || "/").toLowerCase();
+  return (
+    /^\/(?:[a-z]{2}\/)?(?:jobs?|careers|openings|positions|open-positions|karriere|stellen(?:angebote)?|vacancies|vacatures)$/.test(
+      path,
+    ) ||
+    /^\/(?:[a-z]{2}\/)?(?:careers|karriere)\/(?:jobs?|openings|positions|open-positions|stellen(?:angebote)?)$/.test(
+      path,
+    )
+  );
+}
+
+function isNonPostingPath(pathname: string): boolean {
+  return isDirectoryJobPath(pathname) || isJobsIndexPath(pathname);
+}
+
+/** Card heading when the anchor wraps title + location + department. */
+function anchorRoleFields(innerHtml: string): {
+  title: string | null;
+  location: string | null;
+} {
+  const heading = /<h[1-4]\b[^>]*>([\s\S]*?)<\/h[1-4]>/i.exec(innerHtml)?.[1];
+  const title = heading ? htmlToPlainText(heading) : htmlToPlainText(innerHtml);
+  if (!heading) return { title, location: null };
+  const para = /<p\b[^>]*>([\s\S]*?)<\/p>/i.exec(innerHtml)?.[1];
+  const locationText = htmlToPlainText(para);
+  const location =
+    locationText &&
+    locationText.length <= 80 &&
+    locationText !== title &&
+    !isSkippedExtractedJobTitle(locationText) &&
+    !isApplyCtaTitle(locationText)
+      ? locationText
+      : null;
+  return { title, location };
 }
 
 /** Company slug from a YC or Work at a Startup company board URL. */
@@ -484,7 +534,7 @@ export function extractInertiaJobBoard(
     const row = asRecord(item);
     if (!row) continue;
     const url = asUrl(asString(row.url) ?? "", baseUrl);
-    if (!url || isDirectoryJobPath(url.pathname)) continue;
+    if (!url || isNonPostingPath(url.pathname)) continue;
     if (!jobBelongsToCompany(url, companySlug)) continue;
     const parsed = listing({
       title: asString(row.title),
@@ -615,18 +665,19 @@ export function extractJobAnchors(
   );
   for (const match of anchors) {
     const href = match[1];
-    const inner = htmlToPlainText(match[2]);
+    const fields = anchorRoleFields(match[2] ?? "");
     if (!href || !JOB_HREF.test(href)) continue;
     const url = asUrl(href, baseUrl);
-    if (!url || isDirectoryJobPath(url.pathname)) continue;
+    if (!url || isNonPostingPath(url.pathname)) continue;
     if (!jobBelongsToCompany(url, companySlugFromBoardUrl(baseUrl))) continue;
     const normalized = url.toString().split("#")[0] ?? url.toString();
     if (samePage(normalized, baseUrl)) continue;
     if (seen.has(normalized)) continue;
     seen.add(normalized);
     const parsed = listing({
-      title: inner,
+      title: fields.title,
       sourceUrl: normalized,
+      location: fields.location,
       board: "html",
     });
     if (parsed) listings.push(parsed);
@@ -955,7 +1006,7 @@ export function nestedJobsIndexUrl(
     if (host === "ycombinator.com" || host === "workatastartup.com") continue;
     const path = url.pathname.replace(/\/$/, "") || "/";
     if (path === basePath) continue;
-    if (/\/(?:careers\/)?jobs$/i.test(path)) {
+    if (/\/(?:[a-z]{2}\/)?(?:careers\/)?jobs$/i.test(path)) {
       return `${url.origin}${url.pathname}`;
     }
   }
@@ -998,7 +1049,7 @@ export function extractEmbeddedBoardJobs(
     const href = unescapeJsonString(match[2] ?? "");
     const url = asUrl(href, baseUrl);
     if (!url || !/\/jobs\/[^/]+/i.test(url.pathname)) continue;
-    if (isDirectoryJobPath(url.pathname)) continue;
+    if (isNonPostingPath(url.pathname)) continue;
     if (!jobBelongsToCompany(url, companySlugFromBoardUrl(baseUrl))) continue;
     const window = decoded.slice(match.index ?? 0, (match.index ?? 0) + 700);
     const location = firstCapture(window, /"location":"((?:\\.|[^"\\])*)"/);
