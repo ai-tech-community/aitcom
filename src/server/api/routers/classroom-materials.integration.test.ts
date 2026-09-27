@@ -104,6 +104,8 @@ describe.skipIf(!RUN_DB)("classroom hosted files [DB integration]", () => {
       title?: string;
       extension?: string;
       contentType?: string;
+      failureReason?: string;
+      createdAt?: string;
     } = {},
   ) {
     const uploadId = crypto.randomUUID();
@@ -124,9 +126,13 @@ describe.skipIf(!RUN_DB)("classroom hosted files [DB integration]", () => {
         bytes: over.bytes ?? 1000,
         storageKey: `private/classroom/${fx.communityId}/${courseId}/${uploadId}.${extension}`,
         uploadId,
+        ...(over.failureReason ? { failureReason: over.failureReason } : {}),
+        ...(over.createdAt ? { createdAt: over.createdAt } : {}),
       },
     });
   }
+
+  const DAY_AGO = () => new Date(Date.now() - 24 * 3600_000).toISOString();
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -291,7 +297,8 @@ describe.skipIf(!RUN_DB)("classroom hosted files [DB integration]", () => {
     ).resolves.toMatchObject({
       id: grant.materialId,
       status: "ready",
-      bytes: 2000,
+      // The declared size stays: the grant could still fill it.
+      bytes: 2048,
     });
     const key = (storage.presignUpload.mock.calls[0]![0] as { key: string })
       .key;
@@ -349,7 +356,7 @@ describe.skipIf(!RUN_DB)("classroom hosted files [DB integration]", () => {
     });
   });
 
-  it("a cancelled transfer is discarded: kept as failed, storage freed at once, stored part removed", async () => {
+  it("a cancelled transfer is discarded: kept as failed and counted while its grant lives, stored part removed", async () => {
     const author = callerAs(fx.authorId);
     const grant = await author.classroomMaterials.startFileUpload({
       courseId: fx.membersOnlyId,
@@ -376,7 +383,8 @@ describe.skipIf(!RUN_DB)("classroom hosted files [DB integration]", () => {
     const key = (storage.presignUpload.mock.calls[0]![0] as { key: string })
       .key;
     expect(storage.remove).toHaveBeenCalledWith([key]);
-    await expect(usage()).resolves.toMatchObject({ fileBytesStored: 0 });
+    // The grant is still live, so its bytes stay reserved until it expires.
+    await expect(usage()).resolves.toMatchObject({ fileBytesStored: 4096 });
     await expect(
       m.payload.findByID({
         collection: "hosted-materials",
@@ -413,14 +421,23 @@ describe.skipIf(!RUN_DB)("classroom hosted files [DB integration]", () => {
     });
   });
 
-  it("usage counts uploading and ready files, not failed ones, for owners and admins only", async () => {
+  it("usage counts uploading and ready files, and failed ones only while their grant may live, for owners and admins only", async () => {
     await createMaterial(fx.membersOnlyId, { bytes: 1000 });
     await createMaterial(fx.publicId, { bytes: 500, status: "uploading" });
-    await createMaterial(fx.membersOnlyId, { bytes: 9999, status: "failed" });
+    await createMaterial(fx.membersOnlyId, { bytes: 200, status: "failed" });
+    const old = await createMaterial(fx.membersOnlyId, {
+      bytes: 9999,
+      status: "failed",
+      createdAt: DAY_AGO(),
+    });
+    // Guard the fixture: Payload kept the back-dated creation time.
+    expect(new Date(old.createdAt).getTime()).toBeLessThan(
+      Date.now() - 3600_000,
+    );
     for (const id of [fx.ownerId, fx.authorId]) {
       await expect(
         callerAs(id).classroomMaterials.usage({ slug: fx.communitySlug }),
-      ).resolves.toEqual({ fileBytesStored: 1500, fileBytesAllowed: GB5 });
+      ).resolves.toEqual({ fileBytesStored: 1700, fileBytesAllowed: GB5 });
     }
     await expect(
       callerAs(fx.memberId).classroomMaterials.usage({
@@ -536,5 +553,49 @@ describe.skipIf(!RUN_DB)("classroom hosted files [DB integration]", () => {
         courseId: fx.membersOnlyId,
       }),
     ).resolves.toEqual([]);
+  });
+
+  it("deleting a file whose grant may be live keeps a hidden failed record; an older file is deleted outright", async () => {
+    const author = callerAs(fx.authorId);
+    const fresh = await createMaterial(fx.membersOnlyId, { title: "Fresh" });
+    const settled = await createMaterial(fx.membersOnlyId, {
+      title: "Settled",
+      createdAt: DAY_AGO(),
+    });
+    const mismatch = await createMaterial(fx.membersOnlyId, {
+      title: "Bad upload",
+      status: "failed",
+      failureReason: "UPLOAD_MISMATCH",
+    });
+
+    await author.classroomMaterials.deleteMaterial({ materialId: fresh.id });
+    await expect(
+      m.payload.findByID({
+        collection: "hosted-materials",
+        id: fresh.id,
+        depth: 0,
+      }),
+    ).resolves.toMatchObject({ status: "failed", failureReason: "deleted" });
+
+    await author.classroomMaterials.deleteMaterial({ materialId: settled.id });
+    await expect(
+      m.payload.findByID({
+        collection: "hosted-materials",
+        id: settled.id,
+        depth: 0,
+        disableErrors: true,
+      }),
+    ).resolves.toBeNull();
+    expect(storage.remove).toHaveBeenCalledWith([fresh.storageKey]);
+    expect(storage.remove).toHaveBeenCalledWith([settled.storageKey]);
+
+    // The author still sees an upload that failed its check, not the deleted one.
+    await expect(
+      author.classroomMaterials.listCourseMaterials({
+        courseId: fx.membersOnlyId,
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({ id: mismatch.id, status: "failed" }),
+    ]);
   });
 });

@@ -28,6 +28,7 @@ import {
 import {
   allowanceFor,
   exceedsAllowance,
+  mayUploadGrantBeLive,
   usageFor,
 } from "@/server/classroom/media-allowance";
 import type { db } from "@/server/db";
@@ -70,6 +71,19 @@ export type CourseMaterial = {
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Why a record is failed. "cancelled" (the browser transfer was discarded)
+ * and "deleted" (the author deleted it while its upload grant may still be
+ * live) are kept only so they keep counting until the cleanup removes them;
+ * the author never sees them.
+ */
+const FAILURE = {
+  mismatch: "UPLOAD_MISMATCH",
+  cancelled: "cancelled",
+  deleted: "deleted",
+} as const;
+const HIDDEN_FAILURES = [FAILURE.cancelled, FAILURE.deleted];
 
 function toCourseMaterial(m: HostedMaterial): CourseMaterial {
   return {
@@ -162,7 +176,7 @@ export async function startFileUpload(
   }
 
   const [usage, allowance] = await Promise.all([
-    usageFor(deps.payload, course.communityId),
+    usageFor(deps.payload, course.communityId, now),
     allowanceFor(course.communityId),
   ]);
   if (exceedsAllowance(usage, allowance, input.bytes)) {
@@ -223,6 +237,30 @@ async function requireOwnUpload(
   return material;
 }
 
+/**
+ * Move an upload out of "uploading", but only if it is still uploading, so
+ * finish and discard can never overwrite each other. Returns the updated
+ * record, or null when another request changed it first (re-read it with
+ * `requireOwnUpload` to see what that request left).
+ */
+async function leaveUploading(
+  deps: HostedFileDeps,
+  materialId: number,
+  data: { status: "ready" } | { status: "failed"; failureReason: string },
+): Promise<HostedMaterial | null> {
+  const { docs } = await deps.payload.update({
+    collection: "hosted-materials",
+    where: {
+      and: [
+        { id: { equals: materialId } },
+        { status: { equals: "uploading" } },
+      ],
+    },
+    data,
+  });
+  return docs[0] ?? null;
+}
+
 /** Past the finish window the daily cleanup may already be acting on it. */
 function isPastFinishWindow(deps: HostedFileDeps, material: HostedMaterial) {
   const now = deps.now?.() ?? new Date();
@@ -232,19 +270,20 @@ function isPastFinishWindow(deps: HostedFileDeps, material: HostedMaterial) {
 
 /**
  * Checks the object S3 actually stored: it must exist, have the derived type,
- * and be 1 byte up to the declared size. Good → ready with the real size.
- * Bad → the object is deleted and the record marked failed. A second finish
- * of a ready file returns it unchanged. Past the finish window nothing is
- * touched: the daily cleanup may already be acting on the upload.
+ * and be 1 byte up to the declared size. Good → ready. The record keeps the
+ * declared size: the grant stays usable until it expires, so the key can
+ * still receive up to that many bytes, and the allowance must keep counting
+ * them. Bad → the record is marked failed, then the object deleted. A second
+ * finish of a ready file returns it unchanged. Past the finish window nothing
+ * is touched: the daily cleanup may already be acting on the upload. If a
+ * concurrent finish or discard changed the record first, its result stands.
  */
 export async function finishFileUpload(
   deps: HostedFileDeps,
   input: { userId: string; materialId: number },
 ): Promise<CourseMaterial> {
   const material = await requireOwnUpload(deps, input);
-  if (material.status === "ready") return toCourseMaterial(material);
-  if (material.status === "failed")
-    throw refuse("BAD_REQUEST", "UPLOAD_FAILED");
+  if (material.status !== "uploading") return settledUpload(material);
   if (isPastFinishWindow(deps, material)) {
     throw refuse("NOT_FOUND", "UPLOAD_EXPIRED");
   }
@@ -257,7 +296,12 @@ export async function finishFileUpload(
     stored.bytes > 0 &&
     stored.bytes <= material.bytes &&
     stored.bytes <= MAX_FILE_BYTES;
-  if (!stored || !valid) {
+  if (!valid) {
+    const failed = await leaveUploading(deps, material.id, {
+      status: "failed",
+      failureReason: FAILURE.mismatch,
+    });
+    if (!failed) return settledUpload(await requireOwnUpload(deps, input));
     try {
       await storage.remove([material.storageKey]);
     } catch (error) {
@@ -266,28 +310,31 @@ export async function finishFileUpload(
         { materialId: material.id, key: material.storageKey, error },
       );
     }
-    await deps.payload.update({
-      collection: "hosted-materials",
-      id: material.id,
-      data: { status: "failed", failureReason: "UPLOAD_MISMATCH" },
-    });
     throw refuse("BAD_REQUEST", "UPLOAD_FAILED");
   }
-  const ready = await deps.payload.update({
-    collection: "hosted-materials",
-    id: material.id,
-    data: { status: "ready", bytes: stored.bytes },
-  });
-  return toCourseMaterial(ready);
+  const ready = await leaveUploading(deps, material.id, { status: "ready" });
+  return settledUpload(ready ?? (await requireOwnUpload(deps, input)));
+}
+
+/** What finish answers for an upload that is no longer in progress. */
+function settledUpload(material: HostedMaterial): CourseMaterial {
+  if (material.status === "ready") return toCourseMaterial(material);
+  if (material.status === "failed") {
+    throw refuse("BAD_REQUEST", "UPLOAD_FAILED");
+  }
+  // Still uploading after a lost conditional write cannot happen; refuse
+  // rather than report a file that was never checked.
+  throw refuse("NOT_FOUND", "UPLOAD_EXPIRED");
 }
 
 /**
  * Called when the browser transfer is cancelled or fails before finish. The
- * record is kept but marked failed (reason "cancelled"), which frees its
- * storage at once and still counts toward the uploader's daily limit; then
- * any part already stored is removed, best effort (the daily cleanup removes
- * old failed records and their objects). Only an upload still in progress
- * changes: a ready or failed file is returned as it is.
+ * record is kept but marked failed (reason "cancelled"): it still counts
+ * toward the uploader's daily limit, and toward storage until its grant
+ * expires; then any part already stored is removed, best effort (the daily
+ * cleanup removes old failed records and their objects). Only an upload still
+ * in progress changes: a ready or failed file — including one a concurrent
+ * finish just settled — is returned as it is.
  */
 export async function discardUpload(
   deps: HostedFileDeps,
@@ -298,11 +345,11 @@ export async function discardUpload(
   if (isPastFinishWindow(deps, material)) {
     throw refuse("NOT_FOUND", "UPLOAD_EXPIRED");
   }
-  const discarded = await deps.payload.update({
-    collection: "hosted-materials",
-    id: material.id,
-    data: { status: "failed", failureReason: "cancelled" },
+  const discarded = await leaveUploading(deps, material.id, {
+    status: "failed",
+    failureReason: FAILURE.cancelled,
   });
+  if (!discarded) return toCourseMaterial(await requireOwnUpload(deps, input));
   try {
     await deps.storage().remove([material.storageKey]);
   } catch (error) {
@@ -361,7 +408,10 @@ export async function fileLink(
   return { url };
 }
 
-/** Every file of a course, newest first, for its author. */
+/**
+ * Every file of a course, newest first, for its author — except uploads
+ * that were cancelled or deleted, which are kept only for accounting.
+ */
 export async function listCourseMaterials(
   deps: HostedFileDeps,
   input: { userId: string; courseId: number },
@@ -369,7 +419,18 @@ export async function listCourseMaterials(
   await requireEditableCourse(deps.payload, input.courseId, input.userId);
   const { docs } = await deps.payload.find({
     collection: "hosted-materials",
-    where: { course: { equals: input.courseId } },
+    where: {
+      and: [
+        { course: { equals: input.courseId } },
+        {
+          or: [
+            { status: { not_equals: "failed" } },
+            { failureReason: { exists: false } },
+            { failureReason: { not_in: HIDDEN_FAILURES } },
+          ],
+        },
+      ],
+    },
     sort: "-createdAt",
     pagination: false,
     depth: 0,
@@ -423,9 +484,15 @@ export async function updateMaterial(
 }
 
 /**
- * Delete a file: the stored object first (best effort — a failure is logged,
- * since nothing else will ever find that object again), then the record,
- * which frees the allowance. Lessons that still use it show it as removed.
+ * Delete a file. Lessons that still use it show it as removed.
+ *
+ * While the file's upload grant may still be live (it is still uploading, or
+ * was created within the grant's lifetime), the grant could store a new
+ * object at the key after we remove it. So the record is kept, marked failed
+ * (reason "deleted"): hidden from the author, still counted against storage
+ * until the grant expires, and removed with any late object by the daily
+ * cleanup. Otherwise the record is deleted, which frees the allowance.
+ * Either way the stored object is removed, best effort — a failure is logged.
  */
 export async function deleteMaterial(
   deps: HostedFileDeps,
@@ -436,6 +503,17 @@ export async function deleteMaterial(
     input.materialId,
     input.userId,
   );
+  const now = deps.now?.() ?? new Date();
+  const grantMayBeLive =
+    material.status === "uploading" ||
+    mayUploadGrantBeLive(material.createdAt, now);
+  if (grantMayBeLive) {
+    await deps.payload.update({
+      collection: "hosted-materials",
+      id: material.id,
+      data: { status: "failed", failureReason: FAILURE.deleted },
+    });
+  }
   try {
     await deps.storage().remove([material.storageKey]);
   } catch (error) {
@@ -444,9 +522,11 @@ export async function deleteMaterial(
       { materialId: material.id, key: material.storageKey, error },
     );
   }
-  await deps.payload.delete({
-    collection: "hosted-materials",
-    id: material.id,
-  });
+  if (!grantMayBeLive) {
+    await deps.payload.delete({
+      collection: "hosted-materials",
+      id: material.id,
+    });
+  }
   return { ok: true };
 }

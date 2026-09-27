@@ -5,13 +5,14 @@ import {
   MATERIAL_TITLE_MAX,
   MAX_FILE_BYTES,
 } from "@/lib/classroom/material-rules";
-import { FINISH_WINDOW_HOURS } from "@/lib/video-rules";
+import { FINISH_WINDOW_HOURS, UPLOAD_GRANT_SECONDS } from "@/lib/video-rules";
 
 import {
   deleteMaterial,
   discardUpload,
   fileLink,
   finishFileUpload,
+  listCourseMaterials,
   mayUploadMaterials,
   startFileUpload,
   updateMaterial,
@@ -21,6 +22,12 @@ const UPLOAD = "1b4e28ba-2fa1-41d2-883f-0016d3cca427";
 const NOW = new Date("2026-09-28T12:00:00.000Z");
 const KEY = `private/classroom/c1/12/${UPLOAD}.pdf`;
 const GB5 = 5 * 1024 ** 3;
+const ago = (seconds: number) =>
+  new Date(NOW.getTime() - seconds * 1000).toISOString();
+/** The conditional write finish and discard use: only while still uploading. */
+const WHILE_UPLOADING = {
+  and: [{ id: { equals: 7 } }, { status: { equals: "uploading" } }],
+};
 const COURSE = {
   id: 12,
   authorId: "u1",
@@ -62,6 +69,9 @@ type Over = {
   docs?: unknown[];
   stored?: unknown;
   removeFails?: boolean;
+  /** A concurrent request changed the record first: the conditional write
+   * matches nothing, and a re-read finds the record in this state. */
+  lostRace?: unknown;
 };
 
 function fakes(over: Over = {}) {
@@ -69,10 +79,14 @@ function fakes(over: Over = {}) {
     courses: "course" in over ? over.course : COURSE,
     "hosted-materials": "material" in over ? over.material : material(),
   };
+  let materialReads = 0;
   const payload = {
-    findByID: vi.fn(({ collection }: { collection: string }) =>
-      Promise.resolve(found[collection] ?? null),
-    ),
+    findByID: vi.fn(({ collection }: { collection: string }) => {
+      if (collection === "hosted-materials" && materialReads++ > 0) {
+        if ("lostRace" in over) return Promise.resolve(over.lostRace ?? null);
+      }
+      return Promise.resolve(found[collection] ?? null);
+    }),
     count: vi.fn().mockResolvedValue({ totalDocs: over.recent ?? 0 }),
     find: vi.fn().mockResolvedValue({ docs: over.docs ?? [] }),
     create: vi.fn(({ data }: { data: Record<string, unknown> }) =>
@@ -85,12 +99,26 @@ function fakes(over: Over = {}) {
       }),
     ),
     update: vi.fn(
-      ({ id, data }: { id: number; data: Record<string, unknown> }) =>
-        Promise.resolve({
+      ({
+        id,
+        where,
+        data,
+      }: {
+        id?: number;
+        where?: unknown;
+        data: Record<string, unknown>;
+      }) => {
+        const updated = {
           ...(found["hosted-materials"] as object),
-          id,
+          id: id ?? 7,
           ...data,
-        }),
+        };
+        if (where === undefined) return Promise.resolve(updated);
+        return Promise.resolve({
+          docs: "lostRace" in over ? [] : [updated],
+          errors: [],
+        });
+      },
     ),
     delete: vi.fn().mockResolvedValue({}),
   };
@@ -329,7 +357,7 @@ describe("startFileUpload", () => {
 });
 
 describe("finishFileUpload", () => {
-  it("marks the file ready with the size S3 reports", async () => {
+  it("marks the file ready, keeping the declared size that the allowance reserved", async () => {
     const { deps, payload, storage } = fakes({
       stored: { contentType: "application/pdf", bytes: 2000 },
     });
@@ -337,15 +365,15 @@ describe("finishFileUpload", () => {
     expect(storage.inspect).toHaveBeenCalledWith(KEY);
     expect(payload.update).toHaveBeenCalledWith({
       collection: "hosted-materials",
-      id: 7,
-      data: { status: "ready", bytes: 2000 },
+      where: WHILE_UPLOADING,
+      data: { status: "ready" },
     });
     expect(done).toEqual({
       id: 7,
       title: "Week 1 slides",
       extension: "pdf",
       contentType: "application/pdf",
-      bytes: 2000,
+      bytes: 2048,
       status: "ready",
       visibility: "members",
       failureReason: null,
@@ -368,14 +396,58 @@ describe("finishFileUpload", () => {
         code: "BAD_REQUEST",
         message: "UPLOAD_FAILED",
       });
-      expect(storage.remove).toHaveBeenCalledWith([KEY]);
       expect(payload.update).toHaveBeenCalledWith({
         collection: "hosted-materials",
-        id: 7,
+        where: WHILE_UPLOADING,
         data: { status: "failed", failureReason: "UPLOAD_MISMATCH" },
       });
+      expect(storage.remove).toHaveBeenCalledWith([KEY]);
+      expect(payload.update.mock.invocationCallOrder[0]!).toBeLessThan(
+        storage.remove.mock.invocationCallOrder[0]!,
+      );
     },
   );
+
+  it("returns the file as a concurrent finish left it, when that finish won", async () => {
+    const { deps } = fakes({
+      stored: { contentType: "application/pdf", bytes: 2000 },
+      lostRace: material({ status: "ready" }),
+    });
+    await expect(
+      finishFileUpload(deps, { userId: "u1", materialId: 7 }),
+    ).resolves.toMatchObject({ id: 7, status: "ready", bytes: 2048 });
+  });
+
+  it("answers UPLOAD_FAILED when a discard won the race", async () => {
+    const { deps } = fakes({
+      stored: { contentType: "application/pdf", bytes: 2000 },
+      lostRace: material({ status: "failed", failureReason: "cancelled" }),
+    });
+    await expect(
+      finishFileUpload(deps, { userId: "u1", materialId: 7 }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "UPLOAD_FAILED" });
+  });
+
+  it("does not remove the object of a bad upload when another request changed the record first", async () => {
+    const { deps, storage } = fakes({
+      stored: null,
+      lostRace: material({ status: "ready" }),
+    });
+    await expect(
+      finishFileUpload(deps, { userId: "u1", materialId: 7 }),
+    ).resolves.toMatchObject({ status: "ready" });
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  it("answers UPLOAD_EXPIRED when the record vanished during the race", async () => {
+    const { deps } = fakes({
+      stored: { contentType: "application/pdf", bytes: 2000 },
+      lostRace: null,
+    });
+    await expect(
+      finishFileUpload(deps, { userId: "u1", materialId: 7 }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND", message: "UPLOAD_EXPIRED" });
+  });
 
   it("still marks a bad upload failed when deleting it fails, and logs that", async () => {
     const { deps, payload, log } = fakes({ stored: null, removeFails: true });
@@ -436,7 +508,7 @@ describe("finishFileUpload", () => {
 });
 
 describe("discardUpload", () => {
-  it("marks a cancelled upload failed, which frees its storage, then removes any stored part", async () => {
+  it("marks a cancelled upload failed, then removes any stored part", async () => {
     const { deps, payload, storage } = fakes();
     await expect(
       discardUpload(deps, { userId: "u1", materialId: 7 }),
@@ -447,7 +519,7 @@ describe("discardUpload", () => {
     });
     expect(payload.update).toHaveBeenCalledWith({
       collection: "hosted-materials",
-      id: 7,
+      where: WHILE_UPLOADING,
       data: { status: "failed", failureReason: "cancelled" },
     });
     expect(storage.remove).toHaveBeenCalledWith([KEY]);
@@ -502,6 +574,18 @@ describe("discardUpload", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND", message: "UPLOAD_EXPIRED" });
     expect(getStorage).not.toHaveBeenCalled();
     expect(payload.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("discardUpload races", () => {
+  it("changes nothing when a finish won the race, and returns the ready file", async () => {
+    const { deps, storage } = fakes({
+      lostRace: material({ status: "ready" }),
+    });
+    await expect(
+      discardUpload(deps, { userId: "u1", materialId: 7 }),
+    ).resolves.toMatchObject({ id: 7, status: "ready" });
+    expect(storage.remove).not.toHaveBeenCalled();
   });
 });
 
@@ -615,8 +699,10 @@ describe("updateMaterial / deleteMaterial", () => {
     expect(payload.update).not.toHaveBeenCalled();
   });
 
-  it("removes the stored file, then the record", async () => {
-    const { deps, payload, storage } = fakes();
+  const settled = material({ status: "ready", createdAt: ago(86_400) });
+
+  it("removes the stored file, then the record, of a file whose upload grant has expired", async () => {
+    const { deps, payload, storage } = fakes({ material: settled });
     await expect(
       deleteMaterial(deps, { userId: "u1", materialId: 7 }),
     ).resolves.toEqual({ ok: true });
@@ -625,10 +711,37 @@ describe("updateMaterial / deleteMaterial", () => {
       collection: "hosted-materials",
       id: 7,
     });
+    expect(payload.update).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["an upload still in progress", material()],
+    [
+      "a ready file whose upload grant may still be live",
+      material({ status: "ready", createdAt: ago(UPLOAD_GRANT_SECONDS) }),
+    ],
+  ])(
+    "keeps the record of %s as failed, so it still counts, and removes the stored file",
+    async (_label, m) => {
+      const { deps, payload, storage } = fakes({ material: m });
+      await expect(
+        deleteMaterial(deps, { userId: "u1", materialId: 7 }),
+      ).resolves.toEqual({ ok: true });
+      expect(payload.update).toHaveBeenCalledWith({
+        collection: "hosted-materials",
+        id: 7,
+        data: { status: "failed", failureReason: "deleted" },
+      });
+      expect(storage.remove).toHaveBeenCalledWith([KEY]);
+      expect(payload.delete).not.toHaveBeenCalled();
+    },
+  );
+
   it("still deletes the record when S3 fails, and logs the leftover", async () => {
-    const { deps, payload, log } = fakes({ removeFails: true });
+    const { deps, payload, log } = fakes({
+      material: settled,
+      removeFails: true,
+    });
     await deleteMaterial(deps, { userId: "u1", materialId: 7 });
     expect(log).toHaveBeenCalledWith(
       "[classroomMaterials.deleteMaterial] removing the stored file failed",
@@ -648,6 +761,43 @@ describe("updateMaterial / deleteMaterial", () => {
     expect(getStorage).not.toHaveBeenCalled();
     expect(payload.delete).not.toHaveBeenCalled();
     expect(payload.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("listCourseMaterials", () => {
+  it("lists the course's files newest first, hiding cancelled and deleted uploads", async () => {
+    const { deps, payload } = fakes({
+      docs: [material({ status: "ready" })],
+    });
+    await expect(
+      listCourseMaterials(deps, { userId: "u1", courseId: 12 }),
+    ).resolves.toEqual([expect.objectContaining({ id: 7, status: "ready" })]);
+    expect(payload.find).toHaveBeenCalledWith({
+      collection: "hosted-materials",
+      where: {
+        and: [
+          { course: { equals: 12 } },
+          {
+            or: [
+              { status: { not_equals: "failed" } },
+              { failureReason: { exists: false } },
+              { failureReason: { not_in: ["cancelled", "deleted"] } },
+            ],
+          },
+        ],
+      },
+      sort: "-createdAt",
+      pagination: false,
+      depth: 0,
+    });
+  });
+
+  it("is only for the course author", async () => {
+    const { deps, payload } = fakes();
+    await expect(
+      listCourseMaterials(deps, { userId: "u2", courseId: 12 }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(payload.find).not.toHaveBeenCalled();
   });
 });
 
