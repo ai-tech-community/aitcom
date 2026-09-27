@@ -44,7 +44,8 @@ export function AsciiBuildScene() {
     return fitAsciiFrame(buildLines(phase, blink), cols, rows);
   }, []);
 
-  useAsciiScene(preRef, render, 75);
+  // Reduced motion shows the finished build (phase 3).
+  useAsciiScene(preRef, render, 75, 30);
 
   return (
     <pre

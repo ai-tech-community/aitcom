@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import type { RefObject } from "react";
+import { gridSizeFor, measureCharCell } from "@/components/ascii/measure";
+import { useAsciiMotion } from "@/components/ascii/use-ascii-motion";
 
 export function fitAsciiFrame(
   lines: string[],
@@ -37,42 +38,30 @@ export function fitAsciiFrame(
   return out.join("\n");
 }
 
+/**
+ * Animate a text-only ASCII scene into a `<pre>`. Colour comes from the
+ * element's CSS (currentColor), so no style is read per frame. Motion policy
+ * (reduced motion, off-screen, hidden tab) lives in `useAsciiMotion`.
+ */
 export function useAsciiScene(
   ref: RefObject<HTMLPreElement | null>,
   renderFrame: (tick: number, cols: number, rows: number) => string,
   frameMs = 80,
+  staticTick = 0,
 ) {
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    let raf = 0;
-    let tick = 0;
-    let last = 0;
-
-    const loop = (now: number) => {
+  useAsciiMotion(ref, {
+    frameMs,
+    staticTick,
+    measure: (el) => {
+      const { cols, rows } = gridSizeFor(
+        { width: el.clientWidth, height: el.clientHeight },
+        measureCharCell(el),
+      );
+      return cols >= 10 && rows >= 5 ? { cols, rows } : null;
+    },
+    draw: (tick, { cols, rows }) => {
       const node = ref.current;
-      if (!node) return;
-
-      if (now - last >= frameMs) {
-        last = now;
-
-        const rect = node.getBoundingClientRect();
-        const charW = 6.6;
-        const charH = 13;
-        const cols = Math.floor(rect.width / charW);
-        const rows = Math.floor(rect.height / charH);
-
-        if (cols >= 10 && rows >= 5) {
-          node.textContent = renderFrame(tick, cols, rows);
-          tick += 1;
-        }
-      }
-
-      raf = requestAnimationFrame(loop);
-    };
-
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [frameMs, ref, renderFrame]);
+      if (node) node.textContent = renderFrame(tick, cols, rows);
+    },
+  });
 }
