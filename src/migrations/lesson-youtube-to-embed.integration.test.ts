@@ -4,7 +4,10 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { db as Db } from "@/server/db";
 
-import type { up as Up } from "./20260928a_lesson_youtube_to_embed";
+import type {
+  applyYoutubeMigrationRow as ApplyRow,
+  up as Up,
+} from "./20260928a_lesson_youtube_to_embed";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -24,6 +27,7 @@ describe.skipIf(!RUN_DB)("migration 20260928a lesson youtube → embed [DB integ
     db: typeof Db;
     sql: typeof Sql;
     up: typeof Up;
+    applyRow: typeof ApplyRow;
   };
   let m: Mods;
   const created: number[] = [];
@@ -34,7 +38,7 @@ describe.skipIf(!RUN_DB)("migration 20260928a lesson youtube → embed [DB integ
       import("drizzle-orm"),
       import("./20260928a_lesson_youtube_to_embed"),
     ]);
-    m = { db, sql, up: migration.up };
+    m = { db, sql, up: migration.up, applyRow: migration.applyYoutubeMigrationRow };
   }, 120_000);
 
   afterEach(async () => {
@@ -111,6 +115,28 @@ describe.skipIf(!RUN_DB)("migration 20260928a lesson youtube → embed [DB integ
     const embedCount = JSON.stringify(embed.body).split('"blockType":"Embed"').length - 1;
     expect(embedCount).toBe(1);
     expect((await read(zoomId)).resources).toHaveLength(1);
+  });
+
+  it("does not overwrite a body edited after the migration read it", async () => {
+    const id = await insertLesson(YT, null);
+    const edited = {
+      root: { type: "root", children: [{ type: "paragraph", children: [{ type: "text", text: "edited meanwhile" }] }] },
+    };
+    await m.db.execute(m.sql`UPDATE "lessons" SET "body" = ${JSON.stringify(edited)}::jsonb WHERE "id" = ${id}`);
+    // The row as the migration's SELECT saw it, before the edit.
+    await m.applyRow(m.db as never, { id, youtubeUrl: YT, body: null, resourceUrls: null, maxOrder: null });
+    expect((await read(id)).body).toEqual(edited);
+  });
+
+  it("does not add the Video resource twice when another run added it meanwhile", async () => {
+    const zoom = "https://zoom.us/rec/share/abc";
+    const id = await insertLesson(zoom, null);
+    await m.db.execute(m.sql`
+      INSERT INTO "lessons_resources" ("_order", "_parent_id", "id", "label", "url")
+      VALUES (1, ${id}, ${`r-${id}`}, 'Video', ${zoom})`);
+    // The row as the migration's SELECT saw it, before the resource appeared.
+    await m.applyRow(m.db as never, { id, youtubeUrl: zoom, body: null, resourceUrls: null, maxOrder: null });
+    expect((await read(id)).resources).toHaveLength(1);
   });
 
   it("leaves lessons without a youtube_url alone", async () => {
