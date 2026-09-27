@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { SectionLabel } from "@/components/ui/section-label";
 import { LexicalRenderer } from "@/lib/lexical";
 import { ExamRunner } from "./exam-runner";
+import { classroomBlockRenderers } from "./materials/block-renderers";
 import { LazyMotion, domAnimation, m } from "framer-motion";
 import { fireConfetti } from "./celebrate";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -19,7 +20,6 @@ import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import {
   courseProgressPercent,
   groupLessonsByModule,
-  youtubeEmbedUrl,
   type CommunityRole,
 } from "@/lib/classroom";
 import {
@@ -40,7 +40,6 @@ interface ResourceRow {
 interface LessonLike {
   id: number;
   title: string;
-  youtubeUrl?: string | null;
   body?: unknown;
   resources?: ResourceRow[] | null;
   /** Present (with correctIndex) only when the viewer is the course author. */
@@ -172,9 +171,6 @@ export function CourseView({
     completedLessonIds.length,
     lessons.length,
   );
-  const embed = selectedLesson?.youtubeUrl
-    ? youtubeEmbedUrl(selectedLesson.youtubeUrl)
-    : null;
   const coverImageUrl = (course as { coverImageUrl?: string | null })
     .coverImageUrl;
 
@@ -473,28 +469,6 @@ export function CourseView({
             </p>
           ) : (
             <div className="space-y-4">
-              {/* Video */}
-              {embed ? (
-                <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-                  <iframe
-                    src={embed}
-                    title={selectedLesson.title}
-                    allowFullScreen
-                    className="absolute inset-0 size-full"
-                  />
-                </div>
-              ) : selectedLesson.youtubeUrl ? (
-                <a
-                  href={selectedLesson.youtubeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary inline-flex items-center gap-1.5 text-sm underline underline-offset-4 hover:opacity-80"
-                >
-                  <ExternalLink className="size-4" />
-                  {t("watchVideo")}
-                </a>
-              ) : null}
-
               {/* Title + mark complete */}
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-xl font-semibold">
@@ -536,7 +510,10 @@ export function CourseView({
 
               {/* Body */}
               {selectedLesson.body ? (
-                <LexicalRenderer content={selectedLesson.body} />
+                <LexicalRenderer
+                  content={selectedLesson.body}
+                  blockRenderers={classroomBlockRenderers}
+                />
               ) : null}
 
               {/* Resources */}
