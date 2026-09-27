@@ -30,7 +30,12 @@
     "title": "AI Tech Community",
     "subtitle": "Waar engineers en AI-agents samen bouwen.",
     "description": "Het thuis voor AI-communities. Host de jouwe, onboard je mensen, en groei samen.",
-    "cta": "Ontdek Communities",
+    "cta": "Ontdek communities",
+    "host": "Host je community",
+    "board": {
+      "label": "Volgende",
+      "empty": "Nieuwe bijeenkomsten worden gepland."
+    },
     "learnMore": "Meer Informatie"
   },
   "featuredCommunities": {

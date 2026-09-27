@@ -6,6 +6,7 @@ import {
   eventWallTimeToUtc,
   formatEventIsoWithOffset,
   formatEventTimeRange,
+  formatEventShortWhen,
   formatEventWhenText,
   formatInstantInZone,
   getTimeZoneAbbreviation,
@@ -397,5 +398,34 @@ describe("upcomingEvents", () => {
 
   it("drops rows without a usable date", () => {
     expect(upcomingEvents([{ date: "soon" }], now)).toEqual([]);
+  });
+});
+
+describe("formatEventShortWhen", () => {
+  it("renders a compact English day with the start time", () => {
+    expect(
+      formatEventShortWhen(
+        { date: "2026-10-10T00:00:00.000Z", startTime: "19:00" },
+        "en",
+      ),
+    ).toBe("Sat 10 Oct · 19:00");
+  });
+
+  it("renders Dutch without locale punctuation", () => {
+    expect(
+      formatEventShortWhen({ date: "2026-10-10", startTime: "19:00" }, "nl"),
+    ).toBe("za 10 okt · 19:00");
+  });
+
+  it("omits the time when there is no start time", () => {
+    expect(
+      formatEventShortWhen({ date: "2026-10-10", startTime: null }, "en"),
+    ).toBe("Sat 10 Oct");
+  });
+
+  it("falls back to the raw date for a corrupt row", () => {
+    expect(
+      formatEventShortWhen({ date: "garbage", startTime: null }, "en"),
+    ).toBe("garbage");
   });
 });

@@ -1,10 +1,14 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight } from "lucide-react";
-import { AsciiLandscape } from "@/components/ascii-landscape";
 import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
 import { SectionLabel as UiSectionLabel } from "@/components/ui/section-label";
+import { Button } from "@/components/ui/button";
+import { HomeTownSquareHero } from "@/components/home/town-square/home-town-square-hero";
+import type { NoticeBoardContent } from "@/components/home/town-square/town-square-scene";
+import { CREATE_COMMUNITY_HREF } from "@/components/communities/create-community-link";
+import { formatEventShortWhen } from "@/lib/event-time";
 import { Badge } from "@/components/ui/badge";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
@@ -32,18 +36,6 @@ function formatDate(dateStr: string): string {
   return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function GridMarkers() {
-  return (
-    <div className="flex w-full justify-between">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className="text-border font-mono text-sm select-none">
-          +
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-border border-b pb-4">
@@ -60,7 +52,7 @@ function StatItem({ label, value }: { label: string; value: string }) {
       <span className="text-muted-foreground font-mono text-xs tracking-wider sm:text-xs">
         {label}:
       </span>
-      <span className="text-primary font-mono text-xs font-semibold tracking-wider sm:text-xs">
+      <span className="text-foreground font-mono text-xs font-semibold tracking-wider sm:text-xs">
         {value}
       </span>
     </div>
@@ -102,6 +94,22 @@ export default async function Home() {
     locale: locale as "en" | "nl",
     draft: false,
   });
+
+  // The town-square notice board shows the real next event, or a calm
+  // "being planned" line — never blank, never invented.
+  const nextEvent = events[0];
+  const noticeBoard: NoticeBoardContent = nextEvent
+    ? {
+        kind: "event",
+        label: t("hero.board.label"),
+        title: nextEvent.title,
+        when: formatEventShortWhen(nextEvent, locale),
+      }
+    : {
+        kind: "empty",
+        label: t("hero.board.label"),
+        message: t("hero.board.empty"),
+      };
 
   const { docs: featuredSponsors } = await payload.find({
     collection: "sponsors",
@@ -176,20 +184,21 @@ export default async function Home() {
             "The home for AI communities. Host yours, onboard your people, and grow together.",
         }}
       />
-      {/* Hero with ASCII Landscape */}
-      <section className="relative min-h-[50vh] overflow-hidden sm:min-h-[70vh]">
-        <AsciiLandscape />
-        <div className="relative z-10 px-4 pt-8 pb-6 sm:px-12 sm:pt-16 sm:pb-12">
-          <GridMarkers />
-          <div className="mt-4 space-y-0 sm:mt-8">
-            <HeroTitle greeting="Welcome to" title={t("hero.title")} />
-          </div>
-          <p className="text-muted-foreground mt-4 max-w-175 text-sm leading-relaxed sm:mt-8 sm:text-xl">
-            {t("hero.description")}
-          </p>
-          <GridMarkers />
+      {/* Hero: the town square */}
+      <HomeTownSquareHero board={noticeBoard}>
+        <HeroTitle title={t("hero.title")} tagline={t("hero.subtitle")} />
+        <p className="text-muted-foreground mt-5 max-w-xl text-base leading-relaxed text-pretty sm:text-lg">
+          {t("hero.description")}
+        </p>
+        <div className="mt-8 grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
+          <Button asChild variant="ink" size="lg">
+            <Link href="/communities">{t("hero.cta")}</Link>
+          </Button>
+          <Button asChild variant="ink" size="lg">
+            <Link href={CREATE_COMMUNITY_HREF}>{t("hero.host")}</Link>
+          </Button>
         </div>
-      </section>
+      </HomeTownSquareHero>
 
       {/* Stats Ticker */}
       <div className="border-border grid grid-cols-2 gap-y-1 border-y px-4 py-3 sm:flex sm:items-center sm:gap-y-0 sm:overflow-x-auto sm:px-0 sm:py-2.5">

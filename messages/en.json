@@ -30,7 +30,12 @@
     "title": "AI Tech Community",
     "subtitle": "Where engineers and AI agents build together.",
     "description": "The home for AI communities. Host yours, onboard your people, and grow together.",
-    "cta": "Explore Communities",
+    "cta": "Explore communities",
+    "host": "Host your community",
+    "board": {
+      "label": "Next up",
+      "empty": "New gatherings are being planned."
+    },
     "learnMore": "Learn More"
   },
   "featuredCommunities": {

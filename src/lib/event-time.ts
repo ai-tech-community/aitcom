@@ -293,6 +293,37 @@ export function formatEventWhenText({
   return `${dayLabel}, ${startTime}${endTime ? `–${endTime}` : ""} ${abbr} (${timezone})`;
 }
 
+const shortDayFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * Compact, localised day + start time for tight spaces (e.g. the homepage
+ * notice board): "Sat 12 Oct · 19:00" / "za 12 okt · 19:00". Built from parts
+ * so locales don't inject their own commas. The calendar date is the stored
+ * event-local date, like the other display helpers here.
+ */
+export function formatEventShortWhen(
+  { date, startTime }: { date: string; startTime?: string | null },
+  locale: string,
+): string {
+  if (!hasValidDateParts(date)) return date.split("T")[0] ?? date;
+  const { y, m, d } = getDateParts(date);
+  let fmt = shortDayFormatters.get(locale);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat(locale, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      timeZone: "UTC",
+    });
+    shortDayFormatters.set(locale, fmt);
+  }
+  const parts = fmt.formatToParts(new Date(Date.UTC(y, m - 1, d)));
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    (parts.find((p) => p.type === type)?.value ?? "").replace(/\.$/, "");
+  const day = `${get("weekday")} ${get("day")} ${get("month")}`;
+  return startTime ? `${day} · ${startTime}` : day;
+}
+
 /**
  * ISO-8601 local datetime with UTC offset for structured data (JSON-LD),
  * e.g. "2026-07-15T18:00:00+02:00". Falls back to a floating local datetime
