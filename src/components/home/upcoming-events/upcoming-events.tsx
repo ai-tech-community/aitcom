@@ -3,6 +3,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
+import { MoreLink } from "@/components/ui/more-link";
 import { SectionLabel } from "@/components/ui/section-label";
 import { cn } from "@/lib/utils";
 import {
@@ -71,12 +72,7 @@ export function UpcomingEvents({
       )}
 
       <div className="mt-4 text-right">
-        <Link
-          href="/events"
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 rounded-sm font-mono text-xs tracking-wider transition-colors outline-none focus-visible:ring-[3px]"
-        >
-          {t("viewAll")} →
-        </Link>
+        <MoreLink href="/events">{t("viewAll")}</MoreLink>
       </div>
     </section>
   );

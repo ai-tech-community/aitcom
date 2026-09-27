@@ -8,6 +8,7 @@ import {
   type AsciiSceneLayer,
 } from "@/components/ascii/ascii-scene";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MoreLink } from "@/components/ui/more-link";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SpaceAvatar } from "@/components/communities/rooms/space-avatar";
 import { getInitials } from "@/lib/avatar";
@@ -81,12 +82,7 @@ export function FeaturedCommunities({
         ))}
       </ul>
       <div className="mt-4 text-right">
-        <Link
-          href="/communities"
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 rounded-sm font-mono text-xs tracking-wider transition-colors outline-none focus-visible:ring-[3px]"
-        >
-          {t("viewAll")} →
-        </Link>
+        <MoreLink href="/communities">{t("viewAll")}</MoreLink>
       </div>
     </section>
   );
