@@ -3220,8 +3220,8 @@
     "addLessonPlaceholder": "Add a lesson…",
     "addLessonLabel": "New lesson title",
     "addLessonToModuleLabel": "New lesson title in {module}",
-    "lessonActions": "Lesson actions",
-    "moduleActions": "Module actions",
+    "lessonActions": "Actions for {title}",
+    "moduleActions": "Actions for module {title}",
     "outlineActions": "More outline actions",
     "moveUp": "Move up",
     "moveDown": "Move down",
@@ -3252,6 +3252,7 @@
     "dragStart": "Picked up {title}.",
     "dragOver": "{title} is over {target}.",
     "dragEnd": "{title} dropped in {target}.",
-    "dragCancel": "Moving {title} was cancelled."
+    "dragCancel": "Moving {title} was cancelled.",
+    "renameModule": "Rename {title}"
   }
 }

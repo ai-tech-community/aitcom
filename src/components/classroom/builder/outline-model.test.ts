@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyLessonMove, buildOutline, moveByStep, readingOrder } from "./outline-model";
+import { applyLessonMove, buildOutline, moveByStep, nextModuleTitle, readingOrder } from "./outline-model";
 
 const modules = [
   { id: 10, title: "Basics", order: 0 },
@@ -84,5 +84,21 @@ describe("moveByStep", () => {
 describe("readingOrder", () => {
   it("flattens groups in display order", () => {
     expect(readingOrder(buildOutline(lessons, modules))).toEqual([1, 2, 3]);
+  });
+});
+
+describe("nextModuleTitle", () => {
+  it("numbers after the existing modules", () => {
+    expect(nextModuleTitle("Module", [])).toBe("Module 1");
+    expect(nextModuleTitle("Module", ["Module 1", "Module 2"])).toBe("Module 3");
+  });
+  it("skips a number already used after a delete", () => {
+    // "Module 2" was deleted: two modules left, but "Module 3" is taken.
+    expect(nextModuleTitle("Module", ["Module 1", "Module 3"])).toBe("Module 4");
+    expect(nextModuleTitle("Module", ["Intro", "Module 3", "Module 4"])).toBe("Module 5");
+  });
+  it("ignores renamed modules and surrounding spaces", () => {
+    expect(nextModuleTitle("Module", ["Basics", " Module 2 "])).toBe("Module 3");
+    expect(nextModuleTitle("Module", ["Basics", "Advanced"])).toBe("Module 3");
   });
 });

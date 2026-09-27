@@ -34,6 +34,7 @@ import {
   applyLessonMove,
   buildOutline,
   moveByStep,
+  nextModuleTitle,
   readingOrder,
   type LessonMove,
   type OutlineGroup,
@@ -61,12 +62,18 @@ type MoveResult = { groups: OutlineGroup[]; move: LessonMove };
  * is in flight (a drag, or a reorder the server has not answered yet): then
  * it shows the local order and ignores server data until every hold is
  * released, so a refetch can't snap a row back mid-move.
+ *
+ * `resyncWhenFree` marks the local order as untrusted (a move failed while
+ * another was still pending): once every hold is released, the outline takes
+ * the server's order even if the server data object has not changed.
  */
 function useOptimisticGroups(serverGroups: OutlineGroup[]) {
   const [groups, setGroups] = useState(serverGroups);
   const [basis, setBasis] = useState(serverGroups);
   const [holds, setHolds] = useState(0);
-  if (holds === 0 && basis !== serverGroups) {
+  const [stale, setStale] = useState(false);
+  if (holds === 0 && (stale || basis !== serverGroups)) {
+    setStale(false);
     setBasis(serverGroups);
     setGroups(serverGroups);
   }
@@ -79,7 +86,8 @@ function useOptimisticGroups(serverGroups: OutlineGroup[]) {
       setHolds((h) => h - 1);
     };
   }, []);
-  return { groups, setGroups, hold };
+  const resyncWhenFree = useCallback(() => setStale(true), []);
+  return { groups, setGroups, hold, resyncWhenFree };
 }
 
 function errorCode(err: unknown) {
@@ -123,7 +131,8 @@ export function CourseOutline({
     () => buildOutline(lessons, modules),
     [lessons, modules],
   );
-  const { groups, setGroups, hold } = useOptimisticGroups(serverGroups);
+  const { groups, setGroups, hold, resyncWhenFree } =
+    useOptimisticGroups(serverGroups);
   const lessonById = useMemo(
     () => new Map(lessons.map((l) => [l.id, l])),
     [lessons],
@@ -141,27 +150,44 @@ export function CourseOutline({
   const refresh = () => void utils.classrooms.get.invalidate();
   const fail = (err: unknown) =>
     toast.error(t(builderErrorKey(errorCode(err))));
-  const saved = { onSuccess: refresh, onError: fail };
+  /**
+   * Every write goes through mutateAsync: TanStack Query keeps per-call
+   * `mutate` callbacks only for the latest call on an observer, so an
+   * overlapping second call would silently drop the first one's handlers.
+   */
+  const run = async (write: () => Promise<unknown>) => {
+    try {
+      await write();
+      refresh();
+      return true;
+    } catch (err) {
+      fail(err);
+      return false;
+    }
+  };
 
-  const commitMove = (
+  // Numbers each move so a failure knows whether a later move is on screen.
+  const lastMove = useRef(0);
+  const commitMove = async (
     result: MoveResult,
     previous: OutlineGroup[] = groups,
   ) => {
     const release = hold();
+    const ticket = ++lastMove.current;
     setGroups(result.groups);
-    reorderLessons.mutate(
-      { courseId, ...result.move },
-      {
-        onError: (err) => {
-          setGroups(previous);
-          fail(err);
-        },
-        onSettled: () => {
-          release();
-          refresh();
-        },
-      },
-    );
+    try {
+      await reorderLessons.mutateAsync({ courseId, ...result.move });
+    } catch (err) {
+      fail(err);
+      // Put the old order back only if nothing newer is showing; otherwise
+      // `previous` would wipe the later move. Either way, the server's order
+      // wins once every pending move has settled.
+      if (ticket === lastMove.current) setGroups(previous);
+      resyncWhenFree();
+    } finally {
+      release();
+      refresh();
+    }
   };
 
   const drag = useLessonDrag({
@@ -169,7 +195,7 @@ export function CourseOutline({
     setGroups,
     hold,
     titleOf: (id) => lessonById.get(id)?.title ?? "",
-    onCommit: commitMove,
+    onCommit: (result, previous) => void commitMove(result, previous),
   });
 
   const numbers = new Map(readingOrder(groups).map((id, i) => [id, i + 1]));
@@ -196,38 +222,24 @@ export function CourseOutline({
     });
     if (!ok) return;
     const order = readingOrder(groups);
-    deleteLesson.mutate(
-      { lessonId },
-      {
-        onSuccess: () => {
-          const current = selectionRef.current;
-          if (current.kind === "lesson" && current.lessonId === lessonId) {
-            const next = order[order.indexOf(lessonId) + 1];
-            onSelect(
-              next === undefined
-                ? { kind: "details" }
-                : { kind: "lesson", lessonId: next },
-            );
-          }
-          refresh();
-        },
-        onError: fail,
-      },
-    );
-  };
-
-  const addLessonTo = async (moduleId: number | null, title: string) => {
-    try {
-      await addLesson.mutateAsync(
-        moduleId === null ? { courseId, title } : { courseId, title, moduleId },
+    if (!(await run(() => deleteLesson.mutateAsync({ lessonId })))) return;
+    const current = selectionRef.current;
+    if (current.kind === "lesson" && current.lessonId === lessonId) {
+      const next = order[order.indexOf(lessonId) + 1];
+      onSelect(
+        next === undefined
+          ? { kind: "details" }
+          : { kind: "lesson", lessonId: next },
       );
-      refresh();
-      return true;
-    } catch (err) {
-      fail(err);
-      return false;
     }
   };
+
+  const addLessonTo = (moduleId: number | null, title: string) =>
+    run(() =>
+      addLesson.mutateAsync(
+        moduleId === null ? { courseId, title } : { courseId, title, moduleId },
+      ),
+    );
 
   const moveModule = (moduleId: number, delta: -1 | 1) => {
     const ids = groups
@@ -237,7 +249,7 @@ export function CourseOutline({
     const to = from + delta;
     if (from === -1 || to < 0 || to >= ids.length) return;
     [ids[from], ids[to]] = [ids[to]!, ids[from]!];
-    reorderModules.mutate({ courseId, orderedIds: ids }, saved);
+    void run(() => reorderModules.mutateAsync({ courseId, orderedIds: ids }));
   };
 
   const removeModule = async (moduleId: number, title: string) => {
@@ -246,20 +258,18 @@ export function CourseOutline({
       confirmLabel: t("deleteModule"),
       destructive: true,
     });
-    if (ok) deleteModule.mutate({ moduleId }, saved);
+    if (ok) await run(() => deleteModule.mutateAsync({ moduleId }));
   };
 
-  const createModule = () => {
-    addModule.mutate(
-      { courseId, title: `${t("moduleLabel")} ${modules.length + 1}` },
-      {
-        onSuccess: ({ id }) => {
-          setRenamingModuleId(id);
-          refresh();
-        },
-        onError: fail,
-      },
+  const createModule = async () => {
+    const title = nextModuleTitle(
+      t("moduleLabel"),
+      modules.map((mod) => mod.title),
     );
+    await run(async () => {
+      const { id } = await addModule.mutateAsync({ courseId, title });
+      setRenamingModuleId(id);
+    });
   };
 
   const removeModules = async () => {
@@ -268,7 +278,7 @@ export function CourseOutline({
       confirmLabel: t("removeModules"),
       destructive: true,
     });
-    if (ok) dissolveModules.mutate({ courseId }, saved);
+    if (ok) await run(() => dissolveModules.mutateAsync({ courseId }));
   };
 
   /** Resolves after the server's copy is back, so the header can stop showing its local value. */
@@ -361,7 +371,7 @@ export function CourseOutline({
                         canMoveDown: moveByStep(groups, id, 1) !== null,
                         onMove: (delta) => {
                           const moved = moveByStep(groups, id, delta);
-                          if (moved) commitMove(moved);
+                          if (moved) void commitMove(moved);
                         },
                         moveTargets: moduleTargets.filter(
                           (m) => m.moduleId !== group.moduleId,
@@ -376,7 +386,7 @@ export function CourseOutline({
                               moduleId,
                               index: target.lessonIds.length,
                             });
-                          if (moved) commitMove(moved);
+                          if (moved) void commitMove(moved);
                         },
                         onDelete: () => void removeLesson(id),
                       }}
@@ -417,7 +427,7 @@ export function CourseOutline({
             variant="ghost"
             size="sm"
             disabled={addModule.isPending}
-            onClick={createModule}
+            onClick={() => void createModule()}
             className="text-muted-foreground hover:text-foreground flex-1 justify-start"
           >
             <Plus aria-hidden="true" />

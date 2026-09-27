@@ -48,6 +48,8 @@ export function AddLessonRow({
         }
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
+          // Enter or Escape while an input method (IME) is composing belongs to the IME.
+          if (e.nativeEvent.isComposing) return;
           if (e.key === "Enter") {
             e.preventDefault();
             void submit();

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import en from "../../../../messages/en.json";
 
@@ -109,12 +109,65 @@ function openMenu(trigger: HTMLElement) {
 
 function openRowMenu(id: number) {
   const row = screen.getByTestId(`outline-lesson-${id}`);
-  openMenu(within(row).getByRole("button", { name: "Lesson actions" }));
+  openMenu(within(row).getByRole("button", { name: /^Actions for / }));
 }
 
 function openModuleMenu(moduleId: number) {
   const header = screen.getByTestId(`outline-module-${moduleId}`);
-  openMenu(within(header).getByRole("button", { name: "Module actions" }));
+  openMenu(
+    within(header).getByRole("button", { name: /^Actions for module / }),
+  );
+}
+
+type Deferred = { resolve: (v?: unknown) => void; reject: (e: Error) => void };
+type Callbacks = {
+  onSuccess?: () => void;
+  onError?: (e: Error) => void;
+  onSettled?: () => void;
+};
+
+/**
+ * Behaves like a TanStack Query mutation observer: each call returns a promise
+ * the test settles, and per-call `mutate` callbacks survive only for the
+ * latest call (a second call replaces the first one's). Code that relies on
+ * per-call callbacks for overlapping writes fails against this mock.
+ */
+function observerLike(
+  fn: Mock<(input: unknown, callbacks?: Callbacks) => Promise<unknown>>,
+) {
+  const calls: Deferred[] = [];
+  let latest: Callbacks | undefined;
+  fn.mockImplementation((_input: unknown, callbacks?: Callbacks) => {
+    latest = callbacks;
+    const mine = callbacks;
+    const call = {} as Deferred;
+    const promise = new Promise((resolve, reject) => {
+      call.resolve = resolve;
+      call.reject = reject;
+    });
+    promise.then(
+      () => {
+        if (mine && mine === latest) {
+          mine.onSuccess?.();
+          mine.onSettled?.();
+        }
+      },
+      (e: Error) => {
+        if (mine && mine === latest) {
+          mine.onError?.(e);
+          mine.onSettled?.();
+        }
+      },
+    );
+    calls.push(call);
+    return promise;
+  });
+  return calls;
+}
+
+function clickMenuItem(rowId: number, name: string) {
+  openRowMenu(rowId);
+  fireEvent.click(screen.getByRole("menuitem", { name }));
 }
 
 /** The lesson number shown in a row, e.g. "3". */
@@ -175,10 +228,11 @@ describe("CourseOutline", () => {
     renderOutline();
     openRowMenu(2);
     fireEvent.click(screen.getByRole("menuitem", { name: "Move down" }));
-    expect(m.reorder).toHaveBeenCalledWith(
-      { courseId: 99, moduleId: 20, orderedIds: [2, 3] },
-      expect.anything(),
-    );
+    expect(m.reorder).toHaveBeenCalledWith({
+      courseId: 99,
+      moduleId: 20,
+      orderedIds: [2, 3],
+    });
   });
 
   it("shows a move at once, before the server answers", () => {
@@ -189,20 +243,12 @@ describe("CourseOutline", () => {
     expect(numberOf(1)).toBe("2");
   });
 
-  it("puts the order back and explains when the server refuses a move", () => {
-    m.reorder.mockImplementation(
-      (
-        _input,
-        opts: { onError: (e: Error) => void; onSettled?: () => void },
-      ) => {
-        opts.onError(new Error("LESSON_SET_MISMATCH"));
-        opts.onSettled?.();
-      },
-    );
+  it("puts the order back and explains when the server refuses a move", async () => {
+    m.reorder.mockRejectedValueOnce(new Error("LESSON_SET_MISMATCH"));
     renderOutline();
     openRowMenu(1);
     fireEvent.click(screen.getByRole("menuitem", { name: "Move down" }));
-    expect(numberOf(1)).toBe("1");
+    await vi.waitFor(() => expect(numberOf(1)).toBe("1"));
     expect(m.toastError).toHaveBeenCalledWith(
       en.classroomBuilder.errorOutlineOutOfDate,
     );
@@ -226,10 +272,11 @@ describe("CourseOutline", () => {
     // Only the other modules are offered.
     expect(screen.queryByRole("menuitem", { name: "Basics" })).toBeNull();
     fireEvent.click(screen.getByRole("menuitem", { name: "Advanced" }));
-    expect(m.reorder).toHaveBeenCalledWith(
-      { courseId: 99, moduleId: 20, orderedIds: [3, 1] },
-      expect.anything(),
-    );
+    expect(m.reorder).toHaveBeenCalledWith({
+      courseId: 99,
+      moduleId: 20,
+      orderedIds: [3, 1],
+    });
   });
 
   it("offers no 'Move to module' in a course without modules", () => {
@@ -253,9 +300,6 @@ describe("CourseOutline", () => {
   });
 
   it("deletes the selected lesson after confirming and selects the next one", async () => {
-    m.deleteLesson.mockImplementation(
-      (_input, opts: { onSuccess: () => void }) => opts.onSuccess(),
-    );
     const { onSelect } = renderOutline({
       selection: { kind: "lesson", lessonId: 2 },
     });
@@ -268,10 +312,7 @@ describe("CourseOutline", () => {
         destructive: true,
       }),
     );
-    expect(m.deleteLesson).toHaveBeenCalledWith(
-      { lessonId: 2 },
-      expect.anything(),
-    );
+    expect(m.deleteLesson).toHaveBeenCalledWith({ lessonId: 2 });
     expect(onSelect).toHaveBeenCalledWith<[BuilderSelection]>({
       kind: "lesson",
       lessonId: 3,
@@ -279,9 +320,6 @@ describe("CourseOutline", () => {
   });
 
   it("selects course details after deleting the selected last lesson", async () => {
-    m.deleteLesson.mockImplementation(
-      (_input, opts: { onSuccess: () => void }) => opts.onSuccess(),
-    );
     const { onSelect } = renderOutline({
       selection: { kind: "lesson", lessonId: 3 },
     });
@@ -363,7 +401,7 @@ describe("CourseOutline", () => {
 
   it("renames a module in place: Enter saves, Escape cancels", () => {
     renderOutline();
-    fireEvent.click(screen.getByRole("button", { name: "Basics" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rename Basics" }));
     const input = screen.getByRole("textbox", { name: "Module title" });
     fireEvent.change(input, { target: { value: "Foundations" } });
     fireEvent.keyDown(input, { key: "Enter" });
@@ -373,16 +411,16 @@ describe("CourseOutline", () => {
     });
     // The new name shows at once, not the old one while the server answers.
     expect(
-      screen.getByRole("button", { name: "Foundations" }),
+      screen.getByRole("button", { name: "Rename Foundations" }),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rename Advanced" }));
     const second = screen.getByRole("textbox", { name: "Module title" });
     fireEvent.change(second, { target: { value: "Nope" } });
     fireEvent.keyDown(second, { key: "Escape" });
     expect(m.renameModule).toHaveBeenCalledTimes(1);
     expect(
-      screen.getByRole("button", { name: "Advanced" }),
+      screen.getByRole("button", { name: "Rename Advanced" }),
     ).toBeInTheDocument();
   });
 
@@ -403,12 +441,12 @@ describe("CourseOutline", () => {
   it("shows the old module name again and explains when a rename fails", async () => {
     m.renameModule.mockRejectedValueOnce(new Error("FORBIDDEN"));
     renderOutline();
-    fireEvent.click(screen.getByRole("button", { name: "Basics" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rename Basics" }));
     const input = screen.getByRole("textbox", { name: "Module title" });
     fireEvent.change(input, { target: { value: "Foundations" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(
-      await screen.findByRole("button", { name: "Basics" }),
+      await screen.findByRole("button", { name: "Rename Basics" }),
     ).toBeInTheDocument();
     expect(m.toastError).toHaveBeenCalledWith(
       en.classroomBuilder.errorNotAllowed,
@@ -422,10 +460,10 @@ describe("CourseOutline", () => {
       screen.getByRole("menuitem", { name: "Move module up" }),
     ).toHaveAttribute("aria-disabled", "true");
     fireEvent.click(screen.getByRole("menuitem", { name: "Move module down" }));
-    expect(m.reorderModules).toHaveBeenCalledWith(
-      { courseId: 99, orderedIds: [20, 10] },
-      expect.anything(),
-    );
+    expect(m.reorderModules).toHaveBeenCalledWith({
+      courseId: 99,
+      orderedIds: [20, 10],
+    });
   });
 
   it("won't delete a module that still has lessons, and says why", () => {
@@ -445,25 +483,22 @@ describe("CourseOutline", () => {
     openModuleMenu(30);
     fireEvent.click(screen.getByRole("menuitem", { name: "Delete module" }));
     await vi.waitFor(() =>
-      expect(m.deleteModule).toHaveBeenCalledWith(
-        { moduleId: 30 },
-        expect.anything(),
-      ),
+      expect(m.deleteModule).toHaveBeenCalledWith({
+        moduleId: 30,
+      }),
     );
     expect(m.confirm).toHaveBeenCalled();
   });
 
-  it("adds a numbered module and opens its title for editing", () => {
-    m.addModule.mockImplementation(
-      (_input, opts: { onSuccess: (r: { id: number }) => void }) =>
-        opts.onSuccess({ id: 30 }),
-    );
+  it("adds a numbered module and opens its title for editing", async () => {
+    m.addModule.mockResolvedValueOnce({ id: 30 });
     const { rerenderWith } = renderOutline();
     fireEvent.click(screen.getByRole("button", { name: "Add module" }));
-    expect(m.addModule).toHaveBeenCalledWith(
-      { courseId: 99, title: "Module 3" },
-      expect.anything(),
-    );
+    expect(m.addModule).toHaveBeenCalledWith({
+      courseId: 99,
+      title: "Module 3",
+    });
+    await act(async () => undefined);
     rerenderWith({
       modules: [...modules, { id: 30, title: "Module 3", order: 2 }],
     });
@@ -480,10 +515,10 @@ describe("CourseOutline", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Group lessons into modules" }),
     );
-    expect(m.addModule).toHaveBeenCalledWith(
-      { courseId: 99, title: "Module 1" },
-      expect.anything(),
-    );
+    expect(m.addModule).toHaveBeenCalledWith({
+      courseId: 99,
+      title: "Module 1",
+    });
   });
 
   it("removes modules after confirming", async () => {
@@ -491,10 +526,9 @@ describe("CourseOutline", () => {
     openMenu(screen.getByRole("button", { name: "More outline actions" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Remove modules" }));
     await vi.waitFor(() =>
-      expect(m.dissolveModules).toHaveBeenCalledWith(
-        { courseId: 99 },
-        expect.anything(),
-      ),
+      expect(m.dissolveModules).toHaveBeenCalledWith({
+        courseId: 99,
+      }),
     );
   });
 
@@ -512,6 +546,7 @@ describe("CourseOutline", () => {
   });
 
   it("keeps a pending move on screen while the server data is still old", () => {
+    m.reorder.mockReturnValue(new Promise(() => undefined));
     const { rerenderWith } = renderOutline();
     openRowMenu(1);
     fireEvent.click(screen.getByRole("menuitem", { name: "Move down" }));
@@ -522,18 +557,125 @@ describe("CourseOutline", () => {
   it("shows no handles, menus or add rows when read-only", () => {
     renderOutline({ readOnly: true });
     expect(screen.queryByPlaceholderText("Add a lesson…")).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: /lesson actions/i }),
-    ).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: /module actions/i }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Actions for/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Rename/ })).toBeNull();
     expect(
       screen.queryByRole("button", { name: /Drag to reorder/ }),
     ).toBeNull();
     expect(screen.queryByRole("button", { name: "Add module" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Basics" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "More outline actions" }),
+    ).toBeNull();
     expect(screen.getByText("Basics")).toBeInTheDocument();
+  });
+
+  it("names each menu and rename button after what it acts on", () => {
+    renderOutline();
+    expect(
+      screen.getByRole("button", { name: "Actions for Setup" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Actions for module Advanced" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Rename Basics" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps following the server after two overlapping moves settle", async () => {
+    const calls = observerLike(m.reorder);
+    const { rerenderWith } = renderOutline();
+    clickMenuItem(1, "Move down");
+    clickMenuItem(3, "Move up");
+    expect(calls).toHaveLength(2);
+    await act(async () => {
+      calls[0]!.resolve();
+      calls[1]!.resolve();
+    });
+    // A lesson added afterwards (server data changes) must appear.
+    act(() =>
+      rerenderWith({
+        lessons: [
+          ...lessons,
+          { id: 4, title: "Scaling", module: 20, order: 1 },
+        ],
+      }),
+    );
+    expect(screen.getByTestId("outline-lesson-4")).toBeInTheDocument();
+    expect(numberOf(4)).toBe("4");
+  });
+
+  it("a failed move does not wipe a later pending move; the server order wins once both settle", async () => {
+    const calls = observerLike(m.reorder);
+    renderOutline();
+    clickMenuItem(1, "Move down"); // A: Basics [2, 1]
+    clickMenuItem(3, "Move up"); // B: Basics [2, 1, 3], Advanced empty
+    const advanced = () => screen.getByTestId("outline-group-20");
+
+    await act(async () => calls[0]!.reject(new Error("LESSON_SET_MISMATCH")));
+    expect(m.toastError).toHaveBeenCalledWith(
+      en.classroomBuilder.errorOutlineOutOfDate,
+    );
+    // B is still on screen.
+    expect(
+      within(advanced()).getByText("Drop a lesson here"),
+    ).toBeInTheDocument();
+    expect(numberOf(2)).toBe("1");
+
+    await act(async () => calls[1]!.resolve());
+    // Server data never changed in this test, so its order comes back.
+    expect(numberOf(1)).toBe("1");
+    expect(numberOf(2)).toBe("2");
+    expect(
+      within(advanced()).getByTestId("outline-lesson-3"),
+    ).toBeInTheDocument();
+  });
+
+  it("hands the selection on after a delete even when another delete overlaps it", async () => {
+    const calls = observerLike(m.deleteLesson);
+    const { onSelect } = renderOutline({
+      selection: { kind: "lesson", lessonId: 1 },
+    });
+    clickMenuItem(1, "Delete lesson");
+    await vi.waitFor(() => expect(calls).toHaveLength(1));
+    clickMenuItem(3, "Delete lesson");
+    await vi.waitFor(() => expect(calls).toHaveLength(2));
+    await act(async () => {
+      calls[0]!.resolve();
+      calls[1]!.resolve();
+    });
+    expect(onSelect).toHaveBeenCalledWith({ kind: "lesson", lessonId: 2 });
+  });
+
+  it("does not add a lesson while an input method is still composing", () => {
+    renderOutline();
+    const input = screen.getAllByPlaceholderText("Add a lesson…")[0]!;
+    fireEvent.change(input, { target: { value: "日本" } });
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    expect(m.addLesson).not.toHaveBeenCalled();
+    expect(input).toHaveValue("日本");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(m.addLesson).toHaveBeenCalledWith({
+      courseId: 99,
+      title: "日本",
+      moduleId: 10,
+    });
+  });
+
+  it("does not reuse a module number left by a deleted module", () => {
+    renderOutline({
+      modules: [
+        { id: 10, title: "Module 1", order: 0 },
+        { id: 30, title: "Module 3", order: 1 },
+      ],
+      lessons: lessons.filter((l) => l.module === 10),
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add module" }));
+    expect(m.addModule).toHaveBeenCalledWith({
+      courseId: 99,
+      title: "Module 4",
+    });
   });
 
   it("gives every lesson a labelled drag handle", () => {

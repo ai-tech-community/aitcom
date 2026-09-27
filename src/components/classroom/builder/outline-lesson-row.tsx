@@ -1,6 +1,5 @@
 "use client";
 
-import { useId } from "react";
 import { useTranslations } from "next-intl";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -64,13 +63,7 @@ export function ActiveMarker({ active }: { active: boolean }) {
   ) : null;
 }
 
-function LessonLabel({
-  lesson,
-  titleId,
-}: {
-  lesson: OutlineLessonView;
-  titleId?: string;
-}) {
+function LessonLabel({ lesson }: { lesson: OutlineLessonView }) {
   const t = useTranslations("classroomBuilder");
   return (
     <>
@@ -80,9 +73,7 @@ function LessonLabel({
       >
         {lesson.number}
       </span>{" "}
-      <span id={titleId} className="min-w-0 flex-1 truncate">
-        {lesson.title}
-      </span>
+      <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
       {lesson.hasQuiz ? (
         <span className="text-muted-foreground shrink-0" title={t("hasQuiz")}>
           <ListChecks aria-hidden="true" className="size-3.5" />
@@ -113,7 +104,6 @@ export function OutlineLessonRow({
   actions: LessonRowActions;
 }) {
   const t = useTranslations("classroomBuilder");
-  const titleId = useId();
   const {
     attributes,
     listeners,
@@ -154,19 +144,19 @@ export function OutlineLessonRow({
         className={outlineRowClass(active)}
       >
         <ActiveMarker active={active} />
-        <LessonLabel lesson={lesson} titleId={titleId} />
+        <LessonLabel lesson={lesson} />
       </button>
 
-      {readOnly ? null : <LessonMenu titleId={titleId} actions={actions} />}
+      {readOnly ? null : <LessonMenu title={lesson.title} actions={actions} />}
     </li>
   );
 }
 
 function LessonMenu({
-  titleId,
+  title,
   actions,
 }: {
-  titleId: string;
+  title: string;
   actions: LessonRowActions;
 }) {
   const t = useTranslations("classroomBuilder");
@@ -176,8 +166,7 @@ function LessonMenu({
         <Button
           variant="ghost"
           size="icon"
-          aria-label={t("lessonActions")}
-          aria-describedby={titleId}
+          aria-label={t("lessonActions", { title })}
           className="size-7 shrink-0"
         >
           <MoreHorizontal aria-hidden="true" />

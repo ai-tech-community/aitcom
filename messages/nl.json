@@ -3220,8 +3220,8 @@
     "addLessonPlaceholder": "Voeg een les toe…",
     "addLessonLabel": "Titel van de nieuwe les",
     "addLessonToModuleLabel": "Titel van de nieuwe les in {module}",
-    "lessonActions": "Lesacties",
-    "moduleActions": "Moduleacties",
+    "lessonActions": "Acties voor {title}",
+    "moduleActions": "Acties voor module {title}",
     "outlineActions": "Meer acties voor de indeling",
     "moveUp": "Omhoog",
     "moveDown": "Omlaag",
@@ -3252,6 +3252,7 @@
     "dragStart": "{title} opgepakt.",
     "dragOver": "{title} is boven {target}.",
     "dragEnd": "{title} neergezet in {target}.",
-    "dragCancel": "Verplaatsen van {title} is geannuleerd."
+    "dragCancel": "Verplaatsen van {title} is geannuleerd.",
+    "renameModule": "{title} hernoemen"
   }
 }

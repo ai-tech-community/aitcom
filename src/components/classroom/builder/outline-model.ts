@@ -70,3 +70,16 @@ export function moveByStep(groups: OutlineGroup[], lessonId: number, delta: -1 |
 export function readingOrder(groups: OutlineGroup[]): number[] {
   return groups.flatMap((g) => g.lessonIds);
 }
+
+/**
+ * The default name for a new module: "<label> <n>", where n starts after the
+ * current module count and skips any number an existing "<label> <n>" title
+ * already uses (a deleted module can leave "Module 3" behind with only two
+ * modules left).
+ */
+export function nextModuleTitle(label: string, existingTitles: readonly string[]): string {
+  const taken = new Set(existingTitles.map((title) => title.trim()));
+  let n = existingTitles.length + 1;
+  while (taken.has(`${label} ${n}`)) n++;
+  return `${label} ${n}`;
+}

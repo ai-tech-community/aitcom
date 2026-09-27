@@ -56,6 +56,7 @@ export function OutlineModuleHeader({
   onEditingDone: () => void;
   actions: ModuleHeaderActions;
 }) {
+  const t = useTranslations("classroomBuilder");
   const [editingTitle, setEditingTitle] = useState(startEditing && !readOnly);
   const [editingSummary, setEditingSummary] = useState(false);
   // What the author just saved, shown until the server's copy arrives, so the
@@ -97,6 +98,7 @@ export function OutlineModuleHeader({
           <button
             type="button"
             onClick={() => setEditingTitle(true)}
+            aria-label={t("renameModule", { title })}
             className="hover:bg-secondary/50 focus-visible:ring-ring/50 min-w-0 flex-1 truncate rounded-md px-2 py-1 text-left text-sm font-semibold outline-none focus-visible:ring-[3px]"
           >
             {title}
@@ -104,6 +106,7 @@ export function OutlineModuleHeader({
         )}
         {readOnly ? null : (
           <ModuleMenu
+            title={title}
             hasSummary={!!summary}
             canMoveUp={canMoveUp}
             canMoveDown={canMoveDown}
@@ -221,6 +224,7 @@ function SummaryEditor({
 }
 
 function ModuleMenu({
+  title,
   hasSummary,
   canMoveUp,
   canMoveDown,
@@ -228,6 +232,7 @@ function ModuleMenu({
   onEditSummary,
   actions,
 }: {
+  title: string;
   hasSummary: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
@@ -243,7 +248,7 @@ function ModuleMenu({
         <Button
           variant="ghost"
           size="icon"
-          aria-label={t("moduleActions")}
+          aria-label={t("moduleActions", { title })}
           className="size-7 shrink-0"
         >
           <MoreHorizontal aria-hidden="true" />
