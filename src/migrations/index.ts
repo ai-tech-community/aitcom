@@ -112,6 +112,8 @@ import * as migration_20260924b_startup_country from "./20260924b_startup_countr
 import * as migration_20260924c_startup_role_search from "./20260924c_startup_role_search";
 import * as migration_20260925a_builder_public_events from "./20260925a_builder_public_events";
 import * as migration_20260925b_tedai_vienna from "./20260925b_tedai_vienna";
+import * as migration_20260927a_points_boosts_locked_docs_rels from "./20260927a_points_boosts_locked_docs_rels";
+import * as migration_20260927b_feed_post_counter_repair from "./20260927b_feed_post_counter_repair";
 
 export const migrations = [
   {
@@ -683,5 +685,15 @@ export const migrations = [
     up: migration_20260925b_tedai_vienna.up,
     down: migration_20260925b_tedai_vienna.down,
     name: "20260925b_tedai_vienna",
+  },
+  {
+    up: migration_20260927a_points_boosts_locked_docs_rels.up,
+    down: migration_20260927a_points_boosts_locked_docs_rels.down,
+    name: "20260927a_points_boosts_locked_docs_rels",
+  },
+  {
+    up: migration_20260927b_feed_post_counter_repair.up,
+    down: migration_20260927b_feed_post_counter_repair.down,
+    name: "20260927b_feed_post_counter_repair",
   },
 ];

@@ -10,6 +10,7 @@ const hooks = {
 const payload = {
   findByID: vi.fn(),
   find: vi.fn(),
+  count: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
   delete: vi.fn(),
@@ -79,6 +80,7 @@ beforeEach(() => {
   payload.find.mockResolvedValue({ docs: [] });
   payload.create.mockResolvedValue({ id: 9 });
   payload.update.mockResolvedValue({});
+  payload.count.mockResolvedValue({ totalDocs: 0 });
 });
 
 describe("feed.toggleLike", () => {
@@ -162,6 +164,19 @@ describe("feed.addComment", () => {
     expect(payload.create).toHaveBeenCalledWith(
       expect.objectContaining({ collection: "feed-comments" }),
     );
+  });
+
+  it("stores the post's recounted comment total after a comment", async () => {
+    hooks.membership = { role: "member" };
+    payload.count.mockImplementation(async ({ collection }) => ({
+      totalDocs: collection === "feed-comments" ? 3 : 1,
+    }));
+    await caller().feed.addComment({ postId: 5, content: "hi" });
+    expect(payload.update).toHaveBeenCalledWith({
+      collection: "feed-posts",
+      id: 5,
+      data: { likeCount: 1, commentCount: 3 },
+    });
   });
 
   it("still refuses a non-member commenting on a public post", async () => {

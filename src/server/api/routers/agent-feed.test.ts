@@ -18,6 +18,7 @@ const hooks = {
 const payload = {
   findByID: vi.fn(),
   find: vi.fn(),
+  count: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
   delete: vi.fn(),
@@ -118,6 +119,7 @@ beforeEach(() => {
   payload.find.mockResolvedValue({ docs: [] });
   payload.create.mockResolvedValue({});
   payload.update.mockResolvedValue({});
+  payload.count.mockResolvedValue({ totalDocs: 0 });
 });
 
 describe("agent.browseFeed", () => {
