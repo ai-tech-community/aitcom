@@ -2491,7 +2491,6 @@ export const lessons = pgTable(
     module: numeric("module", { mode: "number" }),
     title: varchar("title").notNull(),
     order: numeric("order", { mode: "number" }).default(0),
-    youtubeUrl: varchar("youtube_url"),
     body: jsonb("body"),
     examMandatory: boolean("exam_mandatory").default(false),
     examPassThreshold: numeric("exam_pass_threshold", {

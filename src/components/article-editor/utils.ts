@@ -3,6 +3,9 @@ import { SLASH_COMMANDS } from "./types";
 import type { SerializedEditorState } from "@payloadcms/richtext-lexical/lexical";
 import { slugify } from "@/lib/text-utils";
 
+/** A Payload block stored as `{type:"block", fields.blockType}` that the editor handles as its own node type. */
+export type BlockNodeMapping = { blockType: string; nodeType: string };
+
 export function extractPlainText(nodes: unknown): string {
   if (!Array.isArray(nodes)) return "";
 
@@ -61,11 +64,15 @@ export function getHeadingOutline(
     });
 }
 
-export function filterSlashCommands(query: string): SlashCommand[] {
+export function filterSlashCommands(
+  query: string,
+  extra: readonly SlashCommand[] = [],
+): SlashCommand[] {
+  const all = [...SLASH_COMMANDS, ...extra];
   const q = query.trim().toLowerCase();
-  if (!q) return SLASH_COMMANDS;
+  if (!q) return all;
 
-  return SLASH_COMMANDS.filter((command) => {
+  return all.filter((command) => {
     return (
       command.label.toLowerCase().includes(q) ||
       command.id.toLowerCase().includes(q) ||
@@ -80,6 +87,7 @@ export function generateSlug(title: string): string {
 
 export function preprocessEditorState(
   content: SerializedEditorState | undefined,
+  extra: readonly BlockNodeMapping[] = [],
 ): string | undefined {
   if (!content) return undefined;
   type MutableSerializedNode = {
@@ -111,6 +119,11 @@ export function preprocessEditorState(
       if (node.type === "block" && node.fields?.blockType === "Image") {
         node.type = "image"; // remap for our ImageNode
       }
+      const mapped =
+        node.type === "block"
+          ? extra.find((e) => e.blockType === node.fields?.blockType)
+          : undefined;
+      if (mapped) node.type = mapped.nodeType;
       if (Array.isArray(node.children)) walkNodes(node.children);
     }
   }
@@ -121,6 +134,7 @@ export function preprocessEditorState(
 
 export function postprocessEditorState(
   state: SerializedEditorState,
+  extra: readonly BlockNodeMapping[] = [],
 ): SerializedEditorState {
   type MutableSerializedNode = {
     type?: string;
@@ -165,6 +179,7 @@ export function postprocessEditorState(
           delete node.alt;
         }
       }
+      if (extra.some((e) => e.nodeType === node.type)) node.type = "block";
       if (Array.isArray(node.children)) walkNodes(node.children);
     }
   }

@@ -58,7 +58,6 @@ export const Lessons: CollectionConfig = {
     },
     { name: "title", type: "text", required: true, maxLength: 200 },
     { name: "order", type: "number", defaultValue: 0, index: true },
-    { name: "youtubeUrl", type: "text", maxLength: 500 },
     {
       name: "body",
       type: "richText",

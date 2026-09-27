@@ -482,7 +482,6 @@ export const classroomsRouter = createTRPCRouter({
       z.object({
         courseId: z.number(),
         title: z.string().min(1).max(200),
-        youtubeUrl: z.string().url().max(500).optional(),
         body: z.any().optional(),
         resources: z
           .array(
@@ -563,7 +562,6 @@ export const classroomsRouter = createTRPCRouter({
           title: input.title,
           order: lessonOrder,
           ...(targetModuleId !== null ? { module: targetModuleId } : {}),
-          youtubeUrl: input.youtubeUrl ?? undefined,
           body: input.body ?? undefined,
           resources: input.resources,
           ...(input.examMandatory !== undefined
@@ -590,7 +588,6 @@ export const classroomsRouter = createTRPCRouter({
       z.object({
         lessonId: z.number(),
         title: z.string().min(1).max(200).optional(),
-        youtubeUrl: z.string().url().max(500).nullable().optional(),
         body: z.any().optional(),
         order: z.number().optional(),
         resources: z
@@ -640,8 +637,6 @@ export const classroomsRouter = createTRPCRouter({
       assertLessonBodyEmbeds(input.body);
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
-      if (input.youtubeUrl !== undefined)
-        data.youtubeUrl = input.youtubeUrl ?? undefined;
       if (input.body !== undefined) data.body = input.body;
       if (input.order !== undefined) data.order = input.order;
       if (input.resources !== undefined) data.resources = input.resources;

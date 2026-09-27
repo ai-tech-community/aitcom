@@ -17,7 +17,9 @@ import {
   $isRangeSelection,
   FORMAT_TEXT_COMMAND,
   type EditorState,
+  type Klass,
   type LexicalEditor,
+  type LexicalNode,
   type SerializedEditorState,
 } from "@payloadcms/richtext-lexical/lexical";
 import { LexicalComposer } from "@payloadcms/richtext-lexical/lexical/react/LexicalComposer";
@@ -80,6 +82,7 @@ import {
   filterSlashCommands,
   preprocessEditorState,
   postprocessEditorState,
+  type BlockNodeMapping,
 } from "./utils";
 import { SlashCommandMenu } from "./slash-command-menu";
 import { FloatingToolbar } from "./floating-toolbar";
@@ -100,6 +103,13 @@ function EditorBridge({
   return null;
 }
 
+type ToolbarItem = {
+  key: string;
+  title: string;
+  icon: ReactNode;
+  run: () => void;
+};
+
 /** Always-visible formatting toolbar — dispatches the same Lexical commands as
  *  the slash menu / floating toolbar, so the editor is usable without knowing
  *  the keyboard tricks. Block-level actions route through `onBlock` (the
@@ -108,9 +118,12 @@ function EditorBridge({
 function EditorToolbar({
   editor,
   onBlock,
+  extraItems,
 }: {
   editor: LexicalEditor | null;
   onBlock: (id: string) => void;
+  /** Buttons contributed by editor extensions, appended after the built-ins. */
+  extraItems: readonly ToolbarItem[];
 }) {
   // Track which inline formats / block type are active under the caret so the
   // matching toolbar buttons can highlight.
@@ -158,12 +171,7 @@ function EditorToolbar({
     if (url) editor.dispatchCommand(TOGGLE_LINK_COMMAND, url);
   };
 
-  const items: {
-    key: string;
-    title: string;
-    icon: ReactNode;
-    run: () => void;
-  }[] = [
+  const items: ToolbarItem[] = [
     {
       key: "bold",
       title: "Bold",
@@ -240,7 +248,7 @@ function EditorToolbar({
 
   return (
     <div className="border-border flex flex-wrap items-center gap-0.5 border-b px-2 py-1.5">
-      {items.map((it) => (
+      {[...items, ...extraItems].map((it) => (
         <button
           key={it.key}
           type="button"
@@ -263,12 +271,24 @@ function EditorToolbar({
   );
 }
 
+/** A feature-owned block node (e.g. classroom Embed): registered, insertable from the slash menu and toolbar, and mapped to/from its stored Payload block. */
+export type RichTextEditorExtension = BlockNodeMapping & {
+  node: Klass<LexicalNode>;
+  command: SlashCommand;
+  toolbar: { title: string; icon: ReactNode };
+  create: () => LexicalNode;
+};
+
+const NO_EXTENSIONS: readonly RichTextEditorExtension[] = [];
+
 export interface RichTextEditorProps {
   /** Lexical editorState JSON to seed the editor with, or null/undefined for empty. */
   initialValue?: unknown;
   /** Called (debounced) with the post-processed lexical editorState JSON on every change. */
   onChange: (state: unknown) => void;
   placeholder?: string;
+  /** Feature-owned block nodes. Pass a module-level constant (stable identity). */
+  extensions?: readonly RichTextEditorExtension[];
 }
 
 /**
@@ -283,6 +303,7 @@ export function RichTextEditor({
   initialValue,
   onChange,
   placeholder,
+  extensions = NO_EXTENSIONS,
 }: RichTextEditorProps) {
   const [slash, slashDispatch] = useReducer(slashMenuReducer, {
     open: false,
@@ -335,9 +356,13 @@ export function RichTextEditor({
         HorizontalRuleNode,
         CodeBlockNode,
         ImageNode,
+        ...extensions.map((e) => e.node),
       ],
       editorState: initialValue
-        ? preprocessEditorState(initialValue as SerializedEditorState)
+        ? preprocessEditorState(
+            initialValue as SerializedEditorState,
+            extensions,
+          )
         : undefined,
       onError: (error: Error) => console.error("[RichTextEditor]", error),
     }),
@@ -352,21 +377,26 @@ export function RichTextEditor({
     return !Array.isArray(children) || children.length === 0;
   });
 
-  const handleEditorChange = useCallback((edState: EditorState) => {
-    edState.read(() => {
-      const root = edState.toJSON().root as { children?: unknown[] };
-      const children = root?.children ?? [];
-      const empty =
-        children.length === 0 ||
-        (children.length === 1 &&
-          (children[0] as { children?: unknown[] })?.children?.length === 0);
-      setIsEmpty(empty);
-    });
-    if (serializeTimer.current) clearTimeout(serializeTimer.current);
-    serializeTimer.current = setTimeout(() => {
-      onChangeRef.current(postprocessEditorState(edState.toJSON()));
-    }, 150);
-  }, []);
+  const handleEditorChange = useCallback(
+    (edState: EditorState) => {
+      edState.read(() => {
+        const root = edState.toJSON().root as { children?: unknown[] };
+        const children = root?.children ?? [];
+        const empty =
+          children.length === 0 ||
+          (children.length === 1 &&
+            (children[0] as { children?: unknown[] })?.children?.length === 0);
+        setIsEmpty(empty);
+      });
+      if (serializeTimer.current) clearTimeout(serializeTimer.current);
+      serializeTimer.current = setTimeout(() => {
+        onChangeRef.current(
+          postprocessEditorState(edState.toJSON(), extensions),
+        );
+      }, 150);
+    },
+    [extensions],
+  );
 
   const insertParagraphText = useCallback(
     (editor: LexicalEditor, text: string) => {
@@ -389,6 +419,18 @@ export function RichTextEditor({
   const executeSlashCommand = useCallback(
     (id: string) => {
       if (!editorRef) return;
+
+      const extension = extensions.find((e) => e.command.id === id);
+      if (extension) {
+        editorRef.update(() => {
+          const selection = $getSelection();
+          if ($isRangeSelection(selection)) {
+            selection.insertNodes([extension.create(), $createParagraphNode()]);
+          }
+        });
+        slashDispatch({ type: "CLOSE" });
+        return;
+      }
 
       if (id === "h2" || id === "h3") {
         editorRef.update(() => {
@@ -484,12 +526,17 @@ export function RichTextEditor({
 
       slashDispatch({ type: "CLOSE" });
     },
-    [editorRef, insertParagraphText],
+    [editorRef, extensions, insertParagraphText],
+  );
+
+  const extensionCommands = useMemo(
+    () => extensions.map((e) => e.command),
+    [extensions],
   );
 
   const filteredSlashCommands = useMemo(
-    () => filterSlashCommands(slash.query),
-    [slash.query],
+    () => filterSlashCommands(slash.query, extensionCommands),
+    [slash.query, extensionCommands],
   );
 
   const handleEditorKeyDown = useCallback(
@@ -578,7 +625,16 @@ export function RichTextEditor({
 
   return (
     <div className="border-border overflow-hidden rounded-lg border">
-      <EditorToolbar editor={editorRef} onBlock={executeSlashCommand} />
+      <EditorToolbar
+        editor={editorRef}
+        onBlock={executeSlashCommand}
+        extraItems={extensions.map((e) => ({
+          key: e.command.id,
+          title: e.toolbar.title,
+          icon: e.toolbar.icon,
+          run: () => executeSlashCommand(e.command.id),
+        }))}
+      />
       <div className="editor-anchor relative" ref={setEditorAnchor}>
         <LexicalComposer initialConfig={initialConfig}>
           <EditorBridge onReady={setEditorRef} />
