@@ -184,9 +184,6 @@
     "tabEvents": "Evenementen",
     "tabPending": "In afwachting",
     "tabMySubmissions": "Mijn inzendingen",
-    "headerDate": "Datum",
-    "headerName": "Naam",
-    "headerType": "Type",
     "noEventsPendingApproval": "Geen evenementen in afwachting van goedkeuring.",
     "noSubmissionsYet": "Nog geen inzendingen.",
     "conflictHintIncomplete": "Kies een datum en doelgroep om te controleren op planningsconflicten.",
@@ -241,7 +238,8 @@
     "opensInNewTab": "opent in een nieuw tabblad",
     "pastSection": "Eerdere evenementen",
     "listsLabel": "Evenementlijsten",
-    "editShort": "Bewerken"
+    "editShort": "Bewerken",
+    "nextUp": "Volgende"
   },
   "blog": {
     "title": "Blog",
@@ -2178,7 +2176,6 @@
       "settings": "Instellingen",
       "upcomingEvents": "Aankomende evenementen",
       "topIdeas": "Top ideeën",
-      "viewAll": "ALLES BEKIJKEN +",
       "votes": "{count} stemmen",
       "replies": "{count, plural, one {# reactie} other {# reacties}}",
       "insights": "Insights",

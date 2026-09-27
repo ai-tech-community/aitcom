@@ -184,9 +184,6 @@
     "tabEvents": "Events",
     "tabPending": "Pending",
     "tabMySubmissions": "My submissions",
-    "headerDate": "Date",
-    "headerName": "Name",
-    "headerType": "Type",
     "noEventsPendingApproval": "No events pending approval.",
     "noSubmissionsYet": "No submissions yet.",
     "conflictHintIncomplete": "Pick a date and audience to check for schedule conflicts.",
@@ -241,7 +238,8 @@
     "opensInNewTab": "opens in a new tab",
     "pastSection": "Past events",
     "listsLabel": "Event lists",
-    "editShort": "Edit"
+    "editShort": "Edit",
+    "nextUp": "Next up"
   },
   "blog": {
     "title": "Blog",
@@ -2178,7 +2176,6 @@
       "settings": "Settings",
       "upcomingEvents": "Upcoming Events",
       "topIdeas": "Top Ideas",
-      "viewAll": "VIEW ALL +",
       "votes": "{count} votes",
       "replies": "{count, plural, one {# reply} other {# replies}}",
       "insights": "Insights",

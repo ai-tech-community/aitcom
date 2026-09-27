@@ -22,7 +22,7 @@ export function EventRowAnchor({
   className: string;
   linkClassName: string;
   children: ReactNode;
-} & { [key: `data-${string}`]: string | boolean | undefined }) {
+} & Partial<Record<`data-${string}`, string | boolean>>) {
   const t = useTranslations("events");
   if (!link) {
     return (
