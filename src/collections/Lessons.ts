@@ -28,6 +28,11 @@ const ImageBlock: Block = {
   ],
 };
 
+const EmbedBlock: Block = {
+  slug: "Embed",
+  fields: [{ name: "url", type: "text", required: true, maxLength: 2000 }],
+};
+
 export const Lessons: CollectionConfig = {
   slug: "lessons",
   admin: {
@@ -61,7 +66,7 @@ export const Lessons: CollectionConfig = {
         features: ({ defaultFeatures }) => [
           ...defaultFeatures,
           BlocksFeature({
-            blocks: [CodeBlock({ languages: codeLanguages }), ImageBlock],
+            blocks: [CodeBlock({ languages: codeLanguages }), ImageBlock, EmbedBlock],
           }),
         ],
       }),

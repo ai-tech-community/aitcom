@@ -37,6 +37,7 @@ import {
   type ExamQuestion,
 } from "@/lib/classroom";
 import { awardXp, awardBadge, XP_AMOUNTS } from "@/lib/gamification";
+import { invalidEmbedUrls } from "@/lib/classroom/lesson-body";
 
 /** Resolve community id + the caller's active role (null if not an active member). */
 async function resolveCommunityAndRole(
@@ -113,6 +114,14 @@ async function issueCertificateIfComplete(
       XP_AMOUNTS.COURSE_COMPLETE,
       "course.complete",
     );
+  }
+}
+
+/** Every Embed block in a lesson body must resolve to a known provider. */
+function assertLessonBodyEmbeds(body: unknown): void {
+  if (body === undefined || body === null) return;
+  if (invalidEmbedUrls(body).length > 0) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_EMBED" });
   }
 }
 
@@ -546,6 +555,7 @@ export const classroomsRouter = createTRPCRouter({
         lessonOrder = totalDocs;
       }
 
+      assertLessonBodyEmbeds(input.body);
       const lesson = await payload.create({
         collection: "lessons",
         data: {
@@ -627,6 +637,7 @@ export const classroomsRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      assertLessonBodyEmbeds(input.body);
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
       if (input.youtubeUrl !== undefined)
