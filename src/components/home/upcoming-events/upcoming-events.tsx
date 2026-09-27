@@ -4,13 +4,14 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { MoreLink } from "@/components/ui/more-link";
+import { useEventRowLabels } from "@/components/home/event-rows/use-event-row-labels";
 import { SectionLabel } from "@/components/ui/section-label";
 import { cn } from "@/lib/utils";
 import {
-  presentUpcomingEvents,
-  type UpcomingEventInput,
-  type UpcomingEventRow,
-} from "./upcoming-event-rows";
+  presentEventRows,
+  type EventRowInput,
+  type EventRow,
+} from "@/components/home/event-rows/event-rows";
 
 /**
  * Homepage "Upcoming events": a timetable. Each row is one link — a mono
@@ -24,29 +25,15 @@ export function UpcomingEvents({
   events,
   now,
 }: {
-  events: readonly UpcomingEventInput[];
+  events: readonly EventRowInput[];
   now?: Date;
 }) {
   const locale = useLocale();
   const t = useTranslations("events");
   const board = useTranslations("hero.board");
   const nextLabel = board("label");
-  const rows = presentUpcomingEvents(events, {
-    locale,
-    now,
-    labels: {
-      types: {
-        workshop: t("eventTypeWorkshop"),
-        hackathon: t("eventTypeHackathon"),
-        deep_dive: t("eventTypeDeepDive"),
-        meetup: t("eventTypeMeetup"),
-      },
-      online: t("online"),
-      hybrid: t("formatHybrid"),
-      inPerson: t("formatInPerson"),
-      hostedBy: (name) => t("hostedBy", { name }),
-    },
-  });
+  const labels = useEventRowLabels();
+  const rows = presentEventRows(events, { locale, now, labels });
 
   return (
     <section
@@ -63,9 +50,13 @@ export function UpcomingEvents({
         </p>
       ) : (
         <ol className="divide-border border-border divide-y border-b">
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <li key={row.key}>
-              <EventRow row={row} nextLabel={nextLabel} />
+              <TimetableRow
+                row={row}
+                isNext={index === 0}
+                nextLabel={nextLabel}
+              />
             </li>
           ))}
         </ol>
@@ -108,11 +99,14 @@ function Dot() {
  * it never replaces visible words. The grid puts the date block first on
  * screen while the title comes first in the DOM.
  */
-function EventRow({
+function TimetableRow({
   row,
+  isNext,
   nextLabel,
 }: {
-  row: UpcomingEventRow;
+  row: EventRow;
+  /** The soonest event: the only row the timetable marks. */
+  isNext: boolean;
   nextLabel: string;
 }) {
   const secondary = [...row.placeParts, ...(row.host ? [row.host] : [])];
@@ -121,7 +115,7 @@ function EventRow({
   return (
     <Link
       href={row.href}
-      data-next={row.isNext || undefined}
+      data-next={isNext || undefined}
       className="group hover:bg-secondary/50 focus-visible:ring-ring/50 grid grid-cols-[4.25rem_minmax(0,1fr)] gap-x-3 gap-y-3 rounded-md px-1 py-5 transition-colors outline-none focus-visible:ring-[3px] sm:grid-cols-[8rem_minmax(0,1fr)_auto] sm:items-center sm:gap-x-8 sm:px-4"
     >
       <span className="col-start-2 row-start-1 min-w-0">
@@ -165,7 +159,7 @@ function EventRow({
 
       <span className="col-start-2 row-start-2 flex flex-wrap items-center gap-x-3 gap-y-2 sm:col-start-3 sm:row-start-1 sm:flex-nowrap sm:justify-end">
         <Pause />
-        {row.isNext ? (
+        {isNext ? (
           <>
             <span
               data-testid="next-marker"

@@ -20,14 +20,14 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 
 import { RecentGatherings } from "./recent-gatherings";
-import type { UpcomingEventInput } from "@/components/home/upcoming-events/upcoming-event-rows";
+import type { EventRowInput } from "@/components/home/event-rows/event-rows";
 
 const NOW = new Date("2026-09-27T12:00:00.000Z");
 
 function event(
   id: number,
-  overrides: Partial<UpcomingEventInput> = {},
-): UpcomingEventInput {
+  overrides: Partial<EventRowInput> = {},
+): EventRowInput {
   return {
     id,
     slug: `event-${id}`,
@@ -41,7 +41,7 @@ function event(
   };
 }
 
-function renderIn(events: UpcomingEventInput[], locale: "en" | "nl" = "en") {
+function renderIn(events: EventRowInput[], locale: "en" | "nl" = "en") {
   return render(
     <NextIntlClientProvider
       locale={locale}

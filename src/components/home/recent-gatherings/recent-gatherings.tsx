@@ -2,9 +2,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { SectionLabel } from "@/components/ui/section-label";
 import {
-  presentUpcomingEvents,
-  type UpcomingEventInput,
-} from "@/components/home/upcoming-events/upcoming-event-rows";
+  presentEventRows,
+  type EventRowInput,
+} from "@/components/home/event-rows/event-rows";
+import { useEventRowLabels } from "@/components/home/event-rows/use-event-row-labels";
 
 /** How many past gatherings the section shows. */
 export const RECENT_GATHERINGS_SHOWN = 3;
@@ -15,7 +16,7 @@ export const RECENT_GATHERINGS_SHOWN = 3;
  * only, from the same event data as the timetable above; with nothing to
  * show, the section is left out rather than filled with claims.
  *
- * Rows come from the timetable's presenter, so dates, places and hosts are
+ * Rows come from the shared event-row presenter, so dates, places and hosts are
  * worded the same way in both sections.
  */
 export function RecentGatherings({
@@ -23,27 +24,16 @@ export function RecentGatherings({
   now,
 }: {
   /** Past events, most recent first (see `pastEvents`). */
-  events: readonly UpcomingEventInput[];
+  events: readonly EventRowInput[];
   now?: Date;
 }) {
   const locale = useLocale();
   const t = useTranslations("homeRecent");
-  const ev = useTranslations("events");
-  const rows = presentUpcomingEvents(events.slice(0, RECENT_GATHERINGS_SHOWN), {
+  const labels = useEventRowLabels();
+  const rows = presentEventRows(events.slice(0, RECENT_GATHERINGS_SHOWN), {
     locale,
     now,
-    labels: {
-      types: {
-        workshop: ev("eventTypeWorkshop"),
-        hackathon: ev("eventTypeHackathon"),
-        deep_dive: ev("eventTypeDeepDive"),
-        meetup: ev("eventTypeMeetup"),
-      },
-      online: ev("online"),
-      hybrid: ev("formatHybrid"),
-      inPerson: ev("formatInPerson"),
-      hostedBy: (name) => ev("hostedBy", { name }),
-    },
+    labels,
   });
   if (rows.length === 0) return null;
 

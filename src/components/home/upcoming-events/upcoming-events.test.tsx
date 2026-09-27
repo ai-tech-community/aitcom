@@ -22,11 +22,11 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 
 import { UpcomingEvents } from "./upcoming-events";
-import type { UpcomingEventInput } from "./upcoming-event-rows";
+import type { EventRowInput } from "@/components/home/event-rows/event-rows";
 
 const NOW = new Date("2026-09-27T10:00:00.000Z");
 
-const EVENTS: UpcomingEventInput[] = [
+const EVENTS: EventRowInput[] = [
   {
     id: 1,
     slug: "the-ai-conference-2026",
@@ -67,7 +67,7 @@ const EVENTS: UpcomingEventInput[] = [
   },
 ];
 
-function renderIn(events: UpcomingEventInput[], locale: "en" | "nl" = "en") {
+function renderIn(events: EventRowInput[], locale: "en" | "nl" = "en") {
   return render(
     <NextIntlClientProvider
       locale={locale}
@@ -274,10 +274,12 @@ describe("UpcomingEvents — translations", () => {
       join(process.cwd(), "src/app/[locale]/page.tsx"),
       "utf8",
     );
-    expect(page).toContain("<UpcomingEvents events={upcomingEventRows} />");
+    // The page hands the rows to HomeSections, which renders this section
+    // (home-sections.test.tsx renders it in place).
+    expect(page).toContain("upcomingEvents={upcomingEventRows}");
     expect(page).not.toMatch(/typeLabels|function formatDate/);
     // Rows come through the tested mapper and the ordering guard.
-    expect(page).toContain("toUpcomingEventInput(event, hostNames)");
+    expect(page).toContain("toEventRowInput(event, hostNames)");
     expect(page).toContain(
       "completeUpcomingCandidates(eventCandidates, UPCOMING_EVENT_CANDIDATES)",
     );
