@@ -155,6 +155,34 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
       });
     });
 
+    it("refuses to move an archived course back to draft", async () => {
+      const { id } = await createViaApi();
+      await m.payload.update({
+        collection: "courses",
+        id,
+        data: { status: "archived" },
+      });
+      await expect(
+        callerAs(fx.authorId).classrooms.update({
+          courseId: id,
+          status: "draft",
+        }),
+      ).rejects.toMatchObject({
+        code: "FORBIDDEN",
+        message: "COURSE_ARCHIVED",
+      });
+    });
+
+    it("refuses an update from another member", async () => {
+      const { id } = await createViaApi();
+      await expect(
+        callerAs(fx.otherId).classrooms.update({
+          courseId: id,
+          title: "Not mine",
+        }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+
     it("still lets the author fix the title of an archived course without touching status", async () => {
       const { id } = await createViaApi();
       await m.payload.update({
@@ -229,6 +257,17 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
           expectedUpdatedAt: first.updatedAt,
         }),
       ).resolves.toMatchObject({ ok: true });
+    });
+
+    it("rejects an expectedUpdatedAt that is not a date as a bad request", async () => {
+      const { id } = await createViaApi();
+      await expect(
+        callerAs(fx.authorId).classrooms.update({
+          courseId: id,
+          summary: "x",
+          expectedUpdatedAt: "not-a-date",
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     });
 
     it("refuses a save based on a stale updatedAt", async () => {

@@ -476,7 +476,7 @@ export const classroomsRouter = createTRPCRouter({
         summary: z.string().max(500).optional(),
         status: z.enum(["draft", "published"]).optional(),
         coverImageUrl: z.string().url().max(1000).nullable().optional(),
-        expectedUpdatedAt: z.string().optional(),
+        expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
