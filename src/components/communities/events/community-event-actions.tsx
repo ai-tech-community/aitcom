@@ -33,7 +33,10 @@ export function RowActions({
   return (
     <div
       data-slot="event-row-actions"
-      className={cn("flex shrink-0 flex-wrap items-center gap-1", className)}
+      className={cn(
+        "flex min-w-0 flex-wrap items-center gap-1 sm:shrink-0",
+        className,
+      )}
     >
       {children}
     </div>
@@ -70,7 +73,9 @@ export function CancelEventButton({ onCancel }: { onCancel: () => void }) {
       type="button"
       variant="ghost"
       size="sm"
-      className="text-destructive hover:text-destructive"
+      // Quiet at rest (it repeats on every row); red once aimed at, and
+      // the confirm dialog that follows is the destructive one.
+      className="text-muted-foreground hover:text-destructive focus-visible:text-destructive"
       onClick={onCancel}
     >
       <XCircle aria-hidden="true" />

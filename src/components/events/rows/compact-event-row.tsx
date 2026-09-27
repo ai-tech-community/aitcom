@@ -63,7 +63,8 @@ export function CompactEventRow({
         ) : null}
       </EventRowAnchor>
       {actions ? (
-        <div className="-mt-2 flex flex-wrap items-center gap-1 pb-4">
+        // -ml-2.5 lines a ghost button's icon up with the text above it.
+        <div className="-mt-2 -ml-2.5 flex flex-wrap items-center gap-1 pb-4">
           {actions}
         </div>
       ) : null}

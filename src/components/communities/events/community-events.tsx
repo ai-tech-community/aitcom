@@ -221,6 +221,9 @@ export function CommunityEvents({
         <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
           {views.length > 1 ? (
             <SegmentedControl
+              // Long Dutch labels scroll inside the control on a phone
+              // instead of pushing the page sideways.
+              className="max-w-full max-sm:overflow-x-auto"
               aria-label={t("listsLabel")}
               options={views}
               value={view}
@@ -333,7 +336,7 @@ export function CommunityEvents({
                           <>
                             {/* Fresh conflict check (#208): its chip joins
                                 the controls, its expansion takes a full
-                                line under the row (`sm:basis-full`). */}
+                                line under the row. */}
                             <PendingEventConflictBadge
                               event={{
                                 id: event.id,

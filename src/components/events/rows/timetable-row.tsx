@@ -28,9 +28,9 @@ const BODY_LINK =
  * - `status`: words about the event's state ("Pending approval"). Not
  *   interactive; they sit beside the type and are part of the link's name.
  * - `actions`: controls (edit, approve, …). Buttons cannot live inside a
- *   link, so they are the row's own flex items after the body: beside it on
- *   wide screens, on a line below it on narrow ones. An item with
- *   `basis-full` takes a full line of its own under the row.
+ *   link, so they sit after the body: on a line under the title on narrow
+ *   screens, as the row's own flex items beside the body on wide ones. An
+ *   item with `order-last basis-full` takes a full line under the row.
  */
 export function TimetableRow({
   row,
@@ -159,7 +159,11 @@ export function TimetableRow({
       className="flex flex-wrap items-center gap-2 px-1 pb-4 sm:gap-x-4 sm:px-0 sm:pr-4 sm:pb-0"
     >
       {body}
-      {actions}
+      {/* Narrow screens: one line under the title column. Wide screens:
+          `contents`, so each control is the row's own flex item. */}
+      <div className="-mt-3 flex min-w-0 basis-full flex-wrap items-center gap-2 pl-[4.625rem] sm:contents">
+        {actions}
+      </div>
     </div>
   );
 }

@@ -176,7 +176,7 @@ function SectionHeader({
   linkLabel?: string;
 }) {
   return (
-    <div className="border-border flex items-center justify-between border-b pb-2">
+    <div className="border-border flex flex-wrap items-center justify-between gap-x-3 border-b pb-2">
       <SectionLabel bordered={false}>{title}</SectionLabel>
       {linkHref && linkLabel ? (
         <MoreLink href={linkHref}>{linkLabel}</MoreLink>
