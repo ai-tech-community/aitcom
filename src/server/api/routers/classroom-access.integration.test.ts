@@ -348,4 +348,41 @@ describe.skipIf(!RUN_DB)("classroom course access [DB integration]", () => {
       expect(get.completedLessonIds).toEqual([fx.membersOnly.lessonId]);
     });
   });
+
+  describe("classrooms.list", () => {
+    async function slugsFor(viewer: string | null) {
+      const { communities } = m.schema;
+      const { eq } = await import("drizzle-orm");
+      const [c] = await m.db
+        .select({ slug: communities.slug })
+        .from(communities)
+        .where(eq(communities.id, fx.communityId));
+      const res = await callerAs(viewer).classrooms.list({
+        communitySlug: c!.slug,
+      });
+      return res.map((r) => r.slug).sort();
+    }
+
+    it("shows outsiders only public courses", async () => {
+      expect(await slugsFor(fx.outsiderId)).toEqual([fx.publicCourse.slug]);
+      expect(await slugsFor(null)).toEqual([fx.publicCourse.slug]);
+    });
+
+    it("shows members published courses but not others' drafts", async () => {
+      expect(await slugsFor(fx.memberId)).toEqual(
+        [fx.membersOnly.slug, fx.publicCourse.slug].sort(),
+      );
+    });
+
+    it("shows moderators drafts too", async () => {
+      expect(await slugsFor(fx.moderatorId)).toEqual(
+        [fx.draft.slug, fx.membersOnly.slug, fx.publicCourse.slug].sort(),
+      );
+    });
+
+    it("shows a banned member only public courses", async () => {
+      await setMembershipStatus(fx.memberId, "banned");
+      expect(await slugsFor(fx.memberId)).toEqual([fx.publicCourse.slug]);
+    });
+  });
 });

@@ -8,7 +8,10 @@ import {
   protectedProcedure,
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
-import { loadCourseAccess } from "@/server/classroom/course-access";
+import {
+  loadCourseAccess,
+  resolveCourseAccess,
+} from "@/server/classroom/course-access";
 import { logActivity } from "@/server/agent/activity";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { db } from "@/server/db";
@@ -147,29 +150,43 @@ export const classroomsRouter = createTRPCRouter({
       const payload = await getPayloadClient();
       const userId = ctx.session?.user?.id;
 
-      // A course is listable if it is published-and-visible to the caller, OR
-      // the caller is its author (so creators see their own drafts/archived).
-      const visibility: Where[] = [
-        role === null
-          ? {
-              and: [
-                { status: { equals: "published" } },
-                { isPublic: { equals: true } },
-              ],
-            }
-          : { status: { equals: "published" } },
-      ];
-      if (userId) visibility.push({ authorId: { equals: userId } });
+      // The database query narrows candidates (so the 50-row page isn't
+      // filled with courses the caller can't see); the access policy is the
+      // authority on what is actually returned.
+      const isManagerRole =
+        role === "owner" || role === "admin" || role === "moderator";
+      const candidates: Where[] = isManagerRole
+        ? [{ status: { exists: true } }]
+        : [
+            role === null
+              ? {
+                  and: [
+                    { status: { equals: "published" } },
+                    { isPublic: { equals: true } },
+                  ],
+                }
+              : { status: { equals: "published" } },
+          ];
+      if (userId) candidates.push({ authorId: { equals: userId } });
 
-      const { docs } = await payload.find({
+      const { docs: found } = await payload.find({
         collection: "courses",
         where: {
-          and: [{ communityId: { equals: communityId } }, { or: visibility }],
+          and: [{ communityId: { equals: communityId } }, { or: candidates }],
         },
         sort: "-enrollmentCount",
         limit: 50,
         depth: 0,
       });
+      const membership = role === null ? null : { role, active: true };
+      const docs = found.filter(
+        (c) =>
+          resolveCourseAccess({
+            course: c,
+            viewerId: userId ?? null,
+            membership,
+          }) !== "none",
+      );
 
       const courseIds = docs.map((d) => d.id);
       if (courseIds.length === 0) {

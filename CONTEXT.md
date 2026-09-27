@@ -182,7 +182,15 @@ flat *or* fully moduled, never mixed),
 **created and owned by any active [[Community]] member** (subject to
 `classroomCreatePolicy`) and published immediately. **Members-only by default**;
 a course becomes **public only when an admin/mod promotes it** — a creator
-cannot self-publish to the open web. A member [[course-enrollment|enrolls]]
+cannot self-publish to the open web.
+Who may read a course is one **course access** decision: `none` (may not
+know it exists — answered as not-found), `visitor` (non-member on a public
+published course), `member` (active member on a published course) or
+`manager` (the author, or an active owner/admin/moderator, who also sees
+drafts and archived courses). Manager is about *seeing*; the exam answer key
+stays author-only. Enrolling, taking an exam and completing a lesson all
+require access, so a banned member's old enrollment opens nothing.
+A member [[course-enrollment|enrolls]]
 explicitly; their per-lesson completions yield a course **progress %**. A member
 has **passed the course** when **every** lesson is complete — i.e. every
 mandatory [[lesson-exam]] was cleared at its own threshold and the rest are
