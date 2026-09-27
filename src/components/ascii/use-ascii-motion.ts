@@ -17,6 +17,16 @@ export interface AsciiMotionOptions<M> {
   frameMs: number;
   /** Frame shown under reduced motion; animation also starts here. */
   staticTick?: number;
+  /**
+   * Other elements whose size changes should also trigger a re-measure
+   * (e.g. a text column the scene must keep clear of).
+   */
+  observe?: readonly RefObject<HTMLElement | null>[];
+}
+
+export interface AsciiMotionHandle {
+  /** Re-measure and repaint now, e.g. after the scene's data changed. */
+  remeasure: () => void;
 }
 
 /**
@@ -29,17 +39,20 @@ export interface AsciiMotionOptions<M> {
  */
 export function useAsciiMotion<M>(
   ref: RefObject<HTMLElement | null>,
-  { measure, draw, frameMs, staticTick = 0 }: AsciiMotionOptions<M>,
-) {
+  { measure, draw, frameMs, staticTick = 0, observe }: AsciiMotionOptions<M>,
+): AsciiMotionHandle {
   // Latest callbacks without restarting the loop on every render.
   const measureRef = useRef(measure);
   const drawRef = useRef(draw);
+  const observeRef = useRef(observe);
   useEffect(() => {
     measureRef.current = measure;
     drawRef.current = draw;
+    observeRef.current = observe;
   });
 
   const measurementRef = useRef<M | null>(null);
+  const resizeHandlerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -101,6 +114,10 @@ export function useAsciiMotion<M>(
         ? new ResizeObserver(onResize)
         : null;
     resize?.observe(el);
+    for (const extra of observeRef.current ?? []) {
+      if (extra.current) resize?.observe(extra.current);
+    }
+    resizeHandlerRef.current = onResize;
 
     let alive = true;
     void document.fonts?.ready.then(() => {
@@ -109,6 +126,7 @@ export function useAsciiMotion<M>(
 
     return () => {
       alive = false;
+      resizeHandlerRef.current = null;
       controller.dispose();
       reducedMotion?.removeEventListener("change", onMotionPreference);
       document.removeEventListener("visibilitychange", onVisibility);
@@ -116,4 +134,8 @@ export function useAsciiMotion<M>(
       resize?.disconnect();
     };
   }, [ref, frameMs, staticTick]);
+
+  return {
+    remeasure: () => resizeHandlerRef.current?.(),
+  };
 }
