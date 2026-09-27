@@ -3253,6 +3253,26 @@
     "dragOver": "{title} is boven {target}.",
     "dragEnd": "{title} neergezet in {target}.",
     "dragCancel": "Verplaatsen van {title} is geannuleerd.",
-    "renameModule": "{title} hernoemen"
+    "renameModule": "{title} hernoemen",
+    "publishTitle": "Klaar om te publiceren?",
+    "publishLead": "Zodra de cursus gepubliceerd is, kunnen leden hem vinden en beginnen met leren. Dit hebben we gecontroleerd.",
+    "check_title": "De cursus heeft een titel",
+    "check_hasLessons": "Er is minstens één les",
+    "check_noEmptyLessons": "Elke les heeft inhoud",
+    "check_quizAnswers": "Elke quizvraag heeft een goed antwoord",
+    "check_noEmptyModules": "Geen enkele module is leeg",
+    "check_cover": "Er is een omslagafbeelding (optioneel)",
+    "checkPassed": "Klaar",
+    "checkFailed": "Moet nog aangepast worden",
+    "checkOptional": "Optioneel",
+    "checkFixHint": "Open er een om het op te lossen:",
+    "publishing": "Publiceren…",
+    "publishSuccess": "Je cursus staat live",
+    "publishSuccessLead": "Leden kunnen hem nu vinden in het klaslokaal.",
+    "viewCourse": "Cursus bekijken",
+    "keepEditing": "Verder bewerken",
+    "notYet": "Nog niet",
+    "moveToDraftTitle": "Terug naar concept?",
+    "moveToDraftConfirm": "Deelnemers die al begonnen zijn houden hun voortgang, maar nieuwe mensen kunnen de cursus pas weer vinden als je opnieuw publiceert."
   }
 }

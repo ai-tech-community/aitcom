@@ -20,12 +20,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useConfirm } from "@/components/confirm-dialog";
 import { CourseView } from "@/components/classroom/course-view";
+import type { ChecklistInput } from "@/lib/classroom/publish-checklist";
 import { BuilderTopBar } from "./builder-top-bar";
 import { CourseDetailsPane } from "./course-details-pane";
 import { builderErrorKey } from "./builder-errors";
 import { createCourseWriter } from "./course-writer";
 import { CourseOutline } from "./course-outline";
+import { PublishDialog } from "./publish-dialog";
 import { useUnsavedChangesGuard, type AutosaveStatus } from "./use-autosave";
 
 export type BuilderSelection =
@@ -97,6 +100,15 @@ const STATUS_CONFLICT: PaneSaveState = {
   retry: async () => undefined,
   flush: async () => "conflict",
 };
+
+/**
+ * How a status change ended. Every failure has already been shown to the
+ * author (toast, or the conflict banner) by the time this is returned.
+ */
+type StatusChangeOutcome = "done" | "unsaved" | "conflict" | "failed";
+
+/** Matches Tailwind's `lg`: the outline is a fixed column from here up. */
+const OUTLINE_COLUMN_QUERY = "(min-width: 64rem)";
 
 type CourseData = RouterOutputs["classrooms"]["get"];
 
@@ -248,10 +260,18 @@ function CourseWorkspace({
   useUnsavedChangesGuard(UNSAFE.has(save.status));
 
   const [statusChanging, setStatusChanging] = useState(false);
-  const changeStatus = async (next: "draft" | "published") => {
+  /**
+   * The one path that changes a course's status. It saves every pane first
+   * (never publish past unsaved work), writes through the shared course
+   * writer (so the next autosave sees the new version), and reports any
+   * failure to the author before returning how it ended.
+   */
+  const changeStatus = async (
+    next: "draft" | "published",
+  ): Promise<StatusChangeOutcome> => {
     setStatusChanging(true);
     try {
-      if (!(await saveAllFirst())) return;
+      if (!(await saveAllFirst())) return "unsaved";
       await writer.run(async (expectedUpdatedAt) => {
         const result = await update.mutateAsync({
           courseId: course.id,
@@ -263,14 +283,72 @@ function CourseWorkspace({
       utils.classrooms.get.setData({ slug: courseSlug }, (old) =>
         old ? { ...old, course: { ...old.course, status: next } } : old,
       );
+      return "done";
     } catch (err) {
       const code = err instanceof Error ? err.message : undefined;
-      if (code === "COURSE_CHANGED") reportPane("status", STATUS_CONFLICT);
-      else toast.error(t(builderErrorKey(code)));
+      if (code === "COURSE_CHANGED") {
+        reportPane("status", STATUS_CONFLICT);
+        return "conflict";
+      }
+      toast.error(t(builderErrorKey(code)));
+      return "failed";
     } finally {
       setStatusChanging(false);
     }
   };
+
+  // Publish: save first so the checklist judges what would really go live,
+  // then let the dialog run the checks and the confirm.
+  const [publishOpen, setPublishOpen] = useState(false);
+  const openPublish = async () => {
+    setStatusChanging(true);
+    try {
+      if (await saveAllFirst()) setPublishOpen(true);
+    } finally {
+      setStatusChanging(false);
+    }
+  };
+  const publish = async () => {
+    const outcome = await changeStatus("published");
+    if (outcome === "done") return;
+    // Unsaved work or a conflict is fixed in the editor, not in the dialog:
+    // close it so the problem is in view. Other failures can simply be retried.
+    if (outcome === "unsaved" || outcome === "conflict") setPublishOpen(false);
+    throw new Error(outcome);
+  };
+
+  const confirm = useConfirm();
+  const moveToDraft = async () => {
+    const ok = await confirm({
+      title: t("moveToDraftTitle"),
+      description: t("moveToDraftConfirm"),
+      confirmLabel: t("moveToDraft"),
+    });
+    if (ok) await changeStatus("draft");
+  };
+
+  // Where a failed publish check sends the author: back to editing, with the
+  // outline in view (on small screens it lives in a sheet).
+  const goToLesson = (lessonId: number) => {
+    setPreviewing(false);
+    select({ kind: "lesson", lessonId });
+  };
+  const goToOutline = () => {
+    setPreviewing(false);
+    if (!window.matchMedia?.(OUTLINE_COLUMN_QUERY).matches) {
+      setOutlineOpen(true);
+    }
+  };
+
+  const checklistInput = useMemo<ChecklistInput>(
+    () => ({
+      title: course.title,
+      coverImageUrl: course.coverImageUrl ?? null,
+      lessons,
+      modules,
+    }),
+    [course.title, course.coverImageUrl, lessons, modules],
+  );
 
   const togglePreview = async () => {
     if (!previewing && !(await saveAllFirst())) return;
@@ -307,8 +385,8 @@ function CourseWorkspace({
         onReload={() => void onReload()}
         previewing={previewing}
         onTogglePreview={() => void togglePreview()}
-        onPublish={() => void changeStatus("published")}
-        onUnpublish={() => void changeStatus("draft")}
+        onPublish={() => void openPublish()}
+        onUnpublish={() => void moveToDraft()}
         statusChanging={statusChanging}
         onOpenOutline={() => setOutlineOpen(true)}
       />
@@ -369,6 +447,16 @@ function CourseWorkspace({
           ) : null}
         </div>
       </div>
+
+      <PublishDialog
+        open={publishOpen}
+        onOpenChange={setPublishOpen}
+        input={checklistInput}
+        onGoToLesson={goToLesson}
+        onGoToOutline={goToOutline}
+        onConfirm={publish}
+        courseHref={`/communities/${slug}/classroom/${courseSlug}`}
+      />
 
       <Sheet open={outlineOpen} onOpenChange={setOutlineOpen}>
         <SheetContent side="left" className="overflow-y-auto">

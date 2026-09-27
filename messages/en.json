@@ -3253,6 +3253,26 @@
     "dragOver": "{title} is over {target}.",
     "dragEnd": "{title} dropped in {target}.",
     "dragCancel": "Moving {title} was cancelled.",
-    "renameModule": "Rename {title}"
+    "renameModule": "Rename {title}",
+    "publishTitle": "Ready to publish?",
+    "publishLead": "Once it's published, members can find the course and start learning. Here's what we checked.",
+    "check_title": "The course has a title",
+    "check_hasLessons": "It has at least one lesson",
+    "check_noEmptyLessons": "Every lesson has something in it",
+    "check_quizAnswers": "Every quiz question has a correct answer",
+    "check_noEmptyModules": "No module is empty",
+    "check_cover": "It has a cover image (optional)",
+    "checkPassed": "Done",
+    "checkFailed": "Needs a fix",
+    "checkOptional": "Optional",
+    "checkFixHint": "Open one to fix it:",
+    "publishing": "Publishing…",
+    "publishSuccess": "Your course is live",
+    "publishSuccessLead": "Members can find it in the classroom now.",
+    "viewCourse": "View course",
+    "keepEditing": "Keep editing",
+    "notYet": "Not yet",
+    "moveToDraftTitle": "Move back to draft?",
+    "moveToDraftConfirm": "Learners who already joined keep their progress, but new people can't find it until you publish again."
   }
 }

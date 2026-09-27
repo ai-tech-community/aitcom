@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -64,6 +64,7 @@ vi.mock("@/i18n/navigation", () => ({
 vi.mock("@/components/classroom/course-view", () => ({
   CourseView: () => null,
 }));
+vi.mock("@/components/classroom/celebrate", () => ({ fireConfetti: vi.fn() }));
 
 import { ConfirmProvider } from "@/components/confirm-dialog";
 import {
@@ -152,6 +153,21 @@ const courseData = {
   },
   lessons: [],
   modules: [],
+};
+
+const paragraph = (text: string) => ({
+  root: {
+    type: "root",
+    children: [{ type: "paragraph", children: [{ type: "text", text }] }],
+  },
+});
+
+/** A draft that passes every blocking publish check. */
+const readyCourse = {
+  ...courseData,
+  lessons: [
+    { id: 21, title: "Welcome", module: null, order: 0, body: paragraph("Hi") },
+  ],
 };
 
 function renderBuilder() {
@@ -256,6 +272,7 @@ describe("CourseBuilder publish and preview guard", () => {
   });
 
   it("publishes once pending details are saved", async () => {
+    trpc.query = { ...trpc.query, data: readyCourse };
     trpc.mutateAsync
       .mockResolvedValueOnce({
         ok: true,
@@ -272,6 +289,13 @@ describe("CourseBuilder publish and preview guard", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Publish" }));
     });
+    // Saving the details comes first, so the checklist sees what goes live.
+    expect(trpc.mutateAsync).toHaveBeenCalledTimes(1);
+    const dialog = screen.getByRole("dialog");
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
+    });
+    expect(await screen.findByText("Your course is live")).toBeInTheDocument();
     expect(trpc.mutateAsync).toHaveBeenCalledTimes(2);
     expect(trpc.mutateAsync.mock.calls[0]![0]).toMatchObject({
       title: "Agents from scratch",
@@ -283,5 +307,133 @@ describe("CourseBuilder publish and preview guard", () => {
       expectedUpdatedAt: "2026-01-01T00:00:01.000Z",
     });
     expect(trpc.toastError).not.toHaveBeenCalled();
+  });
+});
+
+describe("CourseBuilder publish checklist", () => {
+  beforeEach(() => {
+    trpc.mutateAsync.mockReset();
+    trpc.toastError.mockReset();
+    window.history.replaceState(null, "", "/");
+  });
+
+  function loaded(data: unknown) {
+    trpc.query = {
+      data,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  }
+
+  async function openChecklist() {
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    return screen.getByRole("dialog");
+  }
+
+  it("will not publish a course with an empty lesson, and opens that lesson", async () => {
+    loaded({
+      ...courseData,
+      lessons: [{ id: 21, title: "Blank page", module: null, order: 0 }],
+    });
+    renderBuilder();
+    const dialog = await openChecklist();
+    expect(
+      within(dialog).getByRole("button", { name: "Publish" }),
+    ).toBeDisabled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Blank page" }));
+    expect(new URL(window.location.href).searchParams.get("lesson")).toBe("21");
+    expect(trpc.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("closes the checklist and shows the conflict when the course changed elsewhere", async () => {
+    loaded(readyCourse);
+    trpc.mutateAsync.mockRejectedValueOnce(new Error("COURSE_CHANGED"));
+    renderBuilder();
+    const dialog = await openChecklist();
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText(/changed somewhere else/)).toBeInTheDocument();
+    expect(trpc.toastError).not.toHaveBeenCalled();
+  });
+
+  it("keeps the checklist open with a plain message when publishing fails", async () => {
+    loaded(readyCourse);
+    trpc.mutateAsync.mockRejectedValueOnce(new Error("COURSE_ARCHIVED"));
+    renderBuilder();
+    const dialog = await openChecklist();
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
+    });
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(trpc.toastError).toHaveBeenCalledWith(
+      en.classroomBuilder.errorArchived,
+    );
+    expect(screen.queryByText("Your course is live")).toBeNull();
+  });
+});
+
+describe("CourseBuilder move back to draft", () => {
+  beforeEach(() => {
+    trpc.mutateAsync.mockReset();
+    trpc.toastError.mockReset();
+    trpc.query = {
+      data: {
+        ...readyCourse,
+        course: { ...readyCourse.course, status: "published" },
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  });
+
+  async function chooseMoveToDraft() {
+    fireEvent.keyDown(screen.getByRole("button", { name: /Published/ }), {
+      key: "Enter",
+    });
+    const item = await screen.findByRole("menuitem", {
+      name: "Move back to draft",
+    });
+    await act(async () => {
+      fireEvent.click(item);
+    });
+    return screen.getByRole("alertdialog");
+  }
+
+  it("asks first, explaining what happens to learners, then moves it to draft", async () => {
+    trpc.mutateAsync.mockResolvedValueOnce({
+      ok: true,
+      updatedAt: "2026-01-01T00:00:01.000Z",
+    });
+    renderBuilder();
+    const confirm = await chooseMoveToDraft();
+    expect(confirm).toHaveTextContent(en.classroomBuilder.moveToDraftConfirm);
+    expect(trpc.mutateAsync).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(
+        within(confirm).getByRole("button", { name: "Move back to draft" }),
+      );
+    });
+    expect(trpc.mutateAsync).toHaveBeenCalledWith({
+      courseId: 7,
+      status: "draft",
+      expectedUpdatedAt: "2026-01-01T00:00:00.000Z",
+    });
+  });
+
+  it("does nothing when the author cancels", async () => {
+    renderBuilder();
+    const confirm = await chooseMoveToDraft();
+    await act(async () => {
+      fireEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
+    });
+    expect(trpc.mutateAsync).not.toHaveBeenCalled();
   });
 });

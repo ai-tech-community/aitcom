@@ -57,6 +57,7 @@ describe("BuilderTopBar", () => {
 
   it("offers no publish control for an archived course", () => {
     renderBar({ status: "archived" });
+    expect(screen.getByText("Archived")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Publish" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Published/ })).toBeNull();
   });
