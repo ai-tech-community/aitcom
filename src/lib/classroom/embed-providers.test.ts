@@ -126,7 +126,7 @@ describe("resolveEmbed", () => {
       "https://docs.google.com/forms/d/abc/viewform",
       "https://docs.google.com/presentation/d/short/edit",
       "https://www.figma.com/community/file/123",
-      `https://www.youtube.com/watch?v=${YT}`.padEnd(2100, "x"),
+      `https://www.youtube.com/watch?v=${YT}&pad=${"a".repeat(2100)}`,
     ])("%s", (raw) => {
       expect(resolveEmbed(raw)).toBeNull();
     });
