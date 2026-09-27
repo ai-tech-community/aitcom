@@ -718,6 +718,14 @@
       "dontShowAgain": "Don't show again",
       "dismissFailed": "Couldn't save that. Please try again."
     },
+    "setting": {
+      "kicker": "Getting started",
+      "label": "Show the getting-started checklist",
+      "hint": "A short list of first steps. It shows on your dashboard and in the corner of every page.",
+      "hiddenForVisit": "Hidden until your next visit. Turn it on to show it again now.",
+      "finished": "You finished every step, so there is nothing left to show.",
+      "restoreFailed": "Couldn't turn the checklist back on. Please try again."
+    },
     "welcomeCardTitle": "Personalize your experience",
     "welcomeCardDescription": "Answer a few quick questions so we can recommend the right events, members, and content for you.",
     "welcomeCardCta": "Get started",

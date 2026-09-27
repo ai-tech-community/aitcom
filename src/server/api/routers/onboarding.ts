@@ -320,6 +320,22 @@ export const onboardingRouter = createTRPCRouter({
     return { dismissed: true };
   }),
 
+  /**
+   * Undo "Don't show again" (the settings switch). Clears the account-level
+   * dismissal so the dashboard card and the site-wide reminder come back.
+   *
+   * A plain UPDATE, not an upsert: a member without a member_profile row has
+   * never dismissed (getStatus reports dismissed: false), so there is
+   * nothing to clear and no reason to create a row. Idempotent.
+   */
+  restore: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.db
+      .update(memberProfiles)
+      .set({ onboardingDismissedAt: null })
+      .where(eq(memberProfiles.userId, ctx.session.user.id));
+    return { dismissed: false };
+  }),
+
   /** Complete an onboarding step (for steps that aren't auto-detected). */
   completeStep: protectedProcedure
     .input(z.object({ stepSlug: z.string().max(100) }))

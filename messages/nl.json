@@ -718,6 +718,14 @@
       "dontShowAgain": "Niet meer tonen",
       "dismissFailed": "Dat lukte niet. Probeer het opnieuw."
     },
+    "setting": {
+      "kicker": "Aan de slag",
+      "label": "Toon de checklist ‘Aan de slag’",
+      "hint": "Een korte lijst met eerste stappen. Je ziet hem op je dashboard en in de hoek van elke pagina.",
+      "hiddenForVisit": "Verborgen tot je volgende bezoek. Zet hem aan om hem nu weer te tonen.",
+      "finished": "Je hebt alle stappen gedaan, dus er is niets meer om te tonen.",
+      "restoreFailed": "De checklist kon niet weer aan. Probeer het opnieuw."
+    },
     "welcomeCardTitle": "Personaliseer je ervaring",
     "welcomeCardDescription": "Beantwoord een paar snelle vragen zodat we de juiste evenementen, leden en content voor je kunnen aanbevelen.",
     "welcomeCardCta": "Aan de slag",
