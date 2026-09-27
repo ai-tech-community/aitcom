@@ -235,9 +235,13 @@ distinct-enrollment popularity/XP signal. Modelled on [[event]] registration
 
 ### Lesson
 
-One unit of a [[course]]: a title, an **embedded or referenced YouTube**
-video (no native video hosting), a rich-text body, and a list of resource
-links. An enrolled member marks a lesson complete; completion is
+One unit of a [[course]]: a title, a rich-text body that may contain
+[[lesson-material]]s in place (embeds, hosted videos, hosted files), and a
+list of resource links. Embeds are the default; hosting is a metered
+fallback (see [[adr-0037-classroom-long-form-video-is-hosted-on-mux]]). A
+lesson may set a **required watch %**: every ready [[hosted-material]] video in
+it must reach that share of [[watch-progress]] before the lesson can be marked
+complete — like a mandatory exam, it gates completion and never grants XP. An enrolled member marks a lesson complete; completion is
 **self-reported** and drives the [[course]] progress bar but **earns no XP** —
 self-reported completion is trivially farmable, consistent with the
 verification-gated XP rule on [[work-cell]]s. Authored by the course's creator
@@ -245,6 +249,42 @@ verification-gated XP rule on [[work-cell]]s. Authored by the course's creator
 [[lesson-exam]], which — when **mandatory** — converts that lesson's completion
 from self-reported to **verified** (passing the exam is the only path to the
 checkmark).
+
+### Lesson material
+
+Any material block placed inside a [[lesson]] body: an **embed**, a
+**hosted video** or a **hosted file**. Blocks hold references only; status,
+visibility and links are resolved when the lesson is read.
+
+### Embed
+
+A link to material on an allowed external provider (YouTube, Vimeo, Loom,
+Google Slides/Docs/Sheets/Drive, Figma), shown in place. No record, no
+storage, no [[media-allowance]] use. The embed address is always built by us
+from the parsed link, never the author's raw URL. The preferred way to add
+material.
+
+### Hosted material
+
+An uploaded video (on Mux) or file (in our S3) belonging to a [[course]] and
+reusable across its lessons. Counts against the community's
+[[media-allowance]]. Visibility is **members** (default) or **preview**
+(watchable by visitors of a public course). Who may upload is the
+community's `classroomUploadPolicy` (`admins_only` by default).
+
+### Watch progress
+
+Per enrolled learner per hosted video: which 5-second slices were played
+(seeking does not count skipped slices) and the last position. The server
+caps new slices at what real playback could have produced. Evidence the
+video was played, not understood — so it gates completion only.
+
+### Media allowance
+
+A community's limits for hosted material: stored video, stored files and
+monthly viewing. Storage limits are hard (uploads refused); viewing is soft
+(admins notified, playback never blocked). One function decides it, so paid
+plans can raise it later.
 
 ### Lesson exam
 

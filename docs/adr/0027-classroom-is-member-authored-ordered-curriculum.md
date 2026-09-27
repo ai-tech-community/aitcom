@@ -46,7 +46,9 @@ rather than the heavier curated `articles` review flow.
   [[adr-0034-module-is-an-optional-behaviour-free-grouping]]: an opt-in,
   behaviour-free module layer via a nullable FK, no migration.* Lessons are
   YouTube embed/reference +
-  rich text + resource links; no native video hosting.
+  rich text + resource links; no native video hosting. *Amended by
+  [[adr-0037-classroom-long-form-video-is-hosted-on-mux]]: lessons hold
+  embeds (default) and metered hosted video/files.*
 - **Enrollment & progress:** explicit [[course-enrollment]] (modelled on event
   registration); per-lesson completion → course progress %.
 - **Reputation:** the creator earns small Hub-global XP **per distinct member
