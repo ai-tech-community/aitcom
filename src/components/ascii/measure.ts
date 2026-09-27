@@ -74,3 +74,22 @@ export function overlapInCells(
   const y2 = Math.ceil((bottom - outer.top) / cell.height) + padCells;
   return { x, y, w: x2 - x, h: y2 - y };
 }
+
+/**
+ * The grid cell under a pointer at (`x`, `y`) in viewport coordinates, for
+ * a grid whose top-left corner is `box`'s. Null outside the box.
+ */
+export function cellAtPoint(
+  box: { left: number; top: number; width: number; height: number },
+  cell: CharCell,
+  x: number,
+  y: number,
+): { col: number; row: number } | null {
+  const dx = x - box.left;
+  const dy = y - box.top;
+  if (dx < 0 || dy < 0 || dx >= box.width || dy >= box.height) return null;
+  return {
+    col: Math.floor(dx / cell.width),
+    row: Math.floor(dy / cell.height),
+  };
+}

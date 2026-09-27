@@ -13,11 +13,32 @@
  * Output is layered so the renderer can colour by CSS tokens:
  * - `scenery` — houses, props, pavement (quiet)
  * - `people`  — figures and notice-board text (stronger)
+ * - `glow`    — lit windows, lamps and stars once night falls
  * - `accent`  — the notice-board marker + label (the one orange accent)
  * Every cell belongs to at most one layer.
+ *
+ * Hidden play effects (wave, night, splash) are frame *input*: their state
+ * lives in `town-square-effects.ts` and is passed to `frame(tick, effects)`;
+ * `targetAt` maps a cell to the object a click would play with.
  */
 
 import type { CellRect } from "@/components/ascii/measure";
+import {
+  GREET_REPLY_DELAY,
+  NO_EFFECTS,
+  SPLASH_BURST_TICKS,
+  greetReplying,
+  greetStage,
+  greetingText,
+  nightLevel,
+  splashBurstAge,
+  splashGather,
+  waveArmUp,
+  type GreetStage,
+  type SquareTarget,
+  type SquareTargetKind,
+  type TownSquareEffects,
+} from "./town-square-effects";
 
 export type FigureKind = "human" | "agent";
 
@@ -30,14 +51,20 @@ export interface TownSquareData {
   /** Cells the scene must never draw into (the headline + copy column). */
   safeZone?: CellRect | null;
   seed?: number;
+  /**
+   * What an agent says when someone waves at it; rotates per wave.
+   * `{name}` becomes the agent's name. Translated by the caller.
+   */
+  greetings?: readonly string[];
 }
 
 /**
  * Back to front: `far` (distant rooftops, faintest), `scenery` (square,
  * houses, props, back-lane passers-by), `people` (front groups + board
- * text), `accent` (the board pin, the one orange).
+ * text), `glow` (night lights — full foreground, never orange), `accent`
+ * (the board pin, the one orange).
  */
-export type SceneLayer = "far" | "scenery" | "people" | "accent";
+export type SceneLayer = "far" | "scenery" | "people" | "glow" | "accent";
 
 /** `passing`: a passer-by on the back street, not part of a group. */
 export type FigurePhase = "arriving" | "gathered" | "leaving" | "passing";
@@ -302,7 +329,11 @@ function fit(text: string, width: number): string {
 
 // ─── Grid ────────────────────────────────────────────────────────────────────
 
-const LAYER_NAMES = ["far", "scenery", "people", "accent"] as const;
+const LAYER_NAMES = ["far", "scenery", "people", "glow", "accent"] as const;
+
+function emptyLayers(): Record<SceneLayer, string[]> {
+  return { far: [], scenery: [], people: [], glow: [], accent: [] };
+}
 
 class Grid {
   private chars: string[][];
@@ -345,6 +376,24 @@ class Grid {
 
   isEmpty(x: number, y: number): boolean {
     return this.owner[y]?.[x] === null && this.chars[y]?.[x] === " ";
+  }
+
+  /** True when nothing at all is drawn here (not even an opaque space). */
+  isBlank(x: number, y: number): boolean {
+    return this.isEmpty(x, y) && !this.front[y]?.[x];
+  }
+
+  charAt(x: number, y: number): string {
+    return this.chars[y]?.[x] ?? "";
+  }
+
+  clone(): Grid {
+    const copy = new Grid(this.cols, this.rows, this.safe);
+    copy.copyRowsFrom(
+      this,
+      Array.from({ length: this.rows }, (_, y) => y),
+    );
+    return copy;
   }
 
   put(
@@ -420,12 +469,7 @@ class Grid {
   }
 
   layers(): Record<SceneLayer, string[]> {
-    const out: Record<SceneLayer, string[]> = {
-      far: [],
-      scenery: [],
-      people: [],
-      accent: [],
-    };
+    const out = emptyLayers();
     for (let y = 0; y < this.rows; y++) {
       for (const layer of LAYER_NAMES) out[layer].push(this.row(y, layer));
     }
@@ -443,6 +487,11 @@ class Grid {
 
 const DEPTH_X = 2;
 const DEPTH_Y = 1;
+
+interface Cell {
+  x: number;
+  y: number;
+}
 
 interface Placed {
   x: number;
@@ -600,6 +649,7 @@ function drawGableFace(
   house: Pick<House, "x" | "y" | "w" | "h" | "steps">,
   layer: SceneLayer,
   detailed: boolean,
+  windows?: Cell[],
 ) {
   const { x, y, w, h, steps } = house;
   const cx = x + Math.floor(w / 2);
@@ -631,6 +681,7 @@ function drawGableFace(
   for (let row = bodyTop + 1; row < doorTop; row += 2) {
     for (let col = x + 2; col + 1 < x + w - 2; col += 4) {
       grid.text(col, row, "[]", layer);
+      windows?.push({ x: col, y: row });
     }
   }
   // Door at street level with a step in front of it.
@@ -643,7 +694,7 @@ function drawGableFace(
  * A house with volume: back outline (shifted by the depth vector), corner
  * connectors, a shaded side face, then the opaque front face on top.
  */
-function drawHouse(grid: Grid, house: House, street: number) {
+function drawHouse(grid: Grid, house: House, street: number, windows: Cell[]) {
   const { x, y, w, h, steps } = house;
   const cx = x + Math.floor(w / 2);
   const right = x + w - 1;
@@ -692,7 +743,7 @@ function drawHouse(grid: Grid, house: House, street: number) {
   grid.put(right + 1, bodyTop, "/", "scenery");
   grid.put(right + 1, street, "/", "scenery");
 
-  drawGableFace(grid, house, "scenery", true);
+  drawGableFace(grid, house, "scenery", true, windows);
 
   // Cast shadow on the paving (light from the upper left): light dots
   // under the facade, denser just past the receding side.
@@ -958,20 +1009,276 @@ function figuresAt(
   return out;
 }
 
-function figureSprite(f: FigureSnapshot, tick: number, index: number) {
-  const walking = f.phase !== "gathered";
+/** A wave: arm up or out, toward `side`. */
+interface Wave {
+  side: "left" | "right";
+  armUp: boolean;
+}
+
+interface Pose {
+  walking: boolean;
+  wave: Wave | null;
+}
+
+function figureSprite(
+  f: FigureSnapshot,
+  tick: number,
+  index: number,
+  pose: Pose,
+): string[] {
+  const walking = pose.walking;
   const step = walking && tick % 2 === 1;
+  const legs = step ? LEGS_STEP : LEGS;
+  const wave = pose.wave;
   if (f.kind === "agent") {
+    if (wave) {
+      // An agent's head fills its sprite, so the arm reaches one cell out.
+      return wave.armUp
+        ? [AGENT_HEAD + "/", BODY_WAVE, legs]
+        : [AGENT_HEAD, "/|-", legs];
+    }
     const blink = !walking && Math.floor((tick + index * 5) / 9) % 7 === 0;
-    return [blink ? AGENT_BLINK : AGENT_HEAD, BODY, step ? LEGS_STEP : LEGS];
+    return [blink ? AGENT_BLINK : AGENT_HEAD, BODY, legs];
   }
-  const wave = !walking && Math.floor((tick + index * 7) / 20) % 4 === 0;
+  if (wave) {
+    if (wave.side === "left") {
+      return wave.armUp ? ["\\o ", " |\\", legs] : [HUMAN_HEAD, "-|\\", legs];
+    }
+    return wave.armUp
+      ? [HUMAN_WAVE, BODY_WAVE, legs]
+      : [HUMAN_HEAD, "/|-", legs];
+  }
+  const idleWave = !walking && Math.floor((tick + index * 7) / 20) % 4 === 0;
   return [
-    wave ? HUMAN_WAVE : HUMAN_HEAD,
-    wave ? BODY_WAVE : BODY,
-    step ? LEGS_STEP : LEGS,
+    idleWave ? HUMAN_WAVE : HUMAN_HEAD,
+    idleWave ? BODY_WAVE : BODY,
+    legs,
   ];
 }
+
+// ─── Effects: night ──────────────────────────────────────────────────────────
+
+/** One cell that changes when night falls, and the night level it needs. */
+interface NightCell {
+  x: number;
+  y: number;
+  ch: string;
+  layer: SceneLayer;
+  /** Visible once `nightLevel` passes this (0..1). */
+  order: number;
+}
+
+const LIT_WINDOW = "##";
+const LAMP_BULB_LIT = "O";
+/** Light rays around a lamp head: [dx, dy, glyph] from the lamp's top-left. */
+const LAMP_RAYS: [number, number, string][] = [
+  [-1, 0, "\\"],
+  [3, 0, "/"],
+  [-1, 1, "-"],
+  [3, 1, "-"],
+  [-1, 2, "/"],
+  [3, 2, "\\"],
+];
+const STAR_GLYPHS = ["+", ".", "+", "'"];
+const STAR_SPACING = 7;
+const MAX_STARS = 10;
+
+/**
+ * Everything that lights up at night, planned once from the finished day
+ * grid: windows (one by one, in a seeded order), lamps (first) and a few
+ * stars in the open sky above the rooftops. Only blank cells or real
+ * windows are touched, so no outline is ever overwritten.
+ */
+function planNight(
+  base: Grid,
+  layout: PlazaLayout,
+  windows: readonly Cell[],
+  seed: number,
+): NightCell[] {
+  const out: NightCell[] = [];
+
+  for (const w of windows) {
+    if (base.charAt(w.x, w.y) !== "[" || base.charAt(w.x + 1, w.y) !== "]")
+      continue;
+    const order = 0.08 + rand(seed, 61, w.x, w.y) * 0.8;
+    out.push({ x: w.x, y: w.y, ch: LIT_WINDOW[0]!, layer: "glow", order });
+    out.push({ x: w.x + 1, y: w.y, ch: LIT_WINDOW[1]!, layer: "glow", order });
+  }
+
+  for (const lamp of layout.props) {
+    if (lamp.kind !== "lamp") continue;
+    if (base.charAt(lamp.x + 1, lamp.y + 1) === "o") {
+      out.push({
+        x: lamp.x + 1,
+        y: lamp.y + 1,
+        ch: LAMP_BULB_LIT,
+        layer: "glow",
+        order: 0.02,
+      });
+    }
+    for (const [dx, dy, ch] of LAMP_RAYS) {
+      const x = lamp.x + dx;
+      const y = lamp.y + dy;
+      if (base.isBlank(x, y) && !base.isSafe(x, y))
+        out.push({ x, y, ch, layer: "glow", order: 0.04 });
+    }
+  }
+
+  // Skyline: the first drawn row per column. Stars stay well above it.
+  const { cols, rows } = base;
+  const skyline = Array.from({ length: cols }, (_, x) => {
+    for (let y = 0; y < rows; y++) if (!base.isBlank(x, y)) return y;
+    return rows;
+  });
+  const skyTop = Math.max(0, layout.street - 8);
+  const stars: Cell[] = [];
+  const want = Math.min(MAX_STARS, Math.max(3, Math.floor(cols / 18)));
+  for (let i = 0; i < want * 12 && stars.length < want; i++) {
+    const x = 1 + Math.floor(rand(seed, 67, i) * Math.max(1, cols - 2));
+    const y = Math.floor(rand(seed, 71, i) * Math.max(1, skyTop));
+    const roof = Math.min(
+      skyline[x - 1] ?? rows,
+      skyline[x] ?? rows,
+      skyline[x + 1] ?? rows,
+    );
+    if (y >= roof - 2 || base.isSafe(x, y) || !base.isBlank(x, y)) continue;
+    if (stars.some((s) => Math.abs(s.x - x) < STAR_SPACING && s.y === y))
+      continue;
+    if (
+      stars.some(
+        (s) => Math.abs(s.x - x) < STAR_SPACING && Math.abs(s.y - y) < 2,
+      )
+    )
+      continue;
+    stars.push({ x, y });
+    out.push({
+      x,
+      y,
+      ch: STAR_GLYPHS[i % STAR_GLYPHS.length]!,
+      layer: "glow",
+      order: 0.3 + rand(seed, 73, i) * 0.65,
+    });
+  }
+  return out;
+}
+
+// ─── Effects: greeting ───────────────────────────────────────────────────────
+
+const BUBBLE_MAX_TEXT = 30;
+const BUBBLE_H = 3;
+
+interface Bubble extends Placed {
+  text: string;
+  tailX: number;
+}
+
+function overlaps(a: Placed, b: Placed): boolean {
+  return (
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+  );
+}
+
+/**
+ * Where a speech bubble for `figure` goes: centred above its head, nudged
+ * sideways to stay on the grid, off the notice board and out of the copy's
+ * keep-clear zone — but always with its tail over the speaker's head. Null
+ * when there is no such spot (the agent still waves).
+ */
+function placeBubble(
+  grid: Grid,
+  figure: FigureSnapshot,
+  rawText: string,
+  board: Placed | null,
+): Bubble | null {
+  const text = fit(rawText, BUBBLE_MAX_TEXT);
+  const w = textWidth(text) + 4;
+  const y = figure.y - BUBBLE_H;
+  if (y < 0 || w > grid.cols || !text) return null;
+  const head = figure.x + 1;
+  const ideal = Math.min(grid.cols - w, Math.max(0, head - Math.floor(w / 2)));
+  for (let shift = 0; shift <= w; shift++) {
+    for (const x of shift === 0 ? [ideal] : [ideal + shift, ideal - shift]) {
+      if (x < 0 || x + w > grid.cols) continue;
+      // The tail must point at the speaker, or it reads as someone else's.
+      if (head < x + 1 || head > x + w - 2) continue;
+      const rect = { x, y, w, h: BUBBLE_H };
+      if (!grid.canPlace(x, y, w, BUBBLE_H)) continue;
+      if (board && overlaps(rect, board)) continue;
+      return { ...rect, text, tailX: head };
+    }
+  }
+  return null;
+}
+
+const BUBBLE_LAYER: Record<GreetStage, SceneLayer> = {
+  full: "people",
+  dim: "scenery",
+  faint: "far",
+};
+
+function drawBubble(grid: Grid, bubble: Bubble, stage: GreetStage) {
+  const layer = BUBBLE_LAYER[stage];
+  const { x, y, w, text, tailX } = bubble;
+  const edge = "-".repeat(w - 2);
+  grid.text(x, y, `.${edge}.`, layer);
+  const pad = " ".repeat(Math.max(0, w - 4 - textWidth(text)));
+  grid.text(x, y + 1, `| ${text}${pad} |`, layer);
+  grid.text(x, y + 2, `'${edge}'`, layer);
+  grid.put(tailX, y + 2, "v", layer);
+}
+
+// ─── Effects: fountain splash ────────────────────────────────────────────────
+
+/** Droplets: start offset from the spout, sideways and upward speed. */
+const DROPLETS: { dx: number; vx: number; vy: number }[] = [
+  { dx: 0, vx: -0.25, vy: 1.3 },
+  { dx: 0, vx: 0.3, vy: 1.2 },
+  { dx: -1, vx: -0.6, vy: 1.05 },
+  { dx: 1, vx: 0.6, vy: 1.1 },
+  { dx: -2, vx: -0.95, vy: 0.8 },
+  { dx: 2, vx: 0.95, vy: 0.85 },
+  { dx: -3, vx: -1.25, vy: 0.55 },
+  { dx: 3, vx: 1.3, vy: 0.5 },
+];
+const DROPLET_GRAVITY = 0.22;
+/** Rows above the fountain top that flying droplets can reach. */
+const SPLASH_HEADROOM = 4;
+
+function drawDroplets(
+  grid: Grid,
+  fountain: PlacedProp,
+  floor: number,
+  age: number,
+) {
+  const spout = fountain.x + Math.floor(fountain.w / 2);
+  for (const d of DROPLETS) {
+    const x = Math.round(spout + d.dx + d.vx * age);
+    const rise = d.vy * age - (DROPLET_GRAVITY * age * age) / 2;
+    const y = fountain.y - Math.round(rise);
+    if (y >= floor) {
+      // Landed: a small wet mark on the paving in front of the fountain.
+      if (grid.isEmpty(x, floor)) grid.put(x, floor, ",", "people");
+      continue;
+    }
+    if (y < fountain.y - SPLASH_HEADROOM) continue;
+    const falling = d.vy - DROPLET_GRAVITY * age < 0;
+    if (grid.isEmpty(x, y)) grid.put(x, y, falling ? "." : "'", "people");
+  }
+}
+
+/** Figures standing around the fountain, as sprite x positions. */
+function fountainSlots(fountain: Placed): { left: number[]; right: number[] } {
+  return {
+    left: [fountain.x - FIGURE_W - 1, fountain.x - 2 * FIGURE_W - 2],
+    right: [
+      fountain.x + fountain.w + 1,
+      fountain.x + fountain.w + FIGURE_W + 2,
+    ],
+  };
+}
+
+const GATHER_RADIUS = 40;
+const MAX_GATHERERS = 3;
 
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
@@ -986,14 +1293,48 @@ export interface TownSquareScene {
   /** Feet row of the gathering groups. */
   front: number;
   buildings: BuildingRect[];
-  frame(tick: number): TownSquareFrame;
+  /** Clickable props (cells), in layout order. */
+  lamps: CellRect[];
+  fountains: CellRect[];
+  /** Draw `tick`, with any play effects applied. */
+  frame(tick: number, effects?: TownSquareEffects): TownSquareFrame;
+  /** What a click on cell (col, row) would play with, if anything. */
+  targetAt(
+    col: number,
+    row: number,
+    tick: number,
+    effects?: TownSquareEffects,
+  ): SquareTarget | null;
+  /**
+   * A sensible target for the keyboard controls ("wave to an agent" picks
+   * a gathered agent with room for a bubble), or null if there is none.
+   */
+  defaultTarget(
+    kind: SquareTargetKind,
+    tick: number,
+    effects?: TownSquareEffects,
+  ): SquareTarget | null;
+}
+
+const DEFAULT_GREETINGS = ["hi, I'm {name}"];
+
+/** Hit boxes are one cell larger than the art: easier to click. */
+const HIT_PAD = 1;
+
+function contains(r: Placed, col: number, row: number, pad = 0): boolean {
+  return (
+    col >= r.x - pad &&
+    col < r.x + r.w + pad &&
+    row >= r.y - pad &&
+    row < r.y + r.h + pad
+  );
 }
 
 /**
  * Build the square once for a size + data: layout and every static cell are
  * computed here. `frame(tick)` then redraws only the rows where something
- * moves (both walking lines and the fountain water) and reuses cached
- * strings for every other row.
+ * moves (both walking lines and the fountain water, plus the rows an active
+ * effect touches) and reuses cached strings for every other row.
  */
 export function createTownSquare(
   cols: number,
@@ -1003,6 +1344,7 @@ export function createTownSquare(
   const safeCols = Math.max(0, Math.floor(cols));
   const safeRows = Math.max(0, Math.floor(rows));
   const seed = data.seed ?? 1;
+  const greetings = data.greetings?.length ? data.greetings : DEFAULT_GREETINGS;
   const base = new Grid(safeCols, safeRows, data.safeZone ?? null);
 
   if (safeCols < 8 || safeRows < 8) {
@@ -1015,6 +1357,8 @@ export function createTownSquare(
       street: -1,
       front: -1,
       buildings: [],
+      lamps: [],
+      fountains: [],
       frame: () => ({
         cols: safeCols,
         rows: safeRows,
@@ -1023,13 +1367,17 @@ export function createTownSquare(
         boardLines: [],
         board: null,
       }),
+      targetAt: () => null,
+      defaultTarget: () => null,
     };
   }
 
   const layout = layoutPlaza(base, seed);
   drawFloor(base, layout, seed);
   // Back to front: houses on the street, street props, then front props.
-  for (const house of layout.houses) drawHouse(base, house, layout.street);
+  const windows: Cell[] = [];
+  for (const house of layout.houses)
+    drawHouse(base, house, layout.street, windows);
   for (const prop of layout.props)
     if (STREET_PROPS.has(prop.kind)) drawProp(base, prop);
   for (const prop of layout.props)
@@ -1049,19 +1397,89 @@ export function createTownSquare(
   }));
 
   const fountains = layout.props.filter((p) => p.kind === "fountain");
+  const lamps = layout.props.filter((p) => p.kind === "lamp");
+  // Fountain hit box includes the puddle row under the basin.
+  const fountainBoxes = fountains.map((f) => ({ ...f, h: f.h + 1 }));
+  const rect = ({ x, y, w, h }: Placed): CellRect => ({ x, y, w, h });
+
   const lane = (feet: number) =>
     Array.from({ length: FIGURE_H }, (_, i) => feet - FIGURE_H + 1 + i);
+  const inGrid = (y: number) => y >= 0 && y < safeRows;
   const dynamicRows = [
     ...new Set([
       ...lane(layout.street),
       ...lane(layout.front),
       ...fountains.flatMap(fountainRows),
     ]),
-  ].filter((y) => y >= 0 && y < safeRows);
-  const dynamic = new Set(dynamicRows);
+  ].filter(inGrid);
 
   const staticLayers = base.layers();
   const work = new Grid(safeCols, safeRows, data.safeZone ?? null);
+
+  // Night is planned once; its fully-dark grid is built on first use.
+  const nightCells = planNight(base, layout, windows, seed);
+  const nightRows = [...new Set(nightCells.map((c) => c.y))];
+  let night: { grid: Grid; layers: Record<SceneLayer, string[]> } | null = null;
+  const fullNight = () => {
+    if (!night) {
+      const grid = base.clone();
+      for (const c of nightCells) grid.put(c.x, c.y, c.ch, c.layer);
+      night = { grid, layers: grid.layers() };
+    }
+    return night;
+  };
+
+  /**
+   * Figures at `tick` with the splash detour applied: the few people
+   * nearest the fountain when it splashed walk over, stand around it, then
+   * walk back into their normal choreography.
+   */
+  const stageFigures = (tick: number, effects: TownSquareEffects) => {
+    const figures = figuresAt(tick, safeCols, layout, seed);
+    const walking = new Set<string>();
+    const splash = effects.splash;
+    const fountain = splash ? fountains[splash.fountain] : undefined;
+    const weight = splashGather(splash, tick);
+    if (!splash || !fountain || weight <= 0) return { figures, walking };
+
+    const centre = fountain.x + Math.floor(fountain.w / 2);
+    const feetY = layout.front - FIGURE_H + 1;
+    const slots = fountainSlots(fountain);
+    const free = (x: number) => base.canPlace(x, feetY, FIGURE_W, FIGURE_H);
+    const left = slots.left.filter(free);
+    const right = slots.right.filter(free);
+    const chosen = figuresAt(splash.since, safeCols, layout, seed)
+      .filter(
+        (f) =>
+          f.depth === "front" && Math.abs(f.x + 1 - centre) <= GATHER_RADIUS,
+      )
+      .sort((a, b) => Math.abs(a.x + 1 - centre) - Math.abs(b.x + 1 - centre))
+      .slice(0, MAX_GATHERERS);
+    const target = new Map<string, number>();
+    for (const f of chosen) {
+      const fromLeft = f.x + 1 < centre;
+      const slot =
+        (fromLeft ? left : right).shift() ?? (fromLeft ? right : left).shift();
+      if (slot !== undefined) target.set(f.id, slot);
+    }
+    for (const f of figures) {
+      const slot = target.get(f.id);
+      if (slot === undefined) continue;
+      f.x = lerp(f.x, slot, weight);
+      if (weight < 1) walking.add(f.id);
+    }
+    return { figures, walking };
+  };
+
+  const frontAgents = (figures: FigureSnapshot[]) =>
+    figures.filter((f) => f.kind === "agent" && f.depth === "front");
+
+  const greetingFor = (tick: number, effects: TownSquareEffects) => {
+    const greet = effects.greet;
+    const stage = greetStage(greet, tick);
+    if (!greet || !stage) return null;
+    return { greet, stage };
+  };
 
   return {
     cols: safeCols,
@@ -1071,12 +1489,95 @@ export function createTownSquare(
     street: layout.street,
     front: layout.front,
     buildings,
-    frame(tick: number): TownSquareFrame {
-      work.copyRowsFrom(base, dynamicRows);
+    lamps: lamps.map(rect),
+    fountains: fountains.map(rect),
+
+    frame(tick: number, effects = NO_EFFECTS): TownSquareFrame {
+      const level = nightLevel(effects.lighting, tick);
+      const dark = level >= 1 ? fullNight() : null;
+      const source = dark ? dark.grid : base;
+      const statics = dark ? dark.layers : staticLayers;
+      const redraw = new Set(dynamicRows);
+      const dusk = level > 0 && !dark;
+      if (dusk) for (const y of nightRows) redraw.add(y);
+
+      const { figures, walking } = stageFigures(tick, effects);
+
+      const greeting = greetingFor(tick, effects);
+      const waver = greeting
+        ? figures.find(
+            (f) => f.id === greeting.greet.figureId && f.depth === "front",
+          )
+        : undefined;
+      const bubble =
+        greeting && waver
+          ? placeBubble(
+              base,
+              waver,
+              greetingText(waver.id, greeting.greet.line, greetings),
+              layout.board,
+            )
+          : null;
+      if (bubble) for (let r = 0; r < BUBBLE_H; r++) redraw.add(bubble.y + r);
+
+      const splashFountain = effects.splash
+        ? fountains[effects.splash.fountain]
+        : undefined;
+      const burst = splashFountain
+        ? splashBurstAge(effects.splash, tick)
+        : null;
+      if (splashFountain && burst !== null) {
+        for (
+          let y = splashFountain.y - SPLASH_HEADROOM;
+          y <= layout.front + 1;
+          y++
+        )
+          redraw.add(y);
+      }
+
+      const rowsToDraw = [...redraw].filter(inGrid);
+      work.copyRowsFrom(source, rowsToDraw);
+      if (dusk) {
+        for (const c of nightCells)
+          if (c.order < level) work.put(c.x, c.y, c.ch, c.layer);
+      }
       for (const f of fountains) drawFountainWater(work, f, tick);
-      const figures = figuresAt(tick, safeCols, layout, seed);
+      if (splashFountain && burst !== null && burst < SPLASH_BURST_TICKS)
+        drawDroplets(work, splashFountain, layout.front + 1, burst);
+
+      // The neighbour who waves back: the nearest human in the same group.
+      const neighbour =
+        waver &&
+        greeting &&
+        waver.group >= 0 &&
+        greetReplying(greeting.greet, tick)
+          ? figures
+              .filter(
+                (f) =>
+                  f.kind === "human" &&
+                  f.group === waver.group &&
+                  f.depth === "front",
+              )
+              .sort(
+                (a, b) => Math.abs(a.x - waver.x) - Math.abs(b.x - waver.x),
+              )[0]
+          : undefined;
+
       figures.forEach((f, i) => {
-        const sprite = figureSprite(f, tick, i);
+        let wave: Wave | null = null;
+        if (greeting && f === waver) {
+          wave = { side: "right", armUp: waveArmUp(greeting.greet, tick) };
+        } else if (greeting && waver && f === neighbour) {
+          wave = {
+            side: f.x > waver.x ? "left" : "right",
+            armUp: waveArmUp(greeting.greet, tick, GREET_REPLY_DELAY),
+          };
+        }
+        const pose: Pose = {
+          walking: f.phase !== "gathered" || walking.has(f.id),
+          wave,
+        };
+        const sprite = figureSprite(f, tick, i, pose);
         if (f.depth === "back") {
           // Fainter, and hidden behind anything standing on the front line.
           work.sprite(f.x, f.y, sprite, "scenery", { behindFront: true });
@@ -1084,17 +1585,13 @@ export function createTownSquare(
           work.sprite(f.x, f.y, sprite, "people");
         }
       });
+      if (bubble && greeting) drawBubble(work, bubble, greeting.stage);
 
-      const layers: Record<SceneLayer, string[]> = {
-        far: [],
-        scenery: [],
-        people: [],
-        accent: [],
-      };
+      const layers = emptyLayers();
       for (let y = 0; y < safeRows; y++) {
         for (const layer of LAYER_NAMES) {
           layers[layer].push(
-            dynamic.has(y) ? work.row(y, layer) : staticLayers[layer][y]!,
+            redraw.has(y) ? work.row(y, layer) : statics[layer][y]!,
           );
         }
       }
@@ -1107,6 +1604,53 @@ export function createTownSquare(
         board,
       };
     },
+
+    targetAt(col, row, tick, effects = NO_EFFECTS) {
+      const { figures } = stageFigures(tick, effects);
+      for (const f of frontAgents(figures)) {
+        if (
+          contains(
+            { x: f.x, y: f.y, w: FIGURE_W, h: FIGURE_H },
+            col,
+            row,
+            HIT_PAD,
+          )
+        )
+          return { kind: "agent", figureId: f.id };
+      }
+      const fi = fountainBoxes.findIndex((f) => contains(f, col, row, HIT_PAD));
+      if (fi >= 0) return { kind: "fountain", index: fi };
+      const li = lamps.findIndex((l) => contains(l, col, row, HIT_PAD));
+      if (li >= 0) return { kind: "lamp", index: li };
+      return null;
+    },
+
+    defaultTarget(kind, tick, effects = NO_EFFECTS) {
+      switch (kind) {
+        case "lamp":
+          return lamps.length ? { kind, index: lamps.length - 1 } : null;
+        case "fountain":
+          return fountains.length ? { kind, index: 0 } : null;
+        case "agent": {
+          const agents = frontAgents(stageFigures(tick, effects).figures);
+          const roomy = agents.filter((f) =>
+            placeBubble(
+              base,
+              f,
+              greetingText(f.id, 0, greetings),
+              layout.board,
+            ),
+          );
+          const pool = roomy.length ? roomy : agents;
+          const best = [...pool].sort(
+            (a, b) =>
+              Number(b.phase === "gathered") - Number(a.phase === "gathered") ||
+              b.x - a.x,
+          )[0];
+          return best ? { kind, figureId: best.id } : null;
+        }
+      }
+    },
   };
 }
 
@@ -1116,6 +1660,7 @@ export function renderTownSquare(
   cols: number,
   rows: number,
   data: TownSquareData,
+  effects?: TownSquareEffects,
 ): TownSquareFrame {
-  return createTownSquare(cols, rows, data).frame(tick);
+  return createTownSquare(cols, rows, data).frame(tick, effects);
 }

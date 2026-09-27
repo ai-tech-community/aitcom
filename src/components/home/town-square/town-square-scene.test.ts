@@ -12,6 +12,14 @@ import {
   type TownSquareData,
   type TownSquareFrame,
 } from "./town-square-scene";
+import {
+  GREET_TICKS,
+  NIGHT_FALL_TICKS,
+  SPLASH_TICKS,
+  agentName,
+  triggerEffect,
+  type TownSquareEffects,
+} from "./town-square-effects";
 
 const EVENT_BOARD: NoticeBoardContent = {
   kind: "event",
@@ -47,9 +55,11 @@ function flatten(f: TownSquareFrame): string {
       [...row]
         .map((ch, x) => {
           const accent = f.layers.accent[y]![x]!;
+          const glow = f.layers.glow[y]![x]!;
           const people = f.layers.people[y]![x]!;
           const far = f.layers.far[y]![x]!;
           if (accent !== " ") return accent;
+          if (glow !== " ") return glow;
           if (people !== " ") return people;
           return ch !== " " ? ch : far;
         })
@@ -80,9 +90,9 @@ describe("renderTownSquare — frame shape", () => {
     const f = frame(TOWN_SQUARE_STATIC_TICK, DESKTOP);
     for (let y = 0; y < f.rows; y++) {
       for (let x = 0; x < f.cols; x++) {
-        const filled = (["far", "scenery", "people", "accent"] as const).filter(
-          (l) => f.layers[l][y]![x] !== " ",
-        );
+        const filled = (
+          ["far", "scenery", "people", "glow", "accent"] as const
+        ).filter((l) => f.layers[l][y]![x] !== " ");
         expect(filled.length).toBeLessThanOrEqual(1);
       }
     }
@@ -434,5 +444,284 @@ describe("wrapText", () => {
         expect(line.length).toBeLessThanOrEqual(w);
       }
     }
+  });
+});
+
+// ─── Play effects ────────────────────────────────────────────────────────────
+
+describe("play effects", () => {
+  const T = TOWN_SQUARE_STATIC_TICK;
+  const GREETINGS = ["hi, I'm {name}", "hello, neighbour!"];
+  const scene = createTownSquare(DESKTOP.cols, DESKTOP.rows, {
+    board: EVENT_BOARD,
+    safeZone: DESKTOP_SAFE,
+    greetings: GREETINGS,
+  });
+  const live = (tick = T) => ({ tick, settled: false });
+  const still = { tick: T, settled: true };
+  const count = (rows: string[], needle: string) =>
+    rows.join("\n").split(needle).length - 1;
+
+  describe("hit-testing", () => {
+    it("finds a front-line agent under the pointer", () => {
+      const agent = scene
+        .frame(T)
+        .figures.find((f) => f.kind === "agent" && f.depth === "front")!;
+      expect(scene.targetAt(agent.x + 1, agent.y, T)).toEqual({
+        kind: "agent",
+        figureId: agent.id,
+      });
+      // One cell of slack around the sprite.
+      expect(scene.targetAt(agent.x - 1, agent.y + 2, T)).toEqual({
+        kind: "agent",
+        figureId: agent.id,
+      });
+    });
+
+    it("ignores humans and back-street passers-by", () => {
+      const f = scene.frame(T);
+      const human = f.figures.find(
+        (x) =>
+          x.kind === "human" &&
+          !f.figures.some(
+            (a) => a.kind === "agent" && Math.abs(a.x - x.x) <= 4,
+          ),
+      );
+      if (human) {
+        expect(scene.targetAt(human.x + 1, human.y + 1, T)?.kind).not.toBe(
+          "agent",
+        );
+      }
+    });
+
+    it("finds lamps and the fountain", () => {
+      expect(scene.lamps.length).toBeGreaterThan(0);
+      expect(scene.fountains.length).toBeGreaterThan(0);
+      const lamp = scene.lamps[0]!;
+      expect(scene.targetAt(lamp.x + 1, lamp.y + 1, T)).toEqual({
+        kind: "lamp",
+        index: 0,
+      });
+      const fountain = scene.fountains[0]!;
+      expect(scene.targetAt(fountain.x + 5, fountain.y + 2, T)).toEqual({
+        kind: "fountain",
+        index: 0,
+      });
+    });
+
+    it("returns nothing for sky, the board or the copy's zone", () => {
+      expect(scene.targetAt(DESKTOP.cols - 2, 1, T)).toBeNull();
+      const board = scene.board!;
+      expect(scene.targetAt(board.x + 4, board.y + 2, T)).toBeNull();
+      expect(scene.targetAt(10, 10, T)).toBeNull();
+    });
+
+    it("suggests a target of every kind for the keyboard controls", () => {
+      expect(scene.defaultTarget("agent", T)?.kind).toBe("agent");
+      expect(scene.defaultTarget("lamp", T)?.kind).toBe("lamp");
+      expect(scene.defaultTarget("fountain", T)?.kind).toBe("fountain");
+    });
+
+    it("has nothing to play with on a tiny grid", () => {
+      const tiny = createTownSquare(6, 4, { board: EVENT_BOARD });
+      expect(tiny.targetAt(1, 1, 0)).toBeNull();
+      expect(tiny.defaultTarget("agent", 0)).toBeNull();
+    });
+  });
+
+  describe("wave to an agent", () => {
+    const target = scene.defaultTarget("agent", T)!;
+    const id = target.kind === "agent" ? target.figureId : "";
+    const effects = triggerEffect({}, target, live());
+    const hello = `hi, I'm ${agentName(id)}`;
+
+    it("shows a speech bubble and waves", () => {
+      const f = scene.frame(T, effects);
+      expect(f.layers.people.join("\n")).toContain(hello);
+      expect(flatten(f)).toContain("[•]/");
+    });
+
+    it("has a neighbour from the group wave back", () => {
+      const waver = scene.frame(T).figures.find((f) => f.id === id)!;
+      const reply = scene.frame(T + 6, effects);
+      const neighbour = reply.figures
+        .filter(
+          (f) =>
+            f.kind === "human" &&
+            f.group === waver.group &&
+            f.depth === "front",
+        )
+        .sort((a, b) => Math.abs(a.x - waver.x) - Math.abs(b.x - waver.x))[0]!;
+      const rows = flatten(reply).split("\n");
+      const head = rows[neighbour.y]!.slice(neighbour.x, neighbour.x + 3);
+      const body = rows[neighbour.y + 1]!.slice(neighbour.x, neighbour.x + 3);
+      expect(`${head}|${body}`).toMatch(/\\o|o\/|-\||\|-/);
+    });
+
+    it("fades through quieter layers, then is gone", () => {
+      const dim = scene.frame(T + GREET_TICKS - 5, effects);
+      expect(dim.layers.people.join("\n")).not.toContain(hello);
+      expect(dim.layers.scenery.join("\n")).toContain(hello);
+      const gone = scene.frame(T + GREET_TICKS, effects);
+      expect(flatten(gone)).not.toContain(hello);
+    });
+
+    it("rotates to the next line on the next wave", () => {
+      const twice = triggerEffect(effects, target, live(T + 2));
+      expect(scene.frame(T + 2, twice).layers.people.join("\n")).toContain(
+        "hello, neighbour!",
+      );
+    });
+
+    it("keeps the bubble off the notice board", () => {
+      const f = scene.frame(T, effects);
+      const b = scene.board!;
+      expect(f.boardLines[0]).toBeDefined();
+      const board = flatten(scene.frame(T)).split("\n");
+      const withBubble = flatten(f).split("\n");
+      for (let y = b.y; y < b.y + b.h; y++) {
+        expect(withBubble[y]!.slice(b.x, b.x + b.w)).toBe(
+          board[y]!.slice(b.x, b.x + b.w),
+        );
+      }
+    });
+  });
+
+  describe("night", () => {
+    const dusk = triggerEffect({}, { kind: "lamp", index: 0 }, live());
+    const litWindows = (f: TownSquareFrame) => count(f.layers.glow, "##");
+
+    it("lights windows one by one, then all of them", () => {
+      const start = litWindows(scene.frame(T, dusk));
+      const middle = litWindows(scene.frame(T + NIGHT_FALL_TICKS / 2, dusk));
+      const full = litWindows(scene.frame(T + NIGHT_FALL_TICKS, dusk));
+      expect(start).toBe(0);
+      expect(middle).toBeGreaterThan(0);
+      expect(full).toBeGreaterThan(middle);
+      expect(count(scene.frame(T).layers.scenery, "[]")).toBe(full);
+    });
+
+    it("lights the lamps and shows a few stars", () => {
+      const f = scene.frame(T + NIGHT_FALL_TICKS, dusk);
+      expect(count(f.layers.glow, "O")).toBe(scene.lamps.length);
+      const sky = f.layers.glow.slice(0, scene.street - 8).join("");
+      expect(sky.replace(/ /g, "").length).toBeGreaterThanOrEqual(3);
+    });
+
+    it("keeps orange to the board pin", () => {
+      const day = scene.frame(T);
+      const night = scene.frame(T + NIGHT_FALL_TICKS, dusk);
+      expect(night.layers.accent).toEqual(day.layers.accent);
+    });
+
+    it("returns to day on the next lamp click", () => {
+      const dawn = triggerEffect(
+        dusk,
+        { kind: "lamp", index: 1 },
+        live(T + 100),
+      );
+      const day = scene.frame(T + 200, dawn);
+      expect(day.layers.glow.join("").trim()).toBe("");
+      expect(flatten(day)).toBe(flatten(scene.frame(T + 200)));
+    });
+
+    it("reuses cached rows once night has fallen", () => {
+      const a = scene.frame(T + 40, dusk);
+      const b = scene.frame(T + 41, dusk);
+      expect(b.layers.glow[0]).toBe(a.layers.glow[0]);
+      expect(b.layers.scenery[5]).toBe(a.layers.scenery[5]);
+    });
+  });
+
+  describe("fountain splash", () => {
+    const fountain = scene.fountains[0]!;
+    const splash = triggerEffect({}, { kind: "fountain", index: 0 }, live());
+    const nearFountain = (f: TownSquareFrame) =>
+      f.figures.filter(
+        (x) =>
+          x.depth === "front" &&
+          x.x + 3 >= fountain.x - 8 &&
+          x.x <= fountain.x + fountain.w + 8,
+      ).length;
+
+    it("throws droplets above the basin", () => {
+      const rows = flatten(scene.frame(T + 4, splash)).split("\n");
+      const above = rows
+        .slice(fountain.y - 4, fountain.y)
+        .map((r) => r.slice(fountain.x - 6, fountain.x + fountain.w + 6))
+        .join("");
+      const calm = flatten(scene.frame(T + 4))
+        .split("\n")
+        .slice(fountain.y - 4, fountain.y)
+        .map((r) => r.slice(fountain.x - 6, fountain.x + fountain.w + 6))
+        .join("");
+      expect(above).not.toBe(calm);
+      expect(above).toMatch(/['.]/);
+    });
+
+    it("draws nearby people over, then lets them go back", () => {
+      const before = nearFountain(scene.frame(T));
+      const gathered = nearFountain(scene.frame(T + 20, splash));
+      expect(gathered).toBeGreaterThan(before);
+      expect(flatten(scene.frame(T + SPLASH_TICKS + 1, splash))).toBe(
+        flatten(scene.frame(T + SPLASH_TICKS + 1)),
+      );
+    });
+  });
+
+  describe("reduced motion", () => {
+    it("shows every effect finished in a single still frame", () => {
+      let fx: TownSquareEffects = {};
+      fx = triggerEffect(fx, { kind: "lamp", index: 0 }, still);
+      fx = triggerEffect(fx, scene.defaultTarget("agent", T)!, still);
+      fx = triggerEffect(fx, { kind: "fountain", index: 0 }, still);
+      const f = scene.frame(T, fx);
+      expect(count(f.layers.glow, "##")).toBe(
+        count(scene.frame(T).layers.scenery, "[]"),
+      );
+      expect(f.layers.people.join("\n")).toMatch(/hi, I'm agent-\d+/);
+      // The same tick always draws the same still frame.
+      expect(flatten(scene.frame(T, fx))).toBe(flatten(f));
+    });
+  });
+
+  describe("keep-clear zone", () => {
+    it("is never drawn into while effects play", () => {
+      for (const seed of [1, 2, 3]) {
+        const sc = createTownSquare(DESKTOP.cols, DESKTOP.rows, {
+          board: EVENT_BOARD,
+          safeZone: DESKTOP_SAFE,
+          greetings: GREETINGS,
+          seed,
+        });
+        let fx: TownSquareEffects = {};
+        fx = triggerEffect(fx, { kind: "lamp", index: 0 }, live());
+        if (sc.fountains.length)
+          fx = triggerEffect(fx, { kind: "fountain", index: 0 }, live());
+        const agent = sc.defaultTarget("agent", T);
+        if (agent) fx = triggerEffect(fx, agent, live());
+        for (let tick = T; tick < T + 60; tick += 3) {
+          const f = sc.frame(tick, fx);
+          for (let y = 0; y < DESKTOP_SAFE.h; y++) {
+            for (const layer of Object.values(f.layers)) {
+              expect(layer[y]!.slice(0, DESKTOP_SAFE.w).trim()).toBe("");
+            }
+          }
+        }
+      }
+    });
+  });
+
+  describe("performance", () => {
+    it("only redraws the rows an effect touches", () => {
+      const target = scene.defaultTarget("agent", T)!;
+      const fx = triggerEffect({}, target, live());
+      const plain = scene.frame(T);
+      const greeted = scene.frame(T, fx);
+      // The sky and rooftops are the cached strings, not rebuilt rows.
+      for (let y = 0; y < 10; y++) {
+        expect(greeted.layers.scenery[y]).toBe(plain.layers.scenery[y]);
+      }
+    });
   });
 });

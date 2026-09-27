@@ -176,4 +176,66 @@ describe("useAsciiMotion — re-measuring", () => {
     act(() => handle!.remeasure());
     expect(measure.mock.calls.length).toBe(before + 1);
   });
+
+  it("keeps the same handle across renders", () => {
+    stubReducedMotion(true);
+    stubResizeObserver();
+    const handles: AsciiMotionHandle[] = [];
+    const view = render(
+      <WithCopy
+        measure={() => ({ cols: 1 })}
+        onHandle={(h) => handles.push(h)}
+      />,
+    );
+    view.rerender(
+      <WithCopy
+        measure={() => ({ cols: 2 })}
+        onHandle={(h) => handles.push(h)}
+      />,
+    );
+    expect(handles.length).toBeGreaterThanOrEqual(2);
+    expect(handles[1]).toBe(handles[0]);
+  });
+});
+
+describe("useAsciiMotion — interaction", () => {
+  function WithHandle({
+    draw,
+    onHandle,
+  }: {
+    draw: (tick: number) => void;
+    onHandle: (h: AsciiMotionHandle) => void;
+  }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const handle = useAsciiMotion(ref, {
+      frameMs: 100,
+      staticTick: 7,
+      measure: () => ({ cols: 10 }),
+      draw: (tick) => draw(tick),
+    });
+    useEffect(() => {
+      onHandle(handle);
+    });
+    return <div ref={ref} />;
+  }
+
+  it("redraw() repaints the current frame on demand", () => {
+    stubReducedMotion(true);
+    const draw = vi.fn();
+    let handle: AsciiMotionHandle | null = null;
+    render(<WithHandle draw={draw} onHandle={(h) => (handle = h)} />);
+    draw.mockClear();
+    act(() => handle!.redraw());
+    expect(draw).toHaveBeenCalledTimes(1);
+    expect(draw).toHaveBeenCalledWith(7);
+  });
+
+  it("isStatic() reports reduced motion", () => {
+    const pref = stubReducedMotion(true);
+    let handle: AsciiMotionHandle | null = null;
+    render(<WithHandle draw={vi.fn()} onHandle={(h) => (handle = h)} />);
+    expect(handle!.isStatic()).toBe(true);
+    act(() => pref.set(false));
+    expect(handle!.isStatic()).toBe(false);
+  });
 });

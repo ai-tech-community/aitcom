@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
 import { AsciiMotionController } from "./motion-controller";
 
@@ -27,6 +27,13 @@ export interface AsciiMotionOptions<M> {
 export interface AsciiMotionHandle {
   /** Re-measure and repaint now, e.g. after the scene's data changed. */
   remeasure: () => void;
+  /** Repaint the current frame now, e.g. after an interaction changed it. */
+  redraw: () => void;
+  /**
+   * True under reduced motion: the tick will not advance, so anything
+   * triggered now should be shown in its finished state.
+   */
+  isStatic: () => boolean;
 }
 
 /**
@@ -53,6 +60,7 @@ export function useAsciiMotion<M>(
 
   const measurementRef = useRef<M | null>(null);
   const resizeHandlerRef = useRef<(() => void) | null>(null);
+  const controllerRef = useRef<AsciiMotionController | null>(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -85,6 +93,7 @@ export function useAsciiMotion<M>(
       },
     });
     controller.start();
+    controllerRef.current = controller;
 
     const onMotionPreference = (event: MediaQueryListEvent) =>
       controller.update({ prefersReducedMotion: event.matches });
@@ -127,6 +136,7 @@ export function useAsciiMotion<M>(
     return () => {
       alive = false;
       resizeHandlerRef.current = null;
+      controllerRef.current = null;
       controller.dispose();
       reducedMotion?.removeEventListener("change", onMotionPreference);
       document.removeEventListener("visibilitychange", onVisibility);
@@ -135,7 +145,13 @@ export function useAsciiMotion<M>(
     };
   }, [ref, frameMs, staticTick]);
 
-  return {
-    remeasure: () => resizeHandlerRef.current?.(),
-  };
+  // Stable identity, so callers can list it in effect dependencies.
+  return useMemo(
+    () => ({
+      remeasure: () => resizeHandlerRef.current?.(),
+      redraw: () => controllerRef.current?.redraw(),
+      isStatic: () => controllerRef.current?.currentMode === "static",
+    }),
+    [],
+  );
 }

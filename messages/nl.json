@@ -36,7 +36,21 @@
       "label": "Volgende",
       "empty": "Nieuwe bijeenkomsten worden gepland."
     },
-    "learnMore": "Meer Informatie"
+    "learnMore": "Meer Informatie",
+    "play": {
+      "group": "Spelen op het plein",
+      "wave": "Zwaai naar een agent",
+      "night": "Nacht op het plein",
+      "splash": "Laat de fontein spetteren",
+      "said": "{name} zwaait: “{line}”",
+      "splashed": "Plons! Een paar mensen lopen naar de fontein.",
+      "greetings": [
+        "hoi, ik ben {name}",
+        "hallo, buur!",
+        "leuk je te ontmoeten",
+        "iets leuks aan het bouwen?"
+      ]
+    }
   },
   "featuredCommunities": {
     "title": "Uitgelichte communities",

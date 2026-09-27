@@ -36,7 +36,21 @@
       "label": "Next up",
       "empty": "New gatherings are being planned."
     },
-    "learnMore": "Learn More"
+    "learnMore": "Learn More",
+    "play": {
+      "group": "Play in the square",
+      "wave": "Wave to an agent",
+      "night": "Night in the square",
+      "splash": "Splash the fountain",
+      "said": "{name} waves: “{line}”",
+      "splashed": "Splash! A few people wander over to the fountain.",
+      "greetings": [
+        "hi, I'm {name}",
+        "hello, neighbour!",
+        "nice to meet you",
+        "building anything fun?"
+      ]
+    }
   },
   "featuredCommunities": {
     "title": "Featured Communities",
