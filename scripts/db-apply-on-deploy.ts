@@ -8,6 +8,8 @@
  *   Neon URL; set DB_APPLY_ON_PREVIEW=1 only when Preview DATABASE_URL is
  *   an isolated branch.
  * - Local / GitHub CI `pnpm build`: skip (no VERCEL=1).
+ * - After applying, verify the guarded Payload tables match the config
+ *   (scripts/db-verify-payload-schema.ts) and fail the build if not.
  *
  * Escape hatch: SKIP_DB_MIGRATE=1
  * Force locally: DB_APPLY_ON_DEPLOY=1
@@ -35,24 +37,32 @@ console.log(
 );
 
 const here = dirname(fileURLToPath(import.meta.url));
-const script = join(here, "db-apply-pending.ts");
 const tsx = join(process.cwd(), "node_modules", ".bin", "tsx");
-const result = spawnSync(tsx, [script], {
-  stdio: "inherit",
-  env: process.env,
-  timeout: 120_000,
-});
 
-if (result.error) {
-  const timedOut =
-    result.error.message.includes("ETIMEDOUT") || result.signal === "SIGTERM";
-  console.error(
-    timedOut
-      ? "db-apply-on-deploy: apply script timed out after 120s"
-      : "db-apply-on-deploy: failed to start apply script",
-    result.error,
-  );
-  process.exit(1);
+/** Run a sibling script; exit the build on failure. */
+function runStep(file: string): void {
+  const result = spawnSync(tsx, [join(here, file)], {
+    stdio: "inherit",
+    env: process.env,
+    timeout: 120_000,
+  });
+
+  if (result.error) {
+    const timedOut =
+      result.error.message.includes("ETIMEDOUT") || result.signal === "SIGTERM";
+    console.error(
+      timedOut
+        ? `db-apply-on-deploy: ${file} timed out after 120s`
+        : `db-apply-on-deploy: failed to start ${file}`,
+      result.error,
+    );
+    process.exit(1);
+  }
+  if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-process.exit(result.status ?? 1);
+runStep("db-apply-pending.ts");
+// Fail the build before shipping code the schema cannot serve, e.g. a
+// collection added without its payload_locked_documents_rels column.
+runStep("db-verify-payload-schema.ts");
+process.exit(0);

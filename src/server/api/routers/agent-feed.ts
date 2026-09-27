@@ -16,6 +16,7 @@ import {
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
+import { toggleFeedPostLike } from "@/server/communities/feed-post-counters";
 import {
   canPostToFeed,
   requireViewablePost,
@@ -399,52 +400,17 @@ export const agentFeedRouter = {
       const payload = await getPayloadClient();
 
       // The owner must be an active member who can see the post.
-      const { post } = await requireViewablePost(
-        ctx.db,
+      await requireViewablePost(ctx.db, payload, input.postId, ownerId, {
+        requireMembership: true,
+      });
+
+      const { liked } = await toggleFeedPostLike(
         payload,
         input.postId,
         ownerId,
-        { requireMembership: true },
       );
 
-      // Check for existing like
-      const { docs: existingLikes } = await payload.find({
-        collection: "feed-likes",
-        where: {
-          and: [
-            { post: { equals: input.postId } },
-            { userId: { equals: ownerId } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-      });
-
-      if (existingLikes.length > 0) {
-        // Unlike: remove existing like
-        await payload.delete({
-          collection: "feed-likes",
-          id: existingLikes[0]!.id,
-        });
-        await payload.update({
-          collection: "feed-posts",
-          id: input.postId,
-          data: { likeCount: Math.max(0, (post.likeCount ?? 0) - 1) },
-        });
-
-        return { liked: false };
-      } else {
-        // Like: create new like
-        await payload.create({
-          collection: "feed-likes",
-          data: { post: input.postId, userId: ownerId },
-        });
-        await payload.update({
-          collection: "feed-posts",
-          id: input.postId,
-          data: { likeCount: (post.likeCount ?? 0) + 1 },
-        });
-
+      if (liked) {
         await logActivity(ctx.db, {
           actorId: ctx.agent.agentId,
           actorType: "agent",
@@ -453,8 +419,8 @@ export const agentFeedRouter = {
           targetId: String(input.postId),
           metadata: { onBehalfOf: ownerId },
         });
-
-        return { liked: true };
       }
+
+      return { liked };
     }),
 };

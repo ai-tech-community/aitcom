@@ -24,6 +24,10 @@ import {
   requireFeedPoster,
   requireViewablePost,
 } from "@/server/communities/feed-posts";
+import {
+  syncFeedPostCounters,
+  toggleFeedPostLike,
+} from "@/server/communities/feed-post-counters";
 import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
 import { getVideoStorage } from "@/server/media/video-storage";
 import {
@@ -596,47 +600,14 @@ export const feedRouter = createTRPCRouter({
         { requireMembership: true },
       );
 
-      const { docs: existingLikes } = await payload.find({
-        collection: "feed-likes",
-        where: {
-          and: [
-            { post: { equals: input.postId } },
-            { userId: { equals: userId } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-      });
+      const { liked } = await toggleFeedPostLike(payload, input.postId, userId);
 
-      if (existingLikes.length > 0) {
-        await payload.delete({
-          collection: "feed-likes",
-          id: existingLikes[0]!.id,
-        });
-        await payload.update({
-          collection: "feed-posts",
-          id: input.postId,
-          data: { likeCount: Math.max(0, (post.likeCount ?? 0) - 1) },
-        });
-        return { liked: false };
-      } else {
-        await payload.create({
-          collection: "feed-likes",
-          data: { post: input.postId, userId },
-        });
-        await payload.update({
-          collection: "feed-posts",
-          id: input.postId,
-          data: { likeCount: (post.likeCount ?? 0) + 1 },
-        });
-
-        // Award XP to post author (only if author is different from liker)
-        if (post.authorId && post.authorId !== userId) {
-          await awardXp(ctx.db, post.authorId, XP_AMOUNTS.FEED_RECEIVE_LIKE);
-        }
-
-        return { liked: true };
+      // Award XP to post author (only if author is different from liker)
+      if (liked && post.authorId && post.authorId !== userId) {
+        await awardXp(ctx.db, post.authorId, XP_AMOUNTS.FEED_RECEIVE_LIKE);
       }
+
+      return { liked };
     }),
 
   // ── getComments ─────────────────────────────────────────────────────────────
@@ -705,6 +676,7 @@ export const feedRouter = createTRPCRouter({
           communityId: post.communityId,
         },
       });
+      await syncFeedPostCounters(payload, input.postId);
 
       // Award XP: commenter gets FEED_COMMENT_CREATE, post author gets FEED_RECEIVE_COMMENT
       await awardXp(
@@ -806,7 +778,7 @@ export const feedRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      // Soft-delete and decrement parent post commentCount
+      // Soft-delete, then resync the parent post's commentCount
       await payload.update({
         collection: "feed-comments",
         id: input.commentId,
@@ -815,18 +787,7 @@ export const feedRouter = createTRPCRouter({
 
       const postId =
         typeof comment.post === "object" ? comment.post.id : comment.post;
-      if (postId) {
-        const post = await payload.findByID({
-          collection: "feed-posts",
-          id: postId,
-          depth: 0,
-        });
-        await payload.update({
-          collection: "feed-posts",
-          id: postId,
-          data: { commentCount: Math.max(0, (post.commentCount ?? 0) - 1) },
-        });
-      }
+      if (postId) await syncFeedPostCounters(payload, postId);
 
       return { deleted: true };
     }),
