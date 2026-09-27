@@ -25,7 +25,7 @@ import { BuilderTopBar } from "./builder-top-bar";
 import { CourseDetailsPane } from "./course-details-pane";
 import { builderErrorKey } from "./builder-errors";
 import { createCourseWriter } from "./course-writer";
-import { buildOutline, type OutlineGroup } from "./outline-model";
+import { CourseOutline } from "./course-outline";
 import { useUnsavedChangesGuard, type AutosaveStatus } from "./use-autosave";
 
 export type BuilderSelection =
@@ -277,30 +277,19 @@ function CourseWorkspace({
     setPreviewing((p) => !p);
   };
 
-  const groups = useMemo(
-    () =>
-      buildOutline(
-        lessons.map((l) => ({
-          id: l.id,
-          title: l.title,
-          module: l.module ?? null,
-          order: l.order ?? 0,
-        })),
-        modules,
-      ),
-    [lessons, modules],
-  );
   const lessonTitles = useMemo(
     () => new Map(lessons.map((l) => [l.id, l.title])),
     [lessons],
   );
 
   const outline = (
-    <OutlineList
-      groups={groups}
-      lessonTitles={lessonTitles}
+    <CourseOutline
+      courseId={course.id}
+      lessons={lessons}
+      modules={modules}
       selection={selection}
       onSelect={select}
+      readOnly={readOnly}
     />
   );
 
@@ -390,86 +379,6 @@ function CourseWorkspace({
         </SheetContent>
       </Sheet>
     </div>
-  );
-}
-
-function OutlineList({
-  groups,
-  lessonTitles,
-  selection,
-  onSelect,
-}: {
-  groups: OutlineGroup[];
-  lessonTitles: ReadonlyMap<number, string>;
-  selection: BuilderSelection;
-  onSelect: (next: BuilderSelection) => void;
-}) {
-  const t = useTranslations("classroomBuilder");
-  const hasLessons = groups.some((g) => g.lessonIds.length > 0);
-
-  return (
-    <div className="space-y-4 p-3">
-      <OutlineRow
-        active={selection.kind === "details"}
-        onClick={() => onSelect({ kind: "details" })}
-      >
-        {t("courseDetails")}
-      </OutlineRow>
-
-      {hasLessons ? (
-        groups.map((group) => (
-          <div key={group.moduleId ?? "loose"} className="space-y-1">
-            {group.title ? (
-              <p className="text-muted-foreground truncate px-2 text-xs font-medium">
-                {group.title}
-              </p>
-            ) : null}
-            <ul className="space-y-0.5">
-              {group.lessonIds.map((id) => (
-                <li key={id}>
-                  <OutlineRow
-                    active={
-                      selection.kind === "lesson" && selection.lessonId === id
-                    }
-                    onClick={() => onSelect({ kind: "lesson", lessonId: id })}
-                  >
-                    {lessonTitles.get(id)}
-                  </OutlineRow>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))
-      ) : (
-        <p className="text-muted-foreground px-2 text-sm">{t("noLessons")}</p>
-      )}
-    </div>
-  );
-}
-
-function OutlineRow({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-current={active ? "true" : undefined}
-      onClick={onClick}
-      className={cn(
-        "focus-visible:ring-ring/50 block w-full truncate rounded-md px-2 py-1.5 text-left text-sm outline-none focus-visible:ring-[3px]",
-        active
-          ? "bg-secondary text-foreground font-medium"
-          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
   );
 }
 

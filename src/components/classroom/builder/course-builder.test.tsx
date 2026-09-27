@@ -28,6 +28,28 @@ vi.mock("@/trpc/react", () => ({
     classrooms: {
       get: { useQuery: () => trpc.query },
       update: { useMutation: () => ({ mutateAsync: trpc.mutateAsync }) },
+      // The outline's writes; these tests cover the builder around it.
+      ...Object.fromEntries(
+        [
+          "reorderLessons",
+          "addLesson",
+          "deleteLesson",
+          "addModule",
+          "renameModule",
+          "reorderModules",
+          "deleteModule",
+          "dissolveModules",
+        ].map((name) => [
+          name,
+          {
+            useMutation: () => ({
+              mutate: vi.fn(),
+              mutateAsync: vi.fn(),
+              isPending: false,
+            }),
+          },
+        ]),
+      ),
     },
   },
 }));
@@ -43,6 +65,7 @@ vi.mock("@/components/classroom/course-view", () => ({
   CourseView: () => null,
 }));
 
+import { ConfirmProvider } from "@/components/confirm-dialog";
 import {
   CourseBuilder,
   canLeaveEditing,
@@ -134,7 +157,9 @@ const courseData = {
 function renderBuilder() {
   render(
     <NextIntlClientProvider locale="en" messages={en}>
-      <CourseBuilder slug="hub" courseSlug="intro-1" />
+      <ConfirmProvider>
+        <CourseBuilder slug="hub" courseSlug="intro-1" />
+      </ConfirmProvider>
     </NextIntlClientProvider>,
   );
 }
