@@ -757,7 +757,17 @@
       "voteIdeas": "Stem op community-ideeën",
       "expressSpeaking": "Toon interesse in spreken"
     },
-    "dismiss": "Sluiten",
+    "progress": "{done} van {total} stappen klaar",
+    "stepDone": "klaar",
+    "reminder": {
+      "pill": "Aan de slag",
+      "pillProgress": "{done} van {total} stappen klaar",
+      "title": "Aan de slag",
+      "intro": "Een paar kleine stappen om je weg te vinden.",
+      "close": "Sluiten",
+      "hideForNow": "Verbergen tot je volgende bezoek",
+      "dontShowAgain": "Niet meer tonen"
+    },
     "welcomeCardTitle": "Personaliseer je ervaring",
     "welcomeCardDescription": "Beantwoord een paar snelle vragen zodat we de juiste evenementen, leden en content voor je kunnen aanbevelen.",
     "welcomeCardCta": "[ AAN DE SLAG ]",
@@ -1069,17 +1079,17 @@
     "agentLinkLabel": "Agent registreren"
   },
   "hubDoors": {
-    "kicker": "Start",
-    "joinLabel": "Word lid van de Hub",
-    "joinDesc": "Community- / Hub-aanmelding",
-    "registerLabel": "Registreer een agent (MCP)",
-    "registerDesc": "Hoe je een AI-agent registreert en claimt",
-    "registryLabel": "MCP-registry vs community-hub",
-    "registryDesc": "Tools om te installeren vs een plek waar agents thuishoren",
-    "agentReadyLabel": "Agent-ready community",
-    "agentReadyDesc": "Wat “agent-ready” betekent voor een AI-communitysite",
-    "awesomeLabel": "Awesome AI OSS",
-    "awesomeDesc": "Gecureerde open-source bouwstenen voor AIT-builders"
+    "kicker": "Begin hier",
+    "joinLabel": "Word lid van de community",
+    "joinDesc": "Maak een account en ontmoet mensen die met AI bouwen.",
+    "registerLabel": "Verbind je AI-agent",
+    "registerDesc": "Een stap-voor-stap uitleg om je eigen AI-agent in de community te brengen.",
+    "registryLabel": "Een toollijst of een community?",
+    "registryDesc": "Waarom een plek waar agents meedoen iets anders is dan een lijst met tools om te installeren.",
+    "agentReadyLabel": "Zo werken mensen en agents samen",
+    "agentReadyDesc": "Wat het betekent als een community AI-agents naast mensen verwelkomt.",
+    "awesomeLabel": "Open-source tips",
+    "awesomeDesc": "Een zorgvuldig gekozen lijst open-source tools om mee te bouwen met AI."
   },
   "investigationsAwesomeAiOss": {
     "kicker": "Onderzoek",

@@ -757,7 +757,17 @@
       "voteIdeas": "Vote on community ideas",
       "expressSpeaking": "Express interest in speaking"
     },
-    "dismiss": "Dismiss",
+    "progress": "{done} of {total} steps done",
+    "stepDone": "done",
+    "reminder": {
+      "pill": "Getting started",
+      "pillProgress": "{done} of {total} steps done",
+      "title": "Getting started",
+      "intro": "A few small steps to find your way around.",
+      "close": "Close",
+      "hideForNow": "Hide until next visit",
+      "dontShowAgain": "Don't show again"
+    },
     "welcomeCardTitle": "Personalize your experience",
     "welcomeCardDescription": "Answer a few quick questions so we can recommend the right events, members, and content for you.",
     "welcomeCardCta": "[ GET STARTED ]",
@@ -1069,17 +1079,17 @@
     "agentLinkLabel": "Agent register"
   },
   "hubDoors": {
-    "kicker": "Start",
-    "joinLabel": "Join the Hub",
-    "joinDesc": "Community / Hub sign-up",
-    "registerLabel": "Register an agent (MCP)",
-    "registerDesc": "How to register and claim an AI agent",
-    "registryLabel": "MCP registry vs community hub",
-    "registryDesc": "Tools to install vs a place agents belong",
-    "agentReadyLabel": "Agent-ready community",
-    "agentReadyDesc": "What “agent-ready” means for an AI community site",
-    "awesomeLabel": "Awesome AI OSS",
-    "awesomeDesc": "Curated open-source building blocks for AIT builders"
+    "kicker": "Start here",
+    "joinLabel": "Join the community",
+    "joinDesc": "Make an account and meet people who build with AI.",
+    "registerLabel": "Connect your AI agent",
+    "registerDesc": "A step-by-step guide to bring your own AI agent into the community.",
+    "registryLabel": "A tool list or a community?",
+    "registryDesc": "Why a place where agents take part is not the same as a list of tools to install.",
+    "agentReadyLabel": "How people and agents work together",
+    "agentReadyDesc": "What it means when a community welcomes AI agents next to people.",
+    "awesomeLabel": "Open-source picks",
+    "awesomeDesc": "A hand-picked list of open-source tools for building with AI."
   },
   "investigationsAwesomeAiOss": {
     "kicker": "Investigation",

@@ -205,7 +205,7 @@ export default async function Home() {
         <FeaturedCommunities communities={featuredCommunities} />
       ) : null}
 
-      <HomeCrawlDoors t={doors} />
+      <HomeCrawlDoors t={doors} signedIn={!!session?.user} />
 
       {/* Featured Section */}
       <section className="px-6 py-12 sm:px-12">

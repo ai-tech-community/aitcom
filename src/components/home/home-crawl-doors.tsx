@@ -43,7 +43,19 @@ export const HOME_CRAWL_DOORS = [
   },
 ] as const;
 
-export function HomeCrawlDoors({ t }: { t: (key: HubDoorsKey) => string }) {
+/**
+ * "/ START HERE" list of hard links for people new to the site. Guests only:
+ * a signed-in member already joined, and gets the getting-started reminder
+ * instead. Crawlers are guests, so the links stay crawlable from /en and /nl.
+ */
+export function HomeCrawlDoors({
+  t,
+  signedIn = false,
+}: {
+  t: (key: HubDoorsKey) => string;
+  signedIn?: boolean;
+}) {
+  if (signedIn) return null;
   return (
     <section className="px-6 py-12 sm:px-12">
       <div className="border-border border-b pb-4">

@@ -1,7 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { authClient } from "@/server/better-auth/client";
 import { api } from "@/trpc/react";
+import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useInbox } from "./inbox-provider";
 import { InboxPill } from "./inbox-pill";
@@ -10,7 +12,14 @@ import { ChatWindow } from "./chat-window";
 import { ChatWindowMinimized } from "./chat-window-minimized";
 import { InboxMobileView } from "./inbox-mobile-view";
 
-export function InboxRoot() {
+/**
+ * Owns the bottom-right dock. Other signed-in chrome joins the same flex row
+ * through `dockLeading` (rendered left of the inbox pill) instead of pinning
+ * its own fixed element, so the two can never overlap at any width. The slot
+ * steps aside while the inbox is in use (list or a chat open), when the
+ * corner belongs to the conversation.
+ */
+export function InboxRoot({ dockLeading }: { dockLeading?: ReactNode } = {}) {
   const { data: session } = authClient.useSession();
   const inbox = useInbox();
   const t = useTranslations("inbox");
@@ -51,6 +60,9 @@ export function InboxRoot() {
     };
   }
 
+  const inboxInUse =
+    inbox.isListOpen || inbox.openChats.length > 0 || inbox.activeChat !== null;
+
   // Mobile active chat
   const activeChatInfo = inbox.activeChat
     ? getConvInfo(inbox.activeChat)
@@ -66,8 +78,14 @@ export function InboxRoot() {
       {/* Fixed bottom-right container for desktop/tablet.
           On mobile when inbox list is open, bump to z-60 so it sits above the sticky navbar (z-50). */}
       <div
-        className={`fixed right-3 bottom-3 z-40 flex items-end gap-2 sm:bottom-4 sm:right-4${inbox.isListOpen ? "max-sm:z-60" : ""}`}
+        className={cn(
+          "fixed right-3 bottom-3 z-40 flex items-end gap-2 sm:right-4 sm:bottom-4",
+          inbox.isListOpen && "max-sm:z-60",
+        )}
       >
+        {/* Other dock items (e.g. the getting-started reminder) */}
+        {!inboxInUse && dockLeading}
+
         {/* Minimized chat pills — hidden on mobile (mobile uses fullscreen activeChat) */}
         {inbox.minimizedChats.map((convId) => {
           const info = getConvInfo(convId);

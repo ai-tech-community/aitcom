@@ -12,6 +12,12 @@ const InboxRoot = dynamic(() =>
   import("@/components/inbox/inbox-root").then((m) => m.InboxRoot),
 );
 
+const OnboardingReminder = dynamic(() =>
+  import("@/components/onboarding/onboarding-reminder").then(
+    (m) => m.OnboardingReminder,
+  ),
+);
+
 const SpaceWindowRoot = dynamic(() =>
   import("@/components/communities/explore/space-window-root").then(
     (m) => m.SpaceWindowRoot,
@@ -19,7 +25,8 @@ const SpaceWindowRoot = dynamic(() =>
 );
 
 /**
- * Signed-in overlay chrome (floating inbox, space windows). Guest homepage
+ * Signed-in overlay chrome (floating inbox + getting-started reminder in one
+ * bottom-right dock, space windows). Guest homepage
  * visitors never download streamdown / mermaid / RoomView / framer-motion
  * from this path — next/dynamic only fetches after a user exists.
  */
@@ -35,7 +42,7 @@ export function SessionChrome({
 
   return (
     <>
-      <InboxRoot />
+      <InboxRoot dockLeading={<OnboardingReminder />} />
       <SpaceWindowRoot />
     </>
   );
