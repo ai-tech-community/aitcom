@@ -24,7 +24,7 @@ import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import { getSession } from "@/server/better-auth/server";
 import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
-import { FeaturedCommunities } from "@/components/home/featured-communities";
+import { FeaturedCommunities } from "@/components/home/featured-communities/featured-communities";
 import { HomeCrawlDoors } from "@/components/home/home-crawl-doors";
 import { WhatWeDo } from "@/components/home/what-we-do/what-we-do";
 

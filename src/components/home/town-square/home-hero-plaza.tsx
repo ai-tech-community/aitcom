@@ -177,7 +177,7 @@ export function HomeHeroPlaza({
     >
       <div
         ref={copyRef}
-        className="relative z-10 px-4 pt-10 pb-6 sm:max-w-[44rem] sm:px-12 sm:pt-16 sm:pb-12"
+        className="relative z-10 px-6 pt-10 pb-6 sm:max-w-[44rem] sm:px-12 sm:pt-16 sm:pb-12"
       >
         {children}
       </div>

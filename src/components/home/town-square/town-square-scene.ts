@@ -24,6 +24,26 @@
 
 import type { CellRect } from "@/components/ascii/measure";
 import {
+  FIGURE_H,
+  FIGURE_W,
+  figure,
+  type FigureKind,
+} from "@/components/ascii/figures";
+import {
+  DEPTH_X,
+  DEPTH_Y,
+  drawHouse,
+  type GableHouse,
+} from "@/components/ascii/gabled-house";
+import {
+  cellWidth,
+  graphemes,
+  textCells,
+  textWidth,
+} from "@/components/ascii/cells";
+import { rand } from "@/components/ascii/seeded";
+import { TREE } from "@/components/ascii/street-props";
+import {
   GREET_REPLY_DELAY,
   NO_EFFECTS,
   SPLASH_BURST_TICKS,
@@ -39,8 +59,6 @@ import {
   type SquareTargetKind,
   type TownSquareEffects,
 } from "./town-square-effects";
-
-export type FigureKind = "human" | "agent";
 
 export type NoticeBoardContent =
   | { kind: "event"; label: string; title: string; when: string }
@@ -131,18 +149,6 @@ export const TOWN_SQUARE_STATIC_TICK = 250;
 
 // ─── Sprites ─────────────────────────────────────────────────────────────────
 
-const FIGURE_W = 3;
-const FIGURE_H = 3;
-
-const HUMAN_HEAD = " o ";
-const HUMAN_WAVE = " o/";
-const AGENT_HEAD = "[•]";
-const AGENT_BLINK = "[-]";
-const BODY = "/|\\";
-const BODY_WAVE = "/| ";
-const LEGS = "/ \\";
-const LEGS_STEP = " |\\";
-
 const FOUNTAIN_SPRAY: [string, string][] = [
   ["  .  :  .  ", " '   |   ' "],
   [" .   :   . ", "  '  |  '  "],
@@ -154,14 +160,6 @@ const LAMP = [".-.", "|o|", "'+'", " | ", " | ", "_|_"];
 /** Phone-sized squares: a shorter lamp so it doesn't block a doorway. */
 const LAMP_SHORT = [".-.", "|o|", " | ", "_|_"];
 const BENCH = ["._______.", "||     ||"];
-const TREE = [
-  "  .--.  ",
-  " (    ) ",
-  "(  ..  )",
-  " `-..-' ",
-  "   ||   ",
-  "   ||   ",
-];
 
 type PropKind = "fountain" | "lamp" | "bench" | "tree";
 /** `gap` is open paving where a group can gather. */
@@ -197,67 +195,9 @@ const BOARD_H = 9; // 6-row panel + 3-row legs, so figures stand below it
 const BOARD_MIN_W = 22;
 const BOARD_MAX_W = 34;
 
-// ─── Deterministic randomness ────────────────────────────────────────────────
-
-function hash(...parts: number[]): number {
-  let h = 0x811c9dc5;
-  for (const p of parts) {
-    h = Math.imul(h ^ (p | 0), 0x01000193);
-    h ^= h >>> 15;
-  }
-  // murmur3 finaliser for good avalanche on small integer keys
-  h ^= h >>> 16;
-  h = Math.imul(h, 0x85ebca6b);
-  h ^= h >>> 13;
-  h = Math.imul(h, 0xc2b2ae35);
-  h ^= h >>> 16;
-  return h >>> 0;
-}
-
-/** Stable pseudo-random number in [0, 1) for the given key. */
-function rand(...parts: number[]): number {
-  return hash(...parts) / 4294967296;
-}
-
 // ─── Text helpers ────────────────────────────────────────────────────────────
 
 const ELLIPSIS = "…";
-
-const graphemeSegmenter =
-  typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
-    ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
-    : null;
-
-/** User-perceived characters, so "é" or a flag is one unit, not 2–4. */
-export function graphemes(text: string): string[] {
-  return graphemeSegmenter
-    ? Array.from(graphemeSegmenter.segment(text), (s) => s.segment)
-    : Array.from(text);
-}
-
-/** East Asian wide / fullwidth ranges render as two monospace cells. */
-function isWide(cp: number): boolean {
-  return (
-    (cp >= 0x1100 && cp <= 0x115f) ||
-    (cp >= 0x2e80 && cp <= 0xa4cf) ||
-    (cp >= 0xac00 && cp <= 0xd7a3) ||
-    (cp >= 0xf900 && cp <= 0xfaff) ||
-    (cp >= 0xfe30 && cp <= 0xfe4f) ||
-    (cp >= 0xff00 && cp <= 0xff60) ||
-    (cp >= 0xffe0 && cp <= 0xffe6) ||
-    (cp >= 0x20000 && cp <= 0x3fffd)
-  );
-}
-
-/** Monospace cells a grapheme occupies (1 or 2). */
-export function cellWidth(grapheme: string): number {
-  const cp = grapheme.codePointAt(0) ?? 0;
-  return isWide(cp) ? 2 : 1;
-}
-
-export function textWidth(text: string): number {
-  return graphemes(text).reduce((sum, g) => sum + cellWidth(g), 0);
-}
 
 /**
  * Board text: drop emoji (their rendered width is font-dependent and would
@@ -435,13 +375,7 @@ class Grid {
     layer: SceneLayer,
     opts?: { front?: boolean },
   ): void {
-    let col = x;
-    for (const g of graphemes(s)) {
-      const w = cellWidth(g);
-      this.put(col, y, g, layer, opts);
-      if (w === 2) this.put(col + 1, y, "", layer, opts);
-      col += w;
-    }
+    for (const [col, g] of textCells(x, s)) this.put(col, y, g, layer, opts);
   }
 
   /**
@@ -497,29 +431,13 @@ class Grid {
 // The floor between them recedes toward a vanishing point above the square.
 // Depth is drawn as the back outline shifted right DEPTH_X / up DEPTH_Y.
 
-const DEPTH_X = 2;
-const DEPTH_Y = 1;
-
 interface Cell {
   x: number;
   y: number;
 }
 
-interface Placed {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-interface PlacedProp extends Placed {
+interface PlacedProp extends CellRect {
   kind: PropKind;
-}
-
-interface House extends Placed {
-  steps: number;
-  /** Optional distant rooftop peeking out behind this house. */
-  far: Placed | null;
 }
 
 interface PlazaLayout {
@@ -527,9 +445,9 @@ interface PlazaLayout {
   front: number;
   /** Back line: base row of every building; feet row of passers-by. */
   street: number;
-  board: Placed | null;
+  board: CellRect | null;
   props: PlacedProp[];
-  houses: House[];
+  houses: GableHouse[];
   /** Centre columns where groups gather, in priority order. */
   spots: number[];
 }
@@ -551,7 +469,7 @@ function layoutPlaza(grid: Grid, seed: number): PlazaLayout {
   const props: PlacedProp[] = [];
   const spotCandidates: number[] = [];
 
-  let board: Placed | null = null;
+  let board: CellRect | null = null;
   const bw = Math.min(
     cols - 4,
     Math.max(BOARD_MIN_W, Math.min(BOARD_MAX_W, Math.round(cols * 0.22))),
@@ -593,10 +511,10 @@ function layoutPlaza(grid: Grid, seed: number): PlazaLayout {
 
   // Houses line the street. The whole volume (front face, receding side,
   // roof, cast shadow) must stay clear of the copy.
-  const houses: House[] = [];
+  const houses: GableHouse[] = [];
   // Keep facades clear of the board, the fountain and street trees, so
   // every outline stays readable.
-  const noHouse: Placed[] = [
+  const noHouse: CellRect[] = [
     ...(board ? [board] : []),
     ...props.filter((p) => STREET_PROPS.has(p.kind) || p.kind === "fountain"),
   ];
@@ -620,7 +538,7 @@ function layoutPlaza(grid: Grid, seed: number): PlazaLayout {
       grid.canPlace(x, y - DEPTH_Y, w + DEPTH_X + 2, h + DEPTH_Y + 2);
     if (fits) {
       // A taller building one block back, only ever seen above this house.
-      let far: Placed | null = null;
+      let far: CellRect | null = null;
       const farRise = 2 + Math.floor(rand(seed, 41, n) * 4);
       const farY = y - DEPTH_Y - farRise;
       if (rand(seed, 43, n) < 0.6 && farY >= 0) {
@@ -654,117 +572,6 @@ function layoutPlaza(grid: Grid, seed: number): PlazaLayout {
 }
 
 // ─── Drawing ─────────────────────────────────────────────────────────────────
-
-/** Stepped-gable outline (optionally with windows and a door). */
-function drawGableFace(
-  grid: Grid,
-  house: Pick<House, "x" | "y" | "w" | "h" | "steps">,
-  layer: SceneLayer,
-  detailed: boolean,
-  windows?: Cell[],
-) {
-  const { x, y, w, h, steps } = house;
-  const cx = x + Math.floor(w / 2);
-  grid.text(cx - 1, y, "___", layer);
-  for (let k = 0; k < steps; k++) {
-    const d = 2 + 2 * k;
-    grid.put(cx - d, y + 1 + 2 * k, "|", layer);
-    grid.put(cx + d, y + 1 + 2 * k, "|", layer);
-    grid.text(cx - d - 1, y + 2 + 2 * k, "_|", layer);
-    grid.text(cx + d, y + 2 + 2 * k, "|_", layer);
-    for (let fill = cx - d + 1; fill < cx + d; fill++) {
-      grid.put(fill, y + 1 + 2 * k, " ", layer);
-      grid.put(fill, y + 2 + 2 * k, " ", layer);
-    }
-  }
-  const bodyTop = y + 1 + 2 * steps;
-  for (let row = bodyTop; row < y + h; row++) {
-    grid.put(x, row, "|", layer);
-    grid.put(x + w - 1, row, "|", layer);
-    for (let col = x + 1; col < x + w - 1; col++)
-      grid.put(col, row, " ", layer);
-  }
-  for (let col = x + 1; col < x + w - 1; col++)
-    grid.put(col, y + h - 1, "_", layer);
-  if (!detailed) return;
-
-  if (steps === 2) grid.put(cx, y + 2, "o", layer);
-  const doorTop = y + h - 3;
-  for (let row = bodyTop + 1; row < doorTop; row += 2) {
-    for (let col = x + 2; col + 1 < x + w - 2; col += 4) {
-      grid.text(col, row, "[]", layer);
-      windows?.push({ x: col, y: row });
-    }
-  }
-  // Door at street level with a step in front of it.
-  grid.text(cx - 1, doorTop, ".-.", layer);
-  grid.text(cx - 1, doorTop + 1, "| |", layer);
-  grid.text(cx - 1, doorTop + 2, "|_|", layer);
-}
-
-/**
- * A house with volume: back outline (shifted by the depth vector), corner
- * connectors, a shaded side face, then the opaque front face on top.
- */
-function drawHouse(grid: Grid, house: House, street: number, windows: Cell[]) {
-  const { x, y, w, h, steps } = house;
-  const cx = x + Math.floor(w / 2);
-  const right = x + w - 1;
-  const bodyTop = y + 1 + 2 * steps;
-
-  if (house.far) {
-    // Its walls run down behind the house body (which is drawn later and
-    // hides them), so it reads as standing behind — never floating.
-    const f = house.far;
-    const visibleBottom = y - DEPTH_Y + 2 * steps + 1;
-    grid.text(f.x, f.y, "_".repeat(f.w), "far");
-    grid.put(f.x + f.w, f.y, "/", "far");
-    for (let r = f.y + 1; r <= visibleBottom; r++) {
-      grid.put(f.x, r, "|", "far");
-      grid.put(f.x + f.w - 1, r, "|", "far");
-      if (r - 1 > f.y) grid.put(f.x + f.w + 1, r - 1, "|", "far");
-      for (let c = f.x + 1; c < f.x + f.w - 1; c++) {
-        grid.put(
-          c,
-          r,
-          (r - f.y) % 2 === 0 && (c - f.x) % 3 === 1 ? "." : " ",
-          "far",
-        );
-      }
-    }
-  }
-
-  // Back face: same silhouette, pushed into the depth.
-  drawGableFace(
-    grid,
-    { x: x + DEPTH_X, y: y - DEPTH_Y, w, h, steps },
-    "scenery",
-    false,
-  );
-  // Side face shading between the front and back right walls.
-  for (let r = bodyTop + 1; r < street; r++) {
-    for (let c = right + 1; c < right + DEPTH_X; c++) {
-      grid.put(c, r, r % 2 === 0 ? ":" : " ", "scenery");
-    }
-  }
-  // Corner connectors (receding edges).
-  grid.put(cx + 2, y, "/", "scenery");
-  for (let k = 0; k < steps; k++) {
-    grid.put(cx + 3 + 2 * k + 1, y + 2 + 2 * k, "/", "scenery");
-  }
-  grid.put(right + 1, bodyTop, "/", "scenery");
-  grid.put(right + 1, street, "/", "scenery");
-
-  drawGableFace(grid, house, "scenery", true, windows);
-
-  // Cast shadow on the paving (light from the upper left): light dots
-  // under the facade, denser just past the receding side.
-  for (let c = x + 2; c <= right + DEPTH_X + 2; c++) {
-    const near = c > right && c <= right + DEPTH_X + 1;
-    if (near) grid.put(c, street + 1, ":", "scenery");
-    else if ((c - x) % 2 === 0) grid.put(c, street + 1, ".", "scenery");
-  }
-}
 
 /** Paving: street line, perspective seams and denser tiles toward the back. */
 function drawFloor(
@@ -872,7 +679,7 @@ function boardText(board: NoticeBoardContent, inner: number) {
 
 function drawBoard(
   grid: Grid,
-  at: Placed,
+  at: CellRect,
   content: NoticeBoardContent,
 ): string[] {
   const { x, y, w } = at;
@@ -1038,34 +845,20 @@ function figureSprite(
   index: number,
   pose: Pose,
 ): string[] {
-  const walking = pose.walking;
-  const step = walking && tick % 2 === 1;
-  const legs = step ? LEGS_STEP : LEGS;
-  const wave = pose.wave;
-  if (f.kind === "agent") {
-    if (wave) {
-      // An agent's head fills its sprite, so the arm reaches one cell out.
-      return wave.armUp
-        ? [AGENT_HEAD + "/", BODY_WAVE, legs]
-        : [AGENT_HEAD, "/|-", legs];
-    }
-    const blink = !walking && Math.floor((tick + index * 5) / 9) % 7 === 0;
-    return [blink ? AGENT_BLINK : AGENT_HEAD, BODY, legs];
-  }
+  const { walking, wave } = pose;
   if (wave) {
-    if (wave.side === "left") {
-      return wave.armUp ? ["\\o ", " |\\", legs] : [HUMAN_HEAD, "-|\\", legs];
-    }
-    return wave.armUp
-      ? [HUMAN_WAVE, BODY_WAVE, legs]
-      : [HUMAN_HEAD, "/|-", legs];
+    return figure(f.kind, tick, {
+      walking,
+      arm: wave.armUp ? "up" : "out",
+      side: wave.side,
+    });
+  }
+  if (f.kind === "agent") {
+    const blink = !walking && Math.floor((tick + index * 5) / 9) % 7 === 0;
+    return figure("agent", tick, { walking, blink });
   }
   const idleWave = !walking && Math.floor((tick + index * 7) / 20) % 4 === 0;
-  return [
-    idleWave ? HUMAN_WAVE : HUMAN_HEAD,
-    idleWave ? BODY_WAVE : BODY,
-    legs,
-  ];
+  return figure("human", tick, { walking, arm: idleWave ? "up" : undefined });
 }
 
 // ─── Effects: night ──────────────────────────────────────────────────────────
@@ -1179,12 +972,12 @@ function planNight(
 const BUBBLE_MAX_TEXT = 30;
 const BUBBLE_H = 3;
 
-interface Bubble extends Placed {
+interface Bubble extends CellRect {
   text: string;
   tailX: number;
 }
 
-function overlaps(a: Placed, b: Placed): boolean {
+function overlaps(a: CellRect, b: CellRect): boolean {
   return (
     a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
   );
@@ -1200,7 +993,7 @@ function placeBubble(
   grid: Grid,
   figure: FigureSnapshot,
   rawText: string,
-  board: Placed | null,
+  board: CellRect | null,
 ): Bubble | null {
   const text = fit(rawText, BUBBLE_MAX_TEXT);
   const w = textWidth(text) + 4;
@@ -1279,7 +1072,10 @@ function drawDroplets(
 }
 
 /** Figures standing around the fountain, as sprite x positions. */
-function fountainSlots(fountain: Placed): { left: number[]; right: number[] } {
+function fountainSlots(fountain: CellRect): {
+  left: number[];
+  right: number[];
+} {
   return {
     left: [fountain.x - FIGURE_W - 1, fountain.x - 2 * FIGURE_W - 2],
     right: [
@@ -1346,7 +1142,7 @@ const DEFAULT_GREETINGS = ["hi, I'm {name}"];
 /** Hit boxes are one cell larger than the art: easier to click. */
 const HIT_PAD = 1;
 
-function contains(r: Placed, col: number, row: number, pad = 0): boolean {
+function contains(r: CellRect, col: number, row: number, pad = 0): boolean {
   return (
     col >= r.x - pad &&
     col < r.x + r.w + pad &&
@@ -1428,7 +1224,7 @@ export function createTownSquare(
   const lamps = layout.props.filter((p) => p.kind === "lamp");
   // Fountain hit box includes the puddle row under the basin.
   const fountainBoxes = fountains.map((f) => ({ ...f, h: f.h + 1 }));
-  const rect = ({ x, y, w, h }: Placed): CellRect => ({ x, y, w, h });
+  const rect = ({ x, y, w, h }: CellRect): CellRect => ({ x, y, w, h });
 
   const lane = (feet: number) =>
     Array.from({ length: FIGURE_H }, (_, i) => feet - FIGURE_H + 1 + i);
