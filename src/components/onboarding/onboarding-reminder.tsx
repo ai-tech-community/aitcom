@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { focusDockHome } from "@/components/inbox/corner-dock";
 import type { OnboardingChecklistView } from "./checklist-view";
 import {
   OnboardingProgress,
@@ -43,6 +44,13 @@ export function OnboardingReminder() {
   if (!shouldShowReminder({ pathname, view, hiddenForVisit })) return null;
 
   const close = () => setOpen(false);
+  // The pill is about to unmount while it (or its panel) holds focus. Hand
+  // focus to a stable control first so it does not fall to <body>.
+  const hideAnd = (hide: () => void) => () => {
+    focusDockHome();
+    close();
+    hide();
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -104,10 +112,10 @@ export function OnboardingReminder() {
         )}
 
         <div className="border-border flex flex-wrap justify-end gap-1 border-t px-2 py-2">
-          <Button variant="ghost" size="sm" onClick={hideForVisit}>
+          <Button variant="ghost" size="sm" onClick={hideAnd(hideForVisit)}>
             {t("hideForNow")}
           </Button>
-          <Button variant="ghost" size="sm" onClick={dismiss}>
+          <Button variant="ghost" size="sm" onClick={hideAnd(dismiss)}>
             {t("dontShowAgain")}
           </Button>
         </div>
@@ -133,7 +141,16 @@ function PillLabel({ view }: { view: OnboardingChecklistView }) {
           ))}
         </span>
       ) : null}
-      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider whitespace-nowrap uppercase">
+      {/* Small screens: dots + count only, so the dock row fits at 320px
+          (WCAG 1.4.10). The label stays as sr-only text, so the accessible
+          name does not change. The welcome state has no count to show, so it
+          keeps its label. */}
+      <span
+        className={cn(
+          "text-muted-foreground font-mono text-xs font-medium tracking-wider whitespace-nowrap uppercase",
+          view.kind === "checklist" && "max-sm:sr-only",
+        )}
+      >
         {t("pill")}
       </span>
       {view.kind === "checklist" ? (
@@ -144,6 +161,8 @@ function PillLabel({ view }: { view: OnboardingChecklistView }) {
           >
             {view.completedCount}/{view.totalCount}
           </span>
+          {/* Space text node: sibling spans otherwise join with no gap in
+              the computed accessible name ("started2 of 5"). */}{" "}
           <span className="sr-only">
             {t("pillProgress", {
               done: view.completedCount,

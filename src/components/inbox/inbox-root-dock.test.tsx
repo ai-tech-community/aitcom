@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,6 +16,7 @@ vi.mock("@/trpc/react", () => ({
   api: {
     inbox: {
       listConversations: { useQuery: () => ({ data: undefined }) },
+      totalUnreadCount: { useQuery: () => ({ data: { count: 0 } }) },
     },
   },
 }));
@@ -29,6 +31,8 @@ vi.mock("./chat-window-minimized", () => ({ ChatWindowMinimized: () => null }));
 vi.mock("./inbox-mobile-view", () => ({ InboxMobileView: () => null }));
 
 import { InboxRoot } from "./inbox-root";
+
+type InboxPillModule = { InboxPill: () => React.ReactNode };
 
 const Reminder = () => <button type="button">Getting started</button>;
 
@@ -45,8 +49,9 @@ describe("InboxRoot dock", () => {
     const reminder = screen.getByRole("button", { name: "Getting started" });
     const inbox = screen.getByRole("button", { name: "INBOX" });
     // One shared flex container: they sit side by side and cannot overlap.
-    expect(reminder.parentElement).toBe(inbox.parentElement);
-    expect(reminder.parentElement).toHaveClass("fixed", "flex");
+    const slot = reminder.closest('[data-slot="dock-leading"]');
+    expect(slot?.parentElement).toBe(inbox.parentElement);
+    expect(inbox.parentElement).toHaveClass("fixed", "flex");
     expect(
       reminder.compareDocumentPosition(inbox) &
         Node.DOCUMENT_POSITION_FOLLOWING,
@@ -67,6 +72,43 @@ describe("InboxRoot dock", () => {
     expect(
       screen.queryByRole("button", { name: "Getting started" }),
     ).toBeNull();
+  });
+
+  it("steps aside while chats are minimized, so they do not crowd the row", () => {
+    inboxState.minimizedChats = ["c1"];
+    render(<InboxRoot dockLeading={<Reminder />} />);
+    expect(
+      screen.queryByRole("button", { name: "Getting started" }),
+    ).toBeNull();
+  });
+
+  it("keeps the leading item mounted while hidden, so its state survives", () => {
+    const mounts = vi.fn();
+    function Counted() {
+      useEffect(() => {
+        mounts();
+      }, []);
+      return <button type="button">Getting started</button>;
+    }
+    const { rerender } = render(<InboxRoot dockLeading={<Counted />} />);
+    inboxState.isListOpen = true;
+    rerender(<InboxRoot dockLeading={<Counted />} />);
+    expect(
+      screen.queryByRole("button", { name: "Getting started" }),
+    ).toBeNull();
+    inboxState.isListOpen = false;
+    rerender(<InboxRoot dockLeading={<Counted />} />);
+    expect(
+      screen.getByRole("button", { name: "Getting started" }),
+    ).toBeInTheDocument();
+    expect(mounts).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks the inbox pill as the dock's focus home", async () => {
+    const { InboxPill: RealInboxPill } =
+      await vi.importActual<InboxPillModule>("./inbox-pill");
+    const { container } = render(<RealInboxPill />);
+    expect(container.querySelector("[data-dock-home]")).not.toBeNull();
   });
 
   it("keeps the z-index bump class well-formed when the list is open", () => {

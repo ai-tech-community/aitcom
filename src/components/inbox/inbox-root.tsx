@@ -16,8 +16,9 @@ import { InboxMobileView } from "./inbox-mobile-view";
  * Owns the bottom-right dock. Other signed-in chrome joins the same flex row
  * through `dockLeading` (rendered left of the inbox pill) instead of pinning
  * its own fixed element, so the two can never overlap at any width. The slot
- * steps aside while the inbox is in use (list or a chat open), when the
- * corner belongs to the conversation.
+ * is hidden (not unmounted, so its state survives) while the inbox is in use
+ * (list, a chat, or minimized chats), when the corner belongs to the
+ * conversation.
  */
 export function InboxRoot({ dockLeading }: { dockLeading?: ReactNode } = {}) {
   const { data: session } = authClient.useSession();
@@ -61,7 +62,10 @@ export function InboxRoot({ dockLeading }: { dockLeading?: ReactNode } = {}) {
   }
 
   const inboxInUse =
-    inbox.isListOpen || inbox.openChats.length > 0 || inbox.activeChat !== null;
+    inbox.isListOpen ||
+    inbox.openChats.length > 0 ||
+    inbox.minimizedChats.length > 0 ||
+    inbox.activeChat !== null;
 
   // Mobile active chat
   const activeChatInfo = inbox.activeChat
@@ -84,7 +88,15 @@ export function InboxRoot({ dockLeading }: { dockLeading?: ReactNode } = {}) {
         )}
       >
         {/* Other dock items (e.g. the getting-started reminder) */}
-        {!inboxInUse && dockLeading}
+        {dockLeading ? (
+          <div
+            hidden={inboxInUse}
+            data-slot="dock-leading"
+            className="empty:hidden"
+          >
+            {dockLeading}
+          </div>
+        ) : null}
 
         {/* Minimized chat pills — hidden on mobile (mobile uses fullscreen activeChat) */}
         {inbox.minimizedChats.map((convId) => {

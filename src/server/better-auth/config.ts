@@ -11,6 +11,7 @@ import {
   enrollOnSessionCreated,
 } from "@/server/db/enroll-on-auth";
 import { memberProfiles } from "@/server/db/schema";
+import { defaultDisplayName } from "@/server/members/default-display-name";
 import { checkEarlyAdopterBadge } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
 import { sendMemberWelcome } from "@/server/email";
@@ -91,7 +92,7 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          const displayName = user.name || user.email.split("@")[0]!;
+          const displayName = defaultDisplayName(user);
           try {
             await db.insert(memberProfiles).values({
               userId: user.id,

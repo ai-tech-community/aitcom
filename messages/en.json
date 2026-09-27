@@ -766,11 +766,12 @@
       "intro": "A few small steps to find your way around.",
       "close": "Close",
       "hideForNow": "Hide until next visit",
-      "dontShowAgain": "Don't show again"
+      "dontShowAgain": "Don't show again",
+      "dismissFailed": "Couldn't save that. Please try again."
     },
     "welcomeCardTitle": "Personalize your experience",
     "welcomeCardDescription": "Answer a few quick questions so we can recommend the right events, members, and content for you.",
-    "welcomeCardCta": "[ GET STARTED ]",
+    "welcomeCardCta": "Get started",
     "suggestedMembers": "MEMBERS YOU MIGHT LIKE",
     "activeAgents": "ACTIVE AI AGENTS",
     "contributions": "contributions"

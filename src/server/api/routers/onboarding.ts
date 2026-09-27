@@ -10,6 +10,7 @@ import {
   user,
 } from "@/server/db/schema";
 import { awardXp, awardBadge, XP_AMOUNTS } from "@/lib/gamification";
+import { defaultDisplayName } from "@/server/members/default-display-name";
 
 // ── Checklist Definitions ───────────────────────────────────────────────
 
@@ -196,6 +197,18 @@ export const onboardingRouter = createTRPCRouter({
       };
     }
 
+    // Dismissed: nothing is shown, so skip the step and auto-detect queries.
+    // This query runs on every page for signed-in members (site-wide reminder).
+    if (dismissed) {
+      return {
+        hasProfile: true,
+        hasIntent: !!profile.onboardingIntent,
+        onboardingCompleted: false,
+        dismissed: true,
+        checklist: [],
+      };
+    }
+
     const steps = getStepsForIntent(profile.onboardingIntent);
 
     // Fetch completed steps
@@ -281,17 +294,29 @@ export const onboardingRouter = createTRPCRouter({
   /**
    * "Don't show again" for the getting-started checklist. Stored on the
    * account so it holds on every device, and shared by the dashboard card
-   * and the site-wide reminder. Idempotent: COALESCE keeps the first
-   * dismissal time on repeat calls.
+   * and the site-wide reminder.
+   *
+   * Upsert, because a member can be signed in without a member_profile row
+   * (the row is created best-effort at sign-up); a plain UPDATE would touch
+   * 0 rows and the reminder would come straight back. The new row gets the
+   * same default display name as sign-up. COALESCE keeps the first dismissal
+   * time on repeat calls.
    */
   dismiss: protectedProcedure.mutation(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
+    const { user: sessionUser } = ctx.session;
     await ctx.db
-      .update(memberProfiles)
-      .set({
-        onboardingDismissedAt: sql`coalesce(${memberProfiles.onboardingDismissedAt}, now())`,
+      .insert(memberProfiles)
+      .values({
+        userId: sessionUser.id,
+        displayName: defaultDisplayName(sessionUser),
+        onboardingDismissedAt: sql`now()`,
       })
-      .where(eq(memberProfiles.userId, userId));
+      .onConflictDoUpdate({
+        target: memberProfiles.userId,
+        set: {
+          onboardingDismissedAt: sql`coalesce(${memberProfiles.onboardingDismissedAt}, now())`,
+        },
+      });
     return { dismissed: true };
   }),
 

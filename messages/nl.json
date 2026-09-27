@@ -766,11 +766,12 @@
       "intro": "Een paar kleine stappen om je weg te vinden.",
       "close": "Sluiten",
       "hideForNow": "Verbergen tot je volgende bezoek",
-      "dontShowAgain": "Niet meer tonen"
+      "dontShowAgain": "Niet meer tonen",
+      "dismissFailed": "Dat lukte niet. Probeer het opnieuw."
     },
     "welcomeCardTitle": "Personaliseer je ervaring",
     "welcomeCardDescription": "Beantwoord een paar snelle vragen zodat we de juiste evenementen, leden en content voor je kunnen aanbevelen.",
-    "welcomeCardCta": "[ AAN DE SLAG ]",
+    "welcomeCardCta": "Aan de slag",
     "suggestedMembers": "LEDEN DIE JE MISSCHIEN LEUK VINDT",
     "activeAgents": "ACTIEVE AI AGENTS",
     "contributions": "bijdragen"

@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -95,16 +96,29 @@ const INCOMPLETE: OnboardingChecklistView = {
   ],
 };
 
-function renderReminder(locale: "en" | "nl" = "en") {
+function renderReminder(
+  locale: "en" | "nl" = "en",
+  { dockHome = false }: { dockHome?: boolean } = {},
+) {
   return render(
     <NextIntlClientProvider
       locale={locale}
       messages={locale === "en" ? en : nl}
     >
-      <OnboardingReminder />
+      <main>
+        <OnboardingReminder />
+        {dockHome ? (
+          <button type="button" data-dock-home="">
+            INBOX
+          </button>
+        ) : null}
+      </main>
     </NextIntlClientProvider>,
   );
 }
+
+/** Let Radix's deferred close-focus (setTimeout 0) run. */
+const settle = () => act(() => new Promise((r) => setTimeout(r, 20)));
 
 const pill = () =>
   screen.getByRole("button", { name: /getting started.*2 of 5 steps done/i });
@@ -142,20 +156,20 @@ describe("OnboardingReminder visibility", () => {
   it("is hidden when onboarding is done or dismissed", () => {
     controller.view = { kind: "hidden" };
     const { container } = renderReminder();
-    expect(container).toBeEmptyDOMElement();
+    expect(container.querySelector("main")).toBeEmptyDOMElement();
   });
 
   it("is hidden on the dashboard and does not sync there", () => {
     nav.pathname = "/dashboard";
     const { container } = renderReminder();
-    expect(container).toBeEmptyDOMElement();
+    expect(container.querySelector("main")).toBeEmptyDOMElement();
     expect(controller.lastSync).toBe("off");
   });
 
   it("is hidden on auth pages", () => {
     nav.pathname = "/auth/signin";
     const { container } = renderReminder();
-    expect(container).toBeEmptyDOMElement();
+    expect(container.querySelector("main")).toBeEmptyDOMElement();
   });
 
   it("syncs only on finish on normal pages", () => {
@@ -249,14 +263,72 @@ describe("OnboardingReminder panel", () => {
       );
     });
     expect(controller.dismiss).not.toHaveBeenCalled();
-    expect(container).toBeEmptyDOMElement();
+    expect(container.querySelector("main")).toBeEmptyDOMElement();
     expect(sessionStorage.getItem("onboarding-reminder-hidden")).toBe("1");
 
     // Same session, next page: still hidden.
     unmount();
     resetHiddenForVisitForTests();
     const again = renderReminder();
-    expect(again.container).toBeEmptyDOMElement();
+    expect(again.container.querySelector("main")).toBeEmptyDOMElement();
+  });
+});
+
+describe("OnboardingReminder small screens (WCAG 1.4.10)", () => {
+  it("hides the label visually below sm but keeps it in the accessible name", () => {
+    renderReminder();
+    const label = within(pill()).getByText("Getting started");
+    expect(label).toHaveClass("max-sm:sr-only");
+    expect(pill()).toHaveAccessibleName("Getting started 2 of 5 steps done");
+  });
+
+  it("keeps the label visible in the welcome state (no count to show)", () => {
+    controller.view = { kind: "welcome" };
+    renderReminder();
+    const button = screen.getByRole("button", { name: /getting started/i });
+    expect(within(button).getByText("Getting started")).not.toHaveClass(
+      "max-sm:sr-only",
+    );
+  });
+});
+
+describe("OnboardingReminder focus after hiding (WCAG 2.4.3)", () => {
+  it('"Hide until next visit" hands focus to the dock home control', async () => {
+    renderReminder("en", { dockHome: true });
+    fireEvent.click(pill());
+    fireEvent.click(
+      screen.getByRole("button", { name: "Hide until next visit" }),
+    );
+    await settle();
+    expect(
+      screen.queryByRole("button", { name: /getting started/i }),
+    ).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "INBOX" }),
+    );
+  });
+
+  it('"Don\'t show again" hands focus to the dock home control', async () => {
+    renderReminder("en", { dockHome: true });
+    fireEvent.click(pill());
+    fireEvent.click(screen.getByRole("button", { name: "Don't show again" }));
+    await settle();
+    expect(controller.dismiss).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "INBOX" }),
+    );
+  });
+
+  it("falls back to <main> when there is no dock home control", async () => {
+    const { container } = renderReminder();
+    fireEvent.click(pill());
+    fireEvent.click(
+      screen.getByRole("button", { name: "Hide until next visit" }),
+    );
+    await settle();
+    const main = container.querySelector("main")!;
+    expect(document.activeElement).toBe(main);
+    expect(main).toHaveAttribute("tabindex", "-1");
   });
 });
 

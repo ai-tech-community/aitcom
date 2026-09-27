@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+
 import { api } from "@/trpc/react";
 import {
   isAwaitingCompletionSync,
@@ -11,7 +14,7 @@ import {
 
 /**
  * The browser-only dismiss flag the dashboard card used before dismissal
- * moved to the account. Read once to carry an old choice over, then removed.
+ * moved to the account. Removed on sight; never read.
  */
 export const LEGACY_DISMISS_KEY = "onboarding-dismissed";
 
@@ -47,6 +50,7 @@ export function useOnboardingChecklist({
   sync: OnboardingSyncPolicy;
 }): OnboardingChecklistController {
   const utils = api.useUtils();
+  const t = useTranslations("onboarding.reminder");
   const { data, isLoading } = api.onboarding.getStatus.useQuery();
 
   const refresh = useCallback(
@@ -67,7 +71,8 @@ export function useOnboardingChecklist({
       await utils.onboarding.getStatus.cancel();
       const previous = utils.onboarding.getStatus.getData();
       utils.onboarding.getStatus.setData(undefined, (old) =>
-        old ? { ...old, dismissed: true } : old,
+        // Same shape the server returns for a dismissed member.
+        old ? { ...old, dismissed: true, checklist: [] } : old,
       );
       return { previous };
     },
@@ -75,6 +80,7 @@ export function useOnboardingChecklist({
       if (context?.previous) {
         utils.onboarding.getStatus.setData(undefined, context.previous);
       }
+      toast.error(t("dismissFailed"));
     },
     onSettled: refresh,
   });
@@ -92,24 +98,19 @@ export function useOnboardingChecklist({
     runSync();
   }, [shouldSync, runSync]);
 
-  // Carry an old browser-only dismissal over to the account, once.
-  const { mutate: runDismiss } = dismissMutation;
-  const legacyChecked = useRef(false);
+  // Drop the old browser-only flag. It is not carried over to the account:
+  // it belongs to the browser, not the member, so on a shared computer it
+  // would dismiss for the wrong person. Members who dismissed before see the
+  // checklist once more and can dismiss it for good.
   useEffect(() => {
-    if (!data || legacyChecked.current) return;
-    legacyChecked.current = true;
     try {
-      const legacy = window.localStorage.getItem(LEGACY_DISMISS_KEY);
-      if (legacy === null) return;
-      // No profile row yet: nothing to write the choice to. Keep the flag
-      // so the next visit (after the profile exists) can carry it over.
-      if (legacy === "true" && !data.dismissed && !data.hasProfile) return;
-      if (legacy === "true" && !data.dismissed) runDismiss();
       window.localStorage.removeItem(LEGACY_DISMISS_KEY);
     } catch {
-      // Storage blocked (private mode, policy): nothing to carry over.
+      // Storage blocked (private mode, policy): nothing to clean up.
     }
-  }, [data, runDismiss]);
+  }, []);
+
+  const { mutate: runDismiss } = dismissMutation;
 
   const { mutate: runComplete } = completeMutation;
   const completeStep = useCallback(

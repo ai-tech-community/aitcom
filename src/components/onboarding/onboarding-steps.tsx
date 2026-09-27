@@ -116,18 +116,28 @@ export function OnboardingWelcome({ onFollow }: { onFollow?: () => void }) {
   const t = useTranslations("onboarding");
   return (
     <div className="flex items-start gap-3">
-      <Sparkles aria-hidden className="text-muted-foreground mt-0.5 h-4 w-4" />
+      <Sparkles
+        aria-hidden
+        className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0"
+      />
       <div>
         <p className="text-sm font-medium">{t("welcomeCardTitle")}</p>
         <p className="text-muted-foreground mt-1 text-sm">
           {t("welcomeCardDescription")}
         </p>
+        {/* Ink text for contrast (small orange text on white is ~3:1, and
+            so is white on the orange button). Orange stays on the arrow, a
+            non-text marker for the one action here. */}
         <Link
           href="/dashboard/onboarding"
           onClick={onFollow}
-          className="text-primary hover:text-primary/80 focus-visible:ring-ring/50 mt-3 inline-block rounded-sm font-mono text-xs tracking-wider outline-none focus-visible:ring-[3px]"
+          className="text-foreground focus-visible:ring-ring/50 group mt-3 inline-flex min-h-6 items-center gap-1.5 rounded-sm text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-[3px]"
         >
           {t("welcomeCardCta")}
+          <ArrowRight
+            aria-hidden
+            className="text-primary h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
+          />
         </Link>
       </div>
     </div>

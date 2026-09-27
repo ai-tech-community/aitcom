@@ -104,8 +104,13 @@ describe("dashboard OnboardingChecklist", () => {
     expect(
       screen.getByText(en.onboarding.welcomeCardTitle),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: en.onboarding.welcomeCardCta }),
-    ).toHaveAttribute("href", "/dashboard/onboarding");
+    const cta = screen.getByRole("link", {
+      name: en.onboarding.welcomeCardCta,
+    });
+    expect(cta).toHaveAttribute("href", "/dashboard/onboarding");
+    // Contrast: ink text, orange only on the non-text arrow marker.
+    expect(cta).toHaveClass("text-foreground");
+    expect(cta).not.toHaveClass("text-primary");
+    expect(cta.querySelector("svg")).toHaveClass("text-primary");
   });
 });

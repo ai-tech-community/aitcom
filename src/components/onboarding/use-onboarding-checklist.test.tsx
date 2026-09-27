@@ -78,6 +78,13 @@ vi.mock("@/trpc/react", () => {
   };
 });
 
+const toastError = vi.hoisted(() => vi.fn());
+vi.mock("sonner", () => ({ toast: { error: toastError } }));
+vi.mock("next-intl", () => ({
+  useTranslations: (namespace: string) => (key: string) =>
+    `${namespace}.${key}`,
+}));
+
 import {
   LEGACY_DISMISS_KEY,
   useOnboardingChecklist,
@@ -110,6 +117,7 @@ beforeEach(() => {
   fake.calls = { sync: 0, complete: [], dismiss: 0, invalidate: 0 };
   fake.dismissFails = false;
   vi.stubGlobal("localStorage", createMemoryStorage());
+  toastError.mockReset();
 });
 
 afterEach(() => {
@@ -174,6 +182,7 @@ describe("useOnboardingChecklist", () => {
     await flush();
     expect(fake.calls.dismiss).toBe(1);
     expect(fake.status?.dismissed).toBe(true);
+    expect(fake.status?.checklist).toEqual([]);
     expect(fake.calls.invalidate).toBeGreaterThan(0);
   });
 
@@ -187,32 +196,33 @@ describe("useOnboardingChecklist", () => {
     expect(fake.status?.dismissed).toBe(false);
   });
 
-  it("carries an old browser-only dismissal over to the account, once", async () => {
-    window.localStorage.setItem(LEGACY_DISMISS_KEY, "true");
-    const { rerender } = renderHook(() =>
+  it("tells the member when the dismissal could not be saved", async () => {
+    fake.dismissFails = true;
+    const { result } = renderHook(() =>
       useOnboardingChecklist({ sync: "off" }),
     );
-    rerender();
+    act(() => result.current.dismiss());
     await flush();
-    expect(fake.calls.dismiss).toBe(1);
-    expect(window.localStorage.getItem(LEGACY_DISMISS_KEY)).toBeNull();
+    expect(toastError).toHaveBeenCalledWith(
+      "onboarding.reminder.dismissFailed",
+    );
   });
 
-  it("only clears the old flag when the account is already dismissed", async () => {
-    fake.status = status({ dismissed: true });
+  it("does not toast when the dismissal succeeds", async () => {
+    const { result } = renderHook(() =>
+      useOnboardingChecklist({ sync: "off" }),
+    );
+    act(() => result.current.dismiss());
+    await flush();
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("removes the old browser-only flag without dismissing for this account", async () => {
+    // The flag belongs to the browser, not the member (shared computers).
     window.localStorage.setItem(LEGACY_DISMISS_KEY, "true");
     renderHook(() => useOnboardingChecklist({ sync: "off" }));
     await flush();
-    expect(fake.calls.dismiss).toBe(0);
     expect(window.localStorage.getItem(LEGACY_DISMISS_KEY)).toBeNull();
-  });
-
-  it("keeps the old flag until a profile exists to store it on", async () => {
-    fake.status = status({ hasProfile: false, hasIntent: false });
-    window.localStorage.setItem(LEGACY_DISMISS_KEY, "true");
-    renderHook(() => useOnboardingChecklist({ sync: "off" }));
-    await flush();
     expect(fake.calls.dismiss).toBe(0);
-    expect(window.localStorage.getItem(LEGACY_DISMISS_KEY)).toBe("true");
   });
 });
