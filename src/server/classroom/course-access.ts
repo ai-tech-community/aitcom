@@ -1,4 +1,7 @@
+import { and, eq, isNull } from "drizzle-orm";
 import type { CommunityRole } from "@/lib/classroom";
+import type { db } from "@/server/db";
+import { communities, communityMemberships } from "@/server/db/schema";
 
 /**
  * Who may read a classroom course. The single source of the course read
@@ -42,4 +45,40 @@ export function resolveCourseAccess(input: {
   if (course.status !== "published") return "none";
   if (role !== null) return "member";
   return course.isPublic === true ? "visitor" : "none";
+}
+
+export type LoadableCourse = CourseAccessCourse & { communityId: string };
+
+/**
+ * The caller's access to a course, read from the database. A course whose
+ * community is missing or soft-deleted is `none` for everyone, including
+ * its author.
+ */
+export async function loadCourseAccess(
+  database: typeof db,
+  course: LoadableCourse,
+  viewerId: string | null,
+): Promise<CourseAccess> {
+  const community = await database.query.communities.findFirst({
+    where: and(
+      eq(communities.id, course.communityId),
+      isNull(communities.deletedAt),
+    ),
+    columns: { id: true },
+  });
+  if (!community) return "none";
+
+  let membership: CourseAccessMembership | null = null;
+  if (viewerId !== null) {
+    const row = await database.query.communityMemberships.findFirst({
+      where: and(
+        eq(communityMemberships.communityId, course.communityId),
+        eq(communityMemberships.userId, viewerId),
+      ),
+      columns: { role: true, status: true },
+    });
+    if (row) membership = { role: row.role, active: row.status === "active" };
+  }
+
+  return resolveCourseAccess({ course, viewerId, membership });
 }

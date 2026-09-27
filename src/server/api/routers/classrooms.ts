@@ -8,6 +8,7 @@ import {
   protectedProcedure,
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
+import { loadCourseAccess } from "@/server/classroom/course-access";
 import { logActivity } from "@/server/agent/activity";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { db } from "@/server/db";
@@ -209,10 +210,10 @@ export const classroomsRouter = createTRPCRouter({
 
       const userId = ctx.session?.user?.id;
 
-      // Drafts/archived are visible only to the author.
-      if (course.status !== "published" && course.authorId !== userId) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
+      // One policy decides who may read a course (members-only, public,
+      // drafts). `none` must not reveal that the course exists.
+      const access = await loadCourseAccess(ctx.db, course, userId ?? null);
+      if (access === "none") throw new TRPCError({ code: "NOT_FOUND" });
 
       const { docs: rawLessons } = await payload.find({
         collection: "lessons",
