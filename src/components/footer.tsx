@@ -3,13 +3,25 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { AitLogo } from "@/components/ait-logo";
+import { SectionLabel } from "@/components/ui/section-label";
 
+/**
+ * Site footer, always on the dark token set: the `dark` class scopes the
+ * dark tokens to the footer, so its muted text is the dark theme's
+ * `--muted-foreground` (0.708) instead of the light theme's grey on ink
+ * (4.2:1). On a light page it is an ink band (`--background`, 0.145,
+ * about 7.6:1). On a dark page that would match the page itself, so it
+ * steps up to the dark `--card` surface (0.205, about 6.9:1) with the
+ * hairline top border — `dark:` only matches when the page is dark, since
+ * it needs a `.dark` ancestor. Column labels are h2s (the level after the
+ * page's h1), each naming its own `nav` landmark.
+ */
 export function Footer() {
   const t = useTranslations("footer");
   const tNav = useTranslations("nav");
 
   return (
-    <footer className="bg-foreground text-background">
+    <footer className="dark bg-background text-foreground border-border dark:bg-card border-t">
       <div className="mx-auto max-w-6xl px-6 py-12 sm:px-12">
         <div className="flex flex-col justify-between gap-12 lg:flex-row">
           {/* Brand */}
@@ -24,10 +36,13 @@ export function Footer() {
           <div className="flex flex-wrap gap-16">
             {/* Navigate */}
             <div className="space-y-3">
-              <h4 className="text-muted-foreground font-mono text-xs font-semibold tracking-wider">
-                / {t("navigation").toUpperCase()}
-              </h4>
-              <nav className="flex flex-col gap-2">
+              <SectionLabel id="footer-navigation" bordered={false}>
+                {t("navigation")}
+              </SectionLabel>
+              <nav
+                aria-labelledby="footer-navigation"
+                className="flex flex-col gap-2"
+              >
                 <Link
                   href="/"
                   className="hover:text-primary text-sm transition-colors"
@@ -75,10 +90,13 @@ export function Footer() {
 
             {/* Connect */}
             <div className="space-y-3">
-              <h4 className="text-muted-foreground font-mono text-xs font-semibold tracking-wider">
-                / {t("connect").toUpperCase()}
-              </h4>
-              <nav className="flex flex-col gap-2">
+              <SectionLabel id="footer-connect" bordered={false}>
+                {t("connect")}
+              </SectionLabel>
+              <nav
+                aria-labelledby="footer-connect"
+                className="flex flex-col gap-2"
+              >
                 <a
                   href="https://github.com/ai-tech-community"
                   target="_blank"
@@ -116,10 +134,13 @@ export function Footer() {
 
             {/* Legal */}
             <div className="space-y-3">
-              <h4 className="text-muted-foreground font-mono text-xs font-semibold tracking-wider">
-                / {t("legal").toUpperCase()}
-              </h4>
-              <nav className="flex flex-col gap-2">
+              <SectionLabel id="footer-legal" bordered={false}>
+                {t("legal")}
+              </SectionLabel>
+              <nav
+                aria-labelledby="footer-legal"
+                className="flex flex-col gap-2"
+              >
                 <Link
                   href="/privacy"
                   className="hover:text-primary text-sm transition-colors"
@@ -144,7 +165,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 sm:flex-row">
+        <div className="border-border mt-12 flex flex-col items-center justify-between gap-4 border-t pt-6 sm:flex-row">
           <p className="text-muted-foreground font-mono text-xs tracking-wider">
             {t("copyright", { year: new Date().getFullYear() })}
           </p>

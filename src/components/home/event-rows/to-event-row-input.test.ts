@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
-import {
-  toUpcomingEventInput,
-  type UpcomingEventDoc,
-} from "./to-upcoming-event-input";
-import type { UpcomingEventInput } from "./upcoming-event-rows";
+import { toEventRowInput, type EventRowDoc } from "./to-event-row-input";
+import type { EventRowInput } from "./event-rows";
 
-const DOC: UpcomingEventDoc = {
+const DOC: EventRowDoc = {
   id: 42,
   slug: "rag-deep-dive",
   title: "RAG in production",
@@ -22,9 +19,9 @@ const DOC: UpcomingEventDoc = {
 
 const HOSTS = new Map([["c-nl", "AIT Community Netherlands"]]);
 
-describe("toUpcomingEventInput", () => {
+describe("toEventRowInput", () => {
   it("copies every field the timetable reads", () => {
-    const expected: Required<UpcomingEventInput> = {
+    const expected: Required<EventRowInput> = {
       id: 42,
       slug: "rag-deep-dive",
       title: "RAG in production",
@@ -38,18 +35,18 @@ describe("toUpcomingEventInput", () => {
       location: "Pakhuis de Zwijger, Amsterdam",
       host: "AIT Community Netherlands",
     };
-    expect(toUpcomingEventInput(DOC, HOSTS)).toEqual(expected);
+    expect(toEventRowInput(DOC, HOSTS)).toEqual(expected);
   });
 
   it("leaves no input field unset or undefined", () => {
-    const input = toUpcomingEventInput(DOC, HOSTS);
+    const input = toEventRowInput(DOC, HOSTS);
     for (const [key, value] of Object.entries(input)) {
       expect(value, key).not.toBeUndefined();
     }
   });
 
   it("turns missing optional fields into null, not undefined", () => {
-    const input = toUpcomingEventInput(
+    const input = toEventRowInput(
       {
         ...DOC,
         format: undefined,
@@ -73,7 +70,7 @@ describe("toUpcomingEventInput", () => {
 
   it("credits no host for an unknown or deleted community", () => {
     expect(
-      toUpcomingEventInput({ ...DOC, communityId: "gone" }, HOSTS).host,
+      toEventRowInput({ ...DOC, communityId: "gone" }, HOSTS).host,
     ).toBeNull();
   });
 });

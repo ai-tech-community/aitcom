@@ -65,7 +65,12 @@ export type NoticeBoardContent =
   | { kind: "empty"; label: string; message: string };
 
 export interface TownSquareData {
-  board: NoticeBoardContent;
+  /**
+   * What the notice board says. Null draws the square without a board, so
+   * nothing lands on the `accent` layer (e.g. a closing strip that must not
+   * spend the page's orange).
+   */
+  board: NoticeBoardContent | null;
   /** Cells the scene must never draw into (the headline + copy column). */
   safeZone?: CellRect | null;
   seed?: number;
@@ -462,7 +467,11 @@ function floorDepth(rows: number): number {
   return rows >= 24 ? 4 : 3;
 }
 
-function layoutPlaza(grid: Grid, seed: number): PlazaLayout {
+function layoutPlaza(
+  grid: Grid,
+  seed: number,
+  withBoard: boolean,
+): PlazaLayout {
   const { cols, rows } = grid;
   const front = rows - 2;
   const street = front - floorDepth(rows);
@@ -474,7 +483,7 @@ function layoutPlaza(grid: Grid, seed: number): PlazaLayout {
     cols - 4,
     Math.max(BOARD_MIN_W, Math.min(BOARD_MAX_W, Math.round(cols * 0.22))),
   );
-  if (bw >= 16 && front - BOARD_H + 1 >= 0) {
+  if (withBoard && bw >= 16 && front - BOARD_H + 1 >= 0) {
     const candidate = {
       x: cols - 2 - bw,
       y: front - BOARD_H + 1,
@@ -1196,7 +1205,7 @@ export function createTownSquare(
     };
   }
 
-  const layout = layoutPlaza(base, seed);
+  const layout = layoutPlaza(base, seed, data.board !== null);
   drawFloor(base, layout, seed);
   // Back to front: houses on the street, street props, then front props.
   const windows: Cell[] = [];
@@ -1206,9 +1215,8 @@ export function createTownSquare(
     if (STREET_PROPS.has(prop.kind)) drawProp(base, prop);
   for (const prop of layout.props)
     if (!STREET_PROPS.has(prop.kind)) drawProp(base, prop);
-  const boardLines = layout.board
-    ? drawBoard(base, layout.board, data.board)
-    : [];
+  const boardLines =
+    layout.board && data.board ? drawBoard(base, layout.board, data.board) : [];
   const board = layout.board
     ? { x: layout.board.x, y: layout.board.y, w: layout.board.w, h: 6 }
     : null;

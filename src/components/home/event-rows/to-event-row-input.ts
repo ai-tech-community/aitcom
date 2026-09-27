@@ -1,8 +1,8 @@
 import type { Event } from "@/payload-types";
-import type { UpcomingEventInput } from "./upcoming-event-rows";
+import type { EventRowInput } from "./event-rows";
 
-/** The Payload event fields the homepage timetable reads. */
-export type UpcomingEventDoc = Pick<
+/** The Payload event fields the homepage event sections read. */
+export type EventRowDoc = Pick<
   Event,
   | "id"
   | "slug"
@@ -23,10 +23,10 @@ export type UpcomingEventDoc = Pick<
  * host community's name resolved from a batched lookup. Every field the
  * presenter reads is copied here and only here.
  */
-export function toUpcomingEventInput(
-  doc: UpcomingEventDoc,
+export function toEventRowInput(
+  doc: EventRowDoc,
   hostNames: ReadonlyMap<string, string>,
-): UpcomingEventInput {
+): EventRowInput {
   return {
     id: doc.id,
     slug: doc.slug,

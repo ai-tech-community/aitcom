@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  pastEvents,
+  pastEventsQueryCeiling,
   upcomingEvents,
   upcomingEventsQueryFloor,
   DEFAULT_EVENT_TIMEZONE,
@@ -683,6 +685,93 @@ describe("eventDayFormatter", () => {
     expect(
       eventDayFormatter("en", { day: "numeric" }).resolvedOptions().timeZone,
     ).toBe("UTC");
+  });
+});
+
+describe("pastEvents", () => {
+  // 22:30 UTC = 00:30 on the 24th in Amsterdam (CEST), 18:30 on the 23rd in New York.
+  const now = new Date("2026-09-23T22:30:00.000Z");
+
+  it("keeps only events that are over, most recent first", () => {
+    expect(
+      pastEvents(
+        [
+          { id: "older", date: "2026-08-01T00:00:00.000Z", timezone: "UTC" },
+          { id: "later", date: "2026-10-05T00:00:00.000Z", timezone: "UTC" },
+          { id: "recent", date: "2026-09-20T00:00:00.000Z", timezone: "UTC" },
+          { id: "today", date: "2026-09-23T00:00:00.000Z", timezone: "UTC" },
+        ],
+        now,
+      ).map((event) => event.id),
+    ).toEqual(["recent", "older"]);
+  });
+
+  it("uses the same rule for over as upcomingEvents, so no event is in both", () => {
+    const events = [
+      { id: "ams", date: "2026-09-23", timezone: "Europe/Amsterdam" },
+      { id: "nyc", date: "2026-09-23", timezone: "America/New_York" },
+      {
+        id: "ended",
+        date: "2026-09-23",
+        startTime: "18:00",
+        endTime: "20:00",
+        timezone: "UTC",
+      },
+      {
+        id: "running",
+        date: "2026-09-23",
+        startTime: "21:00",
+        endTime: "23:30",
+        timezone: "UTC",
+      },
+    ];
+    const past = pastEvents(events, now).map((event) => event.id);
+    const upcoming = upcomingEvents(events, now).map((event) => event.id);
+    expect(past.sort()).toEqual(["ams", "ended"]);
+    expect(upcoming.sort()).toEqual(["nyc", "running"]);
+  });
+
+  it("drops rows without a usable date", () => {
+    expect(pastEvents([{ date: "long ago" }], now)).toEqual([]);
+  });
+});
+
+describe("pastEventsQueryCeiling", () => {
+  it("keeps an event far east of UTC that is over though its date is ahead of now", () => {
+    // 20:00 UTC on 27 Sep is already 10:00 on 28 Sep in Kiritimati (UTC+14).
+    const now = new Date("2026-09-27T20:00:00.000Z");
+    const kiritimati = {
+      id: "kir",
+      date: "2026-09-28T00:00:00.000Z",
+      startTime: "06:00",
+      endTime: "08:00",
+      timezone: "Pacific/Kiritimati",
+    };
+    const ceiling = pastEventsQueryCeiling(now);
+    expect(kiritimati.date < now.toISOString()).toBe(false); // old query
+    expect(kiritimati.date < ceiling).toBe(true);
+    expect(pastEvents([kiritimati], now)).toEqual([kiritimati]);
+  });
+
+  it("lets through rows that pastEvents then drops because they are not over", () => {
+    const now = new Date("2026-09-27T20:00:00.000Z");
+    const tomorrow = { date: "2026-09-28T00:00:00.000Z", timezone: "UTC" };
+    const running = {
+      date: "2026-09-27T00:00:00.000Z",
+      startTime: "19:00",
+      endTime: "21:00",
+      timezone: "UTC",
+    };
+    const ceiling = pastEventsQueryCeiling(now);
+    expect(tomorrow.date < ceiling).toBe(true);
+    expect(running.date < ceiling).toBe(true);
+    expect(pastEvents([tomorrow, running], now)).toEqual([]);
+  });
+
+  it("is exactly two days after now", () => {
+    expect(pastEventsQueryCeiling(new Date("2026-09-27T20:00:00.000Z"))).toBe(
+      "2026-09-29T20:00:00.000Z",
+    );
   });
 });
 

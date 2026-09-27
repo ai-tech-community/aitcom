@@ -803,3 +803,14 @@ describe("play effects", () => {
     });
   });
 });
+
+describe("town square without a board", () => {
+  it("has no board rectangle and no board lines", () => {
+    const scene = createTownSquare(DESKTOP.cols, DESKTOP.rows, { board: null });
+    expect(scene.board).toBeNull();
+    const frame = scene.frame(0);
+    expect(frame.board).toBeNull();
+    expect(frame.boardLines).toEqual([]);
+    expect(frame.layers.accent.join("").trim()).toBe("");
+  });
+});

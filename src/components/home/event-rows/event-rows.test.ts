@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  presentUpcomingEvents,
-  upcomingEventKind,
-  upcomingEventPlaceParts,
-  type UpcomingEventInput,
-  type UpcomingEventLabels,
-} from "./upcoming-event-rows";
+  presentEventRows,
+  eventRowKind,
+  eventRowPlaceParts,
+  type EventRowInput,
+  type EventRowLabels,
+} from "./event-rows";
 
-const EN: UpcomingEventLabels = {
+const EN: EventRowLabels = {
   types: {
     workshop: "Workshop",
     hackathon: "Hackathon",
@@ -20,7 +20,7 @@ const EN: UpcomingEventLabels = {
   hostedBy: (name) => `by ${name}`,
 };
 
-const NL: UpcomingEventLabels = {
+const NL: EventRowLabels = {
   ...EN,
   hybrid: "Hybride",
   inPerson: "Op locatie",
@@ -29,16 +29,16 @@ const NL: UpcomingEventLabels = {
 
 /** The place line as the screen shows it. */
 function upcomingEventPlace(
-  event: Parameters<typeof upcomingEventPlaceParts>[0],
-  labels: Parameters<typeof upcomingEventPlaceParts>[1],
+  event: Parameters<typeof eventRowPlaceParts>[0],
+  labels: Parameters<typeof eventRowPlaceParts>[1],
 ): string | null {
-  const parts = upcomingEventPlaceParts(event, labels);
+  const parts = eventRowPlaceParts(event, labels);
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 const NOW = new Date("2026-09-27T10:00:00.000Z");
 
-const CONFERENCE: UpcomingEventInput = {
+const CONFERENCE: EventRowInput = {
   id: 1,
   slug: "the-ai-conference-2026",
   title: "The AI Conference 2026",
@@ -52,7 +52,7 @@ const CONFERENCE: UpcomingEventInput = {
   location: "Pier 48, San Francisco",
 };
 
-const HACKATHON: UpcomingEventInput = {
+const HACKATHON: EventRowInput = {
   id: 2,
   slug: "agents-hackathon",
   title: "Agents Hackathon",
@@ -67,7 +67,7 @@ const HACKATHON: UpcomingEventInput = {
   host: "AIT Community Netherlands",
 };
 
-const ONLINE_WORKSHOP: UpcomingEventInput = {
+const ONLINE_WORKSHOP: EventRowInput = {
   id: 3,
   slug: "prompting-workshop",
   title: "Prompting workshop",
@@ -81,7 +81,7 @@ const ONLINE_WORKSHOP: UpcomingEventInput = {
   location: "Online",
 };
 
-const HYBRID_DEEP_DIVE: UpcomingEventInput = {
+const HYBRID_DEEP_DIVE: EventRowInput = {
   id: 4,
   slug: "rag-deep-dive",
   title: "RAG deep-dive",
@@ -98,18 +98,18 @@ const HYBRID_DEEP_DIVE: UpcomingEventInput = {
 const ALL = [CONFERENCE, HACKATHON, ONLINE_WORKSHOP, HYBRID_DEEP_DIVE];
 
 function present(
-  events: UpcomingEventInput[],
+  events: EventRowInput[],
   locale: "en" | "nl" = "en",
   now = NOW,
 ) {
-  return presentUpcomingEvents(events, {
+  return presentEventRows(events, {
     locale,
     labels: locale === "en" ? EN : NL,
     now,
   });
 }
 
-describe("presentUpcomingEvents — when", () => {
+describe("presentEventRows — when", () => {
   const originalTz = process.env.TZ;
   afterEach(() => {
     process.env.TZ = originalTz;
@@ -281,18 +281,18 @@ describe("upcomingEventPlace", () => {
   });
 });
 
-describe("upcomingEventKind", () => {
+describe("eventRowKind", () => {
   it("labels every known type in the given language", () => {
-    expect(upcomingEventKind("meetup", EN)).toEqual({
+    expect(eventRowKind("meetup", EN)).toEqual({
       type: "meetup",
       label: "Meetup",
     });
-    expect(upcomingEventKind("deep_dive", EN).label).toBe("Deep Dive");
-    expect(upcomingEventKind("hackathon", NL).label).toBe("Hackathon");
+    expect(eventRowKind("deep_dive", EN).label).toBe("Deep Dive");
+    expect(eventRowKind("hackathon", NL).label).toBe("Hackathon");
   });
 
   it("shows a legacy type as written, not as a guess", () => {
-    expect(upcomingEventKind("panel_talk", EN)).toEqual({
+    expect(eventRowKind("panel_talk", EN)).toEqual({
       type: null,
       label: "panel talk",
     });
@@ -304,10 +304,9 @@ describe("upcomingEventKind", () => {
   });
 });
 
-describe("presentUpcomingEvents — rows", () => {
-  it("marks only the first row as next", () => {
-    const rows = present(ALL);
-    expect(rows.map((r) => r.isNext)).toEqual([true, false, false, false]);
+describe("presentEventRows — rows", () => {
+  it("carries no section-specific mark such as next up", () => {
+    for (const row of present(ALL)) expect(row).not.toHaveProperty("isNext");
   });
 
   it("links each row to its event page", () => {

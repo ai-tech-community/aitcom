@@ -64,41 +64,23 @@
     "groups": {
       "gather": {
         "title": "Samenkomen",
-        "description": "Vind een community bij jou in de buurt of online, kom naar een evenement en ontmoet de mensen die met AI bouwen.",
-        "links": {
-          "communities": "Sluit je aan, of begin je eigen",
-          "events": "Workshops, hackathons, deep-dives en meetups",
-          "members": "De mensen achter het werk"
-        }
+        "description": "Vind een community bij jou in de buurt of online, en ontmoet de mensen die met AI bouwen.",
+        "link": "Vind een community"
       },
       "build": {
         "title": "Bouwen",
-        "description": "Pak echte problemen aan, deel wat je maakt en werk samen met AI-agents als teamgenoten.",
-        "links": {
-          "challenges": "Echte problemen om met je agent op te lossen",
-          "launchpad": "Laat een prototype zien en krijg feedback",
-          "ideas": "Stel verbeteringen aan het platform voor en stem erop",
-          "agents": "Koppel een agent en zie wat hij hier kan"
-        }
+        "description": "Los echte problemen op met een AI-agent als teamgenoot, en laat zien wat je maakt.",
+        "link": "Bekijk de challenges"
       },
       "work": {
         "title": "Werken",
-        "description": "Vind je volgende baan, een startup om te volgen, of een rol in het draaiende houden van de community.",
-        "links": {
-          "roles": "Neem een rol in het runnen van de community",
-          "jobs": "Vacatures rechtstreeks van de sites van AI-startups",
-          "startups": "AI-bedrijven om in de gaten te houden"
-        }
+        "description": "Vind je volgende baan bij een AI-startup.",
+        "link": "Bekijk vacatures"
       },
       "learn": {
         "title": "Leren",
-        "description": "Samen lezen, onderzoeken en meten wat AI echt doet.",
-        "links": {
-          "benchmark": "Help meten welke merken AI-tools aanraden",
-          "investigations": "Communityonderzoek naar de AI-economie",
-          "blog": "Artikelen, tutorials en opnames van talks",
-          "impact": "Wat mensen en agents samen bereiken, in cijfers"
-        }
+        "description": "Lees artikelen, tutorials en talks van mensen die met AI bouwen.",
+        "link": "Lees de blog"
       }
     }
   },
@@ -489,39 +471,26 @@
     },
     "cta": "Bekijk Challenges"
   },
-  "join": {
-    "title": "Klaar om te beginnen?",
-    "subtitle": "Sluit je aan bij een community of start je eigen",
-    "attend": {
-      "title": "Bouw Met AI",
-      "description": "Stel je agent in en begin met bouwen. Workshops, tools en open source om je op weg te helpen."
-    },
-    "challenge": {
-      "title": "Doe een Challenge",
-      "description": "Los echte problemen op met je AI-agent. Verdien XP, badges en sponsorbeloningen."
-    },
-    "partner": {
-      "title": "Host Je Community",
-      "description": "Breng je AI-community online. Krijg je eigen ruimte met forums, evenementen en ledenbeheer — volledig onderhouden door AIT."
-    }
+  "homeStats": {
+    "communities": "Communities",
+    "profiles": "Openbare profielen",
+    "events": "Evenementen",
+    "workshops": "Workshops",
+    "hackathons": "Hackathons",
+    "sponsors": "Sponsors"
   },
-  "aiHumans": {
-    "title": "Waarom AI + Mensen",
-    "headline": "Samen Beter Dan Apart",
-    "description": "Wanneer engineers en AI-agents samenwerken, ontsluiten ze mogelijkheden die geen van beiden alleen heeft. Menselijke creativiteit bepaalt de richting - AI-snelheid maakt het werkelijkheid. Samen bouwen ze oplossingen die ertoe doen.",
-    "props": {
-      "creativity": "MENSELIJKE CREATIVITEIT",
-      "creativityDesc": "Engineers brengen domeinexpertise, smaak en het vermogen om de juiste vragen te stellen. AI versterkt die creativiteit - het vervangt het niet.",
-      "speed": "AI SNELHEID",
-      "speedDesc": "AI-agents doen het repetitieve werk - code genereren, testen, documentatie - zodat engineers zich kunnen richten op architectuur- en ontwerpbeslissingen.",
-      "impact": "ECHTE IMPACT",
-      "impactDesc": "Onze community bewijst het elke dag: mens-AI teams leveren sneller, leren sneller en lossen problemen op die geen van beiden alleen aankan."
-    }
+  "homeRecent": {
+    "title": "Onlangs op het plein",
+    "lead": "Bijeenkomsten die al plaatsvonden, de nieuwste eerst."
   },
-  "sponsorPitch": {
-    "headline": "Bouw Mee Met de Beste Engineers in AI",
-    "description": "Onze sponsors publiceren echte challenges, verbinden met topoplossers en ontdekken engineers die dagelijks bouwen met AI. Sluit je aan bij de bedrijven die al samenwerken met onze community.",
-    "cta": "Word Sponsor"
+  "homeSponsors": {
+    "title": "Sponsors",
+    "supportedBy": "AIT Community wordt gesteund door <sponsors></sponsors>.",
+    "none": "Nog geen sponsors. Jouw bedrijf kan de eerste zijn.",
+    "become": "Word sponsor"
+  },
+  "homeClosing": {
+    "title": "Sluit je aan bij een community, of begin je eigen."
   },
   "footer": {
     "description": "Het thuis voor AI-communities — geboren in Nederland, open voor de wereld.",

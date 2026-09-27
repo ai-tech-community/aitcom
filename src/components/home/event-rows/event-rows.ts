@@ -7,10 +7,11 @@ import {
 } from "@/lib/events/public-events";
 
 /**
- * Plain, already-loaded event data the homepage hands to the section. The
- * server page shapes Payload docs into this; nothing here touches a client.
+ * Plain, already-loaded event data the homepage hands to its event sections
+ * (the upcoming timetable and the recent gatherings). The server page shapes
+ * Payload docs into this; nothing here touches a client.
  */
-export interface UpcomingEventInput {
+export interface EventRowInput {
   id: string | number;
   slug: string;
   title: string;
@@ -30,7 +31,7 @@ export interface UpcomingEventInput {
 }
 
 /** Translated words the presenter needs; the component supplies them. */
-export interface UpcomingEventLabels {
+export interface EventRowLabels {
   types: Record<EventType, string>;
   online: string;
   hybrid: string;
@@ -38,14 +39,14 @@ export interface UpcomingEventLabels {
   hostedBy: (name: string) => string;
 }
 
-export interface UpcomingEventKind {
+export interface EventRowKind {
   /** Known event type, or null for a legacy value outside EVENT_TYPES. */
   type: EventType | null;
   label: string;
 }
 
 /** One timetable row, ready to render. */
-export interface UpcomingEventRow {
+export interface EventRow {
   key: string;
   href: `/events/${string}`;
   title: string;
@@ -65,9 +66,7 @@ export interface UpcomingEventRow {
   placeParts: string[];
   /** "by <community>", when a host community is known. */
   host: string | null;
-  kind: UpcomingEventKind;
-  /** The soonest event: the only row the section marks. */
-  isNext: boolean;
+  kind: EventRowKind;
 }
 
 /** "Amsterdam, Netherlands" already names "netherlands"; so does "Singapore". */
@@ -93,9 +92,9 @@ function clean(value: string | null | undefined): string | null {
  * place line so it is never said twice. Returned as parts so the screen
  * shows "Amsterdam, Netherlands · Hybrid" and a reader hears commas.
  */
-export function upcomingEventPlaceParts(
-  event: Pick<UpcomingEventInput, "format" | "city" | "country" | "location">,
-  labels: Pick<UpcomingEventLabels, "online" | "hybrid" | "inPerson">,
+export function eventRowPlaceParts(
+  event: Pick<EventRowInput, "format" | "city" | "country" | "location">,
+  labels: Pick<EventRowLabels, "online" | "hybrid" | "inPerson">,
 ): string[] {
   // Hybrid is never "online only", whatever a legacy location says.
   const online = event.format !== "hybrid" && isOnlineEvent(event);
@@ -114,29 +113,31 @@ export function upcomingEventPlaceParts(
   return event.format === "in-person" ? [labels.inPerson] : [];
 }
 
-export function upcomingEventKind(
+export function eventRowKind(
   type: string,
-  labels: Pick<UpcomingEventLabels, "types">,
-): UpcomingEventKind {
+  labels: Pick<EventRowLabels, "types">,
+): EventRowKind {
   return isEventType(type)
     ? { type, label: labels.types[type] }
     : { type: null, label: type.replace(/_/g, " ") };
 }
 
 /**
- * Event → timetable row. Dates come from the stored event-local calendar
- * day and the time is qualified with the event's own zone, so every viewer
- * sees when it happens where it happens. The first row is the next event.
+ * Event → display row, shared by the timetable and the recent gatherings.
+ * Dates come from the stored event-local calendar day and the time is
+ * qualified with the event's own zone, so every viewer sees when it
+ * happens where it happens. Section-specific marks (the timetable's
+ * "next up") belong to the section, not to the row.
  */
-export function presentUpcomingEvents(
-  events: readonly UpcomingEventInput[],
+export function presentEventRows(
+  events: readonly EventRowInput[],
   {
     locale,
     labels,
     now = new Date(),
-  }: { locale: string; labels: UpcomingEventLabels; now?: Date },
-): UpcomingEventRow[] {
-  return events.map((event, index) => {
+  }: { locale: string; labels: EventRowLabels; now?: Date },
+): EventRow[] {
+  return events.map((event) => {
     const parts = eventDayParts(event.date, locale);
     const time = formatEventTimeRange({
       date: event.date,
@@ -144,10 +145,10 @@ export function presentUpcomingEvents(
       endTime: null,
       timezone: event.timezone,
     });
-    const placeParts = upcomingEventPlaceParts(event, labels);
+    const placeParts = eventRowPlaceParts(event, labels);
     const hostName = clean(event.host);
     const host = hostName ? labels.hostedBy(hostName) : null;
-    const kind = upcomingEventKind(event.type, labels);
+    const kind = eventRowKind(event.type, labels);
 
     return {
       key: String(event.id),
@@ -165,7 +166,6 @@ export function presentUpcomingEvents(
       placeParts,
       host,
       kind,
-      isNext: index === 0,
     };
   });
 }

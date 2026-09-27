@@ -71,22 +71,29 @@ describe("homepage crawl doors", () => {
   });
 
   it("is mounted on the locale homepage so /en can crawl the doors", () => {
+    // The page is an async server component (Payload + DB), so this one
+    // wiring check reads its source; home-sections.test.tsx renders the
+    // doors inside the homepage sections for guests and hides them for
+    // members.
     const homepage = readFileSync(
       join(dir, "../../app/[locale]/page.tsx"),
       "utf8",
     );
-    expect(homepage).toContain("HomeCrawlDoors");
-    expect(homepage).toContain("hubDoors");
+    expect(homepage).toContain("<HomeSections");
     // Guest-only, keyed on the request session: crawlers (guests) keep it.
-    expect(homepage).toContain(
-      "<HomeCrawlDoors t={doors} signedIn={!!session?.user} />",
-    );
+    expect(homepage).toContain("signedIn={!!session?.user}");
   });
 
   it("renders for guests (and crawlers)", () => {
     render(<HomeCrawlDoors t={tFrom(en.hubDoors)} signedIn={false} />);
+    // The shared house kicker: "/ " is decorative, CSS upper-cases the label.
+    const heading = screen.getByRole("heading", {
+      level: 2,
+      name: "Start here",
+    });
+    expect(heading).toHaveAttribute("data-slot", "section-label");
     expect(
-      screen.getByRole("heading", { name: "/ START HERE" }),
+      screen.getByRole("region", { name: "Start here" }),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("link")).toHaveLength(HOME_CRAWL_DOORS.length);
   });
