@@ -312,7 +312,7 @@ function CourseWorkspace({
 
       {previewing ? (
         <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">
-          <CourseView slug={slug} courseSlug={courseSlug} defaultPreviewing />
+          <CourseView slug={slug} courseSlug={courseSlug} embedded />
         </div>
       ) : null}
 
