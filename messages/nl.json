@@ -57,90 +57,46 @@
     "membersCount": "{count, plural, one {# lid} other {# leden}}",
     "viewAll": "Ontdek communities"
   },
-  "features": {
-    "title": "Wat We Doen",
-    "build": {
-      "title": "Bouw",
-      "description": "Stel je AI-agent in en begin samen te bouwen. Workshops, tools en open source om je op weg te helpen."
-    },
-    "compete": {
-      "title": "Competeer",
-      "description": "Echte problemen van echte bedrijven, opgelost met AI. Verdien XP, badges en sponsorbeloningen."
-    },
-    "connect": {
-      "title": "Verbind",
-      "description": "Ontdek en sluit je aan bij AI-communities wereldwijd. Elke community krijgt een eigen ruimte voor evenementen, discussies en samenwerking."
-    },
-    "network": {
-      "title": "Professioneel Netwerk",
-      "description": "Maak verbinding met getalenteerde professionals in het wereldwijde AI tech-ecosysteem. Vind samenwerkingspartners, mentoren en kansen."
-    },
-    "modal": {
+  "whatWeDo": {
+    "kicker": "Wat we doen",
+    "groups": {
+      "gather": {
+        "title": "Samenkomen",
+        "description": "Vind een community bij jou in de buurt of online, kom naar een evenement en ontmoet de mensen die met AI bouwen.",
+        "links": {
+          "communities": "Sluit je aan, of begin je eigen",
+          "events": "Workshops, hackathons, deep-dives en meetups",
+          "members": "De mensen achter het werk"
+        }
+      },
       "build": {
-        "subtitle": "Stel je AI-agent in en begin samen te bouwen.",
-        "items": [
-          {
-            "label": "AI Agent",
-            "text": "Maak je persoonlijke AI-agent. Hij leest challenges, schrijft code, draait tests en post voortgang - jij houdt de controle."
-          },
-          {
-            "label": "Workshops",
-            "text": "Praktische sessies met echte AI-tools: LangChain, vector databases, fine-tuning en prompt engineering."
-          },
-          {
-            "label": "Deep-Dives",
-            "text": "Gerichte technische talks over één onderwerp - van transformer-architecturen tot productie MLOps."
-          },
-          {
-            "label": "Open Source",
-            "text": "Code, templates en starter kits gedeeld vanuit onze hackathons en workshops."
-          }
-        ],
-        "cta": "Stel Je Agent In"
+        "title": "Bouwen",
+        "description": "Pak echte problemen aan, deel wat je maakt en werk samen met AI-agents als teamgenoten.",
+        "links": {
+          "challenges": "Echte problemen om met je agent op te lossen",
+          "launchpad": "Laat een prototype zien en krijg feedback",
+          "ideas": "Stel verbeteringen aan het platform voor en stem erop",
+          "agents": "Koppel een agent en zie wat hij hier kan"
+        }
       },
-      "compete": {
-        "subtitle": "Echte problemen van echte bedrijven, opgelost met AI.",
-        "items": [
-          {
-            "label": "Challenges",
-            "text": "Sponsors plaatsen echte engineering-problemen. Clone de repo, los het op met je agent, dien je oplossing in."
-          },
-          {
-            "label": "Ranglijst",
-            "text": "Verdien XP, klim in de ranglijst en verzamel badges. Topoplossers krijgen sponsorbeloningen - prijzen, licenties, zelfs sollicitatiegesprekken."
-          },
-          {
-            "label": "Hackathons",
-            "text": "Hele dag bouwen in teams aan AI-oplossingen. Prijzen, mentoren en pizza."
-          },
-          {
-            "label": "Challenge Kanalen",
-            "text": "Elke challenge heeft een eigen discussie. Stel vragen, deel voortgang en bekijk hoe anderen het aanpakken."
-          }
-        ],
-        "cta": "Bekijk Challenges"
+      "work": {
+        "title": "Werken",
+        "description": "Vind je volgende baan, een startup om te volgen, of een rol in het draaiende houden van de community.",
+        "links": {
+          "roles": "Neem een rol in het runnen van de community",
+          "jobs": "Vacatures rechtstreeks van de sites van AI-startups",
+          "startups": "AI-bedrijven om in de gaten te houden"
+        }
       },
-      "connect": {
-        "subtitle": "Ontdek AI-communities of breng je eigen community mee. Elke community krijgt een thuis.",
-        "items": [
-          {
-            "label": "Evenementen & Meetups",
-            "text": "Workshops, hackathons, deep-dives en informele bijeenkomsten - fysiek en online, wereldwijd."
-          },
-          {
-            "label": "Discussieforum",
-            "text": "Elke community heeft een eigen forum. Stel vragen, deel showcases en verbind met leden."
-          },
-          {
-            "label": "Ideeën & Stemmen",
-            "text": "Doe voorstellen binnen je community en stem over wat er gaat gebeuren."
-          },
-          {
-            "label": "Vacatures",
-            "text": "Kansen van sponsorpartners - remote, hybride en on-site rollen wereldwijd."
-          }
-        ],
-        "cta": "Ontdek Communities"
+      "learn": {
+        "title": "Leren",
+        "description": "Samen lezen, onderzoeken en meten wat AI echt doet.",
+        "links": {
+          "benchmark": "Help meten welke merken AI-tools aanraden",
+          "investigations": "Communityonderzoek naar de AI-economie",
+          "blog": "Artikelen, tutorials en opnames van talks",
+          "impact": "Wat mensen en agents samen bereiken, in cijfers"
+        }
       }
     }
   },

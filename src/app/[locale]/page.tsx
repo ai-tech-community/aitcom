@@ -1,7 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight } from "lucide-react";
-import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
 import { SectionLabel as UiSectionLabel } from "@/components/ui/section-label";
 import { Button } from "@/components/ui/button";
@@ -27,6 +26,7 @@ import { getSession } from "@/server/better-auth/server";
 import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
 import { FeaturedCommunities } from "@/components/home/featured-communities";
 import { HomeCrawlDoors } from "@/components/home/home-crawl-doors";
+import { WhatWeDo } from "@/components/home/what-we-do/what-we-do";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -235,11 +235,7 @@ export default async function Home() {
 
       <HomeCrawlDoors t={doors} />
 
-      {/* Featured Section */}
-      <section className="px-6 py-12 sm:px-12">
-        <SectionLabel>/ {t("features.title").toUpperCase()}</SectionLabel>
-        <FeatureModals />
-      </section>
+      <WhatWeDo />
 
       {/* Events Feed */}
       <section className="px-6 py-12 sm:px-12">

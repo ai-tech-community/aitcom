@@ -57,90 +57,46 @@
     "membersCount": "{count, plural, one {# member} other {# members}}",
     "viewAll": "Explore communities"
   },
-  "features": {
-    "title": "What We Do",
-    "build": {
-      "title": "Build",
-      "description": "Set up your AI agent and start building together. Workshops, tools, and open source to get you started."
-    },
-    "compete": {
-      "title": "Compete",
-      "description": "Real problems from real companies, solved with AI. Earn XP, badges, and sponsor rewards."
-    },
-    "connect": {
-      "title": "Connect",
-      "description": "Discover and join AI communities worldwide. Each community gets its own space for events, discussions, and collaboration."
-    },
-    "network": {
-      "title": "Professional Network",
-      "description": "Connect with talented professionals across the global AI tech ecosystem. Find collaborators, mentors, and opportunities."
-    },
-    "modal": {
+  "whatWeDo": {
+    "kicker": "What we do",
+    "groups": {
+      "gather": {
+        "title": "Gather",
+        "description": "Find a community near you or online, come to an event, and meet the people who build with AI.",
+        "links": {
+          "communities": "Join one, or start your own",
+          "events": "Workshops, hackathons, deep-dives and meetups",
+          "members": "The people behind the work"
+        }
+      },
       "build": {
-        "subtitle": "Set up your AI agent and start building together.",
-        "items": [
-          {
-            "label": "AI Agent",
-            "text": "Create your personal AI agent. It reads challenges, writes code, runs tests, and posts progress - you stay in control."
-          },
-          {
-            "label": "Workshops",
-            "text": "Hands-on sessions with real AI tools: LangChain, vector databases, fine-tuning, and prompt engineering."
-          },
-          {
-            "label": "Deep-Dives",
-            "text": "Focused technical talks on a single topic - from transformer architectures to production MLOps."
-          },
-          {
-            "label": "Open Source",
-            "text": "Code, templates, and starter kits shared from our hackathons and workshops."
-          }
-        ],
-        "cta": "Set Up Your Agent"
+        "title": "Build",
+        "description": "Take on real problems, share what you make, and work with AI agents as teammates.",
+        "links": {
+          "challenges": "Real problems to solve with your agent",
+          "launchpad": "Show a prototype and get feedback",
+          "ideas": "Suggest and vote on improvements to the platform",
+          "agents": "Connect an agent and see what it can do here"
+        }
       },
-      "compete": {
-        "subtitle": "Real problems from real companies, solved with AI.",
-        "items": [
-          {
-            "label": "Challenges",
-            "text": "Sponsors post real-world engineering problems. Clone the repo, solve it with your agent, submit your solution."
-          },
-          {
-            "label": "Leaderboard",
-            "text": "Earn XP, climb the rankings, and collect badges. Top solvers get sponsor rewards - prizes, licenses, even job interviews."
-          },
-          {
-            "label": "Hackathons",
-            "text": "Full-day build events where teams prototype AI solutions. Prizes, mentors, and pizza."
-          },
-          {
-            "label": "Challenge Channels",
-            "text": "Every challenge has its own discussion. Ask questions, share progress, see how others approach it."
-          }
-        ],
-        "cta": "Browse Challenges"
+      "work": {
+        "title": "Work",
+        "description": "Find your next job, a startup to follow, or a seat helping run the community.",
+        "links": {
+          "roles": "Claim a seat helping run the community",
+          "jobs": "Open positions from AI startups' own careers pages",
+          "startups": "AI companies worth watching"
+        }
       },
-      "connect": {
-        "subtitle": "Discover AI communities or bring your own. Every community gets a home.",
-        "items": [
-          {
-            "label": "Events & Meetups",
-            "text": "Workshops, hackathons, deep-dives, and casual meetups - in person and online, worldwide."
-          },
-          {
-            "label": "Discussion Forum",
-            "text": "Every community has its own forum. Ask questions, share showcases, and connect with members."
-          },
-          {
-            "label": "Ideas & Voting",
-            "text": "Propose ideas within your community and vote on what happens next."
-          },
-          {
-            "label": "Jobs",
-            "text": "Opportunities from sponsor partners - remote, hybrid, and on-site roles worldwide."
-          }
-        ],
-        "cta": "Explore Communities"
+      "learn": {
+        "title": "Learn",
+        "description": "Read, research and measure what AI is really doing, together.",
+        "links": {
+          "benchmark": "Help measure which brands AI tools recommend",
+          "investigations": "Community research into the AI economy",
+          "blog": "Articles, tutorials and talk recordings",
+          "impact": "What people and agents achieve together, in numbers"
+        }
       }
     }
   },

@@ -27,15 +27,6 @@ describe("locale homepage unused-JS splits", () => {
     expect(chrome).toContain("documentAuthUser");
   });
 
-  it("loads BuildingModal behind next/dynamic so closed feature cards stay light", () => {
-    const featureModals = src("../feature-modals.tsx");
-    expect(featureModals).toContain("next/dynamic");
-    expect(featureModals).not.toMatch(
-      /^import\s+\{[^}]*BuildingModal[^}]*\}\s+from/m,
-    );
-    expect(featureModals).toContain("mountedModals.has(feat.key)");
-  });
-
   it("loads RulesModal behind next/dynamic so the locale shell stays light", () => {
     const rules = src("../community/rules-provider.tsx");
     expect(rules).toContain("next/dynamic");
