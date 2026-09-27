@@ -1,4 +1,5 @@
 import { Link } from "@/i18n/navigation";
+import { SectionLabel } from "@/components/ui/section-label";
 import { AWESOME_AI_OSS_PATH } from "@/lib/investigations/awesome-ai-oss";
 import { GUIDE_PATHS, JOIN_PATH } from "@/lib/seo-guides";
 
@@ -57,12 +58,10 @@ export function HomeCrawlDoors({
 }) {
   if (signedIn) return null;
   return (
-    <section className="px-6 py-12 sm:px-12">
-      <div className="border-border border-b pb-4">
-        <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / {t("kicker").toUpperCase()}
-        </h2>
-      </div>
+    <section aria-labelledby="start-here-title" className="px-6 py-12 sm:px-12">
+      <SectionLabel id="start-here-title" className="pb-4">
+        {t("kicker")}
+      </SectionLabel>
 
       <div className="mt-2">
         {HOME_CRAWL_DOORS.map((door) => (

@@ -24,12 +24,30 @@ vi.mock("@/i18n/navigation", () => ({
 import { WhatWeDo } from "./what-we-do";
 import { WHAT_WE_DO_GROUPS } from "./groups";
 
-const EXPECTED: Record<string, string[]> = {
-  gather: ["/communities", "/events", "/members"],
-  build: ["/challenges", "/launchpad", "/ideas", "/agents"],
-  work: ["/roles", "/jobs", "/startups"],
-  learn: ["/benchmark", "/investigations", "/blog", "/impact"],
+const EXPECTED: Record<string, string> = {
+  gather: "/communities",
+  build: "/challenges",
+  work: "/jobs",
+  learn: "/blog",
 };
+
+/** Every place the section used to list; each must stay in the navigation. */
+const FORMER_LINKS = [
+  "/communities",
+  "/events",
+  "/members",
+  "/challenges",
+  "/launchpad",
+  "/ideas",
+  "/agents",
+  "/roles",
+  "/jobs",
+  "/startups",
+  "/benchmark",
+  "/investigations",
+  "/blog",
+  "/impact",
+];
 
 function renderIn(locale: "en" | "nl") {
   return render(
@@ -57,25 +75,43 @@ describe("WhatWeDo", () => {
     expect(section.textContent).not.toMatch(/FIG\./);
   });
 
-  it("links every group to its destinations, in order", () => {
+  it("gives each of the four groups one sentence and one link", () => {
     renderIn("en");
-    for (const [key, hrefs] of Object.entries(EXPECTED)) {
-      const titles: Record<string, string> = Object.fromEntries(
-        Object.entries(en.whatWeDo.groups).map(([k, g]) => [k, g.title]),
-      );
+    const titles: Record<string, string> = Object.fromEntries(
+      Object.entries(en.whatWeDo.groups).map(([k, g]) => [k, g.title]),
+    );
+    expect(screen.getAllByRole("article")).toHaveLength(4);
+    for (const [key, href] of Object.entries(EXPECTED)) {
       const group = screen.getByRole("article", { name: titles[key] });
       const links = within(group).getAllByRole("link");
-      expect(links.map((a) => a.getAttribute("href"))).toEqual(hrefs);
+      expect(links.map((a) => a.getAttribute("href"))).toEqual([href]);
+      expect(group.querySelectorAll("p")).toHaveLength(1);
     }
   });
 
-  it("names each link like the navigation does, with a hint", () => {
+  it("names the link in the reader's language", () => {
     renderIn("nl");
-    const link = screen.getByRole("link", { name: /Onderzoeken/ });
-    expect(link).toHaveAttribute("href", "/investigations");
-    expect(link.textContent).toContain(
-      nl.whatWeDo.groups.learn.links.investigations,
-    );
+    const link = screen.getByRole("link", {
+      name: nl.whatWeDo.groups.learn.link,
+    });
+    expect(link).toHaveAttribute("href", "/blog");
+  });
+
+  it("gives every link a target at least 24px tall", () => {
+    renderIn("en");
+    for (const link of screen.getAllByRole("link")) {
+      expect(link.className).toMatch(/\bmin-h-6\b/);
+      expect(link.className).toMatch(/\binline-flex\b/);
+    }
+  });
+
+  it("shows the vignettes only from lg up", () => {
+    renderIn("en");
+    for (const key of Object.keys(EXPECTED)) {
+      const art = screen.getByTestId(`vignette-${key}`);
+      expect(art.className).toMatch(/(^|\s)hidden(\s|$)/);
+      expect(art.className).toMatch(/\blg:block\b/);
+    }
   });
 
   it("keeps the art decorative", () => {
@@ -100,17 +136,9 @@ describe("WhatWeDo — translations", () => {
       for (const group of WHAT_WE_DO_GROUPS) {
         const g = m.whatWeDo.groups[group.key];
         expect(g.title).toBeTruthy();
-        expect(g.description).toBeTruthy();
-        for (const link of group.links) {
-          expect(
-            (g.links as Record<string, string>)[link.nav],
-            `${locale} ${group.key}.${link.nav}`,
-          ).toBeTruthy();
-          expect(
-            (m.nav as Record<string, string>)[link.nav],
-            `${locale} nav.${link.nav}`,
-          ).toBeTruthy();
-        }
+        expect(g.link).toBeTruthy();
+        // One sentence per group.
+        expect(g.description.match(/[.!?](\s|$)/g)).toHaveLength(1);
       }
     },
   );
@@ -129,9 +157,17 @@ describe("WhatWeDo — translations", () => {
       "utf8",
     );
     for (const group of WHAT_WE_DO_GROUPS) {
-      for (const link of group.links) {
-        expect(navbar).toContain(`href: "${link.href}"`);
-      }
+      expect(navbar).toContain(`href: "${group.href}"`);
+    }
+  });
+
+  it("keeps every page it no longer lists reachable from the navigation", () => {
+    const navbar = readFileSync(
+      join(process.cwd(), "src/components/navbar.tsx"),
+      "utf8",
+    );
+    for (const href of FORMER_LINKS) {
+      expect(navbar, href).toContain(`href: "${href}"`);
     }
   });
 });

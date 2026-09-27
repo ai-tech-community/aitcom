@@ -485,20 +485,47 @@ export function upcomingEvents<T extends UpcomingCandidate>(
   events: readonly T[],
   now: Date = new Date(),
 ): T[] {
-  const withStart = events.flatMap((event) => {
-    const day = event.date.slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return [];
-    const end = eventEndInstant(event);
-    const over = end
-      ? end.getTime() <= now.getTime()
-      : day < instantToZonedDateString(now.toISOString(), event.timezone);
-    if (over) return [];
+  return withStartInstants(events, now, false)
+    .sort((a, b) => a.start - b.start || compareIds(a.event.id, b.event.id))
+    .map(({ event }) => event);
+}
+
+/**
+ * Events that are over, most recent start first — the mirror image of
+ * `upcomingEvents`, with the same rule for "over" (see there). An event
+ * without an end time counts as over only once its own calendar day has
+ * ended where it happens, so a running event is never listed as past.
+ */
+export function pastEvents<T extends UpcomingCandidate>(
+  events: readonly T[],
+  now: Date = new Date(),
+): T[] {
+  return withStartInstants(events, now, true)
+    .sort((a, b) => b.start - a.start || compareIds(b.event.id, a.event.id))
+    .map(({ event }) => event);
+}
+
+/** True once the event has ended (see `upcomingEvents` for the rule). */
+function isEventOver(event: UpcomingCandidate, now: Date): boolean {
+  const end = eventEndInstant(event);
+  return end
+    ? end.getTime() <= now.getTime()
+    : event.date.slice(0, 10) <
+        instantToZonedDateString(now.toISOString(), event.timezone);
+}
+
+/** Events on the chosen side of "over", paired with their start instant. */
+function withStartInstants<T extends UpcomingCandidate>(
+  events: readonly T[],
+  now: Date,
+  over: boolean,
+): { event: T; start: number }[] {
+  return events.flatMap((event) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(event.date.slice(0, 10))) return [];
+    if (isEventOver(event, now) !== over) return [];
     const start = eventStartInstant(event);
     return start ? [{ event, start: start.getTime() }] : [];
   });
-  return withStart
-    .sort((a, b) => a.start - b.start || compareIds(a.event.id, b.event.id))
-    .map(({ event }) => event);
 }
 
 /**

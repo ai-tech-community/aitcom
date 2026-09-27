@@ -1,6 +1,5 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { ArrowUpRight } from "lucide-react";
 import { HeroTitle } from "@/components/hero-title";
 import { Button } from "@/components/ui/button";
 import { HomeHeroPlaza } from "@/components/home/town-square/home-hero-plaza";
@@ -9,6 +8,7 @@ import { CREATE_COMMUNITY_HREF } from "@/components/communities/create-community
 import {
   completeUpcomingCandidates,
   formatEventShortWhen,
+  pastEvents,
   upcomingEvents,
   upcomingEventsQueryFloor,
 } from "@/lib/event-time";
@@ -17,7 +17,6 @@ import { db } from "@/server/db";
 import { communities, memberProfiles } from "@/server/db/schema";
 import { count, isNull } from "drizzle-orm";
 import { publicRosterVisibility } from "@/server/members/public-roster";
-import Image from "next/image";
 import type { Metadata } from "next";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
@@ -29,6 +28,13 @@ import { WhatWeDo } from "@/components/home/what-we-do/what-we-do";
 import { UpcomingEvents } from "@/components/home/upcoming-events/upcoming-events";
 import { toUpcomingEventInput } from "@/components/home/upcoming-events/to-upcoming-event-input";
 import { loadEventHostNames } from "@/server/events/event-hosts-queries";
+import {
+  RECENT_GATHERINGS_SHOWN,
+  RecentGatherings,
+} from "@/components/home/recent-gatherings/recent-gatherings";
+import { HomeSponsors } from "@/components/home/sponsors/home-sponsors";
+import { toHomeSponsor } from "@/components/home/sponsors/home-sponsor";
+import { HomeClosingSquare } from "@/components/home/closing-square/home-closing-square";
 
 /**
  * Rows fetched for the upcoming-events block. The block shows 5; the rest
@@ -38,20 +44,17 @@ import { loadEventHostNames } from "@/server/events/event-hosts-queries";
  */
 const UPCOMING_EVENT_CANDIDATES = 50;
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border-border border-b pb-4">
-      <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-        {children}
-      </h2>
-    </div>
-  );
-}
+/**
+ * Past rows fetched for "Recently on the square". A few more than shown, so
+ * events that started but are still running today (not over yet) cannot
+ * leave the section short.
+ */
+const RECENT_EVENT_CANDIDATES = 12;
 
 function StatItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center gap-1.5 px-3 py-1 sm:gap-2 sm:px-6 sm:py-0">
-      <span className="text-muted-foreground font-mono text-xs tracking-wider sm:text-xs">
+      <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase sm:text-xs">
         {label}:
       </span>
       <span className="text-foreground font-mono text-xs font-semibold tracking-wider sm:text-xs">
@@ -72,11 +75,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [locale, t, session, doors] = await Promise.all([
+  const [locale, t, session, doors, stats] = await Promise.all([
     getLocale(),
     getTranslations(),
     getSession(),
     getTranslations("hubDoors"),
+    getTranslations("homeStats"),
   ]);
 
   const payload = await getPayloadClient();
@@ -100,6 +104,27 @@ export default async function Home() {
     locale: locale as "en" | "nl",
     draft: false,
   });
+  // Proof for "Recently on the square": the latest gatherings that took
+  // place, with the same filters as the upcoming list. `date` is the
+  // event-local midnight, so every event that is over has `date < now`;
+  // pastEvents() drops the ones still running today.
+  const { docs: recentCandidates } = await payload.find({
+    collection: "events",
+    where: {
+      status: { equals: "published" },
+      date: { less_than: new Date().toISOString() },
+      discoverySource: { not_equals: "luma" },
+    },
+    sort: "-date",
+    limit: RECENT_EVENT_CANDIDATES,
+    locale: locale as "en" | "nl",
+    draft: false,
+  });
+  const recentEvents = pastEvents(recentCandidates).slice(
+    0,
+    RECENT_GATHERINGS_SHOWN,
+  );
+
   // Soonest real start first (same-day events by time, then id); ended
   // events drop out, so the list and the notice board agree on "next up".
   const events = upcomingEvents(
@@ -174,13 +199,17 @@ export default async function Home() {
       .from(communities)
       .where(isNull(communities.deletedAt))
       .then((r) => r[0]?.value ?? 0),
+    // One lookup for the hosts of both upcoming and recent gatherings.
     loadEventHostNames(
       db,
-      events.map((event) => event.communityId),
+      [...events, ...recentEvents].map((event) => event.communityId),
     ),
   ]);
 
   const upcomingEventRows = events.map((event) =>
+    toUpcomingEventInput(event, hostNames),
+  );
+  const recentEventRows = recentEvents.map((event) =>
     toUpcomingEventInput(event, hostNames),
   );
 
@@ -233,140 +262,30 @@ export default async function Home() {
 
       {/* Stats Ticker */}
       <div className="border-border grid grid-cols-2 gap-y-1 border-y px-4 py-3 sm:flex sm:items-center sm:gap-y-0 sm:overflow-x-auto sm:px-0 sm:py-2.5">
-        <StatItem label="COMMUNITIES" value={String(communityCount)} />
-        <StatItem label="PEOPLE" value={String(memberCount)} />
-        <StatItem label="EVENTS" value={String(eventCount)} />
-        <StatItem label="WORKSHOPS" value={String(workshopCount)} />
-        <StatItem label="HACKATHONS" value={String(hackathonCount)} />
-        <StatItem label="SPONSORS" value={String(sponsorCount)} />
+        <StatItem label={stats("communities")} value={String(communityCount)} />
+        {/* Counts public roster profiles only, not every member. */}
+        <StatItem label={stats("profiles")} value={String(memberCount)} />
+        <StatItem label={stats("events")} value={String(eventCount)} />
+        <StatItem label={stats("workshops")} value={String(workshopCount)} />
+        <StatItem label={stats("hackathons")} value={String(hackathonCount)} />
+        <StatItem label={stats("sponsors")} value={String(sponsorCount)} />
       </div>
 
       {featuredCommunities.length > 0 ? (
         <FeaturedCommunities communities={featuredCommunities} />
       ) : null}
 
+      <UpcomingEvents events={upcomingEventRows} />
+
       <HomeCrawlDoors t={doors} signedIn={!!session?.user} />
 
       <WhatWeDo />
 
-      <UpcomingEvents events={upcomingEventRows} />
+      <RecentGatherings events={recentEventRows} />
 
-      {/* Why AI + Humans */}
-      <section className="px-6 py-12 sm:px-12">
-        <SectionLabel>/ {t("aiHumans.title").toUpperCase()}</SectionLabel>
+      <HomeSponsors sponsors={featuredSponsors.map(toHomeSponsor)} />
 
-        <div className="mt-8 max-w-3xl">
-          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            {t("aiHumans.headline")}
-          </h2>
-          <p className="text-muted-foreground mt-4 text-base leading-relaxed sm:text-lg">
-            {t("aiHumans.description")}
-          </p>
-        </div>
-
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
-          {(["creativity", "speed", "impact"] as const).map((key) => (
-            <div key={key} className="space-y-2">
-              <h3 className="font-mono text-xs font-semibold tracking-wider">
-                {t(`aiHumans.props.${key}`)}
-              </h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                {t(`aiHumans.props.${key}Desc`)}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Sponsors */}
-      <section className="px-6 py-12 sm:px-12">
-        <SectionLabel>
-          / {t("sponsors.currentSponsors").toUpperCase()}
-        </SectionLabel>
-
-        <div className="mt-8 max-w-3xl">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {t("sponsorPitch.headline")}
-          </h2>
-          <p className="text-muted-foreground mt-3 text-sm leading-relaxed sm:text-base">
-            {t("sponsorPitch.description")}
-          </p>
-        </div>
-
-        {featuredSponsors.length > 0 && (
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-8">
-            {featuredSponsors.map((sponsor) => {
-              const logo =
-                typeof sponsor.logo === "object" ? sponsor.logo : null;
-              return logo?.url ? (
-                <a
-                  key={sponsor.id}
-                  href={sponsor.website ?? "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="opacity-60 transition-opacity hover:opacity-100"
-                >
-                  <Image
-                    src={logo.url}
-                    alt={sponsor.name}
-                    width={120}
-                    height={48}
-                    className="h-8 w-auto object-contain sm:h-12"
-                  />
-                </a>
-              ) : null;
-            })}
-          </div>
-        )}
-
-        <div className="mt-6 text-right">
-          <Link
-            href="/sponsors"
-            className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
-          >
-            {t("sponsorPitch.cta")} →
-          </Link>
-        </div>
-      </section>
-
-      {/* CTA Cards */}
-      <section className="px-6 py-12 sm:px-12">
-        <div className="grid gap-6 sm:grid-cols-3">
-          {[
-            {
-              title: t("join.attend.title"),
-              desc: t("join.attend.description"),
-              href: session?.user
-                ? ("/dashboard/agent" as const)
-                : ("/communities" as const),
-            },
-            {
-              title: t("join.challenge.title"),
-              desc: t("join.challenge.description"),
-              href: "/challenges" as const,
-            },
-            {
-              title: t("join.partner.title"),
-              desc: t("join.partner.description"),
-              href: "/sponsors" as const,
-            },
-          ].map((cta) => (
-            <Link
-              key={cta.title}
-              href={cta.href}
-              className="group border-border hover:border-foreground/30 flex h-44 flex-col items-center justify-center gap-2 rounded-xl border px-6 text-center transition-colors"
-            >
-              <span className="group-hover:text-primary text-xl font-semibold">
-                {cta.title}
-              </span>
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                {cta.desc}
-              </p>
-              <ArrowUpRight className="text-muted-foreground group-hover:text-primary h-5 w-5 transition-colors" />
-            </Link>
-          ))}
-        </div>
-      </section>
+      <HomeClosingSquare />
     </>
   );
 }

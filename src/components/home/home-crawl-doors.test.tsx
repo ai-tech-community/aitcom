@@ -85,8 +85,14 @@ describe("homepage crawl doors", () => {
 
   it("renders for guests (and crawlers)", () => {
     render(<HomeCrawlDoors t={tFrom(en.hubDoors)} signedIn={false} />);
+    // The shared house kicker: "/ " is decorative, CSS upper-cases the label.
+    const heading = screen.getByRole("heading", {
+      level: 2,
+      name: "Start here",
+    });
+    expect(heading).toHaveAttribute("data-slot", "section-label");
     expect(
-      screen.getByRole("heading", { name: "/ START HERE" }),
+      screen.getByRole("region", { name: "Start here" }),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("link")).toHaveLength(HOME_CRAWL_DOORS.length);
   });
