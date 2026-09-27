@@ -1,7 +1,11 @@
+import { textCells } from "./cells";
+
 /**
  * A fixed-size character grid where every cell belongs to at most one named
  * layer, so a renderer can colour each layer from a CSS token. Writes outside
  * the grid are ignored, which lets scenes draw without bounds checks.
+ * Text is laid out in monospace cells (see `cells.ts`): a wide glyph takes
+ * two cells, so every row stays exactly `width` cells wide on screen.
  */
 export class LayeredCanvas<L extends string> {
   private chars: string[][];
@@ -21,12 +25,17 @@ export class LayeredCanvas<L extends string> {
   put(x: number, y: number, ch: string, layer: L): void {
     if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
     this.chars[y]![x] = ch;
+    // "" is the trailing half of a wide glyph: owned, but prints nothing.
     this.owner[y]![x] = ch === " " ? null : layer;
   }
 
-  /** Write a string cell by cell (single-width characters only). */
+  /**
+   * Write text by grapheme. A wide glyph owns its cell and the next one is
+   * left empty ("") so the row keeps its visual width.
+   */
   text(x: number, y: number, s: string, layer: L): void {
-    [...s].forEach((ch, i) => this.put(x + i, y, ch, layer));
+    for (const [col, g] of textCells(x, s, this.width))
+      this.put(col, y, g, layer);
   }
 
   /**
@@ -35,11 +44,15 @@ export class LayeredCanvas<L extends string> {
    */
   sprite(x: number, y: number, lines: readonly string[], layer: L): void {
     lines.forEach((line, dy) => {
-      const first = line.search(/\S/);
+      const cells = textCells(x, line, this.width);
+      const first = cells.findIndex(([, g]) => g !== " ");
       if (first < 0) return;
-      const last = line.trimEnd().length - 1;
-      for (let i = first; i <= last; i++)
-        this.put(x + i, y + dy, line[i]!, layer);
+      let last = cells.length - 1;
+      while (cells[last]![1] === " ") last--;
+      for (let i = first; i <= last; i++) {
+        const [col, g] = cells[i]!;
+        this.put(col, y + dy, g, layer);
+      }
     });
   }
 

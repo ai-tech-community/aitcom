@@ -22,6 +22,7 @@ import {
   FIGURE_W,
   figure,
   type FigureKind,
+  type FigurePose,
 } from "@/components/ascii/figures";
 import {
   DEPTH_X,
@@ -29,8 +30,8 @@ import {
   drawHouse,
   minHouseHeight,
   type GableHouse,
-  type HouseRect,
 } from "@/components/ascii/gabled-house";
+import type { CellRect } from "@/components/ascii/measure";
 import { LayeredCanvas } from "@/components/ascii/layered-canvas";
 import { rand, seedFromString } from "@/components/ascii/seeded";
 import { TREE } from "@/components/ascii/street-props";
@@ -126,7 +127,7 @@ function layoutHouse(
   const x = 1 + Math.round(slack * (0.2 + 0.6 * rand(seed, 4)));
   const y = street - h + 1;
 
-  let far: HouseRect | null = null;
+  let far: CellRect | null = null;
   const rise = 2 + Math.floor(rand(seed, 5) * 3);
   const farY = y - DEPTH_Y - rise;
   if (rand(seed, 6) < 0.6 && farY >= SKY_ROWS) {
@@ -222,12 +223,17 @@ function drawPaving(
   for (let x = 2; x < c.width; x += 6) c.put(x, front + 1, ".", "scenery");
 }
 
-function figurePose(index: number, count: number, kind: FigureKind, t: number) {
+function figurePose(
+  index: number,
+  count: number,
+  kind: FigureKind,
+  t: number,
+): FigurePose {
   const turn = Math.floor(t / WAVE_TURN) % count;
   const inTurn = t % WAVE_TURN;
   const armUp = turn === index && inTurn < WAVE_TICKS && inTurn % 4 < 2;
   const blink = kind === "agent" && !armUp && (t + index * 11) % 43 === 0;
-  return { armUp, blink };
+  return { arm: armUp ? "up" : undefined, blink };
 }
 
 /**

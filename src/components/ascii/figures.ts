@@ -20,11 +20,20 @@ export const LEGS_STEP = " |\\";
 
 export interface FigurePose {
   walking?: boolean;
-  /** Arm raised on the right (waving, placing, pinning). */
-  armUp?: boolean;
+  /**
+   * A raised arm: `up` is the top of a wave, `out` the arm swung level on
+   * the way down. Omit for arms at rest.
+   */
+  arm?: "up" | "out";
+  /**
+   * Which arm waves (default right). Humans only: an agent's head fills its
+   * sprite, so an agent always waves with its right arm, reaching one cell
+   * past the sprite.
+   */
+  side?: "left" | "right";
   /** Agent only: eyes shut for a frame. */
   blink?: boolean;
-  /** Replaces the body row, e.g. a human holding an open book. */
+  /** Replaces the body row at rest, e.g. a human holding an open book. */
   body?: string;
 }
 
@@ -37,11 +46,16 @@ export function figure(
   const legs = pose.walking && tick % 2 === 1 ? LEGS_STEP : LEGS;
   if (kind === "agent") {
     const head = pose.blink ? AGENT_BLINK : AGENT_HEAD;
-    return pose.armUp
-      ? [head + "/", BODY_WAVE, legs]
-      : [head, pose.body ?? BODY, legs];
+    if (pose.arm === "up") return [head + "/", BODY_WAVE, legs];
+    if (pose.arm === "out") return [head, "/|-", legs];
+    return [head, pose.body ?? BODY, legs];
   }
-  return pose.armUp
-    ? [HUMAN_WAVE, BODY_WAVE, legs]
-    : [HUMAN_HEAD, pose.body ?? BODY, legs];
+  if (pose.side === "left") {
+    if (pose.arm === "up") return ["\\o ", " |\\", legs];
+    if (pose.arm === "out") return [HUMAN_HEAD, "-|\\", legs];
+  } else {
+    if (pose.arm === "up") return [HUMAN_WAVE, BODY_WAVE, legs];
+    if (pose.arm === "out") return [HUMAN_HEAD, "/|-", legs];
+  }
+  return [HUMAN_HEAD, pose.body ?? BODY, legs];
 }

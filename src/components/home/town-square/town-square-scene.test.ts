@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   createTownSquare,
-  graphemes,
-  textWidth,
   toBoardText,
   TOWN_SQUARE_CYCLE,
   TOWN_SQUARE_STATIC_TICK,
@@ -12,6 +10,7 @@ import {
   type TownSquareData,
   type TownSquareFrame,
 } from "./town-square-scene";
+import { graphemes, textWidth } from "@/components/ascii/cells";
 import {
   GREET_TICKS,
   NIGHT_FALL_TICKS,

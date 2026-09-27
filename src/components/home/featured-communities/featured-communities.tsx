@@ -114,7 +114,7 @@ function CommunityCard({
       href={`/communities/${slug}`}
       aria-labelledby={`${id}-name`}
       aria-describedby={`${id}-about`}
-      className={`group border-border hover:border-foreground/30 hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-ring/50 flex h-full flex-col overflow-hidden rounded-xl border transition-colors outline-none focus-visible:ring-[3px] ${
+      className={`group border-border hover:border-foreground/30 hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-ring/50 flex h-full flex-col overflow-hidden rounded-xl border shadow-sm transition-colors outline-none focus-visible:ring-[3px] ${
         wide ? "md:flex-row" : ""
       }`}
     >

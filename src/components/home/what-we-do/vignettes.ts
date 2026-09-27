@@ -48,10 +48,12 @@ class Canvas extends LayeredCanvas<VignetteLayer> {
 
 // ─── Figures (same sprites as the town square) ──────────────────────────────
 
-type Kind = FigureKind;
-
 /** The shared figure; agents blink now and then while standing. */
-function figure(kind: Kind, tick: number, pose: FigurePose = {}): string[] {
+function figure(
+  kind: FigureKind,
+  tick: number,
+  pose: FigurePose = {},
+): string[] {
   return drawFigure(kind, tick, {
     ...pose,
     blink: !pose.walking && tick % 37 === 0,
@@ -132,7 +134,7 @@ function gather(tick: number): VignetteFrame {
   c.sprite(0, 7, ["_".repeat(W)], "scenery");
   paving(c, [10]);
 
-  const crowd: { kind: Kind; slot: number; offset: number }[] = [
+  const crowd: { kind: FigureKind; slot: number; offset: number }[] = [
     { kind: "human", slot: 12, offset: 0 },
     { kind: "agent", slot: 17, offset: 22 },
     { kind: "human", slot: 22, offset: 44 },
@@ -153,7 +155,10 @@ function gather(tick: number): VignetteFrame {
     c.sprite(
       w.x,
       8,
-      figure(p.kind, tick, { walking: w.walking, armUp }),
+      figure(p.kind, tick, {
+        walking: w.walking,
+        arm: armUp ? "up" : undefined,
+      }),
       "people",
     );
   }
@@ -208,13 +213,17 @@ function build(tick: number): VignetteFrame {
   c.sprite(
     2,
     7,
-    figure("human", tick, { armUp: reaching && placer === "human" }),
+    figure("human", tick, {
+      arm: reaching && placer === "human" ? "up" : undefined,
+    }),
     "people",
   );
   c.sprite(
     33,
     7,
-    figure("agent", tick, { armUp: reaching && placer === "agent" }),
+    figure("agent", tick, {
+      arm: reaching && placer === "agent" ? "up" : undefined,
+    }),
     "people",
   );
   return c.frame();
@@ -264,7 +273,12 @@ function work(tick: number): VignetteFrame {
 
   // The agent keeps the board fresh; its arm goes up as a note goes on.
   const pinning = tick % 50 < 6;
-  c.sprite(17, 6, figure("agent", tick, { armUp: pinning }), "people");
+  c.sprite(
+    17,
+    6,
+    figure("agent", tick, { arm: pinning ? "up" : undefined }),
+    "people",
+  );
 
   // Someone reads the board, then heads for the door and goes in.
   const reader = walker(tick, {
@@ -322,7 +336,12 @@ function learn(tick: number): VignetteFrame {
     figure("human", tick, { body: turning ? "/=|" : "/=\\" }),
     "people",
   );
-  c.sprite(23, 6, figure("agent", tick, { armUp: tick % 60 < 20 }), "people");
+  c.sprite(
+    23,
+    6,
+    figure("agent", tick, { arm: tick % 60 < 20 ? "up" : undefined }),
+    "people",
+  );
   return c.frame();
 }
 

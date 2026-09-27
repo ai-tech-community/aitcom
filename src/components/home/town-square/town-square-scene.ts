@@ -24,19 +24,23 @@
 
 import type { CellRect } from "@/components/ascii/measure";
 import {
-  AGENT_BLINK,
-  AGENT_HEAD,
-  BODY,
-  BODY_WAVE,
   FIGURE_H,
   FIGURE_W,
-  HUMAN_HEAD,
-  HUMAN_WAVE,
-  LEGS,
-  LEGS_STEP,
+  figure,
   type FigureKind,
 } from "@/components/ascii/figures";
-import { DEPTH_X, DEPTH_Y, drawHouse } from "@/components/ascii/gabled-house";
+import {
+  DEPTH_X,
+  DEPTH_Y,
+  drawHouse,
+  type GableHouse,
+} from "@/components/ascii/gabled-house";
+import {
+  cellWidth,
+  graphemes,
+  textCells,
+  textWidth,
+} from "@/components/ascii/cells";
 import { rand } from "@/components/ascii/seeded";
 import { TREE } from "@/components/ascii/street-props";
 import {
@@ -55,8 +59,6 @@ import {
   type SquareTargetKind,
   type TownSquareEffects,
 } from "./town-square-effects";
-
-export type { FigureKind };
 
 export type NoticeBoardContent =
   | { kind: "event"; label: string; title: string; when: string }
@@ -196,42 +198,6 @@ const BOARD_MAX_W = 34;
 // ─── Text helpers ────────────────────────────────────────────────────────────
 
 const ELLIPSIS = "…";
-
-const graphemeSegmenter =
-  typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
-    ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
-    : null;
-
-/** User-perceived characters, so "é" or a flag is one unit, not 2–4. */
-export function graphemes(text: string): string[] {
-  return graphemeSegmenter
-    ? Array.from(graphemeSegmenter.segment(text), (s) => s.segment)
-    : Array.from(text);
-}
-
-/** East Asian wide / fullwidth ranges render as two monospace cells. */
-function isWide(cp: number): boolean {
-  return (
-    (cp >= 0x1100 && cp <= 0x115f) ||
-    (cp >= 0x2e80 && cp <= 0xa4cf) ||
-    (cp >= 0xac00 && cp <= 0xd7a3) ||
-    (cp >= 0xf900 && cp <= 0xfaff) ||
-    (cp >= 0xfe30 && cp <= 0xfe4f) ||
-    (cp >= 0xff00 && cp <= 0xff60) ||
-    (cp >= 0xffe0 && cp <= 0xffe6) ||
-    (cp >= 0x20000 && cp <= 0x3fffd)
-  );
-}
-
-/** Monospace cells a grapheme occupies (1 or 2). */
-export function cellWidth(grapheme: string): number {
-  const cp = grapheme.codePointAt(0) ?? 0;
-  return isWide(cp) ? 2 : 1;
-}
-
-export function textWidth(text: string): number {
-  return graphemes(text).reduce((sum, g) => sum + cellWidth(g), 0);
-}
 
 /**
  * Board text: drop emoji (their rendered width is font-dependent and would
@@ -409,13 +375,7 @@ class Grid {
     layer: SceneLayer,
     opts?: { front?: boolean },
   ): void {
-    let col = x;
-    for (const g of graphemes(s)) {
-      const w = cellWidth(g);
-      this.put(col, y, g, layer, opts);
-      if (w === 2) this.put(col + 1, y, "", layer, opts);
-      col += w;
-    }
+    for (const [col, g] of textCells(x, s)) this.put(col, y, g, layer, opts);
   }
 
   /**
@@ -476,21 +436,8 @@ interface Cell {
   y: number;
 }
 
-interface Placed {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-interface PlacedProp extends Placed {
+interface PlacedProp extends CellRect {
   kind: PropKind;
-}
-
-interface House extends Placed {
-  steps: number;
-  /** Optional distant rooftop peeking out behind this house. */
-  far: Placed | null;
 }
 
 interface PlazaLayout {
@@ -498,9 +445,9 @@ interface PlazaLayout {
   front: number;
   /** Back line: base row of every building; feet row of passers-by. */
   street: number;
-  board: Placed | null;
+  board: CellRect | null;
   props: PlacedProp[];
-  houses: House[];
+  houses: GableHouse[];
   /** Centre columns where groups gather, in priority order. */
   spots: number[];
 }
@@ -522,7 +469,7 @@ function layoutPlaza(grid: Grid, seed: number): PlazaLayout {
   const props: PlacedProp[] = [];
   const spotCandidates: number[] = [];
 
-  let board: Placed | null = null;
+  let board: CellRect | null = null;
   const bw = Math.min(
     cols - 4,
     Math.max(BOARD_MIN_W, Math.min(BOARD_MAX_W, Math.round(cols * 0.22))),
@@ -564,10 +511,10 @@ function layoutPlaza(grid: Grid, seed: number): PlazaLayout {
 
   // Houses line the street. The whole volume (front face, receding side,
   // roof, cast shadow) must stay clear of the copy.
-  const houses: House[] = [];
+  const houses: GableHouse[] = [];
   // Keep facades clear of the board, the fountain and street trees, so
   // every outline stays readable.
-  const noHouse: Placed[] = [
+  const noHouse: CellRect[] = [
     ...(board ? [board] : []),
     ...props.filter((p) => STREET_PROPS.has(p.kind) || p.kind === "fountain"),
   ];
@@ -591,7 +538,7 @@ function layoutPlaza(grid: Grid, seed: number): PlazaLayout {
       grid.canPlace(x, y - DEPTH_Y, w + DEPTH_X + 2, h + DEPTH_Y + 2);
     if (fits) {
       // A taller building one block back, only ever seen above this house.
-      let far: Placed | null = null;
+      let far: CellRect | null = null;
       const farRise = 2 + Math.floor(rand(seed, 41, n) * 4);
       const farY = y - DEPTH_Y - farRise;
       if (rand(seed, 43, n) < 0.6 && farY >= 0) {
@@ -732,7 +679,7 @@ function boardText(board: NoticeBoardContent, inner: number) {
 
 function drawBoard(
   grid: Grid,
-  at: Placed,
+  at: CellRect,
   content: NoticeBoardContent,
 ): string[] {
   const { x, y, w } = at;
@@ -898,34 +845,20 @@ function figureSprite(
   index: number,
   pose: Pose,
 ): string[] {
-  const walking = pose.walking;
-  const step = walking && tick % 2 === 1;
-  const legs = step ? LEGS_STEP : LEGS;
-  const wave = pose.wave;
-  if (f.kind === "agent") {
-    if (wave) {
-      // An agent's head fills its sprite, so the arm reaches one cell out.
-      return wave.armUp
-        ? [AGENT_HEAD + "/", BODY_WAVE, legs]
-        : [AGENT_HEAD, "/|-", legs];
-    }
-    const blink = !walking && Math.floor((tick + index * 5) / 9) % 7 === 0;
-    return [blink ? AGENT_BLINK : AGENT_HEAD, BODY, legs];
-  }
+  const { walking, wave } = pose;
   if (wave) {
-    if (wave.side === "left") {
-      return wave.armUp ? ["\\o ", " |\\", legs] : [HUMAN_HEAD, "-|\\", legs];
-    }
-    return wave.armUp
-      ? [HUMAN_WAVE, BODY_WAVE, legs]
-      : [HUMAN_HEAD, "/|-", legs];
+    return figure(f.kind, tick, {
+      walking,
+      arm: wave.armUp ? "up" : "out",
+      side: wave.side,
+    });
+  }
+  if (f.kind === "agent") {
+    const blink = !walking && Math.floor((tick + index * 5) / 9) % 7 === 0;
+    return figure("agent", tick, { walking, blink });
   }
   const idleWave = !walking && Math.floor((tick + index * 7) / 20) % 4 === 0;
-  return [
-    idleWave ? HUMAN_WAVE : HUMAN_HEAD,
-    idleWave ? BODY_WAVE : BODY,
-    legs,
-  ];
+  return figure("human", tick, { walking, arm: idleWave ? "up" : undefined });
 }
 
 // ─── Effects: night ──────────────────────────────────────────────────────────
@@ -1039,12 +972,12 @@ function planNight(
 const BUBBLE_MAX_TEXT = 30;
 const BUBBLE_H = 3;
 
-interface Bubble extends Placed {
+interface Bubble extends CellRect {
   text: string;
   tailX: number;
 }
 
-function overlaps(a: Placed, b: Placed): boolean {
+function overlaps(a: CellRect, b: CellRect): boolean {
   return (
     a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
   );
@@ -1060,7 +993,7 @@ function placeBubble(
   grid: Grid,
   figure: FigureSnapshot,
   rawText: string,
-  board: Placed | null,
+  board: CellRect | null,
 ): Bubble | null {
   const text = fit(rawText, BUBBLE_MAX_TEXT);
   const w = textWidth(text) + 4;
@@ -1139,7 +1072,10 @@ function drawDroplets(
 }
 
 /** Figures standing around the fountain, as sprite x positions. */
-function fountainSlots(fountain: Placed): { left: number[]; right: number[] } {
+function fountainSlots(fountain: CellRect): {
+  left: number[];
+  right: number[];
+} {
   return {
     left: [fountain.x - FIGURE_W - 1, fountain.x - 2 * FIGURE_W - 2],
     right: [
@@ -1206,7 +1142,7 @@ const DEFAULT_GREETINGS = ["hi, I'm {name}"];
 /** Hit boxes are one cell larger than the art: easier to click. */
 const HIT_PAD = 1;
 
-function contains(r: Placed, col: number, row: number, pad = 0): boolean {
+function contains(r: CellRect, col: number, row: number, pad = 0): boolean {
   return (
     col >= r.x - pad &&
     col < r.x + r.w + pad &&
@@ -1288,7 +1224,7 @@ export function createTownSquare(
   const lamps = layout.props.filter((p) => p.kind === "lamp");
   // Fountain hit box includes the puddle row under the basin.
   const fountainBoxes = fountains.map((f) => ({ ...f, h: f.h + 1 }));
-  const rect = ({ x, y, w, h }: Placed): CellRect => ({ x, y, w, h });
+  const rect = ({ x, y, w, h }: CellRect): CellRect => ({ x, y, w, h });
 
   const lane = (feet: number) =>
     Array.from({ length: FIGURE_H }, (_, i) => feet - FIGURE_H + 1 + i);

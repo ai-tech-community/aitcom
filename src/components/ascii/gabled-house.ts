@@ -6,6 +6,8 @@
  * `scenery` layer, so the hero plaza and smaller scenes share one drawing.
  */
 
+import type { CellRect } from "./measure";
+
 /** Depth vector: the back outline sits this far right / up of the front. */
 export const DEPTH_X = 2;
 export const DEPTH_Y = 1;
@@ -18,18 +20,11 @@ export interface HouseSurface {
   text(x: number, y: number, s: string, layer: HouseLayer): void;
 }
 
-export interface HouseRect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-export interface GableHouse extends HouseRect {
+export interface GableHouse extends CellRect {
   /** Gable steps (1 or 2); the body starts `2 * steps + 1` rows down. */
   steps: number;
   /** Optional distant rooftop peeking out behind this house. */
-  far: HouseRect | null;
+  far: CellRect | null;
 }
 
 /** Smallest height that fits the gable, one window row and the door. */

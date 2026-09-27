@@ -160,11 +160,14 @@ describe("FeaturedCommunities", () => {
     expect(classes).not.toContain("mx-auto");
   });
 
-  it("keeps resting cards flat: border-defined, no shadow", () => {
+  it("uses the system card surface: full border and the resting shadow-sm", () => {
     renderIn(THREE);
     for (const card of cardLinks()) {
-      expect(card.className).toMatch(/\bborder\b/);
-      expect(card.className).not.toMatch(/shadow/);
+      const classes = card.className.split(/\s+/);
+      expect(classes).toEqual(
+        expect.arrayContaining(["border", "rounded-xl", "shadow-sm"]),
+      );
+      expect(classes.filter((c) => /(^|:)shadow-(?!sm$)/.test(c))).toEqual([]);
     }
   });
 
