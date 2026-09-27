@@ -12,6 +12,7 @@ const KEYS = {
   MODULE_SET_MISMATCH: "errorOutlineOutOfDate",
   INVALID_EMBED: "errorInvalidEmbed",
   FORBIDDEN: "errorNotAllowed",
+  CANNOT_CREATE_COURSE: "errorCannotCreateCourse",
 } as const;
 
 type BuilderErrorCode = keyof typeof KEYS;

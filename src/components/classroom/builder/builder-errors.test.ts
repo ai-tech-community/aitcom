@@ -12,6 +12,7 @@ describe("builderErrorKey", () => {
     ["MODULE_SET_MISMATCH", "errorOutlineOutOfDate"],
     ["INVALID_EMBED", "errorInvalidEmbed"],
     ["FORBIDDEN", "errorNotAllowed"],
+    ["CANNOT_CREATE_COURSE", "errorCannotCreateCourse"],
     ["something raw from the server", "errorGeneric"],
     [undefined, "errorGeneric"],
   ])("maps %s to %s", (code, key) => {

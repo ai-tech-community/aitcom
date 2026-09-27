@@ -3214,6 +3214,7 @@
     "errorOutlineOutOfDate": "The outline was out of date. We reloaded it — please try again.",
     "errorInvalidEmbed": "One of the embedded links can't be shown. Check it and try again.",
     "errorNotAllowed": "Only the course author can do this.",
-    "errorGeneric": "Something went wrong. Try again."
+    "errorGeneric": "Something went wrong. Try again.",
+    "errorCannotCreateCourse": "You can't start a course in this community yet. Ask an organiser if you'd like to teach here."
   }
 }
