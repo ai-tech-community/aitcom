@@ -1,28 +1,25 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
-import { formatEventTimeRange, upcomingEvents } from "@/lib/event-time";
-import { Badge } from "@/components/ui/badge";
+import { upcomingEvents } from "@/lib/event-time";
+import { MoreLink } from "@/components/ui/more-link";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@/i18n/navigation";
-import { Calendar, ChevronUp } from "lucide-react";
+import { ChevronUp } from "lucide-react";
+import { CompactEventRow } from "@/components/events/rows/compact-event-row";
+import { presentEventRows } from "@/components/events/rows/event-rows";
+import { useEventRowLabels } from "@/components/events/rows/use-event-row-labels";
+import { toCommunityEventRowInput } from "@/components/communities/events/community-event-rows";
 
-const typeLabels: Record<string, string> = {
-  workshop: "WORKSHOP",
-  hackathon: "HACKATHON",
-  deep_dive: "DEEP-DIVE",
-  meetup: "MEETUP",
-};
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
-}
+/** How many upcoming events the sidebar lists. */
+export const SIDEBAR_EVENTS_SHOWN = 3;
 
 interface CommunitySidebarProps {
   slug: string;
+  /** "Now" for picking upcoming events; tests pin it. */
+  now?: Date;
 }
 
 /**
@@ -30,8 +27,11 @@ interface CommunitySidebarProps {
  * up, and the ideas members back most. Discussions live in the feed itself.
  * Sections with nothing to show are left out rather than saying "none".
  */
-export function CommunitySidebar({ slug }: CommunitySidebarProps) {
+export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
   const t = useTranslations("communities.profile");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
+  const labels = useEventRowLabels();
 
   const { data: eventsData, isLoading: eventsLoading } =
     api.events.getCommunityEvents.useQuery({ communitySlug: slug });
@@ -42,7 +42,19 @@ export function CommunitySidebar({ slug }: CommunitySidebarProps) {
   const { data: links } = api.links.list.useQuery({ communitySlug: slug });
   const { data: community } = api.communities.getBySlug.useQuery({ slug });
 
-  const events = upcomingEvents(eventsData ?? []).slice(0, 3);
+  // Same rows as the community's events page, in their compact form.
+  const eventRows = presentEventRows(
+    upcomingEvents(eventsData ?? [], now)
+      .slice(0, SIDEBAR_EVENTS_SHOWN)
+      .map((event) =>
+        toCommunityEventRowInput(event, {
+          communitySlug: slug,
+          view: "published",
+          isAdminOrOwner: false,
+        }),
+      ),
+    { locale, labels, now },
+  );
   const ideas = (ideasData ?? [])
     .filter((idea) => (idea.voteCount ?? 0) > 0)
     .slice(0, 3);
@@ -98,41 +110,24 @@ export function CommunitySidebar({ slug }: CommunitySidebarProps) {
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-14 rounded-lg" />
         </div>
-      ) : events.length > 0 ? (
+      ) : eventRows.length > 0 ? (
         <section data-sidebar-section="events">
           <SectionHeader
             title={t("upcomingEvents")}
             linkHref={`/communities/${slug}/events`}
-            linkLabel={t("viewAll")}
+            linkLabel={tCommon("viewAll")}
           />
-          <div className="mt-3 space-y-1">
-            {events.map((event) => (
-              <Link
-                key={event.id}
-                href={`/events/${event.slug}` as never}
-                className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
-              >
-                <Calendar className="text-muted-foreground size-4 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{event.title}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {formatDate(event.date)}
-                    {event.startTime &&
-                      ` · ${formatEventTimeRange({
-                        date: event.date,
-                        startTime: event.startTime,
-                        endTime: event.endTime,
-                        timezone: event.timezone,
-                      })}`}
-                    {event.location && ` · ${event.location}`}
-                  </p>
-                </div>
-                <Badge variant="outline" className="shrink-0 text-xs uppercase">
-                  {typeLabels[event.type] ?? event.type}
-                </Badge>
-              </Link>
+          <ol className="divide-border divide-y">
+            {eventRows.map((row) => (
+              <li key={row.key} className="min-w-0">
+                <CompactEventRow
+                  row={row}
+                  withTime
+                  where={[...row.placeParts, row.kind.label].join(" · ")}
+                />
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
       ) : null}
 
@@ -141,7 +136,7 @@ export function CommunitySidebar({ slug }: CommunitySidebarProps) {
           <SectionHeader
             title={t("topIdeas")}
             linkHref={`/communities/${slug}/ideas`}
-            linkLabel={t("viewAll")}
+            linkLabel={tCommon("viewAll")}
           />
           <div className="mt-3 space-y-1">
             {ideas.map((idea) => (
@@ -181,15 +176,10 @@ function SectionHeader({
   linkLabel?: string;
 }) {
   return (
-    <div className="border-border flex items-center justify-between border-b pb-2">
+    <div className="border-border flex flex-wrap items-center justify-between gap-x-3 border-b pb-2">
       <SectionLabel bordered={false}>{title}</SectionLabel>
       {linkHref && linkLabel ? (
-        <Link
-          href={linkHref as never}
-          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
-        >
-          {linkLabel}
-        </Link>
+        <MoreLink href={linkHref}>{linkLabel}</MoreLink>
       ) : null}
     </div>
   );

@@ -62,6 +62,18 @@ import {
   type ConflictCandidate,
 } from "@/server/events/conflicts/rule";
 import { suggestSlots } from "@/server/events/conflicts/suggest";
+import { assertEventCancellable } from "@/server/events/cancel-guard";
+
+/**
+ * One row of a community's event list: the shared normalized shape plus the
+ * city and country a native event knows (a live Luma row only has its
+ * `location` text), so the list can say where it happens the same way every
+ * other event list does.
+ */
+type CommunityListedEvent = NormalizedEvent & {
+  city?: string | null;
+  country?: string | null;
+};
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -504,7 +516,7 @@ export const eventsRouter = createTRPCRouter({
         depth: 1,
       });
 
-      const nativeEvents: NormalizedEvent[] = docs.map((e) => ({
+      const nativeEvents: CommunityListedEvent[] = docs.map((e) => ({
         id: e.id,
         title: e.title,
         slug: e.slug,
@@ -515,6 +527,9 @@ export const eventsRouter = createTRPCRouter({
         endTime: e.endTime ?? null,
         timezone: e.timezone ?? null,
         location: e.location,
+        format: e.format ?? undefined,
+        city: e.city ?? null,
+        country: e.country ?? null,
         maxAttendees: (e.maxAttendees as number | null) ?? null,
         image: null,
         status: e.status,
@@ -531,7 +546,7 @@ export const eventsRouter = createTRPCRouter({
             : null,
       }));
 
-      let lumaEvents: NormalizedEvent[] = [];
+      let lumaEvents: CommunityListedEvent[] = [];
 
       const [integration] = await ctx.db
         .select()
@@ -824,6 +839,7 @@ export const eventsRouter = createTRPCRouter({
           message: "Event not found in this community",
         });
       }
+      assertEventCancellable(existingEvent);
 
       await payload.update({
         collection: "events",
@@ -1075,6 +1091,7 @@ export const eventsRouter = createTRPCRouter({
         location: e.location,
         format: e.format ?? null,
         city: e.city ?? null,
+        country: e.country ?? null,
         status: e.status,
         submittedBy: e.submittedBy ?? null,
         communityId: community.id,
@@ -1141,7 +1158,13 @@ export const eventsRouter = createTRPCRouter({
         slug: e.slug,
         type: e.type,
         date: e.date,
+        startTime: e.startTime ?? null,
+        endTime: e.endTime ?? null,
+        timezone: e.timezone ?? null,
         location: e.location,
+        format: e.format ?? null,
+        city: e.city ?? null,
+        country: e.country ?? null,
         status: e.status,
         communityId: community.id,
         coverImageId:

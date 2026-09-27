@@ -24,7 +24,7 @@ vi.mock("@/i18n/navigation", () => ({
 
 import { HOME_SECTION_ORDER, HomeSections } from "./home-sections";
 import type { HomeSectionsProps } from "./home-sections";
-import type { EventRowInput } from "@/components/home/event-rows/event-rows";
+import type { EventRowInput } from "@/components/events/rows/event-rows";
 
 const NOW = new Date("2026-09-27T10:00:00.000Z");
 

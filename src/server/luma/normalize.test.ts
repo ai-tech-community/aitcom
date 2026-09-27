@@ -75,3 +75,42 @@ describe("normalizeLumaEvent format derivation", () => {
     expect(normalized.format).toBe("online");
   });
 });
+
+describe("normalizeLumaEvent display format", () => {
+  it("keeps the conflict default out of what people read (TBA)", () => {
+    const normalized = normalizeLumaEvent(
+      makeLumaEvent({ geo_address_json: null, meeting_url: null }),
+      "community-1",
+    );
+    // The conflict check still counts it as online…
+    expect(normalized.format).toBe("online");
+    // …but a list must not say "Online" for a place nobody announced.
+    expect(normalized.displayFormat).toBeNull();
+    expect(normalized.location).toBe("TBA");
+  });
+
+  it("matches the stated format whenever the source states one", () => {
+    const cases = [
+      [
+        { geo_address_json: { address: "Amsterdam" }, meeting_url: null },
+        "in-person",
+      ],
+      [
+        { geo_address_json: null, meeting_url: "https://meet.example/x" },
+        "online",
+      ],
+      [
+        {
+          geo_address_json: { address: "Amsterdam" },
+          meeting_url: "https://meet.example/x",
+        },
+        "hybrid",
+      ],
+    ] as const;
+    for (const [overrides, expected] of cases) {
+      const normalized = normalizeLumaEvent(makeLumaEvent(overrides), "c");
+      expect(normalized.displayFormat).toBe(expected);
+      expect(normalized.format).toBe(expected);
+    }
+  });
+});

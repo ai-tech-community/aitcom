@@ -7,13 +7,25 @@ import {
 } from "@/lib/events/public-events";
 
 /**
- * Plain, already-loaded event data the homepage hands to its event sections
- * (the upcoming timetable and the recent gatherings). The server page shapes
- * Payload docs into this; nothing here touches a client.
+ * Where a row goes when clicked. Most rows open the event's public page;
+ * a row synced live from Luma opens the Luma page in a new tab; a surface
+ * with its own rules (a community's draft hackathon opens its manage page)
+ * names an internal path of its own.
+ */
+export type EventRowLink =
+  | { kind: "internal"; href: string }
+  | { kind: "external"; href: string };
+
+/**
+ * Plain, already-loaded event data an event list hands to the shared rows
+ * (the homepage timetable and recent gatherings, a community's events page
+ * and sidebar). Each surface shapes its own data into this with a small
+ * mapper; nothing here touches a client.
  */
 export interface EventRowInput {
   id: string | number;
-  slug: string;
+  /** Public page slug; null for a row that has no page here (Luma live sync). */
+  slug: string | null;
   title: string;
   type: string;
   format?: string | null;
@@ -28,6 +40,18 @@ export interface EventRowInput {
   location?: string | null;
   /** Name of the community hosting the event, when it has one. */
   host?: string | null;
+  /**
+   * The source says the place is not known yet (a Luma event with neither a
+   * venue nor a meeting link). With no other place to show, the row says
+   * "Place to be announced" rather than nothing — or a guess.
+   */
+  placeToBeAnnounced?: boolean;
+  /**
+   * Where the row goes, when it is not the public page of `slug`. `null`
+   * means the row is not a link at all (a draft has no public page yet).
+   * Leave it out for the default.
+   */
+  link?: EventRowLink | null;
 }
 
 /** Translated words the presenter needs; the component supplies them. */
@@ -37,6 +61,7 @@ export interface EventRowLabels {
   hybrid: string;
   inPerson: string;
   hostedBy: (name: string) => string;
+  placeToBeAnnounced: string;
 }
 
 export interface EventRowKind {
@@ -45,10 +70,11 @@ export interface EventRowKind {
   label: string;
 }
 
-/** One timetable row, ready to render. */
+/** One event row, ready to render. */
 export interface EventRow {
   key: string;
-  href: `/events/${string}`;
+  /** Where the row goes; null renders the row as plain, unlinked content. */
+  link: EventRowLink | null;
   title: string;
   /** YYYY-MM-DD for `<time dateTime>`, or null for a corrupt date. */
   dateTime: string | null;
@@ -93,8 +119,14 @@ function clean(value: string | null | undefined): string | null {
  * shows "Amsterdam, Netherlands · Hybrid" and a reader hears commas.
  */
 export function eventRowPlaceParts(
-  event: Pick<EventRowInput, "format" | "city" | "country" | "location">,
-  labels: Pick<EventRowLabels, "online" | "hybrid" | "inPerson">,
+  event: Pick<
+    EventRowInput,
+    "format" | "city" | "country" | "location" | "placeToBeAnnounced"
+  >,
+  labels: Pick<
+    EventRowLabels,
+    "online" | "hybrid" | "inPerson" | "placeToBeAnnounced"
+  >,
 ): string[] {
   // Hybrid is never "online only", whatever a legacy location says.
   const online = event.format !== "hybrid" && isOnlineEvent(event);
@@ -110,7 +142,8 @@ export function eventRowPlaceParts(
     return place ? [place, labels.hybrid] : [labels.hybrid];
   }
   if (place) return [place];
-  return event.format === "in-person" ? [labels.inPerson] : [];
+  if (event.format === "in-person") return [labels.inPerson];
+  return event.placeToBeAnnounced ? [labels.placeToBeAnnounced] : [];
 }
 
 export function eventRowKind(
@@ -122,8 +155,16 @@ export function eventRowKind(
     : { type: null, label: type.replace(/_/g, " ") };
 }
 
+/** The input's own link, or the event's public page when it has one. */
+function eventRowLink(event: EventRowInput): EventRowLink | null {
+  if (event.link !== undefined) return event.link;
+  const slug = clean(event.slug);
+  return slug ? { kind: "internal", href: `/events/${slug}` } : null;
+}
+
 /**
- * Event → display row, shared by the timetable and the recent gatherings.
+ * Event → display row, shared by every event list (timetable, compact
+ * rows).
  * Dates come from the stored event-local calendar day and the time is
  * qualified with the event's own zone, so every viewer sees when it
  * happens where it happens. Section-specific marks (the timetable's
@@ -152,7 +193,7 @@ export function presentEventRows(
 
     return {
       key: String(event.id),
-      href: `/events/${event.slug}`,
+      link: eventRowLink(event),
       title: event.title.trim(),
       dateTime: parts?.iso ?? null,
       day: parts ? String(parts.day).padStart(2, "0") : "--",

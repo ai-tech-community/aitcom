@@ -159,7 +159,9 @@ export function PendingEventConflictBadge({
       {expanded && (
         <div
           id={expansionId}
-          className="bg-muted/40 w-full rounded-lg border p-3 sm:order-20 sm:basis-full"
+          // Last and full width at every size: a line of its own under the
+          // row, after the approve/reject controls.
+          className="bg-muted/40 order-last w-full basis-full rounded-lg border p-3 sm:mb-4"
         >
           <SectionLabel as="p" bordered={false} className="mb-1">
             {t("conflictSectionLabel")}

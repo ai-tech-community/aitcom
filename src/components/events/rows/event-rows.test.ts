@@ -18,6 +18,7 @@ const EN: EventRowLabels = {
   hybrid: "Hybrid",
   inPerson: "In person",
   hostedBy: (name) => `by ${name}`,
+  placeToBeAnnounced: "Place to be announced",
 };
 
 const NL: EventRowLabels = {
@@ -25,6 +26,7 @@ const NL: EventRowLabels = {
   hybrid: "Hybride",
   inPerson: "Op locatie",
   hostedBy: (name) => `door ${name}`,
+  placeToBeAnnounced: "Locatie volgt nog",
 };
 
 /** The place line as the screen shows it. */
@@ -268,6 +270,28 @@ describe("upcomingEventPlace", () => {
     ).toBe("Pakhuis de Zwijger");
   });
 
+  it("says the place is to be announced only when the source says so", () => {
+    expect(
+      upcomingEventPlace(
+        { format: null, city: null, location: "TBA", placeToBeAnnounced: true },
+        EN,
+      ),
+    ).toBe("Place to be announced");
+    expect(
+      upcomingEventPlace(
+        { format: null, city: null, location: "TBA", placeToBeAnnounced: true },
+        NL,
+      ),
+    ).toBe("Locatie volgt nog");
+    // A real place always wins over the flag.
+    expect(
+      upcomingEventPlace(
+        { format: null, city: "Utrecht", placeToBeAnnounced: true },
+        EN,
+      ),
+    ).toBe("Utrecht");
+  });
+
   it("says In person rather than invent a place", () => {
     expect(
       upcomingEventPlace(
@@ -310,12 +334,45 @@ describe("presentEventRows — rows", () => {
   });
 
   it("links each row to its event page", () => {
-    expect(present(ALL).map((r) => r.href)).toEqual([
-      "/events/the-ai-conference-2026",
-      "/events/agents-hackathon",
-      "/events/prompting-workshop",
-      "/events/rag-deep-dive",
+    expect(present(ALL).map((r) => r.link)).toEqual([
+      { kind: "internal", href: "/events/the-ai-conference-2026" },
+      { kind: "internal", href: "/events/agents-hackathon" },
+      { kind: "internal", href: "/events/prompting-workshop" },
+      { kind: "internal", href: "/events/rag-deep-dive" },
     ]);
+  });
+
+  it("keeps a link the surface chose, including none at all", () => {
+    const [external, manage, draft] = present([
+      {
+        ...CONFERENCE,
+        id: "luma-1",
+        slug: null,
+        link: { kind: "external", href: "https://lu.ma/abc" },
+      },
+      {
+        ...HACKATHON,
+        link: {
+          kind: "internal",
+          href: "/communities/ai-amsterdam/events/agents-hackathon/manage",
+        },
+      },
+      { ...CONFERENCE, id: 9, link: null },
+    ]);
+    expect(external?.link).toEqual({
+      kind: "external",
+      href: "https://lu.ma/abc",
+    });
+    expect(manage?.link).toEqual({
+      kind: "internal",
+      href: "/communities/ai-amsterdam/events/agents-hackathon/manage",
+    });
+    expect(draft?.link).toBeNull();
+  });
+
+  it("does not link a row without a slug", () => {
+    const [row] = present([{ ...CONFERENCE, slug: null }]);
+    expect(row?.link).toBeNull();
   });
 
   it("credits the host community when known", () => {

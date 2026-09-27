@@ -21,7 +21,11 @@ const HOSTS = new Map([["c-nl", "AIT Community Netherlands"]]);
 
 describe("toEventRowInput", () => {
   it("copies every field the timetable reads", () => {
-    const expected: Required<EventRowInput> = {
+    // `link` and `placeToBeAnnounced` are a surface's calls, not doc
+    // fields: the homepage keeps the defaults.
+    const expected: Required<
+      Omit<EventRowInput, "link" | "placeToBeAnnounced">
+    > = {
       id: 42,
       slug: "rag-deep-dive",
       title: "RAG in production",
