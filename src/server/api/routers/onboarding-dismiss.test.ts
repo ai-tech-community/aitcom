@@ -134,6 +134,53 @@ describe("onboarding.dismiss", () => {
   });
 });
 
+describe("onboarding.restore", () => {
+  it("clears the dismissal on the member's own profile row only", async () => {
+    const { db, statements } = recordingDb();
+    const result = await caller("user-1", db).onboarding.restore();
+
+    expect(result).toEqual({ dismissed: false });
+    expect(statements).toHaveLength(1);
+    const [stmt] = statements;
+    // updated_at is the column's own $onUpdate bump; nothing else is touched.
+    expect(stmt!.sql).toBe(
+      'update "app"."member_profile" set "onboarding_dismissed_at" = $1, "updated_at" = $2 where "app"."member_profile"."user_id" = $3',
+    );
+    expect(stmt!.params[0]).toBeNull();
+    expect(stmt!.params[2]).toBe("user-1");
+  });
+
+  it("is idempotent: a repeat call sends the same statement and result", async () => {
+    const { db, statements } = recordingDb();
+    const first = await caller("user-1", db).onboarding.restore();
+    const second = await caller("user-1", db).onboarding.restore();
+
+    expect(second).toEqual(first);
+    expect(statements).toHaveLength(2);
+    expect(statements[1]!.sql).toBe(statements[0]!.sql);
+    // Sets NULL, not "toggle": the second call leaves the same end state.
+    expect(statements[1]!.params[0]).toBeNull();
+  });
+
+  it("does not create a profile row for a member who has none", async () => {
+    // No row means never dismissed: an UPDATE that touches 0 rows is correct.
+    const { db, statements } = recordingDb();
+    await caller("user-2", db).onboarding.restore();
+
+    expect(statements).toHaveLength(1);
+    expect(statements[0]!.sql).toMatch(/^update /);
+    expect(statements[0]!.sql).not.toMatch(/insert/i);
+  });
+
+  it("rejects guests", async () => {
+    const { db, statements } = recordingDb();
+    await expect(caller(null, db).onboarding.restore()).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+    expect(statements).toHaveLength(0);
+  });
+});
+
 describe("onboarding.getStatus dismissed flag", () => {
   const profile = {
     userId: "user-1",

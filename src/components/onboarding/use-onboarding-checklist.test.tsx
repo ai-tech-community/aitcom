@@ -23,8 +23,9 @@ const fake = vi.hoisted(() => ({
 }));
 
 vi.mock("@/trpc/react", () => {
-  function mutation(name: "sync" | "complete" | "dismiss") {
+  function mutation(name: "sync" | "complete" | "dismiss" | "restore") {
     return (options: MutationOptions = {}) => ({
+      isPending: false,
       mutate: (input?: unknown) => {
         void (async () => {
           const context = await options.onMutate?.();
@@ -44,6 +45,7 @@ vi.mock("@/trpc/react", () => {
   const syncMutation = mutation("sync");
   const completeMutation = mutation("complete");
   const dismissMutation = mutation("dismiss");
+  const restoreMutation = mutation("restore");
   const utils = {
     onboarding: {
       getStatus: {
@@ -73,6 +75,7 @@ vi.mock("@/trpc/react", () => {
         syncAutoDetected: { useMutation: syncMutation },
         completeStep: { useMutation: completeMutation },
         dismiss: { useMutation: dismissMutation },
+        restore: { useMutation: restoreMutation },
       },
     },
   };
