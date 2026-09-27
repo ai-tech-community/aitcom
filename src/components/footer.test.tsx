@@ -58,6 +58,9 @@ describe("Footer", () => {
     const footer = screen.getByRole("contentinfo");
     expect(footer.className).toMatch(/(^|\s)dark(\s|$)/);
     expect(footer.className).toMatch(/\bbg-background\b/);
+    // Separated from a dark page by the dark --card surface and a border.
+    expect(footer.className).toMatch(/\bdark:bg-card\b/);
+    expect(footer.className).toMatch(/\bborder-t\b/);
     // No inverted tokens: they flipped the footer to near-white in dark mode.
     expect(footer.className).not.toMatch(
       /\bbg-foreground\b|\btext-background\b/,
@@ -75,6 +78,13 @@ describe("Footer", () => {
       lightness(dark, "background"),
     );
     expect(ratio).toBeGreaterThanOrEqual(4.5);
+    // On a dark page the footer steps up to --card; still readable.
+    expect(
+      contrast(lightness(dark, "muted-foreground"), lightness(dark, "card")),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(lightness(dark, "card")).toBeGreaterThan(
+      lightness(dark, "background"),
+    );
     // The old pairing (light muted grey on ink) was below the bar.
     const root = /:root\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
     expect(

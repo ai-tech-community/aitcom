@@ -6,19 +6,22 @@ import { AitLogo } from "@/components/ait-logo";
 import { SectionLabel } from "@/components/ui/section-label";
 
 /**
- * Site footer: an ink band in both themes. The `dark` class scopes the dark
- * token set to the footer, so its muted text is the dark theme's
- * `--muted-foreground` on the dark `--background` (about 7.6:1), not the
- * light theme's grey on ink (4.2:1) — and in dark mode it no longer flips
- * to a near-white slab. Column labels are h2s (the level after the page's
- * h1), each naming its own `nav` landmark.
+ * Site footer, always on the dark token set: the `dark` class scopes the
+ * dark tokens to the footer, so its muted text is the dark theme's
+ * `--muted-foreground` (0.708) instead of the light theme's grey on ink
+ * (4.2:1). On a light page it is an ink band (`--background`, 0.145,
+ * about 7.6:1). On a dark page that would match the page itself, so it
+ * steps up to the dark `--card` surface (0.205, about 6.9:1) with the
+ * hairline top border — `dark:` only matches when the page is dark, since
+ * it needs a `.dark` ancestor. Column labels are h2s (the level after the
+ * page's h1), each naming its own `nav` landmark.
  */
 export function Footer() {
   const t = useTranslations("footer");
   const tNav = useTranslations("nav");
 
   return (
-    <footer className="dark bg-background text-foreground border-border border-t">
+    <footer className="dark bg-background text-foreground border-border dark:bg-card border-t">
       <div className="mx-auto max-w-6xl px-6 py-12 sm:px-12">
         <div className="flex flex-col justify-between gap-12 lg:flex-row">
           {/* Brand */}
