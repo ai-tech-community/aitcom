@@ -122,8 +122,11 @@ export function useAutosave<T>({
           persistedRef.current = snapshot;
           savedOnceRef.current = true;
           setSavedAt(new Date());
-        } while (followUpRef.current && canSave());
-        // Still dirty here means a debounce timer is pending for the newer value.
+          // Another pass when someone asked for one (debounce fired, flush, unmount), or when the
+          // draft is still dirty and no pending timer will save it — e.g. the author undid back to
+          // the pre-save value mid-save, so the edit effect saw "clean" and scheduled nothing.
+        } while (canSave() && (followUpRef.current || timerRef.current === null));
+        // Still dirty here means a debounce timer is pending for the newer value, or saving is off.
         updateStatus(isDirty() ? "dirty" : "saved");
       } finally {
         settled = true;

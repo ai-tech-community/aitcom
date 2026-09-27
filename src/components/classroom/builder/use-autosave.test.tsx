@@ -75,6 +75,45 @@ describe("useAutosave", () => {
     expect(save).toHaveBeenLastCalledWith("bcd");
   });
 
+  it("undo to the pre-save value during an in-flight save still saves the undone value", async () => {
+    let resolveFirst!: () => void;
+    const save = vi.fn()
+      .mockImplementationOnce(() => new Promise<void>((r) => { resolveFirst = r; }))
+      .mockResolvedValue(undefined);
+    const { result, rerender } = setup(save);
+    rerender({ value: "b" });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(save).toHaveBeenCalledTimes(1);
+    rerender({ value: "a" });
+    await act(async () => { resolveFirst(); });
+    await act(() => vi.advanceTimersByTimeAsync(10000));
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save.mock.calls).toEqual([["b"], ["a"]]);
+    expect(result.current.status).toBe("saved");
+  });
+
+  it("a change during a save that ends before the debounce is saved by the pending timer", async () => {
+    let resolveFirst!: () => void;
+    const save = vi.fn()
+      .mockImplementationOnce(() => new Promise<void>((r) => { resolveFirst = r; }))
+      .mockResolvedValue(undefined);
+    const { result, rerender } = setup(save);
+    rerender({ value: "b" });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    rerender({ value: "bc" });
+    await act(() => vi.advanceTimersByTimeAsync(300));
+    await act(async () => { resolveFirst(); });
+    // Save of "b" finished; "bc" is still waiting for its debounce.
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe("dirty");
+    await act(() => vi.advanceTimersByTimeAsync(699));
+    expect(save).toHaveBeenCalledTimes(1);
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(save).toHaveBeenLastCalledWith("bc");
+    expect(result.current.status).toBe("saved");
+  });
+
   it("flush saves a pending value immediately", async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     const { result, rerender } = setup(save);
