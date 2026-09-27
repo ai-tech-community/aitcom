@@ -396,6 +396,12 @@ describe.skipIf(!RUN_DB)("classroom course access [DB integration]", () => {
       );
     });
 
+    it("shows the author their own draft", async () => {
+      expect(await slugsFor(fx.authorId)).toEqual(
+        [fx.draft.slug, fx.membersOnly.slug, fx.publicCourse.slug].sort(),
+      );
+    });
+
     it("shows moderators drafts too", async () => {
       expect(await slugsFor(fx.moderatorId)).toEqual(
         [fx.draft.slug, fx.membersOnly.slug, fx.publicCourse.slug].sort(),
