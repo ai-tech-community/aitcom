@@ -123,9 +123,12 @@ async function requireReadableCourse(
   courseId: number,
   viewerId: string,
 ): Promise<Course> {
-  const course = await payload
-    .findByID({ collection: "courses", id: courseId, depth: 0 })
-    .catch(() => null);
+  const course = await payload.findByID({
+    collection: "courses",
+    id: courseId,
+    depth: 0,
+    disableErrors: true,
+  });
   if (!course) throw new TRPCError({ code: "NOT_FOUND" });
   const access = await loadCourseAccess(database, course, viewerId);
   if (access === "none") throw new TRPCError({ code: "NOT_FOUND" });
