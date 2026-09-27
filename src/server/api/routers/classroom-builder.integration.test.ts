@@ -251,4 +251,139 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
       ).rejects.toMatchObject({ code: "CONFLICT", message: "COURSE_CHANGED" });
     });
   });
+  describe("lesson order", () => {
+    async function seedModuled() {
+      const { id } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      await api.addLesson({ courseId: id, title: "L1" });
+      await api.addLesson({ courseId: id, title: "L2" });
+      const { id: modA } = await api.addModule({ courseId: id, title: "A" }); // wraps L1, L2
+      const { id: modB } = await api.addModule({ courseId: id, title: "B" }); // empty
+      const lessons = await m.payload.find({
+        collection: "lessons",
+        where: { course: { equals: id } },
+        sort: "order",
+        depth: 0,
+      });
+      const [l1, l2] = lessons.docs;
+      return { courseId: id, modA, modB, l1: l1!.id, l2: l2!.id };
+    }
+    const lessonState = async (lessonId: number) => {
+      const l = await m.payload.findByID({
+        collection: "lessons",
+        id: lessonId,
+        depth: 0,
+      });
+      return { module: (l.module as number | null) ?? null, order: l.order };
+    };
+
+    it("reorders lessons inside a flat course", async () => {
+      const { id } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      const { id: a } = await api.addLesson({ courseId: id, title: "A" });
+      const { id: b } = await api.addLesson({ courseId: id, title: "B" });
+      await api.reorderLessons({
+        courseId: id,
+        moduleId: null,
+        orderedIds: [b, a],
+      });
+      expect(await lessonState(b)).toEqual({ module: null, order: 0 });
+      expect(await lessonState(a)).toEqual({ module: null, order: 1 });
+    });
+
+    it("moves a lesson into an empty module", async () => {
+      const s = await seedModuled();
+      await callerAs(fx.authorId).classrooms.reorderLessons({
+        courseId: s.courseId,
+        moduleId: s.modB,
+        orderedIds: [s.l2],
+      });
+      expect(await lessonState(s.l2)).toEqual({ module: s.modB, order: 0 });
+    });
+
+    it("lets the last lesson leave a module (the module stays, empty)", async () => {
+      const s = await seedModuled();
+      const api = callerAs(fx.authorId).classrooms;
+      await api.reorderLessons({
+        courseId: s.courseId,
+        moduleId: s.modB,
+        orderedIds: [s.l1, s.l2],
+      });
+      expect(await lessonState(s.l1)).toEqual({ module: s.modB, order: 0 });
+      expect(await lessonState(s.l2)).toEqual({ module: s.modB, order: 1 });
+      const mods = await m.payload.find({
+        collection: "modules",
+        where: { course: { equals: s.courseId } },
+        depth: 0,
+      });
+      expect(mods.totalDocs).toBe(2);
+    });
+
+    it("refuses an order that drops a lesson already in the module", async () => {
+      const s = await seedModuled();
+      await expect(
+        callerAs(fx.authorId).classrooms.reorderLessons({
+          courseId: s.courseId,
+          moduleId: s.modA,
+          orderedIds: [s.l2],
+        }),
+      ).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+        message: "LESSON_SET_MISMATCH",
+      });
+    });
+
+    it("refuses a null module on a moduled course and a module from another course", async () => {
+      const s = await seedModuled();
+      const other = await seedModuled();
+      const api = callerAs(fx.authorId).classrooms;
+      await expect(
+        api.reorderLessons({
+          courseId: s.courseId,
+          moduleId: null,
+          orderedIds: [s.l1, s.l2],
+        }),
+      ).rejects.toMatchObject({ message: "MODULE_COURSE_MISMATCH" });
+      await expect(
+        api.reorderLessons({
+          courseId: s.courseId,
+          moduleId: other.modA,
+          orderedIds: [s.l1, s.l2],
+        }),
+      ).rejects.toMatchObject({ message: "MODULE_COURSE_MISMATCH" });
+    });
+
+    it("refuses another member", async () => {
+      const s = await seedModuled();
+      await expect(
+        callerAs(fx.otherId).classrooms.reorderLessons({
+          courseId: s.courseId,
+          moduleId: s.modA,
+          orderedIds: [s.l2, s.l1],
+        }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+
+    it("adds a lesson to the chosen module, at its end", async () => {
+      const s = await seedModuled();
+      const { id } = await callerAs(fx.authorId).classrooms.addLesson({
+        courseId: s.courseId,
+        title: "New",
+        moduleId: s.modA,
+      });
+      expect(await lessonState(id)).toEqual({ module: s.modA, order: 2 });
+    });
+
+    it("refuses a moduleId on a flat course", async () => {
+      const { id } = await createViaApi();
+      const other = await seedModuled();
+      await expect(
+        callerAs(fx.authorId).classrooms.addLesson({
+          courseId: id,
+          title: "X",
+          moduleId: other.modA,
+        }),
+      ).rejects.toMatchObject({ message: "MODULE_COURSE_MISMATCH" });
+    });
+  });
 });
