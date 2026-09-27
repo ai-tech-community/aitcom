@@ -6,11 +6,7 @@ import { eventRegistrations, memberProfiles, user } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { sendRegistrationConfirmation } from "@/server/email";
 import { getPayloadClient } from "@/server/payload";
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
-}
+import { toEventEmailData } from "@/server/events/event-email-data";
 
 /**
  * Mollie webhook handler.
@@ -90,12 +86,7 @@ export async function POST(request: Request) {
         await sendRegistrationConfirmation(
           registeredUser.email,
           registeredUser.name ?? "there",
-          {
-            eventTitle: event.title,
-            eventDate: formatDate(event.date),
-            eventLocation: event.location,
-            eventSlug: event.slug,
-          },
+          toEventEmailData(event),
         );
       }
     } catch (e) {

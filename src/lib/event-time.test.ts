@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   pastEvents,
@@ -13,7 +13,12 @@ import {
   eventDayFormatter,
   eventDayParts,
   eventEndInstant,
+  eventSchemaDates,
+  upcomingFromCandidates,
+  formatEventDay,
+  formatEventDayText,
   formatEventShortWhen,
+  formatEventTimeText,
   formatEventWhenText,
   formatInstantInZone,
   getTimeZoneAbbreviation,
@@ -795,5 +800,162 @@ describe("upcomingEventsQueryFloor", () => {
     const past = { date: "2026-10-09T00:00:00.000Z", timezone: "UTC" };
     expect(past.date >= upcomingEventsQueryFloor(now)).toBe(true);
     expect(upcomingEvents([past], now)).toEqual([]);
+  });
+});
+
+describe("formatEventDay", () => {
+  const originalTz = process.env.TZ;
+  afterEach(() => {
+    process.env.TZ = originalTz;
+  });
+
+  it("gives the stored day, zero-padded, with the year", () => {
+    expect(formatEventDay("2026-10-05T00:00:00.000Z", "en")).toBe(
+      "05 Oct 2026",
+    );
+    expect(formatEventDay("2026-10-05", "nl")).toBe("05 okt 2026");
+  });
+
+  it("leaves the year out on request", () => {
+    expect(formatEventDay("2026-09-29", "en", { year: false })).toBe("29 Sep");
+  });
+
+  it("does not move the day for a viewer west of UTC", () => {
+    process.env.TZ = "America/Los_Angeles";
+    // The old `new Date(date).getDate()` read the 28th here.
+    expect(new Date("2026-09-29T00:00:00.000Z").getDate()).toBe(28);
+    expect(formatEventDay("2026-09-29T00:00:00.000Z", "en")).toBe(
+      "29 Sep 2026",
+    );
+    expect(formatEventDay("2026-09-29", "en")).toBe("29 Sep 2026");
+  });
+
+  it("renders a corrupt date as written instead of throwing", () => {
+    expect(formatEventDay("soon", "en")).toBe("soon");
+  });
+});
+
+describe("formatEventDayText", () => {
+  const originalTz = process.env.TZ;
+  afterEach(() => {
+    process.env.TZ = originalTz;
+  });
+
+  it("writes the day for an English email", () => {
+    expect(formatEventDayText("2026-07-05T00:00:00.000Z")).toBe("5 Jul 2026");
+  });
+
+  it("keeps the day on a server west of UTC", () => {
+    process.env.TZ = "America/New_York";
+    expect(formatEventDayText("2026-07-05T00:00:00.000Z")).toBe("5 Jul 2026");
+  });
+});
+
+describe("formatEventTimeText", () => {
+  it("qualifies the range with the zone's abbreviation and name", () => {
+    expect(
+      formatEventTimeText({
+        date: "2026-07-15",
+        startTime: "18:00",
+        endTime: "21:00",
+        timezone: "Europe/Amsterdam",
+      }),
+    ).toBe("18:00–21:00 CEST (Europe/Amsterdam)");
+  });
+
+  it("is null without a start time and bare without a zone", () => {
+    expect(
+      formatEventTimeText({
+        date: "2026-07-15",
+        startTime: null,
+        timezone: "Europe/Amsterdam",
+      }),
+    ).toBeNull();
+    expect(
+      formatEventTimeText({
+        date: "2026-07-15",
+        startTime: "18:00",
+        timezone: null,
+      }),
+    ).toBe("18:00");
+  });
+});
+
+describe("eventSchemaDates", () => {
+  it("gives the plain calendar day for a date-only event", () => {
+    // Not the stored "…T00:00:00.000Z", which claims 00:00 UTC.
+    expect(
+      eventSchemaDates({
+        date: "2026-10-14T00:00:00.000Z",
+        startTime: null,
+        timezone: "Europe/Amsterdam",
+      }),
+    ).toEqual({ startDate: "2026-10-14" });
+  });
+
+  it("gives start and end with the event zone's offset", () => {
+    expect(
+      eventSchemaDates({
+        date: "2026-07-15T00:00:00.000Z",
+        startTime: "18:00",
+        endTime: "21:00",
+        timezone: "Europe/Amsterdam",
+      }),
+    ).toEqual({
+      startDate: "2026-07-15T18:00:00+02:00",
+      endDate: "2026-07-15T21:00:00+02:00",
+    });
+  });
+
+  it("moves an end past midnight to the next day", () => {
+    expect(
+      eventSchemaDates({
+        date: "2026-12-31",
+        startTime: "22:00",
+        endTime: "02:00",
+        timezone: "America/Los_Angeles",
+      }),
+    ).toEqual({
+      startDate: "2026-12-31T22:00:00-08:00",
+      endDate: "2027-01-01T02:00:00-08:00",
+    });
+  });
+
+  it("is null for a corrupt date", () => {
+    expect(
+      eventSchemaDates({ date: "tbd", startTime: "18:00", timezone: null }),
+    ).toBeNull();
+  });
+});
+
+describe("upcomingFromCandidates", () => {
+  const NOW = new Date("2026-09-27T10:00:00.000Z");
+
+  it("keeps today's event after 00:00 UTC and drops ended ones", () => {
+    const rows = [
+      // Ended yesterday where it happened.
+      { id: 1, date: "2026-09-26T00:00:00.000Z", timezone: "UTC" },
+      // Today in Los Angeles (03:00 there): still upcoming, though its
+      // stored date is 10 hours behind now.
+      {
+        id: 2,
+        date: "2026-09-27T00:00:00.000Z",
+        startTime: "18:00",
+        timezone: "America/Los_Angeles",
+      },
+      { id: 3, date: "2026-09-29T00:00:00.000Z", timezone: "UTC" },
+    ];
+    expect(upcomingFromCandidates(rows, 50, NOW).map((r) => r.id)).toEqual([
+      2, 3,
+    ]);
+  });
+
+  it("drops the trailing days of a full page", () => {
+    const rows = [
+      { id: 1, date: "2026-09-28", timezone: "UTC" },
+      { id: 2, date: "2026-10-01", timezone: "UTC" },
+      { id: 3, date: "2026-10-02", timezone: "UTC" },
+    ];
+    expect(upcomingFromCandidates(rows, 3, NOW).map((r) => r.id)).toEqual([1]);
   });
 });

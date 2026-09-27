@@ -2,14 +2,18 @@
 
 import type { ReactNode } from "react";
 import { ChevronUp, Lightbulb, MessageSquare } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
-import { formatEventTimeRange } from "@/lib/event-time";
+import {
+  eventDayParts,
+  formatEventShortWhen,
+  formatEventTimeRange,
+} from "@/lib/event-time";
 import type { RouterOutputs } from "@/trpc/react";
 
 type FeedItem = RouterOutputs["feed"]["getActivity"]["items"][number];
@@ -194,18 +198,22 @@ function MemberFaces({ members }: { members: readonly Member[] }) {
   );
 }
 
+/** The event's own calendar day, never moved through the viewer's zone. */
 function EventDateTile({ date }: { date: string }) {
-  const format = useFormatter();
-  const day = new Date(date);
+  const locale = useLocale();
+  const parts = eventDayParts(date, locale);
   return (
-    <span className="border-border bg-background flex size-9 flex-col items-center justify-center gap-0.5 rounded-md border leading-none">
+    <time
+      dateTime={parts?.iso}
+      className="border-border bg-background flex size-9 flex-col items-center justify-center gap-0.5 rounded-md border leading-none"
+    >
       <span className="text-muted-foreground font-mono text-xs uppercase">
-        {format.dateTime(day, { month: "short", timeZone: "UTC" })}
+        {parts?.month ?? ""}
       </span>
       <span className="text-xs font-semibold tabular-nums">
-        {format.dateTime(day, { day: "numeric", timeZone: "UTC" })}
+        {parts ? String(parts.day).padStart(2, "0") : "--"}
       </span>
-    </span>
+    </time>
   );
 }
 
@@ -214,22 +222,15 @@ function EventMeta({
 }: {
   event: Extract<ActivityItem, { kind: "event" }>["event"];
 }) {
-  const format = useFormatter();
+  const locale = useLocale();
   const parts = [
-    format.dateTime(new Date(event.date), {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      timeZone: "UTC",
+    formatEventShortWhen({ date: event.date }, locale),
+    formatEventTimeRange({
+      date: event.date,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      timezone: event.timezone,
     }),
-    event.startTime
-      ? formatEventTimeRange({
-          date: event.date,
-          startTime: event.startTime,
-          endTime: event.endTime,
-          timezone: event.timezone,
-        })
-      : null,
     event.location,
   ].filter(Boolean);
   return (

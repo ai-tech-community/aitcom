@@ -43,11 +43,7 @@ import {
 import { resolveAudienceIds } from "./audience-resolve";
 import { runEventImport } from "@/server/events/import-from-url";
 import { checkEventImportRateLimit } from "@/server/events/import-rate-limit";
-import {
-  DEFAULT_EVENT_TIMEZONE,
-  formatEventTimeRange,
-  isValidTimeZone,
-} from "@/lib/event-time";
+import { DEFAULT_EVENT_TIMEZONE, isValidTimeZone } from "@/lib/event-time";
 import type { Audience } from "@/payload-types";
 import {
   corpusDateWindow,
@@ -63,6 +59,7 @@ import {
 } from "@/server/events/conflicts/rule";
 import { suggestSlots } from "@/server/events/conflicts/suggest";
 import { assertEventCancellable } from "@/server/events/cancel-guard";
+import { toEventEmailData } from "@/server/events/event-email-data";
 
 /**
  * One row of a community's event list: the shared normalized shape plus the
@@ -75,29 +72,10 @@ type CommunityListedEvent = NormalizedEvent & {
   country?: string | null;
 };
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
-}
-
 async function getEventEmailData(eventId: number) {
   const payload = await getPayloadClient();
   const event = await payload.findByID({ collection: "events", id: eventId });
-  return {
-    eventTitle: event.title,
-    eventDate: formatDate(event.date),
-    // Timezone-qualified time, e.g. "18:00–21:00 CEST (Europe/Amsterdam)"
-    eventTime: event.startTime
-      ? `${formatEventTimeRange({
-          date: event.date,
-          startTime: event.startTime,
-          endTime: event.endTime,
-          timezone: event.timezone,
-        })}${isValidTimeZone(event.timezone) ? ` (${event.timezone})` : ""}`
-      : null,
-    eventLocation: event.location,
-    eventSlug: event.slug,
-  };
+  return toEventEmailData(event);
 }
 
 function getAppUrl(): string {

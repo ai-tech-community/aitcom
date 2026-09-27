@@ -155,6 +155,21 @@ export function eventRowKind(
     : { type: null, label: type.replace(/_/g, " ") };
 }
 
+/**
+ * An event format in the reader's language: "Online", "Hybrid" / "Hybride",
+ * "In person" / "Op locatie". A legacy value outside the known formats is
+ * shown as written rather than guessed.
+ */
+export function eventFormatLabel(
+  format: string,
+  labels: Pick<EventRowLabels, "online" | "hybrid" | "inPerson">,
+): string {
+  if (format === "online") return labels.online;
+  if (format === "hybrid") return labels.hybrid;
+  if (format === "in-person") return labels.inPerson;
+  return format.replace(/[-_]/g, " ");
+}
+
 /** The input's own link, or the event's public page when it has one. */
 function eventRowLink(event: EventRowInput): EventRowLink | null {
   if (event.link !== undefined) return event.link;
