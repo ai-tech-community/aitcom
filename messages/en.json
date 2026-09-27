@@ -3215,6 +3215,7 @@
     "errorInvalidEmbed": "One of the embedded links can't be shown. Check it and try again.",
     "errorNotAllowed": "Only the course author can do this.",
     "errorGeneric": "Something went wrong. Try again.",
-    "errorCannotCreateCourse": "You can't start a course in this community yet. Ask an organiser if you'd like to teach here."
+    "errorCannotCreateCourse": "You can't start a course in this community yet. Ask an organiser if you'd like to teach here.",
+    "finishSavingFirst": "Some changes aren't saved yet. Fix what the editor shows, then try again."
   }
 }

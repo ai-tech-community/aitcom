@@ -122,6 +122,32 @@ describe("useAutosave", () => {
     expect(save).toHaveBeenCalledWith("b");
   });
 
+  it("flush resolves with the settled status, before React re-renders", async () => {
+    const save = vi.fn().mockRejectedValueOnce(new Error("NETWORK")).mockResolvedValue(undefined);
+    const { result, rerender } = setup(save);
+    rerender({ value: "b" });
+    let settled: string | undefined;
+    await act(async () => {
+      settled = await result.current.flush();
+    });
+    expect(settled).toBe("error");
+    await act(async () => {
+      settled = await result.current.flush();
+    });
+    expect(settled).toBe("saved");
+  });
+
+  it("flush reports a conflict", async () => {
+    const save = vi.fn().mockRejectedValue(new Error("COURSE_CHANGED"));
+    const { result, rerender } = setup(save);
+    rerender({ value: "b" });
+    let settled: string | undefined;
+    await act(async () => {
+      settled = await result.current.flush();
+    });
+    expect(settled).toBe("conflict");
+  });
+
   it("flushes a pending value on unmount", async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     const { rerender, unmount } = setup(save);

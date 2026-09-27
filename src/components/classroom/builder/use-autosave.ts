@@ -20,10 +20,14 @@ export type UseAutosaveOptions<T> = {
 export type UseAutosaveResult = {
   status: AutosaveStatus;
   savedAt: Date | null;
-  /** Save now if there is unsaved work; resolves when every queued save has settled. */
-  flush: () => Promise<void>;
+  /**
+   * Save now if there is unsaved work; resolves when every queued save has settled,
+   * with the status at that moment (React state lags behind, so callers that must
+   * decide right after a flush — publish, preview — read this instead).
+   */
+  flush: () => Promise<AutosaveStatus>;
   /** Try again after an error. Does nothing in a conflict — the server would reject it again. */
-  retry: () => Promise<void>;
+  retry: () => Promise<AutosaveStatus>;
 };
 
 const CONFLICT_CODES = new Set(["COURSE_CHANGED", "LESSON_CHANGED"]);
@@ -176,9 +180,10 @@ export function useAutosave<T>({
     [canSave, clearTimer, drain],
   );
 
-  const flush = useCallback(async () => {
+  const flush = useCallback(async (): Promise<AutosaveStatus> => {
     clearTimer();
     await drain();
+    return statusRef.current;
   }, [clearTimer, drain]);
 
   return { status, savedAt, flush, retry: flush };

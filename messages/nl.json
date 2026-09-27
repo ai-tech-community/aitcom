@@ -3215,6 +3215,7 @@
     "errorInvalidEmbed": "Een van de ingesloten links kan niet worden getoond. Controleer hem en probeer het opnieuw.",
     "errorNotAllowed": "Alleen de auteur van de cursus kan dit doen.",
     "errorGeneric": "Er ging iets mis. Probeer het opnieuw.",
-    "errorCannotCreateCourse": "Je kunt in deze community nog geen cursus beginnen. Vraag een organisator als je hier wilt lesgeven."
+    "errorCannotCreateCourse": "Je kunt in deze community nog geen cursus beginnen. Vraag een organisator als je hier wilt lesgeven.",
+    "finishSavingFirst": "Sommige wijzigingen zijn nog niet opgeslagen. Los op wat de editor laat zien en probeer het dan opnieuw."
   }
 }

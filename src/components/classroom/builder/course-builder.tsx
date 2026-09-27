@@ -37,7 +37,8 @@ export type PaneSaveState = {
   status: AutosaveStatus;
   savedAt: Date | null;
   retry: () => Promise<void>;
-  flush: () => Promise<void>;
+  /** Saves pending work now; resolves with the pane's status once settled. */
+  flush: () => Promise<AutosaveStatus>;
 };
 
 /** Worst first: the top bar shows the most urgent state of any pane. */
@@ -80,14 +81,21 @@ const UNSAFE: ReadonlySet<AutosaveStatus> = new Set([
   "conflict",
 ]);
 
-const noop = async () => undefined;
+/**
+ * Publish, unpublish and Preview act on what the server has. They go ahead
+ * only when every pane's work is safely saved — never past a failed save, a
+ * conflict, or a draft that cannot be saved yet (a too-short title).
+ */
+export function canLeaveEditing(statuses: readonly AutosaveStatus[]): boolean {
+  return statuses.every((s) => !UNSAFE.has(s));
+}
 
 /** A publish/unpublish refused as stale shows up as a conflict like any pane's. */
 const STATUS_CONFLICT: PaneSaveState = {
   status: "conflict",
   savedAt: null,
-  retry: noop,
-  flush: noop,
+  retry: async () => undefined,
+  flush: async () => "conflict",
 };
 
 type CourseData = RouterOutputs["classrooms"]["get"];
@@ -215,11 +223,26 @@ function CourseWorkspace({
     (state: PaneSaveState) => reportPane("details", state),
     [reportPane],
   );
-  const flushAll = useCallback(async () => {
-    await Promise.all(
-      Object.values(paneStatesRef.current).map((p) => p.flush()),
+  /**
+   * Flush every pane, then say whether it is safe to act on the saved course.
+   * If not, show the problem: open the details pane when it is the one
+   * holding unsaved work, and explain in a toast.
+   */
+  const saveAllFirst = useCallback(async (): Promise<boolean> => {
+    const results = await Promise.all(
+      Object.entries(paneStatesRef.current).map(
+        async ([key, pane]) => [key, await pane.flush()] as const,
+      ),
     );
-  }, []);
+    if (canLeaveEditing(results.map(([, status]) => status))) return true;
+    if (
+      results.some(([key, status]) => key === "details" && UNSAFE.has(status))
+    ) {
+      select({ kind: "details" });
+    }
+    toast.error(t("finishSavingFirst"));
+    return false;
+  }, [select, t]);
 
   const save = combineSaveStates(Object.values(paneStates));
   useUnsavedChangesGuard(UNSAFE.has(save.status));
@@ -228,7 +251,7 @@ function CourseWorkspace({
   const changeStatus = async (next: "draft" | "published") => {
     setStatusChanging(true);
     try {
-      await flushAll();
+      if (!(await saveAllFirst())) return;
       await writer.run(async (expectedUpdatedAt) => {
         const result = await update.mutateAsync({
           courseId: course.id,
@@ -250,7 +273,7 @@ function CourseWorkspace({
   };
 
   const togglePreview = async () => {
-    if (!previewing) await flushAll();
+    if (!previewing && !(await saveAllFirst())) return;
     setPreviewing((p) => !p);
   };
 

@@ -17,6 +17,15 @@ import type { PaneSaveState } from "./course-builder";
 const MIN_TITLE = 3;
 const MAX_SUMMARY = 500;
 
+function paneStatus(
+  hookStatus: AutosaveStatus,
+  titlePaused: boolean,
+): AutosaveStatus {
+  return titlePaused && (hookStatus === "idle" || hookStatus === "saved")
+    ? "dirty"
+    : hookStatus;
+}
+
 type DetailsDraft = {
   title: string;
   summary: string;
@@ -104,25 +113,32 @@ export function CourseDetailsPane({
 
   // Saving pauses while the title is too short, and the hook then reports
   // nothing pending. A saved title is always valid, so an invalid one is
-  // always unsaved work: report it as such so the top bar and the leave-page
-  // guard see it.
-  const reportedStatus: AutosaveStatus =
-    !readOnly && !titleValid && (status === "idle" || status === "saved")
-      ? "dirty"
-      : status;
+  // always unsaved work: report it as such so the top bar, the leave-page
+  // guard and the publish/preview check all see it.
+  const titlePaused = !readOnly && !titleValid;
+  const reportedStatus = paneStatus(status, titlePaused);
 
+  const titlePausedRef = useRef(titlePaused);
   const onStatusChangeRef = useRef(onStatusChange);
   useEffect(() => {
+    titlePausedRef.current = titlePaused;
     onStatusChangeRef.current = onStatusChange;
   });
+  const paneFlush = useCallback(
+    async () => paneStatus(await flush(), titlePausedRef.current),
+    [flush],
+  );
+  const paneRetry = useCallback(async () => {
+    await retry();
+  }, [retry]);
   useEffect(() => {
     onStatusChangeRef.current({
       status: reportedStatus,
       savedAt,
-      flush,
-      retry,
+      flush: paneFlush,
+      retry: paneRetry,
     });
-  }, [reportedStatus, savedAt, flush, retry]);
+  }, [reportedStatus, savedAt, paneFlush, paneRetry]);
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

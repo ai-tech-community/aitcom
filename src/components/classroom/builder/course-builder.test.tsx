@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,7 +15,10 @@ type QueryState = {
 const trpc = vi.hoisted(() => ({
   query: null as unknown as QueryState,
   mutateAsync: vi.fn(),
+  toastError: vi.fn(),
 }));
+
+vi.mock("sonner", () => ({ toast: { error: trpc.toastError } }));
 
 vi.mock("@/trpc/react", () => ({
   api: {
@@ -42,6 +45,7 @@ vi.mock("@/components/classroom/course-view", () => ({
 
 import {
   CourseBuilder,
+  canLeaveEditing,
   combineSaveStates,
   type PaneSaveState,
 } from "./course-builder";
@@ -99,6 +103,16 @@ describe("combineSaveStates", () => {
     await combineSaveStates([failed, fine]).retry();
     expect(failed.retry).toHaveBeenCalledTimes(1);
     expect(fine.retry).not.toHaveBeenCalled();
+  });
+});
+
+describe("canLeaveEditing", () => {
+  it("allows publish and preview only when every pane is safely saved", () => {
+    expect(canLeaveEditing([])).toBe(true);
+    expect(canLeaveEditing(["idle", "saved"])).toBe(true);
+    for (const blocking of ["dirty", "saving", "error", "conflict"] as const) {
+      expect(canLeaveEditing(["saved", blocking])).toBe(false);
+    }
   });
 });
 
@@ -171,5 +185,78 @@ describe("CourseBuilder loading states", () => {
     expect(
       screen.getByText("We couldn't find this course."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("CourseBuilder publish and preview guard", () => {
+  beforeEach(() => {
+    trpc.mutateAsync.mockReset();
+    trpc.toastError.mockReset();
+    trpc.query = {
+      data: courseData,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  });
+
+  it("does not publish while the course details cannot be saved", async () => {
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Course title"), {
+      target: { value: "ab" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    expect(trpc.mutateAsync).not.toHaveBeenCalled();
+    expect(trpc.toastError).toHaveBeenCalledWith(
+      en.classroomBuilder.finishSavingFirst,
+    );
+  });
+
+  it("does not switch to Preview while the course details cannot be saved", async () => {
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Course title"), {
+      target: { value: "ab" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Preview"));
+    });
+    expect(screen.getByLabelText("Course title")).toBeVisible();
+    expect(screen.getByLabelText("Edit")).toBeChecked();
+    expect(trpc.toastError).toHaveBeenCalledWith(
+      en.classroomBuilder.finishSavingFirst,
+    );
+  });
+
+  it("publishes once pending details are saved", async () => {
+    trpc.mutateAsync
+      .mockResolvedValueOnce({
+        ok: true,
+        updatedAt: "2026-01-01T00:00:01.000Z",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        updatedAt: "2026-01-01T00:00:02.000Z",
+      });
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Course title"), {
+      target: { value: "Agents from scratch" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    expect(trpc.mutateAsync).toHaveBeenCalledTimes(2);
+    expect(trpc.mutateAsync.mock.calls[0]![0]).toMatchObject({
+      title: "Agents from scratch",
+      expectedUpdatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    expect(trpc.mutateAsync.mock.calls[1]![0]).toEqual({
+      courseId: 7,
+      status: "published",
+      expectedUpdatedAt: "2026-01-01T00:00:01.000Z",
+    });
+    expect(trpc.toastError).not.toHaveBeenCalled();
   });
 });
