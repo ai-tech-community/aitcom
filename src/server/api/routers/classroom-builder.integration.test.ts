@@ -48,15 +48,13 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
     const sfx = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
     const authorId = `cb-author-${sfx}`;
     const otherId = `cb-other-${sfx}`;
-    await m.db
-      .insert(m.schema.user)
-      .values(
-        [authorId, otherId].map((id) => ({
-          id,
-          email: `${id}@example.test`,
-          name: id,
-        })),
-      );
+    await m.db.insert(m.schema.user).values(
+      [authorId, otherId].map((id) => ({
+        id,
+        email: `${id}@example.test`,
+        name: id,
+      })),
+    );
     const [community] = await m.db
       .insert(m.schema.communities)
       .values({
