@@ -505,4 +505,43 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
       expect(still.title).toBe("L");
     });
   });
+
+  describe("archived course", () => {
+    it("refuses every module change", async () => {
+      const { id: courseId } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      const { id: lessonId } = await api.addLesson({ courseId, title: "L" });
+      const { id: moduleId } = await api.addModule({ courseId, title: "M" });
+      await m.payload.update({
+        collection: "courses",
+        id: courseId,
+        data: { status: "archived" },
+      });
+      const archived = { code: "FORBIDDEN", message: "COURSE_ARCHIVED" };
+      await expect(
+        api.addModule({ courseId, title: "M2" }),
+      ).rejects.toMatchObject(archived);
+      await expect(
+        api.renameModule({ moduleId, title: "Renamed" }),
+      ).rejects.toMatchObject(archived);
+      await expect(
+        api.reorderModules({ courseId, orderedIds: [moduleId] }),
+      ).rejects.toMatchObject(archived);
+      await expect(
+        api.assignLessonToModule({ lessonId, moduleId }),
+      ).rejects.toMatchObject(archived);
+      await expect(api.deleteModule({ moduleId })).rejects.toMatchObject(
+        archived,
+      );
+      await expect(api.dissolveModules({ courseId })).rejects.toMatchObject(
+        archived,
+      );
+      const { docs: modules } = await m.payload.find({
+        collection: "modules",
+        where: { course: { equals: courseId } },
+        depth: 0,
+      });
+      expect(modules.map((mod) => mod.title)).toEqual(["M"]);
+    });
+  });
 });

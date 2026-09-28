@@ -797,6 +797,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       const { totalDocs: moduleCount } = await payload.find({
         collection: "modules",
@@ -866,6 +867,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
@@ -894,6 +896,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       const { docs: modules } = await payload.find({
         collection: "modules",
@@ -956,6 +959,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       const moduleDoc = await payload.findByID({
         collection: "modules",
@@ -1099,6 +1103,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       const { totalDocs: lessonCount } = await payload.find({
         collection: "lessons",
@@ -1131,6 +1136,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       // Null-out and module deletion must land together — un-moduled lessons
       // alongside surviving modules would make groupLessonsByModule hide the
