@@ -74,6 +74,7 @@ import { HorizontalRulePlugin } from "@payloadcms/richtext-lexical/lexical/react
 import { CheckListPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalCheckListPlugin";
 import { LinkPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalLinkPlugin";
 
+import { cn } from "@/lib/utils";
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
 import type { SlashGroup, SlashCommand } from "./types";
@@ -296,6 +297,8 @@ export interface RichTextEditorProps {
   placeholder?: string;
   /** Feature-owned block nodes. Pass a module-level constant (stable identity). */
   extensions?: readonly RichTextEditorExtension[];
+  /** Extra classes for the writing surface, e.g. a taller minimum height. */
+  contentClassName?: string;
 }
 
 /**
@@ -311,6 +314,7 @@ export function RichTextEditor({
   onChange,
   placeholder,
   extensions = NO_EXTENSIONS,
+  contentClassName,
 }: RichTextEditorProps) {
   const [slash, slashDispatch] = useReducer(slashMenuReducer, {
     open: false,
@@ -659,7 +663,10 @@ export function RichTextEditor({
           <RichTextPlugin
             contentEditable={
               <ContentEditable
-                className="min-h-48 px-4 py-3 text-sm leading-relaxed focus:outline-none sm:px-14"
+                className={cn(
+                  "min-h-48 px-4 py-3 text-sm leading-relaxed focus:outline-none sm:px-14",
+                  contentClassName,
+                )}
                 onKeyDown={handleEditorKeyDown}
               />
             }

@@ -57,7 +57,7 @@ export function LessonPane({
   const titleMissing = !readOnly && draft.title.trim() === "";
 
   return (
-    <div className="mx-auto w-full max-w-[70ch] space-y-6 px-4 py-8 sm:px-6">
+    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 sm:px-6">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={titleId}>{t("lessonTitleLabel")}</Label>
         <Input
@@ -109,18 +109,17 @@ export function LessonPane({
             </p>
           )
         ) : (
-          <div className="border-border rounded-md border px-3 py-2">
-            <RichTextEditor
-              initialValue={draft.body}
-              onChange={(body) => setDraft((d) => ({ ...d, body }))}
-              placeholder={t("lessonBodyPlaceholder")}
-              extensions={
-                canUpload
-                  ? classroomEditorExtensionsWithUploads
-                  : classroomEditorExtensions
-              }
-            />
-          </div>
+          <RichTextEditor
+            initialValue={draft.body}
+            onChange={(body) => setDraft((d) => ({ ...d, body }))}
+            placeholder={t("lessonBodyPlaceholder")}
+            extensions={
+              canUpload
+                ? classroomEditorExtensionsWithUploads
+                : classroomEditorExtensions
+            }
+            contentClassName="min-h-[55dvh]"
+          />
         )}
       </div>
     </div>
