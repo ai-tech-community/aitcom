@@ -6,23 +6,14 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isResourceUrl } from "@/lib/classroom/resource-url";
 
 export type ResourceRow = { label: string; url: string };
 
 const MAX_RESOURCES = 20;
 
-/** A link the server accepts: a full web address. */
-export function isResourceUrl(url: string): boolean {
-  try {
-    const { protocol } = new URL(url.trim());
-    return protocol === "https:" || protocol === "http:";
-  } catch {
-    return false;
-  }
-}
-
 /**
- * The rows that can be saved: named, with a full web address. Half-typed
+ * The rows that can be saved: named, with a link the server accepts. Half-typed
  * rows stay in the draft (and show a hint) but are not sent, so one
  * unfinished link never makes the whole lesson fail to save.
  */
@@ -41,7 +32,7 @@ export function hasUnsavableResources(rows: readonly ResourceRow[]): boolean {
   return rows.some(
     (r) =>
       (r.label.trim() !== "" || r.url.trim() !== "") &&
-      !(r.label.trim() && isResourceUrl(r.url)),
+      !(r.label.trim() && isResourceUrl(r.url.trim())),
   );
 }
 
@@ -70,7 +61,8 @@ export function ResourcesEditor({
         const labelId = `${uid}-label-${i}`;
         const urlId = `${uid}-url-${i}`;
         const hintId = `${uid}-hint-${i}`;
-        const urlInvalid = row.url.trim() !== "" && !isResourceUrl(row.url);
+        const urlInvalid =
+          row.url.trim() !== "" && !isResourceUrl(row.url.trim());
         const nameMissing = row.url.trim() !== "" && row.label.trim() === "";
         const urlMissing = row.label.trim() !== "" && row.url.trim() === "";
         const urlProblem = urlInvalid || urlMissing;

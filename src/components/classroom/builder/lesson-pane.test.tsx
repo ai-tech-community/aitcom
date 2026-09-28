@@ -431,6 +431,23 @@ describe("LessonSettingsPane", () => {
     expect(lastState(onStatusChange)?.status).toBe("saved");
   });
 
+  it("treats a stored link the server accepted as saved, even if it is not a web page", async () => {
+    const { onStatusChange } = renderScope({
+      lessonId: 1,
+      title: "One",
+      lesson: {
+        resources: [{ label: "Email me", url: "mailto:teacher@example.com" }],
+      },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(screen.getByLabelText("Link 1 address")).not.toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(lastState(onStatusChange)?.status).toBe("idle");
+    expect(trpc.updateLesson).not.toHaveBeenCalled();
+  });
+
   it("deletes the lesson after the same confirm as the outline", async () => {
     trpc.deleteLesson.mockResolvedValueOnce({ ok: true });
     const { onDeleted } = renderScope({ lessonId: 1, title: "One" });

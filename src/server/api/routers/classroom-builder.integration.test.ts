@@ -539,6 +539,35 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
       ).resolves.toMatchObject({ ok: true });
     });
 
+    it("stores any full link address, but never one that runs code", async () => {
+      const { id: courseId } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      const { id } = await api.addLesson({
+        courseId,
+        title: "L",
+        resources: [{ label: "Mail", url: "mailto:teacher@example.com" }],
+      });
+      await expect(
+        api.updateLesson({
+          lessonId: id,
+          resources: [{ label: "Files", url: "ftp://files.example.com/a" }],
+        }),
+      ).resolves.toMatchObject({ ok: true });
+      await expect(
+        api.updateLesson({
+          lessonId: id,
+          resources: [{ label: "Bad", url: "javascript:alert(1)" }],
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      await expect(
+        api.addLesson({
+          courseId,
+          title: "L2",
+          resources: [{ label: "Bad", url: "data:text/html,hi" }],
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
+
     it("rejects a lesson expectedUpdatedAt that is not a date as a bad request", async () => {
       const { id: courseId } = await createViaApi();
       const api = callerAs(fx.authorId).classrooms;

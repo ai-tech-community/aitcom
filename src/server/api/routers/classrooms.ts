@@ -44,6 +44,13 @@ import {
   loadMaterialsManifest,
 } from "@/server/classroom/lesson-materials";
 import { canPublish, publishChecks } from "@/lib/classroom/publish-checklist";
+import { isResourceUrl } from "@/lib/classroom/resource-url";
+
+/** One lesson resource link; the URL rule is shared with the builder. */
+const resourceSchema = z.object({
+  label: z.string().min(1).max(120),
+  url: z.string().refine(isResourceUrl),
+});
 
 /** Resolve community id + the caller's active role (null if not an active member). */
 async function resolveCommunityAndRole(
@@ -618,15 +625,7 @@ export const classroomsRouter = createTRPCRouter({
         title: z.string().min(1).max(200),
         moduleId: z.number().optional(),
         body: z.any().optional(),
-        resources: z
-          .array(
-            z.object({
-              label: z.string().min(1).max(120),
-              url: z.string().url().max(500),
-            }),
-          )
-          .max(20)
-          .default([]),
+        resources: z.array(resourceSchema).max(20).default([]),
         examMandatory: z.boolean().optional(),
         examPassThreshold: z.number().min(0).max(100).optional(),
         examMaxAttempts: z.number().min(0).optional(),
@@ -731,15 +730,7 @@ export const classroomsRouter = createTRPCRouter({
         title: z.string().min(1).max(200).optional(),
         body: z.any().optional(),
         order: z.number().optional(),
-        resources: z
-          .array(
-            z.object({
-              label: z.string().min(1).max(120),
-              url: z.string().url().max(500),
-            }),
-          )
-          .max(20)
-          .optional(),
+        resources: z.array(resourceSchema).max(20).optional(),
         examMandatory: z.boolean().optional(),
         examPassThreshold: z.number().min(0).max(100).optional(),
         examMaxAttempts: z.number().min(0).optional(),
