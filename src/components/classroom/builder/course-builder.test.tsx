@@ -15,6 +15,8 @@ type QueryState = {
 const trpc = vi.hoisted(() => ({
   query: null as unknown as QueryState,
   mutateAsync: vi.fn(),
+  updateLesson: vi.fn(),
+  deleteLesson: vi.fn(),
   toastError: vi.fn(),
 }));
 
@@ -28,12 +30,21 @@ vi.mock("@/trpc/react", () => ({
     classrooms: {
       get: { useQuery: () => trpc.query },
       update: { useMutation: () => ({ mutateAsync: trpc.mutateAsync }) },
+      updateLesson: {
+        useMutation: () => ({ mutateAsync: trpc.updateLesson }),
+      },
+      deleteLesson: {
+        useMutation: () => ({
+          mutate: vi.fn(),
+          mutateAsync: trpc.deleteLesson,
+          isPending: false,
+        }),
+      },
       // The outline's writes; these tests cover the builder around it.
       ...Object.fromEntries(
         [
           "reorderLessons",
           "addLesson",
-          "deleteLesson",
           "addModule",
           "renameModule",
           "reorderModules",
@@ -53,8 +64,32 @@ vi.mock("@/trpc/react", () => ({
     },
   },
 }));
-vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(),
+// Selection lives in `?lesson=`. Like Next.js, re-render when the builder
+// replaces the URL.
+vi.mock("next/navigation", async () => {
+  const React = await import("react");
+  const subscribe = (onChange: () => void) => {
+    window.addEventListener("test:urlchange", onChange);
+    return () => window.removeEventListener("test:urlchange", onChange);
+  };
+  return {
+    useSearchParams: () => {
+      const search = React.useSyncExternalStore(
+        subscribe,
+        () => window.location.search,
+      );
+      return React.useMemo(() => new URLSearchParams(search), [search]);
+    },
+  };
+});
+const nativeReplaceState = window.history.replaceState.bind(window.history);
+window.history.replaceState = (...args) => {
+  nativeReplaceState(...args);
+  window.dispatchEvent(new Event("test:urlchange"));
+};
+// Lexical does not need to run here: the lesson body is a plain textarea.
+vi.mock("@/components/article-editor/rich-text-editor", () => ({
+  RichTextEditor: () => <textarea aria-label="Rich text" />,
 }));
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -435,5 +470,190 @@ describe("CourseBuilder move back to draft", () => {
       fireEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
     });
     expect(trpc.mutateAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe("CourseBuilder lesson editing", () => {
+  const lessonsCourse = {
+    ...courseData,
+    lessons: [
+      {
+        id: 21,
+        title: "Welcome",
+        module: null,
+        order: 0,
+        body: paragraph("Hi"),
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        id: 22,
+        title: "Second",
+        module: null,
+        order: 1,
+        body: paragraph("More"),
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    trpc.mutateAsync.mockReset();
+    trpc.updateLesson.mockReset();
+    trpc.updateLesson.mockResolvedValue({
+      ok: true,
+      updatedAt: "2026-01-01T00:00:01.000Z",
+    });
+    trpc.deleteLesson.mockReset();
+    trpc.toastError.mockReset();
+    trpc.query = {
+      data: lessonsCourse,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+    window.history.replaceState(null, "", "/?lesson=21");
+  });
+
+  const openedLesson = () =>
+    new URL(window.location.href).searchParams.get("lesson");
+
+  /** The outline row's own select button (not its drag handle or menu). */
+  const outlineRow = (lessonId: number) =>
+    within(screen.getByTestId(`outline-lesson-${lessonId}`))
+      .getAllByRole("button")
+      .find((b) => !b.hasAttribute("aria-label"))!;
+
+  it("opens the lesson from the URL in the middle, with its settings on the right", () => {
+    renderBuilder();
+    expect(screen.getByLabelText("Lesson title")).toHaveValue("Welcome");
+    expect(
+      screen.getByRole("complementary", { name: "Lesson settings" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Course title")).not.toBeVisible();
+  });
+
+  it("saves the open lesson before opening another one", async () => {
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Lesson title"), {
+      target: { value: "Welcome, everyone" },
+    });
+    await act(async () => {
+      fireEvent.click(outlineRow(22));
+    });
+    expect(trpc.updateLesson).toHaveBeenCalledTimes(1);
+    expect(trpc.updateLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ lessonId: 21, title: "Welcome, everyone" }),
+    );
+    expect(openedLesson()).toBe("22");
+    expect(screen.getByLabelText("Lesson title")).toHaveValue("Second");
+  });
+
+  it("waits for that save to finish before opening the next lesson", async () => {
+    let finishSave!: (v: { ok: true; updatedAt: string }) => void;
+    trpc.updateLesson.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishSave = resolve;
+      }),
+    );
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Lesson title"), {
+      target: { value: "Welcome, everyone" },
+    });
+    await act(async () => {
+      fireEvent.click(outlineRow(22));
+    });
+    expect(trpc.updateLesson).toHaveBeenCalledTimes(1);
+    expect(openedLesson()).toBe("21");
+    await act(async () => {
+      finishSave({ ok: true, updatedAt: "2026-01-01T00:00:01.000Z" });
+    });
+    expect(openedLesson()).toBe("22");
+  });
+
+  it("keeps a lesson open when its edits cannot be saved", async () => {
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Lesson title"), {
+      target: { value: " " },
+    });
+    await act(async () => {
+      fireEvent.click(outlineRow(22));
+    });
+    expect(trpc.updateLesson).not.toHaveBeenCalled();
+    expect(openedLesson()).toBe("21");
+    expect(trpc.toastError).toHaveBeenCalledWith(
+      en.classroomBuilder.finishSavingFirst,
+    );
+  });
+
+  it("keeps the lesson in view when it blocks publishing", async () => {
+    renderBuilder();
+    // Both the (hidden) course details and the open lesson hold unsaved work:
+    // the lesson the author is looking at stays in view.
+    fireEvent.change(screen.getByLabelText("Course title"), {
+      target: { value: "ab" },
+    });
+    fireEvent.change(screen.getByLabelText("Lesson title"), {
+      target: { value: "" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(openedLesson()).toBe("21");
+    expect(screen.getByLabelText("Lesson title")).toBeVisible();
+    expect(trpc.toastError).toHaveBeenCalledWith(
+      en.classroomBuilder.finishSavingFirst,
+    );
+  });
+
+  it("opens the next lesson after deleting the open one, without saving it", async () => {
+    trpc.deleteLesson.mockResolvedValueOnce({ ok: true });
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Lesson title"), {
+      target: { value: "About to go" },
+    });
+    const settings = screen.getByRole("complementary", {
+      name: "Lesson settings",
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(settings).getByRole("button", { name: "Delete lesson" }),
+      );
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", {
+          name: "Delete lesson",
+        }),
+      );
+    });
+    expect(trpc.deleteLesson).toHaveBeenCalledWith({ lessonId: 21 });
+    expect(openedLesson()).toBe("22");
+    expect(trpc.updateLesson).not.toHaveBeenCalled();
+  });
+
+  it("remembers whether the settings column is hidden", () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => stored.get(k) ?? null,
+      setItem: (k: string, v: string) => void stored.set(k, v),
+    });
+    try {
+      renderBuilder();
+      fireEvent.click(
+        screen.getByRole("button", { name: "Hide lesson settings" }),
+      );
+      expect(
+        screen.getByRole("button", { name: "Show lesson settings" }),
+      ).toHaveAttribute("aria-expanded", "false");
+      expect(stored.get("classroomBuilder.lessonSettingsCollapsed")).toBe("1");
+      fireEvent.click(
+        screen.getByRole("button", { name: "Show lesson settings" }),
+      );
+      expect(stored.get("classroomBuilder.lessonSettingsCollapsed")).toBe("0");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

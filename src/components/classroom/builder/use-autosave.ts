@@ -30,7 +30,8 @@ export type UseAutosaveResult = {
   retry: () => Promise<AutosaveStatus>;
 };
 
-const CONFLICT_CODES = new Set(["COURSE_CHANGED", "LESSON_CHANGED"]);
+/** Server codes meaning "someone else changed this first": a conflict, not an error. */
+export const CONFLICT_CODES: ReadonlySet<string> = new Set(["COURSE_CHANGED", "LESSON_CHANGED"]);
 const jsonEqual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /**

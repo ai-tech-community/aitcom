@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
@@ -10,21 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionLabel } from "@/components/ui/section-label";
-import { useAutosave, type AutosaveStatus } from "./use-autosave";
+import { useAutosave } from "./use-autosave";
+import { usePaneReport } from "./use-pane-report";
 import type { CourseWriter } from "./course-writer";
 import type { PaneSaveState } from "./course-builder";
 
 const MIN_TITLE = 3;
 const MAX_SUMMARY = 500;
-
-function paneStatus(
-  hookStatus: AutosaveStatus,
-  titlePaused: boolean,
-): AutosaveStatus {
-  return titlePaused && (hookStatus === "idle" || hookStatus === "saved")
-    ? "dirty"
-    : hookStatus;
-}
 
 type DetailsDraft = {
   title: string;
@@ -105,40 +97,18 @@ export function CourseDetailsPane({
     [writer, mutateAsync, courseId, courseSlug, utils],
   );
 
-  const { status, savedAt, flush, retry } = useAutosave({
+  const autosave = useAutosave({
     value: draft,
     save,
     enabled: !readOnly && titleValid,
   });
 
-  // Saving pauses while the title is too short, and the hook then reports
-  // nothing pending. A saved title is always valid, so an invalid one is
-  // always unsaved work: report it as such so the top bar, the leave-page
-  // guard and the publish/preview check all see it.
-  const titlePaused = !readOnly && !titleValid;
-  const reportedStatus = paneStatus(status, titlePaused);
-
-  const titlePausedRef = useRef(titlePaused);
-  const onStatusChangeRef = useRef(onStatusChange);
-  useEffect(() => {
-    titlePausedRef.current = titlePaused;
-    onStatusChangeRef.current = onStatusChange;
+  // Saving pauses while the title is too short; that draft is still unsaved work.
+  usePaneReport({
+    autosave,
+    paused: !readOnly && !titleValid,
+    onStatusChange,
   });
-  const paneFlush = useCallback(
-    async () => paneStatus(await flush(), titlePausedRef.current),
-    [flush],
-  );
-  const paneRetry = useCallback(async () => {
-    await retry();
-  }, [retry]);
-  useEffect(() => {
-    onStatusChangeRef.current({
-      status: reportedStatus,
-      savedAt,
-      flush: paneFlush,
-      retry: paneRetry,
-    });
-  }, [reportedStatus, savedAt, paneFlush, paneRetry]);
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

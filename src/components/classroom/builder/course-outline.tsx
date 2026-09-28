@@ -106,6 +106,7 @@ export function CourseOutline({
   modules,
   selection,
   onSelect,
+  onLessonDeleted,
   readOnly,
 }: {
   courseId: number;
@@ -113,6 +114,8 @@ export function CourseOutline({
   modules: OutlineModule[];
   selection: BuilderSelection;
   onSelect: (s: BuilderSelection) => void;
+  /** Told first when a lesson is deleted, before any selection change. */
+  onLessonDeleted?: (lessonId: number) => void;
   readOnly: boolean;
 }) {
   const t = useTranslations("classroomBuilder");
@@ -223,6 +226,7 @@ export function CourseOutline({
     if (!ok) return;
     const order = readingOrder(groups);
     if (!(await run(() => deleteLesson.mutateAsync({ lessonId })))) return;
+    onLessonDeleted?.(lessonId);
     const current = selectionRef.current;
     if (current.kind === "lesson" && current.lessonId === lessonId) {
       const next = order[order.indexOf(lessonId) + 1];

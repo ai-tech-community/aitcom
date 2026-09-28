@@ -28,8 +28,10 @@ import { CourseDetailsPane } from "./course-details-pane";
 import { builderErrorKey } from "./builder-errors";
 import { createCourseWriter } from "./course-writer";
 import { CourseOutline } from "./course-outline";
+import { LessonEditorScope } from "./lesson-editor-scope";
 import { PublishDialog } from "./publish-dialog";
 import { useUnsavedChangesGuard, type AutosaveStatus } from "./use-autosave";
+import { usePersistedFlag } from "./use-persisted-flag";
 
 export type BuilderSelection =
   | { kind: "details" }
@@ -106,6 +108,28 @@ const STATUS_CONFLICT: PaneSaveState = {
  * author (toast, or the conflict banner) by the time this is returned.
  */
 type StatusChangeOutcome = "done" | "unsaved" | "conflict" | "failed";
+
+/** Where each lesson's editor scope reports its save state. */
+const lessonPaneKey = (lessonId: number) => `lesson:${lessonId}`;
+
+/**
+ * The panes whose save state counts right now. A lesson's editor scope only
+ * lives while that lesson is selected; a report left behind by one that has
+ * since closed (it was saved on the way out, or the lesson was deleted) must
+ * not hold up the top bar or publishing.
+ */
+function activePanes(
+  states: Record<string, PaneSaveState>,
+  selection: BuilderSelection,
+): [string, PaneSaveState][] {
+  const lessonKey =
+    selection.kind === "lesson" ? lessonPaneKey(selection.lessonId) : null;
+  return Object.entries(states).filter(
+    ([key]) => !key.startsWith("lesson:") || key === lessonKey,
+  );
+}
+
+const SETTINGS_COLLAPSED_KEY = "classroomBuilder.lessonSettingsCollapsed";
 
 /** Matches Tailwind's `lg`: the outline is a fixed column from here up. */
 const OUTLINE_COLUMN_QUERY = "(min-width: 64rem)";
@@ -207,6 +231,12 @@ function CourseWorkspace({
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [previewing, setPreviewing] = useState(false);
 
+  const selectionRef = useRef(selection);
+  useEffect(() => {
+    selectionRef.current = selection;
+  });
+
+  /** Changes the selection straight away. Callers first make sure no work is lost. */
   const select = useCallback((next: BuilderSelection) => {
     const url = new URL(window.location.href);
     if (next.kind === "lesson") {
@@ -235,20 +265,35 @@ function CourseWorkspace({
     (state: PaneSaveState) => reportPane("details", state),
     [reportPane],
   );
+  // Lessons deleted during this visit. Their editor scope may still hold
+  // unsaved edits; those are dropped, never sent for a lesson that is gone.
+  const deletedLessons = useRef(new Set<number>());
+  const isLessonDeleted = useCallback(
+    (lessonId: number) => deletedLessons.current.has(lessonId),
+    [],
+  );
+  const markLessonDeleted = useCallback((lessonId: number) => {
+    deletedLessons.current.add(lessonId);
+  }, []);
+
   /**
    * Flush every pane, then say whether it is safe to act on the saved course.
-   * If not, show the problem: open the details pane when it is the one
-   * holding unsaved work, and explain in a toast.
+   * If not, show the problem and explain in a toast: an open lesson that
+   * holds unsaved work stays open; otherwise the details pane opens when it
+   * is the one holding it.
    */
   const saveAllFirst = useCallback(async (): Promise<boolean> => {
     const results = await Promise.all(
-      Object.entries(paneStatesRef.current).map(
+      activePanes(paneStatesRef.current, selectionRef.current).map(
         async ([key, pane]) => [key, await pane.flush()] as const,
       ),
     );
     if (canLeaveEditing(results.map(([, status]) => status))) return true;
+    const blocking = (match: (key: string) => boolean) =>
+      results.some(([key, status]) => match(key) && UNSAFE.has(status));
     if (
-      results.some(([key, status]) => key === "details" && UNSAFE.has(status))
+      !blocking((key) => key.startsWith("lesson:")) &&
+      blocking((key) => key === "details")
     ) {
       select({ kind: "details" });
     }
@@ -256,7 +301,53 @@ function CourseWorkspace({
     return false;
   }, [select, t]);
 
-  const save = combineSaveStates(Object.values(paneStates));
+  /**
+   * Every author-driven selection change. Leaving a lesson first saves it and
+   * waits for that save, so the next pane never reads stale data and no edit
+   * is dropped. When it cannot be saved (a blank title, a failed save, a
+   * conflict), the lesson stays open so the author can see why.
+   */
+  const navigate = useCallback(
+    async (next: BuilderSelection) => {
+      const current = selectionRef.current;
+      const leaving =
+        current.kind === "lesson" &&
+        !(next.kind === "lesson" && next.lessonId === current.lessonId) &&
+        !deletedLessons.current.has(current.lessonId);
+      if (leaving) {
+        const pane = paneStatesRef.current[lessonPaneKey(current.lessonId)];
+        if (pane && UNSAFE.has(await pane.flush())) {
+          setOutlineOpen(false);
+          toast.error(t("finishSavingFirst"));
+          return;
+        }
+      }
+      select(next);
+    },
+    [select, t],
+  );
+
+  /** The open lesson was deleted from its settings pane: open the next one. */
+  const lessonDeletedHere = useCallback(
+    (lessonId: number) => {
+      markLessonDeleted(lessonId);
+      const index = lessons.findIndex((l) => l.id === lessonId);
+      const next = lessons[index + 1];
+      select(
+        next ? { kind: "lesson", lessonId: next.id } : { kind: "details" },
+      );
+      void utils.classrooms.get.invalidate({ slug: courseSlug });
+    },
+    [lessons, markLessonDeleted, select, utils, courseSlug],
+  );
+
+  const [settingsCollapsed, setSettingsCollapsed] = usePersistedFlag(
+    SETTINGS_COLLAPSED_KEY,
+  );
+
+  const save = combineSaveStates(
+    activePanes(paneStates, selection).map(([, state]) => state),
+  );
   useUnsavedChangesGuard(UNSAFE.has(save.status));
 
   const [statusChanging, setStatusChanging] = useState(false);
@@ -331,7 +422,7 @@ function CourseWorkspace({
   // outline in view (on small screens it lives in a sheet).
   const goToLesson = (lessonId: number) => {
     setPreviewing(false);
-    select({ kind: "lesson", lessonId });
+    void navigate({ kind: "lesson", lessonId });
   };
   const goToOutline = () => {
     setPreviewing(false);
@@ -355,10 +446,10 @@ function CourseWorkspace({
     setPreviewing((p) => !p);
   };
 
-  const lessonTitles = useMemo(
-    () => new Map(lessons.map((l) => [l.id, l.title])),
-    [lessons],
-  );
+  const selectedLesson =
+    selection.kind === "lesson"
+      ? lessons.find((l) => l.id === selection.lessonId)
+      : undefined;
 
   const outline = (
     <CourseOutline
@@ -366,7 +457,8 @@ function CourseWorkspace({
       lessons={lessons}
       modules={modules}
       selection={selection}
-      onSelect={select}
+      onSelect={(next) => void navigate(next)}
+      onLessonDeleted={markLessonDeleted}
       readOnly={readOnly}
     />
   );
@@ -409,7 +501,7 @@ function CourseWorkspace({
       {/* Panes stay mounted while previewing so no draft is ever dropped. */}
       <div
         className={cn(
-          "grid min-h-0 flex-1 lg:grid-cols-[18rem_minmax(0,1fr)]",
+          "grid min-h-0 flex-1 lg:grid-cols-[18rem_minmax(0,1fr)_auto]",
           previewing && "hidden",
         )}
       >
@@ -421,31 +513,43 @@ function CourseWorkspace({
           {outline}
         </nav>
 
-        <div className="min-w-0 overflow-y-auto">
-          <div hidden={selection.kind !== "details"}>
-            <CourseDetailsPane
-              course={{
-                id: course.id,
-                slug: course.slug,
-                title: course.title,
-                summary: course.summary ?? null,
-                coverImageUrl: course.coverImageUrl ?? null,
-                isPublic: !!course.isPublic,
-              }}
-              writer={writer}
-              readOnly={readOnly}
-              onStatusChange={reportDetails}
-            />
-          </div>
-          {selection.kind === "lesson" ? (
-            <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
-              <EmptyState
-                title={lessonTitles.get(selection.lessonId)}
-                description={t("lessonPanePending")}
-              />
-            </div>
-          ) : null}
+        {/* Stays mounted (hidden) while a lesson is open so its draft is kept. */}
+        <div
+          hidden={selection.kind !== "details"}
+          className="min-w-0 overflow-y-auto"
+        >
+          <CourseDetailsPane
+            course={{
+              id: course.id,
+              slug: course.slug,
+              title: course.title,
+              summary: course.summary ?? null,
+              coverImageUrl: course.coverImageUrl ?? null,
+              isPublic: !!course.isPublic,
+            }}
+            writer={writer}
+            readOnly={readOnly}
+            onStatusChange={reportDetails}
+          />
         </div>
+
+        {/* Keyed by lesson: switching lessons closes this scope, which saves
+            any last edits under the old lesson's own id (see the scope). */}
+        {selectedLesson ? (
+          <LessonEditorScope
+            key={selectedLesson.id}
+            lesson={selectedLesson}
+            courseSlug={courseSlug}
+            readOnly={readOnly}
+            onStatusChange={(state) =>
+              reportPane(lessonPaneKey(selectedLesson.id), state)
+            }
+            isDeleted={isLessonDeleted}
+            onDeleted={lessonDeletedHere}
+            settingsCollapsed={settingsCollapsed}
+            onToggleSettings={() => setSettingsCollapsed(!settingsCollapsed)}
+          />
+        ) : null}
       </div>
 
       <PublishDialog
