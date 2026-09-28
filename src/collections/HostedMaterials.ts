@@ -102,7 +102,7 @@ export const HostedMaterials: CollectionConfig = {
       min: 0,
       admin: {
         description:
-          "Declared at start, replaced by the stored size at finish.",
+          "The size the browser declared at start, kept as is. The upload grant cannot store more, and finish refuses a stored file larger than this.",
       },
     },
     { name: "storageKey", type: "text", required: true, unique: true },

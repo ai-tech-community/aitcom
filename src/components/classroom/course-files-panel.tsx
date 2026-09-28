@@ -133,8 +133,9 @@ export function CourseFilesPanel({
     courseId,
   });
 
-  // The lesson editor reads file names and visibility from the course
-  // manifest (`classrooms.get`), so both are refreshed after a change.
+  // Lessons in the course view show file names and visibility from the
+  // course manifest (`classrooms.get`); the lesson editor's file picker reads
+  // `listCourseMaterials`. Both are refreshed after a change.
   const refresh = () => {
     void utils.classroomMaterials.listCourseMaterials.invalidate({ courseId });
     void utils.classrooms.get.invalidate();

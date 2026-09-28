@@ -1468,7 +1468,7 @@ export interface HostedMaterial {
   extension: string;
   contentType: string;
   /**
-   * Declared at start, replaced by the stored size at finish.
+   * The size the browser declared at start, kept as is. The upload grant cannot store more, and finish refuses a stored file larger than this.
    */
   bytes: number;
   storageKey: string;
