@@ -62,6 +62,7 @@ vi.mock("@/components/article-editor/rich-text-editor", () => ({
 
 import { ConfirmProvider } from "@/components/confirm-dialog";
 import { LessonEditorScope, type LessonLike } from "./lesson-editor-scope";
+import { createLessonVersionRegistry } from "./lesson-versions";
 
 const T0 = "2026-01-01T00:00:00.000Z";
 const T1 = "2026-01-01T00:00:01.000Z";
@@ -80,6 +81,7 @@ function renderScope(fixture: Fixture) {
   const onDeleted = vi.fn<(lessonId: number) => void>();
   const isDeleted = vi.fn<(lessonId: number) => boolean>(() => false);
   const onToggleSettings = vi.fn();
+  const versions = createLessonVersionRegistry();
 
   const ui = (f: Fixture) => (
     <NextIntlClientProvider locale="en" messages={en}>
@@ -94,6 +96,7 @@ function renderScope(fixture: Fixture) {
             ...f.lesson,
           }}
           readOnly={f.readOnly ?? false}
+          versions={versions}
           onStatusChange={onStatusChange}
           isDeleted={isDeleted}
           onDeleted={onDeleted}

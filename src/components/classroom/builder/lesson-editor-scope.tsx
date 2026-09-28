@@ -12,9 +12,11 @@ import { builderErrorKey, type BuilderErrorKey } from "./builder-errors";
 import type { PaneSaveState } from "./course-builder";
 import { LessonPane, type LessonDraft } from "./lesson-pane";
 import { LessonSettingsPane } from "./lesson-settings-pane";
+import type { LessonVersionRegistry } from "./lesson-versions";
 import { hasUnsavableResources, savableResources } from "./resources-editor";
 import { CONFLICT_CODES, useAutosave } from "./use-autosave";
 import { usePaneReport } from "./use-pane-report";
+import { createVersionedWriter } from "./versioned-writer";
 
 /** The lesson fields the builder loads (a `classrooms.get` lesson). */
 export type LessonLike = {
@@ -65,6 +67,8 @@ export type LessonEditorScopeProps = {
   lesson: LessonLike;
   courseSlug: string;
   readOnly: boolean;
+  /** Where outline changes that rewrite this lesson find its save queue. */
+  versions: LessonVersionRegistry;
   onStatusChange: (state: PaneSaveState) => void;
   /** True once a lesson was deleted: its pending edits are dropped, not saved. */
   isDeleted: (lessonId: number) => boolean;
@@ -81,13 +85,17 @@ export type LessonEditorScopeProps = {
  * unmounts this scope, and the autosave's unmount flush saves the old draft
  * with the old lesson's own id and version — never under the next lesson.
  *
- * Each lesson keeps its own version chain (`expectedUpdatedAt`), separate
- * from the course's writer: lesson saves never race course saves.
+ * Each lesson keeps its own version chain (`expectedUpdatedAt`) in its own
+ * writer, separate from the course's: lesson saves never race course saves.
+ * The writer is registered with the builder's lesson versions, so an outline
+ * change that rewrites this lesson waits its turn in the same queue and hands
+ * the next save the lesson's new version (see lesson-versions.ts).
  */
 export function LessonEditorScope({
   lesson,
   courseSlug,
   readOnly,
+  versions,
   onStatusChange,
   isDeleted,
   onDeleted,
@@ -103,7 +111,7 @@ export function LessonEditorScope({
   const [saveError, setSaveError] = useState<BuilderErrorKey | null>(null);
 
   const lessonId = lesson.id;
-  const versionRef = useRef(lesson.updatedAt);
+  const [writer] = useState(() => createVersionedWriter(lesson.updatedAt));
   const isDeletedRef = useRef(isDeleted);
   useEffect(() => {
     isDeletedRef.current = isDeleted;
@@ -113,13 +121,36 @@ export function LessonEditorScope({
     async (value: LessonDraft) => {
       if (isDeletedRef.current(lessonId)) return;
       const fields = savedFields(value);
-      let updatedAt: string;
       try {
-        ({ updatedAt } = await mutateAsync({
-          lessonId,
-          ...fields,
-          expectedUpdatedAt: versionRef.current,
-        }));
+        await writer.run(async (expectedUpdatedAt) => {
+          const { updatedAt } = await mutateAsync({
+            lessonId,
+            ...fields,
+            expectedUpdatedAt,
+          });
+          // Keep the shared course query in step: the outline's Empty and quiz
+          // tags, the publish checklist, and the next visit to this lesson
+          // (with its new version) all read it. Written inside the queue, so
+          // an outline change queued after this save updates it later.
+          utils.classrooms.get.setData({ slug: courseSlug }, (old) =>
+            old
+              ? {
+                  ...old,
+                  lessons: old.lessons.map((l) =>
+                    l.id === lessonId
+                      ? {
+                          ...l,
+                          ...fields,
+                          body: fields.body as (typeof l)["body"],
+                          updatedAt,
+                        }
+                      : l,
+                  ),
+                }
+              : old,
+          );
+          return updatedAt;
+        });
       } catch (err) {
         const code = err instanceof Error ? err.message : undefined;
         // A conflict is shown once, by the top bar's reload banner.
@@ -128,30 +159,9 @@ export function LessonEditorScope({
         }
         throw err;
       }
-      versionRef.current = updatedAt;
       setSaveError(null);
-      // Keep the shared course query in step: the outline's Empty and quiz
-      // tags, the publish checklist, and the next visit to this lesson (with
-      // its new version) all read it.
-      utils.classrooms.get.setData({ slug: courseSlug }, (old) =>
-        old
-          ? {
-              ...old,
-              lessons: old.lessons.map((l) =>
-                l.id === lessonId
-                  ? {
-                      ...l,
-                      ...fields,
-                      body: fields.body as (typeof l)["body"],
-                      updatedAt,
-                    }
-                  : l,
-              ),
-            }
-          : old,
-      );
     },
-    [mutateAsync, lessonId, courseSlug, utils],
+    [writer, mutateAsync, lessonId, courseSlug, utils],
   );
 
   const titleValid = draft.title.trim() !== "";
@@ -160,6 +170,12 @@ export function LessonEditorScope({
     save,
     enabled: !readOnly && titleValid,
   });
+  // Declared after the autosave: on close, its last save is queued in the
+  // writer before the registration is released (effects clean up in order).
+  useEffect(
+    () => versions.register(lessonId, writer),
+    [versions, lessonId, writer],
+  );
   // Saving pauses while the title is blank, and a half-typed link is left
   // out of each save. Both are still unsaved work: report them as such.
   usePaneReport({

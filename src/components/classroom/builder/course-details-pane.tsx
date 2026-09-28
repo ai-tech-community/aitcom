@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SectionLabel } from "@/components/ui/section-label";
 import { useAutosave } from "./use-autosave";
 import { usePaneReport } from "./use-pane-report";
-import type { CourseWriter } from "./course-writer";
+import type { VersionedWriter } from "./versioned-writer";
 import type { PaneSaveState } from "./course-builder";
 
 const MIN_TITLE = 3;
@@ -33,8 +33,8 @@ export type CourseDetailsPaneProps = {
     coverImageUrl: string | null;
     isPublic: boolean;
   };
-  /** Shared with every other course write in the builder (see course-writer.ts). */
-  writer: CourseWriter;
+  /** Shared with every other course write in the builder (see versioned-writer.ts). */
+  writer: VersionedWriter;
   readOnly: boolean;
   onStatusChange: (state: PaneSaveState) => void;
 };

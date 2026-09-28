@@ -47,6 +47,10 @@ vi.mock("@/components/confirm-dialog", () => ({ useConfirm: () => m.confirm }));
 
 import { CourseOutline } from "./course-outline";
 import type { BuilderSelection } from "./course-builder";
+import type { RewriteLessons } from "./lesson-versions";
+
+/** The builder's seam for writes that rewrite lessons; here it just runs them. */
+const runDirectly: RewriteLessons = (write) => write();
 
 type Props = Parameters<typeof CourseOutline>[0];
 
@@ -84,6 +88,7 @@ function ui(props: Partial<Props>) {
         modules={modules}
         selection={{ kind: "details" }}
         onSelect={vi.fn()}
+        rewriteLessons={runDirectly}
         readOnly={false}
         {...props}
       />
@@ -530,6 +535,35 @@ describe("CourseOutline", () => {
         courseId: 99,
       }),
     );
+  });
+
+  it("sends every write that rewrites lessons through the builder's seam", async () => {
+    const seamCalls = vi.fn();
+    const rewriteLessons: RewriteLessons = (write) => {
+      seamCalls();
+      return write();
+    };
+    m.reorder.mockResolvedValue({ ok: true, lessons: [] });
+    m.addModule.mockResolvedValue({ id: 30, lessons: [] });
+    m.dissolveModules.mockResolvedValue({ ok: true, lessons: [] });
+    m.confirm.mockResolvedValue(true);
+    renderOutline({ rewriteLessons });
+
+    openRowMenu(1);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move down" }));
+    await act(async () => undefined);
+    expect(seamCalls).toHaveBeenCalledTimes(1);
+    expect(m.reorder).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add module" }));
+    await act(async () => undefined);
+    expect(seamCalls).toHaveBeenCalledTimes(2);
+    expect(m.addModule).toHaveBeenCalledTimes(1);
+
+    openMenu(screen.getByRole("button", { name: "More outline actions" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Remove modules" }));
+    await vi.waitFor(() => expect(m.dissolveModules).toHaveBeenCalledTimes(1));
+    expect(seamCalls).toHaveBeenCalledTimes(3);
   });
 
   it("follows new server data when nothing is in flight", () => {

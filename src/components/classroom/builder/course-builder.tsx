@@ -26,10 +26,14 @@ import type { ChecklistInput } from "@/lib/classroom/publish-checklist";
 import { BuilderTopBar } from "./builder-top-bar";
 import { CourseDetailsPane } from "./course-details-pane";
 import { builderErrorKey } from "./builder-errors";
-import { createCourseWriter } from "./course-writer";
+import { createVersionedWriter } from "./versioned-writer";
 import { CourseOutline } from "./course-outline";
 import { buildOutline, readingOrder } from "./outline-model";
 import { LessonEditorScope } from "./lesson-editor-scope";
+import {
+  createLessonVersionRegistry,
+  type RewriteLessons,
+} from "./lesson-versions";
 import { PublishDialog } from "./publish-dialog";
 import { useUnsavedChangesGuard, type AutosaveStatus } from "./use-autosave";
 import { usePersistedFlag } from "./use-persisted-flag";
@@ -225,7 +229,30 @@ function CourseWorkspace({
   const readOnly = course.status === "archived";
 
   // One writer per workspace mount, seeded with the version this mount loaded.
-  const [writer] = useState(() => createCourseWriter(course.updatedAt));
+  const [writer] = useState(() => createVersionedWriter(course.updatedAt));
+  // The save queues of the lessons being edited, for outline changes that
+  // rewrite lessons (and so give them new versions).
+  const [lessonVersions] = useState(createLessonVersionRegistry);
+  const rewriteLessons = useCallback<RewriteLessons>(
+    async (write) => {
+      const result = await lessonVersions.rewrite(write);
+      const changed = new Map(result.lessons.map((l) => [l.id, l.updatedAt]));
+      // A lesson opened later seeds its writer from the cache: keep it current.
+      utils.classrooms.get.setData({ slug: courseSlug }, (old) =>
+        old
+          ? {
+              ...old,
+              lessons: old.lessons.map((l) => {
+                const updatedAt = changed.get(l.id);
+                return updatedAt === undefined ? l : { ...l, updatedAt };
+              }),
+            }
+          : old,
+      );
+      return result;
+    },
+    [lessonVersions, utils, courseSlug],
+  );
 
   const searchParams = useSearchParams();
   const selection = resolveSelection(searchParams.get("lesson"), lessons);
@@ -474,6 +501,7 @@ function CourseWorkspace({
       selection={selection}
       onSelect={(next) => void navigate(next)}
       onLessonDeleted={markLessonDeleted}
+      rewriteLessons={rewriteLessons}
       readOnly={readOnly}
     />
   );
@@ -557,6 +585,7 @@ function CourseWorkspace({
             lesson={selectedLesson}
             courseSlug={courseSlug}
             readOnly={readOnly}
+            versions={lessonVersions}
             onStatusChange={(state) =>
               reportPane(lessonPaneKey(selectedLesson.id), state)
             }

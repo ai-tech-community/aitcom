@@ -42,6 +42,7 @@ import {
   type OutlineModule,
 } from "./outline-model";
 import { AddLessonRow } from "./add-lesson-row";
+import type { RewriteLessons } from "./lesson-versions";
 import { OutlineModuleHeader } from "./outline-module-header";
 import {
   ActiveMarker,
@@ -107,6 +108,7 @@ export function CourseOutline({
   selection,
   onSelect,
   onLessonDeleted,
+  rewriteLessons,
   readOnly,
 }: {
   courseId: number;
@@ -116,6 +118,12 @@ export function CourseOutline({
   onSelect: (s: BuilderSelection) => void;
   /** Told first when a lesson is deleted, before any selection change. */
   onLessonDeleted?: (lessonId: number) => void;
+  /**
+   * Every write that rewrites lessons (a reorder, the first module's wrap,
+   * removing modules) goes through here, so an open lesson keeps saving on
+   * the version the server gave it (see lesson-versions.ts).
+   */
+  rewriteLessons: RewriteLessons;
   readOnly: boolean;
 }) {
   const t = useTranslations("classroomBuilder");
@@ -179,7 +187,9 @@ export function CourseOutline({
     const ticket = ++lastMove.current;
     setGroups(result.groups);
     try {
-      await reorderLessons.mutateAsync({ courseId, ...result.move });
+      await rewriteLessons(() =>
+        reorderLessons.mutateAsync({ courseId, ...result.move }),
+      );
     } catch (err) {
       fail(err);
       // Put the old order back only if nothing newer is showing; otherwise
@@ -271,7 +281,9 @@ export function CourseOutline({
       modules.map((mod) => mod.title),
     );
     await run(async () => {
-      const { id } = await addModule.mutateAsync({ courseId, title });
+      const { id } = await rewriteLessons(() =>
+        addModule.mutateAsync({ courseId, title }),
+      );
       setRenamingModuleId(id);
     });
   };
@@ -282,7 +294,11 @@ export function CourseOutline({
       confirmLabel: t("removeModules"),
       destructive: true,
     });
-    if (ok) await run(() => dissolveModules.mutateAsync({ courseId }));
+    if (ok) {
+      await run(() =>
+        rewriteLessons(() => dissolveModules.mutateAsync({ courseId })),
+      );
+    }
   };
 
   /** Resolves after the server's copy is back, so the header can stop showing its local value. */

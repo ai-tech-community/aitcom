@@ -506,6 +506,83 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
     });
   });
 
+  describe("lesson versions after outline changes", () => {
+    /** The server's current version of each lesson, by id. */
+    async function storedVersions(courseId: number) {
+      const { docs } = await m.payload.find({
+        collection: "lessons",
+        where: { course: { equals: courseId } },
+        pagination: false,
+        depth: 0,
+      });
+      return new Map(docs.map((l) => [l.id, l.updatedAt]));
+    }
+    const byId = (lessons: { id: number; updatedAt: string }[]) =>
+      new Map(lessons.map((l) => [l.id, l.updatedAt]));
+
+    it("reorderLessons returns the new version of every lesson it rewrote", async () => {
+      const { id: courseId } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      const { id: a } = await api.addLesson({ courseId, title: "A" });
+      const { id: b } = await api.addLesson({ courseId, title: "B" });
+      const result = await api.reorderLessons({
+        courseId,
+        moduleId: null,
+        orderedIds: [b, a],
+      });
+      expect(result.ok).toBe(true);
+      expect(byId(result.lessons)).toEqual(await storedVersions(courseId));
+      // The returned version is accepted by the next lesson save.
+      await expect(
+        api.updateLesson({
+          lessonId: a,
+          title: "A2",
+          expectedUpdatedAt: byId(result.lessons).get(a),
+        }),
+      ).resolves.toMatchObject({ ok: true });
+    });
+
+    it("addModule returns the lessons its first-module wrap rewrote, and none later", async () => {
+      const { id: courseId } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      await api.addLesson({ courseId, title: "A" });
+      await api.addLesson({ courseId, title: "B" });
+      const first = await api.addModule({ courseId, title: "M1" });
+      expect(typeof first.id).toBe("number");
+      expect(byId(first.lessons)).toEqual(await storedVersions(courseId));
+      const second = await api.addModule({ courseId, title: "M2" });
+      expect(second.lessons).toEqual([]);
+    });
+
+    it("dissolveModules returns the new version of every lesson", async () => {
+      const { id: courseId } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      await api.addLesson({ courseId, title: "A" });
+      await api.addLesson({ courseId, title: "B" });
+      await api.addModule({ courseId, title: "M1" });
+      const result = await api.dissolveModules({ courseId });
+      expect(result.ok).toBe(true);
+      expect(result.lessons).toHaveLength(2);
+      expect(byId(result.lessons)).toEqual(await storedVersions(courseId));
+    });
+
+    it("assignLessonToModule returns the moved lesson's new version", async () => {
+      const { id: courseId } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      const { id: lessonId } = await api.addLesson({ courseId, title: "A" });
+      await api.addModule({ courseId, title: "M1" });
+      const { id: m2 } = await api.addModule({ courseId, title: "M2" });
+      const result = await api.assignLessonToModule({
+        lessonId,
+        moduleId: m2,
+      });
+      expect(result.ok).toBe(true);
+      expect(result.lessons).toEqual([
+        { id: lessonId, updatedAt: (await storedVersions(courseId)).get(lessonId) },
+      ]);
+    });
+  });
+
   describe("archived course", () => {
     it("refuses every module change", async () => {
       const { id: courseId } = await createViaApi();

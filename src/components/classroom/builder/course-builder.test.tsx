@@ -18,7 +18,10 @@ const trpc = vi.hoisted(() => ({
   updateLesson: vi.fn(),
   deleteLesson: vi.fn(),
   invalidate: vi.fn(),
+  setData: vi.fn(),
   toastError: vi.fn(),
+  // The outline's writes, by procedure name.
+  outline: {} as Record<string, ReturnType<typeof vi.fn>>,
 }));
 
 vi.mock("sonner", () => ({ toast: { error: trpc.toastError } }));
@@ -26,7 +29,9 @@ vi.mock("sonner", () => ({ toast: { error: trpc.toastError } }));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
-      classrooms: { get: { invalidate: trpc.invalidate, setData: vi.fn() } },
+      classrooms: {
+        get: { invalidate: trpc.invalidate, setData: trpc.setData },
+      },
     }),
     classrooms: {
       get: { useQuery: () => trpc.query },
@@ -51,16 +56,19 @@ vi.mock("@/trpc/react", () => ({
           "reorderModules",
           "deleteModule",
           "dissolveModules",
-        ].map((name) => [
-          name,
-          {
-            useMutation: () => ({
-              mutate: vi.fn(),
-              mutateAsync: vi.fn(),
-              isPending: false,
-            }),
-          },
-        ]),
+        ].map((name) => {
+          trpc.outline[name] = vi.fn();
+          return [
+            name,
+            {
+              useMutation: () => ({
+                mutate: vi.fn(),
+                mutateAsync: trpc.outline[name],
+                isPending: false,
+              }),
+            },
+          ];
+        }),
       ),
     },
   },
@@ -748,5 +756,154 @@ describe("CourseBuilder lesson editing", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("CourseBuilder lesson versions after outline changes", () => {
+  const T0 = "2026-01-01T00:00:00.000Z";
+  const T5 = "2026-01-01T00:00:05.000Z";
+  const T6 = "2026-01-01T00:00:06.000Z";
+  const flatCourse = {
+    ...courseData,
+    lessons: [
+      { id: 21, title: "Welcome", module: null, order: 0, updatedAt: T0 },
+      { id: 22, title: "Second", module: null, order: 1, updatedAt: T0 },
+    ],
+  };
+
+  beforeEach(() => {
+    trpc.updateLesson.mockReset();
+    trpc.updateLesson.mockResolvedValue({ ok: true, updatedAt: T6 });
+    trpc.setData.mockReset();
+    trpc.toastError.mockReset();
+    for (const fn of Object.values(trpc.outline)) fn.mockReset();
+    window.history.replaceState(null, "", "/?lesson=21");
+  });
+
+  function loaded(data: unknown) {
+    trpc.query = {
+      data,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  }
+
+  /** Edit the open lesson's title, then save it by opening course details. */
+  async function editAndSave(title: string) {
+    fireEvent.change(screen.getByLabelText("Lesson title"), {
+      target: { value: title },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Course details" }));
+    });
+  }
+
+  /** The cache update for lesson versions, applied to `data`. */
+  function cachedVersions(data: typeof flatCourse) {
+    const versionUpdates = trpc.setData.mock.calls
+      .map(([, update]) => (update as (old: unknown) => typeof flatCourse)(data))
+      .map((next) => next.lessons.map((l) => [l.id, l.updatedAt]));
+    return versionUpdates.at(-1);
+  }
+
+  it("saves the open lesson with the version its reorder gave it", async () => {
+    loaded(flatCourse);
+    trpc.outline.reorderLessons!.mockResolvedValueOnce({
+      ok: true,
+      lessons: [
+        { id: 22, updatedAt: T5 },
+        { id: 21, updatedAt: T5 },
+      ],
+    });
+    renderBuilder();
+    fireEvent.keyDown(
+      within(screen.getByTestId("outline-lesson-21")).getByRole("button", {
+        name: /^Actions for /,
+      }),
+      { key: "Enter" },
+    );
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("menuitem", { name: "Move down" }));
+    });
+    expect(trpc.outline.reorderLessons).toHaveBeenCalledWith({
+      courseId: 7,
+      moduleId: null,
+      orderedIds: [22, 21],
+    });
+    // A lesson opened later starts from the new version too.
+    expect(cachedVersions(flatCourse)).toEqual([
+      [21, T5],
+      [22, T5],
+    ]);
+
+    await editAndSave("Welcome, everyone");
+    expect(trpc.updateLesson).toHaveBeenCalledTimes(1);
+    expect(trpc.updateLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ lessonId: 21, expectedUpdatedAt: T5 }),
+    );
+    expect(screen.queryByText(/changed somewhere else/)).toBeNull();
+  });
+
+  it("saves the open lesson with the version grouping into modules gave it", async () => {
+    loaded(flatCourse);
+    trpc.outline.addModule!.mockResolvedValueOnce({
+      id: 30,
+      lessons: [
+        { id: 21, updatedAt: T5 },
+        { id: 22, updatedAt: T5 },
+      ],
+    });
+    renderBuilder();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Group lessons into modules" }),
+      );
+    });
+    expect(trpc.outline.addModule).toHaveBeenCalledTimes(1);
+
+    await editAndSave("Welcome, everyone");
+    expect(trpc.updateLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ lessonId: 21, expectedUpdatedAt: T5 }),
+    );
+  });
+
+  it("saves the open lesson with the version removing modules gave it", async () => {
+    loaded({
+      ...flatCourse,
+      modules: [{ id: 30, title: "Module 1", order: 0 }],
+      lessons: flatCourse.lessons.map((l) => ({ ...l, module: 30 })),
+    });
+    trpc.outline.dissolveModules!.mockResolvedValueOnce({
+      ok: true,
+      lessons: [
+        { id: 21, updatedAt: T5 },
+        { id: 22, updatedAt: T5 },
+      ],
+    });
+    renderBuilder();
+    fireEvent.keyDown(
+      screen.getByRole("button", { name: "More outline actions" }),
+      { key: "Enter" },
+    );
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByRole("menuitem", { name: "Remove modules" }),
+      );
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", {
+          name: "Remove modules",
+        }),
+      );
+    });
+    expect(trpc.outline.dissolveModules).toHaveBeenCalledWith({ courseId: 7 });
+
+    await editAndSave("Welcome, everyone");
+    expect(trpc.updateLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ lessonId: 21, expectedUpdatedAt: T5 }),
+    );
   });
 });

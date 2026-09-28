@@ -3,7 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import en from "../../../../messages/en.json";
-import { createCourseWriter } from "./course-writer";
+import { createVersionedWriter } from "./versioned-writer";
 import type { PaneSaveState } from "./course-builder";
 
 const trpc = vi.hoisted(() => ({
@@ -41,7 +41,7 @@ function renderPane(readOnly = false) {
     <NextIntlClientProvider locale="en" messages={en}>
       <CourseDetailsPane
         course={course}
-        writer={createCourseWriter(T0)}
+        writer={createVersionedWriter(T0)}
         readOnly={readOnly}
         onStatusChange={onStatusChange}
       />

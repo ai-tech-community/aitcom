@@ -136,6 +136,20 @@ async function issueCertificateIfComplete(
   }
 }
 
+/**
+ * A lesson's version after a write. Outline changes (reorder, module wrap,
+ * dissolve, move) rewrite lessons, and Payload stamps a new updatedAt on each;
+ * returning the new versions lets an editor that has one of those lessons
+ * open keep saving it without being refused as stale (LESSON_CHANGED).
+ */
+type LessonVersion = { id: number; updatedAt: string };
+
+function lessonVersions(
+  docs: readonly { id: number; updatedAt: string }[],
+): LessonVersion[] {
+  return docs.map((doc) => ({ id: doc.id, updatedAt: doc.updatedAt }));
+}
+
 /** Every Embed block in a lesson body must resolve to a known provider. */
 function assertLessonBodyEmbeds(body: unknown): void {
   if (body === undefined || body === null) return;
@@ -825,17 +839,19 @@ export const classroomsRouter = createTRPCRouter({
 
         // First module on a flat course: wrap all existing lessons into it,
         // preserving their order.
+        let wrapped: LessonVersion[] = [];
         if (moduleCount === 0) {
-          await payload.update({
+          const { docs } = await payload.update({
             collection: "lessons",
             where: { course: { equals: input.courseId } },
             data: { module: moduleDoc.id },
             req,
           });
+          wrapped = lessonVersions(docs);
         }
 
         if (transactionID) await payload.db.commitTransaction(transactionID);
-        return { id: moduleDoc.id };
+        return { id: moduleDoc.id, lessons: wrapped };
       } catch (error) {
         if (transactionID) await payload.db.rollbackTransaction(transactionID);
         throw error;
@@ -987,12 +1003,12 @@ export const classroomsRouter = createTRPCRouter({
         depth: 0,
       });
 
-      await payload.update({
+      const moved = await payload.update({
         collection: "lessons",
         id: input.lessonId,
         data: { module: input.moduleId, order: (last[0]?.order ?? -1) + 1 },
       });
-      return { ok: true };
+      return { ok: true, lessons: lessonVersions([moved]) };
     }),
 
   /**
@@ -1044,7 +1060,7 @@ export const classroomsRouter = createTRPCRouter({
       const { docs: lessons } = await payload.find({
         collection: "lessons",
         where: { course: { equals: input.courseId } },
-        limit: 1000,
+        pagination: false,
         depth: 0,
       });
       const courseLessonIds = new Set(lessons.map((l) => l.id));
@@ -1067,21 +1083,23 @@ export const classroomsRouter = createTRPCRouter({
       // order values or a lesson stranded between modules.
       const transactionID = await payload.db.beginTransaction();
       const req = transactionID ? { transactionID } : undefined;
+      const rewritten: LessonVersion[] = [];
       try {
         for (let i = 0; i < input.orderedIds.length; i++) {
-          await payload.update({
+          const lesson = await payload.update({
             collection: "lessons",
             id: input.orderedIds[i]!,
             data: { order: i, module: input.moduleId },
             req,
           });
+          rewritten.push(...lessonVersions([lesson]));
         }
         if (transactionID) await payload.db.commitTransaction(transactionID);
       } catch (error) {
         if (transactionID) await payload.db.rollbackTransaction(transactionID);
         throw error;
       }
-      return { ok: true };
+      return { ok: true, lessons: rewritten };
     }),
 
   /** Delete a module — only when empty (move its lessons out first). */
@@ -1143,13 +1161,15 @@ export const classroomsRouter = createTRPCRouter({
       // course's content.
       const transactionID = await payload.db.beginTransaction();
       const req = transactionID ? { transactionID } : undefined;
+      let unwrapped: LessonVersion[];
       try {
-        await payload.update({
+        const { docs } = await payload.update({
           collection: "lessons",
           where: { course: { equals: input.courseId } },
           data: { module: null },
           req,
         });
+        unwrapped = lessonVersions(docs);
 
         await payload.delete({
           collection: "modules",
@@ -1162,7 +1182,7 @@ export const classroomsRouter = createTRPCRouter({
         if (transactionID) await payload.db.rollbackTransaction(transactionID);
         throw error;
       }
-      return { ok: true };
+      return { ok: true, lessons: unwrapped };
     }),
 
   /** Enroll the caller in a published course; awards the author enrollment XP. */
