@@ -147,7 +147,7 @@ export function ExamEditor({
                 <div key={oi} className="flex items-center gap-2 pl-6">
                   <input
                     type="radio"
-                    name={`correct-${q.id}`}
+                    name={`${uid}-correct-${q.id}`}
                     checked={q.correctIndex === oi}
                     onChange={() => setQuestion(i, { ...q, correctIndex: oi })}
                     disabled={disabled}
