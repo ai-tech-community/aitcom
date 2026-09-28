@@ -17,6 +17,7 @@ const trpc = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
   updateLesson: vi.fn(),
   deleteLesson: vi.fn(),
+  invalidate: vi.fn(),
   toastError: vi.fn(),
 }));
 
@@ -25,7 +26,7 @@ vi.mock("sonner", () => ({ toast: { error: trpc.toastError } }));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
-      classrooms: { get: { invalidate: vi.fn(), setData: vi.fn() } },
+      classrooms: { get: { invalidate: trpc.invalidate, setData: vi.fn() } },
     }),
     classrooms: {
       get: { useQuery: () => trpc.query },
@@ -301,9 +302,31 @@ describe("CourseBuilder publish and preview guard", () => {
     });
     expect(screen.getByLabelText("Course title")).toBeVisible();
     expect(screen.getByLabelText("Edit")).toBeChecked();
+    expect(trpc.invalidate).not.toHaveBeenCalled();
     expect(trpc.toastError).toHaveBeenCalledWith(
       en.classroomBuilder.finishSavingFirst,
     );
+  });
+
+  it("refetches the course before showing Preview, so it shows the saved quiz", async () => {
+    trpc.invalidate.mockReset();
+    let refetched!: () => void;
+    trpc.invalidate.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        refetched = resolve;
+      }),
+    );
+    renderBuilder();
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Preview"));
+    });
+    expect(trpc.invalidate).toHaveBeenCalledWith({ slug: "intro-1" });
+    // Preview waits for the fresh data.
+    expect(screen.getByLabelText("Edit")).toBeChecked();
+    await act(async () => {
+      refetched();
+    });
+    expect(screen.getByLabelText("Preview")).toBeChecked();
   });
 
   it("publishes once pending details are saved", async () => {
@@ -631,6 +654,76 @@ describe("CourseBuilder lesson editing", () => {
     expect(trpc.deleteLesson).toHaveBeenCalledWith({ lessonId: 21 });
     expect(openedLesson()).toBe("22");
     expect(trpc.updateLesson).not.toHaveBeenCalled();
+  });
+
+  it("after deleting the open lesson, opens the next one in reading order", async () => {
+    // Stored order differs from reading order: module 1 reads first.
+    trpc.query = {
+      ...trpc.query,
+      data: {
+        ...courseData,
+        modules: [
+          { id: 1, title: "Start", order: 0 },
+          { id: 2, title: "Later", order: 1 },
+        ],
+        lessons: [
+          {
+            id: 21,
+            title: "A",
+            module: 1,
+            order: 0,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+          {
+            id: 31,
+            title: "B",
+            module: 2,
+            order: 0,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+          {
+            id: 22,
+            title: "C",
+            module: 1,
+            order: 1,
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      },
+    };
+    trpc.deleteLesson.mockResolvedValueOnce({ ok: true });
+    renderBuilder();
+    const settings = screen.getByRole("complementary", {
+      name: "Lesson settings",
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(settings).getByRole("button", { name: "Delete lesson" }),
+      );
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", {
+          name: "Delete lesson",
+        }),
+      );
+    });
+    expect(openedLesson()).toBe("22");
+  });
+
+  it("says the lesson changed elsewhere when its save is refused as stale", async () => {
+    trpc.updateLesson.mockRejectedValueOnce(new Error("LESSON_CHANGED"));
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Lesson title"), {
+      target: { value: "Welcome, everyone" },
+    });
+    await act(async () => {
+      fireEvent.click(outlineRow(22));
+    });
+    expect(openedLesson()).toBe("21");
+    expect(
+      screen.getByText(en.classroomBuilder.errorLessonChangedElsewhere),
+    ).toBeInTheDocument();
   });
 
   it("remembers whether the settings column is hidden", () => {

@@ -24,6 +24,8 @@ export type BuilderTopBarProps = {
   status: CourseStatus;
   isPublic: boolean;
   saveStatus: AutosaveStatus;
+  /** What the conflict banner says changed elsewhere. Default: the course. */
+  conflictKey?: "errorChangedElsewhere" | "errorLessonChangedElsewhere";
   savedAt: Date | null;
   onRetry: () => void;
   /** Conflict recovery: reload the course from the server. */
@@ -48,6 +50,7 @@ export function BuilderTopBar({
   status,
   isPublic,
   saveStatus,
+  conflictKey = "errorChangedElsewhere",
   savedAt,
   onRetry,
   onReload,
@@ -150,7 +153,7 @@ export function BuilderTopBar({
             className="text-destructive size-4 shrink-0"
             aria-hidden="true"
           />
-          <p className="min-w-0 flex-1">{t("errorChangedElsewhere")}</p>
+          <p className="min-w-0 flex-1">{t(conflictKey)}</p>
           <Button type="button" variant="outline" size="sm" onClick={onReload}>
             {t("reload")}
           </Button>

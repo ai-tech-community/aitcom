@@ -372,6 +372,52 @@ describe("LessonSettingsPane", () => {
     expect(screen.queryByLabelText("Link 1 name")).toBeNull();
   });
 
+  it("asks for the address when a link has only a name", () => {
+    renderScope({ lessonId: 1, title: "One" });
+    fireEvent.click(screen.getByRole("button", { name: "Add a link" }));
+    fireEvent.change(screen.getByLabelText("Link 1 name"), {
+      target: { value: "Slides" },
+    });
+    expect(screen.getByLabelText("Link 1 address")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByLabelText("Link 1 address")).toHaveAccessibleDescription(
+      en.classroomBuilder.resourceUrlMissing,
+    );
+  });
+
+  it("counts a half-typed link as unsaved work, even after the rest saved", async () => {
+    const { onStatusChange } = renderScope({ lessonId: 1, title: "One" });
+    fireEvent.click(screen.getByRole("button", { name: "Add a link" }));
+    // A fully blank new row is not work yet.
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(lastState(onStatusChange)?.status).not.toBe("dirty");
+    fireEvent.change(screen.getByLabelText("Link 1 name"), {
+      target: { value: "Slides" },
+    });
+    fireEvent.change(screen.getByLabelText("Lesson title"), {
+      target: { value: "One edited" },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(trpc.updateLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "One edited", resources: [] }),
+    );
+    expect(lastState(onStatusChange)?.status).toBe("dirty");
+    expect(await lastState(onStatusChange)!.flush()).toBe("dirty");
+    // Completing the link makes it savable, and the pane settles.
+    fireEvent.change(screen.getByLabelText("Link 1 address"), {
+      target: { value: "https://example.com/slides" },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(trpc.updateLesson).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        resources: [{ label: "Slides", url: "https://example.com/slides" }],
+      }),
+    );
+    expect(lastState(onStatusChange)?.status).toBe("saved");
+  });
+
   it("deletes the lesson after the same confirm as the outline", async () => {
     trpc.deleteLesson.mockResolvedValueOnce({ ok: true });
     const { onDeleted } = renderScope({ lessonId: 1, title: "One" });

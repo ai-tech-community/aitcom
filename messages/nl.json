@@ -3299,6 +3299,8 @@
     "quizSection": "QUIZ",
     "addQuiz": "Quiz toevoegen",
     "addQuizHint": "Kijk met een paar vragen aan het eind van de les wat cursisten hebben begrepen.",
-    "noQuiz": "Deze les heeft geen quiz."
+    "noQuiz": "Deze les heeft geen quiz.",
+    "errorLessonChangedElsewhere": "Deze les is ergens anders gewijzigd, misschien in een ander tabblad. Laad opnieuw om de nieuwste versie te zien.",
+    "resourceUrlMissing": "Voeg het adres van de link toe. We slaan hem op zodra hij er een heeft."
   }
 }

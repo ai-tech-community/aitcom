@@ -12,7 +12,7 @@ import { builderErrorKey, type BuilderErrorKey } from "./builder-errors";
 import type { PaneSaveState } from "./course-builder";
 import { LessonPane, type LessonDraft } from "./lesson-pane";
 import { LessonSettingsPane } from "./lesson-settings-pane";
-import { savableResources } from "./resources-editor";
+import { hasUnsavableResources, savableResources } from "./resources-editor";
 import { CONFLICT_CODES, useAutosave } from "./use-autosave";
 import { usePaneReport } from "./use-pane-report";
 
@@ -160,10 +160,12 @@ export function LessonEditorScope({
     save,
     enabled: !readOnly && titleValid,
   });
-  // Saving pauses while the title is blank; that draft is still unsaved work.
+  // Saving pauses while the title is blank, and a half-typed link is left
+  // out of each save. Both are still unsaved work: report them as such.
   usePaneReport({
     autosave,
-    paused: !readOnly && !titleValid,
+    paused:
+      !readOnly && (!titleValid || hasUnsavableResources(draft.resources)),
     onStatusChange,
   });
 

@@ -77,6 +77,16 @@ describe("BuilderTopBar", () => {
     expect(props.onReload).toHaveBeenCalledTimes(1);
   });
 
+  it("says it was the lesson that changed when only the lesson conflicts", () => {
+    renderBar({
+      saveStatus: "conflict",
+      conflictKey: "errorLessonChangedElsewhere",
+    });
+    expect(
+      screen.getByText(en.classroomBuilder.errorLessonChangedElsewhere),
+    ).toBeInTheDocument();
+  });
+
   it("offers a retry after a failed save", () => {
     const props = renderBar({ saveStatus: "error" });
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));

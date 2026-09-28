@@ -28,6 +28,7 @@ import { CourseDetailsPane } from "./course-details-pane";
 import { builderErrorKey } from "./builder-errors";
 import { createCourseWriter } from "./course-writer";
 import { CourseOutline } from "./course-outline";
+import { buildOutline, readingOrder } from "./outline-model";
 import { LessonEditorScope } from "./lesson-editor-scope";
 import { PublishDialog } from "./publish-dialog";
 import { useUnsavedChangesGuard, type AutosaveStatus } from "./use-autosave";
@@ -331,23 +332,31 @@ function CourseWorkspace({
   const lessonDeletedHere = useCallback(
     (lessonId: number) => {
       markLessonDeleted(lessonId);
-      const index = lessons.findIndex((l) => l.id === lessonId);
-      const next = lessons[index + 1];
+      // Same rule as deleting from the outline: the next lesson in reading order.
+      const order = readingOrder(buildOutline(lessons, modules));
+      const next = order[order.indexOf(lessonId) + 1];
       select(
-        next ? { kind: "lesson", lessonId: next.id } : { kind: "details" },
+        next === undefined
+          ? { kind: "details" }
+          : { kind: "lesson", lessonId: next },
       );
       void utils.classrooms.get.invalidate({ slug: courseSlug });
     },
-    [lessons, markLessonDeleted, select, utils, courseSlug],
+    [lessons, modules, markLessonDeleted, select, utils, courseSlug],
   );
 
   const [settingsCollapsed, setSettingsCollapsed] = usePersistedFlag(
     SETTINGS_COLLAPSED_KEY,
   );
 
-  const save = combineSaveStates(
-    activePanes(paneStates, selection).map(([, state]) => state),
-  );
+  const panes = activePanes(paneStates, selection);
+  const save = combineSaveStates(panes.map(([, state]) => state));
+  // Name what changed elsewhere: only the open lesson, or the course itself.
+  const conflictKey = panes.every(
+    ([key, state]) => state.status !== "conflict" || key.startsWith("lesson:"),
+  )
+    ? "errorLessonChangedElsewhere"
+    : "errorChangedElsewhere";
   useUnsavedChangesGuard(UNSAFE.has(save.status));
 
   const [statusChanging, setStatusChanging] = useState(false);
@@ -442,7 +451,13 @@ function CourseWorkspace({
   );
 
   const togglePreview = async () => {
-    if (!previewing && !(await saveAllFirst())) return;
+    if (!previewing) {
+      if (!(await saveAllFirst())) return;
+      // Lesson saves write their own fields into the cache, but not the
+      // server-derived parts Preview reads (the quiz summary). Refetch so
+      // Preview shows what was just saved. Safe: editing panes seed once.
+      await utils.classrooms.get.invalidate({ slug: courseSlug });
+    }
     setPreviewing((p) => !p);
   };
 
@@ -472,6 +487,7 @@ function CourseWorkspace({
         status={course.status}
         isPublic={!!course.isPublic}
         saveStatus={save.status}
+        conflictKey={conflictKey}
         savedAt={save.savedAt}
         onRetry={() => void save.retry()}
         onReload={() => void onReload()}

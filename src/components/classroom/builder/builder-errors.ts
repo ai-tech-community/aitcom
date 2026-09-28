@@ -4,7 +4,7 @@
  */
 const KEYS = {
   COURSE_CHANGED: "errorChangedElsewhere",
-  LESSON_CHANGED: "errorChangedElsewhere",
+  LESSON_CHANGED: "errorLessonChangedElsewhere",
   COURSE_ARCHIVED: "errorArchived",
   MODULE_NOT_EMPTY: "errorModuleNotEmpty",
   LESSON_SET_MISMATCH: "errorOutlineOutOfDate",

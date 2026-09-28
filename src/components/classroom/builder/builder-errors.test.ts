@@ -4,7 +4,7 @@ import { builderErrorKey } from "./builder-errors";
 describe("builderErrorKey", () => {
   it.each([
     ["COURSE_CHANGED", "errorChangedElsewhere"],
-    ["LESSON_CHANGED", "errorChangedElsewhere"],
+    ["LESSON_CHANGED", "errorLessonChangedElsewhere"],
     ["COURSE_ARCHIVED", "errorArchived"],
     ["MODULE_NOT_EMPTY", "errorModuleNotEmpty"],
     ["LESSON_SET_MISMATCH", "errorOutlineOutOfDate"],

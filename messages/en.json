@@ -3299,6 +3299,8 @@
     "quizSection": "QUIZ",
     "addQuiz": "Add a quiz",
     "addQuizHint": "Check what learners understood with a few questions at the end of the lesson.",
-    "noQuiz": "This lesson has no quiz."
+    "noQuiz": "This lesson has no quiz.",
+    "errorLessonChangedElsewhere": "This lesson changed somewhere else, maybe in another tab. Reload to get the latest version.",
+    "resourceUrlMissing": "Add the link's address. We'll save it once it has one."
   }
 }

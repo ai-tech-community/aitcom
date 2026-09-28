@@ -32,6 +32,19 @@ export function savableResources(rows: readonly ResourceRow[]): ResourceRow[] {
     .filter((r) => r.label && isResourceUrl(r.url));
 }
 
+/**
+ * True while a row the author started (not left fully blank) cannot be saved
+ * yet. That row is unsaved work: the pane reports it as such so the leave
+ * guard and the publish/switch checks see it.
+ */
+export function hasUnsavableResources(rows: readonly ResourceRow[]): boolean {
+  return rows.some(
+    (r) =>
+      (r.label.trim() !== "" || r.url.trim() !== "") &&
+      !(r.label.trim() && isResourceUrl(r.url)),
+  );
+}
+
 /** Row-based editor for a lesson's links ({label, url}). */
 export function ResourcesEditor({
   resources,
@@ -59,11 +72,15 @@ export function ResourcesEditor({
         const hintId = `${uid}-hint-${i}`;
         const urlInvalid = row.url.trim() !== "" && !isResourceUrl(row.url);
         const nameMissing = row.url.trim() !== "" && row.label.trim() === "";
+        const urlMissing = row.label.trim() !== "" && row.url.trim() === "";
+        const urlProblem = urlInvalid || urlMissing;
         const hint = urlInvalid
           ? t("resourceUrlInvalid")
-          : nameMissing
-            ? t("resourceNameMissing")
-            : null;
+          : urlMissing
+            ? t("resourceUrlMissing")
+            : nameMissing
+              ? t("resourceNameMissing")
+              : null;
         return (
           <div
             key={i}
@@ -110,8 +127,8 @@ export function ResourcesEditor({
               placeholder={t("resourceUrlPlaceholder")}
               maxLength={500}
               disabled={disabled}
-              aria-invalid={(!disabled && urlInvalid) || undefined}
-              aria-describedby={hint && urlInvalid ? hintId : undefined}
+              aria-invalid={(!disabled && urlProblem) || undefined}
+              aria-describedby={hint && urlProblem ? hintId : undefined}
             />
             {hint && !disabled ? (
               <p id={hintId} className="text-destructive text-sm">
