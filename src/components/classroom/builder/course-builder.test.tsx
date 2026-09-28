@@ -1297,6 +1297,16 @@ describe("CourseBuilder course files", () => {
     );
   });
 
+  it("points an author who may upload but has no files yet at uploading", () => {
+    load({ viewerCanUpload: true });
+    renderBuilder();
+    expect(
+      within(
+        screen.getByRole("region", { name: en.classroom.files.panelTitle }),
+      ).getByText(en.classroom.files.panelEmpty),
+    ).toBeInTheDocument();
+  });
+
   it("still lists existing files after upload rights were taken away", () => {
     trpc.courseFiles = [workbook];
     load({ viewerCanUpload: false });

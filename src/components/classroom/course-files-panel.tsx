@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -179,10 +180,10 @@ export function CourseFilesPanel({
 
   return (
     <section className="space-y-3" aria-labelledby={titleId}>
-      <div className="space-y-1">
-        <h2 id={titleId} className="text-base font-semibold">
+      <div className="space-y-2">
+        <SectionLabel as="h3" id={titleId}>
           {t("panelTitle")}
-        </h2>
+        </SectionLabel>
         <p className="text-muted-foreground text-sm">{t("panelHelp")}</p>
         <p className="text-muted-foreground text-xs">{t("previewHelp")}</p>
       </div>
