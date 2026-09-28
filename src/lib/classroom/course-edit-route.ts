@@ -27,7 +27,7 @@ export function courseEditRoute({
   const coursePage = `/communities/${home}/classroom/${courseSlug}`;
   // Not the author (or no such course): the course page, never a builder
   // that would fail on the first save. The server mutations stay the backstop.
-  if (!course || course.authorId !== userId) {
+  if (course?.authorId !== userId) {
     return { kind: "redirect", path: coursePage };
   }
   if (home !== communitySlug) {
