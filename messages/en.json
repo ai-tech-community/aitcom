@@ -3174,6 +3174,7 @@
     "errorNotAllowed": "Only the course author can do this.",
     "errorGeneric": "Something went wrong. Try again.",
     "errorCannotCreateCourse": "You can't start a course in this community yet. Ask an organiser if you'd like to teach here.",
+    "errorPublishChecksFailed": "This course isn't ready to go live yet. Reload the page to see what still needs work.",
     "finishSavingFirst": "Some changes aren't saved yet. Fix what the editor shows, then try again.",
     "addLessonPlaceholder": "Add a lesson…",
     "addLessonLabel": "New lesson title",

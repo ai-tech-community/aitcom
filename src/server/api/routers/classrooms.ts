@@ -43,6 +43,7 @@ import {
   assertLessonMaterials,
   loadMaterialsManifest,
 } from "@/server/classroom/lesson-materials";
+import { canPublish, publishChecks } from "@/lib/classroom/publish-checklist";
 
 /** Resolve community id + the caller's active role (null if not an active member). */
 async function resolveCommunityAndRole(
@@ -148,6 +149,50 @@ function lessonVersions(
   docs: readonly { id: number; updatedAt: string }[],
 ): LessonVersion[] {
   return docs.map((doc) => ({ id: doc.id, updatedAt: doc.updatedAt }));
+}
+
+/**
+ * A course goes live only when every blocking publish check passes — the same
+ * rules the builder's publish dialog shows, so an old tab or a direct API
+ * call cannot publish an empty course.
+ */
+async function assertPublishable(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  course: { id: number; title: string; coverImageUrl?: string | null },
+): Promise<void> {
+  const [{ docs: lessons }, { docs: modules }] = await Promise.all([
+    payload.find({
+      collection: "lessons",
+      where: { course: { equals: course.id } },
+      pagination: false,
+      depth: 0,
+    }),
+    payload.find({
+      collection: "modules",
+      where: { course: { equals: course.id } },
+      pagination: false,
+      depth: 0,
+    }),
+  ]);
+  const checks = publishChecks({
+    title: course.title,
+    coverImageUrl: course.coverImageUrl ?? null,
+    lessons: lessons.map((l) => ({
+      id: l.id,
+      title: l.title,
+      module: relationId(l.module),
+      body: l.body,
+      resources: l.resources,
+      examQuestions: l.examQuestions,
+    })),
+    modules: modules.map((mod) => ({ id: mod.id, title: mod.title })),
+  });
+  if (!canPublish(checks)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "PUBLISH_CHECKS_FAILED",
+    });
+  }
 }
 
 /** Every Embed block in a lesson body must resolve to a known provider. */
@@ -525,6 +570,16 @@ export const classroomsRouter = createTRPCRouter({
         input.status !== undefined && input.status !== course.status;
       if (statusChanges && course.status === "archived") {
         throw new TRPCError({ code: "FORBIDDEN", message: "COURSE_ARCHIVED" });
+      }
+      if (statusChanges && input.status === "published") {
+        await assertPublishable(payload, {
+          id: course.id,
+          title: input.title ?? course.title,
+          coverImageUrl:
+            input.coverImageUrl !== undefined
+              ? input.coverImageUrl
+              : course.coverImageUrl,
+        });
       }
 
       const data: Record<string, unknown> = {};

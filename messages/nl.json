@@ -3174,6 +3174,7 @@
     "errorNotAllowed": "Alleen de auteur van de cursus kan dit doen.",
     "errorGeneric": "Er ging iets mis. Probeer het opnieuw.",
     "errorCannotCreateCourse": "Je kunt in deze community nog geen cursus beginnen. Vraag een organisator als je hier wilt lesgeven.",
+    "errorPublishChecksFailed": "Deze cursus is nog niet klaar om live te gaan. Laad de pagina opnieuw om te zien wat er nog moet gebeuren.",
     "finishSavingFirst": "Sommige wijzigingen zijn nog niet opgeslagen. Los op wat de editor laat zien en probeer het dan opnieuw.",
     "addLessonPlaceholder": "Voeg een les toe…",
     "addLessonLabel": "Titel van de nieuwe les",

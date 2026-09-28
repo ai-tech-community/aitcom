@@ -124,6 +124,17 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
     return res;
   }
 
+  /** A draft that passes every blocking publish check. */
+  async function createPublishable(title = "Builder course") {
+    const res = await createViaApi(title);
+    await callerAs(fx.authorId).classrooms.addLesson({
+      courseId: res.id,
+      title: "Welcome",
+      resources: [{ label: "Docs", url: "https://example.com/docs" }],
+    });
+    return res;
+  }
+
   describe("course status", () => {
     it("creates new courses as drafts by default", async () => {
       const { id } = await createViaApi();
@@ -203,7 +214,7 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
 
     it("logs course.published once when a draft is published", async () => {
       const { eq, and } = await import("drizzle-orm");
-      const { id } = await createViaApi();
+      const { id } = await createPublishable();
       const publishedRows = () =>
         m.db
           .select()
@@ -225,6 +236,72 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
         status: "published",
       });
       expect(await publishedRows()).toHaveLength(1);
+    });
+  });
+
+  describe("publish checklist on the server", () => {
+    const refused = { code: "BAD_REQUEST", message: "PUBLISH_CHECKS_FAILED" };
+    const statusOf = async (id: number) =>
+      (await m.payload.findByID({ collection: "courses", id, depth: 0 }))
+        .status;
+
+    it("refuses to publish a course with no lessons", async () => {
+      const { id } = await createViaApi();
+      await expect(
+        callerAs(fx.authorId).classrooms.update({
+          courseId: id,
+          status: "published",
+        }),
+      ).rejects.toMatchObject(refused);
+      expect(await statusOf(id)).toBe("draft");
+    });
+
+    it("refuses to publish a course with an empty lesson or an empty module", async () => {
+      const { id } = await createPublishable();
+      const api = callerAs(fx.authorId).classrooms;
+      const { id: blank } = await api.addLesson({ courseId: id, title: "Blank" });
+      await expect(
+        api.update({ courseId: id, status: "published" }),
+      ).rejects.toMatchObject(refused);
+      await api.deleteLesson({ lessonId: blank });
+      await api.addModule({ courseId: id, title: "M1" });
+      await api.addModule({ courseId: id, title: "Empty" });
+      await expect(
+        api.update({ courseId: id, status: "published" }),
+      ).rejects.toMatchObject(refused);
+      expect(await statusOf(id)).toBe("draft");
+    });
+
+    it("refuses a quiz question without a valid answer", async () => {
+      const { id } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      await api.addLesson({
+        courseId: id,
+        title: "Quiz",
+        examQuestions: [
+          {
+            id: "q1",
+            prompt: "Pick one",
+            type: "single",
+            options: ["a", "b"],
+            correctIndex: 5,
+          },
+        ],
+      });
+      await expect(
+        api.update({ courseId: id, status: "published" }),
+      ).rejects.toMatchObject(refused);
+    });
+
+    it("publishes a complete course, and moves it back to draft without checks", async () => {
+      const { id } = await createPublishable();
+      const api = callerAs(fx.authorId).classrooms;
+      await expect(
+        api.update({ courseId: id, status: "published" }),
+      ).resolves.toMatchObject({ ok: true });
+      expect(await statusOf(id)).toBe("published");
+      await api.update({ courseId: id, status: "draft" });
+      expect(await statusOf(id)).toBe("draft");
     });
   });
 

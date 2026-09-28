@@ -13,6 +13,7 @@ const KEYS = {
   INVALID_EMBED: "errorInvalidEmbed",
   FORBIDDEN: "errorNotAllowed",
   CANNOT_CREATE_COURSE: "errorCannotCreateCourse",
+  PUBLISH_CHECKS_FAILED: "errorPublishChecksFailed",
 } as const;
 
 type BuilderErrorCode = keyof typeof KEYS;
