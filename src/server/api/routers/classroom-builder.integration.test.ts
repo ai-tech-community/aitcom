@@ -259,7 +259,10 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
     it("refuses to publish a course with an empty lesson or an empty module", async () => {
       const { id } = await createPublishable();
       const api = callerAs(fx.authorId).classrooms;
-      const { id: blank } = await api.addLesson({ courseId: id, title: "Blank" });
+      const { id: blank } = await api.addLesson({
+        courseId: id,
+        title: "Blank",
+      });
       await expect(
         api.update({ courseId: id, status: "published" }),
       ).rejects.toMatchObject(refused);
@@ -597,9 +600,9 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
       await expect(
         api.addLesson({ courseId, title: "y" }),
       ).rejects.toMatchObject(archived);
-      await expect(
-        api.deleteLesson({ lessonId: id }),
-      ).rejects.toMatchObject(archived);
+      await expect(api.deleteLesson({ lessonId: id })).rejects.toMatchObject(
+        archived,
+      );
       await expect(
         api.reorderLessons({ courseId, moduleId: null, orderedIds: [id] }),
       ).rejects.toMatchObject(archived);
@@ -684,7 +687,10 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
       });
       expect(result.ok).toBe(true);
       expect(result.lessons).toEqual([
-        { id: lessonId, updatedAt: (await storedVersions(courseId)).get(lessonId) },
+        {
+          id: lessonId,
+          updatedAt: (await storedVersions(courseId)).get(lessonId),
+        },
       ]);
     });
   });

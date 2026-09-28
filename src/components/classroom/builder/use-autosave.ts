@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type AutosaveStatus = "idle" | "dirty" | "saving" | "saved" | "error" | "conflict";
+export type AutosaveStatus =
+  | "idle"
+  | "dirty"
+  | "saving"
+  | "saved"
+  | "error"
+  | "conflict";
 
 export type UseAutosaveOptions<T> = {
   /** Current draft. The first value seen is the baseline and is never saved. */
@@ -31,8 +37,12 @@ export type UseAutosaveResult = {
 };
 
 /** Server codes meaning "someone else changed this first": a conflict, not an error. */
-export const CONFLICT_CODES: ReadonlySet<string> = new Set(["COURSE_CHANGED", "LESSON_CHANGED"]);
-const jsonEqual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+export const CONFLICT_CODES: ReadonlySet<string> = new Set([
+  "COURSE_CHANGED",
+  "LESSON_CHANGED",
+]);
+const jsonEqual = (a: unknown, b: unknown) =>
+  JSON.stringify(a) === JSON.stringify(b);
 
 /**
  * Debounced autosave for one draft value — the builder's single save model:
@@ -89,7 +99,10 @@ export function useAutosave<T>({
     }
   }, []);
 
-  const isDirty = useCallback(() => !isEqualRef.current(latestRef.current, persistedRef.current), []);
+  const isDirty = useCallback(
+    () => !isEqualRef.current(latestRef.current, persistedRef.current),
+    [],
+  );
 
   const canSave = useCallback(
     () => enabledRef.current && !conflictRef.current && isDirty(),
@@ -130,7 +143,10 @@ export function useAutosave<T>({
           // Another pass when someone asked for one (debounce fired, flush, unmount), or when the
           // draft is still dirty and no pending timer will save it — e.g. the author undid back to
           // the pre-save value mid-save, so the edit effect saw "clean" and scheduled nothing.
-        } while (canSave() && (followUpRef.current || timerRef.current === null));
+        } while (
+          canSave() &&
+          (followUpRef.current || timerRef.current === null)
+        );
         // Still dirty here means a debounce timer is pending for the newer value, or saving is off.
         updateStatus(isDirty() ? "dirty" : "saved");
       } finally {

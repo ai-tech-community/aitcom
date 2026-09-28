@@ -6,10 +6,17 @@ import { useAutosave, useUnsavedChangesGuard } from "./use-autosave";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
-function setup(save: (v: string) => Promise<void>, initial = "a", enabled = true) {
-  return renderHook(({ value }) => useAutosave({ value, save, delayMs: 1000, enabled }), {
-    initialProps: { value: initial },
-  });
+function setup(
+  save: (v: string) => Promise<void>,
+  initial = "a",
+  enabled = true,
+) {
+  return renderHook(
+    ({ value }) => useAutosave({ value, save, delayMs: 1000, enabled }),
+    {
+      initialProps: { value: initial },
+    },
+  );
 }
 
 describe("useAutosave", () => {
@@ -36,7 +43,10 @@ describe("useAutosave", () => {
   });
 
   it("keeps the value and reports error on failure; retry saves it", async () => {
-    const save = vi.fn().mockRejectedValueOnce(new Error("NETWORK")).mockResolvedValue(undefined);
+    const save = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("NETWORK"))
+      .mockResolvedValue(undefined);
     const { result, rerender } = setup(save);
     rerender({ value: "b" });
     await act(() => vi.advanceTimersByTimeAsync(1000));
@@ -59,8 +69,14 @@ describe("useAutosave", () => {
 
   it("never overlaps saves; a change during a save triggers one follow-up with the latest value", async () => {
     let resolveFirst!: () => void;
-    const save = vi.fn()
-      .mockImplementationOnce(() => new Promise<void>((r) => { resolveFirst = r; }))
+    const save = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((r) => {
+            resolveFirst = r;
+          }),
+      )
       .mockResolvedValue(undefined);
     const { rerender } = setup(save);
     rerender({ value: "b" });
@@ -69,7 +85,9 @@ describe("useAutosave", () => {
     rerender({ value: "bcd" });
     await act(() => vi.advanceTimersByTimeAsync(1000));
     expect(save).toHaveBeenCalledTimes(1);
-    await act(async () => { resolveFirst(); });
+    await act(async () => {
+      resolveFirst();
+    });
     await act(() => vi.advanceTimersByTimeAsync(1000));
     expect(save).toHaveBeenCalledTimes(2);
     expect(save).toHaveBeenLastCalledWith("bcd");
@@ -77,15 +95,23 @@ describe("useAutosave", () => {
 
   it("undo to the pre-save value during an in-flight save still saves the undone value", async () => {
     let resolveFirst!: () => void;
-    const save = vi.fn()
-      .mockImplementationOnce(() => new Promise<void>((r) => { resolveFirst = r; }))
+    const save = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((r) => {
+            resolveFirst = r;
+          }),
+      )
       .mockResolvedValue(undefined);
     const { result, rerender } = setup(save);
     rerender({ value: "b" });
     await act(() => vi.advanceTimersByTimeAsync(1000));
     expect(save).toHaveBeenCalledTimes(1);
     rerender({ value: "a" });
-    await act(async () => { resolveFirst(); });
+    await act(async () => {
+      resolveFirst();
+    });
     await act(() => vi.advanceTimersByTimeAsync(10000));
     expect(save).toHaveBeenCalledTimes(2);
     expect(save.mock.calls).toEqual([["b"], ["a"]]);
@@ -94,15 +120,23 @@ describe("useAutosave", () => {
 
   it("a change during a save that ends before the debounce is saved by the pending timer", async () => {
     let resolveFirst!: () => void;
-    const save = vi.fn()
-      .mockImplementationOnce(() => new Promise<void>((r) => { resolveFirst = r; }))
+    const save = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((r) => {
+            resolveFirst = r;
+          }),
+      )
       .mockResolvedValue(undefined);
     const { result, rerender } = setup(save);
     rerender({ value: "b" });
     await act(() => vi.advanceTimersByTimeAsync(1000));
     rerender({ value: "bc" });
     await act(() => vi.advanceTimersByTimeAsync(300));
-    await act(async () => { resolveFirst(); });
+    await act(async () => {
+      resolveFirst();
+    });
     // Save of "b" finished; "bc" is still waiting for its debounce.
     expect(save).toHaveBeenCalledTimes(1);
     expect(result.current.status).toBe("dirty");
@@ -123,7 +157,10 @@ describe("useAutosave", () => {
   });
 
   it("flush resolves with the settled status, before React re-renders", async () => {
-    const save = vi.fn().mockRejectedValueOnce(new Error("NETWORK")).mockResolvedValue(undefined);
+    const save = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("NETWORK"))
+      .mockResolvedValue(undefined);
     const { result, rerender } = setup(save);
     rerender({ value: "b" });
     let settled: string | undefined;
@@ -177,7 +214,8 @@ describe("useAutosave", () => {
   it("starts the debounce when enabled flips to true with an already-changed value", async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     const { result, rerender } = renderHook(
-      ({ value, enabled }) => useAutosave({ value, save, delayMs: 1000, enabled }),
+      ({ value, enabled }) =>
+        useAutosave({ value, save, delayMs: 1000, enabled }),
       { initialProps: { value: "a", enabled: false } },
     );
     rerender({ value: "b", enabled: false });
@@ -216,7 +254,10 @@ describe("useAutosave", () => {
     const save = vi.fn(async (v: string) => {
       inFlight++;
       maxInFlight = Math.max(maxInFlight, inFlight);
-      if (v === "b") await new Promise<void>((r) => { resolveFirst = r; });
+      if (v === "b")
+        await new Promise<void>((r) => {
+          resolveFirst = r;
+        });
       inFlight--;
     });
     const { rerender, unmount } = setup(save);
@@ -233,7 +274,10 @@ describe("useAutosave", () => {
   });
 
   it("a new change after an error is saved again after the debounce", async () => {
-    const save = vi.fn().mockRejectedValueOnce(new Error("NETWORK")).mockResolvedValue(undefined);
+    const save = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("NETWORK"))
+      .mockResolvedValue(undefined);
     const { result, rerender } = setup(save);
     rerender({ value: "b" });
     await act(() => vi.advanceTimersByTimeAsync(1000));
@@ -268,13 +312,18 @@ describe("useAutosave", () => {
   });
 
   describe("under React StrictMode", () => {
-    const wrapper = ({ children }: { children: ReactNode }) => <StrictMode>{children}</StrictMode>;
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <StrictMode>{children}</StrictMode>
+    );
 
     function setupStrict(save: (v: string) => Promise<void>) {
-      return renderHook(({ value }) => useAutosave({ value, save, delayMs: 1000 }), {
-        initialProps: { value: "a" },
-        wrapper,
-      });
+      return renderHook(
+        ({ value }) => useAutosave({ value, save, delayMs: 1000 }),
+        {
+          initialProps: { value: "a" },
+          wrapper,
+        },
+      );
     }
 
     it("does not save on the strict-mode fake unmount/remount or on real unmount when nothing changed", async () => {
@@ -309,7 +358,10 @@ describe("useAutosave", () => {
 
 describe("useUnsavedChangesGuard", () => {
   it("prevents unload only while active", () => {
-    const { rerender } = renderHook(({ active }) => useUnsavedChangesGuard(active), { initialProps: { active: true } });
+    const { rerender } = renderHook(
+      ({ active }) => useUnsavedChangesGuard(active),
+      { initialProps: { active: true } },
+    );
     const e1 = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(e1);
     expect(e1.defaultPrevented).toBe(true);

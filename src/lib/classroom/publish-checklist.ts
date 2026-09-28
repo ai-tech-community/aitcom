@@ -18,7 +18,13 @@ export type ChecklistInput = {
   lessons: ChecklistLesson[];
   modules: { id: number; title: string }[];
 };
-export type CheckId = "title" | "hasLessons" | "noEmptyLessons" | "quizAnswers" | "noEmptyModules" | "cover";
+export type CheckId =
+  | "title"
+  | "hasLessons"
+  | "noEmptyLessons"
+  | "quizAnswers"
+  | "noEmptyModules"
+  | "cover";
 export type CheckResult = {
   id: CheckId;
   level: "block" | "warn";
@@ -47,7 +53,11 @@ function nodeHasContent(node: unknown): boolean {
   return typeof type === "string" && !WHITESPACE_LEAVES.has(type);
 }
 
-type ExamQuestion = { prompt?: unknown; options?: unknown; correctIndex?: unknown };
+type ExamQuestion = {
+  prompt?: unknown;
+  options?: unknown;
+  correctIndex?: unknown;
+};
 
 /** Raw stored entries; any one may be malformed, so callers check each before use. */
 function questionsOf(lesson: ChecklistLesson): unknown[] {
@@ -58,7 +68,12 @@ export function lessonHasContent(lesson: ChecklistLesson): boolean {
   if ((lesson.resources?.length ?? 0) > 0) return true;
   if (questionsOf(lesson).length > 0) return true;
   const body = lesson.body as { root?: LexicalNode } | null | undefined;
-  return !!body && typeof body === "object" && !!body.root && nodeHasContent(body.root);
+  return (
+    !!body &&
+    typeof body === "object" &&
+    !!body.root &&
+    nodeHasContent(body.root)
+  );
 }
 
 function questionValid(entry: unknown): boolean {
@@ -82,16 +97,39 @@ function quizValid(lesson: ChecklistLesson): boolean {
 }
 
 export function publishChecks(input: ChecklistInput): CheckResult[] {
-  const empty = input.lessons.filter((l) => !lessonHasContent(l)).map((l) => l.id);
+  const empty = input.lessons
+    .filter((l) => !lessonHasContent(l))
+    .map((l) => l.id);
   const badQuiz = input.lessons.filter((l) => !quizValid(l)).map((l) => l.id);
   const used = new Set(input.lessons.map((l) => l.module));
-  const emptyModules = input.modules.filter((mod) => !used.has(mod.id)).map((mod) => mod.id);
+  const emptyModules = input.modules
+    .filter((mod) => !used.has(mod.id))
+    .map((mod) => mod.id);
   return [
-    { id: "title", level: "block", ok: input.title.trim().length >= COURSE_TITLE_MIN },
+    {
+      id: "title",
+      level: "block",
+      ok: input.title.trim().length >= COURSE_TITLE_MIN,
+    },
     { id: "hasLessons", level: "block", ok: input.lessons.length > 0 },
-    { id: "noEmptyLessons", level: "block", ok: empty.length === 0, lessonIds: empty },
-    { id: "quizAnswers", level: "block", ok: badQuiz.length === 0, lessonIds: badQuiz },
-    { id: "noEmptyModules", level: "block", ok: emptyModules.length === 0, moduleIds: emptyModules },
+    {
+      id: "noEmptyLessons",
+      level: "block",
+      ok: empty.length === 0,
+      lessonIds: empty,
+    },
+    {
+      id: "quizAnswers",
+      level: "block",
+      ok: badQuiz.length === 0,
+      lessonIds: badQuiz,
+    },
+    {
+      id: "noEmptyModules",
+      level: "block",
+      ok: emptyModules.length === 0,
+      moduleIds: emptyModules,
+    },
     { id: "cover", level: "warn", ok: !!input.coverImageUrl },
   ];
 }

@@ -1,7 +1,17 @@
 import { groupLessonsByModule } from "@/lib/classroom";
 
-export type OutlineLesson = { id: number; title: string; module: number | null; order: number };
-export type OutlineModule = { id: number; title: string; order: number; summary?: string | null };
+export type OutlineLesson = {
+  id: number;
+  title: string;
+  module: number | null;
+  order: number;
+};
+export type OutlineModule = {
+  id: number;
+  title: string;
+  order: number;
+  summary?: string | null;
+};
 export type OutlineGroup = {
   moduleId: number | null;
   title: string | null;
@@ -13,8 +23,13 @@ export type LessonMove = { moduleId: number | null; orderedIds: number[] };
 type MoveResult = { groups: OutlineGroup[]; move: LessonMove };
 
 /** The builder's outline: the same grouping learners see (course-view uses groupLessonsByModule). */
-export function buildOutline(lessons: OutlineLesson[], modules: OutlineModule[]): OutlineGroup[] {
-  const summaries = new Map(modules.map((mod) => [mod.id, mod.summary ?? null]));
+export function buildOutline(
+  lessons: OutlineLesson[],
+  modules: OutlineModule[],
+): OutlineGroup[] {
+  const summaries = new Map(
+    modules.map((mod) => [mod.id, mod.summary ?? null]),
+  );
   return groupLessonsByModule(lessons, modules).map((g) => ({
     moduleId: g.module?.id ?? null,
     title: g.module?.title ?? null,
@@ -47,17 +62,27 @@ export function applyLessonMove(
   dest.splice(index, 0, lessonId);
 
   if (from.groupIndex === toGroupIndex && from.index === index) return null;
-  return { groups: next, move: { moduleId: target.moduleId, orderedIds: [...dest] } };
+  return {
+    groups: next,
+    move: { moduleId: target.moduleId, orderedIds: [...dest] },
+  };
 }
 
 /** One step up or down in reading order, crossing into the neighbouring module at its edge. */
-export function moveByStep(groups: OutlineGroup[], lessonId: number, delta: -1 | 1): MoveResult | null {
+export function moveByStep(
+  groups: OutlineGroup[],
+  lessonId: number,
+  delta: -1 | 1,
+): MoveResult | null {
   const from = findLesson(groups, lessonId);
   if (!from) return null;
   const group = groups[from.groupIndex]!;
   const within = from.index + delta;
   if (within >= 0 && within < group.lessonIds.length) {
-    return applyLessonMove(groups, lessonId, { moduleId: group.moduleId, index: within });
+    return applyLessonMove(groups, lessonId, {
+      moduleId: group.moduleId,
+      index: within,
+    });
   }
   const neighbour = groups[from.groupIndex + delta];
   if (!neighbour) return null;
@@ -77,7 +102,10 @@ export function readingOrder(groups: OutlineGroup[]): number[] {
  * already uses (a deleted module can leave "Module 3" behind with only two
  * modules left).
  */
-export function nextModuleTitle(label: string, existingTitles: readonly string[]): string {
+export function nextModuleTitle(
+  label: string,
+  existingTitles: readonly string[],
+): string {
   const taken = new Set(existingTitles.map((title) => title.trim()));
   let n = existingTitles.length + 1;
   while (taken.has(`${label} ${n}`)) n++;

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { applyLessonMove, buildOutline, moveByStep, nextModuleTitle, readingOrder } from "./outline-model";
+import {
+  applyLessonMove,
+  buildOutline,
+  moveByStep,
+  nextModuleTitle,
+  readingOrder,
+} from "./outline-model";
 
 const modules = [
   { id: 10, title: "Basics", order: 0 },
@@ -14,13 +20,19 @@ const lessons = [
 
 describe("buildOutline", () => {
   it("groups by module in module order, keeping empty modules", () => {
-    expect(buildOutline(lessons, modules).map((g) => [g.moduleId, g.lessonIds])).toEqual([
-      [10, [1, 2]], [20, [3]], [30, []],
+    expect(
+      buildOutline(lessons, modules).map((g) => [g.moduleId, g.lessonIds]),
+    ).toEqual([
+      [10, [1, 2]],
+      [20, [3]],
+      [30, []],
     ]);
   });
   it("returns one flat group when there are no modules", () => {
     const flat = lessons.map((l, i) => ({ ...l, module: null, order: 2 - i }));
-    expect(buildOutline(flat, [])).toEqual([{ moduleId: null, title: null, summary: null, lessonIds: [3, 2, 1] }]);
+    expect(buildOutline(flat, [])).toEqual([
+      { moduleId: null, title: null, summary: null, lessonIds: [3, 2, 1] },
+    ]);
   });
 });
 
@@ -37,10 +49,14 @@ describe("applyLessonMove", () => {
     expect(r.groups[0]!.lessonIds).toEqual([2]);
   });
   it("moves into an empty module", () => {
-    expect(applyLessonMove(groups, 3, { moduleId: 30, index: 0 })!.move).toEqual({ moduleId: 30, orderedIds: [3] });
+    expect(
+      applyLessonMove(groups, 3, { moduleId: 30, index: 0 })!.move,
+    ).toEqual({ moduleId: 30, orderedIds: [3] });
   });
   it("clamps an index past the end", () => {
-    expect(applyLessonMove(groups, 1, { moduleId: 20, index: 99 })!.move.orderedIds).toEqual([3, 1]);
+    expect(
+      applyLessonMove(groups, 1, { moduleId: 20, index: 99 })!.move.orderedIds,
+    ).toEqual([3, 1]);
   });
   it("returns null for a no-op and for an unknown lesson or module", () => {
     expect(applyLessonMove(groups, 1, { moduleId: 10, index: 0 })).toBeNull();
@@ -63,20 +79,35 @@ describe("applyLessonMove", () => {
 describe("moveByStep", () => {
   const groups = buildOutline(lessons, modules);
   it("moves down within a module", () => {
-    expect(moveByStep(groups, 1, 1)!.move).toEqual({ moduleId: 10, orderedIds: [2, 1] });
+    expect(moveByStep(groups, 1, 1)!.move).toEqual({
+      moduleId: 10,
+      orderedIds: [2, 1],
+    });
   });
   it("moving down from the last slot enters the next module at the top", () => {
-    expect(moveByStep(groups, 2, 1)!.move).toEqual({ moduleId: 20, orderedIds: [2, 3] });
+    expect(moveByStep(groups, 2, 1)!.move).toEqual({
+      moduleId: 20,
+      orderedIds: [2, 3],
+    });
   });
   it("moving up from the first slot enters the previous module at the bottom", () => {
-    expect(moveByStep(groups, 3, -1)!.move).toEqual({ moduleId: 10, orderedIds: [1, 2, 3] });
+    expect(moveByStep(groups, 3, -1)!.move).toEqual({
+      moduleId: 10,
+      orderedIds: [1, 2, 3],
+    });
   });
   it("skips nothing: moving down from the last lesson of the last non-empty module enters the empty module", () => {
-    expect(moveByStep(groups, 3, 1)!.move).toEqual({ moduleId: 30, orderedIds: [3] });
+    expect(moveByStep(groups, 3, 1)!.move).toEqual({
+      moduleId: 30,
+      orderedIds: [3],
+    });
   });
   it("returns null at the very top and very bottom", () => {
     expect(moveByStep(groups, 1, -1)).toBeNull();
-    const flat = buildOutline([{ id: 1, title: "a", module: null, order: 0 }], []);
+    const flat = buildOutline(
+      [{ id: 1, title: "a", module: null, order: 0 }],
+      [],
+    );
     expect(moveByStep(flat, 1, 1)).toBeNull();
   });
 });
@@ -90,15 +121,23 @@ describe("readingOrder", () => {
 describe("nextModuleTitle", () => {
   it("numbers after the existing modules", () => {
     expect(nextModuleTitle("Module", [])).toBe("Module 1");
-    expect(nextModuleTitle("Module", ["Module 1", "Module 2"])).toBe("Module 3");
+    expect(nextModuleTitle("Module", ["Module 1", "Module 2"])).toBe(
+      "Module 3",
+    );
   });
   it("skips a number already used after a delete", () => {
     // "Module 2" was deleted: two modules left, but "Module 3" is taken.
-    expect(nextModuleTitle("Module", ["Module 1", "Module 3"])).toBe("Module 4");
-    expect(nextModuleTitle("Module", ["Intro", "Module 3", "Module 4"])).toBe("Module 5");
+    expect(nextModuleTitle("Module", ["Module 1", "Module 3"])).toBe(
+      "Module 4",
+    );
+    expect(nextModuleTitle("Module", ["Intro", "Module 3", "Module 4"])).toBe(
+      "Module 5",
+    );
   });
   it("ignores renamed modules and surrounding spaces", () => {
-    expect(nextModuleTitle("Module", ["Basics", " Module 2 "])).toBe("Module 3");
+    expect(nextModuleTitle("Module", ["Basics", " Module 2 "])).toBe(
+      "Module 3",
+    );
     expect(nextModuleTitle("Module", ["Basics", "Advanced"])).toBe("Module 3");
   });
 });
