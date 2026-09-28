@@ -2074,7 +2074,20 @@
       "errorNotAllowed": "You can't upload files in this community. Ask a community admin.",
       "errorDailyLimit": "You've uploaded the most files allowed for today. Try again tomorrow.",
       "errorFailed": "The file didn't upload. Please try again.",
-      "invalidOnSave": "One of the files in this lesson belongs to another course. Remove it, then save again."
+      "invalidOnSave": "One of the files in this lesson belongs to another course. Remove it, then save again.",
+      "panelTitle": "Course files",
+      "panelHelp": "Files you upload belong to this course. You can use each one in any of its lessons.",
+      "panelEmpty": "No files yet. Upload one while editing a lesson.",
+      "titleLabel": "File name",
+      "previewToggle": "Free preview",
+      "previewHelp": "Visitors of a public course can download free preview files. Other files are for members only.",
+      "deleteFile": "Delete file",
+      "deleteConfirm": "Delete this file? Lessons that use it will show that it was removed.",
+      "deleted": "File deleted",
+      "saved": "Saved",
+      "saveFailed": "Could not save. Please try again.",
+      "statusUploading": "Still uploading",
+      "statusFailed": "Didn't upload"
     }
   },
   "launchpad": {
@@ -2285,7 +2298,13 @@
         "policyAllMembers": "All members",
         "policyAdminsOnly": "Admins only",
         "saved": "Setting saved",
-        "saveFailed": "Could not save setting"
+        "saveFailed": "Could not save setting",
+        "uploadPolicyTitle": "Who can upload files to courses",
+        "uploadPolicySubtitle": "Uploaded files use your community's storage. Links to YouTube, Google Slides and similar sites don't.",
+        "uploadPolicyAllMembers": "All members who write a course",
+        "uploadPolicyAdminsOnly": "Owners and admins",
+        "storageTitle": "File storage",
+        "storageUsed": "{used} of {allowed} used"
       },
       "topics": {
         "title": "Feed Topics",

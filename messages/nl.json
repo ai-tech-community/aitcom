@@ -2074,7 +2074,20 @@
       "errorNotAllowed": "Je kunt in deze community geen bestanden uploaden. Vraag het een beheerder van de community.",
       "errorDailyLimit": "Je hebt vandaag het maximale aantal bestanden geüpload. Probeer het morgen opnieuw.",
       "errorFailed": "Het bestand is niet geüpload. Probeer het opnieuw.",
-      "invalidOnSave": "Een van de bestanden in deze les hoort bij een andere cursus. Verwijder het en sla opnieuw op."
+      "invalidOnSave": "Een van de bestanden in deze les hoort bij een andere cursus. Verwijder het en sla opnieuw op.",
+      "panelTitle": "Cursusbestanden",
+      "panelHelp": "Bestanden die je uploadt horen bij deze cursus. Je kunt ze in elke les van de cursus gebruiken.",
+      "panelEmpty": "Nog geen bestanden. Upload er een terwijl je een les bewerkt.",
+      "titleLabel": "Bestandsnaam",
+      "previewToggle": "Gratis voorbeeld",
+      "previewHelp": "Bezoekers van een openbare cursus kunnen bestanden met gratis voorbeeld downloaden. Andere bestanden zijn alleen voor leden.",
+      "deleteFile": "Bestand verwijderen",
+      "deleteConfirm": "Dit bestand verwijderen? Lessen die het gebruiken laten zien dat het is verwijderd.",
+      "deleted": "Bestand verwijderd",
+      "saved": "Opgeslagen",
+      "saveFailed": "Opslaan is niet gelukt. Probeer het opnieuw.",
+      "statusUploading": "Wordt nog geüpload",
+      "statusFailed": "Niet geüpload"
     }
   },
   "launchpad": {
@@ -2285,7 +2298,13 @@
         "policyAllMembers": "Alle leden",
         "policyAdminsOnly": "Alleen beheerders",
         "saved": "Instelling opgeslagen",
-        "saveFailed": "Kon instelling niet opslaan"
+        "saveFailed": "Kon instelling niet opslaan",
+        "uploadPolicyTitle": "Wie kan bestanden uploaden naar cursussen",
+        "uploadPolicySubtitle": "Geüploade bestanden gebruiken de opslag van je community. Links naar YouTube, Google Slides en vergelijkbare sites niet.",
+        "uploadPolicyAllMembers": "Alle leden die een cursus maken",
+        "uploadPolicyAdminsOnly": "Eigenaren en beheerders",
+        "storageTitle": "Bestandsopslag",
+        "storageUsed": "{used} van {allowed} gebruikt"
       },
       "topics": {
         "title": "Feed-onderwerpen",
