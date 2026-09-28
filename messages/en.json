@@ -3273,6 +3273,10 @@
     "keepEditing": "Keep editing",
     "notYet": "Not yet",
     "moveToDraftTitle": "Move back to draft?",
-    "moveToDraftConfirm": "Learners who already joined keep their progress, but new people can't find it until you publish again."
+    "moveToDraftConfirm": "Learners who already joined keep their progress, but new people can't find it until you publish again.",
+    "examQuestionPromptLabel": "Question {n}",
+    "examOptionLabel": "Question {n}, option {m}",
+    "examCorrectAnswerLabel": "Question {n}: option {m} is correct",
+    "examCorrectAnswerGroupLabel": "Correct answer for question {n}"
   }
 }

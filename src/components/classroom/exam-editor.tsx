@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { useTranslations } from "next-intl";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,11 @@ export function ExamEditor({
   disabled?: boolean;
 }) {
   const t = useTranslations("classroom");
+  const tb = useTranslations("classroomBuilder");
+  const uid = useId();
+  const mandatoryId = `${uid}-mandatory`;
+  const passThresholdId = `${uid}-pass-threshold`;
+  const maxAttemptsId = `${uid}-max-attempts`;
 
   const setQuestion = (i: number, q: ExamQuestion) => {
     const questions = value.questions.slice();
@@ -55,18 +61,19 @@ export function ExamEditor({
     <div className="border-border space-y-4 rounded-md border p-3">
       <div className="flex items-center gap-2">
         <Checkbox
-          id="exam-mandatory"
+          id={mandatoryId}
           checked={value.mandatory}
           onCheckedChange={(c) => onChange({ ...value, mandatory: c === true })}
           disabled={disabled}
         />
-        <Label htmlFor="exam-mandatory">{t("examMandatory")}</Label>
+        <Label htmlFor={mandatoryId}>{t("examMandatory")}</Label>
       </div>
 
       <div className="flex gap-3">
         <div className="flex flex-col gap-1.5">
-          <Label>{t("examPassThreshold")}</Label>
+          <Label htmlFor={passThresholdId}>{t("examPassThreshold")}</Label>
           <Input
+            id={passThresholdId}
             type="number"
             min={0}
             max={100}
@@ -82,8 +89,9 @@ export function ExamEditor({
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label>{t("examMaxAttempts")}</Label>
+          <Label htmlFor={maxAttemptsId}>{t("examMaxAttempts")}</Label>
           <Input
+            id={maxAttemptsId}
             type="number"
             min={0}
             step={1}
@@ -112,6 +120,7 @@ export function ExamEditor({
               <Input
                 value={q.prompt}
                 placeholder={t("examQuestionPrompt")}
+                aria-label={tb("examQuestionPromptLabel", { n: i + 1 })}
                 onChange={(e) =>
                   setQuestion(i, { ...q, prompt: e.target.value })
                 }
@@ -129,53 +138,63 @@ export function ExamEditor({
                 <Trash2 className="size-4" />
               </Button>
             </div>
-            {q.options.map((opt, oi) => (
-              <div key={oi} className="flex items-center gap-2 pl-6">
-                <input
-                  type="radio"
-                  name={`correct-${q.id}`}
-                  checked={q.correctIndex === oi}
-                  onChange={() => setQuestion(i, { ...q, correctIndex: oi })}
-                  disabled={disabled}
-                  aria-label={t("examMarkCorrect")}
-                />
-                <Input
-                  value={opt}
-                  placeholder={t("examOption")}
-                  onChange={(e) => {
-                    const options = q.options.slice();
-                    options[oi] = e.target.value;
-                    setQuestion(i, { ...q, options });
-                  }}
-                  disabled={disabled}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 shrink-0"
-                  onClick={() =>
-                    setQuestion(i, {
-                      ...q,
-                      options: q.options.filter((_, j) => j !== oi),
-                      // Removing the marked-correct option must not silently
-                      // re-key a neighbour: reset to the first option so the
-                      // author re-selects (the radio visibly moves).
-                      correctIndex:
-                        oi === q.correctIndex
-                          ? 0
-                          : oi < q.correctIndex
-                            ? q.correctIndex - 1
-                            : q.correctIndex,
-                    })
-                  }
-                  disabled={Boolean(disabled) || q.options.length <= 2}
-                  aria-label={t("examRemoveOption")}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </div>
-            ))}
+            <div
+              role="radiogroup"
+              aria-label={tb("examCorrectAnswerGroupLabel", { n: i + 1 })}
+              className="space-y-2"
+            >
+              {q.options.map((opt, oi) => (
+                <div key={oi} className="flex items-center gap-2 pl-6">
+                  <input
+                    type="radio"
+                    name={`correct-${q.id}`}
+                    checked={q.correctIndex === oi}
+                    onChange={() => setQuestion(i, { ...q, correctIndex: oi })}
+                    disabled={disabled}
+                    aria-label={tb("examCorrectAnswerLabel", {
+                      n: i + 1,
+                      m: oi + 1,
+                    })}
+                  />
+                  <Input
+                    value={opt}
+                    placeholder={t("examOption")}
+                    aria-label={tb("examOptionLabel", { n: i + 1, m: oi + 1 })}
+                    onChange={(e) => {
+                      const options = q.options.slice();
+                      options[oi] = e.target.value;
+                      setQuestion(i, { ...q, options });
+                    }}
+                    disabled={disabled}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 shrink-0"
+                    onClick={() =>
+                      setQuestion(i, {
+                        ...q,
+                        options: q.options.filter((_, j) => j !== oi),
+                        // Removing the marked-correct option must not silently
+                        // re-key a neighbour: reset to the first option so the
+                        // author re-selects (the radio visibly moves).
+                        correctIndex:
+                          oi === q.correctIndex
+                            ? 0
+                            : oi < q.correctIndex
+                              ? q.correctIndex - 1
+                              : q.correctIndex,
+                      })
+                    }
+                    disabled={Boolean(disabled) || q.options.length <= 2}
+                    aria-label={t("examRemoveOption")}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
             <Button
               type="button"
               variant="outline"

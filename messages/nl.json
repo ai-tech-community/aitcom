@@ -3273,6 +3273,10 @@
     "keepEditing": "Verder bewerken",
     "notYet": "Nog niet",
     "moveToDraftTitle": "Terug naar concept?",
-    "moveToDraftConfirm": "Deelnemers die al begonnen zijn houden hun voortgang, maar nieuwe mensen kunnen de cursus pas weer vinden als je opnieuw publiceert."
+    "moveToDraftConfirm": "Deelnemers die al begonnen zijn houden hun voortgang, maar nieuwe mensen kunnen de cursus pas weer vinden als je opnieuw publiceert.",
+    "examQuestionPromptLabel": "Vraag {n}",
+    "examOptionLabel": "Vraag {n}, optie {m}",
+    "examCorrectAnswerLabel": "Vraag {n}: optie {m} is juist",
+    "examCorrectAnswerGroupLabel": "Juist antwoord voor vraag {n}"
   }
 }
