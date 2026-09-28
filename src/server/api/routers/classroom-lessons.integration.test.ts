@@ -152,4 +152,72 @@ describe.skipIf(!RUN_DB)("classroom lesson bodies [DB integration]", () => {
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "INVALID_EMBED" });
   });
+
+  it.each(["link", "autolink"])(
+    "accepts a %s exactly as the builder's editor saves it",
+    async (type) => {
+      const { postprocessEditorState } =
+        await import("@/components/article-editor/utils");
+      // lexical/link's own export, as the builder's editor produces it.
+      const editorJson = {
+        root: {
+          type: "root",
+          format: "",
+          indent: 0,
+          version: 1,
+          direction: null,
+          children: [
+            {
+              type: "paragraph",
+              format: "",
+              indent: 0,
+              version: 1,
+              direction: null,
+              textFormat: 0,
+              textStyle: "",
+              children: [
+                {
+                  type,
+                  version: 1,
+                  format: "",
+                  indent: 0,
+                  direction: null,
+                  url: "https://example.com/guide",
+                  rel: "noopener noreferrer",
+                  target: "_blank",
+                  title: null,
+                  children: [
+                    {
+                      type: "text",
+                      version: 1,
+                      text: "guide",
+                      format: 0,
+                      style: "",
+                      mode: "normal",
+                      detail: 0,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+
+      const { id } = await caller().classrooms.addLesson({
+        courseId,
+        title: "Links",
+        body: postprocessEditorState(editorJson as never),
+      });
+
+      const saved = await m.payload.findByID({
+        collection: "lessons",
+        id,
+        depth: 0,
+      });
+      expect(JSON.stringify(saved.body)).toContain(
+        '"url":"https://example.com/guide"',
+      );
+    },
+  );
 });

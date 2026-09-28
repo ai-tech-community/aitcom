@@ -85,6 +85,53 @@ export function generateSlug(title: string): string {
   return slugify(title);
 }
 
+/**
+ * Link nodes are stored in Payload's shape (`fields.url`, version 3), which
+ * the richText field validates, but the editor registers plain lexical/link
+ * nodes that read and export a top-level `url`. These two adapters convert at
+ * the load/save seam, alongside the block remapping below.
+ */
+type SerializedLinkLike = {
+  type?: string;
+  version?: number;
+  url?: unknown;
+  rel?: unknown;
+  target?: unknown;
+  title?: unknown;
+  fields?: { url?: unknown; newTab?: unknown; linkType?: unknown };
+};
+
+function isLinkNode(node: SerializedLinkLike): boolean {
+  return node.type === "link" || node.type === "autolink";
+}
+
+/** Stored (Payload) link → lexical/link: give it the top-level `url` it reads. */
+function linkToEditor(node: SerializedLinkLike): void {
+  if (!isLinkNode(node) || typeof node.url === "string") return;
+  const url = node.fields?.url;
+  node.url = typeof url === "string" ? url : "";
+  const newTab = node.fields?.newTab === true;
+  node.target = newTab ? "_blank" : null;
+  node.rel = newTab ? "noopener noreferrer" : null;
+  node.title = null;
+}
+
+/** lexical/link export → Payload's link shape, which the richText field accepts. */
+function linkToStored(node: SerializedLinkLike): void {
+  if (!isLinkNode(node) || typeof node.url !== "string") return;
+  node.version = 3;
+  node.fields = {
+    ...node.fields,
+    url: node.url,
+    newTab: node.target === "_blank",
+    linkType: "custom",
+  };
+  delete node.url;
+  delete node.rel;
+  delete node.target;
+  delete node.title;
+}
+
 export function preprocessEditorState(
   content: SerializedEditorState | undefined,
   extra: readonly BlockNodeMapping[] = [],
@@ -124,6 +171,7 @@ export function preprocessEditorState(
           ? extra.find((e) => e.blockType === node.fields?.blockType)
           : undefined;
       if (mapped) node.type = mapped.nodeType;
+      linkToEditor(node as SerializedLinkLike);
       if (Array.isArray(node.children)) walkNodes(node.children);
     }
   }
@@ -180,6 +228,7 @@ export function postprocessEditorState(
         }
       }
       if (extra.some((e) => e.nodeType === node.type)) node.type = "block";
+      linkToStored(node as SerializedLinkLike);
       if (Array.isArray(node.children)) walkNodes(node.children);
     }
   }
