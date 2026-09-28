@@ -1,20 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   $createParagraphNode,
   $getRoot,
   createEditor,
 } from "@payloadcms/richtext-lexical/lexical";
 
+// The extension list also registers the file node, which talks to the API
+// only when one is on screen; none is here.
+vi.mock("@/trpc/react", () => ({ api: {} }));
+
 import {
   postprocessEditorState,
   preprocessEditorState,
 } from "@/components/article-editor/utils";
 import { embedBlockNode } from "@/lib/classroom/lesson-body";
-import {
-  $createEmbedNode,
-  EmbedNode,
-  classroomEditorExtensions,
-} from "./embed-node";
+import { classroomEditorExtensions } from "./editor-extensions";
+import { $createEmbedNode, EmbedNode } from "./embed-node";
 
 const URL =
   "https://docs.google.com/presentation/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/edit";

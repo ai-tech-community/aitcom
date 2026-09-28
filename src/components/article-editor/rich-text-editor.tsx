@@ -271,13 +271,20 @@ function EditorToolbar({
   );
 }
 
-/** A feature-owned block node (e.g. classroom Embed): registered, insertable from the slash menu and toolbar, and mapped to/from its stored Payload block. */
+/**
+ * How an author inserts an extension's node: a slash command, optionally
+ * with a toolbar button. An extension without one is only registered — its
+ * stored blocks load and save, but it can't be newly inserted.
+ */
+type ExtensionInsertion =
+  | { command: SlashCommand; toolbar?: { title: string; icon: ReactNode } }
+  | { command?: undefined; toolbar?: undefined };
+
+/** A feature-owned block node (e.g. classroom Embed): registered, mapped to/from its stored Payload block, and optionally insertable. */
 export type RichTextEditorExtension = BlockNodeMapping & {
   node: Klass<LexicalNode>;
-  command: SlashCommand;
-  toolbar: { title: string; icon: ReactNode };
   create: () => LexicalNode;
-};
+} & ExtensionInsertion;
 
 const NO_EXTENSIONS: readonly RichTextEditorExtension[] = [];
 
@@ -420,7 +427,7 @@ export function RichTextEditor({
     (id: string) => {
       if (!editorRef) return;
 
-      const extension = extensions.find((e) => e.command.id === id);
+      const extension = extensions.find((e) => e.command?.id === id);
       if (extension) {
         editorRef.update(() => {
           const selection = $getSelection();
@@ -530,7 +537,7 @@ export function RichTextEditor({
   );
 
   const extensionCommands = useMemo(
-    () => extensions.map((e) => e.command),
+    () => extensions.flatMap((e) => (e.command ? [e.command] : [])),
     [extensions],
   );
 
@@ -628,12 +635,18 @@ export function RichTextEditor({
       <EditorToolbar
         editor={editorRef}
         onBlock={executeSlashCommand}
-        extraItems={extensions.map((e) => ({
-          key: e.command.id,
-          title: e.toolbar.title,
-          icon: e.toolbar.icon,
-          run: () => executeSlashCommand(e.command.id),
-        }))}
+        extraItems={extensions.flatMap((e) => {
+          if (!e.command || !e.toolbar) return [];
+          const id = e.command.id;
+          return [
+            {
+              key: id,
+              title: e.toolbar.title,
+              icon: e.toolbar.icon,
+              run: () => executeSlashCommand(id),
+            },
+          ];
+        })}
       />
       <div className="editor-anchor relative" ref={setEditorAnchor}>
         <LexicalComposer initialConfig={initialConfig}>

@@ -494,6 +494,7 @@ export function CourseEditor({
             courseId={data.course.id}
             lessons={data.lessons}
             modules={data.modules}
+            canUpload={data.viewerCanUpload}
           />
         </>
       ) : null}

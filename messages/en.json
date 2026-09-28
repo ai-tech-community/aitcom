@@ -2056,7 +2056,25 @@
       "join": "Join the community to download this file.",
       "removed": "This file was removed.",
       "processing": "This file is still uploading.",
-      "failed": "This file didn't upload correctly."
+      "failed": "This file didn't upload correctly.",
+      "addFileHelp": "PDF, slides, documents, spreadsheets, ZIP files or images, up to 200 MB.",
+      "chooseFile": "Upload a file",
+      "reuseLabel": "Use a file already in this course",
+      "reusePlaceholder": "Pick a course file",
+      "uploadingProgress": "Uploading… {percent}%",
+      "finishing": "Checking the file…",
+      "cancelUpload": "Cancel",
+      "remove": "Remove",
+      "visibilityMembers": "Members only",
+      "visibilityPreview": "Free preview",
+      "errorType": "This kind of file can't be added. Use a PDF, slides, a document, a spreadsheet, a ZIP file or an image.",
+      "errorEmpty": "This file is empty.",
+      "errorTooLarge": "This file is too big. Files can be up to 200 MB.",
+      "errorStorageFull": "Your community has reached its file storage limit. Delete files you no longer need, or ask a community admin.",
+      "errorNotAllowed": "You can't upload files in this community. Ask a community admin.",
+      "errorDailyLimit": "You've uploaded the most files allowed for today. Try again tomorrow.",
+      "errorFailed": "The file didn't upload. Please try again.",
+      "invalidOnSave": "One of the files in this lesson belongs to another course. Remove it, then save again."
     }
   },
   "launchpad": {

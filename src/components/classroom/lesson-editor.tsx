@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
@@ -8,7 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/article-editor/rich-text-editor";
-import { classroomEditorExtensions } from "./materials/embed-node";
+import {
+  classroomEditorExtensions,
+  classroomEditorExtensionsWithUploads,
+} from "./materials/editor-extensions";
+import {
+  LessonEditorProvider,
+  useLessonEditorContext,
+} from "./materials/lesson-editor-context";
 import { stripIncompleteMaterials } from "@/lib/classroom/lesson-body";
 import { ExamEditor, type ExamDraft } from "./exam-editor";
 import type { ExamQuestion } from "@/lib/classroom";
@@ -38,13 +45,14 @@ interface ModuleLike {
   order: number;
 }
 
-/** Toast text for a failed lesson save: the router's embed refusal gets a friendly message. */
+/** Toast text for a failed lesson save: the router's body refusals get friendly messages. */
 function useLessonSaveErrorMessage() {
   const t = useTranslations("classroom");
-  return (message: string | undefined) =>
-    message === "INVALID_EMBED"
-      ? t("embedInvalidOnSave")
-      : (message ?? t("saveFailed"));
+  return (message: string | undefined) => {
+    if (message === "INVALID_EMBED") return t("embedInvalidOnSave");
+    if (message === "INVALID_MATERIAL") return t("files.invalidOnSave");
+    return message ?? t("saveFailed");
+  };
 }
 
 /** A row-based editor for a lesson's resource links ({label,url}). */
@@ -132,6 +140,7 @@ function LessonFields({
   disabled?: boolean;
 }) {
   const t = useTranslations("classroom");
+  const { canUpload } = useLessonEditorContext();
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1.5">
@@ -150,7 +159,11 @@ function LessonFields({
             initialValue={body ?? null}
             onChange={setBody}
             placeholder={t("lessonBodyPlaceholder")}
-            extensions={classroomEditorExtensions}
+            extensions={
+              canUpload
+                ? classroomEditorExtensionsWithUploads
+                : classroomEditorExtensions
+            }
           />
         </div>
       </div>
@@ -323,12 +336,19 @@ export function LessonEditor({
   courseId,
   lessons,
   modules,
+  canUpload,
 }: {
   courseId: number;
   lessons: LessonLike[];
   modules: ModuleLike[];
+  /** From `classrooms.get().viewerCanUpload`: the author may upload files. */
+  canUpload: boolean;
 }) {
   const t = useTranslations("classroom");
+  const editorContext = useMemo(
+    () => ({ courseId, canUpload }),
+    [courseId, canUpload],
+  );
   const utils = api.useUtils();
   const saveErrorMessage = useLessonSaveErrorMessage();
   const [title, setTitle] = useState("");
@@ -359,54 +379,56 @@ export function LessonEditor({
   });
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-base font-semibold">{t("lessons")}</h2>
+    <LessonEditorProvider value={editorContext}>
+      <div className="space-y-4">
+        <h2 className="text-base font-semibold">{t("lessons")}</h2>
 
-      {lessons.length > 0 ? (
-        <div className="space-y-2">
-          {lessons.map((lesson) => (
-            <LessonRow key={lesson.id} lesson={lesson} modules={modules} />
-          ))}
+        {lessons.length > 0 ? (
+          <div className="space-y-2">
+            {lessons.map((lesson) => (
+              <LessonRow key={lesson.id} lesson={lesson} modules={modules} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">{t("noLessons")}</p>
+        )}
+
+        <div className="border-border space-y-3 rounded-lg border border-dashed p-3">
+          <h3 className="text-sm font-medium">{t("addLesson")}</h3>
+          <LessonFields
+            title={title}
+            setTitle={setTitle}
+            body={body}
+            setBody={setBody}
+            resources={resources}
+            setResources={setResources}
+            exam={exam}
+            setExam={setExam}
+            disabled={add.isPending}
+          />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() =>
+              add.mutate({
+                courseId,
+                title: title.trim(),
+                body: stripIncompleteMaterials(body) ?? undefined,
+                resources: resources.filter(
+                  (r) => r.label.trim() && r.url.trim(),
+                ),
+                examMandatory: exam.mandatory,
+                examPassThreshold: exam.passThreshold,
+                examMaxAttempts: exam.maxAttempts,
+                examQuestions: exam.questions,
+              })
+            }
+            disabled={add.isPending || !title.trim()}
+          >
+            <Plus className="mr-1.5 size-4" /> {t("addLesson")}
+          </Button>
         </div>
-      ) : (
-        <p className="text-muted-foreground text-sm">{t("noLessons")}</p>
-      )}
-
-      <div className="border-border space-y-3 rounded-lg border border-dashed p-3">
-        <h3 className="text-sm font-medium">{t("addLesson")}</h3>
-        <LessonFields
-          title={title}
-          setTitle={setTitle}
-          body={body}
-          setBody={setBody}
-          resources={resources}
-          setResources={setResources}
-          exam={exam}
-          setExam={setExam}
-          disabled={add.isPending}
-        />
-        <Button
-          type="button"
-          size="sm"
-          onClick={() =>
-            add.mutate({
-              courseId,
-              title: title.trim(),
-              body: stripIncompleteMaterials(body) ?? undefined,
-              resources: resources.filter(
-                (r) => r.label.trim() && r.url.trim(),
-              ),
-              examMandatory: exam.mandatory,
-              examPassThreshold: exam.passThreshold,
-              examMaxAttempts: exam.maxAttempts,
-              examQuestions: exam.questions,
-            })
-          }
-          disabled={add.isPending || !title.trim()}
-        >
-          <Plus className="mr-1.5 size-4" /> {t("addLesson")}
-        </Button>
       </div>
-    </div>
+    </LessonEditorProvider>
   );
 }
