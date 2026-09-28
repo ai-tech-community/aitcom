@@ -26,7 +26,7 @@ export function getResend(): Resend | null {
 
 const FROM_EMAIL = "AIT Community <noreply@mailer.aitcommunity.org>";
 
-interface EventEmailData {
+export interface EventEmailData {
   eventTitle: string;
   eventDate: string;
   /** Timezone-qualified time, e.g. "18:00–21:00 CEST (Europe/Amsterdam)". */

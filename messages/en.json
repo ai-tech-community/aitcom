@@ -240,7 +240,23 @@
     "editShort": "Edit",
     "nextUp": "Next up",
     "placeToBeAnnounced": "Place to be announced",
-    "eventCancelError": "Could not cancel the event. It may already have taken place."
+    "eventCancelError": "Could not cancel the event. It may already have taken place.",
+    "myEvents": {
+      "label": "My events",
+      "upcoming": "Upcoming ({count})",
+      "past": "Past ({count})",
+      "noUpcoming": "No upcoming events.",
+      "noPast": "No past events yet.",
+      "browse": "Browse events",
+      "external": "External",
+      "status": {
+        "registered": "Registered",
+        "waitlisted": "Waitlisted",
+        "attended": "Attended",
+        "intent": "Going",
+        "pending_payment": "Pending payment"
+      }
+    }
   },
   "blog": {
     "title": "Blog",

@@ -9,10 +9,8 @@ import { communities } from "@/server/db/schema";
 import { inArray } from "drizzle-orm";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import {
-  EVENT_FORMAT_LABELS,
   EVENT_FORMAT_OPTIONS,
   EVENT_FOCUS_OPTIONS,
-  EVENT_TYPE_LABELS,
   EVENT_TYPES,
   type EventFocus,
   type EventFormat,
@@ -34,7 +32,13 @@ import {
 } from "@/lib/events/public-events";
 import { getVisitorLocation } from "@/lib/visitor-location";
 import { haversineDistanceKm, formatDistance } from "@/lib/geo";
-import { formatEventTimeRange } from "@/lib/event-time";
+import { formatEventDay, formatEventTimeRange } from "@/lib/event-time";
+import {
+  eventFormatLabel,
+  eventRowKind,
+} from "@/components/events/rows/event-rows";
+import { getEventRowLabels } from "@/components/events/rows/get-event-row-labels";
+import { loadEventSideWhere } from "@/server/events/event-side-where";
 import {
   shouldPromoteJoin,
   toHubAuthUser,
@@ -51,11 +55,6 @@ export async function generateMetadata(): Promise<Metadata> {
     ...buildOgMeta(PUBLIC_EVENTS_H1, PUBLIC_EVENTS_META, "Events"),
     alternates: await localeAlternates(PUBLIC_EVENTS_PATH),
   };
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function toMapEvents(
@@ -125,6 +124,7 @@ export default async function EventsPage({
 }) {
   const locale = await getLocale();
   const t = await getTranslations("events");
+  const labels = await getEventRowLabels();
   const session = await getSession();
   const promoteJoin = shouldPromoteJoin(toHubAuthUser(session?.user));
   const sp = await searchParams;
@@ -167,17 +167,12 @@ export default async function EventsPage({
   const activeCountry =
     countryParam ?? (nearMe ? (visitor?.countryName ?? null) : null);
 
-  const now = new Date().toISOString();
+  const now = new Date();
   const conditions: Where[] = [{ status: { equals: "published" } }];
   // Discovered (Luma) events are "scheduled around, not attended through"
   // (CONTEXT.md [[discovered-event]]) — keep them out of this hub-wide
   // public listing; they stay in the conflict corpus (corpus.ts untouched).
   conditions.push({ discoverySource: { not_equals: "luma" } });
-  conditions.push(
-    isPast
-      ? { date: { less_than: now } }
-      : { date: { greater_than_equal: now } },
-  );
   if (type) conditions.push({ type: { equals: type } });
   if (focus) conditions.push({ focus: { equals: focus } });
   if (format) conditions.push({ format: { equals: format } });
@@ -208,6 +203,14 @@ export default async function EventsPage({
   }
 
   const payload = await getPayloadClient();
+  // Upcoming or past, judged in each event's own zone (an event later
+  // today stays upcoming after 00:00 UTC) and exact enough to paginate.
+  const sideWhere = await loadEventSideWhere(payload, {
+    side: isPast ? "past" : "upcoming",
+    where: [...conditions],
+    now,
+  });
+  conditions.push(sideWhere);
   const {
     docs: eventsFetched,
     totalPages,
@@ -329,6 +332,9 @@ export default async function EventsPage({
       title: event.title,
       slug: event.slug,
       date: event.date,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      timezone: event.timezone,
       format: event.format,
       city: event.city,
       location: event.location,
@@ -451,7 +457,9 @@ export default async function EventsPage({
                 )}
                 <div className="space-y-4 p-5">
                   <div className="text-muted-foreground flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">
-                    <span>{formatDate(event.date)}</span>
+                    <time dateTime={event.date.slice(0, 10)}>
+                      {formatEventDay(event.date, locale)}
+                    </time>
                     {event.startTime && (
                       <>
                         <span>•</span>
@@ -466,13 +474,11 @@ export default async function EventsPage({
                       </>
                     )}
                     <span>•</span>
-                    <span>{EVENT_TYPE_LABELS[event.type] ?? event.type}</span>
+                    <span>{eventRowKind(event.type, labels).label}</span>
                     {event.format && (
                       <>
                         <span>•</span>
-                        <span>
-                          {EVENT_FORMAT_LABELS[event.format] ?? event.format}
-                        </span>
+                        <span>{eventFormatLabel(event.format, labels)}</span>
                       </>
                     )}
                     {typeof distanceKm === "number" && (

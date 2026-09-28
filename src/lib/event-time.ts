@@ -266,31 +266,44 @@ const WHEN_DATE_FORMAT = new Intl.DateTimeFormat("en-GB", {
 });
 
 /**
- * Human-readable, timezone-qualified schedule line for emails and reminders,
- * e.g. "15 Jul 2026, 18:00–21:00 CEST (Europe/Amsterdam)".
+ * The event's calendar day for plain-text emails and reminders, e.g.
+ * "15 Jul 2026". Our emails are written in English, so the day is too
+ * (en-GB: day before month, never ambiguous). The stored date is the
+ * event-local day and is never moved through a zone. A corrupt `date`
+ * row renders as the raw string rather than throw mid-cron.
  */
-export function formatEventWhenText({
+export function formatEventDayText(date: string): string {
+  if (!hasValidDateParts(date)) return date.split("T")[0] ?? date;
+  const { y, m, d } = getDateParts(date);
+  return WHEN_DATE_FORMAT.format(new Date(Date.UTC(y, m - 1, d)));
+}
+
+/**
+ * The event's time for plain-text emails and reminders, qualified with its
+ * zone: "18:00–21:00 CEST (Europe/Amsterdam)". Null without a start time;
+ * the bare range when the zone or date is unusable.
+ */
+export function formatEventTimeText({
   date,
   startTime,
   endTime,
   timezone,
-}: EventTimeFields): string {
-  const validDate = hasValidDateParts(date);
-  let dayLabel: string;
-  if (validDate) {
-    const { y, m, d } = getDateParts(date);
-    dayLabel = WHEN_DATE_FORMAT.format(new Date(Date.UTC(y, m - 1, d)));
-  } else {
-    // Corrupt `date` row: render the raw string rather than throw mid-cron.
-    dayLabel = date.split("T")[0] ?? date;
-  }
-  if (!startTime) return dayLabel;
-  if (!validDate || !isValidTimeZone(timezone)) {
-    return `${dayLabel}, ${startTime}${endTime ? `–${endTime}` : ""}`;
-  }
+}: EventTimeFields): string | null {
+  if (!startTime) return null;
+  const range = `${startTime}${endTime ? `–${endTime}` : ""}`;
+  if (!hasValidDateParts(date) || !isValidTimeZone(timezone)) return range;
   const instant = eventWallTimeToUtc(date, startTime, timezone);
-  const abbr = getTimeZoneAbbreviation(timezone, instant);
-  return `${dayLabel}, ${startTime}${endTime ? `–${endTime}` : ""} ${abbr} (${timezone})`;
+  return `${range} ${getTimeZoneAbbreviation(timezone, instant)} (${timezone})`;
+}
+
+/**
+ * Human-readable, timezone-qualified schedule line for emails and reminders,
+ * e.g. "15 Jul 2026, 18:00–21:00 CEST (Europe/Amsterdam)".
+ */
+export function formatEventWhenText(fields: EventTimeFields): string {
+  const day = formatEventDayText(fields.date);
+  const time = formatEventTimeText(fields);
+  return time ? `${day}, ${time}` : day;
 }
 
 const dayFormatters = new Map<string, Intl.DateTimeFormat>();
@@ -373,6 +386,23 @@ export function formatEventShortWhen(
 }
 
 /**
+ * The event's day as one localised label for single displays (an event
+ * page, a map popup, a card): "05 Oct 2026" / "05 okt 2026", or "05 Oct"
+ * without the year. Same parts and zero-padding as the event rows, and the
+ * stored event-local date is never moved through the viewer's zone.
+ */
+export function formatEventDay(
+  date: string,
+  locale: string,
+  { year = true }: { year?: boolean } = {},
+): string {
+  const parts = eventDayParts(date, locale);
+  if (!parts) return date.split("T")[0] ?? date;
+  const day = `${String(parts.day).padStart(2, "0")} ${parts.month}`;
+  return year ? `${day} ${parts.year}` : day;
+}
+
+/**
  * ISO-8601 local datetime with UTC offset for structured data (JSON-LD),
  * e.g. "2026-07-15T18:00:00+02:00". Falls back to a floating local datetime
  * when no usable timezone exists.
@@ -394,6 +424,39 @@ export function formatEventIsoWithOffset(
   const oh = String(Math.floor(abs / 60)).padStart(2, "0");
   const om = String(abs % 60).padStart(2, "0");
   return `${local}${sign}${oh}:${om}`;
+}
+
+/** The calendar day after `date` (YYYY-MM-DD), for times past midnight. */
+function nextCalendarDay(date: string): string {
+  const { y, m, d } = getDateParts(date);
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+}
+
+/**
+ * schema.org `startDate`/`endDate` for an event. With a start time: a local
+ * datetime with the zone's offset ("2026-07-15T18:00:00+02:00"), and an end
+ * at or before the start runs into the next day. Without one: the plain
+ * calendar day ("2026-07-15") — never the stored UTC-midnight timestamp,
+ * which would claim the event starts at 00:00 UTC. Null for a corrupt date.
+ */
+export function eventSchemaDates({
+  date,
+  startTime,
+  endTime,
+  timezone,
+}: EventTimeFields): { startDate: string; endDate?: string } | null {
+  if (!hasValidDateParts(date)) return null;
+  const day = date.slice(0, 10);
+  if (!startTime) return { startDate: day };
+  const startDate = formatEventIsoWithOffset(day, startTime, timezone);
+  if (!endTime) return { startDate };
+  const { hh: sh, mm: sm } = getTimeParts(startTime);
+  const { hh: eh, mm: em } = getTimeParts(endTime);
+  const endDay = eh * 60 + em > sh * 60 + sm ? day : nextCalendarDay(day);
+  return {
+    startDate,
+    endDate: formatEventIsoWithOffset(endDay, endTime, timezone),
+  };
 }
 
 const DAY_MS = 86_400_000;
@@ -460,16 +523,7 @@ export function eventEndInstant(event: UpcomingCandidate): Date | null {
   const zone = zoneOrUtc(event.timezone);
   const end = eventWallTimeToUtc(event.date, event.endTime, zone);
   if (end.getTime() > start.getTime()) return end;
-  const nextDay = new Date(
-    Date.UTC(
-      Number(event.date.slice(0, 4)),
-      Number(event.date.slice(5, 7)) - 1,
-      Number(event.date.slice(8, 10)) + 1,
-    ),
-  )
-    .toISOString()
-    .slice(0, 10);
-  return eventWallTimeToUtc(nextDay, event.endTime, zone);
+  return eventWallTimeToUtc(nextCalendarDay(event.date), event.endTime, zone);
 }
 
 function compareIds(
@@ -563,4 +617,18 @@ export function completeUpcomingCandidates<T extends { date: string }>(
   cutoff.setUTCDate(cutoff.getUTCDate() - 2);
   const cutoffDay = cutoff.toISOString().slice(0, 10);
   return rows.filter((row) => row.date.slice(0, 10) < cutoffDay);
+}
+
+/**
+ * The upcoming events among the rows of a query made with
+ * `upcomingEventsQueryFloor`, sorted by date and capped at `fetchLimit`:
+ * rows a full page may have ranked wrongly are dropped
+ * (`completeUpcomingCandidates`), ended ones filtered out and the rest
+ * ordered by real start (`upcomingEvents`). Fetch more rows than you show:
+ * the floor lets up to two days of past rows in.
+ */
+export function upcomingFromCandidates<
+  T extends UpcomingCandidate & { date: string },
+>(rows: readonly T[], fetchLimit: number, now: Date = new Date()): T[] {
+  return upcomingEvents(completeUpcomingCandidates(rows, fetchLimit), now);
 }

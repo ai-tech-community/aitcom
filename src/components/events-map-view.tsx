@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { useMemo } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
-import { Link } from "@/i18n/navigation";
+import { EventMapPopup } from "./events-map-popup";
 
 const markerIcon = L.divIcon({
   html: `<div style="
@@ -63,11 +63,6 @@ function haversineKm(
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function EventsMapView({
@@ -148,23 +143,7 @@ export function EventsMapView({
             icon={markerIcon}
           >
             <Popup>
-              <div className="font-mono text-xs tracking-wider text-neutral-500">
-                {formatDate(event.date)} · {event.type.toUpperCase()}
-              </div>
-              <Link
-                href={`/events/${event.slug}`}
-                className="mt-1 block text-sm font-semibold text-black hover:underline"
-              >
-                {event.title}
-              </Link>
-              <div className="mt-1 text-xs text-neutral-600">
-                {event.location}
-              </div>
-              {typeof event.aitFitScore === "number" && (
-                <div className="mt-1 inline-block rounded bg-black px-1.5 py-0.5 font-mono text-xs text-white">
-                  AIT {event.aitFitScore}/10
-                </div>
-              )}
+              <EventMapPopup event={event} />
             </Popup>
           </Marker>
         ))}
