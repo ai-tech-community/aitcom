@@ -911,3 +911,73 @@ describe("CourseBuilder lesson versions after outline changes", () => {
     );
   });
 });
+
+describe("CourseBuilder outline placement", () => {
+  const twoLessons = {
+    ...courseData,
+    lessons: [
+      {
+        id: 21,
+        title: "Welcome",
+        module: null,
+        order: 0,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    trpc.query = {
+      data: twoLessons,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+    window.history.replaceState(null, "", "/");
+  });
+
+  function screenIsWide(wide: boolean) {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn((query: string) => ({
+        matches: wide,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
+  }
+
+  it("mounts the outline once on a small screen: only in its sheet", async () => {
+    screenIsWide(false);
+    try {
+      renderBuilder();
+      expect(screen.queryByTestId("outline-lesson-21")).toBeNull();
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Outline" }));
+      });
+      expect(screen.getAllByTestId("outline-lesson-21")).toHaveLength(1);
+      expect(
+        within(screen.getByRole("dialog")).getByTestId("outline-lesson-21"),
+      ).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("mounts the outline once on a wide screen: only in its column", () => {
+    screenIsWide(true);
+    try {
+      renderBuilder();
+      expect(screen.getAllByTestId("outline-lesson-21")).toHaveLength(1);
+      expect(
+        within(screen.getByRole("navigation", { name: "Outline" })).getByTestId(
+          "outline-lesson-21",
+        ),
+      ).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

@@ -8,6 +8,7 @@ import { Archive } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -258,6 +259,10 @@ function CourseWorkspace({
   const selection = resolveSelection(searchParams.get("lesson"), lessons);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  // The outline lives in one place at a time: its column on wide screens, a
+  // sheet on small ones. Mounting it twice would mean two drag contexts and
+  // two optimistic orders. The server render assumes the column.
+  const outlineColumn = useMediaQuery(OUTLINE_COLUMN_QUERY, true);
 
   const selectionRef = useRef(selection);
   useEffect(() => {
@@ -462,9 +467,7 @@ function CourseWorkspace({
   };
   const goToOutline = () => {
     setPreviewing(false);
-    if (!window.matchMedia?.(OUTLINE_COLUMN_QUERY).matches) {
-      setOutlineOpen(true);
-    }
+    if (!outlineColumn) setOutlineOpen(true);
   };
 
   const checklistInput = useMemo<ChecklistInput>(
@@ -549,13 +552,15 @@ function CourseWorkspace({
           previewing && "hidden",
         )}
       >
-        <nav
-          aria-label={t("outline")}
-          className="border-border hidden overflow-y-auto border-r lg:block"
-        >
-          <SectionLabel className="mx-3 mt-4">{t("outline")}</SectionLabel>
-          {outline}
-        </nav>
+        {outlineColumn ? (
+          <nav
+            aria-label={t("outline")}
+            className="border-border hidden overflow-y-auto border-r lg:block"
+          >
+            <SectionLabel className="mx-3 mt-4">{t("outline")}</SectionLabel>
+            {outline}
+          </nav>
+        ) : null}
 
         {/* Stays mounted (hidden) while a lesson is open so its draft is kept. */}
         <div
@@ -607,14 +612,16 @@ function CourseWorkspace({
         courseHref={`/communities/${slug}/classroom/${courseSlug}`}
       />
 
-      <Sheet open={outlineOpen} onOpenChange={setOutlineOpen}>
-        <SheetContent side="left" className="overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{t("outline")}</SheetTitle>
-          </SheetHeader>
-          {outline}
-        </SheetContent>
-      </Sheet>
+      {outlineColumn ? null : (
+        <Sheet open={outlineOpen} onOpenChange={setOutlineOpen}>
+          <SheetContent side="left" className="overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>{t("outline")}</SheetTitle>
+            </SheetHeader>
+            {outline}
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 }
