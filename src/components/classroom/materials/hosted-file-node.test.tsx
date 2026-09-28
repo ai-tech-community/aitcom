@@ -16,14 +16,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => ({
   upload: vi.fn(),
   cancel: vi.fn(),
-  files: [] as unknown[],
+  files: [] as unknown[] | undefined,
+  filesFailed: false,
+  refetchFiles: vi.fn(),
   state: { step: "idle" } as { step: string; share?: number },
 }));
 
 vi.mock("@/trpc/react", () => ({
   api: {
     classroomMaterials: {
-      listCourseMaterials: { useQuery: () => ({ data: m.files }) },
+      listCourseMaterials: {
+        useQuery: () => ({
+          data: m.files,
+          isError: m.filesFailed,
+          refetch: m.refetchFiles,
+        }),
+      },
     },
   },
 }));
@@ -150,6 +158,7 @@ describe("lesson editor: adding a file", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     m.files = [];
+    m.filesFailed = false;
     m.state = { step: "idle" };
     m.upload.mockResolvedValue({ id: 42 });
   });
@@ -233,6 +242,44 @@ describe("lesson editor: adding a file", () => {
     expect(bar).toHaveAttribute("aria-valuenow", "42");
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(m.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("says the course files didn't load and retries, while upload stays possible", async () => {
+    m.files = undefined;
+    m.filesFailed = true;
+    renderEditor(classroomEditorExtensionsWithUploads);
+    await insertFileBlock();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      en.classroom.files.listFailed,
+    );
+    expect(
+      screen.getByLabelText(en.classroom.files.chooseFile),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: en.classroom.files.tryAgain }),
+    );
+    expect(m.refetchFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it("a chosen file whose details can't load says so with a retry, not an endless placeholder", async () => {
+    m.files = undefined;
+    m.filesFailed = true;
+    renderEditor(classroomEditorExtensionsWithUploads);
+    await insertFileBlock();
+    fireEvent.change(
+      await screen.findByLabelText(en.classroom.files.chooseFile),
+      { target: { files: [new File(["%PDF-1.7"], "Week 1.pdf")] } },
+    );
+    await waitFor(() =>
+      expect(screen.queryByLabelText(en.classroom.files.chooseFile)).toBeNull(),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      en.classroom.files.listFailed,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: en.classroom.files.tryAgain }),
+    );
+    expect(m.refetchFiles).toHaveBeenCalledTimes(1);
   });
 
   it("offers no 'Add a file' button without upload rights", async () => {

@@ -6,6 +6,7 @@ import { Download } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 import type { MaterialSummary } from "@/lib/classroom/material-access";
 import {
   fileTypeLabel,
@@ -31,6 +32,7 @@ function DownloadButton({ materialId }: { materialId: number }) {
   const [busy, setBusy] = useState(false);
 
   async function download() {
+    if (busy) return;
     setBusy(true);
     try {
       const { url } = await utils.classroomMaterials.fileLink.fetch({
@@ -50,8 +52,10 @@ function DownloadButton({ materialId }: { materialId: number }) {
       type="button"
       variant="outline"
       size="sm"
-      className="shrink-0"
-      disabled={busy}
+      className="shrink-0 aria-disabled:opacity-50"
+      // Not `disabled`: a disabled button drops keyboard focus mid-download.
+      aria-disabled={busy || undefined}
+      aria-busy={busy || undefined}
       onClick={() => void download()}
     >
       <Download className="size-4" />
@@ -62,7 +66,8 @@ function DownloadButton({ materialId }: { materialId: number }) {
 
 /**
  * The PDF shown in the lesson. The link is fetched only when the card
- * mounts. No `sandbox`: browsers refuse to render PDFs in sandboxed frames,
+ * mounts; if it can't be fetched the card says so and offers a retry (the
+ * Download button above still works). No `sandbox`: browsers refuse to render PDFs in sandboxed frames,
  * and the file is served from the S3 origin, never ours.
  */
 function PdfPreview({
@@ -77,6 +82,17 @@ function PdfPreview({
     { materialId, disposition: "inline" },
     { staleTime: LINK_STALE_MS, refetchOnWindowFocus: false },
   );
+  if (link.isError) {
+    return (
+      <ErrorState
+        className="border-border border-t py-8"
+        title={t("previewFailed")}
+        description=""
+        retryLabel={t("tryAgain")}
+        onRetry={() => void link.refetch()}
+      />
+    );
+  }
   if (!link.data) {
     return (
       <div

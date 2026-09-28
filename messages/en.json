@@ -2103,7 +2103,10 @@
       "saved": "Saved",
       "saveFailed": "Could not save. Please try again.",
       "statusUploading": "Still uploading",
-      "statusFailed": "Didn't upload"
+      "statusFailed": "Didn't upload",
+      "previewFailed": "The preview didn't load.",
+      "listFailed": "Your course files didn't load.",
+      "tryAgain": "Try again"
     }
   },
   "launchpad": {
@@ -2320,7 +2323,9 @@
         "uploadPolicyAllMembers": "All members who write a course",
         "uploadPolicyAdminsOnly": "Owners and admins",
         "storageTitle": "File storage",
-        "storageUsed": "{used} of {allowed} used"
+        "storageUsed": "{used} of {allowed} used",
+        "storageFailed": "Storage use didn't load.",
+        "tryAgain": "Try again"
       },
       "topics": {
         "title": "Feed Topics",

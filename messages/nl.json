@@ -2103,7 +2103,10 @@
       "saved": "Opgeslagen",
       "saveFailed": "Opslaan is niet gelukt. Probeer het opnieuw.",
       "statusUploading": "Wordt nog geüpload",
-      "statusFailed": "Niet geüpload"
+      "statusFailed": "Niet geüpload",
+      "previewFailed": "De voorbeeldweergave is niet geladen.",
+      "listFailed": "Je cursusbestanden zijn niet geladen.",
+      "tryAgain": "Opnieuw proberen"
     }
   },
   "launchpad": {
@@ -2320,7 +2323,9 @@
         "uploadPolicyAllMembers": "Alle leden die een cursus maken",
         "uploadPolicyAdminsOnly": "Eigenaren en beheerders",
         "storageTitle": "Bestandsopslag",
-        "storageUsed": "{used} van {allowed} gebruikt"
+        "storageUsed": "{used} van {allowed} gebruikt",
+        "storageFailed": "Het opslaggebruik is niet geladen.",
+        "tryAgain": "Opnieuw proberen"
       },
       "topics": {
         "title": "Feed-onderwerpen",

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { ErrorState } from "@/components/ui/error-state";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -27,13 +28,29 @@ interface ClassroomSettingsProps {
 
 /**
  * The community's file storage as a bar. Neutral, not Signal Orange (it is
- * a status, not an action); red once the hard limit is reached.
+ * a status, not an action); red once the hard limit is reached. Nothing
+ * while it loads; a note with a retry if it fails.
  */
 function StorageUsage({ slug }: { slug: string }) {
   const t = useTranslations("communities.settings.classroom");
   const usage = api.classroomMaterials.usage.useQuery({ slug });
+  if (usage.isError) {
+    return (
+      <div className="space-y-2">
+        <Label>{t("storageTitle")}</Label>
+        <ErrorState
+          className="border-border items-start rounded-lg border px-4 py-4 text-left"
+          title={t("storageFailed")}
+          description=""
+          retryLabel={t("tryAgain")}
+          onRetry={() => void usage.refetch()}
+        />
+      </div>
+    );
+  }
   if (!usage.data) return null;
   const { fileBytesStored, fileBytesAllowed } = usage.data;
+  const full = fileBytesStored >= fileBytesAllowed;
   const percent =
     fileBytesAllowed > 0
       ? Math.min(100, Math.round((fileBytesStored / fileBytesAllowed) * 100))
@@ -48,9 +65,7 @@ function StorageUsage({ slug }: { slug: string }) {
         aria-label={t("storageTitle")}
         aria-valuenow={percent}
         className="bg-muted"
-        indicatorClassName={
-          percent >= 100 ? "bg-destructive" : "bg-foreground/70"
-        }
+        indicatorClassName={full ? "bg-destructive" : "bg-foreground/70"}
       />
       <p className="text-muted-foreground font-mono text-xs">
         {t("storageUsed", {

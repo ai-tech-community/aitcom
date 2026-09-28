@@ -46,6 +46,19 @@ export type SerializedHostedFileNode = SerializedLexicalNode & {
   };
 };
 
+/** The course file list failed to load: a short note and a retry. */
+function FilesLoadFailed({ onRetry }: { onRetry: () => void }) {
+  const t = useTranslations("classroom.files");
+  return (
+    <div className="flex flex-wrap items-center gap-2" role="alert">
+      <p className="text-destructive text-xs">{t("listFailed")}</p>
+      <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+        {t("tryAgain")}
+      </Button>
+    </div>
+  );
+}
+
 function HostedFileEditor({
   materialId,
   nodeKey,
@@ -63,6 +76,7 @@ function HostedFileEditor({
     { enabled: courseId !== null },
   );
   const { state, upload, cancel } = useFileUpload(courseId);
+  const retryFiles = () => void files.refetch();
 
   const choose = useCallback(
     (id: number) => {
@@ -99,7 +113,9 @@ function HostedFileEditor({
           className="text-muted-foreground size-5 shrink-0"
         />
         <div className="min-w-0 flex-1">
-          {files.data === undefined ? (
+          {files.isError && files.data === undefined ? (
+            <FilesLoadFailed onRetry={retryFiles} />
+          ) : files.data === undefined ? (
             <Skeleton className="h-4 w-40" />
           ) : (
             <p className="truncate text-sm font-medium">
@@ -208,6 +224,9 @@ function HostedFileEditor({
           ) : null}
         </div>
       )}
+      {files.isError && files.data === undefined ? (
+        <FilesLoadFailed onRetry={retryFiles} />
+      ) : null}
       {state.step === "error" ? (
         <p className="text-destructive text-xs" role="alert">
           {state.message}

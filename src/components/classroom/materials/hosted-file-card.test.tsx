@@ -104,6 +104,47 @@ describe("HostedFileCard", () => {
     expect(frame.getAttribute("src")).toBe("https://signed.test/inline");
   });
 
+  it("says the preview didn't load and retries it, keeping the download", () => {
+    const refetch = vi.fn();
+    m.useLinkQuery.mockReturnValue({ data: undefined, isError: true, refetch });
+    renderCard({
+      5: summary({ extension: "pdf", contentType: "application/pdf" }),
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(files.previewFailed);
+    expect(screen.queryByTitle("Preview of Workbook")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: files.download }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: files.tryAgain }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the Download button focusable while it fetches, and ignores repeat clicks", async () => {
+    let resolveLink: (value: { url: string }) => void = () => undefined;
+    m.fetchLink.mockReturnValue(
+      new Promise((resolve) => {
+        resolveLink = resolve;
+      }),
+    );
+    renderCard({ 5: summary() });
+    const button = screen.getByRole("button", { name: files.download });
+    button.focus();
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(button).toHaveAttribute("aria-disabled", "true"),
+    );
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveFocus();
+    fireEvent.click(button);
+    expect(m.fetchLink).toHaveBeenCalledTimes(1);
+
+    resolveLink({ url: "https://signed.test/f" });
+    await waitFor(() => expect(button).not.toHaveAttribute("aria-busy"));
+    expect(button).not.toHaveAttribute("aria-disabled");
+    expect(m.startDownload).toHaveBeenCalledTimes(1);
+  });
+
   it("tells a visitor to join for a members-only file, with no download", () => {
     renderCard({ 5: summary({ access: "join", extension: "pdf" }) });
     expect(screen.getByText(files.join)).toBeInTheDocument();
