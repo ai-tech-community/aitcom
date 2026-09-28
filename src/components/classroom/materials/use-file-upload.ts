@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { uploadToGrant } from "@/lib/upload-to-grant";
@@ -27,10 +27,13 @@ const MESSAGE_KEYS: Record<string, string> = {
  * type, size and storage), POST the file straight to S3 with the type the
  * server chose, then ask the server to check what arrived.
  *
- * One upload at a time. `cancel()` stops the transfer and returns to idle.
- * When the transfer is cancelled or fails before finish, the upload is
- * discarded at once (`discardUpload`), so it stops counting against the
- * community's storage; the daily cleanup removes the record later.
+ * One upload at a time. `cancel()` stops the transfer and returns to idle;
+ * so does unmounting the component that owns the hook. Whenever an attempt
+ * fails or is cancelled after the server recorded it — finish failing
+ * included — the upload is discarded (`discardUpload`), so it stops counting
+ * against the community's storage; the daily cleanup removes the record
+ * later. Discard changes nothing unless the record is still uploading, so it
+ * is safe after a finish the server did settle.
  */
 export function useFileUpload(courseId: number | null) {
   const t = useTranslations("classroom.files");
@@ -40,6 +43,9 @@ export function useFileUpload(courseId: number | null) {
   const discard = api.classroomMaterials.discardUpload.useMutation();
   const [state, setState] = useState<FileUploadState>({ step: "idle" });
   const inFlight = useRef<AbortController | null>(null);
+
+  // Removing the file block (or leaving the editor) stops its upload.
+  useEffect(() => () => inFlight.current?.abort(), []);
 
   function messageFor(error: unknown): string {
     const code = (error as { message?: unknown } | null)?.message;
@@ -52,7 +58,6 @@ export function useFileUpload(courseId: number | null) {
     const controller = new AbortController();
     inFlight.current = controller;
     let materialId: number | null = null;
-    let finishing = false;
     try {
       setState({ step: "uploading", share: 0 });
       const grant = await start.mutateAsync({
@@ -67,7 +72,6 @@ export function useFileUpload(courseId: number | null) {
         (share) => setState({ step: "uploading", share }),
         controller.signal,
       );
-      finishing = true;
       setState({ step: "finishing" });
       const done = await finish.mutateAsync({ materialId: grant.materialId });
       void utils.classroomMaterials.listCourseMaterials.invalidate({
@@ -76,8 +80,7 @@ export function useFileUpload(courseId: number | null) {
       setState({ step: "idle" });
       return { id: done.id };
     } catch (error) {
-      // Finish failing means the server already settled the record itself.
-      if (materialId !== null && !finishing) {
+      if (materialId !== null) {
         void discard.mutateAsync({ materialId }).catch(() => undefined);
       }
       setState(

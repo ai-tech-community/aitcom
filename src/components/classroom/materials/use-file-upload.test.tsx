@@ -128,17 +128,41 @@ describe("useFileUpload", () => {
     expect(m.finish).not.toHaveBeenCalled();
   });
 
-  it("keeps the record when finishing fails (the server marked it failed)", async () => {
-    m.finish.mockRejectedValue(new Error("UPLOAD_FAILED"));
-    const { result } = renderIt();
-    await act(async () => {
-      await result.current.upload(pdf);
+  it.each([
+    ["the server refused the stored file", new Error("UPLOAD_FAILED")],
+    ["the network dropped", new TypeError("Failed to fetch")],
+  ])(
+    "asks the server to discard the upload when finishing fails (%s)",
+    async (_label, error) => {
+      // Discard changes nothing unless the record is still uploading, so it
+      // is safe after a finish the server did settle.
+      m.finish.mockRejectedValue(error);
+      const { result } = renderIt();
+      await act(async () => {
+        await result.current.upload(pdf);
+      });
+      expect(result.current.state).toEqual({
+        step: "error",
+        message: files.errorFailed,
+      });
+      expect(m.discard).toHaveBeenCalledWith({ materialId: 7 });
+    },
+  );
+
+  it("unmounting mid-transfer stops the upload and discards it", async () => {
+    FakeXHR.mode = "hang";
+    const aborts = vi.spyOn(FakeXHR.prototype, "abort");
+    const { result, unmount } = renderIt();
+    let pending: Promise<unknown> = Promise.resolve();
+    act(() => {
+      pending = result.current.upload(pdf);
     });
-    expect(result.current.state).toEqual({
-      step: "error",
-      message: files.errorFailed,
-    });
-    expect(m.discard).not.toHaveBeenCalled();
+    await waitFor(() => expect(FakeXHR.sent).toHaveLength(1));
+    unmount();
+    await expect(pending).resolves.toBeNull();
+    expect(aborts).toHaveBeenCalledTimes(1);
+    expect(m.discard).toHaveBeenCalledWith({ materialId: 7 });
+    expect(m.finish).not.toHaveBeenCalled();
   });
 
   it("cancelling goes back to idle and discards the upload", async () => {
