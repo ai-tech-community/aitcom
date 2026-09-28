@@ -14,10 +14,10 @@ const uploadSwitch = vi.hoisted(() => ({
   value: "on" as "on" | "off" | undefined,
 }));
 vi.mock("@/env", async (importOriginal) => {
-  const { env } = await importOriginal<typeof import("@/env")>();
+  const { env } = await importOriginal<{ env: Record<string, unknown> }>();
   return {
     env: new Proxy(env, {
-      get: (target, prop, receiver) =>
+      get: (target, prop, receiver): unknown =>
         prop === "CLASSROOM_FILE_UPLOADS"
           ? uploadSwitch.value
           : Reflect.get(target, prop, receiver),
