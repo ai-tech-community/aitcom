@@ -28,6 +28,9 @@ export const env = createEnv({
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     S3_BUCKET: z.string().optional(),
     S3_REGION: z.string().optional(),
+    // "on" lets course authors upload lesson files. Leave unset (off) until
+    // the bucket grants the app access to private/classroom/*.
+    CLASSROOM_FILE_UPLOADS: z.enum(["on", "off"]).optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -75,6 +78,7 @@ export const env = createEnv({
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
     S3_BUCKET: process.env.S3_BUCKET,
     S3_REGION: process.env.S3_REGION,
+    CLASSROOM_FILE_UPLOADS: process.env.CLASSROOM_FILE_UPLOADS,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,

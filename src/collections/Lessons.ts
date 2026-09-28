@@ -33,6 +33,11 @@ const EmbedBlock: Block = {
   fields: [{ name: "url", type: "text", required: true, maxLength: 2000 }],
 };
 
+const HostedFileBlock: Block = {
+  slug: "HostedFile",
+  fields: [{ name: "materialId", type: "number", required: true }],
+};
+
 export const Lessons: CollectionConfig = {
   slug: "lessons",
   admin: {
@@ -69,6 +74,7 @@ export const Lessons: CollectionConfig = {
               CodeBlock({ languages: codeLanguages }),
               ImageBlock,
               EmbedBlock,
+              HostedFileBlock,
             ],
           }),
         ],

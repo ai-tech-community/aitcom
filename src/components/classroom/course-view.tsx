@@ -13,6 +13,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { LexicalRenderer } from "@/lib/lexical";
 import { ExamRunner } from "./exam-runner";
 import { classroomBlockRenderers } from "./materials/block-renderers";
+import { MaterialsManifestProvider } from "./materials/materials-context";
 import { LazyMotion, domAnimation, m } from "framer-motion";
 import { fireConfetti } from "./celebrate";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -510,10 +511,12 @@ export function CourseView({
 
               {/* Body */}
               {selectedLesson.body ? (
-                <LexicalRenderer
-                  content={selectedLesson.body}
-                  blockRenderers={classroomBlockRenderers}
-                />
+                <MaterialsManifestProvider manifest={data.materials}>
+                  <LexicalRenderer
+                    content={selectedLesson.body}
+                    blockRenderers={classroomBlockRenderers}
+                  />
+                </MaterialsManifestProvider>
               ) : null}
 
               {/* Resources */}

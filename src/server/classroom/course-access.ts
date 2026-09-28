@@ -113,3 +113,24 @@ export async function requireReadableCourse(
   if (access === "none") throw new TRPCError({ code: "NOT_FOUND" });
   return course;
 }
+
+/**
+ * Load a course and require that the caller may edit it — today, only its
+ * author (the same rule as every lesson/module mutation in classrooms.ts).
+ * The shared gate for classroom material management.
+ */
+export async function requireEditableCourse(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  courseId: number,
+  userId: string,
+): Promise<Course> {
+  const course = await payload.findByID({
+    collection: "courses",
+    id: courseId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!course) throw new TRPCError({ code: "NOT_FOUND" });
+  if (course.authorId !== userId) throw new TRPCError({ code: "FORBIDDEN" });
+  return course;
+}

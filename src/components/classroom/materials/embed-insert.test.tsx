@@ -8,10 +8,14 @@ import {
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 
+// The extension list also registers the file node, which talks to the API
+// only when one is on screen; none is here.
+vi.mock("@/trpc/react", () => ({ api: {} }));
+
 import { RichTextEditor } from "@/components/article-editor/rich-text-editor";
 import { filterSlashCommands } from "@/components/article-editor/utils";
 import en from "../../../../messages/en.json";
-import { classroomEditorExtensions } from "./embed-node";
+import { classroomEditorExtensions } from "./editor-extensions";
 
 type Node = {
   type?: string;
@@ -67,10 +71,15 @@ describe("lesson editor: inserting an Embed", () => {
   });
 
   it("the slash menu offers the Embed command for 'slides'", () => {
-    const ids = filterSlashCommands(
-      "slides",
-      classroomEditorExtensions.map((e) => e.command),
-    ).map((c) => c.id);
-    expect(ids).toContain("embed");
+    const commands = classroomEditorExtensions.flatMap((e) =>
+      e.command ? [e.command] : [],
+    );
+    expect(filterSlashCommands("slides", commands).map((c) => c.id)).toContain(
+      "embed",
+    );
+    // Without upload rights the file block is registered but not offered.
+    expect(
+      filterSlashCommands("file", commands).map((c) => c.id),
+    ).not.toContain("hosted-file");
   });
 });

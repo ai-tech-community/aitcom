@@ -11,7 +11,10 @@
  * not created yet, and checking them would fail every deploy. Add a table
  * here once it matches.
  */
-export const GUARDED_PAYLOAD_TABLES = ["payload_locked_documents_rels"];
+export const GUARDED_PAYLOAD_TABLES = [
+  "payload_locked_documents_rels",
+  "hosted_materials",
+];
 
 /** "table.column" for each expected column the database does not have. */
 export function findMissingColumns(

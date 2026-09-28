@@ -188,34 +188,32 @@ export function $isEmbedNode(
   return node instanceof EmbedNode;
 }
 
-/** The classroom's lesson-editor extensions. Module-level: stable identity. */
-export const classroomEditorExtensions: readonly RichTextEditorExtension[] = [
-  {
-    node: EmbedNode,
-    nodeType: "embed",
-    blockType: "Embed",
-    command: {
-      id: "embed",
-      label: "Embed slides or video",
-      group: "Basic",
-      keywords: [
-        "embed",
-        "video",
-        "youtube",
-        "vimeo",
-        "loom",
-        "slides",
-        "google",
-        "docs",
-        "sheets",
-        "drive",
-        "figma",
-      ],
-    },
-    toolbar: {
-      title: "Embed slides or video",
-      icon: <Presentation className="size-4" />,
-    },
-    create: () => $createEmbedNode(""),
+/** The Embed block, insertable from the slash menu and the toolbar. */
+export const embedExtension: RichTextEditorExtension = {
+  node: EmbedNode,
+  nodeType: "embed",
+  blockType: "Embed",
+  command: {
+    id: "embed",
+    label: "Embed slides or video",
+    group: "Basic",
+    keywords: [
+      "embed",
+      "video",
+      "youtube",
+      "vimeo",
+      "loom",
+      "slides",
+      "google",
+      "docs",
+      "sheets",
+      "drive",
+      "figma",
+    ],
   },
-];
+  toolbar: {
+    title: "Embed slides or video",
+    icon: <Presentation className="size-4" />,
+  },
+  create: () => $createEmbedNode(""),
+};

@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   collectEmbedUrls,
+  collectMaterialIds,
   embedBlockNode,
+  hostedFileBlockNode,
   invalidEmbedUrls,
+  isMaterialId,
   planYoutubeMigration,
   prependEmbedBlock,
-  stripEmptyEmbeds,
+  stripIncompleteMaterials,
 } from "./lesson-body";
 
 const YT = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
@@ -165,7 +168,7 @@ describe("planYoutubeMigration", () => {
   });
 });
 
-describe("stripEmptyEmbeds", () => {
+describe("stripIncompleteMaterials", () => {
   const empty = (url: unknown, id: string) => ({
     type: "block",
     version: 2,
@@ -187,7 +190,7 @@ describe("stripEmptyEmbeds", () => {
       },
       { type: "block", fields: { blockType: "Image", url: "" } },
     ]);
-    expect(stripEmptyEmbeds(body)).toEqual(
+    expect(stripIncompleteMaterials(body)).toEqual(
       root([
         para("intro"),
         embedBlockNode(YT, "b"),
@@ -202,19 +205,19 @@ describe("stripEmptyEmbeds", () => {
 
   it("keeps a filled-in link even if it is not embeddable (the server rejects it)", () => {
     const body = root([embedBlockNode("https://evil.test/x", "a")]);
-    expect(stripEmptyEmbeds(body)).toEqual(body);
+    expect(stripIncompleteMaterials(body)).toEqual(body);
   });
 
   it("does not mutate its input", () => {
     const input = root([empty("", "a"), para("notes")]);
     const copy = JSON.parse(JSON.stringify(input));
-    const out = stripEmptyEmbeds(input);
+    const out = stripIncompleteMaterials(input);
     expect(input).toEqual(copy);
     expect(out).not.toBe(input);
   });
 
   it("works on a stored JSON string", () => {
-    const out = stripEmptyEmbeds(
+    const out = stripIncompleteMaterials(
       JSON.stringify(root([empty("", "a"), para("notes")])),
     );
     expect(out).toEqual(root([para("notes")]));
@@ -223,12 +226,116 @@ describe("stripEmptyEmbeds", () => {
   it.each([null, undefined, 7, "not json", ""])(
     "returns %p unchanged",
     (input) => {
-      expect(stripEmptyEmbeds(input)).toBe(input);
+      expect(stripIncompleteMaterials(input)).toBe(input);
     },
   );
 
   it("returns a body without a root unchanged", () => {
     const input = { notRoot: true };
-    expect(stripEmptyEmbeds(input)).toEqual(input);
+    expect(stripIncompleteMaterials(input)).toEqual(input);
+  });
+});
+
+describe("hostedFileBlockNode / collectMaterialIds", () => {
+  it("builds the stored Payload block shape", () => {
+    expect(hostedFileBlockNode(42, "abc123abc123")).toEqual({
+      type: "block",
+      version: 2,
+      format: "",
+      fields: {
+        id: "abc123abc123",
+        blockName: "",
+        blockType: "HostedFile",
+        materialId: 42,
+      },
+    });
+  });
+
+  it("finds file ids at any depth, in order, and ignores other blocks", () => {
+    const body = root([
+      para("intro"),
+      hostedFileBlockNode(5, "a"),
+      embedBlockNode(YT, "b"),
+      {
+        type: "list",
+        children: [
+          {
+            type: "listitem",
+            children: [
+              hostedFileBlockNode(9, "c"),
+              hostedFileBlockNode(5, "d"),
+            ],
+          },
+        ],
+      },
+    ]);
+    expect(collectMaterialIds(body)).toEqual([5, 9, 5]);
+    expect(collectEmbedUrls(body)).toEqual([YT]);
+  });
+
+  it.each([
+    ["a string id", "12"],
+    ["zero", 0],
+    ["a negative id", -1],
+    ["a fraction", 1.5],
+    ["no id", undefined],
+  ])("turns %s into 0", (_label, materialId) => {
+    const body = root([
+      { type: "block", fields: { blockType: "HostedFile", materialId } },
+    ]);
+    expect(collectMaterialIds(body)).toEqual([0]);
+  });
+
+  it("reads a JSON string body and tolerates junk", () => {
+    expect(
+      collectMaterialIds(JSON.stringify(root([hostedFileBlockNode(3, "a")]))),
+    ).toEqual([3]);
+    for (const junk of [
+      null,
+      undefined,
+      "",
+      "not json",
+      42,
+      {},
+      { root: {} },
+    ]) {
+      expect(collectMaterialIds(junk)).toEqual([]);
+    }
+  });
+
+  it("knows a usable id", () => {
+    expect(isMaterialId(1)).toBe(true);
+    expect(isMaterialId(0)).toBe(false);
+    expect(isMaterialId("1")).toBe(false);
+    expect(isMaterialId(Number.MAX_SAFE_INTEGER + 1)).toBe(false);
+  });
+});
+
+describe("stripIncompleteMaterials: HostedFile blocks", () => {
+  const noFile = {
+    type: "block",
+    version: 2,
+    format: "",
+    fields: { id: "x", blockName: "", blockType: "HostedFile", materialId: 0 },
+  };
+
+  it("drops file blocks that never got a file, at any depth, and keeps the rest", () => {
+    const body = root([
+      hostedFileBlockNode(7, "a"),
+      noFile,
+      {
+        type: "list",
+        children: [{ type: "listitem", children: [noFile, para("item")] }],
+      },
+    ]);
+    expect(stripIncompleteMaterials(body)).toEqual(
+      root([
+        hostedFileBlockNode(7, "a"),
+        {
+          type: "list",
+          children: [{ type: "listitem", children: [para("item")] }],
+        },
+      ]),
+    );
   });
 });

@@ -1,4 +1,6 @@
 export type ClassroomCreatePolicy = "all_members" | "admins_only";
+/** Who may upload hosted lesson files (spec 2026-09-27 §2.3). */
+export type ClassroomUploadPolicy = "all_members" | "admins_only";
 export type CommunityRole = "owner" | "admin" | "moderator" | "member";
 
 /** Completed lessons / total, rounded, clamped 0..100. */
@@ -10,14 +12,34 @@ export function courseProgressPercent(
   return Math.min(100, Math.round((completed / total) * 100));
 }
 
+/**
+ * The shared shape of the classroom community policies: `admins_only` means
+ * owner or admin (moderators excluded); `all_members` means any active
+ * member. null = not an active member.
+ */
+function allowedUnderPolicy(
+  policy: "all_members" | "admins_only",
+  role: CommunityRole | null,
+): boolean {
+  if (role === null) return false;
+  if (policy === "admins_only") return role === "owner" || role === "admin";
+  return true;
+}
+
 /** May this role create a course under the community's policy? null = not a member. */
 export function canCreateCourse(
   policy: ClassroomCreatePolicy,
   role: CommunityRole | null,
 ): boolean {
-  if (role === null) return false;
-  if (policy === "admins_only") return role === "owner" || role === "admin";
-  return true; // all_members: any active member
+  return allowedUnderPolicy(policy, role);
+}
+
+/** May this role upload hosted lesson files under the community's policy? */
+export function canUploadMaterials(
+  policy: ClassroomUploadPolicy,
+  role: CommunityRole | null,
+): boolean {
+  return allowedUnderPolicy(policy, role);
 }
 
 export type ExamQuestion = {

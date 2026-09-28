@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LessonEditor } from "@/components/classroom/lesson-editor";
+import { CourseFilesPanel } from "@/components/classroom/course-files-panel";
 import { useConfirm } from "@/components/confirm-dialog";
 
 type CourseStatus = "draft" | "published";
@@ -494,6 +495,11 @@ export function CourseEditor({
             courseId={data.course.id}
             lessons={data.lessons}
             modules={data.modules}
+            canUpload={data.viewerCanUpload}
+          />
+          <CourseFilesPanel
+            courseId={data.course.id}
+            canUpload={data.viewerCanUpload}
           />
         </>
       ) : null}
