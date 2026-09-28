@@ -3,7 +3,7 @@ import { embedExtension } from "./embed-node";
 import { hostedFileExtension, hostedFileInsertable } from "./hosted-file-node";
 
 /**
- * The lesson editor's block nodes. Both lists register the same nodes, so a
+ * The lesson body editor's block nodes. Both lists register the same nodes, so a
  * lesson that already has files always loads and saves; they differ only in
  * whether "Add a file" is offered. Module-level: stable identity.
  */
