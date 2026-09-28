@@ -81,7 +81,7 @@ function LessonLabel({ lesson }: { lesson: OutlineLessonView }) {
         </span>
       ) : null}
       {lesson.empty ? (
-        <span className="text-muted-foreground border-border shrink-0 rounded-full border px-1.5 text-[0.6875rem] leading-4 font-normal">
+        <span className="text-muted-foreground border-border shrink-0 rounded-full border px-1.5 text-xs leading-4 font-normal">
           {t("emptyLesson")}
         </span>
       ) : null}
