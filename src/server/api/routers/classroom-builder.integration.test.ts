@@ -423,4 +423,86 @@ describe.skipIf(!RUN_DB)("classroom builder server [DB integration]", () => {
       ).rejects.toMatchObject({ message: "MODULE_COURSE_MISMATCH" });
     });
   });
+
+  describe("lesson saves", () => {
+    it("returns updatedAt and refuses a stale lesson save", async () => {
+      const { id: courseId } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      const { id } = await api.addLesson({ courseId, title: "L" });
+      const before = await m.payload.findByID({
+        collection: "lessons",
+        id,
+        depth: 0,
+      });
+      const saved = await api.updateLesson({
+        lessonId: id,
+        title: "L2",
+        expectedUpdatedAt: before.updatedAt,
+      });
+      const after = await m.payload.findByID({
+        collection: "lessons",
+        id,
+        depth: 0,
+      });
+      expect(saved.updatedAt).toBe(after.updatedAt);
+      expect(saved.updatedAt).not.toBe(before.updatedAt);
+      await expect(
+        api.updateLesson({
+          lessonId: id,
+          title: "L3",
+          expectedUpdatedAt: before.updatedAt,
+        }),
+      ).rejects.toMatchObject({ code: "CONFLICT", message: "LESSON_CHANGED" });
+      await expect(
+        api.updateLesson({
+          lessonId: id,
+          title: "L3",
+          expectedUpdatedAt: saved.updatedAt,
+        }),
+      ).resolves.toMatchObject({ ok: true });
+    });
+
+    it("rejects a lesson expectedUpdatedAt that is not a date as a bad request", async () => {
+      const { id: courseId } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      const { id } = await api.addLesson({ courseId, title: "L" });
+      await expect(
+        api.updateLesson({
+          lessonId: id,
+          title: "x",
+          expectedUpdatedAt: "not-a-date",
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
+
+    it("refuses lesson changes on an archived course", async () => {
+      const { id: courseId } = await createViaApi();
+      const api = callerAs(fx.authorId).classrooms;
+      const { id } = await api.addLesson({ courseId, title: "L" });
+      await m.payload.update({
+        collection: "courses",
+        id: courseId,
+        data: { status: "archived" },
+      });
+      const archived = { code: "FORBIDDEN", message: "COURSE_ARCHIVED" };
+      await expect(
+        api.updateLesson({ lessonId: id, title: "x" }),
+      ).rejects.toMatchObject(archived);
+      await expect(
+        api.addLesson({ courseId, title: "y" }),
+      ).rejects.toMatchObject(archived);
+      await expect(
+        api.deleteLesson({ lessonId: id }),
+      ).rejects.toMatchObject(archived);
+      await expect(
+        api.reorderLessons({ courseId, moduleId: null, orderedIds: [id] }),
+      ).rejects.toMatchObject(archived);
+      const still = await m.payload.findByID({
+        collection: "lessons",
+        id,
+        depth: 0,
+      });
+      expect(still.title).toBe("L");
+    });
+  });
 });

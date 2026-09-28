@@ -85,6 +85,13 @@ function relationId(value: unknown): number | null {
   return value as number;
 }
 
+/** Authors may not change an archived course's content; a moderator archived it. */
+function assertCourseEditable(course: { status?: string | null }): void {
+  if (course.status === "archived") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "COURSE_ARCHIVED" });
+  }
+}
+
 /** Issue a course certificate if (and only if) every lesson is now complete. Idempotent. */
 async function issueCertificateIfComplete(
   database: typeof db,
@@ -579,6 +586,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       // Keep the flat-or-fully-moduled invariant: a moduled course's new
       // lesson always lands in a module — the one asked for, else the last.
@@ -643,7 +651,10 @@ export const classroomsRouter = createTRPCRouter({
       return { id: lesson.id };
     }),
 
-  /** Update a lesson on own course. */
+  /**
+   * Update a lesson on own course. expectedUpdatedAt makes a save from a stale
+   * tab fail loudly (LESSON_CHANGED) instead of overwriting newer edits.
+   */
   updateLesson: protectedProcedure
     .input(
       z.object({
@@ -674,6 +685,7 @@ export const classroomsRouter = createTRPCRouter({
             }),
           )
           .optional(),
+        expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -694,6 +706,15 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
+
+      if (
+        input.expectedUpdatedAt !== undefined &&
+        new Date(input.expectedUpdatedAt).getTime() !==
+          new Date(lesson.updatedAt).getTime()
+      ) {
+        throw new TRPCError({ code: "CONFLICT", message: "LESSON_CHANGED" });
+      }
 
       assertLessonBodyEmbeds(input.body);
       await assertLessonMaterials(payload, course.id, input.body);
@@ -711,13 +732,13 @@ export const classroomsRouter = createTRPCRouter({
       if (input.examQuestions !== undefined)
         data.examQuestions = input.examQuestions;
 
-      await payload.update({
+      const updated = await payload.update({
         collection: "lessons",
         id: input.lessonId,
         data,
       });
 
-      return { ok: true };
+      return { ok: true as const, updatedAt: updated.updatedAt };
     }),
 
   /** Delete a lesson on own course. */
@@ -741,6 +762,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       await payload.delete({
         collection: "lessons",
@@ -995,6 +1017,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       const { docs: modules } = await payload.find({
         collection: "modules",
