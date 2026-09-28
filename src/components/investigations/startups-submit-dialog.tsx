@@ -42,6 +42,40 @@ import {
 } from "@/lib/investigations/startups";
 import { api } from "@/trpc/react";
 
+function sourcedNamesToText(
+  entities: readonly {
+    name: string;
+    url: string | null;
+    imageUrl: string | null;
+  }[],
+): string {
+  return entities
+    .map((entity) => {
+      const parts = [entity.name];
+      if (entity.url || entity.imageUrl) {
+        parts.push(entity.url ?? "");
+      }
+      if (entity.imageUrl) parts.push(entity.imageUrl);
+      return parts.join(" | ");
+    })
+    .join("\n");
+}
+
+function sourcedNamesFromText(text: string) {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name, url, imageUrl] = line.split("|").map((part) => part.trim());
+      return {
+        name: name ?? "",
+        url: url ?? null,
+        imageUrl: imageUrl ?? null,
+      };
+    });
+}
+
 export function StartupsSubmitDialog({
   open,
   onOpenChange,
@@ -70,6 +104,8 @@ export function StartupsSubmitDialog({
     fieldLogo: string;
     fieldFounders: string;
     fieldFoundersHint: string;
+    fieldInvestors: string;
+    fieldInvestorsHint: string;
     fieldExit: string;
     fieldExitNone: string;
     fieldAcquirer: string;
@@ -93,6 +129,7 @@ export function StartupsSubmitDialog({
   const [description, setDescription] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [foundersText, setFoundersText] = useState("");
+  const [investorsText, setInvestorsText] = useState("");
   const [exitStatus, setExitStatus] = useState<StartupExitStatus | "">("");
   const [acquirer, setAcquirer] = useState("");
   const [exitOn, setExitOn] = useState("");
@@ -115,18 +152,8 @@ export function StartupsSubmitDialog({
       setStage(editing.stage ?? "");
       setDescription(editing.description ?? "");
       setLogoUrl(editing.logoUrl ?? "");
-      setFoundersText(
-        editing.founders
-          .map((founder) => {
-            const parts = [founder.name];
-            if (founder.url || founder.imageUrl) {
-              parts.push(founder.url ?? "");
-            }
-            if (founder.imageUrl) parts.push(founder.imageUrl);
-            return parts.join(" | ");
-          })
-          .join("\n"),
-      );
+      setFoundersText(sourcedNamesToText(editing.founders));
+      setInvestorsText(sourcedNamesToText(editing.investors));
       setExitStatus(editing.exitStatus ?? "");
       setAcquirer(editing.acquirer ?? "");
       setExitOn(editing.exitOn ?? "");
@@ -185,6 +212,7 @@ export function StartupsSubmitDialog({
     setDescription("");
     setLogoUrl("");
     setFoundersText("");
+    setInvestorsText("");
     setExitStatus("");
     setAcquirer("");
     setExitOn("");
@@ -217,20 +245,8 @@ export function StartupsSubmitDialog({
       stage: stage.trim() || null,
       description: description.trim() || null,
       logoUrl: logoUrl.trim() || null,
-      founders: foundersText
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line) => {
-          const [name, url, imageUrl] = line
-            .split("|")
-            .map((part) => part.trim());
-          return {
-            name: name ?? "",
-            url: url ?? null,
-            imageUrl: imageUrl ?? null,
-          };
-        }),
+      founders: sourcedNamesFromText(foundersText),
+      investors: sourcedNamesFromText(investorsText),
       exitStatus: exitStatus || null,
       acquirer: acquirer.trim() || null,
       exitOn: exitOn.trim() || null,
@@ -376,6 +392,17 @@ export function StartupsSubmitDialog({
             />
             <p className="text-muted-foreground text-xs">
               {copy.fieldFoundersHint}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="startup-investors">{copy.fieldInvestors}</Label>
+            <Textarea
+              id="startup-investors"
+              value={investorsText}
+              onChange={(event) => setInvestorsText(event.target.value)}
+            />
+            <p className="text-muted-foreground text-xs">
+              {copy.fieldInvestorsHint}
             </p>
           </div>
           <div className="flex flex-col gap-2">

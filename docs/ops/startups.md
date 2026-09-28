@@ -81,6 +81,7 @@ Row shape — Pulse fixture aliases are accepted (`logo_url`, `jobs_url`,
   "logo_url": null,
   "description": null,
   "founders": [{ "name": "Ada Example", "url": null }],
+  "investors": [],
   "status": null,
   "exit_acquirer": null,
   "exit_year": null,
@@ -100,6 +101,9 @@ Rules:
   sourced — UI uses initials otherwise and **never invents a face or stock
   photo**. **Never invent a people graph or who-works-where.** Ops will Fail
   invent. Source chips must have unique labels (never `News`/`News`).
+- `investors` uses that same shape and the same max of 8. Column default is
+  `[]`. Leave `[]` until a later enrich climb passes sourced names. Do not
+  invent investor records.
 - Pulse `status` / `exitStatus` is sourced-only `acquired` | `ipo` |
   `shutdown`. Optional `exit_acquirer` / `acquirer` and `exit_year` /
   `exitOn` (`YYYY` or `YYYY-MM-DD`) only when that exit is sourced. Do not

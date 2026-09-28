@@ -24,6 +24,7 @@ import {
   pulseExitAlias,
   resolveStartupPinCoords,
   sanitizeStartupFounders,
+  sanitizeStartupInvestors,
   sanitizeStartupSources,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
@@ -88,6 +89,20 @@ const optionalDescription = z
   .optional()
   .transform((value) => sanitizeStartupDescription(value));
 
+function flattenNamedEntities(value: unknown): unknown[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entity) => {
+    if (!entity || typeof entity !== "object") return [];
+    const item = entity as Record<string, unknown>;
+    return [
+      {
+        ...item,
+        imageUrl: item.imageUrl ?? item.image_url ?? item.photo_url ?? null,
+      },
+    ];
+  });
+}
+
 function flattenPulseStartupRow(raw: unknown): unknown {
   if (!raw || typeof raw !== "object") return raw;
   const row = raw as Record<string, unknown>;
@@ -107,21 +122,18 @@ function flattenPulseStartupRow(raw: unknown): unknown {
       pulseExitAlias(typeof row.status === "string" ? row.status : null),
     acquirer: row.acquirer ?? row.exit_acquirer ?? null,
     exitOn,
-    founders: Array.isArray(row.founders)
-      ? row.founders.flatMap((founder) => {
-          if (!founder || typeof founder !== "object") return [];
-          const item = founder as Record<string, unknown>;
-          return [
-            {
-              ...item,
-              imageUrl:
-                item.imageUrl ?? item.image_url ?? item.photo_url ?? null,
-            },
-          ];
-        })
-      : [],
+    founders: flattenNamedEntities(row.founders),
+    investors: flattenNamedEntities(row.investors),
   };
 }
+
+const sourcedNamedEntity = z.object({
+  name: z.string().trim().max(160),
+  url: optionalBlank,
+  imageUrl: optionalBlank,
+  image_url: optionalBlank,
+  photo_url: optionalBlank,
+});
 
 const createStartupFields = z.object({
   name: z.string().trim().min(1).max(STARTUPS_NAME_MAX),
@@ -135,18 +147,8 @@ const createStartupFields = z.object({
   logoUrl: optionalBlank,
   description: optionalDescription,
   blurb: optionalDescription,
-  founders: z
-    .array(
-      z.object({
-        name: z.string().trim().max(160),
-        url: optionalBlank,
-        imageUrl: optionalBlank,
-        image_url: optionalBlank,
-        photo_url: optionalBlank,
-      }),
-    )
-    .max(8)
-    .optional(),
+  founders: z.array(sourcedNamedEntity).max(8).optional(),
+  investors: z.array(sourcedNamedEntity).max(8).optional(),
   exitStatus: optionalBlank,
   acquirer: optionalBlank,
   exitOn: optionalBlank,
@@ -243,6 +245,7 @@ function parsedWriteFields(input: CreateStartupInput) {
     lng: input.lng ?? null,
   });
   const founders = sanitizeStartupFounders(input.founders);
+  const investors = sanitizeStartupInvestors(input.investors);
   const rawExit = input.exitStatus?.trim() ?? "";
   const exitStatus = rawExit ? parseStartupExitStatus(rawExit) : null;
   if (rawExit && !exitStatus) {
@@ -274,6 +277,7 @@ function parsedWriteFields(input: CreateStartupInput) {
       input.description ?? input.blurb ?? null,
     ),
     founders,
+    investors,
     exitStatus,
     acquirer: exitStatus ? (input.acquirer ?? null) : null,
     exitOn: exitStatus ? parseStartupExitOn(input.exitOn) : null,

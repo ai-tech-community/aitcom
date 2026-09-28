@@ -158,6 +158,7 @@ describe("Startups v1 Ops-Passed seeds", () => {
     const byName = new Map(cards.map((card) => [card.name, card]));
 
     expect(cards.filter((card) => card.founders.length > 0)).toHaveLength(17);
+    expect(cards.every((card) => card.investors.length === 0)).toBe(true);
     expect(
       ["Weaviate", "Apptronik", "Skild AI"].map(
         (name) => byName.get(name)?.founders,

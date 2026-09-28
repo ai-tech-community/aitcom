@@ -151,6 +151,7 @@ export function startupsV1PublicCards(): StartupPublicCard[] {
       logoUrl: row.logoUrl,
       description: row.description,
       founders: row.founders,
+      investors: [],
       exitStatus: row.exitStatus,
       acquirer: row.acquirer,
       exitOn: row.exitOn,

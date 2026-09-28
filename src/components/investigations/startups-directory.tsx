@@ -414,6 +414,8 @@ export function StartupsDirectory({
             fieldLogo: t("fieldLogo"),
             fieldFounders: t("fieldFounders"),
             fieldFoundersHint: t("fieldFoundersHint"),
+            fieldInvestors: t("fieldInvestors"),
+            fieldInvestorsHint: t("fieldInvestorsHint"),
             fieldExit: t("fieldExit"),
             fieldExitNone: t("fieldExitNone"),
             fieldAcquirer: t("fieldAcquirer"),
