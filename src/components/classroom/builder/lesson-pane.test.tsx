@@ -355,6 +355,16 @@ describe("LessonSettingsPane", () => {
     expect(screen.queryByRole("button", { name: "Add a quiz" })).toBeNull();
   });
 
+  it("names the settings sections in normal case (the label styles them)", () => {
+    renderScope({ lessonId: 1, title: "One" });
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Resources" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Quiz" }),
+    ).toBeInTheDocument();
+  });
+
   it("adds, labels and removes resource links", () => {
     renderScope({ lessonId: 1, title: "One" });
     fireEvent.click(screen.getByRole("button", { name: "Add a link" }));
