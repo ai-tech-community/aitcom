@@ -49,19 +49,19 @@ describe("ExamEditor", () => {
     expect(new Set(boxes.map((b) => b.id)).size).toBe(boxes.length);
     // Same question ids in both editors: the correct-answer radio groups must
     // still be separate, or picking an answer in one clears the other.
-    const [first, second] = screen.getAllByRole("radiogroup").reduce<
-      string[][]
-    >(
-      (editors, group, i) => {
-        const names = Array.from(
-          group.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
-          (r) => r.name,
-        );
-        editors[i < 2 ? 0 : 1]!.push(...new Set(names));
-        return editors;
-      },
-      [[], []],
-    );
+    const [first, second] = screen
+      .getAllByRole("radiogroup")
+      .reduce<string[][]>(
+        (editors, group, i) => {
+          const names = Array.from(
+            group.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+            (r) => r.name,
+          );
+          editors[i < 2 ? 0 : 1]!.push(...new Set(names));
+          return editors;
+        },
+        [[], []],
+      );
     expect(first).toHaveLength(2);
     expect(second).toHaveLength(2);
     for (const name of first!) expect(second).not.toContain(name);

@@ -803,7 +803,9 @@ describe("CourseBuilder lesson versions after outline changes", () => {
   /** The cache update for lesson versions, applied to `data`. */
   function cachedVersions(data: typeof flatCourse) {
     const versionUpdates = trpc.setData.mock.calls
-      .map(([, update]) => (update as (old: unknown) => typeof flatCourse)(data))
+      .map(([, update]) =>
+        (update as (old: unknown) => typeof flatCourse)(data),
+      )
       .map((next) => next.lessons.map((l) => [l.id, l.updatedAt]));
     return versionUpdates.at(-1);
   }
@@ -825,7 +827,9 @@ describe("CourseBuilder lesson versions after outline changes", () => {
       { key: "Enter" },
     );
     await act(async () => {
-      fireEvent.click(await screen.findByRole("menuitem", { name: "Move down" }));
+      fireEvent.click(
+        await screen.findByRole("menuitem", { name: "Move down" }),
+      );
     });
     expect(trpc.outline.reorderLessons).toHaveBeenCalledWith({
       courseId: 7,
