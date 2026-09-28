@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   CircleAlert,
@@ -63,6 +63,12 @@ export function PublishDialog({
 }: PublishDialogProps) {
   const t = useTranslations("classroomBuilder");
   const [phase, setPhase] = useState<Phase>("review");
+  // The Publish button that had focus is gone once live: hand focus to the
+  // next step so keyboard and screen-reader users land on the success state.
+  const viewCourseRef = useRef<HTMLAnchorElement>(null);
+  useEffect(() => {
+    if (phase === "live") viewCourseRef.current?.focus();
+  }, [phase]);
   const checks = useMemo(() => publishChecks(input), [input]);
   const ready = canPublish(checks);
 
@@ -113,8 +119,11 @@ export function PublishDialog({
               >
                 {t("keepEditing")}
               </Button>
-              <Button asChild>
-                <Link href={courseHref as never}>{t("viewCourse")}</Link>
+              {/* Orange belongs to Publish alone (One Voice Rule). */}
+              <Button asChild variant="secondary">
+                <Link ref={viewCourseRef} href={courseHref as never}>
+                  {t("viewCourse")}
+                </Link>
               </Button>
             </DialogFooter>
           </>

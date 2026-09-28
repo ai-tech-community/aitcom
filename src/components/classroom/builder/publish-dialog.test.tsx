@@ -102,6 +102,15 @@ describe("PublishDialog", () => {
     );
   });
 
+  it("moves focus to 'View course' once live, in a quiet style (orange stays on Publish)", async () => {
+    renderDialog({ input: { ...base, lessons: [intro] } });
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    await screen.findByText("Your course is live");
+    const view = screen.getByRole("link", { name: "View course" });
+    await vi.waitFor(() => expect(view).toHaveFocus());
+    expect(view).toHaveAttribute("data-variant", "secondary");
+  });
+
   it("stays open and does not celebrate when publishing fails", async () => {
     const onConfirm = vi.fn().mockRejectedValue(new Error("COURSE_ARCHIVED"));
     renderDialog({ input: { ...base, lessons: [intro] }, onConfirm });
