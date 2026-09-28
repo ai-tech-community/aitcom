@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { getSession } from "@/server/better-auth/server";
 import { getPayloadClient } from "@/server/payload";
+import { db } from "@/server/db";
+import { communities } from "@/server/db/schema";
+import { courseEditRoute } from "@/lib/classroom/course-edit-route";
 import { CourseBuilder } from "@/components/classroom/builder/course-builder";
 
 export default async function EditCoursePage({
@@ -17,9 +21,8 @@ export default async function EditCoursePage({
     );
   }
 
-  // Author-only editing: anyone else goes to the course page instead of a
-  // builder that would fail on the first save (Gate-Before-Fail). The server
-  // mutations stay the backstop.
+  // Gate-Before-Fail: only the author edits, under the course's own
+  // community (see courseEditRoute).
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
     collection: "courses",
@@ -28,9 +31,22 @@ export default async function EditCoursePage({
     depth: 0,
   });
   const course = docs[0];
-  if (course?.authorId !== session.user.id) {
-    redirect(`/${locale}/communities/${slug}/classroom/${courseSlug}`);
-  }
+  const community = course
+    ? await db.query.communities.findFirst({
+        where: eq(communities.id, course.communityId),
+        columns: { slug: true },
+      })
+    : undefined;
+
+  const route = courseEditRoute({
+    course: course
+      ? { authorId: course.authorId, communitySlug: community?.slug ?? null }
+      : null,
+    userId: session.user.id,
+    communitySlug: slug,
+    courseSlug,
+  });
+  if (route.kind === "redirect") redirect(`/${locale}${route.path}`);
 
   return <CourseBuilder slug={slug} courseSlug={courseSlug} />;
 }
