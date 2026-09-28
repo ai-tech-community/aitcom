@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionLabel } from "@/components/ui/section-label";
+import { CourseFilesPanel } from "@/components/classroom/course-files-panel";
 import type { CourseDetails } from "./use-course-details";
 
 const MAX_SUMMARY = 500;
@@ -16,6 +17,9 @@ const MAX_SUMMARY = 500;
 export type CourseDetailsPaneProps = {
   /** The course draft, owned by the builder (see use-course-details.ts). */
   details: CourseDetails;
+  courseId: number;
+  /** From `classrooms.get().viewerCanUpload`: the community lets this author upload files. */
+  canUpload: boolean;
   isPublic: boolean;
   readOnly: boolean;
 };
@@ -24,9 +28,17 @@ export type CourseDetailsPaneProps = {
  * The course's own fields — title, summary, cover. Edits go into the
  * builder's course draft, which autosaves. Visibility is shown but changed
  * elsewhere (staff decide it on the course page).
+ *
+ * Below them, the course's uploaded files. Files belong to the course, not
+ * to one lesson (any lesson may use any of them), so they are managed here.
+ * Each file change is its own immediate action, like deleting a lesson; it
+ * is not part of the course draft. An archived course is read-only, so its
+ * files are not offered for changes.
  */
 export function CourseDetailsPane({
   details,
+  courseId,
+  canUpload,
   isPublic,
   readOnly,
 }: CourseDetailsPaneProps) {
@@ -201,6 +213,10 @@ export function CourseDetailsPane({
         </dd>
         <dd className="text-muted-foreground text-sm">{t("visibilityHint")}</dd>
       </dl>
+
+      {readOnly ? null : (
+        <CourseFilesPanel courseId={courseId} canUpload={canUpload} />
+      )}
     </div>
   );
 }

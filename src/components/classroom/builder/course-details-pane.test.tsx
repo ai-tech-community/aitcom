@@ -21,6 +21,23 @@ vi.mock("@/trpc/react", () => ({
   },
 }));
 
+// The files panel has its own tests; here only its place and inputs matter.
+vi.mock("@/components/classroom/course-files-panel", () => ({
+  CourseFilesPanel: ({
+    courseId,
+    canUpload,
+  }: {
+    courseId: number;
+    canUpload: boolean;
+  }) => (
+    <section
+      aria-label="Course files"
+      data-course-id={courseId}
+      data-can-upload={String(canUpload)}
+    />
+  ),
+}));
+
 import { CourseDetailsPane } from "./course-details-pane";
 import { useCourseDetails } from "./use-course-details";
 
@@ -55,6 +72,8 @@ function Harness({
   return (
     <CourseDetailsPane
       details={details}
+      courseId={course.id}
+      canUpload
       isPublic={course.isPublic}
       readOnly={readOnly}
     />
@@ -153,5 +172,17 @@ describe("CourseDetailsPane", () => {
     expect(screen.getByRole("button", { name: "Add a cover" })).toBeDisabled();
     await act(() => vi.advanceTimersByTimeAsync(5000));
     expect(trpc.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("manages the course's files below its details", () => {
+    renderPane();
+    const panel = screen.getByRole("region", { name: "Course files" });
+    expect(panel).toHaveAttribute("data-course-id", "7");
+    expect(panel).toHaveAttribute("data-can-upload", "true");
+  });
+
+  it("offers no file changes on an archived course", () => {
+    renderPane(true);
+    expect(screen.queryByRole("region", { name: "Course files" })).toBeNull();
   });
 });

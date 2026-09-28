@@ -13,6 +13,7 @@ describe("builderErrorKey", () => {
     ["MODULE_COURSE_MISMATCH", "errorOutlineOutOfDate"],
     ["MODULE_SET_MISMATCH", "errorOutlineOutOfDate"],
     ["INVALID_EMBED", "errorInvalidEmbed"],
+    ["INVALID_MATERIAL", "errorInvalidMaterial"],
     ["FORBIDDEN", "errorNotAllowed"],
     ["CANNOT_CREATE_COURSE", "errorCannotCreateCourse"],
     ["PUBLISH_CHECKS_FAILED", "errorPublishChecksFailed"],

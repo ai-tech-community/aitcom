@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/sheet";
 import { useConfirm } from "@/components/confirm-dialog";
 import { CourseView } from "@/components/classroom/course-view";
+import { LessonEditorProvider } from "@/components/classroom/materials/lesson-editor-context";
+import { MaterialsManifestProvider } from "@/components/classroom/materials/materials-context";
 import type { ChecklistInput } from "@/lib/classroom/publish-checklist";
 import { BuilderTopBar } from "./builder-top-bar";
 import { CourseDetailsPane } from "./course-details-pane";
@@ -230,6 +232,13 @@ function CourseWorkspace({
   const update = api.classrooms.update.useMutation();
   const { course, lessons, modules } = data;
   const readOnly = course.status === "archived";
+  // Course-level file facts for the lesson editor's file blocks: which course
+  // they belong to, and whether this author may upload (the community's
+  // upload policy, from `classrooms.get`).
+  const lessonEditorContext = useMemo(
+    () => ({ courseId: course.id, canUpload: data.viewerCanUpload }),
+    [course.id, data.viewerCanUpload],
+  );
 
   // One writer per workspace mount, seeded with the version this mount loaded.
   const [writer] = useState(() => createVersionedWriter(course.updatedAt));
@@ -583,54 +592,66 @@ function CourseWorkspace({
         </div>
       ) : null}
 
-      {/* Panes stay mounted while previewing so no draft is ever dropped. */}
-      <div
-        className={cn(
-          "grid min-h-0 flex-1 lg:grid-cols-[18rem_minmax(0,1fr)_auto]",
-          previewing && "hidden",
-        )}
-      >
-        {outlineColumn ? (
-          <nav
-            aria-label={t("outline")}
-            className="border-border hidden overflow-y-auto border-r lg:block"
+      {/* Panes stay mounted while previewing so no draft is ever dropped.
+          The materials contexts reach the lesson body: the editor's file
+          blocks, and the read-only view's file cards. */}
+      <LessonEditorProvider value={lessonEditorContext}>
+        <MaterialsManifestProvider manifest={data.materials}>
+          <div
+            className={cn(
+              "grid min-h-0 flex-1 lg:grid-cols-[18rem_minmax(0,1fr)_auto]",
+              previewing && "hidden",
+            )}
           >
-            <SectionLabel className="mx-3 mt-4">{t("outline")}</SectionLabel>
-            {outline}
-          </nav>
-        ) : null}
+            {outlineColumn ? (
+              <nav
+                aria-label={t("outline")}
+                className="border-border hidden overflow-y-auto border-r lg:block"
+              >
+                <SectionLabel className="mx-3 mt-4">
+                  {t("outline")}
+                </SectionLabel>
+                {outline}
+              </nav>
+            ) : null}
 
-        {/* Stays mounted (hidden) while a lesson is open so its draft is kept. */}
-        <div
-          hidden={selection.kind !== "details"}
-          className="min-w-0 overflow-y-auto"
-        >
-          <CourseDetailsPane
-            details={details}
-            isPublic={!!course.isPublic}
-            readOnly={readOnly}
-          />
-        </div>
+            {/* Stays mounted (hidden) while a lesson is open so its draft is kept. */}
+            <div
+              hidden={selection.kind !== "details"}
+              className="min-w-0 overflow-y-auto"
+            >
+              <CourseDetailsPane
+                details={details}
+                courseId={course.id}
+                canUpload={data.viewerCanUpload}
+                isPublic={!!course.isPublic}
+                readOnly={readOnly}
+              />
+            </div>
 
-        {/* Keyed by lesson: switching lessons closes this scope, which saves
+            {/* Keyed by lesson: switching lessons closes this scope, which saves
             any last edits under the old lesson's own id (see the scope). */}
-        {selectedLesson ? (
-          <LessonEditorScope
-            key={selectedLesson.id}
-            lesson={selectedLesson}
-            courseSlug={courseSlug}
-            readOnly={readOnly}
-            versions={lessonVersions}
-            onStatusChange={(state) =>
-              reportPane(lessonPaneKey(selectedLesson.id), state)
-            }
-            isDeleted={isLessonDeleted}
-            onDeleted={lessonDeletedHere}
-            settingsCollapsed={settingsCollapsed}
-            onToggleSettings={() => setSettingsCollapsed(!settingsCollapsed)}
-          />
-        ) : null}
-      </div>
+            {selectedLesson ? (
+              <LessonEditorScope
+                key={selectedLesson.id}
+                lesson={selectedLesson}
+                courseSlug={courseSlug}
+                readOnly={readOnly}
+                versions={lessonVersions}
+                onStatusChange={(state) =>
+                  reportPane(lessonPaneKey(selectedLesson.id), state)
+                }
+                isDeleted={isLessonDeleted}
+                onDeleted={lessonDeletedHere}
+                settingsCollapsed={settingsCollapsed}
+                onToggleSettings={() =>
+                  setSettingsCollapsed(!settingsCollapsed)
+                }
+              />
+            ) : null}
+          </div>
+        </MaterialsManifestProvider>
+      </LessonEditorProvider>
 
       <PublishDialog
         open={publishOpen}

@@ -11,6 +11,7 @@ const KEYS = {
   MODULE_COURSE_MISMATCH: "errorOutlineOutOfDate",
   MODULE_SET_MISMATCH: "errorOutlineOutOfDate",
   INVALID_EMBED: "errorInvalidEmbed",
+  INVALID_MATERIAL: "errorInvalidMaterial",
   FORBIDDEN: "errorNotAllowed",
   CANNOT_CREATE_COURSE: "errorCannotCreateCourse",
   PUBLISH_CHECKS_FAILED: "errorPublishChecksFailed",
@@ -26,5 +27,7 @@ function isBuilderErrorCode(message: string): message is BuilderErrorCode {
 }
 
 export function builderErrorKey(message: string | undefined): BuilderErrorKey {
-  return message && isBuilderErrorCode(message) ? KEYS[message] : "errorGeneric";
+  return message && isBuilderErrorCode(message)
+    ? KEYS[message]
+    : "errorGeneric";
 }

@@ -237,6 +237,30 @@ describe("LessonEditorScope saving", () => {
     expect(saved.root.children).toEqual([body.root.children[0]]);
   });
 
+  it("drops file blocks that never got a file, and keeps chosen files", async () => {
+    renderScope({ lessonId: 1, title: "One" });
+    const fileBlock = (id: string, materialId: number) => ({
+      type: "block",
+      version: 2,
+      format: "",
+      fields: { id, blockName: "", blockType: "HostedFile", materialId },
+    });
+    const body = {
+      root: {
+        type: "root",
+        children: [fileBlock("f1", 0), fileBlock("f2", 42)],
+      },
+    };
+    fireEvent.change(screen.getByLabelText("Rich text"), {
+      target: { value: JSON.stringify(body) },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    const saved = trpc.updateLesson.mock.calls[0]![0].body as {
+      root: { children: unknown[] };
+    };
+    expect(saved.root.children).toEqual([fileBlock("f2", 42)]);
+  });
+
   it("does not save a blank title and says why", async () => {
     const { onStatusChange } = renderScope({ lessonId: 1, title: "One" });
     fireEvent.change(screen.getByLabelText("Lesson title"), {
@@ -296,6 +320,20 @@ describe("LessonEditorScope saving", () => {
     expect(lastState(onStatusChange)?.status).toBe("error");
     expect(
       screen.getByText(en.classroomBuilder.errorInvalidEmbed),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Lesson title")).toHaveValue("One edited");
+  });
+
+  it("explains a refused file in plain words and keeps the draft", async () => {
+    trpc.updateLesson.mockRejectedValueOnce(new Error("INVALID_MATERIAL"));
+    const { onStatusChange } = renderScope({ lessonId: 1, title: "One" });
+    fireEvent.change(screen.getByLabelText("Lesson title"), {
+      target: { value: "One edited" },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(lastState(onStatusChange)?.status).toBe("error");
+    expect(
+      screen.getByText(en.classroomBuilder.errorInvalidMaterial),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Lesson title")).toHaveValue("One edited");
   });

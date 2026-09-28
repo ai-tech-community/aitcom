@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,7 +40,7 @@ function CourseFileRow({
 }) {
   const t = useTranslations("classroom.files");
   const titleRef = useRef<HTMLInputElement>(null);
-  const switchId = `course-file-preview-${file.id}`;
+  const switchId = useId();
   const revert = () => {
     if (titleRef.current) titleRef.current.value = file.title;
   };
@@ -129,6 +129,7 @@ export function CourseFilesPanel({
   const t = useTranslations("classroom.files");
   const utils = api.useUtils();
   const confirm = useConfirm();
+  const titleId = useId();
   const list = api.classroomMaterials.listCourseMaterials.useQuery({
     courseId,
   });
@@ -177,9 +178,9 @@ export function CourseFilesPanel({
   const busy = update.isPending || remove.isPending;
 
   return (
-    <section className="space-y-3" aria-labelledby="course-files-title">
+    <section className="space-y-3" aria-labelledby={titleId}>
       <div className="space-y-1">
-        <h2 id="course-files-title" className="text-base font-semibold">
+        <h2 id={titleId} className="text-base font-semibold">
           {t("panelTitle")}
         </h2>
         <p className="text-muted-foreground text-sm">{t("panelHelp")}</p>

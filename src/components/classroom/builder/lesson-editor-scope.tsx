@@ -6,7 +6,7 @@ import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { stripEmptyEmbeds } from "@/lib/classroom/lesson-body";
+import { stripIncompleteMaterials } from "@/lib/classroom/lesson-body";
 import type { ExamQuestion } from "@/lib/classroom";
 import { builderErrorKey, type BuilderErrorKey } from "./builder-errors";
 import type { PaneSaveState } from "./course-builder";
@@ -54,7 +54,7 @@ function draftFrom(lesson: LessonLike): LessonDraft {
 function savedFields(draft: LessonDraft) {
   return {
     title: draft.title.trim(),
-    body: stripEmptyEmbeds(draft.body),
+    body: stripIncompleteMaterials(draft.body),
     resources: savableResources(draft.resources),
     examMandatory: draft.exam.mandatory,
     examPassThreshold: draft.exam.passThreshold,

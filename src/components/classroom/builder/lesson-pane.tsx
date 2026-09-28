@@ -8,7 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/article-editor/rich-text-editor";
 import { LexicalRenderer } from "@/lib/lexical";
-import { classroomEditorExtensions } from "@/components/classroom/materials/embed-node";
+import {
+  classroomEditorExtensions,
+  classroomEditorExtensionsWithUploads,
+} from "@/components/classroom/materials/editor-extensions";
+import { useLessonEditorContext } from "@/components/classroom/materials/lesson-editor-context";
 import { classroomBlockRenderers } from "@/components/classroom/materials/block-renderers";
 import type { ExamDraft } from "@/components/classroom/exam-editor";
 import type { BuilderErrorKey } from "./builder-errors";
@@ -33,6 +37,10 @@ export type LessonPaneProps = {
 /**
  * The middle column when a lesson is selected: its title and its content.
  * Saving is owned by the lesson's editor scope; this pane only edits.
+ *
+ * The course's file facts come from the materials contexts the builder
+ * provides: whether the author may upload ("Add a file" in the editor) and,
+ * for the read-only view, the course's file manifest.
  */
 export function LessonPane({
   draft,
@@ -41,6 +49,7 @@ export function LessonPane({
   saveError,
 }: LessonPaneProps) {
   const t = useTranslations("classroomBuilder");
+  const { canUpload } = useLessonEditorContext();
   const titleId = useId();
   const titleHintId = useId();
   const bodyLabelId = useId();
@@ -105,7 +114,11 @@ export function LessonPane({
               initialValue={draft.body}
               onChange={(body) => setDraft((d) => ({ ...d, body }))}
               placeholder={t("lessonBodyPlaceholder")}
-              extensions={classroomEditorExtensions}
+              extensions={
+                canUpload
+                  ? classroomEditorExtensionsWithUploads
+                  : classroomEditorExtensions
+              }
             />
           </div>
         )}

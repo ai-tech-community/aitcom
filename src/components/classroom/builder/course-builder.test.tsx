@@ -23,6 +23,8 @@ const trpc = vi.hoisted(() => ({
   routerPush: vi.fn(),
   // The outline's writes, by procedure name.
   outline: {} as Record<string, ReturnType<typeof vi.fn>>,
+  // The course's uploaded files (classroomMaterials.listCourseMaterials).
+  courseFiles: [] as unknown[],
 }));
 
 vi.mock("sonner", () => ({ toast: { error: trpc.toastError } }));
@@ -33,7 +35,27 @@ vi.mock("@/trpc/react", () => ({
       classrooms: {
         get: { invalidate: trpc.invalidate, setData: trpc.setData },
       },
+      classroomMaterials: {
+        listCourseMaterials: { invalidate: vi.fn() },
+      },
     }),
+    classroomMaterials: {
+      listCourseMaterials: {
+        useQuery: () => ({
+          data: trpc.courseFiles,
+          isLoading: false,
+          isError: false,
+          error: null,
+          refetch: vi.fn(),
+        }),
+      },
+      updateMaterial: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      deleteMaterial: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+    },
     classrooms: {
       get: { useQuery: () => trpc.query },
       update: { useMutation: () => ({ mutateAsync: trpc.mutateAsync }) },
@@ -98,9 +120,21 @@ window.history.replaceState = (...args) => {
   nativeReplaceState(...args);
   window.dispatchEvent(new Event("test:urlchange"));
 };
-// Lexical does not need to run here: the lesson body is a plain textarea.
+// Lexical does not need to run here: the lesson body is a plain textarea
+// that lists the blocks the author is offered to insert (by command id).
 vi.mock("@/components/article-editor/rich-text-editor", () => ({
-  RichTextEditor: () => <textarea aria-label="Rich text" />,
+  RichTextEditor: ({
+    extensions = [],
+  }: {
+    extensions?: readonly { command?: { id: string } }[];
+  }) => (
+    <textarea
+      aria-label="Rich text"
+      data-insertable={extensions
+        .flatMap((e) => (e.command ? [e.command.id] : []))
+        .join(" ")}
+    />
+  ),
 }));
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -199,6 +233,8 @@ const courseData = {
   },
   lessons: [],
   modules: [],
+  viewerCanUpload: false,
+  materials: {},
 };
 
 const paragraph = (text: string) => ({
@@ -1189,5 +1225,118 @@ describe("CourseBuilder leaving with unsaved work", () => {
     renderBuilder();
     await clickBack();
     expect(leaveDialog()).toBeNull();
+  });
+});
+
+describe("CourseBuilder course files", () => {
+  const fileBlock = (materialId: number) => ({
+    type: "block",
+    version: 2,
+    format: "",
+    fields: { id: "f1", blockName: "", blockType: "HostedFile", materialId },
+  });
+  const lessonWithFile = {
+    id: 21,
+    title: "Welcome",
+    module: null,
+    order: 0,
+    body: { root: { type: "root", children: [fileBlock(42)] } },
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+  const workbook = {
+    id: 42,
+    title: "Workbook",
+    extension: "zip",
+    bytes: 2048,
+    status: "ready",
+    visibility: "members",
+  };
+
+  function load(overrides: Record<string, unknown>) {
+    trpc.query = {
+      data: { ...courseData, lessons: [lessonWithFile], ...overrides },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  }
+
+  beforeEach(() => {
+    trpc.courseFiles = [];
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("offers 'Add a file' in the lesson editor when the community lets the author upload", () => {
+    load({ viewerCanUpload: true });
+    window.history.replaceState(null, "", "/?lesson=21");
+    renderBuilder();
+    expect(
+      screen.getByLabelText("Rich text").dataset.insertable?.split(" "),
+    ).toEqual(["embed", "hosted-file"]);
+  });
+
+  it("offers only embeds to an author who may not upload", () => {
+    load({ viewerCanUpload: false });
+    window.history.replaceState(null, "", "/?lesson=21");
+    renderBuilder();
+    expect(
+      screen.getByLabelText("Rich text").dataset.insertable?.split(" "),
+    ).toEqual(["embed"]);
+  });
+
+  it("manages the course's files in the course details", () => {
+    trpc.courseFiles = [workbook];
+    load({ viewerCanUpload: true });
+    renderBuilder();
+    expect(
+      screen.getByRole("region", { name: en.classroom.files.panelTitle }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(en.classroom.files.titleLabel)).toHaveValue(
+      "Workbook",
+    );
+  });
+
+  it("still lists existing files after upload rights were taken away", () => {
+    trpc.courseFiles = [workbook];
+    load({ viewerCanUpload: false });
+    renderBuilder();
+    expect(
+      screen.getByRole("region", { name: en.classroom.files.panelTitle }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the files panel from an author with no files who may not upload", () => {
+    load({ viewerCanUpload: false });
+    renderBuilder();
+    expect(
+      screen.queryByRole("region", { name: en.classroom.files.panelTitle }),
+    ).toBeNull();
+  });
+
+  it("does not offer file changes on an archived course, and shows its files as learners see them", () => {
+    trpc.courseFiles = [workbook];
+    load({
+      course: { ...courseData.course, status: "archived" },
+      viewerCanUpload: true,
+      materials: {
+        42: {
+          access: "download",
+          kind: "file",
+          contentType: "application/zip",
+          ...workbook,
+        },
+      },
+    });
+    renderBuilder();
+    expect(
+      screen.queryByRole("region", { name: en.classroom.files.panelTitle }),
+    ).toBeNull();
+    act(() => window.history.replaceState(null, "", "/?lesson=21"));
+    // The read-only lesson body renders the file card from the course manifest.
+    expect(screen.getByText("Workbook")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: en.classroom.files.download }),
+    ).toBeInTheDocument();
   });
 });
