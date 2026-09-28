@@ -471,6 +471,32 @@ describe("CourseOutline", () => {
     });
   });
 
+  it("reloads the outline when a change is refused as out of date, as the message says", async () => {
+    m.reorderModules.mockRejectedValueOnce(new Error("MODULE_SET_MISMATCH"));
+    renderOutline();
+    openModuleMenu(10);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move module down" }));
+    await vi.waitFor(() =>
+      expect(m.toastError).toHaveBeenCalledWith(
+        en.classroomBuilder.errorOutlineOutOfDate,
+      ),
+    );
+    expect(m.invalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reload the outline after other failures", async () => {
+    m.reorderModules.mockRejectedValueOnce(new Error("FORBIDDEN"));
+    renderOutline();
+    openModuleMenu(10);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move module down" }));
+    await vi.waitFor(() =>
+      expect(m.toastError).toHaveBeenCalledWith(
+        en.classroomBuilder.errorNotAllowed,
+      ),
+    );
+    expect(m.invalidate).not.toHaveBeenCalled();
+  });
+
   it("won't delete a module that still has lessons, and says why", () => {
     renderOutline();
     openModuleMenu(10);

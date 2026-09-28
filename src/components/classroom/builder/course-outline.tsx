@@ -159,8 +159,12 @@ export function CourseOutline({
   });
 
   const refresh = () => void utils.classrooms.get.invalidate();
-  const fail = (err: unknown) =>
-    toast.error(t(builderErrorKey(errorCode(err))));
+  /** Tells the author what went wrong; returns the message shown. */
+  const fail = (err: unknown) => {
+    const key = builderErrorKey(errorCode(err));
+    toast.error(t(key));
+    return key;
+  };
   /**
    * Every write goes through mutateAsync: TanStack Query keeps per-call
    * `mutate` callbacks only for the latest call on an observer, so an
@@ -172,7 +176,8 @@ export function CourseOutline({
       refresh();
       return true;
     } catch (err) {
-      fail(err);
+      // The out-of-date message promises a reload: keep that promise.
+      if (fail(err) === "errorOutlineOutOfDate") refresh();
       return false;
     }
   };
