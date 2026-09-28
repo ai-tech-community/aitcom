@@ -67,8 +67,9 @@ function DownloadButton({ materialId }: { materialId: number }) {
 /**
  * The PDF shown in the lesson. The link is fetched only when the card
  * mounts; if it can't be fetched the card says so and offers a retry (the
- * Download button above still works). No `sandbox`: browsers refuse to render PDFs in sandboxed frames,
- * and the file is served from the S3 origin, never ours.
+ * Download button above still works). No `sandbox`: browsers refuse to
+ * render PDFs in sandboxed frames, and the file is served from the S3
+ * origin, never ours.
  */
 function PdfPreview({
   materialId,
