@@ -39,6 +39,7 @@ import {
   createStartupCountryResolver,
   startupCountryForWrite,
 } from "@/server/startups/country";
+import { isStartupHomepageUniqueViolation } from "@/server/startups/homepage-conflict";
 import {
   findStartupByHomepage,
   findStartupById,
@@ -340,6 +341,7 @@ export const startupsRouter = createTRPCRouter({
 
       const created: string[] = [];
       const skipped: Array<{ homepage: string; reason: string }> = [];
+      const claimedHomepages = new Set<string>();
       const resolveCountry = createStartupCountryResolver();
 
       for (const row of input.rows) {
@@ -357,8 +359,17 @@ export const startupsRouter = createTRPCRouter({
           continue;
         }
 
+        if (claimedHomepages.has(fields.homepage)) {
+          skipped.push({
+            homepage: fields.homepage,
+            reason: STARTUPS_DUPLICATE_ERROR,
+          });
+          continue;
+        }
+
         const existing = await findStartupByHomepage(fields.homepage);
         if (existing) {
+          claimedHomepages.add(fields.homepage);
           skipped.push({
             homepage: fields.homepage,
             reason: STARTUPS_DUPLICATE_ERROR,
@@ -382,19 +393,38 @@ export const startupsRouter = createTRPCRouter({
           fields.region,
           resolveCountry,
         );
-        const [inserted] = await ctx.db
-          .insert(startups)
-          .values({
-            ...fields,
-            country,
-            slug,
-            status: "approved",
-            source: "staff",
-            listedOn: todayIsoDate(),
-            submittedByUserId: ctx.session.user.id,
-          })
-          .returning({ id: startups.id });
-        created.push(inserted!.id);
+        // The homepage pre-check does not cover a concurrent insert or a
+        // same-batch duplicate the lookup has not seen yet. Either one raises
+        // startup_homepage_idx and must skip this row only.
+        let insertedId: string | undefined;
+        try {
+          const [inserted] = await ctx.db
+            .insert(startups)
+            .values({
+              ...fields,
+              country,
+              slug,
+              status: "approved",
+              source: "staff",
+              listedOn: todayIsoDate(),
+              submittedByUserId: ctx.session.user.id,
+            })
+            .onConflictDoNothing({ target: startups.homepage })
+            .returning({ id: startups.id });
+          insertedId = inserted?.id;
+        } catch (error) {
+          if (!isStartupHomepageUniqueViolation(error)) throw error;
+        }
+        if (!insertedId) {
+          claimedHomepages.add(fields.homepage);
+          skipped.push({
+            homepage: fields.homepage,
+            reason: STARTUPS_DUPLICATE_ERROR,
+          });
+          continue;
+        }
+        claimedHomepages.add(fields.homepage);
+        created.push(insertedId);
       }
 
       return { created: created.length, ids: created, skipped };
