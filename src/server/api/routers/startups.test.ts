@@ -186,6 +186,25 @@ describe("startups router locks", () => {
     expect(queries).toContain("investors:");
   });
 
+  it("skips a homepage unique violation inside the batch instead of failing the call", () => {
+    const batch = src.slice(
+      src.indexOf("createStartups:"),
+      src.indexOf("updateStartup:"),
+    );
+    expect(batch).toContain("claimedHomepages");
+    expect(batch).toContain("onConflictDoNothing");
+    expect(batch).toContain("isStartupHomepageUniqueViolation");
+    expect(batch).toContain("STARTUPS_DUPLICATE_ERROR");
+    expect(batch).toContain("continue");
+
+    const single = src.slice(
+      src.indexOf("createStartup:"),
+      src.indexOf("createStartups:"),
+    );
+    expect(single).toContain("CONFLICT");
+    expect(single).not.toContain("onConflictDoNothing");
+  });
+
   it("adds a sourced-only description column without inventing blurbs", () => {
     expect(descriptionMigration).toContain('"description"');
     expect(descriptionMigration).toMatch(/ADD COLUMN IF NOT EXISTS/);
