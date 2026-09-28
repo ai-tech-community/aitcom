@@ -2048,7 +2048,16 @@
     "examPass": "geslaagd",
     "examFail": "niet geslaagd",
     "certificateEarned": "Cursus voltooid 🎓",
-    "certificateIssued": "Uitgegeven op {date}"
+    "certificateIssued": "Uitgegeven op {date}",
+    "files": {
+      "download": "Downloaden",
+      "downloadFailed": "Het downloaden is niet gestart. Probeer het opnieuw.",
+      "previewTitle": "Voorbeeld van {title}",
+      "join": "Word lid van de community om dit bestand te downloaden.",
+      "removed": "Dit bestand is verwijderd.",
+      "processing": "Dit bestand wordt nog geüpload.",
+      "failed": "Dit bestand is niet goed geüpload."
+    }
   },
   "launchpad": {
     "title": "Launchpad",

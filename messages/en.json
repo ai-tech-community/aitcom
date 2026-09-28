@@ -2048,7 +2048,16 @@
     "examPass": "passed",
     "examFail": "not passed",
     "certificateEarned": "Course completed 🎓",
-    "certificateIssued": "Issued {date}"
+    "certificateIssued": "Issued {date}",
+    "files": {
+      "download": "Download",
+      "downloadFailed": "The download didn't start. Please try again.",
+      "previewTitle": "Preview of {title}",
+      "join": "Join the community to download this file.",
+      "removed": "This file was removed.",
+      "processing": "This file is still uploading.",
+      "failed": "This file didn't upload correctly."
+    }
   },
   "launchpad": {
     "title": "Launchpad",
