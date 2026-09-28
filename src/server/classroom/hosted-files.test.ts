@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   MATERIAL_FILE_NAME_MAX,
@@ -9,6 +9,7 @@ import { FINISH_WINDOW_HOURS, UPLOAD_GRANT_SECONDS } from "@/lib/video-rules";
 
 import {
   deleteMaterial,
+  fileUploadsEnabled,
   discardUpload,
   fileLink,
   finishFileUpload,
@@ -17,6 +18,14 @@ import {
   startFileUpload,
   updateMaterial,
 } from "./hosted-files";
+
+const testEnv = vi.hoisted(() => ({
+  CLASSROOM_FILE_UPLOADS: "on" as "on" | "off" | undefined,
+}));
+vi.mock("@/env", () => ({ env: testEnv }));
+afterEach(() => {
+  testEnv.CLASSROOM_FILE_UPLOADS = "on";
+});
 
 const UPLOAD = "1b4e28ba-2fa1-41d2-883f-0016d3cca427";
 const NOW = new Date("2026-09-28T12:00:00.000Z");
@@ -182,7 +191,7 @@ const START = {
 };
 
 describe("startFileUpload", () => {
-  it("records the upload, then grants exactly the declared size for the type the extension implies", async () => {
+  it("grants exactly the declared size, then records the upload, for the type the extension implies", async () => {
     const { deps, payload, storage } = fakes();
     await expect(startFileUpload(deps, START)).resolves.toEqual({
       materialId: 7,
@@ -341,6 +350,30 @@ describe("startFileUpload", () => {
       "STORAGE_FULL",
     ],
   ];
+
+  it.each([
+    ["switched off", "off"] as const,
+    ["not switched on", undefined] as const,
+  ])(
+    "refuses every upload while site uploads are %s, before anything is created or granted",
+    async (_label, value) => {
+      testEnv.CLASSROOM_FILE_UPLOADS = value;
+      const { deps, payload, storage } = fakes();
+      await expect(startFileUpload(deps, START)).rejects.toMatchObject({
+        code: "FORBIDDEN",
+        message: "UPLOADS_NOT_ALLOWED",
+      });
+      expect(payload.create).not.toHaveBeenCalled();
+      expect(storage.presignUpload).not.toHaveBeenCalled();
+    },
+  );
+
+  it("leaves no record when the upload grant cannot be made", async () => {
+    const { deps, payload, storage } = fakes();
+    storage.presignUpload.mockRejectedValueOnce(new Error("s3 down"));
+    await expect(startFileUpload(deps, START)).rejects.toThrow("s3 down");
+    expect(payload.create).not.toHaveBeenCalled();
+  });
 
   it.each(refusals)(
     "refuses %s and leaves nothing behind",
@@ -812,5 +845,25 @@ describe("mayUploadMaterials", () => {
     await expect(
       mayUploadMaterials(fakes({ community: false }).db as never, "c1", "u1"),
     ).resolves.toBe(false);
+  });
+
+  it("is false for everyone while uploads are switched off for the site", async () => {
+    testEnv.CLASSROOM_FILE_UPLOADS = "off";
+    const { db } = fakes();
+    await expect(mayUploadMaterials(db as never, "c1", "u1")).resolves.toBe(
+      false,
+    );
+    expect(db.query.communities.findFirst).not.toHaveBeenCalled();
+  });
+});
+
+describe("fileUploadsEnabled", () => {
+  it.each([
+    ["on", true],
+    ["off", false],
+    [undefined, false],
+  ] as const)("CLASSROOM_FILE_UPLOADS=%s → %s", (value, enabled) => {
+    testEnv.CLASSROOM_FILE_UPLOADS = value;
+    expect(fileUploadsEnabled()).toBe(enabled);
   });
 });

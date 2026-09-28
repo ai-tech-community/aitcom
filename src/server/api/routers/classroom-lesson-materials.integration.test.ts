@@ -1,5 +1,29 @@
 // @vitest-environment node
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+
+// Site uploads are switched on for these tests; a test may switch them off.
+const uploadSwitch = vi.hoisted(() => ({
+  value: "on" as "on" | "off" | undefined,
+}));
+vi.mock("@/env", async (importOriginal) => {
+  const { env } = await importOriginal<typeof import("@/env")>();
+  return {
+    env: new Proxy(env, {
+      get: (target, prop, receiver) =>
+        prop === "CLASSROOM_FILE_UPLOADS"
+          ? uploadSwitch.value
+          : Reflect.get(target, prop, receiver),
+    }),
+  };
+});
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -334,6 +358,19 @@ describe.skipIf(!RUN_DB)("classroom lesson files [DB integration]", () => {
       slug: fx.publicCourse.slug,
     });
     expect(author.viewerCanUpload).toBe(true);
+
+    uploadSwitch.value = "off";
+    try {
+      const authorWhileOff = await callerAs(fx.authorId).classrooms.get({
+        slug: fx.publicCourse.slug,
+      });
+      expect(authorWhileOff.viewerCanUpload).toBe(false);
+      expect(authorWhileOff.materials[membersFile.id]).toMatchObject({
+        access: "download",
+      });
+    } finally {
+      uploadSwitch.value = "on";
+    }
   });
 
   it("classrooms.get: a file deleted or cancelled while its upload was live reads as removed; a failed upload reads as failed", async () => {

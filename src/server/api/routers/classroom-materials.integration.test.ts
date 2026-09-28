@@ -9,6 +9,22 @@ import {
   vi,
 } from "vitest";
 
+// Site uploads are switched on for these tests; a test may switch them off.
+const uploadSwitch = vi.hoisted(() => ({
+  value: "on" as "on" | "off" | undefined,
+}));
+vi.mock("@/env", async (importOriginal) => {
+  const { env } = await importOriginal<typeof import("@/env")>();
+  return {
+    env: new Proxy(env, {
+      get: (target, prop, receiver) =>
+        prop === "CLASSROOM_FILE_UPLOADS"
+          ? uploadSwitch.value
+          : Reflect.get(target, prop, receiver),
+    }),
+  };
+});
+
 // S3 is never reached: the router's storage getter hands out this fake.
 const storage = vi.hoisted(() => ({
   presignUpload: vi.fn(),
@@ -326,6 +342,30 @@ describe.skipIf(!RUN_DB)("classroom hosted files [DB integration]", () => {
     await expect(start()).resolves.toMatchObject({
       contentType: "application/pdf",
     });
+  });
+
+  it("nobody may start an upload while site uploads are switched off", async () => {
+    uploadSwitch.value = "off";
+    try {
+      await expect(
+        callerAs(fx.authorId).classroomMaterials.startFileUpload({
+          courseId: fx.membersOnlyId,
+          fileName: "a.pdf",
+          bytes: 10,
+        }),
+      ).rejects.toMatchObject({
+        code: "FORBIDDEN",
+        message: "UPLOADS_NOT_ALLOWED",
+      });
+      expect(storage.presignUpload).not.toHaveBeenCalled();
+      const { totalDocs } = await m.payload.count({
+        collection: "hosted-materials",
+        where: { course: { equals: fx.membersOnlyId } },
+      });
+      expect(totalDocs).toBe(0);
+    } finally {
+      uploadSwitch.value = "on";
+    }
   });
 
   it("nobody uploads into a course they did not write", async () => {

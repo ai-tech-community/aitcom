@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Where } from "payload";
 
+import { env } from "@/env";
 import { canUploadMaterials } from "@/lib/classroom";
 import { mayDownloadMaterial } from "@/lib/classroom/material-access";
 import {
@@ -121,12 +122,26 @@ function refuse(
   return new TRPCError({ code, message });
 }
 
-/** May this user upload lesson files in this community, under its policy? */
+/**
+ * The deployment switch for new uploads (`CLASSROOM_FILE_UPLOADS=on`). It
+ * stays off until the storage bucket grants the app access to classroom
+ * files; while off nobody may start an upload, and everything else (links,
+ * listing, rename, delete, cleanup) keeps working.
+ */
+export function fileUploadsEnabled(): boolean {
+  return env.CLASSROOM_FILE_UPLOADS === "on";
+}
+
+/**
+ * May this user upload lesson files in this community, under its policy?
+ * Never while uploads are switched off for the deployment.
+ */
 export async function mayUploadMaterials(
   database: typeof db,
   communityId: string,
   userId: string,
 ): Promise<boolean> {
+  if (!fileUploadsEnabled()) return false;
   const community = await database.query.communities.findFirst({
     where: and(eq(communities.id, communityId), isNull(communities.deletedAt)),
     columns: { classroomUploadPolicy: true },
@@ -149,8 +164,8 @@ export async function mayUploadMaterials(
 /**
  * Checks, in order: the caller edits this course; the community lets them
  * upload; the type is allowed; the size is 1 byte to 200 MB; the daily limit;
- * the storage allowance. Then records the upload and grants one presigned
- * POST pinned to the key, the derived type and the declared size.
+ * the storage allowance. Then grants one presigned POST pinned to the key,
+ * the derived type and the declared size, and records the upload.
  */
 export async function startFileUpload(
   deps: HostedFileDeps,
@@ -206,6 +221,13 @@ export async function startFileUpload(
     uploadId,
     ext: extension,
   });
+  // Presign first: the grant needs only the key, and a failure here must
+  // not leave a record behind that counts against the allowance.
+  const upload = await deps.storage().presignUpload({
+    key: storageKey,
+    contentType,
+    maxBytes: input.bytes,
+  });
   const material = await deps.payload.create({
     collection: "hosted-materials",
     data: {
@@ -223,11 +245,6 @@ export async function startFileUpload(
       storageKey,
       uploadId,
     },
-  });
-  const upload = await deps.storage().presignUpload({
-    key: storageKey,
-    contentType,
-    maxBytes: input.bytes,
   });
   return { materialId: material.id, upload, contentType };
 }
