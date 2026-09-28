@@ -113,13 +113,13 @@ All schema changes ship as hand-written migrations in `src/migrations/`
 | `course` | number, indexed | `courses.id`; material belongs to a course, reusable across its lessons |
 | `uploaderId` | text | Better Auth user id |
 | `kind` | select `video` \| `file` | |
-| `status` | select `uploading` \| `processing` \| `ready` \| `failed` | files skip `processing` |
-| `failureReason` | text | shown to the trainer |
+| `status` | select `uploading` \| `processing` \| `ready` \| `failed` | files skip `processing`. `failed` also covers an upload the author cancelled, or deleted while its upload grant may still be live: those records are kept only so they keep counting (daily limit, and storage while the grant lives), are hidden from the author's file list, read as removed in lessons, and go with the daily cleanup |
+| `failureReason` | text | files: `UPLOAD_MISMATCH` (the stored object failed the finish check) is shown to the trainer; `cancelled` and `deleted` are internal |
 | `title` | text, ≤200 | defaults to the file name |
 | `visibility` | select `members` \| `preview` | default `members` |
-| `bytes` | number | verified server-side, never client-trusted |
+| `bytes` | number | files: declared by the browser at start and kept as declared. The upload grant is pinned to it (S3 refuses a larger body) and finish refuses a stored object larger than it, so it bounds what can be stored |
 | `durationSeconds` | number | video only, from Mux |
-| `contentType` | text | files: verified via S3 HEAD |
+| `contentType` | text | files: derived by the server from the file extension (never sent by the browser), pinned in the upload grant and checked via S3 HEAD at finish |
 | `storageKey` | text | files: S3 object key under `private/classroom/…` |
 | `muxUploadId` | text, indexed | video |
 | `muxAssetId` | text, indexed | video |
@@ -127,6 +127,8 @@ All schema changes ship as hand-written migrations in `src/migrations/`
 | `processingSince` | date | for the reconcile safety net |
 
 Deleting a course deletes its hosted materials (records and remote objects).
+There is no course-delete procedure yet (courses are archived), so slice 2
+has nothing to cascade.
 
 ### 2.2 Drizzle tables (`app` schema)
 
@@ -227,7 +229,9 @@ its renderers from `src/components/classroom/materials/`; forum and
 launchpad pass none, so classroom blocks can never render there.
 
 Hosted blocks render from a per-lesson **materials manifest** returned by
-`classrooms.get`: `{ [materialId]: { kind, title, status, visibility, durationSeconds, bytes, contentType, access: "play" | "join" | "processing" | "failed" | "removed" } }`.
+`classrooms.get`: `{ [materialId]: { kind, title, status, visibility, durationSeconds, bytes, contentType, access: "download" | "play" | "join" | "processing" | "failed" | "removed" } }`
+(`download` for files, `play` for videos from slice 3). It also returns
+`viewerCanUpload`, which the editor uses to offer uploads.
 Playback tokens and download links are **not** in the manifest; they're
 fetched on demand (see 5.3, 4.3) so page loads don't mint credentials for
 every material.
@@ -268,16 +272,35 @@ behaviour-neutral.
 
 ### 4.2 Upload flow
 
-1. `classroomMaterials.startFileUpload({ courseId, fileName, contentType, bytes })`
-   — checks: the viewer may edit this course (today: its author, as in
-   `updateLesson`) **and** `classroomUploadPolicy` allows them; allowed
-   type; size ≤ 200 MB; allowance headroom. Creates the record
-   (`uploading`) and returns a presigned POST (content-length-range and
-   content-type pinned).
+0. Uploads are behind a deployment switch: only `CLASSROOM_FILE_UPLOADS=on`
+   lets anyone start one (see *Setup*). While it is off, `viewerCanUpload`
+   is false and start refuses with `UPLOADS_NOT_ALLOWED`; links, listing,
+   rename, delete and the daily cleanup keep working.
+1. `classroomMaterials.startFileUpload({ courseId, fileName, bytes })`
+   — there is no content-type input: the server derives the type from the
+   file name's extension (the part after the last dot, so `notes.pdf.exe`
+   is refused). Checks, in order: the viewer may edit this course (today:
+   its author, as in `updateLesson`) **and** `classroomUploadPolicy` allows
+   them (`UPLOADS_NOT_ALLOWED`); allowed type (`FILE_TYPE_NOT_ALLOWED`);
+   not empty (`FILE_EMPTY`); ≤ 200 MB (`FILE_TOO_LARGE`); the uploader's
+   daily limit (`UPLOAD_LIMIT`); allowance headroom (`STORAGE_FULL`). Then
+   presigns a POST pinned to the key, the derived content type and
+   **exactly the declared size** (content-length-range 1…`bytes`), and only
+   then creates the record (`uploading`), so a failed grant leaves nothing
+   behind.
 2. Browser POSTs directly to S3.
 3. `classroomMaterials.finishFileUpload({ materialId })` — HEAD the object;
-   verify it exists, type and size match and are within limits; set
-   `bytes`, `status: ready`. Mismatch → delete the object, `failed`.
+   it must exist, have the derived type, and be 1 byte up to the declared
+   size. Good → `status: ready`; the record keeps the declared `bytes`
+   (the grant can still write up to that size until it expires). Bad →
+   `failed` (`UPLOAD_MISMATCH`), then the object is deleted
+   (`UPLOAD_FAILED`).
+4. `classroomMaterials.discardUpload({ materialId })` — the browser calls it
+   whenever an attempt fails or is cancelled after start, finish failing
+   included. It changes only a record still `uploading`: marks it `failed`
+   (`cancelled`) and removes any stored part, best effort. Finish and
+   discard update only `where status = uploading`, so they never overwrite
+   each other.
 
 Allowed types: PDF, PPTX/PPT, DOCX/DOC, XLSX/XLS/CSV, Keynote, ZIP, PNG,
 JPEG, WebP. PDFs render inline in the lesson (`<iframe>` on a signed link);
@@ -285,9 +308,10 @@ everything else renders as a download card (icon, title, size).
 
 ### 4.3 Download
 
-`classroomMaterials.fileLink({ materialId })` → access check (member, or
-visitor + `preview`) → presigned GET, 1 hour, `Content-Disposition` with
-the material title.
+`classroomMaterials.fileLink({ materialId, disposition })` → access check
+on the file's own course (member or manager, or visitor + `preview`; anyone
+else gets NOT_FOUND) → presigned GET, 1 hour, `Content-Disposition`
+(`attachment`, or `inline` for PDFs only) with the material title.
 
 ## 5. Hosted video on Mux (slice 3)
 
@@ -424,7 +448,13 @@ this function.** Upload checks, notices and the settings usage bar all read
 from it.
 
 - Storage usage = sums over `hosted-materials` with status in
-  (`uploading`, `processing`, `ready`) — exact, no external calls.
+  (`uploading`, `processing`, `ready`), plus `failed` records whose upload
+  grant may still be live (created within the grant's lifetime plus a
+  margin), because that grant can still store an object — exact, no
+  external calls.
+- Per-user daily limit: 30 file uploads per uploader in a rolling 24 h.
+  It counts **every** upload started, whatever its status (failed,
+  cancelled and deleted ones included).
 - Storage limit is **hard**: uploads are refused past it; existing material
   keeps working.
 - Viewing is **soft**: when `viewing_seconds` crosses 80% and 100% of the
@@ -450,7 +480,9 @@ this month.
 | Situation | Behaviour |
 |---|---|
 | Upload interrupted | UpChunk resumes; S3 files restart (≤200 MB) |
-| Upload never finished | Daily cleanup removes it after 24 h |
+| Upload cancelled or failed in the browser | Discarded at once (`failed`, hidden); frees storage once its grant expires |
+| Upload never finished | Daily cleanup removes it after 24 h; it also removes `failed` records older than that, with any object at their key |
+| File uploads switched off (`CLASSROOM_FILE_UPLOADS` not `on`) | No upload offered; start refused with `UPLOADS_NOT_ALLOWED`; existing files keep working |
 | Webhook lost | Reconcile on read after 15 min in `processing` |
 | Webhook repeated / out of order | Forward-only status; no-op |
 | Bad webhook signature | 400, logged, no state change |
@@ -494,7 +526,16 @@ this month.
 4. S3: confirm the bucket CORS rule allows browser POSTs from the site
    origin (already required by Reels) and that `private/` stays
    non-public.
-5. Apply each slice's migration in the same window as its deploy.
+5. AWS IAM, for hosted files: grant the app's IAM user `s3:PutObject`,
+   `s3:GetObject` and `s3:DeleteObject` on
+   `arn:aws:s3:::<bucket>/private/classroom/*`, and `s3:ListBucket` on
+   `arn:aws:s3:::<bucket>` with the condition `s3:prefix` =
+   `private/classroom/*`. ListBucket matters: without it S3 answers a HEAD
+   of a missing object with 403 instead of 404, so finish cannot tell
+   "not uploaded" from "not allowed".
+6. After the grant is in place, set `CLASSROOM_FILE_UPLOADS=on` in Vercel
+   env (production and preview) to switch file uploads on.
+7. Apply each slice's migration in the same window as its deploy.
 
 ## 11. Out of scope
 
