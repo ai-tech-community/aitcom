@@ -4217,6 +4217,14 @@ export const startups = appSchema.table(
       >()
       .notNull()
       .default([]),
+    /** Sourced named investors. Same shape and empty default as founders. */
+    investors: d
+      .json()
+      .$type<
+        Array<{ name: string; url: string | null; imageUrl: string | null }>
+      >()
+      .notNull()
+      .default([]),
     /** Sourced exit only. Distinct from listing `status` pending|approved|rejected. */
     exitStatus: d
       .varchar({ length: 16 })

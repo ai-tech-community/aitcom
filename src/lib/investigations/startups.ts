@@ -96,6 +96,9 @@ export type StartupFounder = {
   imageUrl: string | null;
 };
 
+/** Same persisted shape as `StartupFounder`: name, optional source URL, optional photo. */
+export type StartupInvestor = StartupFounder;
+
 /** Promo-only lock (LinkedIn / newsletter / Hub push). Not a crawl gate. */
 export const STARTUPS_PUBLIC_INDEX_MIN = 3000;
 
@@ -117,6 +120,7 @@ export type StartupPublicCard = {
   /** Sourced short blurb only. Soft-omit blank — never invent copy. */
   description: string | null;
   founders: StartupFounder[];
+  investors: StartupInvestor[];
   exitStatus: StartupExitStatus | null;
   acquirer: string | null;
   exitOn: string | null;
@@ -159,6 +163,9 @@ export const STARTUP_EXIT_FILTER_LABELS: Record<
 };
 
 export const STARTUPS_FOUNDERS_MAX = 8;
+
+/** Same cap as founders. Sourced names only — never invent an investor. */
+export const STARTUPS_INVESTORS_MAX = STARTUPS_FOUNDERS_MAX;
 
 export const STARTUPS_EXIT_ERROR =
   "Use a sourced exit only: acquired, IPO, or shutdown.";
@@ -558,6 +565,15 @@ export type PulseStartupRow = {
         photo_url?: string | null;
       }[]
     | null;
+  investors?:
+    | readonly {
+        name?: string | null;
+        url?: string | null;
+        imageUrl?: string | null;
+        image_url?: string | null;
+        photo_url?: string | null;
+      }[]
+    | null;
   status?: string | null;
   exitStatus?: string | null;
   exit_acquirer?: string | null;
@@ -595,6 +611,7 @@ export function mapPulseStartupWrite(row: PulseStartupRow) {
       presentText(row.description) ?? presentText(row.blurb),
     ),
     founders: sanitizeStartupFounders(row.founders),
+    investors: sanitizeStartupInvestors(row.investors),
     exitStatus,
     acquirer: exitStatus
       ? (presentText(row.acquirer) ?? presentText(row.exit_acquirer))
@@ -636,6 +653,18 @@ export function displayStartupFounders(
   founders: readonly StartupFounderInput[] | null | undefined,
 ): StartupFounder[] {
   return sanitizeStartupFounders(founders);
+}
+
+export function sanitizeStartupInvestors(
+  investors: readonly StartupFounderInput[] | null | undefined,
+): StartupInvestor[] {
+  return sanitizeStartupFounders(investors).slice(0, STARTUPS_INVESTORS_MAX);
+}
+
+export function displayStartupInvestors(
+  investors: readonly StartupFounderInput[] | null | undefined,
+): StartupInvestor[] {
+  return sanitizeStartupInvestors(investors);
 }
 
 export function startupFounderInitials(name: string): string {

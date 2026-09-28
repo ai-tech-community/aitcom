@@ -205,6 +205,7 @@ const FIXTURE_CARD: StartupPublicCard = {
   logoUrl: null,
   description: null,
   founders: [],
+  investors: [],
   exitStatus: null,
   acquirer: null,
   exitOn: null,
@@ -1194,6 +1195,39 @@ describe("Startups Insights tab", () => {
     expect(
       screen.getByRole("link", { name: en.investigationsStartups.hubCta }),
     ).toHaveAttribute("href", HUB_OPEN_HREF);
+  });
+});
+
+describe("Hub startup investors field", () => {
+  it("round-trips sourced investors on add and edit without inventing names", () => {
+    const card: StartupPublicCard = {
+      ...FIXTURE_CARD,
+      investors: [
+        {
+          name: "Ada Capital",
+          url: "https://ada.example",
+          imageUrl: null,
+        },
+      ],
+    };
+    render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[card]}
+        isModerator
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add a company" }));
+    const investors = screen.getByLabelText(/Investors/i);
+    expect(investors).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText(/Investors/i)).toHaveValue(
+      "Ada Capital | https://ada.example",
+    );
   });
 });
 

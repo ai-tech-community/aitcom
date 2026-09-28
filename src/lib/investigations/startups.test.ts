@@ -27,6 +27,7 @@ import {
   parseStartupExitStatus,
   presentText,
   sanitizeStartupFounders,
+  sanitizeStartupInvestors,
   sanitizeStartupSources,
   startupDirectoryCanonicalPath,
   startupDirectorySitemapPaths,
@@ -78,6 +79,7 @@ function sampleCard(
     logoUrl: null,
     description: null,
     founders: [],
+    investors: [],
     exitStatus: null,
     acquirer: null,
     exitOn: null,
@@ -515,6 +517,39 @@ describe("soft-omit helpers", () => {
     expect(parseStartupExitOn("")).toBeNull();
   });
 
+  it("keeps sourced investors in the founders shape and defaults to none", () => {
+    expect(sanitizeStartupInvestors(null)).toEqual([]);
+    expect(sanitizeStartupInvestors(undefined)).toEqual([]);
+    expect(
+      sanitizeStartupInvestors([
+        { name: "  " },
+        { name: "Ada Capital", url: "https://ada.example/about" },
+        {
+          name: "Photo Fund",
+          photo_url: "https://ada.example/fund.jpg",
+        },
+      ]),
+    ).toEqual([
+      {
+        name: "Ada Capital",
+        url: "https://ada.example/about",
+        imageUrl: null,
+      },
+      {
+        name: "Photo Fund",
+        url: null,
+        imageUrl: "https://ada.example/fund.jpg",
+      },
+    ]);
+    expect(
+      sanitizeStartupInvestors(
+        Array.from({ length: 12 }, (_, index) => ({
+          name: `Investor ${index}`,
+        })),
+      ),
+    ).toHaveLength(8);
+  });
+
   it("maps Pulse fixture aliases without inventing people or a day", () => {
     const mapped = mapPulseStartupWrite({
       name: "Cursor (Anysphere)",
@@ -535,6 +570,20 @@ describe("soft-omit helpers", () => {
     expect(mapped.founders).toEqual([
       { name: "Michael Truell", url: null, imageUrl: null },
     ]);
+    expect(mapped.investors).toEqual([]);
+    expect(
+      mapPulseStartupWrite({
+        name: "Quiet Co",
+        homepage: "https://quiet.example/",
+        category: "other",
+        sources: ["https://quiet.example/about"],
+        investors: [
+          { name: "Ada Capital", url: "https://ada.example", image_url: null },
+        ],
+      }).investors,
+    ).toEqual([
+      { name: "Ada Capital", url: "https://ada.example", imageUrl: null },
+    ]);
     expect(mapped.logoUrl).toBe("https://cursor.com/og.png");
     expect(mapped.description).toBeNull();
     expect(
@@ -551,6 +600,7 @@ describe("soft-omit helpers", () => {
       }),
     ).toMatchObject({
       founders: [],
+      investors: [],
       exitStatus: null,
       acquirer: null,
       exitOn: null,

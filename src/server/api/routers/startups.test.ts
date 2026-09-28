@@ -150,6 +150,42 @@ describe("startups router locks", () => {
     expect(STARTUPS_SLUG_ERROR).toMatch(/unique lowercase slug/i);
   });
 
+  it("adds investors jsonb with the same empty-array default as founders", () => {
+    const investorsMigration = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../../migrations/20260928e_startup_investors.ts",
+      ),
+      "utf8",
+    );
+    expect(investorsMigration).toContain(
+      "\"investors\" jsonb NOT NULL DEFAULT '[]'::jsonb",
+    );
+    expect(investorsMigration).toContain('ALTER TABLE "app"."startup"');
+    expect(investorsMigration).toContain('DROP COLUMN IF EXISTS "investors"');
+    expect(investorsMigration).not.toMatch(/INSERT INTO/i);
+    expect(investorsMigration).not.toMatch(BAKED_COMPANIES);
+    const migrationIndex = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../../migrations/index.ts",
+      ),
+      "utf8",
+    );
+    const hostedAt = migrationIndex.indexOf(
+      'name: "20260928d_hosted_materials"',
+    );
+    const investorsAt = migrationIndex.indexOf(
+      'name: "20260928e_startup_investors"',
+    );
+    expect(hostedAt).toBeGreaterThan(-1);
+    expect(investorsAt).toBeGreaterThan(hostedAt);
+    expect(src).toContain("investors");
+    expect(src).toContain("sanitizeStartupInvestors");
+    expect(queries).toContain("displayStartupInvestors");
+    expect(queries).toContain("investors:");
+  });
+
   it("adds a sourced-only description column without inventing blurbs", () => {
     expect(descriptionMigration).toContain('"description"');
     expect(descriptionMigration).toMatch(/ADD COLUMN IF NOT EXISTS/);

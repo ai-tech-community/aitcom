@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, sql, type SQL } from "drizzle-orm";
 
 import {
   displayStartupFounders,
+  displayStartupInvestors,
   displayStartupSources,
   parseStartupExitOn,
   parseStartupExitStatus,
@@ -47,6 +48,7 @@ function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
     logoUrl: presentText(row.logoUrl),
     description: presentText(row.description),
     founders: displayStartupFounders(row.founders),
+    investors: displayStartupInvestors(row.investors),
     exitStatus: parseStartupExitStatus(row.exitStatus),
     acquirer: presentText(row.acquirer),
     exitOn: parseStartupExitOn(row.exitOn),
