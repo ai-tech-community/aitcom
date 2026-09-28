@@ -26,8 +26,13 @@ function errorRecordMatchesHomepageUnique(error: object): boolean {
     message?: unknown;
     detail?: unknown;
   };
-  const code = record.code == null ? "" : String(record.code);
-  const constraint = String(record.constraint ?? record.constraint_name ?? "");
+  const code = typeof record.code === "string" ? record.code : "";
+  const constraint =
+    typeof record.constraint === "string"
+      ? record.constraint
+      : typeof record.constraint_name === "string"
+        ? record.constraint_name
+        : "";
   const message = typeof record.message === "string" ? record.message : "";
   const detail = typeof record.detail === "string" ? record.detail : "";
   const mentionsIndex =
