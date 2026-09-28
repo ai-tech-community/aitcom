@@ -1,7 +1,8 @@
 /**
  * Which frame the community layout draws around a page. `workspace` pages are
- * full-screen authoring tools: no community header, no tab bar, no width cap.
- * Add a new workspace route here — the layout reads only this function.
+ * full-screen authoring tools: no community header, no tab bar, no width cap,
+ * and no site footer. Add a new workspace route here — the community layout
+ * and the site footer both read only this file.
  */
 export type CommunityLayoutVariant = "standard" | "workspace";
 
@@ -20,4 +21,14 @@ export function resolveCommunityLayoutVariant(
       pattern.every((p, i) => p === null || p === path[i]),
   );
   return match ? "workspace" : "standard";
+}
+
+/**
+ * The same decision from a locale-free pathname (next-intl's `usePathname`),
+ * for site chrome outside the community layout, such as the footer.
+ */
+export function isWorkspacePath(pathname: string): boolean {
+  const [root, slug, ...rest] = pathname.split("/").filter(Boolean);
+  if (root !== "communities" || slug === undefined) return false;
+  return resolveCommunityLayoutVariant(rest) === "workspace";
 }

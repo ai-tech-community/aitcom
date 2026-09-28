@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveCommunityLayoutVariant } from "./layout-variant";
+import {
+  isWorkspacePath,
+  resolveCommunityLayoutVariant,
+} from "./layout-variant";
 
 describe("resolveCommunityLayoutVariant", () => {
   it("uses the workspace layout for the course builder", () => {
@@ -23,5 +26,29 @@ describe("resolveCommunityLayoutVariant", () => {
     expect(
       resolveCommunityLayoutVariant(["(authoring)", "classroom", "c", "edit"]),
     ).toBe("workspace");
+  });
+});
+
+describe("isWorkspacePath", () => {
+  it("is true for a community workspace page (locale-free path)", () => {
+    expect(isWorkspacePath("/communities/hub/classroom/my-course/edit")).toBe(
+      true,
+    );
+    expect(isWorkspacePath("/communities/hub/classroom/my-course/edit/")).toBe(
+      true,
+    );
+  });
+  it("is false everywhere else", () => {
+    for (const path of [
+      "/",
+      "/communities",
+      "/communities/hub",
+      "/communities/hub/classroom",
+      "/communities/hub/classroom/my-course",
+      "/classroom/my-course/edit",
+      "/events/x/classroom/c/edit",
+    ]) {
+      expect(isWorkspacePath(path)).toBe(false);
+    }
   });
 });
