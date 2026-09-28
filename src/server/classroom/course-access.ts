@@ -115,6 +115,16 @@ export async function requireReadableCourse(
 }
 
 /**
+ * Authors may not change an archived course — its lessons, modules or files;
+ * a moderator archived it. The one archived rule for every classroom write.
+ */
+export function assertCourseEditable(course: { status?: string | null }): void {
+  if (course.status === "archived") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "COURSE_ARCHIVED" });
+  }
+}
+
+/**
  * Load a course and require that the caller may edit it — today, only its
  * author (the same rule as every lesson/module mutation in classrooms.ts).
  * The shared gate for classroom material management.

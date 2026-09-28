@@ -9,6 +9,7 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import {
+  assertCourseEditable,
   isCourseManagerRole,
   loadCourseAccess,
   requireReadableCourse,
@@ -92,13 +93,6 @@ function relationId(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   if (typeof value === "object") return (value as { id: number }).id;
   return value as number;
-}
-
-/** Authors may not change an archived course's content; a moderator archived it. */
-function assertCourseEditable(course: { status?: string | null }): void {
-  if (course.status === "archived") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "COURSE_ARCHIVED" });
-  }
 }
 
 /** Issue a course certificate if (and only if) every lesson is now complete. Idempotent. */
