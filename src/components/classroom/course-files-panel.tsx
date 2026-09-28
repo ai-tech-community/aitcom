@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -40,7 +41,7 @@ function CourseFileRow({
 }) {
   const t = useTranslations("classroom.files");
   const titleRef = useRef<HTMLInputElement>(null);
-  const switchId = `course-file-preview-${file.id}`;
+  const switchId = useId();
   const revert = () => {
     if (titleRef.current) titleRef.current.value = file.title;
   };
@@ -129,6 +130,7 @@ export function CourseFilesPanel({
   const t = useTranslations("classroom.files");
   const utils = api.useUtils();
   const confirm = useConfirm();
+  const titleId = useId();
   const list = api.classroomMaterials.listCourseMaterials.useQuery({
     courseId,
   });
@@ -177,11 +179,11 @@ export function CourseFilesPanel({
   const busy = update.isPending || remove.isPending;
 
   return (
-    <section className="space-y-3" aria-labelledby="course-files-title">
-      <div className="space-y-1">
-        <h2 id="course-files-title" className="text-base font-semibold">
+    <section className="space-y-3" aria-labelledby={titleId}>
+      <div className="space-y-2">
+        <SectionLabel as="h3" id={titleId}>
           {t("panelTitle")}
-        </h2>
+        </SectionLabel>
         <p className="text-muted-foreground text-sm">{t("panelHelp")}</p>
         <p className="text-muted-foreground text-xs">{t("previewHelp")}</p>
       </div>

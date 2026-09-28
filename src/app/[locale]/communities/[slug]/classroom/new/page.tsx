@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { CourseEditor } from "@/components/classroom/course-editor";
+import { NewCourseForm } from "@/components/classroom/new-course-form";
 
 export default function NewCoursePage({
   params,
@@ -9,5 +9,5 @@ export default function NewCoursePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
-  return <CourseEditor slug={slug} />;
+  return <NewCourseForm slug={slug} />;
 }

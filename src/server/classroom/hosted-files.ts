@@ -24,6 +24,7 @@ import {
 import { FINISH_WINDOW_HOURS } from "@/lib/video-rules";
 import type { HostedMaterial } from "@/payload-types";
 import {
+  assertCourseEditable,
   loadCourseAccess,
   requireEditableCourse,
 } from "@/server/classroom/course-access";
@@ -180,6 +181,7 @@ export async function startFileUpload(
     input.courseId,
     input.userId,
   );
+  assertCourseEditable(course);
   if (!(await mayUploadMaterials(deps.db, course.communityId, input.userId))) {
     throw refuse("FORBIDDEN", "UPLOADS_NOT_ALLOWED");
   }
@@ -293,6 +295,20 @@ async function leaveUploading(
   return docs[0] ?? null;
 }
 
+/** Refuses (COURSE_ARCHIVED) when the file's course was archived. */
+async function assertMaterialCourseEditable(
+  deps: HostedFileDeps,
+  material: HostedMaterial,
+): Promise<void> {
+  const course = await deps.payload.findByID({
+    collection: "courses",
+    id: material.course,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (course) assertCourseEditable(course);
+}
+
 /** Past the finish window the daily cleanup may already be acting on it. */
 function isPastFinishWindow(deps: HostedFileDeps, material: HostedMaterial) {
   const now = deps.now?.() ?? new Date();
@@ -319,6 +335,10 @@ export async function finishFileUpload(
   if (isPastFinishWindow(deps, material)) {
     throw refuse("NOT_FOUND", "UPLOAD_EXPIRED");
   }
+  // A course archived mid-upload takes no new file. The browser then
+  // discards the upload (still allowed: it only frees storage); otherwise
+  // the daily cleanup removes it.
+  await assertMaterialCourseEditable(deps, material);
 
   const storage = deps.storage();
   const stored = await storage.inspect(material.storageKey);
@@ -473,7 +493,12 @@ async function requireEditableMaterial(
     disableErrors: true,
   });
   if (!material) throw new TRPCError({ code: "NOT_FOUND" });
-  await requireEditableCourse(deps.payload, material.course, userId);
+  const course = await requireEditableCourse(
+    deps.payload,
+    material.course,
+    userId,
+  );
+  assertCourseEditable(course);
   return material;
 }
 

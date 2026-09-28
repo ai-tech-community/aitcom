@@ -9,6 +9,7 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import {
+  assertCourseEditable,
   isCourseManagerRole,
   loadCourseAccess,
   requireReadableCourse,
@@ -43,6 +44,15 @@ import {
   assertLessonMaterials,
   loadMaterialsManifest,
 } from "@/server/classroom/lesson-materials";
+import { canPublish, publishChecks } from "@/lib/classroom/publish-checklist";
+import { isResourceUrl } from "@/lib/classroom/resource-url";
+import { COURSE_TITLE_MIN } from "@/lib/classroom/course-title";
+
+/** One lesson resource link; the URL rule is shared with the builder. */
+const resourceSchema = z.object({
+  label: z.string().min(1).max(120),
+  url: z.string().refine(isResourceUrl),
+});
 
 /** Resolve community id + the caller's active role (null if not an active member). */
 async function resolveCommunityAndRole(
@@ -76,6 +86,13 @@ async function resolveCommunityAndRole(
     role,
     classroomCreatePolicy: community.classroomCreatePolicy ?? "all_members",
   };
+}
+
+/** A Payload relationship read at depth 0 is an id, but its type admits the populated doc. */
+function relationId(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "object") return (value as { id: number }).id;
+  return value as number;
 }
 
 /** Issue a course certificate if (and only if) every lesson is now complete. Idempotent. */
@@ -119,6 +136,64 @@ async function issueCertificateIfComplete(
       XP_AMOUNTS.COURSE_COMPLETE,
       "course.complete",
     );
+  }
+}
+
+/**
+ * A lesson's version after a write. Outline changes (reorder, module wrap,
+ * dissolve, move) rewrite lessons, and Payload stamps a new updatedAt on each;
+ * returning the new versions lets an editor that has one of those lessons
+ * open keep saving it without being refused as stale (LESSON_CHANGED).
+ */
+type LessonVersion = { id: number; updatedAt: string };
+
+function lessonVersions(
+  docs: readonly { id: number; updatedAt: string }[],
+): LessonVersion[] {
+  return docs.map((doc) => ({ id: doc.id, updatedAt: doc.updatedAt }));
+}
+
+/**
+ * A course goes live only when every blocking publish check passes — the same
+ * rules the builder's publish dialog shows, so an old tab or a direct API
+ * call cannot publish an empty course.
+ */
+async function assertPublishable(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  course: { id: number; title: string; coverImageUrl?: string | null },
+): Promise<void> {
+  const [{ docs: lessons }, { docs: modules }] = await Promise.all([
+    payload.find({
+      collection: "lessons",
+      where: { course: { equals: course.id } },
+      pagination: false,
+      depth: 0,
+    }),
+    payload.find({
+      collection: "modules",
+      where: { course: { equals: course.id } },
+      pagination: false,
+      depth: 0,
+    }),
+  ]);
+  const checks = publishChecks({
+    title: course.title,
+    coverImageUrl: course.coverImageUrl ?? null,
+    lessons: lessons.map((l) => ({
+      id: l.id,
+      title: l.title,
+      module: relationId(l.module),
+      body: l.body,
+      resources: l.resources,
+      examQuestions: l.examQuestions,
+    })),
+    modules: modules.map((mod) => ({ id: mod.id, title: mod.title })),
+  });
+  if (!canPublish(checks)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "PUBLISH_CHECKS_FAILED",
+    });
   }
 }
 
@@ -398,9 +473,9 @@ export const classroomsRouter = createTRPCRouter({
     .input(
       z.object({
         communitySlug: z.string(),
-        title: z.string().min(3).max(200),
+        title: z.string().min(COURSE_TITLE_MIN).max(200),
         summary: z.string().max(500).optional(),
-        status: z.enum(["draft", "published"]).default("published"),
+        status: z.enum(["draft", "published"]).default("draft"),
         coverImageUrl: z.string().url().max(1000).optional(),
       }),
     )
@@ -455,15 +530,21 @@ export const classroomsRouter = createTRPCRouter({
       return { id: course.id, slug };
     }),
 
-  /** Update own course (title/summary/status draft|published|archived). */
+  /**
+   * Update own course. Status moves only between draft and published —
+   * archiving is a moderator action (moderateArchive), and an archived course
+   * cannot be moved back by its author. expectedUpdatedAt makes a save from a
+   * stale tab fail loudly instead of overwriting newer edits.
+   */
   update: protectedProcedure
     .input(
       z.object({
         courseId: z.number(),
-        title: z.string().min(3).max(200).optional(),
+        title: z.string().min(COURSE_TITLE_MIN).max(200).optional(),
         summary: z.string().max(500).optional(),
-        status: z.enum(["draft", "published", "archived"]).optional(),
+        status: z.enum(["draft", "published"]).optional(),
         coverImageUrl: z.string().url().max(1000).nullable().optional(),
+        expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -479,20 +560,56 @@ export const classroomsRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
+      if (
+        input.expectedUpdatedAt !== undefined &&
+        new Date(input.expectedUpdatedAt).getTime() !==
+          new Date(course.updatedAt).getTime()
+      ) {
+        throw new TRPCError({ code: "CONFLICT", message: "COURSE_CHANGED" });
+      }
+
+      const statusChanges =
+        input.status !== undefined && input.status !== course.status;
+      if (statusChanges && course.status === "archived") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "COURSE_ARCHIVED" });
+      }
+      if (statusChanges && input.status === "published") {
+        await assertPublishable(payload, {
+          id: course.id,
+          title: input.title ?? course.title,
+          coverImageUrl:
+            input.coverImageUrl !== undefined
+              ? input.coverImageUrl
+              : course.coverImageUrl,
+        });
+      }
+
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
       if (input.summary !== undefined) data.summary = input.summary;
-      if (input.status !== undefined) data.status = input.status;
+      if (statusChanges) data.status = input.status;
       if (input.coverImageUrl !== undefined)
         data.coverImageUrl = input.coverImageUrl;
 
-      await payload.update({
+      const updated = await payload.update({
         collection: "courses",
         id: input.courseId,
         data,
       });
 
-      return { ok: true };
+      if (statusChanges && input.status === "published") {
+        await logActivity(ctx.db, {
+          actorId: ctx.session.user.id,
+          actorType: "member",
+          action: "course.published",
+          targetType: "courses",
+          targetId: String(course.id),
+          communityId: course.communityId,
+          metadata: { title: updated.title },
+        });
+      }
+
+      return { ok: true as const, updatedAt: updated.updatedAt };
     }),
 
   /** Add a lesson to own course. body is lexical editorState JSON. */
@@ -501,16 +618,9 @@ export const classroomsRouter = createTRPCRouter({
       z.object({
         courseId: z.number(),
         title: z.string().min(1).max(200),
+        moduleId: z.number().optional(),
         body: z.any().optional(),
-        resources: z
-          .array(
-            z.object({
-              label: z.string().min(1).max(120),
-              url: z.string().url().max(500),
-            }),
-          )
-          .max(20)
-          .default([]),
+        resources: z.array(resourceSchema).max(20).default([]),
         examMandatory: z.boolean().optional(),
         examPassThreshold: z.number().min(0).max(100).optional(),
         examMaxAttempts: z.number().min(0).optional(),
@@ -539,39 +649,41 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
-      // Keep the flat-or-fully-moduled invariant: if the course is moduled,
-      // a new lesson must land in a module (never null). Default to the last
-      // module; the author can reassign it via assignLessonToModule.
+      // Keep the flat-or-fully-moduled invariant: a moduled course's new
+      // lesson always lands in a module — the one asked for, else the last.
       const { docs: courseModules } = await payload.find({
         collection: "modules",
         where: { course: { equals: input.courseId } },
         sort: "-order",
+        limit: 1000,
+        depth: 0,
+      });
+      let targetModuleId: number | null = courseModules[0]?.id ?? null;
+      if (input.moduleId !== undefined) {
+        if (!courseModules.some((mod) => mod.id === input.moduleId)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "MODULE_COURSE_MISMATCH",
+          });
+        }
+        targetModuleId = input.moduleId;
+      }
+
+      // Append after the highest order, not at the count: moves between
+      // modules can leave gaps, and a count would then collide.
+      const { docs: last } = await payload.find({
+        collection: "lessons",
+        where:
+          targetModuleId !== null
+            ? { module: { equals: targetModuleId } }
+            : { course: { equals: input.courseId } },
+        sort: "-order",
         limit: 1,
         depth: 0,
       });
-      const targetModuleId = courseModules[0]?.id ?? null;
-
-      let lessonOrder: number;
-      if (targetModuleId !== null) {
-        // Moduled course: order within the target module
-        const { totalDocs: moduleLessonCount } = await payload.find({
-          collection: "lessons",
-          where: { module: { equals: targetModuleId } },
-          limit: 0,
-          depth: 0,
-        });
-        lessonOrder = moduleLessonCount;
-      } else {
-        // Flat course: order across all lessons in the course
-        const { totalDocs } = await payload.find({
-          collection: "lessons",
-          where: { course: { equals: input.courseId } },
-          limit: 0,
-          depth: 0,
-        });
-        lessonOrder = totalDocs;
-      }
+      const lessonOrder = (last[0]?.order ?? -1) + 1;
 
       assertLessonBodyEmbeds(input.body);
       await assertLessonMaterials(payload, input.courseId, input.body);
@@ -602,7 +714,10 @@ export const classroomsRouter = createTRPCRouter({
       return { id: lesson.id };
     }),
 
-  /** Update a lesson on own course. */
+  /**
+   * Update a lesson on own course. expectedUpdatedAt makes a save from a stale
+   * tab fail loudly (LESSON_CHANGED) instead of overwriting newer edits.
+   */
   updateLesson: protectedProcedure
     .input(
       z.object({
@@ -610,15 +725,7 @@ export const classroomsRouter = createTRPCRouter({
         title: z.string().min(1).max(200).optional(),
         body: z.any().optional(),
         order: z.number().optional(),
-        resources: z
-          .array(
-            z.object({
-              label: z.string().min(1).max(120),
-              url: z.string().url().max(500),
-            }),
-          )
-          .max(20)
-          .optional(),
+        resources: z.array(resourceSchema).max(20).optional(),
         examMandatory: z.boolean().optional(),
         examPassThreshold: z.number().min(0).max(100).optional(),
         examMaxAttempts: z.number().min(0).optional(),
@@ -633,6 +740,7 @@ export const classroomsRouter = createTRPCRouter({
             }),
           )
           .optional(),
+        expectedUpdatedAt: z.string().datetime({ offset: true }).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -653,6 +761,15 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
+
+      if (
+        input.expectedUpdatedAt !== undefined &&
+        new Date(input.expectedUpdatedAt).getTime() !==
+          new Date(lesson.updatedAt).getTime()
+      ) {
+        throw new TRPCError({ code: "CONFLICT", message: "LESSON_CHANGED" });
+      }
 
       assertLessonBodyEmbeds(input.body);
       await assertLessonMaterials(payload, course.id, input.body);
@@ -670,13 +787,13 @@ export const classroomsRouter = createTRPCRouter({
       if (input.examQuestions !== undefined)
         data.examQuestions = input.examQuestions;
 
-      await payload.update({
+      const updated = await payload.update({
         collection: "lessons",
         id: input.lessonId,
         data,
       });
 
-      return { ok: true };
+      return { ok: true as const, updatedAt: updated.updatedAt };
     }),
 
   /** Delete a lesson on own course. */
@@ -700,6 +817,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       await payload.delete({
         collection: "lessons",
@@ -734,6 +852,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       const { totalDocs: moduleCount } = await payload.find({
         collection: "modules",
@@ -761,17 +880,19 @@ export const classroomsRouter = createTRPCRouter({
 
         // First module on a flat course: wrap all existing lessons into it,
         // preserving their order.
+        let wrapped: LessonVersion[] = [];
         if (moduleCount === 0) {
-          await payload.update({
+          const { docs } = await payload.update({
             collection: "lessons",
             where: { course: { equals: input.courseId } },
             data: { module: moduleDoc.id },
             req,
           });
+          wrapped = lessonVersions(docs);
         }
 
         if (transactionID) await payload.db.commitTransaction(transactionID);
-        return { id: moduleDoc.id };
+        return { id: moduleDoc.id, lessons: wrapped };
       } catch (error) {
         if (transactionID) await payload.db.rollbackTransaction(transactionID);
         throw error;
@@ -803,6 +924,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
@@ -831,6 +953,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       const { docs: modules } = await payload.find({
         collection: "modules",
@@ -893,6 +1016,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       const moduleDoc = await payload.findByID({
         collection: "modules",
@@ -906,7 +1030,8 @@ export const classroomsRouter = createTRPCRouter({
         });
       }
 
-      const { totalDocs: targetCount } = await payload.find({
+      // Append after the highest order (orders may have gaps after moves).
+      const { docs: last } = await payload.find({
         collection: "lessons",
         where: {
           and: [
@@ -914,16 +1039,108 @@ export const classroomsRouter = createTRPCRouter({
             { module: { equals: input.moduleId } },
           ],
         },
-        limit: 0,
+        sort: "-order",
+        limit: 1,
         depth: 0,
       });
 
-      await payload.update({
+      const moved = await payload.update({
         collection: "lessons",
         id: input.lessonId,
-        data: { module: input.moduleId, order: targetCount },
+        data: { module: input.moduleId, order: (last[0]?.order ?? -1) + 1 },
       });
-      return { ok: true };
+      return { ok: true, lessons: lessonVersions([moved]) };
+    }),
+
+  /**
+   * Set the complete order of one container — a module, or the flat course
+   * when moduleId is null. orderedIds may pull lessons in from another module
+   * of the same course (drag across modules); every lesson already in the
+   * container must be listed, so nothing is silently dropped. Keeps the
+   * flat-or-fully-moduled invariant: a moduled course never gets a null module.
+   */
+  reorderLessons: protectedProcedure
+    .input(
+      z.object({
+        courseId: z.number(),
+        moduleId: z.number().nullable(),
+        orderedIds: z.array(z.number()).min(1).max(500),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const course = await payload.findByID({
+        collection: "courses",
+        id: input.courseId,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      assertCourseEditable(course);
+
+      const { docs: modules } = await payload.find({
+        collection: "modules",
+        where: { course: { equals: input.courseId } },
+        limit: 1000,
+        depth: 0,
+      });
+      const moduled = modules.length > 0;
+      const moduleValid = moduled
+        ? input.moduleId !== null &&
+          modules.some((mod) => mod.id === input.moduleId)
+        : input.moduleId === null;
+      if (!moduleValid) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "MODULE_COURSE_MISMATCH",
+        });
+      }
+
+      const { docs: lessons } = await payload.find({
+        collection: "lessons",
+        where: { course: { equals: input.courseId } },
+        pagination: false,
+        depth: 0,
+      });
+      const courseLessonIds = new Set(lessons.map((l) => l.id));
+      const listed = new Set(input.orderedIds);
+      const currentMembers = lessons.filter(
+        (l) => relationId(l.module) === input.moduleId,
+      );
+      if (
+        listed.size !== input.orderedIds.length ||
+        !input.orderedIds.every((id) => courseLessonIds.has(id)) ||
+        !currentMembers.every((l) => listed.has(l.id))
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "LESSON_SET_MISMATCH",
+        });
+      }
+
+      // All writes land together — a partial reorder would leave duplicate
+      // order values or a lesson stranded between modules.
+      const transactionID = await payload.db.beginTransaction();
+      const req = transactionID ? { transactionID } : undefined;
+      const rewritten: LessonVersion[] = [];
+      try {
+        for (let i = 0; i < input.orderedIds.length; i++) {
+          const lesson = await payload.update({
+            collection: "lessons",
+            id: input.orderedIds[i]!,
+            data: { order: i, module: input.moduleId },
+            req,
+          });
+          rewritten.push(...lessonVersions([lesson]));
+        }
+        if (transactionID) await payload.db.commitTransaction(transactionID);
+      } catch (error) {
+        if (transactionID) await payload.db.rollbackTransaction(transactionID);
+        throw error;
+      }
+      return { ok: true, lessons: rewritten };
     }),
 
   /** Delete a module — only when empty (move its lessons out first). */
@@ -945,6 +1162,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       const { totalDocs: lessonCount } = await payload.find({
         collection: "lessons",
@@ -977,19 +1195,22 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      assertCourseEditable(course);
 
       // Null-out and module deletion must land together — un-moduled lessons
       // alongside surviving modules would make groupLessonsByModule hide the
       // course's content.
       const transactionID = await payload.db.beginTransaction();
       const req = transactionID ? { transactionID } : undefined;
+      let unwrapped: LessonVersion[];
       try {
-        await payload.update({
+        const { docs } = await payload.update({
           collection: "lessons",
           where: { course: { equals: input.courseId } },
           data: { module: null },
           req,
         });
+        unwrapped = lessonVersions(docs);
 
         await payload.delete({
           collection: "modules",
@@ -1002,7 +1223,7 @@ export const classroomsRouter = createTRPCRouter({
         if (transactionID) await payload.db.rollbackTransaction(transactionID);
         throw error;
       }
-      return { ok: true };
+      return { ok: true, lessons: unwrapped };
     }),
 
   /** Enroll the caller in a published course; awards the author enrollment XP. */

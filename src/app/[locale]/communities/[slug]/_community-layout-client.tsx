@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { notFound } from "next/navigation";
+import { notFound, useSelectedLayoutSegments } from "next/navigation";
 import { api } from "@/trpc/react";
 import { PageDocumentAuthProvider } from "@/components/auth/session-provider";
 import { authClient } from "@/server/better-auth/client";
@@ -15,6 +15,7 @@ import {
 import { CommunityHeader } from "@/components/communities/community-header";
 import { CommunityNav } from "@/components/communities/community-nav";
 import { Spinner } from "@/components/ui/spinner";
+import { resolveCommunityLayoutVariant } from "@/lib/communities/layout-variant";
 
 export function CommunityLayoutClient({
   children,
@@ -28,6 +29,7 @@ export function CommunityLayoutClient({
   initialMemberships: HubMembershipSeed[];
 }) {
   const { slug } = use(params);
+  const variant = resolveCommunityLayoutVariant(useSelectedLayoutSegments());
   const { data: session } = authClient.useSession();
   const user = documentAuthUser(null, initialUser, session?.user);
 
@@ -59,17 +61,21 @@ export function CommunityLayoutClient({
 
   return (
     <PageDocumentAuthProvider user={initialUser}>
-      <div className="flex flex-col">
-        <CommunityHeader
-          community={community}
-          membershipStatus={membershipStatus}
-          memberRole={memberRole}
-        />
-        <CommunityNav slug={slug} memberRole={memberRole} />
-        <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-          {children}
+      {variant === "workspace" ? (
+        children
+      ) : (
+        <div className="flex flex-col">
+          <CommunityHeader
+            community={community}
+            membershipStatus={membershipStatus}
+            memberRole={memberRole}
+          />
+          <CommunityNav slug={slug} memberRole={memberRole} />
+          <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+            {children}
+          </div>
         </div>
-      </div>
+      )}
     </PageDocumentAuthProvider>
   );
 }

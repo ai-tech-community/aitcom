@@ -638,4 +638,114 @@ describe.skipIf(!RUN_DB)("classroom hosted files [DB integration]", () => {
       expect.objectContaining({ id: mismatch.id, status: "failed" }),
     ]);
   });
+
+  describe("an archived course is read-only for files too", () => {
+    const archive = (courseId: number) =>
+      m.payload.update({
+        collection: "courses",
+        id: courseId,
+        data: { status: "archived" },
+      });
+    const ARCHIVED = { code: "FORBIDDEN", message: "COURSE_ARCHIVED" };
+
+    it("refuses to start an upload, and records nothing", async () => {
+      await archive(fx.membersOnlyId);
+      await expect(
+        callerAs(fx.authorId).classroomMaterials.startFileUpload({
+          courseId: fx.membersOnlyId,
+          fileName: "Late.pdf",
+          bytes: 10,
+        }),
+      ).rejects.toMatchObject(ARCHIVED);
+      expect(storage.presignUpload).not.toHaveBeenCalled();
+      const { totalDocs } = await m.payload.count({
+        collection: "hosted-materials",
+        where: { course: { equals: fx.membersOnlyId } },
+      });
+      expect(totalDocs).toBe(0);
+    });
+
+    it("refuses to finish an upload started before the course was archived; it can still be discarded", async () => {
+      const author = callerAs(fx.authorId);
+      const grant = await author.classroomMaterials.startFileUpload({
+        courseId: fx.membersOnlyId,
+        fileName: "Late.pdf",
+        bytes: 10,
+      });
+      await archive(fx.membersOnlyId);
+      storage.inspect.mockResolvedValue({
+        contentType: "application/pdf",
+        bytes: 10,
+      });
+      await expect(
+        author.classroomMaterials.finishFileUpload({
+          materialId: grant.materialId,
+        }),
+      ).rejects.toMatchObject(ARCHIVED);
+      expect(storage.inspect).not.toHaveBeenCalled();
+      await expect(
+        author.classroomMaterials.discardUpload({
+          materialId: grant.materialId,
+        }),
+      ).resolves.toMatchObject({
+        status: "failed",
+        failureReason: "cancelled",
+      });
+    });
+
+    it("refuses to rename or re-share a file", async () => {
+      const file = await createMaterial(fx.membersOnlyId, { title: "Kept" });
+      await archive(fx.membersOnlyId);
+      const author = callerAs(fx.authorId);
+      await expect(
+        author.classroomMaterials.updateMaterial({
+          materialId: file.id,
+          title: "Renamed",
+        }),
+      ).rejects.toMatchObject(ARCHIVED);
+      await expect(
+        author.classroomMaterials.updateMaterial({
+          materialId: file.id,
+          visibility: "preview",
+        }),
+      ).rejects.toMatchObject(ARCHIVED);
+      await expect(
+        m.payload.findByID({
+          collection: "hosted-materials",
+          id: file.id,
+          depth: 0,
+        }),
+      ).resolves.toMatchObject({ title: "Kept", visibility: "members" });
+    });
+
+    it("refuses to delete a file, and keeps the stored object", async () => {
+      const file = await createMaterial(fx.membersOnlyId, {
+        createdAt: DAY_AGO(),
+      });
+      await archive(fx.membersOnlyId);
+      await expect(
+        callerAs(fx.authorId).classroomMaterials.deleteMaterial({
+          materialId: file.id,
+        }),
+      ).rejects.toMatchObject(ARCHIVED);
+      expect(storage.remove).not.toHaveBeenCalled();
+      await expect(
+        m.payload.findByID({
+          collection: "hosted-materials",
+          id: file.id,
+          depth: 0,
+        }),
+      ).resolves.toMatchObject({ status: "ready" });
+    });
+
+    it("still lists the files for the author", async () => {
+      const file = await createMaterial(fx.membersOnlyId);
+      await archive(fx.membersOnlyId);
+      await expect(
+        callerAs(fx.authorId).classroomMaterials.listCourseMaterials({
+          courseId: fx.membersOnlyId,
+        }),
+      ).resolves.toEqual([expect.objectContaining({ id: file.id })]);
+    });
+  });
 });

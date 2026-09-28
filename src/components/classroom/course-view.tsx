@@ -52,9 +52,16 @@ interface LessonLike {
 export function CourseView({
   slug,
   courseSlug,
+  embedded = false,
 }: {
   slug: string;
   courseSlug: string;
+  /**
+   * Inside the course builder's Preview tab: a pure learner preview. Starts
+   * in preview mode and hides the author/staff controls (the builder owns
+   * editing, visibility and status), and the title is not the page's h1.
+   */
+  embedded?: boolean;
 }) {
   const t = useTranslations("classroom");
   const confirm = useConfirm();
@@ -72,7 +79,7 @@ export function CourseView({
   });
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [previewing, setPreviewing] = useState(false);
+  const [previewing, setPreviewing] = useState(embedded);
 
   const lessons = useMemo(
     () => (data?.lessons ?? []) as LessonLike[],
@@ -113,7 +120,7 @@ export function CourseView({
       : null) ?? null;
   const isStaff = role === "owner" || role === "admin" || role === "moderator";
   const isAuthor = !!session?.user && data?.course.authorId === session.user.id;
-  const canPreview = isAuthor || isStaff;
+  const canPreview = !embedded && (isAuthor || isStaff);
 
   // Real enrollment OR an author/staff member previewing unlocks lesson content.
   const canViewContent = enrolled || previewing;
@@ -175,6 +182,8 @@ export function CourseView({
   const coverImageUrl = (course as { coverImageUrl?: string | null })
     .coverImageUrl;
 
+  const Title = embedded ? "h2" : "h1";
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 py-6">
       <Link
@@ -199,7 +208,7 @@ export function CourseView({
 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">{course.title}</h1>
+            <Title className="text-2xl font-semibold">{course.title}</Title>
             <p className="text-muted-foreground text-sm">
               {t("byAuthor", { name: course.authorName ?? "member" })}
             </p>
@@ -222,7 +231,7 @@ export function CourseView({
                 {previewing ? t("exitPreview") : t("preview")}
               </Button>
             ) : null}
-            {isAuthor ? (
+            {isAuthor && !embedded ? (
               <Button asChild variant="outline" size="sm">
                 <Link
                   href={
@@ -241,7 +250,7 @@ export function CourseView({
         ) : null}
 
         {/* Staff controls */}
-        {isStaff ? (
+        {isStaff && !embedded ? (
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"

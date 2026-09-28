@@ -10,6 +10,7 @@ import { TRPCReactProvider } from "@/trpc/react";
 import { routing } from "@/i18n/routing";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { FooterGate } from "@/components/footer-gate";
 import { Toaster } from "sonner";
 import { InboxProvider } from "@/components/inbox/inbox-provider";
 import { SpaceWindowProvider } from "@/components/communities/explore/space-window-provider";
@@ -95,7 +96,9 @@ export default async function LocaleLayout({
                     <InboxProvider>
                       <SpaceWindowProvider>
                         <main className="flex-1">{children}</main>
-                        <Footer />
+                        <FooterGate>
+                          <Footer />
+                        </FooterGate>
                         <SessionChrome initialUser={initialUser} />
                       </SpaceWindowProvider>
                     </InboxProvider>

@@ -2,46 +2,52 @@ import { render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 
-import en from "../../../messages/en.json";
+import en from "../../../../messages/en.json";
 
 vi.mock("@/trpc/react", () => ({
   api: {
-    useUtils: () => ({ classrooms: { get: { invalidate: vi.fn() } } }),
-    classrooms: {
-      addLesson: {
-        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
-      },
-    },
+    useUtils: () => ({}),
     classroomMaterials: {
       listCourseMaterials: { useQuery: () => ({ data: [] }) },
     },
   },
 }));
 
-import { LessonEditor } from "./lesson-editor";
+import { LessonEditorProvider } from "@/components/classroom/materials/lesson-editor-context";
+import { LessonPane, type LessonDraft } from "./lesson-pane";
 
-function renderEditor(canUpload: boolean) {
+const draft: LessonDraft = {
+  title: "Welcome",
+  body: null,
+  resources: [],
+  exam: { mandatory: false, passThreshold: 70, maxAttempts: 0, questions: [] },
+};
+
+/** The real rich-text editor: its toolbar shows what the author may insert. */
+function renderPane(canUpload: boolean) {
   render(
     <NextIntlClientProvider locale="en" messages={en}>
-      <LessonEditor
-        courseId={5}
-        lessons={[]}
-        modules={[]}
-        canUpload={canUpload}
-      />
+      <LessonEditorProvider value={{ courseId: 5, canUpload }}>
+        <LessonPane
+          draft={draft}
+          setDraft={vi.fn()}
+          readOnly={false}
+          saveError={null}
+        />
+      </LessonEditorProvider>
     </NextIntlClientProvider>,
   );
 }
 
-describe("LessonEditor", () => {
+describe("LessonPane file uploads", () => {
   it("offers 'Add a file' to an author the community lets upload", async () => {
-    renderEditor(true);
+    renderPane(true);
     expect(await screen.findByTitle("Add a file")).toBeInTheDocument();
     expect(screen.getByTitle("Embed slides or video")).toBeInTheDocument();
   });
 
   it("offers only embeds to an author who may not upload", async () => {
-    renderEditor(false);
+    renderPane(false);
     expect(
       await screen.findByTitle("Embed slides or video"),
     ).toBeInTheDocument();
