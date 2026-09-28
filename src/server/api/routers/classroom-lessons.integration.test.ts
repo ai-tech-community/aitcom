@@ -156,9 +156,8 @@ describe.skipIf(!RUN_DB)("classroom lesson bodies [DB integration]", () => {
   it.each(["link", "autolink"])(
     "accepts a %s exactly as the builder's editor saves it",
     async (type) => {
-      const { postprocessEditorState } = await import(
-        "@/components/article-editor/utils"
-      );
+      const { postprocessEditorState } =
+        await import("@/components/article-editor/utils");
       // lexical/link's own export, as the builder's editor produces it.
       const editorJson = {
         root: {

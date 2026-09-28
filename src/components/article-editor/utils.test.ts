@@ -141,7 +141,8 @@ describe("link ↔ stored Payload link", () => {
     return editor.getEditorState().read(() => {
       const found: { url: string; target: string | null }[] = [];
       const walk = (n: LexicalNode) => {
-        if ($isLinkNode(n)) found.push({ url: n.getURL(), target: n.getTarget() });
+        if ($isLinkNode(n))
+          found.push({ url: n.getURL(), target: n.getTarget() });
         if ($isElementNode(n)) n.getChildren().forEach(walk);
       };
       walk($getRoot());
@@ -157,7 +158,6 @@ describe("link ↔ stored Payload link", () => {
         doc(paragraph(storedLink(type, true))),
       )!;
       editor.setEditorState(editor.parseEditorState(state), {});
-      editor.update(() => {}, { discrete: true });
 
       expect(linksIn(editor)).toEqual([{ url: URL_, target: "_blank" }]);
     },
