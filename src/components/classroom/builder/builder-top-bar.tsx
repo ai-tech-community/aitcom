@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { CourseTitleEditor } from "./course-title-editor";
 import type { AutosaveStatus } from "./use-autosave";
 
 type CourseStatus = "draft" | "published" | "archived";
@@ -21,6 +22,8 @@ export type BuilderTopBarProps = {
   slug: string;
   courseSlug: string;
   title: string;
+  /** Renames the course in place; absent when it cannot be changed (archived). */
+  onRenameTitle?: (title: string) => void;
   status: CourseStatus;
   isPublic: boolean;
   saveStatus: AutosaveStatus;
@@ -47,6 +50,7 @@ export type BuilderTopBarProps = {
 export function BuilderTopBar({
   slug,
   title,
+  onRenameTitle,
   status,
   isPublic,
   saveStatus,
@@ -87,7 +91,7 @@ export function BuilderTopBar({
           <span className="text-border" aria-hidden="true">
             /
           </span>
-          <h1 className="min-w-0 truncate text-sm font-semibold">{title}</h1>
+          <CourseTitleEditor title={title} onRename={onRenameTitle} />
           <StatusBadge status={status} />
           <span className="text-muted-foreground hidden shrink-0 text-xs sm:inline">
             {isPublic ? t("visibilityPublic") : t("visibilityMembers")}

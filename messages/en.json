@@ -3166,6 +3166,8 @@
     "createCourse": "Create draft",
     "signInToCreate": "Sign in to start a course",
     "titleTooShort": "Use at least 3 characters.",
+    "renameCourse": "Rename course",
+    "courseTitleInput": "New course title",
     "errorChangedElsewhere": "This course changed somewhere else, maybe in another tab. Reload to get the latest version.",
     "errorArchived": "This course is archived, so it can't be changed.",
     "errorModuleNotEmpty": "Move this module's lessons out first.",

@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import en from "../../../../messages/en.json";
@@ -21,6 +22,7 @@ vi.mock("@/trpc/react", () => ({
 }));
 
 import { CourseDetailsPane } from "./course-details-pane";
+import { useCourseDetails } from "./use-course-details";
 
 const T0 = "2026-01-01T00:00:00.000Z";
 const T1 = "2026-01-01T00:00:01.000Z";
@@ -35,16 +37,35 @@ const course = {
   isPublic: false,
 };
 
+/** The pane with the builder's course draft behind it, as the builder wires it. */
+function Harness({
+  readOnly,
+  onStatusChange,
+}: {
+  readOnly: boolean;
+  onStatusChange: (s: PaneSaveState) => void;
+}) {
+  const [writer] = useState(() => createVersionedWriter(T0));
+  const details = useCourseDetails({
+    course,
+    writer,
+    readOnly,
+    onStatusChange,
+  });
+  return (
+    <CourseDetailsPane
+      details={details}
+      isPublic={course.isPublic}
+      readOnly={readOnly}
+    />
+  );
+}
+
 function renderPane(readOnly = false) {
   const onStatusChange = vi.fn<(s: PaneSaveState) => void>();
   render(
     <NextIntlClientProvider locale="en" messages={en}>
-      <CourseDetailsPane
-        course={course}
-        writer={createVersionedWriter(T0)}
-        readOnly={readOnly}
-        onStatusChange={onStatusChange}
-      />
+      <Harness readOnly={readOnly} onStatusChange={onStatusChange} />
     </NextIntlClientProvider>,
   );
   return { onStatusChange };

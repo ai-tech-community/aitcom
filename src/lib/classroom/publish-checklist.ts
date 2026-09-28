@@ -1,7 +1,9 @@
 /**
  * What must be true before a course goes live. Pure, so the publish dialog
- * and any future server-side check share one definition.
+ * and the server's publish check (classrooms.update) share one definition.
  */
+import { COURSE_TITLE_MIN } from "./course-title";
+
 export type ChecklistLesson = {
   id: number;
   title: string;
@@ -85,7 +87,7 @@ export function publishChecks(input: ChecklistInput): CheckResult[] {
   const used = new Set(input.lessons.map((l) => l.module));
   const emptyModules = input.modules.filter((mod) => !used.has(mod.id)).map((mod) => mod.id);
   return [
-    { id: "title", level: "block", ok: input.title.trim().length >= 3 },
+    { id: "title", level: "block", ok: input.title.trim().length >= COURSE_TITLE_MIN },
     { id: "hasLessons", level: "block", ok: input.lessons.length > 0 },
     { id: "noEmptyLessons", level: "block", ok: empty.length === 0, lessonIds: empty },
     { id: "quizAnswers", level: "block", ok: badQuiz.length === 0, lessonIds: badQuiz },

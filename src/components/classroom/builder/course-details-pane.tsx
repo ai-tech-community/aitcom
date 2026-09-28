@@ -1,57 +1,37 @@
 "use client";
 
-import { useCallback, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
-import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionLabel } from "@/components/ui/section-label";
-import { useAutosave } from "./use-autosave";
-import { usePaneReport } from "./use-pane-report";
-import type { VersionedWriter } from "./versioned-writer";
-import type { PaneSaveState } from "./course-builder";
+import type { CourseDetails } from "./use-course-details";
 
-const MIN_TITLE = 3;
 const MAX_SUMMARY = 500;
 
-type DetailsDraft = {
-  title: string;
-  summary: string;
-  coverImageUrl: string | null;
-};
-
 export type CourseDetailsPaneProps = {
-  course: {
-    id: number;
-    slug: string;
-    title: string;
-    summary: string | null;
-    coverImageUrl: string | null;
-    isPublic: boolean;
-  };
-  /** Shared with every other course write in the builder (see versioned-writer.ts). */
-  writer: VersionedWriter;
+  /** The course draft, owned by the builder (see use-course-details.ts). */
+  details: CourseDetails;
+  isPublic: boolean;
   readOnly: boolean;
-  onStatusChange: (state: PaneSaveState) => void;
 };
 
 /**
- * The course's own fields — title, summary, cover — autosaved as one draft.
- * Visibility is shown but changed elsewhere (staff decide it on the course page).
+ * The course's own fields — title, summary, cover. Edits go into the
+ * builder's course draft, which autosaves. Visibility is shown but changed
+ * elsewhere (staff decide it on the course page).
  */
 export function CourseDetailsPane({
-  course,
-  writer,
+  details,
+  isPublic,
   readOnly,
-  onStatusChange,
 }: CourseDetailsPaneProps) {
   const t = useTranslations("classroomBuilder");
-  const utils = api.useUtils();
-  const update = api.classrooms.update.useMutation();
+  const { draft, setDraft, titleValid } = details;
 
   const titleId = useId();
   const titleHintId = useId();
@@ -60,55 +40,8 @@ export function CourseDetailsPane({
   const coverLabelId = useId();
   const coverHintId = useId();
 
-  const [draft, setDraft] = useState<DetailsDraft>(() => ({
-    title: course.title,
-    summary: course.summary ?? "",
-    coverImageUrl: course.coverImageUrl,
-  }));
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const titleValid = draft.title.trim().length >= MIN_TITLE;
-  const { mutateAsync } = update;
-  const courseId = course.id;
-  const courseSlug = course.slug;
-
-  const save = useCallback(
-    async (value: DetailsDraft) => {
-      const fields = {
-        title: value.title.trim(),
-        summary: value.summary.trim(),
-        coverImageUrl: value.coverImageUrl,
-      };
-      await writer.run(async (expectedUpdatedAt) => {
-        const result = await mutateAsync({
-          courseId,
-          ...fields,
-          expectedUpdatedAt,
-        });
-        return result.updatedAt;
-      });
-      // Keep the shared course query in step so the top bar and preview show
-      // what was saved without a refetch.
-      utils.classrooms.get.setData({ slug: courseSlug }, (old) =>
-        old ? { ...old, course: { ...old.course, ...fields } } : old,
-      );
-    },
-    [writer, mutateAsync, courseId, courseSlug, utils],
-  );
-
-  const autosave = useAutosave({
-    value: draft,
-    save,
-    enabled: !readOnly && titleValid,
-  });
-
-  // Saving pauses while the title is too short; that draft is still unsaved work.
-  usePaneReport({
-    autosave,
-    paused: !readOnly && !titleValid,
-    onStatusChange,
-  });
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -264,7 +197,7 @@ export function CourseDetailsPane({
           {t("visibilityLabel")}
         </dt>
         <dd className="text-sm">
-          {course.isPublic ? t("visibilityPublic") : t("visibilityMembers")}
+          {isPublic ? t("visibilityPublic") : t("visibilityMembers")}
         </dd>
         <dd className="text-muted-foreground text-sm">{t("visibilityHint")}</dd>
       </dl>

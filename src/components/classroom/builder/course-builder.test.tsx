@@ -981,3 +981,95 @@ describe("CourseBuilder outline placement", () => {
     }
   });
 });
+
+describe("CourseBuilder course title in the top bar", () => {
+  const T0 = "2026-01-01T00:00:00.000Z";
+  const T1 = "2026-01-01T00:00:01.000Z";
+  const T2 = "2026-01-01T00:00:02.000Z";
+
+  beforeEach(() => {
+    trpc.mutateAsync.mockReset();
+    trpc.toastError.mockReset();
+    window.history.replaceState(null, "", "/");
+  });
+
+  function loaded(status = "draft") {
+    trpc.query = {
+      data: { ...courseData, course: { ...courseData.course, status } },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  }
+
+  const renameTo = async (title: string) => {
+    fireEvent.click(screen.getByRole("button", { name: /Rename course/ }));
+    const input = screen.getByRole("textbox", { name: "New course title" });
+    fireEvent.change(input, { target: { value: title } });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Enter" });
+    });
+  };
+
+  it("saves a new title straight away, and the details pane shows it", async () => {
+    loaded();
+    trpc.mutateAsync.mockResolvedValueOnce({ ok: true, updatedAt: T1 });
+    renderBuilder();
+    await renameTo("Agents from scratch");
+    expect(trpc.mutateAsync).toHaveBeenCalledTimes(1);
+    expect(trpc.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        courseId: 7,
+        title: "Agents from scratch",
+        expectedUpdatedAt: T0,
+      }),
+    );
+    expect(screen.getByLabelText("Course title")).toHaveValue(
+      "Agents from scratch",
+    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Agents from scratch",
+    );
+  });
+
+  it("chains its save with the details pane's, never racing it", async () => {
+    loaded();
+    let finishFirst!: (v: { ok: true; updatedAt: string }) => void;
+    trpc.mutateAsync
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishFirst = resolve;
+        }),
+      )
+      .mockResolvedValueOnce({ ok: true, updatedAt: T2 });
+    renderBuilder();
+    await renameTo("Agents from scratch");
+    fireEvent.change(screen.getByLabelText("Short summary"), {
+      target: { value: "Build one." },
+    });
+    // Publishing saves every pane first: that queues the summary save.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    expect(trpc.mutateAsync).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finishFirst({ ok: true, updatedAt: T1 });
+    });
+    expect(trpc.mutateAsync).toHaveBeenCalledTimes(2);
+    expect(trpc.mutateAsync.mock.calls[1]![0]).toMatchObject({
+      title: "Agents from scratch",
+      summary: "Build one.",
+      expectedUpdatedAt: T1,
+    });
+  });
+
+  it("cannot be renamed when the course is archived", () => {
+    loaded("archived");
+    renderBuilder();
+    expect(screen.queryByRole("button", { name: /Rename course/ })).toBeNull();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Intro to agents",
+    );
+  });
+});

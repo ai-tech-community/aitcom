@@ -26,6 +26,7 @@ import { CourseView } from "@/components/classroom/course-view";
 import type { ChecklistInput } from "@/lib/classroom/publish-checklist";
 import { BuilderTopBar } from "./builder-top-bar";
 import { CourseDetailsPane } from "./course-details-pane";
+import { useCourseDetails } from "./use-course-details";
 import { builderErrorKey } from "./builder-errors";
 import { createVersionedWriter } from "./versioned-writer";
 import { CourseOutline } from "./course-outline";
@@ -298,6 +299,20 @@ function CourseWorkspace({
     (state: PaneSaveState) => reportPane("details", state),
     [reportPane],
   );
+  // The course's own fields: one draft for the details pane and the title
+  // in the top bar, saved through the shared course writer.
+  const details = useCourseDetails({
+    course: {
+      id: course.id,
+      slug: course.slug,
+      title: course.title,
+      summary: course.summary ?? null,
+      coverImageUrl: course.coverImageUrl ?? null,
+    },
+    writer,
+    readOnly,
+    onStatusChange: reportDetails,
+  });
   // Lessons deleted during this visit. Their editor scope may still hold
   // unsaved edits; those are dropped, never sent for a lesson that is gone.
   const deletedLessons = useRef(new Set<number>());
@@ -514,7 +529,8 @@ function CourseWorkspace({
       <BuilderTopBar
         slug={slug}
         courseSlug={courseSlug}
-        title={course.title}
+        title={details.draft.title}
+        onRenameTitle={readOnly ? undefined : details.rename}
         status={course.status}
         isPublic={!!course.isPublic}
         saveStatus={save.status}
@@ -568,17 +584,9 @@ function CourseWorkspace({
           className="min-w-0 overflow-y-auto"
         >
           <CourseDetailsPane
-            course={{
-              id: course.id,
-              slug: course.slug,
-              title: course.title,
-              summary: course.summary ?? null,
-              coverImageUrl: course.coverImageUrl ?? null,
-              isPublic: !!course.isPublic,
-            }}
-            writer={writer}
+            details={details}
+            isPublic={!!course.isPublic}
             readOnly={readOnly}
-            onStatusChange={reportDetails}
           />
         </div>
 

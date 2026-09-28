@@ -45,6 +45,7 @@ import {
 } from "@/server/classroom/lesson-materials";
 import { canPublish, publishChecks } from "@/lib/classroom/publish-checklist";
 import { isResourceUrl } from "@/lib/classroom/resource-url";
+import { COURSE_TITLE_MIN } from "@/lib/classroom/course-title";
 
 /** One lesson resource link; the URL rule is shared with the builder. */
 const resourceSchema = z.object({
@@ -478,7 +479,7 @@ export const classroomsRouter = createTRPCRouter({
     .input(
       z.object({
         communitySlug: z.string(),
-        title: z.string().min(3).max(200),
+        title: z.string().min(COURSE_TITLE_MIN).max(200),
         summary: z.string().max(500).optional(),
         status: z.enum(["draft", "published"]).default("draft"),
         coverImageUrl: z.string().url().max(1000).optional(),
@@ -545,7 +546,7 @@ export const classroomsRouter = createTRPCRouter({
     .input(
       z.object({
         courseId: z.number(),
-        title: z.string().min(3).max(200).optional(),
+        title: z.string().min(COURSE_TITLE_MIN).max(200).optional(),
         summary: z.string().max(500).optional(),
         status: z.enum(["draft", "published"]).optional(),
         coverImageUrl: z.string().url().max(1000).nullable().optional(),

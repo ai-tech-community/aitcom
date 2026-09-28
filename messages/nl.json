@@ -3166,6 +3166,8 @@
     "createCourse": "Concept maken",
     "signInToCreate": "Log in om een cursus te beginnen",
     "titleTooShort": "Gebruik minstens 3 tekens.",
+    "renameCourse": "Cursus hernoemen",
+    "courseTitleInput": "Nieuwe titel van de cursus",
     "errorChangedElsewhere": "Deze cursus is ergens anders gewijzigd, misschien in een ander tabblad. Laad opnieuw om de nieuwste versie te krijgen.",
     "errorArchived": "Deze cursus is gearchiveerd en kan niet meer worden gewijzigd.",
     "errorModuleNotEmpty": "Verplaats eerst de lessen uit deze module.",
