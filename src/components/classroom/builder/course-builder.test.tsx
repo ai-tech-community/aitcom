@@ -20,6 +20,7 @@ const trpc = vi.hoisted(() => ({
   invalidate: vi.fn(),
   setData: vi.fn(),
   toastError: vi.fn(),
+  routerPush: vi.fn(),
   // The outline's writes, by procedure name.
   outline: {} as Record<string, ReturnType<typeof vi.fn>>,
 }));
@@ -82,6 +83,7 @@ vi.mock("next/navigation", async () => {
     return () => window.removeEventListener("test:urlchange", onChange);
   };
   return {
+    useRouter: () => ({ push: trpc.routerPush }),
     useSearchParams: () => {
       const search = React.useSyncExternalStore(
         subscribe,
@@ -1071,5 +1073,121 @@ describe("CourseBuilder course title in the top bar", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Intro to agents",
     );
+  });
+});
+
+describe("CourseBuilder leaving with unsaved work", () => {
+  const T1 = "2026-01-01T00:00:01.000Z";
+
+  beforeEach(() => {
+    trpc.mutateAsync.mockReset();
+    trpc.updateLesson.mockReset();
+    trpc.routerPush.mockReset();
+    trpc.toastError.mockReset();
+    window.history.replaceState(null, "", "/");
+    trpc.query = {
+      data: courseData,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    };
+  });
+
+  const backLink = () => screen.getByRole("link", { name: "Classroom" });
+  const leaveDialog = () =>
+    screen.queryByRole("alertdialog", {
+      name: en.classroomBuilder.leaveTitle,
+    });
+
+  async function clickBack() {
+    await act(async () => {
+      fireEvent.click(backLink());
+    });
+  }
+
+  it("asks before leaving while a change is waiting to be saved", async () => {
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Short summary"), {
+      target: { value: "Build one." },
+    });
+    await clickBack();
+    expect(leaveDialog()).toBeInTheDocument();
+    expect(trpc.routerPush).not.toHaveBeenCalled();
+  });
+
+  it("stays when the author chooses to stay", async () => {
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Course title"), {
+      target: { value: "ab" },
+    });
+    await clickBack();
+    await act(async () => {
+      fireEvent.click(
+        within(leaveDialog()!).getByRole("button", {
+          name: en.classroomBuilder.leaveCancel,
+        }),
+      );
+    });
+    expect(leaveDialog()).toBeNull();
+    expect(trpc.routerPush).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Course title")).toHaveValue("ab");
+  });
+
+  it("tries to save, then leaves, when the author confirms", async () => {
+    trpc.mutateAsync.mockResolvedValueOnce({ ok: true, updatedAt: T1 });
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Short summary"), {
+      target: { value: "Build one." },
+    });
+    await clickBack();
+    await act(async () => {
+      fireEvent.click(
+        within(leaveDialog()!).getByRole("button", {
+          name: en.classroomBuilder.leaveConfirm,
+        }),
+      );
+    });
+    expect(trpc.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ summary: "Build one." }),
+    );
+    expect(trpc.routerPush).toHaveBeenCalledWith("/communities/hub/classroom");
+  });
+
+  it("asks while a save has failed", async () => {
+    trpc.mutateAsync.mockRejectedValue(new Error("offline"));
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Short summary"), {
+      target: { value: "Build one." },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Preview"));
+    });
+    expect(
+      screen.getByText(en.classroomBuilder.saveFailed),
+    ).toBeInTheDocument();
+    await clickBack();
+    expect(leaveDialog()).toBeInTheDocument();
+    trpc.mutateAsync.mockReset();
+  });
+
+  it("asks while the course changed elsewhere (a conflict)", async () => {
+    trpc.mutateAsync.mockRejectedValueOnce(new Error("COURSE_CHANGED"));
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Short summary"), {
+      target: { value: "Build one." },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText("Preview"));
+    });
+    expect(screen.getByText(/changed somewhere else/)).toBeInTheDocument();
+    await clickBack();
+    expect(leaveDialog()).toBeInTheDocument();
+  });
+
+  it("does not ask when everything is saved", async () => {
+    renderBuilder();
+    await clickBack();
+    expect(leaveDialog()).toBeNull();
   });
 });

@@ -37,7 +37,8 @@ import {
   type RewriteLessons,
 } from "./lesson-versions";
 import { PublishDialog } from "./publish-dialog";
-import { useUnsavedChangesGuard, type AutosaveStatus } from "./use-autosave";
+import type { AutosaveStatus } from "./use-autosave";
+import { useLeaveGuard } from "./use-leave-guard";
 import { usePersistedFlag } from "./use-persisted-flag";
 
 export type BuilderSelection =
@@ -330,12 +331,19 @@ function CourseWorkspace({
    * holds unsaved work stays open; otherwise the details pane opens when it
    * is the one holding it.
    */
-  const saveAllFirst = useCallback(async (): Promise<boolean> => {
-    const results = await Promise.all(
-      activePanes(paneStatesRef.current, selectionRef.current).map(
-        async ([key, pane]) => [key, await pane.flush()] as const,
+  /** Save every pane now; resolves with each pane's status once settled. */
+  const flushAll = useCallback(
+    () =>
+      Promise.all(
+        activePanes(paneStatesRef.current, selectionRef.current).map(
+          async ([key, pane]) => [key, await pane.flush()] as const,
+        ),
       ),
-    );
+    [],
+  );
+
+  const saveAllFirst = useCallback(async (): Promise<boolean> => {
+    const results = await flushAll();
     if (canLeaveEditing(results.map(([, status]) => status))) return true;
     const blocking = (match: (key: string) => boolean) =>
       results.some(([key, status]) => match(key) && UNSAFE.has(status));
@@ -347,7 +355,7 @@ function CourseWorkspace({
     }
     toast.error(t("finishSavingFirst"));
     return false;
-  }, [select, t]);
+  }, [flushAll, select, t]);
 
   /**
    * Every author-driven selection change. Leaving a lesson first saves it and
@@ -404,7 +412,22 @@ function CourseWorkspace({
   )
     ? "errorLessonChangedElsewhere"
     : "errorChangedElsewhere";
-  useUnsavedChangesGuard(UNSAFE.has(save.status));
+  const confirm = useConfirm();
+  // Leaving with work that is not safely saved asks first; going ahead tries
+  // one last save of everything, then leaves whatever could not be saved.
+  useLeaveGuard({
+    active: UNSAFE.has(save.status),
+    confirmLeave: async () => {
+      const leave = await confirm({
+        title: t("leaveTitle"),
+        description: t("leaveDescription"),
+        confirmLabel: t("leaveConfirm"),
+        cancelLabel: t("leaveCancel"),
+      });
+      if (leave) await flushAll();
+      return leave;
+    },
+  });
 
   const [statusChanging, setStatusChanging] = useState(false);
   /**
@@ -464,7 +487,6 @@ function CourseWorkspace({
     throw new Error(outcome);
   };
 
-  const confirm = useConfirm();
   const moveToDraft = async () => {
     const ok = await confirm({
       title: t("moveToDraftTitle"),
