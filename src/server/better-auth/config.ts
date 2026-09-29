@@ -57,6 +57,15 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
+  user: {
+    additionalFields: {
+      // First/last name for event organizers (ADR-0038). Not settable through
+      // the auth API (input: false): members set them through events.register
+      // and members.upsertProfile, which validate them.
+      firstName: { type: "string", required: false, input: false },
+      lastName: { type: "string", required: false, input: false },
+    },
+  },
   account: {
     accountLinking: {
       enabled: true,

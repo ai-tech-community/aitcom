@@ -229,7 +229,15 @@
       "toastWaitlisted": "You have been added to the waitlist.",
       "toastRegistered": "Successfully registered!",
       "toastCancelled": "Registration cancelled.",
-      "toastAlreadyGoing": "Already marked as going."
+      "toastAlreadyGoing": "Already marked as going.",
+      "organizerNotice": "The organizer will see your name and email. If your profile is public, they also see your company, links and skills.",
+      "namesTitle": "Your name for the organizer",
+      "namesDescription": "We ask this once. It is saved to your account for every event you join.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "nameRequired": "Please fill this in.",
+      "namesCancel": "Cancel",
+      "namesConfirm": "Register"
     },
     "formatInPerson": "In person",
     "formatHybrid": "Hybrid",
@@ -646,7 +654,10 @@
     "disconnectGithubNeedPassword": "Add a password or another sign-in method before disconnecting.",
     "socialDisconnected": "Identity disconnected.",
     "socialDisconnectError": "Could not disconnect that identity.",
-    "socialConnectError": "Could not start the connect flow."
+    "socialConnectError": "Could not start the connect flow.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "namesHint": "Organizers of events you register for see your first and last name."
   },
   "activity": {
     "scopeLabel": "Activity scope",

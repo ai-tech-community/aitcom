@@ -13,12 +13,17 @@ const sendWaitlistPromotion = vi.fn();
 /** Rows each awaited db chain resolves to, in call order. */
 const dbResults: unknown[][] = [];
 const inserted: unknown[] = [];
+const updates: unknown[] = [];
 
 function chain(): Record<string, unknown> {
   const c: Record<string, unknown> = {};
-  for (const m of ["from", "where", "limit", "orderBy", "set", "returning"]) {
+  for (const m of ["from", "where", "limit", "orderBy", "returning"]) {
     c[m] = () => c;
   }
+  c.set = (values: unknown) => {
+    updates.push(values);
+    return c;
+  };
   c.values = (row: unknown) => {
     inserted.push(row);
     return c;
@@ -91,6 +96,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   dbResults.length = 0;
   inserted.length = 0;
+  updates.length = 0;
 });
 
 describe("events.register", () => {
@@ -98,6 +104,7 @@ describe("events.register", () => {
     payload.findByID.mockResolvedValue(NATIVE_EVENT);
     dbResults.push(
       [], // no existing registration
+      [{ firstName: "Ada", lastName: "Lovelace" }], // account names
       [{ count: 0 }], // seats taken
       [{ id: 1, status: "registered" }], // inserted row
       [], // no member profile: no XP
@@ -115,6 +122,59 @@ describe("events.register", () => {
       filename: "invite.ics",
       contentType: "text/calendar; charset=utf-8; method=REQUEST",
     });
+    // The member saw the sharing notice on the register button.
+    expect(inserted[0]).toMatchObject({
+      status: "registered",
+      organizerNoticeAt: expect.any(Date),
+    });
+  });
+
+  it("asks for names when the account has none, and registers nobody", async () => {
+    payload.findByID.mockResolvedValue(NATIVE_EVENT);
+    dbResults.push(
+      [], // no existing registration
+      [{ firstName: null, lastName: null }], // account names
+    );
+
+    await expect(
+      memberCaller().events.register({ eventId: 7 }),
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: "NAME_REQUIRED",
+    });
+    expect(inserted).toHaveLength(0);
+    expect(updates).toHaveLength(0);
+  });
+
+  it("saves the names given with the registration to the account", async () => {
+    payload.findByID.mockResolvedValue(NATIVE_EVENT);
+    dbResults.push(
+      [], // no existing registration
+      [], // save names
+      [{ count: 0 }],
+      [{ id: 1, status: "registered" }],
+      [],
+    );
+
+    await memberCaller().events.register({
+      eventId: 7,
+      firstName: "  Jan ",
+      lastName: "van der  Berg",
+    });
+
+    expect(updates[0]).toEqual({ firstName: "Jan", lastName: "van der Berg" });
+    expect(inserted[0]).toMatchObject({ status: "registered" });
+  });
+
+  it("refuses a blank name", async () => {
+    await expect(
+      memberCaller().events.register({
+        eventId: 7,
+        firstName: "   ",
+        lastName: "Lovelace",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(inserted).toHaveLength(0);
   });
 
   it("refuses an event run on another site and emails nothing", async () => {
@@ -135,6 +195,7 @@ describe("events.register", () => {
     payload.findByID.mockResolvedValue({ ...NATIVE_EVENT, maxAttendees: 1 });
     dbResults.push(
       [],
+      [{ firstName: "Ada", lastName: "Lovelace" }],
       [{ count: 1 }], // full
       [{ id: 2, status: "waitlisted" }],
     );

@@ -6,6 +6,12 @@ import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
+import { useState } from "react";
+import { hasAccountNames } from "@/lib/person-name";
+import {
+  RegistrationNamesDialog,
+  type RegistrationNames,
+} from "@/components/events/registration-names-dialog";
 
 interface EventRegisterButtonProps {
   eventId: number;
@@ -26,6 +32,10 @@ export function EventRegisterButton({
   const session = authClient.useSession();
 
   const isLoggedIn = !!session.data?.user;
+  // First/last name are asked once, before the first registration that
+  // shares them with an organizer (ADR-0038).
+  const needsNames = !hasAccountNames(session.data?.user ?? {});
+  const [namesOpen, setNamesOpen] = useState(false);
   const isPaid = (price ?? 0) > 0;
 
   const registrationStatus = api.events.registrationStatus.useQuery(
@@ -37,6 +47,9 @@ export function EventRegisterButton({
 
   const registerMutation = api.events.register.useMutation({
     onSuccess: (data) => {
+      setNamesOpen(false);
+      // Names given with this registration are now on the account.
+      void session.refetch();
       if (data.alreadyRegistered) {
         toast.info(t("registration.toastAlready"));
       } else if (data.checkoutUrl) {
@@ -52,9 +65,22 @@ export function EventRegisterButton({
       void utils.events.myRegistrations.invalidate();
     },
     onError: (error) => {
+      // The account has no names yet (e.g. a stale session): ask for them.
+      if (error.data?.code === "PRECONDITION_FAILED") {
+        setNamesOpen(true);
+        return;
+      }
       toast.error(error.message || "Registration failed. Please try again.");
     },
   });
+
+  function register(names?: RegistrationNames) {
+    if (!names && needsNames) {
+      setNamesOpen(true);
+      return;
+    }
+    registerMutation.mutate({ eventId, ...names });
+  }
 
   const cancelMutation = api.events.cancelRegistration.useMutation({
     onSuccess: () => {
@@ -207,13 +233,29 @@ export function EventRegisterButton({
   const priceLabel = isPaid ? ` - €${((price ?? 0) / 100).toFixed(2)}` : "";
 
   return (
-    <Button
-      className="w-full font-mono text-xs tracking-wider"
-      onClick={() => registerMutation.mutate({ eventId })}
-      disabled={registerMutation.isPending}
-    >
-      {registerMutation.isPending ? "Registering..." : `Register${priceLabel}`}
-    </Button>
+    <div className="space-y-2">
+      <Button
+        className="w-full font-mono text-xs tracking-wider"
+        onClick={() => register()}
+        disabled={registerMutation.isPending}
+      >
+        {registerMutation.isPending
+          ? "Registering..."
+          : `Register${priceLabel}`}
+      </Button>
+      <p className="text-muted-foreground text-xs">
+        {t("registration.organizerNotice")}
+      </p>
+      {namesOpen ? (
+        <RegistrationNamesDialog
+          open
+          currentName={session.data?.user?.name}
+          pending={registerMutation.isPending}
+          onConfirm={(names) => register(names)}
+          onClose={() => setNamesOpen(false)}
+        />
+      ) : null}
+    </div>
   );
 }
 
