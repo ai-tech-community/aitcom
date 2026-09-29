@@ -361,6 +361,30 @@ or community-scoped by `communityId`. An event is either **native** (created by
 a [[community-admin|community organizer]] on the platform) or a
 [[discovered-event]] ingested from an external platform.
 
+### Event organizer
+
+The one member responsible for a native [[Event]]: they created it, or
+submitted it for review. Stored as `events.organizerId`. They alone see its
+[[attendee-details]] and do [[check-in]]. The community owner can hand the
+role to another active member. Narrower than [[community-admin]] ("community
+organizer"): an admin who did not organize an event does not see its
+attendees. See [[adr-0038-attendee-details-are-shared-with-the-event-organizer-only]].
+
+### Attendee details
+
+What the [[event-organizer]] sees about one registration. Always shown:
+first and last name, email, status, registration time, waitlist position,
+payment status, check-in time, whether they are a member of the hosting
+community, and how many of its events they attended before. For a member
+whose profile is public ([[profile-visibility]]), also: company, links,
+experience level, skills and interests. Built in one place,
+`toAttendeeDetails`, so every surface applies the same rule.
+
+### Check-in
+
+The [[event-organizer]] confirming at the event that a registered member
+came. It moves the registration to `attended`, and it can be undone.
+
 ### Audience
 
 A **Hub-global, curated audience type** (e.g. Engineers, Founders, Executives)
