@@ -3,7 +3,7 @@
 // right person, in order of evidence, and leaves external events alone.
 // Auto-skips unless RUN_DB_TESTS=1 and a local database is configured.
 import type { sql as Sql } from "drizzle-orm";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { db as Db } from "@/server/db";
 
@@ -33,11 +33,17 @@ describe.skipIf(!RUN_DB)(
     const activityIds: string[] = [];
     const logs: string[] = [];
 
-    const run = () =>
-      up({
-        db,
-        payload: { logger: { info: (msg: string) => logs.push(msg) } },
-      } as never);
+    // Called exactly like scripts/db-apply-pending.ts: `db` and nothing else.
+    const run = async () => {
+      const log = vi.spyOn(console, "log").mockImplementation((msg) => {
+        logs.push(String(msg));
+      });
+      try {
+        await up({ db } as never);
+      } finally {
+        log.mockRestore();
+      }
+    };
 
     beforeAll(async () => {
       const [dbMod, drizzle, migration] = await Promise.all([
