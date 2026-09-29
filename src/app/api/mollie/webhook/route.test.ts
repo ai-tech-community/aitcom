@@ -38,7 +38,17 @@ vi.mock("@/lib/gamification", () => ({
   XP_AMOUNTS: { REGISTER_EVENT: 10 },
 }));
 
-vi.mock("@/server/email", () => ({ sendRegistrationConfirmation }));
+vi.mock("@/server/email", () => ({
+  sendRegistrationConfirmation,
+  EMAIL_SENDER: {
+    name: "AIT Community",
+    email: "noreply@mailer.aitcommunity.org",
+  },
+}));
+
+vi.mock("@/env", () => ({
+  env: { NEXT_PUBLIC_APP_URL: "https://app.test" },
+}));
 
 vi.mock("@/server/payload", () => ({
   getPayloadClient: async () => ({ findByID }),
@@ -101,6 +111,16 @@ describe("Mollie webhook confirmation email", () => {
         eventLocation: "Utrecht",
         eventSlug: "agents-hackathon",
       },
+      expect.objectContaining({
+        filename: "invite.ics",
+        contentType: "text/calendar; charset=utf-8; method=REQUEST",
+      }),
+    );
+    const invite = sendRegistrationConfirmation.mock.calls[0]![3] as {
+      content: string;
+    };
+    expect(invite.content.replace(/\r\n /g, "")).toContain(
+      "mailto:ada@example.test",
     );
   });
 });

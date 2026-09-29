@@ -1,4 +1,9 @@
-import type { CollectionAfterChangeHook, CollectionConfig } from "payload";
+import type {
+  CollectionAfterChangeHook,
+  CollectionBeforeChangeHook,
+  CollectionConfig,
+  PayloadRequest,
+} from "payload";
 
 import {
   EVENT_FOCUS_LABELS,
@@ -13,6 +18,7 @@ import {
 import { DEFAULT_EVENT_TIMEZONE, isValidTimeZone } from "@/lib/event-time";
 import { geocodeEvent } from "@/server/geocoding/nominatim";
 import { eventDeadlineWarnings } from "@/server/hackathon/deadlines";
+import type { Event } from "@/payload-types";
 
 function locationChanged(
   doc: Record<string, unknown>,
@@ -86,6 +92,87 @@ const geocodeAfterChange: CollectionAfterChangeHook = async ({
   }
 };
 
+/** Where the live event row read before a save waits for the after hook. */
+const LIVE_BEFORE_KEY = "attendeeCalendarLiveBefore";
+
+/**
+ * The live row members see, in the request's locale — never a draft version
+ * (`draft: false` reads the collection table, not the versions table). Runs
+ * in the save's own transaction via `req`.
+ */
+async function readLiveEvent(
+  req: PayloadRequest,
+  id: number | string,
+): Promise<Event | null> {
+  return req.payload
+    .findByID({
+      collection: "events",
+      id,
+      draft: false,
+      depth: 0,
+      overrideAccess: true,
+      disableErrors: true,
+      req,
+    })
+    .then((doc) => doc ?? null);
+}
+
+const captureLiveEventBeforeChange: CollectionBeforeChangeHook = async ({
+  data,
+  operation,
+  originalDoc,
+  req,
+}) => {
+  if (operation !== "update" || !originalDoc) return data;
+  const live = await readLiveEvent(req, (originalDoc as Event).id);
+  const store = ((req.context[LIVE_BEFORE_KEY] as
+    | Record<string, Event | null>
+    | undefined) ??= {});
+  store[String((originalDoc as Event).id)] = live;
+  return data;
+};
+
+/**
+ * Keep members' calendars in step with the event: when a live event is moved
+ * or cancelled — from the admin panel, the community tools, the agent API,
+ * anywhere — everyone holding a seat gets an email with an updated invite or
+ * a calendar cancel. Compares the live row before and after the save (see
+ * attendeeCalendarChange for why not previousDoc). The mail module is loaded
+ * lazily so the Payload config does not pull in the database and mail
+ * clients. Never fails the save.
+ */
+const attendeeCalendarAfterChange: CollectionAfterChangeHook = async ({
+  doc,
+  operation,
+  req,
+}) => {
+  if (operation !== "update") return;
+  const store = req.context[LIVE_BEFORE_KEY] as
+    | Record<string, Event | null>
+    | undefined;
+  const id = String((doc as Event).id);
+  if (!store || !(id in store)) return;
+  const liveBefore = store[id];
+  delete store[id];
+
+  try {
+    const liveAfter = await readLiveEvent(req, id);
+    const { attendeeCalendarChange, notifyAttendeesOfEventChange } =
+      await import("@/server/events/attendee-calendar-sync");
+    const change = attendeeCalendarChange(liveBefore, liveAfter);
+    if (!change || !liveAfter) return;
+    const result = await notifyAttendeesOfEventChange(liveAfter, change);
+    req.payload.logger.info(
+      `Event ${id} ${change}: emailed ${result.emailed}/${result.attendees} attendees`,
+    );
+  } catch (error) {
+    req.payload.logger.error(
+      { err: error },
+      `Failed to notify attendees of event ${id} change`,
+    );
+  }
+};
+
 export const Events: CollectionConfig = {
   slug: "events",
   admin: {
@@ -104,6 +191,7 @@ export const Events: CollectionConfig = {
         return data;
       },
     ],
+    beforeChange: [captureLiveEventBeforeChange],
     afterChange: [
       async (args) => {
         if ((args.req.context as { skipGeocode?: boolean })?.skipGeocode) {
@@ -111,6 +199,7 @@ export const Events: CollectionConfig = {
         }
         await geocodeAfterChange(args);
       },
+      attendeeCalendarAfterChange,
     ],
   },
   fields: [

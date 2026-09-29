@@ -7,6 +7,7 @@ import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { sendRegistrationConfirmation } from "@/server/email";
 import { getPayloadClient } from "@/server/payload";
 import { toEventEmailData } from "@/server/events/event-email-data";
+import { toRegistrationCalendarInvite } from "@/server/events/registration-invite";
 
 /**
  * Mollie webhook handler.
@@ -87,6 +88,11 @@ export async function POST(request: Request) {
           registeredUser.email,
           registeredUser.name ?? "there",
           toEventEmailData(event),
+          toRegistrationCalendarInvite(
+            event,
+            { email: registeredUser.email, name: registeredUser.name },
+            "invite",
+          ),
         );
       }
     } catch (e) {

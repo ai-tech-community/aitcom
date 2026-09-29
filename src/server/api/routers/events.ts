@@ -60,6 +60,8 @@ import {
 import { suggestSlots } from "@/server/events/conflicts/suggest";
 import { assertEventCancellable } from "@/server/events/cancel-guard";
 import { toEventEmailData } from "@/server/events/event-email-data";
+import { toRegistrationCalendarInvite } from "@/server/events/registration-invite";
+import { externalEventUrl } from "@/lib/events/event-source";
 
 /**
  * One row of a community's event list: the shared normalized shape plus the
@@ -72,10 +74,9 @@ type CommunityListedEvent = NormalizedEvent & {
   country?: string | null;
 };
 
-async function getEventEmailData(eventId: number) {
+async function getEvent(eventId: number) {
   const payload = await getPayloadClient();
-  const event = await payload.findByID({ collection: "events", id: eventId });
-  return toEventEmailData(event);
+  return payload.findByID({ collection: "events", id: eventId });
 }
 
 function getAppUrl(): string {
@@ -112,11 +113,14 @@ export const eventsRouter = createTRPCRouter({
         };
       }
 
-      const payload = await getPayloadClient();
-      const event = await payload.findByID({
-        collection: "events",
-        id: input.eventId,
-      });
+      const event = await getEvent(input.eventId);
+
+      if (externalEventUrl(event) !== null) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This event is run on another site. Register there instead.",
+        });
+      }
 
       const [countResult] = await ctx.db
         .select({ count: sql<number>`count(*)` })
@@ -203,18 +207,30 @@ export const eventsRouter = createTRPCRouter({
         });
       }
 
-      void (async () => {
-        try {
-          const eventData = await getEventEmailData(input.eventId);
-          const userName = ctx.session.user.name ?? "there";
-          const email = ctx.session.user.email;
-          if (email) {
-            await sendRegistrationConfirmation(email, userName, eventData);
+      // Only a confirmed seat gets the confirmation and its calendar invite;
+      // a waitlisted member hears from us when a spot opens up.
+      if (status === "registered") {
+        void (async () => {
+          try {
+            const userName = ctx.session.user.name ?? "there";
+            const email = ctx.session.user.email;
+            if (email) {
+              await sendRegistrationConfirmation(
+                email,
+                userName,
+                toEventEmailData(event),
+                toRegistrationCalendarInvite(
+                  event,
+                  { email, name: ctx.session.user.name },
+                  "invite",
+                ),
+              );
+            }
+          } catch (e) {
+            console.error("Failed to send registration email:", e);
           }
-        } catch (e) {
-          console.error("Failed to send registration email:", e);
-        }
-      })();
+        })();
+      }
 
       return {
         registration: registration!,
@@ -228,6 +244,26 @@ export const eventsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
+      const [active] = await ctx.db
+        .select({ status: eventRegistrations.status })
+        .from(eventRegistrations)
+        .where(
+          and(
+            eq(eventRegistrations.eventId, input.eventId),
+            eq(eventRegistrations.userId, userId),
+            sql`${eventRegistrations.status} NOT IN ('cancelled', 'payment_failed')`,
+          ),
+        )
+        .limit(1);
+      // Nothing to cancel: no email, and no seat to hand on.
+      if (!active) return { success: true };
+
+      // Only a confirmed seat frees a place for the waitlist, and only a
+      // confirmed seat was sent a calendar invite to withdraw. A pending
+      // payment or a waitlist spot holds neither.
+      const hadSeat =
+        active.status === "registered" || active.status === "attended";
+
       await ctx.db
         .update(eventRegistrations)
         .set({ status: "cancelled" })
@@ -239,17 +275,19 @@ export const eventsRouter = createTRPCRouter({
           ),
         );
 
-      const [nextWaitlisted] = await ctx.db
-        .select()
-        .from(eventRegistrations)
-        .where(
-          and(
-            eq(eventRegistrations.eventId, input.eventId),
-            eq(eventRegistrations.status, "waitlisted"),
-          ),
-        )
-        .orderBy(asc(eventRegistrations.registeredAt))
-        .limit(1);
+      const [nextWaitlisted] = hadSeat
+        ? await ctx.db
+            .select()
+            .from(eventRegistrations)
+            .where(
+              and(
+                eq(eventRegistrations.eventId, input.eventId),
+                eq(eventRegistrations.status, "waitlisted"),
+              ),
+            )
+            .orderBy(asc(eventRegistrations.registeredAt))
+            .limit(1)
+        : [];
 
       if (nextWaitlisted) {
         await ctx.db
@@ -259,7 +297,7 @@ export const eventsRouter = createTRPCRouter({
 
         void (async () => {
           try {
-            const eventData = await getEventEmailData(input.eventId);
+            const event = await getEvent(input.eventId);
             const [promotedUser] = await ctx.db
               .select({ name: user.name, email: user.email })
               .from(user)
@@ -269,7 +307,12 @@ export const eventsRouter = createTRPCRouter({
               await sendWaitlistPromotion(
                 promotedUser.email,
                 promotedUser.name ?? "there",
-                eventData,
+                toEventEmailData(event),
+                toRegistrationCalendarInvite(
+                  event,
+                  { email: promotedUser.email, name: promotedUser.name },
+                  "invite",
+                ),
               );
             }
           } catch (e) {
@@ -280,11 +323,22 @@ export const eventsRouter = createTRPCRouter({
 
       void (async () => {
         try {
-          const eventData = await getEventEmailData(input.eventId);
+          const event = await getEvent(input.eventId);
           const userName = ctx.session.user.name ?? "there";
           const email = ctx.session.user.email;
           if (email) {
-            await sendCancellationConfirmation(email, userName, eventData);
+            await sendCancellationConfirmation(
+              email,
+              userName,
+              toEventEmailData(event),
+              hadSeat
+                ? toRegistrationCalendarInvite(
+                    event,
+                    { email, name: ctx.session.user.name },
+                    "cancel",
+                  )
+                : undefined,
+            );
           }
         } catch (e) {
           console.error("Failed to send cancellation email:", e);
@@ -341,7 +395,7 @@ export const eventsRouter = createTRPCRouter({
         id: input.eventId,
       });
 
-      if (!event.sourceUrl) {
+      if (externalEventUrl(event) === null) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Intent only applies to external events.",

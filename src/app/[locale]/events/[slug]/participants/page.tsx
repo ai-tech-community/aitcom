@@ -9,6 +9,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { EventAttendees } from "@/components/event-attendees";
 import { TeamLeaderboard } from "@/components/hackathon/team-leaderboard";
 import { MatchmakingPanel } from "@/components/hackathon/hub/matchmaking-panel";
+import { externalEventUrl } from "@/lib/events/event-source";
 
 export default async function ParticipantsTabPage({
   params,
@@ -34,8 +35,7 @@ export default async function ParticipantsTabPage({
 
   const eventId = Number(event.id);
   const maxAttendees = (event.maxAttendees as number | undefined) ?? null;
-  const isExternal =
-    typeof event.sourceUrl === "string" && event.sourceUrl.length > 0;
+  const isExternal = externalEventUrl(event) !== null;
 
   return (
     <div className="space-y-10">
