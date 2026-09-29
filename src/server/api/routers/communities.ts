@@ -1,5 +1,6 @@
 // src/server/api/routers/communities.ts
 import { z } from "zod";
+import { escapeLike } from "@/server/db/escape-like";
 import { and, eq, isNull, ilike, sql, desc, count, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
@@ -41,11 +42,6 @@ import {
 import { HUB_SLUG } from "@/server/api/trpc";
 import { listMyCommunities } from "@/server/communities/my-communities";
 import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
-
-/** Escape SQL LIKE/ILIKE pattern characters */
-function escapeLike(str: string): string {
-  return str.replace(/[%_\\]/g, "\\$&");
-}
 
 export const communitiesRouter = createTRPCRouter({
   /** Browse listed communities */

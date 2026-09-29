@@ -96,7 +96,7 @@ set to the submitter.
 the rows above. An event created that way keeps its `sourceUrl` and is
 external. It still gets an `organizerId`, but the access policy (§3.1)
 refuses external events, so no attendee list is shown for it.
-| Payload admin panel create | the admin user, if the request has one; otherwise none, and the page tells the community owner to pick an organizer |
+| Payload admin panel create | none: Payload admin users are a separate account system (`users` collection, numeric ids), not community members. The community owner picks an organizer on the events page |
 
 A test that lists every `payload.create({ collection: "events" })` call
 site keeps this table honest. It fails if a new create path appears
@@ -120,7 +120,11 @@ step filled and how many stay null.
 ### 1.4 Reassignment
 
 `events.setOrganizer({ eventId, userId })`: callable by the **community
-owner**, or by the current organizer handing over. The new organizer must
+owner**, or by the current organizer handing over. Rules live in
+`src/server/events/event-organizer.ts`. Community owners and admins see
+"Organizer: <name>" on each native event row
+(`events.communityEventOrganizers`), and the owner or the organizer opens
+the picker from it (`events.organizerCandidates`). The new organizer must
 be an active member of the event's community. This covers an organizer who
 leaves, and the backfill's null cases. Reassigning does not show the owner
 the attendee list.

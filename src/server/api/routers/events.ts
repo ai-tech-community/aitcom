@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, isNull, sql, asc } from "drizzle-orm";
+import { eq, and, isNull, sql, asc, ilike, inArray, or } from "drizzle-orm";
 
 import {
   createTRPCRouter,
@@ -62,6 +62,13 @@ import { assertEventCancellable } from "@/server/events/cancel-guard";
 import { toEventEmailData } from "@/server/events/event-email-data";
 import { toRegistrationCalendarInvite } from "@/server/events/registration-invite";
 import { externalEventUrl } from "@/lib/events/event-source";
+import { escapeLike } from "@/server/db/escape-like";
+import type { db as Db } from "@/server/db";
+import {
+  canSeeEventOrganizers,
+  canSetEventOrganizer,
+  isEligibleOrganizer,
+} from "@/server/events/event-organizer";
 
 /**
  * One row of a community's event list: the shared normalized shape plus the
@@ -81,6 +88,54 @@ async function getEvent(eventId: number) {
 
 function getAppUrl(): string {
   return env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+}
+
+/**
+ * An event that belongs to a live community, with the viewer's membership
+ * there. NOT_FOUND for a missing event, one outside a community, or a
+ * deleted community.
+ */
+async function loadCommunityEventForOrganizer(
+  db: typeof Db,
+  eventId: number,
+  viewerId: string,
+) {
+  const payload = await getPayloadClient();
+  const event = await payload.findByID({
+    collection: "events",
+    id: eventId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!event?.communityId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+  }
+  const community = await db.query.communities.findFirst({
+    where: and(
+      eq(communities.id, event.communityId),
+      isNull(communities.deletedAt),
+    ),
+    columns: { id: true, name: true, slug: true },
+  });
+  if (!community) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+  }
+  const membership = await db.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, community.id),
+      eq(communityMemberships.userId, viewerId),
+    ),
+    columns: { role: true, status: true },
+  });
+  return { payload, event, community, membership: membership ?? null };
+}
+
+/** A member's name as the community shows it. */
+function memberName(row: {
+  displayName: string | null;
+  name: string | null;
+}): string {
+  return row.displayName ?? row.name ?? "Member";
 }
 
 export const eventsRouter = createTRPCRouter({
@@ -678,6 +733,8 @@ export const eventsRouter = createTRPCRouter({
           status: "published",
           communityId: community.id,
           ...(await buildEventPayloadData(payload, input)),
+          // The admin who creates it runs it (ADR-0038).
+          organizerId: userId,
         },
       });
 
@@ -901,6 +958,218 @@ export const eventsRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  /**
+   * Who organizes each of a community's events, for its owner and admins.
+   * `canChange` tells the page where to offer "Change": the owner on every
+   * event, the organizer on their own.
+   */
+  communityEventOrganizers: protectedProcedure
+    .input(z.object({ communitySlug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+        columns: { id: true },
+      });
+      if (!community) return [];
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+        columns: { role: true, status: true },
+      });
+      if (!canSeeEventOrganizers(membership)) return [];
+
+      const payload = await getPayloadClient();
+      const { docs } = await payload.find({
+        collection: "events",
+        where: { communityId: { equals: community.id } },
+        select: { organizerId: true, sourceUrl: true },
+        limit: 0,
+        depth: 0,
+      });
+      const native = docs.filter((e) => externalEventUrl(e) === null);
+
+      const organizerIds = [
+        ...new Set(
+          native
+            .map((e) => e.organizerId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      const people =
+        organizerIds.length === 0
+          ? []
+          : await ctx.db
+              .select({
+                userId: user.id,
+                name: user.name,
+                displayName: memberProfiles.displayName,
+              })
+              .from(user)
+              .leftJoin(memberProfiles, eq(memberProfiles.userId, user.id))
+              .where(inArray(user.id, organizerIds));
+      const nameById = new Map(people.map((p) => [p.userId, memberName(p)]));
+
+      return native.map((e) => ({
+        eventId: e.id,
+        organizer: e.organizerId
+          ? {
+              userId: e.organizerId,
+              name: nameById.get(e.organizerId) ?? "Former member",
+            }
+          : null,
+        canChange: canSetEventOrganizer({
+          event: { organizerId: e.organizerId, communityId: community.id },
+          actorId: userId,
+          actorMembership: membership,
+        }),
+      }));
+    }),
+
+  /** Active members of the event's community who could take it over. */
+  organizerCandidates: protectedProcedure
+    .input(
+      z.object({
+        eventId: z.number(),
+        query: z.string().trim().max(100).default(""),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const { event, community, membership } =
+        await loadCommunityEventForOrganizer(ctx.db, input.eventId, userId);
+      if (
+        !canSetEventOrganizer({
+          event,
+          actorId: userId,
+          actorMembership: membership,
+        })
+      ) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
+
+      const pattern = `%${escapeLike(input.query)}%`;
+      const rows = await ctx.db
+        .select({
+          userId: communityMemberships.userId,
+          role: communityMemberships.role,
+          name: user.name,
+          displayName: memberProfiles.displayName,
+          image: user.image,
+        })
+        .from(communityMemberships)
+        .innerJoin(user, eq(communityMemberships.userId, user.id))
+        .leftJoin(
+          memberProfiles,
+          eq(communityMemberships.userId, memberProfiles.userId),
+        )
+        .where(
+          and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.status, "active"),
+            input.query
+              ? or(
+                  ilike(user.name, pattern),
+                  ilike(memberProfiles.displayName, pattern),
+                )
+              : undefined,
+          ),
+        )
+        .orderBy(asc(memberProfiles.displayName), asc(user.name))
+        .limit(20);
+
+      return rows.map((r) => ({
+        userId: r.userId,
+        name: memberName(r),
+        image: r.image,
+        role: r.role,
+        isCurrent: r.userId === event.organizerId,
+      }));
+    }),
+
+  /**
+   * Hand an event to another active member of its community. Allowed for
+   * the community owner and the current organizer (canSetEventOrganizer).
+   */
+  setOrganizer: protectedProcedure
+    .input(z.object({ eventId: z.number(), userId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const actorId = ctx.session.user.id;
+      const { payload, event, community, membership } =
+        await loadCommunityEventForOrganizer(ctx.db, input.eventId, actorId);
+      if (
+        !canSetEventOrganizer({
+          event,
+          actorId,
+          actorMembership: membership,
+        })
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Only the community owner or the event's organizer can change the organizer",
+        });
+      }
+      if (event.organizerId === input.userId) {
+        return { organizerId: input.userId, changed: false };
+      }
+
+      const target = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, input.userId),
+        ),
+        columns: { role: true, status: true },
+      });
+      if (!isEligibleOrganizer(target)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The organizer must be an active member of the community",
+        });
+      }
+
+      await payload.update({
+        collection: "events",
+        id: input.eventId,
+        data: { organizerId: input.userId },
+        context: { skipGeocode: true },
+      });
+
+      await logActivity(ctx.db, {
+        actorId,
+        actorType: "member",
+        action: "event.organizer_change",
+        targetType: "event",
+        targetId: String(input.eventId),
+        communityId: community.id,
+        metadata: {
+          eventTitle: event.title,
+          from: event.organizerId ?? null,
+          to: input.userId,
+        },
+      });
+
+      if (input.userId !== actorId) {
+        await ctx.db.insert(notifications).values({
+          userId: input.userId,
+          type: "event_organizer",
+          title: "You are now an event organizer",
+          content: `You now organize "${event.title}" in ${community.name}.`,
+          metadata: {
+            eventId: String(input.eventId),
+            communitySlug: community.slug,
+          },
+        });
+      }
+
+      return { organizerId: input.userId, changed: true };
+    }),
+
   submitEvent: protectedProcedure
     .input(
       z.object({ communitySlug: z.string() }).extend(eventUpsertSchema.shape),
@@ -950,6 +1219,8 @@ export const eventsRouter = createTRPCRouter({
           communityId: community.id,
           submittedBy: userId,
           ...(await buildEventPayloadData(payload, input)),
+          // The member who proposes it runs it (ADR-0038).
+          organizerId: userId,
           // Strip curation-only fields that members cannot set
           aitFitScore: undefined,
           curatedByAgent: false,

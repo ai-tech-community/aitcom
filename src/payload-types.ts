@@ -332,6 +332,10 @@ export interface Event {
    */
   challengeId?: string | null;
   /**
+   * User ID of the event organizer: the member who runs this event and alone sees its attendee details (ADR-0038). Set when the event is created; the community owner changes it from the community's events page.
+   */
+  organizerId?: string | null;
+  /**
    * User ID of the community member who submitted this event for review.
    */
   submittedBy?: string | null;
@@ -1794,6 +1798,7 @@ export interface EventsSelect<T extends boolean = true> {
   status?: T;
   communityId?: T;
   challengeId?: T;
+  organizerId?: T;
   submittedBy?: T;
   updatedAt?: T;
   createdAt?: T;

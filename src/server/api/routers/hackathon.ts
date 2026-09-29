@@ -457,6 +457,8 @@ export const hackathonRouter = createTRPCRouter({
             format: input.format,
           })),
           challengeId: String(challenge.id),
+          // The admin who creates the hackathon runs it (ADR-0038).
+          organizerId: userId,
         },
         context: { skipGeocode: true },
       });

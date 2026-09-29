@@ -548,6 +548,17 @@ export const Events: CollectionConfig = {
       },
     },
     {
+      name: "organizerId",
+      type: "text",
+      index: true,
+      admin: {
+        position: "sidebar",
+        description:
+          "User ID of the event organizer: the member who runs this event and alone sees its attendee details (ADR-0038). Set when the event is created; the community owner changes it from the community's events page.",
+        readOnly: true,
+      },
+    },
+    {
       name: "submittedBy",
       type: "text",
       index: true,
