@@ -22,6 +22,10 @@ const m = vi.hoisted(() => ({
   published: [] as unknown[],
   pending: [] as unknown[],
   mine: [] as unknown[],
+  organizers: [] as unknown[],
+  candidates: [] as unknown[],
+  candidateQueries: [] as unknown[],
+  setOrganizer: vi.fn(),
   publishedState: { isLoading: false, isError: false },
   cancel: vi.fn(),
   approve: vi.fn(),
@@ -34,6 +38,7 @@ const m = vi.hoisted(() => ({
     published: vi.fn(),
     pending: vi.fn(),
     mine: vi.fn(),
+    organizers: vi.fn(),
   },
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
@@ -69,6 +74,22 @@ vi.mock("@/trpc/react", () => ({
       },
       getPendingCommunityEvents: { useQuery: () => query(m.pending) },
       getMyEventSubmissions: { useQuery: () => query(m.mine) },
+      communityEventOrganizers: {
+        useQuery: (_input: unknown, opts: { enabled: boolean }) =>
+          query(opts.enabled ? m.organizers : []),
+      },
+      organizerCandidates: {
+        useQuery: (input: unknown) => {
+          m.candidateQueries.push(input);
+          return query(m.candidates);
+        },
+      },
+      setOrganizer: {
+        useMutation: (options: MutationOptions) => {
+          m.mutationOptions.setOrganizer = options;
+          return { mutate: m.setOrganizer, isPending: false };
+        },
+      },
       cancelEvent: {
         useMutation: (options: MutationOptions) => {
           m.mutationOptions.cancel = options;
@@ -93,6 +114,7 @@ vi.mock("@/trpc/react", () => ({
         getCommunityEvents: { invalidate: m.invalidate.published },
         getPendingCommunityEvents: { invalidate: m.invalidate.pending },
         getMyEventSubmissions: { invalidate: m.invalidate.mine },
+        communityEventOrganizers: { invalidate: m.invalidate.organizers },
       },
     }),
   },
@@ -244,6 +266,10 @@ beforeEach(() => {
   m.published = PUBLISHED_EVENTS;
   m.pending = [];
   m.mine = [];
+  m.organizers = [];
+  m.candidates = [];
+  m.candidateQueries = [];
+  m.setOrganizer.mockReset();
   m.publishedState = { isLoading: false, isError: false };
   m.cancel.mockReset();
   m.approve.mockReset();
@@ -699,6 +725,141 @@ describe("CommunityEvents — review queue and submissions", () => {
   });
 });
 
+describe("CommunityEvents — event organizer", () => {
+  function rowOf(title: RegExp) {
+    return screen
+      .getByRole("link", { name: title })
+      .closest("li") as HTMLElement;
+  }
+
+  beforeEach(() => {
+    m.organizers = [
+      {
+        eventId: 1,
+        organizer: { userId: "ada", name: "Ada" },
+        canChange: true,
+      },
+      { eventId: 2, organizer: null, canChange: true },
+      {
+        eventId: 3,
+        organizer: { userId: "grace", name: "Grace" },
+        canChange: false,
+      },
+    ];
+    m.candidates = [
+      {
+        userId: "ada",
+        name: "Ada",
+        image: null,
+        role: "member",
+        isCurrent: true,
+      },
+      {
+        userId: "linus",
+        name: "Linus",
+        image: null,
+        role: "admin",
+        isCurrent: false,
+      },
+    ];
+  });
+
+  it("names the organizer on each row an owner or admin sees", () => {
+    asRole("admin");
+    renderEvents();
+
+    expect(
+      within(rowOf(/^Agents Hackathon/)).getByRole("button", {
+        name: "Organizer: Ada",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(rowOf(/^Prompting workshop/)).getByRole("button", {
+        name: "Choose an organizer",
+      }),
+    ).toBeInTheDocument();
+    // Not theirs to change: words, not a button.
+    const deepDive = rowOf(/^RAG deep dive/);
+    expect(within(deepDive).getByText("Organizer: Grace")).toBeInTheDocument();
+    expect(
+      within(deepDive).queryByRole("button", { name: /Organizer/ }),
+    ).toBeNull();
+  });
+
+  it("shows members and guests no organizer", () => {
+    asRole("member");
+    renderEvents();
+    expect(screen.queryByText(/Organizer:/)).toBeNull();
+  });
+
+  it("hands the event to the chosen member", async () => {
+    asRole("owner");
+    renderEvents();
+
+    fireEvent.click(
+      within(rowOf(/^Agents Hackathon/)).getByRole("button", {
+        name: "Organizer: Ada",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Who organizes this event?",
+    });
+    const confirmButton = within(dialog).getByRole("button", {
+      name: "Make organizer",
+    });
+    // The current organizer is preselected; nothing to confirm yet.
+    expect(within(dialog).getByRole("radio", { name: /Ada/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(confirmButton).toBeDisabled();
+
+    fireEvent.click(within(dialog).getByRole("radio", { name: /Linus/ }));
+    expect(within(dialog).getByText("Admin")).toBeInTheDocument();
+    fireEvent.click(confirmButton);
+
+    expect(m.setOrganizer).toHaveBeenCalledWith({
+      eventId: 1,
+      userId: "linus",
+    });
+    expect(m.candidateQueries.at(-1)).toEqual({ eventId: 1, query: "" });
+
+    act(() => m.mutationOptions.setOrganizer?.onSuccess?.());
+    expect(m.invalidate.organizers).toHaveBeenCalled();
+    expect(m.toastSuccess).toHaveBeenCalledWith("Organizer changed");
+  });
+
+  it("says so in their language when the change fails", async () => {
+    asRole("owner");
+    renderEvents("nl");
+
+    fireEvent.click(
+      within(rowOf(/^Agents Hackathon/)).getByRole("button", {
+        name: "Organisator: Ada",
+      }),
+    );
+    await screen.findByRole("dialog");
+    act(() => m.mutationOptions.setOrganizer?.onError?.());
+    expect(m.toastError).toHaveBeenCalledWith(
+      "De organisator kon niet worden gewijzigd. Probeer het opnieuw.",
+    );
+  });
+
+  it("teaches what to do when no member matches", async () => {
+    asRole("owner");
+    m.candidates = [];
+    renderEvents();
+
+    fireEvent.click(
+      within(rowOf(/^Prompting workshop/)).getByRole("button", {
+        name: "Choose an organizer",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("No members found")).toBeInTheDocument();
+  });
+});
+
 describe("CommunityEvents — translations and wiring", () => {
   const KEYS = [
     "title",
@@ -721,6 +882,20 @@ describe("CommunityEvents — translations and wiring", () => {
     "noEvents",
     "noEventsPendingApproval",
     "noSubmissionsYet",
+    "organizerLabel",
+    "organizerNone",
+    "organizerChoose",
+    "organizerDialogTitle",
+    "organizerDialogDescription",
+    "organizerSearch",
+    "organizerCurrent",
+    "organizerCancel",
+    "organizerConfirm",
+    "organizerChanged",
+    "organizerChangeError",
+    "organizerLoadError",
+    "organizerNoMatches",
+    "organizerNoMatchesHint",
   ] as const;
 
   it.each([

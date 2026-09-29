@@ -4,6 +4,7 @@
 // Exported as a plain object to be spread into the main agent router.
 
 import { z } from "zod";
+import { escapeLike } from "@/server/db/escape-like";
 import { and, eq, isNull, ilike, sql, desc, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
@@ -23,11 +24,6 @@ import { logActivity } from "@/server/agent/activity";
 import { canAdvise } from "@/server/agents/advisory";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Escape SQL LIKE/ILIKE pattern characters */
-function escapeLike(str: string): string {
-  return str.replace(/[%_\\]/g, "\\$&");
-}
 
 /** Resolve a community by slug (non-deleted). Throws NOT_FOUND. */
 async function resolveCommunity(

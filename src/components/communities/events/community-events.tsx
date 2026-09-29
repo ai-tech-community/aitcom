@@ -40,6 +40,7 @@ import {
   RowActions,
   hasStatusNote,
 } from "./community-event-actions";
+import { EventOrganizerControl } from "./event-organizer-control";
 
 type EditTarget = { id: number; resubmit?: boolean } | null;
 
@@ -92,6 +93,15 @@ export function CommunityEvents({
   const published = api.events.getCommunityEvents.useQuery({
     communitySlug: slug,
   });
+  // Supplementary: while it loads or if it fails, rows simply show no
+  // organizer line (the page's own controls still work).
+  const organizers = api.events.communityEventOrganizers.useQuery(
+    { communitySlug: slug },
+    { enabled: isAdminOrOwner },
+  );
+  const organizerByEvent = new Map(
+    (organizers.data ?? []).map((o) => [o.eventId, o]),
+  );
   const pending = api.events.getPendingCommunityEvents.useQuery(
     { communitySlug: slug },
     { enabled: canModerate },
@@ -189,8 +199,12 @@ export function CommunityEvents({
   ): ReactNode {
     if (!isAdminOrOwner || event.source === "luma") return null;
     const id = event.id as number;
+    const organizer = organizerByEvent.get(id);
     return (
       <RowActions className="sm:order-6">
+        {organizer ? (
+          <EventOrganizerControl eventId={id} info={organizer} />
+        ) : null}
         {event.type === "hackathon" && event.slug ? (
           <ManageHackathonLink href={manageHackathonHref(slug, event.slug)} />
         ) : null}

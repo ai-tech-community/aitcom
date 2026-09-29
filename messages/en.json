@@ -256,7 +256,21 @@
         "intent": "Going",
         "pending_payment": "Pending payment"
       }
-    }
+    },
+    "organizerLabel": "Organizer: {name}",
+    "organizerNone": "No organizer yet",
+    "organizerChoose": "Choose an organizer",
+    "organizerDialogTitle": "Who organizes this event?",
+    "organizerDialogDescription": "The organizer runs the event. Only they will see who registered and how to reach them.",
+    "organizerSearch": "Search members by name",
+    "organizerCurrent": "Current",
+    "organizerCancel": "Cancel",
+    "organizerConfirm": "Make organizer",
+    "organizerChanged": "Organizer changed",
+    "organizerChangeError": "Could not change the organizer. Please try again.",
+    "organizerLoadError": "Could not load the members. Please try again.",
+    "organizerNoMatches": "No members found",
+    "organizerNoMatchesHint": "Only active members of this community can organize its events. Try another name."
   },
   "blog": {
     "title": "Blog",

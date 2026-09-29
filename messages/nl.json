@@ -256,7 +256,21 @@
         "intent": "Ik ga",
         "pending_payment": "Wacht op betaling"
       }
-    }
+    },
+    "organizerLabel": "Organisator: {name}",
+    "organizerNone": "Nog geen organisator",
+    "organizerChoose": "Kies een organisator",
+    "organizerDialogTitle": "Wie organiseert dit evenement?",
+    "organizerDialogDescription": "De organisator leidt het evenement. Alleen die persoon ziet wie zich heeft aangemeld en hoe ze te bereiken zijn.",
+    "organizerSearch": "Zoek leden op naam",
+    "organizerCurrent": "Huidig",
+    "organizerCancel": "Annuleren",
+    "organizerConfirm": "Maak organisator",
+    "organizerChanged": "Organisator gewijzigd",
+    "organizerChangeError": "De organisator kon niet worden gewijzigd. Probeer het opnieuw.",
+    "organizerLoadError": "De leden konden niet worden geladen. Probeer het opnieuw.",
+    "organizerNoMatches": "Geen leden gevonden",
+    "organizerNoMatchesHint": "Alleen actieve leden van deze community kunnen evenementen organiseren. Probeer een andere naam."
   },
   "blog": {
     "title": "Blog",
