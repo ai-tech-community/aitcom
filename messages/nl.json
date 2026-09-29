@@ -323,7 +323,20 @@
       "skills": "Vaardigheden",
       "interests": "Interesses",
       "website": "Website",
-      "openLink": "Deelnemers"
+      "openLink": "Deelnemers",
+      "download": "Download CSV",
+      "csv": {
+        "name": "Naam",
+        "firstName": "Voornaam",
+        "lastName": "Achternaam",
+        "email": "E-mail",
+        "status": "Status",
+        "registeredAt": "Aangemeld op ({timezone})",
+        "waitlistPlace": "Plek op wachtlijst",
+        "paymentStatus": "Betaalstatus",
+        "memberSince": "Lid van de community sinds",
+        "earlierEvents": "Eerdere evenementen bijgewoond"
+      }
     }
   },
   "blog": {

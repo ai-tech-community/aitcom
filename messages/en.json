@@ -323,7 +323,20 @@
       "skills": "Skills",
       "interests": "Interests",
       "website": "Website",
-      "openLink": "Attendees"
+      "openLink": "Attendees",
+      "download": "Download CSV",
+      "csv": {
+        "name": "Name",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "email": "Email",
+        "status": "Status",
+        "registeredAt": "Registered at ({timezone})",
+        "waitlistPlace": "Waitlist place",
+        "paymentStatus": "Payment status",
+        "memberSince": "Community member since",
+        "earlierEvents": "Earlier events attended"
+      }
     }
   },
   "blog": {

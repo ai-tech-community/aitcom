@@ -293,10 +293,22 @@ Kicker `/ ATTENDEES`.
 
 ## 4. CSV export
 
-`GET /api/events/[eventId]/attendees.csv?status=…`
+`GET /api/events/[slug]/attendees.csv?view=…&locale=…`
 
-- It uses the same session, the same `canViewEventAttendees`, and the same
-  `loadEventAttendees` → `AttendeeDetails`. Nothing is re-derived.
+- Keyed by event slug (unique), because `/api/events/[slug]/ics` already
+  owns that dynamic segment and Next.js allows one per level.
+- It uses the same session and the same reader as the page's API,
+  `readAttendeesForOrganizer` (`src/server/events/organizer-attendees.ts`),
+  which applies `canViewEventAttendees` and returns `AttendeeDetails` rows.
+  Nothing is re-derived.
+- `view` is one of the page's status views (`src/lib/events/attendee-views.ts`,
+  shared with the page), so the file holds what the organizer was looking
+  at. `locale` picks the header language; the translator is built from the
+  message catalogue directly (`src/i18n/messages.ts`), as a route handler
+  has no page locale.
+- Times are the event's wall-clock time, with the timezone in the header.
+  The file starts with a UTF-8 byte order mark so spreadsheet apps read
+  accented names correctly.
 - Columns: first name, last name, email, status, registered at (ISO,
   event timezone), waitlist position, payment status, checked in at,
   community member since, past events attended, company, LinkedIn,

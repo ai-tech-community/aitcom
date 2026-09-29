@@ -2,10 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Mail } from "lucide-react";
+import { Download, Mail } from "lucide-react";
 
 import { api, type RouterOutputs } from "@/trpc/react";
+import {
+  VIEW_STATUSES,
+  type AttendeeView as View,
+} from "@/lib/events/attendee-views";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
@@ -15,24 +20,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 type AttendeesData = RouterOutputs["events"]["attendees"];
 type Attendee = AttendeesData["rows"][number];
 type Status = Attendee["status"];
-
-/** The list views. "active" is everyone still coming or waiting. */
-type View =
-  | "active"
-  | "registered"
-  | "waitlisted"
-  | "pending"
-  | "attended"
-  | "cancelled";
-
-const VIEW_STATUSES: Record<View, readonly Status[]> = {
-  active: ["registered", "waitlisted", "pending_payment", "attended"],
-  registered: ["registered"],
-  waitlisted: ["waitlisted"],
-  pending: ["pending_payment"],
-  attended: ["attended"],
-  cancelled: ["cancelled", "payment_failed"],
-};
 
 const STATUS_BADGE: Record<
   Status,
@@ -53,6 +40,7 @@ const STATUS_BADGE: Record<
  */
 export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
   const t = useTranslations("events.attendeeList");
+  const locale = useLocale();
   const query = api.events.attendees.useQuery({ eventId });
   const [view, setView] = useState<View>("active");
   const [search, setSearch] = useState("");
@@ -139,14 +127,26 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
             onValueChange={setView}
           />
         </div>
-        <Input
-          type="search"
-          aria-label={t("search")}
-          placeholder={t("search")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="sm:max-w-64"
-        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            type="search"
+            aria-label={t("search")}
+            placeholder={t("search")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="sm:max-w-64"
+          />
+          {/* The page's one primary action: the view on screen, as a file. */}
+          <Button asChild>
+            <a
+              href={`/api/events/${encodeURIComponent(event.slug)}/attendees.csv?view=${view}&locale=${locale}`}
+              download
+            >
+              <Download aria-hidden="true" />
+              {t("download")}
+            </a>
+          </Button>
+        </div>
       </div>
 
       {shown.length === 0 ? (
