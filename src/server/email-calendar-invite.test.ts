@@ -20,6 +20,8 @@ const {
   sendRegistrationConfirmation,
   sendWaitlistPromotion,
   sendCancellationConfirmation,
+  sendEventChangedEmail,
+  sendEventCancelledEmail,
 } = await import("./email");
 
 const EVENT = {
@@ -36,12 +38,17 @@ const INVITE = {
 };
 
 describe("event emails with a calendar invite", () => {
-  beforeEach(() => send.mockReset());
+  beforeEach(() => {
+    send.mockReset();
+    send.mockResolvedValue({ data: { id: "em_1" }, error: null });
+  });
 
   it.each([
     ["registration confirmation", sendRegistrationConfirmation],
     ["waitlist promotion", sendWaitlistPromotion],
     ["cancellation", sendCancellationConfirmation],
+    ["event changed", sendEventChangedEmail],
+    ["event cancelled", sendEventCancelledEmail],
   ])("%s attaches the invite", async (_name, sendEmail) => {
     await sendEmail("ada@example.com", "Ada", EVENT, INVITE);
 
@@ -66,5 +73,33 @@ describe("event emails with a calendar invite", () => {
   it("sends no attachment when there is no invite", async () => {
     await sendRegistrationConfirmation("ada@example.com", "Ada", EVENT);
     expect(send.mock.calls[0]![0]).toMatchObject({ attachments: undefined });
+  });
+
+  it("waits and tries once more when sending too fast", async () => {
+    vi.useFakeTimers();
+    send
+      .mockResolvedValueOnce({
+        data: null,
+        error: { name: "rate_limit_exceeded", message: "Too many requests" },
+      })
+      .mockResolvedValueOnce({ data: { id: "em_2" }, error: null });
+
+    const sent = sendEventChangedEmail("ada@example.com", "Ada", EVENT, INVITE);
+    await vi.advanceTimersByTimeAsync(1000);
+
+    await expect(sent).resolves.toBe(true);
+    expect(send).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it("reports a send Resend refused", async () => {
+    send.mockResolvedValueOnce({
+      data: null,
+      error: { name: "validation_error", message: "bad address" },
+    });
+    await expect(
+      sendEventCancelledEmail("bad", "Ada", EVENT, INVITE),
+    ).resolves.toBe(false);
+    expect(send).toHaveBeenCalledTimes(1);
   });
 });

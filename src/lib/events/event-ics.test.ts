@@ -38,7 +38,7 @@ describe("buildEventIcs", () => {
       buildEventIcs(MEETUP, { method: "publish", appUrl: APP_URL, now: NOW }),
     );
     expect(out).toContain("METHOD:PUBLISH");
-    expect(out).toContain(`UID:${eventIcsUid(MEETUP)}`);
+    expect(out).toContain("UID:event-42@aitcommunity.org");
     expect(out).toContain("DTSTAMP:20260929T100000Z");
     expect(out).toContain("DTSTART;TZID=Europe/Amsterdam:20261015T180000");
     expect(out).toContain("DTEND;TZID=Europe/Amsterdam:20261015T210000");
@@ -145,6 +145,17 @@ describe("buildEventIcs", () => {
     for (const line of ics.split("\r\n")) {
       expect(line.length).toBeLessThanOrEqual(75);
     }
+  });
+});
+
+describe("eventIcsUid", () => {
+  it("stays the same when the organizer renames the slug", () => {
+    const uid = (event: EventIcsSource) =>
+      lines(
+        buildEventIcs(event, { method: "publish", appUrl: APP_URL, now: NOW }),
+      ).find((l) => l.startsWith("UID:"));
+    expect(uid({ ...MEETUP, slug: "renamed" })).toBe(uid(MEETUP));
+    expect(uid(MEETUP)).toBe(`UID:${eventIcsUid(MEETUP)}`);
   });
 });
 

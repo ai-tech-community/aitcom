@@ -209,6 +209,108 @@ export async function sendWaitlistPromotion(
   });
 }
 
+type SendEmailMessage = Parameters<Resend["emails"]["send"]>[0];
+
+/**
+ * Send one email, waiting and trying once more if Resend says we are sending
+ * too fast. For loops that mail every attendee of an event in a row.
+ * Returns whether Resend accepted it.
+ */
+async function sendPaced(
+  resend: Resend,
+  message: SendEmailMessage,
+): Promise<boolean> {
+  const first = await resend.emails.send(message);
+  if (!first.error) return true;
+  if (first.error.name !== "rate_limit_exceeded") {
+    console.error("Email send failed:", first.error);
+    return false;
+  }
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const retry = await resend.emails.send(message);
+  if (retry.error) console.error("Email send failed:", retry.error);
+  return !retry.error;
+}
+
+/**
+ * Tell a registered member their event's time, place or name changed. The
+ * attached invite updates the entry already in their calendar.
+ */
+export async function sendEventChangedEmail(
+  to: string,
+  userName: string,
+  event: EventEmailData,
+  calendarInvite?: EmailCalendarInvite,
+): Promise<boolean> {
+  const resend = getResend();
+  if (!resend) return false;
+
+  return sendPaced(resend, {
+    from: FROM_EMAIL,
+    to,
+    attachments: calendarAttachments(calendarInvite),
+    subject: `Event updated: ${event.eventTitle}`,
+    html: `
+      <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
+        <h2 style="font-size: 18px;">Your event has changed</h2>
+        <p>Hi ${escapeHtml(userName)},</p>
+        <p>The details of <strong>${escapeHtml(event.eventTitle)}</strong> have changed. You are still registered. Here is what it looks like now:</p>
+        <table style="margin: 16px 0; font-size: 14px;">
+          ${eventDetailsRows(event)}
+        </table>
+        ${calendarInvite ? "<p>The attached invite updates the event in your calendar.</p>" : ""}
+        <p style="margin-top: 24px;">
+          <a href="https://www.aitcommunity.org/en/events/${encodeURIComponent(event.eventSlug)}" style="color: #000; font-weight: bold;">
+            View event details →
+          </a>
+        </p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #999;">
+          AIT Community
+        </p>
+      </div>
+    `,
+  });
+}
+
+/**
+ * Tell a registered member their event was cancelled by the organizer. The
+ * attached cancel removes it from their calendar.
+ */
+export async function sendEventCancelledEmail(
+  to: string,
+  userName: string,
+  event: EventEmailData,
+  calendarInvite?: EmailCalendarInvite,
+): Promise<boolean> {
+  const resend = getResend();
+  if (!resend) return false;
+
+  return sendPaced(resend, {
+    from: FROM_EMAIL,
+    to,
+    attachments: calendarAttachments(calendarInvite),
+    subject: `Event cancelled: ${event.eventTitle}`,
+    html: `
+      <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
+        <h2 style="font-size: 18px;">This event is cancelled</h2>
+        <p>Hi ${escapeHtml(userName)},</p>
+        <p>Sorry — <strong>${escapeHtml(event.eventTitle)}</strong> on ${escapeHtml(event.eventDate)} has been cancelled by the organizer.</p>
+        ${calendarInvite ? "<p>The attached update removes it from your calendar.</p>" : ""}
+        <p style="margin-top: 24px;">
+          <a href="https://www.aitcommunity.org/en/events" style="color: #000; font-weight: bold;">
+            Find another event →
+          </a>
+        </p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #999;">
+          AIT Community
+        </p>
+      </div>
+    `,
+  });
+}
+
 interface SponsorApplicationEmailData {
   companyName: string;
   tier: string;

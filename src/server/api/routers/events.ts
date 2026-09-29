@@ -255,9 +255,14 @@ export const eventsRouter = createTRPCRouter({
           ),
         )
         .limit(1);
-      // Only a confirmed seat was sent a calendar invite to withdraw.
+      // Nothing to cancel: no email, and no seat to hand on.
+      if (!active) return { success: true };
+
+      // Only a confirmed seat frees a place for the waitlist, and only a
+      // confirmed seat was sent a calendar invite to withdraw. A pending
+      // payment or a waitlist spot holds neither.
       const hadSeat =
-        active?.status === "registered" || active?.status === "attended";
+        active.status === "registered" || active.status === "attended";
 
       await ctx.db
         .update(eventRegistrations)
@@ -270,17 +275,19 @@ export const eventsRouter = createTRPCRouter({
           ),
         );
 
-      const [nextWaitlisted] = await ctx.db
-        .select()
-        .from(eventRegistrations)
-        .where(
-          and(
-            eq(eventRegistrations.eventId, input.eventId),
-            eq(eventRegistrations.status, "waitlisted"),
-          ),
-        )
-        .orderBy(asc(eventRegistrations.registeredAt))
-        .limit(1);
+      const [nextWaitlisted] = hadSeat
+        ? await ctx.db
+            .select()
+            .from(eventRegistrations)
+            .where(
+              and(
+                eq(eventRegistrations.eventId, input.eventId),
+                eq(eventRegistrations.status, "waitlisted"),
+              ),
+            )
+            .orderBy(asc(eventRegistrations.registeredAt))
+            .limit(1)
+        : [];
 
       if (nextWaitlisted) {
         await ctx.db

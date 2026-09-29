@@ -60,10 +60,12 @@ export function eventIcsContentType(method: EventIcsMethod): string {
 /**
  * One stable UID per event, shared by the download and every invite, so a
  * calendar that already holds the event updates it instead of adding a copy,
- * and a cancel removes the entry the invite created.
+ * and an update or cancel lands on the entry the invite created. Built from
+ * the id alone: organizers can rename the slug, and a UID that changed with
+ * it would leave members with a stale copy.
  */
-export function eventIcsUid(event: Pick<Event, "id" | "slug">): string {
-  return `${event.id}-${event.slug}@aitcommunity.org`;
+export function eventIcsUid(event: Pick<Event, "id">): string {
+  return `event-${event.id}@aitcommunity.org`;
 }
 
 function pad(n: number): string {

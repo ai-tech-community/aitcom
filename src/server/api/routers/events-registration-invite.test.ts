@@ -1,7 +1,8 @@
 // Router-level test: registering for an event AIT Community runs emails a
 // calendar invite; an event run on another site cannot be registered here
 // (the page sends people to its source); a waitlisted member gets no invite;
-// cancelling a seat withdraws the invite.
+// cancelling a seat withdraws the invite and hands the seat to the waitlist,
+// while leaving the waitlist gives nothing away.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const payload = { findByID: vi.fn() };
@@ -29,7 +30,7 @@ function chain(): Record<string, unknown> {
 const fakeDb = {
   select: () => chain(),
   insert: () => chain(),
-  update: () => chain(),
+  update: vi.fn(() => chain()),
 };
 
 vi.mock("@/server/db", () => ({ db: {} }));
@@ -147,16 +148,19 @@ describe("events.register", () => {
 });
 
 describe("events.cancelRegistration", () => {
-  it("withdraws the calendar invite when a seat is cancelled", async () => {
+  it("withdraws the calendar invite and hands the seat to the waitlist", async () => {
     payload.findByID.mockResolvedValue(NATIVE_EVENT);
     dbResults.push(
       [{ status: "registered" }], // active registration
-      [], // update
-      [], // nobody waitlisted
+      [], // cancel it
+      [{ id: 9, userId: "u2" }], // next waitlisted member
+      [], // promote them
+      [{ name: "Grace", email: "grace@example.com" }], // promoted member
     );
 
     await memberCaller().events.cancelRegistration({ eventId: 7 });
 
+    expect(fakeDb.update).toHaveBeenCalledTimes(2);
     await vi.waitFor(() =>
       expect(sendCancellationConfirmation).toHaveBeenCalledTimes(1),
     );
@@ -164,17 +168,43 @@ describe("events.cancelRegistration", () => {
       filename: "cancel.ics",
       contentType: "text/calendar; charset=utf-8; method=CANCEL",
     });
+    await vi.waitFor(() =>
+      expect(sendWaitlistPromotion).toHaveBeenCalledTimes(1),
+    );
+    expect(sendWaitlistPromotion.mock.calls[0]![0]).toBe("grace@example.com");
   });
 
-  it("sends no calendar cancel to a member who only waited", async () => {
+  it("gives no seat away when a waitlisted member leaves the list", async () => {
     payload.findByID.mockResolvedValue(NATIVE_EVENT);
-    dbResults.push([{ status: "waitlisted" }], [], []);
+    dbResults.push([{ status: "waitlisted" }], []);
 
     await memberCaller().events.cancelRegistration({ eventId: 7 });
 
+    expect(fakeDb.update).toHaveBeenCalledTimes(1); // only their own row
     await vi.waitFor(() =>
       expect(sendCancellationConfirmation).toHaveBeenCalledTimes(1),
     );
     expect(sendCancellationConfirmation.mock.calls[0]![3]).toBeUndefined();
+    expect(sendWaitlistPromotion).not.toHaveBeenCalled();
+  });
+
+  it("gives no seat away while a payment is still pending", async () => {
+    payload.findByID.mockResolvedValue(NATIVE_EVENT);
+    dbResults.push([{ status: "pending_payment" }], []);
+
+    await memberCaller().events.cancelRegistration({ eventId: 7 });
+
+    expect(fakeDb.update).toHaveBeenCalledTimes(1);
+    expect(sendWaitlistPromotion).not.toHaveBeenCalled();
+  });
+
+  it("does nothing and sends nothing when there is no registration", async () => {
+    dbResults.push([]);
+
+    await memberCaller().events.cancelRegistration({ eventId: 7 });
+
+    expect(fakeDb.update).not.toHaveBeenCalled();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(sendCancellationConfirmation).not.toHaveBeenCalled();
   });
 });
