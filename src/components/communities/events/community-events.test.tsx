@@ -786,6 +786,38 @@ describe("CommunityEvents — event organizer", () => {
     ).toBeNull();
   });
 
+  it("links the viewer to the attendees of their own events only", () => {
+    asRole("admin");
+    m.organizers = [
+      {
+        eventId: 1,
+        organizer: { userId: "user-1", name: "Me" },
+        canChange: true,
+      },
+      { eventId: 2, organizer: null, canChange: false },
+      {
+        eventId: 3,
+        organizer: { userId: "grace", name: "Grace" },
+        canChange: false,
+      },
+    ];
+    renderEvents();
+
+    expect(
+      within(rowOf(/^Agents Hackathon/)).getByRole("link", {
+        name: "Attendees",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "/communities/ai-amsterdam/events/event-1/attendees",
+    );
+    for (const title of [/^Prompting workshop/, /^RAG deep dive/]) {
+      expect(
+        within(rowOf(title)).queryByRole("link", { name: "Attendees" }),
+      ).toBeNull();
+    }
+  });
+
   it("shows members and guests no organizer", () => {
     asRole("member");
     renderEvents();

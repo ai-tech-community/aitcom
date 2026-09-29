@@ -40,7 +40,11 @@ import {
   RowActions,
   hasStatusNote,
 } from "./community-event-actions";
-import { EventOrganizerControl } from "./event-organizer-control";
+import {
+  AttendeesLink,
+  EventOrganizerControl,
+  attendeesHref,
+} from "./event-organizer-control";
 
 type EditTarget = { id: number; resubmit?: boolean } | null;
 
@@ -204,6 +208,11 @@ export function CommunityEvents({
       <RowActions className="sm:order-6">
         {organizer ? (
           <EventOrganizerControl eventId={id} info={organizer} />
+        ) : null}
+        {session?.user?.id &&
+        organizer?.organizer?.userId === session.user.id &&
+        event.slug ? (
+          <AttendeesLink href={attendeesHref(slug, event.slug)} />
         ) : null}
         {event.type === "hackathon" && event.slug ? (
           <ManageHackathonLink href={manageHackathonHref(slug, event.slug)} />

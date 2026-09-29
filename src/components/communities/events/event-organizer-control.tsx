@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, UserCog } from "lucide-react";
+import { Check, UserCog, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
@@ -22,7 +22,26 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
+import { Link } from "@/i18n/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
+
+/** The organizer's attendee list for a community event (ADR-0038). */
+export function attendeesHref(communitySlug: string, eventSlug: string) {
+  return `/communities/${communitySlug}/events/${eventSlug}/attendees`;
+}
+
+/** Opens the attendee list: navigation, so a link, not a button. */
+export function AttendeesLink({ href }: { href: string }) {
+  const t = useTranslations("events.attendeeList");
+  return (
+    <Button asChild variant="ghost" size="sm">
+      <Link href={href}>
+        <Users aria-hidden="true" />
+        {t("openLink")}
+      </Link>
+    </Button>
+  );
+}
 
 export interface EventOrganizerInfo {
   organizer: { userId: string; name: string } | null;

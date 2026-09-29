@@ -7,6 +7,7 @@ import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { EventRegisterButton } from "@/components/event-register-button";
+import { OrganizerAttendeesLink } from "@/components/events/organizer-attendees-link";
 import { EventAttendees } from "@/components/event-attendees";
 import { EventShareRow } from "@/components/event-share-row";
 import { LexicalRenderer } from "@/lib/lexical";
@@ -556,6 +557,8 @@ export default async function EventDetailPage({
               />
             </div>
 
+            {isExternal ? null : <OrganizerAttendeesLink eventId={eventId} />}
+
             {isExternal && sourceUrl && (
               <div className="text-muted-foreground border-border border-t pt-4 font-mono text-xs tracking-wider">
                 SOURCE ·{" "}
@@ -939,6 +942,8 @@ export default async function EventDetailPage({
                 sourceUrl={sourceUrl}
               />
             </div>
+
+            {isExternal ? null : <OrganizerAttendeesLink eventId={eventId} />}
 
             {isExternal && sourceUrl && (
               <div className="text-muted-foreground border-border border-t pt-4 font-mono text-xs tracking-wider">

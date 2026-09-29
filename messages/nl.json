@@ -278,7 +278,53 @@
     "organizerChangeError": "De organisator kon niet worden gewijzigd. Probeer het opnieuw.",
     "organizerLoadError": "De leden konden niet worden geladen. Probeer het opnieuw.",
     "organizerNoMatches": "Geen leden gevonden",
-    "organizerNoMatchesHint": "Alleen actieve leden van deze community kunnen evenementen organiseren. Probeer een andere naam."
+    "organizerNoMatchesHint": "Alleen actieve leden van deze community kunnen evenementen organiseren. Probeer een andere naam.",
+    "attendeeList": {
+      "intro": "Iedereen die zich voor dit evenement heeft aangemeld. Alleen jij, als organisator, kunt deze pagina zien.",
+      "section": "Deelnemers",
+      "loadError": "De deelnemers konden niet worden geladen. Probeer het opnieuw.",
+      "emptyTitle": "Nog niemand aangemeld",
+      "emptyHint": "Deel de evenementpagina met je community. Wie zich aanmeldt, verschijnt hier.",
+      "noMatches": "Niemand gevonden",
+      "noMatchesHint": "Probeer een andere status of naam.",
+      "viewsLabel": "Toon deelnemers per status",
+      "search": "Zoek op naam, e-mail of bedrijf",
+      "seats": "{taken} van {max} plaatsen bezet",
+      "summary": {
+        "registered": "{count} aangemeld",
+        "waitlisted": "{count} op de wachtlijst",
+        "attended": "{count} ingecheckt"
+      },
+      "view": {
+        "active": "Alle",
+        "registered": "Aangemeld",
+        "waitlisted": "Wachtlijst",
+        "pending": "Wacht op betaling",
+        "attended": "Ingecheckt",
+        "cancelled": "Geannuleerd"
+      },
+      "status": {
+        "registered": "Aangemeld",
+        "waitlisted": "Wachtlijst",
+        "pending_payment": "Wacht op betaling",
+        "attended": "Ingecheckt",
+        "cancelled": "Geannuleerd",
+        "payment_failed": "Betaling mislukt"
+      },
+      "notShared": "Aangemeld voordat gegevens werden gedeeld",
+      "memberSince": "Lid sinds {date}",
+      "notMember": "Geen lid van de community",
+      "pastEvents": "{count, plural, =0 {Geen eerdere evenementen} one {# eerder evenement} other {# eerdere evenementen}}",
+      "payment": "Betaling: {status}",
+      "profile": "Profiel",
+      "profilePrivate": "Profiel is privé",
+      "company": "Bedrijf",
+      "experience": "Ervaring",
+      "skills": "Vaardigheden",
+      "interests": "Interesses",
+      "website": "Website",
+      "openLink": "Deelnemers"
+    }
   },
   "blog": {
     "title": "Blog",
