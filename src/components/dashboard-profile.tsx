@@ -80,7 +80,7 @@ export function DashboardProfile({
             </button>
           </div>
         ) : (
-          <ProfileEditForm initialData={null} />
+          <ProfileEditForm initialData={null} names={data?.names} />
         )}
       </div>
     );
@@ -104,7 +104,7 @@ export function DashboardProfile({
       </div>
 
       {editing ? (
-        <ProfileEditForm initialData={profile} />
+        <ProfileEditForm initialData={profile} names={data?.names} />
       ) : (
         <div className="mt-4 flex items-start gap-4">
           {/* Avatar */}

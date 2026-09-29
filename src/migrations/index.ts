@@ -122,6 +122,7 @@ import * as migration_20260928c_classroom_upload_policy from "./20260928c_classr
 import * as migration_20260928d_hosted_materials from "./20260928d_hosted_materials";
 import * as migration_20260928e_startup_investors from "./20260928e_startup_investors";
 import * as migration_20260929a_event_organizer from "./20260929a_event_organizer";
+import * as migration_20260929b_account_names_and_organizer_notice from "./20260929b_account_names_and_organizer_notice";
 
 export const migrations = [
   {
@@ -743,5 +744,10 @@ export const migrations = [
     up: migration_20260929a_event_organizer.up,
     down: migration_20260929a_event_organizer.down,
     name: "20260929a_event_organizer",
+  },
+  {
+    up: migration_20260929b_account_names_and_organizer_notice.up,
+    down: migration_20260929b_account_names_and_organizer_notice.down,
+    name: "20260929b_account_names_and_organizer_notice",
   },
 ];

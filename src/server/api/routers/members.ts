@@ -28,6 +28,7 @@ import {
   BADGES,
 } from "@/lib/gamification";
 import { getAvatarUrl } from "@/lib/avatar";
+import { personNameSchema } from "@/lib/person-name";
 import { isLinkedinOAuthEnabled } from "@/lib/linkedin-oauth-env";
 import { auth } from "@/server/better-auth";
 import { canDisconnectProvider } from "@/lib/social-identity";
@@ -57,6 +58,10 @@ const upsertProfileInput = z.object({
   githubUrl: z.string().url().max(255).nullable().or(z.literal("")),
   websiteUrl: z.string().url().max(255).nullable().or(z.literal("")),
   isPublic: z.boolean(),
+  // Account names the event organizer sees (ADR-0038). Omitted: unchanged.
+  // Empty: cleared, so the next registration asks again.
+  firstName: z.union([personNameSchema, z.literal("")]).optional(),
+  lastName: z.union([personNameSchema, z.literal("")]).optional(),
 });
 
 export const membersRouter = createTRPCRouter({
@@ -74,6 +79,12 @@ export const membersRouter = createTRPCRouter({
       .select()
       .from(memberBadges)
       .where(eq(memberBadges.userId, userId));
+
+    const [names] = await ctx.db
+      .select({ firstName: user.firstName, lastName: user.lastName })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
 
     await ensureGithubIdentityForUser(ctx.db, userId);
 
@@ -100,6 +111,10 @@ export const membersRouter = createTRPCRouter({
 
     return {
       profile: profile ?? null,
+      names: {
+        firstName: names?.firstName ?? null,
+        lastName: names?.lastName ?? null,
+      },
       badges: badges.map((b) => ({
         ...BADGES[b.badgeSlug],
         earnedAt: b.earnedAt,
@@ -258,6 +273,18 @@ export const membersRouter = createTRPCRouter({
         .limit(1);
 
       const isNew = !existing;
+
+      const nameChanges = {
+        ...(input.firstName !== undefined && {
+          firstName: input.firstName || null,
+        }),
+        ...(input.lastName !== undefined && {
+          lastName: input.lastName || null,
+        }),
+      };
+      if (Object.keys(nameChanges).length > 0) {
+        await ctx.db.update(user).set(nameChanges).where(eq(user.id, userId));
+      }
 
       if (isNew) {
         await ctx.db.insert(memberProfiles).values({

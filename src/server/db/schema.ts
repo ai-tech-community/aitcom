@@ -54,6 +54,9 @@ export const user = appSchema.table("user", (d) => ({
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   name: d.varchar({ length: 255 }),
+  /** Asked once, at the first registration that needs it (ADR-0038). */
+  firstName: d.varchar({ length: 100 }),
+  lastName: d.varchar({ length: 100 }),
   email: d.varchar({ length: 255 }).notNull().unique(),
   emailVerified: d.boolean().default(false),
   image: d.varchar({ length: 255 }),
@@ -183,6 +186,12 @@ export const eventRegistrations = appSchema.table(
       >(),
     paymentId: d.varchar({ length: 255 }),
     paymentStatus: d.varchar({ length: 50 }),
+    /**
+     * When the member saw "the organizer will see your name and email" and
+     * registered anyway (ADR-0038). Null: registered before the notice, so
+     * the organizer sees name and status only.
+     */
+    organizerNoticeAt: d.timestamp({ withTimezone: true }),
     registeredAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

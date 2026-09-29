@@ -229,7 +229,15 @@
       "toastWaitlisted": "Je bent toegevoegd aan de wachtlijst.",
       "toastRegistered": "Succesvol ingeschreven!",
       "toastCancelled": "Inschrijving geannuleerd.",
-      "toastAlreadyGoing": "Al gemarkeerd als aanwezig."
+      "toastAlreadyGoing": "Al gemarkeerd als aanwezig.",
+      "organizerNotice": "De organisator ziet je naam en e-mailadres. Is je profiel openbaar, dan ook je bedrijf, links en vaardigheden.",
+      "namesTitle": "Je naam voor de organisator",
+      "namesDescription": "We vragen dit één keer. Het wordt bewaard in je account voor elk evenement waar je aan meedoet.",
+      "firstName": "Voornaam",
+      "lastName": "Achternaam",
+      "nameRequired": "Vul dit in.",
+      "namesCancel": "Annuleren",
+      "namesConfirm": "Aanmelden"
     },
     "formatInPerson": "Op locatie",
     "formatHybrid": "Hybride",
@@ -646,7 +654,10 @@
     "disconnectGithubNeedPassword": "Stel eerst een wachtwoord of een andere login in voordat je ontkoppelt.",
     "socialDisconnected": "Identiteit ontkoppeld.",
     "socialDisconnectError": "Identiteit ontkoppelen mislukt.",
-    "socialConnectError": "Koppelen starten mislukt."
+    "socialConnectError": "Koppelen starten mislukt.",
+    "firstName": "Voornaam",
+    "lastName": "Achternaam",
+    "namesHint": "Organisatoren van evenementen waarvoor je je aanmeldt, zien je voor- en achternaam."
   },
   "activity": {
     "scopeLabel": "Activiteitsbereik",

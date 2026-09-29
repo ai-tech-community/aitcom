@@ -18,15 +18,19 @@ interface ProfileEditFormProps {
     websiteUrl: string | null;
     isPublic: boolean;
   } | null;
+  /** Account names the event organizer sees (ADR-0038). */
+  names?: { firstName: string | null; lastName: string | null } | null;
 }
 
-export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
+export function ProfileEditForm({ initialData, names }: ProfileEditFormProps) {
   const t = useTranslations("dashboard");
   const utils = api.useUtils();
 
   const [displayName, setDisplayName] = useState(
     initialData?.displayName ?? "",
   );
+  const [firstName, setFirstName] = useState(names?.firstName ?? "");
+  const [lastName, setLastName] = useState(names?.lastName ?? "");
   const [bio, setBio] = useState(initialData?.bio ?? "");
   const [skillsText, setSkillsText] = useState(
     (initialData?.skills ?? []).join(", "),
@@ -58,6 +62,8 @@ export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
 
     upsertMutation.mutate({
       displayName,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
       bio: bio || null,
       skills,
       company: company || null,
@@ -80,6 +86,43 @@ export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
           required
           className="mt-1"
         />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label
+            htmlFor="profile-first-name"
+            className="text-muted-foreground font-mono text-xs tracking-wider"
+          >
+            {t("firstName")}
+          </label>
+          <Input
+            id="profile-first-name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            maxLength={100}
+            autoComplete="given-name"
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="profile-last-name"
+            className="text-muted-foreground font-mono text-xs tracking-wider"
+          >
+            {t("lastName")}
+          </label>
+          <Input
+            id="profile-last-name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            maxLength={100}
+            autoComplete="family-name"
+            className="mt-1"
+          />
+        </div>
+        <p className="text-muted-foreground text-xs sm:col-span-2">
+          {t("namesHint")}
+        </p>
       </div>
       <div>
         <label className="text-muted-foreground font-mono text-xs tracking-wider">

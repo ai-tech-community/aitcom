@@ -63,6 +63,8 @@ import { toEventEmailData } from "@/server/events/event-email-data";
 import { toRegistrationCalendarInvite } from "@/server/events/registration-invite";
 import { externalEventUrl } from "@/lib/events/event-source";
 import { escapeLike } from "@/server/db/escape-like";
+import { personNameSchema } from "@/lib/person-name";
+import { ensureAccountNames } from "@/server/events/registration-names";
 import type { db as Db } from "@/server/db";
 import {
   canSeeEventOrganizers,
@@ -143,6 +145,9 @@ export const eventsRouter = createTRPCRouter({
     .input(
       z.object({
         eventId: z.number(),
+        // Given when the account has no first/last name yet (ADR-0038).
+        firstName: personNameSchema.optional(),
+        lastName: personNameSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -176,6 +181,9 @@ export const eventsRouter = createTRPCRouter({
           message: "This event is run on another site. Register there instead.",
         });
       }
+
+      // The organizer sees who registered by name (ADR-0038).
+      await ensureAccountNames(ctx.db, userId, input);
 
       const [countResult] = await ctx.db
         .select({ count: sql<number>`count(*)` })
@@ -219,6 +227,8 @@ export const eventsRouter = createTRPCRouter({
             status: "pending_payment",
             paymentId: molliePayment.id,
             paymentStatus: molliePayment.status,
+            // The register button showed the sharing notice (ADR-0038).
+            organizerNoticeAt: new Date(),
           })
           .returning();
 
@@ -237,6 +247,8 @@ export const eventsRouter = createTRPCRouter({
           eventId: input.eventId,
           userId,
           status,
+          // The register button showed the sharing notice (ADR-0038).
+          organizerNoticeAt: new Date(),
         })
         .returning();
 

@@ -147,7 +147,7 @@ On `event_registration`:
 ```
 event_registration.organizer_notice_at   timestamptz  null
     -- when the member saw "the organizer will see …" and registered anyway
-event_registration.checked_in_at         timestamptz  null   -- slice 5
+event_registration.checked_in_at         timestamptz  null   -- added in slice 5
 ```
 
 The drizzle schema, the Payload migration, and the generated types change
@@ -158,13 +158,16 @@ together.
 - `events.register` input gains optional `firstName` and `lastName`
   (trimmed, 1–100 characters).
 - If the account has no first or last name and the input does not provide
-  them, `register` refuses with `PRECONDITION_FAILED` and
-  `cause: "NAME_REQUIRED"`.
+  them, `register` refuses with `PRECONDITION_FAILED` and the message
+  `NAME_REQUIRED` (`src/server/events/registration-names.ts`).
 - The register button checks this first. Before calling `register`, it
   opens a small dialog with two fields, pre-filled by splitting the current
   `name` on its first space. The member corrects them if needed.
-- The server stores the names on the account in the same transaction as
-  the registration. It never asks again.
+- The server saves given names to the account just before writing the
+  registration. If registering then fails, keeping the member's own name is
+  harmless, and it avoids holding a transaction open across the payment
+  provider call. It never asks again. The button refreshes the session after
+  registering, so it does not ask twice in one visit.
 - Members can change their names later in profile settings, in the same
   form as the display name.
 - `markIntent` (external events) never asks. No organizer data is shared
