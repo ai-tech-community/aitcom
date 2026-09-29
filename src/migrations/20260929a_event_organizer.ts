@@ -9,7 +9,9 @@
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
 import { sql } from "@payloadcms/db-postgres";
 
-export async function up({ db, payload }: MigrateUpArgs): Promise<void> {
+// The deploy runner (scripts/db-apply-pending.ts) passes only `db`, so this
+// migration logs with console, never `payload.logger`.
+export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
     ALTER TABLE "events"
       ADD COLUMN IF NOT EXISTS "organizer_id" varchar;
@@ -57,7 +59,7 @@ export async function up({ db, payload }: MigrateUpArgs): Promise<void> {
       AND ("source_url" IS NULL OR "source_url" = '')
   `);
 
-  payload.logger.info(
+  console.log(
     `event organizer backfill: submitter=${bySubmitter.rowCount ?? 0} activity=${byActivity.rowCount ?? 0} challenge=${byChallenge.rowCount ?? 0} still-unassigned-native=${(unassigned.rows[0] as { n: number } | undefined)?.n ?? 0}`,
   );
 }
