@@ -280,9 +280,12 @@ export async function loadEventAttendees(db, event, filter): Promise<AttendeeDet
   The expandable profile area shows company, links, experience and skills.
   For a private profile it says "Profile is private".
 - Entry points appear only for the organizer:
-  - "Attendees" on the event page, next to edit and cancel.
-  - The same link on the community events list.
-  - For hackathons, an "Attendees" tab in the existing manage area.
+  - "Attendees" on the public event page, under the register button. The
+    page stays the same for every viewer; `events.attendeesLink` returns the
+    address for the organizer and null for everyone else. This covers
+    hackathons too, so the hackathon manage area gets no separate tab.
+  - The same link on the community events list, on rows the signed-in
+    owner or admin organizes.
 
 This needs the UI rules of `PRODUCT.md` and `DESIGN.md`: One Voice Rule
 for the single primary action (Download CSV), flat surfaces, and the House

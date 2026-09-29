@@ -66,6 +66,8 @@ import { escapeLike } from "@/server/db/escape-like";
 import { personNameSchema } from "@/lib/person-name";
 import { ensureAccountNames } from "@/server/events/registration-names";
 import type { db as Db } from "@/server/db";
+import { canViewEventAttendees } from "@/server/events/attendee-access";
+import { loadEventAttendees } from "@/server/events/attendee-details";
 import {
   canSeeEventOrganizers,
   canSetEventOrganizer,
@@ -1041,6 +1043,95 @@ export const eventsRouter = createTRPCRouter({
           actorMembership: membership,
         }),
       }));
+    }),
+
+  /**
+   * The attendee list for the event's organizer (ADR-0038). NOT_FOUND for
+   * everyone else, so the list's existence is never revealed.
+   */
+  attendees: protectedProcedure
+    .input(z.object({ eventId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const { payload, event, community, membership } =
+        await loadCommunityEventForOrganizer(ctx.db, input.eventId, userId);
+      if (!canViewEventAttendees({ event, viewerId: userId, membership })) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
+
+      const { docs: earlier } = await payload.find({
+        collection: "events",
+        where: {
+          and: [
+            { communityId: { equals: community.id } },
+            { date: { less_than: event.date } },
+          ],
+        },
+        select: { slug: true },
+        limit: 0,
+        depth: 0,
+      });
+
+      const { counts, rows } = await loadEventAttendees(
+        ctx.db,
+        { id: event.id, communityId: community.id },
+        earlier.map((e) => e.id),
+      );
+
+      return {
+        event: {
+          id: event.id,
+          title: event.title,
+          slug: event.slug,
+          date: event.date,
+          startTime: event.startTime ?? null,
+          endTime: event.endTime ?? null,
+          timezone: event.timezone ?? null,
+          maxAttendees: (event.maxAttendees as number | null) ?? null,
+          isPaid: ((event.price as number | null) ?? 0) > 0,
+        },
+        community: { slug: community.slug, name: community.name },
+        counts,
+        rows,
+      };
+    }),
+
+  /**
+   * Where the viewer can open the event's attendee list, or null. Lets a
+   * page that is the same for everyone show the link to its organizer only.
+   */
+  attendeesLink: protectedProcedure
+    .input(z.object({ eventId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const payload = await getPayloadClient();
+      const event = await payload.findByID({
+        collection: "events",
+        id: input.eventId,
+        depth: 0,
+        disableErrors: true,
+      });
+      // Cheap exits first: most viewers are not the organizer.
+      if (!event?.communityId || event.organizerId !== userId) return null;
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.id, event.communityId),
+          isNull(communities.deletedAt),
+        ),
+        columns: { slug: true },
+      });
+      if (!community) return null;
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, event.communityId),
+          eq(communityMemberships.userId, userId),
+        ),
+        columns: { status: true },
+      });
+      if (!canViewEventAttendees({ event, viewerId: userId, membership })) {
+        return null;
+      }
+      return `/communities/${community.slug}/events/${event.slug}/attendees`;
     }),
 
   /** Active members of the event's community who could take it over. */

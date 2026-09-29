@@ -24,11 +24,18 @@ import {
   vi,
 } from "vitest";
 
+import type { eq as Eq } from "drizzle-orm";
+
+import type { db as Db } from "@/server/db";
+import type * as Schema from "@/server/db/schema";
+import type * as EmailModule from "@/server/email";
+import type { getPayloadClient as GetPayloadClient } from "@/server/payload";
+
 const sendEventChangedEmail = vi.fn(async () => true);
 const sendEventCancelledEmail = vi.fn(async () => true);
 
 vi.mock("@/server/email", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/server/email")>()),
+  ...(await importOriginal<typeof EmailModule>()),
   sendEventChangedEmail,
   sendEventCancelledEmail,
 }));
@@ -60,10 +67,10 @@ describe.skipIf(!RUN_DB)(
   "Events attendee calendar hook [DB integration]",
   () => {
     type Mods = {
-      db: typeof import("@/server/db").db;
-      schema: typeof import("@/server/db/schema");
-      getPayloadClient: typeof import("@/server/payload").getPayloadClient;
-      eq: typeof import("drizzle-orm").eq;
+      db: typeof Db;
+      schema: typeof Schema;
+      getPayloadClient: typeof GetPayloadClient;
+      eq: typeof Eq;
     };
     let m: Mods;
 

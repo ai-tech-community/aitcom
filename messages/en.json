@@ -278,7 +278,53 @@
     "organizerChangeError": "Could not change the organizer. Please try again.",
     "organizerLoadError": "Could not load the members. Please try again.",
     "organizerNoMatches": "No members found",
-    "organizerNoMatchesHint": "Only active members of this community can organize its events. Try another name."
+    "organizerNoMatchesHint": "Only active members of this community can organize its events. Try another name.",
+    "attendeeList": {
+      "intro": "Everyone who registered for this event. Only you, as its organizer, can see this page.",
+      "section": "Attendees",
+      "loadError": "Could not load the attendees. Please try again.",
+      "emptyTitle": "No one has registered yet",
+      "emptyHint": "Share the event page with your community. People who register show up here.",
+      "noMatches": "No one matches",
+      "noMatchesHint": "Try another status or name.",
+      "viewsLabel": "Show attendees by status",
+      "search": "Search name, email or company",
+      "seats": "{taken} of {max} seats taken",
+      "summary": {
+        "registered": "{count} registered",
+        "waitlisted": "{count} waitlisted",
+        "attended": "{count} checked in"
+      },
+      "view": {
+        "active": "All",
+        "registered": "Registered",
+        "waitlisted": "Waitlist",
+        "pending": "Awaiting payment",
+        "attended": "Checked in",
+        "cancelled": "Cancelled"
+      },
+      "status": {
+        "registered": "Registered",
+        "waitlisted": "Waitlist",
+        "pending_payment": "Awaiting payment",
+        "attended": "Checked in",
+        "cancelled": "Cancelled",
+        "payment_failed": "Payment failed"
+      },
+      "notShared": "Registered before details were shared",
+      "memberSince": "Member since {date}",
+      "notMember": "Not a community member",
+      "pastEvents": "{count, plural, =0 {No earlier events} one {# earlier event} other {# earlier events}}",
+      "payment": "Payment: {status}",
+      "profile": "Profile",
+      "profilePrivate": "Profile is private",
+      "company": "Company",
+      "experience": "Experience",
+      "skills": "Skills",
+      "interests": "Interests",
+      "website": "Website",
+      "openLink": "Attendees"
+    }
   },
   "blog": {
     "title": "Blog",
