@@ -24,7 +24,32 @@ export function getResend(): Resend | null {
   return resendInstance;
 }
 
-const FROM_EMAIL = "AIT Community <noreply@mailer.aitcommunity.org>";
+/** Who our mail comes from; also the organizer on calendar invites. */
+export const EMAIL_SENDER = {
+  name: "AIT Community",
+  email: "noreply@mailer.aitcommunity.org",
+} as const;
+
+const FROM_EMAIL = `${EMAIL_SENDER.name} <${EMAIL_SENDER.email}>`;
+
+/** An iCalendar file attached to an event email so the mail client offers it as an invite. */
+export interface EmailCalendarInvite {
+  filename: string;
+  content: string;
+  contentType: string;
+}
+
+function calendarAttachments(invite: EmailCalendarInvite | undefined) {
+  return invite
+    ? [
+        {
+          filename: invite.filename,
+          content: Buffer.from(invite.content, "utf-8"),
+          contentType: invite.contentType,
+        },
+      ]
+    : undefined;
+}
 
 export interface EventEmailData {
   eventTitle: string;
@@ -60,6 +85,7 @@ export async function sendRegistrationConfirmation(
   to: string,
   userName: string,
   event: EventEmailData,
+  calendarInvite?: EmailCalendarInvite,
 ) {
   const resend = getResend();
   if (!resend) return;
@@ -81,6 +107,7 @@ export async function sendRegistrationConfirmation(
   await resend.emails.send({
     from: FROM_EMAIL,
     to,
+    attachments: calendarAttachments(calendarInvite),
     subject: rendered?.subject ?? `Registration confirmed: ${event.eventTitle}`,
     html:
       rendered?.html ??
@@ -113,6 +140,7 @@ export async function sendCancellationConfirmation(
   to: string,
   userName: string,
   event: EventEmailData,
+  calendarInvite?: EmailCalendarInvite,
 ) {
   const resend = getResend();
   if (!resend) return;
@@ -120,6 +148,7 @@ export async function sendCancellationConfirmation(
   await resend.emails.send({
     from: FROM_EMAIL,
     to,
+    attachments: calendarAttachments(calendarInvite),
     subject: `Registration cancelled: ${event.eventTitle}`,
     html: `
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
@@ -148,6 +177,7 @@ export async function sendWaitlistPromotion(
   to: string,
   userName: string,
   event: EventEmailData,
+  calendarInvite?: EmailCalendarInvite,
 ) {
   const resend = getResend();
   if (!resend) return;
@@ -155,6 +185,7 @@ export async function sendWaitlistPromotion(
   await resend.emails.send({
     from: FROM_EMAIL,
     to,
+    attachments: calendarAttachments(calendarInvite),
     subject: `You got a spot! ${event.eventTitle}`,
     html: `
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">

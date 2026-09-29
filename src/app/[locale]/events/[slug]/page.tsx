@@ -38,6 +38,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
 import { getInitials } from "@/lib/avatar";
+import { externalEventUrl } from "@/lib/events/event-source";
 
 type MediaValue =
   | { url?: string | null; alt?: string | null }
@@ -163,10 +164,7 @@ export default async function EventDetailPage({
   const eventId = Number(event.id);
   const maxAttendees = (event.maxAttendees as number | undefined) ?? null;
   const price = (event.price as number | undefined) ?? null;
-  const sourceUrl =
-    typeof event.sourceUrl === "string" && event.sourceUrl.length > 0
-      ? event.sourceUrl
-      : null;
+  const sourceUrl = externalEventUrl(event);
   const isExternal = sourceUrl !== null;
   const heroImage = getMedia(
     (event.coverImage as MediaValue) ?? (event.image as MediaValue),
