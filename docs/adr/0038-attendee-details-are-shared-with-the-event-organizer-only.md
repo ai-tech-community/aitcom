@@ -50,8 +50,9 @@ future sign-up form, reuses them.
   from `submittedBy`, the `event.create` activity event, or the hackathon's
   challenge creator. The rest are assigned by the community owner.
 - Each registration records when the member saw the sharing notice
-  (`organizer_notice_at`). Registrations from before the notice need a
-  one-time decision (spec §7).
+  (`organizer_notice_at`). A registration without it shows name and status
+  only, never email or profile (spec §7). On 2026-09-29 this affected only
+  test registrations.
 - An organizer who leaves the community loses access until the owner
   reassigns the event.
 

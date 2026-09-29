@@ -178,7 +178,8 @@ text lives in the `events.registration` message bundle (en, nl).
 
 ### 2.4 Registrations made before this ships
 
-These have no `organizer_notice_at`. **Open question for review:** see §7.
+These have no `organizer_notice_at`. See §7: their email and profile are
+not shown.
 
 ## 3. Attendees page
 
@@ -213,7 +214,7 @@ export type AttendeeDetails = {
   firstName: string | null;
   lastName: string | null;
   displayName: string;          // fallback when names are missing
-  email: string;
+  email: string | null;          // null when registered before the notice (§7)
   status: "registered" | "waitlisted" | "pending_payment" | "attended" | "cancelled" | "payment_failed";
   registeredAt: Date;
   waitlistPosition: number | null;     // 1-based, waitlisted only
@@ -315,7 +316,7 @@ On the page, one button per row: "Check in", or "Checked in 18:04 · Undo".
   left, community admin who is not the organizer, other member, anonymous,
   external event).
 - `toAttendeeDetails`: public profile, private profile, staff-hidden
-  (still shown), missing profile, missing names (fallback), waitlist position.
+  (still shown), missing profile, no notice recorded (no email, no profile), missing names (fallback), waitlist position.
 - Router: `attendees` returns `NOT_FOUND` to non-organizers. `register`
   asks for names once, saves them, and records the notice time.
   `setOrganizer` rules. `setCheckedIn` transitions.
@@ -326,20 +327,16 @@ On the page, one button per row: "Check in", or "Checked in 18:04 · Undo".
   `loadEventAttendees` against real rows, including the one-query-per-concern
   check.
 
-## 7. Open question for review
+## 7. Registrations made before the notice
 
-**Registrations made before the notice shipped.** These members never saw
-"the organizer will see your email". Choices:
+These have no `organizer_notice_at`: the member never saw "the organizer
+will see your email". **Rule:** `toAttendeeDetails` shows such a
+registration with name and status only. `email` is null and `profile` is
+null, and the row is marked "registered before details were shared". The
+CSV leaves those cells empty.
 
-- **(a) Recommended.** Before launch, send one email to every member
-  registered for an upcoming native event: "From <date> the organizer of
-  <event> can see your name and email, so they can reach you about the
-  event. If you don't want that, cancel your registration here." Their
-  details become visible after that date. This is transparent, and
-  organizers of upcoming events keep a working list.
-- **(b)** Show those registrations with name and status only, and no email,
-  until the member registers again. This is the safest, but organizers of
-  events already open lose contact with early registrants.
-
-Past events do not matter here, because the list is only useful before
-and during the event.
+Production on 2026-09-29 (read-only check) had 6 active registrations:
+four from the team's test accounts, and two for an event that no longer
+exists. No real member is registered for an upcoming native event, so
+this rule costs organizers nothing today. It also keeps the promise
+"we only share what we told you about" for any row, now and later.
