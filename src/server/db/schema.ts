@@ -196,6 +196,8 @@ export const eventRegistrations = appSchema.table(
      * Answers to the event's registration questions, keyed by question id:
      * text, or the chosen option id(s). See lib/events/registration-questions.
      */
+    /** When the organizer checked the member in at the event (#369). */
+    checkedInAt: d.timestamp({ withTimezone: true }),
     answers: d
       .jsonb()
       .$type<Record<string, string | string[]>>()

@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Download, Mail } from "lucide-react";
+import { Check, Download, Mail, UserCheck } from "lucide-react";
+import { toast } from "sonner";
 
 import { api, type RouterOutputs } from "@/trpc/react";
 import {
@@ -159,7 +160,7 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
       ) : (
         <ul className="divide-border border-border divide-y rounded-xl border">
           {shown.map((row) => (
-            <AttendeeRow key={row.registrationId} row={row} />
+            <AttendeeRow key={row.registrationId} row={row} eventId={eventId} />
           ))}
         </ul>
       )}
@@ -167,7 +168,7 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
   );
 }
 
-function AttendeeRow({ row }: { row: Attendee }) {
+function AttendeeRow({ row, eventId }: { row: Attendee; eventId: number }) {
   const t = useTranslations("events.attendeeList");
   const locale = useLocale();
   const registeredAt = new Intl.DateTimeFormat(locale, {
@@ -205,6 +206,13 @@ function AttendeeRow({ row }: { row: Attendee }) {
           <span className="text-muted-foreground font-mono text-xs tabular-nums">
             {registeredAt}
           </span>
+          {row.status === "registered" || row.status === "attended" ? (
+            <CheckInControl
+              registrationId={row.registrationId}
+              eventId={eventId}
+              checkedInAt={row.checkedInAt}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -310,5 +318,66 @@ function Detail({
       <dt className="text-muted-foreground">{term}</dt>
       <dd className="min-w-0">{children}</dd>
     </>
+  );
+}
+
+/**
+ * Check-in at the door (#369): "Check in" for a registered member;
+ * "Checked in 18:04" with Undo once they are in. The list refreshes from
+ * the server after each change, so counts and views stay true.
+ */
+function CheckInControl({
+  registrationId,
+  eventId,
+  checkedInAt,
+}: {
+  registrationId: string;
+  eventId: number;
+  checkedInAt: Date | string | null;
+}) {
+  const t = useTranslations("events.attendeeList");
+  const locale = useLocale();
+  const utils = api.useUtils();
+  const setCheckedIn = api.events.setCheckedIn.useMutation({
+    onSuccess: () => void utils.events.attendees.invalidate({ eventId }),
+    onError: () => toast.error(t("checkInError")),
+  });
+
+  if (!checkedInAt) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={setCheckedIn.isPending}
+        onClick={() => setCheckedIn.mutate({ registrationId, checkedIn: true })}
+      >
+        <UserCheck aria-hidden="true" />
+        {t("checkIn")}
+      </Button>
+    );
+  }
+
+  const time = new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(
+    new Date(checkedInAt),
+  );
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="text-success inline-flex items-center gap-1 text-sm">
+        <Check aria-hidden="true" className="size-4" />
+        {t("checkedInAt", { time })}
+      </span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={setCheckedIn.isPending}
+        onClick={() =>
+          setCheckedIn.mutate({ registrationId, checkedIn: false })
+        }
+      >
+        {t("undoCheckIn")}
+      </Button>
+    </span>
   );
 }

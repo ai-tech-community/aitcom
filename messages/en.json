@@ -349,9 +349,14 @@
         "registeredAt": "Registered at ({timezone})",
         "waitlistPlace": "Waitlist place",
         "paymentStatus": "Payment status",
+        "checkedInAt": "Checked in at ({timezone})",
         "memberSince": "Community member since",
         "earlierEvents": "Earlier events attended"
-      }
+      },
+      "checkIn": "Check in",
+      "checkedInAt": "Checked in {time}",
+      "undoCheckIn": "Undo",
+      "checkInError": "Could not save the check-in. Please try again."
     },
     "editor": {
       "sectionsNav": "Sections of the event form",

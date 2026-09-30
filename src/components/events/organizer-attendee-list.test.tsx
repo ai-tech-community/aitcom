@@ -15,11 +15,22 @@ const m = vi.hoisted(() => ({
   data: null as unknown,
   refetch: vi.fn(),
   inputs: [] as unknown[],
+  checkIn: vi.fn(),
+  invalidate: vi.fn(),
+  checkInOptions: {} as { onSuccess?: () => void; onError?: () => void },
 }));
 
+vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/trpc/react", () => ({
   api: {
+    useUtils: () => ({ events: { attendees: { invalidate: m.invalidate } } }),
     events: {
+      setCheckedIn: {
+        useMutation: (options: typeof m.checkInOptions) => {
+          m.checkInOptions = options;
+          return { mutate: m.checkIn, isPending: false };
+        },
+      },
       attendees: {
         useQuery: (input: unknown) => {
           m.inputs.push(input);
@@ -43,6 +54,7 @@ const BASE = {
   registeredAt: new Date("2026-10-01T10:00:00Z"),
   waitlistPosition: null,
   paymentStatus: null,
+  checkedInAt: null as Date | null,
   communityMemberSince: null,
   pastEventsAttended: 0,
   profile: null,
@@ -162,6 +174,8 @@ beforeEach(() => {
   m.data = data();
   m.refetch.mockReset();
   m.inputs = [];
+  m.checkIn.mockReset();
+  m.invalidate.mockReset();
 });
 
 describe("OrganizerAttendeeList", () => {
@@ -245,6 +259,44 @@ describe("OrganizerAttendeeList", () => {
       { target: { value: "evals" } },
     );
     expect(names()).toEqual(["Ada Lovelace"]);
+  });
+
+  it("checks a registered member in, and refreshes the list", () => {
+    renderList();
+    const ada = screen.getAllByRole("listitem")[0]!;
+    fireEvent.click(within(ada).getByRole("button", { name: "Check in" }));
+    expect(m.checkIn).toHaveBeenCalledWith({
+      registrationId: "r1",
+      checkedIn: true,
+    });
+    m.checkInOptions.onSuccess?.();
+    expect(m.invalidate).toHaveBeenCalledWith({ eventId: 7 });
+  });
+
+  it("shows when someone was checked in, with undo", () => {
+    m.data = data([
+      {
+        ...ROWS[0]!,
+        status: "attended",
+        checkedInAt: new Date("2026-10-05T18:04:00Z"),
+      },
+    ]);
+    renderList();
+    const ada = screen.getAllByRole("listitem")[0]!;
+    expect(ada).toHaveTextContent(/Checked in \d{1,2}:04/);
+    fireEvent.click(within(ada).getByRole("button", { name: "Undo" }));
+    expect(m.checkIn).toHaveBeenCalledWith({
+      registrationId: "r1",
+      checkedIn: false,
+    });
+  });
+
+  it("offers no check-in to someone without a seat", () => {
+    renderList();
+    const grace = screen.getAllByRole("listitem")[1]!; // waitlisted
+    expect(
+      within(grace).queryByRole("button", { name: "Check in" }),
+    ).toBeNull();
   });
 
   it("searches name, email and company", () => {
