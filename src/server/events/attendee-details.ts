@@ -54,6 +54,8 @@ export interface AttendeeDetails {
   /** 1-based place on the waitlist; waitlisted rows only. */
   waitlistPosition: number | null;
   paymentStatus: string | null;
+  /** When the organizer checked them in at the event; null if not. */
+  checkedInAt: Date | null;
   /** Null: not an active member of the hosting community. */
   communityMemberSince: Date | null;
   /** Events of this community, before this one, the member attended. */
@@ -74,6 +76,7 @@ export interface AttendeeSourceRow {
   status: AttendeeStatus;
   registeredAt: Date;
   paymentStatus: string | null;
+  checkedInAt: Date | null;
   organizerNoticeAt: Date | null;
   account: {
     name: string | null;
@@ -128,6 +131,7 @@ export function toAttendeeDetails(row: AttendeeSourceRow): AttendeeDetails {
     registeredAt: row.registeredAt,
     waitlistPosition: row.status === "waitlisted" ? row.waitlistPosition : null,
     paymentStatus: row.paymentStatus,
+    checkedInAt: row.checkedInAt,
     communityMemberSince: row.communityMemberSince,
     pastEventsAttended: row.pastEventsAttended,
     answers: detailsShared ? row.answers : [],
@@ -176,6 +180,7 @@ export async function loadEventAttendees(
       status: eventRegistrations.status,
       registeredAt: eventRegistrations.registeredAt,
       paymentStatus: eventRegistrations.paymentStatus,
+      checkedInAt: eventRegistrations.checkedInAt,
       organizerNoticeAt: eventRegistrations.organizerNoticeAt,
       answers: eventRegistrations.answers,
       name: user.name,
@@ -252,6 +257,7 @@ export async function loadEventAttendees(
       status: r.status as AttendeeStatus,
       registeredAt: r.registeredAt,
       paymentStatus: r.paymentStatus,
+      checkedInAt: r.checkedInAt,
       organizerNoticeAt: r.organizerNoticeAt,
       account: {
         name: r.name,

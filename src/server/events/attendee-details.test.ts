@@ -22,6 +22,7 @@ const ROW: Row = {
   status: "registered",
   registeredAt: new Date("2026-10-01T10:00:00Z"),
   paymentStatus: null,
+  checkedInAt: null,
   organizerNoticeAt: new Date("2026-10-01T10:00:00Z"),
   account: {
     name: "ada_l",

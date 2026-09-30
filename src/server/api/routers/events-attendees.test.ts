@@ -25,8 +25,18 @@ function chain(): Record<string, unknown> {
 }
 const findCommunity = vi.fn();
 const findMembership = vi.fn();
+const updates: unknown[] = [];
+const logActivity = vi.fn();
 const fakeDb = {
   select: () => chain(),
+  update: () => {
+    const c = chain();
+    c.set = (values: unknown) => {
+      updates.push(values);
+      return c;
+    };
+    return c;
+  },
   query: {
     communities: { findFirst: findCommunity },
     communityMemberships: { findFirst: findMembership },
@@ -45,6 +55,7 @@ vi.mock("@/server/better-auth", () => ({
   auth: { api: { getSession: async () => null } },
 }));
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => payload }));
+vi.mock("@/server/agent/activity", () => ({ logActivity }));
 
 const { createCaller } = await import("@/server/api/root");
 
@@ -102,6 +113,7 @@ function registration(overrides: Record<string, unknown>) {
 beforeEach(() => {
   vi.clearAllMocks();
   dbResults.length = 0;
+  updates.length = 0;
   payload.findByID.mockResolvedValue(EVENT);
   payload.find.mockResolvedValue({ docs: [{ id: 3 }, { id: 4 }] });
   findCommunity.mockResolvedValue({
@@ -222,5 +234,81 @@ describe("events.attendeesLink", () => {
     await expect(
       caller("org-1").events.attendeesLink({ eventId: 7 }),
     ).resolves.toBeNull();
+  });
+});
+
+describe("events.setCheckedIn", () => {
+  const REGISTERED = {
+    id: "r1",
+    eventId: 7,
+    status: "registered",
+    checkedInAt: null,
+  };
+
+  it("checks a registered member in for the organizer", async () => {
+    dbResults.push([REGISTERED]);
+
+    const res = await caller("org-1").events.setCheckedIn({
+      registrationId: "r1",
+      checkedIn: true,
+    });
+
+    expect(res).toMatchObject({ status: "attended" });
+    expect(updates).toEqual([
+      { status: "attended", checkedInAt: expect.any(Date) },
+    ]);
+    expect(logActivity).toHaveBeenCalledWith(
+      fakeDb,
+      expect.objectContaining({ action: "event.check_in", targetId: "7" }),
+    );
+  });
+
+  it("undoes a check-in", async () => {
+    dbResults.push([
+      { ...REGISTERED, status: "attended", checkedInAt: new Date() },
+    ]);
+
+    await caller("org-1").events.setCheckedIn({
+      registrationId: "r1",
+      checkedIn: false,
+    });
+
+    expect(updates).toEqual([{ status: "registered", checkedInAt: null }]);
+  });
+
+  it("refuses to check in someone on the waitlist", async () => {
+    dbResults.push([{ ...REGISTERED, status: "waitlisted" }]);
+
+    await expect(
+      caller("org-1").events.setCheckedIn({
+        registrationId: "r1",
+        checkedIn: true,
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(updates).toHaveLength(0);
+  });
+
+  it("is not found for anyone but the organizer", async () => {
+    findMembership.mockResolvedValue({ role: "admin", status: "active" });
+    dbResults.push([REGISTERED]);
+
+    await expect(
+      caller("admin-1").events.setCheckedIn({
+        registrationId: "r1",
+        checkedIn: true,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(updates).toHaveLength(0);
+  });
+
+  it("is not found for a registration that does not exist", async () => {
+    dbResults.push([]);
+
+    await expect(
+      caller("org-1").events.setCheckedIn({
+        registrationId: "nope",
+        checkedIn: true,
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });

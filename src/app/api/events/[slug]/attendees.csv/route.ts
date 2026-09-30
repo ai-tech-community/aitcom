@@ -55,6 +55,7 @@ export async function GET(
         registeredAt: (timezone) => t("csv.registeredAt", { timezone }),
         waitlistPlace: t("csv.waitlistPlace"),
         paymentStatus: t("csv.paymentStatus"),
+        checkedInAt: (timezone) => t("csv.checkedInAt", { timezone }),
         memberSince: t("csv.memberSince"),
         earlierEvents: t("csv.earlierEvents"),
         company: t("company"),

@@ -18,6 +18,7 @@ const LABELS: AttendeeCsvLabels = {
   registeredAt: (tz) => `Registered at (${tz})`,
   waitlistPlace: "Waitlist place",
   paymentStatus: "Payment status",
+  checkedInAt: (tz) => `Checked in at (${tz})`,
   memberSince: "Member since",
   earlierEvents: "Earlier events attended",
   company: "Company",
@@ -48,6 +49,7 @@ const ADA: AttendeeDetails = {
   registeredAt: new Date("2026-10-01T10:05:00Z"),
   waitlistPosition: null,
   paymentStatus: null,
+  checkedInAt: new Date("2026-10-05T18:04:00Z"),
   communityMemberSince: new Date("2026-01-15T23:30:00Z"),
   pastEventsAttended: 2,
   answers: [
@@ -115,10 +117,10 @@ describe("toAttendeesCsv", () => {
       }),
     );
     expect(header).toBe(
-      "Name,First name,Last name,Email,Status,Registered at (Europe/Amsterdam),Waitlist place,Payment status,Member since,Earlier events attended,Company,LinkedIn,GitHub,Website,Experience,Skills,Interests",
+      "Name,First name,Last name,Email,Status,Registered at (Europe/Amsterdam),Waitlist place,Payment status,Checked in at (Europe/Amsterdam),Member since,Earlier events attended,Company,LinkedIn,GitHub,Website,Experience,Skills,Interests",
     );
     expect(ada).toBe(
-      'Ada Lovelace,Ada,Lovelace,ada@example.com,Registered,2026-10-01 12:05,,,2026-01-16,2,"Analytical Engines, Ltd",https://linkedin.com/in/ada,,,advanced,math; poetry,',
+      'Ada Lovelace,Ada,Lovelace,ada@example.com,Registered,2026-10-01 12:05,,,2026-10-05 20:04,2026-01-16,2,"Analytical Engines, Ltd",https://linkedin.com/in/ada,,,advanced,math; poetry,',
     );
   });
 
@@ -139,7 +141,7 @@ describe("toAttendeesCsv", () => {
       ),
     );
     expect(old).toBe(
-      "Ada Lovelace,Ada,Lovelace,,Waitlist,2026-10-01 12:05,3,,2026-01-16,2,,,,,,,",
+      "Ada Lovelace,Ada,Lovelace,,Waitlist,2026-10-01 12:05,3,,2026-10-05 20:04,2026-01-16,2,,,,,,,",
     );
   });
 

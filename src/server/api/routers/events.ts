@@ -74,7 +74,11 @@ import {
 import { ensureAccountNames } from "@/server/events/registration-names";
 import type { db as Db } from "@/server/db";
 import { canViewEventAttendees } from "@/server/events/attendee-access";
-import { readAttendeesForOrganizer } from "@/server/events/organizer-attendees";
+import {
+  readAttendeesForOrganizer,
+  resolveOrganizerEvent,
+} from "@/server/events/organizer-attendees";
+import { checkInTransition } from "@/server/events/check-in";
 import {
   canSeeEventOrganizers,
   canSetEventOrganizer,
@@ -1136,6 +1140,64 @@ export const eventsRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
       }
       return view;
+    }),
+
+  /**
+   * Check a registered member in at the door, or undo it (#369). Only the
+   * event's organizer; anyone else gets NOT_FOUND, like the list itself.
+   */
+  setCheckedIn: protectedProcedure
+    .input(
+      z.object({ registrationId: z.string().min(1), checkedIn: z.boolean() }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [registration] = await ctx.db
+        .select({
+          id: eventRegistrations.id,
+          eventId: eventRegistrations.eventId,
+          status: eventRegistrations.status,
+          checkedInAt: eventRegistrations.checkedInAt,
+        })
+        .from(eventRegistrations)
+        .where(eq(eventRegistrations.id, input.registrationId))
+        .limit(1);
+      const access = registration
+        ? await resolveOrganizerEvent(ctx.db, userId, {
+            id: registration.eventId,
+          })
+        : null;
+      if (!registration || !access) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Registration not found",
+        });
+      }
+
+      const next = checkInTransition(registration, input.checkedIn);
+      if (!next) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only registered members can be checked in.",
+        });
+      }
+
+      await ctx.db
+        .update(eventRegistrations)
+        .set(next)
+        .where(eq(eventRegistrations.id, registration.id));
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: input.checkedIn ? "event.check_in" : "event.check_in_undo",
+        targetType: "event",
+        targetId: String(registration.eventId),
+        communityId: access.community.id,
+        metadata: { registrationId: registration.id },
+      });
+
+      return next;
     }),
 
   /**

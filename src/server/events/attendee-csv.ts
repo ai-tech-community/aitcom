@@ -15,6 +15,8 @@ export interface AttendeeCsvLabels {
   registeredAt: (timezone: string) => string;
   waitlistPlace: string;
   paymentStatus: string;
+  /** Takes the timezone, like registeredAt. */
+  checkedInAt: (timezone: string) => string;
   memberSince: string;
   earlierEvents: string;
   company: string;
@@ -79,6 +81,7 @@ export function toAttendeesCsv(
     l.registeredAt(zone),
     l.waitlistPlace,
     l.paymentStatus,
+    l.checkedInAt(zone),
     l.memberSince,
     l.earlierEvents,
     l.company,
@@ -100,6 +103,7 @@ export function toAttendeesCsv(
     when(row.registeredAt),
     row.waitlistPosition,
     row.paymentStatus,
+    when(row.checkedInAt),
     day(row.communityMemberSince),
     row.pastEventsAttended,
     row.profile?.company,

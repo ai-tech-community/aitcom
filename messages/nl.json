@@ -349,9 +349,14 @@
         "registeredAt": "Aangemeld op ({timezone})",
         "waitlistPlace": "Plek op wachtlijst",
         "paymentStatus": "Betaalstatus",
+        "checkedInAt": "Ingecheckt op ({timezone})",
         "memberSince": "Lid van de community sinds",
         "earlierEvents": "Eerdere evenementen bijgewoond"
-      }
+      },
+      "checkIn": "Inchecken",
+      "checkedInAt": "Ingecheckt {time}",
+      "undoCheckIn": "Ongedaan maken",
+      "checkInError": "De check-in kon niet worden opgeslagen. Probeer het opnieuw."
     },
     "editor": {
       "sectionsNav": "Onderdelen van het evenementformulier",

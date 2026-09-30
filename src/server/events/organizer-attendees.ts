@@ -33,11 +33,17 @@ export interface OrganizerAttendeesView extends EventAttendees {
  * attendee surface takes (the page's API, the CSV download), so the access
  * rule and the privacy rule cannot drift between them.
  */
-export async function readAttendeesForOrganizer(
+/**
+ * The native event `viewerId` organizes, with its community, or null — the
+ * access half of every organizer action (the list, the CSV, check-in).
+ * Cheap exit before any membership query: most callers are not the
+ * organizer.
+ */
+export async function resolveOrganizerEvent(
   db: typeof Db,
   viewerId: string,
   ref: { id: number } | { slug: string },
-): Promise<OrganizerAttendeesView | null> {
+) {
   const payload = await getPayloadClient();
   const event =
     "id" in ref
@@ -55,7 +61,6 @@ export async function readAttendeesForOrganizer(
             depth: 0,
           })
         ).docs[0];
-  // Cheap exit before any membership query: most callers are not the organizer.
   if (!event?.communityId || event.organizerId !== viewerId) return null;
 
   const community = await db.query.communities.findFirst({
@@ -75,6 +80,23 @@ export async function readAttendeesForOrganizer(
     columns: { status: true },
   });
   if (!canViewEventAttendees({ event, viewerId, membership })) return null;
+  return { payload, event, community };
+}
+
+/**
+ * The attendee list as the event organizer sees it (ADR-0038), or null for
+ * anyone else — the caller answers null with NOT_FOUND. The one path every
+ * attendee surface takes (the page's API, the CSV download), so the access
+ * rule and the privacy rule cannot drift between them.
+ */
+export async function readAttendeesForOrganizer(
+  db: typeof Db,
+  viewerId: string,
+  ref: { id: number } | { slug: string },
+): Promise<OrganizerAttendeesView | null> {
+  const access = await resolveOrganizerEvent(db, viewerId, ref);
+  if (!access) return null;
+  const { payload, event, community } = access;
 
   // Past attendance counts this community's events before this one.
   const { docs: earlier } = await payload.find({

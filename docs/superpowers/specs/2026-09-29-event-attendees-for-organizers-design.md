@@ -321,16 +321,25 @@ Kicker `/ ATTENDEES`.
 
 ## 5. Check-in
 
-`events.setCheckedIn({ registrationId, checkedIn: boolean })`, protected
-by `canViewEventAttendees` for the registration's event.
+`events.setCheckedIn({ registrationId, checkedIn: boolean })`. Only the
+event's organizer may use it: the access half of the reader,
+`resolveOrganizerEvent` (`src/server/events/organizer-attendees.ts`), is
+shared by the list, the CSV and check-in. Anyone else gets `NOT_FOUND`.
 
-- Checking in: `registered` → `attended`, and `checked_in_at = now()`.
+The rule is `checkInTransition` (`src/server/events/check-in.ts`), a pure
+function:
+
+- Check in: `registered` → `attended`, with `checked_in_at = now()`. Checking
+  in someone already in keeps the first time, so a double tap changes
+  nothing.
 - Undo: `attended` → `registered`, and `checked_in_at = null`.
-- Any other status is refused. Waitlisted and cancelled members cannot be
-  checked in.
-- It is logged as an `event.check_in` activity event.
+- Waitlisted, awaiting payment, cancelled and failed registrations are
+  refused (`BAD_REQUEST`): they never held a seat.
+- It is logged as `event.check_in` / `event.check_in_undo` activity.
 
-On the page, one button per row: "Check in", or "Checked in 18:04 · Undo".
+Each row on the Attendees page shows "Check in", or "Checked in 18:04" with
+Undo. The CSV has a "Checked in at" column in the event's timezone.
+Migration `20260930b` adds `event_registration.checked_in_at`.
 
 ## 6. Tests
 
