@@ -47,6 +47,8 @@ import { toast } from "sonner";
 
 import { SignUpForm } from "./signup-form";
 
+const NO_OAUTH_PROVIDERS = { google: false, github: false, linkedin: false };
+
 describe("SignUpForm post-signup landing", () => {
   beforeEach(() => {
     mockSignUpEmail.mockReset();
@@ -59,7 +61,7 @@ describe("SignUpForm post-signup landing", () => {
   it("sends verification and OAuth callbacks to Hub, not the homepage", async () => {
     mockSignUpEmail.mockResolvedValue({ error: null });
 
-    render(<SignUpForm linkedinEnabled={false} />);
+    render(<SignUpForm oauthProviders={NO_OAUTH_PROVIDERS} />);
 
     expect(screen.getByTestId("social-oauth")).toHaveTextContent(
       "/en/communities/ait",
@@ -92,7 +94,7 @@ describe("SignUpForm post-signup landing", () => {
       data: { user: { id: "user-1" } },
     });
 
-    render(<SignUpForm linkedinEnabled={false} />);
+    render(<SignUpForm oauthProviders={NO_OAUTH_PROVIDERS} />);
 
     expect(mockReplace).toHaveBeenCalledWith("/en/communities/ait");
     expect(mockReplace).not.toHaveBeenCalledWith("/");
@@ -103,7 +105,7 @@ describe("SignUpForm post-signup landing", () => {
       error: { message: "Invalid origin", status: 403 },
     });
 
-    render(<SignUpForm linkedinEnabled={false} />);
+    render(<SignUpForm oauthProviders={NO_OAUTH_PROVIDERS} />);
     fillSignupForm();
     fireEvent.click(screen.getByRole("button", { name: "signUp" }));
 
@@ -117,7 +119,7 @@ describe("SignUpForm post-signup landing", () => {
   it("toasts Invalid origin when signup throws instead of returning error", async () => {
     mockSignUpEmail.mockRejectedValue(new Error("Invalid origin"));
 
-    render(<SignUpForm linkedinEnabled={false} />);
+    render(<SignUpForm oauthProviders={NO_OAUTH_PROVIDERS} />);
     fillSignupForm();
     fireEvent.click(screen.getByRole("button", { name: "signUp" }));
 

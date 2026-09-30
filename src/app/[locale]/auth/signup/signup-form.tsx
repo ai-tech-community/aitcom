@@ -8,13 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SocialOAuthButtons } from "@/components/auth/social-oauth-buttons";
+import type { OAuthProvider } from "@/lib/oauth-providers";
 import { authClient } from "@/server/better-auth/client";
 import { getPostAuthRedirect } from "@/lib/auth-redirect";
 import { getAuthClientErrorMessage } from "@/lib/auth-errors";
 import { getHubCommunityPath } from "@/lib/join-path";
 import { toast } from "sonner";
 
-export function SignUpForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
+export function SignUpForm({
+  oauthProviders,
+}: {
+  oauthProviders: Record<OAuthProvider, boolean>;
+}) {
   const t = useTranslations("auth");
   const locale = useLocale();
   const router = useRouter();
@@ -133,7 +138,7 @@ export function SignUpForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
 
         <SocialOAuthButtons
           callbackURL={target}
-          linkedinEnabled={linkedinEnabled}
+          enabledProviders={oauthProviders}
         />
 
         <p className="text-muted-foreground text-center text-sm">

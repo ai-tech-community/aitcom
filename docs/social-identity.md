@@ -56,14 +56,49 @@ OpenID Connect does not return a public vanity URL. After connect we store
 the LinkedIn `sub` and display name, show a verified badge, and may reuse an
 already-pasted `linkedin.com/in/...` URL as the href.
 
+## Google
+
+Google is a sign-in method only. It is **not** a verified identity: a
+Gmail address is not a public profile, so nothing is written to
+`app.social_identity` and no badge appears on the profile or `/members`.
+Settings labels a linked Google account "Connected", not "Verified".
+
+When `BETTER_AUTH_GOOGLE_CLIENT_ID` and `BETTER_AUTH_GOOGLE_CLIENT_SECRET`
+are both set, "Continue with Google" appears first on sign-in and sign-up,
+and Settings offers Connect Google. Detection is the same request-time read
+as LinkedIn.
+
+Create an OAuth client in Google Cloud Console (Google Auth Platform →
+Clients → Web application) with redirect URI:
+
+```
+{BETTER_AUTH_URL}/api/auth/callback/google
+```
+
+Google accepts exact redirect URIs only, so Google sign-in works on
+production and localhost but not on `*.vercel.app` previews.
+
+Google is a trusted linking provider: signing in with Google using the same
+email as an existing email+password account joins that account (Google
+verifies email ownership).
+
+## Provider registry
+
+`src/lib/oauth-providers.ts` lists every OAuth sign-in provider, its env
+vars, and display order. Better Auth config, the auth-page buttons,
+Settings, `members.getAuthProviders`, and `members.disconnectSocial` all
+read it. Adding a provider is one registry entry plus its icon in
+`src/components/auth/oauth-provider-icon.tsx` and its copy keys.
+
 ## Connect / disconnect
 
 - Sign-in / sign-up: Continue with LinkedIn (same callback
   `{BETTER_AUTH_URL}/api/auth/callback/linkedin`)
+- Sign-in / sign-up: Continue with Google (when configured)
 - Settings: `/[locale]/dashboard/settings` — connect via `linkSocial`
 - Disconnect uses `members.disconnectSocial`
-- Neither GitHub nor LinkedIn can be disconnected if it is the only
-  remaining sign-in method
+- No OAuth provider (Google, GitHub, LinkedIn) can be disconnected if it
+  is the only remaining sign-in method
 
 ## Schema
 
@@ -90,19 +125,28 @@ already-pasted `linkedin.com/in/...` URL as the href.
 
 4. **LinkedIn (credentials set)**
    - Sign-in and sign-up show **Continue with LinkedIn** next to GitHub.
-   - Settings shows Connect LinkedIn (not the “not configured” copy).
+   - Settings shows Connect LinkedIn.
    - Completing OAuth verifies the identity on the public profile.
    - Pasting a LinkedIn URL in the profile form without connecting does
      **not** show a verified badge.
 
 5. **LinkedIn (credentials unset)**
-   - Settings shows the “not configured” copy. App still boots.
+   - Settings hides LinkedIn unless the member already linked it. App
+     still boots.
 
-6. **Agent**
+6. **Google (credentials set)**
+   - Sign-in and sign-up show **Continue with Google** first.
+   - New Google user lands signed in; Settings shows Google "Connected"
+     with no handle; profile and `/members` show no Google mark.
+   - Email+password user with the same address signs in with Google →
+     same account (no duplicate).
+   - Google-only user cannot disconnect Google (hint shown).
+
+7. **Agent**
    - Owner connects GitHub + LinkedIn.
    - Agent public page (`/members/{id}/agent`) may show GitHub.
    - Agent page must not show LinkedIn.
 
-7. **Existing pasted URLs**
+8. **Existing pasted URLs**
    - Greg-style profiles still show website / unverified icons when OAuth
      is missing. Verified OAuth identity wins when both exist.

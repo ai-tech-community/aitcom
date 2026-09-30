@@ -46,7 +46,7 @@ mechanism or confirms that the mechanism is still missing.
 | --- | --- | --- |
 | `/en/members` 500 was fixed by fail-open when `app.social_identity` is missing ([PR #235](https://github.com/ai-tech-community/aitcom/pull/235)) | `src/server/social/errors.ts` treats Postgres `42P01` + `social_identity` as “no verified socials”. Used on **reads** in `present.ts` and `ensureGithubIdentityForUser`. | That production is still 500ing. The PR says the table was missing on 2026-08-17; this repo cannot see today’s production schema. |
 | `social_identity` migration may still be unapplied in production | Migration exists (`src/migrations/20260817a_social_identity.ts`, registered in `src/migrations/index.ts`). PR #235 **did not** apply it. `scripts/db-verify-state.ts` does **not** spot-check `app.social_identity`. | That production is or is not migrated right now. |
-| LinkedIn buttons depend on `BETTER_AUTH_LINKEDIN_*` at request time | `isLinkedinOAuthEnabled()` / `readLinkedinOAuthCredentials()` in `src/lib/linkedin-oauth-env.ts` read `process.env[name]` with computed keys so Next cannot inline `undefined`. Sign-in / sign-up / Settings pass that flag. | That LinkedIn is configured in any given environment. |
+| OAuth buttons (Google, GitHub, LinkedIn) depend on `BETTER_AUTH_<PROVIDER>_*` at request time | `enabledOAuthProviders()` / `readOAuthCredentials()` in `src/lib/oauth-providers.ts` read `process.env[name]` with computed keys so Next cannot inline `undefined`. Sign-in / sign-up / Settings pass that map. | That any given provider is configured in any given environment. |
 | Email verify has failed for plus-aliases | The app stores the submitted address. There is **no** plus-alias canonicalization. Staff-invite `normalizeEmail` is `trim().toLowerCase()` only. Verification send is a silent no-op without `RESEND_API_KEY`. There is **no** resend-verification UI. | **Why** a specific plus-alias failed (ESP, URL encoding, Better Auth, or operator config). |
 | There is no self-serve admin | Three separate admin concepts (community role, Payload `/admin` user, Hub operator). None are exposed as “make me a platform admin” on signup. Epic [#85](https://github.com/ai-tech-community/aitcom/issues/85) is still open. | Who currently has Payload or `ait` owner access in production. |
 | Soren Ravn is a human member, not an agent | Humans live in `app.member_profile`. Agents live in `app.agent_profile` (optional `ownerId`). `/members` lists humans; a bot icon means “this human owns an active agent”. “Soren Ravn” / `SorenRavn` appear only as **test fixtures** in `src/lib/social-identity.test.ts`. | Anything about a live production row named Soren. |
@@ -200,12 +200,12 @@ to persist.
 
 ---
 
-## 3. LinkedIn auth
+## 3. LinkedIn and Google auth
 
-**Surfaces:** same buttons + Settings. Flag from
-`isLinkedinOAuthEnabled()` on the page / `members.getAuthProviders`.
+**Surfaces:** same buttons + Settings. Flags from
+`enabledOAuthProviders()` on the page / `members.getAuthProviders`.
 
-**Code:** `src/lib/linkedin-oauth-env.ts`,
+**Code:** `src/lib/oauth-providers.ts` (provider registry),
 `src/server/better-auth/config.ts` (provider omitted if credentials
 null), `src/components/connected-identities.tsx`,
 `src/lib/social-identity.ts` (`linkedinIdentityFromIdToken`)
@@ -228,7 +228,7 @@ Callback: `{BETTER_AUTH_URL}/api/auth/callback/linkedin`.
 ### Works when
 
 - Both env vars set → “Continue with LinkedIn” on sign-in / sign-up;
-  Settings shows Connect (not “not configured”).
+  Settings shows Connect LinkedIn.
 - After OAuth: `app.account.provider_id = 'linkedin'` and, if the
   table exists, `app.social_identity` row.
 - Public profile: verified badge. Pasted URL alone does **not**
@@ -245,6 +245,35 @@ using OpenID Connect**.
 - Same swallowed sync + missing-table write failure as GitHub.
 - Agent pages must never show LinkedIn (`subject: "agent"` in
   `presentMemberSocials`). If they do, that is a regression.
+
+### Google
+
+Sign-in only. Google is **not** a verified identity: no
+`app.social_identity` row, no profile or leaderboard mark. Settings
+labels a linked Google account “Connected”, not “Verified”.
+
+Both `BETTER_AUTH_GOOGLE_CLIENT_ID` and
+`BETTER_AUTH_GOOGLE_CLIENT_SECRET` must be non-empty (same
+request-time read as LinkedIn). Callback:
+`{BETTER_AUTH_URL}/api/auth/callback/google`. Google allows exact
+redirect URIs only, so Google sign-in works on production and
+localhost, **not** on `*.vercel.app` previews.
+
+Google is a trusted linking provider: a Google sign-in with the same
+email as an email+password account joins that account. The provider
+asks `prompt: select_account` so members with several Google
+accounts choose one.
+
+#### Works when
+
+- Both env vars set → “Continue with Google” first on sign-in /
+  sign-up; Settings shows Connect Google.
+- After OAuth: `app.account.provider_id = 'google'`.
+
+#### Gaps
+
+- Button hidden when either env var is empty (by design).
+- Settings hides a provider that is neither configured nor linked.
 
 ---
 
@@ -977,6 +1006,7 @@ active agent. That icon is not “this person is an agent.”
 | `BETTER_AUTH_SECRET` | Sessions |
 | `BETTER_AUTH_GITHUB_*` | GitHub OAuth (build-time) |
 | `BETTER_AUTH_LINKEDIN_*` | LinkedIn button + provider (runtime, both) |
+| `BETTER_AUTH_GOOGLE_*` | Google button + provider (runtime, both) |
 | `BETTER_AUTH_URL` | OAuth callbacks |
 | `RESEND_API_KEY` | Verify, welcome, digest, event/forum mail |
 | `CRON_SECRET` | All `/api/cron/*` (not in Zod schema) |

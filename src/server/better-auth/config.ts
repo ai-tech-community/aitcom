@@ -3,7 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 
 import { env } from "@/env";
-import { readLinkedinOAuthCredentials } from "@/lib/linkedin-oauth-env";
+import { OAUTH_PROVIDERS, readOAuthCredentials } from "@/lib/oauth-providers";
 import { db } from "@/server/db";
 import {
   enrollAfterVerification,
@@ -35,7 +35,9 @@ import {
 } from "./send-verification-email";
 import { createSignInOnReplayedVerification } from "./sign-in-on-replayed-verify";
 
-const linkedinCredentials = readLinkedinOAuthCredentials();
+const githubCredentials = readOAuthCredentials("github");
+const linkedinCredentials = readOAuthCredentials("linkedin");
+const googleCredentials = readOAuthCredentials("google");
 
 const authUrlEnv = {
   BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
@@ -71,7 +73,9 @@ export const auth = betterAuth({
       enabled: true,
       // LinkedIn email is optional and may differ from the member email.
       allowDifferentEmails: true,
-      trustedProviders: ["github", "linkedin"],
+      // Google verifies email ownership, so a Google sign-in with the same
+      // address as an email+password account joins that account.
+      trustedProviders: [...OAUTH_PROVIDERS],
     },
   },
   databaseHooks: {
@@ -186,15 +190,15 @@ export const auth = betterAuth({
     },
   },
   socialProviders: {
-    github: {
-      clientId: env.BETTER_AUTH_GITHUB_CLIENT_ID,
-      clientSecret: env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
-    },
-    ...(linkedinCredentials
+    ...(githubCredentials ? { github: githubCredentials } : {}),
+    ...(linkedinCredentials ? { linkedin: linkedinCredentials } : {}),
+    ...(googleCredentials
       ? {
-          linkedin: {
-            clientId: linkedinCredentials.clientId,
-            clientSecret: linkedinCredentials.clientSecret,
+          google: {
+            ...googleCredentials,
+            // Members with several Google accounts pick one instead of being
+            // signed in silently with whichever is active in the browser.
+            prompt: "select_account" as const,
           },
         }
       : {}),

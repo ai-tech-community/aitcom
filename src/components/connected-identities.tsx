@@ -3,13 +3,22 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { BadgeCheck, Github, Linkedin } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 
+import { OAuthProviderIcon } from "@/components/auth/oauth-provider-icon";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
+import { OAUTH_PROVIDERS, type OAuthProvider } from "@/lib/oauth-providers";
+import { isSocialProvider } from "@/lib/social-identity";
 import { authClient } from "@/server/better-auth/client";
 import { api } from "@/trpc/react";
+
+const COPY_KEYS: Record<OAuthProvider, { title: string; connect: string }> = {
+  google: { title: "googleIdentity", connect: "connectGoogle" },
+  github: { title: "githubIdentity", connect: "connectGithub" },
+  linkedin: { title: "linkedinIdentity", connect: "connectLinkedin" },
+};
 
 export function ConnectedIdentities() {
   const t = useTranslations("dashboard");
@@ -17,7 +26,7 @@ export function ConnectedIdentities() {
   const utils = api.useUtils();
   const { data, isLoading } = api.members.getMyProfile.useQuery();
   const providers = api.members.getAuthProviders.useQuery();
-  const [pending, setPending] = useState<"github" | "linkedin" | null>(null);
+  const [pending, setPending] = useState<OAuthProvider | null>(null);
 
   const disconnect = api.members.disconnectSocial.useMutation({
     onSuccess: async () => {
@@ -30,7 +39,7 @@ export function ConnectedIdentities() {
     onSettled: () => setPending(null),
   });
 
-  async function connect(provider: "github" | "linkedin") {
+  async function connect(provider: OAuthProvider) {
     setPending(provider);
     const { error } = await authClient.linkSocial({
       provider,
@@ -44,8 +53,17 @@ export function ConnectedIdentities() {
 
   if (isLoading || !data) return null;
 
-  const githubConnected = data.accounts.github;
-  const linkedinConnected = data.accounts.linkedin;
+  const handles: Record<OAuthProvider, string | null> = {
+    google: null,
+    github: data.social.github?.handle ? `@${data.social.github.handle}` : null,
+    linkedin: data.social.linkedin?.handle ?? null,
+  };
+
+  // A connected provider stays listed even if its keys are later removed, so
+  // the member can still disconnect it.
+  const visible = OAUTH_PROVIDERS.filter(
+    (provider) => data.accounts[provider] || providers.data?.[provider],
+  );
 
   return (
     <div>
@@ -55,65 +73,35 @@ export function ConnectedIdentities() {
       </p>
 
       <div className="mt-4 space-y-3">
-        <IdentityRow
-          icon={<Github className="h-4 w-4" />}
-          title={t("githubIdentity")}
-          connected={githubConnected}
-          handle={
-            data.social.github?.handle ? `@${data.social.github.handle}` : null
-          }
-          verifiedLabel={t("verified")}
-          actionLabel={
-            githubConnected ? t("disconnectGithub") : t("connectGithub")
-          }
-          pending={pending === "github" || disconnect.isPending}
-          disabled={githubConnected && !data.canDisconnect.github}
-          disabledReason={t("disconnectGithubNeedPassword")}
-          onClick={() => {
-            if (githubConnected) {
-              setPending("github");
-              disconnect.mutate({ provider: "github" });
-              return;
-            }
-            void connect("github");
-          }}
-        />
-
-        {data.linkedinConnectAvailable || providers.data?.linkedin ? (
-          <IdentityRow
-            icon={<Linkedin className="h-4 w-4" />}
-            title={t("linkedinIdentity")}
-            connected={linkedinConnected}
-            handle={data.social.linkedin?.handle ?? null}
-            verifiedLabel={t("verified")}
-            actionLabel={
-              linkedinConnected ? t("disconnectLinkedin") : t("connectLinkedin")
-            }
-            pending={pending === "linkedin" || disconnect.isPending}
-            disabled={linkedinConnected && !data.canDisconnect.linkedin}
-            disabledReason={t("disconnectGithubNeedPassword")}
-            onClick={() => {
-              if (linkedinConnected) {
-                setPending("linkedin");
-                disconnect.mutate({ provider: "linkedin" });
-                return;
+        {visible.map((provider) => {
+          const connected = data.accounts[provider];
+          return (
+            <IdentityRow
+              key={provider}
+              icon={<OAuthProviderIcon provider={provider} />}
+              title={t(COPY_KEYS[provider].title)}
+              connected={connected}
+              handle={handles[provider]}
+              connectedLabel={
+                isSocialProvider(provider) ? t("verified") : t("connected")
               }
-              void connect("linkedin");
-            }}
-          />
-        ) : (
-          <div className="border-border rounded border px-3 py-3">
-            <div className="flex items-center gap-2">
-              <Linkedin className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                {t("linkedinIdentity")}
-              </span>
-            </div>
-            <p className="text-muted-foreground mt-1 font-mono text-xs tracking-wider">
-              {t("linkedinNotConfigured")}
-            </p>
-          </div>
-        )}
+              actionLabel={
+                connected ? t("disconnect") : t(COPY_KEYS[provider].connect)
+              }
+              pending={pending === provider || disconnect.isPending}
+              disabled={connected && !data.canDisconnect[provider]}
+              disabledReason={t("disconnectNeedAnotherSignIn")}
+              onClick={() => {
+                if (connected) {
+                  setPending(provider);
+                  disconnect.mutate({ provider });
+                  return;
+                }
+                void connect(provider);
+              }}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -124,7 +112,7 @@ function IdentityRow({
   title,
   connected,
   handle,
-  verifiedLabel,
+  connectedLabel,
   actionLabel,
   pending,
   disabled,
@@ -135,7 +123,7 @@ function IdentityRow({
   title: string;
   connected: boolean;
   handle: string | null;
-  verifiedLabel: string;
+  connectedLabel: string;
   actionLabel: string;
   pending: boolean;
   disabled?: boolean;
@@ -151,7 +139,7 @@ function IdentityRow({
           {connected && (
             <span className="border-border text-foreground inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-xs tracking-wider uppercase">
               <BadgeCheck className="h-3 w-3" aria-hidden="true" />
-              {verifiedLabel}
+              {connectedLabel}
             </span>
           )}
         </div>

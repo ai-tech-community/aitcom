@@ -1,17 +1,17 @@
 import { Suspense } from "react";
 
-import { isLinkedinOAuthEnabled } from "@/lib/linkedin-oauth-env";
+import { enabledOAuthProviders } from "@/lib/oauth-providers";
 
 import { SignUpForm } from "./signup-form";
 
 export const dynamic = "force-dynamic";
 
 export default function SignUpPage() {
-  const linkedinEnabled = isLinkedinOAuthEnabled();
+  const oauthProviders = enabledOAuthProviders();
 
   return (
     <Suspense fallback={null}>
-      <SignUpForm linkedinEnabled={linkedinEnabled} />
+      <SignUpForm oauthProviders={oauthProviders} />
     </Suspense>
   );
 }
