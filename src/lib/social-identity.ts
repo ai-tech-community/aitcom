@@ -126,33 +126,6 @@ export function linkedinIdentityFromIdToken(
   };
 }
 
-export function isLinkedinOAuthConfigured(env: {
-  BETTER_AUTH_LINKEDIN_CLIENT_ID?: string;
-  BETTER_AUTH_LINKEDIN_CLIENT_SECRET?: string;
-}): boolean {
-  const id = env.BETTER_AUTH_LINKEDIN_CLIENT_ID?.trim();
-  const secret = env.BETTER_AUTH_LINKEDIN_CLIENT_SECRET?.trim();
-  return Boolean(id && secret);
-}
-
-/**
- * A provider may be disconnected only when another sign-in method remains
- * (password, GitHub, or LinkedIn).
- */
-export function canDisconnectProvider(
-  provider: SocialProvider,
-  accounts: { providerId: string }[],
-): { ok: true } | { ok: false; reason: "last_sign_in" } {
-  const remainingSignIn = accounts.filter(
-    (account) => account.providerId !== provider,
-  );
-
-  if (remainingSignIn.length === 0) {
-    return { ok: false, reason: "last_sign_in" };
-  }
-  return { ok: true };
-}
-
 export function presentPublicSocials(opts: {
   identities: VerifiedSocialIdentity[];
   pasted: PastedSocialUrls;

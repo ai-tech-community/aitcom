@@ -1,16 +1,17 @@
 import { betterAuth } from "better-auth";
+import { eq } from "drizzle-orm";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 
 import { env } from "@/env";
-import { readLinkedinOAuthCredentials } from "@/lib/linkedin-oauth-env";
+import { readOAuthCredentials } from "@/lib/oauth-providers";
 import { db } from "@/server/db";
 import {
   enrollAfterVerification,
   enrollForCreatedUser,
   enrollOnSessionCreated,
 } from "@/server/db/enroll-on-auth";
-import { memberProfiles } from "@/server/db/schema";
+import { account as accountTable, memberProfiles } from "@/server/db/schema";
 import { defaultDisplayName } from "@/server/members/default-display-name";
 import { checkEarlyAdopterBadge } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
@@ -19,6 +20,7 @@ import { getResend } from "@/server/email";
 import {
   redeemForCreatedUser,
   redeemAfterVerification,
+  redeemOnSessionCreated,
 } from "@/server/hackathon/redeem-on-auth";
 import {
   onAuthAccountCreated,
@@ -33,9 +35,17 @@ import {
   isEmailVerificationRequired,
   sendVerificationEmail,
 } from "./send-verification-email";
+import {
+  createProviderVerificationGuard,
+  releaseUnprovenPassword,
+  revertProviderVerification,
+} from "./release-unproven-password";
 import { createSignInOnReplayedVerification } from "./sign-in-on-replayed-verify";
+import { createUnlinkGuard } from "./unlink-guard";
 
-const linkedinCredentials = readLinkedinOAuthCredentials();
+const githubCredentials = readOAuthCredentials("github");
+const linkedinCredentials = readOAuthCredentials("linkedin");
+const googleCredentials = readOAuthCredentials("google");
 
 const authUrlEnv = {
   BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
@@ -50,6 +60,14 @@ const authUrlEnv = {
 };
 
 const sessionCookieDomain = resolveSessionCookieDomain(authUrlEnv);
+
+// Pre-account-takeover guard: an OAuth sign-in that proves the email of an
+// account still waiting for confirmation drops that account's password.
+const providerVerificationGuard = createProviderVerificationGuard({
+  emailVerificationRequired: isEmailVerificationRequired(env.RESEND_API_KEY),
+  release: (userId) => releaseUnprovenPassword(db, userId),
+  revert: (userId) => revertProviderVerification(db, userId),
+});
 
 export const auth = betterAuth({
   baseURL: resolveBetterAuthBaseUrl(authUrlEnv),
@@ -69,9 +87,12 @@ export const auth = betterAuth({
   account: {
     accountLinking: {
       enabled: true,
-      // LinkedIn email is optional and may differ from the member email.
+      // Settings may link a provider whose email differs from the member's.
       allowDifferentEmails: true,
-      trustedProviders: ["github", "linkedin"],
+      // No trustedProviders: "trusted" would join an existing account by
+      // email even when the provider has not verified that email — anyone
+      // could then sign in as a member by registering the member's address
+      // with the provider. A join requires the provider's verified email.
     },
   },
   databaseHooks: {
@@ -95,10 +116,23 @@ export const auth = betterAuth({
           await enrollOnSessionCreated(session).catch(() => {
             /* non-blocking: getMyCommunities also self-heals */
           });
+          // Same self-heal for staff invites: an OAuth join can verify an
+          // email without afterEmailVerification running.
+          await redeemOnSessionCreated(session).catch(() => {
+            /* non-blocking */
+          });
         },
       },
     },
     user: {
+      update: {
+        before: async (data, ctx) => {
+          providerVerificationGuard.before(data, ctx);
+        },
+        after: async (updated, ctx) => {
+          await providerVerificationGuard.after(updated, ctx);
+        },
+      },
       create: {
         after: async (user) => {
           const displayName = defaultDisplayName(user);
@@ -186,15 +220,15 @@ export const auth = betterAuth({
     },
   },
   socialProviders: {
-    github: {
-      clientId: env.BETTER_AUTH_GITHUB_CLIENT_ID,
-      clientSecret: env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
-    },
-    ...(linkedinCredentials
+    ...(githubCredentials ? { github: githubCredentials } : {}),
+    ...(linkedinCredentials ? { linkedin: linkedinCredentials } : {}),
+    ...(googleCredentials
       ? {
-          linkedin: {
-            clientId: linkedinCredentials.clientId,
-            clientSecret: linkedinCredentials.clientSecret,
+          google: {
+            ...googleCredentials,
+            // Members with several Google accounts pick one instead of being
+            // signed in silently with whichever is active in the browser.
+            prompt: "select_account" as const,
           },
         }
       : {}),
@@ -211,6 +245,12 @@ export const auth = betterAuth({
   // human click without a session; this hook mints one and rebuilds the
   // 302 with Set-Cookie the same way first-verify does.
   hooks: {
+    before: createUnlinkGuard((userId) =>
+      db
+        .select({ providerId: accountTable.providerId })
+        .from(accountTable)
+        .where(eq(accountTable.userId, userId)),
+    ),
     after: createSignInOnReplayedVerification({
       enroll: enrollOnSessionCreated,
     }),

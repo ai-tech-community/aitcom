@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 
 import { fetchGithubProfile } from "@/lib/github-profile";
 import {
+  isSocialProvider,
   linkedinIdentityFromIdToken,
   type SocialProvider,
 } from "@/lib/social-identity";
@@ -181,11 +182,11 @@ export async function onAuthAccountDeleted(deleted: {
   userId: string;
   providerId: string;
 }): Promise<void> {
-  if (deleted.providerId !== "github" && deleted.providerId !== "linkedin") {
-    return;
-  }
+  const provider = deleted.providerId;
+  // Sign-in-only providers (Google) have no verified identity to clear.
+  if (!isSocialProvider(provider)) return;
   try {
-    await clearVerifiedIdentity(db, deleted.userId, deleted.providerId);
+    await clearVerifiedIdentity(db, deleted.userId, provider);
   } catch {
     // non-blocking
   }

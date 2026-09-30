@@ -60,6 +60,8 @@ vi.mock("sonner", () => ({
 
 import { SignInForm } from "./signin-form";
 
+const NO_OAUTH_PROVIDERS = { google: false, github: false, linkedin: false };
+
 describe("SignInForm EMAIL_NOT_VERIFIED", () => {
   beforeEach(() => {
     mockSignInEmail.mockReset();
@@ -76,7 +78,7 @@ describe("SignInForm EMAIL_NOT_VERIFIED", () => {
     });
     mockSendVerificationEmail.mockResolvedValue({ error: null });
 
-    render(<SignInForm linkedinEnabled={false} />);
+    render(<SignInForm oauthProviders={NO_OAUTH_PROVIDERS} />);
 
     fireEvent.change(screen.getByLabelText("EMAIL"), {
       target: { value: "greg+qa-human@klevox.com" },
@@ -104,7 +106,7 @@ describe("SignInForm EMAIL_NOT_VERIFIED", () => {
   it("lands in Hub after a successful sign-in with no redirect param", async () => {
     mockSignInEmail.mockResolvedValue({ error: null });
 
-    render(<SignInForm linkedinEnabled={false} />);
+    render(<SignInForm oauthProviders={NO_OAUTH_PROVIDERS} />);
 
     expect(screen.getByTestId("social-oauth")).toHaveTextContent(
       "/en/communities/ait",
@@ -143,7 +145,7 @@ describe("SignInForm EMAIL_NOT_VERIFIED", () => {
     });
     mockSignInEmail.mockResolvedValue({ error: null });
 
-    render(<SignInForm linkedinEnabled={false} />);
+    render(<SignInForm oauthProviders={NO_OAUTH_PROVIDERS} />);
 
     fireEvent.change(screen.getByLabelText("EMAIL"), {
       target: { value: "ada@example.com" },

@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  canDisconnectProvider,
   decodeJwtPayload,
   githubProfileUrl,
-  isLinkedinOAuthConfigured,
   isSocialProvider,
   linkedinIdentityFromIdToken,
   parseGithubHandle,
@@ -84,70 +82,11 @@ describe("decodeJwtPayload / linkedinIdentityFromIdToken", () => {
   });
 });
 
-describe("isLinkedinOAuthConfigured", () => {
-  it("requires both env vars", () => {
-    expect(isLinkedinOAuthConfigured({})).toBe(false);
-    expect(
-      isLinkedinOAuthConfigured({ BETTER_AUTH_LINKEDIN_CLIENT_ID: "id" }),
-    ).toBe(false);
-    expect(
-      isLinkedinOAuthConfigured({
-        BETTER_AUTH_LINKEDIN_CLIENT_ID: "id",
-        BETTER_AUTH_LINKEDIN_CLIENT_SECRET: "secret",
-      }),
-    ).toBe(true);
-    expect(
-      isLinkedinOAuthConfigured({
-        BETTER_AUTH_LINKEDIN_CLIENT_ID: "  id  ",
-        BETTER_AUTH_LINKEDIN_CLIENT_SECRET: "  secret  ",
-      }),
-    ).toBe(true);
-    expect(
-      isLinkedinOAuthConfigured({
-        BETTER_AUTH_LINKEDIN_CLIENT_ID: "   ",
-        BETTER_AUTH_LINKEDIN_CLIENT_SECRET: "secret",
-      }),
-    ).toBe(false);
-  });
-});
-
 describe("isSocialProvider", () => {
   it("accepts github and linkedin only", () => {
     expect(isSocialProvider("github")).toBe(true);
     expect(isSocialProvider("linkedin")).toBe(true);
     expect(isSocialProvider("google")).toBe(false);
-  });
-});
-
-describe("canDisconnectProvider", () => {
-  it("blocks disconnecting GitHub when it is the only sign-in method", () => {
-    expect(canDisconnectProvider("github", [{ providerId: "github" }])).toEqual(
-      { ok: false, reason: "last_sign_in" },
-    );
-  });
-
-  it("allows disconnecting GitHub when LinkedIn remains as a sign-in", () => {
-    expect(
-      canDisconnectProvider("github", [
-        { providerId: "github" },
-        { providerId: "linkedin" },
-      ]),
-    ).toEqual({ ok: true });
-  });
-
-  it("allows disconnecting GitHub when a password exists", () => {
-    expect(
-      canDisconnectProvider("github", [
-        { providerId: "github" },
-        { providerId: "credential" },
-      ]),
-    ).toEqual({ ok: true });
-  });
-
-  it("blocks disconnecting LinkedIn when it is the only sign-in method", () => {
-    expect(
-      canDisconnectProvider("linkedin", [{ providerId: "linkedin" }]),
-    ).toEqual({ ok: false, reason: "last_sign_in" });
   });
 });
 

@@ -29,9 +29,14 @@ import {
 } from "@/lib/gamification";
 import { getAvatarUrl } from "@/lib/avatar";
 import { personNameSchema } from "@/lib/person-name";
-import { isLinkedinOAuthEnabled } from "@/lib/linkedin-oauth-env";
+import {
+  OAUTH_PROVIDERS,
+  canDisconnectProvider,
+  enabledOAuthProviders,
+  mapOAuthProviders,
+} from "@/lib/oauth-providers";
 import { auth } from "@/server/better-auth";
-import { canDisconnectProvider } from "@/lib/social-identity";
+import { isSocialProvider } from "@/lib/social-identity";
 import {
   clearVerifiedIdentity,
   ensureGithubIdentityForUser,
@@ -121,23 +126,20 @@ export const membersRouter = createTRPCRouter({
       })),
       social: toPublicSocialJson(social),
       accounts: {
-        github: accounts.some((a) => a.providerId === "github"),
-        linkedin: accounts.some((a) => a.providerId === "linkedin"),
+        ...mapOAuthProviders((provider) =>
+          accounts.some((a) => a.providerId === provider),
+        ),
         password: accounts.some((a) => a.providerId === "credential"),
       },
-      canDisconnect: {
-        github: canDisconnectProvider("github", accounts).ok,
-        linkedin: canDisconnectProvider("linkedin", accounts).ok,
-      },
-      linkedinConnectAvailable: isLinkedinOAuthEnabled(),
+      canDisconnect: mapOAuthProviders(
+        (provider) =>
+          canDisconnectProvider(provider, accounts, enabledOAuthProviders()).ok,
+      ),
     };
   }),
 
   /** Public flag for auth pages — request-time env, not a build-time snapshot. */
-  getAuthProviders: publicProcedure.query(() => ({
-    github: true,
-    linkedin: isLinkedinOAuthEnabled(),
-  })),
+  getAuthProviders: publicProcedure.query(() => enabledOAuthProviders()),
 
   /**
    * The current user's activity streak, derived from activityEvents (no
@@ -332,9 +334,9 @@ export const membersRouter = createTRPCRouter({
       return { success: true, isNew };
     }),
 
-  /** Disconnect a verified social provider (GitHub / LinkedIn). */
+  /** Disconnect an OAuth sign-in provider (Google / GitHub / LinkedIn). */
   disconnectSocial: protectedProcedure
-    .input(z.object({ provider: z.enum(["github", "linkedin"]) }))
+    .input(z.object({ provider: z.enum(OAUTH_PROVIDERS) }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       const accounts = await ctx.db
@@ -342,7 +344,11 @@ export const membersRouter = createTRPCRouter({
         .from(account)
         .where(eq(account.userId, userId));
 
-      const allowed = canDisconnectProvider(input.provider, accounts);
+      const allowed = canDisconnectProvider(
+        input.provider,
+        accounts,
+        enabledOAuthProviders(),
+      );
       if (!allowed.ok) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
@@ -362,7 +368,9 @@ export const membersRouter = createTRPCRouter({
         });
       }
 
-      await clearVerifiedIdentity(ctx.db, userId, input.provider);
+      if (isSocialProvider(input.provider)) {
+        await clearVerifiedIdentity(ctx.db, userId, input.provider);
+      }
       return { success: true };
     }),
 

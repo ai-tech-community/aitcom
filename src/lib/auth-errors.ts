@@ -37,3 +37,41 @@ export function isEmailNotVerifiedError(
     error.status === 403 && /email not verified/i.test(error.message ?? "")
   );
 }
+
+export type OAuthErrorMessageKey =
+  | "oauthUnverifiedEmail"
+  | "oauthAccountInUse"
+  | "oauthFailed";
+
+/**
+ * Better Auth sends a failed OAuth sign-in or link back to `errorCallbackURL`
+ * with `?error=<code>`. Map the code to a member-facing message key in the
+ * `auth` namespace. A cancelled consent screen (`access_denied`) needs no
+ * message.
+ */
+export function oauthErrorMessageKey(
+  code: string | null | undefined,
+): OAuthErrorMessageKey | null {
+  if (!code || code === "access_denied") return null;
+  // Existing account with this email, but the provider has not verified it
+  // (sign-in), or the provider email is unverified (Settings link).
+  if (code === "account_not_linked" || code === "unable_to_link_account") {
+    return "oauthUnverifiedEmail";
+  }
+  if (code === "account_already_linked_to_different_user") {
+    return "oauthAccountInUse";
+  }
+  return "oauthFailed";
+}
+
+/** Current path and query without a previous OAuth error, for retrying. */
+export function oauthErrorCallbackURL(
+  pathname: string,
+  search: URLSearchParams | null,
+): string {
+  const params = new URLSearchParams(search ?? undefined);
+  params.delete("error");
+  params.delete("error_description");
+  const query = params.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}

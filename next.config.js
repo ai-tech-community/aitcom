@@ -139,6 +139,11 @@ const config = {
         hostname: "media.licdn.com",
       },
       {
+        // Google sign-in profile photos
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
+      {
         protocol: "https",
         hostname: `${process.env.S3_BUCKET}.s3.${process.env.S3_REGION ?? "eu-central-1"}.amazonaws.com`,
       },

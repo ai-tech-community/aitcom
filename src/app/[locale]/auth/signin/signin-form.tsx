@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SocialOAuthButtons } from "@/components/auth/social-oauth-buttons";
+import type { OAuthProvider } from "@/lib/oauth-providers";
 import { authClient } from "@/server/better-auth/client";
 import { pinVerifyRedirectLocation } from "@/server/better-auth/base-url";
 import { getPostAuthRedirect } from "@/lib/auth-redirect";
@@ -21,7 +22,11 @@ function pinPostAuthTarget(target: string) {
   return pinVerifyRedirectLocation(target, window.location.href);
 }
 
-export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
+export function SignInForm({
+  oauthProviders,
+}: {
+  oauthProviders: Record<OAuthProvider, boolean>;
+}) {
   const t = useTranslations("auth");
   const locale = useLocale();
   const router = useRouter();
@@ -191,7 +196,7 @@ export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
 
         <SocialOAuthButtons
           callbackURL={target}
-          linkedinEnabled={linkedinEnabled}
+          enabledProviders={oauthProviders}
         />
 
         <p className="text-muted-foreground text-center text-sm">

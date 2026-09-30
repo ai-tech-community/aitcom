@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   getAuthClientErrorMessage,
   isEmailNotVerifiedError,
+  oauthErrorCallbackURL,
+  oauthErrorMessageKey,
 } from "./auth-errors";
 
 describe("isEmailNotVerifiedError", () => {
@@ -59,6 +61,40 @@ describe("getAuthClientErrorMessage", () => {
     );
     expect(getAuthClientErrorMessage({}, "Sign up failed")).toBe(
       "Sign up failed",
+    );
+  });
+});
+
+describe("oauthErrorMessageKey", () => {
+  it("maps Better Auth OAuth codes to member-facing keys", () => {
+    expect(oauthErrorMessageKey("account_not_linked")).toBe(
+      "oauthUnverifiedEmail",
+    );
+    expect(oauthErrorMessageKey("unable_to_link_account")).toBe(
+      "oauthUnverifiedEmail",
+    );
+    expect(
+      oauthErrorMessageKey("account_already_linked_to_different_user"),
+    ).toBe("oauthAccountInUse");
+    expect(oauthErrorMessageKey("invalid_code")).toBe("oauthFailed");
+  });
+
+  it("stays quiet for no error or a cancelled consent screen", () => {
+    expect(oauthErrorMessageKey(null)).toBeNull();
+    expect(oauthErrorMessageKey("access_denied")).toBeNull();
+  });
+});
+
+describe("oauthErrorCallbackURL", () => {
+  it("keeps the query and drops a previous error", () => {
+    expect(
+      oauthErrorCallbackURL(
+        "/en/auth/signin",
+        new URLSearchParams("redirect=%2Fx&error=a&error_description=b"),
+      ),
+    ).toBe("/en/auth/signin?redirect=%2Fx");
+    expect(oauthErrorCallbackURL("/en/auth/signin", null)).toBe(
+      "/en/auth/signin",
     );
   });
 });
