@@ -1,5 +1,9 @@
 import { and, count, eq, inArray, ne } from "drizzle-orm";
 
+import {
+  ATTENDEE_STATUSES,
+  type AttendeeStatus,
+} from "@/lib/events/attendee-views";
 import type { db as Db } from "@/server/db";
 import {
   communityMemberships,
@@ -15,15 +19,10 @@ import {
  * `loadEventAttendees`, so no surface can forget it.
  */
 
-export const ATTENDEE_STATUSES = [
-  "registered",
-  "waitlisted",
-  "pending_payment",
-  "attended",
-  "cancelled",
-  "payment_failed",
-] as const;
-export type AttendeeStatus = (typeof ATTENDEE_STATUSES)[number];
+export {
+  ATTENDEE_STATUSES,
+  type AttendeeStatus,
+} from "@/lib/events/attendee-views";
 
 export interface PublicProfileDetails {
   company: string | null;

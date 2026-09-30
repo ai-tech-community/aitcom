@@ -194,6 +194,20 @@ describe("OrganizerAttendeeList", () => {
     ).toBeNull();
   });
 
+  it("downloads the view on screen, in the page's language", () => {
+    renderList("nl");
+    const link = screen.getByRole("link", { name: "Download CSV" });
+    expect(link).toHaveAttribute(
+      "href",
+      "/api/events/builders-night/attendees.csv?view=active&locale=nl",
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "Wachtlijst 1" }));
+    expect(link).toHaveAttribute(
+      "href",
+      "/api/events/builders-night/attendees.csv?view=waitlisted&locale=nl",
+    );
+  });
+
   it("searches name, email and company", () => {
     renderList();
     const search = screen.getByRole("searchbox", {

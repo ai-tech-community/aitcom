@@ -67,7 +67,7 @@ import { personNameSchema } from "@/lib/person-name";
 import { ensureAccountNames } from "@/server/events/registration-names";
 import type { db as Db } from "@/server/db";
 import { canViewEventAttendees } from "@/server/events/attendee-access";
-import { loadEventAttendees } from "@/server/events/attendee-details";
+import { readAttendeesForOrganizer } from "@/server/events/organizer-attendees";
 import {
   canSeeEventOrganizers,
   canSetEventOrganizer,
@@ -1052,48 +1052,15 @@ export const eventsRouter = createTRPCRouter({
   attendees: protectedProcedure
     .input(z.object({ eventId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id;
-      const { payload, event, community, membership } =
-        await loadCommunityEventForOrganizer(ctx.db, input.eventId, userId);
-      if (!canViewEventAttendees({ event, viewerId: userId, membership })) {
+      const view = await readAttendeesForOrganizer(
+        ctx.db,
+        ctx.session.user.id,
+        { id: input.eventId },
+      );
+      if (!view) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
       }
-
-      const { docs: earlier } = await payload.find({
-        collection: "events",
-        where: {
-          and: [
-            { communityId: { equals: community.id } },
-            { date: { less_than: event.date } },
-          ],
-        },
-        select: { slug: true },
-        limit: 0,
-        depth: 0,
-      });
-
-      const { counts, rows } = await loadEventAttendees(
-        ctx.db,
-        { id: event.id, communityId: community.id },
-        earlier.map((e) => e.id),
-      );
-
-      return {
-        event: {
-          id: event.id,
-          title: event.title,
-          slug: event.slug,
-          date: event.date,
-          startTime: event.startTime ?? null,
-          endTime: event.endTime ?? null,
-          timezone: event.timezone ?? null,
-          maxAttendees: (event.maxAttendees as number | null) ?? null,
-          isPaid: ((event.price as number | null) ?? 0) > 0,
-        },
-        community: { slug: community.slug, name: community.name },
-        counts,
-        rows,
-      };
+      return view;
     }),
 
   /**
