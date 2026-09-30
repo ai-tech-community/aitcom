@@ -289,6 +289,18 @@ export interface Event {
    * Price in EUR cents (e.g. 1500 = €15.00). Leave empty for free events.
    */
   price?: number | null;
+  /**
+   * Questions members answer when they register (max 10). Edited on the community's event form; answers are seen only by the event organizer (ADR-0038).
+   */
+  registrationQuestions?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   focus?: ('technical' | 'marketing' | 'product' | 'research' | 'mixed') | null;
   level?: ('junior' | 'mid' | 'senior' | 'expert' | 'mixed') | null;
   /**
@@ -1774,6 +1786,7 @@ export interface EventsSelect<T extends boolean = true> {
   resultsDate?: T;
   maxAttendees?: T;
   price?: T;
+  registrationQuestions?: T;
   focus?: T;
   level?: T;
   aitFitScore?: T;

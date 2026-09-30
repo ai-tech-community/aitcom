@@ -4,6 +4,11 @@ import {
   ATTENDEE_STATUSES,
   type AttendeeStatus,
 } from "@/lib/events/attendee-views";
+import {
+  resolveAnswers,
+  type RegistrationQuestion,
+  type ResolvedAnswer,
+} from "@/lib/events/registration-questions";
 import type { db as Db } from "@/server/db";
 import {
   communityMemberships,
@@ -55,6 +60,12 @@ export interface AttendeeDetails {
   pastEventsAttended: number;
   /** Null when the profile is private or missing, or details are not shared. */
   profile: PublicProfileDetails | null;
+  /**
+   * Answers to the event's registration questions, in question order. The
+   * member wrote them for the organizer, so a private profile does not hide
+   * them; registering before the sharing notice does.
+   */
+  answers: ResolvedAnswer[];
 }
 
 /** Everything the loader gathers for one registration. */
@@ -84,6 +95,8 @@ export interface AttendeeSourceRow {
   waitlistPosition: number | null;
   communityMemberSince: Date | null;
   pastEventsAttended: number;
+  /** Already resolved against the event's current questions. */
+  answers: ResolvedAnswer[];
 }
 
 /**
@@ -117,6 +130,7 @@ export function toAttendeeDetails(row: AttendeeSourceRow): AttendeeDetails {
     paymentStatus: row.paymentStatus,
     communityMemberSince: row.communityMemberSince,
     pastEventsAttended: row.pastEventsAttended,
+    answers: detailsShared ? row.answers : [],
     profile:
       detailsShared && profile?.isPublic
         ? {
@@ -148,7 +162,11 @@ export interface EventAttendees {
  */
 export async function loadEventAttendees(
   db: typeof Db,
-  event: { id: number; communityId: string },
+  event: {
+    id: number;
+    communityId: string;
+    questions: readonly RegistrationQuestion[];
+  },
   earlierEventIds: readonly number[],
 ): Promise<EventAttendees> {
   const registrations = await db
@@ -159,6 +177,7 @@ export async function loadEventAttendees(
       registeredAt: eventRegistrations.registeredAt,
       paymentStatus: eventRegistrations.paymentStatus,
       organizerNoticeAt: eventRegistrations.organizerNoticeAt,
+      answers: eventRegistrations.answers,
       name: user.name,
       email: user.email,
       firstName: user.firstName,
@@ -258,6 +277,7 @@ export async function loadEventAttendees(
       waitlistPosition: r.status === "waitlisted" ? ++waitlistPlace : null,
       communityMemberSince: memberSince.get(r.userId) ?? null,
       pastEventsAttended: attended.get(r.userId) ?? 0,
+      answers: resolveAnswers(event.questions, r.answers),
     }),
   );
 

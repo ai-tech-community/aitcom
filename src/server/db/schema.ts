@@ -192,6 +192,15 @@ export const eventRegistrations = appSchema.table(
      * the organizer sees name and status only.
      */
     organizerNoticeAt: d.timestamp({ withTimezone: true }),
+    /**
+     * Answers to the event's registration questions, keyed by question id:
+     * text, or the chosen option id(s). See lib/events/registration-questions.
+     */
+    answers: d
+      .jsonb()
+      .$type<Record<string, string | string[]>>()
+      .notNull()
+      .default({}),
     registeredAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

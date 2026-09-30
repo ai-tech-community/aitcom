@@ -33,6 +33,14 @@ const ROW: Row = {
   waitlistPosition: null,
   communityMemberSince: new Date("2026-01-01T00:00:00Z"),
   pastEventsAttended: 3,
+  answers: [
+    {
+      questionId: "hope",
+      question: "What do you hope to learn?",
+      type: "long_text",
+      value: "Agents",
+    },
+  ],
 };
 
 describe("toAttendeeDetails", () => {
@@ -51,13 +59,15 @@ describe("toAttendeeDetails", () => {
     });
   });
 
-  it("shows name, email and registration only for a private profile", () => {
+  it("shows name, email, registration and answers for a private profile", () => {
     const details = toAttendeeDetails({
       ...ROW,
       profile: { ...PROFILE, isPublic: false },
     });
     expect(details.email).toBe("ada@example.com");
     expect(details.profile).toBeNull();
+    // Answers were written for the organizer; a private profile keeps them.
+    expect(details.answers).toEqual(ROW.answers);
   });
 
   it("works without a member profile", () => {
@@ -74,6 +84,7 @@ describe("toAttendeeDetails", () => {
       email: null,
       detailsShared: false,
       profile: null,
+      answers: [],
     });
   });
 

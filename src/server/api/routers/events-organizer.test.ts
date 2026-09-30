@@ -297,6 +297,49 @@ describe("create paths record the organizer", () => {
     });
   });
 
+  it("createEvent keeps the organizer's registration questions", async () => {
+    findMembership.mockResolvedValue({ role: "admin", status: "active" });
+    const questions = [
+      {
+        id: "q1",
+        type: "short_text" as const,
+        label: " Company ",
+        required: false,
+      },
+    ];
+
+    await caller("admin-1").events.createEvent({
+      ...INPUT,
+      registrationQuestions: questions,
+    });
+
+    expect(payload.create.mock.calls[0]![0].data).toMatchObject({
+      registrationQuestions: [
+        { id: "q1", type: "short_text", label: "Company", required: false },
+      ],
+    });
+  });
+
+  it("createEvent refuses broken registration questions", async () => {
+    findMembership.mockResolvedValue({ role: "admin", status: "active" });
+
+    await expect(
+      caller("admin-1").events.createEvent({
+        ...INPUT,
+        registrationQuestions: [
+          {
+            id: "q1",
+            type: "single_choice",
+            label: "Pick",
+            required: true,
+            options: [{ id: "a", label: "Only one" }],
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+
   it("submitEvent makes the submitting member the organizer", async () => {
     findMembership.mockResolvedValue({ role: "member", status: "active" });
 

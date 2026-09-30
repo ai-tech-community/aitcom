@@ -1,5 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 
+import { parseStoredQuestions } from "@/lib/events/registration-questions";
 import type { db as Db } from "@/server/db";
 import { communities, communityMemberships } from "@/server/db/schema";
 import { canViewEventAttendees } from "@/server/events/attendee-access";
@@ -22,6 +23,8 @@ export interface OrganizerAttendeesView extends EventAttendees {
     isPaid: boolean;
   };
   community: { slug: string; name: string };
+  /** The event's current questions, for column headings. */
+  questions: { id: string; label: string }[];
 }
 
 /**
@@ -87,9 +90,10 @@ export async function readAttendeesForOrganizer(
     depth: 0,
   });
 
+  const questions = parseStoredQuestions(event.registrationQuestions);
   const { counts, rows } = await loadEventAttendees(
     db,
-    { id: event.id, communityId: community.id },
+    { id: event.id, communityId: community.id, questions },
     earlier.map((e) => e.id),
   );
 
@@ -106,6 +110,7 @@ export async function readAttendeesForOrganizer(
       isPaid: ((event.price as number | null) ?? 0) > 0,
     },
     community: { slug: community.slug, name: community.name },
+    questions: questions.map((q) => ({ id: q.id, label: q.label })),
     counts,
     rows,
   };

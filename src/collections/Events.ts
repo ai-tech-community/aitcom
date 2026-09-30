@@ -19,6 +19,7 @@ import { DEFAULT_EVENT_TIMEZONE, isValidTimeZone } from "@/lib/event-time";
 import { geocodeEvent } from "@/server/geocoding/nominatim";
 import { eventDeadlineWarnings } from "@/server/hackathon/deadlines";
 import type { Event } from "@/payload-types";
+import { registrationQuestionsSchema } from "@/lib/events/registration-questions";
 
 function locationChanged(
   doc: Record<string, unknown>,
@@ -386,6 +387,24 @@ export const Events: CollectionConfig = {
               admin: {
                 description:
                   "Price in EUR cents (e.g. 1500 = €15.00). Leave empty for free events.",
+              },
+            },
+            {
+              name: "registrationQuestions",
+              type: "json",
+              // Checked against the shared schema so the admin panel cannot
+              // store a shape the register dialog would misread.
+              validate: (value: unknown) => {
+                const parsed = registrationQuestionsSchema.safeParse(
+                  value ?? [],
+                );
+                return parsed.success
+                  ? true
+                  : `Invalid registration questions: ${parsed.error.issues[0]?.message ?? "unknown shape"}`;
+              },
+              admin: {
+                description:
+                  "Questions members answer when they register (max 10). Edited on the community's event form; answers are seen only by the event organizer (ADR-0038).",
               },
             },
           ],
