@@ -174,7 +174,7 @@ export function EventEditor({
     );
     body = (
       <div className="grid min-h-0 flex-1 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_20rem]">
-        <aside className="border-border hidden overflow-y-auto border-r lg:block">
+        <aside className="border-border relative hidden overflow-y-auto border-r lg:block">
           <EditorSectionNav
             sections={sections}
             finished={finished}
@@ -182,7 +182,13 @@ export function EventEditor({
           />
         </aside>
 
-        <div ref={scrollRef} className="min-w-0 overflow-y-auto scroll-smooth">
+        {/* `relative` on every scrolling column: Radix Select and Checkbox
+            render hidden, absolutely positioned native inputs; without a
+            positioned scroll box they escape it and stretch the page. */}
+        <div
+          ref={scrollRef}
+          className="relative min-w-0 overflow-y-auto scroll-smooth"
+        >
           <form
             id={FORM_ID}
             onSubmit={onSubmit}
@@ -223,7 +229,7 @@ export function EventEditor({
           </div>
         </div>
 
-        <aside className="border-border hidden overflow-y-auto border-l xl:block">
+        <aside className="border-border relative hidden overflow-y-auto border-l xl:block">
           {summary}
         </aside>
       </div>
