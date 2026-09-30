@@ -1,17 +1,12 @@
-import { describe, it, expect, vi } from "vitest";
-
-// event-form-dialog.tsx imports `api` from here for its live queries/mutations
-// — pulling in the real module drags in `@/server/api/root` (every tRPC
-// router, Payload, env validation requiring DATABASE_URL etc). This test only
-// exercises the pure submit-payload helper, so stub it out the same way
-// community-card.test.tsx does for its trpc import.
-vi.mock("@/trpc/react", () => ({ api: {} }));
+import { describe, it, expect } from "vitest";
 
 import {
+  applyImport,
   buildEventSubmitPayload,
   deriveConflictPanelState,
   emptyEventFormData,
-} from "./event-form-dialog";
+  getMutationErrorMessage,
+} from "./event-form-model";
 
 const SLUG = "acme-community";
 
@@ -152,6 +147,92 @@ describe("deriveConflictPanelState", () => {
   it("is conflicts once settled with at least one conflict", () => {
     expect(deriveConflictPanelState({ ...settled, conflictCount: 1 })).toBe(
       "conflicts",
+    );
+  });
+});
+
+const QUESTION = {
+  id: "q1",
+  type: "short_text" as const,
+  label: "Company",
+  required: false,
+};
+
+describe("buildEventSubmitPayload — registration questions", () => {
+  it("always sends the questions, so [] removes them", () => {
+    expect(
+      buildEventSubmitPayload(emptyEventFormData, "edit", SLUG)
+        .registrationQuestions,
+    ).toEqual([]);
+    expect(
+      buildEventSubmitPayload(
+        { ...emptyEventFormData, registrationQuestions: [QUESTION] },
+        "create",
+        SLUG,
+      ).registrationQuestions,
+    ).toEqual([QUESTION]);
+  });
+
+  it("sends none for an event people register for on another site", () => {
+    expect(
+      buildEventSubmitPayload(
+        {
+          ...emptyEventFormData,
+          sourceUrl: "https://lu.ma/x",
+          registrationQuestions: [QUESTION],
+        },
+        "edit",
+        SLUG,
+      ).registrationQuestions,
+    ).toEqual([]);
+  });
+});
+
+describe("applyImport", () => {
+  it("fills what the link found and keeps the rest", () => {
+    const form = { ...emptyEventFormData, title: "Mine", city: "Utrecht" };
+    const result = applyImport(form, {
+      title: "Imported",
+      summary: null,
+      description: null,
+      date: "2026-11-02",
+      startTime: null,
+      endTime: null,
+      location: null,
+      city: null,
+      country: "Netherlands",
+      format: null,
+      sourceUrl: "https://lu.ma/x",
+      coverImageId: null,
+      coverImageUrl: null,
+    });
+    expect(result).toMatchObject({
+      title: "Imported",
+      date: "2026-11-02",
+      city: "Utrecht",
+      country: "Netherlands",
+      sourceUrl: "https://lu.ma/x",
+    });
+  });
+});
+
+describe("getMutationErrorMessage", () => {
+  it("prefers the field message the router exposes", () => {
+    expect(
+      getMutationErrorMessage(
+        { data: { zodError: { fieldErrors: { title: ["Too short"] } } } },
+        "fallback",
+      ),
+    ).toBe("Too short");
+  });
+
+  it("falls back for raw zod dumps and missing messages", () => {
+    expect(getMutationErrorMessage({ message: '[{"code":"x"}]' }, "fb")).toBe(
+      "fb",
+    );
+    expect(getMutationErrorMessage({}, "fb")).toBe("fb");
+    expect(getMutationErrorMessage({ message: "Server said no" }, "fb")).toBe(
+      "Server said no",
     );
   });
 });

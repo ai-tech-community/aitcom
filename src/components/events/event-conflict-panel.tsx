@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Inline scheduling-conflict panel for the event creation/edit dialog
- * (Slice I, #206). Pure display component — the dialog owns the debounced
+ * Inline scheduling-conflict panel for the event editor page
+ * (Slice I, #206). Pure display component — the editor owns the debounced
  * `checkConflicts` query and hands this component a derived `state` plus the
  * raw wire payload. See CONTEXT.md [[scheduling-conflict]] and ADR-0035 for
  * the domain vocabulary; DESIGN.md for the visual rules this panel must
@@ -77,14 +77,14 @@ export interface CheckedAudience {
 export interface EventConflictPanelProps {
   state: ConflictPanelState;
   /** Pre-sorted by the server (most severe first). During a re-check the
-   * dialog keeps passing the *previous* result here (see `lastConflictData`
-   * in event-form-dialog.tsx), so the frame stays rendered — dimmed, with a
+   * editor keeps passing the *previous* result here (see `lastData` in
+   * editor/use-event-conflicts.ts), so the frame stays rendered — dimmed, with a
    * "/ RECHECKING" header — instead of collapsing to a skeleton and shoving
    * every field below it ~180px per debounce cycle. */
   conflicts: WireConflict[];
   checkedAudiences: CheckedAudience[];
   onRetry: () => void;
-  /** Human-readable catchment name (the dialog passes the trimmed `city`
+  /** Human-readable catchment name (the editor passes the trimmed `city`
    * field when non-empty) — named in the "clear" message so "no conflicts"
    * doesn't read as a blanket global guarantee when the check was scoped to
    * a specific place. Omitted entirely (falls back to `conflictClear`) when
@@ -249,7 +249,7 @@ export function ConflictRow({ conflict }: { conflict: WireConflict }) {
 }
 
 /** The (date, startTime, endTime) triple a chip click hands back to the
- * dialog — deliberately narrower than `SlotSuggestion` so `onApply` can never
+ * editor — deliberately narrower than `SlotSuggestion` so `onApply` can never
  * see `reasons`/`dayOffset` and accidentally leak them into form state. */
 export type SlotSuggestionTriple = Pick<
   SlotSuggestion,
@@ -309,7 +309,7 @@ function reasonLabels(
 
 /**
  * One-click alternative-slot chips (Slice I, #207). Pure display + callback —
- * the dialog owns applying a chosen slot to form state and re-running the
+ * the editor owns applying a chosen slot to form state and re-running the
  * debounced conflict check. Mounted via the panel's `children` seam so it
  * only ever renders inside the "conflicts" frame (see `EventConflictPanel`).
  */
@@ -346,7 +346,7 @@ export function SlotSuggestionChips({
               size="sm"
               // h-auto + whitespace-normal: a long NL reason ("Voorkeur van
               // {audience}") must wrap inside the chip instead of overflowing
-              // the 90vh dialog on narrow screens (Button base is nowrap).
+              // narrow screens (Button base is nowrap).
               className="h-auto min-h-8 py-1 whitespace-normal"
               onClick={() =>
                 onApply({

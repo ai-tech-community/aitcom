@@ -7,17 +7,32 @@ import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useRouter } from "@/i18n/navigation";
 import { hasAccountNames } from "@/lib/person-name";
 import {
-  RegistrationNamesDialog,
-  type RegistrationNames,
-} from "@/components/events/registration-names-dialog";
+  ANSWERS_INVALID,
+  canChangeAnswers,
+  type RegistrationAnswers,
+  type RegistrationQuestion,
+} from "@/lib/events/registration-questions";
+import {
+  RegistrationDialog,
+  type RegistrationSubmission,
+} from "@/components/events/registration-dialog";
 
 interface EventRegisterButtonProps {
   eventId: number;
   price?: number | null;
   isExternal?: boolean;
   sourceUrl?: string | null;
+  /** The organizer's registration questions (#369). */
+  questions?: RegistrationQuestion[];
+  /** When the event starts, for "Edit my answers" (until the start). */
+  timing?: {
+    date: string;
+    startTime?: string | null;
+    timezone?: string | null;
+  };
 }
 
 export function EventRegisterButton({
@@ -25,6 +40,8 @@ export function EventRegisterButton({
   price,
   isExternal = false,
   sourceUrl = null,
+  questions = [],
+  timing,
 }: EventRegisterButtonProps) {
   const t = useTranslations("events");
   const tc = useTranslations("common");
@@ -35,7 +52,10 @@ export function EventRegisterButton({
   // First/last name are asked once, before the first registration that
   // shares them with an organizer (ADR-0038).
   const needsNames = !hasAccountNames(session.data?.user ?? {});
-  const [namesOpen, setNamesOpen] = useState(false);
+  // One dialog: names when the account has none, plus the organizer's
+  // questions; or, once registered, just the answers.
+  const [dialog, setDialog] = useState<"register" | "answers" | null>(null);
+  const router = useRouter();
   const isPaid = (price ?? 0) > 0;
 
   const registrationStatus = api.events.registrationStatus.useQuery(
@@ -47,7 +67,7 @@ export function EventRegisterButton({
 
   const registerMutation = api.events.register.useMutation({
     onSuccess: (data) => {
-      setNamesOpen(false);
+      setDialog(null);
       // Names given with this registration are now on the account.
       void session.refetch();
       if (data.alreadyRegistered) {
@@ -67,20 +87,48 @@ export function EventRegisterButton({
     onError: (error) => {
       // The account has no names yet (e.g. a stale session): ask for them.
       if (error.data?.code === "PRECONDITION_FAILED") {
-        setNamesOpen(true);
+        setDialog("register");
+        return;
+      }
+      // The organizer changed the questions since this page loaded: load
+      // the new ones and ask again.
+      if (error.message === ANSWERS_INVALID) {
+        toast.info(t("registration.answersChanged"));
+        router.refresh();
+        setDialog("register");
         return;
       }
       toast.error(error.message || "Registration failed. Please try again.");
     },
   });
 
-  function register(names?: RegistrationNames) {
-    if (!names && needsNames) {
-      setNamesOpen(true);
+  function register(submission?: RegistrationSubmission) {
+    if (!submission && (needsNames || questions.length > 0)) {
+      setDialog("register");
       return;
     }
-    registerMutation.mutate({ eventId, ...names });
+    registerMutation.mutate({
+      eventId,
+      ...submission?.names,
+      answers: submission?.answers,
+    });
   }
+
+  const answersMutation = api.events.updateMyAnswers.useMutation({
+    onSuccess: () => {
+      setDialog(null);
+      toast.success(t("registration.answersSaved"));
+      void utils.events.registrationStatus.invalidate({ eventId });
+    },
+    onError: (error) => {
+      if (error.message === ANSWERS_INVALID) {
+        toast.info(t("registration.answersChanged"));
+        router.refresh();
+        return;
+      }
+      toast.error(t("registration.answersSaveError"));
+    },
+  });
 
   const cancelMutation = api.events.cancelRegistration.useMutation({
     onSuccess: () => {
@@ -197,6 +245,18 @@ export function EventRegisterButton({
             STATUS: {statusLabel}
           </span>
         </div>
+        {questions.length > 0 &&
+        timing &&
+        canChangeAnswers(timing) &&
+        status !== "attended" ? (
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setDialog("answers")}
+          >
+            {t("registration.editAnswers")}
+          </Button>
+        ) : null}
         {status !== "pending_payment" && (
           <Button
             variant="outline"
@@ -207,6 +267,23 @@ export function EventRegisterButton({
             {cancelMutation.isPending ? "Cancelling..." : "Cancel registration"}
           </Button>
         )}
+        {dialog === "answers" ? (
+          <RegistrationDialog
+            open
+            mode="answers"
+            askNames={false}
+            currentName={null}
+            questions={questions}
+            initialAnswers={
+              (registrationStatus.data?.answers ?? {}) as RegistrationAnswers
+            }
+            pending={answersMutation.isPending}
+            onConfirm={({ answers }) =>
+              answersMutation.mutate({ eventId, answers })
+            }
+            onClose={() => setDialog(null)}
+          />
+        ) : null}
       </div>
     );
   }
@@ -246,13 +323,16 @@ export function EventRegisterButton({
       <p className="text-muted-foreground text-xs">
         {t("registration.organizerNotice")}
       </p>
-      {namesOpen ? (
-        <RegistrationNamesDialog
+      {dialog === "register" ? (
+        <RegistrationDialog
           open
+          mode="register"
+          askNames={needsNames}
           currentName={session.data?.user?.name}
+          questions={questions}
           pending={registerMutation.isPending}
-          onConfirm={(names) => register(names)}
-          onClose={() => setNamesOpen(false)}
+          onConfirm={(submission) => register(submission)}
+          onClose={() => setDialog(null)}
         />
       ) : null}
     </div>

@@ -72,12 +72,20 @@ export function ManageHackathonLink({ href }: { href: string }) {
   );
 }
 
-export function EditEventButton({ onEdit }: { onEdit: () => void }) {
+/** The event editor page for an existing community event. */
+export function editEventHref(communitySlug: string, eventSlug: string) {
+  return `/communities/${communitySlug}/events/${eventSlug}/edit`;
+}
+
+/** Opens the event editor: navigation, so a link, not a button. */
+export function EditEventButton({ href }: { href: string }) {
   const t = useTranslations("events");
   return (
-    <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
-      <Pencil aria-hidden="true" />
-      {t("editShort")}
+    <Button asChild variant="ghost" size="sm">
+      <Link href={href}>
+        <Pencil aria-hidden="true" />
+        {t("editShort")}
+      </Link>
     </Button>
   );
 }
@@ -100,16 +108,15 @@ export function CancelEventButton({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-export function ResubmitEventButton({
-  onResubmit,
-}: {
-  onResubmit: () => void;
-}) {
+/** Opens the editor to fix and resubmit a rejected submission. */
+export function ResubmitEventButton({ href }: { href: string }) {
   const t = useTranslations("events");
   return (
-    <Button type="button" variant="outline" size="sm" onClick={onResubmit}>
-      <Pencil aria-hidden="true" />
-      {t("editAndResubmit")}
+    <Button asChild variant="outline" size="sm">
+      <Link href={href}>
+        <Pencil aria-hidden="true" />
+        {t("editAndResubmit")}
+      </Link>
     </Button>
   );
 }

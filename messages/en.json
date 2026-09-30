@@ -237,7 +237,22 @@
       "lastName": "Last name",
       "nameRequired": "Please fill this in.",
       "namesCancel": "Cancel",
-      "namesConfirm": "Register"
+      "namesConfirm": "Register",
+      "questionsTitle": "A few questions from the organizer",
+      "questionsDescription": "Your answers help the organizer plan. Only they see them.",
+      "answersTitle": "Your answers",
+      "answersDescription": "You can change your answers until the event starts. Only the organizer sees them.",
+      "answersSave": "Save answers",
+      "answersSaved": "Your answers are saved.",
+      "answersSaveError": "Your answers could not be saved. Please try again.",
+      "editAnswers": "Edit my answers",
+      "answersChanged": "The organizer changed the questions. Please check your answers.",
+      "required": "required",
+      "answerProblem": {
+        "required": "Please answer this question.",
+        "too_long": "This answer is too long.",
+        "invalid_choice": "Pick one of the options."
+      }
     },
     "formatInPerson": "In person",
     "formatHybrid": "Hybrid",
@@ -288,7 +303,7 @@
       "noMatches": "No one matches",
       "noMatchesHint": "Try another status or name.",
       "viewsLabel": "Show attendees by status",
-      "search": "Search name, email or company",
+      "search": "Search name, email, company or answers",
       "seats": "{taken} of {max} seats taken",
       "summary": {
         "registered": "{count} registered",
@@ -336,6 +351,63 @@
         "paymentStatus": "Payment status",
         "memberSince": "Community member since",
         "earlierEvents": "Earlier events attended"
+      }
+    },
+    "editor": {
+      "sectionsNav": "Sections of the event form",
+      "loadError": "Could not load this event. Please try again.",
+      "saveChanges": "Save changes",
+      "cancel": "Cancel",
+      "removeCover": "Remove cover image",
+      "showCuration": "Show curation fields",
+      "externalLink": "People register on another site",
+      "externalLinkHint": "Paste the link if registration happens on Luma, Meetup or elsewhere. Leave it empty to let people register here.",
+      "externalNoQuestions": "People register on the other site, so there is no seat limit or questions here.",
+      "maxAttendeesHint": "Leave empty for no limit. When it is full, new people join the waitlist.",
+      "sections": {
+        "import": "Start from a link",
+        "basics": "Basics",
+        "basicsHint": "What the event is. The summary shows on event cards.",
+        "audience": "Who it's for",
+        "audienceHint": "Pick who should come. We also use this to warn you about clashing events.",
+        "when": "When",
+        "whenHint": "Times are in the event's own timezone.",
+        "where": "Where",
+        "whereHint": "Online, in person, or both.",
+        "registration": "Registration",
+        "registrationHint": "How people sign up, and what you want to know about them.",
+        "curation": "Curation",
+        "curationHint": "Signals for discovery and ranking. Only community admins see this."
+      },
+      "questions": {
+        "title": "Questions for people who register",
+        "hint": "Ask what you want to know before the event, like their expectations or experience. Only you, as the organizer, see the answers.",
+        "none": "No questions yet.",
+        "question": "Question {number}",
+        "questionPlaceholder": "e.g. What do you hope to learn?",
+        "kindLabel": "Kind of answer for question {number}",
+        "kind": {
+          "short_text": "Short answer",
+          "long_text": "Long answer",
+          "single_choice": "Pick one",
+          "multi_choice": "Pick several"
+        },
+        "optionLabel": "Option {number} of question {question}",
+        "optionPlaceholder": "Option {number}",
+        "removeOption": "Remove option {number}",
+        "addOption": "Add option",
+        "required": "Required",
+        "moveUp": "Move question {number} up",
+        "moveDown": "Move question {number} down",
+        "remove": "Remove",
+        "add": "Add question",
+        "max": "You can ask up to {max} questions.",
+        "problem": {
+          "label": "Write the question.",
+          "options": "Give at least two options.",
+          "optionLabel": "Fill in every option, or remove the empty one."
+        },
+        "fixBeforeSaving": "Some questions are not finished. Fix them to save."
       }
     }
   },

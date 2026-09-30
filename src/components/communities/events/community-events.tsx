@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Plus } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
@@ -12,7 +13,6 @@ import { ErrorState } from "@/components/ui/error-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EventFormDialog } from "@/components/communities/event-form-dialog";
 import { CreateHackathonDialog } from "@/components/hackathon/create-hackathon-dialog";
 import { PendingEventConflictBadge } from "@/components/events/pending-event-conflict-badge";
 import { TimetableRow } from "@/components/events/rows/timetable-row";
@@ -36,6 +36,7 @@ import {
   EventStatusNote,
   ManageHackathonLink,
   ResubmitEventButton,
+  editEventHref,
   ReviewButtons,
   RowActions,
   hasStatusNote,
@@ -45,8 +46,6 @@ import {
   EventOrganizerControl,
   attendeesHref,
 } from "./event-organizer-control";
-
-type EditTarget = { id: number; resubmit?: boolean } | null;
 
 /**
  * A community's events. Everyone sees the schedule: what is coming up as a
@@ -74,8 +73,6 @@ export function CommunityEvents({
   const { data: session } = authClient.useSession();
 
   const [view, setView] = useState<CommunityEventView>("published");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<EditTarget>(null);
 
   const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
     undefined,
@@ -145,11 +142,6 @@ export function CommunityEvents({
   });
   const reviewing = approveMutation.isPending || rejectMutation.isPending;
 
-  function openEditor(target: EditTarget) {
-    setEditing(target);
-    setDialogOpen(true);
-  }
-
   async function cancelEvent(eventId: number) {
     const ok = await confirm({
       description: t("cancelEventConfirm"),
@@ -218,7 +210,9 @@ export function CommunityEvents({
         {event.type === "hackathon" && event.slug ? (
           <ManageHackathonLink href={manageHackathonHref(slug, event.slug)} />
         ) : null}
-        <EditEventButton onEdit={() => openEditor({ id })} />
+        {event.slug ? (
+          <EditEventButton href={editEventHref(slug, event.slug)} />
+        ) : null}
         {past ? null : (
           <CancelEventButton onCancel={() => void cancelEvent(id)} />
         )}
@@ -276,9 +270,13 @@ export function CommunityEvents({
               <CreateHackathonDialog communitySlug={slug} />
             ) : null}
             {isActiveMember ? (
-              <Button onClick={() => openEditor(null)}>
-                <Plus aria-hidden="true" />
-                {canModerate ? t("createEvent") : t("submitEvent")}
+              <Button asChild>
+                <Link href={`/communities/${slug}/events/new`}>
+                  <Plus aria-hidden="true" />
+                  {/* Only an owner/admin publishes directly; everyone else,
+                      moderators included, submits for approval. */}
+                  {isAdminOrOwner ? t("createEvent") : t("submitEvent")}
+                </Link>
               </Button>
             ) : null}
           </div>
@@ -444,12 +442,10 @@ export function CommunityEvents({
                         ) : undefined
                       }
                       actions={
-                        event.status === "rejected" ? (
+                        event.status === "rejected" && event.slug ? (
                           <RowActions className="sm:order-6">
                             <ResubmitEventButton
-                              onResubmit={() =>
-                                openEditor({ id: event.id, resubmit: true })
-                              }
+                              href={`${editEventHref(slug, event.slug)}?resubmit=1`}
                             />
                           </RowActions>
                         ) : undefined
@@ -462,15 +458,6 @@ export function CommunityEvents({
           }
         />
       ) : null}
-
-      <EventFormDialog
-        slug={slug}
-        mode={editing?.resubmit ? "resubmit" : editing ? "edit" : "create"}
-        eventId={editing?.id}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        isAdminOrOwner={isAdminOrOwner}
-      />
     </div>
   );
 }

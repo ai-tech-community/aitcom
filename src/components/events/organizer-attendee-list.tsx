@@ -52,7 +52,12 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
       (row) =>
         VIEW_STATUSES[view].includes(row.status) &&
         (!needle ||
-          [row.displayName, row.email, row.profile?.company]
+          [
+            row.displayName,
+            row.email,
+            row.profile?.company,
+            ...row.answers.flatMap((a) => a.value),
+          ]
             .filter(Boolean)
             .some((text) => text!.toLowerCase().includes(needle))),
     );
@@ -216,6 +221,25 @@ function AttendeeRow({ row }: { row: Attendee }) {
           .filter(Boolean)
           .join(" · ")}
       </p>
+
+      {row.answers.length > 0 ? (
+        // The organizer asked these to plan the event, so they are open,
+        // not folded away like the profile.
+        <dl className="mt-3 space-y-2 text-sm">
+          {row.answers.map((answer) => (
+            <div key={answer.questionId}>
+              <dt className="text-muted-foreground text-xs">
+                {answer.question}
+              </dt>
+              <dd className="break-words whitespace-pre-line">
+                {Array.isArray(answer.value)
+                  ? answer.value.join(", ")
+                  : answer.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
 
       {row.detailsShared ? (
         row.profile ? (
