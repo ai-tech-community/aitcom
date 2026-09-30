@@ -82,6 +82,26 @@ Signing in with Google using the same email as an existing account joins
 that account when Google reports the email as verified. Google is not in
 `trustedProviders`, so an unverified Google email never links.
 
+## Joining a waiting account (takeover guard)
+
+With email verification on, an email+password sign-up cannot sign in until
+someone clicks the emailed link, and anyone can start such a sign-up for any
+address. If the real owner later signs in with an OAuth provider using that
+address, Better Auth joins the two and marks the email verified.
+
+To stop the stranger's password from working after that join,
+`databaseHooks.account.create.before` runs `releaseUnprovenPassword`
+(`src/server/better-auth/release-unproven-password.ts`): when an OAuth
+account is attached to a user whose email is **unverified**, the user's
+password account and all sessions are deleted in one transaction. The
+person who proved the email keeps the account; a failed release aborts the
+link. Verified users (everyone linking from Settings) are untouched. The
+guard is off when email verification is not required (no `RESEND_API_KEY`).
+
+Because such a join verifies the email without
+`emailVerification.afterEmailVerification`, pending staff invites are also
+redeemed on session creation (`redeemOnSessionCreated`, idempotent).
+
 ## Provider registry
 
 `src/lib/oauth-providers.ts` lists every OAuth sign-in provider, its env
@@ -142,6 +162,9 @@ read it. Adding a provider is one registry entry plus its icon in
    - Email+password user with the same address signs in with Google →
      same account (no duplicate).
    - Google-only user cannot disconnect Google (hint shown).
+   - Sign up with email+password but do not confirm. Then sign in with
+     Google using that address → signed in; the old password no longer
+     works.
 
 7. **Agent**
    - Owner connects GitHub + LinkedIn.

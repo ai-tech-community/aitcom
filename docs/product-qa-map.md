@@ -271,6 +271,11 @@ choose one.
   sign-up; Settings shows Connect Google.
 - After OAuth: `app.account.provider_id = 'google'`.
 
+An OAuth join to an account still waiting for email confirmation
+deletes that account's unproven password and sessions first
+(`releaseUnprovenPassword`, `account.create.before`), so a stranger
+who pre-registered the address cannot share the account.
+
 #### Gaps
 
 - Button hidden when either env var is empty (by design).

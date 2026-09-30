@@ -19,6 +19,7 @@ import { getResend } from "@/server/email";
 import {
   redeemForCreatedUser,
   redeemAfterVerification,
+  redeemOnSessionCreated,
 } from "@/server/hackathon/redeem-on-auth";
 import {
   onAuthAccountCreated,
@@ -33,6 +34,10 @@ import {
   isEmailVerificationRequired,
   sendVerificationEmail,
 } from "./send-verification-email";
+import {
+  guardOAuthAccountCreate,
+  releaseUnprovenPassword,
+} from "./release-unproven-password";
 import { createSignInOnReplayedVerification } from "./sign-in-on-replayed-verify";
 
 const githubCredentials = readOAuthCredentials("github");
@@ -82,6 +87,16 @@ export const auth = betterAuth({
   databaseHooks: {
     account: {
       create: {
+        // Pre-account-takeover guard: an OAuth join to an account still
+        // waiting for email confirmation drops its unproven password.
+        before: async (created) => {
+          await guardOAuthAccountCreate(created, {
+            emailVerificationRequired: isEmailVerificationRequired(
+              env.RESEND_API_KEY,
+            ),
+            release: (userId) => releaseUnprovenPassword(db, userId),
+          });
+        },
         after: async (created) => {
           await onAuthAccountCreated(created);
         },
@@ -99,6 +114,11 @@ export const auth = betterAuth({
           // if user.create.after missed it (email+password / Neon FK).
           await enrollOnSessionCreated(session).catch(() => {
             /* non-blocking: getMyCommunities also self-heals */
+          });
+          // Same self-heal for staff invites: an OAuth join can verify an
+          // email without afterEmailVerification running.
+          await redeemOnSessionCreated(session).catch(() => {
+            /* non-blocking */
           });
         },
       },
