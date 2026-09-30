@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
 import { getInitials } from "@/lib/avatar";
 import { externalEventUrl } from "@/lib/events/event-source";
+import { parseStoredQuestions } from "@/lib/events/registration-questions";
 
 type MediaValue =
   | { url?: string | null; alt?: string | null }
@@ -167,6 +168,15 @@ export default async function EventDetailPage({
   const price = (event.price as number | undefined) ?? null;
   const sourceUrl = externalEventUrl(event);
   const isExternal = sourceUrl !== null;
+  // The organizer's questions, asked in the register dialog (#369).
+  const registrationQuestions = isExternal
+    ? []
+    : parseStoredQuestions(event.registrationQuestions);
+  const registrationTiming = {
+    date: String(event.date),
+    startTime: event.startTime ?? null,
+    timezone: event.timezone ?? null,
+  };
   const heroImage = getMedia(
     (event.coverImage as MediaValue) ?? (event.image as MediaValue),
   );
@@ -554,6 +564,8 @@ export default async function EventDetailPage({
                 price={price}
                 isExternal={isExternal}
                 sourceUrl={sourceUrl}
+                questions={registrationQuestions}
+                timing={registrationTiming}
               />
             </div>
 
@@ -940,6 +952,8 @@ export default async function EventDetailPage({
                 price={price}
                 isExternal={isExternal}
                 sourceUrl={sourceUrl}
+                questions={registrationQuestions}
+                timing={registrationTiming}
               />
             </div>
 

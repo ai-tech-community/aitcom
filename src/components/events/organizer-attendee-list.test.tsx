@@ -46,6 +46,12 @@ const BASE = {
   communityMemberSince: null,
   pastEventsAttended: 0,
   profile: null,
+  answers: [] as {
+    questionId: string;
+    question: string;
+    type: string;
+    value: string | string[];
+  }[],
 };
 
 const ROWS = [
@@ -57,6 +63,20 @@ const ROWS = [
     status: "registered",
     communityMemberSince: new Date("2026-01-15T00:00:00Z"),
     pastEventsAttended: 2,
+    answers: [
+      {
+        questionId: "hope",
+        question: "What do you hope to learn?",
+        type: "long_text",
+        value: "Shipping agents",
+      },
+      {
+        questionId: "topics",
+        question: "Topics",
+        type: "multi_choice",
+        value: ["RAG", "Evals"],
+      },
+    ],
     profile: {
       company: "Analytical Engines",
       linkedinUrl: "https://linkedin.com/in/ada",
@@ -208,10 +228,29 @@ describe("OrganizerAttendeeList", () => {
     );
   });
 
+  it("shows each person's answers, open, under their row", () => {
+    renderList();
+    const ada = screen.getAllByRole("listitem")[0]!;
+    expect(within(ada).getByText("What do you hope to learn?")).toBeVisible();
+    expect(within(ada).getByText("Shipping agents")).toBeInTheDocument();
+    expect(within(ada).getByText("RAG, Evals")).toBeInTheDocument();
+  });
+
+  it("finds people by their answers", () => {
+    renderList();
+    fireEvent.change(
+      screen.getByRole("searchbox", {
+        name: "Search name, email, company or answers",
+      }),
+      { target: { value: "evals" } },
+    );
+    expect(names()).toEqual(["Ada Lovelace"]);
+  });
+
   it("searches name, email and company", () => {
     renderList();
     const search = screen.getByRole("searchbox", {
-      name: "Search name, email or company",
+      name: "Search name, email, company or answers",
     });
     fireEvent.change(search, { target: { value: "engines" } });
     expect(names()).toEqual(["Ada Lovelace"]);

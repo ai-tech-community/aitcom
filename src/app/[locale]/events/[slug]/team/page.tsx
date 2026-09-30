@@ -7,6 +7,7 @@ import { hubTabStates } from "@/server/hackathon/hub-tabs";
 import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
 import { MyTeamPanel } from "@/components/hackathon/hub/my-team-panel";
 import { EventRegisterButton } from "@/components/event-register-button";
+import { parseStoredQuestions } from "@/lib/events/registration-questions";
 
 export default async function MyTeamTabPage({
   params,
@@ -33,7 +34,11 @@ export default async function MyTeamTabPage({
       <div className="space-y-4">
         <LockedTabPanel message={t(tab.lockedReasonKey!)} />
         <div className="mx-auto max-w-xs">
-          <EventRegisterButton eventId={eventId} price={price} />
+          <EventRegisterButton
+            eventId={eventId}
+            price={price}
+            questions={parseStoredQuestions(event.registrationQuestions)}
+          />
         </div>
       </div>
     );

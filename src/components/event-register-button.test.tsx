@@ -3,7 +3,7 @@
 // an account that has them registers straight away; everyone sees what the
 // organizer will see before registering.
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../../messages/en.json";
 import nl from "../../messages/nl.json";
@@ -21,6 +21,9 @@ const m = vi.hoisted(() => ({
     lastName?: string | null;
   },
   register: vi.fn(),
+  updateAnswers: vi.fn(),
+  status: null as null | { status: string; answers?: Record<string, unknown> },
+  refresh: vi.fn(),
   refetchSession: vi.fn(),
   options: {} as Record<string, MutationOptions>,
 }));
@@ -35,6 +38,9 @@ vi.mock("@/server/better-auth/client", () => ({
 }));
 vi.mock("@/components/auth/auth-required-dialog", () => ({
   useRequireAuth: () => ({ promptAuth: vi.fn() }),
+}));
+vi.mock("@/i18n/navigation", () => ({
+  useRouter: () => ({ refresh: m.refresh }),
 }));
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
@@ -53,8 +59,9 @@ vi.mock("@/trpc/react", () => ({
   api: {
     events: {
       registrationStatus: {
-        useQuery: () => ({ data: null, isLoading: false }),
+        useQuery: () => ({ data: m.status, isLoading: false }),
       },
+      updateMyAnswers: mutation("answers", m.updateAnswers),
       register: mutation("register", m.register),
       cancelRegistration: mutation("cancel"),
       markIntent: mutation("markIntent"),
@@ -84,6 +91,9 @@ function renderButton(locale: "en" | "nl" = "en") {
 
 beforeEach(() => {
   m.register.mockReset();
+  m.updateAnswers.mockReset();
+  m.refresh.mockReset();
+  m.status = null;
   m.refetchSession.mockReset();
   m.options = {};
   m.user = { id: "u1", name: "Jan van der Berg" };
@@ -122,6 +132,7 @@ describe("EventRegisterButton — names for the organizer", () => {
       eventId: 7,
       firstName: "Jan",
       lastName: "Van der Berg",
+      answers: {}, // this event asks no questions
     });
   });
 
@@ -188,5 +199,122 @@ describe("EventRegisterButton — names for the organizer", () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Register" }));
     expect(screen.getByLabelText("Voornaam")).toHaveValue("Jan");
+  });
+});
+
+const QUESTIONS = [
+  {
+    id: "hope",
+    type: "long_text" as const,
+    label: "What do you hope to learn?",
+    required: true,
+  },
+  {
+    id: "level",
+    type: "single_choice" as const,
+    label: "Your AI experience",
+    required: false,
+    options: [
+      { id: "new", label: "New to it" },
+      { id: "pro", label: "Daily" },
+    ],
+  },
+];
+const FUTURE = {
+  date: "2099-11-02T00:00:00.000Z",
+  startTime: "19:00",
+  timezone: "Europe/Amsterdam",
+};
+const PAST = { ...FUTURE, date: "2020-01-01T00:00:00.000Z" };
+
+function renderWithQuestions(timing = FUTURE) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={en}>
+      <EventRegisterButton eventId={7} questions={QUESTIONS} timing={timing} />
+    </NextIntlClientProvider>,
+  );
+}
+
+describe("EventRegisterButton — the organizer's questions", () => {
+  beforeEach(() => {
+    m.user = { id: "u1", name: "Ada", firstName: "Ada", lastName: "Lovelace" };
+  });
+
+  it("asks the questions before registering, even when names are known", () => {
+    renderWithQuestions();
+    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+
+    expect(m.register).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog", {
+      name: "A few questions from the organizer",
+    });
+    expect(within(dialog).queryByLabelText("First name")).toBeNull();
+    expect(dialog).toHaveTextContent(/The organizer will see/);
+  });
+
+  it("sends the answers, cleaned, with the registration", () => {
+    renderWithQuestions();
+    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+    fireEvent.change(screen.getByLabelText(/What do you hope to learn\?/), {
+      target: { value: "  Agents " },
+    });
+    fireEvent.click(screen.getByLabelText("Daily"));
+    fireEvent.submit(screen.getByRole("dialog").querySelector("form")!);
+
+    expect(m.register).toHaveBeenCalledWith({
+      eventId: 7,
+      answers: { hope: "Agents", level: "pro" },
+    });
+  });
+
+  it("does not register without a required answer, and says which", () => {
+    renderWithQuestions();
+    fireEvent.click(screen.getByRole("button", { name: "Register" }));
+    fireEvent.submit(screen.getByRole("dialog").querySelector("form")!);
+
+    expect(m.register).not.toHaveBeenCalled();
+    expect(
+      screen.getByText("Please answer this question."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/What do you hope to learn\?/),
+    ).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("reloads the questions when the organizer changed them meanwhile", () => {
+    renderWithQuestions();
+    act(() =>
+      m.options.register?.onError?.({
+        message: "ANSWERS_INVALID",
+        data: { code: "BAD_REQUEST" },
+      }),
+    );
+    expect(m.refresh).toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("lets a registered member edit their answers until the event starts", () => {
+    m.status = { status: "registered", answers: { hope: "Agents" } };
+    renderWithQuestions();
+    fireEvent.click(screen.getByRole("button", { name: "Edit my answers" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Your answers" });
+    const hope = within(dialog).getByLabelText(/What do you hope to learn\?/);
+    expect(hope).toHaveValue("Agents");
+    fireEvent.change(hope, { target: { value: "Evals" } });
+    fireEvent.submit(dialog.querySelector("form")!);
+
+    expect(m.updateAnswers).toHaveBeenCalledWith({
+      eventId: 7,
+      answers: { hope: "Evals" },
+    });
+  });
+
+  it("offers no editing once the event has started", () => {
+    m.status = { status: "registered", answers: {} };
+    renderWithQuestions(PAST);
+    expect(
+      screen.queryByRole("button", { name: "Edit my answers" }),
+    ).toBeNull();
   });
 });

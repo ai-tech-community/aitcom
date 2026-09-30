@@ -237,7 +237,22 @@
       "lastName": "Achternaam",
       "nameRequired": "Vul dit in.",
       "namesCancel": "Annuleren",
-      "namesConfirm": "Aanmelden"
+      "namesConfirm": "Aanmelden",
+      "questionsTitle": "Een paar vragen van de organisator",
+      "questionsDescription": "Je antwoorden helpen de organisator plannen. Alleen de organisator ziet ze.",
+      "answersTitle": "Je antwoorden",
+      "answersDescription": "Je kunt je antwoorden wijzigen tot het evenement begint. Alleen de organisator ziet ze.",
+      "answersSave": "Antwoorden opslaan",
+      "answersSaved": "Je antwoorden zijn opgeslagen.",
+      "answersSaveError": "Je antwoorden konden niet worden opgeslagen. Probeer het opnieuw.",
+      "editAnswers": "Mijn antwoorden wijzigen",
+      "answersChanged": "De organisator heeft de vragen gewijzigd. Controleer je antwoorden.",
+      "required": "verplicht",
+      "answerProblem": {
+        "required": "Beantwoord deze vraag.",
+        "too_long": "Dit antwoord is te lang.",
+        "invalid_choice": "Kies een van de opties."
+      }
     },
     "formatInPerson": "Op locatie",
     "formatHybrid": "Hybride",
@@ -288,7 +303,7 @@
       "noMatches": "Niemand gevonden",
       "noMatchesHint": "Probeer een andere status of naam.",
       "viewsLabel": "Toon deelnemers per status",
-      "search": "Zoek op naam, e-mail of bedrijf",
+      "search": "Zoek op naam, e-mail, bedrijf of antwoord",
       "seats": "{taken} van {max} plaatsen bezet",
       "summary": {
         "registered": "{count} aangemeld",
@@ -336,6 +351,63 @@
         "paymentStatus": "Betaalstatus",
         "memberSince": "Lid van de community sinds",
         "earlierEvents": "Eerdere evenementen bijgewoond"
+      }
+    },
+    "editor": {
+      "sectionsNav": "Onderdelen van het evenementformulier",
+      "loadError": "Dit evenement kon niet worden geladen. Probeer het opnieuw.",
+      "saveChanges": "Wijzigingen opslaan",
+      "cancel": "Annuleren",
+      "removeCover": "Omslagfoto verwijderen",
+      "showCuration": "Curatievelden tonen",
+      "externalLink": "Mensen melden zich aan op een andere site",
+      "externalLinkHint": "Plak de link als aanmelden via Luma, Meetup of elders gaat. Laat leeg om mensen hier te laten aanmelden.",
+      "externalNoQuestions": "Mensen melden zich aan op de andere site, dus hier is geen maximum of vragen.",
+      "maxAttendeesHint": "Leeg laten voor geen maximum. Is het vol, dan komen nieuwe mensen op de wachtlijst.",
+      "sections": {
+        "import": "Begin met een link",
+        "basics": "Basis",
+        "basicsHint": "Wat het evenement is. De samenvatting staat op evenementkaarten.",
+        "audience": "Voor wie",
+        "audienceHint": "Kies wie er moet komen. We gebruiken dit ook om je te waarschuwen voor evenementen op hetzelfde moment.",
+        "when": "Wanneer",
+        "whenHint": "Tijden zijn in de eigen tijdzone van het evenement.",
+        "where": "Waar",
+        "whereHint": "Online, op locatie of allebei.",
+        "registration": "Aanmelden",
+        "registrationHint": "Hoe mensen zich aanmelden, en wat je van ze wilt weten.",
+        "curation": "Curatie",
+        "curationHint": "Signalen voor vindbaarheid en rangschikking. Alleen communitybeheerders zien dit."
+      },
+      "questions": {
+        "title": "Vragen voor wie zich aanmeldt",
+        "hint": "Vraag wat je vóór het evenement wilt weten, zoals verwachtingen of ervaring. Alleen jij, als organisator, ziet de antwoorden.",
+        "none": "Nog geen vragen.",
+        "question": "Vraag {number}",
+        "questionPlaceholder": "bijv. Wat hoop je te leren?",
+        "kindLabel": "Soort antwoord voor vraag {number}",
+        "kind": {
+          "short_text": "Kort antwoord",
+          "long_text": "Lang antwoord",
+          "single_choice": "Kies één",
+          "multi_choice": "Kies meerdere"
+        },
+        "optionLabel": "Optie {number} van vraag {question}",
+        "optionPlaceholder": "Optie {number}",
+        "removeOption": "Optie {number} verwijderen",
+        "addOption": "Optie toevoegen",
+        "required": "Verplicht",
+        "moveUp": "Vraag {number} omhoog",
+        "moveDown": "Vraag {number} omlaag",
+        "remove": "Verwijderen",
+        "add": "Vraag toevoegen",
+        "max": "Je kunt maximaal {max} vragen stellen.",
+        "problem": {
+          "label": "Schrijf de vraag.",
+          "options": "Geef minstens twee opties.",
+          "optionLabel": "Vul elke optie in, of verwijder de lege."
+        },
+        "fixBeforeSaving": "Sommige vragen zijn niet af. Maak ze af om op te slaan."
       }
     }
   },

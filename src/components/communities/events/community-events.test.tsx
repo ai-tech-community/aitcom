@@ -32,7 +32,6 @@ const m = vi.hoisted(() => ({
   reject: vi.fn(),
   refetch: vi.fn(),
   confirm: vi.fn(),
-  dialogProps: [] as Record<string, unknown>[],
   mutationOptions: {} as Record<string, MutationOptions>,
   invalidate: {
     published: vi.fn(),
@@ -145,12 +144,6 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 vi.mock("sonner", () => ({
   toast: { success: m.toastSuccess, error: m.toastError },
-}));
-vi.mock("@/components/communities/event-form-dialog", () => ({
-  EventFormDialog: (props: Record<string, unknown>) => {
-    m.dialogProps.push(props);
-    return null;
-  },
 }));
 vi.mock("@/components/hackathon/create-hackathon-dialog", () => ({
   CreateHackathonDialog: () => <button type="button">Create hackathon</button>,
@@ -277,7 +270,6 @@ beforeEach(() => {
   m.refetch.mockReset();
   m.confirm.mockReset();
   m.confirm.mockResolvedValue(true);
-  m.dialogProps = [];
   m.mutationOptions = {};
   for (const fn of Object.values(m.invalidate)) fn.mockReset();
   m.toastSuccess.mockReset();
@@ -375,10 +367,14 @@ describe("CommunityEvents — the schedule everyone sees", () => {
       const star = marker.querySelector("[data-tone]");
       expect(star).toHaveAttribute("data-tone", "ink");
       expect(star).toHaveClass("text-foreground");
-      // The primary button is the one orange thing on screen.
+      // The primary action (create/submit, a link to the editor) is the one
+      // orange thing on screen.
       const orange = orangeElements();
       expect(orange).toHaveLength(1);
-      expect(orange[0]?.tagName).toBe("BUTTON");
+      expect(orange[0]).toHaveAttribute(
+        "href",
+        "/communities/ai-amsterdam/events/new",
+      );
     },
   );
 
@@ -457,15 +453,9 @@ describe("CommunityEvents — organiser controls", () => {
       "/communities/ai-amsterdam/events/event-1/manage",
     );
 
-    fireEvent.click(within(hackathonRow).getByRole("button", { name: "Edit" }));
-    const last = m.dialogProps.at(-1);
-    expect(last).toMatchObject({
-      open: true,
-      mode: "edit",
-      eventId: 1,
-      slug: "ai-amsterdam",
-      isAdminOrOwner: true,
-    });
+    expect(
+      within(hackathonRow).getByRole("link", { name: "Edit" }),
+    ).toHaveAttribute("href", "/communities/ai-amsterdam/events/event-1/edit");
 
     fireEvent.click(
       within(hackathonRow).getByRole("button", { name: "Cancel Event" }),
@@ -510,8 +500,10 @@ describe("CommunityEvents — organiser controls", () => {
     asRole("owner");
     renderEvents();
     const [summer, , harbour] = within(pastSection()).getAllByRole("listitem");
-    fireEvent.click(within(summer!).getByRole("button", { name: "Edit" }));
-    expect(m.dialogProps.at(-1)).toMatchObject({ mode: "edit", eventId: 5 });
+    expect(within(summer!).getByRole("link", { name: "Edit" })).toHaveAttribute(
+      "href",
+      "/communities/ai-amsterdam/events/event-5/edit",
+    );
     expect(
       within(summer!).queryByRole("button", { name: "Cancel Event" }),
     ).toBeNull();
@@ -539,34 +531,38 @@ describe("CommunityEvents — organiser controls", () => {
   it("keeps controls outside the row link", () => {
     asRole("owner");
     renderEvents();
-    for (const button of screen.getAllByRole("button", { name: "Edit" })) {
-      expect(button.closest("a")).toBeNull();
+    // Controls sit after the row's own link, never inside it.
+    for (const edit of screen.getAllByRole("link", { name: "Edit" })) {
+      expect(edit.parentElement?.closest("a")).toBeNull();
     }
   });
 
-  it("opens the create dialog and offers a hackathon to owners", () => {
+  it("links to the event editor and offers a hackathon to owners", () => {
     asRole("owner");
     renderEvents();
     expect(
       screen.getByRole("button", { name: "Create hackathon" }),
     ).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole("button", { name: en.events.createEvent }),
-    );
-    expect(m.dialogProps.at(-1)).toMatchObject({
-      open: true,
-      mode: "create",
-      eventId: undefined,
-    });
+    expect(
+      screen.getByRole("link", { name: en.events.createEvent }),
+    ).toHaveAttribute("href", "/communities/ai-amsterdam/events/new");
+  });
+
+  it("offers a moderator submitting, since only owners and admins publish", () => {
+    asRole("moderator");
+    renderEvents();
+    expect(
+      screen.getByRole("link", { name: en.events.submitEvent }),
+    ).toHaveAttribute("href", "/communities/ai-amsterdam/events/new");
   });
 
   it("lets a member submit, not create, and shows no organiser controls", () => {
     asRole("member");
     renderEvents();
     expect(
-      screen.getByRole("button", { name: en.events.submitEvent }),
+      screen.getByRole("link", { name: en.events.submitEvent }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Edit" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Create hackathon" })).toBe(
       null,
     );
@@ -684,7 +680,13 @@ describe("CommunityEvents — review queue and submissions", () => {
     asRole("member");
     m.mine = [
       { ...draft, id: 31, title: "Waiting one" },
-      { ...draft, id: 32, title: "Turned down", status: "rejected" },
+      {
+        ...draft,
+        id: 32,
+        slug: "event-32",
+        title: "Turned down",
+        status: "rejected",
+      },
     ];
     renderEvents();
     fireEvent.click(
@@ -697,16 +699,14 @@ describe("CommunityEvents — review queue and submissions", () => {
     // Neither has a public page yet, so neither links.
     expect(within(waiting!).queryByRole("link")).toBeNull();
 
-    fireEvent.click(
-      within(rejected!).getByRole("button", {
+    expect(
+      within(rejected!).getByRole("link", {
         name: en.events.editAndResubmit,
       }),
+    ).toHaveAttribute(
+      "href",
+      "/communities/ai-amsterdam/events/event-32/edit?resubmit=1",
     );
-    expect(m.dialogProps.at(-1)).toMatchObject({
-      open: true,
-      mode: "resubmit",
-      eventId: 32,
-    });
   });
 
   it("keeps the empty notes of the queue and the submissions", () => {

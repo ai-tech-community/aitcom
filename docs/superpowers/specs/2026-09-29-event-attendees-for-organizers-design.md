@@ -417,11 +417,31 @@ learn what people expect before the event.
   `readAttendeesForOrganizer` returns the questions for column headings.
   The CSV adds one column per question, after the fixed columns.
 
-### 8.4 Screens (next PR)
+### 8.4 Screens
 
-The event form moves from a dialog to an **event editor page**, organized
-in sections, with the question editor in a "Registration" section. The
-register dialog shows the questions under the name fields; a registered
-member gets "Edit my answers" until the event starts; the Attendees page
-shows each person's answers.
+The event form moved from a dialog to an **event editor page**:
+`/communities/<slug>/events/new` and `/communities/<slug>/events/<event>/edit`
+(`?resubmit=1` from "My submissions"). `resolveEditorAccess`
+(`src/server/events/event-editor-access.ts`) decides who may open it, with
+the same rule as `getEventForEdit`; anyone else gets 404.
+
+Sections, in page order, each under the House Kicker, with a section menu
+on wide screens and a save bar that stays visible:
+
+1. **Start from a link** (new events only)
+2. **Basics**: title, type, summary, description, cover image, video
+3. **Who it's for**: audience, focus, level, tags. It comes before "When"
+   because the clash check needs at least one audience.
+4. **When**: date, timezone, start, end, and the clash warnings
+5. **Where**: format, location, city, region, country
+6. **Registration**: the "people register on another site" link, the seat
+   limit, and the **registration questions** editor. A link to another site
+   hides the questions and saves none.
+7. **Curation** (admins only, folded): fit score, confidence, discovery
+   source, last verified, curated by agent
+
+The register dialog shows the questions under the name fields (names only
+when the account has none). A registered member gets "Edit my answers"
+until the event starts. The Attendees page shows each person's answers
+under their row, and search covers them.
 

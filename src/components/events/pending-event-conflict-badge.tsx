@@ -76,8 +76,8 @@ export function PendingEventConflictBadge({
       audience: audienceSlugs,
       excludeEventId: event.id,
     },
-    // retry: 1 for parity with the create/edit dialog's checkConflicts call
-    // (event-form-dialog.tsx) — a transient failure here should degrade to
+    // retry: 1 for parity with the event editor's checkConflicts call
+    // (editor/use-event-conflicts.ts) — a transient failure here should degrade to
     // "renders nothing" once, not hammer the corpus query indefinitely.
     { enabled, retry: 1 },
   );
