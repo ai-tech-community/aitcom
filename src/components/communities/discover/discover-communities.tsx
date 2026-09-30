@@ -12,7 +12,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateCommunityButton } from "@/components/communities/create-community-dialog";
-import type { DirectorySort } from "@/server/communities/directory";
+import { foldText, type DirectorySort } from "@/server/communities/directory";
 import { cn } from "@/lib/utils";
 import { CommunityCard } from "./community-card";
 import { usePlaceLabel } from "./community-signals";
@@ -109,27 +109,42 @@ export function DiscoverCommunities({
   const locale = useLocale() as "en" | "nl";
 
   // The box updates at once; the URL (and the query) after a short pause.
+  // `sent` remembers what this box last wrote, so the URL catching up never
+  // overwrites letters typed since; only an outside change (Back, a link)
+  // resets the box. The timer calls the latest `onParamsChange`, so a sort
+  // picked during the pause is not undone by stale params.
   const [search, setSearch] = useState(params.q);
+  const sent = useRef(params.q);
+  const latestChange = useRef(onParamsChange);
+  useEffect(() => {
+    latestChange.current = onParamsChange;
+  });
+  useEffect(() => {
+    if (params.q !== sent.current) {
+      sent.current = params.q;
+      setSearch(params.q);
+    }
+  }, [params.q]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => setSearch(params.q), [params.q]);
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current);
     },
     [],
   );
+  const commitSearch = (value: string) => {
+    if (timer.current) clearTimeout(timer.current);
+    sent.current = value;
+    latestChange.current({ q: value });
+  };
   const onSearch = (value: string) => {
     setSearch(value);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(
-      () => onParamsChange({ q: value }),
-      DEBOUNCE_MS,
-    );
+    timer.current = setTimeout(() => commitSearch(value), DEBOUNCE_MS);
   };
   const clearSearch = () => {
-    if (timer.current) clearTimeout(timer.current);
     setSearch("");
-    onParamsChange({ q: "" });
+    commitSearch("");
   };
 
   const query = api.communities.directory.useInfiniteQuery(
@@ -140,10 +155,24 @@ export function DiscoverCommunities({
     },
   );
   const pages = query.data?.pages ?? [];
-  const items = pages.flatMap((p) => p.items);
+  // Pages are offsets into a snapshot that can be rebuilt between them; a
+  // community that moved up shows once, where it was first seen.
+  const seen = new Set<string>();
+  const items = pages
+    .flatMap((p) => p.items)
+    .filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
   const total = pages[0]?.total ?? 0;
   const places = (pages[0]?.places ?? []).map((p) => p.key);
-  if (params.place && !places.includes(params.place)) places.push(params.place);
+  // The URL may spell a place differently from the server's key.
+  const selectedPlace = params.place
+    ? (places.find((p) => foldText(p) === foldText(params.place!)) ??
+      params.place)
+    : null;
+  if (selectedPlace && !places.includes(selectedPlace)) {
+    places.push(selectedPlace);
+  }
+  // A filter with one option is no choice: show it from two places on.
+  const showPlaces = places.length >= 2 || selectedPlace !== null;
 
   const sortOptions: { value: DirectorySort; label: string }[] = [
     { value: "active", label: t("sortActive") },
@@ -168,8 +197,8 @@ export function DiscoverCommunities({
       </div>
 
       <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex max-w-md flex-1 items-center gap-2 font-mono">
-          <span aria-hidden="true" className="text-muted-foreground">
+        <div className="flex max-w-md flex-1 items-center gap-2">
+          <span aria-hidden="true" className="text-muted-foreground font-mono">
             &gt;
           </span>
           <div className="relative flex-1">
@@ -179,7 +208,7 @@ export function DiscoverCommunities({
               onChange={(e) => onSearch(e.target.value)}
               placeholder={t("searchPlaceholder")}
               aria-label={t("searchLabel")}
-              className="pr-9 font-mono text-sm [&::-webkit-search-cancel-button]:hidden"
+              className="pr-9 text-sm [&::-webkit-search-cancel-button]:hidden"
             />
             {search ? (
               <button
@@ -202,11 +231,11 @@ export function DiscoverCommunities({
         />
       </div>
 
-      {places.length > 0 ? (
+      {showPlaces ? (
         <div className="mt-4">
           <PlaceFilter
             places={places}
-            value={params.place}
+            value={selectedPlace}
             onChange={(place) => onParamsChange({ place })}
           />
         </div>
@@ -222,7 +251,11 @@ export function DiscoverCommunities({
             className="border-border rounded-xl border"
             title={t("emptyTitle")}
             description={t("emptyDescription")}
-            action={<CreateCommunityButton variant="outline" />}
+            action={
+              <CreateCommunityButton variant="outline">
+                {t("inviteAction")}
+              </CreateCommunityButton>
+            }
           />
         ) : (
           <ul

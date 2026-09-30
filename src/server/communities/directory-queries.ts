@@ -12,11 +12,12 @@ import {
   type DirectoryEventRow,
 } from "@/server/communities/directory";
 import { loadEventSideWhere } from "@/server/events/event-side-where";
+import { createTtlMemo } from "@/server/ttl-memo";
 
 type DB = typeof _db;
 
-/** Upcoming events read per request; enough for every community's next few. */
-const MAX_UPCOMING_EVENTS = 500;
+/** How long one instance serves a directory snapshot before rebuilding. */
+const SNAPSHOT_TTL_MS = 60_000;
 
 /**
  * Upcoming public events of the given communities, soonest first. Same
@@ -46,7 +47,9 @@ async function loadUpcomingEvents(
     collection: "events",
     where: { and: conditions },
     sort: "date",
-    limit: MAX_UPCOMING_EVENTS,
+    // Every upcoming event: a community's next event and places must not
+    // depend on how many other communities have events.
+    pagination: false,
     locale,
     draft: false,
     depth: 0,
@@ -81,7 +84,7 @@ async function loadUpcomingEvents(
 }
 
 /** Every listed community with its public signals and next event. */
-export async function loadDirectory(
+async function loadDirectory(
   db: DB,
   payload: Payload,
   opts: { now: Date; locale: "en" | "nl" },
@@ -108,4 +111,32 @@ export async function loadDirectory(
     events,
     now: opts.now,
   });
+}
+
+const snapshots = createTtlMemo<"en" | "nl", DirectoryCommunity[]>(
+  SNAPSHOT_TTL_MS,
+);
+
+/**
+ * The directory as one snapshot per locale, rebuilt at most once a minute
+ * per instance. Search, sort and paging run on the snapshot, so a visitor
+ * typing or paging never rebuilds it, and pages of one browse share one
+ * order.
+ */
+export function loadDirectorySnapshot(
+  db: DB,
+  payload: Payload,
+  locale: "en" | "nl",
+): Promise<DirectoryCommunity[]> {
+  return snapshots.get(locale, () =>
+    loadDirectory(db, payload, { now: new Date(), locale }),
+  );
+}
+
+/**
+ * Drops this instance's snapshots, e.g. after a community is created or
+ * its listing changes, so its organizer sees the change right away.
+ */
+export function invalidateDirectorySnapshots(): void {
+  snapshots.clear();
 }

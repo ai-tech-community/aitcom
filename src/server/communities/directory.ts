@@ -181,25 +181,35 @@ export function sortDirectory(
   return [...items].sort(COMPARE[sort]);
 }
 
-/** Places the filter offers: most communities first, then by name. */
+/**
+ * Places the filter offers: most communities first, then by name. The
+ * same place spelled differently counts once, under one stable spelling
+ * (the first in code-point order), so the chip label never flips between
+ * requests.
+ */
 export function directoryPlaces(
   items: readonly DirectoryCommunity[],
 ): DirectoryPlace[] {
-  const counts = new Map<string, { key: string; communities: number }>();
+  const counts = new Map<string, { key: string; ids: Set<string> }>();
   for (const c of items) {
     for (const p of c.places) {
       const folded = foldText(p);
       const hit = counts.get(folded);
-      if (hit) hit.communities++;
-      else counts.set(folded, { key: p, communities: 1 });
+      if (!hit) counts.set(folded, { key: p, ids: new Set([c.id]) });
+      else {
+        hit.ids.add(c.id);
+        if (p < hit.key) hit.key = p;
+      }
     }
   }
-  return [...counts.values()].sort(
-    (a, b) =>
-      b.communities - a.communities ||
-      (a.key === ONLINE_PLACE ? 1 : b.key === ONLINE_PLACE ? -1 : 0) ||
-      a.key.localeCompare(b.key),
-  );
+  return [...counts.values()]
+    .map(({ key, ids }) => ({ key, communities: ids.size }))
+    .sort(
+      (a, b) =>
+        b.communities - a.communities ||
+        (a.key === ONLINE_PLACE ? 1 : b.key === ONLINE_PLACE ? -1 : 0) ||
+        a.key.localeCompare(b.key),
+    );
 }
 
 /**
@@ -235,5 +245,51 @@ export function queryDirectory(
     total: sorted.length,
     nextCursor: end < sorted.length ? end : null,
     places: directoryPlaces(all),
+  };
+}
+
+/** What an anonymous visitor may see of a community in the directory. */
+export type PublicDirectoryCommunity = {
+  id: string;
+  slug: string;
+  name: string;
+  /** Null when empty or only repeating the name. */
+  description: string | null;
+  logoUrl: string | null;
+  joinPolicy: JoinPolicy;
+  memberCount: number;
+  activeRecently: number;
+  isNew: boolean;
+  nextEvent: Pick<DirectoryNextEvent, "date" | "city" | "online"> | null;
+};
+
+/**
+ * The public shape: only the facts the page shows. Ranking internals
+ * (score, new joins) and the event's internal fields stay on the server.
+ */
+export function toPublicDirectoryCommunity(
+  c: DirectoryCommunity,
+): PublicDirectoryCommunity {
+  const description = c.description?.trim() ?? "";
+  return {
+    id: c.id,
+    slug: c.slug,
+    name: c.name,
+    description:
+      description && foldText(description) !== foldText(c.name)
+        ? description
+        : null,
+    logoUrl: c.logoUrl,
+    joinPolicy: c.joinPolicy,
+    memberCount: c.memberCount,
+    activeRecently: c.activeRecently,
+    isNew: c.isNew,
+    nextEvent: c.nextEvent
+      ? {
+          date: c.nextEvent.date,
+          city: c.nextEvent.city,
+          online: c.nextEvent.online,
+        }
+      : null,
   };
 }

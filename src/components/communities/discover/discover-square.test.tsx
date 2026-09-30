@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { useEffect } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { DirectoryItem } from "./community-signals";
@@ -6,7 +6,7 @@ import type { DirectoryItem } from "./community-signals";
 const state = vi.hoisted(() => ({
   items: [] as unknown[],
   lastInput: null as unknown,
-  push: vi.fn(),
+  isError: false,
 }));
 
 vi.mock("@/trpc/react", () => ({
@@ -17,8 +17,8 @@ vi.mock("@/trpc/react", () => ({
           state.lastInput = input;
           return {
             isLoading: false,
-            isError: false,
-            data: { items: state.items },
+            isError: state.isError,
+            data: state.isError ? undefined : { items: state.items },
             refetch: vi.fn(),
           };
         },
@@ -32,22 +32,18 @@ vi.mock("next-intl", () => ({
     vars ? `${k}:${JSON.stringify(vars)}` : k,
 }));
 vi.mock("@/i18n/navigation", () => ({
-  useRouter: () => ({ push: state.push }),
   Link: ({
     href,
     children,
     ...p
   }: {
     href: string;
-    children: React.ReactNode;
+    children?: React.ReactNode;
   }) => (
     <a href={href} {...p}>
       {children}
     </a>
   ),
-}));
-vi.mock("@/components/communities/create-community-dialog", () => ({
-  CreateCommunityButton: () => <button type="button">create</button>,
 }));
 // The real scene measures the DOM; this one reports a wide grid and prints
 // what the frame inked at full strength, so the test can read the street.
@@ -66,7 +62,7 @@ vi.mock("@/components/ascii/ascii-scene", () => ({
 
 import { DiscoverSquare } from "./discover-square";
 
-function item(slug: string, name: string): DirectoryItem {
+function item(slug: string, name: string, over: Partial<DirectoryItem> = {}) {
   return {
     id: slug,
     slug,
@@ -74,67 +70,60 @@ function item(slug: string, name: string): DirectoryItem {
     description: null,
     logoUrl: null,
     joinPolicy: "open",
-    createdAt: new Date("2025-01-01"),
     memberCount: 4,
     activeRecently: 0,
-    newJoins: 0,
-    score: 0,
     isNew: false,
     nextEvent: null,
-    places: [],
     faces: [],
-  };
+    ...over,
+  } satisfies DirectoryItem;
 }
-
-afterEach(() => state.push.mockReset());
 
 describe("DiscoverSquare", () => {
   it("asks for the most active communities, one per house", () => {
+    state.isError = false;
     state.items = [item("a", "Alpha")];
     render(<DiscoverSquare />);
     expect(state.lastInput).toEqual({ sort: "active", limit: 6, locale: "en" });
   });
 
-  it("lists every community as a link", () => {
+  it("links each house to its community", () => {
+    state.isError = false;
     state.items = [item("a", "Alpha"), item("b", "Beta")];
     render(<DiscoverSquare />);
-    expect(screen.getByRole("link", { name: /Alpha/ })).toHaveAttribute(
+    expect(screen.getByTestId("street-house-b")).toHaveAttribute(
       "href",
-      "/communities/a",
+      "/communities/b",
     );
-    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.getByTestId("street-house-b")).toHaveAttribute(
+      "tabindex",
+      "-1",
+    );
   });
 
-  it("marks the row when the pointer is on its house, and opens it on click", () => {
-    state.items = [item("a", "Alpha"), item("b", "Beta")];
+  it("names the pointed-at house and its live facts, then returns to the legend", () => {
+    state.isError = false;
+    state.items = [
+      item("a", "Alpha"),
+      item("b", "Beta", { activeRecently: 3 }),
+    ];
     render(<DiscoverSquare />);
-    const house = screen.getByTestId("street-house-b");
-    fireEvent.pointerEnter(house);
-    expect(screen.getByRole("link", { name: /Beta/ })).toHaveAttribute(
-      "data-active",
-      "true",
-    );
-    expect(screen.getByRole("link", { name: /Alpha/ })).not.toHaveAttribute(
-      "data-active",
-    );
-    fireEvent.click(house);
-    expect(state.push).toHaveBeenCalledWith("/communities/b");
+    expect(screen.getByText("squareHint")).toBeInTheDocument();
+    fireEvent.pointerEnter(screen.getByTestId("street-house-b"));
+    expect(screen.getByText("Beta")).toBeInTheDocument();
+    expect(screen.getByText('activeRecently:{"count":3}')).toBeInTheDocument();
+    expect(screen.getByTestId("glow").textContent).toContain("[ Beta ]");
+    fireEvent.pointerLeave(screen.getByTestId("street-house-b").parentElement!);
+    expect(screen.getByText("squareHint")).toBeInTheDocument();
   });
 
-  it("inks the house of the row being pointed at or focused", () => {
-    state.items = [item("a", "Alpha"), item("b", "Beta")];
-    render(<DiscoverSquare />);
-    expect(screen.getByTestId("glow").textContent).not.toContain("Alpha");
-    fireEvent.focus(screen.getByRole("link", { name: /Alpha/ }));
-    expect(screen.getByTestId("glow").textContent).toContain("Alpha");
-    fireEvent.blur(screen.getByRole("link", { name: /Alpha/ }));
-    expect(screen.getByTestId("glow").textContent).not.toContain("Alpha");
-  });
-
-  it("invites the first organizer when the square is empty", () => {
+  it("does not draw a square without communities or on error", () => {
+    state.isError = false;
     state.items = [];
-    render(<DiscoverSquare />);
-    expect(screen.getByText("squareEmptyTitle")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "create" })).toBeInTheDocument();
+    const { container, rerender } = render(<DiscoverSquare />);
+    expect(container).toBeEmptyDOMElement();
+    state.isError = true;
+    rerender(<DiscoverSquare />);
+    expect(container).toBeEmptyDOMElement();
   });
 });

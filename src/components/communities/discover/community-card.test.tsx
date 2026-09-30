@@ -36,22 +36,14 @@ function item(over: Partial<DirectoryItem> = {}): DirectoryItem {
     description: "Builders who ship",
     logoUrl: null,
     joinPolicy: "open",
-    createdAt: new Date("2025-01-01"),
     memberCount: 12,
     activeRecently: 3,
-    newJoins: 0,
-    score: 9,
     isNew: false,
     nextEvent: {
-      slug: "meetup",
-      title: "Meetup",
       date: "2026-10-14T00:00:00.000Z",
-      startTime: "19:00",
-      timezone: "Europe/Amsterdam",
       city: "Amsterdam",
       online: false,
     },
-    places: ["Amsterdam"],
     faces: [],
     ...over,
   };
@@ -71,9 +63,15 @@ describe("CommunityCard", () => {
     ).toBeInTheDocument();
   });
 
-  it("says plainly when nothing is planned", () => {
-    render(<CommunityCard community={item({ nextEvent: null })} />);
-    expect(screen.getByText("noEvent")).toBeInTheDocument();
+  it("shows only the signals that are there", () => {
+    render(
+      <CommunityCard
+        community={item({ nextEvent: null, activeRecently: 0 })}
+      />,
+    );
+    expect(screen.queryByText(/nextEvent/)).toBeNull();
+    expect(screen.queryByText(/activeRecently/)).toBeNull();
+    expect(screen.getByText("joinOpen")).toBeInTheDocument();
   });
 
   it("names an online event's place as online", () => {

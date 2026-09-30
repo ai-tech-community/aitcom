@@ -7,6 +7,7 @@ import {
   directoryPlaces,
   isNewCommunity,
   matchesQuery,
+  toPublicDirectoryCommunity,
   queryDirectory,
   sortDirectory,
   type DirectoryCommunity,
@@ -192,7 +193,68 @@ describe("sortDirectory", () => {
   });
 });
 
+describe("toPublicDirectoryCommunity", () => {
+  it("keeps ranking internals and event internals on the server", () => {
+    const out = toPublicDirectoryCommunity(
+      community("a", {
+        score: 9,
+        newJoins: 4,
+        places: ["Utrecht"],
+        nextEvent: {
+          slug: "s",
+          title: "T",
+          date: "2026-10-14",
+          startTime: "19:00",
+          timezone: "Europe/Amsterdam",
+          city: "Utrecht",
+          online: false,
+        },
+      }),
+    );
+    expect(Object.keys(out).sort()).toEqual(
+      [
+        "activeRecently",
+        "description",
+        "id",
+        "isNew",
+        "joinPolicy",
+        "logoUrl",
+        "memberCount",
+        "name",
+        "nextEvent",
+        "slug",
+      ].sort(),
+    );
+    expect(out.nextEvent).toEqual({
+      date: "2026-10-14",
+      city: "Utrecht",
+      online: false,
+    });
+  });
+
+  it("drops a description that only repeats the name", () => {
+    expect(
+      toPublicDirectoryCommunity(
+        community("a", { name: "Demo community", description: "demo community" }),
+      ).description,
+    ).toBeNull();
+    expect(
+      toPublicDirectoryCommunity(
+        community("a", { name: "Demo", description: "  " }),
+      ).description,
+    ).toBeNull();
+  });
+});
+
 describe("directoryPlaces", () => {
+  it("counts each community once per place and keeps one stable spelling", () => {
+    const places = directoryPlaces([
+      community("a", { places: ["amsterdam", "Amsterdam"] }),
+      community("b", { places: ["Amsterdam"] }),
+    ]);
+    expect(places).toEqual([{ key: "Amsterdam", communities: 2 }]);
+  });
+
   it("counts communities per place, most first, online after cities on ties", () => {
     const places = directoryPlaces([
       community("a", { places: ["Amsterdam", ONLINE_PLACE] }),

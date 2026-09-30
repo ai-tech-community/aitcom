@@ -18,28 +18,23 @@ export function usePlaceLabel() {
   return (key: string) => (key === ONLINE_PLACE ? t("placeOnline") : key);
 }
 
-/** "Next: Tue 14 Oct · Amsterdam", or a plain note when nothing is planned. */
+/** "Next: Tue 14 Oct · Amsterdam" (or "· Online", or just the day). */
 export function NextEventLine({
   event,
   className,
 }: {
-  event: NextEvent | null;
+  event: NextEvent;
   className?: string;
 }) {
   const t = useTranslations("communities.discover");
   const locale = useLocale();
   const placeLabel = usePlaceLabel();
-  const when = event ? formatEventShortWhen({ date: event.date }, locale) : "";
-  const place = event
-    ? event.online
-      ? placeLabel(ONLINE_PLACE)
-      : event.city
-    : null;
+  const when = formatEventShortWhen({ date: event.date }, locale);
+  const place = event.online ? placeLabel(ONLINE_PLACE) : event.city;
   return (
     <p
       className={cn(
-        "flex min-w-0 items-start gap-2 text-sm",
-        event ? "text-foreground" : "text-muted-foreground",
+        "text-foreground flex min-w-0 items-start gap-2 text-sm",
         className,
       )}
     >
@@ -48,11 +43,7 @@ export function NextEventLine({
         className="text-muted-foreground mt-0.5 size-4 shrink-0"
       />
       <span className="min-w-0 wrap-break-word">
-        {event
-          ? place
-            ? t("nextEventAt", { when, place })
-            : t("nextEvent", { when })
-          : t("noEvent")}
+        {place ? t("nextEventAt", { when, place }) : t("nextEvent", { when })}
       </span>
     </p>
   );

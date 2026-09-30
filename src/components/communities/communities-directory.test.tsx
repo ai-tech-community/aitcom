@@ -4,17 +4,12 @@ import type { DirectoryParams } from "./discover/directory-params";
 
 const nav = vi.hoisted(() => ({
   search: "",
-  replace: vi.fn(),
   onParamsChange: null as null | ((p: Partial<DirectoryParams>) => void),
   params: null as null | DirectoryParams,
 }));
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(nav.search),
-}));
-vi.mock("@/i18n/navigation", () => ({
-  usePathname: () => "/communities",
-  useRouter: () => ({ replace: nav.replace }),
 }));
 vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
 vi.mock("./discover/discover-square", () => ({
@@ -40,14 +35,25 @@ vi.mock("./create-community-dialog", () => ({
   CreateCommunityProvider: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
-  CreateCommunityButton: () => <button type="button">create</button>,
+  CreateCommunityButton: ({
+    variant,
+    children,
+  }: {
+    variant?: string;
+    children?: React.ReactNode;
+  }) => (
+    <button type="button" data-variant={variant ?? "default"}>
+      {children}
+    </button>
+  ),
 }));
 
 import { CommunitiesDirectory } from "./communities-directory";
 
 afterEach(() => {
   nav.search = "";
-  nav.replace.mockReset();
+  vi.restoreAllMocks();
+  window.history.replaceState(null, "", "/");
 });
 
 describe("CommunitiesDirectory", () => {
@@ -70,17 +76,25 @@ describe("CommunitiesDirectory", () => {
     expect(nav.params).toEqual({ q: "ml", place: "Utrecht", sort: "newest" });
   });
 
-  it("writes filter changes to the URL without scrolling", () => {
+  it("writes filter changes into the URL in place", () => {
+    window.history.replaceState(null, "", "/en/communities?q=ml");
     nav.search = "q=ml";
+    const replace = vi.spyOn(window.history, "replaceState");
     render(<CommunitiesDirectory />);
     nav.onParamsChange!({ place: "online" });
-    expect(nav.replace).toHaveBeenCalledWith(
-      "/communities?q=ml&place=online",
-      { scroll: false },
+    expect(replace).toHaveBeenLastCalledWith(
+      null,
+      "",
+      "/en/communities?q=ml&place=online",
     );
     nav.onParamsChange!({ q: "", place: null });
-    expect(nav.replace).toHaveBeenLastCalledWith("/communities", {
-      scroll: false,
-    });
+    expect(replace).toHaveBeenLastCalledWith(null, "", "/en/communities");
+  });
+
+  it("offers organizers a quiet way to start, not an orange primary", () => {
+    render(<CommunitiesDirectory />);
+    expect(
+      screen.getByRole("button", { name: "inviteAction" }),
+    ).toHaveAttribute("data-variant", "outline");
   });
 });

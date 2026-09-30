@@ -13,8 +13,8 @@
  * The picture is decoration (aria-hidden); the list beside it carries the
  * same facts as text.
  *
- * `activeSlug` inks one house at full strength — the one the visitor is
- * pointing at in the list or on the street.
+ * `activeSlug` inks one house at full strength and brackets its name — the
+ * one the visitor is pointing at.
  */
 
 import {
@@ -73,7 +73,7 @@ const LIT_WINDOW = "##";
 const HOUSE_RHYTHM = 37;
 
 /** How far houses rise into spare sky: a skyline, with room left above. */
-const SKYLINE_GROW = 0.8;
+const SKYLINE_GROW = 0.5;
 
 /** Fewest rows that fit the smallest house above the figures and name. */
 export const MIN_STREET_ROWS = 15;
@@ -195,7 +195,11 @@ export function communityStreetFrame(
       c.sprite(f.x, feetTop, figure(f.kind, own, pose), "people");
     });
 
-    const name = laneLabel(community.name, lane.width);
+    // The active house's name is bracketed, like the house tabs' active
+    // state, so the mark does not rest on ink weight alone.
+    const name = active
+      ? `[ ${laneLabel(community.name, lane.width - 4)} ]`
+      : laneLabel(community.name, lane.width);
     const nameX = lane.x + Math.floor((lane.width - textWidth(name)) / 2);
     c.text(nameX, label, name, active ? "glow" : "people");
   });

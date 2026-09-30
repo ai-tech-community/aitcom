@@ -111,6 +111,99 @@ describe("DiscoverCommunities", () => {
     expect(onParamsChange).toHaveBeenCalledWith({ sort: "largest" });
   });
 
+  it("keeps letters typed while the URL catches up", () => {
+    vi.useFakeTimers();
+    state.pages = [page(["Alpha"])];
+    const onParamsChange = vi.fn();
+    const { rerender } = render(
+      <DiscoverCommunities params={DEFAULTS} onParamsChange={onParamsChange} />,
+    );
+    const box = screen.getByRole("searchbox");
+    fireEvent.change(box, { target: { value: "ab" } });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    fireEvent.change(box, { target: { value: "abc" } });
+    // The URL now reports the earlier "ab".
+    rerender(
+      <DiscoverCommunities
+        params={{ ...DEFAULTS, q: "ab" }}
+        onParamsChange={onParamsChange}
+      />,
+    );
+    expect(box).toHaveValue("abc");
+  });
+
+  it("follows an outside URL change, e.g. Back", () => {
+    state.pages = [page(["Alpha"])];
+    const { rerender } = render(
+      <DiscoverCommunities
+        params={{ ...DEFAULTS, q: "ml" }}
+        onParamsChange={vi.fn()}
+      />,
+    );
+    rerender(
+      <DiscoverCommunities params={DEFAULTS} onParamsChange={vi.fn()} />,
+    );
+    expect(screen.getByRole("searchbox")).toHaveValue("");
+  });
+
+  it("uses the latest handler when the pause ends", () => {
+    vi.useFakeTimers();
+    state.pages = [page(["Alpha"])];
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = render(
+      <DiscoverCommunities params={DEFAULTS} onParamsChange={first} />,
+    );
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "x" },
+    });
+    rerender(
+      <DiscoverCommunities
+        params={{ ...DEFAULTS, sort: "newest" }}
+        onParamsChange={second}
+      />,
+    );
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledWith({ q: "x" });
+  });
+
+  it("shows a community once even if two pages both hold it", () => {
+    state.pages = [page(["Alpha", "Beta"]), page(["Beta", "Gamma"])];
+    render(
+      <DiscoverCommunities params={DEFAULTS} onParamsChange={vi.fn()} />,
+    );
+    expect(screen.getAllByText("Beta")).toHaveLength(1);
+    expect(screen.getByText("Gamma")).toBeInTheDocument();
+  });
+
+  it("hides the place filter while there is only one place", () => {
+    state.pages = [page(["Alpha"], ["Amsterdam"])];
+    render(
+      <DiscoverCommunities params={DEFAULTS} onParamsChange={vi.fn()} />,
+    );
+    expect(screen.queryByRole("group", { name: "placeLabel" })).toBeNull();
+  });
+
+  it("marks the URL's place even when it is spelled differently", () => {
+    state.pages = [page(["Alpha"], ["Amsterdam", "online"])];
+    render(
+      <DiscoverCommunities
+        params={{ ...DEFAULTS, place: "amsterdam" }}
+        onParamsChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Amsterdam" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getAllByRole("button", { pressed: true })).toHaveLength(1);
+  });
+
   it("offers the places of upcoming events and filters by one", () => {
     state.pages = [page(["Alpha"], ["Amsterdam", "online"])];
     const onParamsChange = vi.fn();

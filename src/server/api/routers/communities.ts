@@ -30,10 +30,14 @@ import {
 } from "@/server/communities/invite-policy";
 import { logActivity } from "@/server/agent/activity";
 import { loadPublicLiveness } from "@/server/communities/discovery-queries";
-import { loadDirectory } from "@/server/communities/directory-queries";
+import {
+  invalidateDirectorySnapshots,
+  loadDirectorySnapshot,
+} from "@/server/communities/directory-queries";
 import {
   DIRECTORY_SORTS,
   queryDirectory,
+  toPublicDirectoryCommunity,
 } from "@/server/communities/directory";
 import { getPayloadClient } from "@/server/payload";
 import {
@@ -63,11 +67,11 @@ export const communitiesRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const payload = await getPayloadClient();
-      const all = await loadDirectory(ctx.db, payload, {
-        now: new Date(),
-        locale: input.locale,
-      });
+      const all = await loadDirectorySnapshot(
+        ctx.db,
+        await getPayloadClient(),
+        input.locale,
+      );
       const page = queryDirectory(all, input);
       // One extra query for the whole page (no N+1): leadership-first faces.
       const faces = await loadStackFacesForCommunities(
@@ -75,9 +79,11 @@ export const communitiesRouter = createTRPCRouter({
         page.items.map((c) => c.id),
       );
       return {
-        ...page,
+        total: page.total,
+        nextCursor: page.nextCursor,
+        places: page.places,
         items: page.items.map((c) => ({
-          ...c,
+          ...toPublicDirectoryCommunity(c),
           faces: faces.get(c.id) ?? [],
         })),
       };
@@ -311,6 +317,7 @@ export const communitiesRouter = createTRPCRouter({
         targetId: community.id,
         metadata: { name: input.name, slug },
       });
+      invalidateDirectorySnapshots();
 
       return community;
     }),
@@ -782,6 +789,7 @@ export const communitiesRouter = createTRPCRouter({
         targetId: ctx.community.id,
         metadata: updates,
       });
+      invalidateDirectorySnapshots();
 
       return updated!;
     }),

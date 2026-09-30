@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import {
   AsciiScene,
   type AsciiSceneLayer,
@@ -32,11 +32,12 @@ function sameGrid(a: GridSize | null, b: GridSize | null) {
 }
 
 /**
- * The street of community houses. Decorative (aria-hidden): the list
- * beside it carries every fact as text and is the keyboard path. With a
- * mouse, pointing at a house marks it (and its list row) and clicking it
- * opens the community — one invisible hit area per house, laid over the
- * art in the same equal lanes the scene draws.
+ * The street of community houses. Decorative (aria-hidden): the directory
+ * grid below carries every fact as text and is the keyboard path. With a
+ * mouse, pointing at a house marks it and clicking it opens the community
+ * — one hit area per house (a real link, so middle-click works, but out of
+ * the tab order), laid over the art in the same equal lanes the scene
+ * draws.
  */
 export function CommunityStreet({
   houses,
@@ -49,7 +50,6 @@ export function CommunityStreet({
   onActiveChange: (slug: string | null) => void;
   className?: string;
 }) {
-  const router = useRouter();
   const [grid, setGrid] = useState<GridSize | null>(null);
   const onGridChange = useCallback(
     (next: GridSize | null) =>
@@ -61,7 +61,9 @@ export function CommunityStreet({
       communityStreetFrame(houses, cols, rows, tick, activeSlug),
     [houses, activeSlug],
   );
-  const shown = grid ? houses.slice(0, streetCapacity(grid.cols, houses.length)) : [];
+  const shown = grid
+    ? houses.slice(0, streetCapacity(grid.cols, houses.length))
+    : [];
 
   return (
     <div className={cn("relative", className)}>
@@ -82,12 +84,13 @@ export function CommunityStreet({
           onPointerLeave={() => onActiveChange(null)}
         >
           {shown.map((house) => (
-            <div
+            <Link
               key={house.slug}
+              href={`/communities/${house.slug}`}
+              tabIndex={-1}
               data-testid={`street-house-${house.slug}`}
-              className="flex-1 cursor-pointer"
+              className="flex-1"
               onPointerEnter={() => onActiveChange(house.slug)}
-              onClick={() => router.push(`/communities/${house.slug}`)}
             />
           ))}
         </div>

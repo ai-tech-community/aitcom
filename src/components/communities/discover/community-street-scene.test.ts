@@ -155,7 +155,9 @@ describe("communityStreetFrame", () => {
     const active = communityStreetFrame(STREET, 88, 20, 1, STREET[1]!.slug);
     expect(count(active, "people", ".-.")).toBe(1);
     expect(count(idle, "people", ".-.")).toBe(0);
-    expect(count(active, "glow", STREET[1]!.name)).toBe(1);
+    // Bracketed (and shortened to fit its lane) so the mark is not ink alone.
+    expect(count(active, "glow", "[ mlops-community")).toBe(1);
+    expect(count(idle, "glow", "[ ")).toBe(0);
   });
 
   it("never shows more houses than fit", () => {

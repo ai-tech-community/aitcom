@@ -60,6 +60,7 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
     createCaller: typeof import("@/server/api/root").createCaller;
     getPayloadClient: typeof import("@/server/payload").getPayloadClient;
     inArray: typeof import("drizzle-orm").inArray;
+    invalidate: typeof import("@/server/communities/directory-queries").invalidateDirectorySnapshots;
   };
   let m: Mods;
 
@@ -75,15 +76,29 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
   let fx: Fixture;
 
   beforeAll(async () => {
-    const [{ db }, schema, { createCaller }, { getPayloadClient }, drizzle] =
-      await Promise.all([
-        import("@/server/db"),
-        import("@/server/db/schema"),
-        import("@/server/api/root"),
-        import("@/server/payload"),
-        import("drizzle-orm"),
-      ]);
-    m = { db, schema, createCaller, getPayloadClient, inArray: drizzle.inArray };
+    const [
+      { db },
+      schema,
+      { createCaller },
+      { getPayloadClient },
+      drizzle,
+      { invalidateDirectorySnapshots },
+    ] = await Promise.all([
+      import("@/server/db"),
+      import("@/server/db/schema"),
+      import("@/server/api/root"),
+      import("@/server/payload"),
+      import("drizzle-orm"),
+      import("@/server/communities/directory-queries"),
+    ]);
+    m = {
+      db,
+      schema,
+      createCaller,
+      getPayloadClient,
+      inArray: drizzle.inArray,
+      invalidate: invalidateDirectorySnapshots,
+    };
     if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
       throw new Error("Refusing to run against a cloud Neon DATABASE_URL.");
     }
@@ -207,6 +222,8 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
       approval,
       unlisted,
     };
+    // Each test seeds fresh rows; start from a fresh snapshot.
+    m.invalidate();
   });
 
   afterEach(async () => {
@@ -245,18 +262,24 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
       activeRecently: 1,
       isNew: true,
     });
-    expect(open.nextEvent).toMatchObject({
-      slug: `it-dir-next-${fx.suffix}`,
+    expect(open.nextEvent).toEqual({
+      date: expect.stringContaining(isoDay(5)),
       city: "Utrecht",
       online: false,
     });
-    expect(open.places).toEqual(["Utrecht", "online"]);
+    // Ranking internals stay on the server.
+    expect(open).not.toHaveProperty("score");
+    expect(open).not.toHaveProperty("newJoins");
+    expect(out.places.map((p) => p.key)).toEqual(
+      expect.arrayContaining(["Utrecht", "online"]),
+    );
 
     const approval = out.items.find((c) => c.id === fx.approval)!;
     expect(approval.joinPolicy).toBe("approval_required");
     // A discovered (Luma) event is not the community's own next event.
     expect(approval.nextEvent).toBeNull();
-    expect(approval.places).toEqual([]);
+    expect(out.places.map((p) => p.key)).not.toContain("Delft");
+    expect(out.places.map((p) => p.key)).not.toContain("Leiden");
   });
 
   it("puts the busier community first when sorting by activity", async () => {
@@ -288,5 +311,18 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
       place: "Leiden",
     });
     expect(leiden.items).toEqual([]);
+  });
+
+  it("shows a new community to the next request after it is created", async () => {
+    const before = await guest().communities.directory({ q: fx.suffix });
+    await m.db
+      .update(m.schema.communities)
+      .set({ isListedInDirectory: true })
+      .where(m.inArray(m.schema.communities.id, [fx.unlisted]));
+    const cached = await guest().communities.directory({ q: fx.suffix });
+    expect(cached.total).toBe(before.total);
+    m.invalidate();
+    const fresh = await guest().communities.directory({ q: fx.suffix });
+    expect(fresh.items.map((c) => c.id)).toContain(fx.unlisted);
   });
 });
