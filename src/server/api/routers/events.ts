@@ -64,6 +64,13 @@ import { toRegistrationCalendarInvite } from "@/server/events/registration-invit
 import { externalEventUrl } from "@/lib/events/event-source";
 import { escapeLike } from "@/server/db/escape-like";
 import { personNameSchema } from "@/lib/person-name";
+import {
+  ANSWERS_INVALID,
+  answersInputSchema,
+  canChangeAnswers,
+  parseStoredQuestions,
+  validateAnswers,
+} from "@/lib/events/registration-questions";
 import { ensureAccountNames } from "@/server/events/registration-names";
 import type { db as Db } from "@/server/db";
 import { canViewEventAttendees } from "@/server/events/attendee-access";
@@ -150,6 +157,8 @@ export const eventsRouter = createTRPCRouter({
         // Given when the account has no first/last name yet (ADR-0038).
         firstName: personNameSchema.optional(),
         lastName: personNameSchema.optional(),
+        // Answers to the event's registration questions (#369).
+        answers: answersInputSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -182,6 +191,15 @@ export const eventsRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "This event is run on another site. Register there instead.",
         });
+      }
+
+      // Answers are checked before anything is written.
+      const checked = validateAnswers(
+        parseStoredQuestions(event.registrationQuestions),
+        input.answers ?? {},
+      );
+      if (!checked.ok) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: ANSWERS_INVALID });
       }
 
       // The organizer sees who registered by name (ADR-0038).
@@ -231,6 +249,7 @@ export const eventsRouter = createTRPCRouter({
             paymentStatus: molliePayment.status,
             // The register button showed the sharing notice (ADR-0038).
             organizerNoticeAt: new Date(),
+            answers: checked.answers,
           })
           .returning();
 
@@ -251,6 +270,7 @@ export const eventsRouter = createTRPCRouter({
           status,
           // The register button showed the sharing notice (ADR-0038).
           organizerNoticeAt: new Date(),
+          answers: checked.answers,
         })
         .returning();
 
@@ -306,6 +326,59 @@ export const eventsRouter = createTRPCRouter({
         alreadyRegistered: false,
         checkoutUrl: null,
       };
+    }),
+
+  /**
+   * Change your answers to the event's registration questions, until the
+   * event starts (#369). The organizer always sees the latest answers.
+   */
+  updateMyAnswers: protectedProcedure
+    .input(z.object({ eventId: z.number(), answers: answersInputSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const event = await getEvent(input.eventId);
+      if (externalEventUrl(event) !== null) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
+      if (!canChangeAnswers(event)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The event has started; answers can no longer change.",
+        });
+      }
+
+      const [registration] = await ctx.db
+        .select({ id: eventRegistrations.id })
+        .from(eventRegistrations)
+        .where(
+          and(
+            eq(eventRegistrations.eventId, input.eventId),
+            eq(eventRegistrations.userId, userId),
+            sql`${eventRegistrations.status} IN ('registered', 'waitlisted', 'pending_payment')`,
+          ),
+        )
+        .limit(1);
+      if (!registration) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "You are not registered for this event",
+        });
+      }
+
+      const checked = validateAnswers(
+        parseStoredQuestions(event.registrationQuestions),
+        input.answers,
+      );
+      if (!checked.ok) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: ANSWERS_INVALID });
+      }
+
+      await ctx.db
+        .update(eventRegistrations)
+        .set({ answers: checked.answers })
+        .where(eq(eventRegistrations.id, registration.id));
+
+      return { answers: checked.answers };
     }),
 
   cancelRegistration: protectedProcedure
@@ -869,6 +942,8 @@ export const eventsRouter = createTRPCRouter({
       if (input.maxAttendees !== undefined)
         data.maxAttendees = input.maxAttendees;
       if (input.coverImage !== undefined) data.coverImage = input.coverImage;
+      if (input.registrationQuestions !== undefined)
+        data.registrationQuestions = input.registrationQuestions;
 
       const event = await payload.update({
         collection: "events",
@@ -1663,6 +1738,7 @@ export const eventsRouter = createTRPCRouter({
             : "",
         videoUrl: e.videoUrl ?? "",
         maxAttendees: e.maxAttendees != null ? String(e.maxAttendees) : "",
+        registrationQuestions: parseStoredQuestions(e.registrationQuestions),
         coverImageId: cover?.id ?? null,
         coverImageUrl: cover?.url ?? null,
       };
@@ -1928,6 +2004,8 @@ export const eventsRouter = createTRPCRouter({
       if (input.maxAttendees !== undefined)
         data.maxAttendees = input.maxAttendees;
       if (input.coverImage !== undefined) data.coverImage = input.coverImage;
+      if (input.registrationQuestions !== undefined)
+        data.registrationQuestions = input.registrationQuestions;
 
       const event = await payload.update({
         collection: "events",

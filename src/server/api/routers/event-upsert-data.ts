@@ -9,6 +9,7 @@ import {
   EVENT_TYPES,
 } from "@/lib/event-metadata";
 import { resolveAudienceIds } from "./audience-resolve";
+import { registrationQuestionsSchema } from "@/lib/events/registration-questions";
 
 export const eventUpsertSchema = z.object({
   title: z.string().min(3).max(255),
@@ -59,6 +60,8 @@ export const eventUpsertSchema = z.object({
   maxAttendees: z.number().min(1).optional(),
   // number = set/replace cover, null = clear it, undefined = leave unchanged
   coverImage: z.number().int().positive().nullable().optional(),
+  // Questions members answer when registering (#369); [] clears them.
+  registrationQuestions: registrationQuestionsSchema.optional(),
 });
 
 export function normalizeOptionalString(value?: string) {
@@ -109,5 +112,6 @@ export async function buildEventPayloadData(
     videoUrl: normalizeOptionalString(input.videoUrl),
     maxAttendees: input.maxAttendees,
     coverImage: input.coverImage,
+    registrationQuestions: input.registrationQuestions,
   };
 }

@@ -50,6 +50,20 @@ const ADA: AttendeeDetails = {
   paymentStatus: null,
   communityMemberSince: new Date("2026-01-15T23:30:00Z"),
   pastEventsAttended: 2,
+  answers: [
+    {
+      questionId: "hope",
+      question: "What do you hope to learn?",
+      type: "long_text",
+      value: "Ship an agent, then evals",
+    },
+    {
+      questionId: "topics",
+      question: "Topics",
+      type: "multi_choice",
+      value: ["RAG", "Agents"],
+    },
+  ],
   profile: {
     company: "Analytical Engines, Ltd",
     linkedinUrl: "https://linkedin.com/in/ada",
@@ -135,6 +149,24 @@ describe("toAttendeesCsv", () => {
     );
     expect(header).toContain("Registered at (UTC)");
     expect(ada).toContain("2026-10-01 10:05");
+  });
+
+  it("adds one column per question, in the event's order", () => {
+    const [header, ada] = parse(
+      toAttendeesCsv([ADA, { ...ADA, registrationId: "r2", answers: [] }], {
+        timezone: "UTC",
+        labels: LABELS,
+        questions: [
+          { id: "topics", label: "Topics" },
+          { id: "diet", label: "Dietary needs" },
+          { id: "hope", label: "What do you hope to learn?" },
+        ],
+      }),
+    );
+    expect(header).toMatch(
+      /,Interests,Topics,Dietary needs,What do you hope to learn\?$/,
+    );
+    expect(ada).toMatch(/,RAG; Agents,,"Ship an agent, then evals"$/);
   });
 
   it("writes only the header for an empty list", () => {

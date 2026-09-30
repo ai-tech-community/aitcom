@@ -8,6 +8,7 @@
 import type { eq as Eq, inArray as InArray } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import type { RegistrationQuestion } from "@/lib/events/registration-questions";
 import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
 
@@ -25,6 +26,25 @@ function isLocalDbConfigured(): boolean {
   );
 }
 const RUN_DB = isLocalDbConfigured();
+
+const QUESTIONS: RegistrationQuestion[] = [
+  {
+    id: "hope",
+    type: "long_text",
+    label: "What do you hope to learn?",
+    required: false,
+  },
+  {
+    id: "level",
+    type: "single_choice",
+    label: "Your AI experience",
+    required: true,
+    options: [
+      { id: "new", label: "New to it" },
+      { id: "pro", label: "Daily" },
+    ],
+  },
+];
 
 describe.skipIf(!RUN_DB)("loadEventAttendees [DB integration]", () => {
   let db: typeof Db;
@@ -127,6 +147,7 @@ describe.skipIf(!RUN_DB)("loadEventAttendees [DB integration]", () => {
         status: "registered",
         registeredAt: t(1),
         organizerNoticeAt: notice,
+        answers: { hope: "Agents", level: "pro" },
       },
       {
         eventId: EVENT_ID,
@@ -141,12 +162,14 @@ describe.skipIf(!RUN_DB)("loadEventAttendees [DB integration]", () => {
         status: "waitlisted",
         registeredAt: t(2),
         organizerNoticeAt: notice,
+        answers: { level: "new" },
       },
       {
         eventId: EVENT_ID,
         userId: ids.old,
         status: "registered",
         registeredAt: t(0),
+        answers: { hope: "never told" },
       },
       {
         eventId: EVENT_ID,
@@ -170,9 +193,11 @@ describe.skipIf(!RUN_DB)("loadEventAttendees [DB integration]", () => {
       },
     ]);
 
-    const { counts, rows } = await load(db, { id: EVENT_ID, communityId }, [
-      EARLIER_ID,
-    ]);
+    const { counts, rows } = await load(
+      db,
+      { id: EVENT_ID, communityId, questions: QUESTIONS },
+      [EARLIER_ID],
+    );
 
     expect(rows.map((r) => r.displayName)).toEqual([
       "old", // no names on the account: falls back to the account name
@@ -199,12 +224,35 @@ describe.skipIf(!RUN_DB)("loadEventAttendees [DB integration]", () => {
       profile: null, // private profile
       communityMemberSince: null, // pending, not active
     });
-    expect(linus).toMatchObject({ waitlistPosition: 2, profile: null });
+    expect(linus).toMatchObject({
+      waitlistPosition: 2,
+      profile: null,
+      answers: [],
+    });
+
+    // Answers come back as words, in question order; a private profile
+    // keeps them, registering before the notice hides them.
+    expect(ada!.answers).toEqual([
+      {
+        questionId: "hope",
+        question: "What do you hope to learn?",
+        type: "long_text",
+        value: "Agents",
+      },
+      {
+        questionId: "level",
+        question: "Your AI experience",
+        type: "single_choice",
+        value: "Daily",
+      },
+    ]);
+    expect(grace!.answers.map((a) => a.value)).toEqual(["New to it"]);
+    expect(old!.answers).toEqual([]);
   });
 
   it("returns an empty list for an event nobody registered for", async () => {
     await expect(
-      load(db, { id: EVENT_ID + 50, communityId: "none" }, []),
+      load(db, { id: EVENT_ID + 50, communityId: "none", questions: [] }, []),
     ).resolves.toMatchObject({ rows: [], counts: { registered: 0 } });
   });
 });

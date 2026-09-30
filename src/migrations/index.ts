@@ -123,6 +123,7 @@ import * as migration_20260928d_hosted_materials from "./20260928d_hosted_materi
 import * as migration_20260928e_startup_investors from "./20260928e_startup_investors";
 import * as migration_20260929a_event_organizer from "./20260929a_event_organizer";
 import * as migration_20260929b_account_names_and_organizer_notice from "./20260929b_account_names_and_organizer_notice";
+import * as migration_20260930a_event_registration_questions from "./20260930a_event_registration_questions";
 
 export const migrations = [
   {
@@ -749,5 +750,10 @@ export const migrations = [
     up: migration_20260929b_account_names_and_organizer_notice.up,
     down: migration_20260929b_account_names_and_organizer_notice.down,
     name: "20260929b_account_names_and_organizer_notice",
+  },
+  {
+    up: migration_20260930a_event_registration_questions.up,
+    down: migration_20260930a_event_registration_questions.down,
+    name: "20260930a_event_registration_questions",
   },
 ];

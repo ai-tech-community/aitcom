@@ -45,6 +45,7 @@ export async function GET(
     data.rows.filter((row) => VIEW_STATUSES[view].includes(row.status)),
     {
       timezone: data.event.timezone,
+      questions: data.questions,
       labels: {
         name: t("csv.name"),
         firstName: t("csv.firstName"),

@@ -52,8 +52,14 @@ export function csvCell(value: string | number | null | undefined): string {
  */
 export function toAttendeesCsv(
   rows: readonly AttendeeDetails[],
-  options: { timezone: string | null; labels: AttendeeCsvLabels },
+  options: {
+    timezone: string | null;
+    labels: AttendeeCsvLabels;
+    /** The event's questions: one column each, after the fixed columns. */
+    questions?: readonly { id: string; label: string }[];
+  },
 ): string {
+  const questions = options.questions ?? [];
   const zone = isValidTimeZone(options.timezone) ? options.timezone : "UTC";
   const l = options.labels;
   const when = (instant: Date | string | null) => {
@@ -82,6 +88,7 @@ export function toAttendeesCsv(
     l.experience,
     l.skills,
     l.interests,
+    ...questions.map((q) => q.label),
   ];
 
   const lines = rows.map((row) => [
@@ -102,6 +109,10 @@ export function toAttendeesCsv(
     row.profile?.experienceLevel,
     row.profile?.skills.join("; "),
     row.profile?.interests.join("; "),
+    ...questions.map((q) => {
+      const value = row.answers.find((a) => a.questionId === q.id)?.value;
+      return Array.isArray(value) ? value.join("; ") : value;
+    }),
   ]);
 
   return (

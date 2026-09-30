@@ -377,8 +377,18 @@ first and last name, email, status, registration time, waitlist position,
 payment status, check-in time, whether they are a member of the hosting
 community, and how many of its events they attended before. For a member
 whose profile is public ([[profile-visibility]]), also: company, links,
-experience level, skills and interests. Built in one place,
+experience level, skills and interests. Also the member's answers to the
+event's [[registration-question]]s. A private profile does not hide those,
+because the member wrote them for the organizer. Built in one place,
 `toAttendeeDetails`, so every surface applies the same rule.
+
+### Registration question
+
+A question the [[event-organizer]] asks everyone who registers for a native
+[[Event]], to learn their expectations: short text, long text, pick one or
+pick several, optionally required. Up to ten per event. Members answer when
+they register and may change their answers until the event starts. Only the
+organizer sees the answers.
 
 ### Check-in
 

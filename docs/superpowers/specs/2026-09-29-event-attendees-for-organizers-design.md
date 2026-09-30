@@ -362,3 +362,66 @@ four from the team's test accounts, and two for an event that no longer
 exists. No real member is registered for an upcoming native event, so
 this rule costs organizers nothing today. It also keeps the promise
 "we only share what we told you about" for any row, now and later.
+
+## 8. Registration questions
+
+Added 2026-09-30 at the product owner's request. The organizer wants to
+learn what people expect before the event.
+
+| Topic | Decision |
+|---|---|
+| Question kinds | Short text, long text, pick one, pick several |
+| Limits | Up to 10 questions; 2–20 options per choice question; question 200 characters, option 100, short answer 300, long answer 2000 |
+| Required | Per question |
+| Changing answers | Members may change them until the event starts (in its own zone; a date-only event closes at local midnight) |
+| Who sees answers | The event organizer, in the attendee list and the CSV. A private profile does not hide them (the member wrote them for the organizer); registering before the sharing notice does |
+| Order of work | Questions before check-in |
+
+### 8.1 Data
+
+- `events.registrationQuestions` (Payload `json`, column
+  `registration_questions`): the questions, validated by
+  `registrationQuestionsSchema` on every write, including in the admin
+  panel.
+- `event_registration.answers` (`jsonb`, not null, default `{}`): the answers,
+  keyed by question id. A text answer is stored as text; a choice answer as
+  the chosen option id(s).
+- Questions and options carry stable ids. Fixing a typo in a question keeps
+  its answers. Answers to a removed question, or a removed option, are kept
+  but no longer shown.
+
+### 8.2 One set of rules
+
+`src/lib/events/registration-questions.ts` is shared by browser and server:
+
+- `registrationQuestionsSchema`: the question shape and limits.
+- `validateAnswers(questions, input)`: trims text, drops empty answers,
+  keeps only real options (multi-choice de-duplicated, in the organizer's
+  order), drops answers to unknown questions, and names each problem
+  (`required`, `too_long`, `invalid_choice`). The register dialog runs the
+  same function the server enforces.
+- `resolveAnswers(questions, stored)`: turns stored answers into words for
+  the organizer, in question order.
+- `canChangeAnswers(event)`: the "until it starts" rule.
+
+### 8.3 API
+
+- `events.register` takes `answers`. They are checked before anything is
+  written; a bad set answers `BAD_REQUEST` / `ANSWERS_INVALID`.
+- `events.updateMyAnswers({ eventId, answers })`: for a member with an
+  active registration (registered, waitlisted, awaiting payment), until the
+  event starts.
+- Event create, update and resubmit take `registrationQuestions`; `[]`
+  clears them. The edit form receives them back from `getEventForEdit`.
+- The attendee read model adds `answers` to each row, and
+  `readAttendeesForOrganizer` returns the questions for column headings.
+  The CSV adds one column per question, after the fixed columns.
+
+### 8.4 Screens (next PR)
+
+The event form moves from a dialog to an **event editor page**, organized
+in sections, with the question editor in a "Registration" section. The
+register dialog shows the questions under the name fields; a registered
+member gets "Edit my answers" until the event starts; the Attendees page
+shows each person's answers.
+
