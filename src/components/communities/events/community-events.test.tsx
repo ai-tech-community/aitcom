@@ -818,6 +818,17 @@ describe("CommunityEvents — event organizer", () => {
     }
   });
 
+  it("puts the organizer's controls on their own line, so the title keeps its width", () => {
+    asRole("owner");
+    renderEvents();
+    const actions = rowOf(/^Agents Hackathon/).querySelector(
+      "[data-slot='event-row-actions']",
+    );
+    expect(actions).toHaveAttribute("data-placement", "below");
+    expect(actions).toHaveClass("order-last", "basis-full");
+    expect(actions).not.toHaveClass("sm:shrink-0");
+  });
+
   it("shows members and guests no organizer", () => {
     asRole("member");
     renderEvents();
