@@ -22,19 +22,35 @@ import { cn } from "@/lib/utils";
  * least 32px tall.
  */
 
-/** A group of controls; the row places it beside or below the body. */
+/**
+ * A group of controls on an event row.
+ * - `beside` (default): next to the body on wide screens. For one or two
+ *   short controls; it never shrinks, so the body gives way to it.
+ * - `below`: its own full line under the row on every screen, lined up
+ *   with the title: the title column starts at 11rem (8rem date block +
+ *   2rem gap + 1rem row padding), less the small icon button's 0.625rem
+ *   padding so the first icon sits under the title's first letter. For the
+ *   organiser's wider set of controls, which beside the body would squeeze
+ *   the title to a few letters per line.
+ */
 export function RowActions({
   children,
   className,
+  placement = "beside",
 }: {
   children: ReactNode;
   className?: string;
+  placement?: "beside" | "below";
 }) {
   return (
     <div
       data-slot="event-row-actions"
+      data-placement={placement}
       className={cn(
-        "flex min-w-0 flex-wrap items-center gap-1 sm:shrink-0",
+        "flex min-w-0 flex-wrap items-center gap-1",
+        placement === "beside"
+          ? "sm:shrink-0"
+          : "order-last basis-full sm:-mt-3 sm:pb-4 sm:pl-[10.375rem]",
         className,
       )}
     >

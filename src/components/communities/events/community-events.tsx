@@ -205,7 +205,8 @@ export function CommunityEvents({
     const id = event.id as number;
     const organizer = organizerByEvent.get(id);
     return (
-      <RowActions className="sm:order-6">
+      // Up to five controls: a line of their own, so the title keeps its width.
+      <RowActions placement="below">
         {organizer ? (
           <EventOrganizerControl eventId={id} info={organizer} />
         ) : null}
