@@ -1,6 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
@@ -23,7 +31,21 @@ import { useCreateCommunityDeepLink } from "./use-create-community-deep-link";
 
 const SIGN_IN_INTENT = "Sign in to create a community";
 
-export function CreateCommunityDialog() {
+type CreateCommunityContextValue = {
+  /** Opens the dialog; guests are asked to sign in first. */
+  start: () => void;
+};
+
+const CreateCommunityContext =
+  createContext<CreateCommunityContextValue | null>(null);
+
+/**
+ * One create-community dialog for a page. Any `CreateCommunityButton`
+ * inside opens it, so a page can offer the action in several places
+ * (header, empty state, closing invite) without mounting several dialogs
+ * or handling the `?create=1` deep link more than once.
+ */
+export function CreateCommunityProvider({ children }: { children: ReactNode }) {
   const t = useTranslations("communities.create");
   const router = useRouter();
   const utils = api.useUtils();
@@ -66,16 +88,15 @@ export function CreateCommunityDialog() {
     });
   }
 
+  const start = useCallback(
+    () => requireAuth(() => setOpen(true), SIGN_IN_INTENT),
+    [requireAuth],
+  );
+  const value = useMemo(() => ({ start }), [start]);
+
   return (
-    <>
-      <Button
-        size="sm"
-        className="font-mono text-xs"
-        onClick={() => requireAuth(() => setOpen(true), SIGN_IN_INTENT)}
-      >
-        <Plus className="mr-1.5 h-3.5 w-3.5" />
-        {t("title")}
-      </Button>
+    <CreateCommunityContext.Provider value={value}>
+      {children}
 
       <BuildingModal
         isOpen={open}
@@ -153,6 +174,24 @@ export function CreateCommunityDialog() {
           </Button>
         </form>
       </BuildingModal>
-    </>
+    </CreateCommunityContext.Provider>
+  );
+}
+
+/** Opens the page's create-community dialog. Needs a `CreateCommunityProvider`. */
+export function CreateCommunityButton({
+  children,
+  ...props
+}: Omit<ComponentProps<typeof Button>, "onClick">) {
+  const t = useTranslations("communities.create");
+  const context = useContext(CreateCommunityContext);
+  if (!context) {
+    throw new Error("CreateCommunityButton needs a CreateCommunityProvider");
+  }
+  return (
+    <Button {...props} onClick={context.start}>
+      <Plus aria-hidden="true" />
+      {children ?? t("title")}
+    </Button>
   );
 }

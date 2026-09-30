@@ -1,7 +1,6 @@
 // src/server/api/routers/communities.ts
 import { z } from "zod";
-import { escapeLike } from "@/server/db/escape-like";
-import { and, eq, isNull, ilike, sql, desc, count, inArray } from "drizzle-orm";
+import { and, eq, isNull, sql, desc, count, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
@@ -30,11 +29,13 @@ import {
   canRedeemInvite,
 } from "@/server/communities/invite-policy";
 import { logActivity } from "@/server/agent/activity";
+import { loadPublicLiveness } from "@/server/communities/discovery-queries";
+import { loadDirectory } from "@/server/communities/directory-queries";
 import {
-  loadPublicLiveness,
-  loadDiscoveryCandidates,
-} from "@/server/communities/discovery-queries";
-import { livenessScore } from "@/server/communities/discovery";
+  DIRECTORY_SORTS,
+  queryDirectory,
+} from "@/server/communities/directory";
+import { getPayloadClient } from "@/server/payload";
 import {
   loadStackFaces,
   loadStackFacesForCommunities,
@@ -44,140 +45,40 @@ import { listMyCommunities } from "@/server/communities/my-communities";
 import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
 
 export const communitiesRouter = createTRPCRouter({
-  /** Browse listed communities */
-  list: publicProcedure
+  /**
+   * The public directory (Explore page): listed communities with their
+   * public signals — recent activity, next event, join policy — searched
+   * by name or description, filtered by the place of their events, sorted,
+   * one page at a time (`cursor` is an offset).
+   */
+  directory: publicProcedure
     .input(
       z.object({
-        search: z.string().optional(),
-        limit: z.number().min(1).max(50).default(20),
-        sort: z.enum(["newest", "largest"]).default("newest"),
-        cursor: z
-          .object({
-            createdAt: z.string().datetime(),
-            id: z.string(),
-            memberCount: z.number().nullish(),
-          })
-          .nullish(),
+        q: z.string().trim().max(100).optional(),
+        place: z.string().trim().max(100).optional(),
+        sort: z.enum(DIRECTORY_SORTS).default("active"),
+        limit: z.number().int().min(1).max(48).default(24),
+        cursor: z.number().int().min(0).nullish(),
+        locale: z.enum(["en", "nl"]).default("en"),
       }),
     )
     .query(async ({ ctx, input }) => {
-      // Subquery: active member count per community (avoids hardcoded schema name)
-      const memberCountSq = ctx.db
-        .select({
-          communityId: communityMemberships.communityId,
-          count: count().as("member_count"),
-        })
-        .from(communityMemberships)
-        .where(eq(communityMemberships.status, "active"))
-        .groupBy(communityMemberships.communityId)
-        .as("mc");
-
-      const conditions = [
-        eq(communities.isListedInDirectory, true),
-        isNull(communities.deletedAt),
-      ];
-
-      if (input.search) {
-        conditions.push(
-          ilike(communities.name, `%${escapeLike(input.search)}%`),
-        );
-      }
-
-      // Keyset pagination. Newest: (createdAt, id) desc. Largest: (memberCount, id) desc.
-      // For `largest`, always use the memberCount keyset (treating a missing
-      // cursor count as 0) so it can't silently fall back to the createdAt keyset
-      // while the ORDER BY is memberCount-based — that would skip/duplicate rows.
-      const memberCountExpr = sql<number>`coalesce(${memberCountSq.count}, 0)`;
-      if (input.cursor) {
-        if (input.sort === "largest") {
-          conditions.push(
-            sql`(${memberCountExpr}, ${communities.id}) < (${input.cursor.memberCount ?? 0}, ${input.cursor.id})`,
-          );
-        } else {
-          conditions.push(
-            sql`(${communities.createdAt}, ${communities.id}) < (${input.cursor.createdAt}, ${input.cursor.id})`,
-          );
-        }
-      }
-
-      const orderBy =
-        input.sort === "largest"
-          ? [desc(memberCountExpr), desc(communities.id)]
-          : [desc(communities.createdAt), desc(communities.id)];
-
-      const items = await ctx.db
-        .select({
-          id: communities.id,
-          name: communities.name,
-          slug: communities.slug,
-          description: communities.description,
-          logoUrl: communities.logoUrl,
-          joinPolicy: communities.joinPolicy,
-          memberCount: memberCountExpr,
-          createdAt: communities.createdAt,
-        })
-        .from(communities)
-        .leftJoin(memberCountSq, eq(communities.id, memberCountSq.communityId))
-        .where(and(...conditions))
-        .orderBy(...orderBy)
-        .limit(input.limit + 1);
-
-      let nextCursor: typeof input.cursor | undefined;
-      if (items.length > input.limit) {
-        const next = items.pop()!;
-        nextCursor = {
-          createdAt: next.createdAt.toISOString(),
-          id: next.id,
-          memberCount: next.memberCount,
-        };
-      }
-
+      const payload = await getPayloadClient();
+      const all = await loadDirectory(ctx.db, payload, {
+        now: new Date(),
+        locale: input.locale,
+      });
+      const page = queryDirectory(all, input);
       // One extra query for the whole page (no N+1): leadership-first faces.
-      const facesByCommunity = await loadStackFacesForCommunities(
-        ctx.db,
-        items.map((c) => c.id),
-      );
-      const itemsWithFaces = items.map((c) => ({
-        ...c,
-        faces: facesByCommunity.get(c.id) ?? [],
-      }));
-
-      return { items: itemsWithFaces, nextCursor };
-    }),
-
-  /** Top communities by liveness score (anonymous trending shelf). No pagination. */
-  trending: publicProcedure
-    .input(z.object({ limit: z.number().min(1).max(48).default(24) }))
-    .query(async ({ ctx, input }) => {
-      const candidates = await loadDiscoveryCandidates(ctx.db, new Date());
-      const ranked = candidates
-        .map((c) => ({ ...c, score: livenessScore(c) }))
-        .sort(
-          (a, b) =>
-            b.score - a.score ||
-            b.activeNow - a.activeNow ||
-            b.memberCount - a.memberCount ||
-            (a.communityId < b.communityId
-              ? -1
-              : a.communityId > b.communityId
-                ? 1
-                : 0),
-        )
-        .slice(0, input.limit);
       const faces = await loadStackFacesForCommunities(
         ctx.db,
-        ranked.map((c) => c.communityId),
+        page.items.map((c) => c.id),
       );
       return {
-        items: ranked.map((c) => ({
-          id: c.communityId,
-          name: c.name,
-          slug: c.slug,
-          description: c.description,
-          logoUrl: c.logoUrl,
-          joinPolicy: "open" as const, // display-only; Join uses the real policy on the community page
-          memberCount: c.memberCount,
-          faces: faces.get(c.communityId) ?? [],
+        ...page,
+        items: page.items.map((c) => ({
+          ...c,
+          faces: faces.get(c.id) ?? [],
         })),
       };
     }),

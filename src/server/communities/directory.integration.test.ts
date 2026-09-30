@@ -1,0 +1,292 @@
+// @vitest-environment node
+/**
+ * DB-INTEGRATION test for the public directory (`communities.directory`).
+ * Proves, against a REAL local DB + Payload, that the Explore page gets:
+ * listed communities only, the real join policy, recent activity, the next
+ * upcoming native event (not a past one, not a discovered Luma one), the
+ * places of upcoming events, search over the description, and the place
+ * filter.
+ *
+ * Auto-skips unless RUN_DB_TESTS=1 and a local database is configured:
+ *
+ *   RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 PAYLOAD_PUSH=false \
+ *     NEON_LOCAL_PROXY=127.0.0.1:5433 \
+ *     DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test \
+ *     pnpm exec vitest run src/server/communities/directory.integration.test.ts
+ */
+
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+
+function looksLikeCloudNeon(url: string): boolean {
+  return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
+}
+function isLocalDbConfigured(): boolean {
+  if (process.env.RUN_DB_TESTS !== "1") return false;
+  const dbUrl = process.env.DATABASE_URL?.trim() ?? "";
+  if (dbUrl && looksLikeCloudNeon(dbUrl)) return false;
+  return /(@|\/\/)(localhost|127\.0\.0\.1|0\.0\.0\.0|db|postgres|host\.docker\.internal)(:|\/)/i.test(
+    dbUrl,
+  );
+}
+const RUN_DB = isLocalDbConfigured();
+
+const RICH_TEXT = {
+  root: {
+    type: "root",
+    direction: "ltr" as const,
+    format: "" as const,
+    indent: 0,
+    version: 1,
+    children: [
+      {
+        type: "paragraph",
+        version: 1,
+        children: [{ type: "text", text: "directory integration test" }],
+      },
+    ],
+  },
+};
+
+function isoDay(offsetDays: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
+describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
+  type Mods = {
+    db: typeof import("@/server/db").db;
+    schema: typeof import("@/server/db/schema");
+    createCaller: typeof import("@/server/api/root").createCaller;
+    getPayloadClient: typeof import("@/server/payload").getPayloadClient;
+    inArray: typeof import("drizzle-orm").inArray;
+  };
+  let m: Mods;
+
+  type Fixture = {
+    suffix: string;
+    userIds: string[];
+    communityIds: string[];
+    eventIds: number[];
+    open: string;
+    approval: string;
+    unlisted: string;
+  };
+  let fx: Fixture;
+
+  beforeAll(async () => {
+    const [{ db }, schema, { createCaller }, { getPayloadClient }, drizzle] =
+      await Promise.all([
+        import("@/server/db"),
+        import("@/server/db/schema"),
+        import("@/server/api/root"),
+        import("@/server/payload"),
+        import("drizzle-orm"),
+      ]);
+    m = { db, schema, createCaller, getPayloadClient, inArray: drizzle.inArray };
+    if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
+      throw new Error("Refusing to run against a cloud Neon DATABASE_URL.");
+    }
+  });
+
+  function guest() {
+    return m.createCaller({
+      db: m.db,
+      session: null,
+      headers: new Headers(),
+    });
+  }
+
+  beforeEach(async () => {
+    const { db, schema } = m;
+    const suffix = `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
+    const owner = `it-dir-owner-${suffix}`;
+    const member = `it-dir-member-${suffix}`;
+    for (const id of [owner, member]) {
+      await db
+        .insert(schema.user)
+        .values({ id, email: `${id}@example.test`, name: id });
+    }
+
+    const insertCommunity = async (
+      label: string,
+      over: Partial<typeof schema.communities.$inferInsert>,
+    ) => {
+      const [row] = await db
+        .insert(schema.communities)
+        .values({
+          name: `Directory ${label} ${suffix}`,
+          slug: `it-dir-${label}-${suffix}`,
+          description: `Builders meeting in town ${suffix}`,
+          createdBy: owner,
+          isListedInDirectory: true,
+          ...over,
+        })
+        .returning({ id: schema.communities.id });
+      return row!.id;
+    };
+    const open = await insertCommunity("open", { joinPolicy: "open" });
+    const approval = await insertCommunity("approval", {
+      joinPolicy: "approval_required",
+      description: `Agents only ${suffix}`,
+    });
+    const unlisted = await insertCommunity("unlisted", {
+      isListedInDirectory: false,
+    });
+
+    await db.insert(schema.communityMemberships).values([
+      { communityId: open, userId: owner, role: "owner" },
+      { communityId: open, userId: member },
+      { communityId: approval, userId: owner, role: "owner" },
+    ]);
+    await db.insert(schema.activityEvents).values({
+      communityId: open,
+      actorId: member,
+      actorType: "user",
+      action: "thread.create",
+    });
+
+    const payload = await m.getPayloadClient();
+    const createEvent = async (
+      label: string,
+      data: Record<string, unknown>,
+    ) => {
+      const doc = await payload.create({
+        collection: "events",
+        data: {
+          title: `Directory ${label} ${suffix}`,
+          slug: `it-dir-${label}-${suffix}`,
+          description: RICH_TEXT,
+          type: "meetup" as const,
+          status: "published" as const,
+          startTime: "19:00",
+          timezone: "Europe/Amsterdam",
+          location: "Test Lab",
+          ...data,
+        } as never,
+        context: { skipGeocode: true },
+      });
+      return doc.id;
+    };
+    const eventIds = [
+      await createEvent("past", {
+        communityId: open,
+        date: isoDay(-10),
+        city: "Rotterdam",
+      }),
+      await createEvent("later", {
+        communityId: open,
+        date: isoDay(20),
+        format: "online",
+        location: "Online",
+      }),
+      await createEvent("next", {
+        communityId: open,
+        date: isoDay(5),
+        city: "Utrecht",
+      }),
+      await createEvent("luma", {
+        communityId: approval,
+        date: isoDay(3),
+        city: "Delft",
+        discoverySource: "luma",
+      }),
+      await createEvent("unlisted", {
+        communityId: unlisted,
+        date: isoDay(4),
+        city: "Leiden",
+      }),
+    ];
+
+    fx = {
+      suffix,
+      userIds: [owner, member],
+      communityIds: [open, approval, unlisted],
+      eventIds,
+      open,
+      approval,
+      unlisted,
+    };
+  });
+
+  afterEach(async () => {
+    const { db, schema, inArray } = m;
+    const payload = await m.getPayloadClient();
+    for (const id of fx.eventIds) {
+      try {
+        await payload.delete({ collection: "events", id });
+      } catch {
+        // Best-effort teardown.
+      }
+    }
+    await db
+      .delete(schema.activityEvents)
+      .where(inArray(schema.activityEvents.communityId, fx.communityIds));
+    await db
+      .delete(schema.communityMemberships)
+      .where(inArray(schema.communityMemberships.communityId, fx.communityIds));
+    await db
+      .delete(schema.communities)
+      .where(inArray(schema.communities.id, fx.communityIds));
+    await db.delete(schema.user).where(inArray(schema.user.id, fx.userIds));
+  });
+
+  it("returns listed communities with their real public signals", async () => {
+    const out = await guest().communities.directory({ q: fx.suffix });
+    const ids = out.items.map((c) => c.id);
+    expect(ids).toContain(fx.open);
+    expect(ids).toContain(fx.approval);
+    expect(ids).not.toContain(fx.unlisted);
+
+    const open = out.items.find((c) => c.id === fx.open)!;
+    expect(open).toMatchObject({
+      joinPolicy: "open",
+      memberCount: 2,
+      activeRecently: 1,
+      isNew: true,
+    });
+    expect(open.nextEvent).toMatchObject({
+      slug: `it-dir-next-${fx.suffix}`,
+      city: "Utrecht",
+      online: false,
+    });
+    expect(open.places).toEqual(["Utrecht", "online"]);
+
+    const approval = out.items.find((c) => c.id === fx.approval)!;
+    expect(approval.joinPolicy).toBe("approval_required");
+    // A discovered (Luma) event is not the community's own next event.
+    expect(approval.nextEvent).toBeNull();
+    expect(approval.places).toEqual([]);
+  });
+
+  it("puts the busier community first when sorting by activity", async () => {
+    const out = await guest().communities.directory({
+      q: fx.suffix,
+      sort: "active",
+    });
+    expect(out.items.map((c) => c.id)).toEqual([fx.open, fx.approval]);
+  });
+
+  it("searches the description as well as the name", async () => {
+    const out = await guest().communities.directory({
+      q: `Agents only ${fx.suffix}`,
+    });
+    expect(out.items.map((c) => c.id)).toEqual([fx.approval]);
+  });
+
+  it("filters by the place of upcoming events", async () => {
+    const utrecht = await guest().communities.directory({
+      q: fx.suffix,
+      place: "utrecht",
+    });
+    expect(utrecht.items.map((c) => c.id)).toEqual([fx.open]);
+    expect(utrecht.places.map((p) => p.key)).toEqual(
+      expect.arrayContaining(["Utrecht", "online"]),
+    );
+    const leiden = await guest().communities.directory({
+      q: fx.suffix,
+      place: "Leiden",
+    });
+    expect(leiden.items).toEqual([]);
+  });
+});

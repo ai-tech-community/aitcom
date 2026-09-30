@@ -2,73 +2,53 @@
 
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Button } from "@/components/ui/button";
 import { SpaceCard } from "./space-card";
-import { QUIET_SQUARE } from "./ascii-art";
 
-export function DiscoverSpaces({ search }: { search: string }) {
+/**
+ * Fewest public rooms before the section shows while browsing. Below it
+ * the rooms live on their communities' pages only, so a thin list never
+ * becomes the end of the directory. A search always shows its matches.
+ */
+export const MIN_BROWSE_ROOMS = 3;
+
+/** Public rooms across listed communities. */
+export function DiscoverSpaces({
+  search,
+  className,
+}: {
+  search: string;
+  className?: string;
+}) {
   const t = useTranslations("communities.discover");
   const q = api.spaces.discoverPublic.useInfiniteQuery(
     { search: search || undefined, limit: 20 },
     { getNextPageParam: (last) => last.nextCursor ?? undefined },
   );
 
-  if (q.isLoading) {
-    return (
-      <section className="mt-10">
-        <SectionLabel as="h2">{t("spaces")}</SectionLabel>
-        <ul className="border-border divide-border/60 mt-3 divide-y overflow-hidden rounded-lg border">
-          {[0, 1].map((i) => (
-            <li key={i} className="flex items-center gap-3 p-3">
-              <Skeleton className="size-9 shrink-0 rounded-md" />
-              <div className="flex-1 space-y-1.5">
-                <Skeleton className="h-3.5 w-1/3" />
-                <Skeleton className="h-3 w-2/3" />
-              </div>
-              <Skeleton className="h-8 w-16 shrink-0 rounded-md" />
-            </li>
-          ))}
-        </ul>
-      </section>
-    );
-  }
+  if (q.isLoading) return null;
   if (q.isError)
     return (
-      <div className="mt-10">
+      <div className={className}>
         <ErrorState onRetry={() => void q.refetch()} />
       </div>
     );
 
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
-  if (items.length === 0) {
-    return (
-      <section className="mt-10">
-        <SectionLabel as="h2">{t("spaces")}</SectionLabel>
-        <div className="mt-3 flex flex-col items-start gap-2">
-          <pre
-            aria-hidden="true"
-            className="text-muted-foreground overflow-x-auto font-mono text-[10px] leading-tight"
-          >
-            {QUIET_SQUARE}
-          </pre>
-          <p className="text-muted-foreground text-sm">{t("emptySpaces")}</p>
-        </div>
-      </section>
-    );
+  const searching = search.trim().length > 0;
+  if (items.length === 0 || (!searching && items.length < MIN_BROWSE_ROOMS)) {
+    return null;
   }
 
   return (
-    <section className="mt-10">
-      <SectionLabel as="h2">
-        {t("spaces")} · {items.length}
+    <section aria-labelledby="spaces-title" className={className}>
+      <SectionLabel as="h2" id="spaces-title">
+        {t("spaces")}
       </SectionLabel>
-      <p className="text-muted-foreground mt-1 font-mono text-xs">
-        {t("spacesSub")}
-      </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <p className="text-muted-foreground mt-2 text-sm">{t("spacesSub")}</p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((s) => (
           <SpaceCard
             key={s.spaceId}
@@ -81,10 +61,9 @@ export function DiscoverSpaces({ search }: { search: string }) {
         ))}
       </div>
       {q.hasNextPage ? (
-        <div className="mt-3 flex justify-center">
+        <div className="mt-6 flex justify-center">
           <Button
-            variant="ghost"
-            size="sm"
+            variant="outline"
             disabled={q.isFetchingNextPage}
             onClick={() => void q.fetchNextPage()}
           >

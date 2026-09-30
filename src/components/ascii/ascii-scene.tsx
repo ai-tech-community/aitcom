@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { gridSizeFor, measureCharCell } from "./measure";
+import { gridSizeFor, measureCharCell, type GridSize } from "./measure";
 import { useAsciiMotion } from "./use-ascii-motion";
 
 /** One stacked `<pre>` per layer, coloured by a token class. */
@@ -29,6 +29,11 @@ export interface AsciiSceneProps<L extends string> {
   /** Skip drawing when the box is smaller than this many cells. */
   minCols?: number;
   minRows?: number;
+  /**
+   * Called after each measure with the grid in use (null when the box is
+   * below the minimum), so a caller can line an overlay up with the art.
+   */
+  onGridChange?: (grid: GridSize | null) => void;
   className?: string;
   "data-testid"?: string;
 }
@@ -47,11 +52,16 @@ export function AsciiScene<L extends string>({
   staticTick,
   minCols = 10,
   minRows = 4,
+  onGridChange,
   className,
   "data-testid": testId,
 }: AsciiSceneProps<L>) {
   const boxRef = useRef<HTMLDivElement>(null);
   const preRefs = useRef<Partial<Record<L, HTMLPreElement>>>({});
+  const gridChangeRef = useRef(onGridChange);
+  useEffect(() => {
+    gridChangeRef.current = onGridChange;
+  });
 
   const motion = useAsciiMotion(boxRef, {
     frameMs,
@@ -61,7 +71,9 @@ export function AsciiScene<L extends string>({
         { width: el.clientWidth, height: el.clientHeight },
         measureCharCell(el),
       );
-      return cols >= minCols && rows >= minRows ? { cols, rows } : null;
+      const grid = cols >= minCols && rows >= minRows ? { cols, rows } : null;
+      gridChangeRef.current?.(grid);
+      return grid;
     },
     draw: (tick, { cols, rows }) => {
       const out = frame(tick, cols, rows);
