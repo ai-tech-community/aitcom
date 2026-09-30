@@ -1,42 +1,82 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { guardOAuthAccountCreate } from "./release-unproven-password";
+import { createProviderVerificationGuard } from "./release-unproven-password";
 
-describe("guardOAuthAccountCreate", () => {
-  it("releases the password when an OAuth account is attached", async () => {
-    const release = vi.fn().mockResolvedValue(true);
-    await guardOAuthAccountCreate(
-      { userId: "u1", providerId: "google" },
-      { emailVerificationRequired: true, release },
-    );
-    expect(release).toHaveBeenCalledWith("u1");
+function guard(emailVerificationRequired = true) {
+  const release = vi.fn().mockResolvedValue(true);
+  return {
+    release,
+    ...createProviderVerificationGuard({ emailVerificationRequired, release }),
+  };
+}
+
+describe("createProviderVerificationGuard", () => {
+  it("releases the password when an OAuth callback verifies the email", async () => {
+    const g = guard();
+    const ctx = { path: "/callback/:id" };
+
+    g.before({ emailVerified: true }, ctx);
+    await g.after({ id: "u1" }, ctx);
+
+    expect(g.release).toHaveBeenCalledWith("u1");
   });
 
-  it("ignores the password account itself being created", async () => {
-    const release = vi.fn();
-    await guardOAuthAccountCreate(
-      { userId: "u1", providerId: "credential" },
-      { emailVerificationRequired: true, release },
-    );
-    expect(release).not.toHaveBeenCalled();
+  it("releases once per update, not on a later update in the same request", async () => {
+    const g = guard();
+    const ctx = { path: "/callback/google" };
+
+    g.before({ emailVerified: true }, ctx);
+    await g.after({ id: "u1" }, ctx);
+    await g.after({ id: "u1" }, ctx);
+
+    expect(g.release).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores the email-link verification route", async () => {
+    const g = guard();
+    const ctx = { path: "/verify-email" };
+
+    g.before({ emailVerified: true }, ctx);
+    await g.after({ id: "u1" }, ctx);
+
+    expect(g.release).not.toHaveBeenCalled();
+  });
+
+  it("ignores callback updates that do not verify the email", async () => {
+    const g = guard();
+    const ctx = { path: "/callback/:id" };
+
+    g.before({ emailVerified: false }, ctx);
+    await g.after({ id: "u1" }, ctx);
+
+    expect(g.release).not.toHaveBeenCalled();
+  });
+
+  it("does nothing outside a request (no hook context)", async () => {
+    const g = guard();
+
+    g.before({ emailVerified: true }, null);
+    await g.after({ id: "u1" }, null);
+
+    expect(g.release).not.toHaveBeenCalled();
   });
 
   it("does nothing when email verification is not required", async () => {
-    const release = vi.fn();
-    await guardOAuthAccountCreate(
-      { userId: "u1", providerId: "github" },
-      { emailVerificationRequired: false, release },
-    );
-    expect(release).not.toHaveBeenCalled();
+    const g = guard(false);
+    const ctx = { path: "/callback/:id" };
+
+    g.before({ emailVerified: true }, ctx);
+    await g.after({ id: "u1" }, ctx);
+
+    expect(g.release).not.toHaveBeenCalled();
   });
 
-  it("propagates a failed release so the link is aborted", async () => {
-    const release = vi.fn().mockRejectedValue(new Error("db down"));
-    await expect(
-      guardOAuthAccountCreate(
-        { userId: "u1", providerId: "google" },
-        { emailVerificationRequired: true, release },
-      ),
-    ).rejects.toThrow("db down");
+  it("does not let one request's mark leak into another", async () => {
+    const g = guard();
+
+    g.before({ emailVerified: true }, { path: "/callback/:id" });
+    await g.after({ id: "u2" }, { path: "/callback/:id" });
+
+    expect(g.release).not.toHaveBeenCalled();
   });
 });

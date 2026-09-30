@@ -260,8 +260,9 @@ redirect URIs only, so Google sign-in works on production and
 localhost, **not** on `*.vercel.app` previews.
 
 A Google sign-in with the same email as an existing account joins
-that account only when Google reports the email as verified (Google
-is not in `trustedProviders`). The provider asks
+that account only when Google reports the email as verified. No
+provider is in `trustedProviders` (a trusted provider joins by an
+unverified email — an account takeover). The provider asks
 `prompt: select_account` so members with several Google accounts
 choose one.
 
@@ -271,10 +272,10 @@ choose one.
   sign-up; Settings shows Connect Google.
 - After OAuth: `app.account.provider_id = 'google'`.
 
-An OAuth join to an account still waiting for email confirmation
-deletes that account's unproven password and sessions first
-(`releaseUnprovenPassword`, `account.create.before`), so a stranger
-who pre-registered the address cannot share the account.
+When an OAuth sign-in proves the email of an account still waiting
+for confirmation, that account's unproven password and sessions are
+deleted (`createProviderVerificationGuard`, `user.update` hooks), so
+a stranger who pre-registered the address cannot share the account.
 
 #### Gaps
 

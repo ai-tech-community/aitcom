@@ -79,8 +79,16 @@ Google accepts exact redirect URIs only, so Google sign-in works on
 production and localhost but not on `*.vercel.app` previews.
 
 Signing in with Google using the same email as an existing account joins
-that account when Google reports the email as verified. Google is not in
-`trustedProviders`, so an unverified Google email never links.
+that account when Google reports the email as verified.
+
+## Joining by email needs a verified provider email
+
+No provider is in Better Auth's `trustedProviders`. A trusted provider joins
+an existing account by email even when the provider has not verified that
+email, so anyone could register a member's address with GitHub or LinkedIn
+and sign in as that member. Without trust, an OAuth sign-in joins an existing
+account (and Settings can link a provider) only when the provider reports
+its email as verified.
 
 ## Joining a waiting account (takeover guard)
 
@@ -89,14 +97,17 @@ someone clicks the emailed link, and anyone can start such a sign-up for any
 address. If the real owner later signs in with an OAuth provider using that
 address, Better Auth joins the two and marks the email verified.
 
-To stop the stranger's password from working after that join,
-`databaseHooks.account.create.before` runs `releaseUnprovenPassword`
-(`src/server/better-auth/release-unproven-password.ts`): when an OAuth
-account is attached to a user whose email is **unverified**, the user's
-password account and all sessions are deleted in one transaction. The
-person who proved the email keeps the account; a failed release aborts the
-link. Verified users (everyone linking from Settings) are untouched. The
-guard is off when email verification is not required (no `RESEND_API_KEY`).
+Better Auth marks the email verified during an OAuth callback only when the
+provider's verified email equals the account's email. The
+`databaseHooks.user.update` pair in `config.ts`
+(`createProviderVerificationGuard` in
+`src/server/better-auth/release-unproven-password.ts`) watches for exactly
+that update: `before` sees an OAuth callback set `emailVerified: true`,
+`after` deletes that user's password account and all sessions in one
+transaction. The person who proved the email keeps the account; the
+stranger's password is gone. Clicking the emailed link (`/verify-email`)
+and linking from Settings never trigger it. The guard is off when email
+verification is not required (no `RESEND_API_KEY`).
 
 Because such a join verifies the email without
 `emailVerification.afterEmailVerification`, pending staff invites are also
@@ -119,7 +130,9 @@ read it. Adding a provider is one registry entry plus its icon in
 - Disconnect uses `members.disconnectSocial`
 - No OAuth provider (Google, GitHub, LinkedIn) can be disconnected if it
   is the only remaining working sign-in method (a password, or another
-  linked provider that is still configured)
+  linked provider that is still configured). Enforced on Better Auth's
+  `POST /unlink-account` itself (`unlink-guard.ts`), not only in
+  `members.disconnectSocial`
 
 ## Schema
 

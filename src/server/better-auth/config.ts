@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { eq } from "drizzle-orm";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 
@@ -10,7 +11,7 @@ import {
   enrollForCreatedUser,
   enrollOnSessionCreated,
 } from "@/server/db/enroll-on-auth";
-import { memberProfiles } from "@/server/db/schema";
+import { account as accountTable, memberProfiles } from "@/server/db/schema";
 import { defaultDisplayName } from "@/server/members/default-display-name";
 import { checkEarlyAdopterBadge } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
@@ -35,10 +36,11 @@ import {
   sendVerificationEmail,
 } from "./send-verification-email";
 import {
-  guardOAuthAccountCreate,
+  createProviderVerificationGuard,
   releaseUnprovenPassword,
 } from "./release-unproven-password";
 import { createSignInOnReplayedVerification } from "./sign-in-on-replayed-verify";
+import { createUnlinkGuard } from "./unlink-guard";
 
 const githubCredentials = readOAuthCredentials("github");
 const linkedinCredentials = readOAuthCredentials("linkedin");
@@ -57,6 +59,13 @@ const authUrlEnv = {
 };
 
 const sessionCookieDomain = resolveSessionCookieDomain(authUrlEnv);
+
+// Pre-account-takeover guard: an OAuth sign-in that proves the email of an
+// account still waiting for confirmation drops that account's password.
+const providerVerificationGuard = createProviderVerificationGuard({
+  emailVerificationRequired: isEmailVerificationRequired(env.RESEND_API_KEY),
+  release: (userId) => releaseUnprovenPassword(db, userId),
+});
 
 export const auth = betterAuth({
   baseURL: resolveBetterAuthBaseUrl(authUrlEnv),
@@ -78,25 +87,15 @@ export const auth = betterAuth({
       enabled: true,
       // LinkedIn email is optional and may differ from the member email.
       allowDifferentEmails: true,
-      // Trusted = link even when the provider does not vouch for the email.
-      // Google is deliberately absent: it links a same-email account only
-      // when Google reports the email as verified.
-      trustedProviders: ["github", "linkedin"],
+      // No trustedProviders: "trusted" would join an existing account by
+      // email even when the provider has not verified that email — anyone
+      // could then sign in as a member by registering the member's address
+      // with the provider. A join requires the provider's verified email.
     },
   },
   databaseHooks: {
     account: {
       create: {
-        // Pre-account-takeover guard: an OAuth join to an account still
-        // waiting for email confirmation drops its unproven password.
-        before: async (created) => {
-          await guardOAuthAccountCreate(created, {
-            emailVerificationRequired: isEmailVerificationRequired(
-              env.RESEND_API_KEY,
-            ),
-            release: (userId) => releaseUnprovenPassword(db, userId),
-          });
-        },
         after: async (created) => {
           await onAuthAccountCreated(created);
         },
@@ -124,6 +123,14 @@ export const auth = betterAuth({
       },
     },
     user: {
+      update: {
+        before: async (data, ctx) => {
+          providerVerificationGuard.before(data, ctx);
+        },
+        after: async (updated, ctx) => {
+          await providerVerificationGuard.after(updated, ctx);
+        },
+      },
       create: {
         after: async (user) => {
           const displayName = defaultDisplayName(user);
@@ -236,6 +243,12 @@ export const auth = betterAuth({
   // human click without a session; this hook mints one and rebuilds the
   // 302 with Set-Cookie the same way first-verify does.
   hooks: {
+    before: createUnlinkGuard((userId) =>
+      db
+        .select({ providerId: accountTable.providerId })
+        .from(accountTable)
+        .where(eq(accountTable.userId, userId)),
+    ),
     after: createSignInOnReplayedVerification({
       enroll: enrollOnSessionCreated,
     }),

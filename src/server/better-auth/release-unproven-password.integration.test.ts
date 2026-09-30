@@ -1,9 +1,10 @@
 /**
  * DB-INTEGRATION test for the pre-account-takeover guard.
  *
- * Drives Better Auth's own `internalAdapter.linkAccount` — the call its OAuth
- * callback makes when a sign-in joins an existing account by email — so the
- * databaseHooks wiring in config.ts is exercised, not just the helper.
+ * Calls the `databaseHooks.user.update` pair registered on the real `auth`
+ * instance with the hook context of an OAuth callback — the update Better
+ * Auth makes when a provider proves an existing account's email — so the
+ * wiring in config.ts is exercised, not just the helper.
  *
  * AUTO-SKIPS unless RUN_DB_TESTS=1 and a local-looking DATABASE_URL is set.
  * See work-grid.integration.test.ts for the gate rationale.
@@ -96,13 +97,18 @@ describe.skipIf(!RUN_DB)("releaseUnprovenPassword [DB integration]", () => {
     return id;
   }
 
-  async function linkGoogle(userId: string) {
-    const ctx = await auth.$context;
-    return ctx.internalAdapter.linkAccount({
-      userId,
-      providerId: "google",
-      accountId: `google-${userId}`,
-    });
+  /** What Better Auth does when a provider proves the account's email. */
+  async function verifyEmailDuring(path: string, userId: string) {
+    const hooks = auth.options.databaseHooks.user.update;
+    const ctx = { path } as unknown as Parameters<typeof hooks.before>[1];
+    await hooks.before({ emailVerified: true }, ctx);
+    const { eq } = await import("drizzle-orm");
+    const [updated] = await db
+      .update(schema.user)
+      .set({ emailVerified: true })
+      .where(eq(schema.user.id, userId))
+      .returning();
+    await hooks.after(updated as never, ctx);
   }
 
   async function providersOf(userId: string) {
@@ -123,21 +129,21 @@ describe.skipIf(!RUN_DB)("releaseUnprovenPassword [DB integration]", () => {
     return rows.length;
   }
 
-  it("drops the password and sessions of an unverified account on join", async () => {
+  it("drops the password and sessions when an OAuth callback proves the email", async () => {
     const id = await seedPasswordUser(false);
 
-    await linkGoogle(id);
+    await verifyEmailDuring("/callback/:id", id);
 
-    expect(await providersOf(id)).toEqual(["google"]);
+    expect(await providersOf(id)).toEqual([]);
     expect(await sessionCount(id)).toBe(0);
   });
 
-  it("leaves a verified account's password and sessions alone", async () => {
-    const id = await seedPasswordUser(true);
+  it("keeps the password when the member clicks the emailed link", async () => {
+    const id = await seedPasswordUser(false);
 
-    await linkGoogle(id);
+    await verifyEmailDuring("/verify-email", id);
 
-    expect(await providersOf(id)).toEqual(["credential", "google"]);
+    expect(await providersOf(id)).toEqual(["credential"]);
     expect(await sessionCount(id)).toBe(1);
   });
 });
