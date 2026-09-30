@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "lucide-react";
 
 import { DEFAULT_EVENT_TIMEZONE } from "@/lib/event-time";
 import { api } from "@/trpc/react";
-import { Link, useRouter } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "@/i18n/navigation";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { editorChecklist, finishedSections } from "./editor-checklist";
 import { EDITOR_SECTIONS, type EditorSectionId } from "./editor-layout";
+import { EditorSectionNav } from "./editor-section-nav";
+import { EditorSummaryPane } from "./editor-summary-pane";
+import { EditorTopBar } from "./editor-top-bar";
 import {
   formFromEditData,
   newEventForm,
@@ -38,28 +40,40 @@ function browserTimeZone(): string {
   }
 }
 
+const FORM_ID = "event-editor-form";
+
 /**
- * The event editor page body: create, edit or resubmit a community event,
- * in sections instead of one long dialog. The page route has already
- * checked who may open it; the server checks again on save.
+ * The event editor: create, edit or resubmit a community event. A
+ * full-screen workspace like the course builder — a top bar with the one
+ * orange action, the section menu on the left, the form in the middle
+ * (scrolling on its own), and on wide screens a right pane with what is
+ * still missing and a live preview. The page route has already checked who
+ * may open it; the server checks again on save.
  */
 export function EventEditor({
   communitySlug,
+  communityName,
   mode,
   eventId,
   canPublish,
+  title,
+  subtitle,
 }: {
   communitySlug: string;
+  communityName: string;
   mode: EventEditorMode;
   eventId?: number;
   /** Community admin/owner: publishes directly and sees curation fields. */
   canPublish: boolean;
+  title: string;
+  subtitle?: string;
 }) {
   const t = useTranslations("events");
   const te = useTranslations("events.editor");
   const router = useRouter();
   const backHref = `/communities/${communitySlug}/events`;
   const isEditing = mode !== "create";
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const editData = api.events.getEventForEdit.useQuery(
     { eventId: eventId ?? 0, communitySlug },
@@ -98,29 +112,18 @@ export function EventEditor({
   const hasQuestionProblems =
     !form?.sourceUrl.trim() && Object.keys(problems).length > 0;
 
-  if (isEditing && editData.isError) {
-    return (
-      <ErrorState
-        description={te("loadError")}
-        onRetry={() => void editData.refetch()}
-      />
-    );
-  }
-  if (!form) {
-    return (
-      <div className="space-y-4" aria-busy="true">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-40 w-full" />
-      </div>
-    );
-  }
-
-  const sections = EDITOR_SECTIONS.filter(
-    (id: EditorSectionId) =>
-      (id !== "import" || mode === "create") &&
-      (id !== "curation" || canPublish),
+  // Stable per mode/role: the section menu watches these elements.
+  const sections = useMemo(
+    () =>
+      EDITOR_SECTIONS.filter(
+        (id: EditorSectionId) =>
+          (id !== "import" || mode === "create") &&
+          (id !== "curation" || canPublish),
+      ),
+    [mode, canPublish],
   );
+  const checklist = form ? editorChecklist(form, mode) : [];
+  const finished = finishedSections(checklist);
 
   const submitLabel =
     mode === "resubmit"
@@ -143,60 +146,108 @@ export function EventEditor({
     if (form) save(form);
   }
 
-  return (
-    <div className="lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-12">
-      <nav aria-label={te("sectionsNav")} className="hidden lg:block">
-        <ul className="sticky top-24 space-y-1 text-sm">
-          {sections.map((id) => (
-            <li key={id}>
-              <a
-                href={`#${id}`}
-                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 block rounded-md px-2 py-1.5 outline-none focus-visible:ring-[3px]"
-              >
-                {te(`sections.${id}`)}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <form onSubmit={onSubmit}>
-        {sections.includes("import") ? (
-          <ImportSection
-            form={form}
-            update={update}
-            communitySlug={communitySlug}
-          />
-        ) : null}
-        <BasicsSection form={form} update={update} />
-        <AudienceSection form={form} update={update} />
-        <WhenSection form={form} update={update} conflicts={conflicts} />
-        <WhereSection form={form} update={update} />
-        <RegistrationSection
-          form={form}
-          update={update}
-          problems={problems}
-          showProblems={triedSave}
+  let body: React.ReactNode;
+  if (isEditing && editData.isError) {
+    body = (
+      <div className="p-6">
+        <ErrorState
+          description={te("loadError")}
+          onRetry={() => void editData.refetch()}
         />
-        {canPublish ? <CurationSection form={form} update={update} /> : null}
+      </div>
+    );
+  } else if (!form) {
+    body = (
+      <div className="mx-auto max-w-3xl space-y-4 p-6" aria-busy="true">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
+  } else {
+    const summary = (
+      <EditorSummaryPane
+        form={form}
+        checklist={checklist}
+        communityName={communityName}
+      />
+    );
+    body = (
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_20rem]">
+        <aside className="border-border relative hidden overflow-y-auto border-r lg:block">
+          <EditorSectionNav
+            sections={sections}
+            finished={finished}
+            scrollRoot={scrollRef}
+          />
+        </aside>
 
-        <div className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky bottom-0 z-10 -mx-4 flex items-center justify-end gap-2 border-t px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
-          {triedSave && hasQuestionProblems ? (
-            <p role="alert" className="text-destructive mr-auto text-sm">
-              {te("questions.fixBeforeSaving")}
-            </p>
-          ) : null}
-          <Button asChild variant="ghost">
-            <Link href={backHref}>{te("cancel")}</Link>
-          </Button>
-          <Button type="submit" disabled={pending}>
-            {pending ? (
-              <Loader2 className="animate-spin" aria-hidden="true" />
+        {/* `relative` on every scrolling column: Radix Select and Checkbox
+            render hidden, absolutely positioned native inputs; without a
+            positioned scroll box they escape it and stretch the page. */}
+        <div
+          ref={scrollRef}
+          className="relative min-w-0 overflow-y-auto scroll-smooth"
+        >
+          <form
+            id={FORM_ID}
+            onSubmit={onSubmit}
+            className="mx-auto max-w-3xl px-4 py-8 sm:px-8"
+          >
+            {triedSave && hasQuestionProblems ? (
+              <p
+                role="alert"
+                className="border-destructive/40 bg-destructive/10 text-destructive mb-6 rounded-md border px-3 py-2 text-sm"
+              >
+                {te("questions.fixBeforeSaving")}
+              </p>
             ) : null}
-            {submitLabel}
-          </Button>
+            {sections.includes("import") ? (
+              <ImportSection
+                form={form}
+                update={update}
+                communitySlug={communitySlug}
+              />
+            ) : null}
+            <BasicsSection form={form} update={update} />
+            <AudienceSection form={form} update={update} />
+            <WhenSection form={form} update={update} conflicts={conflicts} />
+            <WhereSection form={form} update={update} />
+            <RegistrationSection
+              form={form}
+              update={update}
+              problems={problems}
+              showProblems={triedSave}
+            />
+            {canPublish ? (
+              <CurationSection form={form} update={update} />
+            ) : null}
+          </form>
+          {/* Narrower screens: the checklist and preview follow the form. */}
+          <div className="border-border mx-auto max-w-3xl border-t xl:hidden">
+            {summary}
+          </div>
         </div>
-      </form>
+
+        <aside className="border-border relative hidden overflow-y-auto border-l xl:block">
+          {summary}
+        </aside>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col lg:h-[calc(100dvh-3rem-1px)]">
+      <EditorTopBar
+        backHref={backHref}
+        backLabel={communityName}
+        title={title}
+        subtitle={subtitle}
+        formId={FORM_ID}
+        submitLabel={submitLabel}
+        pending={pending || !form}
+      />
+      {body}
     </div>
   );
 }

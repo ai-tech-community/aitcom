@@ -413,7 +413,29 @@
           "optionLabel": "Vul elke optie in, of verwijder de lege."
         },
         "fixBeforeSaving": "Sommige vragen zijn niet af. Maak ze af om op te slaan."
-      }
+      },
+      "backTo": "Terug naar {name}",
+      "sectionsTitle": "Onderdelen",
+      "sectionDone": "klaar",
+      "checklistTitle": "Klaar om op te slaan",
+      "checklistReady": "Alles wat nodig is, is ingevuld.",
+      "checklistRemaining": "Nog {count, plural, one {# ding} other {# dingen}} te doen voordat je kunt opslaan.",
+      "checklistDone": "(klaar)",
+      "checklistTodo": "(te doen)",
+      "checklist": {
+        "title": "Een titel",
+        "audience": "Voor wie",
+        "date": "Een datum",
+        "location": "Waar het is",
+        "questions": "Vragen afgemaakt"
+      },
+      "previewTitle": "Voorbeeld",
+      "previewUntitled": "Je evenement",
+      "previewNeedsDate": "Kies een datum om te zien hoe het evenement in de lijst staat.",
+      "previewExternal": "Mensen melden zich aan op de andere site.",
+      "previewSeats": "{count, plural, one {# plaats} other {# plaatsen}}",
+      "previewNoLimit": "Geen maximum",
+      "previewQuestions": "{count, plural, =0 {Geen vragen voor wie zich aanmeldt} one {# vraag voor wie zich aanmeldt} other {# vragen voor wie zich aanmeldt}}"
     }
   },
   "blog": {

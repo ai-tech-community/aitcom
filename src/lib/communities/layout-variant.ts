@@ -9,6 +9,9 @@ export type CommunityLayoutVariant = "standard" | "workspace";
 const WORKSPACE_ROUTES: ReadonlyArray<ReadonlyArray<string | null>> = [
   // classroom/<courseSlug>/edit — null matches any single segment
   ["classroom", null, "edit"],
+  // The event editor: events/new and events/<eventSlug>/edit
+  ["events", "new"],
+  ["events", null, "edit"],
 ];
 
 export function resolveCommunityLayoutVariant(

@@ -95,8 +95,10 @@ function renderEditor(
     <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
       <EventEditor
         communitySlug="builders"
+        communityName="Builders"
         mode="create"
         canPublish
+        title="Create event"
         {...props}
       />
     </NextIntlClientProvider>,
@@ -157,6 +159,18 @@ describe("EventEditor — sections", () => {
       "#registration",
       "#curation",
     ]);
+  });
+
+  it("keeps every scrolling column a positioned box", () => {
+    // Radix Select/Checkbox add hidden, absolutely positioned native inputs.
+    // An unpositioned scroll column lets them escape, the page itself then
+    // scrolls, and the editor frame slides out of view (seen 2026-09-30).
+    renderEditor();
+    const scrollers = [...document.querySelectorAll("div, aside")].filter(
+      (el) => el.classList.contains("overflow-y-auto"),
+    );
+    expect(scrollers.length).toBeGreaterThanOrEqual(3);
+    for (const el of scrollers) expect(el).toHaveClass("relative");
   });
 
   it("hides curation from members, and the link import when editing", () => {

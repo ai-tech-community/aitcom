@@ -10,13 +10,23 @@ describe("resolveCommunityLayoutVariant", () => {
       resolveCommunityLayoutVariant(["classroom", "my-course", "edit"]),
     ).toBe("workspace");
   });
+  it("uses the workspace layout for the event editor", () => {
+    expect(resolveCommunityLayoutVariant(["events", "new"])).toBe("workspace");
+    expect(resolveCommunityLayoutVariant(["events", "my-event", "edit"])).toBe(
+      "workspace",
+    );
+    expect(isWorkspacePath("/communities/hub/events/new")).toBe(true);
+  });
   it("keeps the standard layout everywhere else", () => {
     for (const segs of [
       [],
       ["classroom"],
       ["classroom", "new"],
       ["classroom", "my-course"],
-      ["events", "x", "edit"],
+      ["events"],
+      ["events", "x"],
+      ["events", "x", "attendees"],
+      ["events", "x", "manage"],
       ["classroom", "edit"],
     ]) {
       expect(resolveCommunityLayoutVariant(segs)).toBe("standard");
