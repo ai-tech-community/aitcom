@@ -413,7 +413,29 @@
           "optionLabel": "Fill in every option, or remove the empty one."
         },
         "fixBeforeSaving": "Some questions are not finished. Fix them to save."
-      }
+      },
+      "backTo": "Back to {name}",
+      "sectionsTitle": "Sections",
+      "sectionDone": "done",
+      "checklistTitle": "Ready to save",
+      "checklistReady": "Everything needed is filled in.",
+      "checklistRemaining": "{count, plural, one {# thing left} other {# things left}} before you can save.",
+      "checklistDone": "(done)",
+      "checklistTodo": "(to do)",
+      "checklist": {
+        "title": "A title",
+        "audience": "Who it's for",
+        "date": "A date",
+        "location": "Where it happens",
+        "questions": "Finished questions"
+      },
+      "previewTitle": "Preview",
+      "previewUntitled": "Your event",
+      "previewNeedsDate": "Pick a date to see how the event shows in the list.",
+      "previewExternal": "People register on the other site.",
+      "previewSeats": "{count, plural, one {# seat} other {# seats}}",
+      "previewNoLimit": "No seat limit",
+      "previewQuestions": "{count, plural, =0 {No questions for people who register} one {# question for people who register} other {# questions for people who register}}"
     }
   },
   "blog": {

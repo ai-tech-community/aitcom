@@ -95,8 +95,10 @@ function renderEditor(
     <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
       <EventEditor
         communitySlug="builders"
+        communityName="Builders"
         mode="create"
         canPublish
+        title="Create event"
         {...props}
       />
     </NextIntlClientProvider>,

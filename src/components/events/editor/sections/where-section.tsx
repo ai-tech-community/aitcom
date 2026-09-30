@@ -49,7 +49,8 @@ export function WhereSection({ form, update }: SectionProps) {
           </SelectContent>
         </Select>
       </Field>
-      <Field id="event-location" label={t("eventLocation")}>
+      <div className="hidden sm:block" />
+      <Field id="event-location" label={t("eventLocation")} wide>
         <Input
           id="event-location"
           value={form.location}
@@ -66,19 +67,19 @@ export function WhereSection({ form, update }: SectionProps) {
           maxLength={255}
         />
       </Field>
-      <Field id="event-region" label={t("regionLabel")}>
-        <Input
-          id="event-region"
-          value={form.region}
-          onChange={(e) => update({ region: e.target.value })}
-          maxLength={255}
-        />
-      </Field>
       <Field id="event-country" label={t("countryLabel")}>
         <Input
           id="event-country"
           value={form.country}
           onChange={(e) => update({ country: e.target.value })}
+          maxLength={255}
+        />
+      </Field>
+      <Field id="event-region" label={t("regionLabel")}>
+        <Input
+          id="event-region"
+          value={form.region}
+          onChange={(e) => update({ region: e.target.value })}
           maxLength={255}
         />
       </Field>

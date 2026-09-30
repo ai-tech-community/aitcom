@@ -434,8 +434,20 @@ The event form moved from a dialog to an **event editor page**:
 (`src/server/events/event-editor-access.ts`) decides who may open it, with
 the same rule as `getEventForEdit`; anyone else gets 404.
 
-Sections, in page order, each under the House Kicker, with a section menu
-on wide screens and a save bar that stays visible:
+The editor is a full-screen **workspace** page, like the course builder
+(`src/lib/communities/layout-variant.ts`: no community header, no tab bar,
+no width limit):
+
+- **Top bar:** the way back, what is being edited, Cancel, and the one
+  orange action (Save / Create / Submit).
+- **Left pane:** the section menu. The section on screen is marked, and
+  finished sections get a tick.
+- **Middle:** the form, at a readable width, scrolling on its own.
+- **Right pane** (wide screens; below the form on narrower ones): "Ready to
+  save", a checklist from `editorChecklist` whose items jump to their
+  section, and a preview with the real compact list row, fed as you type.
+
+Sections, in page order, each under the House Kicker:
 
 1. **Start from a link** (new events only)
 2. **Basics**: title, type, summary, description, cover image, video

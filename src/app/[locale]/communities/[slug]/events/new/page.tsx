@@ -2,7 +2,6 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { EventEditor } from "@/components/events/editor/event-editor";
-import { EventEditorShell } from "@/components/events/editor/event-editor-shell";
 import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
 import { resolveEditorAccess } from "@/server/events/event-editor-access";
@@ -26,16 +25,12 @@ export default async function NewCommunityEventPage({
 
   const t = await getTranslations("events");
   return (
-    <EventEditorShell
-      backHref={`/communities/${slug}/events`}
-      backLabel={access.community.name}
+    <EventEditor
+      communitySlug={slug}
+      communityName={access.community.name}
+      mode="create"
+      canPublish={access.canPublish}
       title={access.canPublish ? t("createEvent") : t("submitEvent")}
-    >
-      <EventEditor
-        communitySlug={slug}
-        mode="create"
-        canPublish={access.canPublish}
-      />
-    </EventEditorShell>
+    />
   );
 }
