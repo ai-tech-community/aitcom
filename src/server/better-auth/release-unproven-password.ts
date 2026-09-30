@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
 import type { db as Db } from "@/server/db";
-import { account, session } from "@/server/db/schema";
+import { account, session, user } from "@/server/db/schema";
 
 /**
  * Pre-account-takeover guard.
@@ -20,6 +20,22 @@ import { account, session } from "@/server/db/schema";
  * through a different branch that never touches `emailVerified`, so it is
  * never affected.
  */
+
+/**
+ * Undo the provider's `emailVerified: true` after a failed release, so the
+ * next OAuth sign-in makes the same update and the guard runs again. Without
+ * this, a transient failure would leave a verified account that still has
+ * the stranger's password, and no later event would ever remove it.
+ */
+export async function revertProviderVerification(
+  database: typeof Db,
+  userId: string,
+): Promise<void> {
+  await database
+    .update(user)
+    .set({ emailVerified: false })
+    .where(eq(user.id, userId));
+}
 
 /** Delete the user's password account and, if one existed, all sessions. */
 export async function releaseUnprovenPassword(
@@ -42,8 +58,14 @@ export async function releaseUnprovenPassword(
 
 type HookContext = { path?: string } | null | undefined;
 
-function isOAuthCallback(ctx: HookContext): ctx is { path: string } {
-  return typeof ctx?.path === "string" && ctx.path.startsWith("/callback/");
+/**
+ * Routes that run Better Auth's OAuth join (`handleOAuthUserInfo`): the
+ * redirect callback, and `/sign-in/social` with a provider ID token (Google
+ * One Tap style). Both verify the email the same way.
+ */
+function isOAuthSignIn(ctx: HookContext): ctx is { path: string } {
+  if (typeof ctx?.path !== "string") return false;
+  return ctx.path.startsWith("/callback/") || ctx.path === "/sign-in/social";
 }
 
 /**
@@ -60,19 +82,27 @@ function isOAuthCallback(ctx: HookContext): ctx is { path: string } {
 export function createProviderVerificationGuard(deps: {
   emailVerificationRequired: boolean;
   release: (userId: string) => Promise<boolean>;
+  revert: (userId: string) => Promise<void>;
 }) {
   const verifiedByProvider = new WeakSet<object>();
 
   return {
     before: (data: { emailVerified?: boolean | null }, ctx: HookContext) => {
       if (!deps.emailVerificationRequired) return;
-      if (isOAuthCallback(ctx) && data.emailVerified === true) {
+      if (isOAuthSignIn(ctx) && data.emailVerified === true) {
         verifiedByProvider.add(ctx);
       }
     },
     after: async (updated: { id: string }, ctx: HookContext) => {
       if (!ctx || !verifiedByProvider.delete(ctx)) return;
-      await deps.release(updated.id);
+      try {
+        await deps.release(updated.id);
+      } catch (error) {
+        // Fail the sign-in, and put the account back in the waiting state so
+        // a retry re-runs this guard.
+        await deps.revert(updated.id);
+        throw error;
+      }
     },
   };
 }

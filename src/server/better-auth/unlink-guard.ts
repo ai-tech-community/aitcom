@@ -28,7 +28,8 @@ export async function assertCanUnlink(
     enabled?: Record<OAuthProvider, boolean>;
   },
 ): Promise<void> {
-  if (typeof providerId !== "string" || !isOAuthProvider(providerId)) return;
+  if (typeof providerId !== "string") return;
+  if (providerId !== "credential" && !isOAuthProvider(providerId)) return;
   const accounts = await deps.loadAccounts(userId);
   const allowed = canDisconnectProvider(
     providerId,

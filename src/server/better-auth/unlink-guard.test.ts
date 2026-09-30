@@ -33,9 +33,24 @@ describe("assertCanUnlink", () => {
     ).rejects.toThrow("Add another sign-in method before disconnecting.");
   });
 
+  it("blocks removing the password when no working provider remains", async () => {
+    const loadAccounts = vi
+      .fn()
+      .mockResolvedValue([
+        { providerId: "credential" },
+        { providerId: "linkedin" },
+      ]);
+    await expect(
+      assertCanUnlink("u1", "credential", {
+        loadAccounts,
+        enabled: { google: true, github: true, linkedin: false },
+      }),
+    ).rejects.toThrow("Add another sign-in method before disconnecting.");
+  });
+
   it("ignores provider ids outside the registry", async () => {
     const loadAccounts = vi.fn();
-    await assertCanUnlink("u1", "credential", {
+    await assertCanUnlink("u1", "someone-else", {
       loadAccounts,
       enabled: ALL_ENABLED,
     });

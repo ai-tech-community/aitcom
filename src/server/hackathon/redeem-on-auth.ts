@@ -9,7 +9,7 @@ import { normalizeEmail } from "./staff-invite";
 import { redeemPendingStaffInvites } from "./redeem-staff-invites";
 
 // Fired from databaseHooks.user.create.after. Only redeems when the account is
-// already verified (true for trusted OAuth providers); email/password accounts
+// already verified (true when the OAuth provider verified the email); email/password accounts
 // are unverified at creation and redeem later via redeemAfterVerification.
 export async function redeemForCreatedUser(user: {
   id: string;

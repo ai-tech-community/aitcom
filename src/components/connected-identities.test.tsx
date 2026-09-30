@@ -14,6 +14,7 @@ const { mockProfileQuery, mockProvidersQuery, mockDisconnect, mockLinkSocial } =
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/en/dashboard/settings",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
@@ -139,6 +140,7 @@ describe("ConnectedIdentities", () => {
     expect(mockLinkSocial).toHaveBeenCalledWith({
       provider: "google",
       callbackURL: "/en/dashboard/settings",
+      errorCallbackURL: "/en/dashboard/settings",
     });
   });
 

@@ -4,9 +4,15 @@ import { createProviderVerificationGuard } from "./release-unproven-password";
 
 function guard(emailVerificationRequired = true) {
   const release = vi.fn().mockResolvedValue(true);
+  const revert = vi.fn().mockResolvedValue(undefined);
   return {
     release,
-    ...createProviderVerificationGuard({ emailVerificationRequired, release }),
+    revert,
+    ...createProviderVerificationGuard({
+      emailVerificationRequired,
+      release,
+      revert,
+    }),
   };
 }
 
@@ -78,5 +84,36 @@ describe("createProviderVerificationGuard", () => {
     await g.after({ id: "u2" }, { path: "/callback/:id" });
 
     expect(g.release).not.toHaveBeenCalled();
+  });
+
+  it("covers ID-token sign-in, which runs the same join", async () => {
+    const g = guard();
+    const ctx = { path: "/sign-in/social" };
+
+    g.before({ emailVerified: true }, ctx);
+    await g.after({ id: "u1" }, ctx);
+
+    expect(g.release).toHaveBeenCalledWith("u1");
+  });
+
+  it("puts the account back to unverified when the release fails", async () => {
+    const g = guard();
+    g.release.mockRejectedValue(new Error("db blip"));
+    const ctx = { path: "/callback/:id" };
+
+    g.before({ emailVerified: true }, ctx);
+    await expect(g.after({ id: "u1" }, ctx)).rejects.toThrow("db blip");
+
+    expect(g.revert).toHaveBeenCalledWith("u1");
+  });
+
+  it("does not revert after a successful release", async () => {
+    const g = guard();
+    const ctx = { path: "/callback/:id" };
+
+    g.before({ emailVerified: true }, ctx);
+    await g.after({ id: "u1" }, ctx);
+
+    expect(g.revert).not.toHaveBeenCalled();
   });
 });

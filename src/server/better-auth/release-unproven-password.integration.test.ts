@@ -146,4 +146,31 @@ describe.skipIf(!RUN_DB)("releaseUnprovenPassword [DB integration]", () => {
     expect(await providersOf(id)).toEqual(["credential"]);
     expect(await sessionCount(id)).toBe(1);
   });
+
+  it("reverts to unverified when the release fails, so a retry re-runs it", async () => {
+    const { createProviderVerificationGuard, revertProviderVerification } =
+      await import("./release-unproven-password");
+    const { eq } = await import("drizzle-orm");
+    const id = await seedPasswordUser(false);
+    const guard = createProviderVerificationGuard({
+      emailVerificationRequired: true,
+      release: () => Promise.reject(new Error("db blip")),
+      revert: (userId) => revertProviderVerification(db, userId),
+    });
+    const ctx = { path: "/callback/:id" };
+
+    guard.before({ emailVerified: true }, ctx);
+    await db
+      .update(schema.user)
+      .set({ emailVerified: true })
+      .where(eq(schema.user.id, id));
+    await expect(guard.after({ id }, ctx)).rejects.toThrow("db blip");
+
+    const [row] = await db
+      .select({ emailVerified: schema.user.emailVerified })
+      .from(schema.user)
+      .where(eq(schema.user.id, id));
+    expect(row?.emailVerified).toBe(false);
+    expect(await providersOf(id)).toEqual(["credential"]);
+  });
 });

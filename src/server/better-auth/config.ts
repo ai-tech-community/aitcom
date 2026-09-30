@@ -38,6 +38,7 @@ import {
 import {
   createProviderVerificationGuard,
   releaseUnprovenPassword,
+  revertProviderVerification,
 } from "./release-unproven-password";
 import { createSignInOnReplayedVerification } from "./sign-in-on-replayed-verify";
 import { createUnlinkGuard } from "./unlink-guard";
@@ -65,6 +66,7 @@ const sessionCookieDomain = resolveSessionCookieDomain(authUrlEnv);
 const providerVerificationGuard = createProviderVerificationGuard({
   emailVerificationRequired: isEmailVerificationRequired(env.RESEND_API_KEY),
   release: (userId) => releaseUnprovenPassword(db, userId),
+  revert: (userId) => revertProviderVerification(db, userId),
 });
 
 export const auth = betterAuth({
@@ -85,7 +87,7 @@ export const auth = betterAuth({
   account: {
     accountLinking: {
       enabled: true,
-      // LinkedIn email is optional and may differ from the member email.
+      // Settings may link a provider whose email differs from the member's.
       allowDifferentEmails: true,
       // No trustedProviders: "trusted" would join an existing account by
       // email even when the provider has not verified that email — anyone

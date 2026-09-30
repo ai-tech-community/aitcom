@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { OAuthProviderIcon } from "@/components/auth/oauth-provider-icon";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
+import { oauthErrorCallbackURL, oauthErrorMessageKey } from "@/lib/auth-errors";
 import { OAUTH_PROVIDERS, type OAuthProvider } from "@/lib/oauth-providers";
 import { isSocialProvider } from "@/lib/social-identity";
 import { authClient } from "@/server/better-auth/client";
@@ -22,7 +23,11 @@ const COPY_KEYS: Record<OAuthProvider, { title: string; connect: string }> = {
 
 export function ConnectedIdentities() {
   const t = useTranslations("dashboard");
+  const tAuth = useTranslations("auth");
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // A failed connect comes back to Settings with ?error=<code>.
+  const linkErrorKey = oauthErrorMessageKey(searchParams.get("error"));
   const utils = api.useUtils();
   const { data, isLoading } = api.members.getMyProfile.useQuery();
   const providers = api.members.getAuthProviders.useQuery();
@@ -44,6 +49,7 @@ export function ConnectedIdentities() {
     const { error } = await authClient.linkSocial({
       provider,
       callbackURL: pathname,
+      errorCallbackURL: oauthErrorCallbackURL(pathname, searchParams),
     });
     if (error) {
       toast.error(error.message ?? t("socialConnectError"));
@@ -71,6 +77,11 @@ export function ConnectedIdentities() {
       <p className="text-muted-foreground mt-3 text-sm">
         {t("connectedIdentitiesHelp")}
       </p>
+      {linkErrorKey && (
+        <p role="alert" className="text-destructive mt-3 text-sm">
+          {tAuth(linkErrorKey)}
+        </p>
+      )}
 
       <div className="mt-4 space-y-3">
         {visible.map((provider) => {

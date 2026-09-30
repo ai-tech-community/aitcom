@@ -1,9 +1,11 @@
 "use client";
 
+import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { OAuthProviderIcon } from "@/components/auth/oauth-provider-icon";
 import { Button } from "@/components/ui/button";
+import { oauthErrorCallbackURL, oauthErrorMessageKey } from "@/lib/auth-errors";
 import { OAUTH_PROVIDERS, type OAuthProvider } from "@/lib/oauth-providers";
 import { authClient } from "@/server/better-auth/client";
 import { api } from "@/trpc/react";
@@ -19,6 +21,11 @@ export function SocialOAuthButtons({
   enabledProviders,
 }: SocialOAuthButtonsProps) {
   const t = useTranslations("auth");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // A failed sign-in comes back to this page with ?error=<code>.
+  const errorKey = oauthErrorMessageKey(searchParams.get("error"));
+  const errorCallbackURL = oauthErrorCallbackURL(pathname, searchParams);
   const providers = api.members.getAuthProviders.useQuery(undefined, {
     initialData: enabledProviders,
   });
@@ -26,6 +33,11 @@ export function SocialOAuthButtons({
 
   return (
     <div className="space-y-2">
+      {errorKey && (
+        <p role="alert" className="text-destructive text-sm">
+          {t(errorKey)}
+        </p>
+      )}
       {OAUTH_PROVIDERS.filter((provider) => enabled[provider]).map(
         (provider) => (
           <Button
@@ -37,6 +49,7 @@ export function SocialOAuthButtons({
               authClient.signIn.social({
                 provider,
                 callbackURL,
+                errorCallbackURL,
               })
             }
           >

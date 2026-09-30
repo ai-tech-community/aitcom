@@ -4,9 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import en from "../../../messages/en.json";
 
-const { mockSignInSocial, mockUseQuery } = vi.hoisted(() => ({
+const { mockSignInSocial, mockUseQuery, search } = vi.hoisted(() => ({
   mockSignInSocial: vi.fn(),
   mockUseQuery: vi.fn(),
+  search: { value: "" },
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/en/auth/signin",
+  useSearchParams: () => new URLSearchParams(search.value),
 }));
 
 vi.mock("@/server/better-auth/client", () => ({
@@ -36,6 +42,7 @@ describe("SocialOAuthButtons", () => {
   beforeEach(() => {
     mockSignInSocial.mockReset();
     mockUseQuery.mockReset();
+    search.value = "";
     mockUseQuery.mockImplementation(
       (_input: undefined, opts: { initialData: Enabled }) => ({
         data: opts.initialData,
@@ -60,6 +67,7 @@ describe("SocialOAuthButtons", () => {
     expect(mockSignInSocial).toHaveBeenCalledWith({
       provider: "google",
       callbackURL: "/en/dashboard",
+      errorCallbackURL: "/en/auth/signin",
     });
   });
 
@@ -80,5 +88,36 @@ describe("SocialOAuthButtons", () => {
     expect(
       screen.getByRole("button", { name: "Continue with Google" }),
     ).toBeTruthy();
+  });
+
+  it("returns errors to this page, keeping its query but not an old error", () => {
+    search.value = "redirect=%2Fen%2Fevents&error=account_not_linked";
+    renderButtons({ google: true, github: false, linkedin: false });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue with Google" }),
+    );
+
+    expect(mockSignInSocial).toHaveBeenCalledWith(
+      expect.objectContaining({
+        errorCallbackURL: "/en/auth/signin?redirect=%2Fen%2Fevents",
+      }),
+    );
+  });
+
+  it("explains an unverified provider email in plain words", () => {
+    search.value = "error=account_not_linked";
+    renderButtons({ google: true, github: false, linkedin: false });
+
+    expect(screen.getByRole("alert").textContent).toBe(
+      en.auth.oauthUnverifiedEmail,
+    );
+  });
+
+  it("shows nothing when the member cancelled at the provider", () => {
+    search.value = "error=access_denied";
+    renderButtons({ google: true, github: false, linkedin: false });
+
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

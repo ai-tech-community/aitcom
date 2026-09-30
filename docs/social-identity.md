@@ -62,6 +62,8 @@ Google is a sign-in method only. It is **not** a verified identity: a
 Gmail address is not a public profile, so nothing is written to
 `app.social_identity` and no badge appears on the profile or `/members`.
 Settings labels a linked Google account "Connected", not "Verified".
+Google profile photos come from `lh3.googleusercontent.com`, which is in
+`next.config.js` `images.remotePatterns`.
 
 When `BETTER_AUTH_GOOGLE_CLIENT_ID` and `BETTER_AUTH_GOOGLE_CLIENT_SECRET`
 are both set, "Continue with Google" appears first on sign-in and sign-up,
@@ -88,7 +90,15 @@ an existing account by email even when the provider has not verified that
 email, so anyone could register a member's address with GitHub or LinkedIn
 and sign in as that member. Without trust, an OAuth sign-in joins an existing
 account (and Settings can link a provider) only when the provider reports
-its email as verified.
+its email as verified. This also applies to Connect in Settings: a GitHub
+or LinkedIn account whose email is unverified at the provider can no longer
+be linked.
+
+A failed OAuth sign-in or connect returns to the same page with
+`?error=<code>`. The sign-in buttons and Settings show a plain message
+(`oauthErrorMessageKey` in `src/lib/auth-errors.ts`): unconfirmed provider
+email, account already used by another member, or a general failure. A
+cancelled consent screen shows nothing.
 
 ## Joining a waiting account (takeover guard)
 
@@ -106,8 +116,11 @@ that update: `before` sees an OAuth callback set `emailVerified: true`,
 `after` deletes that user's password account and all sessions in one
 transaction. The person who proved the email keeps the account; the
 stranger's password is gone. Clicking the emailed link (`/verify-email`)
-and linking from Settings never trigger it. The guard is off when email
-verification is not required (no `RESEND_API_KEY`).
+and linking from Settings never trigger it. `/sign-in/social` with a provider
+ID token runs the same join, so it is covered too. If the release fails, the
+guard sets `emailVerified` back to false before failing the sign-in, so the
+next attempt makes the same update and the guard runs again. The guard is
+off when email verification is not required (no `RESEND_API_KEY`).
 
 Because such a join verifies the email without
 `emailVerification.afterEmailVerification`, pending staff invites are also
@@ -132,7 +145,7 @@ read it. Adding a provider is one registry entry plus its icon in
   is the only remaining working sign-in method (a password, or another
   linked provider that is still configured). Enforced on Better Auth's
   `POST /unlink-account` itself (`unlink-guard.ts`), not only in
-  `members.disconnectSocial`
+  `members.disconnectSocial`, and it covers removing the password too
 
 ## Schema
 

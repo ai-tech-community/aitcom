@@ -88,7 +88,7 @@ export function enabledOAuthProviders(): Record<OAuthProvider, boolean> {
  * A linked provider whose keys were removed cannot sign anyone in.
  */
 export function canDisconnectProvider(
-  provider: OAuthProvider,
+  provider: OAuthProvider | "credential",
   accounts: { providerId: string }[],
   enabled: Record<OAuthProvider, boolean>,
 ): { ok: true } | { ok: false; reason: "last_sign_in" } {
