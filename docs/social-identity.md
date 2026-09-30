@@ -78,9 +78,9 @@ Clients → Web application) with redirect URI:
 Google accepts exact redirect URIs only, so Google sign-in works on
 production and localhost but not on `*.vercel.app` previews.
 
-Google is a trusted linking provider: signing in with Google using the same
-email as an existing email+password account joins that account (Google
-verifies email ownership).
+Signing in with Google using the same email as an existing account joins
+that account when Google reports the email as verified. Google is not in
+`trustedProviders`, so an unverified Google email never links.
 
 ## Provider registry
 
@@ -98,7 +98,8 @@ read it. Adding a provider is one registry entry plus its icon in
 - Settings: `/[locale]/dashboard/settings` — connect via `linkSocial`
 - Disconnect uses `members.disconnectSocial`
 - No OAuth provider (Google, GitHub, LinkedIn) can be disconnected if it
-  is the only remaining sign-in method
+  is the only remaining working sign-in method (a password, or another
+  linked provider that is still configured)
 
 ## Schema
 

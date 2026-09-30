@@ -82,6 +82,7 @@ export function ConnectedIdentities() {
               title={t(COPY_KEYS[provider].title)}
               connected={connected}
               handle={handles[provider]}
+              verified={isSocialProvider(provider)}
               connectedLabel={
                 isSocialProvider(provider) ? t("verified") : t("connected")
               }
@@ -112,6 +113,7 @@ function IdentityRow({
   title,
   connected,
   handle,
+  verified,
   connectedLabel,
   actionLabel,
   pending,
@@ -123,6 +125,8 @@ function IdentityRow({
   title: string;
   connected: boolean;
   handle: string | null;
+  /** Verified identities get the check mark; sign-in-only ones do not. */
+  verified: boolean;
   connectedLabel: string;
   actionLabel: string;
   pending: boolean;
@@ -138,7 +142,9 @@ function IdentityRow({
           <span className="text-sm font-medium">{title}</span>
           {connected && (
             <span className="border-border text-foreground inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-xs tracking-wider uppercase">
-              <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+              {verified && (
+                <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+              )}
               {connectedLabel}
             </span>
           )}

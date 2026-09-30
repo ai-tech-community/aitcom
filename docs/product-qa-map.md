@@ -259,10 +259,11 @@ request-time read as LinkedIn). Callback:
 redirect URIs only, so Google sign-in works on production and
 localhost, **not** on `*.vercel.app` previews.
 
-Google is a trusted linking provider: a Google sign-in with the same
-email as an email+password account joins that account. The provider
-asks `prompt: select_account` so members with several Google
-accounts choose one.
+A Google sign-in with the same email as an existing account joins
+that account only when Google reports the email as verified (Google
+is not in `trustedProviders`). The provider asks
+`prompt: select_account` so members with several Google accounts
+choose one.
 
 #### Works when
 

@@ -9,6 +9,9 @@
  * also bind a verified handle (`SOCIAL_PROVIDERS` in `social-identity.ts`);
  * Google is sign-in only and never shows on a profile.
  *
+ * GitHub keys are required by the env schema (`src/env.js`), so GitHub is
+ * always enabled in a running app; Google and LinkedIn are optional.
+ *
  * A provider is enabled when both of its env vars are set. They are read via
  * `process.env[name]` (computed key) at request time so Next.js / webpack
  * cannot inline a build-time `undefined` the way `process.env.X` and t3
@@ -80,15 +83,20 @@ export function enabledOAuthProviders(): Record<OAuthProvider, boolean> {
 }
 
 /**
- * A provider may be disconnected only when another sign-in method remains
- * (a password or another OAuth provider).
+ * A provider may be disconnected only when another working sign-in method
+ * remains: a password, or another linked provider that is still enabled.
+ * A linked provider whose keys were removed cannot sign anyone in.
  */
 export function canDisconnectProvider(
   provider: OAuthProvider,
   accounts: { providerId: string }[],
+  enabled: Record<OAuthProvider, boolean>,
 ): { ok: true } | { ok: false; reason: "last_sign_in" } {
   const remainingSignIn = accounts.filter(
-    (account) => account.providerId !== provider,
+    (account) =>
+      account.providerId !== provider &&
+      (account.providerId === "credential" ||
+        (isOAuthProvider(account.providerId) && enabled[account.providerId])),
   );
 
   if (remainingSignIn.length === 0) {

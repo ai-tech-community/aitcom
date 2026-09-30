@@ -96,11 +96,16 @@ describe("ConnectedIdentities", () => {
     renderSettings();
 
     const google = rowFor("Google");
-    expect(within(google).getByText("Connected")).toBeTruthy();
+    // Sign-in only: no verified check mark on the badge.
+    expect(
+      within(google).getByText("Connected").querySelector("svg"),
+    ).toBeNull();
     expect(within(google).queryByText("Verified")).toBeNull();
 
     const github = rowFor("GitHub");
-    expect(within(github).getByText("Verified")).toBeTruthy();
+    expect(
+      within(github).getByText("Verified").querySelector("svg"),
+    ).not.toBeNull();
     expect(within(github).getByText("@octo")).toBeTruthy();
   });
 

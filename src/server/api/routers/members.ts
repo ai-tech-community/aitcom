@@ -132,7 +132,8 @@ export const membersRouter = createTRPCRouter({
         password: accounts.some((a) => a.providerId === "credential"),
       },
       canDisconnect: mapOAuthProviders(
-        (provider) => canDisconnectProvider(provider, accounts).ok,
+        (provider) =>
+          canDisconnectProvider(provider, accounts, enabledOAuthProviders()).ok,
       ),
     };
   }),
@@ -343,7 +344,11 @@ export const membersRouter = createTRPCRouter({
         .from(account)
         .where(eq(account.userId, userId));
 
-      const allowed = canDisconnectProvider(input.provider, accounts);
+      const allowed = canDisconnectProvider(
+        input.provider,
+        accounts,
+        enabledOAuthProviders(),
+      );
       if (!allowed.ok) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",

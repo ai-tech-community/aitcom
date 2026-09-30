@@ -122,48 +122,67 @@ describe("OAUTH_PROVIDERS", () => {
 });
 
 describe("canDisconnectProvider", () => {
+  const ALL_ENABLED = { google: true, github: true, linkedin: true };
+
   it("blocks disconnecting GitHub when it is the only sign-in method", () => {
-    expect(canDisconnectProvider("github", [{ providerId: "github" }])).toEqual(
-      { ok: false, reason: "last_sign_in" },
-    );
+    expect(
+      canDisconnectProvider("github", [{ providerId: "github" }], ALL_ENABLED),
+    ).toEqual({ ok: false, reason: "last_sign_in" });
   });
 
   it("allows disconnecting GitHub when LinkedIn remains as a sign-in", () => {
     expect(
-      canDisconnectProvider("github", [
-        { providerId: "github" },
-        { providerId: "linkedin" },
-      ]),
+      canDisconnectProvider(
+        "github",
+        [{ providerId: "github" }, { providerId: "linkedin" }],
+        ALL_ENABLED,
+      ),
     ).toEqual({ ok: true });
   });
 
   it("allows disconnecting GitHub when a password exists", () => {
     expect(
-      canDisconnectProvider("github", [
-        { providerId: "github" },
-        { providerId: "credential" },
-      ]),
+      canDisconnectProvider(
+        "github",
+        [{ providerId: "github" }, { providerId: "credential" }],
+        ALL_ENABLED,
+      ),
     ).toEqual({ ok: true });
   });
 
   it("blocks disconnecting LinkedIn when it is the only sign-in method", () => {
     expect(
-      canDisconnectProvider("linkedin", [{ providerId: "linkedin" }]),
+      canDisconnectProvider(
+        "linkedin",
+        [{ providerId: "linkedin" }],
+        ALL_ENABLED,
+      ),
     ).toEqual({ ok: false, reason: "last_sign_in" });
   });
 
   it("blocks disconnecting Google when it is the only sign-in method", () => {
-    expect(canDisconnectProvider("google", [{ providerId: "google" }])).toEqual(
-      { ok: false, reason: "last_sign_in" },
-    );
+    expect(
+      canDisconnectProvider("google", [{ providerId: "google" }], ALL_ENABLED),
+    ).toEqual({ ok: false, reason: "last_sign_in" });
   });
 
   it("allows disconnecting Google when GitHub remains", () => {
     expect(
-      canDisconnectProvider("google", [
-        { providerId: "google" },
-        { providerId: "github" },
-      ]),
+      canDisconnectProvider(
+        "google",
+        [{ providerId: "google" }, { providerId: "github" }],
+        ALL_ENABLED,
+      ),
     ).toEqual({ ok: true });
+  });
+
+  it("does not count a linked provider whose keys were removed", () => {
+    expect(
+      canDisconnectProvider(
+        "google",
+        [{ providerId: "google" }, { providerId: "linkedin" }],
+        { google: true, github: true, linkedin: false },
+      ),
+    ).toEqual({ ok: false, reason: "last_sign_in" });
   });
 });

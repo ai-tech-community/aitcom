@@ -3,7 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 
 import { env } from "@/env";
-import { OAUTH_PROVIDERS, readOAuthCredentials } from "@/lib/oauth-providers";
+import { readOAuthCredentials } from "@/lib/oauth-providers";
 import { db } from "@/server/db";
 import {
   enrollAfterVerification,
@@ -73,9 +73,10 @@ export const auth = betterAuth({
       enabled: true,
       // LinkedIn email is optional and may differ from the member email.
       allowDifferentEmails: true,
-      // Google verifies email ownership, so a Google sign-in with the same
-      // address as an email+password account joins that account.
-      trustedProviders: [...OAUTH_PROVIDERS],
+      // Trusted = link even when the provider does not vouch for the email.
+      // Google is deliberately absent: it links a same-email account only
+      // when Google reports the email as verified.
+      trustedProviders: ["github", "linkedin"],
     },
   },
   databaseHooks: {
