@@ -320,9 +320,9 @@ describe.skipIf(!RUN_DB)("@mentions in feed posts [DB integration]", () => {
     // The same author again within the hour: in the app only.
     await mention("Third");
     expect(mail.send).toHaveBeenCalledTimes(2);
-    expect((await toldUsers()).filter((r) => r.userId === fx.jane)).toHaveLength(
-      3,
-    );
+    expect(
+      (await toldUsers()).filter((r) => r.userId === fx.jane),
+    ).toHaveLength(3);
 
     // Deleting the in-app notices does not bring the email back.
     await m.db
@@ -448,7 +448,10 @@ describe.skipIf(!RUN_DB)("@mentions in feed posts [DB integration]", () => {
       query: "al",
     });
     // Offered last, never the first pick; a bare "@" never offers it.
-    expect(forOwner.at(-1)).toMatchObject({ userId: "everyone", everyone: true });
+    expect(forOwner.at(-1)).toMatchObject({
+      userId: "everyone",
+      everyone: true,
+    });
     expect(
       (
         await caller(fx.author).feed.mentionCandidates({
