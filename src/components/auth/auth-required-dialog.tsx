@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { createContext, useCallback, useContext, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,6 +29,11 @@ export type AuthPromptOptions = {
    * pathname alone loses (e.g. `/en/communities?create=1`).
    */
   returnTo?: string;
+  /**
+   * The dialog's explanation, when the action has a better one than the
+   * generic line (e.g. "we'll bring you back and finish joining").
+   */
+  description?: string;
 };
 
 type AuthRequiredContext = {
@@ -73,11 +79,14 @@ export function AuthRequiredProvider({
   const [open, setOpen] = useState(false);
   const [intent, setIntent] = useState<string | undefined>();
   const [returnTo, setReturnTo] = useState<string | undefined>();
+  const [description, setDescription] = useState<string | undefined>();
+  const t = useTranslations("auth");
 
   const promptAuth = useCallback(
     (intentText?: string, options?: AuthPromptOptions) => {
       setIntent(intentText);
       setReturnTo(options?.returnTo);
+      setDescription(options?.description);
       setOpen(true);
     },
     [],
@@ -102,21 +111,20 @@ export function AuthRequiredProvider({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{intent ?? "Sign in to continue"}</DialogTitle>
+            <DialogTitle>{intent ?? t("promptTitle")}</DialogTitle>
             <DialogDescription>
-              You need an AIT account to do this. Sign in or create a free
-              account — it takes about a minute.
+              {description ?? t("promptBody")}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button asChild className="flex-1">
               <Link href={`/auth/signin?redirect=${redirect}`}>
-                <LogIn className="h-4 w-4" /> Sign in
+                <LogIn className="h-4 w-4" /> {t("promptSignIn")}
               </Link>
             </Button>
             <Button asChild variant="outline" className="flex-1">
               <Link href={`/auth/signup?redirect=${redirect}`}>
-                <UserPlus className="h-4 w-4" /> Create account
+                <UserPlus className="h-4 w-4" /> {t("promptCreateAccount")}
               </Link>
             </Button>
           </div>

@@ -40,10 +40,39 @@ describe("JoinAction", () => {
     ).toBeInTheDocument();
   });
 
-  it("cannot be pressed twice while working", () => {
+  it("cannot be pressed twice while working, and says it is busy", () => {
     s.busy = true;
     renderAction();
     expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByRole("button")).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("tells the caller it was pressed", () => {
+    const onPress = vi.fn();
+    render(
+      <JoinAction
+        slug="acme"
+        name="ACME"
+        joinPolicy="open"
+        onPress={onPress}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button"));
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the user's place: focus moves to the new status", () => {
+    const view = renderAction();
+    fireEvent.click(screen.getByRole("button"));
+    s.action = { kind: "member", canLeave: true };
+    view.rerender(<JoinAction slug="acme" name="ACME" joinPolicy="open" />);
+    expect(screen.getByText("youreIn").closest("span[tabindex]")).toHaveFocus();
+  });
+
+  it("does not steal focus when the status was already there", () => {
+    s.action = { kind: "member", canLeave: true };
+    renderAction();
+    expect(document.body).toHaveFocus();
   });
 
   it.each([

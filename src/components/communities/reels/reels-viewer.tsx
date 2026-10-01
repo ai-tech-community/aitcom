@@ -1,5 +1,6 @@
 "use client";
 
+import type { MembershipStatus as ViewerMembershipStatus } from "@/server/communities/invite-policy";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -33,7 +34,7 @@ import { replaceReelVideo, toggleLikeInPages } from "./reels-state";
 
 type MemberRole = "owner" | "admin" | "moderator" | "member";
 type JoinPolicy = "open" | "invite_only" | "approval_required";
-type MembershipStatus = "active" | "pending_approval" | "invited" | null;
+type MembershipStatus = ViewerMembershipStatus | null;
 
 /** Reels fetched per page. */
 const PAGE_SIZE = 8;

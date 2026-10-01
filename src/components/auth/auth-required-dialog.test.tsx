@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import en from "../../../messages/en.json";
 
 const session = vi.hoisted(() => ({
   value: {
@@ -24,12 +26,18 @@ function Capture() {
   return null;
 }
 
-function renderProvider() {
-  return render(
-    <AuthRequiredProvider>
-      <Capture />
-    </AuthRequiredProvider>,
+function tree() {
+  return (
+    <NextIntlClientProvider locale="en" messages={en}>
+      <AuthRequiredProvider>
+        <Capture />
+      </AuthRequiredProvider>
+    </NextIntlClientProvider>
   );
+}
+
+function renderProvider() {
+  return render(tree());
 }
 
 describe("AuthRequiredProvider", () => {
@@ -68,11 +76,7 @@ describe("AuthRequiredProvider", () => {
     expect(captured!.authStatus).toBe("pending");
 
     session.value = { data: null, isPending: false, error: null };
-    view.rerender(
-      <AuthRequiredProvider>
-        <Capture />
-      </AuthRequiredProvider>,
-    );
+    view.rerender(tree());
     expect(captured!.authStatus).toBe("guest");
 
     session.value = {
@@ -80,11 +84,7 @@ describe("AuthRequiredProvider", () => {
       isPending: false,
       error: null,
     };
-    view.rerender(
-      <AuthRequiredProvider>
-        <Capture />
-      </AuthRequiredProvider>,
-    );
+    view.rerender(tree());
     expect(captured!.authStatus).toBe("authenticated");
   });
 
@@ -108,5 +108,26 @@ describe("AuthRequiredProvider", () => {
     const action = vi.fn();
     act(() => captured!.requireAuth(action, "x", { returnTo: "/x" }));
     expect(action).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains the action when the caller has a better line", () => {
+    session.value = { data: null, isPending: false, error: null };
+    renderProvider();
+    act(() =>
+      captured!.promptAuth("Sign in to join ACME", {
+        description: "We'll bring you back and finish joining ACME.",
+      }),
+    );
+    expect(
+      screen.getByText("We'll bring you back and finish joining ACME."),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to the generic explanation", () => {
+    session.value = { data: null, isPending: false, error: null };
+    renderProvider();
+    act(() => captured!.promptAuth());
+    expect(screen.getByText(en.auth.promptBody)).toBeInTheDocument();
+    expect(screen.getByText(en.auth.promptTitle)).toBeInTheDocument();
   });
 });

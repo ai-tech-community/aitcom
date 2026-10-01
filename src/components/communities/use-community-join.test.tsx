@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
 const s = vi.hoisted(() => ({
-  authStatus: "authenticated" as "authenticated" | "guest" | "pending",
+  authStatus: "authenticated" as
+    | "authenticated"
+    | "guest"
+    | "pending"
+    | "unknown",
+  initialUser: null as { id: string } | null,
   mine: [] as { slug: string; status: string; role: string }[],
   promptAuth: vi.fn(),
   join: vi.fn(() => Promise.resolve({ success: true })),
@@ -12,6 +17,7 @@ const s = vi.hoisted(() => ({
     Promise.resolve({ name: "ACME", joinPolicy: "open" as const }),
   ),
   toast: vi.fn(),
+  toastError: vi.fn(),
 }));
 
 vi.mock("@/components/auth/auth-required-dialog", () => ({
@@ -24,7 +30,12 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (k: string, vars?: Record<string, unknown>) =>
     vars ? `${k}:${JSON.stringify(vars)}` : k,
 }));
-vi.mock("sonner", () => ({ toast: { success: s.toast } }));
+vi.mock("sonner", () => ({
+  toast: { success: s.toast, error: s.toastError },
+}));
+vi.mock("@/components/auth/session-provider", () => ({
+  useInitialAuthUser: () => s.initialUser,
+}));
 vi.mock("@/trpc/react", () => {
   const invalidate = () => Promise.resolve();
   return {
@@ -55,10 +66,14 @@ vi.mock("@/trpc/react", () => {
 });
 
 import { useCommunityJoin, useJoinDeepLink } from "./use-community-join";
+import { rememberJoinIntent } from "./join-community-link";
 
 afterEach(() => {
   s.authStatus = "authenticated";
+  s.initialUser = null;
   s.mine = [];
+  s.join.mockImplementation(() => Promise.resolve({ success: true }));
+  window.sessionStorage.clear();
   vi.clearAllMocks();
   window.history.replaceState(null, "", "/");
 });
@@ -97,8 +112,42 @@ describe("useCommunityJoin", () => {
     expect(s.join).not.toHaveBeenCalled();
     expect(s.promptAuth).toHaveBeenCalledWith(
       'signInToJoin:{"community":"ACME"}',
-      { returnTo: "/en/communities?q=ml&join=acme" },
+      {
+        returnTo: "/en/communities?q=ml&join=acme",
+        description: 'signInToJoinBody:{"community":"ACME"}',
+      },
     );
+  });
+
+  it("trusts the server's user while the session is still loading", async () => {
+    s.authStatus = "pending";
+    s.initialUser = { id: "u1" };
+    const { result } = renderHook(() =>
+      useCommunityJoin({ slug: "acme", name: "ACME", joinPolicy: "open" }),
+    );
+    await act(() => result.current.run());
+    expect(s.promptAuth).not.toHaveBeenCalled();
+    expect(s.join).toHaveBeenCalledWith({ slug: "acme" });
+  });
+
+  it("says plainly when a join fails", async () => {
+    s.join.mockImplementation(() => Promise.reject(new Error("boom")));
+    const onChange = vi.fn();
+    const { result } = renderHook(() =>
+      useCommunityJoin({
+        slug: "acme",
+        name: "ACME",
+        joinPolicy: "open",
+        onChange,
+      }),
+    );
+    await act(() => result.current.run());
+    expect(s.toastError).toHaveBeenCalledWith(
+      'joinFailed:{"community":"ACME"}',
+    );
+    expect(s.toast).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(result.current.busy).toBe(false);
   });
 
   it("reads the viewer's membership from the page-wide lookup", () => {
@@ -132,6 +181,7 @@ describe("useCommunityJoin", () => {
 
 describe("useJoinDeepLink", () => {
   it("finishes the join after sign-in and drops the param", async () => {
+    rememberJoinIntent("acme");
     window.history.replaceState(null, "", "/en/communities?q=ml&join=acme");
     const onDone = vi.fn();
     renderHook(() => useJoinDeepLink(onDone));
@@ -148,7 +198,16 @@ describe("useJoinDeepLink", () => {
     expect(window.location.search).toBe("?join=acme");
   });
 
+  it("ignores a join link this browser did not ask for", async () => {
+    window.history.replaceState(null, "", "/en/communities?join=acme");
+    renderHook(() => useJoinDeepLink());
+    await waitFor(() => expect(window.location.search).toBe(""));
+    expect(s.fetchCommunity).not.toHaveBeenCalled();
+    expect(s.join).not.toHaveBeenCalled();
+  });
+
   it("does not join again when already a member", async () => {
+    rememberJoinIntent("acme");
     s.mine = [{ slug: "acme", status: "active", role: "member" }];
     window.history.replaceState(null, "", "/en/communities?join=acme");
     renderHook(() => useJoinDeepLink());

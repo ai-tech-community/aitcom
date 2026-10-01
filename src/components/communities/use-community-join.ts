@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
+import { useInitialAuthUser } from "@/components/auth/session-provider";
 import { HUB_SLUG } from "@/server/communities/hub";
 import {
   viewerJoinAction,
@@ -13,7 +20,12 @@ import {
   type ViewerJoinAction,
 } from "@/server/communities/invite-policy";
 import type { CommunityRole } from "@/server/communities/role-utils";
-import { JOIN_COMMUNITY_PARAM, joinReturnPath } from "./join-community-link";
+import {
+  JOIN_COMMUNITY_PARAM,
+  joinReturnPath,
+  rememberJoinIntent,
+  takeJoinIntent,
+} from "./join-community-link";
 
 export type Membership = {
   status: MembershipStatus;
@@ -21,13 +33,27 @@ export type Membership = {
 };
 
 /**
+ * Whether the viewer is signed in. Trusts the client session once it has
+ * answered; while it is still loading (or failed to load) it trusts the
+ * user the server rendered the page for, so a member who clicks early is
+ * never asked to sign in.
+ */
+export function useViewerSignedIn(): boolean {
+  const { authStatus } = useRequireAuth();
+  const initialUser = useInitialAuthUser();
+  if (authStatus === "authenticated") return true;
+  if (authStatus === "guest") return false;
+  return !!initialUser?.id;
+}
+
+/**
  * The signed-in viewer's memberships by community slug (empty for guests).
  * One query for the whole page, shared by every join control on it.
  */
 export function useMyMemberships(): ReadonlyMap<string, Membership> {
-  const { authStatus } = useRequireAuth();
+  const signedIn = useViewerSignedIn();
   const query = api.communities.getMyCommunities.useQuery(undefined, {
-    enabled: authStatus === "authenticated",
+    enabled: signedIn,
   });
   return useMemo(
     () =>
@@ -41,19 +67,71 @@ export function useMyMemberships(): ReadonlyMap<string, Membership> {
   );
 }
 
-/** Join, request or leave, with the caches every join control reads. */
-function useJoinMutations(slug: string) {
+// ─── A join finishing in the background (after sign-in) ────────────────────
+
+let finishingSlug: string | null = null;
+const listeners = new Set<() => void>();
+
+function setFinishingSlug(slug: string | null) {
+  finishingSlug = slug;
+  for (const listener of listeners) listener();
+}
+
+/** The slug a deep-link join is finishing, so its controls show busy. */
+function useFinishingSlug(): string | null {
+  return useSyncExternalStore(
+    (onChange) => {
+      listeners.add(onChange);
+      return () => listeners.delete(onChange);
+    },
+    () => finishingSlug,
+    () => null,
+  );
+}
+
+// ─── The one way a join, request or leave is performed ─────────────────────
+
+type Verb = "join" | "request" | "leave";
+
+const SAID: Record<Verb, { done: string; failed: string }> = {
+  join: { done: "joined", failed: "joinFailed" },
+  request: { done: "requested", failed: "requestFailed" },
+  leave: { done: "left", failed: "leaveFailed" },
+};
+
+/**
+ * Runs a membership change for a community and refreshes what reads it:
+ * the viewer's memberships and that community's page data. The directory
+ * is left alone — its counts come from a cached snapshot, and re-sorting it
+ * under the pointer would move the card that was just joined.
+ */
+function useMembershipRunner() {
+  const t = useTranslations("communities.discover");
   const utils = api.useUtils();
-  const refresh = () => {
-    void utils.communities.getMyCommunities.invalidate();
-    void utils.communities.getBySlug.invalidate({ slug });
-    void utils.communities.getMembers.invalidate({ slug });
-    void utils.communities.directory.invalidate();
-  };
-  return {
-    join: api.communities.join.useMutation({ onSuccess: refresh }),
-    request: api.communities.requestToJoin.useMutation({ onSuccess: refresh }),
-    leave: api.communities.leave.useMutation({ onSuccess: refresh }),
+  const join = api.communities.join.useMutation();
+  const request = api.communities.requestToJoin.useMutation();
+  const leave = api.communities.leave.useMutation();
+
+  return async (
+    verb: Verb,
+    slug: string,
+    name: string | undefined,
+  ): Promise<boolean> => {
+    const said = (key: string) =>
+      name ? t(key, { community: name }) : t(`${key}Generic`);
+    const mutation = { join, request, leave }[verb];
+    try {
+      await mutation.mutateAsync({ slug });
+      toast.success(said(SAID[verb].done));
+      void utils.communities.getMyCommunities.invalidate();
+      void utils.communities.getBySlug.invalidate({ slug });
+      void utils.communities.getMembers.invalidate({ slug });
+      return true;
+    } catch {
+      // Name the problem and the way forward; never the raw server error.
+      toast.error(said(SAID[verb].failed));
+      return false;
+    }
   };
 }
 
@@ -86,9 +164,11 @@ export function useCommunityJoin({
   onChange?: () => void;
 }): CommunityJoin {
   const t = useTranslations("communities.discover");
-  const { authStatus, promptAuth } = useRequireAuth();
+  const { promptAuth } = useRequireAuth();
+  const signedIn = useViewerSignedIn();
   const mine = useMyMemberships();
-  const mutations = useJoinMutations(slug);
+  const runMembership = useMembershipRunner();
+  const finishing = useFinishingSlug();
   const [busy, setBusy] = useState(false);
 
   const current =
@@ -100,65 +180,60 @@ export function useCommunityJoin({
     isHub: slug === HUB_SLUG,
   });
 
-  const perform = async (work: () => Promise<unknown>, done: string) => {
+  const perform = async (verb: Verb) => {
     setBusy(true);
-    try {
-      await work();
-      toast.success(done);
-      onChange?.();
-    } catch {
-      // tRPC errors are shown by the global error handler.
-    } finally {
-      setBusy(false);
-    }
+    const ok = await runMembership(verb, slug, name);
+    setBusy(false);
+    if (ok) onChange?.();
   };
 
-  const said = (key: "joined" | "requested" | "left" | "signInToJoin") =>
-    name ? t(key, { community: name }) : t(`${key}Generic`);
-
   const run = async () => {
-    if (authStatus !== "authenticated") {
+    if (!signedIn) {
       const here = `${window.location.pathname}${window.location.search}`;
-      promptAuth(said("signInToJoin"), {
-        returnTo: joinReturnPath(here, slug),
-      });
+      // Only a join this browser asked for may finish after sign-in.
+      rememberJoinIntent(slug);
+      promptAuth(
+        name
+          ? t("signInToJoin", { community: name })
+          : t("signInToJoinGeneric"),
+        {
+          returnTo: joinReturnPath(here, slug),
+          description: name
+            ? t("signInToJoinBody", { community: name })
+            : t("signInToJoinBodyGeneric"),
+        },
+      );
       return;
     }
-    if (action.kind === "join") {
-      await perform(() => mutations.join.mutateAsync({ slug }), said("joined"));
-    } else if (action.kind === "request") {
-      await perform(
-        () => mutations.request.mutateAsync({ slug }),
-        said("requested"),
-      );
-    }
+    if (action.kind === "join") await perform("join");
+    else if (action.kind === "request") await perform("request");
   };
 
   const leave = async () => {
     if (action.kind !== "member" || !action.canLeave) return;
-    await perform(() => mutations.leave.mutateAsync({ slug }), said("left"));
+    await perform("leave");
   };
 
-  return { action, run, leave, busy };
+  return { action, run, leave, busy: busy || finishing === slug };
 }
 
 /**
- * Finishes a join a guest started before signing in: on `?join=<slug>`,
- * once signed in, joins (or requests to join) that community, then drops
- * the param so refresh or Back does not repeat it. Runs once per page;
- * mounted wherever a join control can send a guest to sign in (the
- * directory and the community pages).
+ * Finishes a join a guest started before signing in. On `?join=<slug>`,
+ * once signed in, it joins (or requests to join) that community — but only
+ * when this browser recorded that intent when Join was pressed, so a link
+ * someone else sent can never make a member join anything. The param is
+ * always dropped, so refresh or Back does not repeat it. Mounted wherever a
+ * join control can send a guest to sign in (the directory and community
+ * pages).
  */
 export function useJoinDeepLink(onDone?: () => void): void {
-  const t = useTranslations("communities.discover");
   const { authStatus } = useRequireAuth();
   const utils = api.useUtils();
-  const join = api.communities.join.useMutation();
-  const request = api.communities.requestToJoin.useMutation();
+  const runMembership = useMembershipRunner();
   const handled = useRef(false);
-  const onDoneRef = useRef(onDone);
+  const latest = useRef({ onDone, runMembership });
   useEffect(() => {
-    onDoneRef.current = onDone;
+    latest.current = { onDone, runMembership };
   });
 
   useEffect(() => {
@@ -173,8 +248,10 @@ export function useJoinDeepLink(onDone?: () => void): void {
       "",
       `${url.pathname}${url.search}${url.hash}`,
     );
+    if (!takeJoinIntent(slug)) return;
 
     void (async () => {
+      setFinishingSlug(slug);
       try {
         const [community, mine] = await Promise.all([
           utils.communities.getBySlug.fetch({ slug }),
@@ -187,23 +264,25 @@ export function useJoinDeepLink(onDone?: () => void): void {
           role: membership?.role ?? null,
           isHub: slug === HUB_SLUG,
         });
-        if (action.kind === "join") {
-          await join.mutateAsync({ slug });
-          toast.success(t("joined", { community: community.name }));
-        } else if (action.kind === "request") {
-          await request.mutateAsync({ slug });
-          toast.success(t("requested", { community: community.name }));
-        } else {
-          return;
+        const verb =
+          action.kind === "join"
+            ? "join"
+            : action.kind === "request"
+              ? "request"
+              : null;
+        if (verb) {
+          const ok = await latest.current.runMembership(
+            verb,
+            slug,
+            community.name,
+          );
+          if (ok) latest.current.onDone?.();
         }
-        void utils.communities.getMyCommunities.invalidate();
-        void utils.communities.getBySlug.invalidate({ slug });
-        void utils.communities.getMembers.invalidate({ slug });
-        void utils.communities.directory.invalidate();
-        onDoneRef.current?.();
       } catch {
-        // tRPC errors are shown by the global error handler.
+        // The community could not be read (gone, or offline): nothing to join.
+      } finally {
+        setFinishingSlug(null);
       }
     })();
-  }, [authStatus, join, request, t, utils]);
+  }, [authStatus, utils]);
 }

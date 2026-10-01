@@ -41,12 +41,12 @@ export function CommunityCard({ community }: { community: DirectoryItem }) {
     >
       <div className="flex items-start gap-3">
         {logoUrl ? (
-          <Avatar className="size-10 shrink-0 rounded-md">
+          <Avatar className="pointer-events-none size-10 shrink-0 rounded-md">
             <AvatarImage src={logoUrl} alt="" />
             <AvatarFallback>{getInitials(name)}</AvatarFallback>
           </Avatar>
         ) : (
-          <SpaceAvatar name={name} className="size-10" />
+          <SpaceAvatar name={name} className="pointer-events-none size-10" />
         )}
         <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
           <h3
@@ -89,9 +89,10 @@ export function CommunityCard({ community }: { community: DirectoryItem }) {
             ) : null}
           </div>
         ) : null}
-        <div className="border-border mt-auto flex items-center justify-between gap-3 border-t pt-4">
+        <div className="border-border mt-auto flex flex-wrap items-center justify-between gap-3 border-t pt-4">
           <div className="flex min-w-0 items-center gap-2">
-            <div aria-hidden="true">
+            {/* Clicks pass through to the card link (no tooltips here). */}
+            <div aria-hidden="true" className="pointer-events-none">
               <MemberStackView faces={faces} total={memberCount} />
             </div>
             <span className="text-muted-foreground text-xs whitespace-nowrap tabular-nums">

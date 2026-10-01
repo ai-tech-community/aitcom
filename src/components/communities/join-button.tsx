@@ -4,10 +4,14 @@ import { useTranslations } from "next-intl";
 import { LogIn, Clock, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "@/i18n/navigation";
-import type { JoinPolicy } from "@/server/communities/invite-policy";
+import type {
+  JoinPolicy,
+  MembershipStatus as ViewerMembershipStatus,
+} from "@/server/communities/invite-policy";
 import { useCommunityJoin } from "./use-community-join";
 
-type MembershipStatus = "active" | "pending_approval" | "invited" | null;
+/** Includes "banned", so the shared rule can hide the button for them. */
+type MembershipStatus = ViewerMembershipStatus | null;
 
 interface JoinButtonProps {
   slug: string;

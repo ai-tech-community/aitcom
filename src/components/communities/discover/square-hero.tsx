@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -36,7 +37,13 @@ const COPY_GAP_PX = 32;
  * The legend is mouse-only context (aria-hidden); the preview holds real
  * controls, and the directory grid repeats every fact for everyone.
  */
-function StreetPeek({ community }: { community: DirectoryItem | null }) {
+function StreetPeek({
+  community,
+  onJoinPress,
+}: {
+  community: DirectoryItem | null;
+  onJoinPress: () => void;
+}) {
   const t = useTranslations("communities.discover");
   if (!community) {
     return (
@@ -59,10 +66,11 @@ function StreetPeek({ community }: { community: DirectoryItem | null }) {
           slug={community.slug}
           name={community.name}
           joinPolicy={community.joinPolicy}
+          onPress={onJoinPress}
         />
         <Link
           href={`/communities/${community.slug}`}
-          className="text-foreground hover:text-foreground/80 inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+          className="text-foreground hover:text-foreground/80 focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded-sm text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-[3px]"
         >
           {t("visit")}
           <ArrowRight aria-hidden="true" className="size-4" />
@@ -113,6 +121,45 @@ function useReservedShare(
   return state;
 }
 
+/** How long the pointer must rest on another house before the peek moves. */
+const HOVER_INTENT_MS = 150;
+
+/**
+ * Which house the peek shows. The first house shows at once; moving to
+ * another one waits until the pointer rests there, so crossing houses on
+ * the way to the peek's Join button does not change its target. Pressing
+ * Join pins the peek (the sign-in dialog takes the pointer away), until
+ * the visitor points at another house.
+ */
+function useStreetPeek() {
+  const [slug, setSlug] = useState<string | null>(null);
+  const [pinned, setPinned] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancel = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  useEffect(() => cancel, []);
+  return {
+    slug,
+    point: (next: string | null) => {
+      cancel();
+      if (next === null || next === slug) return;
+      const show = () => {
+        setSlug(next);
+        setPinned(false);
+      };
+      if (slug === null) show();
+      else timer.current = setTimeout(show, HOVER_INTENT_MS);
+    },
+    release: () => {
+      cancel();
+      if (!pinned) setSlug(null);
+    },
+    pin: () => setPinned(true),
+  };
+}
+
 /**
  * The page's opening: the street runs edge to edge — the most active
  * communities as houses (lit windows for recent activity, a flag for an
@@ -140,7 +187,7 @@ export function SquareHero({
     wide,
   );
 
-  const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  const peek = useStreetPeek();
   const query = api.communities.directory.useQuery(squareQueryInput(locale));
   const items = useMemo(
     () => (query.isError ? [] : (query.data?.items ?? [])),
@@ -157,10 +204,10 @@ export function SquareHero({
       })),
     [items],
   );
-  const active = items.find((c) => c.slug === activeSlug) ?? null;
+  const active = items.find((c) => c.slug === peek.slug) ?? null;
 
   return (
-    <section className={className} onPointerLeave={() => setActiveSlug(null)}>
+    <section className={className} onPointerLeave={peek.release}>
       <div className="relative">
         <div
           className={`${BODY_FRAME} pt-10 sm:pt-14 lg:pointer-events-none lg:absolute lg:inset-x-0 lg:top-0 lg:z-10`}
@@ -175,8 +222,8 @@ export function SquareHero({
         <div ref={streetRef}>
           <CommunityStreet
             houses={measured ? houses : []}
-            activeSlug={activeSlug}
-            onActiveChange={setActiveSlug}
+            activeSlug={peek.slug}
+            onActiveChange={peek.point}
             reserve={reserve}
             lotLabel={measured ? t("lotSign") : null}
             onLotClick={startCreate}
@@ -189,7 +236,9 @@ export function SquareHero({
           legend to read. Its space is kept while loading: no jump. */}
       {query.isLoading || items.length > 0 ? (
         <div className={`${BODY_FRAME} mt-3 min-h-8`}>
-          {items.length > 0 ? <StreetPeek community={active} /> : null}
+          {items.length > 0 ? (
+            <StreetPeek community={active} onJoinPress={peek.pin} />
+          ) : null}
         </div>
       ) : null}
     </section>

@@ -55,6 +55,13 @@ describe("resolveHubAuthUser", () => {
     expect(memberRoleForSlug(rows, "ait")).toBe("member");
     expect(membershipStatusForSlug(rows, "ait")).toBe("active");
     expect(memberRoleForSlug(rows, "other")).toBeNull();
+    expect(membershipStatusForSlug(rows, "other")).toBeNull();
+    expect(
+      membershipStatusForSlug(
+        [{ ...rows[0]!, slug: "banned-here", status: "banned" }],
+        "banned-here",
+      ),
+    ).toBe("banned");
   });
 });
 

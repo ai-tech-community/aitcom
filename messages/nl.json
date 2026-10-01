@@ -742,7 +742,11 @@
     "resendVerification": "Verificatiemail opnieuw versturen",
     "resendingVerification": "Versturen...",
     "verificationEmailSent": "Verificatiemail verstuurd. Check je inbox.",
-    "verificationEmailFailed": "De verificatiemail kon niet worden verstuurd."
+    "verificationEmailFailed": "De verificatiemail kon niet worden verstuurd.",
+    "promptTitle": "Log in om verder te gaan",
+    "promptBody": "Je hebt een AIT-account nodig om dit te doen. Log in of maak gratis een account aan — het duurt ongeveer een minuut.",
+    "promptSignIn": "Inloggen",
+    "promptCreateAccount": "Account aanmaken"
   },
   "language": {
     "en": "English",
@@ -2400,7 +2404,15 @@
       "pendingAction": "Verzoek verstuurd",
       "inviteOnly": "Alleen op uitnodiging",
       "youreIn": "Je bent lid",
-      "visit": "Bekijken"
+      "visit": "Bekijken",
+      "signInToJoinBody": "Log in of maak gratis een account aan. We brengen je terug en maken je lidmaatschap van {community} af.",
+      "signInToJoinBodyGeneric": "Log in of maak gratis een account aan. We brengen je terug en maken je lidmaatschap af.",
+      "joinFailed": "Lid worden van {community} is niet gelukt. Probeer het opnieuw.",
+      "joinFailedGeneric": "Lid worden is niet gelukt. Probeer het opnieuw.",
+      "requestFailed": "Je verzoek aan {community} is niet verstuurd. Probeer het opnieuw.",
+      "requestFailedGeneric": "Je verzoek is niet verstuurd. Probeer het opnieuw.",
+      "leaveFailed": "Verlaten van {community} is niet gelukt. Probeer het opnieuw.",
+      "leaveFailedGeneric": "Verlaten is niet gelukt. Probeer het opnieuw."
     },
     "stack": {
       "memberFallback": "Lid",
