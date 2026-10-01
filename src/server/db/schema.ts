@@ -3310,6 +3310,41 @@ export const hackathonVotes = appSchema.table(
   ],
 );
 
+/** Votes on feed post polls (#391): one per member per post, changeable
+ *  (an UPSERT that retargets option_id) or taken back until the poll
+ *  closes. `option_id` is a Payload array row id on the post, kept without
+ *  a foreign key on purpose (Payload rewrites array rows on save); a vote
+ *  for an option the post no longer has counts for nothing. */
+export const feedPollVotes = appSchema.table(
+  "feed_poll_vote",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    postId: d.integer().notNull(), // References Payload feed_posts (cascade)
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    optionId: d.varchar({ length: 255 }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("feed_poll_vote_post_user_idx").on(t.postId, t.userId),
+    index("feed_poll_vote_post_option_idx").on(t.postId, t.optionId),
+  ],
+);
+
 export const communityLumaIntegrations = appSchema.table(
   "community_luma_integration",
   (d) => ({

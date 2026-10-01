@@ -78,6 +78,23 @@ export const FeedPosts: CollectionConfig = {
       ],
     },
     {
+      name: "poll",
+      type: "group",
+      admin: {
+        description:
+          "A poll: the post's text is the question. Votes live in app.feed_poll_vote. A post carries pictures, a video, a GIF or a poll, never two.",
+      },
+      fields: [
+        {
+          name: "options",
+          type: "array",
+          maxRows: 4,
+          fields: [{ name: "label", type: "text", required: true }],
+        },
+        { name: "closesAt", type: "date" },
+      ],
+    },
+    {
       name: "imageUrl",
       type: "text",
       admin: {

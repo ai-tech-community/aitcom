@@ -20,6 +20,7 @@ import type {
 } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { PostMention } from "@/lib/post-mentions";
+import { hasPoll, noPoll } from "./post-polls";
 
 import {
   NO_GIF,
@@ -358,6 +359,8 @@ export async function replacePostVideo(
       image: null,
       imageUrl: null,
       gif: NO_GIF,
+      // A video replaces a poll too (with its votes).
+      ...(hasPoll(post) ? { poll: noPoll() } : {}),
       video,
       isEdited: true,
       editedAt: now.toISOString(),

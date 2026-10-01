@@ -130,6 +130,7 @@ import * as migration_20261001b_feed_post_gifs from "./20261001b_feed_post_gifs"
 import * as migration_20261001c_feed_post_pictures from "./20261001c_feed_post_pictures";
 import * as migration_20261001d_feed_post_link_preview_hidden from "./20261001d_feed_post_link_preview_hidden";
 import * as migration_20261001e_feed_post_mentions from "./20261001e_feed_post_mentions";
+import * as migration_20261001f_feed_post_polls from "./20261001f_feed_post_polls";
 
 export const migrations = [
   {
@@ -791,5 +792,10 @@ export const migrations = [
     up: migration_20261001e_feed_post_mentions.up,
     down: migration_20261001e_feed_post_mentions.down,
     name: "20261001e_feed_post_mentions",
+  },
+  {
+    up: migration_20261001f_feed_post_polls.up,
+    down: migration_20261001f_feed_post_polls.down,
+    name: "20261001f_feed_post_polls",
   },
 ];
