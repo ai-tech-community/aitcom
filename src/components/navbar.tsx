@@ -28,6 +28,7 @@ import {
   type HubAuthUser,
 } from "@/server/better-auth/hub-session";
 import { AitLogo } from "@/components/ait-logo";
+import { clearAllPostDrafts } from "@/lib/post-drafts";
 
 const NotificationBell = dynamic(() =>
   import("@/components/notifications/notification-bell").then(
@@ -269,7 +270,10 @@ export function Navbar({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onSelect={() =>
-                      authClient.signOut().then(() => window.location.reload())
+                      authClient.signOut().then(() => {
+                        clearAllPostDrafts();
+                        window.location.reload();
+                      })
                     }
                     className="font-mono text-xs"
                   >
@@ -381,9 +385,10 @@ export function Navbar({
                       <button
                         onClick={() => {
                           setOpen(false);
-                          void authClient
-                            .signOut()
-                            .then(() => window.location.reload());
+                          void authClient.signOut().then(() => {
+                            clearAllPostDrafts();
+                            window.location.reload();
+                          });
                         }}
                         className="text-muted-foreground hover:text-foreground flex items-center gap-2 font-mono text-sm transition-colors"
                       >

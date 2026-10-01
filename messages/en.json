@@ -2773,9 +2773,19 @@
         "emojiNone": "No emoji found.",
         "charactersLeft": "{count, plural, one {# character left} other {# characters left}}",
         "dropImage": "Drop the picture to add it",
-        "draftRestored": "Your unsent draft is back.",
+        "draftRestored": "Your unsent text is back.",
         "discardDraft": "Discard",
-        "submitShortcut": "Ctrl+Enter or ⌘+Enter to post"
+        "submitShortcut": "Ctrl+Enter or ⌘+Enter to post",
+        "notAPicture": "Only pictures can be added here.",
+        "charactersOver": "{count, plural, one {# character too many} other {# characters too many}}",
+        "limitOver": "Over the character limit. Shorten the post to send it.",
+        "limitReached": "Character limit reached.",
+        "limitSoon": "{count} characters or fewer left.",
+        "oneMediaOnly": "A post has one picture or one video. Remove the video first.",
+        "waitForUpload": "Wait for the picture to finish uploading.",
+        "saveShortcut": "Ctrl+Enter or ⌘+Enter to save",
+        "emojiPickHint": "Pick an emoji",
+        "skinTone": "Change skin tone"
       }
     },
     "dashboard": {

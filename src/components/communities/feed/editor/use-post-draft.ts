@@ -2,64 +2,48 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const PREFIX = "aitcom:post-draft:";
+import { postDraftKey, readPostDraft, writePostDraft } from "@/lib/post-drafts";
+
 const SAVE_DELAY_MS = 400;
-
-type StoredDraft = { text: string; base: string };
-
-function read(key: string): StoredDraft | null {
-  try {
-    const raw = window.localStorage.getItem(PREFIX + key);
-    if (!raw) return null;
-    const draft = JSON.parse(raw) as Partial<StoredDraft>;
-    return typeof draft.text === "string" && typeof draft.base === "string"
-      ? { text: draft.text, base: draft.base }
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function write(key: string, draft: StoredDraft | null) {
-  try {
-    if (draft) window.localStorage.setItem(PREFIX + key, JSON.stringify(draft));
-    else window.localStorage.removeItem(PREFIX + key);
-  } catch {
-    // Storage blocked or full: drafts are a convenience, never required.
-  }
-}
 
 /**
  * Keeps unsent post text in this browser, so a reload or a closed tab does
- * not lose it. `base` is the text the member started from (empty for a new
- * post, the post's text for an edit). On mount a saved draft is put back
- * through `restore` — only while the post still starts from the same text —
- * and `restored` says so, so the form can offer to discard it. Text equal
- * to `base` is not a draft and is removed.
+ * not lose it. Drafts belong to one member (`userId`) and one target (a
+ * community's new post, or one post being edited). `base` is the text the
+ * member started from (empty for a new post, the post's text for an edit).
+ *
+ * On mount a saved draft is put back through `restore`, only while the
+ * post still starts from the same text, and `restored` says so until the
+ * member types again. Text equal to `base` is not a draft and is removed.
  */
 export function usePostDraft({
-  key,
+  userId,
+  target,
   base,
   text,
   restore,
 }: {
-  key: string;
+  userId: string;
+  target: string;
   base: string;
   text: string;
   restore: (text: string) => void;
 }) {
+  const key = postDraftKey(userId, target);
   const [restored, setRestored] = useState(false);
+  const restoredText = useRef<string | null>(null);
   // The first save runs before a restored draft reaches `text`; skipping it
   // keeps the draft from being overwritten with `base`.
   const skipNextSave = useRef(true);
 
   useEffect(() => {
-    const draft = read(key);
+    const draft = readPostDraft(key);
     if (draft?.base === base && draft.text !== base) {
+      restoredText.current = draft.text;
       restore(draft.text);
       setRestored(true);
     } else if (draft) {
-      write(key, null);
+      writePostDraft(key, null);
     }
     // Only on mount and when the post changes; `restore` is a setter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -70,20 +54,23 @@ export function usePostDraft({
       skipNextSave.current = false;
       return;
     }
+    // Typing on: the restored text is now simply the member's text.
+    if (restoredText.current !== null && text !== restoredText.current) {
+      restoredText.current = null;
+      setRestored(false);
+    }
     const timer = window.setTimeout(() => {
-      write(key, text === base ? null : { text, base });
+      writePostDraft(key, text === base ? null : { text, base });
     }, SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [key, base, text]);
 
-  /** The post was sent or the edit left: nothing to keep. */
+  /** The post was sent or the changes thrown away: nothing to keep. */
   const clear = useCallback(() => {
-    write(key, null);
+    writePostDraft(key, null);
+    restoredText.current = null;
     setRestored(false);
   }, [key]);
 
-  /** The member keeps writing; stop offering to discard. */
-  const dismissNotice = useCallback(() => setRestored(false), []);
-
-  return { restored, clear, dismissNotice };
+  return { restored, clear };
 }

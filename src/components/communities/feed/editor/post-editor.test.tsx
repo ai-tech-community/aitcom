@@ -7,12 +7,15 @@ import {
   screen,
 } from "@testing-library/react";
 
+const toast = vi.hoisted(() => ({ error: vi.fn() }));
+vi.mock("sonner", () => ({ toast }));
 vi.mock("next-intl", () => ({
   useTranslations: () => (k: string, v?: { count: number }) =>
     v ? `${k}:${v.count}` : k,
   useLocale: () => "en",
 }));
 
+import { clearAllPostDrafts } from "@/lib/post-drafts";
 import { createMemoryStorage } from "@/test/memory-storage";
 
 import { PostEditor } from "./post-editor";
@@ -22,6 +25,7 @@ import { usePostText } from "./use-post-text";
 function Editor(props: {
   initial?: string;
   onImageFile?: (file: File) => void;
+  imageRefusal?: string;
   onSubmitShortcut?: () => void;
 }) {
   const text = usePostText(props.initial ?? "");
@@ -31,6 +35,7 @@ function Editor(props: {
         text={text}
         label="Write a post"
         onImageFile={props.onImageFile}
+        imageRefusal={props.imageRefusal}
         onSubmitShortcut={props.onSubmitShortcut}
         tools={
           <button type="button" onClick={() => text.insert("🎉")}>
@@ -38,7 +43,8 @@ function Editor(props: {
           </button>
         }
       />
-      <output>{text.value}</output>
+      <output data-testid="value">{text.value}</output>
+      <output data-testid="too-long">{String(text.tooLong)}</output>
     </>
   );
 }
@@ -51,14 +57,14 @@ describe("PostEditor", () => {
     const field = screen.getByRole("textbox", { name: "Write a post" });
     (field as HTMLTextAreaElement).setSelectionRange(6, 11);
     fireEvent.click(screen.getByRole("button", { name: "party" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Hello 🎉");
+    expect(screen.getByTestId("value")).toHaveTextContent("Hello 🎉");
   });
 
   it("takes a pasted picture instead of pasting it as text", () => {
     const onImageFile = vi.fn();
     render(<Editor onImageFile={onImageFile} />);
     const pasted = fireEvent.paste(screen.getByRole("textbox"), {
-      clipboardData: { files: [picture] },
+      clipboardData: { files: [picture], getData: () => "" },
     });
     expect(onImageFile).toHaveBeenCalledWith(picture);
     expect(pasted).toBe(false);
@@ -67,9 +73,47 @@ describe("PostEditor", () => {
   it("leaves a normal paste alone, and pictures when none can be added", () => {
     render(<Editor />);
     const pasted = fireEvent.paste(screen.getByRole("textbox"), {
-      clipboardData: { files: [picture] },
+      clipboardData: { files: [], getData: () => "Just text" },
     });
     expect(pasted).toBe(true);
+  });
+
+  it("pastes the text when the clipboard also holds a picture (Word, Excel)", () => {
+    const onImageFile = vi.fn();
+    render(<Editor onImageFile={onImageFile} />);
+    const pasted = fireEvent.paste(screen.getByRole("textbox"), {
+      clipboardData: {
+        files: [picture],
+        getData: (type: string) => (type === "text/plain" ? "A table" : ""),
+      },
+    });
+    expect(pasted).toBe(true);
+    expect(onImageFile).not.toHaveBeenCalled();
+  });
+
+  it("never lets a refused drop open the file; it says why instead", () => {
+    const { container } = render(
+      <Editor imageRefusal="One picture or one video" />,
+    );
+    const field = container.querySelector(".rounded-lg")!;
+    const dropped = fireEvent.drop(field, {
+      dataTransfer: { types: ["Files"], files: [picture] },
+    });
+    expect(dropped).toBe(false);
+    expect(toast.error).toHaveBeenCalledWith("One picture or one video");
+  });
+
+  it("says so when the dropped file is not a picture", () => {
+    const onImageFile = vi.fn();
+    const { container } = render(<Editor onImageFile={onImageFile} />);
+    fireEvent.drop(container.querySelector(".rounded-lg")!, {
+      dataTransfer: {
+        types: ["Files"],
+        files: [new File(["%PDF"], "doc.pdf", { type: "application/pdf" })],
+      },
+    });
+    expect(onImageFile).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith("notAPicture");
   });
 
   it("takes a dropped picture", () => {
@@ -103,10 +147,22 @@ describe("PostEditor", () => {
       "charactersLeft:50",
     );
   });
+
+  it("keeps text past the limit, shows how much to cut and announces it once", () => {
+    render(<Editor initial={"x".repeat(1995)} />);
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "x".repeat(2010) },
+    });
+    expect(screen.getByRole("textbox")).toHaveValue("x".repeat(2010));
+    expect(screen.getByText("charactersOver:10")).toBeVisible();
+    expect(screen.getByTestId("too-long")).toHaveTextContent("true");
+    expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText("limitOver")).toHaveAttribute("role", "status");
+  });
 });
 
 describe("usePostDraft", () => {
-  const KEY = "aitcom:post-draft:new:mlops";
+  const KEY = "aitcom:post-draft:u1:new:mlops";
   beforeEach(() => {
     vi.useFakeTimers();
     vi.stubGlobal("localStorage", createMemoryStorage());
@@ -116,10 +172,11 @@ describe("usePostDraft", () => {
     vi.unstubAllGlobals();
   });
 
-  function useDraft(base: string, start: string) {
+  function useDraft(base: string, start: string, userId = "u1") {
     const text = usePostText(start);
     const draft = usePostDraft({
-      key: "new:mlops",
+      userId,
+      target: "new:mlops",
       base,
       text: text.value,
       restore: text.setValue,
@@ -192,5 +249,26 @@ describe("usePostDraft", () => {
       vi.advanceTimersByTime(500);
     });
     expect(result.current.text.value).toBe("Still typing");
+  });
+
+  it("keeps each member's draft to themselves, and sign-out clears them", () => {
+    localStorage.setItem(KEY, JSON.stringify({ text: "Mine", base: "" }));
+    const other = renderHook(() => useDraft("", "", "u2"));
+    expect(other.result.current.text.value).toBe("");
+    expect(other.result.current.draft.restored).toBe(false);
+    other.unmount();
+
+    localStorage.setItem("unrelated", "stays");
+    clearAllPostDrafts();
+    expect(localStorage.getItem(KEY)).toBeNull();
+    expect(localStorage.getItem("unrelated")).toBe("stays");
+  });
+
+  it("stops offering to discard once the member types on", () => {
+    localStorage.setItem(KEY, JSON.stringify({ text: "Draft", base: "" }));
+    const { result } = renderHook(() => useDraft("", ""));
+    expect(result.current.draft.restored).toBe(true);
+    act(() => result.current.text.setValue("Draft, continued"));
+    expect(result.current.draft.restored).toBe(false);
   });
 });

@@ -59,7 +59,7 @@ const clip = new File(["clip"], "holiday.mov", { type: "video/quicktime" });
 function renderComposer() {
   const view = render(
     <NextIntlClientProvider locale="en" messages={en}>
-      <PostComposer slug="mlops" canPost />
+      <PostComposer slug="mlops" userId="u1" canPost />
     </NextIntlClientProvider>,
   );
   const inputs =
@@ -220,5 +220,23 @@ describe("PostComposer video", () => {
     expect(
       screen.queryByRole("button", { name: "Add video" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("PostComposer pictures", () => {
+  it("does not post while a picture is still uploading, even with Ctrl+Enter", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => undefined)),
+    );
+    const { imageInput } = renderComposer();
+    fireEvent.change(imageInput(), {
+      target: { files: [new File(["x"], "pic.png", { type: "image/png" })] },
+    });
+    const field = screen.getByRole("textbox");
+    fireEvent.change(field, { target: { value: "Look at this" } });
+    fireEvent.keyDown(field, { key: "Enter", ctrlKey: true });
+    expect(m.createPost).not.toHaveBeenCalled();
+    expect(postButton()).toBeDisabled();
   });
 });

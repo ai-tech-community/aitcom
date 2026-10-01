@@ -55,7 +55,9 @@ export function FeedPage({
 
         <ReelsEntry slug={slug} />
 
-        <PostComposer slug={slug} canPost={canPost} />
+        {currentUserId ? (
+          <PostComposer slug={slug} userId={currentUserId} canPost={canPost} />
+        ) : null}
 
         {isAuthenticated && isMember ? (
           <TopicChips

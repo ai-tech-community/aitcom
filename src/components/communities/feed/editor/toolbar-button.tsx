@@ -39,3 +39,29 @@ export const ToolbarButton = forwardRef<
     </Tooltip>
   );
 });
+
+/**
+ * Names the Ctrl/Cmd+Enter shortcut on a form's send button: a tooltip
+ * for pointer users and `aria-keyshortcuts` (set on the button) for screen
+ * readers. The tooltip sits on a wrapper so it also shows while the button
+ * is disabled.
+ */
+export function ShortcutHint({
+  hint,
+  children,
+}: {
+  hint: string;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex">{children}</span>
+      </TooltipTrigger>
+      <TooltipContent>{hint}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** For `aria-keyshortcuts` on a form's send button. */
+export const SEND_SHORTCUTS = "Control+Enter Meta+Enter";

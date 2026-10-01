@@ -245,9 +245,10 @@ export function FeedPostCard({
       ) : null}
 
       {/* Content */}
-      {isEditing ? (
+      {isEditing && currentUserId ? (
         <PostEditForm
           post={post}
+          userId={currentUserId}
           communitySlug={communitySlug}
           onSaved={() => {
             setIsEditing(false);

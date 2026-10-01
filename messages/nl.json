@@ -2773,9 +2773,19 @@
         "emojiNone": "Geen emoji gevonden.",
         "charactersLeft": "{count, plural, one {Nog # teken} other {Nog # tekens}}",
         "dropImage": "Laat de afbeelding los om toe te voegen",
-        "draftRestored": "Je niet-verstuurde concept is terug.",
+        "draftRestored": "Je niet-verstuurde tekst is terug.",
         "discardDraft": "Weggooien",
-        "submitShortcut": "Ctrl+Enter of ⌘+Enter om te plaatsen"
+        "submitShortcut": "Ctrl+Enter of ⌘+Enter om te plaatsen",
+        "notAPicture": "Je kunt hier alleen afbeeldingen toevoegen.",
+        "charactersOver": "{count, plural, one {# teken te veel} other {# tekens te veel}}",
+        "limitOver": "Over de tekenlimiet. Maak het bericht korter om het te plaatsen.",
+        "limitReached": "Tekenlimiet bereikt.",
+        "limitSoon": "Nog {count} tekens of minder.",
+        "oneMediaOnly": "Een bericht heeft één afbeelding of één video. Verwijder eerst de video.",
+        "waitForUpload": "Wacht tot de afbeelding klaar is met uploaden.",
+        "saveShortcut": "Ctrl+Enter of ⌘+Enter om op te slaan",
+        "emojiPickHint": "Kies een emoji",
+        "skinTone": "Huidskleur wijzigen"
       }
     },
     "dashboard": {

@@ -14,16 +14,22 @@ import { uploadFeedImage } from "./upload-feed-image";
 import { DraftNotice } from "./editor/draft-notice";
 import { EmojiPickerButton } from "./editor/emoji-picker-button";
 import { PostEditor } from "./editor/post-editor";
-import { ToolbarButton } from "./editor/toolbar-button";
+import {
+  SEND_SHORTCUTS,
+  ShortcutHint,
+  ToolbarButton,
+} from "./editor/toolbar-button";
 import { usePostDraft } from "./editor/use-post-draft";
 import { usePostText } from "./editor/use-post-text";
 
 interface PostComposerProps {
   slug: string;
+  /** The signed-in member; their unsent draft is kept per community. */
+  userId: string;
   canPost: boolean;
 }
 
-export function PostComposer({ slug, canPost }: PostComposerProps) {
+export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
   const t = useTranslations("communities.feed");
   const te = useTranslations("communities.feed.editor");
   const tc = useTranslations("common");
@@ -31,7 +37,8 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
   const utils = api.useUtils();
   const text = usePostText("");
   const draft = usePostDraft({
-    key: `new:${slug}`,
+    userId,
+    target: `new:${slug}`,
     base: "",
     text: text.value,
     restore: text.setValue,
@@ -122,8 +129,11 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
     void submitVideo(videoFile);
   };
 
+  const busy = createPost.isPending || videoBusy || isUploading;
+
   const submit = () => {
-    if (!content.trim() || videoBusy || createPost.isPending) return;
+    // Waiting for a picture still uploading, so it is not left behind.
+    if (!content.trim() || text.tooLong || busy) return;
     if (videoFile) {
       void submitVideo(videoFile);
       return;
@@ -137,8 +147,6 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
   };
 
   if (!canPost) return null;
-
-  const busy = createPost.isPending || videoBusy;
 
   return (
     <form
@@ -155,6 +163,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
         onImageFile={
           videoFile || isUploading ? undefined : (f) => void addImageFile(f)
         }
+        imageRefusal={videoFile ? te("oneMediaOnly") : te("waitForUpload")}
         onSubmitShortcut={submit}
         attachments={
           videoFile || imageUrl ? (
@@ -229,18 +238,20 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
           </>
         }
         actions={
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!content.trim() || busy}
-            aria-busy={busy}
-            title={te("submitShortcut")}
-          >
-            {busy ? (
-              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-            ) : null}
-            {t("post")}
-          </Button>
+          <ShortcutHint hint={te("submitShortcut")}>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!content.trim() || text.tooLong || busy}
+              aria-busy={busy}
+              aria-keyshortcuts={SEND_SHORTCUTS}
+            >
+              {busy ? (
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              ) : null}
+              {t("post")}
+            </Button>
+          </ShortcutHint>
         }
         notice={
           draft.restored ? (

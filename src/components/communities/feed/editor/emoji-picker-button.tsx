@@ -44,8 +44,12 @@ export function EmojiPickerButton({
       <PopoverContent
         align="start"
         className="w-auto p-0"
+        aria-label={t("emoji")}
         // Focus goes to the search box, not the first emoji.
         onOpenAutoFocus={(e) => e.preventDefault()}
+        // After a pick the text field takes focus back (usePostText), not
+        // this button.
+        onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <EmojiPicker.Root
           locale={locale === "nl" ? "nl" : "en"}
@@ -55,7 +59,7 @@ export function EmojiPickerButton({
             onPick(emoji);
             setOpen(false);
           }}
-          className="isolate flex h-80 w-fit flex-col"
+          className="isolate flex h-[22rem] w-fit flex-col"
         >
           <EmojiPicker.Search
             autoFocus
@@ -97,6 +101,30 @@ export function EmojiPickerButton({
               }}
             />
           </EmojiPicker.Viewport>
+          <div className="border-border flex h-10 items-center justify-between gap-2 border-t px-2">
+            <EmojiPicker.ActiveEmoji>
+              {({ emoji }) =>
+                emoji ? (
+                  <span className="flex min-w-0 items-center gap-1.5 text-sm">
+                    <span aria-hidden="true" className="text-lg">
+                      {emoji.emoji}
+                    </span>
+                    <span className="text-muted-foreground truncate">
+                      {emoji.label}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground truncate text-xs">
+                    {t("emojiPickHint")}
+                  </span>
+                )
+              }
+            </EmojiPicker.ActiveEmoji>
+            <EmojiPicker.SkinToneSelector
+              aria-label={t("skinTone")}
+              className="hover:bg-accent focus-visible:ring-ring/50 flex size-8 shrink-0 items-center justify-center rounded-md text-lg outline-none focus-visible:ring-[3px]"
+            />
+          </div>
         </EmojiPicker.Root>
       </PopoverContent>
     </Popover>
