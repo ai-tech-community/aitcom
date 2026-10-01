@@ -10,10 +10,7 @@ import type { VideoVisibility } from "@/lib/video-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
-import {
-  uploadFeedImage,
-  type UploadedFeedImage,
-} from "./upload-feed-image";
+import { uploadFeedImage, type UploadedFeedImage } from "./upload-feed-image";
 import { DraftNotice } from "./editor/draft-notice";
 import { EmojiPickerButton } from "./editor/emoji-picker-button";
 import { PostEditor } from "./editor/post-editor";
