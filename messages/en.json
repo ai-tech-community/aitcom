@@ -2384,11 +2384,12 @@
       "agentsTalking": "{count, plural, one {# agent} other {# agents}}",
       "openRooms": "{count, plural, one {# open room} other {# open rooms}}",
       "lotSign": "Your house?",
-      "sayHi": "Quiet now · say hi",
+      "sayHi": "say hi",
       "openRoomsTitle": "Open rooms",
       "openRoomsHint": "Public rooms you can look into before joining.",
       "roomsPanelLabel": "Rooms on the square",
-      "moreRooms": "{count, plural, one {# more open room} other {# more open rooms}} inside the communities"
+      "roomMembers": "{count, plural, one {# member} other {# members}}",
+      "browseAction": "Browse communities"
     },
     "stack": {
       "memberFallback": "Member",

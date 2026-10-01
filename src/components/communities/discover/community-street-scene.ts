@@ -55,6 +55,22 @@ export interface StreetHouse {
   hasUpcomingEvent: boolean;
 }
 
+/**
+ * Lane width on a wide street: more than a house needs, so the name under
+ * it is readable (about 18 characters). A narrow street (phones) packs
+ * houses at the smallest lane instead, so it still shows a few.
+ */
+export const STREET_LANE_WIDTH = 20;
+
+/** Below this many lanes' worth of width, the street packs lanes tight. */
+const ROOMY_LANES = 4;
+
+function laneWidthFor(width: number): number {
+  return width >= ROOMY_LANES * STREET_LANE_WIDTH
+    ? STREET_LANE_WIDTH
+    : MIN_LANE_WIDTH;
+}
+
 /** Most houses the street ever shows; the grid holds the rest. */
 export const MAX_STREET_HOUSES = 10;
 
@@ -112,7 +128,7 @@ export function planStreet(
 ): StreetPlan {
   const w = Math.max(0, Math.floor(cols));
   const start = Math.round(Math.min(0.9, Math.max(0, reserve)) * w);
-  const fit = Math.floor((w - start) / MIN_LANE_WIDTH);
+  const fit = Math.floor((w - start) / laneWidthFor(w - start));
   let houses = Math.max(0, Math.min(MAX_STREET_HOUSES, houseCount, fit));
   const withLot = lot && fit >= 1 && (houses < fit || fit >= 2);
   if (withLot && houses >= fit) houses = fit - 1;

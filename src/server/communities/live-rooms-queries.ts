@@ -1,6 +1,6 @@
 /** Loads the Explore page's rooms. Thin DB glue over `live-rooms.ts`. */
 
-import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, notInArray, sql } from "drizzle-orm";
 
 import type { db as _db } from "@/server/db";
 import {
@@ -12,8 +12,10 @@ import {
 } from "@/server/db/schema";
 import {
   LIVE_WINDOW_HOURS,
+  MAX_QUIET_ROOMS,
+  talkingRoomIds,
   type LiveRoomRow,
-  type PublicRoomRow,
+  type QuietRoomRow,
 } from "@/server/communities/live-rooms";
 import { createTtlMemo } from "@/server/ttl-memo";
 
@@ -34,7 +36,6 @@ async function loadLiveRoomRows(db: DB, now: Date): Promise<LiveRoomRow[]> {
       spaceId: spaces.id,
       spaceSlug: spaces.slug,
       spaceName: spaces.name,
-      purpose: spaces.purpose,
       communitySlug: communities.slug,
       communityName: communities.name,
       people: sql<number>`(count(distinct ${messages.senderId}) filter (where ${messages.senderType} = 'human'))::int`,
@@ -70,7 +71,6 @@ async function loadLiveRoomRows(db: DB, now: Date): Promise<LiveRoomRow[]> {
       spaces.id,
       spaces.slug,
       spaces.name,
-      spaces.purpose,
       communities.slug,
       communities.name,
     );
@@ -80,9 +80,18 @@ async function loadLiveRoomRows(db: DB, now: Date): Promise<LiveRoomRow[]> {
   }));
 }
 
-/** Every public, unarchived room of a listed community, with its members. */
-async function loadPublicRoomRows(db: DB): Promise<PublicRoomRow[]> {
-  const rooms = await db
+/**
+ * The quiet pick: public, unarchived rooms of listed communities that are
+ * not talking, biggest first (active members), then newest — ordered and
+ * limited in SQL, so the cost follows what the page shows, not how many
+ * rooms exist.
+ */
+async function loadQuietRoomRows(
+  db: DB,
+  talkingIds: readonly string[],
+): Promise<QuietRoomRow[]> {
+  const members = sql<number>`count(${spaceMemberships.id})::int`;
+  return db
     .select({
       spaceId: spaces.id,
       spaceSlug: spaces.slug,
@@ -90,10 +99,17 @@ async function loadPublicRoomRows(db: DB): Promise<PublicRoomRow[]> {
       purpose: spaces.purpose,
       communitySlug: communities.slug,
       communityName: communities.name,
-      createdAt: spaces.createdAt,
+      members,
     })
     .from(spaces)
     .innerJoin(communities, eq(communities.id, spaces.communityId))
+    .leftJoin(
+      spaceMemberships,
+      and(
+        eq(spaceMemberships.spaceId, spaces.id),
+        eq(spaceMemberships.status, "active"),
+      ),
+    )
     .where(
       and(
         eq(spaces.kind, "room"),
@@ -101,46 +117,43 @@ async function loadPublicRoomRows(db: DB): Promise<PublicRoomRow[]> {
         isNull(spaces.archivedAt),
         eq(communities.isListedInDirectory, true),
         isNull(communities.deletedAt),
-      ),
-    );
-  if (rooms.length === 0) return [];
-  // Grouped count (not a correlated subquery; see the spaces router).
-  const counts = await db
-    .select({
-      spaceId: spaceMemberships.spaceId,
-      n: sql<number>`count(*)::int`,
-    })
-    .from(spaceMemberships)
-    .where(
-      and(
-        inArray(
-          spaceMemberships.spaceId,
-          rooms.map((r) => r.spaceId),
-        ),
-        eq(spaceMemberships.status, "active"),
+        talkingIds.length > 0
+          ? notInArray(spaces.id, [...talkingIds])
+          : undefined,
       ),
     )
-    .groupBy(spaceMemberships.spaceId);
-  const byId = new Map(counts.map((c) => [c.spaceId, c.n]));
-  return rooms.map((r) => ({ ...r, members: byId.get(r.spaceId) ?? 0 }));
+    .groupBy(
+      spaces.id,
+      spaces.slug,
+      spaces.name,
+      spaces.purpose,
+      spaces.createdAt,
+      communities.slug,
+      communities.name,
+    )
+    .orderBy(desc(members), desc(spaces.createdAt), asc(spaces.id))
+    .limit(MAX_QUIET_ROOMS);
 }
 
-type SquareRoomRows = { publicRooms: PublicRoomRow[]; live: LiveRoomRow[] };
+type SquareRoomRows = { live: LiveRoomRow[]; quiet: QuietRoomRow[] };
 
 const squareRoomRows = createTtlMemo<"all", SquareRoomRows>(LIVE_ROOMS_TTL_MS);
 
-/** Public rooms and their recent talk, rebuilt at most once a minute per instance. */
+/** The square's rooms, rebuilt at most once a minute per instance. */
 export function loadSquareRoomRows(db: DB): Promise<SquareRoomRows> {
   return squareRoomRows.get("all", async () => {
-    const [publicRooms, live] = await Promise.all([
-      loadPublicRoomRows(db),
-      loadLiveRoomRows(db, new Date()),
-    ]);
-    return { publicRooms, live };
+    const live = await loadLiveRoomRows(db, new Date());
+    const quiet = await loadQuietRoomRows(db, talkingRoomIds(live));
+    return { live, quiet };
   });
 }
 
-/** Drops this instance's cached rows (tests, or after a listing change). */
+/**
+ * Drops this instance's cached rooms. Called when a room is created,
+ * renamed, made public or private, archived or restored, and when a
+ * community's listing changes — so a room that stops being public leaves
+ * the page at once on this instance (others follow within a minute).
+ */
 export function invalidateSquareRooms(): void {
   squareRoomRows.clear();
 }

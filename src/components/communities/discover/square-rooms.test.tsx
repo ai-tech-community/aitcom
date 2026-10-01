@@ -2,9 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 const state = vi.hoisted(() => ({
-  rooms: [] as unknown[],
+  talking: [] as unknown[],
   quiet: [] as unknown[],
-  quietTotal: 0,
   signedIn: true,
   openSpace: vi.fn(),
   promptAuth: vi.fn(),
@@ -15,11 +14,7 @@ vi.mock("@/trpc/react", () => ({
     spaces: {
       squareRooms: {
         useQuery: () => ({
-          data: {
-            talking: state.rooms,
-            quiet: state.quiet,
-            quietTotal: state.quietTotal,
-          },
+          data: { talking: state.talking, quiet: state.quiet },
         }),
       },
     },
@@ -28,6 +23,8 @@ vi.mock("@/trpc/react", () => ({
 vi.mock("next-intl", () => ({
   useTranslations: () => (k: string, vars?: Record<string, unknown>) =>
     vars ? `${k}:${JSON.stringify(vars)}` : k,
+  useFormatter: () => ({ relativeTime: () => "2 hours ago" }),
+  useNow: () => new Date("2026-10-01T12:00:00Z"),
 }));
 vi.mock("@/components/communities/explore/space-window-provider", () => ({
   useSpaceWindows: () => ({ openSpace: state.openSpace }),
@@ -41,13 +38,12 @@ vi.mock("@/components/auth/auth-required-dialog", () => ({
   }),
 }));
 
-import { SquareRooms } from "./square-rooms";
+import { RoomsPanel, RoomsStrip, STRIP_ROOMS } from "./square-rooms";
 
-const ROOM = {
+const TALKING = {
   spaceId: "s1",
   spaceSlug: "agent-builders",
   spaceName: "agent-builders",
-  purpose: null,
   communitySlug: "mlops",
   communityName: "MLOps Amsterdam",
   people: 3,
@@ -59,89 +55,97 @@ const QUIET = {
   spaceId: "q1",
   spaceSlug: "lobby",
   spaceName: "lobby",
-  purpose: null,
+  purpose: "Say who you are",
   communitySlug: "ait",
   communityName: "AIT Netherlands",
   members: 4,
 };
 
 afterEach(() => {
+  state.talking = [];
   state.quiet = [];
-  state.quietTotal = 0;
+  state.signedIn = true;
   state.openSpace.mockReset();
   state.promptAuth.mockReset();
-  state.signedIn = true;
 });
 
-describe("SquareRooms", () => {
+describe("RoomsPanel", () => {
   it("is not there when no listed community has a public room", () => {
-    state.rooms = [];
-    const { container } = render(<SquareRooms layout="strip" />);
+    const { container } = render(<RoomsPanel />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("shows each room with its community and who is talking", () => {
-    state.rooms = [ROOM];
-    render(<SquareRooms layout="strip" />);
-    expect(screen.getByText("#agent-builders")).toBeInTheDocument();
+  it("lists talking rooms with who and when, then open rooms", () => {
+    state.talking = [TALKING];
+    state.quiet = [QUIET];
+    render(<RoomsPanel />);
+    expect(
+      screen.getByRole("complementary", { name: "roomsPanelLabel" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("talkingNow")).toBeInTheDocument();
     expect(
       screen.getByText('peopleTalking:{"count":3} · agentsTalking:{"count":1}'),
+    ).toBeInTheDocument();
+    expect(screen.getByText("2 hours ago")).toBeInTheDocument();
+    expect(screen.getByText("openRoomsTitle")).toBeInTheDocument();
+    expect(screen.getByText("Say who you are")).toBeInTheDocument();
+    expect(
+      screen.getByText('roomMembers:{"count":4} · sayHi'),
     ).toBeInTheDocument();
   });
 
   it("leaves out a zero count", () => {
-    state.rooms = [{ ...ROOM, agents: 0 }];
-    render(<SquareRooms layout="strip" />);
+    state.talking = [{ ...TALKING, agents: 0 }];
+    render(<RoomsPanel />);
     expect(screen.getByText('peopleTalking:{"count":3}')).toBeInTheDocument();
   });
 
-  it("opens the room's chat window for a member", () => {
-    state.rooms = [ROOM];
-    render(<SquareRooms layout="strip" />);
+  it("opens a room's chat window for a member", () => {
+    state.quiet = [QUIET];
+    render(<RoomsPanel />);
     fireEvent.click(screen.getByRole("button"));
     expect(state.openSpace).toHaveBeenCalledWith({
-      communitySlug: "mlops",
-      spaceSlug: "agent-builders",
-      spaceName: "agent-builders",
-      communityName: "MLOps Amsterdam",
+      communitySlug: "ait",
+      spaceSlug: "lobby",
+      spaceName: "lobby",
+      communityName: "AIT Netherlands",
     });
   });
 
   it("asks a guest to sign in first", () => {
-    state.rooms = [ROOM];
+    state.talking = [TALKING];
     state.signedIn = false;
-    render(<SquareRooms layout="strip" />);
+    render(<RoomsPanel />);
     fireEvent.click(screen.getByRole("button"));
     expect(state.openSpace).not.toHaveBeenCalled();
     expect(state.promptAuth).toHaveBeenCalledWith(
       'signInToOpenSpace:{"space":"agent-builders"}',
     );
   });
+});
 
-  it("offers quiet rooms with a hello when nobody is talking", () => {
-    state.rooms = [];
+describe("RoomsStrip", () => {
+  it("shows one part only, under its own heading", () => {
+    state.talking = [TALKING];
     state.quiet = [QUIET];
-    state.quietTotal = 1;
-    render(<SquareRooms layout="strip" />);
-    expect(screen.getByText("openRoomsTitle")).toBeInTheDocument();
-    expect(screen.getByText("sayHi")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button"));
-    expect(state.openSpace).toHaveBeenCalledWith(
-      expect.objectContaining({ spaceSlug: "lobby", communitySlug: "ait" }),
-    );
+    render(<RoomsStrip part="talking" />);
+    expect(screen.getByText("talkingNow")).toBeInTheDocument();
+    expect(screen.queryByText("openRoomsTitle")).toBeNull();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
   });
 
-  it("splits the panel into talking and open rooms, with the rest counted", () => {
-    state.rooms = [ROOM];
+  it("caps each part so the directory stays near the top", () => {
+    state.quiet = Array.from({ length: 8 }, (_, i) => ({
+      ...QUIET,
+      spaceId: `q${i}`,
+    }));
+    render(<RoomsStrip part="open" />);
+    expect(screen.getAllByRole("button")).toHaveLength(STRIP_ROOMS);
+  });
+
+  it("renders nothing for an empty part", () => {
     state.quiet = [QUIET];
-    state.quietTotal = 3;
-    render(<SquareRooms layout="panel" />);
-    expect(
-      screen.getByRole("complementary", { name: "roomsPanelLabel" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("talkingNow")).toBeInTheDocument();
-    expect(screen.getByText("openRoomsTitle")).toBeInTheDocument();
-    expect(screen.getAllByRole("button")).toHaveLength(2);
-    expect(screen.getByText('moreRooms:{"count":2}')).toBeInTheDocument();
+    const { container } = render(<RoomsStrip part="talking" />);
+    expect(container).toBeEmptyDOMElement();
   });
 });

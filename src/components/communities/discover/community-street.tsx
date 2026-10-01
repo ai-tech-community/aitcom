@@ -34,10 +34,10 @@ function sameGrid(a: GridSize | null, b: GridSize | null) {
 /**
  * The street of community houses, with an empty lot at its end. Decorative
  * (aria-hidden): the directory grid carries every fact as text and the
- * page's "Start a community" button is the keyboard path to the lot. With
- * a mouse, pointing at a house marks it and clicking opens it (a real
- * link, so middle-click works, but out of the tab order); clicking the lot
- * starts a community. Hit areas follow the same plan the scene draws.
+ * page's "Start a community" button is the keyboard path to the lot.
+ * Pointing at a house marks it; clicking or tapping opens it (a real link,
+ * so middle-click works, but out of the tab order); the lot starts a
+ * community. Hit areas follow the same plan the scene draws.
  */
 export function CommunityStreet({
   houses,
@@ -93,7 +93,7 @@ export function CommunityStreet({
       {plan && grid && plan.lanes.length > 0 ? (
         <div
           aria-hidden="true"
-          className="absolute inset-y-0 right-0 hidden sm:flex"
+          className="absolute inset-y-0 right-0 flex"
           style={{ left: `${(plan.start / grid.cols) * 100}%` }}
           onPointerLeave={() => onActiveChange(null)}
         >

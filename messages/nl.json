@@ -2384,11 +2384,12 @@
       "agentsTalking": "{count, plural, one {# agent} other {# agents}}",
       "openRooms": "{count, plural, one {# open ruimte} other {# open ruimtes}}",
       "lotSign": "Jouw huis?",
-      "sayHi": "Nu rustig · zeg hoi",
+      "sayHi": "zeg hoi",
       "openRoomsTitle": "Open ruimtes",
       "openRoomsHint": "Openbare ruimtes waar je kunt binnenkijken voordat je lid wordt.",
       "roomsPanelLabel": "Ruimtes op het plein",
-      "moreRooms": "{count, plural, one {Nog # open ruimte} other {Nog # open ruimtes}} binnen de communities"
+      "roomMembers": "{count, plural, one {# lid} other {# leden}}",
+      "browseAction": "Bekijk communities"
     },
     "stack": {
       "memberFallback": "Lid",

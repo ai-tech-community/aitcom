@@ -24,7 +24,10 @@ import { roomAccessRequestRecipients } from "@/server/communities/room-notificat
 import { getOrCreateRoomConversation } from "@/server/communities/room-conversation";
 import { getAvatarUrl } from "@/lib/avatar";
 import { squareRooms } from "@/server/communities/live-rooms";
-import { loadSquareRoomRows } from "@/server/communities/live-rooms-queries";
+import {
+  invalidateSquareRooms,
+  loadSquareRoomRows,
+} from "@/server/communities/live-rooms-queries";
 
 /** Enabled spaces for the public nav, position-ordered. */
 export const spacesRouter = createTRPCRouter({
@@ -127,6 +130,7 @@ export const spacesRouter = createTRPCRouter({
         )
         .returning();
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      invalidateSquareRooms();
       return updated;
     }),
 
@@ -155,6 +159,7 @@ export const spacesRouter = createTRPCRouter({
         )
         .returning();
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      invalidateSquareRooms();
       return updated;
     }),
 
@@ -204,6 +209,7 @@ export const spacesRouter = createTRPCRouter({
       });
       // Eagerly create the conversation so the first open is instant.
       await getOrCreateRoomConversation(ctx.db, room.id);
+      invalidateSquareRooms();
       return room;
     }),
 
@@ -238,6 +244,7 @@ export const spacesRouter = createTRPCRouter({
         )
         .returning();
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      invalidateSquareRooms();
       return updated;
     }),
 
@@ -260,6 +267,7 @@ export const spacesRouter = createTRPCRouter({
         )
         .returning();
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      invalidateSquareRooms();
       return { success: true };
     }),
 
@@ -333,8 +341,8 @@ export const spacesRouter = createTRPCRouter({
    * never who or what) and the quiet ones.
    */
   squareRooms: publicProcedure.query(async ({ ctx }) => {
-    const { publicRooms, live } = await loadSquareRoomRows(ctx.db);
-    return squareRooms(publicRooms, live);
+    const { live, quiet } = await loadSquareRoomRows(ctx.db);
+    return squareRooms(live, quiet);
   }),
 
   /** Join a PUBLIC room instantly (active community member). */

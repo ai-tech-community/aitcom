@@ -8,15 +8,17 @@
 /** A room counts as talking when someone wrote within this window. */
 export const LIVE_WINDOW_HOURS = 24;
 
-/** Most rooms the strip shows. */
+/** Most talking rooms the page lists. */
 export const MAX_LIVE_ROOMS = 8;
+
+/** Most quiet rooms the page lists under "Open rooms". */
+export const MAX_QUIET_ROOMS = 8;
 
 /** One public room's recent conversation, as loaded. */
 export type LiveRoomRow = {
   spaceId: string;
   spaceSlug: string;
   spaceName: string | null;
-  purpose: string | null;
   communitySlug: string;
   communityName: string;
   /** Distinct people who wrote in the window. */
@@ -26,8 +28,30 @@ export type LiveRoomRow = {
   lastMessageAt: Date;
 };
 
+/**
+ * A public room nobody wrote in during the window, as loaded: already the
+ * page's pick (biggest first, then newest), ordered and limited in SQL.
+ */
+export type QuietRoomRow = {
+  spaceId: string;
+  spaceSlug: string;
+  spaceName: string | null;
+  /** What the room is for, as its owner wrote it. */
+  purpose: string | null;
+  communitySlug: string;
+  communityName: string;
+  /** Active room members. */
+  members: number;
+};
+
 export type PublicLiveRoom = Omit<LiveRoomRow, "lastMessageAt"> & {
   lastMessageAt: string;
+};
+
+export type SquareRooms = {
+  talking: PublicLiveRoom[];
+  /** Public rooms nobody wrote in during the window: a door to knock on. */
+  quiet: QuietRoomRow[];
 };
 
 /**
@@ -50,58 +74,33 @@ export function rankLiveRooms(
     .map((r) => ({ ...r, lastMessageAt: r.lastMessageAt.toISOString() }));
 }
 
-/** Most quiet rooms the side panel lists under "Talking now". */
-export const MAX_QUIET_ROOMS = 8;
-
-/** A public room of a listed community, whether or not it talked. */
-export type PublicRoomRow = {
-  spaceId: string;
-  spaceSlug: string;
-  spaceName: string | null;
-  purpose: string | null;
-  communitySlug: string;
-  communityName: string;
-  /** Active room members. */
-  members: number;
-  createdAt: Date;
-};
-
-export type PublicQuietRoom = Omit<PublicRoomRow, "createdAt">;
-
-export type SquareRooms = {
-  talking: PublicLiveRoom[];
-  /** Public rooms nobody wrote in during the window: a door to knock on. */
-  quiet: PublicQuietRoom[];
-  /** All quiet rooms, also those beyond the list. */
-  quietTotal: number;
-};
+/** The ids of rooms that count as talking, kept out of "quiet". */
+export function talkingRoomIds(rows: readonly LiveRoomRow[]): string[] {
+  return rows.filter((r) => r.people + r.agents > 0).map((r) => r.spaceId);
+}
 
 /**
- * The rooms on the square: the ones talking now, then the quiet ones
- * (biggest first, then newest), so the panel always has a door to open.
+ * The rooms on the square: talking now, then the quiet pick. A room never
+ * shows in both, and each quiet room carries only what the page shows.
  */
 export function squareRooms(
-  publicRooms: readonly PublicRoomRow[],
   live: readonly LiveRoomRow[],
-  limits: { talking?: number; quiet?: number } = {},
+  quiet: readonly QuietRoomRow[],
 ): SquareRooms {
-  const talking = rankLiveRooms(live, limits.talking ?? MAX_LIVE_ROOMS);
-  const talkingIds = new Set(
-    live.filter((r) => r.people + r.agents > 0).map((r) => r.spaceId),
-  );
-  const quietAll = publicRooms
-    .filter((r) => !talkingIds.has(r.spaceId))
-    .sort(
-      (a, b) =>
-        b.members - a.members ||
-        b.createdAt.getTime() - a.createdAt.getTime() ||
-        (a.spaceId < b.spaceId ? -1 : a.spaceId > b.spaceId ? 1 : 0),
-    );
+  const talking = new Set(talkingRoomIds(live));
   return {
-    talking,
-    quiet: quietAll
-      .slice(0, Math.max(0, limits.quiet ?? MAX_QUIET_ROOMS))
-      .map(({ createdAt: _createdAt, ...room }) => room),
-    quietTotal: quietAll.length,
+    talking: rankLiveRooms(live),
+    quiet: quiet
+      .filter((r) => !talking.has(r.spaceId))
+      .slice(0, MAX_QUIET_ROOMS)
+      .map((r) => ({
+        spaceId: r.spaceId,
+        spaceSlug: r.spaceSlug,
+        spaceName: r.spaceName,
+        purpose: r.purpose,
+        communitySlug: r.communitySlug,
+        communityName: r.communityName,
+        members: r.members,
+      })),
   };
 }

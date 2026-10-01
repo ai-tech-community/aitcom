@@ -5,6 +5,7 @@ import {
   MIN_STREET_ROWS,
   STREET_LAYERS,
   communityStreetFrame,
+  STREET_LANE_WIDTH,
   litWindowCount,
   planStreet,
   streetLanes,
@@ -48,9 +49,17 @@ describe("planStreet", () => {
   it("fits as many houses as the width allows, capped", () => {
     expect(planStreet(MIN_LANE_WIDTH * 3, 10).houses).toBe(3);
     expect(planStreet(MIN_LANE_WIDTH * 3 - 1, 10).houses).toBe(2);
+    expect(planStreet(STREET_LANE_WIDTH * 6, 10).houses).toBe(6);
     expect(planStreet(10_000, 20).houses).toBe(MAX_STREET_HOUSES);
     expect(planStreet(1000, 2).houses).toBe(2);
     expect(planStreet(0, 5).houses).toBe(0);
+  });
+
+  it("gives a wide street readable lanes and packs a narrow one", () => {
+    for (const lane of planStreet(200, 10).lanes) {
+      expect(lane.width).toBeGreaterThanOrEqual(STREET_LANE_WIDTH);
+    }
+    expect(planStreet(54, 10).houses).toBe(3);
   });
 
   it("keeps the reserved strip free and lanes after it", () => {
@@ -59,7 +68,7 @@ describe("planStreet", () => {
     expect(plan.lanes[0]!.x).toBe(80);
     const last = plan.lanes[plan.lanes.length - 1]!;
     expect(last.x + last.width).toBe(200);
-    expect(plan.houses).toBe(Math.floor(120 / MIN_LANE_WIDTH));
+    expect(plan.houses).toBe(Math.floor(120 / STREET_LANE_WIDTH));
   });
 
   it("puts the lot after the last house, or on the last lane when full", () => {

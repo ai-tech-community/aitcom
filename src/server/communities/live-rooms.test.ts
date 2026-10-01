@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_QUIET_ROOMS,
   rankLiveRooms,
   squareRooms,
+  talkingRoomIds,
   type LiveRoomRow,
-  type PublicRoomRow,
+  type QuietRoomRow,
 } from "./live-rooms";
 
 function row(id: string, over: Partial<LiveRoomRow> = {}): LiveRoomRow {
@@ -11,7 +13,6 @@ function row(id: string, over: Partial<LiveRoomRow> = {}): LiveRoomRow {
     spaceId: id,
     spaceSlug: id,
     spaceName: id,
-    purpose: null,
     communitySlug: "c",
     communityName: "C",
     people: 1,
@@ -52,7 +53,7 @@ describe("rankLiveRooms", () => {
   });
 });
 
-function room(id: string, over: Partial<PublicRoomRow> = {}): PublicRoomRow {
+function quiet(id: string, over: Partial<QuietRoomRow> = {}): QuietRoomRow {
   return {
     spaceId: id,
     spaceSlug: id,
@@ -61,35 +62,48 @@ function room(id: string, over: Partial<PublicRoomRow> = {}): PublicRoomRow {
     communitySlug: "c",
     communityName: "C",
     members: 1,
-    createdAt: new Date("2026-09-01T00:00:00Z"),
     ...over,
   };
 }
 
 describe("squareRooms", () => {
-  it("lists talking rooms once, and the rest as quiet, biggest first", () => {
+  it("never lists a talking room as quiet, and keeps the SQL order", () => {
     const out = squareRooms(
-      [
-        room("talking"),
-        room("small", { members: 1 }),
-        room("big", { members: 9 }),
-      ],
       [row("talking")],
+      [quiet("big", { members: 9 }), quiet("talking"), quiet("small")],
     );
     expect(out.talking.map((r) => r.spaceId)).toEqual(["talking"]);
     expect(out.quiet.map((r) => r.spaceId)).toEqual(["big", "small"]);
-    expect(out.quietTotal).toBe(2);
   });
 
-  it("caps the quiet list but counts every quiet room", () => {
-    const rooms = Array.from({ length: 5 }, (_, i) => room(`r${i}`));
-    const out = squareRooms(rooms, [], { quiet: 2 });
-    expect(out.quiet).toHaveLength(2);
-    expect(out.quietTotal).toBe(5);
+  it("caps the quiet list", () => {
+    const rooms = Array.from({ length: 12 }, (_, i) => quiet(`r${i}`));
+    expect(squareRooms([], rooms).quiet).toHaveLength(MAX_QUIET_ROOMS);
   });
 
-  it("keeps internal timestamps of quiet rooms on the server", () => {
-    const out = squareRooms([room("a")], []);
-    expect(out.quiet[0]).not.toHaveProperty("createdAt");
+  it("sends only what the page shows", () => {
+    const out = squareRooms(
+      [],
+      [{ ...quiet("a"), createdAt: new Date() } as QuietRoomRow],
+    );
+    expect(Object.keys(out.quiet[0]!).sort()).toEqual(
+      [
+        "communityName",
+        "communitySlug",
+        "members",
+        "purpose",
+        "spaceId",
+        "spaceName",
+        "spaceSlug",
+      ].sort(),
+    );
+  });
+});
+
+describe("talkingRoomIds", () => {
+  it("names the rooms where someone wrote", () => {
+    expect(
+      talkingRoomIds([row("a"), row("b", { people: 0, agents: 0 })]),
+    ).toEqual(["a"]);
   });
 });

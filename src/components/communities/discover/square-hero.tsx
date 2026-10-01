@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -59,11 +59,13 @@ function useReservedShare(
   street: RefObject<HTMLElement | null>,
   copy: RefObject<HTMLElement | null>,
   enabled: boolean,
-): number {
-  const [share, setShare] = useState(0);
-  useEffect(() => {
+): { share: number; measured: boolean } {
+  const [state, setState] = useState({ share: 0, measured: false });
+  // Layout effect: the first measure lands before paint, so houses never
+  // flash under the headline.
+  useLayoutEffect(() => {
     if (!enabled) {
-      setShare(0);
+      setState({ share: 0, measured: true });
       return;
     }
     const measure = () => {
@@ -72,7 +74,12 @@ function useReservedShare(
       if (!s || !c || s.width <= 0) return;
       const next = (c.right + COPY_GAP_PX - s.left) / s.width;
       // Whole percents: no redraw for sub-pixel jitter.
-      setShare(Math.round(Math.min(0.9, Math.max(0, next)) * 100) / 100);
+      const share = Math.round(Math.min(0.9, Math.max(0, next)) * 100) / 100;
+      setState((prev) =>
+        prev.measured && prev.share === share
+          ? prev
+          : { share, measured: true },
+      );
     };
     measure();
     const observer =
@@ -81,7 +88,7 @@ function useReservedShare(
     if (copy.current) observer?.observe(copy.current);
     return () => observer?.disconnect();
   }, [street, copy, enabled]);
-  return share;
+  return state;
 }
 
 /**
@@ -105,7 +112,11 @@ export function SquareHero({
   const wide = useMediaQuery("(min-width: 1024px)", false);
   const streetRef = useRef<HTMLDivElement>(null);
   const copyRef = useRef<HTMLDivElement>(null);
-  const reserve = useReservedShare(streetRef, copyRef, wide);
+  const { share: reserve, measured } = useReservedShare(
+    streetRef,
+    copyRef,
+    wide,
+  );
 
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const query = api.communities.directory.useQuery(squareQueryInput(locale));
@@ -141,11 +152,11 @@ export function SquareHero({
         </div>
         <div ref={streetRef}>
           <CommunityStreet
-            houses={houses}
+            houses={measured ? houses : []}
             activeSlug={activeSlug}
             onActiveChange={setActiveSlug}
             reserve={reserve}
-            lotLabel={t("lotSign")}
+            lotLabel={measured ? t("lotSign") : null}
             onLotClick={startCreate}
             className="border-border mt-8 h-56 border-b sm:h-72 lg:mt-0 lg:h-[30rem]"
           />
@@ -153,10 +164,10 @@ export function SquareHero({
       </div>
       {/* The grid below reads the same directory, so its empty and error
           states speak once for the page; with no houses there is no
-          legend to read. */}
-      {items.length > 0 ? (
+          legend to read. Its space is kept while loading: no jump. */}
+      {query.isLoading || items.length > 0 ? (
         <div aria-hidden="true" className={`${BODY_FRAME} mt-3 min-h-6`}>
-          <StreetCaption community={active} />
+          {items.length > 0 ? <StreetCaption community={active} /> : null}
         </div>
       ) : null}
     </section>

@@ -6,6 +6,7 @@ const nav = vi.hoisted(() => ({
   search: "",
   onParamsChange: null as null | ((p: Partial<DirectoryParams>) => void),
   params: null as null | DirectoryParams,
+  rooms: { talking: [] as unknown[], quiet: [{ spaceId: "q" }] as unknown[] },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -17,7 +18,16 @@ vi.mock("./discover/square-hero", () => ({
     <section>{headline}</section>
   ),
 }));
-vi.mock("./discover/discover-communities", () => ({
+
+vi.mock("./discover/square-rooms", () => ({
+  useSquareRooms: () => ({ data: nav.rooms }),
+  RoomsPanel: () => <div data-testid="rooms-panel" />,
+  RoomsStrip: ({ part }: { part: string }) => (
+    <div data-testid={`rooms-strip-${part}`} />
+  ),
+}));
+vi.mock("./discover/discover-communities", async () => ({
+  ALL_COMMUNITIES_ID: "all-communities-title",
   DiscoverCommunities: (props: {
     params: DirectoryParams;
     onParamsChange: (p: Partial<DirectoryParams>) => void;
@@ -26,11 +36,6 @@ vi.mock("./discover/discover-communities", () => ({
     nav.onParamsChange = props.onParamsChange;
     return <div>communities</div>;
   },
-}));
-vi.mock("./discover/square-rooms", () => ({
-  SquareRooms: ({ layout }: { layout: string }) => (
-    <div data-testid={`rooms-${layout}`} />
-  ),
 }));
 vi.mock("./discover/organizer-invite", () => ({
   OrganizerInvite: () => <div>invite</div>,
@@ -56,6 +61,7 @@ import { CommunitiesDirectory } from "./communities-directory";
 
 afterEach(() => {
   nav.search = "";
+  nav.rooms = { talking: [], quiet: [{ spaceId: "q" }] };
   vi.restoreAllMocks();
   window.history.replaceState(null, "", "/");
 });
@@ -69,10 +75,35 @@ describe("CommunitiesDirectory", () => {
     expect(frame).not.toBeNull();
   });
 
-  it("shows the rooms as a side panel from xl and as a strip below it", () => {
+  it("shows the rooms as a side panel and as strips for narrow screens", () => {
     render(<CommunitiesDirectory />);
     expect(screen.getByTestId("rooms-panel")).toBeInTheDocument();
-    expect(screen.getByTestId("rooms-strip")).toBeInTheDocument();
+    expect(screen.getByTestId("rooms-strip-talking")).toBeInTheDocument();
+    expect(screen.getByTestId("rooms-strip-open")).toBeInTheDocument();
+  });
+
+  it("puts the panel before the card list for keyboard order", () => {
+    render(<CommunitiesDirectory />);
+    const panel = screen.getByTestId("rooms-panel");
+    const list = screen.getByText("communities");
+    expect(
+      panel.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("gives the panel no column when there are no rooms", () => {
+    nav.rooms = { talking: [], quiet: [] };
+    render(<CommunitiesDirectory />);
+    expect(screen.queryByTestId("rooms-panel")).toBeNull();
+    expect(document.querySelector("[class*='xl:grid-cols-']")).toBeNull();
+  });
+
+  it("offers browsing next to starting a community", () => {
+    render(<CommunitiesDirectory />);
+    expect(screen.getByRole("link", { name: "browseAction" })).toHaveAttribute(
+      "href",
+      "#all-communities-title",
+    );
   });
 
   it("leads with a human headline as the page heading", () => {

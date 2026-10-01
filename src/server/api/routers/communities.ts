@@ -34,6 +34,7 @@ import {
   invalidateDirectorySnapshots,
   loadDirectorySnapshot,
 } from "@/server/communities/directory-queries";
+import { invalidateSquareRooms } from "@/server/communities/live-rooms-queries";
 import {
   DIRECTORY_SORTS,
   queryDirectory,
@@ -790,6 +791,8 @@ export const communitiesRouter = createTRPCRouter({
         metadata: updates,
       });
       invalidateDirectorySnapshots();
+      // Listing on/off decides whether the community's rooms are public.
+      invalidateSquareRooms();
 
       return updated!;
     }),
