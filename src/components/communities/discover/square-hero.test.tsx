@@ -9,6 +9,8 @@ const state = vi.hoisted(() => ({
   lastInput: null as unknown,
   isError: false,
   startCreate: vi.fn(),
+  talkingIn: [] as string[],
+  night: false,
 }));
 
 vi.mock("@/trpc/react", () => ({
@@ -33,6 +35,15 @@ vi.mock("next-intl", () => ({
     vars ? `${k}:${JSON.stringify(vars)}` : k,
 }));
 vi.mock("@/hooks/use-media-query", () => ({ useMediaQuery: () => false }));
+vi.mock("./square-rooms", () => ({
+  useSquareRooms: () => ({
+    data: {
+      talking: state.talkingIn.map((communitySlug) => ({ communitySlug })),
+      quiet: [],
+    },
+  }),
+}));
+vi.mock("./amsterdam-night", () => ({ useSquareNight: () => state.night }));
 vi.mock("./join-action", () => ({
   JoinAction: (p: { slug: string; onPress?: () => void }) => (
     <button type="button" onClick={p.onPress}>
@@ -102,6 +113,8 @@ const HEADLINE = <h1>Find your people</h1>;
 
 afterEach(() => {
   state.isError = false;
+  state.talkingIn = [];
+  state.night = false;
   state.startCreate.mockReset();
 });
 
@@ -222,5 +235,14 @@ describe("SquareHero", () => {
     fireEvent.click(screen.getByRole("button", { name: "join b" }));
     fireEvent.pointerLeave(container.querySelector("section")!);
     expect(screen.getByRole("button", { name: "join b" })).toBeInTheDocument();
+  });
+
+  it("draws what the data says: talking rooms, new houses, the night", () => {
+    state.items = [item("a", "Alpha", { isNew: true }), item("b", "Beta")];
+    state.talkingIn = ["b"];
+    state.night = true;
+    render(<SquareHero headline={HEADLINE} />);
+    expect(screen.getByTestId("people").textContent).toContain("--v--");
+    expect(screen.getByTestId("glow").textContent).toMatch(/[+']/);
   });
 });

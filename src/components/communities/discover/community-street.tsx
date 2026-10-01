@@ -48,6 +48,7 @@ export function CommunityStreet({
   reserve = 0,
   lotLabel = null,
   onLotClick,
+  night = false,
   className,
 }: {
   houses: readonly StreetHouse[];
@@ -57,6 +58,8 @@ export function CommunityStreet({
   reserve?: number;
   lotLabel?: string | null;
   onLotClick?: () => void;
+  /** Stars come out (Amsterdam night). */
+  night?: boolean;
   className?: string;
 }) {
   const [grid, setGrid] = useState<GridSize | null>(null);
@@ -72,8 +75,9 @@ export function CommunityStreet({
         activeSlug,
         reserve,
         lotLabel,
+        night,
       }),
-    [houses, activeSlug, reserve, lotLabel],
+    [houses, activeSlug, reserve, lotLabel, night],
   );
   const plan = grid
     ? planStreet(grid.cols, houses.length, { reserve, lot: !!lotLabel })

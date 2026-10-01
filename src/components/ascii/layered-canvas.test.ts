@@ -45,4 +45,14 @@ describe("LayeredCanvas", () => {
     expect(a[0]).toBe("   ");
     expect(textWidth(a[0]!)).toBe(3);
   });
+
+  it("says which layer owns a cell", () => {
+    const c = new LayeredCanvas(4, 1, ["a", "b"] as const);
+    c.put(0, 0, "x", "a");
+    c.put(1, 0, "y", "b");
+    expect(c.ownerAt(0, 0)).toBe("a");
+    expect(c.ownerAt(1, 0)).toBe("b");
+    expect(c.ownerAt(2, 0)).toBeNull();
+    expect(c.ownerAt(9, 9)).toBeNull();
+  });
 });

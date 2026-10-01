@@ -25,6 +25,8 @@ import {
 import { JoinAction } from "./join-action";
 import { BODY_FRAME } from "./explore-layout";
 import { squareQueryInput } from "./directory-params";
+import { useSquareRooms } from "./square-rooms";
+import { useSquareNight } from "./amsterdam-night";
 
 /** Air between the headline and the first house. */
 const COPY_GAP_PX = 32;
@@ -193,6 +195,12 @@ export function SquareHero({
     () => (query.isError ? [] : (query.data?.items ?? [])),
     [query.isError, query.data],
   );
+  const rooms = useSquareRooms();
+  const night = useSquareNight();
+  const talking = useMemo(
+    () => new Set((rooms.data?.talking ?? []).map((r) => r.communitySlug)),
+    [rooms.data],
+  );
   const houses = useMemo<StreetHouse[]>(
     () =>
       items.map((c) => ({
@@ -201,8 +209,10 @@ export function SquareHero({
         memberCount: c.memberCount,
         activeRecently: c.activeRecently,
         hasUpcomingEvent: c.nextEvent !== null,
+        talking: talking.has(c.slug),
+        isNew: c.isNew,
       })),
-    [items],
+    [items, talking],
   );
   const active = items.find((c) => c.slug === peek.slug) ?? null;
 
@@ -226,6 +236,7 @@ export function SquareHero({
             onActiveChange={peek.point}
             reserve={reserve}
             lotLabel={measured ? t("lotSign") : null}
+            night={night}
             onLotClick={startCreate}
             className="border-border mt-8 h-56 border-b sm:h-72 lg:mt-0 lg:h-[30rem]"
           />

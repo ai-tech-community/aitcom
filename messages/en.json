@@ -2366,7 +2366,7 @@
       "placeLabel": "Filter by place",
       "placeAll": "Everywhere",
       "placeOnline": "Online",
-      "squareHint": "Lit windows: people active in the last two weeks. A flag: an event is coming up.",
+      "squareHint": "Lit windows: people active in the last two weeks. A flag: an event is coming up. A speech bubble: people talking in a room now. Scaffolding: a new community.",
       "allCommunities": "All communities",
       "resultsCount": "{count, plural, one {# community} other {# communities}}",
       "activeRecently": "{count, plural, =0 {Quiet the last two weeks} one {# person active the last two weeks} other {# people active the last two weeks}}",

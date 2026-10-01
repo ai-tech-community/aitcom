@@ -8,6 +8,8 @@
  * its community's real signals:
  * - lit windows: people active recently (none lit when nobody was);
  * - a flag on the roof: an event is coming up;
+ * - a speech bubble: one of its public rooms is talking now;
+ * - scaffolding: the community is new;
  * - the row of figures in front: the member count, on the shared log curve;
  * - the name under the house, so the street can be read without the list.
  * The picture is decoration (aria-hidden); the list beside it carries the
@@ -25,7 +27,9 @@ import {
   type Lane,
 } from "@/components/ascii/community-house";
 import { FIGURE_H, figure } from "@/components/ascii/figures";
+import { placeStars } from "@/components/ascii/night-sky";
 import {
+  DEPTH_X,
   drawHouse,
   type GableHouse,
   type HouseLayer,
@@ -53,6 +57,10 @@ export interface StreetHouse {
   /** Distinct people active in the discovery window. */
   activeRecently: number;
   hasUpcomingEvent: boolean;
+  /** One of its public rooms had messages in the last day. */
+  talking?: boolean;
+  /** Created recently: the house still has its scaffolding. */
+  isNew?: boolean;
 }
 
 /**
@@ -85,6 +93,9 @@ const FLOOR_DEPTH = 4;
 
 const LIT_WINDOW = "##";
 
+/** Fixed seed for the street's stars: the same sky every night. */
+const STREET_SKY_SEED = 11;
+
 /** Spread of per-house tick offsets. */
 const HOUSE_RHYTHM = 37;
 
@@ -105,6 +116,8 @@ export type StreetOptions = {
   reserve?: number;
   /** Sign text for the empty lot at the end of the street; none if absent. */
   lotLabel?: string | null;
+  /** Night falls: stars come out above the roofs. */
+  night?: boolean;
 };
 
 /** Where things stand: lanes from `start`, houses first, then the lot. */
@@ -189,6 +202,99 @@ function laneLabel(name: string, width: number): string {
   return `${out.trimEnd()}…`;
 }
 
+/** Dots of the speech bubble, cycling while the street moves. */
+const BUBBLE_DOTS = [".  ", ".. ", "..."];
+const BUBBLE_W = 7;
+
+/**
+ * A speech bubble over a house whose rooms are talking, its tail pointing
+ * at the roof. Kept inside the house's lane; skipped when the sky is too
+ * low to hold it, rather than drawn cut off.
+ */
+function drawBubble(
+  c: LayeredCanvas<StreetLayer>,
+  house: GableHouse,
+  lane: Lane,
+  t: number,
+) {
+  const right = lane.x + lane.width - 1;
+  // Where a bubble could start: over the roof's right side first, then
+  // anywhere along the lane (a tall house may leave sky only beside it).
+  const candidates = [
+    house.x + house.w - 3,
+    ...Array.from({ length: lane.width }, (_, i) => right - BUBBLE_W - i),
+  ].filter((x) => x >= lane.x && x + BUBBLE_W - 1 <= right);
+  for (const x of candidates) {
+    // Sit above the houses and signs under it, never on them; the pale
+    // buildings far behind may be covered, the bubble is in front of them.
+    let roof = house.y + house.h;
+    for (let col = x; col < x + BUBBLE_W; col++) {
+      for (let y = 0; y < roof; y++) {
+        const owner = c.ownerAt(col, y);
+        if (owner !== null && owner !== "far") {
+          roof = y;
+          break;
+        }
+      }
+    }
+    const top = roof - 4;
+    if (top < 0) continue;
+    const dots = BUBBLE_DOTS[Math.floor(t / 3) % BUBBLE_DOTS.length]!;
+    c.text(x, top, `.${"-".repeat(BUBBLE_W - 2)}.`, "people");
+    c.text(x, top + 1, `( ${dots} )`.slice(0, BUBBLE_W), "people");
+    c.text(x, top + 2, `'--v--'`, "people");
+    return;
+  }
+}
+
+/**
+ * Scaffolding around a new house: poles at both ends and planks across,
+ * drawn only where nothing else is, so the house shows through.
+ */
+function drawScaffold(
+  c: LayeredCanvas<StreetLayer>,
+  house: GableHouse,
+  street: number,
+) {
+  const left = house.x - 1;
+  const right = house.x + house.w + DEPTH_X;
+  const bodyTop = house.y + 1 + 2 * house.steps;
+  const put = (x: number, y: number, ch: string) => {
+    if (c.isBlank(x, y)) c.put(x, y, ch, "scenery");
+  };
+  for (let y = bodyTop - 1; y < street; y++) {
+    put(left, y, "|");
+    put(right, y, "|");
+  }
+  for (let y = bodyTop + 1; y < street - 1; y += 3) {
+    for (let x = left; x <= right; x++) put(x, y, "=");
+  }
+}
+
+/** Stars above the roofs, right of `start`, only in cells nothing else uses. */
+function drawStars(
+  c: LayeredCanvas<StreetLayer>,
+  street: number,
+  seed: number,
+  start: number,
+) {
+  const skyline = Array.from({ length: c.width }, (_, x) => {
+    for (let y = 0; y < c.height; y++) if (!c.isBlank(x, y)) return y;
+    return c.height;
+  });
+  for (const star of placeStars({
+    cols: c.width,
+    rows: c.height,
+    skyTop: Math.max(0, street - 4),
+    seed,
+    skyline,
+    // Never in the strip kept free for the headline.
+    isFree: (x, y) => x >= start && c.isBlank(x, y),
+  })) {
+    c.put(star.x, star.y, star.ch, "glow");
+  }
+}
+
 /** The empty lot: a signpost inviting the next community. */
 function drawLot(
   c: LayeredCanvas<StreetLayer>,
@@ -224,6 +330,7 @@ export function communityStreetFrame(
     activeSlug = null,
     reserve = 0,
     lotLabel = null,
+    night = false,
   }: StreetOptions = {},
 ): StreetFrame {
   const w = Math.max(0, Math.floor(cols));
@@ -263,6 +370,9 @@ export function communityStreetFrame(
         .slice(0, litWindowCount(community.activeRecently, windows.length));
       for (const win of lit) c.text(win.x, win.y, LIT_WINDOW, "glow");
       if (community.hasUpcomingEvent) drawFlag(c, house);
+      if (community.isNew) drawScaffold(c, house, street);
+      if (community.talking)
+        drawBubble(c, house, lane, t + (seed % HOUSE_RHYTHM));
     }
 
     const figures = layoutCommunityFigures(
@@ -286,6 +396,9 @@ export function communityStreetFrame(
     const nameX = lane.x + Math.floor((lane.width - textWidth(name)) / 2);
     c.text(nameX, label, name, active ? "glow" : "people");
   });
+
+  // Stars last, so they only take sky nothing else uses.
+  if (night) drawStars(c, street, STREET_SKY_SEED, plan.start);
 
   return c.frame();
 }
