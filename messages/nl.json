@@ -2816,7 +2816,6 @@
         "gifCount": "{count, plural, one {# GIF} other {# GIF's}}",
         "gifClear": "Zoekopdracht wissen",
         "gifResultsFor": "Resultaten voor “{query}”",
-        "addWordsToPost": "Voeg een paar woorden toe om te plaatsen.",
         "pictures": "Afbeeldingen",
         "pictureUploading": "Afbeelding uploaden",
         "removePicture": "Afbeelding {number} verwijderen",

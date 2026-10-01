@@ -7,6 +7,7 @@ import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 import type { PostMention } from "@/lib/post-mentions";
 import type { PollChoice } from "@/lib/poll-rules";
+import { NEEDS_TEXT_MESSAGE } from "@/lib/feed-post-rules";
 
 import {
   claimFeedImages,
@@ -176,6 +177,16 @@ export async function writePostMedia(
   }
 }
 
+/**
+ * Refuses a post that would have neither words nor a picture, GIF or
+ * video (`carriesMedia`); a poll needs its question.
+ */
+export function requireTextOrMedia(content: string, carriesMedia: boolean) {
+  if (!content.trim() && !carriesMedia) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: NEEDS_TEXT_MESSAGE });
+  }
+}
+
 /** Changes an edit makes besides text and media. */
 export type PostDetailsChange = {
   /** Already checked against the community (`resolvePostTopic`). */
@@ -238,6 +249,10 @@ export async function setPostMedia(
 ): Promise<void> {
   const post = await loadPostForMediaEdit(deps.payload, input);
   const { media } = input;
+  requireTextOrMedia(
+    input.content,
+    media.kind === "images" || media.kind === "gif",
+  );
   const images =
     media.kind === "images"
       ? await claimFeedImages(deps.payload, {

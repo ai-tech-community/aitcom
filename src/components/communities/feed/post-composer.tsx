@@ -151,7 +151,7 @@ export function PostComposer({
   };
 
   const handleRetry = () => {
-    if (!videoFile || !content.trim() || videoBusy) return;
+    if (!videoFile || videoBusy) return;
     void submitVideo(videoFile);
   };
 
@@ -159,10 +159,18 @@ export function PostComposer({
   // A picture that did not upload is retried or removed before posting;
   // a poll needs every answer filled in, none twice.
   const blocked = pictures.failed || pollProblemNow !== null;
+  // Words are optional with a picture, GIF or video (a poll's are its
+  // question).
+  const carriesMedia = pictures.count > 0 || Boolean(gif) || Boolean(videoFile);
+  const ready =
+    (content.trim() !== "" || carriesMedia) &&
+    !text.tooLong &&
+    !busy &&
+    !blocked;
 
   const submit = () => {
     // Waiting for a picture still uploading, so it is not left behind.
-    if (!content.trim() || text.tooLong || busy || blocked) return;
+    if (!ready) return;
     if (videoFile) {
       void submitVideo(videoFile);
       return;
@@ -324,7 +332,7 @@ export function PostComposer({
             <Button
               type="submit"
               size="sm"
-              disabled={!content.trim() || text.tooLong || busy || blocked}
+              disabled={!ready}
               aria-busy={busy}
               aria-keyshortcuts={SEND_SHORTCUTS}
             >
@@ -349,10 +357,6 @@ export function PostComposer({
           ) : pollProblemNow === "empty" ? (
             <p className="text-muted-foreground text-xs">
               {te("pollFillAnswers")}
-            </p>
-          ) : (pictures.count > 0 || gif || videoFile) && !content.trim() ? (
-            <p className="text-muted-foreground text-xs">
-              {te("addWordsToPost")}
             </p>
           ) : draft.restored ? (
             <DraftNotice

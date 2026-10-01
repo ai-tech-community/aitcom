@@ -505,6 +505,17 @@ describe("PostEditForm", () => {
     );
   });
 
+  it("saves a post with a picture and no words, but not an empty post", () => {
+    renderForm(imagePost);
+    const box = screen.getByRole("textbox");
+    fireEvent.change(box, { target: { value: "  " } });
+    // The picture says it.
+    expect(screen.getByRole("button", { name: "save" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "removeImage" }));
+    // Neither words nor media: nothing to post.
+    expect(screen.getByRole("button", { name: "save" })).toBeDisabled();
+  });
+
   it("cancels with Escape", () => {
     const { onCancel } = renderForm();
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });

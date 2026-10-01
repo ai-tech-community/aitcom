@@ -121,22 +121,25 @@ export function ReelSlide({
             {video?.visibility === "public" ? t("public") : t("communityOnly")}
           </span>
         </div>
-        <button
-          type="button"
-          aria-expanded={captionOpen}
-          onClick={() => setCaptionOpen((open) => !open)}
-          className="focus-visible:ring-ring pointer-events-auto mt-2 block max-w-prose rounded-sm text-left text-sm leading-relaxed outline-none focus-visible:ring-[3px]"
-        >
-          <span
-            className={cn(
-              "block whitespace-pre-wrap",
-              captionOpen ? "max-h-[40dvh] overflow-y-auto" : "line-clamp-2",
-            )}
+        {/* A video posted without words has no caption to show. */}
+        {reel.content.trim() ? (
+          <button
+            type="button"
+            aria-expanded={captionOpen}
+            onClick={() => setCaptionOpen((open) => !open)}
+            className="focus-visible:ring-ring pointer-events-auto mt-2 block max-w-prose rounded-sm text-left text-sm leading-relaxed outline-none focus-visible:ring-[3px]"
           >
-            {/* The feed formats captions; a reel shows them plain. */}
-            {plainPostText(reel.content)}
-          </span>
-        </button>
+            <span
+              className={cn(
+                "block whitespace-pre-wrap",
+                captionOpen ? "max-h-[40dvh] overflow-y-auto" : "line-clamp-2",
+              )}
+            >
+              {/* The feed formats captions; a reel shows them plain. */}
+              {plainPostText(reel.content)}
+            </span>
+          </button>
+        ) : null}
       </div>
 
       {/* Action rail */}

@@ -157,7 +157,8 @@ describe("PostComposer video", () => {
     expect(
       screen.queryByRole("button", { name: "Add video" }),
     ).not.toBeInTheDocument();
-    expect(postButton()).toBeDisabled();
+    // A video may be posted without words.
+    expect(postButton()).toBeEnabled();
 
     fireEvent.change(
       screen.getByRole("textbox", {
@@ -718,6 +719,32 @@ describe("PostComposer polls", () => {
     expect(screen.queryByRole("textbox", { name: "Answer 1" })).toBeNull();
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Add poll" })).toHaveFocus(),
+    );
+  });
+});
+
+describe("PostComposer posts without words", () => {
+  it("posts a GIF on its own, but not an empty post or a poll without a question", () => {
+    renderComposer();
+    // Nothing yet: nothing to post.
+    expect(postButton()).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add poll" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Answer 1" }), {
+      target: { value: "Yes" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Answer 2" }), {
+      target: { value: "No" },
+    });
+    // A poll's words are its question.
+    expect(postButton()).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Remove poll" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Add GIF" }));
+    expect(postButton()).toBeEnabled();
+    fireEvent.click(postButton());
+    expect(m.createPost).toHaveBeenCalledWith(
+      expect.objectContaining({ content: "", gifId: "abc123" }),
     );
   });
 });

@@ -233,6 +233,14 @@ export function PostEditForm({
   // Saving takes the poll off (another kind of media, or none), votes too.
   const losesVotes = hadPoll && pollVotes > 0 && media.kind !== "keep";
   const hasMedia = media.kind === "keep" ? hadMedia : media.kind !== "none";
+  // Words are optional while the post keeps or gets a picture, GIF or
+  // video; a poll's words are its question.
+  const willCarryMedia =
+    media.kind === "keep"
+      ? hadPictures || hadLegacyImage || Boolean(post.video) || hadGif
+      : media.kind === "pictures" ||
+        media.kind === "video" ||
+        media.kind === "gif";
   const hasPreview =
     !hasMedia && previewLink !== null && post.linkPreview?.url === previewLink;
   const losesPublic =
@@ -320,7 +328,7 @@ export function PostEditForm({
   const save = async () => {
     const caption = content.trim();
     if (
-      !caption ||
+      (!caption && !willCarryMedia) ||
       text.tooLong ||
       busy ||
       videoRefused ||
@@ -687,7 +695,7 @@ export function PostEditForm({
                 type="submit"
                 size="sm"
                 disabled={
-                  !content.trim() ||
+                  (!content.trim() && !willCarryMedia) ||
                   text.tooLong ||
                   busy ||
                   videoRefused ||

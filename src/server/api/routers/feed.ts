@@ -16,7 +16,11 @@ import {
   notifications,
 } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
-import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
+import {
+  carriesMedia,
+  NEEDS_TEXT_MESSAGE,
+  POST_MAX_LENGTH,
+} from "@/lib/feed-post-rules";
 import { MAX_PINS } from "@/lib/feed-sort";
 import { loadCommunityActivity } from "@/server/communities/activity-feed";
 import {
@@ -94,6 +98,7 @@ import {
   lookUpGif,
   loadPostForMediaEdit,
   postDetailsUpdate,
+  requireTextOrMedia,
   setPostMedia,
 } from "@/server/communities/post-media";
 import { resolvePostTopic } from "@/server/communities/post-topics";
@@ -389,7 +394,8 @@ export const feedRouter = createTRPCRouter({
       z
         .object({
           communitySlug: z.string(),
-          content: z.string().min(1).max(POST_MAX_LENGTH),
+          /** May be empty when the post carries pictures or a GIF. */
+          content: z.string().max(POST_MAX_LENGTH),
           /** The member's own feed post images, from `/api/upload`. */
           images: imageChoices.optional(),
           /** A GIF picked from `searchGifs`; a post has pictures or a GIF. */
@@ -407,6 +413,13 @@ export const feedRouter = createTRPCRouter({
             [v.images, v.gifId, v.poll].filter((m) => m !== undefined).length <=
             1,
           { message: "A post has pictures, a GIF or a poll, only one." },
+        )
+        .refine(
+          (v) =>
+            v.content.trim() !== "" ||
+            v.images !== undefined ||
+            v.gifId !== undefined,
+          { message: NEEDS_TEXT_MESSAGE },
         ),
     )
     .mutation(async ({ ctx, input }) => {
@@ -500,7 +513,8 @@ export const feedRouter = createTRPCRouter({
       z.object({
         communitySlug: z.string(),
         uploadId: z.string().uuid(),
-        caption: z.string().trim().min(1).max(POST_MAX_LENGTH),
+        /** May be empty: the video says it. */
+        caption: z.string().trim().max(POST_MAX_LENGTH),
         topicSlug: z.string().optional(),
         mentions: mentionIds.optional(),
         durationSeconds: z.number().positive(),
@@ -629,7 +643,8 @@ export const feedRouter = createTRPCRouter({
       z.object({
         postId: z.number(),
         communitySlug: z.string(),
-        content: z.string().min(1).max(POST_MAX_LENGTH),
+        /** May be empty when the post keeps or gets a picture, GIF or video. */
+        content: z.string().max(POST_MAX_LENGTH),
         media: z
           .discriminatedUnion("kind", [
             z.object({ kind: z.literal("keep") }),
@@ -710,6 +725,7 @@ export const feedRouter = createTRPCRouter({
       if (post.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      requireTextOrMedia(input.content, carriesMedia(post));
       // Moving a post or hiding its preview changes what the community
       // sees, like media: it needs the right to post, and a post under
       // review stays as it is until a moderator has looked.
@@ -770,7 +786,8 @@ export const feedRouter = createTRPCRouter({
         postId: z.number(),
         communitySlug: z.string(),
         uploadId: z.string().uuid(),
-        caption: z.string().trim().min(1).max(POST_MAX_LENGTH),
+        /** May be empty: the video says it. */
+        caption: z.string().trim().max(POST_MAX_LENGTH),
         durationSeconds: z.number().positive(),
         width: z.number().int().positive(),
         height: z.number().int().positive(),
