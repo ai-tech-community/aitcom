@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { RemoveObjectsError } from "@/server/media/object-storage";
+
 import {
   sweepUnusedVideoFiles,
   UNUSED_VIDEO_MIN_AGE_HOURS,
@@ -156,5 +158,45 @@ describe("sweepUnusedVideoFiles", () => {
     await expect(sweepUnusedVideoFiles(deps)).rejects.toThrow("db down");
     expect(storage.list).not.toHaveBeenCalled();
     expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  it("counts only the keys S3 refused when a batch partly fails", async () => {
+    const lost = ["a", "b", "c"].map((name) => ({
+      key: `private/videos/c1/${name}.mp4`,
+      lastModified: OLD,
+    }));
+    const { deps, storage, log } = fakes({
+      objects: { "private/videos/": lost },
+    });
+    storage.remove.mockRejectedValueOnce(
+      new RemoveObjectsError(["private/videos/c1/b.mp4"], "b (AccessDenied)"),
+    );
+    await expect(sweepUnusedVideoFiles(deps)).resolves.toMatchObject({
+      removed: 2,
+      failed: 1,
+    });
+    expect(log).toHaveBeenCalledWith("[unused-video-files] removal failed", {
+      keys: ["private/videos/c1/b.mp4"],
+      error: expect.any(RemoveObjectsError),
+    });
+  });
+
+  it("keeps sweeping past a grant whose ids are unsafe", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { deps } = fakes({
+      grants: [
+        { visibility: "community", communityId: "../etc", uploadId: GRANT },
+      ],
+      objects: {
+        "private/videos/": [
+          { key: "private/videos/c1/lost.mp4", lastModified: OLD },
+        ],
+      },
+    });
+    await expect(sweepUnusedVideoFiles(deps)).resolves.toMatchObject({
+      removed: 1,
+    });
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

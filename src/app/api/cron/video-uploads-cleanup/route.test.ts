@@ -5,6 +5,7 @@ const m = vi.hoisted(() => ({
   videos: vi.fn(),
   materials: vi.fn(),
   unused: vi.fn(),
+  ownsStorage: vi.fn(),
   getVideoStorage: vi.fn(),
   getObjectStorage: vi.fn(),
   payload: { name: "payload" },
@@ -12,6 +13,9 @@ const m = vi.hoisted(() => ({
 
 vi.mock("@/server/communities/video-uploads-cleanup", () => ({
   cleanupAbandonedUploads: m.videos,
+}));
+vi.mock("@/server/media/storage-ownership", () => ({
+  ownsStorageContents: m.ownsStorage,
 }));
 vi.mock("@/server/communities/unused-video-files-sweep", () => ({
   sweepUnusedVideoFiles: m.unused,
@@ -41,6 +45,7 @@ beforeEach(() => {
   m.videos.mockResolvedValue({ removed: 1, failed: 0 });
   m.materials.mockResolvedValue({ removed: 2, failed: 1 });
   m.unused.mockResolvedValue({ scanned: 9, removed: 3, failed: 0 });
+  m.ownsStorage.mockReturnValue(true);
 });
 
 describe("video-uploads-cleanup cron", () => {
@@ -146,5 +151,17 @@ describe("video-uploads-cleanup cron", () => {
       expect.any(Error),
     );
     error.mockRestore();
+  });
+
+  it("skips the unused-file sweep outside production, which shares the bucket", async () => {
+    m.ownsStorage.mockReturnValue(false);
+    const res = await GET(authorized());
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      success: true,
+      unusedVideoFiles: { skipped: "not production" },
+    });
+    expect(m.unused).not.toHaveBeenCalled();
+    expect(m.videos).toHaveBeenCalledTimes(1);
   });
 });

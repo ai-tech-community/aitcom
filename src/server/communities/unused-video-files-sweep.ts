@@ -4,7 +4,10 @@ import {
   VIDEO_KEY_PREFIXES,
   videoObjectKeys,
 } from "@/lib/video-rules";
-import type { ObjectStorage } from "@/server/media/object-storage";
+import {
+  RemoveObjectsError,
+  type ObjectStorage,
+} from "@/server/media/object-storage";
 import type { getPayloadClient } from "@/server/payload";
 
 import { videoKeysOf } from "./post-video-files";
@@ -37,7 +40,8 @@ const REMOVE_BATCH = 1000;
  * points at.
  *
  * The live keys are read before the bucket is listed, and every read error
- * stops the run before anything is deleted.
+ * stops the run before anything is deleted. Run it only where this
+ * database owns the bucket's contents (`ownsStorageContents`).
  */
 export async function sweepUnusedVideoFiles(deps: {
   payload: Payload;
@@ -62,9 +66,13 @@ export async function sweepUnusedVideoFiles(deps: {
       await storage.remove(keys);
       removed += keys.length;
     } catch (error) {
-      failed += keys.length;
+      // S3 deletes what it can; only the keys it refused are left.
+      const left =
+        error instanceof RemoveObjectsError ? error.failedKeys : keys;
+      removed += keys.length - left.length;
+      failed += left.length;
       (deps.log ?? console.error)("[unused-video-files] removal failed", {
-        keys,
+        keys: left,
         error,
       });
     }
@@ -113,9 +121,18 @@ async function keysInUse(payload: Payload): Promise<Set<string>> {
     depth: 0,
   });
   for (const grant of grants) {
-    const keys = videoObjectKeys(grant);
-    inUse.add(keys.video);
-    inUse.add(keys.thumbnail);
+    try {
+      const keys = videoObjectKeys(grant);
+      inUse.add(keys.video);
+      inUse.add(keys.thumbnail);
+    } catch (error) {
+      // A grant whose ids are unsafe has no files under our folders to
+      // protect; it must not stop the sweep.
+      console.warn("[unused-video-files] skipped an unreadable grant", {
+        uploadId: grant.uploadId,
+        error,
+      });
+    }
   }
   return inUse;
 }

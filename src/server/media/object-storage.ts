@@ -20,6 +20,17 @@ export type PresignedUpload = { url: string; fields: Record<string, string> };
 export type StoredObject = { contentType: string | null; bytes: number };
 export type ListedObject = { key: string; lastModified: Date };
 
+/** S3 refused to delete some of the keys; the others are gone. */
+export class RemoveObjectsError extends Error {
+  constructor(
+    readonly failedKeys: readonly string[],
+    detail: string,
+  ) {
+    super(`Failed to delete: ${detail}`);
+    this.name = "RemoveObjectsError";
+  }
+}
+
 export type SignedGetOptions = {
   /** The file name the browser saves, sent back as Content-Disposition. */
   downloadName?: string;
@@ -172,7 +183,10 @@ export function createObjectStorage({
         const detail = errors
           .map((e) => `${e.Key ?? "?"} (${e.Code ?? "unknown"})`)
           .join(", ");
-        throw new Error(`Failed to delete: ${detail}`);
+        throw new RemoveObjectsError(
+          errors.map((e) => e.Key ?? "?"),
+          detail,
+        );
       }
     },
   };

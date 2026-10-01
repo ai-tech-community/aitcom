@@ -26,4 +26,5 @@ Community short videos (feed posts and Reels mode) are converted to 720p H.264 M
 - `src/lib/video-rules.ts` is the single source of limits (90 s, 40 MB, 720p) for both client and server.
 - The server never trusts client-supplied video metadata for access decisions. It verifies each object's existence, type, and size before a post is created.
 - Community-only playback depends on the bucket keeping `private/` non-public. That's an operational prerequisite checked at launch.
-- The bucket needs a CORS rule for browser uploads, and a daily cleanup job removes uploads that were never finished.
+- The bucket needs a CORS rule for browser uploads. A daily cleanup job removes uploads that were never finished, and then (#388) every video file older than seven days that no live post and no open upload grant points at. That second sweep is the safety net for best-effort file removal after a delete, an edit or moderation.
+- Every environment (production, previews, a developer's `.env.dev`) shares this one bucket but has its own database. A sweep that deletes files *because its database does not know them* is only safe where that database is the complete record of the bucket, so it runs in production only (`ownsStorageContents`). Giving each environment its own bucket or key prefix would lift that limit.
