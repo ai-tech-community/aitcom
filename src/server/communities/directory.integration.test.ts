@@ -379,6 +379,14 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
     expect(out.items.map((c) => c.id)).toEqual([fx.open, fx.approval]);
     expect(out.origin).toEqual({ precise: true, city: null });
 
+    // Outside "near" the server does not use any location at all.
+    const plain = await guest().communities.directory({
+      q: fx.suffix,
+      near: amsterdam,
+    });
+    expect(plain.origin).toBeNull();
+    expect(plain.items.every((c) => c.distanceKm === null)).toBe(true);
+
     const learning = await guest().communities.directory({
       q: fx.suffix,
       want: "learn",

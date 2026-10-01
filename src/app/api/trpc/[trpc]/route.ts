@@ -21,6 +21,9 @@ const handler = (req: NextRequest) =>
     req,
     router: appRouter,
     createContext: () => createContext(req),
+    // Lets the client send queries with private input as POST (see
+    // src/trpc/private-input.ts).
+    allowMethodOverride: true,
     onError:
       env.NODE_ENV === "development"
         ? ({ path, error }) => {

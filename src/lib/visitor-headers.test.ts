@@ -1,8 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-
-vi.mock("next/headers", () => ({ headers: vi.fn() }));
-
-import { ipOriginFromHeaders } from "./visitor-location";
+import { describe, expect, it } from "vitest";
+import { ipOriginFromHeaders, readVisitorHeaders } from "./visitor-headers";
 
 describe("ipOriginFromHeaders", () => {
   it("reads Vercel's estimate and decodes the city", () => {
@@ -38,5 +35,28 @@ describe("ipOriginFromHeaders", () => {
         }),
       ),
     ).toEqual({ point: { lat: 52, lng: 5 }, city: null });
+  });
+});
+
+describe("readVisitorHeaders", () => {
+  it("reads country and decoded city the same way for every caller", () => {
+    expect(
+      readVisitorHeaders(
+        new Headers({
+          "x-vercel-ip-country": "NL",
+          "x-vercel-ip-city": "%27s-Hertogenbosch",
+        }),
+      ),
+    ).toEqual({ countryCode: "NL", city: "'s-Hertogenbosch", point: null });
+  });
+
+  it("falls back to Cloudflare's country and ignores the unknown code", () => {
+    expect(
+      readVisitorHeaders(new Headers({ "cf-ipcountry": "BE" })).countryCode,
+    ).toBe("BE");
+    expect(
+      readVisitorHeaders(new Headers({ "x-vercel-ip-country": "XX" }))
+        .countryCode,
+    ).toBeNull();
   });
 });

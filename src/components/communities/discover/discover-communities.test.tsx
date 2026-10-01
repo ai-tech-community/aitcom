@@ -199,7 +199,7 @@ describe("DiscoverCommunities", () => {
   it("hides the place filter while there is only one place", () => {
     state.pages = [page(["Alpha"], ["Amsterdam"])];
     render(<DiscoverCommunities params={DEFAULTS} onParamsChange={vi.fn()} />);
-    expect(screen.queryByRole("group", { name: "placeLabel" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "placeQuestion" })).toBeNull();
   });
 
   it("marks the URL's place even when it is spelled differently", () => {
@@ -273,7 +273,7 @@ describe("DiscoverCommunities", () => {
       screen.getByText('nearFromCity:{"city":"Utrecht"}'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "usePreciseLocation" }),
+      screen.getByRole("button", { name: "useDeviceLocation" }),
     ).toBeInTheDocument();
   });
 
@@ -320,6 +320,8 @@ describe("DiscoverCommunities", () => {
       );
       fireEvent.click(screen.getByRole("button", { name: "useMyLocation" }));
       expect(screen.getByText("locationFailed")).toBeInTheDocument();
+      // The order it falls back to is still said.
+      expect(screen.getByText("nearNeedsLocation")).toBeInTheDocument();
     } finally {
       vi.unstubAllGlobals();
     }
@@ -337,5 +339,80 @@ describe("DiscoverCommunities", () => {
     );
     expect(screen.getByText("nearNoneLocated")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /location/i })).toBeNull();
+  });
+
+  it("tells a visitor who blocked location how to allow it", () => {
+    vi.stubGlobal("navigator", {
+      geolocation: {
+        getCurrentPosition: (
+          _ok: unknown,
+          fail: (e: { code: number }) => void,
+        ) => fail({ code: 1 }),
+      },
+    });
+    try {
+      state.pages = [page(["Alpha"])];
+      render(
+        <DiscoverCommunities
+          params={{ ...DEFAULTS, sort: "near" }}
+          onParamsChange={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "useMyLocation" }));
+      expect(screen.getByText("locationDenied")).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("says how the shared position is handled, and lets the visitor stop", () => {
+    state.pages = [
+      page(["Alpha"], [], {
+        origin: { precise: true, city: null },
+        distanceKm: 3,
+      }),
+    ];
+    render(
+      <DiscoverCommunities
+        params={{ ...DEFAULTS, sort: "near" }}
+        onParamsChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("nearPrecise")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "stopUsingLocation" }),
+    ).toBeInTheDocument();
+  });
+
+  it("speaks of 'these communities' when filters narrow the list", () => {
+    state.pages = [
+      page(["Alpha"], [], { origin: { precise: false, city: "Utrecht" } }),
+    ];
+    render(
+      <DiscoverCommunities
+        params={{ ...DEFAULTS, sort: "near", want: "learn" }}
+        onParamsChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("nearNoneLocatedFiltered")).toBeInTheDocument();
+  });
+
+  it("shows the filter questions, not only announces them", () => {
+    state.pages = [page(["Alpha"], [], { wants: ["meet"] })];
+    render(<DiscoverCommunities params={DEFAULTS} onParamsChange={vi.fn()} />);
+    expect(screen.getByText("wantLabel")).toBeVisible();
+    expect(
+      screen.getByRole("group", { name: "wantLabel" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps one live region mounted for location messages", () => {
+    state.pages = [page(["Alpha"])];
+    const { container } = render(
+      <DiscoverCommunities params={DEFAULTS} onParamsChange={vi.fn()} />,
+    );
+    expect(
+      container.querySelector("[aria-live='polite'].sr-only"),
+    ).not.toBeNull();
   });
 });

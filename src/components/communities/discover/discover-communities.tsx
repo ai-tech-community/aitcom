@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { MapPin, X } from "lucide-react";
+import { Check, MapPin, X } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -58,43 +58,57 @@ function GridSkeleton() {
   );
 }
 
-/** A row of toggle chips; one may be pressed, the first means "any". */
+/**
+ * A labelled row of toggle chips; one may be pressed, the first means
+ * "any". The question is shown, not only announced. Pressed chips are
+ * quiet (a tint, a ring and a check), so "any" never outweighs the search.
+ */
 function ChipFilter<K extends string>({
-  label,
+  id,
+  question,
   options,
   value,
   onChange,
 }: {
-  label: string;
+  id: string;
+  question: string;
   options: { key: K | null; label: string }[];
   value: K | null;
   onChange: (key: K | null) => void;
 }) {
   return (
-    <div
-      role="group"
-      aria-label={label}
-      className="-mx-6 flex gap-2 overflow-x-auto px-6 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
-    >
-      {options.map((o) => {
-        const pressed = o.key === value;
-        return (
-          <button
-            key={o.key ?? "all"}
-            type="button"
-            aria-pressed={pressed}
-            onClick={() => onChange(o.key)}
-            className={cn(
-              "focus-visible:ring-ring/50 h-8 shrink-0 rounded-full border px-3 text-sm whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px]",
-              pressed
-                ? "border-foreground bg-foreground text-background"
-                : "border-border text-foreground hover:bg-muted",
-            )}
-          >
-            {o.label}
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+      <span id={id} className="text-muted-foreground shrink-0 text-sm">
+        {question}
+      </span>
+      <div
+        role="group"
+        aria-labelledby={id}
+        className="-mx-6 -my-1 flex gap-2 overflow-x-auto px-6 py-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+      >
+        {options.map((o) => {
+          const pressed = o.key === value;
+          return (
+            <button
+              key={o.key ?? "all"}
+              type="button"
+              aria-pressed={pressed}
+              onClick={() => onChange(o.key)}
+              className={cn(
+                "focus-visible:ring-ring/50 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px]",
+                pressed
+                  ? "border-foreground bg-secondary text-foreground font-medium"
+                  : "border-border text-foreground hover:bg-muted",
+              )}
+            >
+              {pressed ? (
+                <Check aria-hidden="true" className="size-3.5" />
+              ) : null}
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -104,12 +118,12 @@ function coarse(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-type Locating = "idle" | "locating" | "failed";
+type Locating = "idle" | "locating" | "denied" | "failed";
 
 /**
- * The visitor's shared position for "Near you", held on this page only
- * (never in the URL or on the server beyond the request), rounded to about
- * a kilometre.
+ * The visitor's shared position for "Near you", held on this page only,
+ * rounded to about a kilometre (the server rounds again). It is sent in a
+ * request body, never in a URL, and never stored.
  */
 function useSharedPosition() {
   const [point, setPoint] = useState<GeoPoint | null>(null);
@@ -128,60 +142,96 @@ function useSharedPosition() {
         });
         setState("idle");
       },
-      () => setState("failed"),
+      (error) => setState(error?.code === 1 ? "denied" : "failed"),
       { maximumAge: 10 * 60 * 1000, timeout: 10_000 },
     );
   };
-  return { point, state, ask };
+  const forget = () => {
+    setPoint(null);
+    setState("idle");
+  };
+  return { point, state, ask, forget };
 }
 
-/** The line under the filters while sorting by distance. */
+/**
+ * What the "Near you" order starts from, said plainly — and when it cannot
+ * be near at all, what the order is instead. One live region, always
+ * mounted, so screen readers hear every change.
+ */
 function NearNote({
+  active,
   origin,
   anyLocated,
+  filtered,
+  showPlaces,
   state,
   onAsk,
+  onForget,
 }: {
+  active: boolean;
   origin: { precise: boolean; city: string | null } | null;
   /** Whether any result has an in-person event with a location. */
   anyLocated: boolean;
+  /** Whether a search or filter narrows the results. */
+  filtered: boolean;
+  showPlaces: boolean;
   state: Locating;
   onAsk: () => void;
+  onForget: () => void;
 }) {
   const t = useTranslations("communities.discover");
-  const message =
-    state === "failed"
-      ? t("locationFailed")
-      : !origin
-        ? t("nearNeedsLocation")
-        : !anyLocated
-          ? t("nearNoneLocated")
-          : origin.precise
-            ? t("nearPrecise")
-            : origin.city
-              ? t("nearFromCity", { city: origin.city })
-              : t("nearFromArea");
-  const action =
-    origin?.precise || (origin && !anyLocated)
-      ? null
-      : origin
-        ? t("usePreciseLocation")
-        : t("useMyLocation");
+  let message: string | null = null;
+  let action: { label: string; run: () => void } | null = null;
+  if (active) {
+    if (!origin) {
+      message = t("nearNeedsLocation");
+      action = { label: t("useMyLocation"), run: onAsk };
+    } else if (!anyLocated) {
+      message = filtered ? t("nearNoneLocatedFiltered") : t("nearNoneLocated");
+    } else if (origin.precise) {
+      message = t("nearPrecise");
+      action = { label: t("stopUsingLocation"), run: onForget };
+    } else {
+      message = origin.city
+        ? t("nearFromCity", { city: origin.city })
+        : t("nearFromArea");
+      action = { label: t("useDeviceLocation"), run: onAsk };
+    }
+  }
+  const trouble =
+    active && state === "denied"
+      ? t("locationDenied")
+      : active && state === "failed"
+        ? showPlaces
+          ? t("locationFailedPlaces")
+          : t("locationFailed")
+        : null;
   return (
-    <p className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-      <MapPin aria-hidden="true" className="size-4 shrink-0" />
-      <span aria-live="polite">{message}</span>
-      {action ? (
-        <button
-          type="button"
-          disabled={state === "locating"}
-          onClick={onAsk}
-          className="text-foreground focus-visible:ring-ring/50 rounded-sm font-medium underline underline-offset-4 outline-none hover:no-underline focus-visible:ring-[3px] disabled:opacity-60"
-        >
-          {state === "locating" ? t("locating") : action}
-        </button>
+    <div aria-live="polite" className={cn(!active && "sr-only")}>
+      {message ? (
+        <div className="text-muted-foreground flex gap-2 text-sm">
+          <MapPin aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          <div className="min-w-0 space-y-1">
+            <p>{message}</p>
+            {action && !origin?.precise ? (
+              <p className="text-xs">{t("locationPrivacy")}</p>
+            ) : null}
+            {trouble ? <p>{trouble}</p> : null}
+            {action ? (
+              <button
+                type="button"
+                disabled={state === "locating"}
+                aria-busy={state === "locating" || undefined}
+                onClick={action.run}
+                className="text-foreground focus-visible:ring-ring/50 rounded-sm font-medium underline underline-offset-4 outline-none hover:no-underline focus-visible:ring-[3px] disabled:opacity-60"
+              >
+                {state === "locating" ? t("locating") : action.label}
+              </button>
+            ) : null}
+          </div>
+        </div>
       ) : null}
-    </p>
+    </div>
   );
 }
 
@@ -338,19 +388,23 @@ export function DiscoverCommunities({
             ) : null}
           </div>
         </div>
-        <SegmentedControl
-          aria-label={t("sortLabel")}
-          options={sortOptions}
-          value={params.sort}
-          onValueChange={(sort) => onParamsChange({ sort })}
-          className="self-start md:self-auto"
-        />
+        {/* Four sorts can be wider than a small phone: scroll, never
+            push the page sideways. */}
+        <div className="-mx-6 max-w-[calc(100%+3rem)] self-start overflow-x-auto px-6 py-1 sm:mx-0 sm:max-w-full sm:px-0 md:self-auto">
+          <SegmentedControl
+            aria-label={t("sortLabel")}
+            options={sortOptions}
+            value={params.sort}
+            onValueChange={(sort) => onParamsChange({ sort })}
+          />
+        </div>
       </div>
 
       {wants.length > 0 ? (
         <div className="mt-4">
           <ChipFilter<DirectoryWant>
-            label={t("wantLabel")}
+            id="directory-want-label"
+            question={t("wantLabel")}
             options={[
               { key: null, label: t("wantAll") },
               ...wants.map((w) => ({ key: w, label: wantLabel[w] })),
@@ -364,7 +418,8 @@ export function DiscoverCommunities({
       {showPlaces ? (
         <div className="mt-3">
           <ChipFilter<string>
-            label={t("placeLabel")}
+            id="directory-place-label"
+            question={t("placeQuestion")}
             options={[
               { key: null, label: t("placeAll") },
               ...places.map((p) => ({ key: p, label: placeLabel(p) })),
@@ -375,16 +430,18 @@ export function DiscoverCommunities({
         </div>
       ) : null}
 
-      {near && query.data ? (
-        <div className="mt-4">
-          <NearNote
-            origin={pages[0]?.origin ?? null}
-            anyLocated={items.some((c) => c.distanceKm !== null)}
-            state={position.state}
-            onAsk={position.ask}
-          />
-        </div>
-      ) : null}
+      <div className={near ? "mt-4" : undefined}>
+        <NearNote
+          active={near && !!query.data}
+          origin={pages[0]?.origin ?? null}
+          anyLocated={items.some((c) => c.distanceKm !== null)}
+          filtered={!!(params.q || params.place || params.want)}
+          showPlaces={showPlaces}
+          state={position.state}
+          onAsk={position.ask}
+          onForget={position.forget}
+        />
+      </div>
 
       <div className="mt-6">
         {query.isLoading ? (

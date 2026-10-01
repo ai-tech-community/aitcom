@@ -42,7 +42,12 @@ import {
   toPublicDirectoryCommunity,
 } from "@/server/communities/directory";
 import { getPayloadClient } from "@/server/payload";
-import { ipOriginFromHeaders } from "@/lib/visitor-location";
+import { ipOriginFromHeaders } from "@/lib/visitor-headers";
+
+/** Two decimals of a degree: about a kilometre. */
+function roundToKm(degrees: number): number {
+  return Math.round(degrees * 100) / 100;
+}
 import {
   loadStackFaces,
   loadStackFacesForCommunities,
@@ -67,14 +72,20 @@ export const communitiesRouter = createTRPCRouter({
         want: z.enum(DIRECTORY_WANTS).optional(),
         sort: z.enum(DIRECTORY_SORTS).default("active"),
         /**
-         * A precise position the visitor chose to share for "near"; used
-         * for this request only, never stored or logged.
+         * A position the visitor chose to share for "near": sent in the
+         * request body (POST, see src/trpc/private-input.ts), rounded here
+         * to about a kilometre whatever the caller sent, used for this
+         * request only and never stored.
          */
         near: z
           .object({
             lat: z.number().min(-90).max(90),
             lng: z.number().min(-180).max(180),
           })
+          .transform(({ lat, lng }) => ({
+            lat: roundToKm(lat),
+            lng: roundToKm(lng),
+          }))
           .optional(),
         limit: z.number().int().min(1).max(48).default(24),
         cursor: z.number().int().min(0).nullish(),
@@ -87,9 +98,12 @@ export const communitiesRouter = createTRPCRouter({
         await getPayloadClient(),
         input.locale,
       );
-      // "Near" starts from the shared position, else the edge's estimate.
-      const ip = input.near ? null : ipOriginFromHeaders(ctx.headers);
-      const origin = input.near ?? ip?.point ?? null;
+      // Only "near" needs to know where the visitor is: the shared
+      // position, else the edge's coarse estimate.
+      const near = input.sort === "near";
+      const ip =
+        near && !input.near ? ipOriginFromHeaders(ctx.headers) : null;
+      const origin = near ? (input.near ?? ip?.point ?? null) : null;
       const page = queryDirectory(all, { ...input, origin });
       // One extra query for the whole page (no N+1): leadership-first faces.
       const faces = await loadStackFacesForCommunities(

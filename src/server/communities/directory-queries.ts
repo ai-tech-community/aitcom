@@ -19,6 +19,11 @@ type DB = typeof _db;
 /** How long one instance serves a directory snapshot before rebuilding. */
 const SNAPSHOT_TTL_MS = 60_000;
 
+/** An event held online, by its format or its location text. */
+function isOnline(e: { format?: string | null; location?: unknown }): boolean {
+  return e.format === "online" || e.location === "Online";
+}
+
 /**
  * Upcoming public events of the given communities, soonest first. Same
  * rules as the public events page: published, not a discovered (Luma)
@@ -79,9 +84,12 @@ async function loadUpcomingEvents(
             startTime: e.startTime ?? null,
             timezone: e.timezone ?? null,
             city: e.city ?? null,
-            online: e.format === "online" || e.location === "Online",
+            online: isOnline(e),
+            // Only a real place has a distance: never an online event
+            // (which may keep stale coordinates) or one still "TBA".
             point:
-              e.format !== "online" &&
+              !isOnline(e) &&
+              e.location !== "TBA" &&
               typeof e.latitude === "number" &&
               typeof e.longitude === "number"
                 ? { lat: e.latitude, lng: e.longitude }
