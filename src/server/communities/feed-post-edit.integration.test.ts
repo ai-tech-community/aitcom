@@ -1,0 +1,293 @@
+// @vitest-environment node
+/**
+ * DB-INTEGRATION test for editing a feed post's media (`feed.editPost`).
+ * Proves, against a REAL local DB + Payload, that removing a public post's
+ * video clears its stored video fields (so the unique video key is free
+ * again) and makes the post members-only, that swapping in an image keeps
+ * one image and no video, and that the edit succeeds even when the old
+ * files cannot be removed from storage.
+ *
+ * Auto-skips unless RUN_DB_TESTS=1 and a local database is configured:
+ *
+ *   RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 PAYLOAD_PUSH=false \
+ *     NEON_LOCAL_PROXY=127.0.0.1:5433 \
+ *     DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test \
+ *     pnpm exec vitest run src/server/communities/feed-post-edit.integration.test.ts
+ */
+
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+
+function looksLikeCloudNeon(url: string): boolean {
+  return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
+}
+function isLocalDbConfigured(): boolean {
+  if (process.env.RUN_DB_TESTS !== "1") return false;
+  const dbUrl = process.env.DATABASE_URL?.trim() ?? "";
+  if (dbUrl && looksLikeCloudNeon(dbUrl)) return false;
+  return /(@|\/\/)(localhost|127\.0\.0\.1|0\.0\.0\.0|db|postgres|host\.docker\.internal)(:|\/)/i.test(
+    dbUrl,
+  );
+}
+const RUN_DB = isLocalDbConfigured();
+
+describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
+  type Mods = {
+    db: typeof import("@/server/db").db;
+    schema: typeof import("@/server/db/schema");
+    createCaller: typeof import("@/server/api/root").createCaller;
+    getPayloadClient: typeof import("@/server/payload").getPayloadClient;
+    inArray: typeof import("drizzle-orm").inArray;
+  };
+  let m: Mods;
+  let fx: {
+    suffix: string;
+    userId: string;
+    communityId: string;
+    slug: string;
+    postId: number;
+  };
+
+  beforeAll(async () => {
+    const [{ db }, schema, { createCaller }, { getPayloadClient }, drizzle] =
+      await Promise.all([
+        import("@/server/db"),
+        import("@/server/db/schema"),
+        import("@/server/api/root"),
+        import("@/server/payload"),
+        import("drizzle-orm"),
+      ]);
+    m = {
+      db,
+      schema,
+      createCaller,
+      getPayloadClient,
+      inArray: drizzle.inArray,
+    };
+    if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
+      throw new Error("Refusing to run against a cloud Neon DATABASE_URL.");
+    }
+  });
+
+  beforeEach(async () => {
+    const { db, schema } = m;
+    const suffix = `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
+    const userId = `it-edit-${suffix}`;
+    await db
+      .insert(schema.user)
+      .values({ id: userId, email: `${userId}@example.test`, name: userId });
+    const slug = `it-edit-${suffix}`;
+    const [community] = await db
+      .insert(schema.communities)
+      .values({ name: `Edit ${suffix}`, slug, createdBy: userId })
+      .returning({ id: schema.communities.id });
+    await db.insert(schema.communityMemberships).values({
+      communityId: community!.id,
+      userId,
+      role: "owner",
+    });
+    const payload = await m.getPayloadClient();
+    const post = await payload.create({
+      collection: "feed-posts",
+      data: {
+        content: "A clip",
+        authorId: userId,
+        authorName: "Tester",
+        communityId: community!.id,
+        topicSlug: "general",
+        likeCount: 0,
+        commentCount: 0,
+        visibility: "public",
+        video: {
+          key: `media/videos/public/${community!.id}/${suffix}.mp4`,
+          thumbnailKey: `media/videos/public/${community!.id}/${suffix}.jpg`,
+          storage: "public",
+          durationSeconds: 12,
+          width: 720,
+          height: 1280,
+          bytes: 1000,
+        },
+      },
+    });
+    fx = { suffix, userId, communityId: community!.id, slug, postId: post.id };
+  });
+
+  afterEach(async () => {
+    const { db, schema, inArray } = m;
+    const payload = await m.getPayloadClient();
+    try {
+      await payload.delete({ collection: "feed-posts", id: fx.postId });
+    } catch {
+      // Best-effort teardown.
+    }
+    await db
+      .delete(schema.communityMemberships)
+      .where(
+        inArray(schema.communityMemberships.communityId, [fx.communityId]),
+      );
+    await db
+      .delete(schema.communities)
+      .where(inArray(schema.communities.id, [fx.communityId]));
+    await db.delete(schema.user).where(inArray(schema.user.id, [fx.userId]));
+  });
+
+  function author() {
+    return m.createCaller({
+      db: m.db,
+      session: { user: { id: fx.userId, name: "Tester" } } as never,
+      headers: new Headers(),
+    });
+  }
+
+  it("removes the video, frees its key and makes the post members-only", async () => {
+    // Storage is not configured in this test environment: the old files'
+    // cleanup fails, and the edit must still succeed.
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await expect(
+        author().feed.editPost({
+          postId: fx.postId,
+          communitySlug: fx.slug,
+          content: "Now just text",
+          media: { kind: "none" },
+        }),
+      ).resolves.toEqual({ id: fx.postId });
+    } finally {
+      log.mockRestore();
+    }
+    const payload = await m.getPayloadClient();
+    const saved = await payload.findByID({
+      collection: "feed-posts",
+      id: fx.postId,
+      depth: 0,
+    });
+    expect(saved.content).toBe("Now just text");
+    expect(saved.visibility).toBe("community");
+    expect(saved.video?.key ?? null).toBeNull();
+    expect(saved.video?.thumbnailKey ?? null).toBeNull();
+    expect(saved.imageUrl ?? null).toBeNull();
+    expect(saved.isEdited).toBe(true);
+  });
+
+  it("swaps the video for an image", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await author().feed.editPost({
+        postId: fx.postId,
+        communitySlug: fx.slug,
+        content: "A picture instead",
+        media: { kind: "image", url: "https://bucket.s3.test/pic.jpg" },
+      });
+    } finally {
+      log.mockRestore();
+    }
+    const payload = await m.getPayloadClient();
+    const saved = await payload.findByID({
+      collection: "feed-posts",
+      id: fx.postId,
+      depth: 0,
+    });
+    expect(saved.imageUrl).toBe("https://bucket.s3.test/pic.jpg");
+    expect(saved.video?.key ?? null).toBeNull();
+  });
+
+  it("adds an image to a post that had no media", async () => {
+    const payload = await m.getPayloadClient();
+    const textPost = await payload.create({
+      collection: "feed-posts",
+      data: {
+        content: "Just words",
+        authorId: fx.userId,
+        authorName: "Tester",
+        communityId: fx.communityId,
+        topicSlug: "general",
+        likeCount: 0,
+        commentCount: 0,
+        visibility: "community",
+      },
+    });
+    try {
+      await author().feed.editPost({
+        postId: textPost.id,
+        communitySlug: fx.slug,
+        content: "Words and a picture",
+        media: { kind: "image", url: "https://bucket.s3.test/added.jpg" },
+      });
+      const saved = await payload.findByID({
+        collection: "feed-posts",
+        id: textPost.id,
+        depth: 0,
+      });
+      expect(saved.imageUrl).toBe("https://bucket.s3.test/added.jpg");
+      expect(saved.content).toBe("Words and a picture");
+    } finally {
+      await payload.delete({ collection: "feed-posts", id: textPost.id });
+    }
+  });
+
+  it("keeps a hidden post's video for the moderator", async () => {
+    const payload = await m.getPayloadClient();
+    await payload.update({
+      collection: "feed-posts",
+      id: fx.postId,
+      data: { hiddenAt: new Date().toISOString() },
+    });
+    await expect(
+      author().feed.editPost({
+        postId: fx.postId,
+        communitySlug: fx.slug,
+        content: "Hiding the evidence",
+        media: { kind: "none" },
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const saved = await payload.findByID({
+      collection: "feed-posts",
+      id: fx.postId,
+      depth: 0,
+    });
+    expect(saved.video?.key).toBe(
+      `media/videos/public/${fx.communityId}/${fx.suffix}.mp4`,
+    );
+    expect(saved.visibility).toBe("public");
+  });
+
+  it("refuses a write from a stale read, leaving the newer video in place", async () => {
+    const { writePostMedia } = await import("@/server/communities/post-media");
+    const payload = await m.getPayloadClient();
+    const stale = await payload.findByID({
+      collection: "feed-posts",
+      id: fx.postId,
+      depth: 0,
+    });
+    const newer = `media/videos/public/${fx.communityId}/${fx.suffix}-b.mp4`;
+    await payload.update({
+      collection: "feed-posts",
+      id: fx.postId,
+      data: { video: { ...stale.video, key: newer } },
+    });
+    const getStorage = vi.fn();
+    await expect(
+      writePostMedia(
+        { payload, getStorage },
+        stale,
+        { content: "Too late", imageUrl: null },
+        "test",
+      ),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    const saved = await payload.findByID({
+      collection: "feed-posts",
+      id: fx.postId,
+      depth: 0,
+    });
+    expect(saved.video?.key).toBe(newer);
+    expect(saved.content).toBe("A clip");
+    expect(getStorage).not.toHaveBeenCalled();
+  });
+});

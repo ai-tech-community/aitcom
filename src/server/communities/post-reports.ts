@@ -6,7 +6,7 @@ import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { ReportReason } from "@/lib/post-report-reasons";
 import { canViewPost, type FeedViewer } from "./post-visibility";
-import { cleanUpDeletedPostVideo } from "./video-posts";
+import { cleanUpPostVideoFiles } from "./post-video-files";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
@@ -200,7 +200,7 @@ export async function reviewReport(
   });
   // Best effort: the post is already removed, so a storage failure is
   // logged rather than failing the moderator's action.
-  await cleanUpDeletedPostVideo(deps.storage, post, {
+  await cleanUpPostVideoFiles(deps.storage, post, {
     context: "feed.reviewReport",
     log: deps.log,
   });

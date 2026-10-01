@@ -43,9 +43,11 @@ import {
   reportPost,
   reviewReport,
 } from "@/server/communities/post-reports";
+import { setPostImage } from "@/server/communities/post-media";
+import { cleanUpPostVideoFiles } from "@/server/communities/post-video-files";
 import {
-  cleanUpDeletedPostVideo,
   finishVideoPost,
+  replacePostVideo,
   issueVideoUpload,
 } from "@/server/communities/video-posts";
 
@@ -420,15 +422,49 @@ export const feedRouter = createTRPCRouter({
     }),
 
   // ── editPost ────────────────────────────────────────────────────────────────
+  /**
+   * The author edits a post's text and, optionally, its media: keep it,
+   * remove it, or set an image (which replaces a video). Changing media is
+   * posting new content, so it needs the same right as posting; the media
+   * rules live in `setPostImage`. Putting a new video on the post is
+   * `replacePostVideo`.
+   */
   editPost: protectedProcedure
     .input(
       z.object({
         postId: z.number(),
+        communitySlug: z.string(),
         content: z.string().min(1).max(2000),
+        media: z
+          .discriminatedUnion("kind", [
+            z.object({ kind: z.literal("keep") }),
+            z.object({ kind: z.literal("none") }),
+            z.object({ kind: z.literal("image"), url: z.string().url() }),
+          ])
+          .default({ kind: "keep" }),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
+      // The id only: the stored post carries the video's storage keys.
+      if (input.media.kind !== "keep") {
+        const community = await requireFeedPoster(
+          ctx.db,
+          input.communitySlug,
+          ctx.session.user.id,
+        );
+        await setPostImage(
+          { payload, getStorage: getVideoStorage },
+          {
+            postId: input.postId,
+            userId: ctx.session.user.id,
+            communityId: community.id,
+            content: input.content,
+            imageUrl: input.media.kind === "image" ? input.media.url : null,
+          },
+        );
+        return { id: input.postId };
+      }
 
       const post = await payload.findByID({
         collection: "feed-posts",
@@ -452,8 +488,46 @@ export const feedRouter = createTRPCRouter({
           editedAt: new Date().toISOString(),
         },
       });
-      // The id only: the stored post carries the video's storage keys.
       return { id: post.id };
+    }),
+
+  // ── replacePostVideo ────────────────────────────────────────────────────────
+  /**
+   * The author puts a newly uploaded video on an existing post (replacing
+   * its image or video), with the edited caption. Upload first with
+   * `createVideoUpload` for the post's own visibility.
+   */
+  replacePostVideo: protectedProcedure
+    .input(
+      z.object({
+        postId: z.number(),
+        communitySlug: z.string(),
+        uploadId: z.string().uuid(),
+        caption: z.string().trim().min(1).max(2000),
+        durationSeconds: z.number().positive(),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const community = await requireFeedPoster(
+        ctx.db,
+        input.communitySlug,
+        ctx.session.user.id,
+      );
+      return replacePostVideo(
+        { payload: await getPayloadClient(), storage: getVideoStorage() },
+        {
+          userId: ctx.session.user.id,
+          communityId: community.id,
+          postId: input.postId,
+          uploadId: input.uploadId,
+          caption: input.caption,
+          durationSeconds: input.durationSeconds,
+          width: input.width,
+          height: input.height,
+        },
+      );
     }),
 
   // ── deletePost ──────────────────────────────────────────────────────────────
@@ -509,7 +583,7 @@ export const feedRouter = createTRPCRouter({
       });
       // Best effort: the post is already gone, so a storage failure is logged
       // rather than surfaced.
-      await cleanUpDeletedPostVideo(getVideoStorage, post, {
+      await cleanUpPostVideoFiles(getVideoStorage, post, {
         context: "feed.deletePost",
       });
       // The id only: the stored post carries the video's storage keys.

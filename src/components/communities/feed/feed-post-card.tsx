@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -11,7 +11,6 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
 import { firstLink } from "@/lib/links";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +25,7 @@ import { LinkPreviewCard } from "./link-preview-card";
 import { LinkifiedText } from "./linkified-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
+import { PostEditForm } from "./post-edit-form";
 
 interface FeedPost {
   id: number;
@@ -84,7 +84,10 @@ export function FeedPostCard({
   const confirm = useConfirm();
   const { requireAuth } = useRequireAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(post.content);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  // Opening the editor from the menu: its text box takes focus, not the
+  // menu button the menu would otherwise return focus to.
+  const openingEditor = useRef(false);
   const [reportOpen, setReportOpen] = useState(false);
 
   const isAuthor = !!currentUserId && post.authorId === currentUserId;
@@ -96,15 +99,6 @@ export function FeedPostCard({
   const toggleLike = api.feed.toggleLike.useMutation({
     onSuccess: () => void onRefresh(),
     onError: () => toast.error(t("toastLikeError")),
-  });
-
-  const editPost = api.feed.editPost.useMutation({
-    onSuccess: () => {
-      toast.success(t("postEdited"));
-      setIsEditing(false);
-      void onRefresh();
-    },
-    onError: () => toast.error(t("toastPostUpdateError")),
   });
 
   const deletePost = api.feed.deletePost.useMutation({
@@ -185,15 +179,29 @@ export function FeedPostCard({
         {(isAuthor || isPrivileged) && currentUserId ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-7 shrink-0">
-                <MoreHorizontal className="size-4" />
+              <Button
+                ref={menuButton}
+                variant="ghost"
+                size="icon"
+                className="size-7 shrink-0"
+                aria-label={t("postActions")}
+              >
+                <MoreHorizontal aria-hidden="true" className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent
+              align="end"
+              onCloseAutoFocus={(e) => {
+                if (openingEditor.current) {
+                  openingEditor.current = false;
+                  e.preventDefault();
+                }
+              }}
+            >
               {isAuthor && (
                 <DropdownMenuItem
                   onClick={() => {
-                    setEditContent(post.content);
+                    openingEditor.current = true;
                     setIsEditing(true);
                   }}
                 >
@@ -238,45 +246,27 @@ export function FeedPostCard({
 
       {/* Content */}
       {isEditing ? (
-        <div className="space-y-2">
-          <Textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            maxLength={2000}
-            rows={3}
-            className="resize-none"
-            autoFocus
-          />
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() =>
-                editPost.mutate({
-                  postId: post.id,
-                  content: editContent.trim(),
-                })
-              }
-              disabled={!editContent.trim() || editPost.isPending}
-            >
-              {t("save")}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setIsEditing(false)}
-            >
-              {t("cancel")}
-            </Button>
-          </div>
-        </div>
+        <PostEditForm
+          post={post}
+          communitySlug={communitySlug}
+          onSaved={() => {
+            setIsEditing(false);
+            menuButton.current?.focus();
+            void onRefresh();
+          }}
+          onCancel={() => {
+            setIsEditing(false);
+            menuButton.current?.focus();
+          }}
+        />
       ) : (
         <p className="text-sm leading-relaxed whitespace-pre-wrap">
           <LinkifiedText text={post.content} />
         </p>
       )}
 
-      {/* Media */}
-      {post.video ? (
+      {/* Media (the edit form shows its own while editing) */}
+      {isEditing ? null : post.video ? (
         <FeedVideoPlayer video={post.video} onExpired={refreshVideo} />
       ) : post.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
