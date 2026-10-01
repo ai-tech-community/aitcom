@@ -2752,7 +2752,13 @@
       "emptyTitle": "Nothing here yet",
       "emptyHelp": "Start with a post above, or ask the community a question in the forum.",
       "emptyAction": "Ask a question",
-      "loadError": "Could not load the feed."
+      "loadError": "Could not load the feed.",
+      "editLabel": "Edit your post",
+      "currentImage": "Current image",
+      "currentVideo": "Current video",
+      "replaceWithImage": "Replace with image",
+      "replaceWithVideo": "Replace with video",
+      "becomesMembersOnly": "Without its video, this post can no longer be public: it will be visible to members only."
     },
     "dashboard": {
       "title": "My Communities",

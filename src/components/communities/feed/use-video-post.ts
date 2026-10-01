@@ -31,6 +31,8 @@ export type VideoPostInput = {
   caption: string;
   visibility: VideoVisibility;
   topicSlug: string;
+  /** Put the video on this existing post (an edit) instead of a new post. */
+  replacePostId?: number;
 };
 
 type VideoUploadGrant = {
@@ -65,7 +67,8 @@ class CannotConvertHereError extends Error {}
 
 /**
  * Posts a video: prepare it on the device, upload the thumbnail and the video
- * straight to S3 with one-time grants, then create the post.
+ * straight to S3 with one-time grants, then create the post — or, with
+ * `replacePostId`, put it on that existing post (an edit).
  *
  * Only one post runs at a time; a second call while one is in flight returns
  * false without doing anything. `cancel()` stops preparing or uploading and
@@ -93,6 +96,7 @@ export function useVideoPost(slug: string) {
   const checking = useRef<File | null>(null);
   const createUpload = api.feed.createVideoUpload.useMutation();
   const finish = api.feed.finishVideoPost.useMutation();
+  const replace = api.feed.replacePostVideo.useMutation();
 
   function messageFor(error: unknown): string {
     if (error instanceof CannotConvertHereError) return t("unsupported");
@@ -211,15 +215,22 @@ export function useVideoPost(slug: string) {
 
       setState({ step: "posting" });
       try {
-        await finish.mutateAsync({
+        const uploaded = {
           communitySlug: slug,
           uploadId: grant.uploadId,
           caption: input.caption,
-          topicSlug: input.topicSlug,
           durationSeconds: prepared.durationSeconds,
           width: prepared.width,
           height: prepared.height,
-        });
+        };
+        if (input.replacePostId === undefined) {
+          await finish.mutateAsync({ ...uploaded, topicSlug: input.topicSlug });
+        } else {
+          await replace.mutateAsync({
+            ...uploaded,
+            postId: input.replacePostId,
+          });
+        }
       } catch (error) {
         grantCache.current = null;
         throw error;

@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import type { VideoVisibility } from "@/lib/video-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
+import { uploadFeedImage } from "./upload-feed-image";
 
 interface PostComposerProps {
   slug: string;
@@ -57,18 +58,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("alt", "feed post image");
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Upload failed");
-
-      const data = (await res.json()) as { url: string };
-      setImageUrl(data.url);
+      setImageUrl(await uploadFeedImage(file));
     } catch {
       toast.error(tc("uploadFailed"));
     } finally {

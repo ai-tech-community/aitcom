@@ -2752,7 +2752,13 @@
       "emptyTitle": "Nog niets te zien",
       "emptyHelp": "Begin met een bericht hierboven, of stel de community een vraag op het forum.",
       "emptyAction": "Stel een vraag",
-      "loadError": "De feed kon niet laden."
+      "loadError": "De feed kon niet laden.",
+      "editLabel": "Bewerk je bericht",
+      "currentImage": "Huidige afbeelding",
+      "currentVideo": "Huidige video",
+      "replaceWithImage": "Vervang door afbeelding",
+      "replaceWithVideo": "Vervang door video",
+      "becomesMembersOnly": "Zonder video kan dit bericht niet meer openbaar zijn: alleen leden kunnen het dan zien."
     },
     "dashboard": {
       "title": "Mijn Communities",

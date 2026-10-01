@@ -9,7 +9,11 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { VideoVisibility } from "@/lib/video-rules";
 import type { VideoPostState } from "./use-video-post";
 
-/** The picked clip in the composer: who can watch, progress, and errors. */
+/**
+ * The picked clip: who can watch, progress, and errors. Without
+ * `onVisibilityChange` the audience is fixed (editing a post keeps the
+ * audience it was posted to) and the choice is not shown.
+ */
 export function VideoAttachment({
   file,
   visibility,
@@ -21,7 +25,7 @@ export function VideoAttachment({
 }: {
   file: File;
   visibility: VideoVisibility;
-  onVisibilityChange: (visibility: VideoVisibility) => void;
+  onVisibilityChange?: (visibility: VideoVisibility) => void;
   onRemove: () => void;
   onCancel: () => void;
   /** Try the same post again (same caption and visibility). */
@@ -71,22 +75,24 @@ export function VideoAttachment({
         )}
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <span className="text-muted-foreground text-xs">
-          {t("visibilityLabel")}
-        </span>
-        <SegmentedControl<VideoVisibility>
-          aria-label={t("visibilityLabel")}
-          size="sm"
-          className="h-auto min-h-7 max-w-full [&>label]:py-1 [&>label]:whitespace-normal"
-          value={visibility}
-          onValueChange={onVisibilityChange}
-          options={[
-            { value: "community", label: t("community"), disabled: busy },
-            { value: "public", label: t("public"), disabled: busy },
-          ]}
-        />
-      </div>
+      {onVisibilityChange ? (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-muted-foreground text-xs">
+            {t("visibilityLabel")}
+          </span>
+          <SegmentedControl<VideoVisibility>
+            aria-label={t("visibilityLabel")}
+            size="sm"
+            className="h-auto min-h-7 max-w-full [&>label]:py-1 [&>label]:whitespace-normal"
+            value={visibility}
+            onValueChange={onVisibilityChange}
+            options={[
+              { value: "community", label: t("community"), disabled: busy },
+              { value: "public", label: t("public"), disabled: busy },
+            ]}
+          />
+        </div>
+      ) : null}
 
       {label ? (
         <div className="flex items-center gap-3">

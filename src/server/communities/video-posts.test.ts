@@ -5,10 +5,11 @@ import { describe, expect, it, vi } from "vitest";
 import { FINISH_WINDOW_HOURS } from "@/lib/video-rules";
 
 import {
-  cleanUpDeletedPostVideo,
+  cleanUpPostVideoFiles,
   finishVideoPost,
   issueVideoUpload,
   removePostVideo,
+  replacePostVideo,
 } from "./video-posts";
 
 const UPLOAD = "1b4e28ba-2fa1-41d2-883f-0016d3cca427";
@@ -20,9 +21,11 @@ function fakes(
     posts?: unknown[];
     recent?: number;
     heads?: unknown[];
+    target?: unknown;
   } = {},
 ) {
   const payload = {
+    findByID: vi.fn().mockResolvedValue(over.target ?? null),
     count: vi.fn().mockResolvedValue({ totalDocs: over.recent ?? 0 }),
     create: vi
       .fn()
@@ -357,10 +360,10 @@ describe("removePostVideo", () => {
   });
 });
 
-describe("cleanUpDeletedPostVideo", () => {
+describe("cleanUpPostVideoFiles", () => {
   it("removes the files of a deleted video post", async () => {
     const { storage } = fakes();
-    await cleanUpDeletedPostVideo(
+    await cleanUpPostVideoFiles(
       () => storage,
       { id: 9, video: { key: "a.mp4", thumbnailKey: "a.jpg" } },
       { context: "feed.deletePost" },
@@ -370,7 +373,7 @@ describe("cleanUpDeletedPostVideo", () => {
 
   it("does not touch storage for a post without a video", async () => {
     const getStorage = vi.fn();
-    await cleanUpDeletedPostVideo(
+    await cleanUpPostVideoFiles(
       getStorage,
       { id: 9, video: null },
       { context: "feed.deletePost" },
@@ -384,7 +387,7 @@ describe("cleanUpDeletedPostVideo", () => {
     storage.remove.mockRejectedValueOnce(failure);
     const log = vi.fn();
     await expect(
-      cleanUpDeletedPostVideo(
+      cleanUpPostVideoFiles(
         () => storage,
         { id: 9, video: { key: "a.mp4", thumbnailKey: "a.jpg" } },
         { context: "feed.deletePost", log },
@@ -400,7 +403,7 @@ describe("cleanUpDeletedPostVideo", () => {
   it("logs when storage itself is unavailable", async () => {
     const failure = new Error("S3 is not configured for video storage");
     const log = vi.fn();
-    await cleanUpDeletedPostVideo(
+    await cleanUpPostVideoFiles(
       () => {
         throw failure;
       },
@@ -415,5 +418,152 @@ describe("cleanUpDeletedPostVideo", () => {
         error: failure,
       },
     );
+  });
+});
+
+const OLD_VIDEO = {
+  key: "media/videos/public/c1/old.mp4",
+  thumbnailKey: "media/videos/public/c1/old.jpg",
+};
+
+const target = (over: Record<string, unknown> = {}) => ({
+  id: 9,
+  authorId: "u1",
+  communityId: "c1",
+  visibility: "public",
+  isDeleted: false,
+  imageUrl: null,
+  video: OLD_VIDEO,
+  ...over,
+});
+
+const replace = {
+  userId: "u1",
+  communityId: "c1",
+  postId: 9,
+  uploadId: UPLOAD,
+  caption: "Better take",
+  durationSeconds: 30,
+  width: 720,
+  height: 1280,
+};
+
+describe("replacePostVideo", () => {
+  it("puts the checked upload on the post, closes the grant, then removes the old files", async () => {
+    const { deps, payload, storage } = fakes({
+      uploads: [upload()],
+      heads: goodHeads(),
+      target: target(),
+    });
+    await expect(replacePostVideo(deps, replace)).resolves.toEqual({ id: 9 });
+    type Call = { collection: string; data: Record<string, unknown> };
+    const update = (payload.update.mock.calls as [Call][])
+      .map(([c]) => c)
+      .find((c) => c.collection === "feed-posts")!;
+    expect(update.data).toMatchObject({
+      content: "Better take",
+      imageUrl: null,
+      isEdited: true,
+      video: {
+        key: `media/videos/public/c1/${UPLOAD}.mp4`,
+        thumbnailKey: `media/videos/public/c1/${UPLOAD}.jpg`,
+        storage: "public",
+        durationSeconds: 30,
+        bytes: 1_000_000,
+      },
+    });
+    expect(payload.update).toHaveBeenCalledWith({
+      collection: "video-uploads",
+      id: 3,
+      data: { finishedAt: NOW.toISOString() },
+    });
+    expect(storage.remove).toHaveBeenCalledWith([
+      OLD_VIDEO.key,
+      OLD_VIDEO.thumbnailKey,
+    ]);
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+
+  it("replaces an image post's picture with a video", async () => {
+    const { deps, payload, storage } = fakes({
+      uploads: [upload({ visibility: "community" })],
+      heads: goodHeads(),
+      target: target({
+        visibility: "community",
+        video: null,
+        imageUrl: "https://bucket/img.jpg",
+      }),
+    });
+    await replacePostVideo(deps, replace);
+    const update = payload.update.mock.calls[0]![0];
+    expect(update.data.imageUrl).toBeNull();
+    expect(update.data.video.storage).toBe("private");
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  it("keeps the post's audience: an upload granted for another one is refused", async () => {
+    const { deps, payload } = fakes({
+      uploads: [upload({ visibility: "community" })],
+      heads: goodHeads(),
+      target: target({ visibility: "public" }),
+    });
+    await expect(replacePostVideo(deps, replace)).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(payload.update).not.toHaveBeenCalled();
+  });
+
+  it("only lets the author replace, and only in the post's community", async () => {
+    const someone = fakes({ uploads: [upload()], target: target() });
+    await expect(
+      replacePostVideo(someone.deps, { ...replace, userId: "u2" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const elsewhere = fakes({
+      uploads: [upload()],
+      target: target({ communityId: "c2" }),
+    });
+    await expect(
+      replacePostVideo(elsewhere.deps, replace),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const gone = fakes({
+      uploads: [upload()],
+      target: target({ isDeleted: true }),
+    });
+    await expect(replacePostVideo(gone.deps, replace)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+  });
+
+  it("is safe to retry: a post already carrying this upload just closes the grant", async () => {
+    const { deps, payload, storage } = fakes({
+      uploads: [upload()],
+      target: target({
+        video: {
+          key: `media/videos/public/c1/${UPLOAD}.mp4`,
+          thumbnailKey: `media/videos/public/c1/${UPLOAD}.jpg`,
+        },
+      }),
+    });
+    await expect(replacePostVideo(deps, replace)).resolves.toEqual({ id: 9 });
+    expect(payload.update).toHaveBeenCalledTimes(1);
+    expect(payload.update.mock.calls[0]![0].collection).toBe("video-uploads");
+    expect(storage.inspect).not.toHaveBeenCalled();
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  it("removes a bad upload and leaves the post as it was", async () => {
+    const { deps, payload, storage } = fakes({
+      uploads: [upload()],
+      heads: [{ contentType: "text/html", bytes: 10 }, null],
+      target: target(),
+    });
+    await expect(replacePostVideo(deps, replace)).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(payload.update).not.toHaveBeenCalled();
+    expect(storage.remove).toHaveBeenCalledWith([
+      `media/videos/public/c1/${UPLOAD}.mp4`,
+      `media/videos/public/c1/${UPLOAD}.jpg`,
+    ]);
   });
 });

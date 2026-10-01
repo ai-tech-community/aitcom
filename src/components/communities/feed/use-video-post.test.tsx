@@ -16,6 +16,7 @@ const m = vi.hoisted(() => {
     transcodeForUpload: vi.fn(),
     createUpload: vi.fn(),
     finish: vi.fn(),
+    replace: vi.fn(),
     invalidate: vi.fn(),
   };
 });
@@ -42,6 +43,7 @@ vi.mock("@/trpc/react", () => ({
         useMutation: () => ({ mutateAsync: m.createUpload }),
       },
       finishVideoPost: { useMutation: () => ({ mutateAsync: m.finish }) },
+      replacePostVideo: { useMutation: () => ({ mutateAsync: m.replace }) },
     },
   },
 }));
@@ -215,6 +217,24 @@ describe("useVideoPost", () => {
     },
   );
 
+  it("puts the video on an existing post when editing, instead of creating one", async () => {
+    const { result } = renderIt();
+    let ok = false;
+    await act(async () => {
+      ok = await result.current.post({ ...input, replacePostId: 9 });
+    });
+    expect(ok).toBe(true);
+    expect(m.finish).not.toHaveBeenCalled();
+    expect(m.replace).toHaveBeenCalledWith({
+      communitySlug: "mlops",
+      postId: 9,
+      uploadId: grant.uploadId,
+      caption: "Look at this",
+      durationSeconds: 12.5,
+      width: 720,
+      height: 1280,
+    });
+  });
   it("does not start preparing when the browser cannot convert", async () => {
     m.canTranscode.mockResolvedValue(false);
     const { result } = renderIt();

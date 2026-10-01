@@ -11,7 +11,6 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
 import { firstLink } from "@/lib/links";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +25,7 @@ import { LinkPreviewCard } from "./link-preview-card";
 import { LinkifiedText } from "./linkified-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
+import { PostEditForm } from "./post-edit-form";
 
 interface FeedPost {
   id: number;
@@ -84,7 +84,6 @@ export function FeedPostCard({
   const confirm = useConfirm();
   const { requireAuth } = useRequireAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(post.content);
   const [reportOpen, setReportOpen] = useState(false);
 
   const isAuthor = !!currentUserId && post.authorId === currentUserId;
@@ -96,15 +95,6 @@ export function FeedPostCard({
   const toggleLike = api.feed.toggleLike.useMutation({
     onSuccess: () => void onRefresh(),
     onError: () => toast.error(t("toastLikeError")),
-  });
-
-  const editPost = api.feed.editPost.useMutation({
-    onSuccess: () => {
-      toast.success(t("postEdited"));
-      setIsEditing(false);
-      void onRefresh();
-    },
-    onError: () => toast.error(t("toastPostUpdateError")),
   });
 
   const deletePost = api.feed.deletePost.useMutation({
@@ -191,12 +181,7 @@ export function FeedPostCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {isAuthor && (
-                <DropdownMenuItem
-                  onClick={() => {
-                    setEditContent(post.content);
-                    setIsEditing(true);
-                  }}
-                >
+                <DropdownMenuItem onClick={() => setIsEditing(true)}>
                   {t("edit")}
                 </DropdownMenuItem>
               )}
@@ -238,45 +223,23 @@ export function FeedPostCard({
 
       {/* Content */}
       {isEditing ? (
-        <div className="space-y-2">
-          <Textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            maxLength={2000}
-            rows={3}
-            className="resize-none"
-            autoFocus
-          />
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() =>
-                editPost.mutate({
-                  postId: post.id,
-                  content: editContent.trim(),
-                })
-              }
-              disabled={!editContent.trim() || editPost.isPending}
-            >
-              {t("save")}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setIsEditing(false)}
-            >
-              {t("cancel")}
-            </Button>
-          </div>
-        </div>
+        <PostEditForm
+          post={post}
+          communitySlug={communitySlug}
+          onSaved={() => {
+            setIsEditing(false);
+            void onRefresh();
+          }}
+          onCancel={() => setIsEditing(false)}
+        />
       ) : (
         <p className="text-sm leading-relaxed whitespace-pre-wrap">
           <LinkifiedText text={post.content} />
         </p>
       )}
 
-      {/* Media */}
-      {post.video ? (
+      {/* Media (the edit form shows its own while editing) */}
+      {isEditing ? null : post.video ? (
         <FeedVideoPlayer video={post.video} onExpired={refreshVideo} />
       ) : post.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element

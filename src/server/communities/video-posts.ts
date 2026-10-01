@@ -107,27 +107,30 @@ function isDuplicateVideoKey(error: unknown): boolean {
   );
 }
 
+type VideoGrant = {
+  id: number;
+  uploadId: string;
+  userId: string;
+  communityId: string;
+  visibility: VideoVisibility;
+  createdAt: string;
+};
+
+type UploadedVideo = {
+  durationSeconds: number;
+  width: number;
+  height: number;
+};
+
 /**
- * Turns a finished upload into a post. Trusts nothing from the client for
- * access: the grant must be the caller's and unused, and both stored objects
- * must exist with the right type and size. Size and length from the client
- * are kept for layout only, after a sanity check. Returns the new post's id
- * only, so the storage keys never reach the client.
+ * The caller's open upload grant for this community, and where its files
+ * are stored. Anything else (someone else's, another community's, already
+ * finished, unknown) is the same "expired" answer.
  */
-export async function finishVideoPost(
+async function openGrant(
   deps: VideoPostDeps,
-  input: {
-    userId: string;
-    authorName: string;
-    communityId: string;
-    uploadId: string;
-    caption: string;
-    topicSlug: string;
-    durationSeconds: number;
-    width: number;
-    height: number;
-  },
-): Promise<{ id: number }> {
+  input: { userId: string; communityId: string; uploadId: string },
+): Promise<{ grant: VideoGrant; keys: { video: string; thumbnail: string } }> {
   const { docs } = await deps.payload.find({
     collection: "video-uploads",
     where: { uploadId: { equals: input.uploadId } },
@@ -142,32 +145,28 @@ export async function finishVideoPost(
   ) {
     throw new TRPCError({ code: "NOT_FOUND", message: UPLOAD_EXPIRED });
   }
-  const now = deps.now?.() ?? new Date();
-  const visibility = grant.visibility;
   const keys = videoObjectKeys({
-    visibility,
+    visibility: grant.visibility,
     communityId: grant.communityId,
     uploadId: grant.uploadId,
   });
-  // A retry after a finish that created the post but crashed before closing
-  // the grant: close it now and hand back the same post.
-  const { docs: existingPosts } = await deps.payload.find({
-    collection: "feed-posts",
-    where: {
-      and: [
-        { "video.key": { equals: keys.video } },
-        { authorId: { equals: input.userId } },
-        { isDeleted: { not_equals: true } },
-      ],
-    },
-    limit: 1,
-    depth: 0,
-  });
-  const existingPost = existingPosts[0];
-  if (existingPost) {
-    await markGrantFinished(deps, grant.id, now);
-    return { id: existingPost.id };
-  }
+  return { grant, keys };
+}
+
+/**
+ * Trusts nothing from the client: inside the finish window, both stored
+ * objects must exist with the right type and size, and the client's size
+ * and length must be sane (they are kept for layout only). A bad upload is
+ * removed with its grant. Returns the post's `video` fields.
+ */
+async function verifiedVideo(
+  deps: VideoPostDeps,
+  grant: VideoGrant,
+  keys: { video: string; thumbnail: string },
+  input: UploadedVideo,
+  now: Date,
+  context: string,
+) {
   const finishCutoff = new Date(
     now.getTime() - FINISH_WINDOW_HOURS * 60 * 60 * 1000,
   );
@@ -200,10 +199,11 @@ export async function finishVideoPost(
     } catch (error) {
       // The member still gets the plain answer; the daily cleanup never sees
       // these files once the grant is gone, so the log is the only trace.
-      (deps.log ?? console.error)(
-        "[feed.finishVideoPost] removing a bad upload failed",
-        { uploadId: grant.uploadId, keys: badKeys, error },
-      );
+      (deps.log ?? console.error)(`[${context}] removing a bad upload failed`, {
+        uploadId: grant.uploadId,
+        keys: badKeys,
+        error,
+      });
     }
     await deps.payload.delete({ collection: "video-uploads", id: grant.id });
     throw new TRPCError({
@@ -211,6 +211,64 @@ export async function finishVideoPost(
       message: "The video didn't upload correctly. Please try again.",
     });
   }
+  return {
+    key: keys.video,
+    thumbnailKey: keys.thumbnail,
+    storage: storageClassFor(grant.visibility),
+    durationSeconds: Math.round(input.durationSeconds * 10) / 10,
+    width: Math.round(input.width),
+    height: Math.round(input.height),
+    bytes: video.bytes,
+  };
+}
+
+/**
+ * Turns a finished upload into a post. Trusts nothing from the client for
+ * access: the grant must be the caller's and unused, and both stored objects
+ * must exist with the right type and size. Size and length from the client
+ * are kept for layout only, after a sanity check. Returns the new post's id
+ * only, so the storage keys never reach the client.
+ */
+export async function finishVideoPost(
+  deps: VideoPostDeps,
+  input: {
+    userId: string;
+    authorName: string;
+    communityId: string;
+    uploadId: string;
+    caption: string;
+    topicSlug: string;
+  } & UploadedVideo,
+): Promise<{ id: number }> {
+  const { grant, keys } = await openGrant(deps, input);
+  const now = deps.now?.() ?? new Date();
+  // A retry after a finish that created the post but crashed before closing
+  // the grant: close it now and hand back the same post.
+  const { docs: existingPosts } = await deps.payload.find({
+    collection: "feed-posts",
+    where: {
+      and: [
+        { "video.key": { equals: keys.video } },
+        { authorId: { equals: input.userId } },
+        { isDeleted: { not_equals: true } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+  });
+  const existingPost = existingPosts[0];
+  if (existingPost) {
+    await markGrantFinished(deps, grant.id, now);
+    return { id: existingPost.id };
+  }
+  const video = await verifiedVideo(
+    deps,
+    grant,
+    keys,
+    input,
+    now,
+    "feed.finishVideoPost",
+  );
   let post;
   try {
     post = await deps.payload.create({
@@ -223,16 +281,8 @@ export async function finishVideoPost(
         topicSlug: input.topicSlug,
         likeCount: 0,
         commentCount: 0,
-        visibility,
-        video: {
-          key: keys.video,
-          thumbnailKey: keys.thumbnail,
-          storage: storageClassFor(visibility),
-          durationSeconds: Math.round(input.durationSeconds * 10) / 10,
-          width: Math.round(input.width),
-          height: Math.round(input.height),
-          bytes: video.bytes,
-        },
+        visibility: grant.visibility,
+        video,
       },
     });
   } catch (error) {
@@ -243,6 +293,75 @@ export async function finishVideoPost(
     throw error;
   }
   await markGrantFinished(deps, grant.id, now);
+  return { id: post.id };
+}
+
+/**
+ * Puts a finished upload on the author's existing post, replacing its image
+ * or video, with the edited caption. Same checks as `finishVideoPost`. The
+ * post keeps its visibility (it is fixed after posting), so the upload must
+ * have been granted for that same visibility. The old video's files are
+ * removed afterwards, at best effort. Safe to retry: a post that already
+ * carries this upload just closes the grant.
+ */
+export async function replacePostVideo(
+  deps: VideoPostDeps,
+  input: {
+    userId: string;
+    communityId: string;
+    postId: number;
+    uploadId: string;
+    caption: string;
+  } & UploadedVideo,
+): Promise<{ id: number }> {
+  const post = await deps.payload.findByID({
+    collection: "feed-posts",
+    id: input.postId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!post || post.isDeleted || post.communityId !== input.communityId) {
+    throw new TRPCError({ code: "NOT_FOUND" });
+  }
+  if (post.authorId !== input.userId) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  const { grant, keys } = await openGrant(deps, input);
+  const now = deps.now?.() ?? new Date();
+  if (post.video?.key === keys.video) {
+    await markGrantFinished(deps, grant.id, now);
+    return { id: post.id };
+  }
+  if (grant.visibility !== (post.visibility ?? "community")) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "A post keeps the audience it was posted to.",
+    });
+  }
+  const video = await verifiedVideo(
+    deps,
+    grant,
+    keys,
+    input,
+    now,
+    "feed.replacePostVideo",
+  );
+  await deps.payload.update({
+    collection: "feed-posts",
+    id: post.id,
+    data: {
+      content: input.caption,
+      imageUrl: null,
+      video,
+      isEdited: true,
+      editedAt: now.toISOString(),
+    },
+  });
+  await markGrantFinished(deps, grant.id, now);
+  await cleanUpPostVideoFiles(() => deps.storage, post, {
+    context: "feed.replacePostVideo",
+    log: deps.log,
+  });
   return { id: post.id };
 }
 
@@ -275,16 +394,19 @@ export async function removePostVideo(
 }
 
 /**
- * Best-effort file cleanup after a post is already soft-deleted. The delete
- * has happened, so a storage failure must not turn it into an error for the
- * user. The abandoned-upload cleanup never covers finished posts, so the log
- * line is the only signal that files were left behind.
+ * Best-effort removal of a post's video files once nothing points at them
+ * any more: the post was deleted or removed by a moderator, or an edit
+ * replaced or removed its video. That change has already happened, so a
+ * storage failure (even storage being unavailable) must not turn it into
+ * an error for the user. The abandoned-upload cleanup never covers
+ * finished posts, so the log line is the only signal that files were left
+ * behind.
  */
-export async function cleanUpDeletedPostVideo(
+export async function cleanUpPostVideoFiles(
   getStorage: VideoStorageSource,
   post: PostVideoFiles & { id: number },
   options: {
-    /** The action that deleted the post, e.g. "feed.deletePost", for the log. */
+    /** The action that dropped the files, e.g. "feed.deletePost", for the log. */
     context: string;
     log?: (message: string, detail: unknown) => void;
   },
