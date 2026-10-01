@@ -2796,7 +2796,14 @@
         "gifMore": "More GIFs",
         "gifUntitled": "GIF",
         "poweredByGiphy": "POWERED BY GIPHY",
-        "tryAgain": "Try again"
+        "tryAgain": "Try again",
+        "gifBusy": "GIF search is busy. Try again in a few minutes.",
+        "gifUnavailable": "GIFs are not available right now.",
+        "gifGone": "That GIF is not available any more. Pick another one.",
+        "gifCount": "{count, plural, one {# GIF} other {# GIFs}}",
+        "gifClear": "Clear search",
+        "gifResultsFor": "Results for “{query}”",
+        "addWordsToPost": "Add a few words to post."
       },
       "gifBadge": "GIF",
       "removeGif": "Remove GIF",
@@ -2804,7 +2811,8 @@
       "currentGif": "Current GIF",
       "keepCurrentGif": "Keep current GIF",
       "playGif": "Play GIF",
-      "pauseGif": "Pause GIF"
+      "pauseGif": "Pause GIF",
+      "gifGone": "This GIF is no longer available."
     },
     "dashboard": {
       "title": "My Communities",

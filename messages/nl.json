@@ -2796,7 +2796,14 @@
         "gifMore": "Meer GIF's",
         "gifUntitled": "GIF",
         "poweredByGiphy": "POWERED BY GIPHY",
-        "tryAgain": "Opnieuw proberen"
+        "tryAgain": "Opnieuw proberen",
+        "gifBusy": "GIF zoeken is druk. Probeer het over een paar minuten opnieuw.",
+        "gifUnavailable": "GIF's zijn nu niet beschikbaar.",
+        "gifGone": "Die GIF is niet meer beschikbaar. Kies een andere.",
+        "gifCount": "{count, plural, one {# GIF} other {# GIF's}}",
+        "gifClear": "Zoekopdracht wissen",
+        "gifResultsFor": "Resultaten voor “{query}”",
+        "addWordsToPost": "Voeg een paar woorden toe om te plaatsen."
       },
       "gifBadge": "GIF",
       "removeGif": "GIF verwijderen",
@@ -2804,7 +2811,8 @@
       "currentGif": "Huidige GIF",
       "keepCurrentGif": "Huidige GIF houden",
       "playGif": "GIF afspelen",
-      "pauseGif": "GIF pauzeren"
+      "pauseGif": "GIF pauzeren",
+      "gifGone": "Deze GIF is niet meer beschikbaar."
     },
     "dashboard": {
       "title": "Mijn Communities",

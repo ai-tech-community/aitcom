@@ -55,6 +55,16 @@ import {
   setPostMedia,
 } from "@/server/communities/post-media";
 import { getGiphyClient } from "@/server/giphy/giphy";
+import { createPerUserLimit } from "@/server/rate-limit/per-user-window";
+
+/**
+ * GIF searches per member: GIPHY's quota is shared by the whole app, so
+ * one member paging through results must not use it up for everyone.
+ */
+const checkGifSearchLimit = createPerUserLimit({
+  windowMs: 3_600_000, // 1 hour
+  max: 60,
+});
 import { cleanUpPostVideoFiles } from "@/server/communities/post-video-files";
 import {
   finishVideoPost,
@@ -472,6 +482,12 @@ export const feedRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       await requireFeedPoster(ctx.db, input.communitySlug, ctx.session.user.id);
+      if (!checkGifSearchLimit(ctx.session.user.id).allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "GIF search is busy. Try again in a few minutes.",
+        });
+      }
       const giphy = getGiphyClient();
       const query = input.query.trim();
       const offset = input.cursor ?? 0;

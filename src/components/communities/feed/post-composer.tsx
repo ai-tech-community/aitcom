@@ -76,8 +76,15 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
       void utils.feed.getFeed.invalidate();
       void utils.feed.getActivity.invalidate({ communitySlug: slug });
     },
-    onError: () => {
-      toast.error(t("toastCreateError"));
+    onError: (error) => {
+      const code = error.data?.code;
+      toast.error(
+        code === "TOO_MANY_REQUESTS" && gif
+          ? te("gifBusy")
+          : code === "BAD_REQUEST" && gif
+            ? te("gifGone")
+            : t("toastCreateError"),
+      );
     },
   });
 
@@ -208,7 +215,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
           <>
             {videoFile ? null : (
               <ToolbarButton
-                label={image ? t("replaceWithImage") : t("addImage")}
+                label={image || gif ? t("replaceWithImage") : t("addImage")}
                 icon={
                   isUploading ? (
                     <Loader2
@@ -279,7 +286,11 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
           </ShortcutHint>
         }
         notice={
-          draft.restored ? (
+          (image || gif || videoFile) && !content.trim() ? (
+            <p className="text-muted-foreground text-xs">
+              {te("addWordsToPost")}
+            </p>
+          ) : draft.restored ? (
             <DraftNotice
               onDiscard={() => {
                 text.setValue("");

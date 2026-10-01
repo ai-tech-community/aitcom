@@ -5,12 +5,14 @@ vi.mock("@/env", () => ({ env: {} }));
 
 import { createGiphyClient, isGiphyMediaUrl, toGif } from "./giphy";
 
-const raw = (id: string, host = "media2.giphy.com") => ({
+const raw = (id: string, host = "media2.giphy.com", rating = "g") => ({
   id,
   title: `Title ${id}`,
+  rating,
   images: {
     original: {
       mp4: `https://${host}/media/${id}/giphy.mp4`,
+      mp4_size: "900000",
       width: "480",
       height: "270",
     },
@@ -135,5 +137,48 @@ describe("createGiphyClient", () => {
       fetch: (async () => new Response("", { status: 404 })) as never,
     });
     await expect(giphy.byId("gone")).resolves.toBeNull();
+  });
+
+  it("refuses a GIF rated above pg, also when looked up by id", async () => {
+    expect(toGif(raw("adult", undefined, "r"))).toBeNull();
+    expect(toGif({ ...raw("unrated"), rating: undefined })).toBeNull();
+    const giphy = createGiphyClient({
+      apiKey: "k",
+      fetch: (async () =>
+        new Response(
+          JSON.stringify({ data: raw("adult", undefined, "r") }),
+        )) as never,
+    });
+    await expect(giphy.byId("adult")).resolves.toBeNull();
+  });
+
+  it("answers a just-picked GIF from the search it came from", async () => {
+    const fetch = vi.fn(async () => page(["a"]));
+    const giphy = createGiphyClient({ apiKey: "k", fetch: fetch as never });
+    await giphy.trending({ offset: 0 });
+    await expect(giphy.byId("a")).resolves.toMatchObject({ giphyId: "a" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the lighter rendition for a large GIF, and tidies titles", () => {
+    const big = raw("big");
+    big.images.original.mp4_size = String(5 * 1024 * 1024);
+    Object.assign(big.images, {
+      fixed_height: {
+        mp4: "https://media2.giphy.com/media/big/200.mp4",
+        width: "356",
+        height: "200",
+      },
+      fixed_height_still: {
+        url: "https://media2.giphy.com/media/big/200_s.gif",
+      },
+    });
+    expect(toGif(big)).toMatchObject({
+      mp4Url: "https://media2.giphy.com/media/big/200.mp4",
+      height: 200,
+    });
+    expect(
+      toGif({ ...raw("t"), title: "Happy Dance GIF by Foo Studio" })?.title,
+    ).toBe("Happy Dance");
   });
 });

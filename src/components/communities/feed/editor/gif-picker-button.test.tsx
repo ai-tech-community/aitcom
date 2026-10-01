@@ -98,17 +98,24 @@ describe("GifPickerButton", () => {
       vi.advanceTimersByTime(450);
     });
     expect(m.calls.at(-1)).toMatchObject({ query: "party" });
-    expect(screen.getByText("gifResults")).toBeVisible();
+    expect(screen.getByText("gifResultsFor")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "gifClear" }));
+    expect(screen.getByRole("searchbox")).toHaveValue("");
   });
 
-  it("plays previews as small looping videos", () => {
+  it("shows still previews that play only while hovered or focused", () => {
     open();
-    expect(document.querySelectorAll("video")).toHaveLength(2);
+    expect(document.querySelectorAll("video")).toHaveLength(0);
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Title a" }));
+    expect(document.querySelectorAll("video")).toHaveLength(1);
+    fireEvent.mouseLeave(screen.getByRole("button", { name: "Title a" }));
+    expect(document.querySelectorAll("video")).toHaveLength(0);
   });
 
   it("shows still previews when the member asks for reduced motion", () => {
     m.reduce = true;
     open();
+    fireEvent.focus(screen.getByRole("button", { name: "Title a" }));
     expect(document.querySelectorAll("video")).toHaveLength(0);
     expect(document.querySelectorAll("img")).toHaveLength(2);
   });
@@ -134,9 +141,8 @@ describe("GifPickerButton", () => {
       refetch,
     };
     open();
-    expect(
-      screen.getByText("GIF search is busy. Try again in a few minutes."),
-    ).toBeVisible();
+    expect(screen.getAllByText("gifBusy")).toHaveLength(2);
+    expect(screen.getByRole("status")).toHaveTextContent("gifBusy");
     fireEvent.click(screen.getByRole("button", { name: "tryAgain" }));
     expect(refetch).toHaveBeenCalled();
   });
@@ -144,6 +150,25 @@ describe("GifPickerButton", () => {
   it("says when nothing matched", () => {
     m.result = loaded([]);
     open();
-    expect(screen.getByText("gifNone")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("gifNone");
+  });
+
+  it("keeps tiles in place and drops repeats when more GIFs arrive", () => {
+    m.result = {
+      ...loaded([]),
+      data: {
+        pages: [
+          { gifs: ["a", "b"].map(gif), nextCursor: 24 },
+          { gifs: ["b", "c"].map(gif), nextCursor: null },
+        ],
+      },
+    };
+    open();
+    const names = screen
+      .getAllByRole("button")
+      .map((b) => b.getAttribute("aria-label"))
+      .filter((n) => n?.startsWith("Title"));
+    expect(names.sort()).toEqual(["Title a", "Title b", "Title c"]);
+    expect(screen.getByRole("status")).toHaveTextContent("gifCount");
   });
 });

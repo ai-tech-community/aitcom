@@ -14,7 +14,7 @@ import { env } from "@/env";
 export type Gif = {
   giphyId: string;
   title: string;
-  /** Full size, as a looping video (far lighter than a .gif file). */
+  /** Sized for the feed, as a looping video (far lighter than a .gif). */
   mp4Url: string;
   stillUrl: string;
   width: number;
@@ -40,6 +40,8 @@ const API = "https://api.giphy.com/v1/gifs";
 const PAGE_SIZE = 24;
 /** GIPHY ratings: "pg" keeps a professional community feed safe for work. */
 const RATING = "pg";
+/** The ratings a post may carry, checked on every path (search and id). */
+const ALLOWED_RATINGS = new Set(["g", "pg"]);
 /** GIPHY's search offset ceiling. */
 const MAX_OFFSET = 4999;
 const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -67,25 +69,50 @@ export function isGiphyId(value: string): boolean {
 type Rendition = {
   url?: string;
   mp4?: string;
+  mp4_size?: string;
   width?: string;
   height?: string;
 };
+
+/**
+ * The feed shows a GIF at most 384px tall: the full-size video when it is
+ * small enough to scroll past cheaply, else GIPHY's 200px-tall one.
+ */
+const FEED_MP4_MAX_BYTES = 2 * 1024 * 1024;
+
+/** "Happy Dance GIF by Foo" → "Happy Dance": the UI already says "GIF". */
+export function cleanGifTitle(title: string): string {
+  return title
+    .replace(/\s+GIF(\s+by\s+.*)?$/i, "")
+    .trim()
+    .slice(0, 200);
+}
 type RawGif = {
   id?: string;
   title?: string;
+  rating?: string;
   images?: Record<string, Rendition | undefined>;
 };
 
-/** A GIPHY result as a Gif, or null when it lacks what a post needs. */
+/**
+ * A GIPHY result as a Gif, or null when it lacks what a post needs or is
+ * rated above "pg" (a member could otherwise post any GIF by its id).
+ */
 export function toGif(raw: RawGif): Gif | null {
   const original = raw.images?.original;
-  const still = raw.images?.original_still;
+  const lighter = raw.images?.fixed_height;
+  const feed =
+    Number(original?.mp4_size) > 0 &&
+    Number(original?.mp4_size) <= FEED_MP4_MAX_BYTES
+      ? { video: original, still: raw.images?.original_still }
+      : { video: lighter, still: raw.images?.fixed_height_still };
   const small = raw.images?.fixed_width;
   const smallStill = raw.images?.fixed_width_still;
-  const urls = [original?.mp4, still?.url, small?.mp4, smallStill?.url];
+  const urls = [feed.video?.mp4, feed.still?.url, small?.mp4, smallStill?.url];
   if (
     !raw.id ||
     !isGiphyId(raw.id) ||
+    !ALLOWED_RATINGS.has(raw.rating ?? "") ||
     !urls.every((url): url is string => !!url && isGiphyMediaUrl(url))
   ) {
     return null;
@@ -97,10 +124,10 @@ export function toGif(raw: RawGif): Gif | null {
   });
   return {
     giphyId: raw.id,
-    title: (raw.title ?? "").slice(0, 200),
+    title: cleanGifTitle(raw.title ?? ""),
     mp4Url: mp4Url!,
     stillUrl: stillUrl!,
-    ...size(original),
+    ...size(feed.video),
     preview: { mp4Url: previewMp4!, stillUrl: previewStill!, ...size(small) },
   };
 }
@@ -133,6 +160,8 @@ export function createGiphyClient(input: {
   const doFetch = input.fetch ?? fetch;
   const now = input.now ?? Date.now;
   const cache = new Map<string, { expires: number; page: GifPage }>();
+  // GIFs seen in a page, by id: posting a GIF just picked costs no call.
+  const seen = new Map<string, { expires: number; gif: Gif }>();
 
   async function call(path: string, params: Record<string, string>) {
     const url = new URL(`${API}/${path}`);
@@ -169,6 +198,13 @@ export function createGiphyClient(input: {
       | Parameters<typeof toPage>[0]
       | null;
     const result = toPage(body ?? {});
+    for (const gif of result.gifs) {
+      if (seen.size >= CACHE_MAX_ENTRIES * 24) {
+        const oldest = seen.keys().next().value;
+        if (oldest !== undefined) seen.delete(oldest);
+      }
+      seen.set(gif.giphyId, { expires: now() + CACHE_TTL_MS, gif });
+    }
     if (cache.size >= CACHE_MAX_ENTRIES) {
       // Drop the oldest entry (a Map keeps insertion order).
       const oldest = cache.keys().next().value;
@@ -201,6 +237,8 @@ export function createGiphyClient(input: {
     },
     async byId(giphyId) {
       if (!isGiphyId(giphyId)) return null;
+      const hit = seen.get(giphyId);
+      if (hit && hit.expires > now()) return hit.gif;
       const body = (await call(giphyId, {})) as { data?: RawGif } | null;
       return body?.data ? toGif(body.data) : null;
     },

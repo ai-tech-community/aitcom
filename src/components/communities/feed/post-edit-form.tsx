@@ -113,9 +113,14 @@ export function PostEditForm({
     },
     onError: (error) =>
       toast.error(
-        error.data?.code === "CONFLICT" || error.data?.code === "FORBIDDEN"
-          ? error.message
-          : t("toastPostUpdateError"),
+        error.data?.code === "TOO_MANY_REQUESTS"
+          ? te("gifBusy")
+          : error.data?.code === "BAD_REQUEST" && media.kind === "gif"
+            ? te("gifGone")
+            : error.data?.code === "CONFLICT" ||
+                error.data?.code === "FORBIDDEN"
+              ? error.message
+              : t("toastPostUpdateError"),
       ),
   });
 
@@ -298,7 +303,7 @@ export function PostEditForm({
             ) : showsOldGif ? (
               <MediaPreview
                 src={post.gif?.stillUrl ?? null}
-                alt=""
+                alt={post.gif?.title ?? t("gifBadge")}
                 badge={t("currentGif")}
                 removeLabel={t("removeGif")}
                 onRemove={removeMedia}

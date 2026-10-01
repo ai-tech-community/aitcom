@@ -462,6 +462,19 @@ describe("feed post writes", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  it("searchGifs limits each member, so one member cannot use up GIPHY for everyone", async () => {
+    const heavy = caller("gif-heavy-user");
+    for (let i = 0; i < 60; i++) {
+      await heavy.feed.searchGifs({ communitySlug: "c" });
+    }
+    await expect(
+      heavy.feed.searchGifs({ communitySlug: "c" }),
+    ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    await expect(
+      caller("someone-else").feed.searchGifs({ communitySlug: "c" }),
+    ).resolves.toBeDefined();
+  }, 30_000);
+
   it("editPost lets only the author edit", async () => {
     await expect(
       caller("someone-else").feed.editPost({
