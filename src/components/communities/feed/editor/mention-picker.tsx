@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { AtSign } from "lucide-react";
@@ -32,6 +33,29 @@ export type MentionPicker = ReturnType<typeof useMentionPicker>;
 function visibleBottom(): number {
   const viewport = window.visualViewport;
   return viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
+}
+
+/**
+ * Where the list goes for an "@" at `start`, on screen: under the "@", or
+ * above it when there is more room there, kept inside the window.
+ */
+function placeAt(field: HTMLTextAreaElement, start: number): Placement {
+  const caret = caretPosition(field, start);
+  const box = field.getBoundingClientRect();
+  const atTop = box.top + caret.top;
+  const atBottom = atTop + caret.height;
+  const roomBelow = visibleBottom() - atBottom;
+  const above = roomBelow < LIST_HEIGHT && atTop > roomBelow;
+  const left = Math.min(
+    box.left + caret.left,
+    box.right - LIST_WIDTH - 8,
+    window.innerWidth - LIST_WIDTH - 8,
+  );
+  return {
+    top: above ? atTop - 4 : atBottom + 4,
+    left: Math.max(8, left),
+    above,
+  };
 }
 
 /**
@@ -117,20 +141,25 @@ export function useMentionPicker({
       setClosedAt(null);
       return;
     }
-    const caret = caretPosition(field, next.start);
-    const box = field.getBoundingClientRect();
-    const roomBelow = visibleBottom() - (box.top + caret.top + caret.height);
-    const roomAbove = box.top + caret.top;
-    const above = roomBelow < LIST_HEIGHT && roomAbove > roomBelow;
-    setPlacement({
-      top: above ? caret.top - 4 : caret.top + caret.height + 4,
-      left: Math.max(
-        8,
-        Math.min(caret.left, field.clientWidth - LIST_WIDTH - 8),
-      ),
-      above,
-    });
+    setPlacement(placeAt(field, next.start));
   }, [text.textareaRef, typed]);
+
+  // The list sits on top of the page, so it follows the "@" when the page
+  // or the text area scrolls, or the window (or on-screen keyboard) resizes.
+  const followFrom = showing ? (typed?.start ?? null) : null;
+  useEffect(() => {
+    const field = text.textareaRef.current;
+    if (followFrom === null || !field) return;
+    const follow = () => setPlacement(placeAt(field, followFrom));
+    window.addEventListener("scroll", follow, { capture: true, passive: true });
+    window.addEventListener("resize", follow);
+    window.visualViewport?.addEventListener("resize", follow);
+    return () => {
+      window.removeEventListener("scroll", follow, { capture: true });
+      window.removeEventListener("resize", follow);
+      window.visualViewport?.removeEventListener("resize", follow);
+    };
+  }, [followFrom, text.textareaRef]);
 
   const pick = (index: number) => {
     const member = members[index];
@@ -193,7 +222,10 @@ export function useMentionPicker({
       "aria-activedescendant":
         showing && members.length > 0 ? optionId(activeIndex) : undefined,
     },
-    /** The list, placed at the "@" (render inside the field). */
+    /**
+     * The status line, and the list on top of the page (in a portal, so no
+     * sticky bar or clipping parent can hide it), placed at the "@".
+     */
     list: (
       <>
         {/* Says how many members match, and which one is highlighted
@@ -201,62 +233,65 @@ export function useMentionPicker({
         <p role="status" className="sr-only">
           {status}
         </p>
-        {showing ? (
-          <div
-            className={cn(
-              "bg-popover text-popover-foreground absolute z-20 w-64 max-w-[calc(100%-1rem)] overflow-hidden rounded-lg border shadow-md",
-              placement.above && "-translate-y-full",
-            )}
-            style={{ top: placement.top, left: placement.left }}
-          >
-            {members.length > 0 ? (
-              <ul
-                id={listId}
-                role="listbox"
-                aria-label={t("mentionList")}
-                className="max-h-64 overflow-y-auto p-1"
+        {showing
+          ? createPortal(
+              <div
+                className={cn(
+                  "bg-popover text-popover-foreground fixed z-50 w-64 max-w-[calc(100vw-1rem)] overflow-hidden rounded-lg border shadow-md",
+                  placement.above && "-translate-y-full",
+                )}
+                style={{ top: placement.top, left: placement.left }}
               >
-                {members.map((member, index) => (
-                  <li
-                    key={member.userId}
-                    id={optionId(index)}
-                    role="option"
-                    aria-selected={index === activeIndex}
-                    // Keeps the focus in the text area.
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => pick(index)}
-                    onMouseMove={() => setActive(index)}
-                    className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm",
-                      // Fill, weight and an outline: more than colour alone.
-                      index === activeIndex &&
-                        "bg-accent text-accent-foreground ring-ring/60 font-medium ring-1 ring-inset",
-                    )}
+                {members.length > 0 ? (
+                  <ul
+                    id={listId}
+                    role="listbox"
+                    aria-label={t("mentionList")}
+                    className="max-h-64 overflow-y-auto p-1"
                   >
-                    <Avatar aria-hidden="true" className="size-6">
-                      {member.image ? (
-                        <AvatarImage src={member.image} alt="" />
-                      ) : null}
-                      <AvatarFallback className="text-[10px]">
-                        {getInitials(member.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate">{member.name}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p
-                id={listId}
-                className="text-muted-foreground px-3 py-2 text-sm"
-              >
-                {results.isError
-                  ? t("mentionFailed")
-                  : t("mentionNone", { query: typedQuery.trim() })}
-              </p>
-            )}
-          </div>
-        ) : null}
+                    {members.map((member, index) => (
+                      <li
+                        key={member.userId}
+                        id={optionId(index)}
+                        role="option"
+                        aria-selected={index === activeIndex}
+                        // Keeps the focus in the text area.
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => pick(index)}
+                        onMouseMove={() => setActive(index)}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm",
+                          // Fill, weight and an outline: more than colour alone.
+                          index === activeIndex &&
+                            "bg-accent text-accent-foreground ring-ring/60 font-medium ring-1 ring-inset",
+                        )}
+                      >
+                        <Avatar aria-hidden="true" className="size-6">
+                          {member.image ? (
+                            <AvatarImage src={member.image} alt="" />
+                          ) : null}
+                          <AvatarFallback className="text-[10px]">
+                            {getInitials(member.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="truncate">{member.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p
+                    id={listId}
+                    className="text-muted-foreground px-3 py-2 text-sm"
+                  >
+                    {results.isError
+                      ? t("mentionFailed")
+                      : t("mentionNone", { query: typedQuery.trim() })}
+                  </p>
+                )}
+              </div>,
+              document.body,
+            )
+          : null}
       </>
     ),
   };
