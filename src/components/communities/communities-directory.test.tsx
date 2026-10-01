@@ -12,8 +12,10 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(nav.search),
 }));
 vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
-vi.mock("./discover/discover-square", () => ({
-  DiscoverSquare: () => <div>square</div>,
+vi.mock("./discover/square-hero", () => ({
+  SquareHero: ({ headline }: { headline: React.ReactNode }) => (
+    <section>{headline}</section>
+  ),
 }));
 vi.mock("./discover/discover-communities", () => ({
   DiscoverCommunities: (props: {
@@ -25,8 +27,10 @@ vi.mock("./discover/discover-communities", () => ({
     return <div>communities</div>;
   },
 }));
-vi.mock("./discover/talking-now", () => ({
-  TalkingNow: () => <div>talking now</div>,
+vi.mock("./discover/square-rooms", () => ({
+  SquareRooms: ({ layout }: { layout: string }) => (
+    <div data-testid={`rooms-${layout}`} />
+  ),
 }));
 vi.mock("./discover/organizer-invite", () => ({
   OrganizerInvite: () => <div>invite</div>,
@@ -57,10 +61,18 @@ afterEach(() => {
 });
 
 describe("CommunitiesDirectory", () => {
-  it("uses the same max-w-6xl page shell as Events", () => {
-    const { container } = render(<CommunitiesDirectory />);
-    const shell = container.firstElementChild;
-    expect(shell?.className.split(/\s+/)).toContain("max-w-6xl");
+  it("frames the directory wider than other pages, by design", () => {
+    render(<CommunitiesDirectory />);
+    const frame = screen
+      .getByTestId("rooms-panel")
+      .closest("[class*='max-w-[1600px]']");
+    expect(frame).not.toBeNull();
+  });
+
+  it("shows the rooms as a side panel from xl and as a strip below it", () => {
+    render(<CommunitiesDirectory />);
+    expect(screen.getByTestId("rooms-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("rooms-strip")).toBeInTheDocument();
   });
 
   it("leads with a human headline as the page heading", () => {

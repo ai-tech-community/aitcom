@@ -178,18 +178,28 @@ export function CreateCommunityProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * The page's "start a community" action, for triggers that are not a
+ * button of their own (e.g. the empty lot on the Explore street). Needs a
+ * `CreateCommunityProvider`.
+ */
+export function useStartCreateCommunity(): () => void {
+  const context = useContext(CreateCommunityContext);
+  if (!context) {
+    throw new Error("useStartCreateCommunity needs a CreateCommunityProvider");
+  }
+  return context.start;
+}
+
 /** Opens the page's create-community dialog. Needs a `CreateCommunityProvider`. */
 export function CreateCommunityButton({
   children,
   ...props
 }: Omit<ComponentProps<typeof Button>, "onClick">) {
   const t = useTranslations("communities.create");
-  const context = useContext(CreateCommunityContext);
-  if (!context) {
-    throw new Error("CreateCommunityButton needs a CreateCommunityProvider");
-  }
+  const start = useStartCreateCommunity();
   return (
-    <Button {...props} onClick={context.start}>
+    <Button {...props} onClick={start}>
       <Plus aria-hidden="true" />
       {children ?? t("title")}
     </Button>

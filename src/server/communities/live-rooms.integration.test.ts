@@ -1,9 +1,10 @@
 // @vitest-environment node
 /**
- * DB-INTEGRATION test for "Talking now" (`spaces.liveNow`). Proves, against
- * a REAL local DB, that only public, unarchived rooms of listed communities
- * with a message in the last day appear, with distinct people and agents
- * counted separately — and nothing about who wrote or what.
+ * DB-INTEGRATION test for the Explore rooms (`spaces.squareRooms`). Proves,
+ * against a REAL local DB, that only public, unarchived rooms of listed
+ * communities appear: "talking" when someone wrote in the last day (with
+ * distinct people and agents counted apart, and nothing about who wrote or
+ * what), the rest as quiet rooms with their member count.
  *
  * Auto-skips unless RUN_DB_TESTS=1 and a local database is configured:
  *
@@ -28,13 +29,13 @@ function isLocalDbConfigured(): boolean {
 }
 const RUN_DB = isLocalDbConfigured();
 
-describe.skipIf(!RUN_DB)("spaces.liveNow [DB integration]", () => {
+describe.skipIf(!RUN_DB)("spaces.squareRooms [DB integration]", () => {
   type Mods = {
     db: typeof import("@/server/db").db;
     schema: typeof import("@/server/db/schema");
     createCaller: typeof import("@/server/api/root").createCaller;
     inArray: typeof import("drizzle-orm").inArray;
-    invalidate: typeof import("@/server/communities/live-rooms-queries").invalidateLiveRooms;
+    invalidate: typeof import("@/server/communities/live-rooms-queries").invalidateSquareRooms;
   };
   let m: Mods;
 
@@ -51,20 +52,25 @@ describe.skipIf(!RUN_DB)("spaces.liveNow [DB integration]", () => {
   let fx: Fixture;
 
   beforeAll(async () => {
-    const [{ db }, schema, { createCaller }, drizzle, { invalidateLiveRooms }] =
-      await Promise.all([
-        import("@/server/db"),
-        import("@/server/db/schema"),
-        import("@/server/api/root"),
-        import("drizzle-orm"),
-        import("@/server/communities/live-rooms-queries"),
-      ]);
+    const [
+      { db },
+      schema,
+      { createCaller },
+      drizzle,
+      { invalidateSquareRooms },
+    ] = await Promise.all([
+      import("@/server/db"),
+      import("@/server/db/schema"),
+      import("@/server/api/root"),
+      import("drizzle-orm"),
+      import("@/server/communities/live-rooms-queries"),
+    ]);
     m = {
       db,
       schema,
       createCaller,
       inArray: drizzle.inArray,
-      invalidate: invalidateLiveRooms,
+      invalidate: invalidateSquareRooms,
     };
     if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
       throw new Error("Refusing to run against a cloud Neon DATABASE_URL.");
@@ -208,18 +214,26 @@ describe.skipIf(!RUN_DB)("spaces.liveNow [DB integration]", () => {
     await db.delete(schema.user).where(inArray(schema.user.id, fx.userIds));
   });
 
-  it("lists only public rooms of listed communities that talked in the last day", async () => {
+  it("splits public rooms of listed communities into talking and quiet", async () => {
     const caller = m.createCaller({
       db: m.db,
       session: null,
       headers: new Headers(),
     });
-    const { rooms } = await caller.spaces.liveNow();
-    const ours = rooms.filter((r) => fx.spaceIds.includes(r.spaceId));
-    expect(ours.map((r) => r.spaceId)).toEqual([fx.talking]);
-    expect(ours[0]).toMatchObject({ people: 2, agents: 1 });
-    // Counts only: nothing about who wrote or what.
-    expect(JSON.stringify(ours[0])).not.toContain("hey");
-    expect(ours[0]).not.toHaveProperty("senderId");
+    const { talking, quiet } = await caller.spaces.squareRooms();
+    const ours = (ids: { spaceId: string }[]) =>
+      ids.filter((r) => fx.spaceIds.includes(r.spaceId)).map((r) => r.spaceId);
+
+    expect(ours(talking)).toEqual([fx.talking]);
+    expect(talking.find((r) => r.spaceId === fx.talking)).toMatchObject({
+      people: 2,
+      agents: 1,
+    });
+    // A room that talked two days ago is quiet; private and unlisted never show.
+    expect(ours(quiet)).toEqual([fx.stale]);
+
+    const room = talking.find((r) => r.spaceId === fx.talking)!;
+    expect(JSON.stringify(room)).not.toContain("hey");
+    expect(room).not.toHaveProperty("senderId");
   });
 });

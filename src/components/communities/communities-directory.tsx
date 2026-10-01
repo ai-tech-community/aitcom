@@ -7,9 +7,10 @@ import {
   CreateCommunityButton,
   CreateCommunityProvider,
 } from "./create-community-dialog";
-import { DiscoverSquare } from "./discover/discover-square";
+import { SquareHero } from "./discover/square-hero";
+import { SquareRooms } from "./discover/square-rooms";
+import { BODY_FRAME } from "./discover/explore-layout";
 import { DiscoverCommunities } from "./discover/discover-communities";
-import { TalkingNow } from "./discover/talking-now";
 import { OrganizerInvite } from "./discover/organizer-invite";
 import {
   parseDirectoryParams,
@@ -18,10 +19,12 @@ import {
 } from "./discover/directory-params";
 
 /**
- * The Explore page: a human headline, the square (the most active
- * communities as houses on a street), the rooms talking now, every
- * community with search / sort / place in the URL, and an invitation to
- * organizers as the close.
+ * The Explore page: the street runs edge to edge with the headline on it
+ * (the most active communities as houses, an empty lot for the next one).
+ * Below it, the directory (search / sort / place in the URL, closing with
+ * the organizer invite) and, from `xl`, a sticky side panel with the rooms
+ * on the square; narrower screens get the rooms as a strip above the
+ * directory.
  */
 export function CommunitiesDirectory() {
   const t = useTranslations("communities.discover");
@@ -52,35 +55,37 @@ export function CommunitiesDirectory() {
 
   return (
     <CreateCommunityProvider>
-      <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
-        <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-2xl">
+      <SquareHero
+        headline={
+          <>
             <h1 className="text-[clamp(2rem,5vw,3.5rem)] leading-[1.05] font-semibold tracking-[-0.02em] text-balance">
               {t("headline")}
             </h1>
-            <p className="text-muted-foreground mt-4 max-w-xl text-base leading-relaxed text-pretty sm:text-lg">
+            <p className="text-muted-foreground mt-4 text-base leading-relaxed text-pretty sm:text-lg">
               {t("tagline")}
             </p>
+            <CreateCommunityButton variant="outline" className="mt-6">
+              {t("inviteAction")}
+            </CreateCommunityButton>
+          </>
+        }
+      />
+
+      <div className={`${BODY_FRAME} pt-10 pb-16 sm:pb-20`}>
+        <SquareRooms layout="strip" className="mb-14 xl:hidden" />
+        <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-12">
+          <div className="min-w-0">
+            <DiscoverCommunities
+              params={params}
+              onParamsChange={onParamsChange}
+            />
+            <OrganizerInvite className="mt-16" />
           </div>
-          <CreateCommunityButton
-            variant="outline"
-            className="self-start sm:self-auto"
-          >
-            {t("inviteAction")}
-          </CreateCommunityButton>
-        </header>
-
-        <DiscoverSquare className="mt-10 sm:mt-12" />
-
-        <TalkingNow className="mt-14" />
-
-        <DiscoverCommunities
-          params={params}
-          onParamsChange={onParamsChange}
-          className="mt-16"
-        />
-
-        <OrganizerInvite className="mt-16" />
+          <SquareRooms
+            layout="panel"
+            className="hidden xl:sticky xl:top-20 xl:block xl:max-h-[calc(100vh-6rem)] xl:self-start xl:overflow-y-auto"
+          />
+        </div>
       </div>
     </CreateCommunityProvider>
   );

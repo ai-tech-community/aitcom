@@ -254,6 +254,10 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 - **Active state:** Carried by Signal Orange + weight, plus a non-color cue (underline or marker) so it's color-blind-safe.
 - **Overflow:** Dropdowns/menus must use native `<dialog>`/popover or a portal — never `position:absolute` inside an `overflow:hidden`/`auto` container, or they clip.
 
+### Page frame
+- **Default:** pages sit in a centred `max-w-6xl` column with `px-6 sm:px-12` gutters, so every surface reads as one product.
+- **Named exception — the Explore page (`/communities`):** the town-square street runs edge to edge, with the headline standing on its left, and the directory below it uses a wider `max-w-[1600px]` frame (`BODY_FRAME` in `communities/discover/explore-layout.ts`) with a sticky rooms side panel from `xl`. It is a showroom, not a tool page. Text never runs edge to edge: only the street does. Do not copy this frame to other pages without recording a new exception here.
+
 ### Section Label (signature)
 The house kicker, now a shared primitive: `<SectionLabel>` (`src/components/ui/section-label.tsx`). Renders a monospace, muted, ruled marker with a leading `/ ` — e.g. `<SectionLabel>Communities</SectionLabel>` → `/ COMMUNITIES`. Props: `as` (element), `bordered`, `marker`. **Always use this instead of re-typing `font-mono text-xs tracking-wider text-muted-foreground`.** The single most recognizable element of the system — only as a real section divider.
 

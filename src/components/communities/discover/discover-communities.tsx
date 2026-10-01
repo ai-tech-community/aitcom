@@ -20,7 +20,11 @@ import { gridQueryInput, type DirectoryParams } from "./directory-params";
 
 const DEBOUNCE_MS = 300;
 
-const GRID = "grid gap-4 sm:grid-cols-2 lg:grid-cols-3";
+/**
+ * Columns follow the section's own width (a container query), not the
+ * screen's: from `xl` the side panel takes part of the screen.
+ */
+const GRID = "grid gap-4 @xl:grid-cols-2 @5xl:grid-cols-3 @[96rem]:grid-cols-4";
 
 function GridSkeleton() {
   return (
@@ -181,7 +185,10 @@ export function DiscoverCommunities({
   ];
 
   return (
-    <section aria-labelledby="all-communities-title" className={className}>
+    <section
+      aria-labelledby="all-communities-title"
+      className={cn("@container", className)}
+    >
       <div className="border-border flex items-baseline justify-between gap-4 border-b pb-2">
         <SectionLabel as="h2" id="all-communities-title" bordered={false}>
           {t("allCommunities")}

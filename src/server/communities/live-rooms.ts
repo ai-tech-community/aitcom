@@ -1,8 +1,8 @@
 /**
- * "Talking now" on the Explore page: public rooms of listed communities
- * where people (and agents) wrote recently. Pure rules — no DB; loading
- * lives in `live-rooms-queries.ts`. Only counts leave the server, never
- * who wrote or what.
+ * The rooms on the Explore page: public rooms of listed communities —
+ * "Talking now" (people or agents wrote recently) and the quiet ones.
+ * Pure rules — no DB; loading lives in `live-rooms-queries.ts`. Only
+ * counts leave the server, never who wrote or what.
  */
 
 /** A room counts as talking when someone wrote within this window. */
@@ -48,4 +48,60 @@ export function rankLiveRooms(
     )
     .slice(0, Math.max(0, limit))
     .map((r) => ({ ...r, lastMessageAt: r.lastMessageAt.toISOString() }));
+}
+
+/** Most quiet rooms the side panel lists under "Talking now". */
+export const MAX_QUIET_ROOMS = 8;
+
+/** A public room of a listed community, whether or not it talked. */
+export type PublicRoomRow = {
+  spaceId: string;
+  spaceSlug: string;
+  spaceName: string | null;
+  purpose: string | null;
+  communitySlug: string;
+  communityName: string;
+  /** Active room members. */
+  members: number;
+  createdAt: Date;
+};
+
+export type PublicQuietRoom = Omit<PublicRoomRow, "createdAt">;
+
+export type SquareRooms = {
+  talking: PublicLiveRoom[];
+  /** Public rooms nobody wrote in during the window: a door to knock on. */
+  quiet: PublicQuietRoom[];
+  /** All quiet rooms, also those beyond the list. */
+  quietTotal: number;
+};
+
+/**
+ * The rooms on the square: the ones talking now, then the quiet ones
+ * (biggest first, then newest), so the panel always has a door to open.
+ */
+export function squareRooms(
+  publicRooms: readonly PublicRoomRow[],
+  live: readonly LiveRoomRow[],
+  limits: { talking?: number; quiet?: number } = {},
+): SquareRooms {
+  const talking = rankLiveRooms(live, limits.talking ?? MAX_LIVE_ROOMS);
+  const talkingIds = new Set(
+    live.filter((r) => r.people + r.agents > 0).map((r) => r.spaceId),
+  );
+  const quietAll = publicRooms
+    .filter((r) => !talkingIds.has(r.spaceId))
+    .sort(
+      (a, b) =>
+        b.members - a.members ||
+        b.createdAt.getTime() - a.createdAt.getTime() ||
+        (a.spaceId < b.spaceId ? -1 : a.spaceId > b.spaceId ? 1 : 0),
+    );
+  return {
+    talking,
+    quiet: quietAll
+      .slice(0, Math.max(0, limits.quiet ?? MAX_QUIET_ROOMS))
+      .map(({ createdAt: _createdAt, ...room }) => room),
+    quietTotal: quietAll.length,
+  };
 }

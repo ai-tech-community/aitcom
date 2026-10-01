@@ -2362,7 +2362,6 @@
       "placeLabel": "Filter by place",
       "placeAll": "Everywhere",
       "placeOnline": "Online",
-      "squareTitle": "On the square now",
       "squareHint": "Lit windows: people active in the last two weeks. A flag: an event is coming up.",
       "allCommunities": "All communities",
       "resultsCount": "{count, plural, one {# community} other {# communities}}",
@@ -2383,7 +2382,13 @@
       "talkingNowHint": "Public rooms where people wrote in the last day. Drop in and listen before you join.",
       "peopleTalking": "{count, plural, one {# person} other {# people}}",
       "agentsTalking": "{count, plural, one {# agent} other {# agents}}",
-      "openRooms": "{count, plural, one {# open room} other {# open rooms}}"
+      "openRooms": "{count, plural, one {# open room} other {# open rooms}}",
+      "lotSign": "Your house?",
+      "sayHi": "Quiet now · say hi",
+      "openRoomsTitle": "Open rooms",
+      "openRoomsHint": "Public rooms you can look into before joining.",
+      "roomsPanelLabel": "Rooms on the square",
+      "moreRooms": "{count, plural, one {# more open room} other {# more open rooms}} inside the communities"
     },
     "stack": {
       "memberFallback": "Member",

@@ -11,7 +11,7 @@ import {
   MIN_STREET_ROWS,
   STREET_STILL_TICK,
   communityStreetFrame,
-  streetCapacity,
+  planStreet,
   type StreetHouse,
   type StreetLayer,
 } from "./community-street-scene";
@@ -32,22 +32,29 @@ function sameGrid(a: GridSize | null, b: GridSize | null) {
 }
 
 /**
- * The street of community houses. Decorative (aria-hidden): the directory
- * grid below carries every fact as text and is the keyboard path. With a
- * mouse, pointing at a house marks it and clicking it opens the community
- * — one hit area per house (a real link, so middle-click works, but out of
- * the tab order), laid over the art in the same equal lanes the scene
- * draws.
+ * The street of community houses, with an empty lot at its end. Decorative
+ * (aria-hidden): the directory grid carries every fact as text and the
+ * page's "Start a community" button is the keyboard path to the lot. With
+ * a mouse, pointing at a house marks it and clicking opens it (a real
+ * link, so middle-click works, but out of the tab order); clicking the lot
+ * starts a community. Hit areas follow the same plan the scene draws.
  */
 export function CommunityStreet({
   houses,
   activeSlug,
   onActiveChange,
+  reserve = 0,
+  lotLabel = null,
+  onLotClick,
   className,
 }: {
   houses: readonly StreetHouse[];
   activeSlug: string | null;
   onActiveChange: (slug: string | null) => void;
+  /** Share of the width kept free on the left (see `planStreet`). */
+  reserve?: number;
+  lotLabel?: string | null;
+  onLotClick?: () => void;
   className?: string;
 }) {
   const [grid, setGrid] = useState<GridSize | null>(null);
@@ -58,12 +65,18 @@ export function CommunityStreet({
   );
   const frame = useCallback(
     (tick: number, cols: number, rows: number) =>
-      communityStreetFrame(houses, cols, rows, tick, activeSlug),
-    [houses, activeSlug],
+      communityStreetFrame(houses, cols, rows, {
+        tick,
+        activeSlug,
+        reserve,
+        lotLabel,
+      }),
+    [houses, activeSlug, reserve, lotLabel],
   );
-  const shown = grid
-    ? houses.slice(0, streetCapacity(grid.cols, houses.length))
-    : [];
+  const plan = grid
+    ? planStreet(grid.cols, houses.length, { reserve, lot: !!lotLabel })
+    : null;
+  const shown = plan ? houses.slice(0, plan.houses) : [];
 
   return (
     <div className={cn("relative", className)}>
@@ -77,10 +90,11 @@ export function CommunityStreet({
         data-testid="community-street"
         className="h-full font-mono text-[10px] leading-3 sm:text-xs sm:leading-[14px]"
       />
-      {shown.length > 0 ? (
+      {plan && grid && plan.lanes.length > 0 ? (
         <div
           aria-hidden="true"
-          className="absolute inset-0 hidden sm:flex"
+          className="absolute inset-y-0 right-0 hidden sm:flex"
+          style={{ left: `${(plan.start / grid.cols) * 100}%` }}
           onPointerLeave={() => onActiveChange(null)}
         >
           {shown.map((house) => (
@@ -93,6 +107,14 @@ export function CommunityStreet({
               onPointerEnter={() => onActiveChange(house.slug)}
             />
           ))}
+          {plan.lot ? (
+            <div
+              data-testid="street-lot"
+              className="flex-1 cursor-pointer"
+              onPointerEnter={() => onActiveChange(null)}
+              onClick={onLotClick}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>

@@ -1,17 +1,19 @@
-/** Loads "Talking now" rooms. Thin DB glue over `live-rooms.ts`. */
+/** Loads the Explore page's rooms. Thin DB glue over `live-rooms.ts`. */
 
-import { and, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 
 import type { db as _db } from "@/server/db";
 import {
   communities,
   conversations,
   messages,
+  spaceMemberships,
   spaces,
 } from "@/server/db/schema";
 import {
   LIVE_WINDOW_HOURS,
   type LiveRoomRow,
+  type PublicRoomRow,
 } from "@/server/communities/live-rooms";
 import { createTtlMemo } from "@/server/ttl-memo";
 
@@ -78,14 +80,67 @@ async function loadLiveRoomRows(db: DB, now: Date): Promise<LiveRoomRow[]> {
   }));
 }
 
-const liveRooms = createTtlMemo<"all", LiveRoomRow[]>(LIVE_ROOMS_TTL_MS);
+/** Every public, unarchived room of a listed community, with its members. */
+async function loadPublicRoomRows(db: DB): Promise<PublicRoomRow[]> {
+  const rooms = await db
+    .select({
+      spaceId: spaces.id,
+      spaceSlug: spaces.slug,
+      spaceName: spaces.name,
+      purpose: spaces.purpose,
+      communitySlug: communities.slug,
+      communityName: communities.name,
+      createdAt: spaces.createdAt,
+    })
+    .from(spaces)
+    .innerJoin(communities, eq(communities.id, spaces.communityId))
+    .where(
+      and(
+        eq(spaces.kind, "room"),
+        eq(spaces.visibility, "public"),
+        isNull(spaces.archivedAt),
+        eq(communities.isListedInDirectory, true),
+        isNull(communities.deletedAt),
+      ),
+    );
+  if (rooms.length === 0) return [];
+  // Grouped count (not a correlated subquery; see the spaces router).
+  const counts = await db
+    .select({
+      spaceId: spaceMemberships.spaceId,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(spaceMemberships)
+    .where(
+      and(
+        inArray(
+          spaceMemberships.spaceId,
+          rooms.map((r) => r.spaceId),
+        ),
+        eq(spaceMemberships.status, "active"),
+      ),
+    )
+    .groupBy(spaceMemberships.spaceId);
+  const byId = new Map(counts.map((c) => [c.spaceId, c.n]));
+  return rooms.map((r) => ({ ...r, members: byId.get(r.spaceId) ?? 0 }));
+}
 
-/** "Talking now" rows, rebuilt at most once a minute per instance. */
-export function loadLiveRooms(db: DB): Promise<LiveRoomRow[]> {
-  return liveRooms.get("all", () => loadLiveRoomRows(db, new Date()));
+type SquareRoomRows = { publicRooms: PublicRoomRow[]; live: LiveRoomRow[] };
+
+const squareRoomRows = createTtlMemo<"all", SquareRoomRows>(LIVE_ROOMS_TTL_MS);
+
+/** Public rooms and their recent talk, rebuilt at most once a minute per instance. */
+export function loadSquareRoomRows(db: DB): Promise<SquareRoomRows> {
+  return squareRoomRows.get("all", async () => {
+    const [publicRooms, live] = await Promise.all([
+      loadPublicRoomRows(db),
+      loadLiveRoomRows(db, new Date()),
+    ]);
+    return { publicRooms, live };
+  });
 }
 
 /** Drops this instance's cached rows (tests, or after a listing change). */
-export function invalidateLiveRooms(): void {
-  liveRooms.clear();
+export function invalidateSquareRooms(): void {
+  squareRoomRows.clear();
 }
