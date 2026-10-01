@@ -392,7 +392,7 @@ describe("replacePostVideo", () => {
       .find((c) => c.collection === "feed-posts")!;
     expect(update.data).toMatchObject({
       content: "Better take",
-      imageUrl: null,
+      image: null,
       isEdited: true,
       video: {
         key: `media/videos/public/c1/${UPLOAD}.mp4`,
@@ -421,12 +421,19 @@ describe("replacePostVideo", () => {
       target: target({
         visibility: "community",
         video: null,
+        image: 66,
         imageUrl: "https://bucket/img.jpg",
       }),
     });
     await replacePostVideo(deps, replace);
     const update = payload.update.mock.calls[0]![0];
-    expect(update.data.imageUrl).toBeNull();
+    expect(update.data.image).toBeNull();
+    expect(payload.delete).toHaveBeenCalledWith({
+      collection: "media",
+      where: {
+        and: [{ id: { equals: 66 } }, { purpose: { equals: "feed-post" } }],
+      },
+    });
     expect(update.data.video.storage).toBe("private");
     expect(storage.remove).not.toHaveBeenCalled();
   });
@@ -495,6 +502,7 @@ describe("replacePostVideo", () => {
         { isDeleted: { not_equals: true } },
         { hiddenAt: { exists: false } },
         { "video.key": { equals: OLD_VIDEO.key } },
+        { image: { exists: false } },
       ],
     });
   });

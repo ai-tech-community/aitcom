@@ -45,6 +45,7 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
     createCaller: typeof import("@/server/api/root").createCaller;
     getPayloadClient: typeof import("@/server/payload").getPayloadClient;
     inArray: typeof import("drizzle-orm").inArray;
+    sql: typeof import("drizzle-orm").sql;
   };
   let m: Mods;
   let fx: {
@@ -70,6 +71,7 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
       createCaller,
       getPayloadClient,
       inArray: drizzle.inArray,
+      sql: drizzle.sql,
     };
     if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
       throw new Error("Refusing to run against a cloud Neon DATABASE_URL.");
@@ -127,6 +129,9 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
     } catch {
       // Best-effort teardown.
     }
+    await m.db.execute(
+      m.sql`DELETE FROM "media" WHERE "uploaded_by" IN (${fx.userId}, 'someone-else') AND "filename" LIKE 'it-edit-%'`,
+    );
     await db
       .delete(schema.communityMemberships)
       .where(
@@ -137,6 +142,16 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
       .where(inArray(schema.communities.id, [fx.communityId]));
     await db.delete(schema.user).where(inArray(schema.user.id, [fx.userId]));
   });
+
+  /** A feed post image `uploadedBy` uploaded (no file: storage is not used). */
+  async function ownImage(uploadedBy = fx.userId) {
+    const name = `it-edit-${Date.now()}-${Math.floor(Math.random() * 1e6)}.png`;
+    const res = await m.db.execute(m.sql`
+      INSERT INTO "media" ("alt", "filename", "uploaded_by", "purpose", "updated_at", "created_at")
+      VALUES ('Feed post image', ${name}, ${uploadedBy}, 'feed-post', now(), now())
+      RETURNING "id"`);
+    return { id: Number((res.rows[0] as { id: number }).id), name };
+  }
 
   function author() {
     return m.createCaller({
@@ -177,13 +192,14 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
   });
 
   it("swaps the video for an image", async () => {
+    const image = await ownImage();
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     try {
       await author().feed.editPost({
         postId: fx.postId,
         communitySlug: fx.slug,
         content: "A picture instead",
-        media: { kind: "image", url: "https://bucket.s3.test/pic.jpg" },
+        media: { kind: "image", imageId: image.id },
       });
     } finally {
       log.mockRestore();
@@ -194,8 +210,22 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
       id: fx.postId,
       depth: 0,
     });
-    expect(saved.imageUrl).toBe("https://bucket.s3.test/pic.jpg");
+    expect(saved.image).toBe(image.id);
+    expect(saved.imageUrl).toMatch(new RegExp(`${image.name}$`));
     expect(saved.video?.key ?? null).toBeNull();
+  });
+
+  it("refuses someone else's upload", async () => {
+    const image = await ownImage("someone-else");
+    await expect(
+      author().feed.editPost({
+        postId: fx.postId,
+        communitySlug: fx.slug,
+        content: "Not mine",
+        media: { kind: "image", imageId: image.id },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await m.db.execute(m.sql`DELETE FROM "media" WHERE "id" = ${image.id}`);
   });
 
   it("adds an image to a post that had no media", async () => {
@@ -213,22 +243,48 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
         visibility: "community",
       },
     });
+    const image = await ownImage();
     try {
       await author().feed.editPost({
         postId: textPost.id,
         communitySlug: fx.slug,
         content: "Words and a picture",
-        media: { kind: "image", url: "https://bucket.s3.test/added.jpg" },
+        media: { kind: "image", imageId: image.id },
       });
       const saved = await payload.findByID({
         collection: "feed-posts",
         id: textPost.id,
         depth: 0,
       });
-      expect(saved.imageUrl).toBe("https://bucket.s3.test/added.jpg");
+      expect(saved.image).toBe(image.id);
+      expect(saved.imageUrl).toMatch(new RegExp(`${image.name}$`));
       expect(saved.content).toBe("Words and a picture");
+
+      // Removing it again clears the link and the URL and deletes the
+      // upload (its storage files fail to delete here, which is logged).
+      const log = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      try {
+        await author().feed.editPost({
+          postId: textPost.id,
+          communitySlug: fx.slug,
+          content: "Words again",
+          media: { kind: "none" },
+        });
+      } finally {
+        log.mockRestore();
+      }
+      const cleared = await payload.findByID({
+        collection: "feed-posts",
+        id: textPost.id,
+        depth: 0,
+      });
+      expect(cleared.image ?? null).toBeNull();
+      expect(cleared.imageUrl ?? null).toBeNull();
     } finally {
       await payload.delete({ collection: "feed-posts", id: textPost.id });
+      await m.db.execute(m.sql`DELETE FROM "media" WHERE "id" = ${image.id}`);
     }
   });
 

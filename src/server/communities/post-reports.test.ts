@@ -293,12 +293,28 @@ describe("reviewReport", () => {
     expect(payload.update).toHaveBeenCalledWith({
       collection: "feed-posts",
       id: 5,
-      data: { isDeleted: true, content: "", authorName: "", imageUrl: null },
+      data: { isDeleted: true, content: "", authorName: "", image: null },
     });
     expect(storage.remove).toHaveBeenCalledWith(["k.mp4", "k.jpg"]);
     expect(payload.delete).toHaveBeenCalledWith({
       collection: "post-reports",
       where: { post: { equals: 5 } },
+    });
+  });
+
+  it("remove deletes an image post's upload", async () => {
+    const { deps, payload } = fakes({
+      id: 5,
+      communityId: "c1",
+      image: 66,
+      hiddenAt: NOW.toISOString(),
+    });
+    await reviewReport(deps, { postId: 5, action: "remove" });
+    expect(payload.delete).toHaveBeenCalledWith({
+      collection: "media",
+      where: {
+        and: [{ id: { equals: 66 } }, { purpose: { equals: "feed-post" } }],
+      },
     });
   });
 

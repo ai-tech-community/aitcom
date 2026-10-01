@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getPayloadClient } from "@/server/payload";
 import { auth } from "@/server/better-auth";
+import { MAX_IMAGE_BYTES, isMediaPurpose } from "@/lib/image-uploads";
 
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -11,6 +12,12 @@ export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
   const alt = (formData.get("alt") as string) ?? "upload";
+  // What the image is for. A purpose makes it the uploader's, for one use
+  // only (a feed post image); without one it may be shared (a cover).
+  const purpose = formData.get("purpose");
+  if (purpose !== null && !isMediaPurpose(purpose)) {
+    return NextResponse.json({ error: "Unknown purpose" }, { status: 400 });
+  }
 
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -23,8 +30,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 2MB limit
-  if (file.size > 2 * 1024 * 1024) {
+  if (file.size > MAX_IMAGE_BYTES) {
     return NextResponse.json(
       { error: "File too large (max 2MB)" },
       { status: 400 },
@@ -38,7 +44,11 @@ export async function POST(request: NextRequest) {
 
   const media = await payload.create({
     collection: "media",
-    data: { alt },
+    data: {
+      alt,
+      uploadedBy: session.user.id,
+      ...(purpose === null ? {} : { purpose }),
+    },
     file: {
       data: buffer,
       name: file.name,

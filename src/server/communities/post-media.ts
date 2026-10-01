@@ -5,6 +5,7 @@ import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 
+import { claimFeedImage, cleanUpPostImage, imageIdOf } from "./feed-images";
 import { cleanUpPostVideoFiles } from "./post-video-files";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -59,11 +60,12 @@ export async function loadPostForMediaEdit(
 }
 
 /**
- * Writes new media onto `post` and then removes the video files it no
- * longer points at. The write only lands while the post still carries the
- * video it was read with (and is still live and unhidden), so two edits
- * racing on one post cannot both drop the same files and orphan the
- * winner's: the loser gets a CONFLICT and nothing changes.
+ * Writes new media onto `post` and then removes the video files and the
+ * image it no longer points at. The write only lands while the post still
+ * carries the video and image it was read with (and is still live and
+ * unhidden), so two edits racing on one post cannot both drop the same
+ * files and orphan the winner's: the loser gets a CONFLICT and nothing
+ * changes.
  */
 export async function writePostMedia(
   deps: PostMediaDeps,
@@ -72,6 +74,7 @@ export async function writePostMedia(
   context: string,
 ): Promise<void> {
   const oldKey = post.video?.key ?? null;
+  const oldImage = imageIdOf(post);
   const unchangedSinceRead: Where = {
     and: [
       { id: { equals: post.id } },
@@ -80,6 +83,9 @@ export async function writePostMedia(
       oldKey
         ? { "video.key": { equals: oldKey } }
         : { "video.key": { exists: false } },
+      oldImage === null
+        ? { image: { exists: false } }
+        : { image: { equals: oldImage } },
     ],
   };
   const { docs } = await deps.payload.update({
@@ -101,14 +107,18 @@ export async function writePostMedia(
       log: deps.log,
     });
   }
+  if (data.image !== undefined && imageIdOf(data) !== oldImage) {
+    await cleanUpPostImage(deps.payload, post, { context, log: deps.log });
+  }
 }
 
 /**
  * Sets a post's text and its image, or no media at all, in place of what
- * it carried. A post holds one image or one video, never both, so any
- * video goes; and since only video posts may be public, a public post
- * that loses its video becomes community-only. Putting a new video on a
- * post is `replacePostVideo`, which needs a checked upload.
+ * it carried. The image must be the author's own unused feed post image.
+ * A post holds one image or one video, never both, so any video goes; and
+ * since only video posts may be public, a public post that loses its video
+ * becomes community-only. Putting a new video on a post is
+ * `replacePostVideo`, which needs a checked upload.
  */
 export async function setPostImage(
   deps: PostMediaDeps,
@@ -117,17 +127,25 @@ export async function setPostImage(
     userId: string;
     communityId: string;
     content: string;
-    imageUrl: string | null;
+    imageId: number | null;
   },
 ): Promise<void> {
   const post = await loadPostForMediaEdit(deps.payload, input);
+  const image =
+    input.imageId === null
+      ? null
+      : await claimFeedImage(deps.payload, {
+          imageId: input.imageId,
+          userId: input.userId,
+          postId: post.id,
+        });
   const now = deps.now?.() ?? new Date();
   await writePostMedia(
     deps,
     post,
     {
       content: input.content,
-      imageUrl: input.imageUrl,
+      image: image?.id ?? null,
       ...(post.video?.key
         ? { video: NO_VIDEO, visibility: "community" as const }
         : {}),

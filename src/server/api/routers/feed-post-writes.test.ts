@@ -32,7 +32,20 @@ const payload = {
   findByID: vi.fn(),
   find: vi.fn(),
   update: vi.fn(),
+  count: vi.fn(),
+  delete: vi.fn(),
+  create: vi.fn(),
 };
+
+/** The member's own unused feed post image. */
+const ownImage = {
+  id: 77,
+  url: "https://bucket.s3.test/new.jpg",
+  uploadedBy: "u-1",
+  purpose: "feed-post",
+};
+let storedPost: Record<string, unknown> = post;
+let storedImage: Record<string, unknown> | null = ownImage;
 
 const storage = { remove: vi.fn() };
 
@@ -58,6 +71,13 @@ vi.mock("@/server/payload", () => ({ getPayloadClient: async () => payload }));
 vi.mock("@/server/media/video-storage", () => ({
   getVideoStorage: () => storage,
 }));
+vi.mock("@/lib/gamification", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/gamification")>()),
+  awardXp: vi.fn(async () => undefined),
+}));
+vi.mock("@/server/agent/activity", () => ({
+  logActivity: vi.fn(async () => undefined),
+}));
 vi.mock("@/server/communities/feed-posts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/server/communities/feed-posts")>()),
   requireFeedPoster: vi.fn(async () => {
@@ -81,7 +101,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   hooks.membership = { role: "member" };
   hooks.poster = { id: "c-1" };
-  payload.findByID.mockResolvedValue(post);
+  storedPost = post;
+  storedImage = ownImage;
+  payload.findByID.mockImplementation(
+    async ({ collection }: { collection: string }) =>
+      collection === "media" ? storedImage : storedPost,
+  );
+  payload.count.mockResolvedValue({ totalDocs: 0 });
+  payload.delete.mockResolvedValue({ docs: [] });
   // A guarded media write (by `where`) answers with the posts it changed.
   payload.update.mockImplementation(
     async ({
@@ -122,19 +149,19 @@ describe("feed post writes", () => {
   });
 
   it("editPost swaps a public post's video for an image: members-only, old files removed", async () => {
-    payload.findByID.mockResolvedValue({ ...post, visibility: "public" });
+    storedPost = { ...post, visibility: "public" };
     await caller().feed.editPost({
       postId: 5,
       communitySlug: "c",
       content: "Now a picture",
-      media: { kind: "image", url: "https://bucket.s3.test/new.jpg" },
+      media: { kind: "image", imageId: 77 },
     });
     const data = payload.update.mock.calls[0]![0].data as Record<
       string,
       unknown
     >;
     expect(data).toMatchObject({
-      imageUrl: "https://bucket.s3.test/new.jpg",
+      image: 77,
       visibility: "community",
       video: { key: null, thumbnailKey: null },
     });
@@ -144,12 +171,13 @@ describe("feed post writes", () => {
     ]);
   });
 
-  it("editPost removes media without touching storage when there was no video", async () => {
-    payload.findByID.mockResolvedValue({
+  it("editPost removes the image, deleting the upload, without touching video storage", async () => {
+    storedPost = {
       ...post,
       video: null,
+      image: 66,
       imageUrl: "https://bucket.s3.test/old.jpg",
-    });
+    };
     await caller().feed.editPost({
       postId: 5,
       communitySlug: "c",
@@ -160,9 +188,15 @@ describe("feed post writes", () => {
       string,
       unknown
     >;
-    expect(data.imageUrl).toBeNull();
+    expect(data.image).toBeNull();
     expect(data).not.toHaveProperty("visibility");
     expect(storage.remove).not.toHaveBeenCalled();
+    expect(payload.delete).toHaveBeenCalledWith({
+      collection: "media",
+      where: {
+        and: [{ id: { equals: 66 } }, { purpose: { equals: "feed-post" } }],
+      },
+    });
   });
 
   it("editPost still succeeds when the old video's files cannot be removed", async () => {
@@ -213,10 +247,7 @@ describe("feed post writes", () => {
   });
 
   it("editPost leaves a hidden post's media for the moderator", async () => {
-    payload.findByID.mockResolvedValue({
-      ...post,
-      hiddenAt: "2026-09-24T11:00:00Z",
-    });
+    storedPost = { ...post, hiddenAt: "2026-09-24T11:00:00Z" };
     await expect(
       caller().feed.editPost({
         postId: 5,
@@ -240,6 +271,73 @@ describe("feed post writes", () => {
       }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
     expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  it("editPost refuses an image that is not the member's own feed post image", async () => {
+    for (const image of [
+      null,
+      { ...ownImage, uploadedBy: "someone-else" },
+      { ...ownImage, purpose: null },
+    ]) {
+      storedImage = image;
+      await expect(
+        caller().feed.editPost({
+          postId: 5,
+          communitySlug: "c",
+          content: "New",
+          media: { kind: "image", imageId: 77 },
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+    expect(payload.update).not.toHaveBeenCalled();
+  });
+
+  it("editPost refuses an image another post already shows", async () => {
+    payload.count.mockResolvedValue({ totalDocs: 1 });
+    await expect(
+      caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "New",
+        media: { kind: "image", imageId: 77 },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(payload.count).toHaveBeenCalledWith({
+      collection: "feed-posts",
+      where: {
+        and: [{ image: { equals: 77 } }, { id: { not_equals: 5 } }],
+      },
+    });
+  });
+
+  it("createPost links the member's own image", async () => {
+    payload.create.mockResolvedValue({ id: 8 });
+    await caller().feed.createPost({
+      communitySlug: "c",
+      content: "Look",
+      imageId: 77,
+    });
+    expect(payload.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "feed-posts",
+        data: expect.objectContaining({ image: 77 }),
+      }),
+    );
+  });
+
+  it("deletePost also deletes the post's image upload", async () => {
+    storedPost = { ...post, video: null, image: { id: 66, url: "u" } };
+    await caller().feed.deletePost({ postId: 5 });
+    expect(payload.update.mock.calls[0]![0].data).toMatchObject({
+      isDeleted: true,
+      image: null,
+    });
+    expect(payload.delete).toHaveBeenCalledWith({
+      collection: "media",
+      where: {
+        and: [{ id: { equals: 66 } }, { purpose: { equals: "feed-post" } }],
+      },
+    });
   });
 
   it("editPost lets only the author edit", async () => {

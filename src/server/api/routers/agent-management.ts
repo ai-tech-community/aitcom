@@ -25,6 +25,7 @@ import { logActivity } from "@/server/agent/activity";
 import { generateInviteCode } from "@/app/api/mcp/registration-tools";
 import { getPayloadClient } from "@/server/payload";
 import { incrementNumeric } from "@/server/payload-numeric";
+import { importFeedImage } from "@/server/communities/feed-images";
 import { syncFeedPostCounters } from "@/server/communities/feed-post-counters";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
@@ -806,6 +807,23 @@ export const agentManagementRouter = createTRPCRouter({
         }
       }
 
+      // A feed post draft's picture is fetched before the draft is claimed,
+      // so a picture that cannot be loaded leaves the draft pending instead
+      // of approved-but-unpublished. Agents attach pictures by address; it is
+      // copied into our storage as the owner's feed post image, so readers
+      // never load an outside address. If the claim then fails, the unused
+      // image is removed by the daily sweep.
+      const draftImageUrl =
+        input.action === "approved" && existing.type === "feed_post"
+          ? (existing.metadata as { imageUrl?: string } | null)?.imageUrl
+          : undefined;
+      const image = draftImageUrl
+        ? await importFeedImage(await getPayloadClient(), {
+            url: draftImageUrl,
+            userId,
+          })
+        : null;
+
       // 2. CAS claim: only the caller who flips pending→action proceeds.
       const [draft] = await ctx.db
         .update(agentDrafts)
@@ -889,12 +907,11 @@ export const agentManagementRouter = createTRPCRouter({
           });
         }
         const payload = await getPayloadClient();
-        const meta = (draft.metadata ?? {}) as { imageUrl?: string };
         await payload.create({
           collection: "feed-posts",
           data: {
             content: draft.content ?? "",
-            imageUrl: meta.imageUrl,
+            image: image?.id,
             authorId: userId,
             authorName: ctx.session.user.name ?? "Community member",
             communityId: draft.targetId,

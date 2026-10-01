@@ -338,7 +338,7 @@ export async function replacePostVideo(
     post,
     {
       content: input.caption,
-      imageUrl: null,
+      image: null,
       video,
       isEdited: true,
       editedAt: now.toISOString(),

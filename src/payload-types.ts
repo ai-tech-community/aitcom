@@ -362,6 +362,14 @@ export interface Event {
 export interface Media {
   id: number;
   alt: string;
+  /**
+   * Better Auth user ID of the member who uploaded it.
+   */
+  uploadedBy?: string | null;
+  /**
+   * What it was uploaded for. A feed post image belongs to one post and is deleted when the post stops using it. Empty for shared images (covers, logos).
+   */
+  purpose?: 'feed-post' | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -671,7 +679,11 @@ export interface FeedPost {
   id: number;
   content: string;
   /**
-   * S3 image URL.
+   * The post's picture: a feed post image its author uploaded. Deleted when the post stops using it.
+   */
+  image?: (number | null) | Media;
+  /**
+   * Public URL of the image, written by the server with it so feeds read it without a join.
    */
   imageUrl?: string | null;
   /**
@@ -1980,6 +1992,7 @@ export interface CommentsSelect<T extends boolean = true> {
  */
 export interface FeedPostsSelect<T extends boolean = true> {
   content?: T;
+  image?: T;
   imageUrl?: T;
   authorId?: T;
   authorName?: T;
@@ -2189,6 +2202,8 @@ export interface PagesSelect<T extends boolean = true> {
  */
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
+  uploadedBy?: T;
+  purpose?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
