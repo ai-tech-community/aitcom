@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { FeedComments } from "./feed-comments";
 import { FeedVideoPlayer, type FeedVideo } from "./feed-video-player";
 import { LinkPreviewCard } from "./link-preview-card";
-import { LinkifiedText } from "./linkified-text";
+import { FormattedPostText } from "./formatted-post-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
 import { FeedGif, type FeedGifView } from "./feed-gif";
@@ -54,6 +54,8 @@ interface FeedPost {
     description?: string | null;
     imageUrl?: string | null;
     siteName?: string | null;
+    /** The author took the preview off; the link stays in the text. */
+    hidden?: boolean | null;
   } | null;
   /** Set when the post was reported; only its author and moderators see it. */
   hiddenAt?: string | null;
@@ -265,9 +267,7 @@ export function FeedPostCard({
           }}
         />
       ) : (
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-          <LinkifiedText text={post.content} />
-        </p>
+        <FormattedPostText text={post.content} />
       )}
 
       {/* Media (the edit form shows its own while editing) */}
@@ -280,7 +280,7 @@ export function FeedPostCard({
       ) : post.imageUrl ? (
         // A legacy post shows its one picture by URL, with no description.
         <FeedImageGallery images={[{ url: post.imageUrl, alt: "" }]} />
-      ) : link && !isEditing ? (
+      ) : link && !isEditing && !post.linkPreview?.hidden ? (
         <LinkPreviewCard href={link} preview={linkPreview} />
       ) : null}
 

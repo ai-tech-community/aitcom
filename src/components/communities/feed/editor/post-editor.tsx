@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
+import { toggleWrap } from "@/lib/post-format";
 import { cn } from "@/lib/utils";
 
 import type { usePostText } from "./use-post-text";
@@ -139,9 +140,14 @@ export function PostEditor({
               takeImages(files);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              if (!(e.metaKey || e.ctrlKey)) return;
+              if (e.key === "Enter") {
                 e.preventDefault();
                 onSubmitShortcut?.();
+              } else if (e.key === "b" || e.key === "i") {
+                e.preventDefault();
+                const marker = e.key === "b" ? "**" : "_";
+                text.format((v, s, end) => toggleWrap(v, s, end, marker));
               }
             }}
             placeholder={placeholder}

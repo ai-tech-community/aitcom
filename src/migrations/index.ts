@@ -128,6 +128,7 @@ import * as migration_20260930b_event_registration_checked_in_at from "./2026093
 import * as migration_20261001a_feed_post_owned_images from "./20261001a_feed_post_owned_images";
 import * as migration_20261001b_feed_post_gifs from "./20261001b_feed_post_gifs";
 import * as migration_20261001c_feed_post_pictures from "./20261001c_feed_post_pictures";
+import * as migration_20261001d_feed_post_link_preview_hidden from "./20261001d_feed_post_link_preview_hidden";
 
 export const migrations = [
   {
@@ -779,5 +780,10 @@ export const migrations = [
     up: migration_20261001c_feed_post_pictures.up,
     down: migration_20261001c_feed_post_pictures.down,
     name: "20261001c_feed_post_pictures",
+  },
+  {
+    up: migration_20261001d_feed_post_link_preview_hidden.up,
+    down: migration_20261001d_feed_post_link_preview_hidden.down,
+    name: "20261001d_feed_post_link_preview_hidden",
   },
 ];

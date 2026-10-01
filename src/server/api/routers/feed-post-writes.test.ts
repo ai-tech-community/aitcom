@@ -480,6 +480,57 @@ describe("feed post writes", () => {
     ).resolves.toBeDefined();
   }, 30_000);
 
+  it("editPost moves a post only to one of its community's topics", async () => {
+    payload.count.mockImplementation(async ({ where }: { where: unknown }) => ({
+      totalDocs: JSON.stringify(where).includes('"jobs"') ? 1 : 0,
+    }));
+    await caller().feed.editPost({
+      postId: 5,
+      communitySlug: "c",
+      content: "Hiring",
+      topicSlug: "jobs",
+    });
+    expect(payload.update.mock.calls.at(-1)![0].data).toMatchObject({
+      topicSlug: "jobs",
+    });
+    await expect(
+      caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "Elsewhere",
+        topicSlug: "another-community-topic",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("editPost hides the link preview, keeping what it says", async () => {
+    storedPost = {
+      ...post,
+      content: "Read https://x.test/a",
+      linkPreview: { url: "https://x.test/a", title: "A page", hidden: false },
+    };
+    await caller().feed.editPost({
+      postId: 5,
+      communitySlug: "c",
+      content: "Read https://x.test/a",
+      linkPreviewHidden: true,
+    });
+    expect(payload.update.mock.calls.at(-1)![0].data).toMatchObject({
+      linkPreview: { url: "https://x.test/a", title: "A page", hidden: true },
+    });
+  });
+
+  it("createPost refuses a topic that is not in the community", async () => {
+    await expect(
+      caller().feed.createPost({
+        communitySlug: "c",
+        content: "Hi",
+        topicSlug: "nope",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+
   it("editPost lets only the author edit", async () => {
     await expect(
       caller("someone-else").feed.editPost({

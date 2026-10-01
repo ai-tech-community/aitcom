@@ -8,7 +8,10 @@ import {
 } from "@/server/link-preview/fetch-link-preview";
 
 /** The stored `linkPreview` group: the previewed URL plus what its page said. */
-export type StoredLinkPreview = { url: string | null } & LinkPreviewMeta;
+export type StoredLinkPreview = {
+  url: string | null;
+  hidden?: boolean | null;
+} & LinkPreviewMeta;
 
 const NO_META: LinkPreviewMeta = {
   title: null,
@@ -37,9 +40,10 @@ export function linkPreviewBeforeChange(
       (originalDoc?.linkPreview as StoredLinkPreview | undefined)?.url ?? null;
     if (link === previous) return data;
 
+    // A new link starts shown, whatever the author did with the old one.
     const preview: StoredLinkPreview = link
-      ? { url: link, ...((await fetcher(link)) ?? NO_META) }
-      : { url: null, ...NO_META };
+      ? { url: link, hidden: false, ...((await fetcher(link)) ?? NO_META) }
+      : { url: null, hidden: false, ...NO_META };
     data.linkPreview = preview;
     return data;
   };

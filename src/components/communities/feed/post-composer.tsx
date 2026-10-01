@@ -12,6 +12,7 @@ import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
 import { DraftNotice } from "./editor/draft-notice";
 import { EmojiPickerButton } from "./editor/emoji-picker-button";
+import { FormatButtons } from "./editor/format-buttons";
 import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
 import { PictureAttachments } from "./editor/picture-attachments";
 import { PostEditor } from "./editor/post-editor";
@@ -262,6 +263,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
               />
             )}
             <EmojiPickerButton onPick={text.insert} />
+            <FormatButtons text={text} />
             {/* One topic is no choice; the select appears once there are two. */}
             {topics && topics.length > 1 ? (
               <select

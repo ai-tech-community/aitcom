@@ -55,6 +55,16 @@ vi.mock("sonner", () => ({ toast: { success: m.toast, error: m.toast } }));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({ feed: { getReels: { invalidate: m.reels } } }),
+    topics: {
+      list: {
+        useQuery: () => ({
+          data: [
+            { id: 1, slug: "general", label: "General", emoji: null },
+            { id: 2, slug: "jobs", label: "Jobs", emoji: null },
+          ],
+        }),
+      },
+    },
     feed: {
       editPost: {
         useMutation: (opts: { onSuccess: () => void }) => ({
@@ -417,5 +427,48 @@ describe("PostEditForm", () => {
         },
       }),
     );
+  });
+
+  it("moves the post to another topic, sending only what changed", () => {
+    renderForm({ ...textPost, topicSlug: "general" });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(m.editPost).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ topicSlug: expect.anything() }),
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: "selectTopic" }), {
+      target: { value: "jobs" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(m.editPost).toHaveBeenLastCalledWith(
+      expect.objectContaining({ topicSlug: "jobs" }),
+    );
+  });
+
+  it("takes a wrong link preview off the post, and can put it back", () => {
+    const linked: EditablePost = {
+      ...textPost,
+      content: "Read https://example.com/post",
+      linkPreview: {
+        url: "https://example.com/post",
+        title: "Not what I meant",
+        hidden: false,
+      },
+    };
+    renderForm(linked);
+    expect(screen.getByText("Not what I meant")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "removePreview" }));
+    expect(screen.getByText("previewHidden")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(m.editPost).toHaveBeenLastCalledWith(
+      expect.objectContaining({ linkPreviewHidden: true }),
+    );
+  });
+
+  it("makes the selection bold from the toolbar", async () => {
+    renderForm({ ...textPost, content: "Hello world" });
+    const field = screen.getByRole("textbox", { name: "editLabel" });
+    (field as HTMLTextAreaElement).setSelectionRange(6, 11);
+    fireEvent.click(screen.getByRole("button", { name: "bold" }));
+    expect(field).toHaveValue("Hello **world**");
   });
 });

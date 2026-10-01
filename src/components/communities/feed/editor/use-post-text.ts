@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
+import type { TextEdit } from "@/lib/post-format";
 
 /**
  * The text of a post being written, with a way to insert at the cursor
@@ -31,11 +32,31 @@ export function usePostText(initial: string) {
     });
   }, []);
 
+  /**
+   * Applies a formatting change (post-format's toggleWrap or toggleList)
+   * to the current selection, then selects what it returns.
+   */
+  const format = useCallback(
+    (edit: (value: string, start: number, end: number) => TextEdit) => {
+      const field = textareaRef.current;
+      const start = field?.selectionStart ?? 0;
+      const end = field?.selectionEnd ?? start;
+      const next = edit(field?.value ?? "", start, end);
+      setValue(next.value);
+      requestAnimationFrame(() => {
+        field?.focus();
+        field?.setSelectionRange(next.start, next.end);
+      });
+    },
+    [],
+  );
+
   return {
     value,
     setValue,
     textareaRef,
     insert,
+    format,
     tooLong: value.length > POST_MAX_LENGTH,
   };
 }
