@@ -363,6 +363,7 @@ const target = (over: Record<string, unknown> = {}) => ({
   visibility: "public",
   isDeleted: false,
   imageUrl: null,
+  updatedAt: "2026-09-24T10:00:00.000Z",
   video: OLD_VIDEO,
   ...over,
 });
@@ -392,7 +393,7 @@ describe("replacePostVideo", () => {
       .find((c) => c.collection === "feed-posts")!;
     expect(update.data).toMatchObject({
       content: "Better take",
-      image: null,
+      images: [],
       isEdited: true,
       video: {
         key: `media/videos/public/c1/${UPLOAD}.mp4`,
@@ -421,17 +422,17 @@ describe("replacePostVideo", () => {
       target: target({
         visibility: "community",
         video: null,
-        image: 66,
+        images: [66, 67],
         imageUrl: "https://bucket/img.jpg",
       }),
     });
     await replacePostVideo(deps, replace);
     const update = payload.update.mock.calls[0]![0];
-    expect(update.data.image).toBeNull();
+    expect(update.data.images).toEqual([]);
     expect(payload.delete).toHaveBeenCalledWith({
       collection: "media",
       where: {
-        and: [{ id: { equals: 66 } }, { purpose: { equals: "feed-post" } }],
+        and: [{ id: { in: [66, 67] } }, { purpose: { equals: "feed-post" } }],
       },
     });
     expect(update.data.video.storage).toBe("private");
@@ -488,7 +489,7 @@ describe("replacePostVideo", () => {
     expect(storage.remove).not.toHaveBeenCalled();
   });
 
-  it("only writes while the post still carries the video it was read with", async () => {
+  it("only writes while the post is exactly as it was read", async () => {
     const { deps, payload } = fakes({
       uploads: [upload()],
       heads: goodHeads(),
@@ -499,10 +500,9 @@ describe("replacePostVideo", () => {
     expect(write.where).toEqual({
       and: [
         { id: { equals: 9 } },
+        { updatedAt: { equals: "2026-09-24T10:00:00.000Z" } },
         { isDeleted: { not_equals: true } },
         { hiddenAt: { exists: false } },
-        { "video.key": { equals: OLD_VIDEO.key } },
-        { image: { exists: false } },
       ],
     });
   });

@@ -123,9 +123,11 @@ beforeEach(() => {
   hooks.poster = { id: "c-1" };
   storedPost = post;
   storedImage = ownImage;
-  payload.findByID.mockImplementation(
-    async ({ collection }: { collection: string }) =>
-      collection === "media" ? storedImage : storedPost,
+  payload.findByID.mockImplementation(async () => storedPost);
+  payload.find.mockImplementation(
+    async ({ collection }: { collection: string }) => ({
+      docs: collection === "media" && storedImage ? [storedImage] : [],
+    }),
   );
   payload.count.mockResolvedValue({ totalDocs: 0 });
   giphy.byId.mockImplementation(async (id: string) =>
@@ -179,14 +181,14 @@ describe("feed post writes", () => {
       postId: 5,
       communitySlug: "c",
       content: "Now a picture",
-      media: { kind: "image", imageId: 77 },
+      media: { kind: "images", images: [{ id: 77, alt: "" }] },
     });
     const data = payload.update.mock.calls[0]![0].data as Record<
       string,
       unknown
     >;
     expect(data).toMatchObject({
-      image: 77,
+      images: [77],
       visibility: "community",
       video: { key: null, thumbnailKey: null },
     });
@@ -200,7 +202,7 @@ describe("feed post writes", () => {
     storedPost = {
       ...post,
       video: null,
-      image: 66,
+      images: [66],
       imageUrl: "https://bucket.s3.test/old.jpg",
     };
     await caller().feed.editPost({
@@ -213,13 +215,13 @@ describe("feed post writes", () => {
       string,
       unknown
     >;
-    expect(data.image).toBeNull();
+    expect(data.images).toEqual([]);
     expect(data).not.toHaveProperty("visibility");
     expect(storage.remove).not.toHaveBeenCalled();
     expect(payload.delete).toHaveBeenCalledWith({
       collection: "media",
       where: {
-        and: [{ id: { equals: 66 } }, { purpose: { equals: "feed-post" } }],
+        and: [{ id: { in: [66] } }, { purpose: { equals: "feed-post" } }],
       },
     });
   });
@@ -310,7 +312,7 @@ describe("feed post writes", () => {
           postId: 5,
           communitySlug: "c",
           content: "New",
-          media: { kind: "image", imageId: 77 },
+          media: { kind: "images", images: [{ id: 77, alt: "" }] },
         }),
       ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     }
@@ -324,13 +326,13 @@ describe("feed post writes", () => {
         postId: 5,
         communitySlug: "c",
         content: "New",
-        media: { kind: "image", imageId: 77 },
+        media: { kind: "images", images: [{ id: 77, alt: "" }] },
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(payload.count).toHaveBeenCalledWith({
       collection: "feed-posts",
       where: {
-        and: [{ image: { equals: 77 } }, { id: { not_equals: 5 } }],
+        and: [{ images: { in: [77] } }, { id: { not_equals: 5 } }],
       },
     });
   });
@@ -340,27 +342,27 @@ describe("feed post writes", () => {
     await caller().feed.createPost({
       communitySlug: "c",
       content: "Look",
-      imageId: 77,
+      images: [{ id: 77, alt: "" }],
     });
     expect(payload.create).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: "feed-posts",
-        data: expect.objectContaining({ image: 77 }),
+        data: expect.objectContaining({ images: [77] }),
       }),
     );
   });
 
   it("deletePost also deletes the post's image upload", async () => {
-    storedPost = { ...post, video: null, image: { id: 66, url: "u" } };
+    storedPost = { ...post, video: null, images: [{ id: 66, url: "u" }] };
     await caller().feed.deletePost({ postId: 5 });
     expect(payload.update.mock.calls[0]![0].data).toMatchObject({
       isDeleted: true,
-      image: null,
+      images: [],
     });
     expect(payload.delete).toHaveBeenCalledWith({
       collection: "media",
       where: {
-        and: [{ id: { equals: 66 } }, { purpose: { equals: "feed-post" } }],
+        and: [{ id: { in: [66] } }, { purpose: { equals: "feed-post" } }],
       },
     });
   });
@@ -382,7 +384,7 @@ describe("feed post writes", () => {
         width: 400,
         height: 300,
       },
-      image: null,
+      images: [],
       visibility: "community",
       video: { key: null },
     });
@@ -407,10 +409,10 @@ describe("feed post writes", () => {
       postId: 5,
       communitySlug: "c",
       content: "A picture now",
-      media: { kind: "image", imageId: 77 },
+      media: { kind: "images", images: [{ id: 77, alt: "" }] },
     });
     expect(payload.update.mock.calls[0]![0].data).toMatchObject({
-      image: 77,
+      images: [77],
       gif: { giphyId: null, mp4Url: null },
     });
   });
@@ -433,7 +435,7 @@ describe("feed post writes", () => {
       caller().feed.createPost({
         communitySlug: "c",
         content: "Both",
-        imageId: 77,
+        images: [{ id: 77, alt: "" }],
         gifId: "abc123",
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });

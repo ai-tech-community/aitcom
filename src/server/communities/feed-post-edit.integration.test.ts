@@ -167,8 +167,8 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
   async function ownImage(uploadedBy = fx.userId) {
     const name = `it-edit-${Date.now()}-${Math.floor(Math.random() * 1e6)}.png`;
     const res = await m.db.execute(m.sql`
-      INSERT INTO "media" ("alt", "filename", "uploaded_by", "purpose", "updated_at", "created_at")
-      VALUES ('Feed post image', ${name}, ${uploadedBy}, 'feed-post', now(), now())
+      INSERT INTO "media" ("alt", "filename", "mime_type", "uploaded_by", "purpose", "updated_at", "created_at")
+      VALUES ('Feed post image', ${name}, 'image/png', ${uploadedBy}, 'feed-post', now(), now())
       RETURNING "id"`);
     return { id: Number((res.rows[0] as { id: number }).id), name };
   }
@@ -219,7 +219,7 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
         postId: fx.postId,
         communitySlug: fx.slug,
         content: "A picture instead",
-        media: { kind: "image", imageId: image.id },
+        media: { kind: "images", images: [{ id: image.id, alt: "A picture" }] },
       });
     } finally {
       log.mockRestore();
@@ -230,7 +230,7 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
       id: fx.postId,
       depth: 0,
     });
-    expect(saved.image).toBe(image.id);
+    expect(saved.images).toEqual([image.id]);
     expect(saved.imageUrl).toMatch(new RegExp(`${image.name}$`));
     expect(saved.video?.key ?? null).toBeNull();
   });
@@ -242,7 +242,7 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
         postId: fx.postId,
         communitySlug: fx.slug,
         content: "Not mine",
-        media: { kind: "image", imageId: image.id },
+        media: { kind: "images", images: [{ id: image.id, alt: "A picture" }] },
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     await m.db.execute(m.sql`DELETE FROM "media" WHERE "id" = ${image.id}`);
@@ -269,14 +269,14 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
         postId: textPost.id,
         communitySlug: fx.slug,
         content: "Words and a picture",
-        media: { kind: "image", imageId: image.id },
+        media: { kind: "images", images: [{ id: image.id, alt: "A picture" }] },
       });
       const saved = await payload.findByID({
         collection: "feed-posts",
         id: textPost.id,
         depth: 0,
       });
-      expect(saved.image).toBe(image.id);
+      expect(saved.images).toEqual([image.id]);
       expect(saved.imageUrl).toMatch(new RegExp(`${image.name}$`));
       expect(saved.content).toBe("Words and a picture");
 
@@ -300,7 +300,7 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
         id: textPost.id,
         depth: 0,
       });
-      expect(cleared.image ?? null).toBeNull();
+      expect(cleared.images ?? []).toEqual([]);
       expect(cleared.imageUrl ?? null).toBeNull();
     } finally {
       await payload.delete({ collection: "feed-posts", id: textPost.id });
@@ -396,7 +396,7 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
         postId: fx.postId,
         communitySlug: fx.slug,
         content: "A picture",
-        media: { kind: "image", imageId: image.id },
+        media: { kind: "images", images: [{ id: image.id, alt: "A picture" }] },
       });
       const withImage = await payload.findByID({
         collection: "feed-posts",
@@ -405,7 +405,61 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
       });
       expect(withImage.gif?.giphyId ?? null).toBeNull();
       expect(withImage.gif?.mp4Url ?? null).toBeNull();
-      expect(withImage.image).toBe(image.id);
+      expect(withImage.images).toEqual([image.id]);
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("keeps several pictures in order with their descriptions, and deletes the one taken out", async () => {
+    const first = await ownImage();
+    const second = await ownImage();
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await author().feed.editPost({
+        postId: fx.postId,
+        communitySlug: fx.slug,
+        content: "Two pictures",
+        media: {
+          kind: "images",
+          images: [
+            { id: second.id, alt: "Second, shown first" },
+            { id: first.id, alt: "" },
+          ],
+        },
+      });
+      const payload = await m.getPayloadClient();
+      const saved = await payload.findByID({
+        collection: "feed-posts",
+        id: fx.postId,
+        depth: 0,
+      });
+      expect(saved.images).toEqual([second.id, first.id]);
+      expect(saved.imageUrl).toMatch(new RegExp(`${second.name}$`));
+      const described = await payload.findByID({
+        collection: "media",
+        id: second.id,
+        depth: 0,
+      });
+      expect(described.alt).toBe("Second, shown first");
+
+      await author().feed.editPost({
+        postId: fx.postId,
+        communitySlug: fx.slug,
+        content: "One picture",
+        media: { kind: "images", images: [{ id: first.id, alt: "" }] },
+      });
+      const after = await payload.findByID({
+        collection: "feed-posts",
+        id: fx.postId,
+        depth: 0,
+      });
+      expect(after.images).toEqual([first.id]);
+      expect(after.imageUrl).toMatch(new RegExp(`${first.name}$`));
+      const gone = await m.db.execute(
+        m.sql`SELECT 1 FROM "media" WHERE "id" = ${second.id}`,
+      );
+      expect(gone.rows).toHaveLength(0);
     } finally {
       log.mockRestore();
     }

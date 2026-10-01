@@ -26,13 +26,14 @@ export const FeedPosts: CollectionConfig = {
       maxLength: POST_MAX_LENGTH,
     },
     {
-      name: "image",
+      name: "images",
       type: "upload",
       relationTo: "media",
-      unique: true,
+      hasMany: true,
+      maxRows: 4,
       admin: {
         description:
-          "The post's picture: a feed post image its author uploaded. Deleted when the post stops using it.",
+          "The post's pictures (up to 4): feed post images its author uploaded, each described by its media alt text. Deleted when the post stops using them.",
       },
     },
     {
@@ -57,7 +58,7 @@ export const FeedPosts: CollectionConfig = {
       admin: {
         readOnly: true,
         description:
-          "Public URL of the image, written by the server with it so feeds read it without a join.",
+          "Public URL of the first picture, written by the server so older readers (agents, MCP) get one picture without a join.",
       },
     },
     {

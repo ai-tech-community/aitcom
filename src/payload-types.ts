@@ -679,9 +679,9 @@ export interface FeedPost {
   id: number;
   content: string;
   /**
-   * The post's picture: a feed post image its author uploaded. Deleted when the post stops using it.
+   * The post's pictures (up to 4): feed post images its author uploaded, each described by its media alt text. Deleted when the post stops using them.
    */
-  image?: (number | null) | Media;
+  images?: (number | Media)[] | null;
   /**
    * A GIF from GIPHY, looked up by the server by its GIPHY id. A post carries one picture, video or GIF, never more.
    */
@@ -694,7 +694,7 @@ export interface FeedPost {
     height?: number | null;
   };
   /**
-   * Public URL of the image, written by the server with it so feeds read it without a join.
+   * Public URL of the first picture, written by the server so older readers (agents, MCP) get one picture without a join.
    */
   imageUrl?: string | null;
   /**
@@ -2003,7 +2003,7 @@ export interface CommentsSelect<T extends boolean = true> {
  */
 export interface FeedPostsSelect<T extends boolean = true> {
   content?: T;
-  image?: T;
+  images?: T;
   gif?:
     | T
     | {

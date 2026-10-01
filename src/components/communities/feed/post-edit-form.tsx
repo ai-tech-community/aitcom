@@ -15,6 +15,7 @@ import { DraftNotice } from "./editor/draft-notice";
 import { EmojiPickerButton } from "./editor/emoji-picker-button";
 import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
 import type { FeedGifView } from "./feed-gif";
+import { MAX_PICTURES, PictureAttachments } from "./editor/picture-attachments";
 import { PostEditor } from "./editor/post-editor";
 import {
   SEND_SHORTCUTS,
@@ -25,13 +26,23 @@ import { usePostDraft } from "./editor/use-post-draft";
 import { usePostText } from "./editor/use-post-text";
 
 /**
- * What the post will carry after the edit. A picked image stays on the
- * device until Save, so cancelling never leaves an uploaded file behind.
+ * One picture in an edited post: one it already shows (`id`), or one just
+ * picked (`file`), which stays on the device until Save, so cancelling
+ * never leaves an uploaded file behind.
  */
+type EditPicture = {
+  key: string;
+  id?: number;
+  file?: File;
+  src: string;
+  alt: string;
+};
+
+/** What the post will carry after the edit. */
 type MediaEdit =
   | { kind: "keep" }
   | { kind: "none" }
-  | { kind: "image"; file: File; previewUrl: string }
+  | { kind: "pictures"; items: EditPicture[] }
   | { kind: "video"; file: File }
   | { kind: "gif"; gif: PickedGif };
 
@@ -39,6 +50,7 @@ export type EditablePost = {
   id: number;
   content: string;
   imageUrl?: string | null;
+  images?: { id: number; url: string; alt: string }[] | null;
   visibility?: VideoVisibility | null;
   video?: { thumbnailUrl: string | null } | null;
   gif?: FeedGifView | null;
@@ -48,7 +60,7 @@ export type EditablePost = {
 
 /**
  * Editing a post: its text and its media, with the composer's controls.
- * A post carries one image or one video, never both. Its audience is fixed
+ * A post carries pictures (up to 4), a video or a GIF, never two kinds. Its audience is fixed
  * after posting, so a new video goes to the same audience; a public post
  * whose video is removed becomes community-only (only video posts may be
  * public), and the form says so before saving. Nothing changes until Save.
@@ -85,6 +97,7 @@ export function PostEditForm({
   });
   const [media, setMedia] = useState<MediaEdit>({ kind: "keep" });
   const [isUploading, setIsUploading] = useState(false);
+  const previews = useRef(new Set<string>());
   const imageInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const imageButton = useRef<HTMLButtonElement>(null);
@@ -92,15 +105,27 @@ export function PostEditForm({
   const audience: VideoVisibility =
     post.visibility === "public" ? "public" : "community";
   const hadGif = Boolean(post.gif?.mp4Url);
-  const hadMedia = Boolean(post.imageUrl) || Boolean(post.video) || hadGif;
+  const currentPictures: EditPicture[] = (post.images ?? []).map((image) => ({
+    key: `current-${image.id}`,
+    id: image.id,
+    src: image.url,
+    alt: image.alt,
+  }));
+  const hadPictures = currentPictures.length > 0;
+  // A legacy post shows a picture by URL only; it can be removed or
+  // replaced, not edited.
+  const hadLegacyImage = !hadPictures && Boolean(post.imageUrl);
+  const hadMedia =
+    hadPictures || hadLegacyImage || Boolean(post.video) || hadGif;
   const mediaLocked = Boolean(post.hiddenAt);
 
-  // The local preview of a picked image lives as long as the pick.
+  // Free the device previews of picked pictures when the form goes away.
   useEffect(() => {
-    if (media.kind !== "image") return;
-    const url = media.previewUrl;
-    return () => URL.revokeObjectURL(url);
-  }, [media]);
+    const urls = previews.current;
+    return () => {
+      for (const url of urls) URL.revokeObjectURL(url);
+    };
+  }, []);
 
   const editPost = api.feed.editPost.useMutation({
     onSuccess: () => {
@@ -134,24 +159,59 @@ export function PostEditForm({
     videoPost.state.step === "error" &&
     !videoPost.state.retryable;
 
-  const showsOldImage = media.kind === "keep" && Boolean(post.imageUrl);
+  const showsOldImage = media.kind === "keep" && hadLegacyImage;
   const showsOldVideo = media.kind === "keep" && Boolean(post.video);
   const showsOldGif = media.kind === "keep" && hadGif;
   const hasMedia = media.kind === "keep" ? hadMedia : media.kind !== "none";
   const losesPublic =
     audience === "public" &&
     Boolean(post.video) &&
-    (media.kind === "none" || media.kind === "image" || media.kind === "gif");
+    (media.kind === "none" ||
+      media.kind === "pictures" ||
+      media.kind === "gif");
 
-  const pickImageFile = (file: File) => {
+  /** The pictures the post will carry, before any change made here. */
+  const pictures: EditPicture[] =
+    media.kind === "pictures"
+      ? media.items
+      : media.kind === "keep"
+        ? currentPictures
+        : [];
+  const pictureRoom = MAX_PICTURES - pictures.length;
+
+  const setPictures = (items: EditPicture[]) => {
+    setMedia(items.length > 0 ? { kind: "pictures", items } : { kind: "none" });
+  };
+
+  const addPictureFiles = (files: File[]) => {
     videoPost.reset();
-    setMedia({ kind: "image", file, previewUrl: URL.createObjectURL(file) });
+    const taken = files.slice(0, Math.max(0, pictureRoom));
+    if (taken.length < files.length) toast.error(te("tooManyPictures"));
+    const added = taken.map((file) => {
+      const src = URL.createObjectURL(file);
+      previews.current.add(src);
+      return { key: crypto.randomUUID(), file, src, alt: "" };
+    });
+    setPictures([...pictures, ...added]);
   };
 
   const pickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (file) pickImageFile(file);
+    if (files.length > 0) addPictureFiles(files);
+  };
+
+  const removePicture = (key: string) => {
+    const left = pictures.filter((item) => item.key !== key);
+    setPictures(left);
+    // The remove button is gone: keep keyboard focus in the form.
+    if (left.length === 0) imageButton.current?.focus();
+  };
+
+  const describePicture = (key: string, alt: string) => {
+    setPictures(
+      pictures.map((item) => (item.key === key ? { ...item, alt } : item)),
+    );
   };
 
   const pickVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,15 +267,18 @@ export function PostEditForm({
     let change:
       | { kind: "keep" }
       | { kind: "none" }
-      | { kind: "image"; imageId: number }
+      | { kind: "images"; images: { id: number; alt: string }[] }
       | { kind: "gif"; giphyId: string };
-    if (media.kind === "image") {
+    if (media.kind === "pictures") {
       setIsUploading(true);
       try {
-        change = {
-          kind: "image",
-          imageId: (await uploadFeedImage(media.file)).id,
-        };
+        const images = await Promise.all(
+          media.items.map(async (item) => ({
+            id: item.id ?? (await uploadFeedImage(item.file!)).id,
+            alt: item.alt.trim(),
+          })),
+        );
+        change = { kind: "images", images };
       } catch {
         toast.error(tc("uploadFailed"));
         return;
@@ -259,9 +322,15 @@ export function PostEditForm({
         text={text}
         label={t("editLabel")}
         autoFocus
-        onImageFile={mediaLocked || busy ? undefined : pickImageFile}
+        onImageFiles={
+          mediaLocked || busy || pictureRoom <= 0 ? undefined : addPictureFiles
+        }
         imageRefusal={
-          mediaLocked ? t("mediaLockedWhileReviewed") : te("waitForUpload")
+          mediaLocked
+            ? t("mediaLockedWhileReviewed")
+            : pictureRoom <= 0
+              ? te("tooManyPictures")
+              : te("waitForUpload")
         }
         onSubmitShortcut={() => void save()}
         attachments={
@@ -275,12 +344,11 @@ export function PostEditForm({
                 onRetry={() => void save()}
                 state={videoPost.state}
               />
-            ) : media.kind === "image" ? (
-              <MediaPreview
-                src={media.previewUrl}
-                alt={t("attachedImage")}
-                removeLabel={t("removeImage")}
-                onRemove={removeMedia}
+            ) : pictures.length > 0 ? (
+              <PictureAttachments
+                items={pictures}
+                onAltChange={describePicture}
+                onRemove={removePicture}
                 disabled={busy}
               />
             ) : showsOldImage ? (
@@ -338,7 +406,9 @@ export function PostEditForm({
                   ? t("keepCurrentVideo")
                   : hadGif
                     ? t("keepCurrentGif")
-                    : t("keepCurrentImage")}
+                    : hadPictures
+                      ? t("keepCurrentPictures")
+                      : t("keepCurrentImage")}
               </Button>
             ) : null}
             {mediaLocked ? (
@@ -372,9 +442,15 @@ export function PostEditForm({
               <>
                 <ToolbarButton
                   ref={imageButton}
-                  label={hasMedia ? t("replaceWithImage") : t("addImage")}
+                  label={
+                    pictureRoom <= 0
+                      ? te("tooManyPictures")
+                      : pictures.length > 0 || !hasMedia
+                        ? t("addImage")
+                        : t("replaceWithImage")
+                  }
                   icon={<ImagePlus aria-hidden="true" className="size-4" />}
-                  disabled={busy}
+                  disabled={busy || pictureRoom <= 0}
                   onClick={() => imageInput.current?.click()}
                 />
                 <ToolbarButton
@@ -442,6 +518,7 @@ export function PostEditForm({
         ref={imageInput}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={pickImage}
       />

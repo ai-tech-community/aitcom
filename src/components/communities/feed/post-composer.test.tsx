@@ -14,6 +14,7 @@ const m = vi.hoisted(() => ({
   cancel: vi.fn(),
   createPost: vi.fn(),
   toastSuccess: vi.fn(),
+  toastError: vi.fn(),
 }));
 
 const pickedGif = vi.hoisted(() => ({
@@ -62,7 +63,7 @@ vi.mock("next/image", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { success: m.toastSuccess, error: vi.fn() },
+  toast: { success: m.toastSuccess, error: m.toastError },
 }));
 
 vi.mock("@/trpc/react", () => ({
@@ -107,6 +108,9 @@ function pickVideo(input: HTMLInputElement) {
 const postButton = () => screen.getByRole("button", { name: "Post" });
 
 beforeEach(() => {
+  // jsdom has no object URLs.
+  URL.createObjectURL = vi.fn(() => "blob:preview");
+  URL.revokeObjectURL = vi.fn();
   m.videoState = { step: "idle" };
   m.post.mockResolvedValue(true);
 });
@@ -130,9 +134,14 @@ describe("PostComposer video", () => {
     ).not.toBeInTheDocument();
     expect(postButton()).toBeDisabled();
 
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "  Our trip  " },
-    });
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: en.communities.feed.composePlaceholder,
+      }),
+      {
+        target: { value: "  Our trip  " },
+      },
+    );
     fireEvent.click(screen.getByRole("radio", { name: /Public/ }));
     fireEvent.click(postButton());
 
@@ -148,31 +157,49 @@ describe("PostComposer video", () => {
       en.communities.feed.postCreated,
     );
     expect(screen.queryByText("holiday.mov")).not.toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toHaveValue("");
+    expect(
+      screen.getByRole("textbox", {
+        name: en.communities.feed.composePlaceholder,
+      }),
+    ).toHaveValue("");
   });
 
   it("keeps the clip and caption when the video post fails", async () => {
     m.post.mockResolvedValue(false);
     const { videoInput } = renderComposer();
     pickVideo(videoInput());
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "Our trip" },
-    });
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: en.communities.feed.composePlaceholder,
+      }),
+      {
+        target: { value: "Our trip" },
+      },
+    );
     fireEvent.click(postButton());
 
     await waitFor(() => expect(m.post).toHaveBeenCalled());
     expect(m.toastSuccess).not.toHaveBeenCalled();
     expect(screen.getByText("holiday.mov")).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toHaveValue("Our trip");
+    expect(
+      screen.getByRole("textbox", {
+        name: en.communities.feed.composePlaceholder,
+      }),
+    ).toHaveValue("Our trip");
   });
 
   it("tries the same post again from the error", async () => {
     m.post.mockResolvedValue(false);
     const { videoInput } = renderComposer();
     pickVideo(videoInput());
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "Our trip" },
-    });
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: en.communities.feed.composePlaceholder,
+      }),
+      {
+        target: { value: "Our trip" },
+      },
+    );
     fireEvent.click(screen.getByRole("radio", { name: /Public/ }));
     fireEvent.click(postButton());
     await waitFor(() => expect(m.post).toHaveBeenCalledTimes(1));
@@ -182,9 +209,14 @@ describe("PostComposer video", () => {
       message: en.communities.video.failed,
       retryable: true,
     };
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "Our trip " },
-    });
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: en.communities.feed.composePlaceholder,
+      }),
+      {
+        target: { value: "Our trip " },
+      },
+    );
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(m.post).toHaveBeenCalledTimes(2));
     expect(m.post).toHaveBeenLastCalledWith({
@@ -206,9 +238,14 @@ describe("PostComposer video", () => {
     m.videoState = { step: "uploading", share: 0.3 };
     const { videoInput } = renderComposer();
     pickVideo(videoInput());
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "Our trip" },
-    });
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: en.communities.feed.composePlaceholder,
+      }),
+      {
+        target: { value: "Our trip" },
+      },
+    );
 
     expect(postButton()).toBeDisabled();
     fireEvent.submit(postButton().closest("form")!);
@@ -242,7 +279,7 @@ describe("PostComposer video", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: en.communities.feed.removeImage }),
+        screen.getByRole("button", { name: "Remove picture 1" }),
       ).toBeInTheDocument(),
     );
     expect(
@@ -261,7 +298,9 @@ describe("PostComposer pictures", () => {
     fireEvent.change(imageInput(), {
       target: { files: [new File(["x"], "pic.png", { type: "image/png" })] },
     });
-    const field = screen.getByRole("textbox");
+    const field = screen.getByRole("textbox", {
+      name: en.communities.feed.composePlaceholder,
+    });
     fireEvent.change(field, { target: { value: "Look at this" } });
     fireEvent.keyDown(field, { key: "Enter", ctrlKey: true });
     expect(m.createPost).not.toHaveBeenCalled();
@@ -279,12 +318,86 @@ describe("PostComposer pictures", () => {
     expect(
       screen.queryByRole("button", { name: en.communities.video.add }),
     ).not.toBeInTheDocument();
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "Weekend!" },
-    });
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: en.communities.feed.composePlaceholder,
+      }),
+      {
+        target: { value: "Weekend!" },
+      },
+    );
     fireEvent.click(postButton());
     expect(m.createPost).toHaveBeenCalledWith(
-      expect.objectContaining({ gifId: "abc123", imageId: undefined }),
+      expect.objectContaining({ gifId: "abc123", images: undefined }),
+    );
+  });
+
+  it("posts several pictures in order, with their descriptions", async () => {
+    let next = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        next += 1;
+        const id = next;
+        return {
+          ok: true,
+          json: () =>
+            Promise.resolve({ id, url: `https://cdn.test/${id}.png` }),
+        };
+      }),
+    );
+    const { imageInput } = renderComposer();
+    fireEvent.change(imageInput(), {
+      target: {
+        files: [
+          new File(["a"], "a.png", { type: "image/png" }),
+          new File(["b"], "b.png", { type: "image/png" }),
+        ],
+      },
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Post" })).toBeDisabled(),
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Description of picture 1" }),
+      { target: { value: "Our new office" } },
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: en.communities.feed.composePlaceholder,
+      }),
+      { target: { value: "Moved in!" } },
+    );
+    await waitFor(() => expect(postButton()).toBeEnabled());
+    fireEvent.click(postButton());
+    expect(m.createPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        images: [
+          { id: 1, alt: "Our new office" },
+          { id: 2, alt: "" },
+        ],
+      }),
+    );
+  });
+
+  it("keeps at most four pictures and says so", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => undefined)),
+    );
+    const { imageInput } = renderComposer();
+    fireEvent.change(imageInput(), {
+      target: {
+        files: [1, 2, 3, 4, 5].map(
+          (n) => new File([String(n)], `${n}.png`, { type: "image/png" }),
+        ),
+      },
+    });
+    expect(
+      screen.getAllByRole("button", { name: /Remove picture/ }),
+    ).toHaveLength(4);
+    expect(m.toastError).toHaveBeenCalledWith(
+      en.communities.feed.editor.tooManyPictures,
     );
   });
 });

@@ -6,7 +6,7 @@ import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { ReportReason } from "@/lib/post-report-reasons";
 import { canViewPost, type FeedViewer } from "./post-visibility";
-import { cleanUpPostImage } from "./feed-images";
+import { cleanUpPostImages } from "./feed-images";
 import { NO_GIF } from "./post-media";
 import { cleanUpPostVideoFiles } from "./post-video-files";
 
@@ -202,7 +202,7 @@ export async function reviewReport(
       isDeleted: true,
       content: "",
       authorName: "",
-      image: null,
+      images: [],
       imageUrl: null,
       gif: NO_GIF,
     },
@@ -213,7 +213,7 @@ export async function reviewReport(
     context: "feed.reviewReport",
     log: deps.log,
   });
-  await cleanUpPostImage(deps.payload, post, {
+  await cleanUpPostImages(deps.payload, post, [], {
     context: "feed.reviewReport",
     log: deps.log,
   });

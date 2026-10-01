@@ -6,7 +6,12 @@ const net = vi.hoisted(() => ({
 }));
 vi.mock("@/server/net/safe-fetch", () => net);
 
-import { cleanUpPostImage, fetchImage, importFeedImage } from "./feed-images";
+import {
+  claimFeedImages,
+  cleanUpPostImages,
+  fetchImage,
+  importFeedImage,
+} from "./feed-images";
 import {
   feedPostImageUrlBeforeChange,
   unlinkFeedPostsBeforeMediaDelete,
@@ -17,6 +22,9 @@ function fakePayload() {
     create: vi.fn().mockResolvedValue({ id: 31, url: "https://ours/x.png" }),
     delete: vi.fn().mockResolvedValue({ docs: [] }),
     findByID: vi.fn(),
+    find: vi.fn().mockResolvedValue({ docs: [] }),
+    count: vi.fn().mockResolvedValue({ totalDocs: 0 }),
+    update: vi.fn().mockResolvedValue({}),
   };
 }
 
@@ -104,46 +112,109 @@ describe("importFeedImage", () => {
   });
 });
 
-describe("cleanUpPostImage", () => {
-  it("deletes only a feed post image, and logs a failure instead of throwing", async () => {
+describe("claimFeedImages", () => {
+  const own = (id: number, alt = "") => ({
+    id,
+    url: `https://ours/${id}.png`,
+    alt,
+    uploadedBy: "u1",
+    purpose: "feed-post",
+  });
+
+  it("claims the member's own pictures in order and saves new descriptions", async () => {
     const payload = fakePayload();
-    await cleanUpPostImage(
+    payload.find.mockResolvedValue({ docs: [own(2, "old"), own(1)] });
+    const images = await claimFeedImages(payload as never, {
+      images: [
+        { id: 1, alt: " A cat on a desk " },
+        { id: 2, alt: "old" },
+      ],
+      userId: "u1",
+      postId: 9,
+    });
+    expect(images).toEqual([
+      { id: 1, url: "https://ours/1.png" },
+      { id: 2, url: "https://ours/2.png" },
+    ]);
+    expect(payload.count).toHaveBeenCalledWith({
+      collection: "feed-posts",
+      where: { and: [{ images: { in: [1, 2] } }, { id: { not_equals: 9 } }] },
+    });
+    expect(payload.update).toHaveBeenCalledTimes(1);
+    expect(payload.update).toHaveBeenCalledWith({
+      collection: "media",
+      id: 1,
+      data: { alt: "A cat on a desk" },
+      depth: 0,
+    });
+  });
+
+  it("refuses someone else's picture, a shared upload, one on another post, repeats and more than four", async () => {
+    const cases: [unknown[], { id: number; alt: string }[], number][] = [
+      [[{ ...own(1), uploadedBy: "u2" }], [{ id: 1, alt: "" }], 0],
+      [[{ ...own(1), purpose: null }], [{ id: 1, alt: "" }], 0],
+      [[own(1)], [{ id: 1, alt: "" }], 1],
+      [
+        [own(1)],
+        [
+          { id: 1, alt: "" },
+          { id: 1, alt: "" },
+        ],
+        0,
+      ],
+      [
+        [1, 2, 3, 4, 5].map((id) => own(id)),
+        [1, 2, 3, 4, 5].map((id) => ({ id, alt: "" })),
+        0,
+      ],
+    ];
+    for (const [docs, images, usedElsewhere] of cases) {
+      const payload = fakePayload();
+      payload.find.mockResolvedValue({ docs });
+      payload.count.mockResolvedValue({ totalDocs: usedElsewhere });
+      await expect(
+        claimFeedImages(payload as never, { images, userId: "u1" }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    }
+  });
+});
+
+describe("cleanUpPostImages", () => {
+  it("deletes only the feed post pictures the post no longer uses", async () => {
+    const payload = fakePayload();
+    await cleanUpPostImages(
       payload as never,
-      { id: 5, image: { id: 66 } as never },
+      { id: 5, images: [1, { id: 2 }, 3] },
+      [2],
       { context: "test" },
     );
     expect(payload.delete).toHaveBeenCalledWith({
       collection: "media",
       where: {
-        and: [{ id: { equals: 66 } }, { purpose: { equals: "feed-post" } }],
+        and: [{ id: { in: [1, 3] } }, { purpose: { equals: "feed-post" } }],
       },
-    });
-    const log = vi.fn();
-    payload.delete.mockRejectedValueOnce(new Error("s3 down"));
-    await expect(
-      cleanUpPostImage(
-        payload as never,
-        { id: 5, image: 66 },
-        { context: "test", log },
-      ),
-    ).resolves.toBeUndefined();
-    expect(log).toHaveBeenCalledWith("[test] image cleanup failed", {
-      postId: 5,
-      imageId: 66,
-      error: expect.any(Error),
     });
   });
 
-  it("does nothing for a post without an image", async () => {
+  it("logs a failure instead of throwing, and does nothing when all are kept", async () => {
     const payload = fakePayload();
-    await cleanUpPostImage(
-      payload as never,
-      { id: 5, image: null },
-      {
-        context: "test",
-      },
-    );
+    await cleanUpPostImages(payload as never, { id: 5, images: [1] }, [1], {
+      context: "test",
+    });
     expect(payload.delete).not.toHaveBeenCalled();
+    const log = vi.fn();
+    payload.delete.mockRejectedValueOnce(new Error("s3 down"));
+    await expect(
+      cleanUpPostImages(payload as never, { id: 5, images: [1] }, [], {
+        context: "test",
+        log,
+      }),
+    ).resolves.toBeUndefined();
+    expect(log).toHaveBeenCalledWith("[test] image cleanup failed", {
+      postId: 5,
+      imageIds: [1],
+      error: expect.any(Error),
+    });
   });
 });
 
@@ -163,58 +234,64 @@ describe("feedPostImageUrlBeforeChange", () => {
     return { result, findByID };
   };
 
-  it("writes the URL of a newly linked image", async () => {
-    const { result } = run({ image: 7 }, { image: null });
+  it("copies the URL of the new first picture", async () => {
+    const { result } = run({ images: [7, 8] }, { images: [] });
     await expect(result).resolves.toMatchObject({
       imageUrl: "https://ours/7.png",
     });
   });
 
-  it("clears the URL when the linked image is removed", async () => {
+  it("clears the URL when the pictures are removed", async () => {
     const { result, findByID } = run(
-      { image: null },
-      { image: 7, imageUrl: "https://ours/7.png" },
+      { images: [] },
+      { images: [7], imageUrl: "https://ours/7.png" },
     );
     await expect(result).resolves.toMatchObject({ imageUrl: null });
     expect(findByID).not.toHaveBeenCalled();
   });
 
-  it("keeps a legacy URL-only picture through a save with an empty image (Payload admin)", async () => {
+  it("keeps a legacy URL-only picture through a save with an empty list (Payload admin)", async () => {
     const { result } = run(
-      { image: null, content: "edited" },
-      { image: null, imageUrl: "https://elsewhere/p.png" },
+      { images: [], content: "edited" },
+      { images: [], imageUrl: "https://elsewhere/p.png" },
     );
-    await expect(result).resolves.toEqual({ image: null, content: "edited" });
+    await expect(result).resolves.toEqual({ images: [], content: "edited" });
   });
 
-  it("leaves the URL alone when a write does not set the image", async () => {
-    const { result, findByID } = run(
-      { content: "edited" },
-      { image: null, imageUrl: "https://elsewhere/p.png" },
-    );
-    await expect(result).resolves.toEqual({ content: "edited" });
-    expect(findByID).not.toHaveBeenCalled();
-  });
-
-  it("does not look the image up again when it did not change", async () => {
-    const { result, findByID } = run(
-      { image: 7 },
-      { image: 7, imageUrl: "https://ours/7.png" },
-    );
-    await expect(result).resolves.toEqual({ image: 7 });
-    expect(findByID).not.toHaveBeenCalled();
+  it("leaves the URL alone when the first picture stays, or the write does not set pictures", async () => {
+    const same = run({ images: [7, 9] }, { images: [7], imageUrl: "u" });
+    await expect(same.result).resolves.toEqual({ images: [7, 9] });
+    expect(same.findByID).not.toHaveBeenCalled();
+    const untouched = run({ content: "x" }, { images: [7], imageUrl: "u" });
+    await expect(untouched.result).resolves.toEqual({ content: "x" });
   });
 });
 
 describe("unlinkFeedPostsBeforeMediaDelete", () => {
-  it("unlinks every post showing the image, in the same request", async () => {
-    const update = vi.fn().mockResolvedValue({ docs: [] });
-    const req = { payload: { update } };
+  it("takes the picture out of every post that shows it, in the same request", async () => {
+    const find = vi.fn().mockResolvedValue({
+      docs: [
+        { id: 5, images: [66, 67] },
+        { id: 6, images: [{ id: 66 }] },
+      ],
+    });
+    const update = vi.fn().mockResolvedValue({});
+    const req = { payload: { find, update } };
     await unlinkFeedPostsBeforeMediaDelete()({ id: 66, req } as never);
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { images: { in: [66] } }, req }),
+    );
     expect(update).toHaveBeenCalledWith({
       collection: "feed-posts",
-      where: { image: { equals: 66 } },
-      data: { image: null },
+      id: 5,
+      data: { images: [67] },
+      depth: 0,
+      req,
+    });
+    expect(update).toHaveBeenCalledWith({
+      collection: "feed-posts",
+      id: 6,
+      data: { images: [] },
       depth: 0,
       req,
     });

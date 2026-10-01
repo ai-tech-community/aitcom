@@ -2803,7 +2803,13 @@
         "gifCount": "{count, plural, one {# GIF} other {# GIF's}}",
         "gifClear": "Zoekopdracht wissen",
         "gifResultsFor": "Resultaten voor “{query}”",
-        "addWordsToPost": "Voeg een paar woorden toe om te plaatsen."
+        "addWordsToPost": "Voeg een paar woorden toe om te plaatsen.",
+        "pictures": "Afbeeldingen",
+        "pictureUploading": "Afbeelding uploaden",
+        "removePicture": "Afbeelding {number} verwijderen",
+        "describePicture": "Beschrijf hem (voor wie hem niet kan zien)",
+        "describePictureLabel": "Beschrijving van afbeelding {number}",
+        "tooManyPictures": "Een bericht heeft maximaal 4 afbeeldingen."
       },
       "gifBadge": "GIF",
       "removeGif": "GIF verwijderen",
@@ -2812,7 +2818,15 @@
       "keepCurrentGif": "Huidige GIF houden",
       "playGif": "GIF afspelen",
       "pauseGif": "GIF pauzeren",
-      "gifGone": "Deze GIF is niet meer beschikbaar."
+      "gifGone": "Deze GIF is niet meer beschikbaar.",
+      "keepCurrentPictures": "Huidige afbeeldingen houden",
+      "pictureOf": "Afbeelding {number} van {total}",
+      "pictures": "{count} afbeeldingen",
+      "openPicture": "{name} openen",
+      "noDescription": "Geen beschrijving.",
+      "previousPicture": "Vorige afbeelding",
+      "nextPicture": "Volgende afbeelding",
+      "closePicture": "Sluiten"
     },
     "dashboard": {
       "title": "Mijn Communities",

@@ -1,7 +1,6 @@
 import { TRPCError } from "@trpc/server";
 
 import { MAX_IMAGE_BYTES } from "@/lib/image-uploads";
-import type { FeedPost } from "@/payload-types";
 import { readBodyCapped, safeFetch } from "@/server/net/safe-fetch";
 import type { getPayloadClient } from "@/server/payload";
 
@@ -10,43 +9,67 @@ type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 /** A feed post image: the `media` id a post links and its public URL. */
 export type FeedImage = { id: number; url: string };
 
+/** A picture as a post is given it: the upload and its description. */
+export type FeedImageChoice = { id: number; alt: string };
+
+/** The most pictures one post carries. */
+export const MAX_POST_IMAGES = 4;
+
+/** The longest description (alt text) of one picture. */
+export const MAX_IMAGE_ALT_LENGTH = 500;
+
 const NOT_AVAILABLE = "That picture is not available. Please upload it again.";
 
-/** The media id a post's `image` holds, whether populated or not. */
-export function imageIdOf(post: Pick<FeedPost, "image">): number | null {
-  const image = post.image;
-  if (image == null) return null;
-  return typeof image === "number" ? image : image.id;
+type Linked = number | { id: number } | null | undefined;
+
+/** The media ids a post's `images` hold, populated or not, in order. */
+export function imageIdsOf(post: { images?: Linked[] | null }): number[] {
+  return (post.images ?? [])
+    .map((image) => (typeof image === "number" ? image : (image?.id ?? null)))
+    .filter((id): id is number => id !== null);
 }
 
 /**
- * The member's own feed post image, free to go on `postId` (or a new post).
- * Only images uploaded as feed post images by this member count, so a post
- * can never show someone else's upload or an outside address, and the image
- * can be deleted with the post.
+ * The member's own feed post images, free to go on `postId` (or a new
+ * post), with their descriptions saved on the uploads. Only images
+ * uploaded as feed post images by this member count, so a post can never
+ * show someone else's upload or an outside address, and the images can be
+ * deleted with the post. Returns them in the given order.
  */
-export async function claimFeedImage(
+export async function claimFeedImages(
   payload: Payload,
-  input: { imageId: number; userId: string; postId?: number },
-): Promise<FeedImage> {
-  const media = await payload.findByID({
+  input: { images: FeedImageChoice[]; userId: string; postId?: number },
+): Promise<FeedImage[]> {
+  const ids = input.images.map((image) => image.id);
+  if (new Set(ids).size !== ids.length || ids.length > MAX_POST_IMAGES) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `A post has up to ${MAX_POST_IMAGES} different pictures.`,
+    });
+  }
+  if (ids.length === 0) return [];
+  const { docs: media } = await payload.find({
     collection: "media",
-    id: input.imageId,
+    where: { id: { in: ids } },
+    limit: ids.length,
     depth: 0,
-    disableErrors: true,
   });
-  if (
-    !media?.url ||
-    media.uploadedBy !== input.userId ||
-    media.purpose !== "feed-post"
-  ) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: NOT_AVAILABLE });
+  const byId = new Map(media.map((doc) => [doc.id, doc]));
+  for (const id of ids) {
+    const doc = byId.get(id);
+    if (
+      !doc?.url ||
+      doc.uploadedBy !== input.userId ||
+      doc.purpose !== "feed-post"
+    ) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: NOT_AVAILABLE });
+    }
   }
   const { totalDocs: usedElsewhere } = await payload.count({
     collection: "feed-posts",
     where: {
       and: [
-        { image: { equals: media.id } },
+        { images: { in: ids } },
         ...(input.postId === undefined
           ? []
           : [{ id: { not_equals: input.postId } }]),
@@ -56,7 +79,26 @@ export async function claimFeedImage(
   if (usedElsewhere > 0) {
     throw new TRPCError({ code: "BAD_REQUEST", message: NOT_AVAILABLE });
   }
-  return { id: media.id, url: media.url };
+  for (const image of input.images) {
+    const alt = image.alt.trim().slice(0, MAX_IMAGE_ALT_LENGTH);
+    if (alt && alt !== byId.get(image.id)?.alt) {
+      try {
+        await payload.update({
+          collection: "media",
+          id: image.id,
+          data: { alt },
+          depth: 0,
+        });
+      } catch (error) {
+        // A description is a courtesy: the post goes ahead without it.
+        console.warn("[feed-images] saving a description failed", {
+          imageId: image.id,
+          error,
+        });
+      }
+    }
+  }
+  return ids.map((id) => ({ id, url: byId.get(id)!.url! }));
 }
 
 /** The image types an imported picture may be. */
@@ -135,40 +177,35 @@ export async function importFeedImage(
 }
 
 /**
- * Best-effort removal of a feed post image once its post stops using it
- * (an edit replaced or removed it, or the post was deleted). Only feed post
- * images are removed; a legacy post that showed a shared upload leaves it
- * alone. The post change already happened, so a failure is logged; the
- * daily sweep of unused feed images removes it later.
+ * Best-effort removal of the feed post images a post no longer uses (an
+ * edit replaced or removed them, or the post was deleted): every image of
+ * `post` not in `keep`. Only feed post images are removed; a legacy post
+ * that showed a shared upload leaves it alone. The post change already
+ * happened, so a failure is logged; the daily sweep of unused feed images
+ * removes them later.
  */
-export async function cleanUpPostImage(
+export async function cleanUpPostImages(
   payload: Payload,
-  post: Pick<FeedPost, "id" | "image">,
+  post: { id: number; images?: Linked[] | null },
+  keep: readonly number[],
   options: {
     context: string;
     log?: (message: string, detail: unknown) => void;
   },
 ): Promise<void> {
-  const imageId = imageIdOf(post);
-  if (imageId === null) return;
+  const dropped = imageIdsOf(post).filter((id) => !keep.includes(id));
+  if (dropped.length === 0) return;
   try {
     await payload.delete({
       collection: "media",
       where: {
-        and: [
-          { id: { equals: imageId } },
-          { purpose: { equals: "feed-post" } },
-        ],
+        and: [{ id: { in: dropped } }, { purpose: { equals: "feed-post" } }],
       },
     });
   } catch (error) {
     (options.log ?? console.error)(
       `[${options.context}] image cleanup failed`,
-      {
-        postId: post.id,
-        imageId,
-        error,
-      },
+      { postId: post.id, imageIds: dropped, error },
     );
   }
 }

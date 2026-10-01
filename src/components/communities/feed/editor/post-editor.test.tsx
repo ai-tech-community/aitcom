@@ -24,7 +24,7 @@ import { usePostText } from "./use-post-text";
 
 function Editor(props: {
   initial?: string;
-  onImageFile?: (file: File) => void;
+  onImageFiles?: (files: File[]) => void;
   imageRefusal?: string;
   onSubmitShortcut?: () => void;
 }) {
@@ -34,7 +34,7 @@ function Editor(props: {
       <PostEditor
         text={text}
         label="Write a post"
-        onImageFile={props.onImageFile}
+        onImageFiles={props.onImageFiles}
         imageRefusal={props.imageRefusal}
         onSubmitShortcut={props.onSubmitShortcut}
         tools={
@@ -61,12 +61,12 @@ describe("PostEditor", () => {
   });
 
   it("takes a pasted picture instead of pasting it as text", () => {
-    const onImageFile = vi.fn();
-    render(<Editor onImageFile={onImageFile} />);
+    const onImageFiles = vi.fn();
+    render(<Editor onImageFiles={onImageFiles} />);
     const pasted = fireEvent.paste(screen.getByRole("textbox"), {
       clipboardData: { files: [picture], getData: () => "" },
     });
-    expect(onImageFile).toHaveBeenCalledWith(picture);
+    expect(onImageFiles).toHaveBeenCalledWith([picture]);
     expect(pasted).toBe(false);
   });
 
@@ -79,8 +79,8 @@ describe("PostEditor", () => {
   });
 
   it("pastes the text when the clipboard also holds a picture (Word, Excel)", () => {
-    const onImageFile = vi.fn();
-    render(<Editor onImageFile={onImageFile} />);
+    const onImageFiles = vi.fn();
+    render(<Editor onImageFiles={onImageFiles} />);
     const pasted = fireEvent.paste(screen.getByRole("textbox"), {
       clipboardData: {
         files: [picture],
@@ -88,7 +88,7 @@ describe("PostEditor", () => {
       },
     });
     expect(pasted).toBe(true);
-    expect(onImageFile).not.toHaveBeenCalled();
+    expect(onImageFiles).not.toHaveBeenCalled();
   });
 
   it("never lets a refused drop open the file; it says why instead", () => {
@@ -104,26 +104,37 @@ describe("PostEditor", () => {
   });
 
   it("says so when the dropped file is not a picture", () => {
-    const onImageFile = vi.fn();
-    const { container } = render(<Editor onImageFile={onImageFile} />);
+    const onImageFiles = vi.fn();
+    const { container } = render(<Editor onImageFiles={onImageFiles} />);
     fireEvent.drop(container.querySelector(".rounded-lg")!, {
       dataTransfer: {
         types: ["Files"],
         files: [new File(["%PDF"], "doc.pdf", { type: "application/pdf" })],
       },
     });
-    expect(onImageFile).not.toHaveBeenCalled();
+    expect(onImageFiles).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalledWith("notAPicture");
   });
 
+  it("takes several dropped pictures, leaving other files out", () => {
+    const onImageFiles = vi.fn();
+    const second = new File(["y"], "b.jpg", { type: "image/jpeg" });
+    const doc = new File(["%PDF"], "doc.pdf", { type: "application/pdf" });
+    const { container } = render(<Editor onImageFiles={onImageFiles} />);
+    fireEvent.drop(container.querySelector(".rounded-lg")!, {
+      dataTransfer: { types: ["Files"], files: [picture, doc, second] },
+    });
+    expect(onImageFiles).toHaveBeenCalledWith([picture, second]);
+  });
+
   it("takes a dropped picture", () => {
-    const onImageFile = vi.fn();
-    const { container } = render(<Editor onImageFile={onImageFile} />);
+    const onImageFiles = vi.fn();
+    const { container } = render(<Editor onImageFiles={onImageFiles} />);
     const field = container.querySelector("[data-dragging], .rounded-lg")!;
     fireEvent.drop(field, {
       dataTransfer: { types: ["Files"], files: [picture] },
     });
-    expect(onImageFile).toHaveBeenCalledWith(picture);
+    expect(onImageFiles).toHaveBeenCalledWith([picture]);
   });
 
   it("posts with Ctrl+Enter or Cmd+Enter", () => {

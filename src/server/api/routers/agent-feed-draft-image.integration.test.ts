@@ -183,7 +183,7 @@ describe.skipIf(!RUN_DB)(
       });
       cleanup.posts.push(...docs.map((d) => d.id));
       expect(docs).toHaveLength(1);
-      expect(docs[0]!.image).toBe(mediaId);
+      expect(docs[0]!.images).toEqual([mediaId]);
       expect(docs[0]!.imageUrl).toMatch(new RegExp(`${name}$`));
       expect(await draftStatus()).toBe("approved");
     });

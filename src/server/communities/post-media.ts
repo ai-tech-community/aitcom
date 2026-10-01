@@ -6,7 +6,12 @@ import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 
-import { claimFeedImage, cleanUpPostImage, imageIdOf } from "./feed-images";
+import {
+  claimFeedImages,
+  cleanUpPostImages,
+  imageIdsOf,
+  type FeedImageChoice,
+} from "./feed-images";
 import { cleanUpPostVideoFiles } from "./post-video-files";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -110,11 +115,10 @@ export async function loadPostForMediaEdit(
 
 /**
  * Writes new media onto `post` and then removes the video files and the
- * image it no longer points at. The write only lands while the post still
- * carries the video and image it was read with (and is still live and
- * unhidden), so two edits racing on one post cannot both drop the same
- * files and orphan the winner's: the loser gets a CONFLICT and nothing
- * changes.
+ * pictures it no longer points at. The write only lands while the post is
+ * exactly as it was read (same `updatedAt`, still live and unhidden), so
+ * two edits racing on one post cannot both drop the same files and orphan
+ * the winner's: the loser gets a CONFLICT and nothing changes.
  */
 export async function writePostMedia(
   deps: PostMediaDeps,
@@ -123,18 +127,12 @@ export async function writePostMedia(
   context: string,
 ): Promise<void> {
   const oldKey = post.video?.key ?? null;
-  const oldImage = imageIdOf(post);
   const unchangedSinceRead: Where = {
     and: [
       { id: { equals: post.id } },
+      { updatedAt: { equals: post.updatedAt } },
       { isDeleted: { not_equals: true } },
       { hiddenAt: { exists: false } },
-      oldKey
-        ? { "video.key": { equals: oldKey } }
-        : { "video.key": { exists: false } },
-      oldImage === null
-        ? { image: { exists: false } }
-        : { image: { equals: oldImage } },
     ],
   };
   const { docs } = await deps.payload.update({
@@ -156,22 +154,26 @@ export async function writePostMedia(
       log: deps.log,
     });
   }
-  if (data.image !== undefined && imageIdOf(data) !== oldImage) {
-    await cleanUpPostImage(deps.payload, post, { context, log: deps.log });
+  if (data.images !== undefined) {
+    await cleanUpPostImages(deps.payload, post, imageIdsOf(data), {
+      context,
+      log: deps.log,
+    });
   }
 }
 
 /** What a post's media becomes, other than a new video. */
 export type PostMediaChange =
   | { kind: "none" }
-  | { kind: "image"; imageId: number }
+  | { kind: "images"; images: FeedImageChoice[] }
   | { kind: "gif"; giphyId: string };
 
 /**
- * Sets a post's text and its media (a picture, a GIF, or none) in place of
- * what it carried. A picture must be the author's own unused feed post
- * image; a GIF is looked up on GIPHY by its id. A post holds one picture,
- * video or GIF, never more, so the others go; and since only video posts
+ * Sets a post's text and its media (up to 4 pictures, a GIF, or none) in
+ * place of what it carried. Pictures must be the author's own feed post
+ * images, not on another post; their descriptions are saved with them. A
+ * GIF is looked up on GIPHY by its id. A post holds pictures, a video or a
+ * GIF, never two of them, so the others go; and since only video posts
  * may be public, a public post that loses its video becomes
  * community-only. Putting a new video on a post is `replacePostVideo`,
  * which needs a checked upload.
@@ -188,14 +190,14 @@ export async function setPostMedia(
 ): Promise<void> {
   const post = await loadPostForMediaEdit(deps.payload, input);
   const { media } = input;
-  const image =
-    media.kind === "image"
-      ? await claimFeedImage(deps.payload, {
-          imageId: media.imageId,
+  const images =
+    media.kind === "images"
+      ? await claimFeedImages(deps.payload, {
+          images: media.images,
           userId: input.userId,
           postId: post.id,
         })
-      : null;
+      : [];
   const gif =
     media.kind === "gif" ? await lookUpGif(deps.getGiphy, media.giphyId) : null;
   const now = deps.now?.() ?? new Date();
@@ -204,9 +206,9 @@ export async function setPostMedia(
     post,
     {
       content: input.content,
-      image: image?.id ?? null,
+      images: images.map((image) => image.id),
       // A legacy URL-only picture has no link for the hook to clear.
-      ...(image ? {} : { imageUrl: null }),
+      ...(images.length > 0 ? {} : { imageUrl: null }),
       gif: gif ? gifFields(gif) : NO_GIF,
       ...(post.video?.key
         ? { video: NO_VIDEO, visibility: "community" as const }
