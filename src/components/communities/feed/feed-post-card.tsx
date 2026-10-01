@@ -26,6 +26,7 @@ import { LinkifiedText } from "./linkified-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
 import { FeedGif, type FeedGifView } from "./feed-gif";
+import { FeedImageGallery, type GalleryImage } from "./feed-image-gallery";
 import { PostEditForm } from "./post-edit-form";
 
 interface FeedPost {
@@ -58,6 +59,7 @@ interface FeedPost {
   hiddenAt?: string | null;
   visibility?: "community" | "public" | null;
   gif?: FeedGifView | null;
+  images?: (GalleryImage & { id: number })[] | null;
 }
 
 interface FeedPostCardProps {
@@ -273,13 +275,11 @@ export function FeedPostCard({
         <FeedVideoPlayer video={post.video} onExpired={refreshVideo} />
       ) : post.gif?.mp4Url ? (
         <FeedGif gif={post.gif} />
+      ) : post.images?.length ? (
+        <FeedImageGallery images={post.images} />
       ) : post.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={post.imageUrl}
-          alt="Post image"
-          className="max-h-96 w-full rounded-lg object-cover"
-        />
+        // A legacy post shows its one picture by URL, with no description.
+        <FeedImageGallery images={[{ url: post.imageUrl, alt: "" }]} />
       ) : link && !isEditing ? (
         <LinkPreviewCard href={link} preview={linkPreview} />
       ) : null}

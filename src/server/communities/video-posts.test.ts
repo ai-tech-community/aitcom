@@ -9,6 +9,8 @@ import {
   issueVideoUpload,
   replacePostVideo,
 } from "./video-posts";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 const UPLOAD = "1b4e28ba-2fa1-41d2-883f-0016d3cca427";
 const NOW = new Date("2026-09-24T12:00:00.000Z");
@@ -37,13 +39,16 @@ function fakes(
             : (over.uploads ?? []),
       }),
     ),
-    // A guarded update (by `where`) answers with the posts it changed.
-    update: vi
-      .fn()
-      .mockImplementation(({ where }: { where?: unknown }) =>
-        Promise.resolve(where ? { docs: over.changed ?? [{ id: 9 }] } : {}),
-      ),
+    update: vi.fn().mockResolvedValue({}),
     delete: vi.fn().mockResolvedValue({}),
+    // The media claim answers with the post it moved on (none: lost race).
+    db: {
+      drizzle: {
+        execute: vi
+          .fn()
+          .mockResolvedValue({ rows: over.changed ?? [{ id: 9 }] }),
+      },
+    },
   };
   const heads = [...(over.heads ?? [])];
   const log = vi.fn();
@@ -363,6 +368,7 @@ const target = (over: Record<string, unknown> = {}) => ({
   visibility: "public",
   isDeleted: false,
   imageUrl: null,
+  updatedAt: "2026-09-24T10:00:00.000Z",
   video: OLD_VIDEO,
   ...over,
 });
@@ -392,7 +398,7 @@ describe("replacePostVideo", () => {
       .find((c) => c.collection === "feed-posts")!;
     expect(update.data).toMatchObject({
       content: "Better take",
-      image: null,
+      images: [],
       isEdited: true,
       video: {
         key: `media/videos/public/c1/${UPLOAD}.mp4`,
@@ -421,17 +427,17 @@ describe("replacePostVideo", () => {
       target: target({
         visibility: "community",
         video: null,
-        image: 66,
+        images: [66, 67],
         imageUrl: "https://bucket/img.jpg",
       }),
     });
     await replacePostVideo(deps, replace);
     const update = payload.update.mock.calls[0]![0];
-    expect(update.data.image).toBeNull();
+    expect(update.data.images).toEqual([]);
     expect(payload.delete).toHaveBeenCalledWith({
       collection: "media",
       where: {
-        and: [{ id: { equals: 66 } }, { purpose: { equals: "feed-post" } }],
+        and: [{ id: { in: [66, 67] } }, { purpose: { equals: "feed-post" } }],
       },
     });
     expect(update.data.video.storage).toBe("private");
@@ -488,23 +494,18 @@ describe("replacePostVideo", () => {
     expect(storage.remove).not.toHaveBeenCalled();
   });
 
-  it("only writes while the post still carries the video it was read with", async () => {
+  it("only writes while the post is exactly as it was read", async () => {
     const { deps, payload } = fakes({
       uploads: [upload()],
       heads: goodHeads(),
       target: target(),
     });
     await replacePostVideo(deps, replace);
-    const write = payload.update.mock.calls[0]![0];
-    expect(write.where).toEqual({
-      and: [
-        { id: { equals: 9 } },
-        { isDeleted: { not_equals: true } },
-        { hiddenAt: { exists: false } },
-        { "video.key": { equals: OLD_VIDEO.key } },
-        { image: { exists: false } },
-      ],
-    });
+    const calls = payload.db.drizzle.execute.mock.calls as unknown as [SQL][];
+    const claim = new PgDialect().sqlToQuery(calls[0]![0]);
+    expect(claim.sql).toMatch(/"updated_at" = \$2::timestamptz/);
+    expect(claim.sql).toMatch(/"hidden_at" IS NULL/);
+    expect(claim.params).toEqual([9, "2026-09-24T10:00:00.000Z"]);
   });
 
   it("refuses a lost race: no files removed and the grant stays open", async () => {
@@ -518,7 +519,7 @@ describe("replacePostVideo", () => {
       code: "CONFLICT",
     });
     expect(storage.remove).not.toHaveBeenCalled();
-    expect(payload.update).toHaveBeenCalledTimes(1);
+    expect(payload.update).not.toHaveBeenCalled();
   });
 
   it("removes the old files before closing the grant, so a failed close leaves nothing behind", async () => {
@@ -527,10 +528,11 @@ describe("replacePostVideo", () => {
       heads: goodHeads(),
       target: target(),
     });
-    payload.update.mockImplementation(({ where }: { where?: unknown }) =>
-      where
-        ? Promise.resolve({ docs: [{ id: 9 }] })
-        : Promise.reject(new Error("db down")),
+    payload.update.mockImplementation(
+      ({ collection }: { collection: string }) =>
+        collection === "video-uploads"
+          ? Promise.reject(new Error("db down"))
+          : Promise.resolve({}),
     );
     await expect(replacePostVideo(deps, replace)).rejects.toThrow("db down");
     expect(storage.remove).toHaveBeenCalledWith([

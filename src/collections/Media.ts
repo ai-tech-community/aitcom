@@ -18,11 +18,22 @@ export const Media: CollectionConfig = {
       { name: "thumbnail", width: 300, height: 300, position: "centre" },
       { name: "card", width: 768, height: 432, position: "centre" },
       { name: "hero", width: 1440, height: 600, position: "centre" },
+      // Uncropped, for feed pictures: their tiles never need the original.
+      { name: "feed", width: 1200, withoutEnlargement: true },
     ],
   },
   hooks: { beforeDelete: [unlinkFeedPostsBeforeMediaDelete()] },
   fields: [
-    { name: "alt", type: "text", required: true },
+    {
+      name: "alt",
+      type: "text",
+      // Required for shared uploads (covers, logos). A feed post picture's
+      // description is its author's to write, and may be left empty.
+      validate: (value: unknown, { siblingData }: { siblingData: unknown }) =>
+        (siblingData as { purpose?: string | null }).purpose === "feed-post" ||
+        (typeof value === "string" && value.trim().length > 0) ||
+        "Describe the image.",
+    },
     {
       name: "uploadedBy",
       type: "text",

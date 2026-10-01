@@ -26,13 +26,24 @@ export const FeedPosts: CollectionConfig = {
       maxLength: POST_MAX_LENGTH,
     },
     {
+      // Deprecated: the first picture, mirrored from `images` by the server
+      // so the previous version (during a deploy, or after a rollback) and
+      // its cleanup job still see it. Dropped by a later migration (#391).
       name: "image",
       type: "upload",
       relationTo: "media",
       unique: true,
+      admin: { hidden: true },
+    },
+    {
+      name: "images",
+      type: "upload",
+      relationTo: "media",
+      hasMany: true,
+      maxRows: 4,
       admin: {
         description:
-          "The post's picture: a feed post image its author uploaded. Deleted when the post stops using it.",
+          "The post's pictures (up to 4): feed post images its author uploaded, each described by its media alt text. Deleted when the post stops using them.",
       },
     },
     {
@@ -57,7 +68,7 @@ export const FeedPosts: CollectionConfig = {
       admin: {
         readOnly: true,
         description:
-          "Public URL of the image, written by the server with it so feeds read it without a join.",
+          "Public URL of the first picture, written by the server so older readers (agents, MCP) get one picture without a join.",
       },
     },
     {

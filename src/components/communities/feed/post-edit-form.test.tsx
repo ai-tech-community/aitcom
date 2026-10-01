@@ -77,7 +77,10 @@ vi.mock("./use-video-post", () => ({
     cancel: m.cancel,
   }),
 }));
-vi.mock("./upload-feed-image", () => ({ uploadFeedImage: m.upload }));
+vi.mock("./upload-feed-image", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./upload-feed-image")>()),
+  uploadFeedImage: m.upload,
+}));
 vi.mock("./video-attachment", () => ({
   VideoAttachment: ({ file }: { file: File }) => (
     <div data-testid="new-video">{file.name}</div>
@@ -92,6 +95,14 @@ const textPost: EditablePost = {
   visibility: "community",
 };
 const imagePost = { ...textPost, imageUrl: "https://bucket.s3.test/old.jpg" };
+const picturesPost: EditablePost = {
+  ...textPost,
+  imageUrl: "https://bucket.s3.test/11.jpg",
+  images: [
+    { id: 11, url: "https://bucket.s3.test/11.jpg", alt: "Desk" },
+    { id: 12, url: "https://bucket.s3.test/12.jpg", alt: "" },
+  ],
+};
 const publicVideoPost: EditablePost = {
   ...textPost,
   visibility: "public",
@@ -166,13 +177,10 @@ describe("PostEditForm", () => {
     );
   });
 
-  it("uploads a picked image only on Save", async () => {
+  it("uploads a picked picture only on Save", async () => {
     const { container } = renderForm();
     pick(container, "image/*", picture);
-    expect(screen.getByRole("img", { name: "attachedImage" })).toHaveAttribute(
-      "src",
-      "blob:preview",
-    );
+    expect(container.querySelector('img[src="blob:preview"]')).not.toBeNull();
     expect(m.upload).not.toHaveBeenCalled();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "save" }));
@@ -180,8 +188,67 @@ describe("PostEditForm", () => {
     expect(m.upload).toHaveBeenCalledWith(picture);
     expect(m.editPost).toHaveBeenCalledWith(
       expect.objectContaining({
-        media: { kind: "image", imageId: 42 },
+        media: { kind: "images", images: [{ id: 42, alt: "" }] },
       }),
+    );
+  });
+
+  it("keeps the other pictures when one is removed, with edited descriptions", async () => {
+    const { container } = renderForm(picturesPost);
+    expect(
+      screen.getAllByRole("button", { name: "removePicture" }),
+    ).toHaveLength(2);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "removePicture" })[0]!,
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "describePictureLabel" }),
+      { target: { value: "  The whole team  " } },
+    );
+    pick(container, "image/*", picture);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+    });
+    expect(m.upload).toHaveBeenCalledTimes(1);
+    expect(m.editPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        media: {
+          kind: "images",
+          images: [
+            { id: 12, alt: "The whole team" },
+            { id: 42, alt: "" },
+          ],
+        },
+      }),
+    );
+  });
+
+  it("takes no more than four pictures", () => {
+    const { container } = renderForm(picturesPost);
+    fireEvent.change(fileInput(container, "image/*"), {
+      target: { files: [picture, picture, picture] },
+    });
+    expect(
+      screen.getAllByRole("button", { name: "removePicture" }),
+    ).toHaveLength(4);
+    expect(m.toast).toHaveBeenCalledWith("tooManyPictures");
+    expect(
+      screen.getByRole("button", { name: "tooManyPictures" }),
+    ).toBeDisabled();
+  });
+
+  it("removing every picture leaves the post without media", async () => {
+    renderForm(picturesPost);
+    for (const button of screen.getAllByRole("button", {
+      name: "removePicture",
+    })) {
+      fireEvent.click(button);
+    }
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+    });
+    expect(m.editPost).toHaveBeenCalledWith(
+      expect.objectContaining({ media: { kind: "none" } }),
     );
   });
 
@@ -200,7 +267,7 @@ describe("PostEditForm", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "save" }));
     });
-    expect(m.toast).toHaveBeenCalledWith("uploadFailed");
+    expect(m.toast).toHaveBeenCalledWith("pictureFailed");
     expect(m.editPost).not.toHaveBeenCalled();
     expect(onSaved).not.toHaveBeenCalled();
   });
@@ -319,5 +386,36 @@ describe("PostEditForm", () => {
     expect(
       screen.getByRole("button", { name: "keepCurrentGif" }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps pictures that uploaded when a later one fails, and does not upload them again", async () => {
+    const second = new File(["y"], "b.png", { type: "image/png" });
+    m.upload
+      .mockResolvedValueOnce({ id: 51, url: "https://bucket.s3.test/51.jpg" })
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ id: 52, url: "https://bucket.s3.test/52.jpg" });
+    const { container } = renderForm();
+    fireEvent.change(fileInput(container, "image/*"), {
+      target: { files: [picture, second] },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+    });
+    expect(m.editPost).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+    });
+    expect(m.upload).toHaveBeenCalledTimes(3);
+    expect(m.editPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        media: {
+          kind: "images",
+          images: [
+            { id: 51, alt: "" },
+            { id: 52, alt: "" },
+          ],
+        },
+      }),
+    );
   });
 });

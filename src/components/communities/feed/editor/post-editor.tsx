@@ -16,9 +16,8 @@ const COUNTER_FROM = 200;
 /** Screen readers hear the limit at these points, not on every key. */
 const ANNOUNCE_AT = [20, 100] as const;
 
-function firstImage(files: FileList | null | undefined): File | null {
-  if (!files) return null;
-  return Array.from(files).find((f) => f.type.startsWith("image/")) ?? null;
+function imagesIn(files: FileList | null | undefined): File[] {
+  return Array.from(files ?? []).filter((f) => f.type.startsWith("image/"));
 }
 
 function draggingFiles(e: React.DragEvent): boolean {
@@ -38,7 +37,7 @@ function lengthMilestone(left: number): "over" | 0 | 20 | 100 | null {
  * area itself is borderless; the field takes the focus ring while the text
  * area has focus.
  *
- * A picture can also be pasted or dropped in when `onImageFile` is given.
+ * Pictures can also be pasted or dropped in when `onImageFiles` is given.
  * While it is not (a video is attached, an upload is running),
  * `imageRefusal` says why, and a dropped file never makes the browser
  * leave the page. Ctrl/Cmd+Enter calls `onSubmitShortcut`.
@@ -51,7 +50,7 @@ export function PostEditor({
   label,
   placeholder,
   autoFocus,
-  onImageFile,
+  onImageFiles,
   imageRefusal,
   onSubmitShortcut,
   attachments,
@@ -63,7 +62,7 @@ export function PostEditor({
   label: string;
   placeholder?: string;
   autoFocus?: boolean;
-  onImageFile?: (file: File) => void;
+  onImageFiles?: (files: File[]) => void;
   /** Why a picture cannot be added right now, shown when one is dropped. */
   imageRefusal?: string;
   onSubmitShortcut?: () => void;
@@ -82,12 +81,12 @@ export function PostEditor({
   const counterId = useId();
   const milestone = lengthMilestone(left);
 
-  const takeImage = (file: File | null) => {
-    if (!file) {
+  const takeImages = (files: File[]) => {
+    if (files.length === 0) {
       toast.error(t("notAPicture"));
       return;
     }
-    if (onImageFile) onImageFile(file);
+    if (onImageFiles) onImageFiles(files);
     else if (imageRefusal) toast.error(imageRefusal);
   };
 
@@ -106,12 +105,12 @@ export function PostEditor({
           onDragEnter={(e) => {
             if (!draggingFiles(e)) return;
             e.preventDefault();
-            if (onImageFile) setDragging(true);
+            if (onImageFiles) setDragging(true);
           }}
           onDragOver={(e) => {
             if (!draggingFiles(e)) return;
             e.preventDefault();
-            e.dataTransfer.dropEffect = onImageFile ? "copy" : "none";
+            e.dataTransfer.dropEffect = onImageFiles ? "copy" : "none";
           }}
           onDragLeave={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
@@ -122,7 +121,7 @@ export function PostEditor({
             if (!draggingFiles(e)) return;
             e.preventDefault();
             setDragging(false);
-            takeImage(firstImage(e.dataTransfer.files));
+            takeImages(imagesIn(e.dataTransfer.files));
           }}
         >
           <textarea
@@ -130,12 +129,14 @@ export function PostEditor({
             value={text.value}
             onChange={(e) => text.setValue(e.target.value)}
             onPaste={(e) => {
-              const file = firstImage(e.clipboardData.files);
+              const files = imagesIn(e.clipboardData.files);
               // Office apps put a picture of the selection next to its
               // text: pasting text always wins.
-              if (!file || e.clipboardData.getData("text/plain")) return;
+              if (files.length === 0 || e.clipboardData.getData("text/plain")) {
+                return;
+              }
               e.preventDefault();
-              takeImage(file);
+              takeImages(files);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {

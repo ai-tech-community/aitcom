@@ -96,7 +96,7 @@ describe.skipIf(!RUN_DB)("sweepUnusedFeedImages [DB integration]", () => {
         likeCount: 0,
         commentCount: 0,
         visibility: "community",
-        image: linked,
+        images: [linked],
       },
     });
     created.posts.push(post.id);
@@ -133,7 +133,7 @@ describe.skipIf(!RUN_DB)("sweepUnusedFeedImages [DB integration]", () => {
         likeCount: 0,
         commentCount: 0,
         visibility: "community",
-        image: linked,
+        images: [linked],
       },
     });
     created.posts.push(post.id);
@@ -153,7 +153,7 @@ describe.skipIf(!RUN_DB)("sweepUnusedFeedImages [DB integration]", () => {
       id: post.id,
       depth: 0,
     });
-    expect(saved.image ?? null).toBeNull();
+    expect(saved.images ?? []).toEqual([]);
     expect(saved.imageUrl ?? null).toBeNull();
   });
 });

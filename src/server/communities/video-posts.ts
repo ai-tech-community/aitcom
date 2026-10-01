@@ -338,6 +338,7 @@ export async function replacePostVideo(
     post,
     {
       content: input.caption,
+      images: [],
       image: null,
       imageUrl: null,
       gif: NO_GIF,

@@ -75,6 +75,11 @@ async function unusedImages(
     WHERE m."purpose" = 'feed-post'
       AND m."created_at" < ${cutoff.toISOString()}
       AND NOT EXISTS (
+        SELECT 1 FROM "feed_posts_rels" r
+        WHERE r."media_id" = m."id" AND r."path" = 'images'
+      )
+      -- The single-picture column, until a later migration drops it.
+      AND NOT EXISTS (
         SELECT 1 FROM "feed_posts" fp WHERE fp."image_id" = m."id"
       )
       ${skip.length > 0 ? sql`AND m."id" NOT IN ${skip}` : sql``}
@@ -87,7 +92,7 @@ async function unusedImages(
 async function isLinked(payload: Payload, imageId: number): Promise<boolean> {
   const { totalDocs } = await payload.count({
     collection: "feed-posts",
-    where: { image: { equals: imageId } },
+    where: { images: { in: [imageId] } },
   });
   return totalDocs > 0;
 }

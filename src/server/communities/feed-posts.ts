@@ -13,6 +13,7 @@ import {
   OUTSIDE_VIEWER,
   type FeedViewer,
 } from "@/server/communities/post-visibility";
+import { imageIdsOf } from "./feed-images";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -155,15 +156,66 @@ export type FeedVideoView = {
   visibility: "community" | "public";
 };
 
+/** What a client sees of one of a post's pictures; never who uploaded it. */
+export type FeedImageView = {
+  id: number;
+  /** The feed-sized copy (or the original when it has none). */
+  url: string;
+  /** The original, for the large view. */
+  fullUrl: string;
+  alt: string;
+  width: number | null;
+  height: number | null;
+};
+
 /**
  * What a client sees of a post. The report count stays on the server:
  * moderators read reports through getPostReports.
  */
-export type FeedPostView = Omit<FeedPost, "video" | "reportCount"> & {
+export type FeedPostView = Omit<
+  FeedPost,
+  "video" | "reportCount" | "images"
+> & {
   authorImage: string | null;
   hasLiked: boolean;
   video: FeedVideoView | null;
+  images: FeedImageView[];
 };
+
+/** The pictures of a set of posts, by media id, in one query. */
+async function loadImageViews(
+  payload: Payload,
+  posts: readonly FeedPost[],
+): Promise<Map<number, FeedImageView>> {
+  const ids = [...new Set(posts.flatMap((post) => imageIdsOf(post)))];
+  const views = new Map<number, FeedImageView>();
+  if (ids.length === 0) return views;
+  const { docs } = await payload.find({
+    collection: "media",
+    where: { id: { in: ids } },
+    limit: ids.length,
+    depth: 0,
+    select: {
+      url: true,
+      alt: true,
+      width: true,
+      height: true,
+      sizes: { feed: { url: true } },
+    },
+  });
+  for (const doc of docs) {
+    if (!doc.url) continue;
+    views.set(doc.id, {
+      id: doc.id,
+      url: doc.sizes?.feed?.url ?? doc.url,
+      fullUrl: doc.url,
+      alt: doc.alt ?? "",
+      width: doc.width ?? null,
+      height: doc.height ?? null,
+    });
+  }
+  return views;
+}
 
 async function videoView(
   post: FeedPost,
@@ -204,8 +256,9 @@ export async function loadUserImages(
 }
 
 /**
- * Adds the author photo, whether the viewer liked each post, and playback
- * links for a post's video (the raw storage keys never leave the server).
+ * Adds the author photo, whether the viewer liked each post, playback
+ * links for a post's video (the raw storage keys never leave the server),
+ * and its pictures with their descriptions (never who uploaded them).
  */
 export async function decorateFeedPosts(
   database: Database,
@@ -215,10 +268,13 @@ export async function decorateFeedPosts(
   storage: VideoStorageSource,
 ): Promise<FeedPostView[]> {
   if (posts.length === 0) return [];
-  const images = await loadUserImages(
-    database,
-    posts.map((post) => post.authorId),
-  );
+  const [images, pictures] = await Promise.all([
+    loadUserImages(
+      database,
+      posts.map((post) => post.authorId),
+    ),
+    loadImageViews(payload, posts),
+  ]);
   let liked = new Set<number>();
   if (viewerId) {
     const postIds = posts.map((post) => post.id);
@@ -244,6 +300,9 @@ export async function decorateFeedPosts(
       authorImage: images.get(post.authorId) ?? null,
       hasLiked: liked.has(post.id),
       video: await videoView(post, storage),
+      images: imageIdsOf(post)
+        .map((id) => pictures.get(id))
+        .filter((view): view is FeedImageView => view !== undefined),
     })),
   );
 }

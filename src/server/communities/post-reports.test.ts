@@ -297,6 +297,7 @@ describe("reviewReport", () => {
         isDeleted: true,
         content: "",
         authorName: "",
+        images: [],
         image: null,
         imageUrl: null,
         gif: {
@@ -320,14 +321,14 @@ describe("reviewReport", () => {
     const { deps, payload } = fakes({
       id: 5,
       communityId: "c1",
-      image: 66,
+      images: [66, 67],
       hiddenAt: NOW.toISOString(),
     });
     await reviewReport(deps, { postId: 5, action: "remove" });
     expect(payload.delete).toHaveBeenCalledWith({
       collection: "media",
       where: {
-        and: [{ id: { equals: 66 } }, { purpose: { equals: "feed-post" } }],
+        and: [{ id: { in: [66, 67] } }, { purpose: { equals: "feed-post" } }],
       },
     });
   });

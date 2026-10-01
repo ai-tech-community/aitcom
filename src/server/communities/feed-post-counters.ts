@@ -1,3 +1,5 @@
+import { sql } from "@payloadcms/db-postgres";
+
 import type { getPayloadClient } from "@/server/payload";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -35,11 +37,14 @@ export async function syncFeedPostCounters(
     likeCount: likes.totalDocs,
     commentCount: comments.totalDocs,
   };
-  await payload.update({
-    collection: "feed-posts",
-    id: postId,
-    data: counters,
-  });
+  // Only these two columns: re-saving the whole post through Payload would
+  // write back the picture list read a moment ago over a concurrent edit.
+  await payload.db.drizzle.execute(sql`
+    UPDATE "feed_posts"
+      SET "like_count" = ${counters.likeCount},
+          "comment_count" = ${counters.commentCount}
+      WHERE "id" = ${postId}
+  `);
   return counters;
 }
 

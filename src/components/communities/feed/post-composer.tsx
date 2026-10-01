@@ -10,10 +10,10 @@ import type { VideoVisibility } from "@/lib/video-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
-import { uploadFeedImage, type UploadedFeedImage } from "./upload-feed-image";
 import { DraftNotice } from "./editor/draft-notice";
 import { EmojiPickerButton } from "./editor/emoji-picker-button";
 import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
+import { PictureAttachments } from "./editor/picture-attachments";
 import { PostEditor } from "./editor/post-editor";
 import {
   SEND_SHORTCUTS,
@@ -21,6 +21,7 @@ import {
   ToolbarButton,
 } from "./editor/toolbar-button";
 import { usePostDraft } from "./editor/use-post-draft";
+import { usePictureUploads } from "./editor/use-picture-uploads";
 import { usePostText } from "./editor/use-post-text";
 
 interface PostComposerProps {
@@ -33,7 +34,6 @@ interface PostComposerProps {
 export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
   const t = useTranslations("communities.feed");
   const te = useTranslations("communities.feed.editor");
-  const tc = useTranslations("common");
   const tv = useTranslations("communities.video");
   const utils = api.useUtils();
   const text = usePostText("");
@@ -44,10 +44,11 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
     text: text.value,
     restore: text.setValue,
   });
-  // A post carries one picture, video or GIF, never more.
-  const [image, setImage] = useState<UploadedFeedImage | null>(null);
+  // A post carries pictures (up to 4), a video or a GIF, never two kinds.
+  const pictures = usePictureUploads();
+  const imageButton = useRef<HTMLButtonElement>(null);
   const [gif, setGif] = useState<PickedGif | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const isUploading = pictures.uploading;
   const [topicSlug, setTopicSlug] = useState("general");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -71,7 +72,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
   const createPost = api.feed.createPost.useMutation({
     onSuccess: () => {
       posted();
-      setImage(null);
+      pictures.clear();
       setGif(null);
       void utils.feed.getFeed.invalidate();
       void utils.feed.getActivity.invalidate({ communitySlug: slug });
@@ -88,22 +89,16 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
     },
   });
 
-  const addImageFile = async (file: File) => {
-    setIsUploading(true);
-    try {
-      setImage(await uploadFeedImage(file));
-      setGif(null);
-    } catch {
-      toast.error(tc("uploadFailed"));
-    } finally {
-      setIsUploading(false);
-    }
+  const addImageFiles = (files: File[]) => {
+    setGif(null);
+    const left = pictures.add(files);
+    if (left > 0) toast.error(te("tooManyPictures"));
   };
 
   const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (file) void addImageFile(file);
+    if (files.length > 0) addImageFiles(files);
   };
 
   const handleVideoPick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,10 +137,12 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
   };
 
   const busy = createPost.isPending || videoBusy || isUploading;
+  // A picture that did not upload is retried or removed before posting.
+  const blocked = pictures.failed;
 
   const submit = () => {
     // Waiting for a picture still uploading, so it is not left behind.
-    if (!content.trim() || text.tooLong || busy) return;
+    if (!content.trim() || text.tooLong || busy || blocked) return;
     if (videoFile) {
       void submitVideo(videoFile);
       return;
@@ -153,7 +150,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
     createPost.mutate({
       communitySlug: slug,
       content: content.trim(),
-      imageId: image?.id,
+      images: pictures.count > 0 ? pictures.choices() : undefined,
       gifId: gif?.giphyId,
       topicSlug,
     });
@@ -172,13 +169,13 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
         text={text}
         label={t("composePlaceholder")}
         placeholder={t("composePlaceholder")}
-        onImageFile={
-          videoFile || isUploading ? undefined : (f) => void addImageFile(f)
+        onImageFiles={
+          videoFile || pictures.room <= 0 ? undefined : addImageFiles
         }
-        imageRefusal={videoFile ? te("oneMediaOnly") : te("waitForUpload")}
+        imageRefusal={videoFile ? te("oneMediaOnly") : te("tooManyPictures")}
         onSubmitShortcut={submit}
         attachments={
-          videoFile || image || gif ? (
+          videoFile || pictures.count > 0 || gif ? (
             <>
               {videoFile ? (
                 <VideoAttachment
@@ -191,14 +188,13 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
                   state={videoPost.state}
                 />
               ) : null}
-              {image ? (
-                <MediaPreview
-                  src={image.url}
-                  alt={t("attachedImage")}
-                  removeLabel={t("removeImage")}
-                  onRemove={() => setImage(null)}
-                />
-              ) : null}
+              <PictureAttachments
+                items={pictures.items}
+                onAltChange={pictures.setAlt}
+                onRemove={pictures.remove}
+                onRetry={pictures.retry}
+                onEmptied={() => imageButton.current?.focus()}
+              />
               {gif ? (
                 <MediaPreview
                   src={gif.preview.stillUrl}
@@ -215,34 +211,49 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
           <>
             {videoFile ? null : (
               <ToolbarButton
-                label={image || gif ? t("replaceWithImage") : t("addImage")}
-                icon={
-                  isUploading ? (
-                    <Loader2
-                      aria-hidden="true"
-                      className="size-4 animate-spin"
-                    />
-                  ) : (
-                    <ImagePlus aria-hidden="true" className="size-4" />
-                  )
+                ref={imageButton}
+                label={
+                  pictures.room <= 0
+                    ? te("tooManyPictures")
+                    : gif
+                      ? t("replaceWithImage")
+                      : t("addImage")
                 }
-                disabled={isUploading}
-                aria-busy={isUploading}
+                icon={<ImagePlus aria-hidden="true" className="size-4" />}
+                disabled={pictures.room <= 0}
                 onClick={() => fileInputRef.current?.click()}
               />
             )}
             {videoFile ? null : (
               <GifPickerButton
                 communitySlug={slug}
-                label={gif ? t("replaceWithGif") : te("gif")}
+                label={
+                  gif
+                    ? t("replaceWithGif")
+                    : pictures.count > 0
+                      ? te("replacePicturesWithGif")
+                      : te("gif")
+                }
                 onPick={(picked) => {
                   setGif(picked);
-                  setImage(null);
+                  if (pictures.count === 0) return;
+                  // One click must not lose pictures and their descriptions.
+                  const saved = pictures.snapshot();
+                  pictures.clear();
+                  toast(te("picturesReplacedByGif"), {
+                    action: {
+                      label: te("undo"),
+                      onClick: () => {
+                        setGif(null);
+                        pictures.restore(saved);
+                      },
+                    },
+                  });
                 }}
                 disabled={isUploading}
               />
             )}
-            {image || gif || videoFile ? null : (
+            {pictures.count > 0 || gif || videoFile ? null : (
               <ToolbarButton
                 label={tv("add")}
                 icon={<Film aria-hidden="true" className="size-4" />}
@@ -274,7 +285,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
             <Button
               type="submit"
               size="sm"
-              disabled={!content.trim() || text.tooLong || busy}
+              disabled={!content.trim() || text.tooLong || busy || blocked}
               aria-busy={busy}
               aria-keyshortcuts={SEND_SHORTCUTS}
             >
@@ -286,7 +297,9 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
           </ShortcutHint>
         }
         notice={
-          (image || gif || videoFile) && !content.trim() ? (
+          blocked ? (
+            <p className="text-destructive text-xs">{te("fixPictures")}</p>
+          ) : (pictures.count > 0 || gif || videoFile) && !content.trim() ? (
             <p className="text-muted-foreground text-xs">
               {te("addWordsToPost")}
             </p>
@@ -305,6 +318,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={handleImagePick}
       />

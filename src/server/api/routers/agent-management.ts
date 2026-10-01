@@ -911,7 +911,7 @@ export const agentManagementRouter = createTRPCRouter({
           collection: "feed-posts",
           data: {
             content: draft.content ?? "",
-            image: image?.id,
+            images: image ? [image.id] : [],
             authorId: userId,
             authorName: ctx.session.user.name ?? "Community member",
             communityId: draft.targetId,

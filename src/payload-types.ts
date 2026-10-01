@@ -361,7 +361,7 @@ export interface Event {
  */
 export interface Media {
   id: number;
-  alt: string;
+  alt?: string | null;
   /**
    * Better Auth user ID of the member who uploaded it.
    */
@@ -399,6 +399,14 @@ export interface Media {
       filename?: string | null;
     };
     hero?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    feed?: {
       url?: string | null;
       width?: number | null;
       height?: number | null;
@@ -678,10 +686,11 @@ export interface Comment {
 export interface FeedPost {
   id: number;
   content: string;
-  /**
-   * The post's picture: a feed post image its author uploaded. Deleted when the post stops using it.
-   */
   image?: (number | null) | Media;
+  /**
+   * The post's pictures (up to 4): feed post images its author uploaded, each described by its media alt text. Deleted when the post stops using them.
+   */
+  images?: (number | Media)[] | null;
   /**
    * A GIF from GIPHY, looked up by the server by its GIPHY id. A post carries one picture, video or GIF, never more.
    */
@@ -694,7 +703,7 @@ export interface FeedPost {
     height?: number | null;
   };
   /**
-   * Public URL of the image, written by the server with it so feeds read it without a join.
+   * Public URL of the first picture, written by the server so older readers (agents, MCP) get one picture without a join.
    */
   imageUrl?: string | null;
   /**
@@ -2004,6 +2013,7 @@ export interface CommentsSelect<T extends boolean = true> {
 export interface FeedPostsSelect<T extends boolean = true> {
   content?: T;
   image?: T;
+  images?: T;
   gif?:
     | T
     | {
@@ -2260,6 +2270,16 @@ export interface MediaSelect<T extends boolean = true> {
               filename?: T;
             };
         hero?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        feed?:
           | T
           | {
               url?: T;

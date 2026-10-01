@@ -45,9 +45,22 @@ import {
   reviewReport,
 } from "@/server/communities/post-reports";
 import {
-  claimFeedImage,
-  cleanUpPostImage,
+  MAX_IMAGE_ALT_LENGTH,
+  MAX_POST_IMAGES,
+  claimFeedImages,
+  cleanUpPostImages,
 } from "@/server/communities/feed-images";
+
+/** Pictures as a member attaches them: their uploads and descriptions. */
+const imageChoices = z
+  .array(
+    z.object({
+      id: z.number().int().positive(),
+      alt: z.string().max(MAX_IMAGE_ALT_LENGTH).default(""),
+    }),
+  )
+  .min(1)
+  .max(MAX_POST_IMAGES);
 import {
   NO_GIF,
   gifFields,
@@ -329,17 +342,17 @@ export const feedRouter = createTRPCRouter({
         .object({
           communitySlug: z.string(),
           content: z.string().min(1).max(POST_MAX_LENGTH),
-          /** The member's own feed post image, from `/api/upload`. */
-          imageId: z.number().int().positive().optional(),
-          /** A GIF picked from `searchGifs`; a post has a picture or a GIF. */
+          /** The member's own feed post images, from `/api/upload`. */
+          images: imageChoices.optional(),
+          /** A GIF picked from `searchGifs`; a post has pictures or a GIF. */
           gifId: z
             .string()
             .regex(/^[A-Za-z0-9]{1,64}$/)
             .optional(),
           topicSlug: z.string().optional(),
         })
-        .refine((v) => v.imageId === undefined || v.gifId === undefined, {
-          message: "A post has one picture or one GIF.",
+        .refine((v) => v.images === undefined || v.gifId === undefined, {
+          message: "A post has pictures or a GIF, not both.",
         }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -351,13 +364,12 @@ export const feedRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
-      const image =
-        input.imageId === undefined
-          ? null
-          : await claimFeedImage(payload, {
-              imageId: input.imageId,
-              userId: ctx.session.user.id,
-            });
+      const images = input.images
+        ? await claimFeedImages(payload, {
+            images: input.images,
+            userId: ctx.session.user.id,
+          })
+        : [];
       const gif =
         input.gifId === undefined
           ? null
@@ -367,7 +379,7 @@ export const feedRouter = createTRPCRouter({
         collection: "feed-posts",
         data: {
           content: input.content,
-          image: image?.id,
+          images: images.map((image) => image.id),
           ...(gif ? { gif: gifFields(gif) } : {}),
           authorId: ctx.session.user.id,
           authorName: userName,
@@ -515,10 +527,7 @@ export const feedRouter = createTRPCRouter({
           .discriminatedUnion("kind", [
             z.object({ kind: z.literal("keep") }),
             z.object({ kind: z.literal("none") }),
-            z.object({
-              kind: z.literal("image"),
-              imageId: z.number().int().positive(),
-            }),
+            z.object({ kind: z.literal("images"), images: imageChoices }),
             z.object({
               kind: z.literal("gif"),
               giphyId: z.string().regex(/^[A-Za-z0-9]{1,64}$/),
@@ -665,6 +674,7 @@ export const feedRouter = createTRPCRouter({
           isDeleted: true,
           content: "",
           authorName: "",
+          images: [],
           image: null,
           imageUrl: null,
           gif: NO_GIF,
@@ -675,7 +685,9 @@ export const feedRouter = createTRPCRouter({
       await cleanUpPostVideoFiles(getVideoStorage, post, {
         context: "feed.deletePost",
       });
-      await cleanUpPostImage(payload, post, { context: "feed.deletePost" });
+      await cleanUpPostImages(payload, post, [], {
+        context: "feed.deletePost",
+      });
       // The id only: the stored post carries the video's storage keys.
       return { id: post.id };
     }),
