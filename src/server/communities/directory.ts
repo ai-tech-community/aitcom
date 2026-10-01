@@ -51,6 +51,8 @@ export type DirectoryCommunity = {
   /** Liveness ranking score (see `livenessScore`). */
   score: number;
   isNew: boolean;
+  /** Public rooms anyone can look into. */
+  openRooms: number;
   nextEvent: DirectoryNextEvent | null;
   /** Place keys of all upcoming events: city names and/or `ONLINE_PLACE`. */
   places: string[];
@@ -89,6 +91,8 @@ export function buildDirectory(opts: {
   candidates: readonly CommunityCandidate[];
   facts: ReadonlyMap<string, { joinPolicy: JoinPolicy; createdAt: Date }>;
   events: readonly DirectoryEventRow[];
+  /** Public room count per community id (absent = none). */
+  openRooms?: ReadonlyMap<string, number>;
   now: Date;
 }): DirectoryCommunity[] {
   const eventsByCommunity = new Map<string, DirectoryEventRow[]>();
@@ -122,6 +126,7 @@ export function buildDirectory(opts: {
         newJoins: c.newJoins,
         score: livenessScore(c),
         isNew: isNewCommunity(facts.createdAt, opts.now),
+        openRooms: opts.openRooms?.get(c.communityId) ?? 0,
         nextEvent: first
           ? {
               slug: first.slug,
@@ -260,6 +265,7 @@ export type PublicDirectoryCommunity = {
   memberCount: number;
   activeRecently: number;
   isNew: boolean;
+  openRooms: number;
   nextEvent: Pick<DirectoryNextEvent, "date" | "city" | "online"> | null;
 };
 
@@ -284,6 +290,7 @@ export function toPublicDirectoryCommunity(
     memberCount: c.memberCount,
     activeRecently: c.activeRecently,
     isNew: c.isNew,
+    openRooms: c.openRooms,
     nextEvent: c.nextEvent
       ? {
           date: c.nextEvent.date,

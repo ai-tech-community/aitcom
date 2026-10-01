@@ -85,6 +85,7 @@ function community(
     newJoins: 0,
     score: 0,
     isNew: false,
+    openRooms: 0,
     nextEvent: null,
     places: [],
     ...over,
@@ -101,14 +102,16 @@ describe("isNewCommunity", () => {
 });
 
 describe("buildDirectory", () => {
-  it("carries the real join policy, activity and newness", () => {
+  it("carries the real join policy, activity, newness and open rooms", () => {
     const [c] = buildDirectory({
       candidates: [candidate("a", { activeNow: 3, newJoins: 2 })],
       facts: facts([["a", { joinPolicy: "approval_required", ageDays: 3 }]]),
       events: [],
+      openRooms: new Map([["a", 2]]),
       now: NOW,
     });
     expect(c).toMatchObject({
+      openRooms: 2,
       joinPolicy: "approval_required",
       activeRecently: 3,
       newJoins: 2,
@@ -222,6 +225,7 @@ describe("toPublicDirectoryCommunity", () => {
         "memberCount",
         "name",
         "nextEvent",
+        "openRooms",
         "slug",
       ].sort(),
     );

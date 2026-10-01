@@ -12,6 +12,7 @@ import {
   ActivityLine,
   JoinPolicyLabel,
   NextEventLine,
+  OpenRoomsLine,
   type DirectoryItem,
 } from "./community-signals";
 
@@ -25,7 +26,10 @@ export function CommunityCard({ community }: { community: DirectoryItem }) {
   const t = useTranslations("communities.discover");
   const { slug, name, description, logoUrl, memberCount, faces } = community;
   const id = `community-card-${slug}`;
-  const alive = community.activeRecently > 0 || community.nextEvent !== null;
+  const alive =
+    community.activeRecently > 0 ||
+    community.nextEvent !== null ||
+    community.openRooms > 0;
 
   return (
     <Link
@@ -72,6 +76,9 @@ export function CommunityCard({ community }: { community: DirectoryItem }) {
             ) : null}
             {community.nextEvent ? (
               <NextEventLine event={community.nextEvent} />
+            ) : null}
+            {community.openRooms > 0 ? (
+              <OpenRoomsLine count={community.openRooms} />
             ) : null}
           </div>
         ) : null}

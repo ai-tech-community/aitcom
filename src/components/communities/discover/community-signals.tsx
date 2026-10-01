@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { CalendarDays, DoorOpen, KeyRound, Mail } from "lucide-react";
+import { CalendarDays, DoorOpen, Hash, KeyRound, Mail } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
 import { formatEventShortWhen } from "@/lib/event-time";
 import { ONLINE_PLACE, type JoinPolicy } from "@/server/communities/directory";
@@ -75,6 +75,33 @@ export function ActivityLine({
       />
       <span className="min-w-0 wrap-break-word">
         {t("activeRecently", { count })}
+      </span>
+    </p>
+  );
+}
+
+/** Public rooms anyone can look into before joining. */
+export function OpenRoomsLine({
+  count,
+  className,
+}: {
+  count: number;
+  className?: string;
+}) {
+  const t = useTranslations("communities.discover");
+  return (
+    <p
+      className={cn(
+        "text-foreground flex min-w-0 items-start gap-2 text-sm",
+        className,
+      )}
+    >
+      <Hash
+        aria-hidden="true"
+        className="text-muted-foreground mt-0.5 size-4 shrink-0"
+      />
+      <span className="min-w-0 wrap-break-word">
+        {t("openRooms", { count })}
       </span>
     </p>
   );

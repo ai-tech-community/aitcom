@@ -39,6 +39,7 @@ function item(over: Partial<DirectoryItem> = {}): DirectoryItem {
     memberCount: 12,
     activeRecently: 3,
     isNew: false,
+    openRooms: 0,
     nextEvent: {
       date: "2026-10-14T00:00:00.000Z",
       city: "Amsterdam",
@@ -98,6 +99,13 @@ describe("CommunityCard", () => {
     expect(screen.getByText('activeRecently:{"count":3}')).toBeInTheDocument();
     expect(screen.getByText("joinApproval")).toBeInTheDocument();
     expect(screen.getByText('membersCount:{"count":1}')).toBeInTheDocument();
+  });
+
+  it("mentions open rooms only when there are some", () => {
+    const { rerender } = render(<CommunityCard community={item()} />);
+    expect(screen.queryByText(/openRooms/)).toBeNull();
+    rerender(<CommunityCard community={item({ openRooms: 3 })} />);
+    expect(screen.getByText('openRooms:{"count":3}')).toBeInTheDocument();
   });
 
   it("marks a new community", () => {

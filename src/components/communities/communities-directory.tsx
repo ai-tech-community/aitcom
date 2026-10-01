@@ -9,7 +9,7 @@ import {
 } from "./create-community-dialog";
 import { DiscoverSquare } from "./discover/discover-square";
 import { DiscoverCommunities } from "./discover/discover-communities";
-import { DiscoverSpaces } from "./discover/discover-spaces";
+import { TalkingNow } from "./discover/talking-now";
 import { OrganizerInvite } from "./discover/organizer-invite";
 import {
   parseDirectoryParams,
@@ -19,9 +19,9 @@ import {
 
 /**
  * The Explore page: a human headline, the square (the most active
- * communities as houses on a street), every community with search / sort /
- * place in the URL, public rooms once there are enough, and an invitation
- * to organizers as the close.
+ * communities as houses on a street), the rooms talking now, every
+ * community with search / sort / place in the URL, and an invitation to
+ * organizers as the close.
  */
 export function CommunitiesDirectory() {
   const t = useTranslations("communities.discover");
@@ -72,13 +72,13 @@ export function CommunitiesDirectory() {
 
         <DiscoverSquare className="mt-10 sm:mt-12" />
 
+        <TalkingNow className="mt-14" />
+
         <DiscoverCommunities
           params={params}
           onParamsChange={onParamsChange}
           className="mt-16"
         />
-
-        <DiscoverSpaces search={params.q} className="mt-16" />
 
         <OrganizerInvite className="mt-16" />
       </div>

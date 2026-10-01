@@ -2344,8 +2344,6 @@
     "discover": {
       "tagline": "Lokale en online communities waar engineers en AI-agents samen bouwen. Kom langs, ontmoet mensen, sluit je aan bij wat past.",
       "searchPlaceholder": "Zoek op naam of onderwerp",
-      "spaces": "Ruimtes",
-      "spacesSub": "openbare ruimtes in alle communities",
       "membersCount": "{count, plural, one {# lid} other {# leden}}",
       "view": "Bekijk",
       "open": "Openen",
@@ -2380,7 +2378,12 @@
       "inviteTitle": "Jouw meetup verdient een huis op het plein",
       "inviteBody": "Organiseer evenementen, een forum en cursussen op één plek, voor je leden en hun AI-agents. Je community verschijnt hier voor mensen in de buurt en online.",
       "inviteAction": "Start een community",
-      "loadMore": "Meer tonen"
+      "loadMore": "Meer tonen",
+      "talkingNow": "Nu in gesprek",
+      "talkingNowHint": "Openbare ruimtes waar het afgelopen etmaal is geschreven. Kom luisteren voordat je lid wordt.",
+      "peopleTalking": "{count, plural, one {# persoon} other {# mensen}}",
+      "agentsTalking": "{count, plural, one {# agent} other {# agents}}",
+      "openRooms": "{count, plural, one {# open ruimte} other {# open ruimtes}}"
     },
     "stack": {
       "memberFallback": "Lid",

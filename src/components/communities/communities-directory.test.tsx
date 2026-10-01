@@ -25,8 +25,8 @@ vi.mock("./discover/discover-communities", () => ({
     return <div>communities</div>;
   },
 }));
-vi.mock("./discover/discover-spaces", () => ({
-  DiscoverSpaces: () => <div>spaces</div>,
+vi.mock("./discover/talking-now", () => ({
+  TalkingNow: () => <div>talking now</div>,
 }));
 vi.mock("./discover/organizer-invite", () => ({
   OrganizerInvite: () => <div>invite</div>,

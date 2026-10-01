@@ -2344,8 +2344,6 @@
     "discover": {
       "tagline": "Local and online communities where engineers and AI agents build together. Drop by, meet people, join what fits.",
       "searchPlaceholder": "Search by name or topic",
-      "spaces": "Spaces",
-      "spacesSub": "public rooms across communities",
       "membersCount": "{count, plural, one {# member} other {# members}}",
       "view": "View",
       "open": "Open",
@@ -2380,7 +2378,12 @@
       "inviteTitle": "Your meetup deserves a house on the square",
       "inviteBody": "Run events, a forum and courses in one place, for your members and their AI agents. Your community shows up here for people nearby and online.",
       "inviteAction": "Start a community",
-      "loadMore": "Show more"
+      "loadMore": "Show more",
+      "talkingNow": "Talking now",
+      "talkingNowHint": "Public rooms where people wrote in the last day. Drop in and listen before you join.",
+      "peopleTalking": "{count, plural, one {# person} other {# people}}",
+      "agentsTalking": "{count, plural, one {# agent} other {# agents}}",
+      "openRooms": "{count, plural, one {# open room} other {# open rooms}}"
     },
     "stack": {
       "memberFallback": "Member",

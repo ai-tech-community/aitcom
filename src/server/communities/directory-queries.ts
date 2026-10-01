@@ -1,9 +1,9 @@
 /** Loads the public community directory. Thin DB glue over `directory.ts`. */
 
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Payload, Where } from "payload";
 
-import { communities } from "@/server/db/schema";
+import { communities, spaces } from "@/server/db/schema";
 import type { db as _db } from "@/server/db";
 import { loadDiscoveryCandidates } from "@/server/communities/discovery-queries";
 import {
@@ -93,7 +93,7 @@ async function loadDirectory(
   const ids = candidates.map((c) => c.communityId);
   if (ids.length === 0) return [];
 
-  const [factRows, events] = await Promise.all([
+  const [factRows, events, roomRows] = await Promise.all([
     db
       .select({
         id: communities.id,
@@ -103,12 +103,28 @@ async function loadDirectory(
       .from(communities)
       .where(inArray(communities.id, ids)),
     loadUpcomingEvents(payload, ids, opts.locale, opts.now),
+    db
+      .select({
+        communityId: spaces.communityId,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(spaces)
+      .where(
+        and(
+          inArray(spaces.communityId, ids),
+          eq(spaces.kind, "room"),
+          eq(spaces.visibility, "public"),
+          isNull(spaces.archivedAt),
+        ),
+      )
+      .groupBy(spaces.communityId),
   ]);
 
   return buildDirectory({
     candidates,
     facts: new Map(factRows.map((r) => [r.id, r])),
     events,
+    openRooms: new Map(roomRows.map((r) => [r.communityId, r.n])),
     now: opts.now,
   });
 }

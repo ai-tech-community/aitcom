@@ -154,6 +154,15 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
       { communityId: open, userId: member },
       { communityId: approval, userId: owner, role: "owner" },
     ]);
+    await db.insert(schema.spaces).values({
+      communityId: open,
+      kind: "room",
+      visibility: "public",
+      name: "lobby",
+      slug: `lobby-${suffix}`,
+      position: 100,
+      createdBy: owner,
+    });
     await db.insert(schema.activityEvents).values({
       communityId: open,
       actorId: member,
@@ -240,6 +249,9 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
       .delete(schema.activityEvents)
       .where(inArray(schema.activityEvents.communityId, fx.communityIds));
     await db
+      .delete(schema.spaces)
+      .where(inArray(schema.spaces.communityId, fx.communityIds));
+    await db
       .delete(schema.communityMemberships)
       .where(inArray(schema.communityMemberships.communityId, fx.communityIds));
     await db
@@ -261,6 +273,7 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
       memberCount: 2,
       activeRecently: 1,
       isNew: true,
+      openRooms: 1,
     });
     expect(open.nextEvent).toEqual({
       date: expect.stringContaining(isoDay(5)),

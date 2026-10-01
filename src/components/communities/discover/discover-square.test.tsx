@@ -73,6 +73,7 @@ function item(slug: string, name: string, over: Partial<DirectoryItem> = {}) {
     memberCount: 4,
     activeRecently: 0,
     isNew: false,
+    openRooms: 0,
     nextEvent: null,
     faces: [],
     ...over,
