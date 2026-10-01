@@ -37,10 +37,12 @@ import {
 import { invalidateSquareRooms } from "@/server/communities/live-rooms-queries";
 import {
   DIRECTORY_SORTS,
+  DIRECTORY_WANTS,
   queryDirectory,
   toPublicDirectoryCommunity,
 } from "@/server/communities/directory";
 import { getPayloadClient } from "@/server/payload";
+import { ipOriginFromHeaders } from "@/lib/visitor-location";
 import {
   loadStackFaces,
   loadStackFacesForCommunities,
@@ -52,8 +54,9 @@ import { viewerCanReadRoster } from "@/server/communities/content-visibility-que
 export const communitiesRouter = createTRPCRouter({
   /**
    * The public directory (Explore page): listed communities with their
-   * public signals — recent activity, next event, join policy — searched
-   * by name or description, filtered by the place of their events, sorted,
+   * public signals — recent activity, next event, join policy, what they
+   * offer — searched by name or description, filtered by the place of
+   * their events and by what the visitor wants, sorted (also by distance),
    * one page at a time (`cursor` is an offset).
    */
   directory: publicProcedure
@@ -61,7 +64,18 @@ export const communitiesRouter = createTRPCRouter({
       z.object({
         q: z.string().trim().max(100).optional(),
         place: z.string().trim().max(100).optional(),
+        want: z.enum(DIRECTORY_WANTS).optional(),
         sort: z.enum(DIRECTORY_SORTS).default("active"),
+        /**
+         * A precise position the visitor chose to share for "near"; used
+         * for this request only, never stored or logged.
+         */
+        near: z
+          .object({
+            lat: z.number().min(-90).max(90),
+            lng: z.number().min(-180).max(180),
+          })
+          .optional(),
         limit: z.number().int().min(1).max(48).default(24),
         cursor: z.number().int().min(0).nullish(),
         locale: z.enum(["en", "nl"]).default("en"),
@@ -73,7 +87,10 @@ export const communitiesRouter = createTRPCRouter({
         await getPayloadClient(),
         input.locale,
       );
-      const page = queryDirectory(all, input);
+      // "Near" starts from the shared position, else the edge's estimate.
+      const ip = input.near ? null : ipOriginFromHeaders(ctx.headers);
+      const origin = input.near ?? ip?.point ?? null;
+      const page = queryDirectory(all, { ...input, origin });
       // One extra query for the whole page (no N+1): leadership-first faces.
       const faces = await loadStackFacesForCommunities(
         ctx.db,
@@ -83,6 +100,10 @@ export const communitiesRouter = createTRPCRouter({
         total: page.total,
         nextCursor: page.nextCursor,
         places: page.places,
+        wants: page.wants,
+        origin: origin
+          ? { precise: !!input.near, city: ip?.city ?? null }
+          : null,
         items: page.items.map((c) => ({
           ...toPublicDirectoryCommunity(c),
           faces: faces.get(c.id) ?? [],

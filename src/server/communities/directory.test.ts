@@ -13,6 +13,8 @@ import {
   type DirectoryCommunity,
   type DirectoryEventRow,
   type JoinPolicy,
+  directoryWants,
+  distanceFrom,
 } from "./directory";
 
 const NOW = new Date("2026-10-01T12:00:00Z");
@@ -64,6 +66,8 @@ function event(
     timezone: "Europe/Amsterdam",
     city: "Amsterdam",
     online: false,
+    point: null,
+    hackathon: false,
     ...over,
   };
 }
@@ -88,6 +92,8 @@ function community(
     openRooms: 0,
     nextEvent: null,
     places: [],
+    wants: [],
+    points: [],
     ...over,
   };
 }
@@ -236,9 +242,11 @@ describe("toPublicDirectoryCommunity", () => {
         "logoUrl",
         "memberCount",
         "name",
+        "distanceKm",
         "nextEvent",
         "openRooms",
         "slug",
+        "wants",
       ].sort(),
     );
     expect(out.nextEvent).toEqual({
@@ -318,5 +326,101 @@ describe("queryDirectory", () => {
     });
     expect(out.items.map((c) => c.id)).toEqual(["c"]);
     expect(out.places).toEqual([{ key: "Amsterdam", communities: 2 }]);
+  });
+});
+
+const AMSTERDAM = { lat: 52.37, lng: 4.9 };
+const UTRECHT = { lat: 52.09, lng: 5.12 };
+const ROTTERDAM = { lat: 51.92, lng: 4.48 };
+
+describe("wants", () => {
+  it("reads what a community really offers", () => {
+    const [c] = buildDirectory({
+      candidates: [candidate("a")],
+      facts: facts([["a", {}]]),
+      events: [
+        event("a", { online: true, city: null }),
+        event("a", { hackathon: true, online: true, city: null }),
+      ],
+      offerings: { learn: new Set(["a"]), work: new Set() },
+      now: NOW,
+    });
+    // Online-only events are not "meet"; a hackathon is "build".
+    expect(c!.wants).toEqual(["learn", "build"]);
+  });
+
+  it("counts meet from an in-person event and keeps its location", () => {
+    const [c] = buildDirectory({
+      candidates: [candidate("a")],
+      facts: facts([["a", {}]]),
+      events: [event("a", { point: UTRECHT })],
+      now: NOW,
+    });
+    expect(c!.wants).toEqual(["meet"]);
+    expect(c!.points).toEqual([UTRECHT]);
+  });
+
+  it("offers only wants some community has", () => {
+    expect(
+      directoryWants([
+        community("a", { wants: ["meet", "work"] }),
+        community("b", { wants: ["meet"] }),
+      ]),
+    ).toEqual([
+      { key: "meet", communities: 2 },
+      { key: "work", communities: 1 },
+    ]);
+  });
+
+  it("filters by want", () => {
+    const out = queryDirectory(
+      [community("a", { wants: ["learn"] }), community("b")],
+      { sort: "active", limit: 10, want: "learn" },
+    );
+    expect(out.items.map((c) => c.id)).toEqual(["a"]);
+  });
+});
+
+describe("near", () => {
+  it("measures to the nearest located event", () => {
+    const c = community("a", { points: [ROTTERDAM, UTRECHT] });
+    const km = distanceFrom(c, AMSTERDAM)!;
+    expect(km).toBeGreaterThan(30);
+    expect(km).toBeLessThan(45);
+    expect(distanceFrom(community("b"), AMSTERDAM)).toBeNull();
+  });
+
+  it("puts the nearest first and unlocated communities last", () => {
+    const out = queryDirectory(
+      [
+        community("far", { points: [ROTTERDAM], score: 1 }),
+        community("none", { score: 99 }),
+        community("close", { points: [UTRECHT] }),
+      ],
+      { sort: "near", origin: AMSTERDAM, limit: 10 },
+    );
+    expect(out.items.map((c) => c.id)).toEqual(["close", "far", "none"]);
+    expect(out.items[0]!.distanceKm).toBeGreaterThan(0);
+  });
+
+  it("orders by activity when it does not know where the visitor is", () => {
+    const out = queryDirectory(
+      [
+        community("quiet", { points: [UTRECHT], score: 1 }),
+        community("busy", { score: 5 }),
+      ],
+      { sort: "near", limit: 10 },
+    );
+    expect(out.items.map((c) => c.id)).toEqual(["busy", "quiet"]);
+    expect(out.items.every((c) => c.distanceKm === null)).toBe(true);
+  });
+
+  it("sends a coarse distance, never coordinates", () => {
+    const pub = toPublicDirectoryCommunity({
+      ...community("a", { points: [UTRECHT] }),
+      distanceKm: 36.6,
+    });
+    expect(pub.distanceKm).toBe(37);
+    expect(pub).not.toHaveProperty("points");
   });
 });

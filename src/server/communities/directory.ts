@@ -1,16 +1,31 @@
 /**
  * The public community directory (Explore page). Pure rules — no DB: what a
- * listed community shows, how search and the place filter match, how the
- * sorts order, and which places the filter offers. Loading lives in
+ * listed community shows, how search, the place and "what do you want"
+ * filters match, how the sorts order (including by distance), and which
+ * places and wants the filters offer. Loading lives in
  * `directory-queries.ts`.
  */
 
 import type { CommunityCandidate } from "@/server/communities/discovery";
 import { livenessScore } from "@/server/communities/discovery";
 import type { JoinPolicy } from "@/server/communities/invite-policy";
+import { haversineDistanceKm } from "@/lib/geo";
 
-export const DIRECTORY_SORTS = ["active", "newest", "largest"] as const;
+export const DIRECTORY_SORTS = ["active", "newest", "largest", "near"] as const;
 export type DirectorySort = (typeof DIRECTORY_SORTS)[number];
+
+/**
+ * What a visitor can come for, each read from what a community really
+ * offers right now:
+ * - meet: an upcoming in-person or hybrid event;
+ * - learn: a published course open to visitors;
+ * - build: an active challenge or an upcoming hackathon;
+ * - work: an open job.
+ */
+export const DIRECTORY_WANTS = ["meet", "learn", "build", "work"] as const;
+export type DirectoryWant = (typeof DIRECTORY_WANTS)[number];
+
+export type GeoPoint = { lat: number; lng: number };
 
 export type { JoinPolicy };
 
@@ -35,7 +50,12 @@ export type DirectoryNextEvent = {
 };
 
 /** An upcoming public event reduced to what the directory reads. */
-export type DirectoryEventRow = DirectoryNextEvent & { communityId: string };
+export type DirectoryEventRow = DirectoryNextEvent & {
+  communityId: string;
+  /** Where it takes place, when geocoded and not online. */
+  point: GeoPoint | null;
+  hackathon: boolean;
+};
 
 export type DirectoryCommunity = {
   id: string;
@@ -57,9 +77,14 @@ export type DirectoryCommunity = {
   nextEvent: DirectoryNextEvent | null;
   /** Place keys of all upcoming events: city names and/or `ONLINE_PLACE`. */
   places: string[];
+  /** What a visitor can come for (see `DIRECTORY_WANTS`). */
+  wants: DirectoryWant[];
+  /** Where its upcoming in-person events are (for "near you"). */
+  points: GeoPoint[];
 };
 
 export type DirectoryPlace = { key: string; communities: number };
+export type DirectoryWantCount = { key: DirectoryWant; communities: number };
 
 /** Case- and accent-insensitive comparison key. */
 export function foldText(s: string): string {
@@ -94,6 +119,12 @@ export function buildDirectory(opts: {
   events: readonly DirectoryEventRow[];
   /** Public room count per community id (absent = none). */
   openRooms?: ReadonlyMap<string, number>;
+  /** Community ids with a public course / active challenge / open job. */
+  offerings?: {
+    learn?: ReadonlySet<string>;
+    build?: ReadonlySet<string>;
+    work?: ReadonlySet<string>;
+  };
   now: Date;
 }): DirectoryCommunity[] {
   const eventsByCommunity = new Map<string, DirectoryEventRow[]>();
@@ -111,6 +142,14 @@ export function buildDirectory(opts: {
     const places = [
       ...new Set(upcoming.map(placeOf).filter((p): p is string => p !== null)),
     ];
+    const has = {
+      meet: upcoming.some((e) => !e.online),
+      learn: opts.offerings?.learn?.has(c.communityId) ?? false,
+      build:
+        (opts.offerings?.build?.has(c.communityId) ?? false) ||
+        upcoming.some((e) => e.hackathon),
+      work: opts.offerings?.work?.has(c.communityId) ?? false,
+    };
     return [
       {
         id: c.communityId,
@@ -138,9 +177,25 @@ export function buildDirectory(opts: {
             }
           : null,
         places,
+        wants: DIRECTORY_WANTS.filter((w) => has[w]),
+        points: upcoming
+          .map((e) => e.point)
+          .filter((p): p is GeoPoint => p !== null),
       },
     ];
   });
+}
+
+/**
+ * How far a community is from `origin`: the distance to its nearest
+ * upcoming in-person event, or null when it has none with a location.
+ */
+export function distanceFrom(
+  c: Pick<DirectoryCommunity, "points">,
+  origin: GeoPoint,
+): number | null {
+  if (c.points.length === 0) return null;
+  return Math.min(...c.points.map((p) => haversineDistanceKm(origin, p)));
 }
 
 /** Search matches the name or the description, ignoring case and accents. */
@@ -163,25 +218,47 @@ function byId(a: DirectoryCommunity, b: DirectoryCommunity) {
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
-const COMPARE: Record<
-  DirectorySort,
-  (a: DirectoryCommunity, b: DirectoryCommunity) => number
-> = {
-  active: (a, b) =>
-    b.score - a.score ||
-    b.activeRecently - a.activeRecently ||
-    b.memberCount - a.memberCount ||
-    byId(a, b),
+/** A community as sorted: with its distance when the visitor asked "near". */
+type Ranked = DirectoryCommunity & { distanceKm?: number | null };
+
+const byActivity = (a: DirectoryCommunity, b: DirectoryCommunity) =>
+  b.score - a.score ||
+  b.activeRecently - a.activeRecently ||
+  b.memberCount - a.memberCount ||
+  byId(a, b);
+
+const COMPARE: Record<DirectorySort, (a: Ranked, b: Ranked) => number> = {
+  active: byActivity,
   newest: (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || byId(a, b),
   largest: (a, b) =>
     b.memberCount - a.memberCount || b.score - a.score || byId(a, b),
+  // Nearest first; communities with no located event after, by activity.
+  near: (a, b) => {
+    const da = a.distanceKm ?? null;
+    const db = b.distanceKm ?? null;
+    if (da === null || db === null) {
+      if (da !== db) return da === null ? 1 : -1;
+      return byActivity(a, b);
+    }
+    return da - db || byActivity(a, b);
+  },
 };
 
-export function sortDirectory(
-  items: readonly DirectoryCommunity[],
+export function sortDirectory<T extends Ranked>(
+  items: readonly T[],
   sort: DirectorySort,
-): DirectoryCommunity[] {
+): T[] {
   return [...items].sort(COMPARE[sort]);
+}
+
+/** Wants the filter offers: those at least one listed community has. */
+export function directoryWants(
+  items: readonly DirectoryCommunity[],
+): DirectoryWantCount[] {
+  return DIRECTORY_WANTS.map((key) => ({
+    key,
+    communities: items.filter((c) => c.wants.includes(key)).length,
+  })).filter((w) => w.communities > 0);
 }
 
 /**
@@ -216,31 +293,43 @@ export function directoryPlaces(
 }
 
 /**
- * One page of the directory. Places are counted over every listed
- * community (so the filter never offers a dead end), results over the
- * search + place match. `cursor` is the offset of the page.
+ * One page of the directory. Places and wants are counted over every
+ * listed community (so the filters never offer a dead end), results over
+ * the search + place + want match. "near" needs an `origin`; without one
+ * it orders by activity. `cursor` is the offset of the page.
  */
 export function queryDirectory(
   all: readonly DirectoryCommunity[],
   input: {
     q?: string;
     place?: string;
+    want?: DirectoryWant;
     sort: DirectorySort;
+    origin?: GeoPoint | null;
     limit: number;
     cursor?: number | null;
   },
 ): {
-  items: DirectoryCommunity[];
+  items: (DirectoryCommunity & { distanceKm: number | null })[];
   total: number;
   nextCursor: number | null;
   places: DirectoryPlace[];
+  wants: DirectoryWantCount[];
 } {
-  const matched = all.filter(
-    (c) =>
-      (!input.q || matchesQuery(c, input.q)) &&
-      (!input.place || matchesPlace(c, input.place)),
-  );
-  const sorted = sortDirectory(matched, input.sort);
+  const origin = input.origin ?? null;
+  const matched: (DirectoryCommunity & { distanceKm: number | null })[] = all
+    .filter(
+      (c) =>
+        (!input.q || matchesQuery(c, input.q)) &&
+        (!input.place || matchesPlace(c, input.place)) &&
+        (!input.want || c.wants.includes(input.want)),
+    )
+    .map((c) => ({
+      ...c,
+      distanceKm: origin ? distanceFrom(c, origin) : null,
+    }));
+  const sort = input.sort === "near" && !origin ? "active" : input.sort;
+  const sorted = sortDirectory(matched, sort);
   const start = Math.max(0, input.cursor ?? 0);
   const end = start + input.limit;
   return {
@@ -248,6 +337,7 @@ export function queryDirectory(
     total: sorted.length,
     nextCursor: end < sorted.length ? end : null,
     places: directoryPlaces(all),
+    wants: directoryWants(all),
   };
 }
 
@@ -265,6 +355,9 @@ export type PublicDirectoryCommunity = {
   isNew: boolean;
   openRooms: number;
   nextEvent: Pick<DirectoryNextEvent, "date" | "city" | "online"> | null;
+  wants: DirectoryWant[];
+  /** Km to its nearest upcoming in-person event, when asked "near". */
+  distanceKm: number | null;
 };
 
 /**
@@ -272,7 +365,7 @@ export type PublicDirectoryCommunity = {
  * (score, new joins) and the event's internal fields stay on the server.
  */
 export function toPublicDirectoryCommunity(
-  c: DirectoryCommunity,
+  c: DirectoryCommunity & { distanceKm?: number | null },
 ): PublicDirectoryCommunity {
   const description = c.description?.trim() ?? "";
   return {
@@ -296,5 +389,11 @@ export function toPublicDirectoryCommunity(
           online: c.nextEvent.online,
         }
       : null,
+    wants: c.wants,
+    // Coarse on purpose: enough to choose, not to locate anyone.
+    distanceKm:
+      c.distanceKm === undefined || c.distanceKm === null
+        ? null
+        : Math.round(c.distanceKm),
   };
 }

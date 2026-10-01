@@ -104,6 +104,8 @@ function item(slug: string, name: string, over: Partial<DirectoryItem> = {}) {
     activeRecently: 0,
     isNew: false,
     openRooms: 0,
+    wants: [],
+    distanceKm: null,
     nextEvent: null,
     faces: [],
     ...over,

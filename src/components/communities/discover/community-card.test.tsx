@@ -48,6 +48,8 @@ function item(over: Partial<DirectoryItem> = {}): DirectoryItem {
     activeRecently: 3,
     isNew: false,
     openRooms: 0,
+    wants: [],
+    distanceKm: null,
     nextEvent: {
       date: "2026-10-14T00:00:00.000Z",
       city: "Amsterdam",
@@ -128,6 +130,17 @@ describe("CommunityCard", () => {
     expect(screen.queryByText(/openRooms/)).toBeNull();
     rerender(<CommunityCard community={item({ openRooms: 3 })} />);
     expect(screen.getByText('openRooms:{"count":3}')).toBeInTheDocument();
+  });
+
+  it("says how far it is only when sorting by distance", () => {
+    const { rerender } = render(
+      <CommunityCard community={item({ distanceKm: 12 })} />,
+    );
+    expect(screen.queryByText(/distanceAway/)).toBeNull();
+    rerender(
+      <CommunityCard community={item({ distanceKm: 12 })} showDistance />,
+    );
+    expect(screen.getByText('distanceAway:{"km":12}')).toBeInTheDocument();
   });
 
   it("marks a new community", () => {

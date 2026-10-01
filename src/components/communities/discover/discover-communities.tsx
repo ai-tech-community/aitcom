@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { X } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,7 +12,12 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateCommunityButton } from "@/components/communities/create-community-dialog";
-import { foldText, type DirectorySort } from "@/server/communities/directory";
+import {
+  foldText,
+  type DirectorySort,
+  type DirectoryWant,
+  type GeoPoint,
+} from "@/server/communities/directory";
 import { cn } from "@/lib/utils";
 import { CommunityCard } from "./community-card";
 import { usePlaceLabel } from "./community-signals";
@@ -53,26 +58,22 @@ function GridSkeleton() {
   );
 }
 
-/** Place chips: "Everywhere" plus every place with upcoming events. */
-function PlaceFilter({
-  places,
+/** A row of toggle chips; one may be pressed, the first means "any". */
+function ChipFilter<K extends string>({
+  label,
+  options,
   value,
   onChange,
 }: {
-  places: string[];
-  value: string | null;
-  onChange: (place: string | null) => void;
+  label: string;
+  options: { key: K | null; label: string }[];
+  value: K | null;
+  onChange: (key: K | null) => void;
 }) {
-  const t = useTranslations("communities.discover");
-  const placeLabel = usePlaceLabel();
-  const options: { key: string | null; label: string }[] = [
-    { key: null, label: t("placeAll") },
-    ...places.map((p) => ({ key: p, label: placeLabel(p) })),
-  ];
   return (
     <div
       role="group"
-      aria-label={t("placeLabel")}
+      aria-label={label}
       className="-mx-6 flex gap-2 overflow-x-auto px-6 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
     >
       {options.map((o) => {
@@ -98,10 +99,98 @@ function PlaceFilter({
   );
 }
 
+/** Coordinates kept to two decimals (about a kilometre) before sending. */
+function coarse(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+type Locating = "idle" | "locating" | "failed";
+
 /**
- * "All communities": search (name and description), sort, a place filter
- * from the communities' own upcoming events, and the card grid. Every
- * choice lives in the URL through `onParamsChange`.
+ * The visitor's shared position for "Near you", held on this page only
+ * (never in the URL or on the server beyond the request), rounded to about
+ * a kilometre.
+ */
+function useSharedPosition() {
+  const [point, setPoint] = useState<GeoPoint | null>(null);
+  const [state, setState] = useState<Locating>("idle");
+  const ask = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setState("failed");
+      return;
+    }
+    setState("locating");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setPoint({
+          lat: coarse(pos.coords.latitude),
+          lng: coarse(pos.coords.longitude),
+        });
+        setState("idle");
+      },
+      () => setState("failed"),
+      { maximumAge: 10 * 60 * 1000, timeout: 10_000 },
+    );
+  };
+  return { point, state, ask };
+}
+
+/** The line under the filters while sorting by distance. */
+function NearNote({
+  origin,
+  anyLocated,
+  state,
+  onAsk,
+}: {
+  origin: { precise: boolean; city: string | null } | null;
+  /** Whether any result has an in-person event with a location. */
+  anyLocated: boolean;
+  state: Locating;
+  onAsk: () => void;
+}) {
+  const t = useTranslations("communities.discover");
+  const message =
+    state === "failed"
+      ? t("locationFailed")
+      : !origin
+        ? t("nearNeedsLocation")
+        : !anyLocated
+          ? t("nearNoneLocated")
+          : origin.precise
+            ? t("nearPrecise")
+            : origin.city
+              ? t("nearFromCity", { city: origin.city })
+              : t("nearFromArea");
+  const action =
+    origin?.precise || (origin && !anyLocated)
+      ? null
+      : origin
+        ? t("usePreciseLocation")
+        : t("useMyLocation");
+  return (
+    <p className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+      <MapPin aria-hidden="true" className="size-4 shrink-0" />
+      <span aria-live="polite">{message}</span>
+      {action ? (
+        <button
+          type="button"
+          disabled={state === "locating"}
+          onClick={onAsk}
+          className="text-foreground focus-visible:ring-ring/50 rounded-sm font-medium underline underline-offset-4 outline-none hover:no-underline focus-visible:ring-[3px] disabled:opacity-60"
+        >
+          {state === "locating" ? t("locating") : action}
+        </button>
+      ) : null}
+    </p>
+  );
+}
+
+/**
+ * "All communities": search (name and description), sort (also by
+ * distance), "what do you want" and place filters built from what the
+ * communities really offer, and the card grid. Every choice lives in the
+ * URL through `onParamsChange` — except a shared position, which stays on
+ * this page.
  */
 export function DiscoverCommunities({
   params,
@@ -114,6 +203,7 @@ export function DiscoverCommunities({
 }) {
   const t = useTranslations("communities.discover");
   const locale = useLocale() as "en" | "nl";
+  const placeLabel = usePlaceLabel();
 
   // The box updates at once; the URL (and the query) after a short pause.
   // `sent` remembers what this box last wrote, so the URL catching up never
@@ -154,8 +244,9 @@ export function DiscoverCommunities({
     commitSearch("");
   };
 
+  const position = useSharedPosition();
   const query = api.communities.directory.useInfiniteQuery(
-    gridQueryInput(params, locale),
+    gridQueryInput(params, locale, position.point),
     {
       getNextPageParam: (last) => last.nextCursor ?? undefined,
       placeholderData: (prev) => prev,
@@ -180,9 +271,19 @@ export function DiscoverCommunities({
   }
   // A filter with one option is no choice: show it from two places on.
   const showPlaces = places.length >= 2 || selectedPlace !== null;
+  const wants = (pages[0]?.wants ?? []).map((w) => w.key);
+  if (params.want && !wants.includes(params.want)) wants.push(params.want);
+  const wantLabel: Record<DirectoryWant, string> = {
+    meet: t("wantMeet"),
+    learn: t("wantLearn"),
+    build: t("wantBuild"),
+    work: t("wantWork"),
+  };
+  const near = params.sort === "near";
 
   const sortOptions: { value: DirectorySort; label: string }[] = [
     { value: "active", label: t("sortActive") },
+    { value: "near", label: t("sortNear") },
     { value: "newest", label: t("sortNewest") },
     { value: "largest", label: t("sortLargest") },
   ];
@@ -246,12 +347,41 @@ export function DiscoverCommunities({
         />
       </div>
 
-      {showPlaces ? (
+      {wants.length > 0 ? (
         <div className="mt-4">
-          <PlaceFilter
-            places={places}
+          <ChipFilter<DirectoryWant>
+            label={t("wantLabel")}
+            options={[
+              { key: null, label: t("wantAll") },
+              ...wants.map((w) => ({ key: w, label: wantLabel[w] })),
+            ]}
+            value={params.want}
+            onChange={(want) => onParamsChange({ want })}
+          />
+        </div>
+      ) : null}
+
+      {showPlaces ? (
+        <div className="mt-3">
+          <ChipFilter<string>
+            label={t("placeLabel")}
+            options={[
+              { key: null, label: t("placeAll") },
+              ...places.map((p) => ({ key: p, label: placeLabel(p) })),
+            ]}
             value={selectedPlace}
             onChange={(place) => onParamsChange({ place })}
+          />
+        </div>
+      ) : null}
+
+      {near && query.data ? (
+        <div className="mt-4">
+          <NearNote
+            origin={pages[0]?.origin ?? null}
+            anyLocated={items.some((c) => c.distanceKm !== null)}
+            state={position.state}
+            onAsk={position.ask}
           />
         </div>
       ) : null}
@@ -279,7 +409,7 @@ export function DiscoverCommunities({
           >
             {items.map((c) => (
               <li key={c.id} className="min-w-0">
-                <CommunityCard community={c} />
+                <CommunityCard community={c} showDistance={near} />
               </li>
             ))}
           </ul>
