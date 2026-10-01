@@ -199,7 +199,7 @@ describe.skipIf(!RUN_DB)("@mentions in feed posts [DB integration]", () => {
         metadata: {
           postId: post.id,
           reviewPath: `/communities/${fx.slug}`,
-          linkLabel: "See the post",
+          linkLabel: "Open the feed",
         },
       },
     ]);
@@ -259,6 +259,83 @@ describe.skipIf(!RUN_DB)("@mentions in feed posts [DB integration]", () => {
     ]);
     await caller(fx.author).feed.deletePost({ postId: post.id });
     expect((await saved(post.id)).mentions).toEqual([]);
+  });
+
+  it("never tells a member twice about one post, even after a name is put back", async () => {
+    const n = await names();
+    const post = await caller(fx.author).feed.createPost({
+      communitySlug: fx.slug,
+      content: `Hi @${n[fx.jane]}`,
+      mentions: [fx.jane],
+    });
+    posts.push(post.id);
+    const edit = (content: string, mentions: string[]) =>
+      caller(fx.author).feed.editPost({
+        postId: post.id,
+        communitySlug: fx.slug,
+        content,
+        mentions,
+      });
+    await edit("Hi all", []);
+    await edit(`Hi _@${n[fx.jane]}_ again`, [fx.jane]);
+    // The italic mention still counts.
+    expect((await saved(post.id)).mentions).toEqual([
+      { userId: fx.jane, name: n[fx.jane] },
+    ]);
+    expect((await toldUsers()).map((r) => r.userId)).toEqual([fx.jane]);
+  });
+
+  it("tells a member mentioned while the post was hidden once it is restored", async () => {
+    const n = await names();
+    const payload = await m.getPayloadClient();
+    const post = await payload.create({
+      collection: "feed-posts",
+      data: {
+        content: `Hi @${n[fx.jane]}`,
+        mentions: [{ userId: fx.jane, name: n[fx.jane] }],
+        authorId: fx.author,
+        authorName: "Author",
+        communityId: fx.communityId,
+        topicSlug: "general",
+        likeCount: 0,
+        commentCount: 0,
+        visibility: "community",
+        hiddenAt: new Date().toISOString(),
+      },
+    });
+    posts.push(post.id);
+    expect(await toldUsers()).toEqual([]);
+    await payload.update({
+      collection: "feed-posts",
+      id: post.id,
+      data: { hiddenAt: null },
+    });
+    expect((await toldUsers()).map((r) => r.userId)).toEqual([fx.jane]);
+  });
+
+  it("tells no one when the author is no longer a member", async () => {
+    const n = await names();
+    const post = await caller(fx.author).feed.createPost({
+      communitySlug: fx.slug,
+      content: "Hello",
+    });
+    posts.push(post.id);
+    await m.db
+      .update(m.schema.communityMemberships)
+      .set({ status: "banned" })
+      .where(
+        m.and(
+          m.eq(m.schema.communityMemberships.communityId, fx.communityId),
+          m.eq(m.schema.communityMemberships.userId, fx.author),
+        ),
+      );
+    await caller(fx.author).feed.editPost({
+      postId: post.id,
+      communitySlug: fx.slug,
+      content: `Hello @${n[fx.jane]}`,
+      mentions: [fx.jane],
+    });
+    expect(await toldUsers()).toEqual([]);
   });
 
   it("tells no one about a post hidden for review", async () => {

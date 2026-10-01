@@ -2828,7 +2828,8 @@
         "previewHidden": "Linkvoorbeeld verwijderd. De link blijft in je tekst.",
         "movedToTopic": "Bericht bewerkt en verplaatst naar {topic}.",
         "mentionList": "Leden om te noemen",
-        "mentionCount": "{count, plural, one {# lid} other {# leden}} gevonden. Kies met de pijltjestoetsen omhoog en omlaag, dan Enter.",
+        "mentionCount": "{count, plural, one {# lid} other {# leden}} gevonden. Kies met de pijltjestoetsen, Enter of Tab om te kiezen, Escape om te sluiten.",
+        "mentionActive": "{name}, {position} van {count}",
         "mentionNone": "Geen leden met de naam “{query}”.",
         "mentionFailed": "De leden konden niet worden geladen. Typ verder om het opnieuw te proberen.",
         "mention": "Een lid noemen"

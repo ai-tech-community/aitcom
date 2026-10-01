@@ -23,6 +23,9 @@ import {
 
 type Database = typeof Db;
 
+/** The notification type for a mention (also its "already told" record). */
+const MENTION_NOTIFICATION = "post_mention";
+
 /** A mention as the feed shows it: a link only to a profile open to all. */
 export type PostMentionView = PostMention & { hasProfile: boolean };
 
@@ -157,31 +160,62 @@ type MentionedPost = {
   mentions?: unknown;
 };
 
-/**
- * A member-chosen name in notification markdown: the marks that could make
- * a link, an image or emphasis are escaped, so it shows as written.
- */
-function escapeMarkdown(text: string): string {
-  return text.replace(/[\\`*_[\]<>]/g, "\\$&");
+/** Whether `userId` is an active member of the community. */
+async function isActiveMember(
+  database: Database,
+  communityId: string,
+  userId: string,
+): Promise<boolean> {
+  const rows = await database
+    .select({ userId: communityMemberships.userId })
+    .from(communityMemberships)
+    .where(
+      and(
+        eq(communityMemberships.communityId, communityId),
+        eq(communityMemberships.userId, userId),
+        eq(communityMemberships.status, "active"),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
 }
 
 /**
- * Tells each member a post newly mentions (never its author) that they
- * were mentioned, once: a mention already on the post before this write
- * was told then. A post hidden for review tells no one, since they could
- * not see it.
+ * Tells each member a post mentions (never its author) that they were
+ * mentioned, once per post: the notifications already sent for this post
+ * are the record, so taking a name out and putting it back tells no one
+ * again, and a mention added while the post was hidden for review is told
+ * when a moderator restores it. A hidden post tells no one, since they
+ * could not see it; nor does an author who is no longer a member.
+ *
+ * Member-chosen names go only in the title, which is shown as plain text;
+ * the markdown body holds none.
  */
 export async function notifyNewMentions(
   database: Database,
   post: MentionedPost,
-  before: MentionedPost | null,
 ): Promise<void> {
   if (!post.communityId || post.isDeleted || post.hiddenAt) return;
-  const told = new Set(readMentions(before?.mentions).map((m) => m.userId));
-  const fresh = readMentions(post.mentions)
+  const wanted = readMentions(post.mentions)
     .map((mention) => mention.userId)
-    .filter((userId) => userId !== post.authorId && !told.has(userId));
+    .filter((userId) => userId !== post.authorId);
+  if (wanted.length === 0) return;
+  const told = await database
+    .select({ userId: notifications.userId })
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.type, MENTION_NOTIFICATION),
+        inArray(notifications.userId, wanted),
+        sql`${notifications.metadata}->>'postId' = ${String(post.id)}`,
+      ),
+    );
+  const toldIds = new Set(told.map((row) => row.userId));
+  const fresh = wanted.filter((userId) => !toldIds.has(userId));
   if (fresh.length === 0) return;
+  if (!(await isActiveMember(database, post.communityId, post.authorId))) {
+    return;
+  }
   const community = await database.query.communities.findFirst({
     where: and(
       eq(communities.id, post.communityId),
@@ -193,41 +227,52 @@ export async function notifyNewMentions(
   // Still members now: a stored list is never trusted on its own.
   const recipients = await activeMembers(database, post.communityId, fresh);
   if (recipients.length === 0) return;
-  const path = post.video?.key
+  const isVideo = Boolean(post.video?.key);
+  // Text posts have no page of their own yet: the link opens the feed.
+  const path = isVideo
     ? `/communities/${community.slug}/reels?v=${post.id}`
     : `/communities/${community.slug}`;
-  const author = escapeMarkdown(post.authorName ?? "A member");
   await database.insert(notifications).values(
     recipients.map(({ userId }) => ({
       userId,
-      type: "post_mention",
-      title: "You were mentioned in a post",
-      content: `**${author}** mentioned you in a post in **${escapeMarkdown(community.name)}**.`,
+      type: MENTION_NOTIFICATION,
+      title: `${post.authorName ?? "A member"} mentioned you in ${community.name}`,
+      content: isVideo
+        ? "You were mentioned in a video. Watch it to see what they said."
+        : "You were mentioned in a post. Open the feed to read it and reply.",
       communityId: post.communityId,
       metadata: {
         postId: post.id,
         reviewPath: path,
-        linkLabel: "See the post",
+        linkLabel: isVideo ? "Watch the video" : "Open the feed",
       },
     })),
   );
 }
 
 /**
- * Notifies newly mentioned members after a post is saved. A failure to
- * notify never fails the post: it is logged.
+ * Notifies newly mentioned members after a post is saved. Saves that
+ * change nothing a notice depends on (a pin, a topic) skip the check. A
+ * failure to notify never fails the post: it is logged.
  */
 export function feedPostMentionsAfterChange(
   getDatabase: () => Promise<Database> = async () =>
     (await import("@/server/db")).db,
 ): CollectionAfterChangeHook {
   return async ({ doc, previousDoc, operation }) => {
+    const post = doc as MentionedPost;
+    const before = previousDoc as MentionedPost | undefined;
+    if (
+      operation === "update" &&
+      before &&
+      JSON.stringify(readMentions(before.mentions)) ===
+        JSON.stringify(readMentions(post.mentions)) &&
+      Boolean(before.hiddenAt) === Boolean(post.hiddenAt)
+    ) {
+      return;
+    }
     try {
-      await notifyNewMentions(
-        await getDatabase(),
-        doc as MentionedPost,
-        operation === "create" ? null : (previousDoc as MentionedPost),
-      );
+      await notifyNewMentions(await getDatabase(), post);
     } catch (error) {
       console.error("[feed-posts] failed to notify mentioned members", error);
     }

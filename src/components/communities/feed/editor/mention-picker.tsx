@@ -19,19 +19,35 @@ import type { usePostText } from "./use-post-text";
 const SEARCH_DELAY_MS = 120;
 /** The list's width; it moves left to stay inside the field. */
 const LIST_WIDTH = 256;
+/** The list's tallest; it opens above the "@" when there is no room below. */
+const LIST_HEIGHT = 264;
 
 type Typed = { start: number; query: string };
+type Placement = { top: number; left: number; above: boolean };
 
 /** What `useMentionPicker` hands the post editor. */
 export type MentionPicker = ReturnType<typeof useMentionPicker>;
 
+/** The bottom of what the member can see (above an on-screen keyboard). */
+function visibleBottom(): number {
+  const viewport = window.visualViewport;
+  return viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
+}
+
 /**
  * Mentions while typing: an "@" at the start of a word opens a list of the
- * community's members matching what follows, under the caret. The text
- * area keeps the focus the whole time (the list is its popup, linked by
- * `aria-activedescendant`): the arrow keys move through the list, Enter or
- * Tab writes "@Name ", Escape closes it until the next "@". Clicking a
- * member works too.
+ * community's members matching what follows, at the "@" (below it, or
+ * above when there is no room). The text area keeps the focus the whole
+ * time (the list is its popup, linked by `aria-activedescendant`, and a
+ * live status names the highlighted member): the arrow keys move through
+ * the list, Enter or Tab writes "@Name ", Escape closes it until the next
+ * "@". Clicking a member works too.
+ *
+ * Only members whose name holds what is typed now are offered, even while
+ * the results for it are still loading, so Enter never picks someone the
+ * text no longer matches; with no one to offer, Enter is a new line. Right
+ * after a finished mention, or while typing words after an "@" that match
+ * no one, the list stays away.
  */
 export function useMentionPicker({
   text,
@@ -47,9 +63,18 @@ export function useMentionPicker({
   // Escape (or a pick) closes the list for this "@" until a new one.
   const [closedAt, setClosedAt] = useState<number | null>(null);
   const [active, setActive] = useState(0);
-  const [anchor, setAnchor] = useState({ top: 0, left: 0 });
-  const query = useDebouncedValue(typed?.query ?? "", SEARCH_DELAY_MS);
-  const open = typed !== null && typed.start !== closedAt;
+  // The member moved to with the arrow keys, for the status line.
+  const [moved, setMoved] = useState(false);
+  const [placement, setPlacement] = useState<Placement>({
+    top: 0,
+    left: 0,
+    above: false,
+  });
+  const typedQuery = typed?.query ?? "";
+  const query = useDebouncedValue(typedQuery, SEARCH_DELAY_MS);
+  const finished =
+    typed !== null && text.mentions.some((m) => m.name === typed.query);
+  const open = typed !== null && typed.start !== closedAt && !finished;
 
   const results = api.feed.mentionCandidates.useQuery(
     { communitySlug, query },
@@ -60,8 +85,19 @@ export function useMentionPicker({
       retry: false,
     },
   );
-  const members = open ? (results.data ?? []) : [];
+  const needle = typedQuery.trim().toLocaleLowerCase();
+  const members = open
+    ? (results.data ?? []).filter((member) =>
+        member.name.toLocaleLowerCase().includes(needle),
+      )
+    : [];
   const activeIndex = Math.min(active, Math.max(0, members.length - 1));
+  const searching =
+    !results.isFetched || results.isPlaceholderData || query !== typedQuery;
+  // Words after an "@" that match no one: the member is just writing.
+  const noMatch =
+    members.length === 0 && !searching && !typedQuery.includes(" ");
+  const showing = open && (members.length > 0 || noMatch || results.isError);
 
   /** Reads what is being typed at the caret; call on every change. */
   const update = useCallback(() => {
@@ -74,6 +110,7 @@ export function useMentionPicker({
     // A new "@" or new letters start again at the first member.
     if (next?.start !== typed?.start || next?.query !== typed?.query) {
       setActive(0);
+      setMoved(false);
     }
     setTyped(next);
     if (!next) {
@@ -81,10 +118,17 @@ export function useMentionPicker({
       return;
     }
     const caret = caretPosition(field, next.start);
-    const room = field.clientWidth - LIST_WIDTH - 8;
-    setAnchor({
-      top: caret.top + caret.height + 4,
-      left: Math.max(8, Math.min(caret.left, room)),
+    const box = field.getBoundingClientRect();
+    const roomBelow = visibleBottom() - (box.top + caret.top + caret.height);
+    const roomAbove = box.top + caret.top;
+    const above = roomBelow < LIST_HEIGHT && roomAbove > roomBelow;
+    setPlacement({
+      top: above ? caret.top - 4 : caret.top + caret.height + 4,
+      left: Math.max(
+        8,
+        Math.min(caret.left, field.clientWidth - LIST_WIDTH - 8),
+      ),
+      above,
     });
   }, [text.textareaRef, typed]);
 
@@ -97,7 +141,8 @@ export function useMentionPicker({
 
   /** Handles the list's keys; true when the key was for the list. */
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (!open || !typed) return false;
+    // Enter that finishes a word in an input method is not a pick.
+    if (!open || !typed || e.nativeEvent.isComposing) return false;
     if (e.key === "Escape") {
       e.preventDefault();
       setClosedAt(typed.start);
@@ -108,6 +153,7 @@ export function useMentionPicker({
       e.preventDefault();
       const step = e.key === "ArrowDown" ? 1 : -1;
       setActive((activeIndex + step + members.length) % members.length);
+      setMoved(true);
       return true;
     }
     if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
@@ -119,17 +165,21 @@ export function useMentionPicker({
   };
 
   const optionId = (index: number) => `${listId}-option-${index}`;
-  const showing = open && (members.length > 0 || results.isFetched);
+  const activeMember = members[activeIndex];
 
-  const status = !open
+  const status = !showing
     ? ""
     : results.isError
       ? t("mentionFailed")
-      : !results.isFetched
-        ? ""
-        : members.length === 0
-          ? t("mentionNone", { query })
-          : t("mentionCount", { count: members.length });
+      : moved && activeMember
+        ? t("mentionActive", {
+            name: activeMember.name,
+            position: activeIndex + 1,
+            count: members.length,
+          })
+        : members.length > 0
+          ? t("mentionCount", { count: members.length })
+          : t("mentionNone", { query: typedQuery.trim() });
 
   return {
     update,
@@ -143,17 +193,21 @@ export function useMentionPicker({
       "aria-activedescendant":
         showing && members.length > 0 ? optionId(activeIndex) : undefined,
     },
-    /** The list, placed under the "@" (render inside the field). */
+    /** The list, placed at the "@" (render inside the field). */
     list: (
       <>
-        {/* Says how many members match (WCAG 4.1.3). */}
+        {/* Says how many members match, and which one is highlighted
+            (WCAG 4.1.3). */}
         <p role="status" className="sr-only">
           {status}
         </p>
         {showing ? (
           <div
-            className="bg-popover text-popover-foreground absolute z-20 w-64 max-w-[calc(100%-1rem)] overflow-hidden rounded-lg border shadow-md"
-            style={{ top: anchor.top, left: anchor.left }}
+            className={cn(
+              "bg-popover text-popover-foreground absolute z-20 w-64 max-w-[calc(100%-1rem)] overflow-hidden rounded-lg border shadow-md",
+              placement.above && "-translate-y-full",
+            )}
+            style={{ top: placement.top, left: placement.left }}
           >
             {members.length > 0 ? (
               <ul
@@ -174,8 +228,9 @@ export function useMentionPicker({
                     onMouseMove={() => setActive(index)}
                     className={cn(
                       "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm",
+                      // Fill, weight and an outline: more than colour alone.
                       index === activeIndex &&
-                        "bg-accent text-accent-foreground",
+                        "bg-accent text-accent-foreground ring-ring/60 font-medium ring-1 ring-inset",
                     )}
                   >
                     <Avatar aria-hidden="true" className="size-6">
@@ -197,7 +252,7 @@ export function useMentionPicker({
               >
                 {results.isError
                   ? t("mentionFailed")
-                  : t("mentionNone", { query })}
+                  : t("mentionNone", { query: typedQuery.trim() })}
               </p>
             )}
           </div>

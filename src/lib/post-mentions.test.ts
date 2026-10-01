@@ -24,6 +24,12 @@ describe("mentionsIn", () => {
     expect(mentionsIn("Jane Doe without the @", [jane])).toEqual([]);
   });
 
+  it("still counts a bold or italic mention", () => {
+    for (const text of ["_@Jane Doe_", "*@Jane Doe*", "**@Jane Doe**!"]) {
+      expect(mentionsIn(text, [jane])).toEqual([jane]);
+    }
+  });
+
   it("keeps one per member and at most the limit", () => {
     expect(
       mentionsIn("@Jane Doe", [jane, { userId: "u-jane", name: "Jane" }]),
@@ -60,6 +66,7 @@ describe("mentionQueryAt", () => {
   it("finds the @name being typed before the caret", () => {
     expect(mentionQueryAt("Hello @Ja", 9)).toEqual({ start: 6, query: "Ja" });
     expect(mentionQueryAt("@", 1)).toEqual({ start: 0, query: "" });
+    expect(mentionQueryAt("_@Ja", 4)).toEqual({ start: 1, query: "Ja" });
     expect(mentionQueryAt("(@Jane D", 8)).toEqual({
       start: 1,
       query: "Jane D",

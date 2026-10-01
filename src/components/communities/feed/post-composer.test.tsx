@@ -557,7 +557,7 @@ describe("PostComposer mentions", () => {
     );
   });
 
-  it("closes the list with Escape until a new @, and says when no one matches", () => {
+  it("closes the list with Escape until a new @, and says when no one matches", async () => {
     renderComposer();
     const box = screen.getByRole("textbox");
     fireEvent.change(box, { target: { value: "Hi @Jo" } });
@@ -573,9 +573,40 @@ describe("PostComposer mentions", () => {
       isError: false,
     }));
     fireEvent.change(box, { target: { value: "Hi @Joe and @Zed" } });
-    expect(screen.getAllByText(/No members named/)[0]).toBeVisible();
-    // Enter with no one to pick is a new line, not a pick.
+    expect(
+      (await screen.findAllByText("No members named “Zed”."))[0],
+    ).toBeVisible();
     expect(screen.queryByRole("listbox")).toBeNull();
+    // Words after an "@" that match no one: no list, no message.
+    fireEvent.change(box, { target: { value: "Hi @Joe and @Zed is here" } });
+    await waitFor(() =>
+      expect(screen.queryAllByText(/No members named/)).toHaveLength(0),
+    );
+  });
+
+  it("never offers a member the typed name no longer matches", () => {
+    renderComposer();
+    const box = screen.getByRole("textbox");
+    // The results for "J" are still on screen while "Jane can" loads.
+    fireEvent.change(box, { target: { value: "@Jane can" } });
+    expect(screen.queryByRole("option")).toBeNull();
+    const enter = fireEvent.keyDown(box, { key: "Enter" });
+    // Not taken by the list: Enter stays a new line.
+    expect(enter).toBe(true);
+    expect(box).toHaveValue("@Jane can");
+  });
+
+  it("names the highlighted member for screen readers", () => {
+    renderComposer();
+    const box = screen.getByRole("textbox");
+    fireEvent.change(box, { target: { value: "@" } });
+    expect(
+      screen.getByText(
+        "2 members found. Arrow keys to choose, Enter or Tab to pick, Escape to close.",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    expect(screen.getByText("Joe, 2 of 2")).toBeInTheDocument();
   });
 
   it("types an @ from the toolbar button", () => {

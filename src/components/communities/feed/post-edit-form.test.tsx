@@ -403,6 +403,32 @@ describe("PostEditForm", () => {
     }));
   });
 
+  it("does not offer members with the caret right after a finished mention", () => {
+    m.mentionCandidates.mockImplementation(() => ({
+      data: [{ userId: "u-jane", name: "Jane Doe", image: null }],
+      isFetched: true,
+      isError: false,
+    }));
+    renderForm({
+      ...textPost,
+      content: "Hi @Jane Doe",
+      mentions: [{ userId: "u-jane", name: "Jane Doe" }],
+    });
+    const box = screen.getByRole<HTMLTextAreaElement>("textbox");
+    box.setSelectionRange(12, 12);
+    fireEvent.select(box);
+    expect(screen.queryByRole("listbox")).toBeNull();
+    // Inside the name it is a search again.
+    box.setSelectionRange(8, 8);
+    fireEvent.select(box);
+    expect(screen.getByRole("option", { name: "Jane Doe" })).toBeVisible();
+    m.mentionCandidates.mockImplementation(() => ({
+      data: [],
+      isFetched: true,
+      isError: false,
+    }));
+  });
+
   it("cancels with Escape", () => {
     const { onCancel } = renderForm();
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });

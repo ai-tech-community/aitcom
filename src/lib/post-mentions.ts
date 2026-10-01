@@ -12,8 +12,12 @@ export type PostMention = { userId: string; name: string };
 /** The most members one post may mention. */
 export const MAX_POST_MENTIONS = 10;
 
-/** A letter or digit right after "@Name" means it was a longer name. */
-const NAME_CHAR = /[\p{L}\p{N}_]/u;
+/**
+ * A letter or digit right after "@Name" means it was a longer name (and
+ * one right before the "@", an address). Formatting marks (_ and *) do
+ * not, so an italic or bold mention still counts.
+ */
+const NAME_CHAR = /[\p{L}\p{N}]/u;
 
 /** Where "@name" is written in `text` as a whole name, from `from` on. */
 function indexOfMention(text: string, name: string, from = 0): number {
@@ -115,7 +119,8 @@ export function splitMentions<M extends PostMention>(
 
 /**
  * The "@query" being typed just before the caret, if any: an "@" at the
- * start of the text or after a space or bracket, followed by up to 30
+ * start of the text or after a space, a bracket or a formatting mark,
+ * followed by up to 30
  * characters with no line break. Spaces are allowed, since names have them.
  */
 export function mentionQueryAt(
@@ -130,6 +135,6 @@ export function mentionQueryAt(
     return null;
   }
   const lead = at > 0 ? before[at - 1]! : "";
-  if (lead && !/[\s([{]/.test(lead)) return null;
+  if (lead && !/[\s([{_*]/.test(lead)) return null;
   return { start: at, query };
 }

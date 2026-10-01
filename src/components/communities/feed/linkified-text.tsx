@@ -11,8 +11,10 @@ import { splitMentions, type PostMention } from "@/lib/post-mentions";
 export type ShownMention = PostMention & { hasProfile?: boolean };
 
 /**
- * Text with each "@Name" the post mentions shown as that member: a link to
- * their profile, or just the name in bold when the profile is not open.
+ * Text with each "@Name" the post mentions shown as that member, in ink
+ * (orange is kept for the one main action): a link to their profile,
+ * always underlined so it reads as one without colour, or just the name in
+ * medium weight when the profile is not open.
  */
 function MentionedText({
   text,
@@ -30,7 +32,7 @@ function MentionedText({
           <Link
             key={index}
             href={`/members/${encodeURIComponent(part.mention.userId)}`}
-            className="text-primary font-medium underline-offset-4 hover:underline"
+            className="decoration-primary/60 hover:decoration-primary font-medium underline underline-offset-4"
           >
             {part.text}
           </Link>
