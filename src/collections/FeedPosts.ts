@@ -2,6 +2,7 @@ import type { CollectionConfig } from "payload";
 
 import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
 import { VIDEO_VISIBILITIES, VIDEO_VISIBILITY_LABELS } from "@/lib/video-rules";
+import { feedPostImageUrlBeforeChange } from "@/server/communities/feed-post-image-url-hook";
 import { linkPreviewBeforeChange } from "@/server/link-preview/link-preview-hook";
 
 export const FeedPosts: CollectionConfig = {
@@ -24,7 +25,25 @@ export const FeedPosts: CollectionConfig = {
       required: true,
       maxLength: POST_MAX_LENGTH,
     },
-    { name: "imageUrl", type: "text", admin: { description: "S3 image URL." } },
+    {
+      name: "image",
+      type: "upload",
+      relationTo: "media",
+      unique: true,
+      admin: {
+        description:
+          "The post's picture: a feed post image its author uploaded. Deleted when the post stops using it.",
+      },
+    },
+    {
+      name: "imageUrl",
+      type: "text",
+      admin: {
+        readOnly: true,
+        description:
+          "Public URL of the image, written by the server with it so feeds read it without a join.",
+      },
+    },
     {
       name: "authorId",
       type: "text",
@@ -155,7 +174,7 @@ export const FeedPosts: CollectionConfig = {
     },
   ],
   hooks: {
-    beforeChange: [linkPreviewBeforeChange()],
+    beforeChange: [feedPostImageUrlBeforeChange(), linkPreviewBeforeChange()],
   },
   timestamps: true,
 };

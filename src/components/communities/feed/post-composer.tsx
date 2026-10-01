@@ -10,7 +10,7 @@ import type { VideoVisibility } from "@/lib/video-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
-import { uploadFeedImage } from "./upload-feed-image";
+import { uploadFeedImage, type UploadedFeedImage } from "./upload-feed-image";
 import { DraftNotice } from "./editor/draft-notice";
 import { EmojiPickerButton } from "./editor/emoji-picker-button";
 import { PostEditor } from "./editor/post-editor";
@@ -43,7 +43,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
     text: text.value,
     restore: text.setValue,
   });
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [image, setImage] = useState<UploadedFeedImage | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [topicSlug, setTopicSlug] = useState("general");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,7 +68,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
   const createPost = api.feed.createPost.useMutation({
     onSuccess: () => {
       posted();
-      setImageUrl(null);
+      setImage(null);
       void utils.feed.getFeed.invalidate();
       void utils.feed.getActivity.invalidate({ communitySlug: slug });
     },
@@ -80,7 +80,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
   const addImageFile = async (file: File) => {
     setIsUploading(true);
     try {
-      setImageUrl(await uploadFeedImage(file));
+      setImage(await uploadFeedImage(file));
     } catch {
       toast.error(tc("uploadFailed"));
     } finally {
@@ -141,7 +141,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
     createPost.mutate({
       communitySlug: slug,
       content: content.trim(),
-      imageUrl: imageUrl ?? undefined,
+      imageId: image?.id,
       topicSlug,
     });
   };
@@ -166,7 +166,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
         imageRefusal={videoFile ? te("oneMediaOnly") : te("waitForUpload")}
         onSubmitShortcut={submit}
         attachments={
-          videoFile || imageUrl ? (
+          videoFile || image ? (
             <>
               {videoFile ? (
                 <VideoAttachment
@@ -179,12 +179,12 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
                   state={videoPost.state}
                 />
               ) : null}
-              {imageUrl ? (
+              {image ? (
                 <MediaPreview
-                  src={imageUrl}
+                  src={image.url}
                   alt={t("attachedImage")}
                   removeLabel={t("removeImage")}
-                  onRemove={() => setImageUrl(null)}
+                  onRemove={() => setImage(null)}
                 />
               ) : null}
             </>
@@ -194,7 +194,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
           <>
             {videoFile ? null : (
               <ToolbarButton
-                label={imageUrl ? t("replaceWithImage") : t("addImage")}
+                label={image ? t("replaceWithImage") : t("addImage")}
                 icon={
                   isUploading ? (
                     <Loader2
@@ -210,7 +210,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
                 onClick={() => fileInputRef.current?.click()}
               />
             )}
-            {imageUrl || videoFile ? null : (
+            {image || videoFile ? null : (
               <ToolbarButton
                 label={tv("add")}
                 icon={<Film aria-hidden="true" className="size-4" />}

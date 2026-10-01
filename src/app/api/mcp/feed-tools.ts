@@ -92,7 +92,9 @@ export function registerFeedTools(
           .string()
           .url()
           .optional()
-          .describe("Optional image URL to attach."),
+          .describe(
+            "Optional public image to attach: a JPEG, PNG, WebP or GIF of up to 2 MB. It is copied into the community when the owner publishes the draft.",
+          ),
       },
     },
     async ({ communitySlug, content, imageUrl }) => {

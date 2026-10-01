@@ -12,7 +12,10 @@ const m = vi.hoisted(() => ({
   check: vi.fn(async () => undefined),
   reset: vi.fn(),
   cancel: vi.fn(),
-  upload: vi.fn(async () => "https://bucket.s3.test/new.jpg"),
+  upload: vi.fn(async () => ({
+    id: 42,
+    url: "https://bucket.s3.test/new.jpg",
+  })),
   toast: vi.fn(),
 }));
 
@@ -149,7 +152,7 @@ describe("PostEditForm", () => {
     expect(m.upload).toHaveBeenCalledWith(picture);
     expect(m.editPost).toHaveBeenCalledWith(
       expect.objectContaining({
-        media: { kind: "image", url: "https://bucket.s3.test/new.jpg" },
+        media: { kind: "image", imageId: 42 },
       }),
     );
   });

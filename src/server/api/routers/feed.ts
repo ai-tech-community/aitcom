@@ -44,6 +44,10 @@ import {
   reportPost,
   reviewReport,
 } from "@/server/communities/post-reports";
+import {
+  claimFeedImage,
+  cleanUpPostImage,
+} from "@/server/communities/feed-images";
 import { setPostImage } from "@/server/communities/post-media";
 import { cleanUpPostVideoFiles } from "@/server/communities/post-video-files";
 import {
@@ -308,7 +312,8 @@ export const feedRouter = createTRPCRouter({
       z.object({
         communitySlug: z.string(),
         content: z.string().min(1).max(POST_MAX_LENGTH),
-        imageUrl: z.string().url().optional(),
+        /** The member's own feed post image, from `/api/upload`. */
+        imageId: z.number().int().positive().optional(),
         topicSlug: z.string().optional(),
       }),
     )
@@ -321,12 +326,19 @@ export const feedRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
+      const image =
+        input.imageId === undefined
+          ? null
+          : await claimFeedImage(payload, {
+              imageId: input.imageId,
+              userId: ctx.session.user.id,
+            });
 
       const post = await payload.create({
         collection: "feed-posts",
         data: {
           content: input.content,
-          imageUrl: input.imageUrl ?? undefined,
+          image: image?.id,
           authorId: ctx.session.user.id,
           authorName: userName,
           communityId: community.id,
@@ -440,7 +452,10 @@ export const feedRouter = createTRPCRouter({
           .discriminatedUnion("kind", [
             z.object({ kind: z.literal("keep") }),
             z.object({ kind: z.literal("none") }),
-            z.object({ kind: z.literal("image"), url: z.string().url() }),
+            z.object({
+              kind: z.literal("image"),
+              imageId: z.number().int().positive(),
+            }),
           ])
           .default({ kind: "keep" }),
       }),
@@ -461,7 +476,7 @@ export const feedRouter = createTRPCRouter({
             userId: ctx.session.user.id,
             communityId: community.id,
             content: input.content,
-            imageUrl: input.media.kind === "image" ? input.media.url : null,
+            imageId: input.media.kind === "image" ? input.media.imageId : null,
           },
         );
         return { id: input.postId };
@@ -579,6 +594,7 @@ export const feedRouter = createTRPCRouter({
           isDeleted: true,
           content: "",
           authorName: "",
+          image: null,
           imageUrl: null,
         },
       });
@@ -587,6 +603,7 @@ export const feedRouter = createTRPCRouter({
       await cleanUpPostVideoFiles(getVideoStorage, post, {
         context: "feed.deletePost",
       });
+      await cleanUpPostImage(payload, post, { context: "feed.deletePost" });
       // The id only: the stored post carries the video's storage keys.
       return { id: post.id };
     }),

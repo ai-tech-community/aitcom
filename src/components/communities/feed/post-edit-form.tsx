@@ -196,11 +196,14 @@ export function PostEditForm({
     let change:
       | { kind: "keep" }
       | { kind: "none" }
-      | { kind: "image"; url: string };
+      | { kind: "image"; imageId: number };
     if (media.kind === "image") {
       setIsUploading(true);
       try {
-        change = { kind: "image", url: await uploadFeedImage(media.file) };
+        change = {
+          kind: "image",
+          imageId: (await uploadFeedImage(media.file)).id,
+        };
       } catch {
         toast.error(tc("uploadFailed"));
         return;
