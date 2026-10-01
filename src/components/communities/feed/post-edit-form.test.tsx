@@ -19,6 +19,34 @@ const m = vi.hoisted(() => ({
   toast: vi.fn(),
 }));
 
+const pickedGif = vi.hoisted(() => ({
+  giphyId: "abc123",
+  title: "Party parrot",
+  mp4Url: "https://media.giphy.com/media/abc123/giphy.mp4",
+  stillUrl: "https://media.giphy.com/media/abc123/giphy_s.gif",
+  width: 400,
+  height: 300,
+  preview: {
+    mp4Url: "https://media.giphy.com/media/abc123/200w.mp4",
+    stillUrl: "https://media.giphy.com/media/abc123/200w_s.gif",
+    width: 200,
+    height: 150,
+  },
+}));
+vi.mock("./editor/gif-picker-button", () => ({
+  GifPickerButton: ({
+    label,
+    onPick,
+  }: {
+    label: string;
+    onPick: (gif: typeof pickedGif) => void;
+  }) => (
+    <button type="button" onClick={() => onPick(pickedGif)}>
+      {label}
+    </button>
+  ),
+}));
+
 vi.mock("next-intl", () => ({
   useTranslations: () => (k: string) => k,
   useLocale: () => "en",
@@ -272,5 +300,24 @@ describe("PostEditForm", () => {
     screen.getByRole("textbox").dispatchEvent(escape);
     expect(onCancel).not.toHaveBeenCalled();
     outside.remove();
+  });
+
+  it("puts a picked GIF on the post, and a public video post would lose public", () => {
+    renderForm(publicVideoPost);
+    fireEvent.click(screen.getByRole("button", { name: "replaceWithGif" }));
+    expect(screen.getByText("becomesMembersOnly")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(m.editPost).toHaveBeenCalledWith(
+      expect.objectContaining({ media: { kind: "gif", giphyId: "abc123" } }),
+    );
+  });
+
+  it("shows the post's current GIF and keeps it by default", () => {
+    renderForm({ ...textPost, gif: pickedGif });
+    expect(screen.getByText("currentGif")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "removeGif" }));
+    expect(
+      screen.getByRole("button", { name: "keepCurrentGif" }),
+    ).toBeInTheDocument();
   });
 });

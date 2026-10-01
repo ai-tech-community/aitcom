@@ -16,6 +16,34 @@ const m = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
 }));
 
+const pickedGif = vi.hoisted(() => ({
+  giphyId: "abc123",
+  title: "Party parrot",
+  mp4Url: "https://media.giphy.com/media/abc123/giphy.mp4",
+  stillUrl: "https://media.giphy.com/media/abc123/giphy_s.gif",
+  width: 400,
+  height: 300,
+  preview: {
+    mp4Url: "https://media.giphy.com/media/abc123/200w.mp4",
+    stillUrl: "https://media.giphy.com/media/abc123/200w_s.gif",
+    width: 200,
+    height: 150,
+  },
+}));
+vi.mock("./editor/gif-picker-button", () => ({
+  GifPickerButton: ({
+    label,
+    onPick,
+  }: {
+    label: string;
+    onPick: (gif: typeof pickedGif) => void;
+  }) => (
+    <button type="button" onClick={() => onPick(pickedGif)}>
+      {label}
+    </button>
+  ),
+}));
+
 vi.mock("./use-video-post", () => ({
   useVideoPost: () => ({
     state: m.videoState,
@@ -238,5 +266,25 @@ describe("PostComposer pictures", () => {
     fireEvent.keyDown(field, { key: "Enter", ctrlKey: true });
     expect(m.createPost).not.toHaveBeenCalled();
     expect(postButton()).toBeDisabled();
+  });
+
+  it("posts a picked GIF by its GIPHY id, and a GIF hides Add video", () => {
+    renderComposer();
+    fireEvent.click(
+      screen.getByRole("button", { name: en.communities.feed.editor.gif }),
+    );
+    expect(
+      screen.getByRole("img", { name: "Party parrot" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: en.communities.video.add }),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Weekend!" },
+    });
+    fireEvent.click(postButton());
+    expect(m.createPost).toHaveBeenCalledWith(
+      expect.objectContaining({ gifId: "abc123", imageId: undefined }),
+    );
   });
 });

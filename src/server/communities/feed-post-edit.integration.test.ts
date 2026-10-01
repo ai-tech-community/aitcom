@@ -25,6 +25,26 @@ import {
   vi,
 } from "vitest";
 
+const gif = vi.hoisted(() => ({
+  giphyId: "itgif1",
+  title: "Party parrot",
+  mp4Url: "https://media.giphy.com/media/itgif1/giphy.mp4",
+  stillUrl: "https://media.giphy.com/media/itgif1/giphy_s.gif",
+  width: 400,
+  height: 300,
+  preview: {
+    mp4Url: "https://media.giphy.com/media/itgif1/200w.mp4",
+    stillUrl: "https://media.giphy.com/media/itgif1/200w_s.gif",
+    width: 200,
+    height: 150,
+  },
+}));
+vi.mock("@/server/giphy/giphy", () => ({
+  getGiphyClient: () => ({
+    byId: async (id: string) => (id === gif.giphyId ? gif : null),
+  }),
+}));
+
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
 }
@@ -345,5 +365,49 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
     expect(saved.video?.key).toBe(newer);
     expect(saved.content).toBe("A clip");
     expect(getStorage).not.toHaveBeenCalled();
+  });
+
+  it("puts a GIF on the post in place of its video, then a picture in place of the GIF", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const image = await ownImage();
+    try {
+      await author().feed.editPost({
+        postId: fx.postId,
+        communitySlug: fx.slug,
+        content: "Party",
+        media: { kind: "gif", giphyId: "itgif1" },
+      });
+      const payload = await m.getPayloadClient();
+      const withGif = await payload.findByID({
+        collection: "feed-posts",
+        id: fx.postId,
+        depth: 0,
+      });
+      expect(withGif.gif).toMatchObject({
+        giphyId: "itgif1",
+        mp4Url: gif.mp4Url,
+        width: 400,
+        height: 300,
+      });
+      expect(withGif.video?.key ?? null).toBeNull();
+      expect(withGif.visibility).toBe("community");
+
+      await author().feed.editPost({
+        postId: fx.postId,
+        communitySlug: fx.slug,
+        content: "A picture",
+        media: { kind: "image", imageId: image.id },
+      });
+      const withImage = await payload.findByID({
+        collection: "feed-posts",
+        id: fx.postId,
+        depth: 0,
+      });
+      expect(withImage.gif?.giphyId ?? null).toBeNull();
+      expect(withImage.gif?.mp4Url ?? null).toBeNull();
+      expect(withImage.image).toBe(image.id);
+    } finally {
+      log.mockRestore();
+    }
   });
 });

@@ -48,7 +48,23 @@ import {
   claimFeedImage,
   cleanUpPostImage,
 } from "@/server/communities/feed-images";
-import { setPostImage } from "@/server/communities/post-media";
+import {
+  NO_GIF,
+  gifFields,
+  lookUpGif,
+  setPostMedia,
+} from "@/server/communities/post-media";
+import { getGiphyClient } from "@/server/giphy/giphy";
+import { createPerUserLimit } from "@/server/rate-limit/per-user-window";
+
+/**
+ * GIF searches per member: GIPHY's quota is shared by the whole app, so
+ * one member paging through results must not use it up for everyone.
+ */
+const checkGifSearchLimit = createPerUserLimit({
+  windowMs: 3_600_000, // 1 hour
+  max: 60,
+});
 import { cleanUpPostVideoFiles } from "@/server/communities/post-video-files";
 import {
   finishVideoPost,
@@ -309,13 +325,22 @@ export const feedRouter = createTRPCRouter({
   // ── createPost ──────────────────────────────────────────────────────────────
   createPost: protectedProcedure
     .input(
-      z.object({
-        communitySlug: z.string(),
-        content: z.string().min(1).max(POST_MAX_LENGTH),
-        /** The member's own feed post image, from `/api/upload`. */
-        imageId: z.number().int().positive().optional(),
-        topicSlug: z.string().optional(),
-      }),
+      z
+        .object({
+          communitySlug: z.string(),
+          content: z.string().min(1).max(POST_MAX_LENGTH),
+          /** The member's own feed post image, from `/api/upload`. */
+          imageId: z.number().int().positive().optional(),
+          /** A GIF picked from `searchGifs`; a post has a picture or a GIF. */
+          gifId: z
+            .string()
+            .regex(/^[A-Za-z0-9]{1,64}$/)
+            .optional(),
+          topicSlug: z.string().optional(),
+        })
+        .refine((v) => v.imageId === undefined || v.gifId === undefined, {
+          message: "A post has one picture or one GIF.",
+        }),
     )
     .mutation(async ({ ctx, input }) => {
       const community = await requireFeedPoster(
@@ -333,12 +358,17 @@ export const feedRouter = createTRPCRouter({
               imageId: input.imageId,
               userId: ctx.session.user.id,
             });
+      const gif =
+        input.gifId === undefined
+          ? null
+          : await lookUpGif(getGiphyClient, input.gifId);
 
       const post = await payload.create({
         collection: "feed-posts",
         data: {
           content: input.content,
           image: image?.id,
+          ...(gif ? { gif: gifFields(gif) } : {}),
           authorId: ctx.session.user.id,
           authorName: userName,
           communityId: community.id,
@@ -434,12 +464,45 @@ export const feedRouter = createTRPCRouter({
       return post;
     }),
 
+  // ── searchGifs ──────────────────────────────────────────────────────────────
+  /**
+   * GIFs for the post editor: trending without a query, otherwise a search
+   * in the member's language. Only members who may post can search, since
+   * every search counts against the app's GIPHY quota.
+   */
+  searchGifs: protectedProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        query: z.string().max(50).default(""),
+        /** The offset of the page, for infinite loading. */
+        cursor: z.number().int().min(0).max(4999).nullish(),
+        lang: z.enum(["en", "nl"]).default("en"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      await requireFeedPoster(ctx.db, input.communitySlug, ctx.session.user.id);
+      if (!checkGifSearchLimit(ctx.session.user.id).allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "GIF search is busy. Try again in a few minutes.",
+        });
+      }
+      const giphy = getGiphyClient();
+      const query = input.query.trim();
+      const offset = input.cursor ?? 0;
+      const page = query
+        ? await giphy.search({ query, offset, lang: input.lang })
+        : await giphy.trending({ offset });
+      return { gifs: page.gifs, nextCursor: page.nextOffset };
+    }),
+
   // ── editPost ────────────────────────────────────────────────────────────────
   /**
    * The author edits a post's text and, optionally, its media: keep it,
    * remove it, or set an image (which replaces a video). Changing media is
    * posting new content, so it needs the same right as posting; the media
-   * rules live in `setPostImage`. Putting a new video on the post is
+   * rules live in `setPostMedia`. Putting a new video on the post is
    * `replacePostVideo`.
    */
   editPost: protectedProcedure
@@ -456,6 +519,10 @@ export const feedRouter = createTRPCRouter({
               kind: z.literal("image"),
               imageId: z.number().int().positive(),
             }),
+            z.object({
+              kind: z.literal("gif"),
+              giphyId: z.string().regex(/^[A-Za-z0-9]{1,64}$/),
+            }),
           ])
           .default({ kind: "keep" }),
       }),
@@ -469,14 +536,18 @@ export const feedRouter = createTRPCRouter({
           input.communitySlug,
           ctx.session.user.id,
         );
-        await setPostImage(
-          { payload, getStorage: getVideoStorage },
+        await setPostMedia(
+          {
+            payload,
+            getStorage: getVideoStorage,
+            getGiphy: getGiphyClient,
+          },
           {
             postId: input.postId,
             userId: ctx.session.user.id,
             communityId: community.id,
             content: input.content,
-            imageId: input.media.kind === "image" ? input.media.imageId : null,
+            media: input.media,
           },
         );
         return { id: input.postId };
@@ -596,6 +667,7 @@ export const feedRouter = createTRPCRouter({
           authorName: "",
           image: null,
           imageUrl: null,
+          gif: NO_GIF,
         },
       });
       // Best effort: the post is already gone, so a storage failure is logged

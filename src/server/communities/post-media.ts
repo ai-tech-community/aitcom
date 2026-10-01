@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { Where } from "payload";
 
+import type { Gif, GiphyClient } from "@/server/giphy/giphy";
 import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
@@ -13,6 +14,8 @@ type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 export type PostMediaDeps = {
   payload: Payload;
   getStorage: VideoStorageSource;
+  /** Reached only when a GIF is put on a post. */
+  getGiphy?: () => GiphyClient;
   now?: () => Date;
   log?: (message: string, detail: unknown) => void;
 };
@@ -27,6 +30,52 @@ const NO_VIDEO = {
   height: null,
   bytes: null,
 } as const;
+
+/** A post with no GIF: every field of the `gif` group cleared. */
+export const NO_GIF = {
+  giphyId: null,
+  title: null,
+  mp4Url: null,
+  stillUrl: null,
+  width: null,
+  height: null,
+} as const;
+
+/** The `gif` group a post stores for a GIF looked up from GIPHY. */
+export function gifFields(gif: Gif) {
+  return {
+    giphyId: gif.giphyId,
+    title: gif.title,
+    mp4Url: gif.mp4Url,
+    stillUrl: gif.stillUrl,
+    width: gif.width,
+    height: gif.height,
+  };
+}
+
+/**
+ * A GIF to put on a post, looked up by its GIPHY id, so a post only ever
+ * stores GIPHY's own media addresses.
+ */
+export async function lookUpGif(
+  getGiphy: (() => GiphyClient) | undefined,
+  giphyId: string,
+): Promise<Gif> {
+  if (!getGiphy) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "GIFs are not available right now.",
+    });
+  }
+  const gif = await getGiphy().byId(giphyId);
+  if (!gif) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "That GIF is not available. Pick another one.",
+    });
+  }
+  return gif;
+}
 
 /**
  * The author's live post in this community, ready to have its image or
@@ -112,33 +161,43 @@ export async function writePostMedia(
   }
 }
 
+/** What a post's media becomes, other than a new video. */
+export type PostMediaChange =
+  | { kind: "none" }
+  | { kind: "image"; imageId: number }
+  | { kind: "gif"; giphyId: string };
+
 /**
- * Sets a post's text and its image, or no media at all, in place of what
- * it carried. The image must be the author's own unused feed post image.
- * A post holds one image or one video, never both, so any video goes; and
- * since only video posts may be public, a public post that loses its video
- * becomes community-only. Putting a new video on a post is
- * `replacePostVideo`, which needs a checked upload.
+ * Sets a post's text and its media (a picture, a GIF, or none) in place of
+ * what it carried. A picture must be the author's own unused feed post
+ * image; a GIF is looked up on GIPHY by its id. A post holds one picture,
+ * video or GIF, never more, so the others go; and since only video posts
+ * may be public, a public post that loses its video becomes
+ * community-only. Putting a new video on a post is `replacePostVideo`,
+ * which needs a checked upload.
  */
-export async function setPostImage(
+export async function setPostMedia(
   deps: PostMediaDeps,
   input: {
     postId: number;
     userId: string;
     communityId: string;
     content: string;
-    imageId: number | null;
+    media: PostMediaChange;
   },
 ): Promise<void> {
   const post = await loadPostForMediaEdit(deps.payload, input);
+  const { media } = input;
   const image =
-    input.imageId === null
-      ? null
-      : await claimFeedImage(deps.payload, {
-          imageId: input.imageId,
+    media.kind === "image"
+      ? await claimFeedImage(deps.payload, {
+          imageId: media.imageId,
           userId: input.userId,
           postId: post.id,
-        });
+        })
+      : null;
+  const gif =
+    media.kind === "gif" ? await lookUpGif(deps.getGiphy, media.giphyId) : null;
   const now = deps.now?.() ?? new Date();
   await writePostMedia(
     deps,
@@ -148,6 +207,7 @@ export async function setPostImage(
       image: image?.id ?? null,
       // A legacy URL-only picture has no link for the hook to clear.
       ...(image ? {} : { imageUrl: null }),
+      gif: gif ? gifFields(gif) : NO_GIF,
       ...(post.video?.key
         ? { video: NO_VIDEO, visibility: "community" as const }
         : {}),

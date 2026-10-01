@@ -299,6 +299,14 @@ describe("reviewReport", () => {
         authorName: "",
         image: null,
         imageUrl: null,
+        gif: {
+          giphyId: null,
+          title: null,
+          mp4Url: null,
+          stillUrl: null,
+          width: null,
+          height: null,
+        },
       },
     });
     expect(storage.remove).toHaveBeenCalledWith(["k.mp4", "k.jpg"]);
