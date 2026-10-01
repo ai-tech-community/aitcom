@@ -26,9 +26,7 @@ const STREET_BOX =
 function StreetCaption({ community }: { community: DirectoryItem | null }) {
   const t = useTranslations("communities.discover");
   if (!community) {
-    return (
-      <p className="text-muted-foreground text-sm">{t("squareHint")}</p>
-    );
+    return <p className="text-muted-foreground text-sm">{t("squareHint")}</p>;
   }
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-1">

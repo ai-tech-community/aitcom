@@ -108,9 +108,7 @@ export function buildDirectory(opts: {
     const upcoming = eventsByCommunity.get(c.communityId) ?? [];
     const first = upcoming[0];
     const places = [
-      ...new Set(
-        upcoming.map(placeOf).filter((p): p is string => p !== null),
-      ),
+      ...new Set(upcoming.map(placeOf).filter((p): p is string => p !== null)),
     ];
     return [
       {
@@ -173,8 +171,7 @@ const COMPARE: Record<
     b.activeRecently - a.activeRecently ||
     b.memberCount - a.memberCount ||
     byId(a, b),
-  newest: (a, b) =>
-    b.createdAt.getTime() - a.createdAt.getTime() || byId(a, b),
+  newest: (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || byId(a, b),
   largest: (a, b) =>
     b.memberCount - a.memberCount || b.score - a.score || byId(a, b),
 };

@@ -44,7 +44,10 @@ function RoomChip({ room }: { room: LiveRoom }) {
             aria-hidden="true"
             className="bg-success size-2 shrink-0 rounded-full"
           />
-          <span className="min-w-0 truncate text-sm font-semibold" title={label}>
+          <span
+            className="min-w-0 truncate text-sm font-semibold"
+            title={label}
+          >
             #{label}
           </span>
         </span>

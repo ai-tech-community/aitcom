@@ -174,18 +174,14 @@ describe("DiscoverCommunities", () => {
 
   it("shows a community once even if two pages both hold it", () => {
     state.pages = [page(["Alpha", "Beta"]), page(["Beta", "Gamma"])];
-    render(
-      <DiscoverCommunities params={DEFAULTS} onParamsChange={vi.fn()} />,
-    );
+    render(<DiscoverCommunities params={DEFAULTS} onParamsChange={vi.fn()} />);
     expect(screen.getAllByText("Beta")).toHaveLength(1);
     expect(screen.getByText("Gamma")).toBeInTheDocument();
   });
 
   it("hides the place filter while there is only one place", () => {
     state.pages = [page(["Alpha"], ["Amsterdam"])];
-    render(
-      <DiscoverCommunities params={DEFAULTS} onParamsChange={vi.fn()} />,
-    );
+    render(<DiscoverCommunities params={DEFAULTS} onParamsChange={vi.fn()} />);
     expect(screen.queryByRole("group", { name: "placeLabel" })).toBeNull();
   });
 

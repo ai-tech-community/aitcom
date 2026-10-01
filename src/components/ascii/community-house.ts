@@ -9,7 +9,12 @@
  */
 
 import { FIGURE_W, type FigureKind, type FigurePose } from "./figures";
-import { DEPTH_X, DEPTH_Y, minHouseHeight, type GableHouse } from "./gabled-house";
+import {
+  DEPTH_X,
+  DEPTH_Y,
+  minHouseHeight,
+  type GableHouse,
+} from "./gabled-house";
 import type { CellRect } from "./measure";
 import { rand } from "./seeded";
 

@@ -5,7 +5,10 @@ describe("createTtlMemo", () => {
   it("shares one in-flight load between concurrent callers", async () => {
     const memo = createTtlMemo<string, number>(1000, () => 0);
     const load = vi.fn(() => Promise.resolve(7));
-    const [a, b] = await Promise.all([memo.get("k", load), memo.get("k", load)]);
+    const [a, b] = await Promise.all([
+      memo.get("k", load),
+      memo.get("k", load),
+    ]);
     expect([a, b]).toEqual([7, 7]);
     expect(load).toHaveBeenCalledTimes(1);
   });

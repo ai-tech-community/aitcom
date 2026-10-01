@@ -43,7 +43,10 @@ async function loadLiveRoomRows(db: DB, now: Date): Promise<LiveRoomRow[]> {
     .innerJoin(communities, eq(communities.id, spaces.communityId))
     .innerJoin(
       conversations,
-      and(eq(conversations.type, "space"), eq(conversations.spaceId, spaces.id)),
+      and(
+        eq(conversations.type, "space"),
+        eq(conversations.spaceId, spaces.id),
+      ),
     )
     .innerJoin(
       messages,

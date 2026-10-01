@@ -51,7 +51,7 @@ export function CommunityCard({ community }: { community: DirectoryItem }) {
           <h3
             id={`${id}-name`}
             title={name}
-            className="line-clamp-2 text-base leading-snug font-semibold wrap-break-word text-balance"
+            className="line-clamp-2 text-base leading-snug font-semibold text-balance wrap-break-word"
           >
             {name}
           </h3>

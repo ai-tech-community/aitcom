@@ -169,8 +169,9 @@ describe("communityStreetFrame", () => {
   it("rises into a tall street instead of leaving empty sky", () => {
     const rows = 40;
     const frame = communityStreetFrame(STREET, 88, rows);
-    const firstInked = Array.from({ length: rows }, (_, y) => row(frame, y))
-      .findIndex((line) => line.trim().length > 0);
+    const firstInked = Array.from({ length: rows }, (_, y) =>
+      row(frame, y),
+    ).findIndex((line) => line.trim().length > 0);
     expect(firstInked).toBeLessThan(rows / 3);
   });
 });

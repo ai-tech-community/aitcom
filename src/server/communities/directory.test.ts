@@ -159,16 +159,28 @@ describe("matchesQuery", () => {
     expect(matchesQuery(c, "rotterdam")).toBe(false);
   });
   it("ignores accents", () => {
-    expect(
-      matchesQuery(community("y", { name: "Café Agents" }), "cafe"),
-    ).toBe(true);
+    expect(matchesQuery(community("y", { name: "Café Agents" }), "cafe")).toBe(
+      true,
+    );
   });
 });
 
 describe("sortDirectory", () => {
-  const a = community("a", { score: 1, memberCount: 9, createdAt: new Date(1) });
-  const b = community("b", { score: 5, memberCount: 2, createdAt: new Date(3) });
-  const c = community("c", { score: 3, memberCount: 4, createdAt: new Date(2) });
+  const a = community("a", {
+    score: 1,
+    memberCount: 9,
+    createdAt: new Date(1),
+  });
+  const b = community("b", {
+    score: 5,
+    memberCount: 2,
+    createdAt: new Date(3),
+  });
+  const c = community("c", {
+    score: 3,
+    memberCount: 4,
+    createdAt: new Date(2),
+  });
   it("orders by liveness, recency or size", () => {
     expect(sortDirectory([a, b, c], "active").map((x) => x.id)).toEqual([
       "b",
@@ -239,7 +251,10 @@ describe("toPublicDirectoryCommunity", () => {
   it("drops a description that only repeats the name", () => {
     expect(
       toPublicDirectoryCommunity(
-        community("a", { name: "Demo community", description: "demo community" }),
+        community("a", {
+          name: "Demo community",
+          description: "demo community",
+        }),
       ).description,
     ).toBeNull();
     expect(
