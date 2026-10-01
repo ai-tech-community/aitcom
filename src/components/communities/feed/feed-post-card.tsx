@@ -25,6 +25,7 @@ import { LinkPreviewCard } from "./link-preview-card";
 import { LinkifiedText } from "./linkified-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
+import { FeedGif, type FeedGifView } from "./feed-gif";
 import { PostEditForm } from "./post-edit-form";
 
 interface FeedPost {
@@ -56,6 +57,7 @@ interface FeedPost {
   /** Set when the post was reported; only its author and moderators see it. */
   hiddenAt?: string | null;
   visibility?: "community" | "public" | null;
+  gif?: FeedGifView | null;
 }
 
 interface FeedPostCardProps {
@@ -269,6 +271,8 @@ export function FeedPostCard({
       {/* Media (the edit form shows its own while editing) */}
       {isEditing ? null : post.video ? (
         <FeedVideoPlayer video={post.video} onExpired={refreshVideo} />
+      ) : post.gif?.mp4Url ? (
+        <FeedGif gif={post.gif} />
       ) : post.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

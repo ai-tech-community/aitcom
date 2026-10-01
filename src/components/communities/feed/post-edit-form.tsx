@@ -13,6 +13,8 @@ import { MediaPreview } from "./media-preview";
 import { uploadFeedImage } from "./upload-feed-image";
 import { DraftNotice } from "./editor/draft-notice";
 import { EmojiPickerButton } from "./editor/emoji-picker-button";
+import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
+import type { FeedGifView } from "./feed-gif";
 import { PostEditor } from "./editor/post-editor";
 import {
   SEND_SHORTCUTS,
@@ -30,7 +32,8 @@ type MediaEdit =
   | { kind: "keep" }
   | { kind: "none" }
   | { kind: "image"; file: File; previewUrl: string }
-  | { kind: "video"; file: File };
+  | { kind: "video"; file: File }
+  | { kind: "gif"; gif: PickedGif };
 
 export type EditablePost = {
   id: number;
@@ -38,6 +41,7 @@ export type EditablePost = {
   imageUrl?: string | null;
   visibility?: VideoVisibility | null;
   video?: { thumbnailUrl: string | null } | null;
+  gif?: FeedGifView | null;
   /** Set while a moderator reviews a report: the media stays as it is. */
   hiddenAt?: string | null;
 };
@@ -87,7 +91,8 @@ export function PostEditForm({
   const videoPost = useVideoPost(communitySlug);
   const audience: VideoVisibility =
     post.visibility === "public" ? "public" : "community";
-  const hadMedia = Boolean(post.imageUrl) || Boolean(post.video);
+  const hadGif = Boolean(post.gif?.mp4Url);
+  const hadMedia = Boolean(post.imageUrl) || Boolean(post.video) || hadGif;
   const mediaLocked = Boolean(post.hiddenAt);
 
   // The local preview of a picked image lives as long as the pick.
@@ -126,11 +131,12 @@ export function PostEditForm({
 
   const showsOldImage = media.kind === "keep" && Boolean(post.imageUrl);
   const showsOldVideo = media.kind === "keep" && Boolean(post.video);
+  const showsOldGif = media.kind === "keep" && hadGif;
   const hasMedia = media.kind === "keep" ? hadMedia : media.kind !== "none";
   const losesPublic =
     audience === "public" &&
     Boolean(post.video) &&
-    (media.kind === "none" || media.kind === "image");
+    (media.kind === "none" || media.kind === "image" || media.kind === "gif");
 
   const pickImageFile = (file: File) => {
     videoPost.reset();
@@ -196,7 +202,8 @@ export function PostEditForm({
     let change:
       | { kind: "keep" }
       | { kind: "none" }
-      | { kind: "image"; imageId: number };
+      | { kind: "image"; imageId: number }
+      | { kind: "gif"; giphyId: string };
     if (media.kind === "image") {
       setIsUploading(true);
       try {
@@ -210,6 +217,8 @@ export function PostEditForm({
       } finally {
         setIsUploading(false);
       }
+    } else if (media.kind === "gif") {
+      change = { kind: "gif", giphyId: media.gif.giphyId };
     } else {
       change = media;
     }
@@ -277,6 +286,24 @@ export function PostEditForm({
                 onRemove={removeMedia}
                 disabled={busy}
               />
+            ) : media.kind === "gif" ? (
+              <MediaPreview
+                src={media.gif.preview.stillUrl}
+                alt={media.gif.title || t("gifBadge")}
+                badge={t("gifBadge")}
+                removeLabel={t("removeGif")}
+                onRemove={removeMedia}
+                disabled={busy}
+              />
+            ) : showsOldGif ? (
+              <MediaPreview
+                src={post.gif?.stillUrl ?? null}
+                alt=""
+                badge={t("currentGif")}
+                removeLabel={t("removeGif")}
+                onRemove={removeMedia}
+                disabled={busy}
+              />
             ) : showsOldVideo ? (
               <MediaPreview
                 src={post.video?.thumbnailUrl ?? null}
@@ -302,7 +329,11 @@ export function PostEditForm({
                 className="-ml-2"
               >
                 <Undo2 aria-hidden="true" className="size-4" />
-                {post.video ? t("keepCurrentVideo") : t("keepCurrentImage")}
+                {post.video
+                  ? t("keepCurrentVideo")
+                  : hadGif
+                    ? t("keepCurrentGif")
+                    : t("keepCurrentImage")}
               </Button>
             ) : null}
             {mediaLocked ? (
@@ -346,6 +377,15 @@ export function PostEditForm({
                   icon={<Film aria-hidden="true" className="size-4" />}
                   disabled={busy}
                   onClick={() => videoInput.current?.click()}
+                />
+                <GifPickerButton
+                  communitySlug={communitySlug}
+                  label={hasMedia ? t("replaceWithGif") : te("gif")}
+                  onPick={(gif) => {
+                    videoPost.reset();
+                    setMedia({ kind: "gif", gif });
+                  }}
+                  disabled={busy}
                 />
               </>
             )}

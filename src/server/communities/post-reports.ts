@@ -7,6 +7,7 @@ import type { getPayloadClient } from "@/server/payload";
 import type { ReportReason } from "@/lib/post-report-reasons";
 import { canViewPost, type FeedViewer } from "./post-visibility";
 import { cleanUpPostImage } from "./feed-images";
+import { NO_GIF } from "./post-media";
 import { cleanUpPostVideoFiles } from "./post-video-files";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -203,6 +204,7 @@ export async function reviewReport(
       authorName: "",
       image: null,
       imageUrl: null,
+      gif: NO_GIF,
     },
   });
   // Best effort: the post is already removed, so a storage failure is

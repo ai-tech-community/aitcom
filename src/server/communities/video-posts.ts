@@ -20,7 +20,7 @@ import type {
 } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 
-import { loadPostForMediaEdit, writePostMedia } from "./post-media";
+import { NO_GIF, loadPostForMediaEdit, writePostMedia } from "./post-media";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
@@ -340,6 +340,7 @@ export async function replacePostVideo(
       content: input.caption,
       image: null,
       imageUrl: null,
+      gif: NO_GIF,
       video,
       isEdited: true,
       editedAt: now.toISOString(),

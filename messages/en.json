@@ -2781,12 +2781,30 @@
         "limitOver": "Over the character limit. Shorten the post to send it.",
         "limitReached": "Character limit reached.",
         "limitSoon": "{count} characters or fewer left.",
-        "oneMediaOnly": "A post has one picture or one video. Remove the video first.",
+        "oneMediaOnly": "A post has one picture, video or GIF. Remove the video first.",
         "waitForUpload": "Wait for the picture to finish uploading.",
         "saveShortcut": "Ctrl+Enter or ⌘+Enter to save",
         "emojiPickHint": "Pick an emoji",
-        "skinTone": "Change skin tone"
-      }
+        "skinTone": "Change skin tone",
+        "gif": "Add GIF",
+        "gifs": "GIFs",
+        "gifSearch": "Search GIPHY",
+        "gifResults": "Results",
+        "gifTrending": "Trending on GIPHY",
+        "gifNone": "No GIFs found. Try another word.",
+        "gifError": "GIFs could not load.",
+        "gifMore": "More GIFs",
+        "gifUntitled": "GIF",
+        "poweredByGiphy": "POWERED BY GIPHY",
+        "tryAgain": "Try again"
+      },
+      "gifBadge": "GIF",
+      "removeGif": "Remove GIF",
+      "replaceWithGif": "Replace with GIF",
+      "currentGif": "Current GIF",
+      "keepCurrentGif": "Keep current GIF",
+      "playGif": "Play GIF",
+      "pauseGif": "Pause GIF"
     },
     "dashboard": {
       "title": "My Communities",

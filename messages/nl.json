@@ -2781,12 +2781,30 @@
         "limitOver": "Over de tekenlimiet. Maak het bericht korter om het te plaatsen.",
         "limitReached": "Tekenlimiet bereikt.",
         "limitSoon": "Nog {count} tekens of minder.",
-        "oneMediaOnly": "Een bericht heeft één afbeelding of één video. Verwijder eerst de video.",
+        "oneMediaOnly": "Een bericht heeft één afbeelding, video of GIF. Verwijder eerst de video.",
         "waitForUpload": "Wacht tot de afbeelding klaar is met uploaden.",
         "saveShortcut": "Ctrl+Enter of ⌘+Enter om op te slaan",
         "emojiPickHint": "Kies een emoji",
-        "skinTone": "Huidskleur wijzigen"
-      }
+        "skinTone": "Huidskleur wijzigen",
+        "gif": "GIF toevoegen",
+        "gifs": "GIF's",
+        "gifSearch": "Zoeken op GIPHY",
+        "gifResults": "Resultaten",
+        "gifTrending": "Populair op GIPHY",
+        "gifNone": "Geen GIF's gevonden. Probeer een ander woord.",
+        "gifError": "GIF's konden niet laden.",
+        "gifMore": "Meer GIF's",
+        "gifUntitled": "GIF",
+        "poweredByGiphy": "POWERED BY GIPHY",
+        "tryAgain": "Opnieuw proberen"
+      },
+      "gifBadge": "GIF",
+      "removeGif": "GIF verwijderen",
+      "replaceWithGif": "Vervangen door GIF",
+      "currentGif": "Huidige GIF",
+      "keepCurrentGif": "Huidige GIF houden",
+      "playGif": "GIF afspelen",
+      "pauseGif": "GIF pauzeren"
     },
     "dashboard": {
       "title": "Mijn Communities",

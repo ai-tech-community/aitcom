@@ -71,6 +71,26 @@ vi.mock("@/server/payload", () => ({ getPayloadClient: async () => payload }));
 vi.mock("@/server/media/video-storage", () => ({
   getVideoStorage: () => storage,
 }));
+const gif = {
+  giphyId: "abc123",
+  title: "Party parrot",
+  mp4Url: "https://media.giphy.com/media/abc123/giphy.mp4",
+  stillUrl: "https://media.giphy.com/media/abc123/giphy_s.gif",
+  width: 400,
+  height: 300,
+  preview: {
+    mp4Url: "https://media.giphy.com/media/abc123/200w.mp4",
+    stillUrl: "https://media.giphy.com/media/abc123/200w_s.gif",
+    width: 200,
+    height: 150,
+  },
+};
+const giphy = {
+  byId: vi.fn(),
+  search: vi.fn(),
+  trending: vi.fn(),
+};
+vi.mock("@/server/giphy/giphy", () => ({ getGiphyClient: () => giphy }));
 vi.mock("@/lib/gamification", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/gamification")>()),
   awardXp: vi.fn(async () => undefined),
@@ -108,6 +128,11 @@ beforeEach(() => {
       collection === "media" ? storedImage : storedPost,
   );
   payload.count.mockResolvedValue({ totalDocs: 0 });
+  giphy.byId.mockImplementation(async (id: string) =>
+    id === gif.giphyId ? gif : null,
+  );
+  giphy.trending.mockResolvedValue({ gifs: [gif], nextOffset: 24 });
+  giphy.search.mockResolvedValue({ gifs: [gif], nextOffset: null });
   payload.delete.mockResolvedValue({ docs: [] });
   // A guarded media write (by `where`) answers with the posts it changed.
   payload.update.mockImplementation(
@@ -338,6 +363,103 @@ describe("feed post writes", () => {
         and: [{ id: { equals: 66 } }, { purpose: { equals: "feed-post" } }],
       },
     });
+  });
+
+  it("editPost puts a GIF looked up on GIPHY in place of a public video", async () => {
+    storedPost = { ...post, visibility: "public" };
+    await caller().feed.editPost({
+      postId: 5,
+      communitySlug: "c",
+      content: "Party",
+      media: { kind: "gif", giphyId: "abc123" },
+    });
+    expect(giphy.byId).toHaveBeenCalledWith("abc123");
+    expect(payload.update.mock.calls[0]![0].data).toMatchObject({
+      gif: {
+        giphyId: "abc123",
+        mp4Url: gif.mp4Url,
+        stillUrl: gif.stillUrl,
+        width: 400,
+        height: 300,
+      },
+      image: null,
+      visibility: "community",
+      video: { key: null },
+    });
+    expect(storage.remove).toHaveBeenCalled();
+  });
+
+  it("editPost refuses a GIF GIPHY does not know", async () => {
+    await expect(
+      caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "Party",
+        media: { kind: "gif", giphyId: "gone" },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(payload.update).not.toHaveBeenCalled();
+  });
+
+  it("editPost with a picture clears a GIF", async () => {
+    storedPost = { ...post, video: null, gif: { giphyId: "abc123" } };
+    await caller().feed.editPost({
+      postId: 5,
+      communitySlug: "c",
+      content: "A picture now",
+      media: { kind: "image", imageId: 77 },
+    });
+    expect(payload.update.mock.calls[0]![0].data).toMatchObject({
+      image: 77,
+      gif: { giphyId: null, mp4Url: null },
+    });
+  });
+
+  it("createPost stores a GIF looked up by id, and refuses a picture and a GIF together", async () => {
+    payload.create.mockResolvedValue({ id: 8 });
+    await caller().feed.createPost({
+      communitySlug: "c",
+      content: "Weekend",
+      gifId: "abc123",
+    });
+    expect(payload.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          gif: expect.objectContaining({ giphyId: "abc123" }),
+        }),
+      }),
+    );
+    await expect(
+      caller().feed.createPost({
+        communitySlug: "c",
+        content: "Both",
+        imageId: 77,
+        gifId: "abc123",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("searchGifs is for members who may post, trending without a query", async () => {
+    await expect(
+      caller().feed.searchGifs({ communitySlug: "c" }),
+    ).resolves.toEqual({ gifs: [gif], nextCursor: 24 });
+    expect(giphy.trending).toHaveBeenCalledWith({ offset: 0 });
+    await caller().feed.searchGifs({
+      communitySlug: "c",
+      query: "party",
+      cursor: 24,
+      lang: "nl",
+    });
+    expect(giphy.search).toHaveBeenCalledWith({
+      query: "party",
+      offset: 24,
+      lang: "nl",
+    });
+    const { TRPCError } = await import("@trpc/server");
+    hooks.poster = new TRPCError({ code: "FORBIDDEN" });
+    await expect(
+      caller().feed.searchGifs({ communitySlug: "c" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("editPost lets only the author edit", async () => {

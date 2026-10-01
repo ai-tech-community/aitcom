@@ -683,6 +683,17 @@ export interface FeedPost {
    */
   image?: (number | null) | Media;
   /**
+   * A GIF from GIPHY, looked up by the server by its GIPHY id. A post carries one picture, video or GIF, never more.
+   */
+  gif?: {
+    giphyId?: string | null;
+    title?: string | null;
+    mp4Url?: string | null;
+    stillUrl?: string | null;
+    width?: number | null;
+    height?: number | null;
+  };
+  /**
    * Public URL of the image, written by the server with it so feeds read it without a join.
    */
   imageUrl?: string | null;
@@ -1993,6 +2004,16 @@ export interface CommentsSelect<T extends boolean = true> {
 export interface FeedPostsSelect<T extends boolean = true> {
   content?: T;
   image?: T;
+  gif?:
+    | T
+    | {
+        giphyId?: T;
+        title?: T;
+        mp4Url?: T;
+        stillUrl?: T;
+        width?: T;
+        height?: T;
+      };
   imageUrl?: T;
   authorId?: T;
   authorName?: T;

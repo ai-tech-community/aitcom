@@ -29,6 +29,8 @@ export const env = createEnv({
     S3_ACCESS_KEY_ID: z.string().optional(),
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     S3_BUCKET: z.string().optional(),
+    // GIF search for the post editor; only the server talks to GIPHY.
+    GIPHY_API_KEY: z.string().optional(),
     S3_REGION: z.string().optional(),
     // "on" lets course authors upload lesson files. Leave unset (off) until
     // the bucket grants the app access to private/classroom/*.
@@ -82,6 +84,7 @@ export const env = createEnv({
     S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
     S3_BUCKET: process.env.S3_BUCKET,
+    GIPHY_API_KEY: process.env.GIPHY_API_KEY,
     S3_REGION: process.env.S3_REGION,
     CLASSROOM_FILE_UPLOADS: process.env.CLASSROOM_FILE_UPLOADS,
     NODE_ENV: process.env.NODE_ENV,

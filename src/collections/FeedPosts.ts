@@ -36,6 +36,22 @@ export const FeedPosts: CollectionConfig = {
       },
     },
     {
+      name: "gif",
+      type: "group",
+      admin: {
+        description:
+          "A GIF from GIPHY, looked up by the server by its GIPHY id. A post carries one picture, video or GIF, never more.",
+      },
+      fields: [
+        { name: "giphyId", type: "text" },
+        { name: "title", type: "text" },
+        { name: "mp4Url", type: "text" },
+        { name: "stillUrl", type: "text" },
+        { name: "width", type: "number" },
+        { name: "height", type: "number" },
+      ],
+    },
+    {
       name: "imageUrl",
       type: "text",
       admin: {
