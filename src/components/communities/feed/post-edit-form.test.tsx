@@ -16,7 +16,10 @@ const m = vi.hoisted(() => ({
   toast: vi.fn(),
 }));
 
-vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
+vi.mock("next-intl", () => ({
+  useTranslations: () => (k: string) => k,
+  useLocale: () => "en",
+}));
 vi.mock("sonner", () => ({ toast: { success: m.toast, error: m.toast } }));
 vi.mock("@/trpc/react", () => ({
   api: {
@@ -70,6 +73,7 @@ function renderForm(post: EditablePost = textPost) {
   const view = render(
     <PostEditForm
       post={post}
+      userId="u1"
       communitySlug="mlops"
       onSaved={onSaved}
       onCancel={onCancel}
@@ -191,10 +195,11 @@ describe("PostEditForm", () => {
 
   it("warns, in a live region already on the page, that a public post without its video becomes community-only", () => {
     renderForm(publicVideoPost);
-    const region = screen.getByRole("status");
-    expect(region).toBeEmptyDOMElement();
+    const regions = screen.getAllByRole("status");
+    expect(screen.queryByText("becomesMembersOnly")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "remove" }));
-    expect(region).toHaveTextContent("becomesMembersOnly");
+    const warning = screen.getByText("becomesMembersOnly");
+    expect(regions.some((region) => region.contains(warning))).toBe(true);
   });
 
   it("brings the current media back without losing the text", () => {
@@ -248,5 +253,21 @@ describe("PostEditForm", () => {
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
     expect(onCancel).toHaveBeenCalled();
     expect(m.cancel).toHaveBeenCalled();
+  });
+
+  it("ignores an Escape that a popover in a portal already handled", () => {
+    const { onCancel } = renderForm();
+    const outside = document.createElement("div");
+    document.body.appendChild(outside);
+    fireEvent.keyDown(outside, { key: "Escape" });
+    const escape = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    escape.preventDefault();
+    screen.getByRole("textbox").dispatchEvent(escape);
+    expect(onCancel).not.toHaveBeenCalled();
+    outside.remove();
   });
 });
