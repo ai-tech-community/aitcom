@@ -1,9 +1,19 @@
-import type { CollectionConfig } from "payload";
+import type { CollectionConfig, TextFieldSingleValidation } from "payload";
+import { text } from "payload/shared";
 
 import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
 import { VIDEO_VISIBILITIES, VIDEO_VISIBILITY_LABELS } from "@/lib/video-rules";
 import { feedPostImageUrlBeforeChange } from "@/server/communities/feed-post-image-url-hook";
 import { linkPreviewBeforeChange } from "@/server/link-preview/link-preview-hook";
+
+/**
+ * A post needs text, except a deleted or moderator-removed one: its content
+ * is emptied on purpose, which the plain required check would refuse.
+ */
+const validateContent: TextFieldSingleValidation = (value, args) =>
+  (args.siblingData as { isDeleted?: boolean | null }).isDeleted === true
+    ? true
+    : text(value, args);
 
 export const FeedPosts: CollectionConfig = {
   slug: "feed-posts",
@@ -24,6 +34,7 @@ export const FeedPosts: CollectionConfig = {
       type: "text",
       required: true,
       maxLength: POST_MAX_LENGTH,
+      validate: validateContent,
     },
     {
       // Deprecated: the first picture, mirrored from `images` by the server
