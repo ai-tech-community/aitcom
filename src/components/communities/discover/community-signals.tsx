@@ -1,10 +1,10 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { CalendarDays, DoorOpen, Hash, KeyRound, Mail } from "lucide-react";
+import { CalendarDays, Hash } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
 import { formatEventShortWhen } from "@/lib/event-time";
-import { ONLINE_PLACE, type JoinPolicy } from "@/server/communities/directory";
+import { ONLINE_PLACE } from "@/server/communities/directory";
 import { cn } from "@/lib/utils";
 
 export type DirectoryItem =
@@ -104,39 +104,5 @@ export function OpenRoomsLine({
         {t("openRooms", { count })}
       </span>
     </p>
-  );
-}
-
-const JOIN_ICON: Record<JoinPolicy, typeof DoorOpen> = {
-  open: DoorOpen,
-  approval_required: KeyRound,
-  invite_only: Mail,
-};
-
-/** How someone gets in: open, on approval, or by invite. */
-export function JoinPolicyLabel({
-  policy,
-  className,
-}: {
-  policy: JoinPolicy;
-  className?: string;
-}) {
-  const t = useTranslations("communities.discover");
-  const label: Record<JoinPolicy, string> = {
-    open: t("joinOpen"),
-    approval_required: t("joinApproval"),
-    invite_only: t("joinInvite"),
-  };
-  const Icon = JOIN_ICON[policy];
-  return (
-    <span
-      className={cn(
-        "text-muted-foreground inline-flex items-center gap-1.5 text-xs",
-        className,
-      )}
-    >
-      <Icon aria-hidden="true" className="size-3.5 shrink-0" />
-      {label[policy]}
-    </span>
   );
 }

@@ -14,12 +14,14 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { useStartCreateCommunity } from "@/components/communities/create-community-dialog";
 import { CommunityStreet } from "./community-street";
 import type { StreetHouse } from "./community-street-scene";
+import { ArrowRight } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import {
   ActivityLine,
-  JoinPolicyLabel,
   NextEventLine,
   type DirectoryItem,
 } from "./community-signals";
+import { JoinAction } from "./join-action";
 import { BODY_FRAME } from "./explore-layout";
 import { squareQueryInput } from "./directory-params";
 
@@ -27,17 +29,24 @@ import { squareQueryInput } from "./directory-params";
 const COPY_GAP_PX = 32;
 
 /**
- * The line under the street: the legend while nobody is pointing, the
- * pointed-at community's facts while someone is. Mouse-only (the street
- * is), so it is hidden from screen readers; the grid carries the facts.
+ * The line under the street. While nobody points at a house it is the
+ * legend; once someone does, it becomes a small preview of that house —
+ * its live facts, Join and Visit — and stays on it until the pointer
+ * leaves the street area, so the pointer can travel to the Join button.
+ * The legend is mouse-only context (aria-hidden); the preview holds real
+ * controls, and the directory grid repeats every fact for everyone.
  */
-function StreetCaption({ community }: { community: DirectoryItem | null }) {
+function StreetPeek({ community }: { community: DirectoryItem | null }) {
   const t = useTranslations("communities.discover");
   if (!community) {
-    return <p className="text-muted-foreground text-sm">{t("squareHint")}</p>;
+    return (
+      <p aria-hidden="true" className="text-muted-foreground text-sm">
+        {t("squareHint")}
+      </p>
+    );
   }
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
       <span className="text-sm font-semibold">{community.name}</span>
       {community.activeRecently > 0 ? (
         <ActivityLine count={community.activeRecently} />
@@ -45,7 +54,20 @@ function StreetCaption({ community }: { community: DirectoryItem | null }) {
       {community.nextEvent ? (
         <NextEventLine event={community.nextEvent} />
       ) : null}
-      <JoinPolicyLabel policy={community.joinPolicy} />
+      <span className="flex items-center gap-3">
+        <JoinAction
+          slug={community.slug}
+          name={community.name}
+          joinPolicy={community.joinPolicy}
+        />
+        <Link
+          href={`/communities/${community.slug}`}
+          className="text-foreground hover:text-foreground/80 inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+        >
+          {t("visit")}
+          <ArrowRight aria-hidden="true" className="size-4" />
+        </Link>
+      </span>
     </div>
   );
 }
@@ -138,7 +160,7 @@ export function SquareHero({
   const active = items.find((c) => c.slug === activeSlug) ?? null;
 
   return (
-    <section className={className}>
+    <section className={className} onPointerLeave={() => setActiveSlug(null)}>
       <div className="relative">
         <div
           className={`${BODY_FRAME} pt-10 sm:pt-14 lg:pointer-events-none lg:absolute lg:inset-x-0 lg:top-0 lg:z-10`}
@@ -166,8 +188,8 @@ export function SquareHero({
           states speak once for the page; with no houses there is no
           legend to read. Its space is kept while loading: no jump. */}
       {query.isLoading || items.length > 0 ? (
-        <div aria-hidden="true" className={`${BODY_FRAME} mt-3 min-h-6`}>
-          {items.length > 0 ? <StreetCaption community={active} /> : null}
+        <div className={`${BODY_FRAME} mt-3 min-h-8`}>
+          {items.length > 0 ? <StreetPeek community={active} /> : null}
         </div>
       ) : null}
     </section>

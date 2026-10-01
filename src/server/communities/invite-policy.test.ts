@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  viewerJoinAction,
   slugJoinStatus,
   roleFromInvite,
   canRedeemInvite,
@@ -48,5 +49,61 @@ describe("canRedeemInvite", () => {
   });
   it("rejects when the user has no email but the invite is bound", () => {
     expect(canRedeemInvite("a@example.com", null)).toBe(false);
+  });
+});
+
+describe("viewerJoinAction", () => {
+  it("offers join, request or nothing by policy to a non-member", () => {
+    expect(viewerJoinAction({ joinPolicy: "open", status: null })).toEqual({
+      kind: "join",
+    });
+    expect(
+      viewerJoinAction({ joinPolicy: "approval_required", status: null }),
+    ).toEqual({ kind: "request" });
+    expect(
+      viewerJoinAction({ joinPolicy: "invite_only", status: null }),
+    ).toEqual({ kind: "invite_only" });
+  });
+
+  it("treats an open invitation like no membership (the invite link accepts it)", () => {
+    expect(
+      viewerJoinAction({ joinPolicy: "open", status: "invited" }).kind,
+    ).toBe("join");
+    expect(
+      viewerJoinAction({ joinPolicy: "invite_only", status: "invited" }).kind,
+    ).toBe("invite_only");
+  });
+
+  it("shows a pending request as pending, whatever the policy", () => {
+    expect(
+      viewerJoinAction({ joinPolicy: "open", status: "pending_approval" }),
+    ).toEqual({ kind: "pending" });
+  });
+
+  it("lets members leave, except owners and Hub members", () => {
+    expect(
+      viewerJoinAction({
+        joinPolicy: "open",
+        status: "active",
+        role: "member",
+      }),
+    ).toEqual({ kind: "member", canLeave: true });
+    expect(
+      viewerJoinAction({ joinPolicy: "open", status: "active", role: "owner" }),
+    ).toEqual({ kind: "member", canLeave: false });
+    expect(
+      viewerJoinAction({
+        joinPolicy: "open",
+        status: "active",
+        role: "member",
+        isHub: true,
+      }),
+    ).toEqual({ kind: "member", canLeave: false });
+  });
+
+  it("offers nothing to a banned visitor", () => {
+    expect(viewerJoinAction({ joinPolicy: "open", status: "banned" })).toEqual({
+      kind: "unavailable",
+    });
   });
 });

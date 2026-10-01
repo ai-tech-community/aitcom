@@ -16,6 +16,8 @@ import { CommunityHeader } from "@/components/communities/community-header";
 import { CommunityNav } from "@/components/communities/community-nav";
 import { Spinner } from "@/components/ui/spinner";
 import { resolveCommunityLayoutVariant } from "@/lib/communities/layout-variant";
+import { useJoinDeepLink } from "@/components/communities/use-community-join";
+import { useRouter } from "@/i18n/navigation";
 
 export function CommunityLayoutClient({
   children,
@@ -29,6 +31,9 @@ export function CommunityLayoutClient({
   initialMemberships: HubMembershipSeed[];
 }) {
   const { slug } = use(params);
+  const router = useRouter();
+  // A guest who pressed Join here comes back from sign-in with ?join=.
+  useJoinDeepLink(() => router.refresh());
   const variant = resolveCommunityLayoutVariant(useSelectedLayoutSegments());
   const { data: session } = authClient.useSession();
   const user = documentAuthUser(null, initialUser, session?.user);

@@ -74,6 +74,7 @@ export function CommunityHeader({
           <div className="flex shrink-0 items-center gap-2">
             <JoinButton
               slug={community.slug}
+              name={community.name}
               joinPolicy={community.joinPolicy}
               membershipStatus={membershipStatus}
               memberRole={memberRole}

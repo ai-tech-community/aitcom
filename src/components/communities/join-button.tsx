@@ -1,142 +1,83 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { LogIn, Clock, LogOut, Loader2 } from "lucide-react";
-import { api } from "@/trpc/react";
-import { authClient } from "@/server/better-auth/client";
-import { useInitialAuthUser } from "@/components/auth/session-provider";
-import { resolveHubAuthUser } from "@/server/better-auth/hub-session";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "@/i18n/navigation";
-import { useRequireAuth } from "@/components/auth/auth-required-dialog";
-import { toast } from "sonner";
-import { HUB_SLUG } from "@/server/communities/hub";
+import type { JoinPolicy } from "@/server/communities/invite-policy";
+import { useCommunityJoin } from "./use-community-join";
 
-type JoinPolicy = "open" | "invite_only" | "approval_required";
 type MembershipStatus = "active" | "pending_approval" | "invited" | null;
 
 interface JoinButtonProps {
   slug: string;
+  /** For messages; generic wording when absent. */
+  name?: string;
   joinPolicy: JoinPolicy;
   membershipStatus: MembershipStatus;
   memberRole?: "owner" | "admin" | "moderator" | "member" | null;
 }
 
+/**
+ * The community page's join control: join, request, pending, or leave.
+ * Follows the shared `viewerJoinAction` rule through `useCommunityJoin`,
+ * with the membership the page already loaded on the server.
+ */
 export function JoinButton({
   slug,
+  name,
   joinPolicy,
   membershipStatus,
   memberRole,
 }: JoinButtonProps) {
   const t = useTranslations("communities.profile");
-  const { data: session } = authClient.useSession();
-  const user = resolveHubAuthUser(useInitialAuthUser(), session?.user);
   const router = useRouter();
-  const { promptAuth } = useRequireAuth();
-  const utils = api.useUtils();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const joinMutation = api.communities.join.useMutation({
-    onSuccess: () => {
-      void utils.communities.getMyCommunities.invalidate();
-      void utils.communities.getBySlug.invalidate({ slug });
-      void utils.communities.getMembers.invalidate({ slug });
-      router.refresh();
-    },
+  const { action, run, leave, busy } = useCommunityJoin({
+    slug,
+    name,
+    joinPolicy,
+    membership: membershipStatus
+      ? { status: membershipStatus, role: memberRole ?? "member" }
+      : null,
+    onChange: () => router.refresh(),
   });
 
-  const requestMutation = api.communities.requestToJoin.useMutation({
-    onSuccess: () => {
-      void utils.communities.getMyCommunities.invalidate();
-      router.refresh();
-    },
-  });
-
-  const leaveMutation = api.communities.leave.useMutation({
-    onSuccess: () => {
-      void utils.communities.getMyCommunities.invalidate();
-      void utils.communities.getBySlug.invalidate({ slug });
-      void utils.communities.getMembers.invalidate({ slug });
-      router.refresh();
-    },
-  });
-
-  const handleAction = async () => {
-    if (!user) {
-      promptAuth("Sign in to join this community");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      if (membershipStatus === "active") {
-        await leaveMutation.mutateAsync({ slug });
-        toast.success(t("leave"));
-      } else if (joinPolicy === "open") {
-        await joinMutation.mutateAsync({ slug });
-        toast.success(t("join"));
-      } else if (joinPolicy === "approval_required") {
-        await requestMutation.mutateAsync({ slug });
-        toast.success(t("requestToJoin"));
-      }
-    } catch {
-      // tRPC errors are handled by the global error handler
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Invite-only communities: no join button unless already a member
-  if (joinPolicy === "invite_only" && membershipStatus !== "active") {
-    return null;
+  switch (action.kind) {
+    case "invite_only":
+    case "unavailable":
+      return null;
+    case "pending":
+      return (
+        <Button variant="outline" disabled>
+          <Clock className="size-4" />
+          {t("pending")}
+        </Button>
+      );
+    case "member":
+      // Owners cannot leave; the Hub is where every member belongs — the
+      // header's Member badge is the "you're in" signal.
+      if (!action.canLeave) return null;
+      return (
+        <Button variant="outline" onClick={() => void leave()} disabled={busy}>
+          {busy ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <LogOut className="size-4" />
+          )}
+          {t("leave")}
+        </Button>
+      );
+    case "join":
+    case "request":
+      return (
+        <Button onClick={() => void run()} disabled={busy}>
+          {busy ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <LogIn className="size-4" />
+          )}
+          {action.kind === "request" ? t("requestToJoin") : t("join")}
+        </Button>
+      );
   }
-
-  // Pending approval: show disabled pending badge
-  if (membershipStatus === "pending_approval") {
-    return (
-      <Button variant="outline" disabled>
-        <Clock className="size-4" />
-        {t("pending")}
-      </Button>
-    );
-  }
-
-  // Owners cannot leave their community. Hub is the root every member
-  // belongs to — the header Member badge is the "you're in" signal.
-  if (
-    membershipStatus === "active" &&
-    (memberRole === "owner" || slug === HUB_SLUG)
-  ) {
-    return null;
-  }
-
-  // Active member: show leave button
-  if (membershipStatus === "active") {
-    return (
-      <Button variant="outline" onClick={handleAction} disabled={isLoading}>
-        {isLoading ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <LogOut className="size-4" />
-        )}
-        {t("leave")}
-      </Button>
-    );
-  }
-
-  // Not a member: show join or request button
-  const label =
-    joinPolicy === "approval_required" ? t("requestToJoin") : t("join");
-
-  return (
-    <Button onClick={handleAction} disabled={isLoading}>
-      {isLoading ? (
-        <Loader2 className="size-4 animate-spin" />
-      ) : (
-        <LogIn className="size-4" />
-      )}
-      {label}
-    </Button>
-  );
 }

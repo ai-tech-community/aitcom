@@ -16,6 +16,7 @@ import {
 import { ALL_COMMUNITIES_ID } from "./discover/discover-communities";
 import { Button } from "@/components/ui/button";
 import { BODY_FRAME } from "./discover/explore-layout";
+import { useJoinDeepLink } from "./use-community-join";
 import { DiscoverCommunities } from "./discover/discover-communities";
 import { OrganizerInvite } from "./discover/organizer-invite";
 import {
@@ -37,6 +38,8 @@ import {
 export function CommunitiesDirectory() {
   const t = useTranslations("communities.discover");
   const searchParams = useSearchParams();
+  // A guest who pressed Join comes back from sign-in with ?join=.
+  useJoinDeepLink();
   const rooms = useSquareRooms();
   // The panel takes a column only when there are rooms to show.
   const hasRooms =

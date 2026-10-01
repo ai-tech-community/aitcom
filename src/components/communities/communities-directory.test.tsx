@@ -7,12 +7,14 @@ const nav = vi.hoisted(() => ({
   onParamsChange: null as null | ((p: Partial<DirectoryParams>) => void),
   params: null as null | DirectoryParams,
   rooms: { talking: [] as unknown[], quiet: [{ spaceId: "q" }] as unknown[] },
+  deepLink: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(nav.search),
 }));
 vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
+vi.mock("./use-community-join", () => ({ useJoinDeepLink: nav.deepLink }));
 vi.mock("./discover/square-hero", () => ({
   SquareHero: ({ headline }: { headline: React.ReactNode }) => (
     <section>{headline}</section>
@@ -96,6 +98,11 @@ describe("CommunitiesDirectory", () => {
     render(<CommunitiesDirectory />);
     expect(screen.queryByTestId("rooms-panel")).toBeNull();
     expect(document.querySelector("[class*='xl:grid-cols-']")).toBeNull();
+  });
+
+  it("finishes a join a guest started before signing in", () => {
+    render(<CommunitiesDirectory />);
+    expect(nav.deepLink).toHaveBeenCalled();
   });
 
   it("offers browsing next to starting a community", () => {
