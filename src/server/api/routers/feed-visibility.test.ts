@@ -14,6 +14,8 @@ const payload = {
   create: vi.fn(),
   update: vi.fn(),
   delete: vi.fn(),
+  // Counters are written straight to their columns.
+  db: { drizzle: { execute: vi.fn(async () => ({ rows: [] })) } },
 };
 
 vi.mock("@/server/db", () => ({
@@ -46,6 +48,8 @@ vi.mock("@/server/agent/activity", () => ({
 
 import { createCaller } from "@/server/api/root";
 import { db as mockedDb } from "@/server/db";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 function caller(userId = "u-1") {
   return createCaller({
@@ -172,11 +176,10 @@ describe("feed.addComment", () => {
       totalDocs: collection === "feed-comments" ? 3 : 1,
     }));
     await caller().feed.addComment({ postId: 5, content: "hi" });
-    expect(payload.update).toHaveBeenCalledWith({
-      collection: "feed-posts",
-      id: 5,
-      data: { likeCount: 1, commentCount: 3 },
-    });
+    const calls = payload.db.drizzle.execute.mock.calls as unknown as [SQL][];
+    expect(new PgDialect().sqlToQuery(calls.at(-1)![0]).params).toEqual([
+      1, 3, 5,
+    ]);
   });
 
   it("still refuses a non-member commenting on a public post", async () => {

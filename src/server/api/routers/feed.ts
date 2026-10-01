@@ -675,6 +675,7 @@ export const feedRouter = createTRPCRouter({
           content: "",
           authorName: "",
           images: [],
+          image: null,
           imageUrl: null,
           gif: NO_GIF,
         },

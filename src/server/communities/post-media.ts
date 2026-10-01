@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import type { Where } from "payload";
+import { sql } from "@payloadcms/db-postgres";
 
 import type { Gif, GiphyClient } from "@/server/giphy/giphy";
 import type { VideoStorageSource } from "@/server/media/video-storage";
@@ -115,10 +115,12 @@ export async function loadPostForMediaEdit(
 
 /**
  * Writes new media onto `post` and then removes the video files and the
- * pictures it no longer points at. The write only lands while the post is
- * exactly as it was read (same `updatedAt`, still live and unhidden), so
- * two edits racing on one post cannot both drop the same files and orphan
- * the winner's: the loser gets a CONFLICT and nothing changes.
+ * pictures it no longer points at. The post is first claimed in one
+ * statement: its `updatedAt` moves on only while it is exactly as it was
+ * read (and still live and unhidden), so of two edits racing on one post
+ * only one gets through; the other gets a CONFLICT and nothing changes.
+ * Counters are written column by column (feed-post-counters), so a like
+ * never re-saves the post over an edit.
  */
 export async function writePostMedia(
   deps: PostMediaDeps,
@@ -127,26 +129,26 @@ export async function writePostMedia(
   context: string,
 ): Promise<void> {
   const oldKey = post.video?.key ?? null;
-  const unchangedSinceRead: Where = {
-    and: [
-      { id: { equals: post.id } },
-      { updatedAt: { equals: post.updatedAt } },
-      { isDeleted: { not_equals: true } },
-      { hiddenAt: { exists: false } },
-    ],
-  };
-  const { docs } = await deps.payload.update({
-    collection: "feed-posts",
-    where: unchangedSinceRead,
-    data,
-    depth: 0,
-  });
-  if (docs.length === 0) {
+  const { rows } = await deps.payload.db.drizzle.execute(sql`
+    UPDATE "feed_posts" SET "updated_at" = now()
+    WHERE "id" = ${post.id}
+      AND "updated_at" = ${post.updatedAt}::timestamptz
+      AND "is_deleted" IS DISTINCT FROM true
+      AND "hidden_at" IS NULL
+    RETURNING "id"
+  `);
+  if (rows.length === 0) {
     throw new TRPCError({
       code: "CONFLICT",
       message: "This post was changed somewhere else. Reload and try again.",
     });
   }
+  await deps.payload.update({
+    collection: "feed-posts",
+    id: post.id,
+    data,
+    depth: 0,
+  });
   const newKey = data.video === undefined ? oldKey : (data.video?.key ?? null);
   if (oldKey && oldKey !== newKey) {
     await cleanUpPostVideoFiles(deps.getStorage, post, {
@@ -207,8 +209,9 @@ export async function setPostMedia(
     {
       content: input.content,
       images: images.map((image) => image.id),
-      // A legacy URL-only picture has no link for the hook to clear.
-      ...(images.length > 0 ? {} : { imageUrl: null }),
+      // A legacy picture (URL-only, or in the deprecated single field) has
+      // no list entry for the hook to clear.
+      ...(images.length > 0 ? {} : { imageUrl: null, image: null }),
       gif: gif ? gifFields(gif) : NO_GIF,
       ...(post.video?.key
         ? { video: NO_VIDEO, visibility: "community" as const }

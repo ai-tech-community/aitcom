@@ -79,7 +79,7 @@ describe("importFeedImage", () => {
     expect(payload.create).toHaveBeenCalledWith({
       collection: "media",
       data: {
-        alt: "Feed post image",
+        alt: "",
         uploadedBy: "owner-1",
         purpose: "feed-post",
       },
@@ -260,7 +260,7 @@ describe("feedPostImageUrlBeforeChange", () => {
 
   it("leaves the URL alone when the first picture stays, or the write does not set pictures", async () => {
     const same = run({ images: [7, 9] }, { images: [7], imageUrl: "u" });
-    await expect(same.result).resolves.toEqual({ images: [7, 9] });
+    await expect(same.result).resolves.toEqual({ images: [7, 9], image: 7 });
     expect(same.findByID).not.toHaveBeenCalled();
     const untouched = run({ content: "x" }, { images: [7], imageUrl: "u" });
     await expect(untouched.result).resolves.toEqual({ content: "x" });

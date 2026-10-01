@@ -77,7 +77,10 @@ vi.mock("./use-video-post", () => ({
     cancel: m.cancel,
   }),
 }));
-vi.mock("./upload-feed-image", () => ({ uploadFeedImage: m.upload }));
+vi.mock("./upload-feed-image", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./upload-feed-image")>()),
+  uploadFeedImage: m.upload,
+}));
 vi.mock("./video-attachment", () => ({
   VideoAttachment: ({ file }: { file: File }) => (
     <div data-testid="new-video">{file.name}</div>
@@ -264,7 +267,7 @@ describe("PostEditForm", () => {
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "save" }));
     });
-    expect(m.toast).toHaveBeenCalledWith("uploadFailed");
+    expect(m.toast).toHaveBeenCalledWith("pictureFailed");
     expect(m.editPost).not.toHaveBeenCalled();
     expect(onSaved).not.toHaveBeenCalled();
   });
@@ -383,5 +386,36 @@ describe("PostEditForm", () => {
     expect(
       screen.getByRole("button", { name: "keepCurrentGif" }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps pictures that uploaded when a later one fails, and does not upload them again", async () => {
+    const second = new File(["y"], "b.png", { type: "image/png" });
+    m.upload
+      .mockResolvedValueOnce({ id: 51, url: "https://bucket.s3.test/51.jpg" })
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ id: 52, url: "https://bucket.s3.test/52.jpg" });
+    const { container } = renderForm();
+    fireEvent.change(fileInput(container, "image/*"), {
+      target: { files: [picture, second] },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+    });
+    expect(m.editPost).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+    });
+    expect(m.upload).toHaveBeenCalledTimes(3);
+    expect(m.editPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        media: {
+          kind: "images",
+          images: [
+            { id: 51, alt: "" },
+            { id: 52, alt: "" },
+          ],
+        },
+      }),
+    );
   });
 });

@@ -2807,9 +2807,18 @@
         "pictures": "Afbeeldingen",
         "pictureUploading": "Afbeelding uploaden",
         "removePicture": "Afbeelding {number} verwijderen",
-        "describePicture": "Beschrijf hem (voor wie hem niet kan zien)",
+        "describePicture": "Optioneel",
         "describePictureLabel": "Beschrijving van afbeelding {number}",
-        "tooManyPictures": "Een bericht heeft maximaal 4 afbeeldingen."
+        "tooManyPictures": "Een bericht heeft maximaal 4 afbeeldingen.",
+        "describeHelp": "Beschrijvingen helpen mensen die de afbeeldingen niet kunnen zien.",
+        "picturesUploading": "{count, plural, one {# afbeelding uploaden} other {# afbeeldingen uploaden}}",
+        "pictureTooLarge": "Te groot om te uploaden (max. 2 MB).",
+        "pictureFailed": "Niet geüpload.",
+        "retryPicture": "Afbeelding {number} opnieuw proberen",
+        "fixPictures": "Probeer de afbeeldingen die niet zijn geüpload opnieuw, of verwijder ze.",
+        "replacePicturesWithGif": "Afbeeldingen vervangen door GIF",
+        "picturesReplacedByGif": "Afbeeldingen vervangen door de GIF.",
+        "undo": "Ongedaan maken"
       },
       "gifBadge": "GIF",
       "removeGif": "GIF verwijderen",
@@ -2826,7 +2835,8 @@
       "noDescription": "Geen beschrijving.",
       "previousPicture": "Vorige afbeelding",
       "nextPicture": "Volgende afbeelding",
-      "closePicture": "Sluiten"
+      "closePicture": "Sluiten",
+      "picture": "afbeelding"
     },
     "dashboard": {
       "title": "Mijn Communities",

@@ -26,6 +26,16 @@ export const FeedPosts: CollectionConfig = {
       maxLength: POST_MAX_LENGTH,
     },
     {
+      // Deprecated: the first picture, mirrored from `images` by the server
+      // so the previous version (during a deploy, or after a rollback) and
+      // its cleanup job still see it. Dropped by a later migration (#391).
+      name: "image",
+      type: "upload",
+      relationTo: "media",
+      unique: true,
+      admin: { hidden: true },
+    },
+    {
       name: "images",
       type: "upload",
       relationTo: "media",

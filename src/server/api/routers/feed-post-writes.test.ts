@@ -35,6 +35,8 @@ const payload = {
   count: vi.fn(),
   delete: vi.fn(),
   create: vi.fn(),
+  // The media claim (and counters) run as single SQL statements.
+  db: { drizzle: { execute: vi.fn() } },
 };
 
 /** The member's own unused feed post image. */
@@ -130,6 +132,7 @@ beforeEach(() => {
     }),
   );
   payload.count.mockResolvedValue({ totalDocs: 0 });
+  payload.db.drizzle.execute.mockResolvedValue({ rows: [{ id: 5 }] });
   giphy.byId.mockImplementation(async (id: string) =>
     id === gif.giphyId ? gif : null,
   );
@@ -288,7 +291,7 @@ describe("feed post writes", () => {
   });
 
   it("editPost refuses when another edit changed the media first, keeping the files", async () => {
-    payload.update.mockResolvedValue({ docs: [] });
+    payload.db.drizzle.execute.mockResolvedValue({ rows: [] });
     await expect(
       caller().feed.editPost({
         postId: 5,

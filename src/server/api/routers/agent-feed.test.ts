@@ -22,6 +22,8 @@ const payload = {
   create: vi.fn(),
   update: vi.fn(),
   delete: vi.fn(),
+  // Counters are written straight to their columns.
+  db: { drizzle: { execute: vi.fn(async () => ({ rows: [] })) } },
 };
 
 function makeUpdateChain() {

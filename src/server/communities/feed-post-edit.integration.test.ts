@@ -435,6 +435,21 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
         depth: 0,
       });
       expect(saved.images).toEqual([second.id, first.id]);
+      // The deprecated single field mirrors the first picture, for the
+      // previous version's cleanup during a deploy or after a rollback.
+      expect(saved.image).toBe(second.id);
+
+      // A like rewrites only the counters: the pictures stay as edited.
+      const { syncFeedPostCounters } =
+        await import("@/server/communities/feed-post-counters");
+      await syncFeedPostCounters(payload, fx.postId);
+      const liked = await payload.findByID({
+        collection: "feed-posts",
+        id: fx.postId,
+        depth: 0,
+      });
+      expect(liked.images).toEqual([second.id, first.id]);
+      expect(liked.likeCount).toBe(0);
       expect(saved.imageUrl).toMatch(new RegExp(`${second.name}$`));
       const described = await payload.findByID({
         collection: "media",

@@ -81,7 +81,8 @@ export async function claimFeedImages(
   }
   for (const image of input.images) {
     const alt = image.alt.trim().slice(0, MAX_IMAGE_ALT_LENGTH);
-    if (alt && alt !== byId.get(image.id)?.alt) {
+    // Saved also when emptied: the author may take a description away.
+    if (alt !== (byId.get(image.id)?.alt ?? "")) {
       try {
         await payload.update({
           collection: "media",
@@ -161,7 +162,7 @@ export async function importFeedImage(
   const media = await payload.create({
     collection: "media",
     data: {
-      alt: "Feed post image",
+      alt: "",
       uploadedBy: input.userId,
       purpose: "feed-post",
     },
@@ -186,14 +187,19 @@ export async function importFeedImage(
  */
 export async function cleanUpPostImages(
   payload: Payload,
-  post: { id: number; images?: Linked[] | null },
+  post: { id: number; images?: Linked[] | null; image?: Linked },
   keep: readonly number[],
   options: {
     context: string;
     log?: (message: string, detail: unknown) => void;
   },
 ): Promise<void> {
-  const dropped = imageIdsOf(post).filter((id) => !keep.includes(id));
+  // Also a picture only the deprecated single field holds (a post written
+  // by the previous version during a deploy).
+  const legacy = imageIdsOf({ images: [post.image] });
+  const dropped = [...new Set([...imageIdsOf(post), ...legacy])].filter(
+    (id) => !keep.includes(id),
+  );
   if (dropped.length === 0) return;
   try {
     await payload.delete({

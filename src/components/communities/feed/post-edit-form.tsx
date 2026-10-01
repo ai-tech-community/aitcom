@@ -10,7 +10,7 @@ import type { VideoVisibility } from "@/lib/video-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
-import { uploadFeedImage } from "./upload-feed-image";
+import { FeedImageUploadError, uploadFeedImage } from "./upload-feed-image";
 import { DraftNotice } from "./editor/draft-notice";
 import { EmojiPickerButton } from "./editor/emoji-picker-button";
 import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
@@ -82,7 +82,6 @@ export function PostEditForm({
   onCancel: () => void;
 }) {
   const t = useTranslations("communities.feed");
-  const tc = useTranslations("common");
   const tv = useTranslations("communities.video");
   const te = useTranslations("communities.feed.editor");
   const utils = api.useUtils();
@@ -202,10 +201,7 @@ export function PostEditForm({
   };
 
   const removePicture = (key: string) => {
-    const left = pictures.filter((item) => item.key !== key);
-    setPictures(left);
-    // The remove button is gone: keep keyboard focus in the form.
-    if (left.length === 0) imageButton.current?.focus();
+    setPictures(pictures.filter((item) => item.key !== key));
   };
 
   const describePicture = (key: string, alt: string) => {
@@ -270,21 +266,32 @@ export function PostEditForm({
       | { kind: "images"; images: { id: number; alt: string }[] }
       | { kind: "gif"; giphyId: string };
     if (media.kind === "pictures") {
+      // Upload new pictures one by one, keeping each one's id as it lands,
+      // so a failed save or upload never uploads the others again.
+      const items = [...media.items];
       setIsUploading(true);
       try {
-        const images = await Promise.all(
-          media.items.map(async (item) => ({
-            id: item.id ?? (await uploadFeedImage(item.file!)).id,
-            alt: item.alt.trim(),
-          })),
+        for (const [index, item] of items.entries()) {
+          if (item.id !== undefined || !item.file) continue;
+          const uploaded = await uploadFeedImage(item.file);
+          items[index] = { ...item, id: uploaded.id, file: undefined };
+        }
+      } catch (error) {
+        setMedia({ kind: "pictures", items });
+        toast.error(
+          error instanceof FeedImageUploadError && error.reason === "tooLarge"
+            ? te("pictureTooLarge")
+            : te("pictureFailed"),
         );
-        change = { kind: "images", images };
-      } catch {
-        toast.error(tc("uploadFailed"));
         return;
       } finally {
         setIsUploading(false);
       }
+      setMedia({ kind: "pictures", items });
+      change = {
+        kind: "images",
+        images: items.map((item) => ({ id: item.id!, alt: item.alt.trim() })),
+      };
     } else if (media.kind === "gif") {
       change = { kind: "gif", giphyId: media.gif.giphyId };
     } else {
@@ -349,6 +356,7 @@ export function PostEditForm({
                 items={pictures}
                 onAltChange={describePicture}
                 onRemove={removePicture}
+                onEmptied={() => imageButton.current?.focus()}
                 disabled={busy}
               />
             ) : showsOldImage ? (
@@ -461,7 +469,13 @@ export function PostEditForm({
                 />
                 <GifPickerButton
                   communitySlug={communitySlug}
-                  label={hasMedia ? t("replaceWithGif") : te("gif")}
+                  label={
+                    pictures.length > 0
+                      ? te("replacePicturesWithGif")
+                      : hasMedia
+                        ? t("replaceWithGif")
+                        : te("gif")
+                  }
                   onPick={(gif) => {
                     videoPost.reset();
                     setMedia({ kind: "gif", gif });

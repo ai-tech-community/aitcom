@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { syncFeedPostCounters, toggleFeedPostLike } from "./feed-post-counters";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 // A tiny in-memory stand-in for the two row collections, so the counts the
 // helper stores come from the rows, not from a canned return value.
@@ -48,8 +50,15 @@ const payload = {
   delete: vi.fn(async ({ id }: { id: number }) => {
     rows.likes = rows.likes.filter((r) => r.id !== id);
   }),
-  update: vi.fn(async () => ({})),
+  db: { drizzle: { execute: vi.fn(async () => ({ rows: [] })) } },
 };
+
+/** The SQL the last counter write sent, with its values. */
+function stored() {
+  const calls = payload.db.drizzle.execute.mock.calls as unknown as [SQL][];
+  const query = new PgDialect().sqlToQuery(calls.at(-1)![0]);
+  return { sql: query.sql.replace(/\s+/g, " ").trim(), params: query.params };
+}
 const p = payload as never;
 
 beforeEach(() => {
@@ -76,10 +85,10 @@ describe("syncFeedPostCounters", () => {
       likeCount: 2,
       commentCount: 1,
     });
-    expect(payload.update).toHaveBeenCalledWith({
-      collection: "feed-posts",
-      id: 5,
-      data: { likeCount: 2, commentCount: 1 },
+    // Only the two counter columns, so a concurrent edit is never undone.
+    expect(stored()).toEqual({
+      sql: 'UPDATE "feed_posts" SET "like_count" = $1, "comment_count" = $2 WHERE "id" = $3',
+      params: [2, 1, 5],
     });
   });
 });
@@ -96,13 +105,7 @@ describe("toggleFeedPostLike", () => {
       collection: "feed-likes",
       data: { post: 5, userId: "u-1" },
     });
-    expect(payload.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection: "feed-posts",
-        id: 5,
-        data: expect.objectContaining({ likeCount: 2 }),
-      }),
-    );
+    expect(stored().params).toEqual([2, 0, 5]);
   });
 
   it("removes the user's existing like and stores the recounted total", async () => {
@@ -131,10 +134,6 @@ describe("toggleFeedPostLike", () => {
 
     await toggleFeedPostLike(p, 5, "u-1");
 
-    expect(payload.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ likeCount: 3 }),
-      }),
-    );
+    expect(stored().params[0]).toBe(3);
   });
 });

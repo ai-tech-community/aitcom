@@ -40,7 +40,10 @@ describe("FeedImageGallery", () => {
     expect(within(dialog).getByText("Our new office")).toBeVisible();
     fireEvent.keyDown(dialog, { key: "ArrowRight" });
     expect(within(dialog).getByText("2 / 3")).toBeVisible();
-    expect(within(dialog).getByText("noDescription")).toBeVisible();
+    // An undescribed picture shows no caption; its place is announced.
+    // Named by the title and spoken by the live region.
+    expect(within(dialog).getAllByText("pictureOf(2,3)")).toHaveLength(2);
+    expect(within(dialog).queryByText("noDescription")).toBeNull();
     fireEvent.keyDown(dialog, { key: "ArrowLeft" });
     fireEvent.keyDown(dialog, { key: "ArrowLeft" });
     expect(within(dialog).getByText("3 / 3")).toBeVisible();

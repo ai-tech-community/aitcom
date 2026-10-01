@@ -2807,9 +2807,18 @@
         "pictures": "Pictures",
         "pictureUploading": "Uploading picture",
         "removePicture": "Remove picture {number}",
-        "describePicture": "Describe it (for people who can't see it)",
+        "describePicture": "Optional",
         "describePictureLabel": "Description of picture {number}",
-        "tooManyPictures": "A post has up to 4 pictures."
+        "tooManyPictures": "A post has up to 4 pictures.",
+        "describeHelp": "Descriptions help people who can't see the pictures.",
+        "picturesUploading": "{count, plural, one {Uploading # picture} other {Uploading # pictures}}",
+        "pictureTooLarge": "Too large to upload (max 2 MB).",
+        "pictureFailed": "Didn't upload.",
+        "retryPicture": "Try picture {number} again",
+        "fixPictures": "Try the pictures that didn't upload again, or remove them.",
+        "replacePicturesWithGif": "Replace pictures with GIF",
+        "picturesReplacedByGif": "Pictures replaced by the GIF.",
+        "undo": "Undo"
       },
       "gifBadge": "GIF",
       "removeGif": "Remove GIF",
@@ -2826,7 +2835,8 @@
       "noDescription": "No description.",
       "previousPicture": "Previous picture",
       "nextPicture": "Next picture",
-      "closePicture": "Close"
+      "closePicture": "Close",
+      "picture": "picture"
     },
     "dashboard": {
       "title": "My Communities",

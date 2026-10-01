@@ -8,9 +8,10 @@ import type { FeedPost } from "@/payload-types";
 import { imageIdsOf } from "./feed-images";
 
 /**
- * Keeps a post's `imageUrl` in step with its first picture on every write
- * path (members, agents, admin), so older readers (agents, MCP) get one
- * picture without a join. Writes that do not set `images`, or leave the
+ * Keeps a post's `imageUrl` (and the deprecated `image` field) in step with
+ * its first picture on every write path (members, agents, admin), so older
+ * readers (agents, MCP, the previous version) get one picture without a
+ * join. Writes that do not set `images`, or leave the
  * first picture as it was, leave the URL alone: a legacy post that only
  * has a URL keeps it through an admin save (which sends an empty list).
  * Code that removes such a picture clears `imageUrl` itself.
@@ -23,6 +24,11 @@ export function feedPostImageUrlBeforeChange(): CollectionBeforeChangeHook {
     const before = originalDoc
       ? (imageIdsOf(originalDoc as FeedPost)[0] ?? null)
       : null;
+    // The deprecated single-picture field mirrors the first picture. An
+    // empty list on a post that never had one (an admin save of a post
+    // written by the previous version) leaves it alone; code that removes
+    // pictures on purpose clears it itself.
+    if (first !== null || before !== null) data.image = first;
     if (first === before) return data;
     if (first === null) {
       data.imageUrl = null;

@@ -159,7 +159,10 @@ export type FeedVideoView = {
 /** What a client sees of one of a post's pictures; never who uploaded it. */
 export type FeedImageView = {
   id: number;
+  /** The feed-sized copy (or the original when it has none). */
   url: string;
+  /** The original, for the large view. */
+  fullUrl: string;
   alt: string;
   width: number | null;
   height: number | null;
@@ -192,13 +195,20 @@ async function loadImageViews(
     where: { id: { in: ids } },
     limit: ids.length,
     depth: 0,
-    select: { url: true, alt: true, width: true, height: true },
+    select: {
+      url: true,
+      alt: true,
+      width: true,
+      height: true,
+      sizes: { feed: { url: true } },
+    },
   });
   for (const doc of docs) {
     if (!doc.url) continue;
     views.set(doc.id, {
       id: doc.id,
-      url: doc.url,
+      url: doc.sizes?.feed?.url ?? doc.url,
+      fullUrl: doc.url,
       alt: doc.alt ?? "",
       width: doc.width ?? null,
       height: doc.height ?? null,

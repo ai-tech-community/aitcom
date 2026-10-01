@@ -298,6 +298,7 @@ describe("reviewReport", () => {
         content: "",
         authorName: "",
         images: [],
+        image: null,
         imageUrl: null,
         gif: {
           giphyId: null,

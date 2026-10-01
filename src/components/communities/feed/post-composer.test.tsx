@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../../messages/en.json";
@@ -15,6 +21,7 @@ const m = vi.hoisted(() => ({
   createPost: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  toastInfo: vi.fn(),
 }));
 
 const pickedGif = vi.hoisted(() => ({
@@ -63,7 +70,10 @@ vi.mock("next/image", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { success: m.toastSuccess, error: m.toastError },
+  toast: Object.assign(m.toastInfo, {
+    success: m.toastSuccess,
+    error: m.toastError,
+  }),
 }));
 
 vi.mock("@/trpc/react", () => ({
@@ -399,5 +409,76 @@ describe("PostComposer pictures", () => {
     expect(m.toastError).toHaveBeenCalledWith(
       en.communities.feed.editor.tooManyPictures,
     );
+  });
+
+  it("keeps a picture that did not upload, blocks posting, and retries it", async () => {
+    let attempt = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        attempt += 1;
+        return attempt === 1
+          ? { ok: false, json: async () => ({}) }
+          : {
+              ok: true,
+              json: async () => ({ id: 9, url: "https://cdn.test/9.png" }),
+            };
+      }),
+    );
+    const { imageInput } = renderComposer();
+    fireEvent.change(imageInput(), {
+      target: { files: [new File(["a"], "a.png", { type: "image/png" })] },
+    });
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: en.communities.feed.composePlaceholder,
+      }),
+      { target: { value: "Look" } },
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText(en.communities.feed.editor.pictureFailed),
+      ).toBeVisible(),
+    );
+    expect(postButton()).toBeDisabled();
+    expect(
+      screen.getByText(en.communities.feed.editor.fixPictures),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Try picture 1 again" }),
+    );
+    await waitFor(() => expect(postButton()).toBeEnabled());
+    fireEvent.click(postButton());
+    expect(m.createPost).toHaveBeenCalledWith(
+      expect.objectContaining({ images: [{ id: 9, alt: "" }] }),
+    );
+  });
+
+  it("offers to undo when a GIF replaces the pictures", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => undefined)),
+    );
+    const { imageInput } = renderComposer();
+    fireEvent.change(imageInput(), {
+      target: { files: [new File(["a"], "a.png", { type: "image/png" })] },
+    });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: en.communities.feed.editor.replacePicturesWithGif,
+      }),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Remove picture 1" }),
+    ).toBeNull();
+    const [message, options] = m.toastInfo.mock.calls[0] as unknown as [
+      string,
+      { action: { onClick: () => void } },
+    ];
+    expect(message).toBe(en.communities.feed.editor.picturesReplacedByGif);
+    act(() => options.action.onClick());
+    expect(
+      screen.getByRole("button", { name: "Remove picture 1" }),
+    ).toBeVisible();
   });
 });

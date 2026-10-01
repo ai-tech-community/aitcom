@@ -116,5 +116,26 @@ describe.skipIf(!RUN_DB)(
           VALUES (1, ${second}, 'images', ${mediaId})`),
       ).rejects.toThrow();
     });
+
+    it("clears the uploader's placeholder text from feed pictures only", async () => {
+      const placeholder = await insertMedia();
+      await m.db.execute(
+        m.sql`UPDATE "media" SET "alt" = 'feed post image' WHERE "id" = ${placeholder}`,
+      );
+      const cover = await m.db.execute(m.sql`
+        INSERT INTO "media" ("alt", "filename", "updated_at", "created_at")
+        VALUES ('feed post image', ${`it-cover-${Date.now()}.png`}, now(), now())
+        RETURNING "id"`);
+      const coverId = Number((cover.rows[0] as { id: number }).id);
+      created.media.push(coverId);
+      await m.up({ db: m.db } as unknown as Parameters<typeof Up>[0]);
+      const rows = await m.db.execute(m.sql`
+        SELECT "id", "alt" FROM "media" WHERE "id" IN ${[placeholder, coverId]}
+        ORDER BY "id"`);
+      expect(rows.rows).toEqual([
+        { id: placeholder, alt: "" },
+        { id: coverId, alt: "feed post image" },
+      ]);
+    });
   },
 );

@@ -34,7 +34,6 @@ interface PostComposerProps {
 export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
   const t = useTranslations("communities.feed");
   const te = useTranslations("communities.feed.editor");
-  const tc = useTranslations("common");
   const tv = useTranslations("communities.video");
   const utils = api.useUtils();
   const text = usePostText("");
@@ -46,9 +45,8 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
     restore: text.setValue,
   });
   // A post carries pictures (up to 4), a video or a GIF, never two kinds.
-  const pictures = usePictureUploads({
-    onFailed: () => toast.error(tc("uploadFailed")),
-  });
+  const pictures = usePictureUploads();
+  const imageButton = useRef<HTMLButtonElement>(null);
   const [gif, setGif] = useState<PickedGif | null>(null);
   const isUploading = pictures.uploading;
   const [topicSlug, setTopicSlug] = useState("general");
@@ -93,7 +91,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
 
   const addImageFiles = (files: File[]) => {
     setGif(null);
-    const left = pictures.add(files, pictures.room);
+    const left = pictures.add(files);
     if (left > 0) toast.error(te("tooManyPictures"));
   };
 
@@ -139,10 +137,12 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
   };
 
   const busy = createPost.isPending || videoBusy || isUploading;
+  // A picture that did not upload is retried or removed before posting.
+  const blocked = pictures.failed;
 
   const submit = () => {
     // Waiting for a picture still uploading, so it is not left behind.
-    if (!content.trim() || text.tooLong || busy) return;
+    if (!content.trim() || text.tooLong || busy || blocked) return;
     if (videoFile) {
       void submitVideo(videoFile);
       return;
@@ -192,6 +192,8 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
                 items={pictures.items}
                 onAltChange={pictures.setAlt}
                 onRemove={pictures.remove}
+                onRetry={pictures.retry}
+                onEmptied={() => imageButton.current?.focus()}
               />
               {gif ? (
                 <MediaPreview
@@ -209,6 +211,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
           <>
             {videoFile ? null : (
               <ToolbarButton
+                ref={imageButton}
                 label={
                   pictures.room <= 0
                     ? te("tooManyPictures")
@@ -224,10 +227,28 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
             {videoFile ? null : (
               <GifPickerButton
                 communitySlug={slug}
-                label={gif ? t("replaceWithGif") : te("gif")}
+                label={
+                  gif
+                    ? t("replaceWithGif")
+                    : pictures.count > 0
+                      ? te("replacePicturesWithGif")
+                      : te("gif")
+                }
                 onPick={(picked) => {
                   setGif(picked);
+                  if (pictures.count === 0) return;
+                  // One click must not lose pictures and their descriptions.
+                  const saved = pictures.snapshot();
                   pictures.clear();
+                  toast(te("picturesReplacedByGif"), {
+                    action: {
+                      label: te("undo"),
+                      onClick: () => {
+                        setGif(null);
+                        pictures.restore(saved);
+                      },
+                    },
+                  });
                 }}
                 disabled={isUploading}
               />
@@ -264,7 +285,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
             <Button
               type="submit"
               size="sm"
-              disabled={!content.trim() || text.tooLong || busy}
+              disabled={!content.trim() || text.tooLong || busy || blocked}
               aria-busy={busy}
               aria-keyshortcuts={SEND_SHORTCUTS}
             >
@@ -276,7 +297,9 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
           </ShortcutHint>
         }
         notice={
-          (pictures.count > 0 || gif || videoFile) && !content.trim() ? (
+          blocked ? (
+            <p className="text-destructive text-xs">{te("fixPictures")}</p>
+          ) : (pictures.count > 0 || gif || videoFile) && !content.trim() ? (
             <p className="text-muted-foreground text-xs">
               {te("addWordsToPost")}
             </p>

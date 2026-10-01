@@ -11,13 +11,16 @@ export async function POST(request: NextRequest) {
 
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
-  const alt = (formData.get("alt") as string) ?? "upload";
+  const sentAlt = ((formData.get("alt") as string | null) ?? "").trim();
   // What the image is for. A purpose makes it the uploader's, for one use
   // only (a feed post image); without one it may be shared (a cover).
   const purpose = formData.get("purpose");
   if (purpose !== null && !isMediaPurpose(purpose)) {
     return NextResponse.json({ error: "Unknown purpose" }, { status: 400 });
   }
+  // A feed post picture's description is written by its author later;
+  // shared uploads (covers, logos) keep a description, as before.
+  const alt = sentAlt || (purpose === null ? "upload" : "");
 
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
