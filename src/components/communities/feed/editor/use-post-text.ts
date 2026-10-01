@@ -49,10 +49,12 @@ function applyEdit(
   } else {
     setValue(next.value);
   }
-  // After React writes the value, put the selection where the edit says.
+  // After React writes the value, put the selection where the edit says,
+  // unless the member has typed on since (the caret is theirs then).
   requestAnimationFrame(() => {
-    field?.focus();
-    field?.setSelectionRange(next.start, next.end);
+    if (!field || field.value !== next.value) return;
+    field.focus();
+    field.setSelectionRange(next.start, next.end);
   });
 }
 
