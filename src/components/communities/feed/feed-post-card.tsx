@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { useConfirm } from "@/components/confirm-dialog";
@@ -84,6 +84,10 @@ export function FeedPostCard({
   const confirm = useConfirm();
   const { requireAuth } = useRequireAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  // Opening the editor from the menu: its text box takes focus, not the
+  // menu button the menu would otherwise return focus to.
+  const openingEditor = useRef(false);
   const [reportOpen, setReportOpen] = useState(false);
 
   const isAuthor = !!currentUserId && post.authorId === currentUserId;
@@ -175,13 +179,32 @@ export function FeedPostCard({
         {(isAuthor || isPrivileged) && currentUserId ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-7 shrink-0">
-                <MoreHorizontal className="size-4" />
+              <Button
+                ref={menuButton}
+                variant="ghost"
+                size="icon"
+                className="size-7 shrink-0"
+                aria-label={t("postActions")}
+              >
+                <MoreHorizontal aria-hidden="true" className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent
+              align="end"
+              onCloseAutoFocus={(e) => {
+                if (openingEditor.current) {
+                  openingEditor.current = false;
+                  e.preventDefault();
+                }
+              }}
+            >
               {isAuthor && (
-                <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    openingEditor.current = true;
+                    setIsEditing(true);
+                  }}
+                >
                   {t("edit")}
                 </DropdownMenuItem>
               )}
@@ -228,9 +251,13 @@ export function FeedPostCard({
           communitySlug={communitySlug}
           onSaved={() => {
             setIsEditing(false);
+            menuButton.current?.focus();
             void onRefresh();
           }}
-          onCancel={() => setIsEditing(false)}
+          onCancel={() => {
+            setIsEditing(false);
+            menuButton.current?.focus();
+          }}
         />
       ) : (
         <p className="text-sm leading-relaxed whitespace-pre-wrap">

@@ -221,7 +221,12 @@ describe("useVideoPost", () => {
     const { result } = renderIt();
     let ok = false;
     await act(async () => {
-      ok = await result.current.post({ ...input, replacePostId: 9 });
+      ok = await result.current.post({
+        file,
+        caption: input.caption,
+        visibility: input.visibility,
+        replacePostId: 9,
+      });
     });
     expect(ok).toBe(true);
     expect(m.finish).not.toHaveBeenCalled();

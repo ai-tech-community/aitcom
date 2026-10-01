@@ -17,9 +17,10 @@ import {
 import type {
   PresignedUpload,
   VideoStorage,
-  VideoStorageSource,
 } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
+
+import { loadPostForMediaEdit, writePostMedia } from "./post-media";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
@@ -29,10 +30,6 @@ export type VideoPostDeps = {
   now?: () => Date;
   newUploadId?: () => string;
   log?: (message: string, detail: unknown) => void;
-};
-
-type PostVideoFiles = {
-  video?: { key?: string | null; thumbnailKey?: string | null } | null;
 };
 
 const UPLOAD_EXPIRED = "That upload has expired. Please try again.";
@@ -301,8 +298,9 @@ export async function finishVideoPost(
  * or video, with the edited caption. Same checks as `finishVideoPost`. The
  * post keeps its visibility (it is fixed after posting), so the upload must
  * have been granted for that same visibility. The old video's files are
- * removed afterwards, at best effort. Safe to retry: a post that already
- * carries this upload just closes the grant.
+ * removed before the grant closes, so a retry after a failed close finds
+ * nothing left to clean. Safe to retry: a post that already carries this
+ * upload just closes the grant.
  */
 export async function replacePostVideo(
   deps: VideoPostDeps,
@@ -314,18 +312,7 @@ export async function replacePostVideo(
     caption: string;
   } & UploadedVideo,
 ): Promise<{ id: number }> {
-  const post = await deps.payload.findByID({
-    collection: "feed-posts",
-    id: input.postId,
-    depth: 0,
-    disableErrors: true,
-  });
-  if (!post || post.isDeleted || post.communityId !== input.communityId) {
-    throw new TRPCError({ code: "NOT_FOUND" });
-  }
-  if (post.authorId !== input.userId) {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
+  const post = await loadPostForMediaEdit(deps.payload, input);
   const { grant, keys } = await openGrant(deps, input);
   const now = deps.now?.() ?? new Date();
   if (post.video?.key === keys.video) {
@@ -346,22 +333,19 @@ export async function replacePostVideo(
     now,
     "feed.replacePostVideo",
   );
-  await deps.payload.update({
-    collection: "feed-posts",
-    id: post.id,
-    data: {
+  await writePostMedia(
+    { ...deps, getStorage: () => deps.storage },
+    post,
+    {
       content: input.caption,
       imageUrl: null,
       video,
       isEdited: true,
       editedAt: now.toISOString(),
     },
-  });
+    "feed.replacePostVideo",
+  );
   await markGrantFinished(deps, grant.id, now);
-  await cleanUpPostVideoFiles(() => deps.storage, post, {
-    context: "feed.replacePostVideo",
-    log: deps.log,
-  });
   return { id: post.id };
 }
 
@@ -375,54 +359,4 @@ async function markGrantFinished(
     id: grantId,
     data: { finishedAt: now.toISOString() },
   });
-}
-
-function videoKeysOf(post: PostVideoFiles): string[] {
-  return [post.video?.key, post.video?.thumbnailKey].filter(
-    (key): key is string => Boolean(key),
-  );
-}
-
-/** Deletes a video post's files. Safe to call for posts without a video. */
-export async function removePostVideo(
-  storage: VideoStorage,
-  post: PostVideoFiles,
-): Promise<void> {
-  const keys = videoKeysOf(post);
-  if (keys.length === 0) return;
-  await storage.remove(keys);
-}
-
-/**
- * Best-effort removal of a post's video files once nothing points at them
- * any more: the post was deleted or removed by a moderator, or an edit
- * replaced or removed its video. That change has already happened, so a
- * storage failure (even storage being unavailable) must not turn it into
- * an error for the user. The abandoned-upload cleanup never covers
- * finished posts, so the log line is the only signal that files were left
- * behind.
- */
-export async function cleanUpPostVideoFiles(
-  getStorage: VideoStorageSource,
-  post: PostVideoFiles & { id: number },
-  options: {
-    /** The action that dropped the files, e.g. "feed.deletePost", for the log. */
-    context: string;
-    log?: (message: string, detail: unknown) => void;
-  },
-): Promise<void> {
-  const keys = videoKeysOf(post);
-  if (keys.length === 0) return;
-  try {
-    await removePostVideo(getStorage(), post);
-  } catch (error) {
-    (options.log ?? console.error)(
-      `[${options.context}] video cleanup failed`,
-      {
-        postId: post.id,
-        keys,
-        error,
-      },
-    );
-  }
 }

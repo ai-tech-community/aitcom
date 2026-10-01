@@ -1,6 +1,6 @@
 "use client";
 
-import { Film, X } from "lucide-react";
+import { Film, Globe, Users, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import type { VideoPostState } from "./use-video-post";
 /**
  * The picked clip: who can watch, progress, and errors. Without
  * `onVisibilityChange` the audience is fixed (editing a post keeps the
- * audience it was posted to) and the choice is not shown.
+ * audience it was posted to): it is stated, not offered as a choice.
  */
 export function VideoAttachment({
   file,
@@ -75,6 +75,19 @@ export function VideoAttachment({
         )}
       </div>
 
+      {onVisibilityChange ? null : (
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          {visibility === "public" ? (
+            <Globe aria-hidden="true" className="size-3.5 shrink-0" />
+          ) : (
+            <Users aria-hidden="true" className="size-3.5 shrink-0" />
+          )}
+          <span>
+            {t("visibilityLabel")}:{" "}
+            <span className="text-foreground">{t(visibility)}</span>
+          </span>
+        </p>
+      )}
       {onVisibilityChange ? (
         <div className="flex flex-col gap-1.5">
           <span className="text-muted-foreground text-xs">

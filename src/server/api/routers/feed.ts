@@ -43,8 +43,9 @@ import {
   reportPost,
   reviewReport,
 } from "@/server/communities/post-reports";
+import { setPostImage } from "@/server/communities/post-media";
+import { cleanUpPostVideoFiles } from "@/server/communities/post-video-files";
 import {
-  cleanUpPostVideoFiles,
   finishVideoPost,
   replacePostVideo,
   issueVideoUpload,
@@ -424,10 +425,9 @@ export const feedRouter = createTRPCRouter({
   /**
    * The author edits a post's text and, optionally, its media: keep it,
    * remove it, or set an image (which replaces a video). Changing media is
-   * posting new content, so it needs the same right as posting. A post
-   * keeps one image or one video, never both; a post that no longer has a
-   * video can no longer be public (only video posts may be), so it becomes
-   * members-only. Replacing the video itself is `replacePostVideo`.
+   * posting new content, so it needs the same right as posting; the media
+   * rules live in `setPostImage`. Putting a new video on the post is
+   * `replacePostVideo`.
    */
   editPost: protectedProcedure
     .input(
@@ -446,6 +446,25 @@ export const feedRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
+      // The id only: the stored post carries the video's storage keys.
+      if (input.media.kind !== "keep") {
+        const community = await requireFeedPoster(
+          ctx.db,
+          input.communitySlug,
+          ctx.session.user.id,
+        );
+        await setPostImage(
+          { payload, getStorage: getVideoStorage },
+          {
+            postId: input.postId,
+            userId: ctx.session.user.id,
+            communityId: community.id,
+            content: input.content,
+            imageUrl: input.media.kind === "image" ? input.media.url : null,
+          },
+        );
+        return { id: input.postId };
+      }
 
       const post = await payload.findByID({
         collection: "feed-posts",
@@ -460,55 +479,15 @@ export const feedRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      const now = new Date().toISOString();
-      if (input.media.kind === "keep") {
-        await payload.update({
-          collection: "feed-posts",
-          id: input.postId,
-          data: { content: input.content, isEdited: true, editedAt: now },
-        });
-        // The id only: the stored post carries the video's storage keys.
-        return { id: post.id };
-      }
-
-      const community = await requireFeedPoster(
-        ctx.db,
-        input.communitySlug,
-        ctx.session.user.id,
-      );
-      if (post.communityId !== community.id) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-      const hadVideo = Boolean(post.video?.key);
       await payload.update({
         collection: "feed-posts",
         id: input.postId,
         data: {
           content: input.content,
-          imageUrl: input.media.kind === "image" ? input.media.url : null,
-          ...(hadVideo
-            ? {
-                video: {
-                  key: null,
-                  thumbnailKey: null,
-                  storage: null,
-                  durationSeconds: null,
-                  width: null,
-                  height: null,
-                  bytes: null,
-                },
-                visibility: "community" as const,
-              }
-            : {}),
           isEdited: true,
-          editedAt: now,
+          editedAt: new Date().toISOString(),
         },
       });
-      if (hadVideo) {
-        await cleanUpPostVideoFiles(getVideoStorage, post, {
-          context: "feed.editPost",
-        });
-      }
       return { id: post.id };
     }),
 

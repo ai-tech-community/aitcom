@@ -197,4 +197,97 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
     expect(saved.imageUrl).toBe("https://bucket.s3.test/pic.jpg");
     expect(saved.video?.key ?? null).toBeNull();
   });
+
+  it("adds an image to a post that had no media", async () => {
+    const payload = await m.getPayloadClient();
+    const textPost = await payload.create({
+      collection: "feed-posts",
+      data: {
+        content: "Just words",
+        authorId: fx.userId,
+        authorName: "Tester",
+        communityId: fx.communityId,
+        topicSlug: "general",
+        likeCount: 0,
+        commentCount: 0,
+        visibility: "community",
+      },
+    });
+    try {
+      await author().feed.editPost({
+        postId: textPost.id,
+        communitySlug: fx.slug,
+        content: "Words and a picture",
+        media: { kind: "image", url: "https://bucket.s3.test/added.jpg" },
+      });
+      const saved = await payload.findByID({
+        collection: "feed-posts",
+        id: textPost.id,
+        depth: 0,
+      });
+      expect(saved.imageUrl).toBe("https://bucket.s3.test/added.jpg");
+      expect(saved.content).toBe("Words and a picture");
+    } finally {
+      await payload.delete({ collection: "feed-posts", id: textPost.id });
+    }
+  });
+
+  it("keeps a hidden post's video for the moderator", async () => {
+    const payload = await m.getPayloadClient();
+    await payload.update({
+      collection: "feed-posts",
+      id: fx.postId,
+      data: { hiddenAt: new Date().toISOString() },
+    });
+    await expect(
+      author().feed.editPost({
+        postId: fx.postId,
+        communitySlug: fx.slug,
+        content: "Hiding the evidence",
+        media: { kind: "none" },
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const saved = await payload.findByID({
+      collection: "feed-posts",
+      id: fx.postId,
+      depth: 0,
+    });
+    expect(saved.video?.key).toBe(
+      `media/videos/public/${fx.communityId}/${fx.suffix}.mp4`,
+    );
+    expect(saved.visibility).toBe("public");
+  });
+
+  it("refuses a write from a stale read, leaving the newer video in place", async () => {
+    const { writePostMedia } = await import("@/server/communities/post-media");
+    const payload = await m.getPayloadClient();
+    const stale = await payload.findByID({
+      collection: "feed-posts",
+      id: fx.postId,
+      depth: 0,
+    });
+    const newer = `media/videos/public/${fx.communityId}/${fx.suffix}-b.mp4`;
+    await payload.update({
+      collection: "feed-posts",
+      id: fx.postId,
+      data: { video: { ...stale.video, key: newer } },
+    });
+    const getStorage = vi.fn();
+    await expect(
+      writePostMedia(
+        { payload, getStorage },
+        stale,
+        { content: "Too late", imageUrl: null },
+        "test",
+      ),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    const saved = await payload.findByID({
+      collection: "feed-posts",
+      id: fx.postId,
+      depth: 0,
+    });
+    expect(saved.video?.key).toBe(newer);
+    expect(saved.content).toBe("A clip");
+    expect(getStorage).not.toHaveBeenCalled();
+  });
 });

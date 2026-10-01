@@ -30,10 +30,11 @@ export type VideoPostInput = {
   file: File;
   caption: string;
   visibility: VideoVisibility;
-  topicSlug: string;
+} & (
+  | { topicSlug: string }
   /** Put the video on this existing post (an edit) instead of a new post. */
-  replacePostId?: number;
-};
+  | { replacePostId: number }
+);
 
 type VideoUploadGrant = {
   uploadId: string;
@@ -223,13 +224,13 @@ export function useVideoPost(slug: string) {
           width: prepared.width,
           height: prepared.height,
         };
-        if (input.replacePostId === undefined) {
-          await finish.mutateAsync({ ...uploaded, topicSlug: input.topicSlug });
-        } else {
+        if ("replacePostId" in input) {
           await replace.mutateAsync({
             ...uploaded,
             postId: input.replacePostId,
           });
+        } else {
+          await finish.mutateAsync({ ...uploaded, topicSlug: input.topicSlug });
         }
       } catch (error) {
         grantCache.current = null;

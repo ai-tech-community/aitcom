@@ -6,7 +6,7 @@ import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { ReportReason } from "@/lib/post-report-reasons";
 import { canViewPost, type FeedViewer } from "./post-visibility";
-import { cleanUpPostVideoFiles } from "./video-posts";
+import { cleanUpPostVideoFiles } from "./post-video-files";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 

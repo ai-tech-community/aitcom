@@ -58,7 +58,7 @@ describe("VideoAttachment", () => {
       "aria-valuenow",
       "40",
     );
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop upload" }));
     expect(onCancel).toHaveBeenCalled();
   });
 
@@ -76,7 +76,7 @@ describe("VideoAttachment", () => {
     renderIt({ state: { step: "posting" } });
     expect(screen.getByRole("status")).toHaveTextContent("Posting…");
     expect(
-      screen.queryByRole("button", { name: "Cancel" }),
+      screen.queryByRole("button", { name: "Stop upload" }),
     ).not.toBeInTheDocument();
   });
 
@@ -106,5 +106,13 @@ describe("VideoAttachment", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Videos can be up to 90 seconds.",
     );
+  });
+
+  it("states a fixed audience instead of offering a choice", () => {
+    renderIt({ visibility: "public", onVisibilityChange: undefined });
+    expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Public — anyone with the link can watch"),
+    ).toBeInTheDocument();
   });
 });

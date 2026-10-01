@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Film, ImagePlus, Loader2, X } from "lucide-react";
+import { Film, ImagePlus, Loader2, TriangleAlert, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -10,30 +10,35 @@ import { Textarea } from "@/components/ui/textarea";
 import type { VideoVisibility } from "@/lib/video-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
+import { MediaPreview } from "./media-preview";
 import { uploadFeedImage } from "./upload-feed-image";
 
-/** What the post will carry after the edit. */
+/**
+ * What the post will carry after the edit. A picked image stays on the
+ * device until Save, so cancelling never leaves an uploaded file behind.
+ */
 type MediaEdit =
   | { kind: "keep" }
   | { kind: "none" }
-  | { kind: "image"; url: string }
+  | { kind: "image"; file: File; previewUrl: string }
   | { kind: "video"; file: File };
 
 export type EditablePost = {
   id: number;
   content: string;
   imageUrl?: string | null;
-  topicSlug?: string | null;
   visibility?: VideoVisibility | null;
   video?: { thumbnailUrl: string | null } | null;
+  /** Set while a moderator reviews a report: the media stays as it is. */
+  hiddenAt?: string | null;
 };
 
 /**
  * Editing a post: its text and its media, with the composer's controls.
  * A post carries one image or one video, never both. Its audience is fixed
  * after posting, so a new video goes to the same audience; a public post
- * whose video is removed becomes members-only (only video posts may be
- * public), and the form says so before saving.
+ * whose video is removed becomes community-only (only video posts may be
+ * public), and the form says so before saving. Nothing changes until Save.
  */
 export function PostEditForm({
   post,
@@ -43,28 +48,48 @@ export function PostEditForm({
 }: {
   post: EditablePost;
   communitySlug: string;
-  /** After a successful save (refresh the feed and close the form). */
+  /** After a successful save (refresh the feed, close the form). */
   onSaved: () => void;
+  /** The member left without saving. */
   onCancel: () => void;
 }) {
   const t = useTranslations("communities.feed");
   const tc = useTranslations("common");
   const tv = useTranslations("communities.video");
+  const utils = api.useUtils();
   const [content, setContent] = useState(post.content);
   const [media, setMedia] = useState<MediaEdit>({ kind: "keep" });
   const [isUploading, setIsUploading] = useState(false);
   const imageInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
+  const imageButton = useRef<HTMLButtonElement>(null);
   const videoPost = useVideoPost(communitySlug);
   const audience: VideoVisibility =
     post.visibility === "public" ? "public" : "community";
+  const hadMedia = Boolean(post.imageUrl) || Boolean(post.video);
+  const mediaLocked = Boolean(post.hiddenAt);
+
+  // The local preview of a picked image lives as long as the pick.
+  useEffect(() => {
+    if (media.kind !== "image") return;
+    const url = media.previewUrl;
+    return () => URL.revokeObjectURL(url);
+  }, [media]);
 
   const editPost = api.feed.editPost.useMutation({
     onSuccess: () => {
+      // The reels strip is not part of the feed the card refreshes, and a
+      // removed video's files are already gone.
+      void utils.feed.getReels.invalidate({ communitySlug });
       toast.success(t("postEdited"));
       onSaved();
     },
-    onError: () => toast.error(t("toastPostUpdateError")),
+    onError: (error) =>
+      toast.error(
+        error.data?.code === "CONFLICT" || error.data?.code === "FORBIDDEN"
+          ? error.message
+          : t("toastPostUpdateError"),
+      ),
   });
 
   const videoBusy =
@@ -72,36 +97,25 @@ export function PostEditForm({
     videoPost.state.step === "uploading" ||
     videoPost.state.step === "posting";
   const busy = editPost.isPending || videoBusy || isUploading;
+  const videoRefused =
+    media.kind === "video" &&
+    videoPost.state.step === "error" &&
+    !videoPost.state.retryable;
 
-  // What is on the post while editing.
-  const showsImage =
-    media.kind === "image"
-      ? media.url
-      : media.kind === "keep"
-        ? (post.imageUrl ?? null)
-        : null;
+  const showsOldImage = media.kind === "keep" && Boolean(post.imageUrl);
   const showsOldVideo = media.kind === "keep" && Boolean(post.video);
-  const hasMedia =
-    Boolean(showsImage) || showsOldVideo || media.kind === "video";
+  const hasMedia = media.kind === "keep" ? hadMedia : media.kind !== "none";
   const losesPublic =
     audience === "public" &&
     Boolean(post.video) &&
     (media.kind === "none" || media.kind === "image");
 
-  const pickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const pickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    setIsUploading(true);
-    try {
-      const url = await uploadFeedImage(file);
-      videoPost.reset();
-      setMedia({ kind: "image", url });
-    } catch {
-      toast.error(tc("uploadFailed"));
-    } finally {
-      setIsUploading(false);
-    }
+    videoPost.reset();
+    setMedia({ kind: "image", file, previewUrl: URL.createObjectURL(file) });
   };
 
   const pickVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,17 +131,29 @@ export function PostEditForm({
   const removeMedia = () => {
     videoPost.reset();
     setMedia({ kind: "none" });
+    // The remove button is gone: keep keyboard focus in the form.
+    imageButton.current?.focus();
+  };
+
+  const keepCurrent = () => {
+    videoPost.reset();
+    setMedia({ kind: "keep" });
+  };
+
+  const cancel = () => {
+    if (videoPost.state.step === "posting") return;
+    videoPost.cancel();
+    onCancel();
   };
 
   const save = async () => {
     const caption = content.trim();
-    if (!caption || busy) return;
+    if (!caption || busy || videoRefused) return;
     if (media.kind === "video") {
       const ok = await videoPost.post({
         file: media.file,
         caption,
         visibility: audience,
-        topicSlug: post.topicSlug ?? "general",
         replacePostId: post.id,
       });
       if (ok) {
@@ -136,19 +162,54 @@ export function PostEditForm({
       }
       return;
     }
+    let change:
+      | { kind: "keep" }
+      | { kind: "none" }
+      | { kind: "image"; url: string };
+    if (media.kind === "image") {
+      setIsUploading(true);
+      try {
+        change = { kind: "image", url: await uploadFeedImage(media.file) };
+      } catch {
+        toast.error(tc("uploadFailed"));
+        return;
+      } finally {
+        setIsUploading(false);
+      }
+    } else {
+      change = media;
+    }
     editPost.mutate({
       postId: post.id,
       communitySlug,
       content: caption,
-      media,
+      media: change,
     });
   };
 
   return (
-    <div className="space-y-3">
+    <form
+      className="space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void save();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          cancel();
+        }
+      }}
+    >
       <Textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            void save();
+          }
+        }}
         maxLength={2000}
         rows={3}
         className="resize-none"
@@ -156,98 +217,136 @@ export function PostEditForm({
         autoFocus
       />
 
-      {media.kind === "video" ? (
-        <VideoAttachment
-          file={media.file}
-          visibility={audience}
-          onRemove={removeMedia}
-          onCancel={videoPost.cancel}
-          onRetry={() => void save()}
-          state={videoPost.state}
-        />
-      ) : null}
-
-      {showsImage || showsOldVideo ? (
-        <div className="relative inline-block">
-          {/* eslint-disable-next-line @next/next/no-img-element -- S3 or
-              signed thumbnail URLs, not optimizable assets */}
-          <img
-            src={showsImage ?? post.video?.thumbnailUrl ?? ""}
-            alt={showsImage ? t("currentImage") : t("currentVideo")}
-            className="max-h-48 rounded-lg object-cover"
-          />
-          {showsOldVideo ? (
-            <span className="bg-background/90 absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs">
-              <Film aria-hidden="true" className="size-3" />
-              {t("currentVideo")}
-            </span>
-          ) : null}
-          <Button
-            type="button"
-            variant="destructive"
-            size="icon"
-            className="absolute top-1 right-1 size-6"
-            onClick={removeMedia}
-            disabled={busy}
-            aria-label={showsImage ? t("removeImage") : tv("remove")}
-          >
-            <X className="size-3" />
-          </Button>
-        </div>
-      ) : null}
-
-      {losesPublic ? (
-        <p role="status" className="text-muted-foreground text-sm">
-          {t("becomesMembersOnly")}
+      {mediaLocked ? (
+        <p className="text-muted-foreground text-sm">
+          {t("mediaLockedWhileReviewed")}
         </p>
-      ) : null}
+      ) : (
+        <>
+          {media.kind === "video" ? (
+            <VideoAttachment
+              file={media.file}
+              visibility={audience}
+              onRemove={removeMedia}
+              onCancel={videoPost.cancel}
+              onRetry={() => void save()}
+              state={videoPost.state}
+            />
+          ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={busy}
-          onClick={() => imageInput.current?.click()}
-        >
-          {isUploading ? (
-            <Loader2 className="mr-1.5 size-4 animate-spin" />
-          ) : (
-            <ImagePlus className="mr-1.5 size-4" />
+          {media.kind === "image" ? (
+            <MediaPreview
+              src={media.previewUrl}
+              alt={t("attachedImage")}
+              removeLabel={t("removeImage")}
+              onRemove={removeMedia}
+              disabled={busy}
+            />
+          ) : showsOldImage ? (
+            <MediaPreview
+              src={post.imageUrl ?? null}
+              alt={t("currentImage")}
+              removeLabel={t("removeImage")}
+              onRemove={removeMedia}
+              disabled={busy}
+            />
+          ) : showsOldVideo ? (
+            <MediaPreview
+              src={post.video?.thumbnailUrl ?? null}
+              alt=""
+              badge={
+                <>
+                  <Film aria-hidden="true" className="size-3" />
+                  {t("currentVideo")}
+                </>
+              }
+              removeLabel={tv("remove")}
+              onRemove={removeMedia}
+              disabled={busy}
+            />
+          ) : null}
+
+          {/* Always mounted, so screen readers hear the warning when it
+              appears (WCAG 4.1.3). */}
+          <div role="status">
+            {losesPublic ? (
+              <p className="bg-warning/10 border-warning/30 text-foreground flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
+                <TriangleAlert
+                  aria-hidden="true"
+                  className="text-warning mt-0.5 size-4 shrink-0"
+                />
+                {t("becomesMembersOnly")}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              ref={imageButton}
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => imageInput.current?.click()}
+            >
+              <ImagePlus aria-hidden="true" className="mr-1.5 size-4" />
+              {hasMedia ? t("replaceWithImage") : t("addImage")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => videoInput.current?.click()}
+            >
+              <Film aria-hidden="true" className="mr-1.5 size-4" />
+              {hasMedia ? t("replaceWithVideo") : tv("add")}
+            </Button>
+            {hadMedia && media.kind !== "keep" ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                onClick={keepCurrent}
+              >
+                <Undo2 aria-hidden="true" className="mr-1.5 size-4" />
+                {post.video ? t("keepCurrentVideo") : t("keepCurrentImage")}
+              </Button>
+            ) : null}
+          </div>
+
+          {media.kind === "keep" ? null : (
+            <p className="text-muted-foreground text-xs">
+              {t("mediaChangesOnSave")}
+            </p>
           )}
-          {hasMedia ? t("replaceWithImage") : t("addImage")}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={busy}
-          onClick={() => videoInput.current?.click()}
-        >
-          <Film className="mr-1.5 size-4" />
-          {hasMedia ? t("replaceWithVideo") : tv("add")}
-        </Button>
-      </div>
+        </>
+      )}
 
       <div className="flex gap-2">
         <Button
+          type="submit"
           size="sm"
-          onClick={() => void save()}
-          disabled={!content.trim() || busy}
+          disabled={!content.trim() || busy || videoRefused}
+          aria-busy={busy}
         >
-          {busy ? <Loader2 className="mr-1.5 size-4 animate-spin" /> : null}
+          {busy ? (
+            <Loader2
+              aria-hidden="true"
+              className="mr-1.5 size-4 animate-spin"
+            />
+          ) : null}
           {t("save")}
         </Button>
         <Button
+          type="button"
           size="sm"
           variant="ghost"
-          onClick={() => {
-            videoPost.cancel();
-            onCancel();
-          }}
+          onClick={cancel}
           disabled={videoPost.state.step === "posting"}
         >
-          {t("cancel")}
+          {t("discardChanges")}
         </Button>
       </div>
 
@@ -265,6 +364,6 @@ export function PostEditForm({
         className="hidden"
         onChange={pickVideo}
       />
-    </div>
+    </form>
   );
 }

@@ -5,12 +5,12 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import Image from "next/image";
-import { Film, ImagePlus, X, Loader2 } from "lucide-react";
+import { Film, ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { VideoVisibility } from "@/lib/video-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
+import { MediaPreview } from "./media-preview";
 import { uploadFeedImage } from "./upload-feed-image";
 
 interface PostComposerProps {
@@ -147,25 +147,12 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
       ) : null}
 
       {imageUrl ? (
-        <div className="relative inline-block">
-          <Image
-            src={imageUrl}
-            alt="Preview"
-            width={192}
-            height={192}
-            className="max-h-48 rounded-lg object-cover"
-          />
-          <Button
-            type="button"
-            variant="destructive"
-            size="icon"
-            className="absolute top-1 right-1 size-6"
-            onClick={() => setImageUrl(null)}
-            aria-label={t("removeImage")}
-          >
-            <X className="size-3" />
-          </Button>
-        </div>
+        <MediaPreview
+          src={imageUrl}
+          alt={t("attachedImage")}
+          removeLabel={t("removeImage")}
+          onRemove={() => setImageUrl(null)}
+        />
       ) : null}
 
       <div className="flex items-center justify-between gap-2">

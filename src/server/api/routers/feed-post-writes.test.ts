@@ -82,11 +82,15 @@ beforeEach(() => {
   hooks.membership = { role: "member" };
   hooks.poster = { id: "c-1" };
   payload.findByID.mockResolvedValue(post);
+  // A guarded media write (by `where`) answers with the posts it changed.
   payload.update.mockImplementation(
-    async ({ data }: { data: Record<string, unknown> }) => ({
-      ...post,
-      ...data,
-    }),
+    async ({
+      data,
+      where,
+    }: {
+      data: Record<string, unknown>;
+      where?: unknown;
+    }) => (where ? { docs: [{ ...post, ...data }] } : { ...post, ...data }),
   );
   storage.remove.mockResolvedValue(undefined);
 });
@@ -206,6 +210,36 @@ describe("feed post writes", () => {
         media: { kind: "none" },
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("editPost leaves a hidden post's media for the moderator", async () => {
+    payload.findByID.mockResolvedValue({
+      ...post,
+      hiddenAt: "2026-09-24T11:00:00Z",
+    });
+    await expect(
+      caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "New",
+        media: { kind: "none" },
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(payload.update).not.toHaveBeenCalled();
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  it("editPost refuses when another edit changed the media first, keeping the files", async () => {
+    payload.update.mockResolvedValue({ docs: [] });
+    await expect(
+      caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "New",
+        media: { kind: "none" },
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(storage.remove).not.toHaveBeenCalled();
   });
 
   it("editPost lets only the author edit", async () => {
