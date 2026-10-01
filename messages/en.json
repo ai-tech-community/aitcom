@@ -3121,7 +3121,7 @@
     "saved": "Saved",
     "sectionTitle": "Notifications",
     "hubMailKicker": "Email",
-    "hubMailHint": "Today we only email Hub messages — a link back in, never the message itself. The other switches are saved for later.",
+    "hubMailHint": "We email you Hub messages and mentions — a link back in, never the message itself. The other switches are saved for later.",
     "hubMailDm": "Hub messages",
     "hubMailDmHint": "When someone sends you a direct message.",
     "hubMailMention": "Mentions",

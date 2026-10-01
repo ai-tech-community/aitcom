@@ -705,7 +705,7 @@ export const digestSendLog = appSchema.table(
   ],
 );
 
-/** Hub notification-mail toggles. Absence of a row = DM on, everything else off. */
+/** Hub notification-mail toggles. Absence of a row = DM and mentions on, everything else off. */
 export const hubMailPrefs = appSchema.table("hub_mail_pref", (d) => ({
   userId: d
     .varchar({ length: 255 })
@@ -713,7 +713,7 @@ export const hubMailPrefs = appSchema.table("hub_mail_pref", (d) => ({
     .primaryKey()
     .references(() => user.id),
   dm: d.boolean().notNull().default(true),
-  mention: d.boolean().notNull().default(false),
+  mention: d.boolean().notNull().default(true),
   forumReply: d.boolean("forum_reply").notNull().default(false),
   digest: d.boolean().notNull().default(false),
   agentJob: d.boolean("agent_job").notNull().default(false),

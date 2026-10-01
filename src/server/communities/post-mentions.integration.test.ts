@@ -9,7 +9,22 @@
  *     DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test \
  *     pnpm exec vitest run src/server/communities/post-mentions.integration.test.ts
  */
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+
+// Mention emails go through a fake: what would be sent, never sent.
+const mail = vi.hoisted(() => ({ send: vi.fn(async () => true) }));
+vi.mock("@/server/email", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/server/email")>()),
+  sendPostMentionEmail: mail.send,
+}));
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -120,6 +135,10 @@ describe.skipIf(!RUN_DB)("@mentions in feed posts [DB integration]", () => {
   });
 
   afterEach(async () => {
+    mail.send.mockClear();
+    await m.db
+      .delete(m.schema.hubMailPrefs)
+      .where(m.inArray(m.schema.hubMailPrefs.userId, allUsers()));
     const payload = await m.getPayloadClient();
     for (const id of posts) {
       await payload.delete({ collection: "feed-posts", id }).catch(() => null);
@@ -218,6 +237,43 @@ describe.skipIf(!RUN_DB)("@mentions in feed posts [DB integration]", () => {
     expect((await toldUsers()).map((r) => r.userId).sort()).toEqual(
       [fx.jane, fx.janet].sort(),
     );
+  });
+
+  it("emails each newly mentioned member once, unless they turned it off", async () => {
+    const n = await names();
+    // Janet turned mention mail off; Jane has no saved choice (default on).
+    await m.db
+      .insert(m.schema.hubMailPrefs)
+      .values({ userId: fx.janet, mention: false });
+    const post = await caller(fx.author).feed.createPost({
+      communitySlug: fx.slug,
+      content: `Hi @${n[fx.jane]} and @${n[fx.janet]}`,
+      mentions: [fx.jane, fx.janet],
+    });
+    posts.push(post.id);
+    await vi.waitFor(() => expect(mail.send).toHaveBeenCalledTimes(1));
+    expect(mail.send).toHaveBeenCalledWith(`${fx.jane}@example.test`, {
+      locale: "en",
+      mail: {
+        authorName: "Author",
+        communityName: expect.stringMatching(/^Men /) as string,
+        isVideo: false,
+      },
+      urls: {
+        post: `/en/communities/${fx.slug}`,
+        manage: "/en/dashboard/notifications",
+      },
+    });
+
+    // An edit that keeps the mention emails no one again.
+    await caller(fx.author).feed.editPost({
+      postId: post.id,
+      communitySlug: fx.slug,
+      content: `Hi @${n[fx.jane]} and @${n[fx.janet]}!`,
+      mentions: [fx.jane, fx.janet],
+    });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(mail.send).toHaveBeenCalledTimes(1);
   });
 
   it("drops a mention whose name leaves the text, and keeps a renamed one", async () => {

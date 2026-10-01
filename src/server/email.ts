@@ -13,6 +13,11 @@ import {
   renderHubDmPingHtml,
   type HubMailLocale,
 } from "@/server/notifications/hub-dm-mail-copy";
+import {
+  postMentionMailCopy,
+  renderPostMentionHtml,
+  type PostMentionMail,
+} from "@/server/notifications/post-mention-mail-copy";
 
 let resendInstance: Resend | null = null;
 
@@ -506,6 +511,26 @@ export async function sendHubDmPingEmail(
     html: renderHubDmPingHtml(opts.locale, opts.hubUrl),
   });
   return true;
+}
+
+/** Link-only email to a member someone mentioned in a post. */
+export async function sendPostMentionEmail(
+  to: string,
+  opts: {
+    locale: HubMailLocale;
+    mail: PostMentionMail;
+    urls: { post: string; manage: string };
+  },
+) {
+  const resend = getResend();
+  if (!resend) return false;
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: postMentionMailCopy(opts.locale, opts.mail).subject,
+    html: renderPostMentionHtml(opts.locale, opts.mail, opts.urls),
+  });
+  return !error;
 }
 
 /** Send the consolidated weekly Hub digest. */

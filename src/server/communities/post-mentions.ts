@@ -15,6 +15,10 @@ import {
 import { escapeLike } from "@/server/db/escape-like";
 import { publicRosterVisibility } from "@/server/members/public-roster";
 import {
+  scheduleMentionEmails,
+  type MentionEmailInput,
+} from "@/server/notifications/post-mention-mail";
+import {
   MAX_POST_MENTIONS,
   mentionsIn,
   readMentions,
@@ -189,17 +193,18 @@ async function isActiveMember(
  * could not see it; nor does an author who is no longer a member.
  *
  * Member-chosen names go only in the title, which is shown as plain text;
- * the markdown body holds none.
+ * the markdown body holds none. Returns what the mention emails need for
+ * the members just notified (none: null).
  */
 export async function notifyNewMentions(
   database: Database,
   post: MentionedPost,
-): Promise<void> {
-  if (!post.communityId || post.isDeleted || post.hiddenAt) return;
+): Promise<MentionEmailInput | null> {
+  if (!post.communityId || post.isDeleted || post.hiddenAt) return null;
   const wanted = readMentions(post.mentions)
     .map((mention) => mention.userId)
     .filter((userId) => userId !== post.authorId);
-  if (wanted.length === 0) return;
+  if (wanted.length === 0) return null;
   const told = await database
     .select({ userId: notifications.userId })
     .from(notifications)
@@ -212,9 +217,9 @@ export async function notifyNewMentions(
     );
   const toldIds = new Set(told.map((row) => row.userId));
   const fresh = wanted.filter((userId) => !toldIds.has(userId));
-  if (fresh.length === 0) return;
+  if (fresh.length === 0) return null;
   if (!(await isActiveMember(database, post.communityId, post.authorId))) {
-    return;
+    return null;
   }
   const community = await database.query.communities.findFirst({
     where: and(
@@ -223,10 +228,10 @@ export async function notifyNewMentions(
     ),
     columns: { slug: true, name: true },
   });
-  if (!community) return;
+  if (!community) return null;
   // Still members now: a stored list is never trusted on its own.
   const recipients = await activeMembers(database, post.communityId, fresh);
-  if (recipients.length === 0) return;
+  if (recipients.length === 0) return null;
   const isVideo = Boolean(post.video?.key);
   // Text posts have no page of their own yet: the link opens the feed.
   const path = isVideo
@@ -248,10 +253,20 @@ export async function notifyNewMentions(
       },
     })),
   );
+  return {
+    mail: {
+      authorName: post.authorName ?? "A member",
+      communityName: community.name,
+      isVideo,
+    },
+    path,
+    recipientIds: recipients.map(({ userId }) => userId),
+  };
 }
 
 /**
- * Notifies newly mentioned members after a post is saved. Saves that
+ * Notifies newly mentioned members after a post is saved, in the app and
+ * (after the response) by email. Saves that
  * change nothing a notice depends on (a pin, a topic) skip the check. A
  * failure to notify never fails the post: it is logged.
  */
@@ -272,7 +287,9 @@ export function feedPostMentionsAfterChange(
       return;
     }
     try {
-      await notifyNewMentions(await getDatabase(), post);
+      const database = await getDatabase();
+      const emails = await notifyNewMentions(database, post);
+      if (emails) scheduleMentionEmails(database, emails);
     } catch (error) {
       console.error("[feed-posts] failed to notify mentioned members", error);
     }
