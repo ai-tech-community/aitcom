@@ -29,10 +29,16 @@ const PROBLEM_MESSAGES = {
 } as const;
 
 /**
- * The `poll` group a post stores for a poll its author set up, closing
- * `days` after `now`. Refuses a poll that breaks the rules (`pollProblem`).
+ * The `poll` group a post stores for a poll its author set up: open for
+ * `days` from `now`, or, with `days` null, until `keepClosesAt` (the poll
+ * being changed keeps its end). Refuses a poll that breaks the rules
+ * (`pollProblem`).
  */
-export function pollFields(choice: PollChoice, now: Date) {
+export function pollFields(
+  choice: PollChoice,
+  now: Date,
+  keepClosesAt?: string | null,
+) {
   const problem = pollProblem(choice.options);
   if (problem) {
     throw new TRPCError({
@@ -40,11 +46,20 @@ export function pollFields(choice: PollChoice, now: Date) {
       message: PROBLEM_MESSAGES[problem],
     });
   }
+  if (choice.days === null && !keepClosesAt) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Choose how long the poll stays open.",
+    });
+  }
   return {
     options: choice.options.map((label) => ({ label: label.trim() })),
-    closesAt: new Date(
-      now.getTime() + choice.days * 24 * 60 * 60 * 1000,
-    ).toISOString(),
+    closesAt:
+      choice.days === null
+        ? keepClosesAt!
+        : new Date(
+            now.getTime() + choice.days * 24 * 60 * 60 * 1000,
+          ).toISOString(),
   };
 }
 
@@ -58,29 +73,6 @@ export function pollOptionIds(post: Pick<FeedPost, "poll">): string[] {
 /** Whether a post carries a poll. */
 export function hasPoll(post: Pick<FeedPost, "poll">): boolean {
   return pollOptionIds(post).length > 0;
-}
-
-/** Whether anyone voted on a post's poll (on Payload's connection). */
-export async function pollHasVotes(
-  payload: Payload,
-  postId: number,
-): Promise<boolean> {
-  const { rows } = await payload.db.drizzle.execute(payloadSql`
-    SELECT 1 FROM "app"."feed_poll_vote" WHERE "post_id" = ${postId} LIMIT 1
-  `);
-  return rows.length > 0;
-}
-
-/** How many members voted on a post's poll. */
-export async function countPollVotes(
-  database: Database,
-  postId: number,
-): Promise<number> {
-  const [row] = await database
-    .select({ count: sql<number>`count(*)::int` })
-    .from(feedPollVotes)
-    .where(eq(feedPollVotes.postId, postId));
-  return row?.count ?? 0;
 }
 
 /**
@@ -179,7 +171,10 @@ export async function loadPollViews(
 /**
  * Casts, changes (`optionId`) or takes back (null) a member's vote on a
  * post's poll while it is open. The caller has checked the member may see
- * the post.
+ * the post. A vote is stored only if, at that moment, the answer is still
+ * one of the post's and the poll is open, in one statement: an author
+ * changing the answers at the same time never leaves a vote for an answer
+ * the post no longer has.
  */
 export async function castPollVote(
   database: Database,
@@ -212,11 +207,25 @@ export async function castPollVote(
       message: "That answer is not in this poll.",
     });
   }
-  await database
-    .insert(feedPollVotes)
-    .values({ postId: post.id, userId: input.userId, optionId: input.optionId })
-    .onConflictDoUpdate({
-      target: [feedPollVotes.postId, feedPollVotes.userId],
-      set: { optionId: input.optionId, updatedAt: now },
+  const { rows } = await database.execute(sql`
+    INSERT INTO "app"."feed_poll_vote" ("id", "post_id", "user_id", "option_id")
+    SELECT ${crypto.randomUUID()}, ${post.id}, ${input.userId}, ${input.optionId}
+    WHERE EXISTS (
+      SELECT 1 FROM "feed_posts_poll_options" o
+      JOIN "feed_posts" p ON p."id" = o."_parent_id"
+      WHERE o."id" = ${input.optionId}
+        AND p."id" = ${post.id}
+        AND p."poll_closes_at" > now()
+        AND p."is_deleted" IS DISTINCT FROM true
+    )
+    ON CONFLICT ("post_id", "user_id")
+      DO UPDATE SET "option_id" = EXCLUDED."option_id", "updated_at" = now()
+    RETURNING "id"
+  `);
+  if (rows.length === 0) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "This poll just changed. Reload to see it, then vote again.",
     });
+  }
 }

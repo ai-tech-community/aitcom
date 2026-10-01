@@ -180,7 +180,7 @@ describe.skipIf(!RUN_DB)("polls on feed posts [DB integration]", () => {
     expect(takenBack).toMatchObject({ totalVotes: 1, myVote: null });
   });
 
-  it("refuses outsiders, unknown answers, a second media kind, and a closed poll", async () => {
+  it("refuses outsiders, unknown answers, a second media kind, a missing end, and a closed poll", async () => {
     const postId = await pollPost();
     const [pizza] = (await shown(postId, fx.voter)).options;
     await expect(
@@ -204,6 +204,13 @@ describe.skipIf(!RUN_DB)("polls on feed posts [DB integration]", () => {
         poll: { options: ["Yes", "yes"], days: 1 },
       }),
     ).rejects.toThrow(/same/);
+    await expect(
+      caller(fx.author).feed.createPost({
+        communitySlug: fx.slug,
+        content: "No end",
+        poll: { options: ["a", "b"], days: null },
+      }),
+    ).rejects.toThrow(/how long/);
 
     await m.db.execute(
       m.sql`UPDATE "feed_posts" SET "poll_closes_at" = now() - interval '1 minute' WHERE "id" = ${postId}`,
@@ -230,19 +237,50 @@ describe.skipIf(!RUN_DB)("polls on feed posts [DB integration]", () => {
     expect(after.totalVotes).toBe(1);
   });
 
-  it("refuses new answers once members voted, and removing the poll removes its votes", async () => {
+  it("replacing or removing a voted poll removes its votes, and a stale vote is refused", async () => {
     const postId = await pollPost();
-    const [pizza] = (await shown(postId, fx.voter)).options;
-    await caller(fx.voter).feed.votePoll({ postId, optionId: pizza!.id });
+    const before = await shown(postId, fx.voter);
+    await caller(fx.voter).feed.votePoll({
+      postId,
+      optionId: before.options[0]!.id,
+    });
 
+    // New answers in one save: the old votes go with the old answers.
+    await caller(fx.author).feed.editPost({
+      postId,
+      communitySlug: fx.slug,
+      content: "New answers",
+      media: { kind: "poll", poll: { options: ["x", "y"], days: null } },
+    });
+    const replaced = await shown(postId, fx.voter);
+    expect(replaced.options.map((o) => o.label)).toEqual(["x", "y"]);
+    expect(replaced.totalVotes).toBe(0);
+    // It kept its end.
+    expect(replaced.closesAt).toBe(before.closesAt);
+    expect(await voteCount(postId)).toBe(0);
+
+    // A vote for an answer read before the change is refused, never stored.
+    const { castPollVote } = await import("./post-polls");
+    const payload = await m.getPayloadClient();
+    const fresh = await payload.findByID({
+      collection: "feed-posts",
+      id: postId,
+      depth: 0,
+    });
+    const stale = {
+      ...fresh,
+      poll: {
+        ...fresh.poll,
+        options: [{ id: before.options[0]!.id, label: "Pizza" }],
+      },
+    };
     await expect(
-      caller(fx.author).feed.editPost({
-        postId,
-        communitySlug: fx.slug,
-        content: "New answers",
-        media: { kind: "poll", poll: { options: ["x", "y"], days: 1 } },
+      castPollVote(m.db, stale, {
+        userId: fx.voter,
+        optionId: before.options[0]!.id,
       }),
-    ).rejects.toThrow(/already voted/);
+    ).rejects.toThrow(/just changed/);
+    expect(await voteCount(postId)).toBe(0);
 
     await caller(fx.author).feed.editPost({
       postId,
@@ -254,7 +292,6 @@ describe.skipIf(!RUN_DB)("polls on feed posts [DB integration]", () => {
       communitySlug: fx.slug,
     });
     expect(feed.posts.find((p) => p.id === postId)!.poll).toBeNull();
-    expect(await voteCount(postId)).toBe(0);
   });
 
   it("lets the author change the answers while no one has voted", async () => {

@@ -14,8 +14,11 @@ export const POLL_DAYS = [1, 3, 7] as const;
 export type PollDays = (typeof POLL_DAYS)[number];
 export const DEFAULT_POLL_DAYS: PollDays = 3;
 
-/** A poll as its author sets it up. */
-export type PollChoice = { options: string[]; days: PollDays };
+/**
+ * A poll as its author sets it up. `days` null keeps the end of the poll
+ * being changed.
+ */
+export type PollChoice = { options: string[]; days: PollDays | null };
 
 /**
  * Why a poll cannot be posted as it is, or null when it can: every answer

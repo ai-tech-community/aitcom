@@ -66,13 +66,16 @@ const pollChoice = z.object({
     .array(z.string().max(MAX_POLL_OPTION_LENGTH))
     .min(MIN_POLL_OPTIONS)
     .max(MAX_POLL_OPTIONS),
-  days: z.union(
-    POLL_DAYS.map((days) => z.literal(days)) as [
-      z.ZodLiteral<(typeof POLL_DAYS)[number]>,
-      z.ZodLiteral<(typeof POLL_DAYS)[number]>,
-      ...z.ZodLiteral<(typeof POLL_DAYS)[number]>[],
-    ],
-  ),
+  /** Null keeps the end of the poll being changed (edits only). */
+  days: z
+    .union(
+      POLL_DAYS.map((days) => z.literal(days)) as [
+        z.ZodLiteral<(typeof POLL_DAYS)[number]>,
+        z.ZodLiteral<(typeof POLL_DAYS)[number]>,
+        ...z.ZodLiteral<(typeof POLL_DAYS)[number]>[],
+      ],
+    )
+    .nullable(),
 });
 
 /** Pictures as a member attaches them: their uploads and descriptions. */

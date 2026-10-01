@@ -7,11 +7,27 @@ import type { FeedPollView } from "@/lib/poll-rules";
 
 const m = vi.hoisted(() => ({
   vote: vi.fn(),
+  requireAuth: vi.fn(),
+  signedIn: true,
   next: null as FeedPollView | null,
+}));
+vi.mock("@/components/auth/auth-required-dialog", () => ({
+  useRequireAuth: () => ({
+    requireAuth: (action: () => void, reason: string) => {
+      m.requireAuth(reason);
+      if (m.signedIn) action();
+    },
+  }),
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 vi.mock("@/trpc/react", () => ({
   api: {
+    useUtils: () => ({
+      feed: {
+        getFeed: { invalidate: vi.fn() },
+        getActivity: { invalidate: vi.fn() },
+      },
+    }),
     feed: {
       votePoll: {
         useMutation: (opts: {
@@ -44,15 +60,21 @@ const open: FeedPollView = {
   myVote: null,
 };
 
-function renderPoll(poll: FeedPollView, canVote = true) {
+function renderPoll(
+  poll: FeedPollView,
+  viewer: "member" | "guest" | "outsider" = "member",
+) {
   return render(
     <NextIntlClientProvider locale="en" messages={en} now={new Date()}>
-      <FeedPoll postId={7} poll={poll} canVote={canVote} />
+      <FeedPoll postId={7} poll={poll} viewer={viewer} />
     </NextIntlClientProvider>,
   );
 }
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  m.signedIn = true;
+});
 
 describe("FeedPoll", () => {
   it("votes with one tap, then shows the results with the member's answer", () => {
@@ -78,6 +100,10 @@ describe("FeedPoll", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Your vote is counted.",
     );
+    // The pressed button is gone: focus moves to what comes next.
+    expect(
+      screen.getByRole("button", { name: "Take back vote" }),
+    ).toHaveFocus();
   });
 
   it("takes a vote back", () => {
@@ -85,7 +111,7 @@ describe("FeedPoll", () => {
     renderPoll({ ...open, myVote: "a" });
     fireEvent.click(screen.getByRole("button", { name: "Take back vote" }));
     expect(m.vote).toHaveBeenCalledWith({ postId: 7, optionId: null });
-    expect(screen.getByRole("button", { name: "Pizza" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Pizza" })).toHaveFocus();
   });
 
   it("shows only results once closed, or to someone who cannot vote", () => {
@@ -95,9 +121,20 @@ describe("FeedPoll", () => {
     expect(screen.getByText(/67%/)).toBeInTheDocument();
   });
 
-  it("shows results without voting to a visitor", () => {
-    renderPoll(open, false);
+  it("asks a visitor to sign in before voting", () => {
+    m.signedIn = false;
+    renderPoll(open, "guest");
+    fireEvent.click(screen.getByRole("button", { name: "Pizza" }));
+    expect(m.requireAuth).toHaveBeenCalledWith("Sign in to vote");
+    expect(m.vote).not.toHaveBeenCalled();
+  });
+
+  it("shows a signed-in non-member the results and how to vote", () => {
+    renderPoll(open, "outsider");
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.getByText(/Closes in 2 days/)).toBeInTheDocument();
+    expect(
+      screen.getByText("Join this community to vote."),
+    ).toBeInTheDocument();
   });
 });

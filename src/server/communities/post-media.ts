@@ -19,7 +19,6 @@ import {
   hasPoll,
   noPoll,
   pollFields,
-  pollHasVotes,
   pollOptionIds,
   removeStaleVotes,
 } from "./post-polls";
@@ -220,9 +219,8 @@ export type PostMediaChange =
  * A GIF is looked up on GIPHY by its id. A post holds pictures, a video, a
  * GIF or a poll, never two of them, so the others go; and since only video
  * posts may be public, a public post that loses its video becomes
- * community-only. A poll members already voted on can be taken off (with
- * its votes) but not swapped for another: the votes were for its answers.
- * Putting a new video on a post is `replacePostVideo`, which needs a
+ * community-only. Taking a poll off, or changing its answers, removes the
+ * votes for answers it no longer has. Putting a new video on a post is `replacePostVideo`, which needs a
  * checked upload.
  */
 export async function setPostMedia(
@@ -251,18 +249,12 @@ export async function setPostMedia(
   const gif =
     media.kind === "gif" ? await lookUpGif(deps.getGiphy, media.giphyId) : null;
   const now = deps.now?.() ?? new Date();
-  if (
-    media.kind === "poll" &&
-    hasPoll(post) &&
-    (await pollHasVotes(deps.payload, post.id))
-  ) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message:
-        "Members already voted on this poll, so its answers stay as they are. You can take the poll off instead.",
-    });
-  }
-  const poll = media.kind === "poll" ? pollFields(media.poll, now) : noPoll();
+  // A changed poll may keep its end (`days` null); votes for answers it no
+  // longer has go with them (the editor warns before Save).
+  const poll =
+    media.kind === "poll"
+      ? pollFields(media.poll, now, post.poll?.closesAt)
+      : noPoll();
   await writePostMedia(
     deps,
     post,

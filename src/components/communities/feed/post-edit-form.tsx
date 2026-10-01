@@ -14,7 +14,6 @@ import {
 import { firstLink } from "@/lib/links";
 import type { PostMention } from "@/lib/post-mentions";
 import {
-  DEFAULT_POLL_DAYS,
   pollProblem,
   type FeedPollView,
   type PollChoice,
@@ -482,6 +481,7 @@ export function PostEditForm({
               <PollBuilder
                 value={media.poll}
                 onChange={(poll) => setMedia({ kind: "poll", poll })}
+                keepEnd={hadPoll}
                 onRemove={() => {
                   // A poll just added goes back to what the post had; the
                   // post's own poll, being changed, comes off.
@@ -501,9 +501,11 @@ export function PostEditForm({
                     : () =>
                         setMedia({
                           kind: "poll",
+                          // The changed poll keeps its end unless the
+                          // author picks a new one.
                           poll: {
                             options: post.poll!.options.map((o) => o.label),
-                            days: DEFAULT_POLL_DAYS,
+                            days: null,
                           },
                         })
                 }
@@ -639,7 +641,7 @@ export function PostEditForm({
                   }}
                   disabled={busy}
                 />
-                {media.kind === "poll" || showsOldPoll ? null : (
+                {media.kind === "poll" ? null : (
                   <ToolbarButton
                     ref={pollButton}
                     label={hasMedia ? te("replaceWithPoll") : te("addPoll")}
@@ -698,7 +700,11 @@ export function PostEditForm({
           </>
         }
         notice={
-          draft.restored ? (
+          pollProblemNow === "empty" ? (
+            <p className="text-muted-foreground text-xs">
+              {te("pollFillAnswers")}
+            </p>
+          ) : draft.restored ? (
             <DraftNotice
               onDiscard={() => {
                 text.restore(post.content, post.mentions ?? []);

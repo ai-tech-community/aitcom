@@ -448,10 +448,10 @@ describe("PostEditForm", () => {
     expect(
       screen.queryByRole("button", { name: "changePollAnswers" }),
     ).toBeNull();
-    // No new poll over one with votes.
+    // A new poll can still replace it (its votes go, as warned).
     expect(
-      screen.queryByRole("button", { name: "replaceWithPoll" }),
-    ).toBeNull();
+      screen.getByRole("button", { name: "replaceWithPoll" }),
+    ).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "removePoll" }));
     expect(screen.getByText("pollVotesRemoved")).toBeInTheDocument();
@@ -483,7 +483,8 @@ describe("PostEditForm", () => {
       expect.objectContaining({
         media: {
           kind: "poll",
-          poll: { options: ["Pizza", "Sushi"], days: 3 },
+          // Changed answers keep the poll's end.
+          poll: { options: ["Pizza", "Sushi"], days: null },
         },
       }),
     );

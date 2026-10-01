@@ -302,7 +302,7 @@ export function FeedPostCard({
         <FeedPoll
           postId={post.id}
           poll={post.poll}
-          canVote={Boolean(currentUserId && memberRole)}
+          viewer={!currentUserId ? "guest" : memberRole ? "member" : "outsider"}
         />
       ) : link && !isEditing && !post.linkPreview?.hidden ? (
         <LinkPreviewCard href={link} preview={linkPreview} />

@@ -6,6 +6,7 @@ import { Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SectionLabel } from "@/components/ui/section-label";
 import {
   MAX_POLL_OPTION_LENGTH,
   MAX_POLL_OPTIONS,
@@ -28,14 +29,16 @@ export function emptyPoll(days: PollDays = 3): PollChoice {
 /**
  * Setting up a poll while writing a post: the post's text is the question,
  * and here go its answers (2 to 4) and how long it stays open. Two answers
- * are always there; more can be added and removed. Two answers that are
- * the same are pointed out as they are typed. The first answer takes the
- * focus when the poll is added (`autoFocus`).
+ * are always there; with more, any can be removed. Two answers that are
+ * the same are pointed out as they are typed, on both fields. The first
+ * answer takes the focus when the poll is added (`autoFocus`). A poll being
+ * changed can keep its end (`keepEnd`: days null).
  */
 export function PollBuilder({
   value,
   onChange,
   onRemove,
+  keepEnd,
   autoFocus,
   disabled,
 }: {
@@ -43,6 +46,8 @@ export function PollBuilder({
   onChange: (poll: PollChoice) => void;
   /** Takes the poll off the post. */
   onRemove: () => void;
+  /** Offer to keep the end of the poll being changed. */
+  keepEnd?: boolean;
   autoFocus?: boolean;
   disabled?: boolean;
 }) {
@@ -78,6 +83,11 @@ export function PollBuilder({
   };
 
   const duplicate = pollProblem(value.options) === "duplicate";
+  const normalized = value.options.map((o) => o.trim().toLocaleLowerCase());
+  const isDuplicate = (index: number) =>
+    normalized[index] !== "" &&
+    normalized.indexOf(normalized[index]!) !==
+      normalized.lastIndexOf(normalized[index]!);
 
   return (
     <div
@@ -86,12 +96,9 @@ export function PollBuilder({
       className="border-border space-y-2 rounded-lg border p-3"
     >
       <div className="flex items-center justify-between gap-2">
-        <p
-          id={`${id}-kicker`}
-          className="text-muted-foreground font-mono text-xs uppercase"
-        >
+        <SectionLabel as="p" bordered={false} id={`${id}-kicker`}>
           {t("pollKicker")}
-        </p>
+        </SectionLabel>
         <Button
           type="button"
           variant="ghost"
@@ -125,9 +132,10 @@ export function PollBuilder({
                   maxLength={MAX_POLL_OPTION_LENGTH}
                   placeholder={t("pollAnswerLabel", { number: index + 1 })}
                   disabled={disabled}
+                  aria-invalid={isDuplicate(index) || undefined}
                   className="h-9"
                 />
-                {index >= MIN_POLL_OPTIONS ? (
+                {value.options.length > MIN_POLL_OPTIONS ? (
                   <Button
                     type="button"
                     variant="ghost"
@@ -172,13 +180,20 @@ export function PollBuilder({
         <label className="text-muted-foreground flex items-center gap-2 text-xs">
           {t("pollClosesIn")}
           <select
-            value={value.days}
+            value={value.days ?? ""}
             onChange={(e) =>
-              onChange({ ...value, days: Number(e.target.value) as PollDays })
+              onChange({
+                ...value,
+                days:
+                  e.target.value === ""
+                    ? null
+                    : (Number(e.target.value) as PollDays),
+              })
             }
             disabled={disabled}
             className="border-input bg-background text-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-8 rounded-md border px-2 text-base outline-none focus-visible:ring-[3px] disabled:opacity-50 md:text-sm"
           >
+            {keepEnd ? <option value="">{t("pollKeepEnd")}</option> : null}
             {POLL_DAYS.map((days) => (
               <option key={days} value={days}>
                 {t("pollDays", { count: days })}
@@ -194,8 +209,9 @@ export function PollBuilder({
 /**
  * The poll a post already carries, in the edit form: its answers and votes,
  * a way to change the answers while no one has voted (`onChange`, absent
- * once there are votes or it has closed: votes were cast for those words),
- * and one to take it off. Nothing changes until the post is saved.
+ * once there are votes or it has closed: votes were cast for those words;
+ * a new poll can still replace it), and one to take it off. Nothing changes
+ * until the post is saved.
  */
 export function CurrentPoll({
   poll,
@@ -218,12 +234,9 @@ export function CurrentPoll({
       className="border-border space-y-2 rounded-lg border p-3"
     >
       <div className="flex items-center justify-between gap-2">
-        <p
-          id={`${id}-kicker`}
-          className="text-muted-foreground font-mono text-xs uppercase"
-        >
+        <SectionLabel as="p" bordered={false} id={`${id}-kicker`}>
           {t("currentPoll")}
-        </p>
+        </SectionLabel>
         <Button
           type="button"
           variant="ghost"

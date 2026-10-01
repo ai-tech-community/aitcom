@@ -2775,7 +2775,9 @@
         "takeBack": "Take back vote",
         "voteCounted": "Your vote is counted.",
         "voteTakenBack": "Your vote is taken back.",
-        "voteFailed": "Your vote could not be saved. Try again."
+        "voteFailed": "Your vote could not be saved. Try again.",
+        "signInToVote": "Sign in to vote",
+        "joinToVote": "Join this community to vote."
       },
       "editor": {
         "emoji": "Add emoji",
@@ -2844,14 +2846,15 @@
         "addPoll": "Add poll",
         "replaceWithPoll": "Replace with poll",
         "removePoll": "Remove poll",
-        "pollKicker": "/ Poll",
-        "currentPoll": "/ Current poll",
+        "pollKicker": "Poll",
+        "currentPoll": "Current poll",
         "pollHelp": "Your post is the question. Members pick one answer.",
         "pollAnswerLabel": "Answer {number}",
         "removePollAnswer": "Remove answer {number}",
         "addPollAnswer": "Add answer",
         "pollDuplicate": "Two answers are the same. Make each one different.",
         "pollClosesIn": "Closes in",
+        "pollKeepEnd": "Keep current end",
         "pollDays": "{count, plural, one {# day} other {# days}}",
         "pollQuestion": "Ask a question…",
         "pollAskQuestion": "Write your question above to post the poll.",

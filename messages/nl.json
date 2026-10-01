@@ -2775,7 +2775,9 @@
         "takeBack": "Stem intrekken",
         "voteCounted": "Je stem is geteld.",
         "voteTakenBack": "Je stem is ingetrokken.",
-        "voteFailed": "Je stem kon niet worden opgeslagen. Probeer het opnieuw."
+        "voteFailed": "Je stem kon niet worden opgeslagen. Probeer het opnieuw.",
+        "signInToVote": "Log in om te stemmen",
+        "joinToVote": "Word lid van deze community om te stemmen."
       },
       "editor": {
         "emoji": "Emoji toevoegen",
@@ -2844,14 +2846,15 @@
         "addPoll": "Poll toevoegen",
         "replaceWithPoll": "Vervangen door poll",
         "removePoll": "Poll verwijderen",
-        "pollKicker": "/ Poll",
-        "currentPoll": "/ Huidige poll",
+        "pollKicker": "Poll",
+        "currentPoll": "Huidige poll",
         "pollHelp": "Je bericht is de vraag. Leden kiezen één antwoord.",
         "pollAnswerLabel": "Antwoord {number}",
         "removePollAnswer": "Antwoord {number} verwijderen",
         "addPollAnswer": "Antwoord toevoegen",
         "pollDuplicate": "Twee antwoorden zijn hetzelfde. Maak ze allemaal anders.",
         "pollClosesIn": "Sluit over",
+        "pollKeepEnd": "Huidig einde houden",
         "pollDays": "{count, plural, one {# dag} other {# dagen}}",
         "pollQuestion": "Stel een vraag…",
         "pollAskQuestion": "Schrijf hierboven je vraag om de poll te plaatsen.",
