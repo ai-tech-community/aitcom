@@ -19,6 +19,7 @@ import {
   type MentionEmailInput,
 } from "@/server/notifications/post-mention-mail";
 import {
+  EVERYONE,
   MAX_POST_MENTIONS,
   mentionsIn,
   readMentions,
@@ -72,8 +73,19 @@ async function activeMembers(
   });
 }
 
-/** A member the editor offers after "@". */
-export type MentionCandidate = PostMention & { image: string | null };
+/** A member the editor offers after "@" (or "@everyone"). */
+export type MentionCandidate = PostMention & {
+  image: string | null;
+  everyone?: boolean;
+};
+
+/** "@everyone" as the editor offers it to those who may announce. */
+export const EVERYONE_CANDIDATE: MentionCandidate = {
+  userId: EVERYONE,
+  name: EVERYONE,
+  image: null,
+  everyone: true,
+};
 
 /**
  * Members of a community the author may mention, matching what they typed

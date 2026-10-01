@@ -9,6 +9,24 @@
 /** One member a post mentions, by the name written in its text. */
 export type PostMention = { userId: string; name: string };
 
+/**
+ * "@everyone": the whole community. Only owners, admins and moderators can
+ * use it (the server checks); for anyone else it is plain text. "@all" is
+ * offered as the same thing while typing.
+ */
+export const EVERYONE = "everyone";
+
+/** Whether `text` says "@everyone" as a whole word. */
+export function mentionsEveryone(text: string): boolean {
+  return indexOfMention(text, EVERYONE) !== -1;
+}
+
+/** Whether what is typed after "@" could become "@everyone" (or "@all"). */
+export function couldMeanEveryone(query: string): boolean {
+  const typed = query.trim().toLocaleLowerCase();
+  return EVERYONE.startsWith(typed) || "all".startsWith(typed);
+}
+
 /** The most members one post may mention. */
 export const MAX_POST_MENTIONS = 10;
 

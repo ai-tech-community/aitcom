@@ -98,28 +98,33 @@ export function usePostText(
 
   /**
    * Writes "@Name " over the "@query" typed from `start` to the caret, and
-   * remembers whom it points at.
+   * remembers whom it points at (not for "@everyone", which is no member:
+   * `track` false).
    */
-  const mention = useCallback((start: number, member: PostMention) => {
-    const field = textareaRef.current;
-    const current = field?.value ?? "";
-    const end = field?.selectionEnd ?? current.length;
-    const written = `@${member.name} `;
-    const caret = start + written.length;
-    applyEdit(
-      field,
-      {
-        value: current.slice(0, start) + written + current.slice(end),
-        start: caret,
-        end: caret,
-      },
-      (next) => setValue(next),
-    );
-    setMentions((list) => [
-      ...list.filter((m) => m.userId !== member.userId),
-      { userId: member.userId, name: member.name },
-    ]);
-  }, []);
+  const mention = useCallback(
+    (start: number, member: PostMention, { track = true } = {}) => {
+      const field = textareaRef.current;
+      const current = field?.value ?? "";
+      const end = field?.selectionEnd ?? current.length;
+      const written = `@${member.name} `;
+      const caret = start + written.length;
+      applyEdit(
+        field,
+        {
+          value: current.slice(0, start) + written + current.slice(end),
+          start: caret,
+          end: caret,
+        },
+        (next) => setValue(next),
+      );
+      if (!track) return;
+      setMentions((list) => [
+        ...list.filter((m) => m.userId !== member.userId),
+        { userId: member.userId, name: member.name },
+      ]);
+    },
+    [],
+  );
 
   /** Puts back saved text and its mentions (a draft, or a reset). */
   const restore = useCallback(

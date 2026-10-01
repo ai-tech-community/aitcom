@@ -609,6 +609,30 @@ describe("PostComposer mentions", () => {
     expect(screen.getByText("Joe, 2 of 2")).toBeInTheDocument();
   });
 
+  it("offers @everyone for @all, and writes it without a member behind it", () => {
+    m.mentionCandidates.mockImplementation(() => ({
+      data: [
+        { userId: "everyone", name: "everyone", image: null, everyone: true },
+        ...members,
+      ],
+      isFetched: true,
+      isError: false,
+    }));
+    renderComposer();
+    const box = screen.getByRole("textbox");
+    fireEvent.change(box, { target: { value: "News @al" } });
+    const option = screen.getByRole("option", { name: /@everyone/ });
+    expect(option).toHaveTextContent("Notify the whole community");
+    // Members whose name doesn't hold "al" are not offered.
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(box).toHaveValue("News @everyone ");
+    fireEvent.click(postButton());
+    expect(m.createPost).toHaveBeenCalledWith(
+      expect.objectContaining({ content: "News @everyone", mentions: [] }),
+    );
+  });
+
   it("types an @ from the toolbar button", () => {
     renderComposer();
     const box = screen.getByRole("textbox");

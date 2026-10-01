@@ -2843,6 +2843,7 @@
         "mentionList": "Leden om te noemen",
         "mentionCount": "{count, plural, one {# lid} other {# leden}} gevonden. Kies met de pijltjestoetsen, Enter of Tab om te kiezen, Escape om te sluiten.",
         "mentionActive": "{name}, {position} van {count}",
+        "mentionEveryoneHint": "Stuur de hele community een melding",
         "addPoll": "Poll toevoegen",
         "replaceWithPoll": "Vervangen door poll",
         "removePoll": "Poll verwijderen",

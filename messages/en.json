@@ -2843,6 +2843,7 @@
         "mentionList": "Members to mention",
         "mentionCount": "{count, plural, one {# member} other {# members}} found. Arrow keys to choose, Enter or Tab to pick, Escape to close.",
         "mentionActive": "{name}, {position} of {count}",
+        "mentionEveryoneHint": "Notify the whole community",
         "addPoll": "Add poll",
         "replaceWithPoll": "Replace with poll",
         "removePoll": "Remove poll",

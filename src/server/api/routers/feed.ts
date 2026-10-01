@@ -98,10 +98,11 @@ import {
 } from "@/server/communities/post-media";
 import { resolvePostTopic } from "@/server/communities/post-topics";
 import {
+  EVERYONE_CANDIDATE,
   findMentionCandidates,
   resolveMentions,
 } from "@/server/communities/post-mentions";
-import { MAX_POST_MENTIONS } from "@/lib/post-mentions";
+import { couldMeanEveryone, MAX_POST_MENTIONS } from "@/lib/post-mentions";
 import {
   MAX_POLL_OPTION_LENGTH,
   MAX_POLL_OPTIONS,
@@ -586,6 +587,7 @@ export const feedRouter = createTRPCRouter({
    * Members the post editor offers after "@": the community's active
    * members whose name has the typed text, not the caller. Members can
    * see the community's member list already, so this shows nothing new.
+   * Owners, admins and moderators are also offered "@everyone".
    */
   mentionCandidates: protectedProcedure
     .input(
@@ -600,12 +602,16 @@ export const feedRouter = createTRPCRouter({
         input.communitySlug,
         ctx.session.user.id,
       );
-      return findMentionCandidates(ctx.db, {
+      const members = await findMentionCandidates(ctx.db, {
         communityId: community.id,
         authorId: ctx.session.user.id,
         query: input.query,
         limit: 8,
       });
+      // "@everyone" first, for those who may announce to the community.
+      return isModeratorRole(community.role) && couldMeanEveryone(input.query)
+        ? [EVERYONE_CANDIDATE, ...members]
+        : members;
     }),
 
   // ── editPost ────────────────────────────────────────────────────────────────

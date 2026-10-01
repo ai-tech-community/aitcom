@@ -753,6 +753,10 @@ export interface FeedPost {
     height?: number | null;
     bytes?: number | null;
   };
+  /**
+   * When the post's @everyone went out to the whole community (once; owners, admins and moderators only).
+   */
+  announcedAt?: string | null;
   mentions?:
     | {
         [k: string]: unknown;
@@ -2080,6 +2084,7 @@ export interface FeedPostsSelect<T extends boolean = true> {
         height?: T;
         bytes?: T;
       };
+  announcedAt?: T;
   mentions?: T;
   linkPreview?:
     | T

@@ -4,6 +4,7 @@ import { text } from "payload/shared";
 import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
 import { VIDEO_VISIBILITIES, VIDEO_VISIBILITY_LABELS } from "@/lib/video-rules";
 import { feedPostImageUrlBeforeChange } from "@/server/communities/feed-post-image-url-hook";
+import { feedPostAnnouncementAfterChange } from "@/server/communities/post-announcements";
 import {
   feedPostMentionsAfterChange,
   feedPostMentionsBeforeChange,
@@ -200,6 +201,15 @@ export const FeedPosts: CollectionConfig = {
       ],
     },
     {
+      name: "announcedAt",
+      type: "date",
+      admin: {
+        readOnly: true,
+        description:
+          "When the post's @everyone went out to the whole community (once; owners, admins and moderators only).",
+      },
+    },
+    {
       // Who the post's "@Name" mentions point at: [{ userId, name }],
       // checked by the server (members of the post's community only).
       name: "mentions",
@@ -252,7 +262,10 @@ export const FeedPosts: CollectionConfig = {
       linkPreviewBeforeChange(),
       feedPostMentionsBeforeChange(),
     ],
-    afterChange: [feedPostMentionsAfterChange()],
+    afterChange: [
+      feedPostMentionsAfterChange(),
+      feedPostAnnouncementAfterChange(),
+    ],
   },
   timestamps: true,
 };

@@ -24,6 +24,7 @@ import { FeedVideoPlayer, type FeedVideo } from "./feed-video-player";
 import { LinkPreviewCard } from "./link-preview-card";
 import { FormattedPostText } from "./formatted-post-text";
 import type { FeedPollView } from "@/lib/poll-rules";
+import { EVERYONE } from "@/lib/post-mentions";
 import type { ShownMention } from "./linkified-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
@@ -69,6 +70,8 @@ interface FeedPost {
   mentions?: ShownMention[] | null;
   /** The post's poll with its counts and the viewer's vote. */
   poll?: FeedPollView | null;
+  /** When the post's "@everyone" went out to the community. */
+  announcedAt?: string | null;
 }
 
 interface FeedPostCardProps {
@@ -285,7 +288,15 @@ export function FeedPostCard({
           }}
         />
       ) : (
-        <FormattedPostText text={post.content} mentions={post.mentions ?? []} />
+        <FormattedPostText
+          text={post.content}
+          mentions={
+            // "@everyone" shows as a mention once it really went out.
+            post.announcedAt
+              ? [...(post.mentions ?? []), { userId: EVERYONE, name: EVERYONE }]
+              : (post.mentions ?? [])
+          }
+        />
       )}
 
       {/* Media (the edit form shows its own while editing) */}

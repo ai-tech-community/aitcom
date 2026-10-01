@@ -20,10 +20,14 @@ import {
 } from "vitest";
 
 // Mention emails go through a fake: what would be sent, never sent.
-const mail = vi.hoisted(() => ({ send: vi.fn(async () => true) }));
+const mail = vi.hoisted(() => ({
+  send: vi.fn(async () => true),
+  broadcast: vi.fn(async () => true),
+}));
 vi.mock("@/server/email", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/server/email")>()),
   sendPostMentionEmail: mail.send,
+  sendBroadcastEmail: mail.broadcast,
 }));
 
 function looksLikeCloudNeon(url: string): boolean {
@@ -48,6 +52,7 @@ describe.skipIf(!RUN_DB)("@mentions in feed posts [DB integration]", () => {
     eq: typeof import("drizzle-orm").eq;
     and: typeof import("drizzle-orm").and;
     inArray: typeof import("drizzle-orm").inArray;
+    sql: typeof import("drizzle-orm").sql;
   };
   let m: Mods;
   let fx: {
@@ -81,6 +86,7 @@ describe.skipIf(!RUN_DB)("@mentions in feed posts [DB integration]", () => {
       eq: drizzle.eq,
       and: drizzle.and,
       inArray: drizzle.inArray,
+      sql: drizzle.sql,
     };
   });
 
@@ -136,6 +142,16 @@ describe.skipIf(!RUN_DB)("@mentions in feed posts [DB integration]", () => {
 
   afterEach(async () => {
     mail.send.mockClear();
+    mail.broadcast.mockClear();
+    await m.db
+      .delete(m.schema.broadcastDeliveries)
+      .where(m.eq(m.schema.broadcastDeliveries.communityId, fx.communityId));
+    await m.db
+      .delete(m.schema.broadcasts)
+      .where(m.eq(m.schema.broadcasts.communityId, fx.communityId));
+    await m.db
+      .delete(m.schema.notificationOptouts)
+      .where(m.eq(m.schema.notificationOptouts.communityId, fx.communityId));
     await m.db
       .delete(m.schema.hubMailPrefs)
       .where(m.inArray(m.schema.hubMailPrefs.userId, allUsers()));
@@ -274,6 +290,76 @@ describe.skipIf(!RUN_DB)("@mentions in feed posts [DB integration]", () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(mail.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("announces an owner's @everyone to the community once, minding opt-outs", async () => {
+    // Janet stopped this community's announcements.
+    await m.db.insert(m.schema.notificationOptouts).values({
+      userId: fx.janet,
+      communityId: fx.communityId,
+      category: "broadcast",
+    });
+    const post = await caller(fx.author).feed.createPost({
+      communitySlug: fx.slug,
+      content: "Big news @everyone: we meet **Friday**!",
+    });
+    posts.push(post.id);
+    await vi.waitFor(async () =>
+      expect((await toldUsers()).map((r) => r.userId)).toEqual([fx.jane]),
+    );
+    const [notice] = await toldUsers();
+    expect(notice).toMatchObject({
+      type: "broadcast",
+      metadata: expect.objectContaining({
+        reviewPath: `/communities/${fx.slug}`,
+        linkLabel: "Open the post",
+      }) as unknown,
+    });
+    expect(mail.broadcast).toHaveBeenCalledTimes(1);
+    expect(mail.broadcast).toHaveBeenCalledWith(
+      `${fx.jane}@example.test`,
+      expect.stringMatching(
+        /^Author in Men .*: Big news @everyone: we meet Friday!$/,
+      ),
+      "Big news @everyone: we meet Friday!",
+      { label: "Open the post", url: `/en/communities/${fx.slug}` },
+    );
+    expect((await saved(post.id)).announcedAt).toBeTruthy();
+
+    // Editing it never announces again, even if the mark were lost.
+    await m.db.execute(
+      m.sql`UPDATE "feed_posts" SET "announced_at" = NULL WHERE "id" = ${post.id}`,
+    );
+    await caller(fx.author).feed.editPost({
+      postId: post.id,
+      communitySlug: fx.slug,
+      content: "Big news @everyone: we meet Friday at 6!",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(await toldUsers()).toHaveLength(1);
+    expect(mail.broadcast).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a member's @everyone as plain text, and offers it to owners only", async () => {
+    const post = await caller(fx.jane).feed.createPost({
+      communitySlug: fx.slug,
+      content: "Hey @everyone, buy my course",
+    });
+    posts.push(post.id);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(await toldUsers()).toEqual([]);
+    expect((await saved(post.id)).announcedAt).toBeFalsy();
+
+    const forOwner = await caller(fx.author).feed.mentionCandidates({
+      communitySlug: fx.slug,
+      query: "al",
+    });
+    expect(forOwner[0]).toMatchObject({ userId: "everyone", everyone: true });
+    const forMember = await caller(fx.jane).feed.mentionCandidates({
+      communitySlug: fx.slug,
+      query: "ev",
+    });
+    expect(forMember.some((c) => c.everyone)).toBe(false);
   });
 
   it("drops a mention whose name leaves the text, and keeps a renamed one", async () => {

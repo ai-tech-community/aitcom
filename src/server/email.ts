@@ -551,6 +551,8 @@ export async function sendBroadcastEmail(
   to: string,
   subject: string,
   body: string,
+  /** A button under the text (an absolute URL in production). */
+  link?: { label: string; url: string },
 ) {
   const resend = getResend();
   if (!resend) return false;
@@ -560,7 +562,14 @@ export async function sendBroadcastEmail(
     subject,
     html: `
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
-        <p style="font-size: 14px; white-space: pre-wrap;">${escapeHtml(body)}</p>
+        <p style="font-size: 14px; white-space: pre-wrap;">${escapeHtml(body)}</p>${
+          link
+            ? `
+        <p style="margin-top: 24px;">
+          <a href="${escapeHtml(link.url)}" style="color: #000; font-weight: bold;">${escapeHtml(link.label)} →</a>
+        </p>`
+            : ""
+        }
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
         <p style="font-size: 12px; color: #999;">
           AIT Community ·
