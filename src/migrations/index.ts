@@ -131,6 +131,8 @@ import * as migration_20261001c_feed_post_pictures from "./20261001c_feed_post_p
 import * as migration_20261001d_feed_post_link_preview_hidden from "./20261001d_feed_post_link_preview_hidden";
 import * as migration_20261001e_feed_post_mentions from "./20261001e_feed_post_mentions";
 import * as migration_20261001f_feed_post_polls from "./20261001f_feed_post_polls";
+import * as migration_20261001g_mention_mail_on_by_default from "./20261001g_mention_mail_on_by_default";
+import * as migration_20261001h_feed_post_announced_at from "./20261001h_feed_post_announced_at";
 
 export const migrations = [
   {
@@ -797,5 +799,15 @@ export const migrations = [
     up: migration_20261001f_feed_post_polls.up,
     down: migration_20261001f_feed_post_polls.down,
     name: "20261001f_feed_post_polls",
+  },
+  {
+    up: migration_20261001g_mention_mail_on_by_default.up,
+    down: migration_20261001g_mention_mail_on_by_default.down,
+    name: "20261001g_mention_mail_on_by_default",
+  },
+  {
+    up: migration_20261001h_feed_post_announced_at.up,
+    down: migration_20261001h_feed_post_announced_at.down,
+    name: "20261001h_feed_post_announced_at",
   },
 ];

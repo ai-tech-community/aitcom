@@ -14,7 +14,13 @@ import {
 } from "@/server/db/schema";
 import { escapeLike } from "@/server/db/escape-like";
 import { publicRosterVisibility } from "@/server/members/public-roster";
+import { ANNOUNCED_CONTEXT_KEY } from "./post-announcements";
 import {
+  scheduleMentionEmails,
+  type MentionEmailInput,
+} from "@/server/notifications/post-mention-mail";
+import {
+  EVERYONE,
   MAX_POST_MENTIONS,
   mentionsIn,
   readMentions,
@@ -68,8 +74,19 @@ async function activeMembers(
   });
 }
 
-/** A member the editor offers after "@". */
-export type MentionCandidate = PostMention & { image: string | null };
+/** A member the editor offers after "@" (or "@everyone"). */
+export type MentionCandidate = PostMention & {
+  image: string | null;
+  everyone?: boolean;
+};
+
+/** "@everyone" as the editor offers it to those who may announce. */
+export const EVERYONE_CANDIDATE: MentionCandidate = {
+  userId: EVERYONE,
+  name: EVERYONE,
+  image: null,
+  everyone: true,
+};
 
 /**
  * Members of a community the author may mention, matching what they typed
@@ -189,17 +206,18 @@ async function isActiveMember(
  * could not see it; nor does an author who is no longer a member.
  *
  * Member-chosen names go only in the title, which is shown as plain text;
- * the markdown body holds none.
+ * the markdown body holds none. Returns what the mention emails need for
+ * the members just notified (none: null).
  */
 export async function notifyNewMentions(
   database: Database,
   post: MentionedPost,
-): Promise<void> {
-  if (!post.communityId || post.isDeleted || post.hiddenAt) return;
+): Promise<MentionEmailInput | null> {
+  if (!post.communityId || post.isDeleted || post.hiddenAt) return null;
   const wanted = readMentions(post.mentions)
     .map((mention) => mention.userId)
     .filter((userId) => userId !== post.authorId);
-  if (wanted.length === 0) return;
+  if (wanted.length === 0) return null;
   const told = await database
     .select({ userId: notifications.userId })
     .from(notifications)
@@ -212,9 +230,9 @@ export async function notifyNewMentions(
     );
   const toldIds = new Set(told.map((row) => row.userId));
   const fresh = wanted.filter((userId) => !toldIds.has(userId));
-  if (fresh.length === 0) return;
+  if (fresh.length === 0) return null;
   if (!(await isActiveMember(database, post.communityId, post.authorId))) {
-    return;
+    return null;
   }
   const community = await database.query.communities.findFirst({
     where: and(
@@ -223,10 +241,10 @@ export async function notifyNewMentions(
     ),
     columns: { slug: true, name: true },
   });
-  if (!community) return;
+  if (!community) return null;
   // Still members now: a stored list is never trusted on its own.
   const recipients = await activeMembers(database, post.communityId, fresh);
-  if (recipients.length === 0) return;
+  if (recipients.length === 0) return null;
   const isVideo = Boolean(post.video?.key);
   // Text posts have no page of their own yet: the link opens the feed.
   const path = isVideo
@@ -248,10 +266,22 @@ export async function notifyNewMentions(
       },
     })),
   );
+  return {
+    postId: post.id,
+    authorId: post.authorId,
+    mail: {
+      authorName: post.authorName ?? "A member",
+      communityName: community.name,
+      isVideo,
+    },
+    path,
+    recipientIds: recipients.map(({ userId }) => userId),
+  };
 }
 
 /**
- * Notifies newly mentioned members after a post is saved. Saves that
+ * Notifies newly mentioned members after a post is saved, in the app and
+ * (after the response) by email. Saves that
  * change nothing a notice depends on (a pin, a topic) skip the check. A
  * failure to notify never fails the post: it is logged.
  */
@@ -259,7 +289,7 @@ export function feedPostMentionsAfterChange(
   getDatabase: () => Promise<Database> = async () =>
     (await import("@/server/db")).db,
 ): CollectionAfterChangeHook {
-  return async ({ doc, previousDoc, operation }) => {
+  return async ({ doc, previousDoc, operation, req }) => {
     const post = doc as MentionedPost;
     const before = previousDoc as MentionedPost | undefined;
     if (
@@ -272,7 +302,12 @@ export function feedPostMentionsAfterChange(
       return;
     }
     try {
-      await notifyNewMentions(await getDatabase(), post);
+      const database = await getDatabase();
+      const emails = await notifyNewMentions(database, post);
+      // An announced post already emails everyone once.
+      if (emails && !req.context[ANNOUNCED_CONTEXT_KEY]) {
+        await scheduleMentionEmails(database, emails);
+      }
     } catch (error) {
       console.error("[feed-posts] failed to notify mentioned members", error);
     }

@@ -8,6 +8,7 @@ import { ChartBar, Film, ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { VideoVisibility } from "@/lib/video-rules";
 import { pollProblem, type PollChoice } from "@/lib/poll-rules";
+import { mentionsEveryone } from "@/lib/post-mentions";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
@@ -34,9 +35,16 @@ interface PostComposerProps {
   /** The signed-in member; their unsent draft is kept per community. */
   userId: string;
   canPost: boolean;
+  /** May announce with "@everyone" (`canBroadcast`): warned before posting. */
+  canAnnounce?: boolean;
 }
 
-export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
+export function PostComposer({
+  slug,
+  userId,
+  canPost,
+  canAnnounce = false,
+}: PostComposerProps) {
   const t = useTranslations("communities.feed");
   const te = useTranslations("communities.feed.editor");
   const tv = useTranslations("communities.video");
@@ -330,6 +338,10 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
         notice={
           pictures.failed ? (
             <p className="text-destructive text-xs">{te("fixPictures")}</p>
+          ) : canAnnounce && mentionsEveryone(content) ? (
+            <p className="text-foreground text-xs font-medium">
+              {te("everyoneWillBeNotified")}
+            </p>
           ) : poll && !content.trim() ? (
             <p className="text-muted-foreground text-xs">
               {te("pollAskQuestion")}

@@ -4,12 +4,12 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { AtSign } from "lucide-react";
+import { AtSign, Users } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { getInitials } from "@/lib/avatar";
-import { mentionQueryAt } from "@/lib/post-mentions";
+import { couldMeanEveryone, mentionQueryAt } from "@/lib/post-mentions";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
@@ -112,7 +112,9 @@ export function useMentionPicker({
   const needle = typedQuery.trim().toLocaleLowerCase();
   const members = open
     ? (results.data ?? []).filter((member) =>
-        member.name.toLocaleLowerCase().includes(needle),
+        member.everyone
+          ? couldMeanEveryone(typedQuery)
+          : member.name.toLocaleLowerCase().includes(needle),
       )
     : [];
   const activeIndex = Math.min(active, Math.max(0, members.length - 1));
@@ -164,7 +166,7 @@ export function useMentionPicker({
   const pick = (index: number) => {
     const member = members[index];
     if (!typed || !member) return;
-    text.mention(typed.start, member);
+    text.mention(typed.start, member, { track: !member.everyone });
     setClosedAt(typed.start);
   };
 
@@ -186,6 +188,10 @@ export function useMentionPicker({
       return true;
     }
     if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
+      // "@everyone" reaches the whole community: it is picked only on
+      // purpose (moved to with the arrows, or clicked), never by a quick
+      // Enter on the first option.
+      if (members[activeIndex]?.everyone && !moved) return false;
       e.preventDefault();
       pick(activeIndex);
       return true;
@@ -202,7 +208,9 @@ export function useMentionPicker({
       ? t("mentionFailed")
       : moved && activeMember
         ? t("mentionActive", {
-            name: activeMember.name,
+            name: activeMember.everyone
+              ? `@${activeMember.name}, ${t("mentionEveryoneHint")}`
+              : activeMember.name,
             position: activeIndex + 1,
             count: members.length,
           })
@@ -266,15 +274,34 @@ export function useMentionPicker({
                             "bg-accent text-accent-foreground ring-ring/60 font-medium ring-1 ring-inset",
                         )}
                       >
-                        <Avatar aria-hidden="true" className="size-6">
-                          {member.image ? (
-                            <AvatarImage src={member.image} alt="" />
-                          ) : null}
-                          <AvatarFallback className="text-[10px]">
-                            {getInitials(member.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="truncate">{member.name}</span>
+                        {member.everyone ? (
+                          <>
+                            <span
+                              aria-hidden="true"
+                              className="bg-muted flex size-6 shrink-0 items-center justify-center rounded-full"
+                            >
+                              <Users className="size-3.5" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block">@{member.name}</span>
+                              <span className="text-muted-foreground block text-xs font-normal">
+                                {t("mentionEveryoneHint")}
+                              </span>
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Avatar aria-hidden="true" className="size-6">
+                              {member.image ? (
+                                <AvatarImage src={member.image} alt="" />
+                              ) : null}
+                              <AvatarFallback className="text-[10px]">
+                                {getInitials(member.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{member.name}</span>
+                          </>
+                        )}
                       </li>
                     ))}
                   </ul>

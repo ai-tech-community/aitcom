@@ -12,7 +12,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { firstLink } from "@/lib/links";
-import type { PostMention } from "@/lib/post-mentions";
+import { mentionsEveryone, type PostMention } from "@/lib/post-mentions";
 import {
   pollProblem,
   type FeedPollView,
@@ -87,6 +87,8 @@ export type EditablePost = {
   mentions?: PostMention[] | null;
   /** The post's poll, with its votes. */
   poll?: FeedPollView | null;
+  /** When the post's "@everyone" went out (it goes out only when shared). */
+  announcedAt?: string | null;
 };
 
 /**
@@ -100,6 +102,7 @@ export function PostEditForm({
   post,
   userId,
   communitySlug,
+  canAnnounce = false,
   onSaved,
   onCancel,
 }: {
@@ -107,6 +110,8 @@ export function PostEditForm({
   /** The author; their unsent edit is kept per post. */
   userId: string;
   communitySlug: string;
+  /** May announce with "@everyone": told an edit never announces. */
+  canAnnounce?: boolean;
   /** After a successful save (refresh the feed, close the form). */
   onSaved: () => void;
   /** The member left without saving. */
@@ -700,7 +705,11 @@ export function PostEditForm({
           </>
         }
         notice={
-          pollProblemNow === "empty" ? (
+          canAnnounce && !post.announcedAt && mentionsEveryone(content) ? (
+            <p className="text-muted-foreground text-xs">
+              {te("everyoneNotInEdits")}
+            </p>
+          ) : pollProblemNow === "empty" ? (
             <p className="text-muted-foreground text-xs">
               {te("pollFillAnswers")}
             </p>

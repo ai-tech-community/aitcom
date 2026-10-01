@@ -97,7 +97,7 @@ export const notificationPrefsRouter = createTRPCRouter({
       return { ok: true };
     }),
 
-  /** Toggle one Hub notification-mail case. Only DM mail sends in this first cut. */
+  /** Toggle one Hub notification-mail case. DM and mention mail send today. */
   setHubMail: protectedProcedure
     .input(
       z.object({

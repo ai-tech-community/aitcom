@@ -10,10 +10,10 @@ export type HubMailCase = (typeof HUB_MAIL_CASES)[number];
 
 export type HubMailPrefs = Record<HubMailCase, boolean>;
 
-/** Absence of a row = these defaults. Only DM is live in this first cut. */
+/** Absence of a row = these defaults. DM and mention mail are live. */
 export const DEFAULT_HUB_MAIL_PREFS: HubMailPrefs = {
   dm: true,
-  mention: false,
+  mention: true,
   forumReply: false,
   digest: false,
   agentJob: false,
@@ -28,16 +28,19 @@ export function resolveHubMailPrefs(
   };
 }
 
+/** The cases that send mail today; the others are stored for later. */
+const LIVE_HUB_MAIL_CASES: readonly HubMailCase[] = ["dm", "mention"];
+
 /**
- * First cut: only Hub DM mail is allowed to send, and only when the
- * member left that toggle on (default). Other stored cases never fire.
+ * Whether a mail case may be sent to a member: only a live case, and only
+ * when the member left its toggle on (both are on by default).
  */
 export function canSendHubMail(
   prefs: HubMailPrefs,
   mailCase: HubMailCase,
 ): boolean {
-  if (mailCase !== "dm") return false;
-  return prefs.dm;
+  if (!LIVE_HUB_MAIL_CASES.includes(mailCase)) return false;
+  return prefs[mailCase];
 }
 
 export function isHubDmConversation(type: string | null | undefined): boolean {

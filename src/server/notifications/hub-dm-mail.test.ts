@@ -71,10 +71,10 @@ function memoryStore(init?: {
 }
 
 describe("hub mail prefs", () => {
-  it("defaults DM on and every other case off when no row exists", () => {
+  it("defaults DM and mentions on and the other cases off when no row exists", () => {
     expect(resolveHubMailPrefs(null)).toEqual({
       dm: true,
-      mention: false,
+      mention: true,
       forumReply: false,
       digest: false,
       agentJob: false,
@@ -94,7 +94,7 @@ describe("hub mail prefs", () => {
     expect(canSendHubMail(prefs, "dm")).toBe(false);
   });
 
-  it("stores other cases but never sends them in this first cut", () => {
+  it("sends DM and mention mail, and stores the other cases for later", () => {
     const allOn = resolveHubMailPrefs({
       dm: true,
       mention: true,
@@ -103,7 +103,8 @@ describe("hub mail prefs", () => {
       agentJob: true,
     });
     expect(canSendHubMail(allOn, "dm")).toBe(true);
-    expect(canSendHubMail(allOn, "mention")).toBe(false);
+    expect(canSendHubMail(allOn, "mention")).toBe(true);
+    expect(canSendHubMail({ ...allOn, mention: false }, "mention")).toBe(false);
     expect(canSendHubMail(allOn, "forumReply")).toBe(false);
     expect(canSendHubMail(allOn, "digest")).toBe(false);
     expect(canSendHubMail(allOn, "agentJob")).toBe(false);

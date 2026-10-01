@@ -15,6 +15,7 @@ import {
   currentWindowKey,
 } from "@/server/notifications/constants";
 import { sendBroadcastEmail } from "@/server/email";
+import { pinHubConversationUrl } from "@/server/notifications/hub-dm-mail";
 
 type DB = typeof _db;
 
@@ -32,7 +33,10 @@ function chunks<T>(arr: T[], size: number): T[][] {
 /** Compose and send a PROMOTIONAL broadcast to a community's active members.
  *  In-app notification is created for opted-in members; email is ceiling-gated
  *  per member.  Transactional class is system-reserved (event reminders) — not
- *  sendable here. */
+ *  sendable here. An optional `link` (a site path) becomes a button in the
+ *  email and the link on the in-app notification; `skipUserIds` (e.g. the
+ *  author of an @everyone post) get neither. A `dedupeKey` (e.g. one per
+ *  post) keeps each member to one delivery for it, across broadcasts. */
 export async function sendCommunityBroadcast(
   db: DB,
   opts: {
@@ -40,6 +44,10 @@ export async function sendCommunityBroadcast(
     authorId: string;
     subject: string;
     body: string;
+    link?: { label: string; path: string };
+    skipUserIds?: readonly string[];
+    /** Keeps deliveries to one per member per key (default: per broadcast). */
+    dedupeKey?: string;
   },
 ): Promise<{ broadcastId: string; emailed: number }> {
   const communityId = opts.communityId;
@@ -78,7 +86,10 @@ export async function sendCommunityBroadcast(
         eq(communityMemberships.status, "active"),
       ),
     );
-  const memberIds = members.map((member) => member.userId);
+  const skipped = new Set(opts.skipUserIds ?? []);
+  const memberIds = members
+    .filter((member) => !skipped.has(member.userId))
+    .map((member) => member.userId);
   if (memberIds.length === 0) {
     return { broadcastId: broadcast!.id, emailed: 0 };
   }
@@ -103,7 +114,9 @@ export async function sendCommunityBroadcast(
   ).flat();
   const optedOut = new Set(optedOutRows.map((r) => r.userId));
 
-  const eligibleMembers = members.filter((m) => !optedOut.has(m.userId));
+  const eligibleMembers = members.filter(
+    (m) => !optedOut.has(m.userId) && !skipped.has(m.userId),
+  );
   const eligibleIds = eligibleMembers.map((m) => m.userId);
   if (eligibleIds.length === 0) {
     return { broadcastId: broadcast!.id, emailed: 0 };
@@ -116,7 +129,7 @@ export async function sendCommunityBroadcast(
   // NULL prevents duplicate delivery if this function is retried for the same
   // broadcast.  onConflictDoNothing: rows that already exist (retry) are
   // silently skipped, and the returning clause tells us which claims we won.
-  const broadcastDedupeKey = `broadcast:${broadcast!.id}`;
+  const broadcastDedupeKey = opts.dedupeKey ?? `broadcast:${broadcast!.id}`;
   const claimRows = eligibleMembers.map((m) => ({
     broadcastId: broadcast!.id,
     userId: m.userId,
@@ -213,66 +226,78 @@ export async function sendCommunityBroadcast(
     sendsByUser.set(r.userId, m);
   }
 
-  const notificationRows: (typeof notifications.$inferInsert)[] = [];
-  const emailedUserIds: string[] = [];
-
-  let emailed = 0;
-  for (const member of claimedMembers) {
-    // In-app notification for opted-in members (pull channel, not ceiling-limited).
-    notificationRows.push({
+  // In-app notices first, for every claimed member (the pull channel, not
+  // ceiling-limited): if the email loop below is cut short (a time limit,
+  // a provider refusal), everyone still has the notice.
+  const notificationRows: (typeof notifications.$inferInsert)[] =
+    claimedMembers.map((member) => ({
       userId: member.userId,
       type: "broadcast",
       title: opts.subject,
       content: opts.body,
       communityId,
-      metadata: { broadcastId: broadcast!.id },
-    });
+      metadata: {
+        broadcastId: broadcast!.id,
+        ...(opts.link
+          ? { reviewPath: opts.link.path, linkLabel: opts.link.label }
+          : {}),
+      },
+    }));
+  for (const chunk of chunks(notificationRows, CHUNK_SIZE)) {
+    await db.insert(notifications).values(chunk);
+  }
 
+  const link = opts.link
+    ? {
+        label: opts.link.label,
+        url: pinHubConversationUrl(`/en${opts.link.path}`),
+      }
+    : undefined;
+  // Marks delivery rows emailSent=true as emails go out, a batch at a
+  // time, so the weekly ceiling counts what was really sent.
+  let pending: string[] = [];
+  const markSent = async () => {
+    if (pending.length === 0) return;
+    const batch = pending;
+    pending = [];
+    await db
+      .update(broadcastDeliveries)
+      .set({ emailSent: true })
+      .where(
+        and(
+          eq(broadcastDeliveries.broadcastId, broadcast!.id),
+          inArray(broadcastDeliveries.userId, batch),
+        ),
+      );
+  };
+
+  let emailed = 0;
+  for (const member of claimedMembers) {
     const emailAllowed = allowPromotional({
       sendsByCommunity: sendsByUser.get(member.userId) ?? {},
       communityId,
       nCommunities: communityCounts.get(member.userId) ?? 1,
       ceiling: BROADCAST_CEILING,
     });
-
-    if (emailAllowed) {
-      let emailSent = false;
-      try {
-        emailSent = await sendBroadcastEmail(
-          member.email,
-          opts.subject,
-          opts.body,
-        );
-      } catch (err) {
-        console.error(`broadcast: send failed for ${member.userId}`, err);
-      }
-      if (emailSent) {
-        emailedUserIds.push(member.userId);
-        emailed++;
-      }
+    if (!emailAllowed) continue;
+    let emailSent = false;
+    try {
+      emailSent = await sendBroadcastEmail(
+        member.email,
+        opts.subject,
+        opts.body,
+        link,
+      );
+    } catch (err) {
+      console.error(`broadcast: send failed for ${member.userId}`, err);
+    }
+    if (emailSent) {
+      pending.push(member.userId);
+      emailed++;
+      if (pending.length >= 50) await markSent();
     }
   }
-
-  if (notificationRows.length)
-    await db.insert(notifications).values(notificationRows);
-
-  // Mark delivery rows as emailSent=true for members who were successfully emailed.
-  // Chunked to avoid oversized IN(...).
-  if (emailedUserIds.length > 0) {
-    await Promise.all(
-      chunks(emailedUserIds, CHUNK_SIZE).map((chunk) =>
-        db
-          .update(broadcastDeliveries)
-          .set({ emailSent: true })
-          .where(
-            and(
-              eq(broadcastDeliveries.broadcastId, broadcast!.id),
-              inArray(broadcastDeliveries.userId, chunk),
-            ),
-          ),
-      ),
-    );
-  }
+  await markSent();
 
   return { broadcastId: broadcast!.id, emailed };
 }

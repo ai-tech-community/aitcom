@@ -13,6 +13,12 @@ import {
   renderHubDmPingHtml,
   type HubMailLocale,
 } from "@/server/notifications/hub-dm-mail-copy";
+import {
+  postMentionMailCopy,
+  renderPostMentionHtml,
+  renderPostMentionText,
+  type PostMentionMail,
+} from "@/server/notifications/post-mention-mail-copy";
 
 let resendInstance: Resend | null = null;
 
@@ -508,6 +514,27 @@ export async function sendHubDmPingEmail(
   return true;
 }
 
+/** Link-only email to a member someone mentioned in a post. */
+export async function sendPostMentionEmail(
+  to: string,
+  opts: {
+    locale: HubMailLocale;
+    mail: PostMentionMail;
+    urls: { post: string; manage: string };
+  },
+) {
+  const resend = getResend();
+  if (!resend) return false;
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: postMentionMailCopy(opts.locale, opts.mail).subject,
+    html: renderPostMentionHtml(opts.locale, opts.mail, opts.urls),
+    text: renderPostMentionText(opts.locale, opts.mail, opts.urls),
+  });
+  return !error;
+}
+
 /** Send the consolidated weekly Hub digest. */
 export async function sendHubDigestEmail(to: string, html: string) {
   const resend = getResend();
@@ -526,24 +553,41 @@ export async function sendBroadcastEmail(
   to: string,
   subject: string,
   body: string,
+  /** A button under the text (an absolute URL in production). */
+  link?: { label: string; url: string },
 ) {
   const resend = getResend();
   if (!resend) return false;
-  await resend.emails.send({
+  const manage = "https://www.aitcommunity.org/en/dashboard/notifications";
+  const { error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
     subject,
     html: `
-      <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
-        <p style="font-size: 14px; white-space: pre-wrap;">${escapeHtml(body)}</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-        <p style="font-size: 12px; color: #999;">
+      <div lang="en" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.5; color: #111; max-width: 600px; margin: 0 auto;">
+        <p style="white-space: pre-wrap;">${escapeHtml(body)}</p>${
+          link
+            ? `
+        <p style="margin-top: 24px;">
+          <a href="${escapeHtml(link.url)}" style="color: #111; font-weight: bold;">${escapeHtml(link.label)}<span aria-hidden="true"> →</span></a>
+        </p>`
+            : ""
+        }
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;" />
+        <p style="font-size: 13px; color: #595959;">
           AIT Community ·
-          <a href="https://www.aitcommunity.org/en/dashboard/notifications" style="color:#999;">Manage notifications</a>
+          <a href="${manage}" style="color: #595959;">Manage notifications</a>
         </p>
       </div>`,
+    text: [
+      body,
+      ...(link ? ["", `${link.label}: ${link.url}`] : []),
+      "",
+      "—",
+      `AIT Community · Manage notifications: ${manage}`,
+    ].join("\n"),
   });
-  return true;
+  return !error;
 }
 
 /** Send a transactional reminder to a member who registered for an event.
