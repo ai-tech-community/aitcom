@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -14,12 +15,14 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { useStartCreateCommunity } from "@/components/communities/create-community-dialog";
 import { CommunityStreet } from "./community-street";
 import type { StreetHouse } from "./community-street-scene";
+import { ArrowRight } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import {
   ActivityLine,
-  JoinPolicyLabel,
   NextEventLine,
   type DirectoryItem,
 } from "./community-signals";
+import { JoinAction } from "./join-action";
 import { BODY_FRAME } from "./explore-layout";
 import { squareQueryInput } from "./directory-params";
 
@@ -27,17 +30,30 @@ import { squareQueryInput } from "./directory-params";
 const COPY_GAP_PX = 32;
 
 /**
- * The line under the street: the legend while nobody is pointing, the
- * pointed-at community's facts while someone is. Mouse-only (the street
- * is), so it is hidden from screen readers; the grid carries the facts.
+ * The line under the street. While nobody points at a house it is the
+ * legend; once someone does, it becomes a small preview of that house —
+ * its live facts, Join and Visit — and stays on it until the pointer
+ * leaves the street area, so the pointer can travel to the Join button.
+ * The legend is mouse-only context (aria-hidden); the preview holds real
+ * controls, and the directory grid repeats every fact for everyone.
  */
-function StreetCaption({ community }: { community: DirectoryItem | null }) {
+function StreetPeek({
+  community,
+  onJoinPress,
+}: {
+  community: DirectoryItem | null;
+  onJoinPress: () => void;
+}) {
   const t = useTranslations("communities.discover");
   if (!community) {
-    return <p className="text-muted-foreground text-sm">{t("squareHint")}</p>;
+    return (
+      <p aria-hidden="true" className="text-muted-foreground text-sm">
+        {t("squareHint")}
+      </p>
+    );
   }
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
       <span className="text-sm font-semibold">{community.name}</span>
       {community.activeRecently > 0 ? (
         <ActivityLine count={community.activeRecently} />
@@ -45,7 +61,21 @@ function StreetCaption({ community }: { community: DirectoryItem | null }) {
       {community.nextEvent ? (
         <NextEventLine event={community.nextEvent} />
       ) : null}
-      <JoinPolicyLabel policy={community.joinPolicy} />
+      <span className="flex items-center gap-3">
+        <JoinAction
+          slug={community.slug}
+          name={community.name}
+          joinPolicy={community.joinPolicy}
+          onPress={onJoinPress}
+        />
+        <Link
+          href={`/communities/${community.slug}`}
+          className="text-foreground hover:text-foreground/80 focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded-sm text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-[3px]"
+        >
+          {t("visit")}
+          <ArrowRight aria-hidden="true" className="size-4" />
+        </Link>
+      </span>
     </div>
   );
 }
@@ -91,6 +121,45 @@ function useReservedShare(
   return state;
 }
 
+/** How long the pointer must rest on another house before the peek moves. */
+const HOVER_INTENT_MS = 150;
+
+/**
+ * Which house the peek shows. The first house shows at once; moving to
+ * another one waits until the pointer rests there, so crossing houses on
+ * the way to the peek's Join button does not change its target. Pressing
+ * Join pins the peek (the sign-in dialog takes the pointer away), until
+ * the visitor points at another house.
+ */
+function useStreetPeek() {
+  const [slug, setSlug] = useState<string | null>(null);
+  const [pinned, setPinned] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancel = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  useEffect(() => cancel, []);
+  return {
+    slug,
+    point: (next: string | null) => {
+      cancel();
+      if (next === null || next === slug) return;
+      const show = () => {
+        setSlug(next);
+        setPinned(false);
+      };
+      if (slug === null) show();
+      else timer.current = setTimeout(show, HOVER_INTENT_MS);
+    },
+    release: () => {
+      cancel();
+      if (!pinned) setSlug(null);
+    },
+    pin: () => setPinned(true),
+  };
+}
+
 /**
  * The page's opening: the street runs edge to edge — the most active
  * communities as houses (lit windows for recent activity, a flag for an
@@ -118,7 +187,7 @@ export function SquareHero({
     wide,
   );
 
-  const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  const peek = useStreetPeek();
   const query = api.communities.directory.useQuery(squareQueryInput(locale));
   const items = useMemo(
     () => (query.isError ? [] : (query.data?.items ?? [])),
@@ -135,10 +204,10 @@ export function SquareHero({
       })),
     [items],
   );
-  const active = items.find((c) => c.slug === activeSlug) ?? null;
+  const active = items.find((c) => c.slug === peek.slug) ?? null;
 
   return (
-    <section className={className}>
+    <section className={className} onPointerLeave={peek.release}>
       <div className="relative">
         <div
           className={`${BODY_FRAME} pt-10 sm:pt-14 lg:pointer-events-none lg:absolute lg:inset-x-0 lg:top-0 lg:z-10`}
@@ -153,8 +222,8 @@ export function SquareHero({
         <div ref={streetRef}>
           <CommunityStreet
             houses={measured ? houses : []}
-            activeSlug={activeSlug}
-            onActiveChange={setActiveSlug}
+            activeSlug={peek.slug}
+            onActiveChange={peek.point}
             reserve={reserve}
             lotLabel={measured ? t("lotSign") : null}
             onLotClick={startCreate}
@@ -166,8 +235,10 @@ export function SquareHero({
           states speak once for the page; with no houses there is no
           legend to read. Its space is kept while loading: no jump. */}
       {query.isLoading || items.length > 0 ? (
-        <div aria-hidden="true" className={`${BODY_FRAME} mt-3 min-h-6`}>
-          {items.length > 0 ? <StreetCaption community={active} /> : null}
+        <div className={`${BODY_FRAME} mt-3 min-h-8`}>
+          {items.length > 0 ? (
+            <StreetPeek community={active} onJoinPress={peek.pin} />
+          ) : null}
         </div>
       ) : null}
     </section>

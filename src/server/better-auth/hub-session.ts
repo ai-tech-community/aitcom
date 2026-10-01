@@ -72,16 +72,9 @@ export function memberRoleForSlug(
 export function membershipStatusForSlug(
   rows: HubMembershipSeed[] | null | undefined,
   slug: string,
-): "active" | "pending_approval" | "invited" | null {
-  const row = rows?.find((m) => m.slug === slug);
-  if (
-    row?.status === "active" ||
-    row?.status === "pending_approval" ||
-    row?.status === "invited"
-  ) {
-    return row.status;
-  }
-  return null;
+): HubMembershipSeed["status"] | null {
+  // Banned is passed through: the shared join rule hides Join for it.
+  return rows?.find((m) => m.slug === slug)?.status ?? null;
 }
 
 /**

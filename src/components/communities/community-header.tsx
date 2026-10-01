@@ -1,5 +1,6 @@
 "use client";
 
+import type { MembershipStatus as ViewerMembershipStatus } from "@/server/communities/invite-policy";
 import { useTranslations } from "next-intl";
 import { Users } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -10,7 +11,7 @@ import { MemberStack } from "./member-stack";
 import type { RouterOutputs } from "@/trpc/react";
 
 type Community = RouterOutputs["communities"]["getBySlug"];
-type MembershipStatus = "active" | "pending_approval" | "invited" | null;
+type MembershipStatus = ViewerMembershipStatus | null;
 
 interface CommunityHeaderProps {
   community: Community;
@@ -74,6 +75,7 @@ export function CommunityHeader({
           <div className="flex shrink-0 items-center gap-2">
             <JoinButton
               slug={community.slug}
+              name={community.name}
               joinPolicy={community.joinPolicy}
               membershipStatus={membershipStatus}
               memberRole={memberRole}

@@ -26,6 +26,14 @@ vi.mock("@/components/communities/member-stack", () => ({
   MemberStackView: () => <div data-testid="stack" />,
 }));
 
+vi.mock("./join-action", () => ({
+  JoinAction: (p: { slug: string; name: string; joinPolicy: string }) => (
+    <button type="button" data-policy={p.joinPolicy}>
+      join {p.slug}
+    </button>
+  ),
+}));
+
 import { CommunityCard } from "./community-card";
 
 function item(over: Partial<DirectoryItem> = {}): DirectoryItem {
@@ -55,6 +63,15 @@ describe("CommunityCard", () => {
     render(<CommunityCard community={item()} />);
     const link = screen.getByRole("link", { name: "ACME Builders" });
     expect(link).toHaveAttribute("href", "/communities/acme");
+    expect(
+      screen.getByRole("article", { name: "ACME Builders" }),
+    ).toBeInTheDocument();
+  });
+
+  it("puts the join control beside the link, not inside it", () => {
+    render(<CommunityCard community={item()} />);
+    const join = screen.getByRole("button", { name: "join acme" });
+    expect(join.closest("a")).toBeNull();
   });
 
   it("shows the next event with its day and city", () => {
@@ -72,7 +89,9 @@ describe("CommunityCard", () => {
     );
     expect(screen.queryByText(/nextEvent/)).toBeNull();
     expect(screen.queryByText(/activeRecently/)).toBeNull();
-    expect(screen.getByText("joinOpen")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "join acme" }),
+    ).toBeInTheDocument();
   });
 
   it("names an online event's place as online", () => {
@@ -97,7 +116,10 @@ describe("CommunityCard", () => {
       />,
     );
     expect(screen.getByText('activeRecently:{"count":3}')).toBeInTheDocument();
-    expect(screen.getByText("joinApproval")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "join acme" })).toHaveAttribute(
+      "data-policy",
+      "approval_required",
+    );
     expect(screen.getByText('membersCount:{"count":1}')).toBeInTheDocument();
   });
 

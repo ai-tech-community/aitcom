@@ -7,11 +7,12 @@
 
 import type { CommunityCandidate } from "@/server/communities/discovery";
 import { livenessScore } from "@/server/communities/discovery";
+import type { JoinPolicy } from "@/server/communities/invite-policy";
 
 export const DIRECTORY_SORTS = ["active", "newest", "largest"] as const;
 export type DirectorySort = (typeof DIRECTORY_SORTS)[number];
 
-export type JoinPolicy = "open" | "invite_only" | "approval_required";
+export type { JoinPolicy };
 
 /** The place key for events held online; every other key is a city name. */
 export const ONLINE_PLACE = "online";

@@ -41,3 +41,51 @@ export function canRedeemInvite(
   if (!userEmail) return false;
   return targetEmail.trim().toLowerCase() === userEmail.trim().toLowerCase();
 }
+
+export type MembershipStatus =
+  | "active"
+  | "pending_approval"
+  | "invited"
+  | "banned";
+
+/** What a visitor can do about a community, from its policy and their membership. */
+export type ViewerJoinAction =
+  | { kind: "join" }
+  | { kind: "request" }
+  | { kind: "pending" }
+  | { kind: "invite_only" }
+  | { kind: "member"; canLeave: boolean }
+  | { kind: "unavailable" };
+
+/**
+ * The one rule every join control follows (community page, directory cards,
+ * the Explore street). `status` is null for a guest or a non-member. An
+ * open invitation does not skip the community's policy here: accepting an
+ * invite runs through the invite link. Owners and members of the Hub root
+ * cannot leave (the Hub is where every member belongs).
+ */
+export function viewerJoinAction({
+  joinPolicy,
+  status,
+  role,
+  isHub = false,
+}: {
+  joinPolicy: JoinPolicy;
+  status: MembershipStatus | null;
+  role?: CommunityRole | null;
+  isHub?: boolean;
+}): ViewerJoinAction {
+  if (status === "banned") return { kind: "unavailable" };
+  if (status === "active") {
+    return { kind: "member", canLeave: role !== "owner" && !isHub };
+  }
+  if (status === "pending_approval") return { kind: "pending" };
+  switch (joinPolicy) {
+    case "open":
+      return { kind: "join" };
+    case "approval_required":
+      return { kind: "request" };
+    case "invite_only":
+      return { kind: "invite_only" };
+  }
+}

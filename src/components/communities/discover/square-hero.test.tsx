@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
 import { useEffect } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { DirectoryItem } from "./community-signals";
@@ -32,6 +33,13 @@ vi.mock("next-intl", () => ({
     vars ? `${k}:${JSON.stringify(vars)}` : k,
 }));
 vi.mock("@/hooks/use-media-query", () => ({ useMediaQuery: () => false }));
+vi.mock("./join-action", () => ({
+  JoinAction: (p: { slug: string; onPress?: () => void }) => (
+    <button type="button" onClick={p.onPress}>
+      join {p.slug}
+    </button>
+  ),
+}));
 vi.mock("@/components/communities/create-community-dialog", () => ({
   useStartCreateCommunity: () => state.startCreate,
 }));
@@ -133,6 +141,27 @@ describe("SquareHero", () => {
     expect(screen.getByTestId("glow").textContent).toContain("[ Beta ]");
   });
 
+  it("turns the caption into a peek with Join and Visit that stays put", () => {
+    state.items = [item("a", "Alpha"), item("b", "Beta")];
+    const { container } = render(<SquareHero headline={HEADLINE} />);
+    fireEvent.pointerEnter(screen.getByTestId("street-house-b"));
+    expect(screen.getByRole("button", { name: "join b" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "visit" })).toHaveAttribute(
+      "href",
+      "/communities/b",
+    );
+    // Moving off the house onto the Join button keeps the peek…
+    const join = screen.getByRole("button", { name: "join b" });
+    fireEvent.pointerOut(screen.getByTestId("street-house-b"), {
+      relatedTarget: join,
+    });
+    expect(screen.getByRole("button", { name: "join b" })).toBeInTheDocument();
+    // …leaving the whole street area lets it go.
+    fireEvent.pointerLeave(container.querySelector("section")!);
+    expect(screen.queryByRole("button", { name: "join b" })).toBeNull();
+    expect(screen.getByText("squareHint")).toBeInTheDocument();
+  });
+
   it("puts an empty lot at the end of the street that starts a community", () => {
     state.items = [item("a", "Alpha")];
     render(<SquareHero headline={HEADLINE} />);
@@ -150,5 +179,48 @@ describe("SquareHero", () => {
     rerender(<SquareHero headline={HEADLINE} />);
     expect(screen.queryByTestId("street-house-a")).toBeNull();
     expect(screen.getByTestId("street-lot")).toBeInTheDocument();
+  });
+
+  it("moves the peek to another house only when the pointer rests there", () => {
+    vi.useFakeTimers();
+    try {
+      state.items = [item("a", "Alpha"), item("b", "Beta")];
+      render(<SquareHero headline={HEADLINE} />);
+      fireEvent.pointerEnter(screen.getByTestId("street-house-b"));
+      expect(
+        screen.getByRole("button", { name: "join b" }),
+      ).toBeInTheDocument();
+      // Passing over another house on the way to the button changes nothing…
+      fireEvent.pointerEnter(screen.getByTestId("street-house-a"));
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      fireEvent.pointerEnter(screen.getByTestId("street-lot"));
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(
+        screen.getByRole("button", { name: "join b" }),
+      ).toBeInTheDocument();
+      // …resting on it does.
+      fireEvent.pointerEnter(screen.getByTestId("street-house-a"));
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(
+        screen.getByRole("button", { name: "join a" }),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the peek pinned after Join is pressed, e.g. under the sign-in dialog", () => {
+    state.items = [item("a", "Alpha"), item("b", "Beta")];
+    const { container } = render(<SquareHero headline={HEADLINE} />);
+    fireEvent.pointerEnter(screen.getByTestId("street-house-b"));
+    fireEvent.click(screen.getByRole("button", { name: "join b" }));
+    fireEvent.pointerLeave(container.querySelector("section")!);
+    expect(screen.getByRole("button", { name: "join b" })).toBeInTheDocument();
   });
 });
