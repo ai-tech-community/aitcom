@@ -480,6 +480,89 @@ describe("feed post writes", () => {
     ).resolves.toBeDefined();
   }, 30_000);
 
+  it("editPost moves a post only to one of its community's topics", async () => {
+    payload.count.mockImplementation(async ({ where }: { where: unknown }) => ({
+      totalDocs: JSON.stringify(where).includes('"jobs"') ? 1 : 0,
+    }));
+    await caller().feed.editPost({
+      postId: 5,
+      communitySlug: "c",
+      content: "Hiring",
+      topicSlug: "jobs",
+    });
+    expect(payload.update.mock.calls.at(-1)![0].data).toMatchObject({
+      topicSlug: "jobs",
+    });
+    await expect(
+      caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "Elsewhere",
+        topicSlug: "another-community-topic",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("editPost hides the link preview, keeping what it says", async () => {
+    storedPost = {
+      ...post,
+      content: "Read https://x.test/a",
+      linkPreview: { url: "https://x.test/a", title: "A page", hidden: false },
+    };
+    await caller().feed.editPost({
+      postId: 5,
+      communitySlug: "c",
+      content: "Read https://x.test/a",
+      linkPreviewHidden: true,
+    });
+    expect(payload.update.mock.calls.at(-1)![0].data).toMatchObject({
+      linkPreview: { url: "https://x.test/a", title: "A page", hidden: true },
+    });
+  });
+
+  it("createPost refuses a topic that is not in the community", async () => {
+    await expect(
+      caller().feed.createPost({
+        communitySlug: "c",
+        content: "Hi",
+        topicSlug: "nope",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+
+  it("editPost moving a post needs the right to post, and leaves a post under review alone", async () => {
+    payload.count.mockResolvedValue({ totalDocs: 1 });
+    const { TRPCError } = await import("@trpc/server");
+    hooks.poster = new TRPCError({ code: "FORBIDDEN" });
+    await expect(
+      caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "Moved",
+        topicSlug: "jobs",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    hooks.poster = { id: "c-1" };
+    storedPost = { ...post, hiddenAt: "2026-09-24T11:00:00Z" };
+    await expect(
+      caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "Moved",
+        topicSlug: "jobs",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(payload.update).not.toHaveBeenCalled();
+    // A text-only fix needs neither.
+    await caller().feed.editPost({
+      postId: 5,
+      communitySlug: "c",
+      content: "Typo fixed",
+    });
+    expect(payload.update).toHaveBeenCalled();
+  });
+
   it("editPost lets only the author edit", async () => {
     await expect(
       caller("someone-else").feed.editPost({

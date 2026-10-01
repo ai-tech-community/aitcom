@@ -2818,7 +2818,15 @@
         "fixPictures": "Try the pictures that didn't upload again, or remove them.",
         "replacePicturesWithGif": "Replace pictures with GIF",
         "picturesReplacedByGif": "Pictures replaced by the GIF.",
-        "undo": "Undo"
+        "undo": "Undo",
+        "bold": "Bold",
+        "italic": "Italic",
+        "bulletList": "Bulleted list",
+        "numberedList": "Numbered list",
+        "removePreview": "Remove preview",
+        "showPreview": "Show preview",
+        "previewHidden": "Link preview removed. The link stays in your text.",
+        "movedToTopic": "Post edited and moved to {topic}."
       },
       "gifBadge": "GIF",
       "removeGif": "Remove GIF",

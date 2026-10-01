@@ -3,12 +3,64 @@
 import { useCallback, useRef, useState } from "react";
 
 import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
+import type { TextEdit } from "@/lib/post-format";
 
 /**
- * The text of a post being written, with a way to insert at the cursor
- * (an emoji, later a mention) the way typing would: replacing any selected
- * text, then putting the caret right after what was inserted. The text may
- * run past the limit; `tooLong` says so, and the form will not send it.
+ * Writes `next` into the text field the way typing would, so the
+ * browser's undo (Ctrl/Cmd+Z) can take it back: only the part that
+ * changed is replaced, through the browser's own insert command, which
+ * also fires the input event the form listens to. Where that command is
+ * missing the value is set directly (no undo step, same result).
+ */
+function applyEdit(
+  field: HTMLTextAreaElement | null,
+  next: TextEdit,
+  setValue: (value: string) => void,
+) {
+  if (field) {
+    const current = field.value;
+    let head = 0;
+    while (
+      head < current.length &&
+      head < next.value.length &&
+      current[head] === next.value[head]
+    ) {
+      head++;
+    }
+    let tail = 0;
+    while (
+      tail < current.length - head &&
+      tail < next.value.length - head &&
+      current[current.length - 1 - tail] ===
+        next.value[next.value.length - 1 - tail]
+    ) {
+      tail++;
+    }
+    const inserted = next.value.slice(head, next.value.length - tail);
+    field.focus();
+    field.setSelectionRange(head, current.length - tail);
+    const typed =
+      typeof document.execCommand === "function" &&
+      (inserted
+        ? document.execCommand("insertText", false, inserted)
+        : document.execCommand("delete"));
+    if (!typed || field.value !== next.value) setValue(next.value);
+  } else {
+    setValue(next.value);
+  }
+  // After React writes the value, put the selection where the edit says.
+  requestAnimationFrame(() => {
+    field?.focus();
+    field?.setSelectionRange(next.start, next.end);
+  });
+}
+
+/**
+ * The text of a post being written, with ways to insert at the cursor (an
+ * emoji, later a mention) and to apply formatting, both the way typing
+ * would: undoable, replacing any selected text, and leaving the caret or
+ * selection where it belongs. The text may run past the limit; `tooLong`
+ * says so, and the form will not send it.
  */
 export function usePostText(initial: string) {
   const [value, setValue] = useState(initial);
@@ -16,26 +68,43 @@ export function usePostText(initial: string) {
 
   const insert = useCallback((text: string) => {
     const field = textareaRef.current;
-    if (!field) {
-      setValue((current) => current + text);
-      return;
-    }
-    const start = field.selectionStart ?? field.value.length;
-    const end = field.selectionEnd ?? start;
-    setValue(field.value.slice(0, start) + text + field.value.slice(end));
+    const current = field?.value ?? "";
+    const start = field?.selectionStart ?? current.length;
+    const end = field?.selectionEnd ?? start;
     const caret = start + text.length;
-    // After React writes the new value, put the caret back in place.
-    requestAnimationFrame(() => {
-      field.focus();
-      field.setSelectionRange(caret, caret);
-    });
+    applyEdit(
+      field,
+      {
+        value: current.slice(0, start) + text + current.slice(end),
+        start: caret,
+        end: caret,
+      },
+      (next) => setValue(next),
+    );
   }, []);
+
+  /**
+   * Applies a formatting change (post-format's toggleWrap or toggleList)
+   * to the current selection, then selects what it returns.
+   */
+  const format = useCallback(
+    (edit: (value: string, start: number, end: number) => TextEdit) => {
+      const field = textareaRef.current;
+      const start = field?.selectionStart ?? 0;
+      const end = field?.selectionEnd ?? start;
+      applyEdit(field, edit(field?.value ?? "", start, end), (next) =>
+        setValue(next),
+      );
+    },
+    [],
+  );
 
   return {
     value,
     setValue,
     textareaRef,
     insert,
+    format,
     tooLong: value.length > POST_MAX_LENGTH,
   };
 }

@@ -181,6 +181,13 @@ export const FeedPosts: CollectionConfig = {
         { name: "description", type: "text" },
         { name: "imageUrl", type: "text" },
         { name: "siteName", type: "text" },
+        {
+          // The author took the preview off their post; the link stays.
+          // A new first link brings a preview back.
+          name: "hidden",
+          type: "checkbox",
+          defaultValue: false,
+        },
       ],
     },
     {

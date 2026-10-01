@@ -65,8 +65,11 @@ import {
   NO_GIF,
   gifFields,
   lookUpGif,
+  loadPostForMediaEdit,
+  postDetailsUpdate,
   setPostMedia,
 } from "@/server/communities/post-media";
+import { resolvePostTopic } from "@/server/communities/post-topics";
 import { getGiphyClient } from "@/server/giphy/giphy";
 import { createPerUserLimit } from "@/server/rate-limit/per-user-window";
 
@@ -386,7 +389,11 @@ export const feedRouter = createTRPCRouter({
           communityId: community.id,
           likeCount: 0,
           commentCount: 0,
-          topicSlug: input.topicSlug ?? "general",
+          topicSlug: await resolvePostTopic(
+            payload,
+            community.id,
+            input.topicSlug,
+          ),
           visibility: "community",
         },
       });
@@ -457,7 +464,11 @@ export const feedRouter = createTRPCRouter({
           communityId: community.id,
           uploadId: input.uploadId,
           caption: input.caption,
-          topicSlug: input.topicSlug ?? "general",
+          topicSlug: await resolvePostTopic(
+            await getPayloadClient(),
+            community.id,
+            input.topicSlug,
+          ),
           durationSeconds: input.durationSeconds,
           width: input.width,
           height: input.height,
@@ -534,6 +545,10 @@ export const feedRouter = createTRPCRouter({
             }),
           ])
           .default({ kind: "keep" }),
+        /** Move the post to another of its community's topics. */
+        topicSlug: z.string().max(100).optional(),
+        /** Take the link preview off the post (true) or put it back. */
+        linkPreviewHidden: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -557,6 +572,17 @@ export const feedRouter = createTRPCRouter({
             communityId: community.id,
             content: input.content,
             media: input.media,
+            details: {
+              topicSlug:
+                input.topicSlug === undefined
+                  ? undefined
+                  : await resolvePostTopic(
+                      payload,
+                      community.id,
+                      input.topicSlug,
+                    ),
+              linkPreviewHidden: input.linkPreviewHidden,
+            },
           },
         );
         return { id: input.postId };
@@ -574,12 +600,38 @@ export const feedRouter = createTRPCRouter({
       if (post.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      // Moving a post or hiding its preview changes what the community
+      // sees, like media: it needs the right to post, and a post under
+      // review stays as it is until a moderator has looked.
+      if (
+        input.topicSlug !== undefined ||
+        input.linkPreviewHidden !== undefined
+      ) {
+        const community = await requireFeedPoster(
+          ctx.db,
+          input.communitySlug,
+          ctx.session.user.id,
+        );
+        await loadPostForMediaEdit(payload, {
+          postId: post.id,
+          userId: ctx.session.user.id,
+          communityId: community.id,
+        });
+      }
 
+      const topicSlug =
+        input.topicSlug === undefined || !post.communityId
+          ? undefined
+          : await resolvePostTopic(payload, post.communityId, input.topicSlug);
       await payload.update({
         collection: "feed-posts",
         id: input.postId,
         data: {
           content: input.content,
+          ...postDetailsUpdate(post, {
+            topicSlug,
+            linkPreviewHidden: input.linkPreviewHidden,
+          }),
           isEdited: true,
           editedAt: new Date().toISOString(),
         },
@@ -603,6 +655,9 @@ export const feedRouter = createTRPCRouter({
         durationSeconds: z.number().positive(),
         width: z.number().int().positive(),
         height: z.number().int().positive(),
+        /** Topic and preview changes made in the same edit. */
+        topicSlug: z.string().max(100).optional(),
+        linkPreviewHidden: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -622,6 +677,17 @@ export const feedRouter = createTRPCRouter({
           durationSeconds: input.durationSeconds,
           width: input.width,
           height: input.height,
+          details: {
+            topicSlug:
+              input.topicSlug === undefined
+                ? undefined
+                : await resolvePostTopic(
+                    await getPayloadClient(),
+                    community.id,
+                    input.topicSlug,
+                  ),
+            linkPreviewHidden: input.linkPreviewHidden,
+          },
         },
       );
     }),

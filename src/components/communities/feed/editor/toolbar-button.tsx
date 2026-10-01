@@ -18,8 +18,10 @@ export const ToolbarButton = forwardRef<
   Omit<ComponentProps<typeof Button>, "children"> & {
     label: string;
     icon: ReactNode;
+    /** Shown in the tooltip after the label, e.g. "Ctrl+B". */
+    shortcut?: string;
   }
->(function ToolbarButton({ label, icon, ...props }, ref) {
+>(function ToolbarButton({ label, icon, shortcut, ...props }, ref) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -35,10 +37,19 @@ export const ToolbarButton = forwardRef<
           {icon}
         </Button>
       </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent>
+        {shortcut ? `${label} · ${shortcut}` : label}
+      </TooltipContent>
     </Tooltip>
   );
 });
+
+/** A thin divider between groups of toolbar buttons. */
+export function ToolbarSeparator() {
+  return (
+    <span aria-hidden="true" className="bg-border mx-1 h-5 w-px self-center" />
+  );
+}
 
 /**
  * Names the Ctrl/Cmd+Enter shortcut on a form's send button: a tooltip

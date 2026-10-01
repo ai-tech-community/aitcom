@@ -750,6 +750,7 @@ export interface FeedPost {
     description?: string | null;
     imageUrl?: string | null;
     siteName?: string | null;
+    hidden?: boolean | null;
   };
   /**
    * Set by the first report; cleared when a moderator restores.
@@ -2055,6 +2056,7 @@ export interface FeedPostsSelect<T extends boolean = true> {
         description?: T;
         imageUrl?: T;
         siteName?: T;
+        hidden?: T;
       };
   hiddenAt?: T;
   reportCount?: T;

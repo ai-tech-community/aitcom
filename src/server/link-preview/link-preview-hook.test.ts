@@ -33,7 +33,7 @@ describe("linkPreviewBeforeChange", () => {
       content: `Grok Bot cheat sheet ${LINK} and https://other.example.com`,
     });
     expect(fetcher).toHaveBeenCalledExactlyOnceWith(LINK);
-    expect(data.linkPreview).toEqual({ url: LINK, ...META });
+    expect(data.linkPreview).toEqual({ url: LINK, hidden: false, ...META });
   });
 
   it("stores the URL alone when the page gives nothing", async () => {
@@ -42,6 +42,7 @@ describe("linkPreviewBeforeChange", () => {
     });
     expect(data.linkPreview).toEqual({
       url: LINK,
+      hidden: false,
       title: null,
       description: null,
       imageUrl: null,
@@ -100,10 +101,26 @@ describe("linkPreviewBeforeChange", () => {
     );
     expect(data.linkPreview).toEqual({
       url: null,
+      hidden: false,
       title: null,
       description: null,
       imageUrl: null,
       siteName: null,
+    });
+  });
+
+  it("shows the preview again when an edit brings a new link", async () => {
+    const data = await run(
+      vi.fn().mockResolvedValue(META),
+      { content: "now https://new.example.com/page" },
+      {
+        content: `x ${LINK}`,
+        linkPreview: { url: LINK, hidden: true, ...META },
+      },
+    );
+    expect(data.linkPreview).toMatchObject({
+      url: "https://new.example.com/page",
+      hidden: false,
     });
   });
 });

@@ -33,7 +33,11 @@ export type VideoPostInput = {
 } & (
   | { topicSlug: string }
   /** Put the video on this existing post (an edit) instead of a new post. */
-  | { replacePostId: number }
+  | {
+      replacePostId: number;
+      /** Topic and preview changes made in the same edit. */
+      details?: { topicSlug?: string; linkPreviewHidden?: boolean };
+    }
 );
 
 type VideoUploadGrant = {
@@ -228,6 +232,7 @@ export function useVideoPost(slug: string) {
           await replace.mutateAsync({
             ...uploaded,
             postId: input.replacePostId,
+            ...input.details,
           });
         } else {
           await finish.mutateAsync({ ...uploaded, topicSlug: input.topicSlug });

@@ -2818,7 +2818,15 @@
         "fixPictures": "Probeer de afbeeldingen die niet zijn geüpload opnieuw, of verwijder ze.",
         "replacePicturesWithGif": "Afbeeldingen vervangen door GIF",
         "picturesReplacedByGif": "Afbeeldingen vervangen door de GIF.",
-        "undo": "Ongedaan maken"
+        "undo": "Ongedaan maken",
+        "bold": "Vet",
+        "italic": "Cursief",
+        "bulletList": "Lijst met opsommingstekens",
+        "numberedList": "Genummerde lijst",
+        "removePreview": "Voorbeeld verwijderen",
+        "showPreview": "Voorbeeld tonen",
+        "previewHidden": "Linkvoorbeeld verwijderd. De link blijft in je tekst.",
+        "movedToTopic": "Bericht bewerkt en verplaatst naar {topic}."
       },
       "gifBadge": "GIF",
       "removeGif": "GIF verwijderen",

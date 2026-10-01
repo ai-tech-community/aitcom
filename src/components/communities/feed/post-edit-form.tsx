@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Film, ImagePlus, Loader2, TriangleAlert, Undo2 } from "lucide-react";
+import {
+  Film,
+  ImagePlus,
+  Link2,
+  Loader2,
+  TriangleAlert,
+  Undo2,
+} from "lucide-react";
+import { firstLink } from "@/lib/links";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +21,8 @@ import { MediaPreview } from "./media-preview";
 import { FeedImageUploadError, uploadFeedImage } from "./upload-feed-image";
 import { DraftNotice } from "./editor/draft-notice";
 import { EmojiPickerButton } from "./editor/emoji-picker-button";
+import { FormatButtons } from "./editor/format-buttons";
+import { TopicSelect } from "./editor/topic-select";
 import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
 import type { FeedGifView } from "./feed-gif";
 import { MAX_PICTURES, PictureAttachments } from "./editor/picture-attachments";
@@ -54,6 +64,13 @@ export type EditablePost = {
   visibility?: VideoVisibility | null;
   video?: { thumbnailUrl: string | null } | null;
   gif?: FeedGifView | null;
+  topicSlug?: string | null;
+  linkPreview?: {
+    url?: string | null;
+    title?: string | null;
+    siteName?: string | null;
+    hidden?: boolean | null;
+  } | null;
   /** Set while a moderator reviews a report: the media stays as it is. */
   hiddenAt?: string | null;
 };
@@ -95,6 +112,22 @@ export function PostEditForm({
     restore: text.setValue,
   });
   const [media, setMedia] = useState<MediaEdit>({ kind: "keep" });
+  const initialTopic = post.topicSlug ?? "general";
+  const [topicSlug, setTopicSlug] = useState(initialTopic);
+  const { data: topics } = api.topics.list.useQuery({ communitySlug });
+  const initiallyHidden = Boolean(post.linkPreview?.hidden);
+  const [previewHidden, setPreviewHidden] = useState(initiallyHidden);
+  // The stored preview belongs to one link: offer to hide it only while
+  // the text being edited still leads with that link, and only when the
+  // post will carry no media (the card shows a preview only then).
+  const previewLink = firstLink(text.value);
+  /** Topic and preview changes, sent only when the member made them. */
+  const details = {
+    ...(topicSlug === initialTopic ? {} : { topicSlug }),
+    ...(previewHidden === initiallyHidden
+      ? {}
+      : { linkPreviewHidden: previewHidden }),
+  };
   const [isUploading, setIsUploading] = useState(false);
   const previews = useRef(new Set<string>());
   const imageInput = useRef<HTMLInputElement>(null);
@@ -126,12 +159,19 @@ export function PostEditForm({
     };
   }, []);
 
+  const movedTo =
+    topicSlug === initialTopic
+      ? null
+      : (topics?.find((topic) => topic.slug === topicSlug)?.label ?? topicSlug);
+
   const editPost = api.feed.editPost.useMutation({
     onSuccess: () => {
       // The reels strip is not part of the feed the card refreshes, and a
       // removed video's files are already gone.
       void utils.feed.getReels.invalidate({ communitySlug });
-      toast.success(t("postEdited"));
+      toast.success(
+        movedTo ? te("movedToTopic", { topic: movedTo }) : t("postEdited"),
+      );
       draft.clear();
       onSaved();
     },
@@ -162,6 +202,8 @@ export function PostEditForm({
   const showsOldVideo = media.kind === "keep" && Boolean(post.video);
   const showsOldGif = media.kind === "keep" && hadGif;
   const hasMedia = media.kind === "keep" ? hadMedia : media.kind !== "none";
+  const hasPreview =
+    !hasMedia && previewLink !== null && post.linkPreview?.url === previewLink;
   const losesPublic =
     audience === "public" &&
     Boolean(post.video) &&
@@ -252,12 +294,14 @@ export function PostEditForm({
         caption,
         visibility: audience,
         replacePostId: post.id,
+        details,
       });
-      if (ok) {
-        toast.success(t("postEdited"));
-        draft.clear();
-        onSaved();
-      }
+      if (!ok) return;
+      toast.success(
+        movedTo ? te("movedToTopic", { topic: movedTo }) : t("postEdited"),
+      );
+      draft.clear();
+      onSaved();
       return;
     }
     let change:
@@ -302,6 +346,7 @@ export function PostEditForm({
       communitySlug,
       content: caption,
       media: change,
+      ...details,
     });
   };
 
@@ -424,6 +469,27 @@ export function PostEditForm({
                 {t("mediaLockedWhileReviewed")}
               </p>
             ) : null}
+            {hasPreview ? (
+              <div className="border-border flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                <Link2 aria-hidden="true" className="size-4 shrink-0" />
+                <span role="status" className="min-w-0 flex-1 truncate">
+                  {previewHidden
+                    ? te("previewHidden")
+                    : (post.linkPreview?.title ??
+                      post.linkPreview?.siteName ??
+                      previewLink)}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => setPreviewHidden(!previewHidden)}
+                >
+                  {previewHidden ? te("showPreview") : te("removePreview")}
+                </Button>
+              </div>
+            ) : null}
             {/* Always mounted, so screen readers hear the warning when it
                 appears (WCAG 4.1.3). Above Save, so it is read first. */}
             <div role="status">
@@ -485,6 +551,13 @@ export function PostEditForm({
               </>
             )}
             <EmojiPickerButton onPick={text.insert} disabled={busy} />
+            <FormatButtons text={text} disabled={busy} />
+            <TopicSelect
+              communitySlug={communitySlug}
+              value={topicSlug}
+              onChange={setTopicSlug}
+              disabled={busy}
+            />
           </>
         }
         actions={

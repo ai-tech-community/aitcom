@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import { FeedComments } from "./feed-comments";
 import { FeedVideoPlayer, type FeedVideo } from "./feed-video-player";
 import { LinkPreviewCard } from "./link-preview-card";
-import { LinkifiedText } from "./linkified-text";
+import { FormattedPostText } from "./formatted-post-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
 import { FeedGif, type FeedGifView } from "./feed-gif";
@@ -54,6 +54,8 @@ interface FeedPost {
     description?: string | null;
     imageUrl?: string | null;
     siteName?: string | null;
+    /** The author took the preview off; the link stays in the text. */
+    hidden?: boolean | null;
   } | null;
   /** Set when the post was reported; only its author and moderators see it. */
   hiddenAt?: string | null;
@@ -89,6 +91,7 @@ export function FeedPostCard({
   const { requireAuth } = useRequireAuth();
   const [isEditing, setIsEditing] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   // Opening the editor from the menu: its text box takes focus, not the
   // menu button the menu would otherwise return focus to.
   const openingEditor = useRef(false);
@@ -149,7 +152,10 @@ export function FeedPostCard({
     link && post.linkPreview?.url === link ? post.linkPreview : null;
 
   return (
-    <div className="border-border space-y-3 rounded-lg border p-4">
+    <div
+      ref={cardRef}
+      className="border-border space-y-3 rounded-lg border p-4"
+    >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
@@ -257,7 +263,14 @@ export function FeedPostCard({
           onSaved={() => {
             setIsEditing(false);
             menuButton.current?.focus();
-            void onRefresh();
+            // A topic change can take the post out of the filtered feed:
+            // then keep keyboard focus in the list it was in.
+            const list = cardRef.current?.parentElement ?? null;
+            void onRefresh().then(() => {
+              if (cardRef.current?.isConnected || !list?.isConnected) return;
+              list.setAttribute("tabindex", "-1");
+              list.focus();
+            });
           }}
           onCancel={() => {
             setIsEditing(false);
@@ -265,9 +278,7 @@ export function FeedPostCard({
           }}
         />
       ) : (
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
-          <LinkifiedText text={post.content} />
-        </p>
+        <FormattedPostText text={post.content} />
       )}
 
       {/* Media (the edit form shows its own while editing) */}
@@ -280,7 +291,7 @@ export function FeedPostCard({
       ) : post.imageUrl ? (
         // A legacy post shows its one picture by URL, with no description.
         <FeedImageGallery images={[{ url: post.imageUrl, alt: "" }]} />
-      ) : link && !isEditing ? (
+      ) : link && !isEditing && !post.linkPreview?.hidden ? (
         <LinkPreviewCard href={link} preview={linkPreview} />
       ) : null}
 

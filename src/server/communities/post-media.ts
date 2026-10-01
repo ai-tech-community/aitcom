@@ -164,6 +164,35 @@ export async function writePostMedia(
   }
 }
 
+/** Changes an edit makes besides text and media. */
+export type PostDetailsChange = {
+  /** Already checked against the community (`resolvePostTopic`). */
+  topicSlug?: string;
+  /** Take the link preview off the post, or put it back. */
+  linkPreviewHidden?: boolean;
+};
+
+/** The fields a details change writes onto `post`. */
+export function postDetailsUpdate(
+  post: FeedPost,
+  details: PostDetailsChange,
+): Partial<FeedPost> {
+  return {
+    ...(details.topicSlug === undefined
+      ? {}
+      : { topicSlug: details.topicSlug }),
+    // Only a post with a previewed link has a preview to hide.
+    ...(details.linkPreviewHidden === undefined || !post.linkPreview?.url
+      ? {}
+      : {
+          linkPreview: {
+            ...post.linkPreview,
+            hidden: details.linkPreviewHidden,
+          },
+        }),
+  };
+}
+
 /** What a post's media becomes, other than a new video. */
 export type PostMediaChange =
   | { kind: "none" }
@@ -188,6 +217,7 @@ export async function setPostMedia(
     communityId: string;
     content: string;
     media: PostMediaChange;
+    details?: PostDetailsChange;
   },
 ): Promise<void> {
   const post = await loadPostForMediaEdit(deps.payload, input);
@@ -208,6 +238,7 @@ export async function setPostMedia(
     post,
     {
       content: input.content,
+      ...postDetailsUpdate(post, input.details ?? {}),
       images: images.map((image) => image.id),
       // A legacy picture (URL-only, or in the deprecated single field) has
       // no list entry for the hook to clear.

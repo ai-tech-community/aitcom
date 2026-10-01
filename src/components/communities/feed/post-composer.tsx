@@ -12,6 +12,8 @@ import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
 import { DraftNotice } from "./editor/draft-notice";
 import { EmojiPickerButton } from "./editor/emoji-picker-button";
+import { FormatButtons } from "./editor/format-buttons";
+import { TopicSelect } from "./editor/topic-select";
 import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
 import { PictureAttachments } from "./editor/picture-attachments";
 import { PostEditor } from "./editor/post-editor";
@@ -60,8 +62,6 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
     videoPost.state.step === "uploading" ||
     videoPost.state.step === "posting";
   const content = text.value;
-
-  const { data: topics } = api.topics.list.useQuery({ communitySlug: slug });
 
   const posted = () => {
     toast.success(t("postCreated"));
@@ -262,22 +262,12 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
               />
             )}
             <EmojiPickerButton onPick={text.insert} />
-            {/* One topic is no choice; the select appears once there are two. */}
-            {topics && topics.length > 1 ? (
-              <select
-                value={topicSlug}
-                onChange={(e) => setTopicSlug(e.target.value)}
-                className="border-border bg-background ml-1 h-8 max-w-44 truncate rounded-md border px-2 text-sm"
-                aria-label={t("selectTopic")}
-              >
-                {topics.map((tp) => (
-                  <option key={tp.id} value={tp.slug}>
-                    {tp.emoji ? `${tp.emoji} ` : ""}
-                    {tp.label}
-                  </option>
-                ))}
-              </select>
-            ) : null}
+            <FormatButtons text={text} />
+            <TopicSelect
+              communitySlug={slug}
+              value={topicSlug}
+              onChange={setTopicSlug}
+            />
           </>
         }
         actions={

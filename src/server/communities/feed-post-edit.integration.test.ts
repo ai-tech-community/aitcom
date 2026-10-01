@@ -479,4 +479,50 @@ describe.skipIf(!RUN_DB)("feed.editPost media [DB integration]", () => {
       log.mockRestore();
     }
   });
+
+  it("moves a post to another topic and hides its link preview", async () => {
+    const { up } =
+      await import("@/migrations/20261001d_feed_post_link_preview_hidden");
+    await up({ db: m.db } as never);
+    const payload = await m.getPayloadClient();
+    const topic = await payload.create({
+      collection: "community-topics",
+      data: { label: "Jobs", slug: "jobs", communityId: fx.communityId },
+    });
+    try {
+      // The preview fetch fails here (no such host); the URL is still kept.
+      await author().feed.editPost({
+        postId: fx.postId,
+        communitySlug: fx.slug,
+        content: "Hiring, see https://jobs.invalid/role",
+        topicSlug: "jobs",
+      });
+      await author().feed.editPost({
+        postId: fx.postId,
+        communitySlug: fx.slug,
+        content: "Hiring, see https://jobs.invalid/role",
+        linkPreviewHidden: true,
+      });
+      const saved = await payload.findByID({
+        collection: "feed-posts",
+        id: fx.postId,
+        depth: 0,
+      });
+      expect(saved.topicSlug).toBe("jobs");
+      expect(saved.linkPreview).toMatchObject({
+        url: "https://jobs.invalid/role",
+        hidden: true,
+      });
+      await expect(
+        author().feed.editPost({
+          postId: fx.postId,
+          communitySlug: fx.slug,
+          content: "Elsewhere",
+          topicSlug: "not-here",
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    } finally {
+      await payload.delete({ collection: "community-topics", id: topic.id });
+    }
+  }, 30_000);
 });

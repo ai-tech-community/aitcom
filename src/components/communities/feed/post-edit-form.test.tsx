@@ -55,6 +55,16 @@ vi.mock("sonner", () => ({ toast: { success: m.toast, error: m.toast } }));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({ feed: { getReels: { invalidate: m.reels } } }),
+    topics: {
+      list: {
+        useQuery: () => ({
+          data: [
+            { id: 1, slug: "general", label: "General", emoji: null },
+            { id: 2, slug: "jobs", label: "Jobs", emoji: null },
+          ],
+        }),
+      },
+    },
     feed: {
       editPost: {
         useMutation: (opts: { onSuccess: () => void }) => ({
@@ -286,6 +296,7 @@ describe("PostEditForm", () => {
       caption: "Hello",
       visibility: "public",
       replacePostId: 5,
+      details: {},
     });
     expect(m.editPost).not.toHaveBeenCalled();
     expect(onSaved).toHaveBeenCalled();
@@ -417,5 +428,83 @@ describe("PostEditForm", () => {
         },
       }),
     );
+  });
+
+  it("moves the post to another topic, sending only what changed", () => {
+    renderForm({ ...textPost, topicSlug: "general" });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(m.editPost).toHaveBeenLastCalledWith(
+      expect.not.objectContaining({ topicSlug: expect.anything() }),
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: "selectTopic" }), {
+      target: { value: "jobs" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(m.editPost).toHaveBeenLastCalledWith(
+      expect.objectContaining({ topicSlug: "jobs" }),
+    );
+  });
+
+  it("takes a wrong link preview off the post, and can put it back", () => {
+    const linked: EditablePost = {
+      ...textPost,
+      content: "Read https://example.com/post",
+      linkPreview: {
+        url: "https://example.com/post",
+        title: "Not what I meant",
+        hidden: false,
+      },
+    };
+    renderForm(linked);
+    expect(screen.getByText("Not what I meant")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "removePreview" }));
+    expect(screen.getByText("previewHidden")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(m.editPost).toHaveBeenLastCalledWith(
+      expect.objectContaining({ linkPreviewHidden: true }),
+    );
+  });
+
+  it("makes the selection bold from the toolbar", async () => {
+    renderForm({ ...textPost, content: "Hello world" });
+    const field = screen.getByRole("textbox", { name: "editLabel" });
+    (field as HTMLTextAreaElement).setSelectionRange(6, 11);
+    fireEvent.click(screen.getByRole("button", { name: "bold" }));
+    expect(field).toHaveValue("Hello **world**");
+  });
+
+  it("replaces a video and moves the post in one save", async () => {
+    const { container } = renderForm({
+      ...publicVideoPost,
+      topicSlug: "general",
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "selectTopic" }), {
+      target: { value: "jobs" },
+    });
+    pick(container, "video/*", new File(["v"], "clip.mov"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+    });
+    expect(m.post).toHaveBeenCalledWith(
+      expect.objectContaining({ details: { topicSlug: "jobs" } }),
+    );
+    expect(m.editPost).not.toHaveBeenCalled();
+  });
+
+  it("offers to hide a preview only while the text still leads with its link, and the post has no media", () => {
+    const linked: EditablePost = {
+      ...textPost,
+      content: "Read https://example.com/post",
+      linkPreview: { url: "https://example.com/post", title: "A page" },
+    };
+    const { unmount } = renderForm(linked);
+    expect(screen.getByRole("button", { name: "removePreview" })).toBeVisible();
+    fireEvent.change(screen.getByRole("textbox", { name: "editLabel" }), {
+      target: { value: "Read https://example.com/other" },
+    });
+    expect(screen.queryByRole("button", { name: "removePreview" })).toBeNull();
+    unmount();
+    renderForm({ ...linked, imageUrl: "https://bucket.s3.test/a.jpg" });
+    expect(screen.queryByRole("button", { name: "removePreview" })).toBeNull();
   });
 });
