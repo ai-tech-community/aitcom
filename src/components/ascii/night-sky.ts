@@ -61,3 +61,15 @@ export function placeStars({
   }
   return stars;
 }
+
+/** The first drawn row of each column (`rows` when the column is empty). */
+export function skylineOf(
+  cols: number,
+  rows: number,
+  isBlank: (x: number, y: number) => boolean,
+): number[] {
+  return Array.from({ length: cols }, (_, x) => {
+    for (let y = 0; y < rows; y++) if (!isBlank(x, y)) return y;
+    return rows;
+  });
+}

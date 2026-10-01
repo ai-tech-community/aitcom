@@ -76,6 +76,16 @@ describe("squareRooms", () => {
     expect(out.quiet.map((r) => r.spaceId)).toEqual(["big", "small"]);
   });
 
+  it("names every talking community, beyond the capped list", () => {
+    const live = Array.from({ length: 12 }, (_, i) =>
+      row(`r${i}`, { communitySlug: `c${i % 10}` }),
+    );
+    const out = squareRooms(live, []);
+    expect(out.talking).toHaveLength(8);
+    expect(out.talkingCommunities).toHaveLength(10);
+    expect(out.talkingCommunities).toContain("c9");
+  });
+
   it("caps the quiet list", () => {
     const rooms = Array.from({ length: 12 }, (_, i) => quiet(`r${i}`));
     expect(squareRooms([], rooms).quiet).toHaveLength(MAX_QUIET_ROOMS);

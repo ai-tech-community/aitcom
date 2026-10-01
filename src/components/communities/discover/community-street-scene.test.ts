@@ -248,14 +248,19 @@ describe("communityStreetFrame", () => {
 
   it("puts scaffolding only around new houses, without covering them", () => {
     const plain = communityStreetFrame(STREET, 120, 24);
-    expect(count(plain, "scenery", "==")).toBe(0);
+    expect(count(plain, "far", "+")).toBe(0);
     const fresh = communityStreetFrame(
       STREET.map((h, i) => ({ ...h, isNew: i === 0 })),
       120,
       24,
     );
-    expect(count(fresh, "scenery", "==")).toBeGreaterThan(0);
+    // Light poles with caps and planks, around the house…
+    expect(count(fresh, "far", "+")).toBe(2);
+    expect(count(fresh, "far", "=")).toBeGreaterThan(0);
+    // …never across its front: the house's own lines carry no plank.
+    expect(fresh.scenery.join("").includes("=")).toBe(false);
     expect(count(fresh, "scenery", ".-.")).toBe(STREET.length);
+    expect(fresh.glow).toEqual(communityStreetFrame(STREET, 120, 24).glow);
   });
 
   it("lets stars out only at night, and only into empty sky", () => {

@@ -50,6 +50,11 @@ export type PublicLiveRoom = Omit<LiveRoomRow, "lastMessageAt"> & {
 
 export type SquareRooms = {
   talking: PublicLiveRoom[];
+  /**
+   * Every community with a talking room — from all rooms, not the capped
+   * `talking` list — so the street's bubbles never drop one.
+   */
+  talkingCommunities: string[];
   /** Public rooms nobody wrote in during the window: a door to knock on. */
   quiet: QuietRoomRow[];
 };
@@ -90,6 +95,11 @@ export function squareRooms(
   const talking = new Set(talkingRoomIds(live));
   return {
     talking: rankLiveRooms(live),
+    talkingCommunities: [
+      ...new Set(
+        live.filter((r) => talking.has(r.spaceId)).map((r) => r.communitySlug),
+      ),
+    ].sort(),
     quiet: quiet
       .filter((r) => !talking.has(r.spaceId))
       .slice(0, MAX_QUIET_ROOMS)

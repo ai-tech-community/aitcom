@@ -41,7 +41,7 @@ import {
   textCells,
   textWidth,
 } from "@/components/ascii/cells";
-import { placeStars } from "@/components/ascii/night-sky";
+import { placeStars, skylineOf } from "@/components/ascii/night-sky";
 import { rand } from "@/components/ascii/seeded";
 import { TREE } from "@/components/ascii/street-props";
 import {
@@ -938,10 +938,7 @@ function planNight(
 
   // Skyline: the first drawn row per column. Stars stay well above it.
   const { cols, rows } = base;
-  const skyline = Array.from({ length: cols }, (_, x) => {
-    for (let y = 0; y < rows; y++) if (!base.isBlank(x, y)) return y;
-    return rows;
-  });
+  const skyline = skylineOf(cols, rows, (x, y) => base.isBlank(x, y));
   for (const star of placeStars({
     cols,
     rows,

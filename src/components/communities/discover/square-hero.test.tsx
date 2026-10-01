@@ -38,7 +38,8 @@ vi.mock("@/hooks/use-media-query", () => ({ useMediaQuery: () => false }));
 vi.mock("./square-rooms", () => ({
   useSquareRooms: () => ({
     data: {
-      talking: state.talkingIn.map((communitySlug) => ({ communitySlug })),
+      talking: [],
+      talkingCommunities: state.talkingIn,
       quiet: [],
     },
   }),
@@ -78,8 +79,8 @@ vi.mock("@/components/ascii/ascii-scene", () => ({
     frame: (t: number, c: number, r: number) => Record<string, string[]>;
     onGridChange?: (g: { cols: number; rows: number }) => void;
   }) => {
-    useEffect(() => onGridChange?.({ cols: 120, rows: 20 }), [onGridChange]);
-    const f = frame(1, 120, 20);
+    useEffect(() => onGridChange?.({ cols: 120, rows: 30 }), [onGridChange]);
+    const f = frame(1, 120, 30);
     return (
       <>
         <pre data-testid="glow">{f.glow!.join("\n")}</pre>
@@ -147,7 +148,7 @@ describe("SquareHero", () => {
       "href",
       "/communities/b",
     );
-    expect(screen.getByText("squareHint")).toBeInTheDocument();
+    expect(screen.getByText(/legendWindows/)).toBeInTheDocument();
     fireEvent.pointerEnter(screen.getByTestId("street-house-b"));
     expect(screen.getByText("Beta")).toBeInTheDocument();
     expect(screen.getByText('activeRecently:{"count":3}')).toBeInTheDocument();
@@ -172,7 +173,7 @@ describe("SquareHero", () => {
     // …leaving the whole street area lets it go.
     fireEvent.pointerLeave(container.querySelector("section")!);
     expect(screen.queryByRole("button", { name: "join b" })).toBeNull();
-    expect(screen.getByText("squareHint")).toBeInTheDocument();
+    expect(screen.getByText(/legendWindows/)).toBeInTheDocument();
   });
 
   it("puts an empty lot at the end of the street that starts a community", () => {
@@ -187,7 +188,7 @@ describe("SquareHero", () => {
     state.items = [];
     const { rerender } = render(<SquareHero headline={HEADLINE} />);
     expect(screen.getByTestId("street-lot")).toBeInTheDocument();
-    expect(screen.queryByText("squareHint")).toBeNull();
+    expect(screen.queryByText(/legendWindows/)).toBeNull();
     state.isError = true;
     rerender(<SquareHero headline={HEADLINE} />);
     expect(screen.queryByTestId("street-house-a")).toBeNull();
@@ -244,5 +245,18 @@ describe("SquareHero", () => {
     render(<SquareHero headline={HEADLINE} />);
     expect(screen.getByTestId("people").textContent).toContain("--v--");
     expect(screen.getByTestId("glow").textContent).toMatch(/[+']/);
+  });
+
+  it("lists only the signs that are on the street, and says the peek's in words", () => {
+    state.items = [item("a", "Alpha", { isNew: true }), item("b", "Beta")];
+    state.talkingIn = ["b"];
+    render(<SquareHero headline={HEADLINE} />);
+    const legend = screen.getByText(/legendWindows/).textContent;
+    expect(legend).toContain("legendBubble");
+    expect(legend).toContain("legendScaffold");
+    expect(legend).not.toContain("legendFlag");
+    expect(legend).not.toContain("legendNight");
+    fireEvent.pointerEnter(screen.getByTestId("street-house-b"));
+    expect(screen.getByText("talkedToday")).toBeInTheDocument();
   });
 });

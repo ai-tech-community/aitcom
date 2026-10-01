@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -41,9 +41,14 @@ export function CommunitiesDirectory() {
   // A guest who pressed Join comes back from sign-in with ?join=.
   useJoinDeepLink();
   const rooms = useSquareRooms();
-  // The panel takes a column only when there are rooms to show.
-  const hasRooms =
+  // The panel takes a column only when there are rooms to show. Once it
+  // is there it stays for the visit, so a minute's refresh that empties it
+  // never yanks the layout from under the reader.
+  const roomsNow =
     (rooms.data?.talking.length ?? 0) + (rooms.data?.quiet.length ?? 0) > 0;
+  const hadRooms = useRef(false);
+  if (roomsNow) hadRooms.current = true;
+  const hasRooms = roomsNow || hadRooms.current;
 
   const params = useMemo(
     () => parseDirectoryParams(searchParams),
