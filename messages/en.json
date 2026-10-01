@@ -2826,7 +2826,13 @@
         "removePreview": "Remove preview",
         "showPreview": "Show preview",
         "previewHidden": "Link preview removed. The link stays in your text.",
-        "movedToTopic": "Post edited and moved to {topic}."
+        "movedToTopic": "Post edited and moved to {topic}.",
+        "mentionList": "Members to mention",
+        "mentionCount": "{count, plural, one {# member} other {# members}} found. Arrow keys to choose, Enter or Tab to pick, Escape to close.",
+        "mentionActive": "{name}, {position} of {count}",
+        "mentionNone": "No members named “{query}”.",
+        "mentionFailed": "Members could not be loaded. Keep typing to try again.",
+        "mention": "Mention a member"
       },
       "gifBadge": "GIF",
       "removeGif": "Remove GIF",

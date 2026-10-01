@@ -5,6 +5,7 @@ import type { Gif, GiphyClient } from "@/server/giphy/giphy";
 import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
+import type { PostMention } from "@/lib/post-mentions";
 
 import {
   claimFeedImages,
@@ -216,6 +217,8 @@ export async function setPostMedia(
     userId: string;
     communityId: string;
     content: string;
+    /** New checked mentions (`resolveMentions`); the post's own stay. */
+    mentions?: PostMention[];
     media: PostMediaChange;
     details?: PostDetailsChange;
   },
@@ -238,6 +241,7 @@ export async function setPostMedia(
     post,
     {
       content: input.content,
+      ...(input.mentions ? { mentions: input.mentions } : {}),
       ...postDetailsUpdate(post, input.details ?? {}),
       images: images.map((image) => image.id),
       // A legacy picture (URL-only, or in the deprecated single field) has

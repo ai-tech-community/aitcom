@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
 const m = vi.hoisted(() => ({
+  mentionCandidates: vi.fn((_input: unknown, _opts: unknown) => ({
+    data: [] as { userId: string; name: string; image: string | null }[],
+    isFetched: true,
+    isError: false,
+  })),
   editPost: vi.fn(),
   editPending: false,
   reels: vi.fn(),
@@ -66,6 +71,10 @@ vi.mock("@/trpc/react", () => ({
       },
     },
     feed: {
+      mentionCandidates: {
+        useQuery: (input: { query: string }, opts: { enabled: boolean }) =>
+          m.mentionCandidates(input, opts),
+      },
       editPost: {
         useMutation: (opts: { onSuccess: () => void }) => ({
           mutate: (input: unknown) => {
@@ -169,6 +178,7 @@ describe("PostEditForm", () => {
       postId: 5,
       communitySlug: "mlops",
       content: "Hello again",
+      mentions: [],
       media: { kind: "keep" },
     });
     expect(m.reels).toHaveBeenCalledWith({ communitySlug: "mlops" });
@@ -294,6 +304,7 @@ describe("PostEditForm", () => {
     expect(m.post).toHaveBeenCalledWith({
       file: clip,
       caption: "Hello",
+      mentions: [],
       visibility: "public",
       replacePostId: 5,
       details: {},
@@ -355,6 +366,67 @@ describe("PostEditForm", () => {
     const { container } = renderForm();
     pick(container, "video/*", new File(["v"], "long.mov"));
     expect(screen.getByRole("button", { name: "save" })).toBeDisabled();
+  });
+
+  it("keeps the post's mentions, and Escape closes the member list before the form", () => {
+    m.mentionCandidates.mockImplementation(() => ({
+      data: [{ userId: "u-joe", name: "Joe", image: null }],
+      isFetched: true,
+      isError: false,
+    }));
+    const { onCancel } = renderForm({
+      ...textPost,
+      content: "Hi @Jane Doe",
+      mentions: [{ userId: "u-jane", name: "Jane Doe" }],
+    });
+    const box = screen.getByRole("textbox");
+    fireEvent.change(box, { target: { value: "Hi @Jane Doe and @J" } });
+    expect(screen.getByRole("listbox")).toBeVisible();
+    fireEvent.keyDown(box, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(onCancel).not.toHaveBeenCalled();
+
+    // A new "@" opens it again.
+    fireEvent.change(box, { target: { value: "Hi @Jane Doe and @" } });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.change(box, { target: { value: "Hi @Jane Doe, @" } });
+    fireEvent.keyDown(box, { key: "Tab" });
+    expect(box).toHaveValue("Hi @Jane Doe, @Joe ");
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(m.editPost).toHaveBeenCalledWith(
+      expect.objectContaining({ mentions: ["u-jane", "u-joe"] }),
+    );
+    m.mentionCandidates.mockImplementation(() => ({
+      data: [],
+      isFetched: true,
+      isError: false,
+    }));
+  });
+
+  it("does not offer members with the caret right after a finished mention", () => {
+    m.mentionCandidates.mockImplementation(() => ({
+      data: [{ userId: "u-jane", name: "Jane Doe", image: null }],
+      isFetched: true,
+      isError: false,
+    }));
+    renderForm({
+      ...textPost,
+      content: "Hi @Jane Doe",
+      mentions: [{ userId: "u-jane", name: "Jane Doe" }],
+    });
+    const box = screen.getByRole<HTMLTextAreaElement>("textbox");
+    box.setSelectionRange(12, 12);
+    fireEvent.select(box);
+    expect(screen.queryByRole("listbox")).toBeNull();
+    // Inside the name it is a search again.
+    box.setSelectionRange(8, 8);
+    fireEvent.select(box);
+    expect(screen.getByRole("option", { name: "Jane Doe" })).toBeVisible();
+    m.mentionCandidates.mockImplementation(() => ({
+      data: [],
+      isFetched: true,
+      isError: false,
+    }));
   });
 
   it("cancels with Escape", () => {

@@ -16,6 +16,7 @@ import { FormatButtons } from "./editor/format-buttons";
 import { TopicSelect } from "./editor/topic-select";
 import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
 import { PictureAttachments } from "./editor/picture-attachments";
+import { MentionButton, useMentionPicker } from "./editor/mention-picker";
 import { PostEditor } from "./editor/post-editor";
 import {
   SEND_SHORTCUTS,
@@ -39,12 +40,14 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
   const tv = useTranslations("communities.video");
   const utils = api.useUtils();
   const text = usePostText("");
+  const mentions = useMentionPicker({ text, communitySlug: slug });
   const draft = usePostDraft({
     userId,
     target: `new:${slug}`,
     base: "",
     text: text.value,
-    restore: text.setValue,
+    mentions: text.mentions,
+    restore: text.restore,
   });
   // A post carries pictures (up to 4), a video or a GIF, never two kinds.
   const pictures = usePictureUploads();
@@ -65,7 +68,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
 
   const posted = () => {
     toast.success(t("postCreated"));
-    text.setValue("");
+    text.restore("");
     draft.clear();
   };
 
@@ -122,6 +125,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
     const ok = await videoPost.post({
       file,
       caption: content.trim(),
+      mentions: text.mentionIds,
       visibility,
       topicSlug,
     });
@@ -150,6 +154,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
     createPost.mutate({
       communitySlug: slug,
       content: content.trim(),
+      mentions: text.mentionIds,
       images: pictures.count > 0 ? pictures.choices() : undefined,
       gifId: gif?.giphyId,
       topicSlug,
@@ -167,6 +172,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
     >
       <PostEditor
         text={text}
+        mentions={mentions}
         label={t("composePlaceholder")}
         placeholder={t("composePlaceholder")}
         onImageFiles={
@@ -262,6 +268,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
               />
             )}
             <EmojiPickerButton onPick={text.insert} />
+            <MentionButton text={text} />
             <FormatButtons text={text} />
             <TopicSelect
               communitySlug={slug}
@@ -296,7 +303,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
           ) : draft.restored ? (
             <DraftNotice
               onDiscard={() => {
-                text.setValue("");
+                text.restore("");
                 draft.clear();
               }}
             />

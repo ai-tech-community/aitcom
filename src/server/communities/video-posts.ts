@@ -19,6 +19,7 @@ import type {
   VideoStorage,
 } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
+import type { PostMention } from "@/lib/post-mentions";
 
 import {
   NO_GIF,
@@ -240,6 +241,8 @@ export async function finishVideoPost(
     communityId: string;
     uploadId: string;
     caption: string;
+    /** Checked mentions (`resolveMentions`). */
+    mentions?: PostMention[];
     topicSlug: string;
   } & UploadedVideo,
 ): Promise<{ id: number }> {
@@ -278,6 +281,7 @@ export async function finishVideoPost(
       collection: "feed-posts",
       data: {
         content: input.caption,
+        mentions: input.mentions ?? [],
         authorId: input.userId,
         authorName: input.authorName,
         communityId: input.communityId,
@@ -316,6 +320,8 @@ export async function replacePostVideo(
     postId: number;
     uploadId: string;
     caption: string;
+    /** New checked mentions (`resolveMentions`); the post's own stay. */
+    mentions?: PostMention[];
     /** Topic and preview changes made in the same edit. */
     details?: PostDetailsChange;
   } & UploadedVideo,
@@ -346,6 +352,7 @@ export async function replacePostVideo(
     post,
     {
       content: input.caption,
+      ...(input.mentions ? { mentions: input.mentions } : {}),
       ...postDetailsUpdate(post, input.details ?? {}),
       images: [],
       image: null,

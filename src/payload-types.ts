@@ -741,6 +741,15 @@ export interface FeedPost {
     height?: number | null;
     bytes?: number | null;
   };
+  mentions?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   /**
    * Preview of the first link in the content, read from that page when the post is saved.
    */
@@ -2048,6 +2057,7 @@ export interface FeedPostsSelect<T extends boolean = true> {
         height?: T;
         bytes?: T;
       };
+  mentions?: T;
   linkPreview?:
     | T
     | {

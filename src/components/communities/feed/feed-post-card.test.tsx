@@ -17,6 +17,13 @@ vi.mock("@/trpc/react", () => {
     },
   };
 });
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children, ...rest }: React.ComponentProps<"a">) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
+}));
 vi.mock("@/components/confirm-dialog", () => ({ useConfirm: () => vi.fn() }));
 vi.mock("@/components/auth/auth-required-dialog", () => ({
   useRequireAuth: () => ({ requireAuth: (fn: () => void) => fn() }),

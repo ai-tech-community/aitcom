@@ -11,6 +11,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { firstLink } from "@/lib/links";
+import type { PostMention } from "@/lib/post-mentions";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { TopicSelect } from "./editor/topic-select";
 import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
 import type { FeedGifView } from "./feed-gif";
 import { MAX_PICTURES, PictureAttachments } from "./editor/picture-attachments";
+import { MentionButton, useMentionPicker } from "./editor/mention-picker";
 import { PostEditor } from "./editor/post-editor";
 import {
   SEND_SHORTCUTS,
@@ -73,6 +75,8 @@ export type EditablePost = {
   } | null;
   /** Set while a moderator reviews a report: the media stays as it is. */
   hiddenAt?: string | null;
+  /** Whom the post mentions now. */
+  mentions?: PostMention[] | null;
 };
 
 /**
@@ -102,14 +106,16 @@ export function PostEditForm({
   const tv = useTranslations("communities.video");
   const te = useTranslations("communities.feed.editor");
   const utils = api.useUtils();
-  const text = usePostText(post.content);
+  const text = usePostText(post.content, post.mentions ?? []);
+  const mentions = useMentionPicker({ text, communitySlug });
   const content = text.value;
   const draft = usePostDraft({
     userId,
     target: `edit:${post.id}`,
     base: post.content,
     text: text.value,
-    restore: text.setValue,
+    mentions: text.mentions,
+    restore: text.restore,
   });
   const [media, setMedia] = useState<MediaEdit>({ kind: "keep" });
   const initialTopic = post.topicSlug ?? "general";
@@ -292,6 +298,7 @@ export function PostEditForm({
       const ok = await videoPost.post({
         file: media.file,
         caption,
+        mentions: text.mentionIds,
         visibility: audience,
         replacePostId: post.id,
         details,
@@ -345,6 +352,7 @@ export function PostEditForm({
       postId: post.id,
       communitySlug,
       content: caption,
+      mentions: text.mentionIds,
       media: change,
       ...details,
     });
@@ -372,6 +380,7 @@ export function PostEditForm({
     >
       <PostEditor
         text={text}
+        mentions={mentions}
         label={t("editLabel")}
         autoFocus
         onImageFiles={
@@ -551,6 +560,7 @@ export function PostEditForm({
               </>
             )}
             <EmojiPickerButton onPick={text.insert} disabled={busy} />
+            <MentionButton text={text} disabled={busy} />
             <FormatButtons text={text} disabled={busy} />
             <TopicSelect
               communitySlug={communitySlug}
@@ -593,7 +603,7 @@ export function PostEditForm({
           draft.restored ? (
             <DraftNotice
               onDiscard={() => {
-                text.setValue(post.content);
+                text.restore(post.content, post.mentions ?? []);
                 draft.clear();
               }}
             />

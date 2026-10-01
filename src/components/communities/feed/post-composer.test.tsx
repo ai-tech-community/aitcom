@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
@@ -13,6 +14,11 @@ import { PostComposer } from "./post-composer";
 import type { VideoPostState } from "./use-video-post";
 
 const m = vi.hoisted(() => ({
+  mentionCandidates: vi.fn((_input: unknown, _opts: unknown) => ({
+    data: [] as { userId: string; name: string; image: string | null }[],
+    isFetched: true,
+    isError: false,
+  })),
   videoState: { step: "idle" } as VideoPostState,
   post: vi.fn(),
   reset: vi.fn(),
@@ -86,6 +92,10 @@ vi.mock("@/trpc/react", () => ({
     }),
     topics: { list: { useQuery: () => ({ data: undefined }) } },
     feed: {
+      mentionCandidates: {
+        useQuery: (input: { query: string }, opts: { enabled: boolean }) =>
+          m.mentionCandidates(input, opts),
+      },
       createPost: {
         useMutation: () => ({ mutate: m.createPost, isPending: false }),
       },
@@ -159,6 +169,7 @@ describe("PostComposer video", () => {
     expect(m.post).toHaveBeenCalledWith({
       file: clip,
       caption: "Our trip",
+      mentions: [],
       visibility: "public",
       topicSlug: "general",
     });
@@ -232,6 +243,7 @@ describe("PostComposer video", () => {
     expect(m.post).toHaveBeenLastCalledWith({
       file: clip,
       caption: "Our trip",
+      mentions: [],
       visibility: "public",
       topicSlug: "general",
     });
@@ -480,5 +492,128 @@ describe("PostComposer pictures", () => {
     expect(
       screen.getByRole("button", { name: "Remove picture 1" }),
     ).toBeVisible();
+  });
+});
+
+describe("PostComposer mentions", () => {
+  const members = [
+    { userId: "u-jane", name: "Jane Doe", image: null },
+    { userId: "u-joe", name: "Joe", image: null },
+  ];
+  beforeEach(() => {
+    m.mentionCandidates.mockImplementation(() => ({
+      data: members,
+      isFetched: true,
+      isError: false,
+    }));
+  });
+
+  it("offers members after @, writes the picked one and posts whom it mentions", () => {
+    renderComposer();
+    const box = screen.getByRole("textbox");
+    expect(screen.queryByRole("listbox")).toBeNull();
+
+    fireEvent.change(box, { target: { value: "Thanks @J" } });
+    const list = screen.getByRole("listbox", { name: "Members to mention" });
+    const options = within(list).getAllByRole("option");
+    // The text area keeps the focus and points at the active member.
+    expect(box).toHaveAttribute("aria-controls", list.id);
+    expect(box).toHaveAttribute("aria-activedescendant", options[0]!.id);
+    expect(m.mentionCandidates).toHaveBeenLastCalledWith(
+      expect.objectContaining({ communitySlug: "mlops" }),
+      expect.objectContaining({ enabled: true }),
+    );
+
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    expect(options[1]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    expect(options[0]).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(box, { key: "Enter" });
+
+    expect(box).toHaveValue("Thanks @Jane Doe ");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(box).not.toHaveAttribute("aria-activedescendant");
+
+    fireEvent.click(postButton());
+    expect(m.createPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: "Thanks @Jane Doe",
+        mentions: ["u-jane"],
+      }),
+    );
+  });
+
+  it("picks with a click, and leaves out a mention whose name was deleted", () => {
+    renderComposer();
+    const box = screen.getByRole("textbox");
+    fireEvent.change(box, { target: { value: "@" } });
+    fireEvent.click(screen.getByRole("option", { name: "Joe" }));
+    expect(box).toHaveValue("@Joe ");
+
+    fireEvent.change(box, { target: { value: "Never mind" } });
+    fireEvent.click(postButton());
+    expect(m.createPost).toHaveBeenCalledWith(
+      expect.objectContaining({ content: "Never mind", mentions: [] }),
+    );
+  });
+
+  it("closes the list with Escape until a new @, and says when no one matches", async () => {
+    renderComposer();
+    const box = screen.getByRole("textbox");
+    fireEvent.change(box, { target: { value: "Hi @Jo" } });
+    expect(screen.getByRole("listbox")).toBeVisible();
+    fireEvent.keyDown(box, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.change(box, { target: { value: "Hi @Joe" } });
+    expect(screen.queryByRole("listbox")).toBeNull();
+
+    m.mentionCandidates.mockImplementation(() => ({
+      data: [],
+      isFetched: true,
+      isError: false,
+    }));
+    fireEvent.change(box, { target: { value: "Hi @Joe and @Zed" } });
+    expect(
+      (await screen.findAllByText("No members named “Zed”."))[0],
+    ).toBeVisible();
+    expect(screen.queryByRole("listbox")).toBeNull();
+    // Words after an "@" that match no one: no list, no message.
+    fireEvent.change(box, { target: { value: "Hi @Joe and @Zed is here" } });
+    await waitFor(() =>
+      expect(screen.queryAllByText(/No members named/)).toHaveLength(0),
+    );
+  });
+
+  it("never offers a member the typed name no longer matches", () => {
+    renderComposer();
+    const box = screen.getByRole("textbox");
+    // The results for "J" are still on screen while "Jane can" loads.
+    fireEvent.change(box, { target: { value: "@Jane can" } });
+    expect(screen.queryByRole("option")).toBeNull();
+    const enter = fireEvent.keyDown(box, { key: "Enter" });
+    // Not taken by the list: Enter stays a new line.
+    expect(enter).toBe(true);
+    expect(box).toHaveValue("@Jane can");
+  });
+
+  it("names the highlighted member for screen readers", () => {
+    renderComposer();
+    const box = screen.getByRole("textbox");
+    fireEvent.change(box, { target: { value: "@" } });
+    expect(
+      screen.getByText(
+        "2 members found. Arrow keys to choose, Enter or Tab to pick, Escape to close.",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    expect(screen.getByText("Joe, 2 of 2")).toBeInTheDocument();
+  });
+
+  it("types an @ from the toolbar button", () => {
+    renderComposer();
+    const box = screen.getByRole("textbox");
+    fireEvent.change(box, { target: { value: "Hello" } });
+    fireEvent.click(screen.getByRole("button", { name: "Mention a member" }));
+    expect(box).toHaveValue("Hello @");
   });
 });

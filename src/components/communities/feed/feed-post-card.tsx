@@ -23,6 +23,7 @@ import { FeedComments } from "./feed-comments";
 import { FeedVideoPlayer, type FeedVideo } from "./feed-video-player";
 import { LinkPreviewCard } from "./link-preview-card";
 import { FormattedPostText } from "./formatted-post-text";
+import type { ShownMention } from "./linkified-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
 import { FeedGif, type FeedGifView } from "./feed-gif";
@@ -62,6 +63,8 @@ interface FeedPost {
   visibility?: "community" | "public" | null;
   gif?: FeedGifView | null;
   images?: (GalleryImage & { id: number })[] | null;
+  /** Whom the post mentions, and whether each profile is open. */
+  mentions?: ShownMention[] | null;
 }
 
 interface FeedPostCardProps {
@@ -278,7 +281,7 @@ export function FeedPostCard({
           }}
         />
       ) : (
-        <FormattedPostText text={post.content} />
+        <FormattedPostText text={post.content} mentions={post.mentions ?? []} />
       )}
 
       {/* Media (the edit form shows its own while editing) */}

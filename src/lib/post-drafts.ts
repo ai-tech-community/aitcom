@@ -3,9 +3,16 @@
  * carry the member's id, so on a shared computer one member's draft never
  * shows up for another; signing out clears them all.
  */
+import { readMentions, type PostMention } from "./post-mentions";
+
 const PREFIX = "aitcom:post-draft:";
 
-export type StoredDraft = { text: string; base: string };
+export type StoredDraft = {
+  text: string;
+  base: string;
+  /** Whom the text mentions (members picked from the list). */
+  mentions?: PostMention[];
+};
 
 /** Where one member's draft for one post (or new post) lives. */
 export function postDraftKey(userId: string, target: string): string {
@@ -16,9 +23,15 @@ export function readPostDraft(key: string): StoredDraft | null {
   try {
     const raw = window.localStorage.getItem(key);
     if (!raw) return null;
-    const draft = JSON.parse(raw) as Partial<StoredDraft>;
+    const draft = JSON.parse(raw) as Partial<
+      Record<keyof StoredDraft, unknown>
+    >;
     return typeof draft.text === "string" && typeof draft.base === "string"
-      ? { text: draft.text, base: draft.base }
+      ? {
+          text: draft.text,
+          base: draft.base,
+          mentions: readMentions(draft.mentions),
+        }
       : null;
   } catch {
     return null;

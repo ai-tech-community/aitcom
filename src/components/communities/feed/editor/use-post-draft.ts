@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { postDraftKey, readPostDraft, writePostDraft } from "@/lib/post-drafts";
+import type { PostMention } from "@/lib/post-mentions";
 
 const SAVE_DELAY_MS = 400;
 
@@ -11,6 +12,9 @@ const SAVE_DELAY_MS = 400;
  * not lose it. Drafts belong to one member (`userId`) and one target (a
  * community's new post, or one post being edited). `base` is the text the
  * member started from (empty for a new post, the post's text for an edit).
+ *
+ * Whom the text mentions is kept with it, so a restored "@Name" still
+ * points at the member picked.
  *
  * On mount a saved draft is put back through `restore`, only while the
  * post still starts from the same text, and `restored` says so until the
@@ -21,15 +25,20 @@ export function usePostDraft({
   target,
   base,
   text,
+  mentions,
   restore,
 }: {
   userId: string;
   target: string;
   base: string;
   text: string;
-  restore: (text: string) => void;
+  mentions: readonly PostMention[];
+  restore: (text: string, mentions: PostMention[]) => void;
 }) {
   const key = postDraftKey(userId, target);
+  // Mentions change only with the text, so the text alone times the save.
+  const latestMentions = useRef(mentions);
+  latestMentions.current = mentions;
   const [restored, setRestored] = useState(false);
   const restoredText = useRef<string | null>(null);
   // The first save runs before a restored draft reaches `text`; skipping it
@@ -40,7 +49,7 @@ export function usePostDraft({
     const draft = readPostDraft(key);
     if (draft?.base === base && draft.text !== base) {
       restoredText.current = draft.text;
-      restore(draft.text);
+      restore(draft.text, draft.mentions ?? []);
       setRestored(true);
     } else if (draft) {
       writePostDraft(key, null);
@@ -60,7 +69,12 @@ export function usePostDraft({
       setRestored(false);
     }
     const timer = window.setTimeout(() => {
-      writePostDraft(key, text === base ? null : { text, base });
+      writePostDraft(
+        key,
+        text === base
+          ? null
+          : { text, base, mentions: [...latestMentions.current] },
+      );
     }, SAVE_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [key, base, text]);
