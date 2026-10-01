@@ -15,7 +15,8 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { useStartCreateCommunity } from "@/components/communities/create-community-dialog";
 import { CommunityStreet } from "./community-street";
 import type { StreetHouse } from "./community-street-scene";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, MessageCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "@/i18n/navigation";
 import {
   ActivityLine,
@@ -25,41 +26,82 @@ import {
 import { JoinAction } from "./join-action";
 import { BODY_FRAME } from "./explore-layout";
 import { squareQueryInput } from "./directory-params";
+import { useSquareRooms } from "./square-rooms";
+import { useSquareNight } from "./amsterdam-night";
 
 /** Air between the headline and the first house. */
 const COPY_GAP_PX = 32;
 
+/** Which signs are on the street right now, for the legend. */
+type StreetSigns = {
+  flag: boolean;
+  bubble: boolean;
+  scaffold: boolean;
+  night: boolean;
+};
+
+/**
+ * The legend: only the signs the street shows right now, as short
+ * fragments (lit windows are always there). Mouse-and-eye context, so
+ * aria-hidden; the directory grid states every fact as text.
+ */
+function StreetLegend({ signs }: { signs: StreetSigns }) {
+  const t = useTranslations("communities.discover");
+  const parts = [
+    t("legendWindows"),
+    signs.flag ? t("legendFlag") : null,
+    signs.bubble ? t("legendBubble") : null,
+    signs.scaffold ? t("legendScaffold") : null,
+    signs.night ? t("legendNight") : null,
+  ].filter(Boolean);
+  return (
+    <p aria-hidden="true" className="text-muted-foreground text-sm">
+      {parts.join(" · ")}
+    </p>
+  );
+}
+
 /**
  * The line under the street. While nobody points at a house it is the
  * legend; once someone does, it becomes a small preview of that house —
- * its live facts, Join and Visit — and stays on it until the pointer
- * leaves the street area, so the pointer can travel to the Join button.
- * The legend is mouse-only context (aria-hidden); the preview holds real
- * controls, and the directory grid repeats every fact for everyone.
+ * every sign it shows in words, Join and Visit — and stays on it until the
+ * pointer leaves the street area, so the pointer can reach Join.
  */
 function StreetPeek({
   community,
+  talking,
+  signs,
   onJoinPress,
 }: {
   community: DirectoryItem | null;
+  talking: boolean;
+  signs: StreetSigns;
   onJoinPress: () => void;
 }) {
   const t = useTranslations("communities.discover");
-  if (!community) {
-    return (
-      <p aria-hidden="true" className="text-muted-foreground text-sm">
-        {t("squareHint")}
-      </p>
-    );
-  }
+  if (!community) return <StreetLegend signs={signs} />;
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-      <span className="text-sm font-semibold">{community.name}</span>
+      <span className="flex items-center gap-2">
+        <span className="text-sm font-semibold">{community.name}</span>
+        {community.isNew ? (
+          <Badge variant="secondary">{t("isNew")}</Badge>
+        ) : null}
+      </span>
       {community.activeRecently > 0 ? (
         <ActivityLine count={community.activeRecently} />
       ) : null}
       {community.nextEvent ? (
         <NextEventLine event={community.nextEvent} />
+      ) : null}
+      {talking ? (
+        <span className="text-foreground inline-flex items-center gap-2 text-sm">
+          <MessageCircle
+            aria-hidden="true"
+            className="text-muted-foreground size-4"
+          />
+          {t("talkedToday")}
+        </span>
       ) : null}
       <span className="flex items-center gap-3">
         <JoinAction
@@ -193,6 +235,12 @@ export function SquareHero({
     () => (query.isError ? [] : (query.data?.items ?? [])),
     [query.isError, query.data],
   );
+  const rooms = useSquareRooms();
+  const night = useSquareNight();
+  const talking = useMemo(
+    () => new Set(rooms.data?.talkingCommunities ?? []),
+    [rooms.data],
+  );
   const houses = useMemo<StreetHouse[]>(
     () =>
       items.map((c) => ({
@@ -201,10 +249,18 @@ export function SquareHero({
         memberCount: c.memberCount,
         activeRecently: c.activeRecently,
         hasUpcomingEvent: c.nextEvent !== null,
+        talking: talking.has(c.slug),
+        isNew: c.isNew,
       })),
-    [items],
+    [items, talking],
   );
   const active = items.find((c) => c.slug === peek.slug) ?? null;
+  const signs: StreetSigns = {
+    flag: houses.some((h) => h.hasUpcomingEvent),
+    bubble: houses.some((h) => h.talking),
+    scaffold: houses.some((h) => h.isNew),
+    night,
+  };
 
   return (
     <section className={className} onPointerLeave={peek.release}>
@@ -226,6 +282,7 @@ export function SquareHero({
             onActiveChange={peek.point}
             reserve={reserve}
             lotLabel={measured ? t("lotSign") : null}
+            night={night}
             onLotClick={startCreate}
             className="border-border mt-8 h-56 border-b sm:h-72 lg:mt-0 lg:h-[30rem]"
           />
@@ -235,9 +292,15 @@ export function SquareHero({
           states speak once for the page; with no houses there is no
           legend to read. Its space is kept while loading: no jump. */}
       {query.isLoading || items.length > 0 ? (
-        <div className={`${BODY_FRAME} mt-3 min-h-8`}>
+        // Tall enough for a wrapped legend or the peek: no jump on hover.
+        <div className={`${BODY_FRAME} mt-3 min-h-12`}>
           {items.length > 0 ? (
-            <StreetPeek community={active} onJoinPress={peek.pin} />
+            <StreetPeek
+              community={active}
+              talking={active ? talking.has(active.slug) : false}
+              signs={signs}
+              onJoinPress={peek.pin}
+            />
           ) : null}
         </div>
       ) : null}

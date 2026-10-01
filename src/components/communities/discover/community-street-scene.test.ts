@@ -223,4 +223,65 @@ describe("communityStreetFrame", () => {
       expect(row(frame, y).slice(0, 36).replace(/[_. ]/g, "")).toBe("");
     }
   });
+
+  it("puts a speech bubble only over houses whose rooms are talking", () => {
+    const quiet = communityStreetFrame(STREET, 120, 30);
+    expect(count(quiet, "people", "--v--")).toBe(0);
+    const talking = communityStreetFrame(
+      STREET.map((h, i) => ({ ...h, talking: i === 1 })),
+      120,
+      30,
+    );
+    expect(count(talking, "people", "--v--")).toBe(1);
+  });
+
+  it("never draws a bubble on a house, and skips it when no sky is left", () => {
+    const everyone = STREET.map((h) => ({ ...h, talking: true }));
+    // A packed, short street: no lane has room above or beside its house.
+    const packed = communityStreetFrame(everyone, 45, MIN_STREET_ROWS);
+    expect(count(packed, "people", "--v--")).toBe(0);
+    const roomy = communityStreetFrame(everyone, 120, 30);
+    expect(count(roomy, "people", "--v--")).toBe(STREET.length);
+    // Every house still has its door: nothing was drawn over it.
+    expect(count(roomy, "scenery", ".-.")).toBe(STREET.length);
+  });
+
+  it("puts scaffolding only around new houses, without covering them", () => {
+    const plain = communityStreetFrame(STREET, 120, 24);
+    expect(count(plain, "far", "+")).toBe(0);
+    const fresh = communityStreetFrame(
+      STREET.map((h, i) => ({ ...h, isNew: i === 0 })),
+      120,
+      24,
+    );
+    // Light poles with caps and planks, around the house…
+    expect(count(fresh, "far", "+")).toBe(2);
+    expect(count(fresh, "far", "=")).toBeGreaterThan(0);
+    // …never across its front: the house's own lines carry no plank.
+    expect(fresh.scenery.join("").includes("=")).toBe(false);
+    expect(count(fresh, "scenery", ".-.")).toBe(STREET.length);
+    expect(fresh.glow).toEqual(communityStreetFrame(STREET, 120, 24).glow);
+  });
+
+  it("lets stars out only at night, and only into empty sky", () => {
+    const day = communityStreetFrame(STREET, 120, 30);
+    const night = communityStreetFrame(STREET, 120, 30, { night: true });
+    const stars = (f: StreetFrame) =>
+      f.glow.join("").replace(/[^+.']/g, "").length;
+    expect(stars(day)).toBe(0);
+    expect(stars(night)).toBeGreaterThan(0);
+    // The rest of the picture is the same.
+    expect(night.scenery).toEqual(day.scenery);
+    expect(night.people).toEqual(day.people);
+  });
+
+  it("keeps stars out of the strip kept for the headline", () => {
+    const night = communityStreetFrame(STREET, 120, 30, {
+      night: true,
+      reserve: 0.4,
+    });
+    for (const line of night.glow) {
+      expect(line.slice(0, 48).replace(/ /g, "")).toBe("");
+    }
+  });
 });

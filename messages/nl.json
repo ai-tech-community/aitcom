@@ -2366,7 +2366,6 @@
       "placeLabel": "Filter op plaats",
       "placeAll": "Overal",
       "placeOnline": "Online",
-      "squareHint": "Verlichte ramen: mensen die de afgelopen twee weken actief waren. Een vlag: er komt een evenement aan.",
       "allCommunities": "Alle communities",
       "resultsCount": "{count, plural, one {# community} other {# communities}}",
       "activeRecently": "{count, plural, =0 {Rustig de afgelopen twee weken} one {# persoon actief de afgelopen twee weken} other {# mensen actief de afgelopen twee weken}}",
@@ -2412,7 +2411,13 @@
       "requestFailed": "Je verzoek aan {community} is niet verstuurd. Probeer het opnieuw.",
       "requestFailedGeneric": "Je verzoek is niet verstuurd. Probeer het opnieuw.",
       "leaveFailed": "Verlaten van {community} is niet gelukt. Probeer het opnieuw.",
-      "leaveFailedGeneric": "Verlaten is niet gelukt. Probeer het opnieuw."
+      "leaveFailedGeneric": "Verlaten is niet gelukt. Probeer het opnieuw.",
+      "legendWindows": "Verlichte ramen: actief in de afgelopen twee weken",
+      "legendFlag": "Vlag: er komt een evenement aan",
+      "legendBubble": "Ballon: er is vandaag geschreven in een openbare ruimte",
+      "legendScaffold": "Steigers: een nieuwe community",
+      "legendNight": "Nacht in Amsterdam: de sterren staan aan de hemel",
+      "talkedToday": "Er is vandaag geschreven in een openbare ruimte"
     },
     "stack": {
       "memberFallback": "Lid",

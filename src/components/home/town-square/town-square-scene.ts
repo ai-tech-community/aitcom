@@ -41,6 +41,7 @@ import {
   textCells,
   textWidth,
 } from "@/components/ascii/cells";
+import { placeStars, skylineOf } from "@/components/ascii/night-sky";
 import { rand } from "@/components/ascii/seeded";
 import { TREE } from "@/components/ascii/street-props";
 import {
@@ -893,9 +894,6 @@ const LAMP_RAYS: [number, number, string][] = [
   [-1, 2, "/"],
   [3, 2, "\\"],
 ];
-const STAR_GLYPHS = ["+", ".", "+", "'"];
-const STAR_SPACING = 7;
-const MAX_STARS = 10;
 
 /**
  * Everything that lights up at night, planned once from the finished day
@@ -940,37 +938,21 @@ function planNight(
 
   // Skyline: the first drawn row per column. Stars stay well above it.
   const { cols, rows } = base;
-  const skyline = Array.from({ length: cols }, (_, x) => {
-    for (let y = 0; y < rows; y++) if (!base.isBlank(x, y)) return y;
-    return rows;
-  });
-  const skyTop = Math.max(0, layout.street - 8);
-  const stars: Cell[] = [];
-  const want = Math.min(MAX_STARS, Math.max(3, Math.floor(cols / 18)));
-  for (let i = 0; i < want * 12 && stars.length < want; i++) {
-    const x = 1 + Math.floor(rand(seed, 67, i) * Math.max(1, cols - 2));
-    const y = Math.floor(rand(seed, 71, i) * Math.max(1, skyTop));
-    const roof = Math.min(
-      skyline[x - 1] ?? rows,
-      skyline[x] ?? rows,
-      skyline[x + 1] ?? rows,
-    );
-    if (y >= roof - 2 || base.isSafe(x, y) || !base.isBlank(x, y)) continue;
-    if (stars.some((s) => Math.abs(s.x - x) < STAR_SPACING && s.y === y))
-      continue;
-    if (
-      stars.some(
-        (s) => Math.abs(s.x - x) < STAR_SPACING && Math.abs(s.y - y) < 2,
-      )
-    )
-      continue;
-    stars.push({ x, y });
+  const skyline = skylineOf(cols, rows, (x, y) => base.isBlank(x, y));
+  for (const star of placeStars({
+    cols,
+    rows,
+    skyTop: Math.max(0, layout.street - 8),
+    seed,
+    skyline,
+    isFree: (x, y) => base.isBlank(x, y) && !base.isSafe(x, y),
+  })) {
     out.push({
-      x,
-      y,
-      ch: STAR_GLYPHS[i % STAR_GLYPHS.length]!,
+      x: star.x,
+      y: star.y,
+      ch: star.ch,
       layer: "glow",
-      order: 0.3 + rand(seed, 73, i) * 0.65,
+      order: 0.3 + rand(seed, 73, star.index) * 0.65,
     });
   }
   return out;

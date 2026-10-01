@@ -2366,7 +2366,6 @@
       "placeLabel": "Filter by place",
       "placeAll": "Everywhere",
       "placeOnline": "Online",
-      "squareHint": "Lit windows: people active in the last two weeks. A flag: an event is coming up.",
       "allCommunities": "All communities",
       "resultsCount": "{count, plural, one {# community} other {# communities}}",
       "activeRecently": "{count, plural, =0 {Quiet the last two weeks} one {# person active the last two weeks} other {# people active the last two weeks}}",
@@ -2412,7 +2411,13 @@
       "requestFailed": "Couldn't send your request to {community}. Please try again.",
       "requestFailedGeneric": "Couldn't send your request. Please try again.",
       "leaveFailed": "Couldn't leave {community}. Please try again.",
-      "leaveFailedGeneric": "Couldn't leave the community. Please try again."
+      "leaveFailedGeneric": "Couldn't leave the community. Please try again.",
+      "legendWindows": "Lit windows: active in the last two weeks",
+      "legendFlag": "Flag: an event is coming up",
+      "legendBubble": "Bubble: someone wrote in a public room today",
+      "legendScaffold": "Scaffolding: a new community",
+      "legendNight": "Night in Amsterdam: the stars are out",
+      "talkedToday": "Someone wrote in a public room today"
     },
     "stack": {
       "memberFallback": "Member",

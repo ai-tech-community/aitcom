@@ -12,6 +12,7 @@ import {
   STREET_STILL_TICK,
   communityStreetFrame,
   planStreet,
+  streetRow,
   type StreetHouse,
   type StreetLayer,
 } from "./community-street-scene";
@@ -48,6 +49,7 @@ export function CommunityStreet({
   reserve = 0,
   lotLabel = null,
   onLotClick,
+  night = false,
   className,
 }: {
   houses: readonly StreetHouse[];
@@ -57,6 +59,8 @@ export function CommunityStreet({
   reserve?: number;
   lotLabel?: string | null;
   onLotClick?: () => void;
+  /** Stars come out (Amsterdam night). */
+  night?: boolean;
   className?: string;
 }) {
   const [grid, setGrid] = useState<GridSize | null>(null);
@@ -72,8 +76,9 @@ export function CommunityStreet({
         activeSlug,
         reserve,
         lotLabel,
+        night,
       }),
-    [houses, activeSlug, reserve, lotLabel],
+    [houses, activeSlug, reserve, lotLabel, night],
   );
   const plan = grid
     ? planStreet(grid.cols, houses.length, { reserve, lot: !!lotLabel })
@@ -82,6 +87,20 @@ export function CommunityStreet({
 
   return (
     <div className={cn("relative", className)}>
+      {/* Night sky: the illustration tint, only above the street and right
+          of the headline's strip, fading in at its left edge. */}
+      {grid && plan ? (
+        <div
+          aria-hidden="true"
+          data-testid="street-night-sky"
+          className="absolute top-0 right-0 bg-[linear-gradient(to_bottom,var(--color-night-sky)_0%,var(--color-night-sky)_55%,transparent_100%)] [mask-image:linear-gradient(to_right,transparent,black_14rem)] transition-opacity duration-1000 motion-reduce:transition-none"
+          style={{
+            left: `${(plan.start / grid.cols) * 100}%`,
+            height: `${(Math.max(0, streetRow(grid.rows)) / grid.rows) * 100}%`,
+            opacity: night ? 1 : 0,
+          }}
+        />
+      ) : null}
       <AsciiScene
         layers={LAYERS}
         frame={frame}

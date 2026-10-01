@@ -17,9 +17,17 @@ type AnyRoom = TalkingRoom | QuietRoom;
 /** Rooms per part of the strip, so it never pushes the directory far down. */
 export const STRIP_ROOMS = 4;
 
-/** The square's rooms, shared by the page layout and the room lists. */
+/** How often the page asks again who is talking (the server caches a minute). */
+const ROOMS_REFRESH_MS = 60_000;
+
+/**
+ * The square's rooms, shared by the page layout, the room lists and the
+ * street's speech bubbles; refreshed every minute while the tab is visible.
+ */
 export function useSquareRooms() {
-  return api.spaces.squareRooms.useQuery();
+  return api.spaces.squareRooms.useQuery(undefined, {
+    refetchInterval: ROOMS_REFRESH_MS,
+  });
 }
 
 function isTalking(room: AnyRoom): room is TalkingRoom {

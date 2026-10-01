@@ -56,6 +56,11 @@ export class LayeredCanvas<L extends string> {
     });
   }
 
+  /** The layer that owns this cell, or null when none does. */
+  ownerAt(x: number, y: number): L | null {
+    return this.owner[y]?.[x] ?? null;
+  }
+
   /** True when nothing (not even an opaque space) owns this cell. */
   isBlank(x: number, y: number): boolean {
     return this.owner[y]?.[x] === null && this.chars[y]?.[x] === " ";
