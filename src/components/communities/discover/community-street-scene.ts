@@ -55,8 +55,24 @@ export interface StreetHouse {
   hasUpcomingEvent: boolean;
 }
 
-/** Most houses the street ever shows; the list and grid hold the rest. */
-export const MAX_STREET_HOUSES = 6;
+/**
+ * Lane width on a wide street: more than a house needs, so the name under
+ * it is readable (about 18 characters). A narrow street (phones) packs
+ * houses at the smallest lane instead, so it still shows a few.
+ */
+export const STREET_LANE_WIDTH = 20;
+
+/** Below this many lanes' worth of width, the street packs lanes tight. */
+const ROOMY_LANES = 4;
+
+function laneWidthFor(width: number): number {
+  return width >= ROOMY_LANES * STREET_LANE_WIDTH
+    ? STREET_LANE_WIDTH
+    : MIN_LANE_WIDTH;
+}
+
+/** Most houses the street ever shows; the grid holds the rest. */
+export const MAX_STREET_HOUSES = 10;
 
 /** Reduced-motion frame: the first figure of each house mid-wave. */
 export const STREET_STILL_TICK = 1;
@@ -78,10 +94,48 @@ const SKYLINE_GROW = 0.5;
 /** Fewest rows that fit the smallest house above the figures and name. */
 export const MIN_STREET_ROWS = 15;
 
-/** How many houses fit a street `cols` wide (never more than there are). */
-export function streetCapacity(cols: number, houses: number): number {
-  const fit = Math.floor(Math.max(0, cols) / MIN_LANE_WIDTH);
-  return Math.max(0, Math.min(MAX_STREET_HOUSES, houses, fit));
+export type StreetOptions = {
+  tick?: number;
+  /** The house the visitor is pointing at, inked and bracketed. */
+  activeSlug?: string | null;
+  /**
+   * Share (0–0.9) of the width kept free of houses on the left, e.g. for a
+   * headline standing on the street. The paving still runs under it.
+   */
+  reserve?: number;
+  /** Sign text for the empty lot at the end of the street; none if absent. */
+  lotLabel?: string | null;
+};
+
+/** Where things stand: lanes from `start`, houses first, then the lot. */
+export type StreetPlan = {
+  start: number;
+  lanes: Lane[];
+  houses: number;
+  lot: boolean;
+};
+
+/**
+ * Lays the street out for `cols`: the reserved strip on the left, then as
+ * many equal lanes as fit. Houses take the lanes in order; with a lot, it
+ * takes the lane after the last house — or the last lane when the street
+ * is full, so the invitation is always on it.
+ */
+export function planStreet(
+  cols: number,
+  houseCount: number,
+  { reserve = 0, lot = false }: { reserve?: number; lot?: boolean } = {},
+): StreetPlan {
+  const w = Math.max(0, Math.floor(cols));
+  const start = Math.round(Math.min(0.9, Math.max(0, reserve)) * w);
+  const fit = Math.floor((w - start) / laneWidthFor(w - start));
+  let houses = Math.max(0, Math.min(MAX_STREET_HOUSES, houseCount, fit));
+  const withLot = lot && fit >= 1 && (houses < fit || fit >= 2);
+  if (withLot && houses >= fit) houses = fit - 1;
+  const lanes = streetLanes(houses + (withLot ? 1 : 0), w - start).map(
+    (lane) => ({ x: lane.x + start, width: lane.width }),
+  );
+  return { start, lanes, houses, lot: withLot };
 }
 
 /**
@@ -135,16 +189,42 @@ function laneLabel(name: string, width: number): string {
   return `${out.trimEnd()}…`;
 }
 
+/** The empty lot: a signpost inviting the next community. */
+function drawLot(
+  c: LayeredCanvas<StreetLayer>,
+  lane: Lane,
+  street: number,
+  label: string,
+) {
+  const text = laneLabel(label, lane.width - 3);
+  const boxW = textWidth(text) + 4;
+  const x = lane.x + Math.floor((lane.width - boxW) / 2);
+  const top = street - 6;
+  if (top < 0) return;
+  c.text(x, top, `.${"-".repeat(boxW - 2)}.`, "people");
+  c.text(x, top + 1, `| ${text} |`, "people");
+  c.text(x, top + 2, `'${"-".repeat(boxW - 2)}'`, "people");
+  const post = x + Math.floor(boxW / 2) - 1;
+  for (let y = top + 3; y < street; y++) c.text(post, y, "||", "scenery");
+  // Pegs marking out the plot on the paving.
+  c.put(lane.x + 1, street, "+", "scenery");
+  c.put(lane.x + lane.width - 2, street, "+", "scenery");
+}
+
 /**
- * The street for a `cols` × `rows` grid at `tick`. Every row of every layer
- * is exactly `cols` wide; each cell belongs to one layer.
+ * The street for a `cols` × `rows` grid. Every row of every layer is
+ * exactly `cols` wide; each cell belongs to one layer.
  */
 export function communityStreetFrame(
   houses: readonly StreetHouse[],
   cols: number,
   rows: number,
-  tick: number = STREET_STILL_TICK,
-  activeSlug: string | null = null,
+  {
+    tick = STREET_STILL_TICK,
+    activeSlug = null,
+    reserve = 0,
+    lotLabel = null,
+  }: StreetOptions = {},
 ): StreetFrame {
   const w = Math.max(0, Math.floor(cols));
   const h = Math.max(0, Math.floor(rows));
@@ -159,12 +239,15 @@ export function communityStreetFrame(
   for (let x = 0; x < w; x++) c.put(x, street, "_", "scenery");
   for (let x = 2; x < w; x += 6) c.put(x, front + 1, ".", "scenery");
 
-  const shown = houses.slice(0, streetCapacity(w, houses.length));
-  const lanes = streetLanes(shown.length, w);
+  const plan = planStreet(w, houses.length, { reserve, lot: !!lotLabel });
+  const shown = houses.slice(0, plan.houses);
   const feetTop = front - FIGURE_H + 1;
+  if (plan.lot && lotLabel) {
+    drawLot(c, plan.lanes[plan.houses]!, street, lotLabel);
+  }
 
   shown.forEach((community, i) => {
-    const lane = lanes[i]!;
+    const lane = plan.lanes[i]!;
     const seed = seedFromString(community.slug);
     const active = community.slug === activeSlug;
     const house = layoutCommunityHouse(seed, lane, street, {

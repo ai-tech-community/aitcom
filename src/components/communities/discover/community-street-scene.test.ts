@@ -5,8 +5,9 @@ import {
   MIN_STREET_ROWS,
   STREET_LAYERS,
   communityStreetFrame,
+  STREET_LANE_WIDTH,
   litWindowCount,
-  streetCapacity,
+  planStreet,
   streetLanes,
   type StreetFrame,
   type StreetHouse,
@@ -44,13 +45,43 @@ function count(frame: StreetFrame, layer: keyof StreetFrame, s: string) {
   return frame[layer].join("\n").split(s).length - 1;
 }
 
-describe("streetCapacity", () => {
+describe("planStreet", () => {
   it("fits as many houses as the width allows, capped", () => {
-    expect(streetCapacity(MIN_LANE_WIDTH * 3, 10)).toBe(3);
-    expect(streetCapacity(MIN_LANE_WIDTH * 3 - 1, 10)).toBe(2);
-    expect(streetCapacity(1000, 10)).toBe(MAX_STREET_HOUSES);
-    expect(streetCapacity(1000, 2)).toBe(2);
-    expect(streetCapacity(0, 5)).toBe(0);
+    expect(planStreet(MIN_LANE_WIDTH * 3, 10).houses).toBe(3);
+    expect(planStreet(MIN_LANE_WIDTH * 3 - 1, 10).houses).toBe(2);
+    expect(planStreet(STREET_LANE_WIDTH * 6, 10).houses).toBe(6);
+    expect(planStreet(10_000, 20).houses).toBe(MAX_STREET_HOUSES);
+    expect(planStreet(1000, 2).houses).toBe(2);
+    expect(planStreet(0, 5).houses).toBe(0);
+  });
+
+  it("gives a wide street readable lanes and packs a narrow one", () => {
+    for (const lane of planStreet(200, 10).lanes) {
+      expect(lane.width).toBeGreaterThanOrEqual(STREET_LANE_WIDTH);
+    }
+    expect(planStreet(54, 10).houses).toBe(3);
+  });
+
+  it("keeps the reserved strip free and lanes after it", () => {
+    const plan = planStreet(200, 10, { reserve: 0.4 });
+    expect(plan.start).toBe(80);
+    expect(plan.lanes[0]!.x).toBe(80);
+    const last = plan.lanes[plan.lanes.length - 1]!;
+    expect(last.x + last.width).toBe(200);
+    expect(plan.houses).toBe(Math.floor(120 / STREET_LANE_WIDTH));
+  });
+
+  it("puts the lot after the last house, or on the last lane when full", () => {
+    const roomy = planStreet(MIN_LANE_WIDTH * 5, 2, { lot: true });
+    expect(roomy).toMatchObject({ houses: 2, lot: true });
+    expect(roomy.lanes).toHaveLength(3);
+    const full = planStreet(MIN_LANE_WIDTH * 3, 10, { lot: true });
+    expect(full).toMatchObject({ houses: 2, lot: true });
+    expect(planStreet(MIN_LANE_WIDTH, 0, { lot: true }).lot).toBe(true);
+    expect(planStreet(MIN_LANE_WIDTH, 1, { lot: true })).toMatchObject({
+      houses: 1,
+      lot: false,
+    });
   });
 });
 
@@ -88,7 +119,7 @@ describe("communityStreetFrame", () => {
       [20, 6],
       [0, 0],
     ] as const) {
-      const frame = communityStreetFrame(STREET, cols, rows, 5);
+      const frame = communityStreetFrame(STREET, cols, rows, { tick: 5 });
       for (const layer of STREET_LAYERS) {
         expect(frame[layer]).toHaveLength(rows);
         for (const line of frame[layer]) expect(line).toHaveLength(cols);
@@ -97,13 +128,16 @@ describe("communityStreetFrame", () => {
   });
 
   it("is deterministic for the same input", () => {
-    expect(communityStreetFrame(STREET, 88, 20, 9)).toEqual(
-      communityStreetFrame(STREET, 88, 20, 9),
+    expect(communityStreetFrame(STREET, 88, 20, { tick: 9 })).toEqual(
+      communityStreetFrame(STREET, 88, 20, { tick: 9 }),
     );
   });
 
   it("gives every cell to at most one layer", () => {
-    const frame = communityStreetFrame(STREET, 88, 20, 3, STREET[0]!.slug);
+    const frame = communityStreetFrame(STREET, 88, 20, {
+      tick: 3,
+      activeSlug: STREET[0]!.slug,
+    });
     for (let y = 0; y < 20; y++) {
       for (let x = 0; x < 88; x++) {
         const owners = STREET_LAYERS.filter((l) => frame[l][y]![x] !== " ");
@@ -151,8 +185,11 @@ describe("communityStreetFrame", () => {
   });
 
   it("inks the active house at full strength and leaves the others quiet", () => {
-    const idle = communityStreetFrame(STREET, 88, 20, 1, null);
-    const active = communityStreetFrame(STREET, 88, 20, 1, STREET[1]!.slug);
+    const idle = communityStreetFrame(STREET, 88, 20, { tick: 1 });
+    const active = communityStreetFrame(STREET, 88, 20, {
+      tick: 1,
+      activeSlug: STREET[1]!.slug,
+    });
     expect(count(active, "people", ".-.")).toBe(1);
     expect(count(idle, "people", ".-.")).toBe(0);
     // Bracketed (and shortened to fit its lane) so the mark is not ink alone.
@@ -163,7 +200,7 @@ describe("communityStreetFrame", () => {
   it("never shows more houses than fit", () => {
     const many = Array.from({ length: 10 }, (_, i) => house(`c-${i}`));
     const frame = communityStreetFrame(many, 60, 20);
-    expect(count(frame, "scenery", ".-.")).toBe(streetCapacity(60, 10));
+    expect(count(frame, "scenery", ".-.")).toBe(planStreet(60, 10).houses);
   });
 
   it("rises into a tall street instead of leaving empty sky", () => {
@@ -173,5 +210,17 @@ describe("communityStreetFrame", () => {
       row(frame, y),
     ).findIndex((line) => line.trim().length > 0);
     expect(firstInked).toBeLessThan(rows / 3);
+  });
+
+  it("draws the lot's sign and leaves the reserved strip without houses", () => {
+    const frame = communityStreetFrame(STREET, 120, 20, {
+      reserve: 0.3,
+      lotLabel: "Your house?",
+    });
+    expect(count(frame, "people", "| Your house? |")).toBe(1);
+    for (let y = 0; y < 20; y++) {
+      // Only the paving (and its dots) may cross the reserved strip.
+      expect(row(frame, y).slice(0, 36).replace(/[_. ]/g, "")).toBe("");
+    }
   });
 });

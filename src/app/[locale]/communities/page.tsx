@@ -37,11 +37,14 @@ export default async function CommunitiesPage({
     },
   });
 
-  // The square and the first page of the grid arrive in the HTML, so
-  // visitors, search engines and link previews see real communities.
+  // The square, the first page of the grid and the rooms arrive in the
+  // HTML, so visitors, search engines and link previews see real
+  // communities.
   await Promise.all([
     api.communities.directory.prefetch(squareQueryInput(lang)),
     api.communities.directory.prefetchInfinite(gridQueryInput(params, lang)),
+    // The rooms decide the layout (side panel or not): no jump on load.
+    api.spaces.squareRooms.prefetch(),
   ]);
 
   return (

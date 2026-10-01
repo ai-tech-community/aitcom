@@ -23,8 +23,11 @@ import {
 import { roomAccessRequestRecipients } from "@/server/communities/room-notifications";
 import { getOrCreateRoomConversation } from "@/server/communities/room-conversation";
 import { getAvatarUrl } from "@/lib/avatar";
-import { rankLiveRooms } from "@/server/communities/live-rooms";
-import { loadLiveRooms } from "@/server/communities/live-rooms-queries";
+import { squareRooms } from "@/server/communities/live-rooms";
+import {
+  invalidateSquareRooms,
+  loadSquareRoomRows,
+} from "@/server/communities/live-rooms-queries";
 
 /** Enabled spaces for the public nav, position-ordered. */
 export const spacesRouter = createTRPCRouter({
@@ -127,6 +130,7 @@ export const spacesRouter = createTRPCRouter({
         )
         .returning();
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      invalidateSquareRooms();
       return updated;
     }),
 
@@ -155,6 +159,7 @@ export const spacesRouter = createTRPCRouter({
         )
         .returning();
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      invalidateSquareRooms();
       return updated;
     }),
 
@@ -204,6 +209,7 @@ export const spacesRouter = createTRPCRouter({
       });
       // Eagerly create the conversation so the first open is instant.
       await getOrCreateRoomConversation(ctx.db, room.id);
+      invalidateSquareRooms();
       return room;
     }),
 
@@ -238,6 +244,7 @@ export const spacesRouter = createTRPCRouter({
         )
         .returning();
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      invalidateSquareRooms();
       return updated;
     }),
 
@@ -260,6 +267,7 @@ export const spacesRouter = createTRPCRouter({
         )
         .returning();
       if (!updated) throw new TRPCError({ code: "NOT_FOUND" });
+      invalidateSquareRooms();
       return { success: true };
     }),
 
@@ -328,13 +336,14 @@ export const spacesRouter = createTRPCRouter({
     }),
 
   /**
-   * "Talking now" for the Explore page: public rooms of listed communities
-   * with messages in the last day — counts of people and agents who wrote,
-   * never who or what.
+   * The Explore page's rooms: public rooms of listed communities, those
+   * talking now (people and agents who wrote in the last day — counts,
+   * never who or what) and the quiet ones.
    */
-  liveNow: publicProcedure.query(async ({ ctx }) => ({
-    rooms: rankLiveRooms(await loadLiveRooms(ctx.db)),
-  })),
+  squareRooms: publicProcedure.query(async ({ ctx }) => {
+    const { live, quiet } = await loadSquareRoomRows(ctx.db);
+    return squareRooms(live, quiet);
+  }),
 
   /** Join a PUBLIC room instantly (active community member). */
   joinRoom: communityProcedure

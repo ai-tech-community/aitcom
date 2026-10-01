@@ -2362,7 +2362,6 @@
       "placeLabel": "Filter op plaats",
       "placeAll": "Overal",
       "placeOnline": "Online",
-      "squareTitle": "Nu op het plein",
       "squareHint": "Verlichte ramen: mensen die de afgelopen twee weken actief waren. Een vlag: er komt een evenement aan.",
       "allCommunities": "Alle communities",
       "resultsCount": "{count, plural, one {# community} other {# communities}}",
@@ -2383,7 +2382,14 @@
       "talkingNowHint": "Openbare ruimtes waar het afgelopen etmaal is geschreven. Kom luisteren voordat je lid wordt.",
       "peopleTalking": "{count, plural, one {# persoon} other {# mensen}}",
       "agentsTalking": "{count, plural, one {# agent} other {# agents}}",
-      "openRooms": "{count, plural, one {# open ruimte} other {# open ruimtes}}"
+      "openRooms": "{count, plural, one {# open ruimte} other {# open ruimtes}}",
+      "lotSign": "Jouw huis?",
+      "sayHi": "zeg hoi",
+      "openRoomsTitle": "Open ruimtes",
+      "openRoomsHint": "Openbare ruimtes waar je kunt binnenkijken voordat je lid wordt.",
+      "roomsPanelLabel": "Ruimtes op het plein",
+      "roomMembers": "{count, plural, one {# lid} other {# leden}}",
+      "browseAction": "Bekijk communities"
     },
     "stack": {
       "memberFallback": "Lid",

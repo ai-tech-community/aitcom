@@ -7,9 +7,16 @@ import {
   CreateCommunityButton,
   CreateCommunityProvider,
 } from "./create-community-dialog";
-import { DiscoverSquare } from "./discover/discover-square";
+import { SquareHero } from "./discover/square-hero";
+import {
+  RoomsPanel,
+  RoomsStrip,
+  useSquareRooms,
+} from "./discover/square-rooms";
+import { ALL_COMMUNITIES_ID } from "./discover/discover-communities";
+import { Button } from "@/components/ui/button";
+import { BODY_FRAME } from "./discover/explore-layout";
 import { DiscoverCommunities } from "./discover/discover-communities";
-import { TalkingNow } from "./discover/talking-now";
 import { OrganizerInvite } from "./discover/organizer-invite";
 import {
   parseDirectoryParams,
@@ -18,14 +25,22 @@ import {
 } from "./discover/directory-params";
 
 /**
- * The Explore page: a human headline, the square (the most active
- * communities as houses on a street), the rooms talking now, every
- * community with search / sort / place in the URL, and an invitation to
- * organizers as the close.
+ * The Explore page: the street runs edge to edge with the headline on it
+ * (the most active communities as houses, an empty lot for the next one).
+ * Below it, the directory (search / sort / place in the URL, closing with
+ * the organizer invite) and, from `xl` and only when there are rooms, a
+ * sticky side panel with the rooms on the square. Narrower screens get the
+ * rooms as capped strips: talking rooms above the directory, quiet ones
+ * after it. Strip and panel both render and CSS shows one, so the server
+ * HTML is right for every width without a layout jump.
  */
 export function CommunitiesDirectory() {
   const t = useTranslations("communities.discover");
   const searchParams = useSearchParams();
+  const rooms = useSquareRooms();
+  // The panel takes a column only when there are rooms to show.
+  const hasRooms =
+    (rooms.data?.talking.length ?? 0) + (rooms.data?.quiet.length ?? 0) > 0;
 
   const params = useMemo(
     () => parseDirectoryParams(searchParams),
@@ -52,35 +67,50 @@ export function CommunitiesDirectory() {
 
   return (
     <CreateCommunityProvider>
-      <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
-        <header className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="max-w-2xl">
+      <SquareHero
+        headline={
+          <>
             <h1 className="text-[clamp(2rem,5vw,3.5rem)] leading-[1.05] font-semibold tracking-[-0.02em] text-balance">
               {t("headline")}
             </h1>
-            <p className="text-muted-foreground mt-4 max-w-xl text-base leading-relaxed text-pretty sm:text-lg">
+            <p className="text-muted-foreground mt-4 text-base leading-relaxed text-pretty sm:text-lg">
               {t("tagline")}
             </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button asChild variant="ink">
+                <a href={`#${ALL_COMMUNITIES_ID}`}>{t("browseAction")}</a>
+              </Button>
+              <CreateCommunityButton variant="outline">
+                {t("inviteAction")}
+              </CreateCommunityButton>
+            </div>
+          </>
+        }
+      />
+
+      <div className={`${BODY_FRAME} pt-10 pb-16 sm:pb-20`}>
+        <RoomsStrip part="talking" className="mb-14 xl:hidden" />
+        <div
+          className={
+            hasRooms
+              ? "xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-12"
+              : undefined
+          }
+        >
+          {/* First in the DOM so keyboard and screen-reader users reach the
+              rooms before the long card list; placed right by the grid. */}
+          {hasRooms ? (
+            <RoomsPanel className="hidden [scrollbar-width:thin] xl:sticky xl:top-20 xl:col-start-2 xl:row-start-1 xl:-mx-3 xl:block xl:max-h-[calc(100vh-6rem)] xl:self-start xl:overflow-y-auto xl:px-3" />
+          ) : null}
+          <div className="min-w-0 xl:col-start-1 xl:row-start-1">
+            <DiscoverCommunities
+              params={params}
+              onParamsChange={onParamsChange}
+            />
+            <RoomsStrip part="open" className="mt-14 xl:hidden" />
+            <OrganizerInvite className="mt-16" />
           </div>
-          <CreateCommunityButton
-            variant="outline"
-            className="self-start sm:self-auto"
-          >
-            {t("inviteAction")}
-          </CreateCommunityButton>
-        </header>
-
-        <DiscoverSquare className="mt-10 sm:mt-12" />
-
-        <TalkingNow className="mt-14" />
-
-        <DiscoverCommunities
-          params={params}
-          onParamsChange={onParamsChange}
-          className="mt-16"
-        />
-
-        <OrganizerInvite className="mt-16" />
+        </div>
       </div>
     </CreateCommunityProvider>
   );

@@ -1,17 +1,21 @@
-/** Loads "Talking now" rooms. Thin DB glue over `live-rooms.ts`. */
+/** Loads the Explore page's rooms. Thin DB glue over `live-rooms.ts`. */
 
-import { and, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, notInArray, sql } from "drizzle-orm";
 
 import type { db as _db } from "@/server/db";
 import {
   communities,
   conversations,
   messages,
+  spaceMemberships,
   spaces,
 } from "@/server/db/schema";
 import {
   LIVE_WINDOW_HOURS,
+  MAX_QUIET_ROOMS,
+  talkingRoomIds,
   type LiveRoomRow,
+  type QuietRoomRow,
 } from "@/server/communities/live-rooms";
 import { createTtlMemo } from "@/server/ttl-memo";
 
@@ -32,7 +36,6 @@ async function loadLiveRoomRows(db: DB, now: Date): Promise<LiveRoomRow[]> {
       spaceId: spaces.id,
       spaceSlug: spaces.slug,
       spaceName: spaces.name,
-      purpose: spaces.purpose,
       communitySlug: communities.slug,
       communityName: communities.name,
       people: sql<number>`(count(distinct ${messages.senderId}) filter (where ${messages.senderType} = 'human'))::int`,
@@ -68,7 +71,6 @@ async function loadLiveRoomRows(db: DB, now: Date): Promise<LiveRoomRow[]> {
       spaces.id,
       spaces.slug,
       spaces.name,
-      spaces.purpose,
       communities.slug,
       communities.name,
     );
@@ -78,14 +80,80 @@ async function loadLiveRoomRows(db: DB, now: Date): Promise<LiveRoomRow[]> {
   }));
 }
 
-const liveRooms = createTtlMemo<"all", LiveRoomRow[]>(LIVE_ROOMS_TTL_MS);
-
-/** "Talking now" rows, rebuilt at most once a minute per instance. */
-export function loadLiveRooms(db: DB): Promise<LiveRoomRow[]> {
-  return liveRooms.get("all", () => loadLiveRoomRows(db, new Date()));
+/**
+ * The quiet pick: public, unarchived rooms of listed communities that are
+ * not talking, biggest first (active members), then newest — ordered and
+ * limited in SQL, so the cost follows what the page shows, not how many
+ * rooms exist.
+ */
+async function loadQuietRoomRows(
+  db: DB,
+  talkingIds: readonly string[],
+): Promise<QuietRoomRow[]> {
+  const members = sql<number>`count(${spaceMemberships.id})::int`;
+  return db
+    .select({
+      spaceId: spaces.id,
+      spaceSlug: spaces.slug,
+      spaceName: spaces.name,
+      purpose: spaces.purpose,
+      communitySlug: communities.slug,
+      communityName: communities.name,
+      members,
+    })
+    .from(spaces)
+    .innerJoin(communities, eq(communities.id, spaces.communityId))
+    .leftJoin(
+      spaceMemberships,
+      and(
+        eq(spaceMemberships.spaceId, spaces.id),
+        eq(spaceMemberships.status, "active"),
+      ),
+    )
+    .where(
+      and(
+        eq(spaces.kind, "room"),
+        eq(spaces.visibility, "public"),
+        isNull(spaces.archivedAt),
+        eq(communities.isListedInDirectory, true),
+        isNull(communities.deletedAt),
+        talkingIds.length > 0
+          ? notInArray(spaces.id, [...talkingIds])
+          : undefined,
+      ),
+    )
+    .groupBy(
+      spaces.id,
+      spaces.slug,
+      spaces.name,
+      spaces.purpose,
+      spaces.createdAt,
+      communities.slug,
+      communities.name,
+    )
+    .orderBy(desc(members), desc(spaces.createdAt), asc(spaces.id))
+    .limit(MAX_QUIET_ROOMS);
 }
 
-/** Drops this instance's cached rows (tests, or after a listing change). */
-export function invalidateLiveRooms(): void {
-  liveRooms.clear();
+type SquareRoomRows = { live: LiveRoomRow[]; quiet: QuietRoomRow[] };
+
+const squareRoomRows = createTtlMemo<"all", SquareRoomRows>(LIVE_ROOMS_TTL_MS);
+
+/** The square's rooms, rebuilt at most once a minute per instance. */
+export function loadSquareRoomRows(db: DB): Promise<SquareRoomRows> {
+  return squareRoomRows.get("all", async () => {
+    const live = await loadLiveRoomRows(db, new Date());
+    const quiet = await loadQuietRoomRows(db, talkingRoomIds(live));
+    return { live, quiet };
+  });
+}
+
+/**
+ * Drops this instance's cached rooms. Called when a room is created,
+ * renamed, made public or private, archived or restored, and when a
+ * community's listing changes — so a room that stops being public leaves
+ * the page at once on this instance (others follow within a minute).
+ */
+export function invalidateSquareRooms(): void {
+  squareRoomRows.clear();
 }

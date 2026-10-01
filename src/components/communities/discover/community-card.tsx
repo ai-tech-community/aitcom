@@ -87,7 +87,7 @@ export function CommunityCard({ community }: { community: DirectoryItem }) {
             <div aria-hidden="true">
               <MemberStackView faces={faces} total={memberCount} />
             </div>
-            <span className="text-muted-foreground text-xs tabular-nums">
+            <span className="text-muted-foreground text-xs whitespace-nowrap tabular-nums">
               {t("membersCount", { count: memberCount })}
             </span>
           </div>
