@@ -65,6 +65,7 @@ import {
   NO_GIF,
   gifFields,
   lookUpGif,
+  loadPostForMediaEdit,
   postDetailsUpdate,
   setPostMedia,
 } from "@/server/communities/post-media";
@@ -599,6 +600,24 @@ export const feedRouter = createTRPCRouter({
       if (post.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      // Moving a post or hiding its preview changes what the community
+      // sees, like media: it needs the right to post, and a post under
+      // review stays as it is until a moderator has looked.
+      if (
+        input.topicSlug !== undefined ||
+        input.linkPreviewHidden !== undefined
+      ) {
+        const community = await requireFeedPoster(
+          ctx.db,
+          input.communitySlug,
+          ctx.session.user.id,
+        );
+        await loadPostForMediaEdit(payload, {
+          postId: post.id,
+          userId: ctx.session.user.id,
+          communityId: community.id,
+        });
+      }
 
       const topicSlug =
         input.topicSlug === undefined || !post.communityId
@@ -636,6 +655,9 @@ export const feedRouter = createTRPCRouter({
         durationSeconds: z.number().positive(),
         width: z.number().int().positive(),
         height: z.number().int().positive(),
+        /** Topic and preview changes made in the same edit. */
+        topicSlug: z.string().max(100).optional(),
+        linkPreviewHidden: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -655,6 +677,17 @@ export const feedRouter = createTRPCRouter({
           durationSeconds: input.durationSeconds,
           width: input.width,
           height: input.height,
+          details: {
+            topicSlug:
+              input.topicSlug === undefined
+                ? undefined
+                : await resolvePostTopic(
+                    await getPayloadClient(),
+                    community.id,
+                    input.topicSlug,
+                  ),
+            linkPreviewHidden: input.linkPreviewHidden,
+          },
         },
       );
     }),

@@ -140,15 +140,20 @@ export function PostEditor({
               takeImages(files);
             }}
             onKeyDown={(e) => {
-              if (!(e.metaKey || e.ctrlKey)) return;
+              if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
               if (e.key === "Enter") {
                 e.preventDefault();
                 onSubmitShortcut?.();
-              } else if (e.key === "b" || e.key === "i") {
-                e.preventDefault();
-                const marker = e.key === "b" ? "**" : "_";
-                text.format((v, s, end) => toggleWrap(v, s, end, marker));
+                return;
               }
+              // By key position, so Caps Lock and other keyboard layouts
+              // work too.
+              if (e.shiftKey) return;
+              const marker =
+                e.code === "KeyB" ? "**" : e.code === "KeyI" ? "_" : null;
+              if (!marker) return;
+              e.preventDefault();
+              text.format((v, s, end) => toggleWrap(v, s, end, marker));
             }}
             placeholder={placeholder}
             aria-label={label}

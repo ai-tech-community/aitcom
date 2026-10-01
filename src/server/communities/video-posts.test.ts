@@ -420,6 +420,31 @@ describe("replacePostVideo", () => {
     expect(payload.create).not.toHaveBeenCalled();
   });
 
+  it("moves the post and hides its preview in the same write", async () => {
+    const { deps, payload } = fakes({
+      uploads: [upload()],
+      heads: goodHeads(),
+      target: target({
+        linkPreview: { url: "https://x.test/a", title: "A", hidden: false },
+      }),
+    });
+    await replacePostVideo(deps, {
+      ...replace,
+      details: { topicSlug: "jobs", linkPreviewHidden: true },
+    });
+    const write = (
+      payload.update.mock.calls as [
+        { collection: string; data: Record<string, unknown> },
+      ][]
+    )
+      .map(([c]) => c)
+      .find((c) => c.collection === "feed-posts")!;
+    expect(write.data).toMatchObject({
+      topicSlug: "jobs",
+      linkPreview: { url: "https://x.test/a", hidden: true },
+    });
+  });
+
   it("replaces an image post's picture with a video", async () => {
     const { deps, payload, storage } = fakes({
       uploads: [upload({ visibility: "community" })],

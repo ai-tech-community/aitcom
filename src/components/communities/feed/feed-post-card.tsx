@@ -91,6 +91,7 @@ export function FeedPostCard({
   const { requireAuth } = useRequireAuth();
   const [isEditing, setIsEditing] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   // Opening the editor from the menu: its text box takes focus, not the
   // menu button the menu would otherwise return focus to.
   const openingEditor = useRef(false);
@@ -151,7 +152,10 @@ export function FeedPostCard({
     link && post.linkPreview?.url === link ? post.linkPreview : null;
 
   return (
-    <div className="border-border space-y-3 rounded-lg border p-4">
+    <div
+      ref={cardRef}
+      className="border-border space-y-3 rounded-lg border p-4"
+    >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
@@ -259,7 +263,14 @@ export function FeedPostCard({
           onSaved={() => {
             setIsEditing(false);
             menuButton.current?.focus();
-            void onRefresh();
+            // A topic change can take the post out of the filtered feed:
+            // then keep keyboard focus in the list it was in.
+            const list = cardRef.current?.parentElement ?? null;
+            void onRefresh().then(() => {
+              if (cardRef.current?.isConnected || !list?.isConnected) return;
+              list.setAttribute("tabindex", "-1");
+              list.focus();
+            });
           }}
           onCancel={() => {
             setIsEditing(false);

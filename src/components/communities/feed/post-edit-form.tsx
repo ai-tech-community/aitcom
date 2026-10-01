@@ -22,6 +22,7 @@ import { FeedImageUploadError, uploadFeedImage } from "./upload-feed-image";
 import { DraftNotice } from "./editor/draft-notice";
 import { EmojiPickerButton } from "./editor/emoji-picker-button";
 import { FormatButtons } from "./editor/format-buttons";
+import { TopicSelect } from "./editor/topic-select";
 import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
 import type { FeedGifView } from "./feed-gif";
 import { MAX_PICTURES, PictureAttachments } from "./editor/picture-attachments";
@@ -116,10 +117,10 @@ export function PostEditForm({
   const { data: topics } = api.topics.list.useQuery({ communitySlug });
   const initiallyHidden = Boolean(post.linkPreview?.hidden);
   const [previewHidden, setPreviewHidden] = useState(initiallyHidden);
-  // The stored preview belongs to the first link of the saved text.
-  const previewLink = firstLink(post.content);
-  const hasPreview =
-    previewLink !== null && post.linkPreview?.url === previewLink;
+  // The stored preview belongs to one link: offer to hide it only while
+  // the text being edited still leads with that link, and only when the
+  // post will carry no media (the card shows a preview only then).
+  const previewLink = firstLink(text.value);
   /** Topic and preview changes, sent only when the member made them. */
   const details = {
     ...(topicSlug === initialTopic ? {} : { topicSlug }),
@@ -158,12 +159,19 @@ export function PostEditForm({
     };
   }, []);
 
+  const movedTo =
+    topicSlug === initialTopic
+      ? null
+      : (topics?.find((topic) => topic.slug === topicSlug)?.label ?? topicSlug);
+
   const editPost = api.feed.editPost.useMutation({
     onSuccess: () => {
       // The reels strip is not part of the feed the card refreshes, and a
       // removed video's files are already gone.
       void utils.feed.getReels.invalidate({ communitySlug });
-      toast.success(t("postEdited"));
+      toast.success(
+        movedTo ? te("movedToTopic", { topic: movedTo }) : t("postEdited"),
+      );
       draft.clear();
       onSaved();
     },
@@ -194,6 +202,8 @@ export function PostEditForm({
   const showsOldVideo = media.kind === "keep" && Boolean(post.video);
   const showsOldGif = media.kind === "keep" && hadGif;
   const hasMedia = media.kind === "keep" ? hadMedia : media.kind !== "none";
+  const hasPreview =
+    !hasMedia && previewLink !== null && post.linkPreview?.url === previewLink;
   const losesPublic =
     audience === "public" &&
     Boolean(post.video) &&
@@ -284,20 +294,12 @@ export function PostEditForm({
         caption,
         visibility: audience,
         replacePostId: post.id,
+        details,
       });
       if (!ok) return;
-      if (Object.keys(details).length > 0) {
-        // The video path saves media and text; the rest follows.
-        editPost.mutate({
-          postId: post.id,
-          communitySlug,
-          content: caption,
-          media: { kind: "keep" },
-          ...details,
-        });
-        return;
-      }
-      toast.success(t("postEdited"));
+      toast.success(
+        movedTo ? te("movedToTopic", { topic: movedTo }) : t("postEdited"),
+      );
       draft.clear();
       onSaved();
       return;
@@ -470,7 +472,7 @@ export function PostEditForm({
             {hasPreview ? (
               <div className="border-border flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
                 <Link2 aria-hidden="true" className="size-4 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">
+                <span role="status" className="min-w-0 flex-1 truncate">
                   {previewHidden
                     ? te("previewHidden")
                     : (post.linkPreview?.title ??
@@ -550,23 +552,12 @@ export function PostEditForm({
             )}
             <EmojiPickerButton onPick={text.insert} disabled={busy} />
             <FormatButtons text={text} disabled={busy} />
-            {/* One topic is no choice; the select appears once there are two. */}
-            {topics && topics.length > 1 ? (
-              <select
-                value={topicSlug}
-                onChange={(e) => setTopicSlug(e.target.value)}
-                disabled={busy}
-                className="border-border bg-background ml-1 h-8 max-w-44 truncate rounded-md border px-2 text-sm"
-                aria-label={t("selectTopic")}
-              >
-                {topics.map((tp) => (
-                  <option key={tp.id} value={tp.slug}>
-                    {tp.emoji ? `${tp.emoji} ` : ""}
-                    {tp.label}
-                  </option>
-                ))}
-              </select>
-            ) : null}
+            <TopicSelect
+              communitySlug={communitySlug}
+              value={topicSlug}
+              onChange={setTopicSlug}
+              disabled={busy}
+            />
           </>
         }
         actions={

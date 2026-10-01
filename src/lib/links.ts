@@ -12,8 +12,12 @@ export type TextSegment =
 
 const URL_PATTERN = /https?:\/\/[^\s<>"']+/gi;
 
-/** Sentence punctuation that ends up glued to a link: "see https://x.com." */
-const TRAILING_PUNCTUATION = /[.,!?:;'"]+$/;
+/**
+ * Punctuation that ends up glued to a link: "see https://x.com.", and the
+ * marks of a bold or italic link ("**https://x.com/a**", see post-format).
+ * A real link ending in * or _ is far rarer than a formatted one.
+ */
+const TRAILING_PUNCTUATION = /[.,!?:;'"*_]+$/;
 
 /**
  * Drops trailing punctuation and an unbalanced closing bracket, so

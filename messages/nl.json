@@ -2825,7 +2825,8 @@
         "numberedList": "Genummerde lijst",
         "removePreview": "Voorbeeld verwijderen",
         "showPreview": "Voorbeeld tonen",
-        "previewHidden": "Linkvoorbeeld verwijderd. De link blijft in je tekst."
+        "previewHidden": "Linkvoorbeeld verwijderd. De link blijft in je tekst.",
+        "movedToTopic": "Bericht bewerkt en verplaatst naar {topic}."
       },
       "gifBadge": "GIF",
       "removeGif": "GIF verwijderen",

@@ -296,6 +296,7 @@ describe("PostEditForm", () => {
       caption: "Hello",
       visibility: "public",
       replacePostId: 5,
+      details: {},
     });
     expect(m.editPost).not.toHaveBeenCalled();
     expect(onSaved).toHaveBeenCalled();
@@ -470,5 +471,40 @@ describe("PostEditForm", () => {
     (field as HTMLTextAreaElement).setSelectionRange(6, 11);
     fireEvent.click(screen.getByRole("button", { name: "bold" }));
     expect(field).toHaveValue("Hello **world**");
+  });
+
+  it("replaces a video and moves the post in one save", async () => {
+    const { container } = renderForm({
+      ...publicVideoPost,
+      topicSlug: "general",
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "selectTopic" }), {
+      target: { value: "jobs" },
+    });
+    pick(container, "video/*", new File(["v"], "clip.mov"));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "save" }));
+    });
+    expect(m.post).toHaveBeenCalledWith(
+      expect.objectContaining({ details: { topicSlug: "jobs" } }),
+    );
+    expect(m.editPost).not.toHaveBeenCalled();
+  });
+
+  it("offers to hide a preview only while the text still leads with its link, and the post has no media", () => {
+    const linked: EditablePost = {
+      ...textPost,
+      content: "Read https://example.com/post",
+      linkPreview: { url: "https://example.com/post", title: "A page" },
+    };
+    const { unmount } = renderForm(linked);
+    expect(screen.getByRole("button", { name: "removePreview" })).toBeVisible();
+    fireEvent.change(screen.getByRole("textbox", { name: "editLabel" }), {
+      target: { value: "Read https://example.com/other" },
+    });
+    expect(screen.queryByRole("button", { name: "removePreview" })).toBeNull();
+    unmount();
+    renderForm({ ...linked, imageUrl: "https://bucket.s3.test/a.jpg" });
+    expect(screen.queryByRole("button", { name: "removePreview" })).toBeNull();
   });
 });

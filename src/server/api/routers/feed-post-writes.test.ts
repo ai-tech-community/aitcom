@@ -531,6 +531,38 @@ describe("feed post writes", () => {
     expect(payload.create).not.toHaveBeenCalled();
   });
 
+  it("editPost moving a post needs the right to post, and leaves a post under review alone", async () => {
+    payload.count.mockResolvedValue({ totalDocs: 1 });
+    const { TRPCError } = await import("@trpc/server");
+    hooks.poster = new TRPCError({ code: "FORBIDDEN" });
+    await expect(
+      caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "Moved",
+        topicSlug: "jobs",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    hooks.poster = { id: "c-1" };
+    storedPost = { ...post, hiddenAt: "2026-09-24T11:00:00Z" };
+    await expect(
+      caller().feed.editPost({
+        postId: 5,
+        communitySlug: "c",
+        content: "Moved",
+        topicSlug: "jobs",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(payload.update).not.toHaveBeenCalled();
+    // A text-only fix needs neither.
+    await caller().feed.editPost({
+      postId: 5,
+      communitySlug: "c",
+      content: "Typo fixed",
+    });
+    expect(payload.update).toHaveBeenCalled();
+  });
+
   it("editPost lets only the author edit", async () => {
     await expect(
       caller("someone-else").feed.editPost({

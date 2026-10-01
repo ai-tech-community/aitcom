@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { getInitials } from "@/lib/avatar";
+import { plainPostText } from "@/lib/post-format";
 import { cn } from "@/lib/utils";
 import type { RouterOutputs } from "@/trpc/react";
 import { FeedVideoPlayer } from "../feed/feed-video-player";
@@ -132,7 +133,8 @@ export function ReelSlide({
               captionOpen ? "max-h-[40dvh] overflow-y-auto" : "line-clamp-2",
             )}
           >
-            {reel.content}
+            {/* The feed formats captions; a reel shows them plain. */}
+            {plainPostText(reel.content)}
           </span>
         </button>
       </div>

@@ -20,7 +20,13 @@ import type {
 } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 
-import { NO_GIF, loadPostForMediaEdit, writePostMedia } from "./post-media";
+import {
+  NO_GIF,
+  loadPostForMediaEdit,
+  postDetailsUpdate,
+  writePostMedia,
+  type PostDetailsChange,
+} from "./post-media";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
@@ -310,6 +316,8 @@ export async function replacePostVideo(
     postId: number;
     uploadId: string;
     caption: string;
+    /** Topic and preview changes made in the same edit. */
+    details?: PostDetailsChange;
   } & UploadedVideo,
 ): Promise<{ id: number }> {
   const post = await loadPostForMediaEdit(deps.payload, input);
@@ -338,6 +346,7 @@ export async function replacePostVideo(
     post,
     {
       content: input.caption,
+      ...postDetailsUpdate(post, input.details ?? {}),
       images: [],
       image: null,
       imageUrl: null,

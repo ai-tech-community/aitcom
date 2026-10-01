@@ -5,7 +5,7 @@ import { Bold, Italic, List, ListOrdered } from "lucide-react";
 
 import { toggleList, toggleWrap } from "@/lib/post-format";
 
-import { ToolbarButton } from "./toolbar-button";
+import { ToolbarButton, ToolbarSeparator } from "./toolbar-button";
 import type { usePostText } from "./use-post-text";
 
 /**
@@ -23,10 +23,12 @@ export function FormatButtons({
   const t = useTranslations("communities.feed.editor");
   return (
     <>
+      <ToolbarSeparator />
       <ToolbarButton
         label={t("bold")}
         icon={<Bold aria-hidden="true" className="size-4" />}
         aria-keyshortcuts="Control+B Meta+B"
+        shortcut="Ctrl+B"
         disabled={disabled}
         onClick={() => text.format((v, s, e) => toggleWrap(v, s, e, "**"))}
       />
@@ -34,6 +36,7 @@ export function FormatButtons({
         label={t("italic")}
         icon={<Italic aria-hidden="true" className="size-4" />}
         aria-keyshortcuts="Control+I Meta+I"
+        shortcut="Ctrl+I"
         disabled={disabled}
         onClick={() => text.format((v, s, e) => toggleWrap(v, s, e, "_"))}
       />
