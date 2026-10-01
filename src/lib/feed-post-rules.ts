@@ -12,9 +12,9 @@ export type PostMediaShape = {
 };
 
 /**
- * Whether a post carries a picture, a GIF or a video. Such a post may go
- * without text (the media says it); any other post needs words, and a
- * poll's text is its question.
+ * Whether a stored post carries a picture, a GIF or a video: the data
+ * rule the collection checks for every writer (a post without text must
+ * carry something). Members meet the stricter `mayGoWithoutWords`.
  */
 export function carriesMedia(post: PostMediaShape): boolean {
   return (
@@ -26,6 +26,24 @@ export function carriesMedia(post: PostMediaShape): boolean {
   );
 }
 
-/** The message when a post has neither words nor media. */
+/**
+ * Whether a member's post may go without words, so that it still says
+ * something to everyone, screen readers included: a GIF (GIPHY gives it a
+ * title), or pictures that all have a description. A video (no text
+ * alternative yet), a legacy picture (no description), a poll (its words
+ * are the question) and an empty post need words. The one rule for the
+ * editor and the server.
+ */
+export function mayGoWithoutWords(media: {
+  gif?: boolean;
+  /** The descriptions of the pictures the post will carry. */
+  pictureAlts?: readonly string[];
+}): boolean {
+  if (media.gif) return true;
+  const alts = media.pictureAlts ?? [];
+  return alts.length > 0 && alts.every((alt) => alt.trim() !== "");
+}
+
+/** The message when a post may not go without words. */
 export const NEEDS_TEXT_MESSAGE =
-  "Write something, or add a picture, GIF or video.";
+  "Write something, or add a GIF or pictures with descriptions.";

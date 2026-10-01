@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import type { VideoVisibility } from "@/lib/video-rules";
 import { pollProblem, type PollChoice } from "@/lib/poll-rules";
 import { mentionsEveryone } from "@/lib/post-mentions";
+import { mayGoWithoutWords } from "@/lib/feed-post-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
@@ -151,7 +152,7 @@ export function PostComposer({
   };
 
   const handleRetry = () => {
-    if (!videoFile || videoBusy) return;
+    if (!videoFile || noWords || videoBusy) return;
     void submitVideo(videoFile);
   };
 
@@ -159,14 +160,15 @@ export function PostComposer({
   // A picture that did not upload is retried or removed before posting;
   // a poll needs every answer filled in, none twice.
   const blocked = pictures.failed || pollProblemNow !== null;
-  // Words are optional with a picture, GIF or video (a poll's are its
-  // question).
-  const carriesMedia = pictures.count > 0 || Boolean(gif) || Boolean(videoFile);
+  // Words are optional with a GIF or described pictures; a video and a
+  // poll (its words are the question) need them.
+  const wordsOptional = mayGoWithoutWords({
+    gif: Boolean(gif),
+    pictureAlts: pictures.items.map((item) => item.alt),
+  });
+  const noWords = content.trim() === "";
   const ready =
-    (content.trim() !== "" || carriesMedia) &&
-    !text.tooLong &&
-    !busy &&
-    !blocked;
+    (!noWords || wordsOptional) && !text.tooLong && !busy && !blocked;
 
   const submit = () => {
     // Waiting for a picture still uploading, so it is not left behind.
@@ -225,6 +227,7 @@ export function PostComposer({
               ) : null}
               <PictureAttachments
                 items={pictures.items}
+                altRequired={noWords}
                 onAltChange={pictures.setAlt}
                 onRemove={pictures.remove}
                 onRetry={pictures.retry}
@@ -357,6 +360,14 @@ export function PostComposer({
           ) : pollProblemNow === "empty" ? (
             <p className="text-muted-foreground text-xs">
               {te("pollFillAnswers")}
+            </p>
+          ) : noWords && pictures.count > 0 ? (
+            <p className="text-muted-foreground text-xs">
+              {te("describeToPostWithoutWords")}
+            </p>
+          ) : noWords && videoFile ? (
+            <p className="text-muted-foreground text-xs">
+              {te("videoNeedsWords")}
             </p>
           ) : draft.restored ? (
             <DraftNotice

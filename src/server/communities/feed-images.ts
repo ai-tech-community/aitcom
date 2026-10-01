@@ -30,6 +30,27 @@ export function imageIdsOf(post: { images?: Linked[] | null }): number[] {
 }
 
 /**
+ * The descriptions (alt text) of a post's pictures, in its order: what a
+ * screen reader gets when the post has no words.
+ */
+export async function loadImageAlts(
+  payload: Payload,
+  post: { images?: Linked[] | null },
+): Promise<string[]> {
+  const ids = imageIdsOf(post);
+  if (ids.length === 0) return [];
+  const { docs } = await payload.find({
+    collection: "media",
+    where: { id: { in: ids } },
+    depth: 0,
+    limit: ids.length,
+    pagination: false,
+  });
+  const alts = new Map(docs.map((doc) => [doc.id, doc.alt ?? ""]));
+  return ids.map((id) => alts.get(id) ?? "");
+}
+
+/**
  * The member's own feed post images, free to go on `postId` (or a new
  * post), with their descriptions saved on the uploads. Only images
  * uploaded as feed post images by this member count, so a post can never

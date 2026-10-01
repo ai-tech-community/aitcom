@@ -16,12 +16,10 @@ import {
 import { linkPreviewBeforeChange } from "@/server/link-preview/link-preview-hook";
 
 /**
- * A post needs text, except a deleted or moderator-removed one: its content
- * is emptied on purpose, which the plain required check would refuse.
- */
-/**
- * A post's text is required, except on a deleted post (emptied) and on a
- * post that carries a picture, GIF or video, which may go without words.
+ * A post's text is required, except on a deleted or moderator-removed post
+ * (emptied on purpose) and on a post that carries a picture, GIF or video:
+ * the data rule every writer meets. Members meet the stricter
+ * `mayGoWithoutWords` in the router (descriptions, no bare video).
  */
 const validateContent: TextFieldSingleValidation = (value, args) => {
   const post = args.siblingData as PostMediaShape & {

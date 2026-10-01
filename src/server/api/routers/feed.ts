@@ -17,7 +17,7 @@ import {
 } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import {
-  carriesMedia,
+  mayGoWithoutWords,
   NEEDS_TEXT_MESSAGE,
   POST_MAX_LENGTH,
 } from "@/lib/feed-post-rules";
@@ -53,6 +53,7 @@ import {
   MAX_POST_IMAGES,
   claimFeedImages,
   cleanUpPostImages,
+  loadImageAlts,
 } from "@/server/communities/feed-images";
 
 /**
@@ -98,7 +99,7 @@ import {
   lookUpGif,
   loadPostForMediaEdit,
   postDetailsUpdate,
-  requireTextOrMedia,
+  requireWordsUnless,
   setPostMedia,
 } from "@/server/communities/post-media";
 import { resolvePostTopic } from "@/server/communities/post-topics";
@@ -394,7 +395,7 @@ export const feedRouter = createTRPCRouter({
       z
         .object({
           communitySlug: z.string(),
-          /** May be empty when the post carries pictures or a GIF. */
+          /** May be empty with a GIF or described pictures (`mayGoWithoutWords`). */
           content: z.string().max(POST_MAX_LENGTH),
           /** The member's own feed post images, from `/api/upload`. */
           images: imageChoices.optional(),
@@ -417,8 +418,10 @@ export const feedRouter = createTRPCRouter({
         .refine(
           (v) =>
             v.content.trim() !== "" ||
-            v.images !== undefined ||
-            v.gifId !== undefined,
+            mayGoWithoutWords({
+              gif: v.gifId !== undefined,
+              pictureAlts: v.images?.map((image) => image.alt),
+            }),
           { message: NEEDS_TEXT_MESSAGE },
         ),
     )
@@ -513,8 +516,7 @@ export const feedRouter = createTRPCRouter({
       z.object({
         communitySlug: z.string(),
         uploadId: z.string().uuid(),
-        /** May be empty: the video says it. */
-        caption: z.string().trim().max(POST_MAX_LENGTH),
+        caption: z.string().trim().min(1).max(POST_MAX_LENGTH),
         topicSlug: z.string().optional(),
         mentions: mentionIds.optional(),
         durationSeconds: z.number().positive(),
@@ -643,7 +645,7 @@ export const feedRouter = createTRPCRouter({
       z.object({
         postId: z.number(),
         communitySlug: z.string(),
-        /** May be empty when the post keeps or gets a picture, GIF or video. */
+        /** May be empty when the post may go without words (`mayGoWithoutWords`). */
         content: z.string().max(POST_MAX_LENGTH),
         media: z
           .discriminatedUnion("kind", [
@@ -725,7 +727,13 @@ export const feedRouter = createTRPCRouter({
       if (post.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      requireTextOrMedia(input.content, carriesMedia(post));
+      // Without words, the post's own GIF or described pictures must say it.
+      if (!input.content.trim()) {
+        requireWordsUnless(input.content, {
+          gif: Boolean(post.gif?.giphyId),
+          pictureAlts: await loadImageAlts(payload, post),
+        });
+      }
       // Moving a post or hiding its preview changes what the community
       // sees, like media: it needs the right to post, and a post under
       // review stays as it is until a moderator has looked.
@@ -786,8 +794,7 @@ export const feedRouter = createTRPCRouter({
         postId: z.number(),
         communitySlug: z.string(),
         uploadId: z.string().uuid(),
-        /** May be empty: the video says it. */
-        caption: z.string().trim().max(POST_MAX_LENGTH),
+        caption: z.string().trim().min(1).max(POST_MAX_LENGTH),
         durationSeconds: z.number().positive(),
         width: z.number().int().positive(),
         height: z.number().int().positive(),

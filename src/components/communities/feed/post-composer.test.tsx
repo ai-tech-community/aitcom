@@ -157,8 +157,11 @@ describe("PostComposer video", () => {
     expect(
       screen.queryByRole("button", { name: "Add video" }),
     ).not.toBeInTheDocument();
-    // A video may be posted without words.
-    expect(postButton()).toBeEnabled();
+    // A video needs a few words (it has no other text alternative yet).
+    expect(postButton()).toBeDisabled();
+    expect(
+      screen.getByText("Add a few words about the video."),
+    ).toBeInTheDocument();
 
     fireEvent.change(
       screen.getByRole("textbox", {
@@ -724,6 +727,30 @@ describe("PostComposer polls", () => {
 });
 
 describe("PostComposer posts without words", () => {
+  it("posts pictures without words only once each has a description", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: () => Promise.resolve({ id: 1, url: "https://cdn.test/1.png" }),
+      })),
+    );
+    const { imageInput } = renderComposer();
+    fireEvent.change(imageInput(), {
+      target: { files: [new File(["x"], "a.png", { type: "image/png" })] },
+    });
+    expect(postButton()).toBeDisabled();
+    expect(
+      screen.getByText(/No words\? Describe each picture/),
+    ).toBeInTheDocument();
+    const alt = screen.getByRole("textbox", {
+      name: "Description of picture 1",
+    });
+    expect(alt).toHaveAttribute("aria-required", "true");
+    fireEvent.change(alt, { target: { value: "Our team at the meetup" } });
+    await waitFor(() => expect(postButton()).toBeEnabled());
+  });
+
   it("posts a GIF on its own, but not an empty post or a poll without a question", () => {
     renderComposer();
     // Nothing yet: nothing to post.

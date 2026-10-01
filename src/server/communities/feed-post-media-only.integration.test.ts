@@ -179,11 +179,20 @@ describe.skipIf(!RUN_DB)("posts without words [DB integration]", () => {
       }),
     ).rejects.toThrow(/Write something/);
 
+    // A picture without a description says nothing to a screen reader.
+    await expect(
+      author().feed.createPost({
+        communitySlug: fx.slug,
+        content: "",
+        images: [{ id: await picture(), alt: "  " }],
+      }),
+    ).rejects.toThrow(/Write something/);
+
     // Taking the only picture off a wordless post is refused too.
     const pic = await author().feed.createPost({
       communitySlug: fx.slug,
       content: "",
-      images: [{ id: await picture(), alt: "" }],
+      images: [{ id: await picture(), alt: "Desk" }],
     });
     posts.push(pic.id);
     await expect(
@@ -204,5 +213,26 @@ describe.skipIf(!RUN_DB)("posts without words [DB integration]", () => {
         data: { content: "" },
       }),
     ).rejects.toThrow(/Content/);
+  });
+
+  it("removes a wordless post when an admin deletes its only picture", async () => {
+    const mediaId = await picture();
+    const post = await author().feed.createPost({
+      communitySlug: fx.slug,
+      content: "",
+      images: [{ id: mediaId, alt: "Our team" }],
+    });
+    posts.push(post.id);
+    const payload = await m.getPayloadClient();
+    // The stored file cannot be removed without S3 here.
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await payload.delete({ collection: "media", id: mediaId });
+    } finally {
+      log.mockRestore();
+    }
+    const after = await saved(post.id);
+    expect(after.isDeleted).toBe(true);
+    expect(after.images).toEqual([]);
   });
 });
