@@ -6,6 +6,7 @@ import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 import type { PostMention } from "@/lib/post-mentions";
+import type { PollChoice } from "@/lib/poll-rules";
 
 import {
   claimFeedImages,
@@ -14,6 +15,13 @@ import {
   type FeedImageChoice,
 } from "./feed-images";
 import { cleanUpPostVideoFiles } from "./post-video-files";
+import {
+  hasPoll,
+  noPoll,
+  pollFields,
+  pollOptionIds,
+  removeStaleVotes,
+} from "./post-polls";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
@@ -27,7 +35,7 @@ export type PostMediaDeps = {
 };
 
 /** A post with no video: every field of the `video` group cleared. */
-const NO_VIDEO = {
+export const NO_VIDEO = {
   key: null,
   thumbnailKey: null,
   storage: null,
@@ -115,8 +123,8 @@ export async function loadPostForMediaEdit(
 }
 
 /**
- * Writes new media onto `post` and then removes the video files and the
- * pictures it no longer points at. The post is first claimed in one
+ * Writes new media onto `post` and then removes the video files, the
+ * pictures and the poll votes it no longer points at. The post is first claimed in one
  * statement: its `updatedAt` moves on only while it is exactly as it was
  * read (and still live and unhidden), so of two edits racing on one post
  * only one gets through; the other gets a CONFLICT and nothing changes.
@@ -144,7 +152,7 @@ export async function writePostMedia(
       message: "This post was changed somewhere else. Reload and try again.",
     });
   }
-  await deps.payload.update({
+  const saved = await deps.payload.update({
     collection: "feed-posts",
     id: post.id,
     data,
@@ -162,6 +170,9 @@ export async function writePostMedia(
       context,
       log: deps.log,
     });
+  }
+  if (data.poll !== undefined && hasPoll(post)) {
+    await removeStaleVotes(deps.payload, post.id, pollOptionIds(saved));
   }
 }
 
@@ -198,17 +209,19 @@ export function postDetailsUpdate(
 export type PostMediaChange =
   | { kind: "none" }
   | { kind: "images"; images: FeedImageChoice[] }
-  | { kind: "gif"; giphyId: string };
+  | { kind: "gif"; giphyId: string }
+  | { kind: "poll"; poll: PollChoice };
 
 /**
- * Sets a post's text and its media (up to 4 pictures, a GIF, or none) in
- * place of what it carried. Pictures must be the author's own feed post
- * images, not on another post; their descriptions are saved with them. A
- * GIF is looked up on GIPHY by its id. A post holds pictures, a video or a
- * GIF, never two of them, so the others go; and since only video posts
- * may be public, a public post that loses its video becomes
- * community-only. Putting a new video on a post is `replacePostVideo`,
- * which needs a checked upload.
+ * Sets a post's text and its media (up to 4 pictures, a GIF, a poll, or
+ * none) in place of what it carried. Pictures must be the author's own feed
+ * post images, not on another post; their descriptions are saved with them.
+ * A GIF is looked up on GIPHY by its id. A post holds pictures, a video, a
+ * GIF or a poll, never two of them, so the others go; and since only video
+ * posts may be public, a public post that loses its video becomes
+ * community-only. Taking a poll off, or changing its answers, removes the
+ * votes for answers it no longer has. Putting a new video on a post is `replacePostVideo`, which needs a
+ * checked upload.
  */
 export async function setPostMedia(
   deps: PostMediaDeps,
@@ -236,6 +249,12 @@ export async function setPostMedia(
   const gif =
     media.kind === "gif" ? await lookUpGif(deps.getGiphy, media.giphyId) : null;
   const now = deps.now?.() ?? new Date();
+  // A changed poll may keep its end (`days` null); votes for answers it no
+  // longer has go with them (the editor warns before Save).
+  const poll =
+    media.kind === "poll"
+      ? pollFields(media.poll, now, post.poll?.closesAt)
+      : noPoll();
   await writePostMedia(
     deps,
     post,
@@ -248,6 +267,7 @@ export async function setPostMedia(
       // no list entry for the hook to clear.
       ...(images.length > 0 ? {} : { imageUrl: null, image: null }),
       gif: gif ? gifFields(gif) : NO_GIF,
+      ...(media.kind === "poll" || hasPoll(post) ? { poll } : {}),
       ...(post.video?.key
         ? { video: NO_VIDEO, visibility: "community" as const }
         : {}),

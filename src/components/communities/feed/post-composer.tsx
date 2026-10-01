@@ -4,9 +4,10 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
-import { Film, ImagePlus, Loader2 } from "lucide-react";
+import { ChartBar, Film, ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { VideoVisibility } from "@/lib/video-rules";
+import { pollProblem, type PollChoice } from "@/lib/poll-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
@@ -16,6 +17,7 @@ import { FormatButtons } from "./editor/format-buttons";
 import { TopicSelect } from "./editor/topic-select";
 import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
 import { PictureAttachments } from "./editor/picture-attachments";
+import { emptyPoll, PollBuilder } from "./editor/poll-builder";
 import { MentionButton, useMentionPicker } from "./editor/mention-picker";
 import { PostEditor } from "./editor/post-editor";
 import {
@@ -49,10 +51,14 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
     mentions: text.mentions,
     restore: text.restore,
   });
-  // A post carries pictures (up to 4), a video or a GIF, never two kinds.
+  // A post carries pictures (up to 4), a video, a GIF or a poll, never two
+  // kinds.
   const pictures = usePictureUploads();
   const imageButton = useRef<HTMLButtonElement>(null);
+  const pollButton = useRef<HTMLButtonElement>(null);
   const [gif, setGif] = useState<PickedGif | null>(null);
+  const [poll, setPoll] = useState<PollChoice | null>(null);
+  const pollProblemNow = poll ? pollProblem(poll.options) : null;
   const isUploading = pictures.uploading;
   const [topicSlug, setTopicSlug] = useState("general");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,6 +83,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
       posted();
       pictures.clear();
       setGif(null);
+      setPoll(null);
       void utils.feed.getFeed.invalidate();
       void utils.feed.getActivity.invalidate({ communitySlug: slug });
     },
@@ -141,8 +148,9 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
   };
 
   const busy = createPost.isPending || videoBusy || isUploading;
-  // A picture that did not upload is retried or removed before posting.
-  const blocked = pictures.failed;
+  // A picture that did not upload is retried or removed before posting;
+  // a poll needs every answer filled in, none twice.
+  const blocked = pictures.failed || pollProblemNow !== null;
 
   const submit = () => {
     // Waiting for a picture still uploading, so it is not left behind.
@@ -157,6 +165,9 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
       mentions: text.mentionIds,
       images: pictures.count > 0 ? pictures.choices() : undefined,
       gifId: gif?.giphyId,
+      poll: poll
+        ? { options: poll.options.map((o) => o.trim()), days: poll.days }
+        : undefined,
       topicSlug,
     });
   };
@@ -173,15 +184,17 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
       <PostEditor
         text={text}
         mentions={mentions}
-        label={t("composePlaceholder")}
-        placeholder={t("composePlaceholder")}
+        label={poll ? te("pollQuestion") : t("composePlaceholder")}
+        placeholder={poll ? te("pollQuestion") : t("composePlaceholder")}
         onImageFiles={
-          videoFile || pictures.room <= 0 ? undefined : addImageFiles
+          videoFile || poll || pictures.room <= 0 ? undefined : addImageFiles
         }
-        imageRefusal={videoFile ? te("oneMediaOnly") : te("tooManyPictures")}
+        imageRefusal={
+          videoFile || poll ? te("oneMediaOnly") : te("tooManyPictures")
+        }
         onSubmitShortcut={submit}
         attachments={
-          videoFile || pictures.count > 0 || gif ? (
+          videoFile || pictures.count > 0 || gif || poll ? (
             <>
               {videoFile ? (
                 <VideoAttachment
@@ -210,12 +223,24 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
                   onRemove={() => setGif(null)}
                 />
               ) : null}
+              {poll ? (
+                <PollBuilder
+                  value={poll}
+                  onChange={setPoll}
+                  onRemove={() => {
+                    setPoll(null);
+                    // The poll box is gone: keep keyboard focus in the form.
+                    requestAnimationFrame(() => pollButton.current?.focus());
+                  }}
+                  autoFocus
+                />
+              ) : null}
             </>
           ) : null
         }
         tools={
           <>
-            {videoFile ? null : (
+            {videoFile || poll ? null : (
               <ToolbarButton
                 ref={imageButton}
                 label={
@@ -230,7 +255,7 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
                 onClick={() => fileInputRef.current?.click()}
               />
             )}
-            {videoFile ? null : (
+            {videoFile || poll ? null : (
               <GifPickerButton
                 communitySlug={slug}
                 label={
@@ -259,12 +284,21 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
                 disabled={isUploading}
               />
             )}
-            {pictures.count > 0 || gif || videoFile ? null : (
+            {pictures.count > 0 || gif || videoFile || poll ? null : (
               <ToolbarButton
                 label={tv("add")}
                 icon={<Film aria-hidden="true" className="size-4" />}
                 disabled={isUploading}
                 onClick={() => videoInputRef.current?.click()}
+              />
+            )}
+            {pictures.count > 0 || gif || videoFile || poll ? null : (
+              <ToolbarButton
+                ref={pollButton}
+                label={te("addPoll")}
+                icon={<ChartBar aria-hidden="true" className="size-4" />}
+                disabled={isUploading}
+                onClick={() => setPoll(emptyPoll())}
               />
             )}
             <EmojiPickerButton onPick={text.insert} />
@@ -294,8 +328,16 @@ export function PostComposer({ slug, userId, canPost }: PostComposerProps) {
           </ShortcutHint>
         }
         notice={
-          blocked ? (
+          pictures.failed ? (
             <p className="text-destructive text-xs">{te("fixPictures")}</p>
+          ) : poll && !content.trim() ? (
+            <p className="text-muted-foreground text-xs">
+              {te("pollAskQuestion")}
+            </p>
+          ) : pollProblemNow === "empty" ? (
+            <p className="text-muted-foreground text-xs">
+              {te("pollFillAnswers")}
+            </p>
           ) : (pictures.count > 0 || gif || videoFile) && !content.trim() ? (
             <p className="text-muted-foreground text-xs">
               {te("addWordsToPost")}

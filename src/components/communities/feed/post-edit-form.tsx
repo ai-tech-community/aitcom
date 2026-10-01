@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
+  ChartBar,
   Film,
   ImagePlus,
   Link2,
@@ -12,6 +13,11 @@ import {
 } from "lucide-react";
 import { firstLink } from "@/lib/links";
 import type { PostMention } from "@/lib/post-mentions";
+import {
+  pollProblem,
+  type FeedPollView,
+  type PollChoice,
+} from "@/lib/poll-rules";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +34,7 @@ import { GifPickerButton, type PickedGif } from "./editor/gif-picker-button";
 import type { FeedGifView } from "./feed-gif";
 import { MAX_PICTURES, PictureAttachments } from "./editor/picture-attachments";
 import { MentionButton, useMentionPicker } from "./editor/mention-picker";
+import { CurrentPoll, emptyPoll, PollBuilder } from "./editor/poll-builder";
 import { PostEditor } from "./editor/post-editor";
 import {
   SEND_SHORTCUTS,
@@ -56,7 +63,8 @@ type MediaEdit =
   | { kind: "none" }
   | { kind: "pictures"; items: EditPicture[] }
   | { kind: "video"; file: File }
-  | { kind: "gif"; gif: PickedGif };
+  | { kind: "gif"; gif: PickedGif }
+  | { kind: "poll"; poll: PollChoice };
 
 export type EditablePost = {
   id: number;
@@ -77,6 +85,8 @@ export type EditablePost = {
   hiddenAt?: string | null;
   /** Whom the post mentions now. */
   mentions?: PostMention[] | null;
+  /** The post's poll, with its votes. */
+  poll?: FeedPollView | null;
 };
 
 /**
@@ -139,6 +149,7 @@ export function PostEditForm({
   const imageInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const imageButton = useRef<HTMLButtonElement>(null);
+  const pollButton = useRef<HTMLButtonElement>(null);
   const videoPost = useVideoPost(communitySlug);
   const audience: VideoVisibility =
     post.visibility === "public" ? "public" : "community";
@@ -153,8 +164,12 @@ export function PostEditForm({
   // A legacy post shows a picture by URL only; it can be removed or
   // replaced, not edited.
   const hadLegacyImage = !hadPictures && Boolean(post.imageUrl);
+  const hadPoll = Boolean(post.poll);
+  const pollVotes = post.poll?.totalVotes ?? 0;
+  // Votes were cast for the poll's words: they stay until it is taken off.
+  const pollAnswersFixed = pollVotes > 0 || Boolean(post.poll?.closed);
   const hadMedia =
-    hadPictures || hadLegacyImage || Boolean(post.video) || hadGif;
+    hadPictures || hadLegacyImage || Boolean(post.video) || hadGif || hadPoll;
   const mediaLocked = Boolean(post.hiddenAt);
 
   // Free the device previews of picked pictures when the form goes away.
@@ -207,6 +222,11 @@ export function PostEditForm({
   const showsOldImage = media.kind === "keep" && hadLegacyImage;
   const showsOldVideo = media.kind === "keep" && Boolean(post.video);
   const showsOldGif = media.kind === "keep" && hadGif;
+  const showsOldPoll = media.kind === "keep" && hadPoll;
+  const pollProblemNow =
+    media.kind === "poll" ? pollProblem(media.poll.options) : null;
+  // Saving takes the poll off (another kind of media, or none), votes too.
+  const losesVotes = hadPoll && pollVotes > 0 && media.kind !== "keep";
   const hasMedia = media.kind === "keep" ? hadMedia : media.kind !== "none";
   const hasPreview =
     !hasMedia && previewLink !== null && post.linkPreview?.url === previewLink;
@@ -215,7 +235,8 @@ export function PostEditForm({
     Boolean(post.video) &&
     (media.kind === "none" ||
       media.kind === "pictures" ||
-      media.kind === "gif");
+      media.kind === "gif" ||
+      media.kind === "poll");
 
   /** The pictures the post will carry, before any change made here. */
   const pictures: EditPicture[] =
@@ -293,7 +314,15 @@ export function PostEditForm({
 
   const save = async () => {
     const caption = content.trim();
-    if (!caption || text.tooLong || busy || videoRefused) return;
+    if (
+      !caption ||
+      text.tooLong ||
+      busy ||
+      videoRefused ||
+      pollProblemNow !== null
+    ) {
+      return;
+    }
     if (media.kind === "video") {
       const ok = await videoPost.post({
         file: media.file,
@@ -315,7 +344,8 @@ export function PostEditForm({
       | { kind: "keep" }
       | { kind: "none" }
       | { kind: "images"; images: { id: number; alt: string }[] }
-      | { kind: "gif"; giphyId: string };
+      | { kind: "gif"; giphyId: string }
+      | { kind: "poll"; poll: PollChoice };
     if (media.kind === "pictures") {
       // Upload new pictures one by one, keeping each one's id as it lands,
       // so a failed save or upload never uploads the others again.
@@ -345,6 +375,14 @@ export function PostEditForm({
       };
     } else if (media.kind === "gif") {
       change = { kind: "gif", giphyId: media.gif.giphyId };
+    } else if (media.kind === "poll") {
+      change = {
+        kind: "poll",
+        poll: {
+          options: media.poll.options.map((option) => option.trim()),
+          days: media.poll.days,
+        },
+      };
     } else {
       change = media;
     }
@@ -439,6 +477,41 @@ export function PostEditForm({
                 onRemove={removeMedia}
                 disabled={busy}
               />
+            ) : media.kind === "poll" ? (
+              <PollBuilder
+                value={media.poll}
+                onChange={(poll) => setMedia({ kind: "poll", poll })}
+                keepEnd={hadPoll}
+                onRemove={() => {
+                  // A poll just added goes back to what the post had; the
+                  // post's own poll, being changed, comes off.
+                  if (hadPoll) removeMedia();
+                  else keepCurrent();
+                  requestAnimationFrame(() => pollButton.current?.focus());
+                }}
+                autoFocus
+                disabled={busy}
+              />
+            ) : showsOldPoll && post.poll ? (
+              <CurrentPoll
+                poll={post.poll}
+                onChange={
+                  pollAnswersFixed
+                    ? undefined
+                    : () =>
+                        setMedia({
+                          kind: "poll",
+                          // The changed poll keeps its end unless the
+                          // author picks a new one.
+                          poll: {
+                            options: post.poll!.options.map((o) => o.label),
+                            days: null,
+                          },
+                        })
+                }
+                onRemove={removeMedia}
+                disabled={busy}
+              />
             ) : showsOldVideo ? (
               <MediaPreview
                 src={post.video?.thumbnailUrl ?? null}
@@ -468,9 +541,11 @@ export function PostEditForm({
                   ? t("keepCurrentVideo")
                   : hadGif
                     ? t("keepCurrentGif")
-                    : hadPictures
-                      ? t("keepCurrentPictures")
-                      : t("keepCurrentImage")}
+                    : hadPoll
+                      ? te("keepCurrentPoll")
+                      : hadPictures
+                        ? t("keepCurrentPictures")
+                        : t("keepCurrentImage")}
               </Button>
             ) : null}
             {mediaLocked ? (
@@ -502,6 +577,15 @@ export function PostEditForm({
             {/* Always mounted, so screen readers hear the warning when it
                 appears (WCAG 4.1.3). Above Save, so it is read first. */}
             <div role="status">
+              {losesVotes ? (
+                <p className="bg-warning/10 border-warning/30 text-foreground mb-2 flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
+                  <TriangleAlert
+                    aria-hidden="true"
+                    className="text-warning mt-0.5 size-4 shrink-0"
+                  />
+                  {te("pollVotesRemoved", { count: pollVotes })}
+                </p>
+              ) : null}
               {losesPublic ? (
                 <p className="bg-warning/10 border-warning/30 text-foreground flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
                   <TriangleAlert
@@ -557,6 +641,18 @@ export function PostEditForm({
                   }}
                   disabled={busy}
                 />
+                {media.kind === "poll" ? null : (
+                  <ToolbarButton
+                    ref={pollButton}
+                    label={hasMedia ? te("replaceWithPoll") : te("addPoll")}
+                    icon={<ChartBar aria-hidden="true" className="size-4" />}
+                    disabled={busy}
+                    onClick={() => {
+                      videoPost.reset();
+                      setMedia({ kind: "poll", poll: emptyPoll() });
+                    }}
+                  />
+                )}
               </>
             )}
             <EmojiPickerButton onPick={text.insert} disabled={busy} />
@@ -586,7 +682,11 @@ export function PostEditForm({
                 type="submit"
                 size="sm"
                 disabled={
-                  !content.trim() || text.tooLong || busy || videoRefused
+                  !content.trim() ||
+                  text.tooLong ||
+                  busy ||
+                  videoRefused ||
+                  pollProblemNow !== null
                 }
                 aria-busy={busy}
                 aria-keyshortcuts={SEND_SHORTCUTS}
@@ -600,7 +700,11 @@ export function PostEditForm({
           </>
         }
         notice={
-          draft.restored ? (
+          pollProblemNow === "empty" ? (
+            <p className="text-muted-foreground text-xs">
+              {te("pollFillAnswers")}
+            </p>
+          ) : draft.restored ? (
             <DraftNotice
               onDiscard={() => {
                 text.restore(post.content, post.mentions ?? []);

@@ -617,3 +617,61 @@ describe("PostComposer mentions", () => {
     expect(box).toHaveValue("Hello @");
   });
 });
+
+describe("PostComposer polls", () => {
+  it("adds a poll, posts it only once the question and answers are in", async () => {
+    renderComposer();
+    fireEvent.click(screen.getByRole("button", { name: "Add poll" }));
+    const first = screen.getByRole("textbox", { name: "Answer 1" });
+    await waitFor(() => expect(first).toHaveFocus());
+    // One kind of media at a time.
+    expect(screen.queryByRole("button", { name: "Add video" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add GIF" })).toBeNull();
+
+    const question = screen.getByRole("textbox", { name: "Ask a question…" });
+    fireEvent.change(question, { target: { value: "Pizza or tacos?" } });
+    fireEvent.change(first, { target: { value: "Pizza" } });
+    expect(postButton()).toBeDisabled();
+    expect(
+      screen.getByText("Fill in every answer, or remove the empty one."),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Answer 2" }), {
+      target: { value: "pizza " },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Two answers are the same.",
+    );
+    expect(postButton()).toBeDisabled();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Answer 2" }), {
+      target: { value: "Tacos" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add answer" }));
+    const third = screen.getByRole("textbox", { name: "Answer 3" });
+    await waitFor(() => expect(third).toHaveFocus());
+    fireEvent.change(third, { target: { value: "Both " } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Closes in" }), {
+      target: { value: "7" },
+    });
+    fireEvent.click(postButton());
+    expect(m.createPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: "Pizza or tacos?",
+        poll: { options: ["Pizza", "Tacos", "Both"], days: 7 },
+        images: undefined,
+        gifId: undefined,
+      }),
+    );
+  });
+
+  it("takes the poll off and puts focus back on Add poll", async () => {
+    renderComposer();
+    fireEvent.click(screen.getByRole("button", { name: "Add poll" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove poll" }));
+    expect(screen.queryByRole("textbox", { name: "Answer 1" })).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Add poll" })).toHaveFocus(),
+    );
+  });
+});

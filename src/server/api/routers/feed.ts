@@ -57,6 +57,27 @@ import {
  */
 const mentionIds = z.array(z.string().min(1).max(255)).max(MAX_POST_MENTIONS);
 
+/**
+ * A poll as its author sets it up: 2 to 4 answers (the post's text is the
+ * question) and how many days it stays open. `pollFields` checks the rest.
+ */
+const pollChoice = z.object({
+  options: z
+    .array(z.string().max(MAX_POLL_OPTION_LENGTH))
+    .min(MIN_POLL_OPTIONS)
+    .max(MAX_POLL_OPTIONS),
+  /** Null keeps the end of the poll being changed (edits only). */
+  days: z
+    .union(
+      POLL_DAYS.map((days) => z.literal(days)) as [
+        z.ZodLiteral<(typeof POLL_DAYS)[number]>,
+        z.ZodLiteral<(typeof POLL_DAYS)[number]>,
+        ...z.ZodLiteral<(typeof POLL_DAYS)[number]>[],
+      ],
+    )
+    .nullable(),
+});
+
 /** Pictures as a member attaches them: their uploads and descriptions. */
 const imageChoices = z
   .array(
@@ -81,6 +102,17 @@ import {
   resolveMentions,
 } from "@/server/communities/post-mentions";
 import { MAX_POST_MENTIONS } from "@/lib/post-mentions";
+import {
+  MAX_POLL_OPTION_LENGTH,
+  MAX_POLL_OPTIONS,
+  MIN_POLL_OPTIONS,
+  POLL_DAYS,
+} from "@/lib/poll-rules";
+import {
+  castPollVote,
+  loadPollViews,
+  pollFields,
+} from "@/server/communities/post-polls";
 import { getGiphyClient } from "@/server/giphy/giphy";
 import { createPerUserLimit } from "@/server/rate-limit/per-user-window";
 
@@ -365,10 +397,15 @@ export const feedRouter = createTRPCRouter({
             .optional(),
           topicSlug: z.string().optional(),
           mentions: mentionIds.optional(),
+          /** A poll; the post's text is its question. */
+          poll: pollChoice.optional(),
         })
-        .refine((v) => v.images === undefined || v.gifId === undefined, {
-          message: "A post has pictures or a GIF, not both.",
-        }),
+        .refine(
+          (v) =>
+            [v.images, v.gifId, v.poll].filter((m) => m !== undefined).length <=
+            1,
+          { message: "A post has pictures, a GIF or a poll, only one." },
+        ),
     )
     .mutation(async ({ ctx, input }) => {
       const community = await requireFeedPoster(
@@ -401,6 +438,7 @@ export const feedRouter = createTRPCRouter({
           }),
           images: images.map((image) => image.id),
           ...(gif ? { gif: gifFields(gif) } : {}),
+          ...(input.poll ? { poll: pollFields(input.poll, new Date()) } : {}),
           authorId: ctx.session.user.id,
           authorName: userName,
           communityId: community.id,
@@ -593,6 +631,7 @@ export const feedRouter = createTRPCRouter({
               kind: z.literal("gif"),
               giphyId: z.string().regex(/^[A-Za-z0-9]{1,64}$/),
             }),
+            z.object({ kind: z.literal("poll"), poll: pollChoice }),
           ])
           .default({ kind: "keep" }),
         /** Move the post to another of its community's topics. */
@@ -932,6 +971,33 @@ export const feedRouter = createTRPCRouter({
       }
 
       return { liked };
+    }),
+
+  // ── votePoll ────────────────────────────────────────────────────────────────
+  /**
+   * An active member who can see a post votes on its poll, changes their
+   * vote (another `optionId`) or takes it back (null) while it is open.
+   * Returns the poll as the feed shows it, with the new counts.
+   */
+  votePoll: protectedProcedure
+    .input(
+      z.object({
+        postId: z.number(),
+        optionId: z.string().min(1).max(255).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const userId = ctx.session.user.id;
+      const { post } = await requireViewablePost(
+        ctx.db,
+        payload,
+        input.postId,
+        userId,
+        { requireMembership: true },
+      );
+      await castPollVote(ctx.db, post, { userId, optionId: input.optionId });
+      return (await loadPollViews(ctx.db, [post], userId))(post);
     }),
 
   // ── getComments ─────────────────────────────────────────────────────────────

@@ -429,6 +429,82 @@ describe("PostEditForm", () => {
     }));
   });
 
+  it("keeps a voted poll's answers, and warns that removing it removes its votes", () => {
+    const { container } = renderForm({
+      ...textPost,
+      poll: {
+        options: [
+          { id: "a", label: "Pizza", votes: 2 },
+          { id: "b", label: "Tacos", votes: 0 },
+        ],
+        totalVotes: 2,
+        closesAt: new Date(Date.now() + 86_400_000).toISOString(),
+        closed: false,
+        myVote: null,
+      },
+    });
+    expect(container).toHaveTextContent("Pizza");
+    expect(screen.getByText("pollVotedKeep")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "changePollAnswers" }),
+    ).toBeNull();
+    // A new poll can still replace it (its votes go, as warned).
+    expect(
+      screen.getByRole("button", { name: "replaceWithPoll" }),
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "removePoll" }));
+    expect(screen.getByText("pollVotesRemoved")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(m.editPost).toHaveBeenCalledWith(
+      expect.objectContaining({ media: { kind: "none" } }),
+    );
+  });
+
+  it("changes a poll's answers while no one has voted", () => {
+    renderForm({
+      ...textPost,
+      poll: {
+        options: [
+          { id: "a", label: "Pizza", votes: 0 },
+          { id: "b", label: "Tacos", votes: 0 },
+        ],
+        totalVotes: 0,
+        closesAt: new Date(Date.now() + 86_400_000).toISOString(),
+        closed: false,
+        myVote: null,
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "changePollAnswers" }));
+    const answers = screen.getAllByRole("textbox", { name: "pollAnswerLabel" });
+    fireEvent.change(answers[1]!, { target: { value: "Sushi" } });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(m.editPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        media: {
+          kind: "poll",
+          // Changed answers keep the poll's end.
+          poll: { options: ["Pizza", "Sushi"], days: null },
+        },
+      }),
+    );
+  });
+
+  it("adds a poll to a post without media", () => {
+    renderForm();
+    fireEvent.click(screen.getByRole("button", { name: "addPoll" }));
+    const answers = screen.getAllByRole("textbox", { name: "pollAnswerLabel" });
+    fireEvent.change(answers[0]!, { target: { value: "Yes" } });
+    expect(screen.getByRole("button", { name: "save" })).toBeDisabled();
+    fireEvent.change(answers[1]!, { target: { value: "No" } });
+    fireEvent.click(screen.getByRole("button", { name: "save" }));
+    expect(m.editPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        media: { kind: "poll", poll: { options: ["Yes", "No"], days: 3 } },
+      }),
+    );
+  });
+
   it("cancels with Escape", () => {
     const { onCancel } = renderForm();
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });

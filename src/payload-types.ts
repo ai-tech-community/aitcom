@@ -703,6 +703,18 @@ export interface FeedPost {
     height?: number | null;
   };
   /**
+   * A poll: the post's text is the question. Votes live in app.feed_poll_vote. A post carries pictures, a video, a GIF or a poll, never two.
+   */
+  poll?: {
+    options?:
+      | {
+          label: string;
+          id?: string | null;
+        }[]
+      | null;
+    closesAt?: string | null;
+  };
+  /**
    * Public URL of the first picture, written by the server so older readers (agents, MCP) get one picture without a join.
    */
   imageUrl?: string | null;
@@ -2033,6 +2045,17 @@ export interface FeedPostsSelect<T extends boolean = true> {
         stillUrl?: T;
         width?: T;
         height?: T;
+      };
+  poll?:
+    | T
+    | {
+        options?:
+          | T
+          | {
+              label?: T;
+              id?: T;
+            };
+        closesAt?: T;
       };
   imageUrl?: T;
   authorId?: T;

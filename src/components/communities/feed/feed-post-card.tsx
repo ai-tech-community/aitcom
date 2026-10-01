@@ -23,10 +23,12 @@ import { FeedComments } from "./feed-comments";
 import { FeedVideoPlayer, type FeedVideo } from "./feed-video-player";
 import { LinkPreviewCard } from "./link-preview-card";
 import { FormattedPostText } from "./formatted-post-text";
+import type { FeedPollView } from "@/lib/poll-rules";
 import type { ShownMention } from "./linkified-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
 import { FeedGif, type FeedGifView } from "./feed-gif";
+import { FeedPoll } from "./feed-poll";
 import { FeedImageGallery, type GalleryImage } from "./feed-image-gallery";
 import { PostEditForm } from "./post-edit-form";
 
@@ -65,6 +67,8 @@ interface FeedPost {
   images?: (GalleryImage & { id: number })[] | null;
   /** Whom the post mentions, and whether each profile is open. */
   mentions?: ShownMention[] | null;
+  /** The post's poll with its counts and the viewer's vote. */
+  poll?: FeedPollView | null;
 }
 
 interface FeedPostCardProps {
@@ -294,6 +298,12 @@ export function FeedPostCard({
       ) : post.imageUrl ? (
         // A legacy post shows its one picture by URL, with no description.
         <FeedImageGallery images={[{ url: post.imageUrl, alt: "" }]} />
+      ) : post.poll ? (
+        <FeedPoll
+          postId={post.id}
+          poll={post.poll}
+          viewer={!currentUserId ? "guest" : memberRole ? "member" : "outsider"}
+        />
       ) : link && !isEditing && !post.linkPreview?.hidden ? (
         <LinkPreviewCard href={link} preview={linkPreview} />
       ) : null}

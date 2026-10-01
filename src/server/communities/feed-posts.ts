@@ -15,6 +15,8 @@ import {
 } from "@/server/communities/post-visibility";
 import { imageIdsOf } from "./feed-images";
 import { loadMentionViews, type PostMentionView } from "./post-mentions";
+import { loadPollViews } from "./post-polls";
+import type { FeedPollView } from "@/lib/poll-rules";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -175,7 +177,7 @@ export type FeedImageView = {
  */
 export type FeedPostView = Omit<
   FeedPost,
-  "video" | "reportCount" | "images" | "mentions"
+  "video" | "reportCount" | "images" | "mentions" | "poll"
 > & {
   authorImage: string | null;
   hasLiked: boolean;
@@ -183,6 +185,8 @@ export type FeedPostView = Omit<
   images: FeedImageView[];
   /** Who the post's "@Name" mentions point at. */
   mentions: PostMentionView[];
+  /** The post's poll with its counts and the viewer's vote, if any. */
+  poll: FeedPollView | null;
 };
 
 /** The pictures of a set of posts, by media id, in one query. */
@@ -261,8 +265,8 @@ export async function loadUserImages(
 /**
  * Adds the author photo, whether the viewer liked each post, playback
  * links for a post's video (the raw storage keys never leave the server),
- * its pictures with their descriptions (never who uploaded them), and
- * whom it mentions.
+ * its pictures with their descriptions (never who uploaded them), whom
+ * it mentions, and its poll's counts (never who voted for what).
  */
 export async function decorateFeedPosts(
   database: Database,
@@ -272,13 +276,14 @@ export async function decorateFeedPosts(
   storage: VideoStorageSource,
 ): Promise<FeedPostView[]> {
   if (posts.length === 0) return [];
-  const [images, pictures, mentionsOf] = await Promise.all([
+  const [images, pictures, mentionsOf, pollOf] = await Promise.all([
     loadUserImages(
       database,
       posts.map((post) => post.authorId),
     ),
     loadImageViews(payload, posts),
     loadMentionViews(database, posts),
+    loadPollViews(database, posts, viewerId),
   ]);
   let liked = new Set<number>();
   if (viewerId) {
@@ -309,6 +314,7 @@ export async function decorateFeedPosts(
         .map((id) => pictures.get(id))
         .filter((view): view is FeedImageView => view !== undefined),
       mentions: mentionsOf(post),
+      poll: pollOf(post),
     })),
   );
 }
