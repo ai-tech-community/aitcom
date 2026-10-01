@@ -190,7 +190,8 @@ describe("usePostDraft", () => {
       target: "new:mlops",
       base,
       text: text.value,
-      restore: text.setValue,
+      mentions: text.mentions,
+      restore: text.restore,
     });
     return { text, draft };
   }
@@ -212,6 +213,7 @@ describe("usePostDraft", () => {
     expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({
       text: "Half a thought",
       base: "",
+      mentions: [],
     });
   });
 

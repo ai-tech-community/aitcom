@@ -4,6 +4,10 @@ import { text } from "payload/shared";
 import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
 import { VIDEO_VISIBILITIES, VIDEO_VISIBILITY_LABELS } from "@/lib/video-rules";
 import { feedPostImageUrlBeforeChange } from "@/server/communities/feed-post-image-url-hook";
+import {
+  feedPostMentionsAfterChange,
+  feedPostMentionsBeforeChange,
+} from "@/server/communities/post-mentions";
 import { linkPreviewBeforeChange } from "@/server/link-preview/link-preview-hook";
 
 /**
@@ -179,6 +183,13 @@ export const FeedPosts: CollectionConfig = {
       ],
     },
     {
+      // Who the post's "@Name" mentions point at: [{ userId, name }],
+      // checked by the server (members of the post's community only).
+      name: "mentions",
+      type: "json",
+      admin: { readOnly: true },
+    },
+    {
       name: "linkPreview",
       type: "group",
       admin: {
@@ -219,7 +230,12 @@ export const FeedPosts: CollectionConfig = {
     },
   ],
   hooks: {
-    beforeChange: [feedPostImageUrlBeforeChange(), linkPreviewBeforeChange()],
+    beforeChange: [
+      feedPostImageUrlBeforeChange(),
+      linkPreviewBeforeChange(),
+      feedPostMentionsBeforeChange(),
+    ],
+    afterChange: [feedPostMentionsAfterChange()],
   },
   timestamps: true,
 };

@@ -51,6 +51,12 @@ import {
   cleanUpPostImages,
 } from "@/server/communities/feed-images";
 
+/**
+ * The members a post's "@Name" mentions point at, by user id. The server
+ * keeps only active members of the community whose name is in the text.
+ */
+const mentionIds = z.array(z.string().min(1).max(255)).max(MAX_POST_MENTIONS);
+
 /** Pictures as a member attaches them: their uploads and descriptions. */
 const imageChoices = z
   .array(
@@ -70,6 +76,11 @@ import {
   setPostMedia,
 } from "@/server/communities/post-media";
 import { resolvePostTopic } from "@/server/communities/post-topics";
+import {
+  findMentionCandidates,
+  resolveMentions,
+} from "@/server/communities/post-mentions";
+import { MAX_POST_MENTIONS } from "@/lib/post-mentions";
 import { getGiphyClient } from "@/server/giphy/giphy";
 import { createPerUserLimit } from "@/server/rate-limit/per-user-window";
 
@@ -353,6 +364,7 @@ export const feedRouter = createTRPCRouter({
             .regex(/^[A-Za-z0-9]{1,64}$/)
             .optional(),
           topicSlug: z.string().optional(),
+          mentions: mentionIds.optional(),
         })
         .refine((v) => v.images === undefined || v.gifId === undefined, {
           message: "A post has pictures or a GIF, not both.",
@@ -382,6 +394,11 @@ export const feedRouter = createTRPCRouter({
         collection: "feed-posts",
         data: {
           content: input.content,
+          mentions: await resolveMentions(ctx.db, {
+            communityId: community.id,
+            content: input.content,
+            userIds: input.mentions ?? [],
+          }),
           images: images.map((image) => image.id),
           ...(gif ? { gif: gifFields(gif) } : {}),
           authorId: ctx.session.user.id,
@@ -445,6 +462,7 @@ export const feedRouter = createTRPCRouter({
         uploadId: z.string().uuid(),
         caption: z.string().trim().min(1).max(POST_MAX_LENGTH),
         topicSlug: z.string().optional(),
+        mentions: mentionIds.optional(),
         durationSeconds: z.number().positive(),
         width: z.number().int().positive(),
         height: z.number().int().positive(),
@@ -464,6 +482,11 @@ export const feedRouter = createTRPCRouter({
           communityId: community.id,
           uploadId: input.uploadId,
           caption: input.caption,
+          mentions: await resolveMentions(ctx.db, {
+            communityId: community.id,
+            content: input.caption,
+            userIds: input.mentions ?? [],
+          }),
           topicSlug: await resolvePostTopic(
             await getPayloadClient(),
             community.id,
@@ -520,6 +543,33 @@ export const feedRouter = createTRPCRouter({
       return { gifs: page.gifs, nextCursor: page.nextOffset };
     }),
 
+  // ── mentionCandidates ───────────────────────────────────────────────────────
+  /**
+   * Members the post editor offers after "@": the community's active
+   * members whose name has the typed text, not the caller. Members can
+   * see the community's member list already, so this shows nothing new.
+   */
+  mentionCandidates: protectedProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        query: z.string().max(50).default(""),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const community = await requireActiveFeedMember(
+        ctx.db,
+        input.communitySlug,
+        ctx.session.user.id,
+      );
+      return findMentionCandidates(ctx.db, {
+        communityId: community.id,
+        authorId: ctx.session.user.id,
+        query: input.query,
+        limit: 8,
+      });
+    }),
+
   // ── editPost ────────────────────────────────────────────────────────────────
   /**
    * The author edits a post's text and, optionally, its media: keep it,
@@ -549,6 +599,11 @@ export const feedRouter = createTRPCRouter({
         topicSlug: z.string().max(100).optional(),
         /** Take the link preview off the post (true) or put it back. */
         linkPreviewHidden: z.boolean().optional(),
+        /**
+         * Members the edited text mentions. Mentions already on the post
+         * stay while their names are in the text, given here or not.
+         */
+        mentions: mentionIds.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -571,6 +626,14 @@ export const feedRouter = createTRPCRouter({
             userId: ctx.session.user.id,
             communityId: community.id,
             content: input.content,
+            mentions:
+              input.mentions === undefined
+                ? undefined
+                : await resolveMentions(ctx.db, {
+                    communityId: community.id,
+                    content: input.content,
+                    userIds: input.mentions,
+                  }),
             media: input.media,
             details: {
               topicSlug:
@@ -623,11 +686,20 @@ export const feedRouter = createTRPCRouter({
         input.topicSlug === undefined || !post.communityId
           ? undefined
           : await resolvePostTopic(payload, post.communityId, input.topicSlug);
+      const mentions =
+        input.mentions === undefined || !post.communityId
+          ? undefined
+          : await resolveMentions(ctx.db, {
+              communityId: post.communityId,
+              content: input.content,
+              userIds: input.mentions,
+            });
       await payload.update({
         collection: "feed-posts",
         id: input.postId,
         data: {
           content: input.content,
+          ...(mentions ? { mentions } : {}),
           ...postDetailsUpdate(post, {
             topicSlug,
             linkPreviewHidden: input.linkPreviewHidden,
@@ -658,6 +730,8 @@ export const feedRouter = createTRPCRouter({
         /** Topic and preview changes made in the same edit. */
         topicSlug: z.string().max(100).optional(),
         linkPreviewHidden: z.boolean().optional(),
+        /** As in `editPost`. */
+        mentions: mentionIds.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -674,6 +748,14 @@ export const feedRouter = createTRPCRouter({
           postId: input.postId,
           uploadId: input.uploadId,
           caption: input.caption,
+          mentions:
+            input.mentions === undefined
+              ? undefined
+              : await resolveMentions(ctx.db, {
+                  communityId: community.id,
+                  content: input.caption,
+                  userIds: input.mentions,
+                }),
           durationSeconds: input.durationSeconds,
           width: input.width,
           height: input.height,

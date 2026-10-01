@@ -10,6 +10,7 @@ import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
 import { toggleWrap } from "@/lib/post-format";
 import { cn } from "@/lib/utils";
 
+import type { MentionPicker } from "./mention-picker";
 import type { usePostText } from "./use-post-text";
 
 /** The counter appears once this few characters are left. */
@@ -41,13 +42,15 @@ function lengthMilestone(left: number): "over" | 0 | 20 | 100 | null {
  * Pictures can also be pasted or dropped in when `onImageFiles` is given.
  * While it is not (a video is attached, an upload is running),
  * `imageRefusal` says why, and a dropped file never makes the browser
- * leave the page. Ctrl/Cmd+Enter calls `onSubmitShortcut`.
+ * leave the page. Ctrl/Cmd+Enter calls `onSubmitShortcut`. With a
+ * `mentions` picker (`useMentionPicker`), typing "@" offers members.
  *
  * The text may run past the limit: the counter then shows how much to cut,
  * and the form disables sending (`usePostText().tooLong`).
  */
 export function PostEditor({
   text,
+  mentions,
   label,
   placeholder,
   autoFocus,
@@ -60,6 +63,8 @@ export function PostEditor({
   notice,
 }: {
   text: ReturnType<typeof usePostText>;
+  /** Offers members to mention after "@" (`useMentionPicker`). */
+  mentions?: MentionPicker;
   label: string;
   placeholder?: string;
   autoFocus?: boolean;
@@ -128,7 +133,12 @@ export function PostEditor({
           <textarea
             ref={text.textareaRef}
             value={text.value}
-            onChange={(e) => text.setValue(e.target.value)}
+            onChange={(e) => {
+              text.setValue(e.target.value);
+              mentions?.update();
+            }}
+            onSelect={mentions?.update}
+            onBlur={mentions?.onBlur}
             onPaste={(e) => {
               const files = imagesIn(e.clipboardData.files);
               // Office apps put a picture of the selection next to its
@@ -140,6 +150,7 @@ export function PostEditor({
               takeImages(files);
             }}
             onKeyDown={(e) => {
+              if (mentions?.onKeyDown(e)) return;
               if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -157,12 +168,14 @@ export function PostEditor({
             }}
             placeholder={placeholder}
             aria-label={label}
+            {...mentions?.fieldProps}
             aria-invalid={text.tooLong || undefined}
             aria-describedby={left <= COUNTER_FROM ? counterId : undefined}
             autoFocus={autoFocus}
             rows={3}
             className="placeholder:text-muted-foreground block field-sizing-content max-h-80 min-h-20 w-full resize-none bg-transparent px-3 pt-3 pb-2 text-base outline-none md:text-sm"
           />
+          {mentions?.list}
 
           {attachments ? (
             <div className="space-y-3 px-3 pb-3">{attachments}</div>

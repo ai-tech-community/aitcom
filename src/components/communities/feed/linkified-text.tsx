@@ -1,17 +1,65 @@
 "use client";
 
+import { Fragment } from "react";
 import { useTranslations } from "next-intl";
 
+import { Link } from "@/i18n/navigation";
 import { splitTextIntoLinks } from "@/lib/links";
+import { splitMentions, type PostMention } from "@/lib/post-mentions";
+
+/** A mention as shown: a link only when the member's profile is open. */
+export type ShownMention = PostMention & { hasProfile?: boolean };
+
+/**
+ * Text with each "@Name" the post mentions shown as that member: a link to
+ * their profile, or just the name in bold when the profile is not open.
+ */
+function MentionedText({
+  text,
+  mentions,
+}: {
+  text: string;
+  mentions: readonly ShownMention[];
+}) {
+  return (
+    <>
+      {splitMentions(text, mentions).map((part, index) =>
+        !part.mention ? (
+          <Fragment key={index}>{part.text}</Fragment>
+        ) : part.mention.hasProfile ? (
+          <Link
+            key={index}
+            href={`/members/${encodeURIComponent(part.mention.userId)}`}
+            className="text-primary font-medium underline-offset-4 hover:underline"
+          >
+            {part.text}
+          </Link>
+        ) : (
+          <span key={index} className="font-medium">
+            {part.text}
+          </span>
+        ),
+      )}
+    </>
+  );
+}
 
 /** rel for links members write: no opener access, no referrer, no SEO credit. */
 export const USER_LINK_REL = "noopener noreferrer nofollow ugc";
 
 /**
- * Plain user text with its web links made clickable. Links open in a new tab;
- * everything else renders as text, so no user markup ever reaches the DOM.
+ * Plain user text with its web links made clickable and, when given, its
+ * @mentions shown as members (never inside a link). Links open in a new
+ * tab; everything else renders as text, so no user markup ever reaches the
+ * DOM.
  */
-export function LinkifiedText({ text }: { text: string }) {
+export function LinkifiedText({
+  text,
+  mentions = [],
+}: {
+  text: string;
+  mentions?: readonly ShownMention[];
+}) {
   const t = useTranslations("communities.feed");
   return (
     <>
@@ -28,7 +76,7 @@ export function LinkifiedText({ text }: { text: string }) {
             <span className="sr-only"> ({t("linkOpensInNewTab")})</span>
           </a>
         ) : (
-          segment.text
+          <MentionedText key={index} text={segment.text} mentions={mentions} />
         ),
       )}
     </>

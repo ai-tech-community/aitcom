@@ -29,6 +29,8 @@ export type VideoPostState =
 export type VideoPostInput = {
   file: File;
   caption: string;
+  /** Ids of the members the caption mentions. */
+  mentions?: string[];
   visibility: VideoVisibility;
 } & (
   | { topicSlug: string }
@@ -224,6 +226,7 @@ export function useVideoPost(slug: string) {
           communitySlug: slug,
           uploadId: grant.uploadId,
           caption: input.caption,
+          mentions: input.mentions,
           durationSeconds: prepared.durationSeconds,
           width: prepared.width,
           height: prepared.height,

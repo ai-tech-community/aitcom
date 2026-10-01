@@ -5,13 +5,19 @@ import { Fragment } from "react";
 import { parsePostText, type Line } from "@/lib/post-format";
 import { cn } from "@/lib/utils";
 
-import { LinkifiedText } from "./linkified-text";
+import { LinkifiedText, type ShownMention } from "./linkified-text";
 
-function Inlines({ line }: { line: Line }) {
+function Inlines({
+  line,
+  mentions,
+}: {
+  line: Line;
+  mentions: readonly ShownMention[];
+}) {
   return (
     <>
       {line.map((part, index) => {
-        const text = <LinkifiedText text={part.text} />;
+        const text = <LinkifiedText text={part.text} mentions={mentions} />;
         if (part.bold && part.italic) {
           return (
             <strong key={index}>
@@ -28,15 +34,18 @@ function Inlines({ line }: { line: Line }) {
 }
 
 /**
- * A post's text with its light formatting (bold, italic, lists) and its
- * links made clickable. Everything is built as elements from parsed data,
- * so no member markup ever reaches the DOM.
+ * A post's text with its light formatting (bold, italic, lists), its links
+ * made clickable and its @mentions shown as members. Everything is built
+ * as elements from parsed data, so no member markup ever reaches the DOM.
  */
 export function FormattedPostText({
   text,
+  mentions = [],
   className,
 }: {
   text: string;
+  /** Whom the post mentions, as the server checked it. */
+  mentions?: readonly ShownMention[];
   className?: string;
 }) {
   return (
@@ -47,7 +56,7 @@ export function FormattedPostText({
             <ul key={index} className="list-disc space-y-0.5 pl-5">
               {block.items.map((item, i) => (
                 <li key={i}>
-                  <Inlines line={item} />
+                  <Inlines line={item} mentions={mentions} />
                 </li>
               ))}
             </ul>
@@ -62,7 +71,7 @@ export function FormattedPostText({
             >
               {block.items.map((item, i) => (
                 <li key={i}>
-                  <Inlines line={item} />
+                  <Inlines line={item} mentions={mentions} />
                 </li>
               ))}
             </ol>
@@ -73,7 +82,7 @@ export function FormattedPostText({
             {block.lines.map((line, i) => (
               <Fragment key={i}>
                 {i > 0 ? "\n" : null}
-                <Inlines line={line} />
+                <Inlines line={line} mentions={mentions} />
               </Fragment>
             ))}
           </p>
