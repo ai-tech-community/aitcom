@@ -226,13 +226,11 @@ export async function sendCommunityBroadcast(
     sendsByUser.set(r.userId, m);
   }
 
-  const notificationRows: (typeof notifications.$inferInsert)[] = [];
-  const emailedUserIds: string[] = [];
-
-  let emailed = 0;
-  for (const member of claimedMembers) {
-    // In-app notification for opted-in members (pull channel, not ceiling-limited).
-    notificationRows.push({
+  // In-app notices first, for every claimed member (the pull channel, not
+  // ceiling-limited): if the email loop below is cut short (a time limit,
+  // a provider refusal), everyone still has the notice.
+  const notificationRows: (typeof notifications.$inferInsert)[] =
+    claimedMembers.map((member) => ({
       userId: member.userId,
       type: "broadcast",
       title: opts.subject,
@@ -244,59 +242,62 @@ export async function sendCommunityBroadcast(
           ? { reviewPath: opts.link.path, linkLabel: opts.link.label }
           : {}),
       },
-    });
+    }));
+  for (const chunk of chunks(notificationRows, CHUNK_SIZE)) {
+    await db.insert(notifications).values(chunk);
+  }
 
+  const link = opts.link
+    ? {
+        label: opts.link.label,
+        url: pinHubConversationUrl(`/en${opts.link.path}`),
+      }
+    : undefined;
+  // Marks delivery rows emailSent=true as emails go out, a batch at a
+  // time, so the weekly ceiling counts what was really sent.
+  let pending: string[] = [];
+  const markSent = async () => {
+    if (pending.length === 0) return;
+    const batch = pending;
+    pending = [];
+    await db
+      .update(broadcastDeliveries)
+      .set({ emailSent: true })
+      .where(
+        and(
+          eq(broadcastDeliveries.broadcastId, broadcast!.id),
+          inArray(broadcastDeliveries.userId, batch),
+        ),
+      );
+  };
+
+  let emailed = 0;
+  for (const member of claimedMembers) {
     const emailAllowed = allowPromotional({
       sendsByCommunity: sendsByUser.get(member.userId) ?? {},
       communityId,
       nCommunities: communityCounts.get(member.userId) ?? 1,
       ceiling: BROADCAST_CEILING,
     });
-
-    if (emailAllowed) {
-      let emailSent = false;
-      try {
-        emailSent = await sendBroadcastEmail(
-          member.email,
-          opts.subject,
-          opts.body,
-          opts.link
-            ? {
-                label: opts.link.label,
-                url: pinHubConversationUrl(`/en${opts.link.path}`),
-              }
-            : undefined,
-        );
-      } catch (err) {
-        console.error(`broadcast: send failed for ${member.userId}`, err);
-      }
-      if (emailSent) {
-        emailedUserIds.push(member.userId);
-        emailed++;
-      }
+    if (!emailAllowed) continue;
+    let emailSent = false;
+    try {
+      emailSent = await sendBroadcastEmail(
+        member.email,
+        opts.subject,
+        opts.body,
+        link,
+      );
+    } catch (err) {
+      console.error(`broadcast: send failed for ${member.userId}`, err);
+    }
+    if (emailSent) {
+      pending.push(member.userId);
+      emailed++;
+      if (pending.length >= 50) await markSent();
     }
   }
-
-  if (notificationRows.length)
-    await db.insert(notifications).values(notificationRows);
-
-  // Mark delivery rows as emailSent=true for members who were successfully emailed.
-  // Chunked to avoid oversized IN(...).
-  if (emailedUserIds.length > 0) {
-    await Promise.all(
-      chunks(emailedUserIds, CHUNK_SIZE).map((chunk) =>
-        db
-          .update(broadcastDeliveries)
-          .set({ emailSent: true })
-          .where(
-            and(
-              eq(broadcastDeliveries.broadcastId, broadcast!.id),
-              inArray(broadcastDeliveries.userId, chunk),
-            ),
-          ),
-      ),
-    );
-  }
+  await markSent();
 
   return { broadcastId: broadcast!.id, emailed };
 }

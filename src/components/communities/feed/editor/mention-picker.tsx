@@ -188,6 +188,10 @@ export function useMentionPicker({
       return true;
     }
     if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
+      // "@everyone" reaches the whole community: it is picked only on
+      // purpose (moved to with the arrows, or clicked), never by a quick
+      // Enter on the first option.
+      if (members[activeIndex]?.everyone && !moved) return false;
       e.preventDefault();
       pick(activeIndex);
       return true;
@@ -204,7 +208,9 @@ export function useMentionPicker({
       ? t("mentionFailed")
       : moved && activeMember
         ? t("mentionActive", {
-            name: activeMember.name,
+            name: activeMember.everyone
+              ? `@${activeMember.name}, ${t("mentionEveryoneHint")}`
+              : activeMember.name,
             position: activeIndex + 1,
             count: members.length,
           })

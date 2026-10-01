@@ -2844,6 +2844,8 @@
         "mentionCount": "{count, plural, one {# lid} other {# leden}} gevonden. Kies met de pijltjestoetsen, Enter of Tab om te kiezen, Escape om te sluiten.",
         "mentionActive": "{name}, {position} van {count}",
         "mentionEveryoneHint": "Stuur de hele community een melding",
+        "everyoneWillBeNotified": "Dit bericht stuurt iedereen in de community een melding, in de app en per e-mail (tenzij ze aankondigingen hebben uitgezet).",
+        "everyoneNotInEdits": "@everyone stuurt alleen een melding wanneer een bericht voor het eerst wordt gedeeld, dus deze wijziging stuurt niemand een melding.",
         "addPoll": "Poll toevoegen",
         "replaceWithPoll": "Vervangen door poll",
         "removePoll": "Poll verwijderen",

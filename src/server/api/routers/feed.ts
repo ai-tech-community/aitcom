@@ -97,6 +97,7 @@ import {
   setPostMedia,
 } from "@/server/communities/post-media";
 import { resolvePostTopic } from "@/server/communities/post-topics";
+import { canBroadcast } from "@/server/communities/role-utils";
 import {
   EVERYONE_CANDIDATE,
   findMentionCandidates,
@@ -587,7 +588,8 @@ export const feedRouter = createTRPCRouter({
    * Members the post editor offers after "@": the community's active
    * members whose name has the typed text, not the caller. Members can
    * see the community's member list already, so this shows nothing new.
-   * Owners, admins and moderators are also offered "@everyone".
+   * Those who may announce to the community (`canBroadcast`) are also
+   * offered "@everyone", last.
    */
   mentionCandidates: protectedProcedure
     .input(
@@ -608,9 +610,9 @@ export const feedRouter = createTRPCRouter({
         query: input.query,
         limit: 8,
       });
-      // "@everyone" first, for those who may announce to the community.
-      return isModeratorRole(community.role) && couldMeanEveryone(input.query)
-        ? [EVERYONE_CANDIDATE, ...members]
+      // "@everyone" last, never the first pick, for those who may announce.
+      return canBroadcast(community.role) && couldMeanEveryone(input.query)
+        ? [...members, EVERYONE_CANDIDATE]
         : members;
     }),
 

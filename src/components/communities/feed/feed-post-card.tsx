@@ -25,6 +25,7 @@ import { LinkPreviewCard } from "./link-preview-card";
 import { FormattedPostText } from "./formatted-post-text";
 import type { FeedPollView } from "@/lib/poll-rules";
 import { EVERYONE } from "@/lib/post-mentions";
+import { canBroadcast } from "@/lib/community-broadcast";
 import type { ShownMention } from "./linkified-text";
 import { ReportDialog } from "./report-dialog";
 import { ReportedBanner } from "./reported-banner";
@@ -270,6 +271,7 @@ export function FeedPostCard({
           post={post}
           userId={currentUserId}
           communitySlug={communitySlug}
+          canAnnounce={canBroadcast(memberRole)}
           onSaved={() => {
             setIsEditing(false);
             menuButton.current?.focus();

@@ -2844,6 +2844,8 @@
         "mentionCount": "{count, plural, one {# member} other {# members}} found. Arrow keys to choose, Enter or Tab to pick, Escape to close.",
         "mentionActive": "{name}, {position} of {count}",
         "mentionEveryoneHint": "Notify the whole community",
+        "everyoneWillBeNotified": "This post will notify everyone in the community, in the app and by email (unless they turned announcements off).",
+        "everyoneNotInEdits": "@everyone only notifies people when a post is first shared, so this edit won't notify anyone.",
         "addPoll": "Add poll",
         "replaceWithPoll": "Replace with poll",
         "removePoll": "Remove poll",

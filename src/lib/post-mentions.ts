@@ -10,9 +10,9 @@
 export type PostMention = { userId: string; name: string };
 
 /**
- * "@everyone": the whole community. Only owners, admins and moderators can
- * use it (the server checks); for anyone else it is plain text. "@all" is
- * offered as the same thing while typing.
+ * "@everyone": the whole community, when a post is first shared. Only
+ * owners and admins can use it (the server checks); for anyone else, and in
+ * an edit, it is plain text. "@all" and "@iedereen" offer it while typing.
  */
 export const EVERYONE = "everyone";
 
@@ -21,10 +21,19 @@ export function mentionsEveryone(text: string): boolean {
   return indexOfMention(text, EVERYONE) !== -1;
 }
 
-/** Whether what is typed after "@" could become "@everyone" (or "@all"). */
+/** The words that, typed after "@", offer "@everyone". */
+const EVERYONE_WORDS = [EVERYONE, "all", "iedereen"] as const;
+
+/**
+ * Whether what is typed after "@" could become "@everyone": two or more
+ * letters of "everyone", "all" or "iedereen". A bare "@" never offers it,
+ * so a quick Enter cannot reach the whole community.
+ */
 export function couldMeanEveryone(query: string): boolean {
   const typed = query.trim().toLocaleLowerCase();
-  return EVERYONE.startsWith(typed) || "all".startsWith(typed);
+  return (
+    typed.length >= 2 && EVERYONE_WORDS.some((word) => word.startsWith(typed))
+  );
 }
 
 /** The most members one post may mention. */

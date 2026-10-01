@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, communityProcedure } from "@/server/api/trpc";
 import { sendCommunityBroadcast } from "@/server/notifications/broadcast-send";
+import { canBroadcast } from "@/server/communities/role-utils";
 
 export const broadcastRouter = createTRPCRouter({
   /** Compose and send a PROMOTIONAL broadcast to a community's active members.
@@ -17,7 +18,7 @@ export const broadcastRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
+      if (!canBroadcast(ctx.communityRole)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       return sendCommunityBroadcast(ctx.db, {

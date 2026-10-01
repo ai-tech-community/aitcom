@@ -34,6 +34,24 @@ describe("post mention mail", () => {
     expect(html).toContain("Jane &lt;b&gt;Doe&lt;/b&gt;");
     expect(html).toContain('href="/en/communities/gif-lab"');
     expect(html).toContain('href="/en/dashboard/notifications"');
-    expect(html).toContain("Open the post");
+    expect(html).toContain("Open the feed");
+    expect(html).toContain('<span aria-hidden="true"> →</span>');
+    expect(html).toContain('lang="en"');
+  });
+});
+
+describe("post mention plain text", () => {
+  it("carries the same words and links", async () => {
+    const { renderPostMentionText } = await import("./post-mention-mail-copy");
+    expect(renderPostMentionText("en", mail, urls)).toBe(
+      [
+        "Jane <b>Doe</b> mentioned you in a post in GIF Lab.",
+        "",
+        "Open the feed: /en/communities/gif-lab",
+        "",
+        "—",
+        "AIT Community · Manage notifications: /en/dashboard/notifications",
+      ].join("\n"),
+    );
   });
 });

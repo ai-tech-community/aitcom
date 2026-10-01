@@ -17,3 +17,5 @@ export function canManageRole(
 ): boolean {
   return ROLE_HIERARCHY[actorRole] > ROLE_HIERARCHY[targetRole];
 }
+
+export { BROADCASTER_ROLES, canBroadcast } from "@/lib/community-broadcast";

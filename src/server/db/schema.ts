@@ -720,6 +720,36 @@ export const hubMailPrefs = appSchema.table("hub_mail_pref", (d) => ({
   updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 }));
 
+/** Mention emails sent (#391): one per member per post (the unique index is
+ *  the guard, claimed before sending), kept apart from the in-app
+ *  notifications members can delete; also what the per-recipient limits
+ *  count. post_id is a Payload feed post id, without a foreign key: the
+ *  email can be claimed before the post's save commits. */
+export const postMentionMailLog = appSchema.table(
+  "post_mention_mail_log",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    postId: d.integer().notNull(),
+    authorId: d.varchar("author_id", { length: 255 }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("post_mention_mail_log_uidx").on(t.userId, t.postId),
+    index("post_mention_mail_log_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);
+
 /** One ping per unread Hub DM streak. unreadAnchor is lastReadAt ISO or "never". */
 export const hubDmMailLog = appSchema.table(
   "hub_dm_mail_log",

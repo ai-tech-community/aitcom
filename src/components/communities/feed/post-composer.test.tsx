@@ -105,10 +105,15 @@ vi.mock("@/trpc/react", () => ({
 
 const clip = new File(["clip"], "holiday.mov", { type: "video/quicktime" });
 
-function renderComposer() {
+function renderComposer({ canAnnounce = false } = {}) {
   const view = render(
     <NextIntlClientProvider locale="en" messages={en}>
-      <PostComposer slug="mlops" userId="u1" canPost />
+      <PostComposer
+        slug="mlops"
+        userId="u1"
+        canPost
+        canAnnounce={canAnnounce}
+      />
     </NextIntlClientProvider>,
   );
   const inputs =
@@ -612,8 +617,8 @@ describe("PostComposer mentions", () => {
   it("offers @everyone for @all, and writes it without a member behind it", () => {
     m.mentionCandidates.mockImplementation(() => ({
       data: [
-        { userId: "everyone", name: "everyone", image: null, everyone: true },
         ...members,
+        { userId: "everyone", name: "everyone", image: null, everyone: true },
       ],
       isFetched: true,
       isError: false,
@@ -625,12 +630,29 @@ describe("PostComposer mentions", () => {
     expect(option).toHaveTextContent("Notify the whole community");
     // Members whose name doesn't hold "al" are not offered.
     expect(screen.getAllByRole("option")).toHaveLength(1);
+    // A quick Enter never reaches the whole community: it stays a key.
+    expect(fireEvent.keyDown(box, { key: "Enter" })).toBe(true);
+    expect(box).toHaveValue("News @al");
+    fireEvent.keyDown(box, { key: "ArrowDown" });
+    expect(
+      screen.getByText("@everyone, Notify the whole community, 1 of 1"),
+    ).toBeInTheDocument();
     fireEvent.keyDown(box, { key: "Enter" });
     expect(box).toHaveValue("News @everyone ");
     fireEvent.click(postButton());
     expect(m.createPost).toHaveBeenCalledWith(
       expect.objectContaining({ content: "News @everyone", mentions: [] }),
     );
+  });
+
+  it("warns an owner that @everyone notifies the whole community", () => {
+    renderComposer({ canAnnounce: true });
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Big news @everyone" },
+    });
+    expect(
+      screen.getByText(/This post will notify everyone in the community/),
+    ).toBeInTheDocument();
   });
 
   it("types an @ from the toolbar button", () => {

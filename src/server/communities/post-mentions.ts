@@ -14,6 +14,7 @@ import {
 } from "@/server/db/schema";
 import { escapeLike } from "@/server/db/escape-like";
 import { publicRosterVisibility } from "@/server/members/public-roster";
+import { ANNOUNCED_CONTEXT_KEY } from "./post-announcements";
 import {
   scheduleMentionEmails,
   type MentionEmailInput,
@@ -266,6 +267,8 @@ export async function notifyNewMentions(
     })),
   );
   return {
+    postId: post.id,
+    authorId: post.authorId,
     mail: {
       authorName: post.authorName ?? "A member",
       communityName: community.name,
@@ -286,7 +289,7 @@ export function feedPostMentionsAfterChange(
   getDatabase: () => Promise<Database> = async () =>
     (await import("@/server/db")).db,
 ): CollectionAfterChangeHook {
-  return async ({ doc, previousDoc, operation }) => {
+  return async ({ doc, previousDoc, operation, req }) => {
     const post = doc as MentionedPost;
     const before = previousDoc as MentionedPost | undefined;
     if (
@@ -301,7 +304,10 @@ export function feedPostMentionsAfterChange(
     try {
       const database = await getDatabase();
       const emails = await notifyNewMentions(database, post);
-      if (emails) scheduleMentionEmails(database, emails);
+      // An announced post already emails everyone once.
+      if (emails && !req.context[ANNOUNCED_CONTEXT_KEY]) {
+        await scheduleMentionEmails(database, emails);
+      }
     } catch (error) {
       console.error("[feed-posts] failed to notify mentioned members", error);
     }

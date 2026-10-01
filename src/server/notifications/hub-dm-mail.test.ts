@@ -104,9 +104,7 @@ describe("hub mail prefs", () => {
     });
     expect(canSendHubMail(allOn, "dm")).toBe(true);
     expect(canSendHubMail(allOn, "mention")).toBe(true);
-    expect(canSendHubMail({ ...allOn, mention: false }, "mention")).toBe(
-      false,
-    );
+    expect(canSendHubMail({ ...allOn, mention: false }, "mention")).toBe(false);
     expect(canSendHubMail(allOn, "forumReply")).toBe(false);
     expect(canSendHubMail(allOn, "digest")).toBe(false);
     expect(canSendHubMail(allOn, "agentJob")).toBe(false);

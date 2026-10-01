@@ -262,9 +262,11 @@ export const FeedPosts: CollectionConfig = {
       linkPreviewBeforeChange(),
       feedPostMentionsBeforeChange(),
     ],
+    // The announcement runs first: an announced post sends no mention
+    // emails on top of the announcement email.
     afterChange: [
-      feedPostMentionsAfterChange(),
       feedPostAnnouncementAfterChange(),
+      feedPostMentionsAfterChange(),
     ],
   },
   timestamps: true,

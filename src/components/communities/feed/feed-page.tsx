@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { canBroadcast } from "@/lib/community-broadcast";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Clapperboard, Loader2, LogIn } from "lucide-react";
@@ -56,7 +57,12 @@ export function FeedPage({
         <ReelsEntry slug={slug} />
 
         {currentUserId ? (
-          <PostComposer slug={slug} userId={currentUserId} canPost={canPost} />
+          <PostComposer
+            slug={slug}
+            userId={currentUserId}
+            canPost={canPost}
+            canAnnounce={canBroadcast(memberRole)}
+          />
         ) : null}
 
         {isAuthenticated && isMember ? (
