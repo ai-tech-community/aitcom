@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { cleanupAbandonedMaterialUploads } from "@/server/classroom/material-uploads-cleanup";
+import { sweepUnusedFeedImages } from "@/server/communities/unused-feed-images-sweep";
 import { sweepUnusedVideoFiles } from "@/server/communities/unused-video-files-sweep";
 import { cleanupAbandonedUploads } from "@/server/communities/video-uploads-cleanup";
 import { getObjectStorage } from "@/server/media/object-storage";
@@ -34,21 +35,53 @@ async function runSweep<T extends SweepResult>(
  * Cron job: runs daily to delete the files and records of uploads nobody
  * finished within ABANDONED_UPLOAD_HOURS — Reels video grants and classroom
  * file uploads — and then the Reels video files no live post or open grant
- * points at any more. Protected by CRON_SECRET header. The path keeps its
+ * points at any more, and the feed post images no post links. Protected by CRON_SECRET header. The path keeps its
  * old name so the Vercel cron schedule is unchanged.
  *
  * The sweeps are independent: one throwing does not stop the others. The
  * response keeps the video counts at the top level (as before), the
  * classroom counts under `materials` and the unused video files under
- * `unusedVideoFiles`; a sweep that threw reports null and makes the run
- * answer 500 so the cron shows as failed. The unused-file sweep runs in
- * production only (see `ownsStorageContents`) and reports itself skipped
- * elsewhere.
+ * `unusedVideoFiles` and the unused feed images under `unusedFeedImages`;
+ * a sweep that threw reports null and makes the run answer 500 so the cron
+ * shows as failed. The two unused-file sweeps run in production only (see
+ * `ownsStorageContents`) and report themselves skipped elsewhere.
  */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const payload = await getPayloadClient();
+  // Lazy storage: only reached when an abandoned upload's files need removing.
+  const videos = await runSweep("videos", () =>
+    cleanupAbandonedUploads({ payload, storage: getVideoStorage }),
+  );
+  const materials = await runSweep("materials", () =>
+    cleanupAbandonedMaterialUploads({ payload, storage: getObjectStorage }),
+  );
+  // After the abandoned grants are gone, so their files are not counted
+  // twice. Only production's database knows everything in the shared bucket.
+  const ownsStorage = ownsStorageContents();
+  const unusedVideoFiles = ownsStorage
+    ? await runSweep<UnusedSweepResult>("unused video files", () =>
+        sweepUnusedVideoFiles({ payload, storage: getObjectStorage }),
+      )
+    : NOT_PRODUCTION;
+  // Deleting a feed image deletes its files in the shared bucket, and
+  // another environment's database may hold copies of production's images.
+  const unusedFeedImages = ownsStorage
+    ? await runSweep("unused feed images", () =>
+        sweepUnusedFeedImages({ payload }),
+      )
+    : NOT_PRODUCTION;
+  const success =
+    videos !== null &&
+    materials !== null &&
+    unusedVideoFiles !== null &&
+    unusedFeedImages !== null;
+
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const payload = await getPayloadClient();
@@ -77,6 +110,7 @@ export async function GET(request: Request) {
       failed: videos?.failed ?? null,
       materials,
       unusedVideoFiles,
+      unusedFeedImages,
       timestamp: new Date().toISOString(),
     },
     { status: success ? 200 : 500 },
