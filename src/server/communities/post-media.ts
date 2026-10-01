@@ -146,6 +146,8 @@ export async function setPostImage(
     {
       content: input.content,
       image: image?.id ?? null,
+      // A legacy URL-only picture has no link for the hook to clear.
+      ...(image ? {} : { imageUrl: null }),
       ...(post.video?.key
         ? { video: NO_VIDEO, visibility: "community" as const }
         : {}),

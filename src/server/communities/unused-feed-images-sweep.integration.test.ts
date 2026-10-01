@@ -119,4 +119,41 @@ describe.skipIf(!RUN_DB)("sweepUnusedFeedImages [DB integration]", () => {
     expect(await exists(shared)).toBe(true);
     expect(result.removed + result.failed).toBeGreaterThanOrEqual(1);
   });
+
+  it("clears a post's picture when its image is deleted some other way", async () => {
+    const linked = await image("feed-post", new Date().toISOString());
+    const payload = await m.getPayloadClient();
+    const post = await payload.create({
+      collection: "feed-posts",
+      data: {
+        content: "linked",
+        authorId: "it-sweeper",
+        communityId: "it-sweep",
+        topicSlug: "general",
+        likeCount: 0,
+        commentCount: 0,
+        visibility: "community",
+        image: linked,
+      },
+    });
+    created.posts.push(post.id);
+    expect(post.imageUrl).toBeTruthy();
+
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    try {
+      await payload.delete({ collection: "media", id: linked });
+    } finally {
+      error.mockRestore();
+    }
+
+    const saved = await payload.findByID({
+      collection: "feed-posts",
+      id: post.id,
+      depth: 0,
+    });
+    expect(saved.image ?? null).toBeNull();
+    expect(saved.imageUrl ?? null).toBeNull();
+  });
 });

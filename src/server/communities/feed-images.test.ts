@@ -7,7 +7,10 @@ const net = vi.hoisted(() => ({
 vi.mock("@/server/net/safe-fetch", () => net);
 
 import { cleanUpPostImage, fetchImage, importFeedImage } from "./feed-images";
-import { feedPostImageUrlBeforeChange } from "./feed-post-image-url-hook";
+import {
+  feedPostImageUrlBeforeChange,
+  unlinkFeedPostsBeforeMediaDelete,
+} from "./feed-post-image-url-hook";
 
 function fakePayload() {
   return {
@@ -167,13 +170,21 @@ describe("feedPostImageUrlBeforeChange", () => {
     });
   });
 
-  it("clears the URL when the image is removed, also a legacy URL-only picture", async () => {
+  it("clears the URL when the linked image is removed", async () => {
     const { result, findByID } = run(
       { image: null },
-      { image: null, imageUrl: "https://elsewhere/p.png" },
+      { image: 7, imageUrl: "https://ours/7.png" },
     );
     await expect(result).resolves.toMatchObject({ imageUrl: null });
     expect(findByID).not.toHaveBeenCalled();
+  });
+
+  it("keeps a legacy URL-only picture through a save with an empty image (Payload admin)", async () => {
+    const { result } = run(
+      { image: null, content: "edited" },
+      { image: null, imageUrl: "https://elsewhere/p.png" },
+    );
+    await expect(result).resolves.toEqual({ image: null, content: "edited" });
   });
 
   it("leaves the URL alone when a write does not set the image", async () => {
@@ -192,5 +203,20 @@ describe("feedPostImageUrlBeforeChange", () => {
     );
     await expect(result).resolves.toEqual({ image: 7 });
     expect(findByID).not.toHaveBeenCalled();
+  });
+});
+
+describe("unlinkFeedPostsBeforeMediaDelete", () => {
+  it("unlinks every post showing the image, in the same request", async () => {
+    const update = vi.fn().mockResolvedValue({ docs: [] });
+    const req = { payload: { update } };
+    await unlinkFeedPostsBeforeMediaDelete()({ id: 66, req } as never);
+    expect(update).toHaveBeenCalledWith({
+      collection: "feed-posts",
+      where: { image: { equals: 66 } },
+      data: { image: null },
+      depth: 0,
+      req,
+    });
   });
 });

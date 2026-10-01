@@ -293,7 +293,13 @@ describe("reviewReport", () => {
     expect(payload.update).toHaveBeenCalledWith({
       collection: "feed-posts",
       id: 5,
-      data: { isDeleted: true, content: "", authorName: "", image: null },
+      data: {
+        isDeleted: true,
+        content: "",
+        authorName: "",
+        image: null,
+        imageUrl: null,
+      },
     });
     expect(storage.remove).toHaveBeenCalledWith(["k.mp4", "k.jpg"]);
     expect(payload.delete).toHaveBeenCalledWith({

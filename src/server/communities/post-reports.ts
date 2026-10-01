@@ -197,7 +197,13 @@ export async function reviewReport(
   await deps.payload.update({
     collection: "feed-posts",
     id: post.id,
-    data: { isDeleted: true, content: "", authorName: "", image: null },
+    data: {
+      isDeleted: true,
+      content: "",
+      authorName: "",
+      image: null,
+      imageUrl: null,
+    },
   });
   // Best effort: the post is already removed, so a storage failure is
   // logged rather than failing the moderator's action.

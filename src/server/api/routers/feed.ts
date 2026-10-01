@@ -595,6 +595,7 @@ export const feedRouter = createTRPCRouter({
           content: "",
           authorName: "",
           image: null,
+          imageUrl: null,
         },
       });
       // Best effort: the post is already gone, so a storage failure is logged

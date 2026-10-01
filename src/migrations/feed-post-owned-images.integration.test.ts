@@ -60,10 +60,10 @@ describe.skipIf(!RUN_DB)(
       created.media.length = 0;
     });
 
-    async function insertMedia(filename: string) {
+    async function insertMedia(filename: string, alt = "feed post image") {
       const res = await m.db.execute(m.sql`
         INSERT INTO "media" ("alt", "filename", "updated_at", "created_at")
-        VALUES ('upload', ${filename}, now(), now()) RETURNING "id"`);
+        VALUES (${alt}, ${filename}, now(), now()) RETURNING "id"`);
       const id = Number((res.rows[0] as { id: number }).id);
       created.media.push(id);
       return id;
@@ -110,6 +110,41 @@ describe.skipIf(!RUN_DB)(
         purpose: "feed-post",
         uploaded_by: "it-author",
       });
+    });
+
+    it("leaves shared pictures alone: other uploads, a URL two posts show, a linked cover", async () => {
+      const url = (name: string) =>
+        `https://bucket.s3.eu-central-1.amazonaws.com/${name}`;
+      const stamp = Date.now();
+      const cover = await insertMedia(`it-cover-${stamp}.png`, "Event cover");
+      const coverPost = await insertPost(url(`it-cover-${stamp}.png`));
+      const twice = await insertMedia(`it-twice-${stamp}.png`);
+      const first = await insertPost(url(`it-twice-${stamp}.png`));
+      const second = await insertPost(url(`it-twice-${stamp}.png`));
+      const speakerPhoto = await insertMedia(`it-photo-${stamp}.png`);
+      const photoPost = await insertPost(url(`it-photo-${stamp}.png`));
+      const speaker = await m.db.execute(m.sql`
+        INSERT INTO "speakers" ("name", "photo_id", "updated_at", "created_at")
+        VALUES ('it speaker', ${speakerPhoto}, now(), now()) RETURNING "id"`);
+      const speakerId = Number((speaker.rows[0] as { id: number }).id);
+      try {
+        await m.up({ db: m.db } as unknown as Parameters<typeof Up>[0]);
+        const posts = await m.db.execute(m.sql`
+          SELECT "image_id" FROM "feed_posts"
+          WHERE "id" IN ${[coverPost, first, second, photoPost]}`);
+        expect(
+          posts.rows.map((r) => (r as { image_id: unknown }).image_id),
+        ).toEqual([null, null, null, null]);
+        const media = await m.db.execute(m.sql`
+          SELECT "purpose" FROM "media" WHERE "id" IN ${[cover, twice, speakerPhoto]}`);
+        expect(
+          media.rows.map((r) => (r as { purpose: unknown }).purpose),
+        ).toEqual([null, null, null]);
+      } finally {
+        await m.db.execute(
+          m.sql`DELETE FROM "speakers" WHERE "id" = ${speakerId}`,
+        );
+      }
     });
 
     it("is safe to run again", async () => {

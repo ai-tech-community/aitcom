@@ -3,9 +3,11 @@
 // per image) instead of trusting a URL. `image_url` stays as the server-
 // written copy of the image's public URL.
 //
-// Backfill: posts whose `image_url` points at one of our uploads (matched by
-// file name) are linked to it, and that upload becomes the post author's
-// feed post image. Other URLs are left as they are.
+// Backfill: a post whose `image_url` points at a picture the feed composer
+// uploaded (matched by file name and the composer's alt text), that no other
+// post shows and nothing else links, is linked to it, and that upload
+// becomes the post author's feed post image. Every other URL is left as it
+// is (shown as before, never deleted).
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
 import { sql } from "@payloadcms/db-postgres";
 
@@ -33,12 +35,29 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS "feed_posts_image_idx" ON "feed_posts" USING btree ("image_id");
 
     WITH matches AS (
-      SELECT DISTINCT ON (m."id") fp."id" AS post_id, m."id" AS media_id
+      SELECT fp."id" AS post_id, m."id" AS media_id
       FROM "feed_posts" fp
       JOIN "media" m ON m."filename" = substring(fp."image_url" FROM '[^/]+$')
       WHERE fp."image_id" IS NULL
         AND fp."image_url" LIKE 'https://%.amazonaws.com/%'
-      ORDER BY m."id", fp."id"
+        -- Only pictures the feed composer uploaded (it always sent this alt
+        -- text); covers and logos are shared and must never become one
+        -- member's, to be deleted with their post.
+        AND m."alt" = 'feed post image'
+        -- Only a picture exactly one post shows.
+        AND NOT EXISTS (
+          SELECT 1 FROM "feed_posts" o
+          WHERE o."id" <> fp."id" AND o."image_url" = fp."image_url"
+        )
+        -- And nothing else links it.
+        AND NOT EXISTS (SELECT 1 FROM "events" e WHERE e."image_id" = m."id" OR e."cover_image_id" = m."id")
+        AND NOT EXISTS (SELECT 1 FROM "_events_v" v WHERE v."version_image_id" = m."id" OR v."version_cover_image_id" = m."id")
+        AND NOT EXISTS (SELECT 1 FROM "events_rels" r WHERE r."media_id" = m."id")
+        AND NOT EXISTS (SELECT 1 FROM "_events_v_rels" r WHERE r."media_id" = m."id")
+        AND NOT EXISTS (SELECT 1 FROM "speakers" sp WHERE sp."photo_id" = m."id")
+        AND NOT EXISTS (SELECT 1 FROM "sponsors" so WHERE so."logo_id" = m."id")
+        AND NOT EXISTS (SELECT 1 FROM "challenges" c WHERE c."image_id" = m."id")
+        AND NOT EXISTS (SELECT 1 FROM "launchpad_projects" lp WHERE lp."cover_image_id" = m."id")
     )
     UPDATE "feed_posts" fp
       SET "image_id" = matches.media_id

@@ -81,28 +81,6 @@ export async function GET(request: Request) {
     unusedVideoFiles !== null &&
     unusedFeedImages !== null;
 
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const payload = await getPayloadClient();
-  // Lazy storage: only reached when an abandoned upload's files need removing.
-  const videos = await runSweep("videos", () =>
-    cleanupAbandonedUploads({ payload, storage: getVideoStorage }),
-  );
-  const materials = await runSweep("materials", () =>
-    cleanupAbandonedMaterialUploads({ payload, storage: getObjectStorage }),
-  );
-  // After the abandoned grants are gone, so their files are not counted
-  // twice. Only production's database knows everything in the shared bucket.
-  const ownsStorage = ownsStorageContents();
-  const unusedVideoFiles = ownsStorage
-    ? await runSweep<UnusedSweepResult>("unused video files", () =>
-        sweepUnusedVideoFiles({ payload, storage: getObjectStorage }),
-      )
-    : NOT_PRODUCTION;
-  const success =
-    videos !== null && materials !== null && unusedVideoFiles !== null;
-
   return NextResponse.json(
     {
       success,
