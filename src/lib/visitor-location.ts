@@ -26,4 +26,3 @@ export async function getVisitorLocation(): Promise<VisitorLocation | null> {
 
   return { countryCode, countryName, city };
 }
-

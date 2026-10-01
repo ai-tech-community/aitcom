@@ -64,7 +64,10 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
         splitLink({
           condition: (op) =>
             op.type === "query" && carriesPrivateInput(op.input),
-          true: httpBatchStreamLink({ ...batchOptions, methodOverride: "POST" }),
+          true: httpBatchStreamLink({
+            ...batchOptions,
+            methodOverride: "POST",
+          }),
           false: httpBatchStreamLink(batchOptions),
         }),
       ],

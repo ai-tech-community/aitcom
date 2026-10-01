@@ -3,9 +3,9 @@ import { carriesPrivateInput } from "./private-input";
 
 describe("carriesPrivateInput", () => {
   it("spots a shared position", () => {
-    expect(carriesPrivateInput({ sort: "near", near: { lat: 1, lng: 2 } })).toBe(
-      true,
-    );
+    expect(
+      carriesPrivateInput({ sort: "near", near: { lat: 1, lng: 2 } }),
+    ).toBe(true);
   });
 
   it("leaves everything else on GET", () => {

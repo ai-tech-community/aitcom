@@ -101,8 +101,7 @@ export const communitiesRouter = createTRPCRouter({
       // Only "near" needs to know where the visitor is: the shared
       // position, else the edge's coarse estimate.
       const near = input.sort === "near";
-      const ip =
-        near && !input.near ? ipOriginFromHeaders(ctx.headers) : null;
+      const ip = near && !input.near ? ipOriginFromHeaders(ctx.headers) : null;
       const origin = near ? (input.near ?? ip?.point ?? null) : null;
       const page = queryDirectory(all, { ...input, origin });
       // One extra query for the whole page (no N+1): leadership-first faces.

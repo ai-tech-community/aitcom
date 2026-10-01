@@ -435,7 +435,9 @@ export function DiscoverCommunities({
           active={near && !!query.data}
           origin={pages[0]?.origin ?? null}
           anyLocated={items.some((c) => c.distanceKm !== null)}
-          filtered={!!(params.q || params.place || params.want)}
+          filtered={
+            params.q !== "" || params.place !== null || params.want !== null
+          }
           showPlaces={showPlaces}
           state={position.state}
           onAsk={position.ask}
