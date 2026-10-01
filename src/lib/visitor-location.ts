@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { readVisitorHeaders } from "./visitor-headers";
 
 export interface VisitorLocation {
   countryCode: string;
@@ -7,16 +8,13 @@ export interface VisitorLocation {
 }
 
 export async function getVisitorLocation(): Promise<VisitorLocation | null> {
-  const h = await headers();
+  const visitor = readVisitorHeaders(await headers());
   const countryCode =
-    h.get("x-vercel-ip-country") ??
-    h.get("cf-ipcountry") ??
-    process.env.DEFAULT_VISITOR_COUNTRY ??
-    null;
+    visitor.countryCode ?? process.env.DEFAULT_VISITOR_COUNTRY ?? null;
 
   if (!countryCode || countryCode === "XX") return null;
 
-  const city = h.get("x-vercel-ip-city") ?? null;
+  const city = visitor.city;
 
   let countryName: string | null = null;
   try {

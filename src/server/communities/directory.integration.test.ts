@@ -69,6 +69,7 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
     userIds: string[];
     communityIds: string[];
     eventIds: number[];
+    courseId: number;
     open: string;
     approval: string;
     unlisted: string;
@@ -208,6 +209,8 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
         communityId: open,
         date: isoDay(5),
         city: "Utrecht",
+        latitude: 52.09,
+        longitude: 5.12,
       }),
       await createEvent("luma", {
         communityId: approval,
@@ -222,11 +225,24 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
       }),
     ];
 
+    const course = await payload.create({
+      collection: "courses",
+      data: {
+        title: `Directory course ${suffix}`,
+        slug: `it-dir-course-${suffix}`,
+        authorId: owner,
+        status: "published",
+        isPublic: true,
+        communityId: open,
+      } as never,
+    });
+
     fx = {
       suffix,
       userIds: [owner, member],
       communityIds: [open, approval, unlisted],
       eventIds,
+      courseId: course.id,
       open,
       approval,
       unlisted,
@@ -238,6 +254,11 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
   afterEach(async () => {
     const { db, schema, inArray } = m;
     const payload = await m.getPayloadClient();
+    try {
+      await payload.delete({ collection: "courses", id: fx.courseId });
+    } catch {
+      // Best-effort teardown.
+    }
     for (const id of fx.eventIds) {
       try {
         await payload.delete({ collection: "events", id });
@@ -337,5 +358,39 @@ describe.skipIf(!RUN_DB)("communities.directory [DB integration]", () => {
     m.invalidate();
     const fresh = await guest().communities.directory({ q: fx.suffix });
     expect(fresh.items.map((c) => c.id)).toContain(fx.unlisted);
+  });
+
+  it("says what a community offers and how far it is", async () => {
+    const amsterdam = { lat: 52.37, lng: 4.9 };
+    const out = await guest().communities.directory({
+      q: fx.suffix,
+      sort: "near",
+      near: amsterdam,
+    });
+    const open = out.items.find((c) => c.id === fx.open)!;
+    const approval = out.items.find((c) => c.id === fx.approval)!;
+    // An in-person event (meet) and a public course (learn).
+    expect(open.wants).toEqual(["meet", "learn"]);
+    expect(approval.wants).toEqual([]);
+    // Utrecht is about 35 km from Amsterdam; no located event, no distance.
+    expect(open.distanceKm).toBeGreaterThan(30);
+    expect(open.distanceKm).toBeLessThan(45);
+    expect(approval.distanceKm).toBeNull();
+    expect(out.items.map((c) => c.id)).toEqual([fx.open, fx.approval]);
+    expect(out.origin).toEqual({ precise: true, city: null });
+
+    // Outside "near" the server does not use any location at all.
+    const plain = await guest().communities.directory({
+      q: fx.suffix,
+      near: amsterdam,
+    });
+    expect(plain.origin).toBeNull();
+    expect(plain.items.every((c) => c.distanceKm === null)).toBe(true);
+
+    const learning = await guest().communities.directory({
+      q: fx.suffix,
+      want: "learn",
+    });
+    expect(learning.items.map((c) => c.id)).toEqual([fx.open]);
   });
 });

@@ -19,6 +19,11 @@ type DB = typeof _db;
 /** How long one instance serves a directory snapshot before rebuilding. */
 const SNAPSHOT_TTL_MS = 60_000;
 
+/** An event held online, by its format or its location text. */
+function isOnline(e: { format?: string | null; location?: unknown }): boolean {
+  return e.format === "online" || e.location === "Online";
+}
+
 /**
  * Upcoming public events of the given communities, soonest first. Same
  * rules as the public events page: published, not a discovered (Luma)
@@ -63,6 +68,9 @@ async function loadUpcomingEvents(
       format: true,
       location: true,
       communityId: true,
+      latitude: true,
+      longitude: true,
+      type: true,
     },
   });
   return docs.flatMap((e) =>
@@ -76,11 +84,70 @@ async function loadUpcomingEvents(
             startTime: e.startTime ?? null,
             timezone: e.timezone ?? null,
             city: e.city ?? null,
-            online: e.format === "online" || e.location === "Online",
+            online: isOnline(e),
+            // Only a real place has a distance: never an online event
+            // (which may keep stale coordinates) or one still "TBA".
+            point:
+              !isOnline(e) &&
+              e.location !== "TBA" &&
+              typeof e.latitude === "number" &&
+              typeof e.longitude === "number"
+                ? { lat: e.latitude, lng: e.longitude }
+                : null,
+            hackathon: e.type === "hackathon",
           },
         ]
       : [],
   );
+}
+
+/** Community ids among `ids` that have at least one matching doc. */
+async function communitiesWith(
+  payload: Payload,
+  collection: "courses" | "challenges" | "jobs",
+  ids: readonly string[],
+  where: Where[],
+): Promise<Set<string>> {
+  const { docs } = await payload.find({
+    collection,
+    where: { and: [{ communityId: { in: [...ids] } }, ...where] },
+    pagination: false,
+    depth: 0,
+    draft: false,
+    select: { communityId: true },
+  });
+  return new Set(docs.flatMap((d) => (d.communityId ? [d.communityId] : [])));
+}
+
+/**
+ * What the listed communities offer beyond events, by the same rules the
+ * public pages use: a course visitors can open (published and public), an
+ * active challenge, an open job that has not expired.
+ */
+async function loadOfferings(
+  payload: Payload,
+  ids: readonly string[],
+  now: Date,
+) {
+  const [learn, build, work] = await Promise.all([
+    communitiesWith(payload, "courses", ids, [
+      { status: { equals: "published" } },
+      { isPublic: { equals: true } },
+    ]),
+    communitiesWith(payload, "challenges", ids, [
+      { status: { equals: "active" } },
+    ]),
+    communitiesWith(payload, "jobs", ids, [
+      { status: { equals: "active" } },
+      {
+        or: [
+          { expiresAt: { exists: false } },
+          { expiresAt: { greater_than: now.toISOString() } },
+        ],
+      },
+    ]),
+  ]);
+  return { learn, build, work };
 }
 
 /** Every listed community with its public signals and next event. */
@@ -93,7 +160,7 @@ async function loadDirectory(
   const ids = candidates.map((c) => c.communityId);
   if (ids.length === 0) return [];
 
-  const [factRows, events, roomRows] = await Promise.all([
+  const [factRows, events, roomRows, offerings] = await Promise.all([
     db
       .select({
         id: communities.id,
@@ -118,6 +185,7 @@ async function loadDirectory(
         ),
       )
       .groupBy(spaces.communityId),
+    loadOfferings(payload, ids, opts.now),
   ]);
 
   return buildDirectory({
@@ -125,6 +193,7 @@ async function loadDirectory(
     facts: new Map(factRows.map((r) => [r.id, r])),
     events,
     openRooms: new Map(roomRows.map((r) => [r.communityId, r.n])),
+    offerings,
     now: opts.now,
   });
 }

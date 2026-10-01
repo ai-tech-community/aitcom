@@ -123,7 +123,12 @@ describe("CommunitiesDirectory", () => {
   it("reads the filters from the URL", () => {
     nav.search = "q=ml&place=Utrecht&sort=newest";
     render(<CommunitiesDirectory />);
-    expect(nav.params).toEqual({ q: "ml", place: "Utrecht", sort: "newest" });
+    expect(nav.params).toEqual({
+      q: "ml",
+      place: "Utrecht",
+      want: null,
+      sort: "newest",
+    });
   });
 
   it("writes filter changes into the URL in place", () => {

@@ -9,6 +9,7 @@ import { MemberStackView } from "@/components/communities/member-stack";
 import { getInitials } from "@/lib/avatar";
 import {
   ActivityLine,
+  DistanceLine,
   NextEventLine,
   OpenRoomsLine,
   type DirectoryItem,
@@ -25,11 +26,20 @@ import { JoinAction } from "./join-action";
  * name is the link, stretched over the card with `after:inset-0`, and the
  * join control sits above it.
  */
-export function CommunityCard({ community }: { community: DirectoryItem }) {
+export function CommunityCard({
+  community,
+  showDistance = false,
+}: {
+  community: DirectoryItem;
+  /** Show how far it is (when sorting by distance). */
+  showDistance?: boolean;
+}) {
   const t = useTranslations("communities.discover");
   const { slug, name, description, logoUrl, memberCount, faces } = community;
   const id = `community-card-${slug}`;
+  const distance = showDistance ? community.distanceKm : null;
   const alive =
+    distance !== null ||
     community.activeRecently > 0 ||
     community.nextEvent !== null ||
     community.openRooms > 0;
@@ -78,6 +88,7 @@ export function CommunityCard({ community }: { community: DirectoryItem }) {
         ) : null}
         {alive ? (
           <div className="space-y-1.5">
+            {distance !== null ? <DistanceLine km={distance} /> : null}
             {community.activeRecently > 0 ? (
               <ActivityLine count={community.activeRecently} />
             ) : null}

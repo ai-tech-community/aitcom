@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { CalendarDays, Hash } from "lucide-react";
+import { CalendarDays, Hash, MapPin } from "lucide-react";
 import type { RouterOutputs } from "@/trpc/react";
 import { formatEventShortWhen } from "@/lib/event-time";
 import { ONLINE_PLACE } from "@/server/communities/directory";
@@ -102,6 +102,33 @@ export function OpenRoomsLine({
       />
       <span className="min-w-0 wrap-break-word">
         {t("openRooms", { count })}
+      </span>
+    </p>
+  );
+}
+
+/** How far the community's nearest upcoming in-person event is. */
+export function DistanceLine({
+  km,
+  className,
+}: {
+  km: number;
+  className?: string;
+}) {
+  const t = useTranslations("communities.discover");
+  return (
+    <p
+      className={cn(
+        "text-foreground flex min-w-0 items-start gap-2 text-sm",
+        className,
+      )}
+    >
+      <MapPin
+        aria-hidden="true"
+        className="text-muted-foreground mt-0.5 size-4 shrink-0"
+      />
+      <span className="min-w-0 wrap-break-word">
+        {t("distanceAway", { km })}
       </span>
     </p>
   );

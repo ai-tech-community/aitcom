@@ -1,12 +1,13 @@
 "use client";
 
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { httpBatchStreamLink, loggerLink } from "@trpc/client";
+import { httpBatchStreamLink, loggerLink, splitLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
 import { useState } from "react";
 import SuperJSON from "superjson";
 
+import { carriesPrivateInput } from "./private-input";
 import { type AppRouter } from "@/server/api/root";
 import { createQueryClient } from "./query-client";
 
@@ -41,26 +42,37 @@ export type RouterOutputs = inferRouterOutputs<AppRouter>;
 export function TRPCReactProvider(props: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
 
-  const [trpcClient] = useState(() =>
-    api.createClient({
+  const [trpcClient] = useState(() => {
+    const batchOptions = {
+      transformer: SuperJSON,
+      url: getBaseUrl() + "/api/trpc",
+      headers: () => {
+        const headers = new Headers();
+        headers.set("x-trpc-source", "nextjs-react");
+        return headers;
+      },
+    };
+    return api.createClient({
       links: [
         loggerLink({
           enabled: (op) =>
             process.env.NODE_ENV === "development" ||
             (op.direction === "down" && op.result instanceof Error),
         }),
-        httpBatchStreamLink({
-          transformer: SuperJSON,
-          url: getBaseUrl() + "/api/trpc",
-          headers: () => {
-            const headers = new Headers();
-            headers.set("x-trpc-source", "nextjs-react");
-            return headers;
-          },
+        // Queries carrying a visitor's position go as POST, so it stays out
+        // of URLs and request logs; everything else keeps cacheable GETs.
+        splitLink({
+          condition: (op) =>
+            op.type === "query" && carriesPrivateInput(op.input),
+          true: httpBatchStreamLink({
+            ...batchOptions,
+            methodOverride: "POST",
+          }),
+          false: httpBatchStreamLink(batchOptions),
         }),
       ],
-    }),
-  );
+    });
+  });
 
   return (
     <QueryClientProvider client={queryClient}>
