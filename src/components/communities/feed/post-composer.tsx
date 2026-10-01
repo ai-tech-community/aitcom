@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Film, ImagePlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { VideoVisibility } from "@/lib/video-rules";
@@ -12,6 +11,12 @@ import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
 import { uploadFeedImage } from "./upload-feed-image";
+import { DraftNotice } from "./editor/draft-notice";
+import { EmojiPickerButton } from "./editor/emoji-picker-button";
+import { PostEditor } from "./editor/post-editor";
+import { ToolbarButton } from "./editor/toolbar-button";
+import { usePostDraft } from "./editor/use-post-draft";
+import { usePostText } from "./editor/use-post-text";
 
 interface PostComposerProps {
   slug: string;
@@ -20,10 +25,17 @@ interface PostComposerProps {
 
 export function PostComposer({ slug, canPost }: PostComposerProps) {
   const t = useTranslations("communities.feed");
+  const te = useTranslations("communities.feed.editor");
   const tc = useTranslations("common");
   const tv = useTranslations("communities.video");
   const utils = api.useUtils();
-  const [content, setContent] = useState("");
+  const text = usePostText("");
+  const draft = usePostDraft({
+    key: `new:${slug}`,
+    base: "",
+    text: text.value,
+    restore: text.setValue,
+  });
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [topicSlug, setTopicSlug] = useState("general");
@@ -36,13 +48,19 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
     videoPost.state.step === "preparing" ||
     videoPost.state.step === "uploading" ||
     videoPost.state.step === "posting";
+  const content = text.value;
 
   const { data: topics } = api.topics.list.useQuery({ communitySlug: slug });
 
+  const posted = () => {
+    toast.success(t("postCreated"));
+    text.setValue("");
+    draft.clear();
+  };
+
   const createPost = api.feed.createPost.useMutation({
     onSuccess: () => {
-      toast.success(t("postCreated"));
-      setContent("");
+      posted();
       setImageUrl(null);
       void utils.feed.getFeed.invalidate();
       void utils.feed.getActivity.invalidate({ communitySlug: slug });
@@ -52,10 +70,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
     },
   });
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const addImageFile = async (file: File) => {
     setIsUploading(true);
     try {
       setImageUrl(await uploadFeedImage(file));
@@ -63,8 +78,13 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
       toast.error(tc("uploadFailed"));
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) void addImageFile(file);
   };
 
   const handleVideoPick = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,8 +112,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
       topicSlug,
     });
     if (!ok) return;
-    toast.success(t("postCreated"));
-    setContent("");
+    posted();
     setVideoFile(null);
     setVisibility("community");
   };
@@ -103,8 +122,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
     void submitVideo(videoFile);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = () => {
     if (!content.trim() || videoBusy || createPost.isPending) return;
     if (videoFile) {
       void submitVideo(videoFile);
@@ -120,110 +138,128 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
 
   if (!canPost) return null;
 
+  const busy = createPost.isPending || videoBusy;
+
   return (
     <form
-      onSubmit={handleSubmit}
-      className="border-border space-y-3 rounded-lg border p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
     >
-      <Textarea
+      <PostEditor
+        text={text}
+        label={t("composePlaceholder")}
         placeholder={t("composePlaceholder")}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        maxLength={2000}
-        rows={3}
-        className="resize-none"
+        // A post carries one image or one video, never both.
+        onImageFile={
+          videoFile || isUploading ? undefined : (f) => void addImageFile(f)
+        }
+        onSubmitShortcut={submit}
+        attachments={
+          videoFile || imageUrl ? (
+            <>
+              {videoFile ? (
+                <VideoAttachment
+                  file={videoFile}
+                  visibility={visibility}
+                  onVisibilityChange={setVisibility}
+                  onRemove={removeVideo}
+                  onCancel={videoPost.cancel}
+                  onRetry={handleRetry}
+                  state={videoPost.state}
+                />
+              ) : null}
+              {imageUrl ? (
+                <MediaPreview
+                  src={imageUrl}
+                  alt={t("attachedImage")}
+                  removeLabel={t("removeImage")}
+                  onRemove={() => setImageUrl(null)}
+                />
+              ) : null}
+            </>
+          ) : null
+        }
+        tools={
+          <>
+            {videoFile ? null : (
+              <ToolbarButton
+                label={imageUrl ? t("replaceWithImage") : t("addImage")}
+                icon={
+                  isUploading ? (
+                    <Loader2
+                      aria-hidden="true"
+                      className="size-4 animate-spin"
+                    />
+                  ) : (
+                    <ImagePlus aria-hidden="true" className="size-4" />
+                  )
+                }
+                disabled={isUploading}
+                aria-busy={isUploading}
+                onClick={() => fileInputRef.current?.click()}
+              />
+            )}
+            {imageUrl || videoFile ? null : (
+              <ToolbarButton
+                label={tv("add")}
+                icon={<Film aria-hidden="true" className="size-4" />}
+                disabled={isUploading}
+                onClick={() => videoInputRef.current?.click()}
+              />
+            )}
+            <EmojiPickerButton onPick={text.insert} />
+            {/* One topic is no choice; the select appears once there are two. */}
+            {topics && topics.length > 1 ? (
+              <select
+                value={topicSlug}
+                onChange={(e) => setTopicSlug(e.target.value)}
+                className="border-border bg-background ml-1 h-8 max-w-44 truncate rounded-md border px-2 text-sm"
+                aria-label={t("selectTopic")}
+              >
+                {topics.map((tp) => (
+                  <option key={tp.id} value={tp.slug}>
+                    {tp.emoji ? `${tp.emoji} ` : ""}
+                    {tp.label}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </>
+        }
+        actions={
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!content.trim() || busy}
+            aria-busy={busy}
+            title={te("submitShortcut")}
+          >
+            {busy ? (
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+            ) : null}
+            {t("post")}
+          </Button>
+        }
+        notice={
+          draft.restored ? (
+            <DraftNotice
+              onDiscard={() => {
+                text.setValue("");
+                draft.clear();
+              }}
+            />
+          ) : null
+        }
       />
-
-      {videoFile ? (
-        <VideoAttachment
-          file={videoFile}
-          visibility={visibility}
-          onVisibilityChange={setVisibility}
-          onRemove={removeVideo}
-          onCancel={videoPost.cancel}
-          onRetry={handleRetry}
-          state={videoPost.state}
-        />
-      ) : null}
-
-      {imageUrl ? (
-        <MediaPreview
-          src={imageUrl}
-          alt={t("attachedImage")}
-          removeLabel={t("removeImage")}
-          onRemove={() => setImageUrl(null)}
-        />
-      ) : null}
-
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {/* A post carries one image or one video, never both. */}
-          {videoFile ? null : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={isUploading}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {isUploading ? (
-                <Loader2 className="mr-1.5 size-4 animate-spin" />
-              ) : (
-                <ImagePlus className="mr-1.5 size-4" />
-              )}
-              {t("addImage")}
-            </Button>
-          )}
-
-          {!imageUrl && !videoFile ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={isUploading}
-              onClick={() => videoInputRef.current?.click()}
-            >
-              <Film className="mr-1.5 size-4" />
-              {tv("add")}
-            </Button>
-          ) : null}
-
-          {/* One topic is no choice; the select appears once there are two. */}
-          {topics && topics.length > 1 ? (
-            <select
-              value={topicSlug}
-              onChange={(e) => setTopicSlug(e.target.value)}
-              className="border-border bg-background rounded-md border px-2 py-1 text-sm"
-              aria-label={t("selectTopic")}
-            >
-              {topics.map((tp) => (
-                <option key={tp.id} value={tp.slug}>
-                  {tp.emoji ? `${tp.emoji} ` : ""}
-                  {tp.label}
-                </option>
-              ))}
-            </select>
-          ) : null}
-        </div>
-
-        <Button
-          type="submit"
-          size="sm"
-          disabled={!content.trim() || createPost.isPending || videoBusy}
-        >
-          {createPost.isPending || videoBusy ? (
-            <Loader2 className="mr-1.5 size-4 animate-spin" />
-          ) : null}
-          {t("post")}
-        </Button>
-      </div>
 
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={handleImageUpload}
+        onChange={handleImagePick}
       />
       <input
         ref={videoInputRef}

@@ -16,6 +16,7 @@ import {
   notifications,
 } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
 import { MAX_PINS } from "@/lib/feed-sort";
 import { loadCommunityActivity } from "@/server/communities/activity-feed";
 import {
@@ -306,7 +307,7 @@ export const feedRouter = createTRPCRouter({
     .input(
       z.object({
         communitySlug: z.string(),
-        content: z.string().min(1).max(2000),
+        content: z.string().min(1).max(POST_MAX_LENGTH),
         imageUrl: z.string().url().optional(),
         topicSlug: z.string().optional(),
       }),
@@ -381,7 +382,7 @@ export const feedRouter = createTRPCRouter({
       z.object({
         communitySlug: z.string(),
         uploadId: z.string().uuid(),
-        caption: z.string().trim().min(1).max(2000),
+        caption: z.string().trim().min(1).max(POST_MAX_LENGTH),
         topicSlug: z.string().optional(),
         durationSeconds: z.number().positive(),
         width: z.number().int().positive(),
@@ -434,7 +435,7 @@ export const feedRouter = createTRPCRouter({
       z.object({
         postId: z.number(),
         communitySlug: z.string(),
-        content: z.string().min(1).max(2000),
+        content: z.string().min(1).max(POST_MAX_LENGTH),
         media: z
           .discriminatedUnion("kind", [
             z.object({ kind: z.literal("keep") }),
@@ -503,7 +504,7 @@ export const feedRouter = createTRPCRouter({
         postId: z.number(),
         communitySlug: z.string(),
         uploadId: z.string().uuid(),
-        caption: z.string().trim().min(1).max(2000),
+        caption: z.string().trim().min(1).max(POST_MAX_LENGTH),
         durationSeconds: z.number().positive(),
         width: z.number().int().positive(),
         height: z.number().int().positive(),

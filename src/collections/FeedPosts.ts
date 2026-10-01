@@ -1,5 +1,6 @@
 import type { CollectionConfig } from "payload";
 
+import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
 import { VIDEO_VISIBILITIES, VIDEO_VISIBILITY_LABELS } from "@/lib/video-rules";
 import { linkPreviewBeforeChange } from "@/server/link-preview/link-preview-hook";
 
@@ -17,7 +18,12 @@ export const FeedPosts: CollectionConfig = {
     description: "Community feed posts.",
   },
   fields: [
-    { name: "content", type: "text", required: true, maxLength: 2000 },
+    {
+      name: "content",
+      type: "text",
+      required: true,
+      maxLength: POST_MAX_LENGTH,
+    },
     { name: "imageUrl", type: "text", admin: { description: "S3 image URL." } },
     {
       name: "authorId",

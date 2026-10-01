@@ -6,12 +6,17 @@ import { Film, ImagePlus, Loader2, TriangleAlert, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import type { VideoVisibility } from "@/lib/video-rules";
 import { useVideoPost } from "./use-video-post";
 import { VideoAttachment } from "./video-attachment";
 import { MediaPreview } from "./media-preview";
 import { uploadFeedImage } from "./upload-feed-image";
+import { DraftNotice } from "./editor/draft-notice";
+import { EmojiPickerButton } from "./editor/emoji-picker-button";
+import { PostEditor } from "./editor/post-editor";
+import { ToolbarButton } from "./editor/toolbar-button";
+import { usePostDraft } from "./editor/use-post-draft";
+import { usePostText } from "./editor/use-post-text";
 
 /**
  * What the post will carry after the edit. A picked image stays on the
@@ -57,7 +62,14 @@ export function PostEditForm({
   const tc = useTranslations("common");
   const tv = useTranslations("communities.video");
   const utils = api.useUtils();
-  const [content, setContent] = useState(post.content);
+  const text = usePostText(post.content);
+  const content = text.value;
+  const draft = usePostDraft({
+    key: `edit:${post.id}`,
+    base: post.content,
+    text: text.value,
+    restore: text.setValue,
+  });
   const [media, setMedia] = useState<MediaEdit>({ kind: "keep" });
   const [isUploading, setIsUploading] = useState(false);
   const imageInput = useRef<HTMLInputElement>(null);
@@ -82,6 +94,7 @@ export function PostEditForm({
       // removed video's files are already gone.
       void utils.feed.getReels.invalidate({ communitySlug });
       toast.success(t("postEdited"));
+      draft.clear();
       onSaved();
     },
     onError: (error) =>
@@ -110,12 +123,15 @@ export function PostEditForm({
     Boolean(post.video) &&
     (media.kind === "none" || media.kind === "image");
 
+  const pickImageFile = (file: File) => {
+    videoPost.reset();
+    setMedia({ kind: "image", file, previewUrl: URL.createObjectURL(file) });
+  };
+
   const pickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
-    videoPost.reset();
-    setMedia({ kind: "image", file, previewUrl: URL.createObjectURL(file) });
+    if (file) pickImageFile(file);
   };
 
   const pickVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,6 +159,7 @@ export function PostEditForm({
   const cancel = () => {
     if (videoPost.state.step === "posting") return;
     videoPost.cancel();
+    draft.clear();
     onCancel();
   };
 
@@ -158,6 +175,7 @@ export function PostEditForm({
       });
       if (ok) {
         toast.success(t("postEdited"));
+        draft.clear();
         onSaved();
       }
       return;
@@ -189,7 +207,6 @@ export function PostEditForm({
 
   return (
     <form
-      className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
         void save();
@@ -201,29 +218,14 @@ export function PostEditForm({
         }
       }}
     >
-      <Textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            void save();
-          }
-        }}
-        maxLength={2000}
-        rows={3}
-        className="resize-none"
-        aria-label={t("editLabel")}
+      <PostEditor
+        text={text}
+        label={t("editLabel")}
         autoFocus
-      />
-
-      {mediaLocked ? (
-        <p className="text-muted-foreground text-sm">
-          {t("mediaLockedWhileReviewed")}
-        </p>
-      ) : (
-        <>
-          {media.kind === "video" ? (
+        onImageFile={mediaLocked || busy ? undefined : pickImageFile}
+        onSubmitShortcut={() => void save()}
+        attachments={
+          mediaLocked ? null : media.kind === "video" ? (
             <VideoAttachment
               file={media.file}
               visibility={audience}
@@ -232,9 +234,7 @@ export function PostEditForm({
               onRetry={() => void save()}
               state={videoPost.state}
             />
-          ) : null}
-
-          {media.kind === "image" ? (
+          ) : media.kind === "image" ? (
             <MediaPreview
               src={media.previewUrl}
               alt={t("attachedImage")}
@@ -264,45 +264,29 @@ export function PostEditForm({
               onRemove={removeMedia}
               disabled={busy}
             />
-          ) : null}
-
-          {/* Always mounted, so screen readers hear the warning when it
-              appears (WCAG 4.1.3). */}
-          <div role="status">
-            {losesPublic ? (
-              <p className="bg-warning/10 border-warning/30 text-foreground flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
-                <TriangleAlert
-                  aria-hidden="true"
-                  className="text-warning mt-0.5 size-4 shrink-0"
+          ) : null
+        }
+        tools={
+          <>
+            {mediaLocked ? null : (
+              <>
+                <ToolbarButton
+                  ref={imageButton}
+                  label={hasMedia ? t("replaceWithImage") : t("addImage")}
+                  icon={<ImagePlus aria-hidden="true" className="size-4" />}
+                  disabled={busy}
+                  onClick={() => imageInput.current?.click()}
                 />
-                {t("becomesMembersOnly")}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              ref={imageButton}
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => imageInput.current?.click()}
-            >
-              <ImagePlus aria-hidden="true" className="mr-1.5 size-4" />
-              {hasMedia ? t("replaceWithImage") : t("addImage")}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => videoInput.current?.click()}
-            >
-              <Film aria-hidden="true" className="mr-1.5 size-4" />
-              {hasMedia ? t("replaceWithVideo") : tv("add")}
-            </Button>
-            {hadMedia && media.kind !== "keep" ? (
+                <ToolbarButton
+                  label={hasMedia ? t("replaceWithVideo") : tv("add")}
+                  icon={<Film aria-hidden="true" className="size-4" />}
+                  disabled={busy}
+                  onClick={() => videoInput.current?.click()}
+                />
+              </>
+            )}
+            <EmojiPickerButton onPick={text.insert} disabled={busy} />
+            {!mediaLocked && hadMedia && media.kind !== "keep" ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -310,45 +294,72 @@ export function PostEditForm({
                 disabled={busy}
                 onClick={keepCurrent}
               >
-                <Undo2 aria-hidden="true" className="mr-1.5 size-4" />
+                <Undo2 aria-hidden="true" className="size-4" />
                 {post.video ? t("keepCurrentVideo") : t("keepCurrentImage")}
               </Button>
             ) : null}
-          </div>
-
-          {media.kind === "keep" ? null : (
-            <p className="text-muted-foreground text-xs">
-              {t("mediaChangesOnSave")}
-            </p>
-          )}
-        </>
-      )}
-
-      <div className="flex gap-2">
-        <Button
-          type="submit"
-          size="sm"
-          disabled={!content.trim() || busy || videoRefused}
-          aria-busy={busy}
-        >
-          {busy ? (
-            <Loader2
-              aria-hidden="true"
-              className="mr-1.5 size-4 animate-spin"
-            />
-          ) : null}
-          {t("save")}
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={cancel}
-          disabled={videoPost.state.step === "posting"}
-        >
-          {t("discardChanges")}
-        </Button>
-      </div>
+          </>
+        }
+        actions={
+          <>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={cancel}
+              disabled={videoPost.state.step === "posting"}
+            >
+              {t("discardChanges")}
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!content.trim() || busy || videoRefused}
+              aria-busy={busy}
+            >
+              {busy ? (
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              ) : null}
+              {t("save")}
+            </Button>
+          </>
+        }
+        notice={
+          <>
+            {draft.restored ? (
+              <DraftNotice
+                onDiscard={() => {
+                  text.setValue(post.content);
+                  draft.clear();
+                }}
+              />
+            ) : null}
+            {mediaLocked ? (
+              <p className="text-muted-foreground text-sm">
+                {t("mediaLockedWhileReviewed")}
+              </p>
+            ) : null}
+            {/* Always mounted, so screen readers hear the warning when it
+                appears (WCAG 4.1.3). */}
+            <div role="status">
+              {losesPublic ? (
+                <p className="bg-warning/10 border-warning/30 text-foreground flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
+                  <TriangleAlert
+                    aria-hidden="true"
+                    className="text-warning mt-0.5 size-4 shrink-0"
+                  />
+                  {t("becomesMembersOnly")}
+                </p>
+              ) : null}
+            </div>
+            {media.kind === "keep" ? null : (
+              <p className="text-muted-foreground text-xs">
+                {t("mediaChangesOnSave")}
+              </p>
+            )}
+          </>
+        }
+      />
 
       <input
         ref={imageInput}

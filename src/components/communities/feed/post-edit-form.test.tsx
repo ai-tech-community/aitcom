@@ -16,7 +16,10 @@ const m = vi.hoisted(() => ({
   toast: vi.fn(),
 }));
 
-vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
+vi.mock("next-intl", () => ({
+  useTranslations: () => (k: string) => k,
+  useLocale: () => "en",
+}));
 vi.mock("sonner", () => ({ toast: { success: m.toast, error: m.toast } }));
 vi.mock("@/trpc/react", () => ({
   api: {

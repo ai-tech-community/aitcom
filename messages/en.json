@@ -2765,7 +2765,18 @@
       "mediaChangesOnSave": "The picture or video changes when you press Save.",
       "mediaLockedWhileReviewed": "This post is being reviewed. You can change its picture or video once a moderator has looked at it.",
       "discardChanges": "Discard changes",
-      "postActions": "Post actions"
+      "postActions": "Post actions",
+      "editor": {
+        "emoji": "Add emoji",
+        "emojiSearch": "Search emoji",
+        "emojiLoading": "Loading emoji…",
+        "emojiNone": "No emoji found.",
+        "charactersLeft": "{count, plural, one {# character left} other {# characters left}}",
+        "dropImage": "Drop the picture to add it",
+        "draftRestored": "Your unsent draft is back.",
+        "discardDraft": "Discard",
+        "submitShortcut": "Ctrl+Enter or ⌘+Enter to post"
+      }
     },
     "dashboard": {
       "title": "My Communities",

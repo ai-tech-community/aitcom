@@ -2765,7 +2765,18 @@
       "mediaChangesOnSave": "De afbeelding of video verandert pas als je op Opslaan drukt.",
       "mediaLockedWhileReviewed": "Dit bericht wordt beoordeeld. Je kunt de afbeelding of video wijzigen zodra een moderator ernaar heeft gekeken.",
       "discardChanges": "Wijzigingen weggooien",
-      "postActions": "Berichtacties"
+      "postActions": "Berichtacties",
+      "editor": {
+        "emoji": "Emoji toevoegen",
+        "emojiSearch": "Emoji zoeken",
+        "emojiLoading": "Emoji laden…",
+        "emojiNone": "Geen emoji gevonden.",
+        "charactersLeft": "{count, plural, one {Nog # teken} other {Nog # tekens}}",
+        "dropImage": "Laat de afbeelding los om toe te voegen",
+        "draftRestored": "Je niet-verstuurde concept is terug.",
+        "discardDraft": "Weggooien",
+        "submitShortcut": "Ctrl+Enter of ⌘+Enter om te plaatsen"
+      }
     },
     "dashboard": {
       "title": "Mijn Communities",
