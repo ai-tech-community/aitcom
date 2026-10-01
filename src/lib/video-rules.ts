@@ -53,6 +53,12 @@ export function isUploadId(value: string): boolean {
   return UPLOAD_ID.test(value);
 }
 
+/** The folders every video and thumbnail key lives under, by storage class. */
+export const VIDEO_KEY_PREFIXES = {
+  public: "media/videos/public/",
+  private: "private/videos/",
+} as const;
+
 /** Object keys for one upload. Throws on ids that could escape their folder. */
 export function videoObjectKeys(input: {
   visibility: VideoVisibility;
@@ -63,10 +69,7 @@ export function videoObjectKeys(input: {
   if (!SAFE_SEGMENT.test(input.communityId)) {
     throw new Error("invalid community id");
   }
-  const base =
-    storageClassFor(input.visibility) === "public"
-      ? `media/videos/public/${input.communityId}/${input.uploadId}`
-      : `private/videos/${input.communityId}/${input.uploadId}`;
+  const base = `${VIDEO_KEY_PREFIXES[storageClassFor(input.visibility)]}${input.communityId}/${input.uploadId}`;
   return { video: `${base}.mp4`, thumbnail: `${base}.jpg` };
 }
 

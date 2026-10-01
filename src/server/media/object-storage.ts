@@ -2,6 +2,7 @@ import {
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   S3Client,
   type GetObjectCommandInput,
 } from "@aws-sdk/client-s3";
@@ -17,6 +18,18 @@ import {
 
 export type PresignedUpload = { url: string; fields: Record<string, string> };
 export type StoredObject = { contentType: string | null; bytes: number };
+export type ListedObject = { key: string; lastModified: Date };
+
+/** S3 refused to delete some of the keys; the others are gone. */
+export class RemoveObjectsError extends Error {
+  constructor(
+    readonly failedKeys: readonly string[],
+    detail: string,
+  ) {
+    super(`Failed to delete: ${detail}`);
+    this.name = "RemoveObjectsError";
+  }
+}
 
 export type SignedGetOptions = {
   /** The file name the browser saves, sent back as Content-Disposition. */
@@ -47,6 +60,8 @@ export type ObjectStorage = {
    */
   signedGetUrl(key: string, options?: SignedGetOptions): Promise<string>;
   publicUrl(key: string): string;
+  /** Every object whose key starts with `prefix`, fetched a page at a time. */
+  list(prefix: string): AsyncIterable<ListedObject>;
   remove(keys: readonly string[]): Promise<void>;
 };
 
@@ -135,6 +150,26 @@ export function createObjectStorage({
     publicUrl(key) {
       return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
     },
+    async *list(prefix) {
+      let continuationToken: string | undefined;
+      do {
+        const page = await client.send(
+          new ListObjectsV2Command({
+            Bucket: bucket,
+            Prefix: prefix,
+            ContinuationToken: continuationToken,
+          }),
+        );
+        for (const object of page.Contents ?? []) {
+          if (object.Key && object.LastModified) {
+            yield { key: object.Key, lastModified: object.LastModified };
+          }
+        }
+        continuationToken = page.IsTruncated
+          ? page.NextContinuationToken
+          : undefined;
+      } while (continuationToken);
+    },
     async remove(keys) {
       if (keys.length === 0) return;
       const result = await client.send(
@@ -148,7 +183,10 @@ export function createObjectStorage({
         const detail = errors
           .map((e) => `${e.Key ?? "?"} (${e.Code ?? "unknown"})`)
           .join(", ");
-        throw new Error(`Failed to delete: ${detail}`);
+        throw new RemoveObjectsError(
+          errors.map((e) => e.Key ?? "?"),
+          detail,
+        );
       }
     },
   };
