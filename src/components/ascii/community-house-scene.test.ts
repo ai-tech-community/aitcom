@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   COMMUNITY_LAYERS,
   COMMUNITY_STILL_TICK,
-  MAX_FIGURES,
   communityHouseFrame,
-  figureCountForMembers,
   type CommunityFrame,
-} from "./community-house-scene";
+} from "@/components/ascii/community-house-scene";
+import {
+  MAX_FIGURES,
+  figureCountForMembers,
+} from "@/components/ascii/community-house";
 
 const SLUGS = ["ait-community-netherlands", "xxx-ai", "ait", "rotterdam-ml"];
 

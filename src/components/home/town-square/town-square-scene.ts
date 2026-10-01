@@ -7,8 +7,8 @@
  * reproduced in tests and the reduced-motion frame is just a chosen tick.
  *
  * Art: original work drawn for AIT Community (no third-party pieces), so no
- * artist initials are embedded — see `communities/discover/ascii-art.ts` for
- * the attribution convention used when art is sourced.
+ * artist initials are embedded. Sourced art would keep its artist's
+ * initials inside the piece, per the ASCII art community convention.
  *
  * Output is layered so the renderer can colour by CSS tokens:
  * - `scenery` — houses, props, pavement (quiet)

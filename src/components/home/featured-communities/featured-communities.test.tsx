@@ -20,7 +20,7 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 
 const sceneSpy = vi.hoisted(() => ({ calls: [] as unknown[][] }));
-vi.mock("./community-house-scene", async (importOriginal) => {
+vi.mock("@/components/ascii/community-house-scene", async (importOriginal) => {
   const real = await importOriginal<typeof SceneModule>();
   return {
     ...real,
@@ -34,7 +34,7 @@ vi.mock("./community-house-scene", async (importOriginal) => {
 });
 
 import { FeaturedCommunities } from "./featured-communities";
-import type * as SceneModule from "./community-house-scene";
+import type * as SceneModule from "@/components/ascii/community-house-scene";
 import type { FeaturedCommunityCard } from "@/server/communities/featured";
 
 const NL_CARD: FeaturedCommunityCard = {

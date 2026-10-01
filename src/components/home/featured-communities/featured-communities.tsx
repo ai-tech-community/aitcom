@@ -20,7 +20,7 @@ import {
   COMMUNITY_STILL_TICK,
   communityHouseFrame,
   type CommunityLayer,
-} from "./community-house-scene";
+} from "@/components/ascii/community-house-scene";
 
 const FRAME_MS = 160;
 
