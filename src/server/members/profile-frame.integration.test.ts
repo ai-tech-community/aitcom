@@ -403,6 +403,10 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
     await db
       .delete(schema.memberBadges)
       .where(inArray(schema.memberBadges.userId, ids));
+    // An approved article earns a badge, which notifies its author.
+    await db
+      .delete(schema.notifications)
+      .where(inArray(schema.notifications.userId, ids));
     await db
       .delete(schema.activityEvents)
       .where(inArray(schema.activityEvents.actorId, ids));
