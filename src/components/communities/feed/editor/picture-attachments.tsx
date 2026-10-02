@@ -39,9 +39,12 @@ export function PictureAttachments({
   onRemove,
   onRetry,
   onEmptied,
+  altRequired,
   disabled,
 }: {
   items: PictureItem[];
+  /** The post has no words: each picture needs a description. */
+  altRequired?: boolean;
   onAltChange: (key: string, alt: string) => void;
   onRemove: (key: string) => void;
   onRetry?: (key: string) => void;
@@ -159,7 +162,12 @@ export function PictureAttachments({
                 value={item.alt}
                 onChange={(e) => onAltChange(item.key, e.target.value)}
                 maxLength={MAX_PICTURE_ALT}
-                placeholder={t("describePicture")}
+                placeholder={
+                  altRequired
+                    ? t("describePictureNeeded")
+                    : t("describePicture")
+                }
+                aria-required={altRequired ? true : undefined}
                 disabled={disabled}
                 className="h-8"
               />

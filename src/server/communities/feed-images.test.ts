@@ -271,8 +271,10 @@ describe("unlinkFeedPostsBeforeMediaDelete", () => {
   it("takes the picture out of every post that shows it, in the same request", async () => {
     const find = vi.fn().mockResolvedValue({
       docs: [
-        { id: 5, images: [66, 67] },
-        { id: 6, images: [{ id: 66 }] },
+        { id: 5, content: "Two pictures", images: [66, 67] },
+        { id: 6, content: "One picture", images: [{ id: 66 }] },
+        // Only this picture and no words: nothing would be left.
+        { id: 7, content: "", images: [66] },
       ],
     });
     const update = vi.fn().mockResolvedValue({});
@@ -292,6 +294,19 @@ describe("unlinkFeedPostsBeforeMediaDelete", () => {
       collection: "feed-posts",
       id: 6,
       data: { images: [] },
+      depth: 0,
+      req,
+    });
+    expect(update).toHaveBeenCalledWith({
+      collection: "feed-posts",
+      id: 7,
+      data: {
+        images: [],
+        imageUrl: null,
+        image: null,
+        isDeleted: true,
+        content: "",
+      },
       depth: 0,
       req,
     });

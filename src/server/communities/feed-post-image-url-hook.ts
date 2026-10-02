@@ -5,6 +5,8 @@ import type {
 
 import type { FeedPost } from "@/payload-types";
 
+import { carriesMedia } from "@/lib/feed-post-rules";
+
 import { imageIdsOf } from "./feed-images";
 
 /**
@@ -58,6 +60,7 @@ export function feedPostImageUrlBeforeChange(): CollectionBeforeChangeHook {
  * takes it out of every post that shows it, so the post's picture list and
  * its `imageUrl` copy move on with it instead of pointing at a deleted
  * file. The database's own cascade would drop the link but not the copy.
+ * A post with no words that showed only this picture is removed.
  */
 export function unlinkFeedPostsBeforeMediaDelete(): CollectionBeforeDeleteHook {
   return async ({ id, req }) => {
@@ -70,12 +73,25 @@ export function unlinkFeedPostsBeforeMediaDelete(): CollectionBeforeDeleteHook {
       req,
     });
     for (const post of docs) {
+      const images = imageIdsOf(post).filter((other) => other !== mediaId);
+      // A post that was only this picture would be left saying nothing:
+      // it is removed the way a moderator removes a post.
+      const leftEmpty =
+        images.length === 0 &&
+        !post.content?.trim() &&
+        !carriesMedia({ gif: post.gif, video: post.video });
       await req.payload.update({
         collection: "feed-posts",
         id: post.id,
-        data: {
-          images: imageIdsOf(post).filter((other) => other !== mediaId),
-        },
+        data: leftEmpty
+          ? {
+              images,
+              imageUrl: null,
+              image: null,
+              isDeleted: true,
+              content: "",
+            }
+          : { images },
         depth: 0,
         req,
       });

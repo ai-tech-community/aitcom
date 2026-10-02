@@ -157,7 +157,11 @@ describe("PostComposer video", () => {
     expect(
       screen.queryByRole("button", { name: "Add video" }),
     ).not.toBeInTheDocument();
+    // A video needs a few words (it has no other text alternative yet).
     expect(postButton()).toBeDisabled();
+    expect(
+      screen.getByText("Add a few words about the video."),
+    ).toBeInTheDocument();
 
     fireEvent.change(
       screen.getByRole("textbox", {
@@ -718,6 +722,56 @@ describe("PostComposer polls", () => {
     expect(screen.queryByRole("textbox", { name: "Answer 1" })).toBeNull();
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Add poll" })).toHaveFocus(),
+    );
+  });
+});
+
+describe("PostComposer posts without words", () => {
+  it("posts pictures without words only once each has a description", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: () => Promise.resolve({ id: 1, url: "https://cdn.test/1.png" }),
+      })),
+    );
+    const { imageInput } = renderComposer();
+    fireEvent.change(imageInput(), {
+      target: { files: [new File(["x"], "a.png", { type: "image/png" })] },
+    });
+    expect(postButton()).toBeDisabled();
+    expect(
+      screen.getByText(/No words\? Describe each picture/),
+    ).toBeInTheDocument();
+    const alt = screen.getByRole("textbox", {
+      name: "Description of picture 1",
+    });
+    expect(alt).toHaveAttribute("aria-required", "true");
+    fireEvent.change(alt, { target: { value: "Our team at the meetup" } });
+    await waitFor(() => expect(postButton()).toBeEnabled());
+  });
+
+  it("posts a GIF on its own, but not an empty post or a poll without a question", () => {
+    renderComposer();
+    // Nothing yet: nothing to post.
+    expect(postButton()).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add poll" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Answer 1" }), {
+      target: { value: "Yes" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Answer 2" }), {
+      target: { value: "No" },
+    });
+    // A poll's words are its question.
+    expect(postButton()).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Remove poll" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Add GIF" }));
+    expect(postButton()).toBeEnabled();
+    fireEvent.click(postButton());
+    expect(m.createPost).toHaveBeenCalledWith(
+      expect.objectContaining({ content: "", gifId: "abc123" }),
     );
   });
 });

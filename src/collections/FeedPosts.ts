@@ -1,7 +1,11 @@
 import type { CollectionConfig, TextFieldSingleValidation } from "payload";
 import { text } from "payload/shared";
 
-import { POST_MAX_LENGTH } from "@/lib/feed-post-rules";
+import {
+  carriesMedia,
+  POST_MAX_LENGTH,
+  type PostMediaShape,
+} from "@/lib/feed-post-rules";
 import { VIDEO_VISIBILITIES, VIDEO_VISIBILITY_LABELS } from "@/lib/video-rules";
 import { feedPostImageUrlBeforeChange } from "@/server/communities/feed-post-image-url-hook";
 import { feedPostAnnouncementAfterChange } from "@/server/communities/post-announcements";
@@ -12,13 +16,19 @@ import {
 import { linkPreviewBeforeChange } from "@/server/link-preview/link-preview-hook";
 
 /**
- * A post needs text, except a deleted or moderator-removed one: its content
- * is emptied on purpose, which the plain required check would refuse.
+ * A post's text is required, except on a deleted or moderator-removed post
+ * (emptied on purpose) and on a post that carries a picture, GIF or video:
+ * the data rule every writer meets. Members meet the stricter
+ * `mayGoWithoutWords` in the router (descriptions, no bare video).
  */
-const validateContent: TextFieldSingleValidation = (value, args) =>
-  (args.siblingData as { isDeleted?: boolean | null }).isDeleted === true
-    ? true
-    : text(value, args);
+const validateContent: TextFieldSingleValidation = (value, args) => {
+  const post = args.siblingData as PostMediaShape & {
+    isDeleted?: boolean | null;
+  };
+  if (post.isDeleted === true) return true;
+  if (!value?.trim() && carriesMedia(post)) return true;
+  return text(value, args);
+};
 
 export const FeedPosts: CollectionConfig = {
   slug: "feed-posts",

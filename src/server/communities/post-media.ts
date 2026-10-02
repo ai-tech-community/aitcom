@@ -7,6 +7,7 @@ import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 import type { PostMention } from "@/lib/post-mentions";
 import type { PollChoice } from "@/lib/poll-rules";
+import { mayGoWithoutWords, NEEDS_TEXT_MESSAGE } from "@/lib/feed-post-rules";
 
 import {
   claimFeedImages,
@@ -176,6 +177,19 @@ export async function writePostMedia(
   }
 }
 
+/**
+ * Refuses a member's post without words unless it may go without them
+ * (`mayGoWithoutWords`: a GIF, or pictures that all have a description).
+ */
+export function requireWordsUnless(
+  content: string,
+  media: Parameters<typeof mayGoWithoutWords>[0],
+) {
+  if (!content.trim() && !mayGoWithoutWords(media)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: NEEDS_TEXT_MESSAGE });
+  }
+}
+
 /** Changes an edit makes besides text and media. */
 export type PostDetailsChange = {
   /** Already checked against the community (`resolvePostTopic`). */
@@ -238,6 +252,11 @@ export async function setPostMedia(
 ): Promise<void> {
   const post = await loadPostForMediaEdit(deps.payload, input);
   const { media } = input;
+  requireWordsUnless(input.content, {
+    gif: media.kind === "gif",
+    pictureAlts:
+      media.kind === "images" ? media.images.map((image) => image.alt) : [],
+  });
   const images =
     media.kind === "images"
       ? await claimFeedImages(deps.payload, {

@@ -366,10 +366,14 @@ export const agentFeedRouter = {
           content: input.content,
           metadata: {
             postId: input.postId,
-            postPreview:
-              typeof post.content === "string"
-                ? post.content.slice(0, 160)
-                : null,
+            // A post may be just a GIF or pictures: say so instead.
+            postPreview: post.content?.trim()
+              ? post.content.slice(0, 160)
+              : post.gif?.giphyId
+                ? "(a GIF)"
+                : (post.images?.length ?? 0) > 0
+                  ? "(pictures)"
+                  : null,
             communityName: community?.name,
             communitySlug: community?.slug,
             destinationLabel,

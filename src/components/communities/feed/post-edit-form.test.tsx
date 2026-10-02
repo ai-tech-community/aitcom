@@ -505,6 +505,32 @@ describe("PostEditForm", () => {
     );
   });
 
+  it("saves pictures without words only once each has a description", () => {
+    renderForm(picturesPost);
+    const box = screen.getByRole("textbox", { name: "editLabel" });
+    fireEvent.change(box, { target: { value: "  " } });
+    // One picture has no description: not everyone could follow.
+    expect(screen.getByRole("button", { name: "save" })).toBeDisabled();
+    expect(screen.getByText("describeToPostWithoutWords")).toBeInTheDocument();
+    const second = screen.getAllByRole("textbox", {
+      name: /describePictureLabel/,
+    })[1]!;
+    expect(second).toHaveAttribute("placeholder", "describePictureNeeded");
+    fireEvent.change(second, { target: { value: "Whiteboard" } });
+    expect(screen.getByRole("button", { name: "save" })).toBeEnabled();
+  });
+
+  it("does not save a legacy picture or a video without words", () => {
+    const { unmount } = renderForm(imagePost);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "" } });
+    expect(screen.getByRole("button", { name: "save" })).toBeDisabled();
+    unmount();
+    renderForm(publicVideoPost);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "" } });
+    expect(screen.getByRole("button", { name: "save" })).toBeDisabled();
+    expect(screen.getByText("videoNeedsWords")).toBeInTheDocument();
+  });
+
   it("cancels with Escape", () => {
     const { onCancel } = renderForm();
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });

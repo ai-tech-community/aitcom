@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { firstLink } from "@/lib/links";
 import { mentionsEveryone, type PostMention } from "@/lib/post-mentions";
+import { mayGoWithoutWords } from "@/lib/feed-post-rules";
 import {
   pollProblem,
   type FeedPollView,
@@ -233,6 +234,7 @@ export function PostEditForm({
   // Saving takes the poll off (another kind of media, or none), votes too.
   const losesVotes = hadPoll && pollVotes > 0 && media.kind !== "keep";
   const hasMedia = media.kind === "keep" ? hadMedia : media.kind !== "none";
+
   const hasPreview =
     !hasMedia && previewLink !== null && post.linkPreview?.url === previewLink;
   const losesPublic =
@@ -251,6 +253,17 @@ export function PostEditForm({
         ? currentPictures
         : [];
   const pictureRoom = MAX_PICTURES - pictures.length;
+  // Words are optional while the post keeps or gets a GIF or described
+  // pictures (`mayGoWithoutWords`); a video, a legacy picture and a poll
+  // need them.
+  const noWords = content.trim() === "";
+  const willCarryMedia = mayGoWithoutWords({
+    gif: media.kind === "gif" || (media.kind === "keep" && hadGif),
+    pictureAlts:
+      media.kind === "keep" && hadLegacyImage
+        ? [""]
+        : pictures.map((item) => item.alt),
+  });
 
   const setPictures = (items: EditPicture[]) => {
     setMedia(items.length > 0 ? { kind: "pictures", items } : { kind: "none" });
@@ -320,7 +333,7 @@ export function PostEditForm({
   const save = async () => {
     const caption = content.trim();
     if (
-      !caption ||
+      (!caption && !willCarryMedia) ||
       text.tooLong ||
       busy ||
       videoRefused ||
@@ -451,6 +464,7 @@ export function PostEditForm({
             ) : pictures.length > 0 ? (
               <PictureAttachments
                 items={pictures}
+                altRequired={noWords}
                 onAltChange={describePicture}
                 onRemove={removePicture}
                 onEmptied={() => imageButton.current?.focus()}
@@ -687,7 +701,7 @@ export function PostEditForm({
                 type="submit"
                 size="sm"
                 disabled={
-                  !content.trim() ||
+                  (!content.trim() && !willCarryMedia) ||
                   text.tooLong ||
                   busy ||
                   videoRefused ||
@@ -708,6 +722,16 @@ export function PostEditForm({
           canAnnounce && !post.announcedAt && mentionsEveryone(content) ? (
             <p className="text-muted-foreground text-xs">
               {te("everyoneNotInEdits")}
+            </p>
+          ) : noWords && !willCarryMedia && pictures.length > 0 ? (
+            <p className="text-muted-foreground text-xs">
+              {te("describeToPostWithoutWords")}
+            </p>
+          ) : noWords &&
+            (media.kind === "video" ||
+              (media.kind === "keep" && Boolean(post.video))) ? (
+            <p className="text-muted-foreground text-xs">
+              {te("videoNeedsWords")}
             </p>
           ) : pollProblemNow === "empty" ? (
             <p className="text-muted-foreground text-xs">

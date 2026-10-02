@@ -289,7 +289,8 @@ export function FeedPostCard({
             menuButton.current?.focus();
           }}
         />
-      ) : (
+      ) : !post.content.trim() ? null : (
+        // A post may be just a picture, GIF or video: then no text block.
         <FormattedPostText
           text={post.content}
           mentions={

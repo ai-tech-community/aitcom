@@ -112,33 +112,35 @@ export function GifPickerButton({
           onFocus={() => setActive(gif.giphyId)}
           onBlur={() => setActive(null)}
           aria-label={gif.title || t("gifUntitled")}
-          className="focus-visible:ring-ring/50 hover:ring-ring/40 bg-muted block w-full overflow-hidden rounded-md outline-none hover:ring-2 focus-visible:ring-[3px]"
+          className="focus-visible:ring-ring/50 hover:ring-ring/40 bg-muted relative block w-full overflow-hidden rounded-md outline-none hover:ring-2 focus-visible:ring-[3px]"
           style={{
             aspectRatio: `${gif.preview.width} / ${gif.preview.height}`,
           }}
         >
+          {/* The still stays put and the moving preview lies over it,
+              never in its place: swapping the element under the pointer
+              as it hovers lost the click (a quick click, or a tap, which
+              hovers first). The preview takes no pointer events. */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- GIPHY media */}
+          <img
+            src={gif.preview.stillUrl}
+            alt=""
+            loading="lazy"
+            width={gif.preview.width}
+            height={gif.preview.height}
+            className="size-full object-cover"
+          />
           {playing ? (
             <video
               src={gif.preview.mp4Url}
-              poster={gif.preview.stillUrl}
               autoPlay
               loop
               muted
               playsInline
               aria-hidden="true"
-              className="size-full object-cover"
+              className="pointer-events-none absolute inset-0 size-full object-cover"
             />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element -- GIPHY media
-            <img
-              src={gif.preview.stillUrl}
-              alt=""
-              loading="lazy"
-              width={gif.preview.width}
-              height={gif.preview.height}
-              className="size-full object-cover"
-            />
-          )}
+          ) : null}
         </button>
       </li>
     );
