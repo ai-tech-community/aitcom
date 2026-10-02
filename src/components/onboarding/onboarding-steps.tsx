@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, Circle, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
+import { ONBOARDING_HREF } from "@/lib/dashboard-routes";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { OnboardingStep } from "./checklist-view";
@@ -33,7 +34,9 @@ export function OnboardingProgress({
         value={percent}
         aria-label={label}
         className="bg-secondary h-1 flex-1"
-        indicatorClassName="motion-reduce:transition-none"
+        // Neutral fill: progress is not an action, and the surfaces this sits
+        // on keep their one Signal Orange for something else (One Voice Rule).
+        indicatorClassName="bg-foreground motion-reduce:transition-none"
       />
       <span
         aria-hidden
@@ -125,18 +128,17 @@ export function OnboardingWelcome({ onFollow }: { onFollow?: () => void }) {
         <p className="text-muted-foreground mt-1 text-sm">
           {t("welcomeCardDescription")}
         </p>
-        {/* Ink text for contrast (small orange text on white is ~3:1, and
-            so is white on the orange button). Orange stays on the arrow, a
-            non-text marker for the one action here. */}
+        {/* Ink text and arrow: small orange text on white is ~3:1, and on
+            the dashboard the one orange is the active tab (One Voice Rule). */}
         <Link
-          href="/dashboard/onboarding"
+          href={ONBOARDING_HREF}
           onClick={onFollow}
           className="text-foreground focus-visible:ring-ring/50 group mt-3 inline-flex min-h-6 items-center gap-1.5 rounded-sm text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-[3px]"
         >
           {t("welcomeCardCta")}
           <ArrowRight
             aria-hidden
-            className="text-primary h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
+            className="text-foreground h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
           />
         </Link>
       </div>

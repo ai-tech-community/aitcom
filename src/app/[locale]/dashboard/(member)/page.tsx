@@ -1,40 +1,22 @@
 import type { Metadata } from "next";
-import { getSession } from "@/server/better-auth/server";
-import { redirect } from "next/navigation";
-import { DashboardProfile } from "@/components/dashboard-profile";
+
 import { ActivityFeed } from "@/components/activity-feed";
-import { OnboardingChecklist } from "@/components/onboarding-checklist";
-import { SocialSuggestions } from "@/components/social-suggestions";
 import { ActiveChallengesWidget } from "@/components/challenges/active-challenges-widget";
-import { StreakWidget } from "@/components/gamification/streak-widget";
-import { PointsWidget } from "@/components/gamification/points-widget";
-import { BoostWidget } from "@/components/gamification/boost-widget";
-import { HydrateClient } from "@/trpc/server";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function DashboardPage() {
-  const session = await getSession();
-  if (!session?.user) redirect("/auth/signin");
-
+/**
+ * Home tab: the main column only — the frame (greeting, tabs, side panel)
+ * comes from the member layout. Challenges and personal activity hold this
+ * space until "Next up" and "From your communities" replace them.
+ */
+export default function DashboardHomePage() {
   return (
-    <HydrateClient>
-      <div className="space-y-8">
-        <BoostWidget />
-        <DashboardProfile
-          userEmail={session.user.email}
-          userImage={session.user.image}
-          userName={session.user.name}
-        />
-        <OnboardingChecklist />
-        <StreakWidget />
-        <PointsWidget />
-        <ActiveChallengesWidget />
-        <ActivityFeed />
-        <SocialSuggestions />
-      </div>
-    </HydrateClient>
+    <div className="space-y-10">
+      <ActiveChallengesWidget />
+      <ActivityFeed />
+    </div>
   );
 }

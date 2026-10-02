@@ -142,8 +142,11 @@ vi.mock("@/trpc/react", async () => {
   };
 });
 
+// The setting and the corner reminder share one state. The reminder stays
+// out of the way on dashboard tabs (their side panel shows the checklist
+// card), so it is mounted here as on any other page.
 vi.mock("@/i18n/navigation", () => ({
-  usePathname: () => "/dashboard/settings",
+  usePathname: () => "/events",
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
     <a href={href}>{children}</a>
   ),

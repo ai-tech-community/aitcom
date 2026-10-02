@@ -58,12 +58,9 @@ function StorageUsage({ slug }: { slug: string }) {
   return (
     <div className="space-y-2">
       <Label>{t("storageTitle")}</Label>
-      {/* Radix gives the bar role="progressbar"; the shared Progress does not
-          forward `value` to it, so aria-valuenow is set here. */}
       <Progress
         value={percent}
         aria-label={t("storageTitle")}
-        aria-valuenow={percent}
         className="bg-muted"
         indicatorClassName={full ? "bg-destructive" : "bg-foreground/70"}
       />

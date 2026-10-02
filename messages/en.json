@@ -778,15 +778,11 @@
     "verified": "Verified"
   },
   "dashboard": {
-    "myProfile": "MY PROFILE",
     "completeProfile": "Complete your profile to earn 50 XP!",
-    "completeProfileCta": "Set up profile",
-    "editProfile": "EDIT",
     "displayName": "Display Name",
     "bio": "Bio",
     "skills": "Skills (comma-separated)",
     "company": "Company",
-    "quickLinks": "Quick links",
     "linkedinUrl": "LinkedIn URL",
     "githubUrl": "GitHub URL",
     "websiteUrl": "Website URL",
@@ -795,15 +791,8 @@
     "saving": "Saving...",
     "profileSaved": "Profile saved!",
     "profileError": "Failed to save profile.",
-    "feed": "Feed",
-    "communities": "Communities",
     "agent": "Agent",
-    "events": "Events",
-    "jobs": "Jobs",
     "challenges": "Challenges",
-    "onboarding": "Onboarding",
-    "notifications": "Notifications",
-    "settings": "Settings",
     "impact": "Impact",
     "qa": "QA",
     "settingsComingSoon": "Settings coming soon.",
@@ -824,7 +813,77 @@
     "socialConnectError": "Could not start the connect flow.",
     "firstName": "First name",
     "lastName": "Last name",
-    "namesHint": "Organizers of events you register for see your first and last name."
+    "namesHint": "Organizers of events you register for see your first and last name.",
+    "greeting": "Hi, {name}",
+    "tabsLabel": "Dashboard sections",
+    "sidePanelLabel": "You and your progress",
+    "tabs": {
+      "home": "Home",
+      "communities": "My communities",
+      "events": "My events",
+      "jobs": "Job tracker",
+      "notifications": "Notifications",
+      "settings": "Settings"
+    },
+    "you": {
+      "title": "You",
+      "editProfile": "Edit profile",
+      "noProfileTitle": "Set up your profile",
+      "noProfileDescription": "Add a few details so other members can find you. You earn 50 XP.",
+      "noProfileCta": "Set up profile",
+      "level": "Level {level}",
+      "xpLabel": "XP towards level {next}",
+      "xpToNext": "{current} of {needed} XP",
+      "xpTotal": "{xp} XP",
+      "streak": "{count, plural, one {<n>#</n> day streak} other {<n>#</n> day streak}}",
+      "noStreak": "No streak yet. Do one thing today to start one.",
+      "thisWeek": "This week",
+      "today": "today",
+      "day": {
+        "active": "{day}: active",
+        "freeze": "{day}: streak freeze used",
+        "idle": "{day}: no activity",
+        "future": "{day}: still to come"
+      },
+      "boost": "{multiplier}× XP: {name}",
+      "boostEnds": "ends {relative}",
+      "seeProgress": "See your progress",
+      "hideProgress": "Hide your progress",
+      "boostCta": "Earn XP",
+      "company": "@ {company}"
+    },
+    "progress": {
+      "streakTitle": "Streak",
+      "days": "{count, plural, one {# day} other {# days}}",
+      "xpGained": "+{amount} XP",
+      "badgesTitle": "Badges",
+      "calendar": {
+        "label": "Streak calendar",
+        "today": "today",
+        "active": "active",
+        "freeze": "streak freeze used",
+        "idle": "no activity",
+        "future": "still to come"
+      }
+    },
+    "getStarted": {
+      "title": "Get started"
+    },
+    "peopleToMeet": {
+      "title": "People to meet",
+      "members": "Members",
+      "agents": "AI agents",
+      "xp": "{xp} XP",
+      "contributions": "{count, plural, one {# contribution} other {# contributions}}"
+    },
+    "profile": {
+      "title": "Profile"
+    },
+    "answers": {
+      "title": "Your interests and goals",
+      "description": "Your answers to the welcome questions shape your getting-started steps and the people we suggest.",
+      "cta": "Change your answers"
+    }
   },
   "activity": {
     "scopeLabel": "Activity scope",
@@ -904,7 +963,6 @@
     "skip": "Skip",
     "next": "Next",
     "finish": "Get Started",
-    "checklistTitle": "GETTING STARTED",
     "steps": {
       "completeProfile": "Complete your profile",
       "browseEvents": "Browse upcoming events",
@@ -939,10 +997,7 @@
     },
     "welcomeCardTitle": "Personalize your experience",
     "welcomeCardDescription": "Answer a few quick questions so we can recommend the right events, members, and content for you.",
-    "welcomeCardCta": "Get started",
-    "suggestedMembers": "MEMBERS YOU MIGHT LIKE",
-    "activeAgents": "ACTIVE AI AGENTS",
-    "contributions": "contributions"
+    "welcomeCardCta": "Answer three quick questions"
   },
   "challenges": {
     "title": "Challenges",
@@ -3504,28 +3559,17 @@
     "confirmTitle": "Are you sure?"
   },
   "streak": {
-    "title": "Streak",
-    "viewDetails": "View Details",
-    "days": "days",
-    "ariaSummary": "Streak summary card",
-    "ariaStats": "Streak stats",
-    "longest": "Longest Streak",
-    "total": "Total",
-    "howTitle": "How do streaks work?",
-    "how1": "Complete at least one activity each day to build your streak.",
-    "how2": "Each day you do an activity, your streak increases.",
-    "how3": "Missing a day will reset your streak to 0."
+    "longest": "Longest streak",
+    "total": "Active days",
+    "how1": "Complete at least one activity each day to build your streak."
   },
   "points": {
     "historyTitle": "Points history",
     "chartTitle": "Your XP over time",
-    "ariaHistory": "Points awards history",
     "empty": "No XP yet — join in to start earning.",
     "activity": "Activity",
     "course_complete": "Course completed",
-    "boostEndsIn": "Ends in {h}h {m}m {s}s",
-    "boostEnded": "Ended",
-    "boostCta": "Earn XP"
+    "total": "Total"
   },
   "classroomBuilder": {
     "backToClassroom": "Classroom",

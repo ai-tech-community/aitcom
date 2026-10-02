@@ -33,6 +33,12 @@ interface PointsChartProps extends React.HTMLAttributes<HTMLDivElement> {
   headerRight?: React.ReactNode;
   yAxisLabel?: string;
   levels?: PointsChartLevel[];
+  /** Label before the running total in the tooltip (translated by the caller). */
+  totalLabel?: string;
+  /** Formats a data point's `date` (YYYY-MM-DD) for the axis and tooltip. */
+  formatDate?: (date: string) => string;
+  /** Width reserved for the Y axis; narrow it in a side panel. */
+  yAxisWidth?: number;
 }
 
 function formatValue(value: number) {
@@ -69,10 +75,13 @@ function LevelReferenceStarLabel({
 function PointsChart({
   data,
   height = 260,
-  title = "Your points",
+  title,
   headerRight,
   yAxisLabel,
   levels,
+  totalLabel = "Total",
+  formatDate,
+  yAxisWidth = 64,
   className,
   ...props
 }: PointsChartProps) {
@@ -102,10 +111,14 @@ function PointsChart({
       className={cn("bg-card border-border rounded-xl border p-4", className)}
       {...props}
     >
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-md text-foreground font-semibold">{title}</p>
-        {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
-      </div>
+      {title || headerRight ? (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          {title ? (
+            <p className="text-md text-foreground font-semibold">{title}</p>
+          ) : null}
+          {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
+        </div>
+      ) : null}
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
@@ -118,6 +131,8 @@ function PointsChart({
               tickLine={false}
               axisLine={false}
               tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+              tickFormatter={formatDate}
+              minTickGap={16}
             />
             <YAxis
               tickLine={false}
@@ -125,7 +140,7 @@ function PointsChart({
               domain={yDomain}
               tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
               tickFormatter={formatValue}
-              width={64}
+              width={yAxisWidth}
               label={
                 yAxisLabel
                   ? {
@@ -173,10 +188,12 @@ function PointsChart({
                 return (
                   <div className="bg-popover text-popover-foreground border-border rounded-lg border px-3 py-2 text-sm">
                     <p className="text-muted-foreground mb-1 font-mono">
-                      {label}
+                      {formatDate && typeof label === "string"
+                        ? formatDate(label)
+                        : label}
                     </p>
                     <p className="font-mono font-medium tabular-nums">
-                      Total {formatValue(row.total)}
+                      {totalLabel} {formatValue(row.total)}
                     </p>
                     <p className="text-muted-foreground font-mono text-xs tabular-nums">
                       {changePrefix}

@@ -778,15 +778,11 @@
     "verified": "Geverifieerd"
   },
   "dashboard": {
-    "myProfile": "MIJN PROFIEL",
     "completeProfile": "Vul je profiel in en verdien 50 XP!",
-    "completeProfileCta": "Profiel instellen",
-    "editProfile": "BEWERKEN",
     "displayName": "Weergavenaam",
     "bio": "Bio",
     "skills": "Vaardigheden (kommagescheiden)",
     "company": "Bedrijf",
-    "quickLinks": "Snelle links",
     "linkedinUrl": "LinkedIn URL",
     "githubUrl": "GitHub URL",
     "websiteUrl": "Website URL",
@@ -795,15 +791,8 @@
     "saving": "Opslaan...",
     "profileSaved": "Profiel opgeslagen!",
     "profileError": "Profiel opslaan mislukt.",
-    "feed": "Feed",
-    "communities": "Community's",
     "agent": "Agent",
-    "events": "Evenementen",
-    "jobs": "Vacatures",
     "challenges": "Uitdagingen",
-    "onboarding": "Onboarding",
-    "notifications": "Meldingen",
-    "settings": "Instellingen",
     "impact": "Impact",
     "qa": "QA",
     "settingsComingSoon": "Instellingen komen binnenkort.",
@@ -824,7 +813,77 @@
     "socialConnectError": "Koppelen starten mislukt.",
     "firstName": "Voornaam",
     "lastName": "Achternaam",
-    "namesHint": "Organisatoren van evenementen waarvoor je je aanmeldt, zien je voor- en achternaam."
+    "namesHint": "Organisatoren van evenementen waarvoor je je aanmeldt, zien je voor- en achternaam.",
+    "greeting": "Hoi {name}",
+    "tabsLabel": "Dashboardonderdelen",
+    "sidePanelLabel": "Jij en je voortgang",
+    "tabs": {
+      "home": "Home",
+      "communities": "Mijn community's",
+      "events": "Mijn evenementen",
+      "jobs": "Vacaturetracker",
+      "notifications": "Meldingen",
+      "settings": "Instellingen"
+    },
+    "you": {
+      "title": "Jij",
+      "editProfile": "Profiel bewerken",
+      "noProfileTitle": "Stel je profiel in",
+      "noProfileDescription": "Vul een paar gegevens in zodat andere leden je kunnen vinden. Je verdient 50 XP.",
+      "noProfileCta": "Profiel instellen",
+      "level": "Niveau {level}",
+      "xpLabel": "XP richting niveau {next}",
+      "xpToNext": "{current} van {needed} XP",
+      "xpTotal": "{xp} XP",
+      "streak": "{count, plural, one {<n>#</n> dag op rij} other {<n>#</n> dagen op rij}}",
+      "noStreak": "Nog geen reeks. Doe vandaag iets om er een te beginnen.",
+      "thisWeek": "Deze week",
+      "today": "vandaag",
+      "day": {
+        "active": "{day}: actief",
+        "freeze": "{day}: reeksbevriezing gebruikt",
+        "idle": "{day}: geen activiteit",
+        "future": "{day}: nog niet geweest"
+      },
+      "boost": "{multiplier}× XP: {name}",
+      "boostEnds": "eindigt {relative}",
+      "seeProgress": "Bekijk je voortgang",
+      "hideProgress": "Verberg je voortgang",
+      "boostCta": "Verdien XP",
+      "company": "@ {company}"
+    },
+    "progress": {
+      "streakTitle": "Reeks",
+      "days": "{count, plural, one {# dag} other {# dagen}}",
+      "xpGained": "+{amount} XP",
+      "badgesTitle": "Badges",
+      "calendar": {
+        "label": "Reekskalender",
+        "today": "vandaag",
+        "active": "actief",
+        "freeze": "reeksbevriezing gebruikt",
+        "idle": "geen activiteit",
+        "future": "nog niet geweest"
+      }
+    },
+    "getStarted": {
+      "title": "Aan de slag"
+    },
+    "peopleToMeet": {
+      "title": "Mensen om te ontmoeten",
+      "members": "Leden",
+      "agents": "AI-agents",
+      "xp": "{xp} XP",
+      "contributions": "{count, plural, one {# bijdrage} other {# bijdragen}}"
+    },
+    "profile": {
+      "title": "Profiel"
+    },
+    "answers": {
+      "title": "Je interesses en doelen",
+      "description": "Je antwoorden op de welkomstvragen bepalen je eerste stappen en de mensen die we je voorstellen.",
+      "cta": "Wijzig je antwoorden"
+    }
   },
   "activity": {
     "scopeLabel": "Activiteitsbereik",
@@ -904,7 +963,6 @@
     "skip": "Overslaan",
     "next": "Volgende",
     "finish": "Aan de slag",
-    "checklistTitle": "AAN DE SLAG",
     "steps": {
       "completeProfile": "Vul je profiel in",
       "browseEvents": "Bekijk aankomende evenementen",
@@ -939,10 +997,7 @@
     },
     "welcomeCardTitle": "Personaliseer je ervaring",
     "welcomeCardDescription": "Beantwoord een paar snelle vragen zodat we de juiste evenementen, leden en content voor je kunnen aanbevelen.",
-    "welcomeCardCta": "Aan de slag",
-    "suggestedMembers": "LEDEN DIE JE MISSCHIEN LEUK VINDT",
-    "activeAgents": "ACTIEVE AI AGENTS",
-    "contributions": "bijdragen"
+    "welcomeCardCta": "Beantwoord drie korte vragen"
   },
   "challenges": {
     "title": "Uitdagingen",
@@ -3504,28 +3559,17 @@
     "confirmTitle": "Weet je het zeker?"
   },
   "streak": {
-    "title": "Reeks",
-    "viewDetails": "Details bekijken",
-    "days": "dagen",
-    "ariaSummary": "Samenvatting van je reeks",
-    "ariaStats": "Reeksstatistieken",
     "longest": "Langste reeks",
-    "total": "Totaal",
-    "howTitle": "Hoe werken reeksen?",
-    "how1": "Voltooi elke dag minstens één activiteit om je reeks op te bouwen.",
-    "how2": "Elke dag dat je actief bent, groeit je reeks.",
-    "how3": "Een dag overslaan zet je reeks terug op 0."
+    "total": "Actieve dagen",
+    "how1": "Voltooi elke dag minstens één activiteit om je reeks op te bouwen."
   },
   "points": {
     "historyTitle": "Puntengeschiedenis",
     "chartTitle": "Je XP in de tijd",
-    "ariaHistory": "Geschiedenis van puntentoekenningen",
     "empty": "Nog geen XP — doe mee om te beginnen met verdienen.",
     "activity": "Activiteit",
     "course_complete": "Cursus afgerond",
-    "boostEndsIn": "Eindigt over {h}u {m}m {s}s",
-    "boostEnded": "Afgelopen",
-    "boostCta": "Verdien XP"
+    "total": "Totaal"
   },
   "classroomBuilder": {
     "backToClassroom": "Klaslokaal",

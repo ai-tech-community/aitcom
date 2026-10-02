@@ -1,8 +1,18 @@
-import { getSession } from "@/server/better-auth/server";
-import { DashboardTabs } from "@/components/dashboard-tabs";
 import { getTranslations } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
 
+import { getSession } from "@/server/better-auth/server";
+import { getAvatarUrl } from "@/lib/avatar";
+import { DashboardTabs } from "@/components/dashboard/dashboard-tabs";
+import { DashboardSidePanel } from "@/components/dashboard/side-panel/dashboard-side-panel";
+
+/**
+ * The member dashboard frame, shared by every tab: greeting (the page's one
+ * h1), tabs, then the tab's own content beside the side panel. Pages render
+ * only their main column, so no tab can drift from the frame.
+ *
+ * Full width, aligned with the top nav's `px-4 sm:px-8` edges — a named
+ * exception to the default page frame (DESIGN.md "Page frame").
+ */
 export default async function MemberDashboardLayout({
   children,
 }: {
@@ -12,29 +22,33 @@ export default async function MemberDashboardLayout({
     getSession(),
     getTranslations("dashboard"),
   ]);
+  // The parent dashboard layout redirects guests before this renders.
+  const user = session!.user;
+  const name = user.name || user.email;
 
   return (
-    <>
-      <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-      <p className="text-muted-foreground mt-2">
-        Welcome back, {session!.user.name ?? session!.user.email}
-      </p>
+    <div className="px-4 py-8 sm:px-8">
+      <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+        {t("greeting", { name })}
+      </h1>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <DashboardTabs />
       </div>
 
-      <div className="text-muted-foreground mt-4 flex flex-wrap items-center gap-3 font-mono text-xs tracking-wider">
-        <span>{t("quickLinks")}:</span>
-        <Link href="/dashboard/onboarding" className="hover:text-foreground">
-          {t("onboarding")}
-        </Link>
-        <Link href="/dashboard/notifications" className="hover:text-foreground">
-          {t("notifications")}
-        </Link>
+      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        {/* Not <main>: the root layout already provides the main landmark. */}
+        <div className="min-w-0">{children}</div>
+        <aside
+          aria-label={t("sidePanelLabel")}
+          className="lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:thin]"
+        >
+          <DashboardSidePanel
+            fallbackName={name}
+            avatarUrl={getAvatarUrl(user.email, user.image)}
+          />
+        </aside>
       </div>
-
-      <div className="mt-8">{children}</div>
-    </>
+    </div>
   );
 }

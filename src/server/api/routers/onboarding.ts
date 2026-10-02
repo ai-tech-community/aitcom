@@ -11,6 +11,7 @@ import {
 } from "@/server/db/schema";
 import { awardXp, awardBadge, XP_AMOUNTS } from "@/lib/gamification";
 import { defaultDisplayName } from "@/server/members/default-display-name";
+import { PROFILE_SETTINGS_HREF } from "@/lib/dashboard-routes";
 
 // ── Checklist Definitions ───────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ const LEARNING_STEPS: ChecklistStep[] = [
   {
     slug: "complete_profile",
     labelKey: "completeProfile",
-    href: "/dashboard",
+    href: PROFILE_SETTINGS_HREF,
     autoDetect: true,
   },
   { slug: "browse_events", labelKey: "browseEvents", href: "/events" },
@@ -48,7 +49,7 @@ const NETWORKING_STEPS: ChecklistStep[] = [
   {
     slug: "complete_profile",
     labelKey: "completeProfile",
-    href: "/dashboard",
+    href: PROFILE_SETTINGS_HREF,
     autoDetect: true,
   },
   { slug: "browse_members", labelKey: "browseMembers", href: "/members" },
@@ -71,7 +72,7 @@ const EXPERTISE_STEPS: ChecklistStep[] = [
   {
     slug: "complete_profile",
     labelKey: "completeProfile",
-    href: "/dashboard",
+    href: PROFILE_SETTINGS_HREF,
     autoDetect: true,
   },
   {

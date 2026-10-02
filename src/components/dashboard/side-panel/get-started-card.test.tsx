@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import en from "../../messages/en.json";
+import en from "../../../../messages/en.json";
 import type { OnboardingChecklistView } from "@/components/onboarding/checklist-view";
 
 vi.mock("@/i18n/navigation", () => ({
@@ -38,12 +38,12 @@ vi.mock("@/components/onboarding/use-onboarding-checklist", () => ({
   },
 }));
 
-import { OnboardingChecklist } from "./onboarding-checklist";
+import { GetStartedCard } from "./get-started-card";
 
 function renderCard() {
   return render(
     <NextIntlClientProvider locale="en" messages={en}>
-      <OnboardingChecklist />
+      <GetStartedCard />
     </NextIntlClientProvider>,
   );
 }
@@ -73,10 +73,16 @@ beforeEach(() => {
   controller.dismiss.mockReset();
 });
 
-describe("dashboard OnboardingChecklist", () => {
-  it("renders the shared checklist and syncs on mount", () => {
+describe("GetStartedCard", () => {
+  it("renders the shared checklist under its own heading and syncs on mount", () => {
     renderCard();
     expect(controller.sync).toBe("on-mount");
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: new RegExp(en.dashboard.getStarted.title, "i"),
+      }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("progressbar", { name: "1 of 2 steps done" }),
     ).toBeInTheDocument();
@@ -88,11 +94,14 @@ describe("dashboard OnboardingChecklist", () => {
 
   it("uses the same account-level dismissal as the reminder", () => {
     renderCard();
-    fireEvent.click(screen.getByRole("button", { name: "Don't show again" }));
+    const dismiss = screen.getByRole("button", { name: "Don't show again" });
+    // A 32px target (WCAG 2.2 target size, with room to spare).
+    expect(dismiss).toHaveClass("size-8");
+    fireEvent.click(dismiss);
     expect(controller.dismiss).toHaveBeenCalledTimes(1);
   });
 
-  it("renders nothing once dismissed or complete", () => {
+  it("renders nothing, heading included, once dismissed or complete", () => {
     controller.view = { kind: "hidden" };
     const { container } = renderCard();
     expect(container).toBeEmptyDOMElement();
@@ -108,9 +117,10 @@ describe("dashboard OnboardingChecklist", () => {
       name: en.onboarding.welcomeCardCta,
     });
     expect(cta).toHaveAttribute("href", "/dashboard/onboarding");
-    // Contrast: ink text, orange only on the non-text arrow marker.
+    // Contrast and One Voice: ink text and arrow; the dashboard's one
+    // orange is the active tab.
     expect(cta).toHaveClass("text-foreground");
     expect(cta).not.toHaveClass("text-primary");
-    expect(cta.querySelector("svg")).toHaveClass("text-primary");
+    expect(cta.querySelector("svg")).not.toHaveClass("text-primary");
   });
 });

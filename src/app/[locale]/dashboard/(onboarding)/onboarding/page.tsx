@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { OnboardingQuestions } from "@/components/onboarding-questions";
 import { api } from "@/trpc/react";

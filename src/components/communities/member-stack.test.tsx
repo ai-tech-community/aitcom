@@ -13,7 +13,7 @@ vi.mock("@/trpc/react", () => ({
   },
 }));
 
-// Repo convention (see dashboard-tabs.test.tsx): stub next-intl so the
+// Repo convention: stub next-intl so the
 // component's useTranslations resolves without a NextIntlClientProvider.
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,

@@ -299,8 +299,8 @@ export function computeStreakData(days: string[], today: string): StreakData {
 
 /**
  * Map a points-event `reason` code to one of the four trigger types the
- * PointsAwards UI knows how to icon (this drives the icon only — not visible
- * text, so it needs no i18n).
+ * dashboard's recent-XP list knows how to icon (this drives the icon only —
+ * not visible text, so it needs no i18n).
  */
 export function pointsTriggerType(
   reason: string,
