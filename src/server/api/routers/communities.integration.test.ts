@@ -98,36 +98,19 @@ describe.skipIf(!RUN_DB)("communities discover [DB integration]", () => {
     userIds.length = 0;
   });
 
-  it("sort=largest orders by active member count desc", async () => {
-    const { and, desc, eq, isNull, sql, count } = await import("drizzle-orm");
-    // Inline the production 'largest' ordering to assert it ranks Large before Small.
-    const mc = db
-      .select({
-        communityId: schema.communityMemberships.communityId,
-        count: count().as("member_count"),
-      })
-      .from(schema.communityMemberships)
-      .where(eq(schema.communityMemberships.status, "active"))
-      .groupBy(schema.communityMemberships.communityId)
-      .as("mc");
-    const rows = await db
-      .select({
-        id: schema.communities.id,
-        memberCount: sql<number>`coalesce(${mc.count},0)`,
-      })
-      .from(schema.communities)
-      .leftJoin(mc, eq(schema.communities.id, mc.communityId))
-      .where(
-        and(
-          eq(schema.communities.isListedInDirectory, true),
-          isNull(schema.communities.deletedAt),
-        ),
-      )
-      .orderBy(desc(sql`coalesce(${mc.count},0)`), desc(schema.communities.id));
-    const our = rows.filter((r) => ids.includes(r.id));
-    expect(our[0]!.memberCount).toBeGreaterThanOrEqual(
-      our[our.length - 1]!.memberCount,
-    );
+  it("sort=largest gets numeric active member counts from the directory query", async () => {
+    // The 'largest' order itself is the pure comparator in directory.ts
+    // (unit-tested in directory.test.ts); it compares memberCount with
+    // subtraction, so the DB read must hand it real numbers.
+    const { loadDiscoveryCandidates } =
+      await import("@/server/communities/discovery-queries");
+    const candidates = await loadDiscoveryCandidates(db, new Date());
+    const [smallId, largeId] = ids;
+    const small = candidates.find((c) => c.communityId === smallId);
+    const large = candidates.find((c) => c.communityId === largeId);
+
+    expect(small?.memberCount).toBe(1);
+    expect(large?.memberCount).toBe(3);
   });
 
   it("livenessScore ranks a more-active community above a quiet one", async () => {
