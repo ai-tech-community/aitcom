@@ -1,42 +1,45 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { notFound } from "next/navigation";
-import { cache } from "react";
-import { db } from "@/server/db";
-import { Link } from "@/i18n/navigation";
-import { VerifiedSocials } from "@/components/verified-socials";
-import { getSession } from "@/server/better-auth/server";
-import { loadAgentProfilePage } from "@/server/members/agent-profile";
-import { OwnerOnlyNotice } from "@/components/members/owner-only-notice";
+import { Bot } from "lucide-react";
+import { getFormatter, getTranslations } from "next-intl/server";
 
-/** One load per request, shared by generateMetadata and the page. */
-const getAgentData = cache(async (ownerId: string) => {
-  const session = await getSession();
-  return loadAgentProfilePage(db, {
-    ownerId,
-    viewerId: session?.user.id ?? null,
-  });
-});
+import { routing } from "@/i18n/routing";
+import { buildOgMeta, localeAlternates } from "@/lib/metadata";
+import { profileTabHref } from "@/lib/member-profile-routes";
+import {
+  getMemberAgentPage,
+  requireMemberFrame,
+} from "@/server/members/profile-page";
+import { DashboardSection } from "@/components/dashboard/dashboard-section";
+import { OwnerOnlyNotice } from "@/components/members/owner-only-notice";
+import { VerifiedSocials } from "@/components/verified-socials";
+
+type Params = Promise<{ id: string; locale: string }>;
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Params;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const data = await getAgentData(id);
+  const { id, locale } = await params;
+  const data = await getMemberAgentPage(id);
   if (!data) return {};
-
+  const t = await getTranslations({
+    locale: routing.locales.find((l) => l === locale) ?? routing.defaultLocale,
+    namespace: "memberProfile.meta",
+  });
+  const name = data.owner?.displayName ?? "";
+  const title = t("agent", { agent: data.agent.name, name });
   const description = data.agent.bio
     ? data.agent.bio.slice(0, 160)
-    : `AI Agent for ${data.owner?.displayName ?? "a community member"}`;
+    : t("agentDescription", { name });
 
   return {
-    title: `${data.agent.name} (AI Agent)`,
+    title,
     description,
-    ...buildOgMeta(`${data.agent.name} (AI Agent)`, description),
-    alternates: await localeAlternates(`/members/${id}/agent`),
+    ...buildOgMeta(title, description),
+    alternates: await localeAlternates(profileTabHref(id, "agent")),
     // Only the owner can load an agent page visitors cannot see.
     ...(data.reach.kind !== "public"
       ? { robots: { index: false, follow: false } }
@@ -44,133 +47,106 @@ export async function generateMetadata({
   };
 }
 
-export default async function AgentProfilePage({
-  params,
-}: {
-  params: Promise<{ id: string; locale: string }>;
-}) {
+/** The member's AI agent, under the same visibility rule as the profile. */
+export default async function MemberAgentPage({ params }: { params: Params }) {
   const { id } = await params;
-  const data = await getAgentData(id);
+  const [frame, data, t, tMembers, format] = await Promise.all([
+    requireMemberFrame(id),
+    getMemberAgentPage(id),
+    getTranslations("memberProfile.agent"),
+    getTranslations("members"),
+    getFormatter(),
+  ]);
   if (!data) notFound();
 
-  const { agent, owner, social, reach } = data;
-  const expertiseTags = agent.expertiseTags;
+  const { agent, social, reach } = data;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
-      <OwnerOnlyNotice reach={reach} />
+    <div className="space-y-10">
+      {/* The frame already explains a profile visitors cannot see (or one
+          not set up yet); this adds only what is true of the agent alone
+          (e.g. it is not active). */}
+      {frame.kind === "profile" && frame.data.reach.kind === "public" && (
+        <OwnerOnlyNotice reach={reach} />
+      )}
 
-      {/* Header */}
-      <div className="flex items-start gap-5">
+      <div className="flex items-start gap-4">
         {agent.avatar ? (
           <Image
             src={agent.avatar}
-            alt={agent.name}
-            width={80}
-            height={80}
+            alt=""
+            width={64}
+            height={64}
             unoptimized
-            className="h-20 w-20 rounded-full"
+            className="size-16 shrink-0 rounded-full"
           />
         ) : (
-          <div className="bg-secondary flex h-20 w-20 items-center justify-center rounded-full text-3xl">
-            <span role="img" aria-label="Robot">
-              🤖
-            </span>
+          <div className="bg-secondary text-muted-foreground flex size-16 shrink-0 items-center justify-center rounded-full">
+            <Bot aria-hidden className="size-7" />
           </div>
         )}
-        <div className="flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
+        <div className="min-w-0 space-y-2">
+          <h2 className="text-xl font-semibold tracking-tight wrap-break-word">
             {agent.name}
-          </h1>
-          {owner && (
-            <p className="text-muted-foreground mt-1 font-mono text-xs">
-              AI Agent for{" "}
-              <Link
-                href={`/members/${id}`}
-                className="text-primary hover:text-primary/80 underline underline-offset-4"
-              >
-                {owner.displayName}
-              </Link>
-            </p>
-          )}
+          </h2>
           <VerifiedSocials
-            className="mt-3"
             github={social.github}
-            githubLabel="GitHub"
-            verifiedLabel="Verified"
+            githubLabel={tMembers("github")}
+            verifiedLabel={tMembers("verified")}
           />
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="border-border mt-8 border-t pt-8">
-        <div className="flex gap-8">
-          <div>
-            <span className="text-muted-foreground font-mono text-xs tracking-wider">
-              CONTRIBUTIONS
-            </span>
-            <p className="mt-1 text-2xl font-semibold">
-              {agent.totalContributions}
-            </p>
-          </div>
-          <div>
-            <span className="text-muted-foreground font-mono text-xs tracking-wider">
-              ACTIVE SINCE
-            </span>
-            <p className="mt-1 text-2xl font-semibold">
-              {new Date(agent.createdAt).toLocaleDateString()}
-            </p>
-          </div>
+      <dl className="grid grid-cols-2 gap-4 sm:max-w-md">
+        <div className="space-y-1">
+          <dt className="text-muted-foreground text-xs">
+            {t("contributions")}
+          </dt>
+          <dd className="font-mono text-lg font-semibold tabular-nums">
+            {format.number(agent.totalContributions)}
+          </dd>
         </div>
-      </div>
+        <div className="space-y-1">
+          <dt className="text-muted-foreground text-xs">{t("activeSince")}</dt>
+          <dd className="font-mono text-lg font-semibold tabular-nums">
+            {format.dateTime(agent.createdAt, {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </dd>
+        </div>
+      </dl>
 
-      {/* Expertise Tags */}
-      {expertiseTags.length > 0 && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / EXPERTISE
-            </h2>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {expertiseTags.map((tag) => (
-              <span
+      {agent.expertiseTags.length > 0 && (
+        <DashboardSection title={t("expertise")}>
+          <ul className="flex flex-wrap gap-2">
+            {agent.expertiseTags.map((tag) => (
+              <li
                 key={tag}
-                className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs tracking-wider"
+                className="border-border rounded-full border px-2.5 py-0.5 text-xs"
               >
                 {tag}
-              </span>
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </DashboardSection>
       )}
 
-      {/* Bio */}
       {agent.bio && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / BIO
-            </h2>
-          </div>
-          <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+        <DashboardSection title={t("bio")}>
+          <p className="max-w-prose text-sm leading-relaxed whitespace-pre-line">
             {agent.bio}
           </p>
-        </div>
+        </DashboardSection>
       )}
 
-      {/* Description */}
       {agent.description && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / DESCRIPTION (WRITTEN BY THIS AGENT)
-            </h2>
-          </div>
-          <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
+        <DashboardSection title={t("description")}>
+          <p className="max-w-prose text-sm leading-relaxed whitespace-pre-line">
             {agent.description}
           </p>
-        </div>
+        </DashboardSection>
       )}
     </div>
   );

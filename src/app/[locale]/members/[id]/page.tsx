@@ -1,313 +1,223 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import { localeAlternates, buildOgMeta } from "@/lib/metadata";
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
-import { api } from "@/trpc/server";
-import { notFound } from "next/navigation";
-import { getInitials } from "@/lib/avatar";
-import { xpForNextLevel, tierForXp } from "@/lib/gamification";
-import { AchievementBadge } from "@/components/gamification/achievement-badge";
-import { VerifiedSocials } from "@/components/verified-socials";
-import { db } from "@/server/db";
-import { agentProfiles } from "@/server/db/schema";
-import { eq } from "drizzle-orm";
-import { Link } from "@/i18n/navigation";
-import { getSession } from "@/server/better-auth/server";
-import { MessageMemberButton } from "@/components/message-member-button";
-import { cache } from "react";
-import { OwnerOnlyNotice } from "@/components/members/owner-only-notice";
-import { hasAgentOnPublicRoster } from "@/lib/public-roster";
 
-/**
- * One profile load per request, shared by generateMetadata and the page, so
- * the procedure (and its GitHub identity check) runs once per view.
- */
-const getProfile = cache((userId: string) =>
-  api.members.getPublicProfile({ userId }),
-);
+import { Link } from "@/i18n/navigation";
+import { PROFILE_SETTINGS_HREF } from "@/lib/dashboard-routes";
+import { profileTabHref } from "@/lib/member-profile-routes";
+import {
+  getMemberRecentWork,
+  profileTabMetadata,
+  requireMemberFrame,
+} from "@/server/members/profile-page";
+import { DashboardSection } from "@/components/dashboard/dashboard-section";
+import { BadgeGrid } from "@/components/members/profile/badge-grid";
+import { ProfileEmpty } from "@/components/members/profile/profile-empty";
+import { recentWork } from "@/components/members/profile/work-entries";
+import { RECENT_WORK_LIMIT } from "@/server/members/profile-work";
+import { WorkEntryList } from "@/components/members/profile/work-entry-list";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+
+/** Badges in the showcase: the most recent until members can pin them. */
+const SHOWCASE_COUNT = 3;
+
+type Params = Promise<{ id: string; locale: string }>;
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Params;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const data = await getProfile(id);
-  if (!data) return {};
-
-  const description = data.profile.bio
-    ? data.profile.bio.slice(0, 160)
-    : `Member of AIT Community - Level ${data.profile.level}`;
-
-  return {
-    title: data.profile.displayName,
-    description,
-    ...buildOgMeta(data.profile.displayName, description),
-    alternates: await localeAlternates(`/members/${id}`),
-    // Only the owner can load a profile visitors cannot see; keep it unindexed.
-    ...(data.reach.kind !== "public"
-      ? { robots: { index: false, follow: false } }
-      : {}),
-  };
+  const { id, locale } = await params;
+  return profileTabMetadata({ userId: id, locale, tab: "overview" });
 }
 
-export default async function MemberProfilePage({
-  params,
+function TabLink({ href, children }: { href: string; children: string }) {
+  return (
+    <Link
+      href={href}
+      className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex min-h-8 items-center rounded-sm text-xs underline-offset-4 outline-none hover:underline focus-visible:ring-[3px]"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function SettingsAction({ children }: { children: string }) {
+  return (
+    <Button asChild size="sm" variant="outline">
+      <Link href={PROFILE_SETTINGS_HREF}>{children}</Link>
+    </Button>
+  );
+}
+
+/**
+ * Recent work: supplementary, so it streams in after the rest of the
+ * Overview and a failed load hides the section instead of failing the page.
+ */
+async function RecentWorkSection({
+  userId,
+  locale,
+  isOwner,
 }: {
-  params: Promise<{ id: string }>;
+  userId: string;
+  locale: string;
+  isOwner: boolean;
 }) {
-  const [{ id }, t, tBadges, tTiers] = await Promise.all([
-    params,
-    getTranslations("members"),
-    getTranslations("badges"),
-    getTranslations("tiers"),
-  ]);
-
-  const [data, [agentProfile], session] = await Promise.all([
-    getProfile(id),
-    db
-      .select()
-      .from(agentProfiles)
-      .where(eq(agentProfiles.ownerId, id))
-      .limit(1),
-    getSession(),
-  ]);
-  if (!data) notFound();
-
-  const {
-    profile,
-    user: memberUser,
-    badges,
-    certificates,
-    eventsAttended,
-    social,
-    reach,
-  } = data;
-
-  const avatarUrl = memberUser?.avatarUrl ?? memberUser?.image ?? null;
-  const initials = getInitials(profile.displayName);
-  const xpProgress = xpForNextLevel(profile.xp);
-  const tier = tierForXp(profile.xp);
+  const t = await getTranslations("memberProfile.overview");
+  const work = await getMemberRecentWork(userId, locale).catch(
+    (error: unknown) => {
+      console.error("Profile recent work failed to load", error);
+      return undefined;
+    },
+  );
+  const recent = work ? recentWork(work, RECENT_WORK_LIMIT, new Date()) : [];
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
-      <OwnerOnlyNotice reach={reach} />
+    <DashboardSection
+      title={t("recentWork")}
+      optional
+      action={
+        recent.length > 0 ? (
+          <TabLink href={profileTabHref(userId, "work")}>
+            {t("recentWorkAll")}
+          </TabLink>
+        ) : undefined
+      }
+      status={{
+        kind: !work ? "error" : recent.length > 0 ? "ready" : "empty",
+      }}
+      empty={
+        <ProfileEmpty
+          isOwner={isOwner}
+          title={t("recentWorkEmptyOwnerTitle")}
+          description={t("recentWorkEmptyOwnerDescription")}
+          visitorText={t("recentWorkEmptyVisitor")}
+        />
+      }
+    >
+      <WorkEntryList entries={recent} showKind />
+    </DashboardSection>
+  );
+}
 
-      {/* Header */}
-      <div className="flex items-start gap-3 sm:gap-5">
-        {avatarUrl ? (
-          <Image
-            src={avatarUrl}
-            alt={profile.displayName}
-            className="h-20 w-20 rounded-full"
-            width={80}
-            height={80}
-          />
-        ) : (
-          <div className="bg-secondary text-muted-foreground flex h-20 w-20 items-center justify-center rounded-full font-mono text-xl font-medium">
-            {initials}
-          </div>
-        )}
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {profile.displayName}
-            </h1>
-            <span className="border-border text-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider uppercase">
-              {tTiers(tier.key)}
-            </span>
-            <span className="text-muted-foreground font-mono text-xs tracking-wider">
-              {t("level")} {profile.level}
-            </span>
-            {session?.user && session.user.id !== id && (
-              <MessageMemberButton recipientId={id} />
-            )}
-          </div>
-          {profile.company && (
-            <p className="text-muted-foreground mt-1 font-mono text-xs">
-              @ {profile.company}
-            </p>
-          )}
-          {/* XP progress */}
-          <div className="mt-3 flex items-center gap-2">
-            <div className="bg-secondary h-1.5 w-24 rounded-full sm:w-32">
-              <div
-                className="bg-primary h-1.5 rounded-full"
-                style={{
-                  width: `${(xpProgress.current / xpProgress.needed) * 100}%`,
-                }}
-              />
-            </div>
-            <span className="text-muted-foreground font-mono text-xs tracking-wider">
-              {profile.xp} {t("xp")}
-            </span>
-          </div>
-        </div>
-      </div>
+export default async function MemberOverviewPage({
+  params,
+}: {
+  params: Params;
+}) {
+  const { id, locale } = await params;
+  const [frame, t, tSetup] = await Promise.all([
+    requireMemberFrame(id),
+    getTranslations("memberProfile.overview"),
+    getTranslations("memberProfile.setup"),
+  ]);
 
-      <VerifiedSocials
-        className="mt-6"
-        github={social.github}
-        linkedin={social.linkedin}
-        websiteUrl={social.website?.url ?? profile.websiteUrl}
-        githubLabel={t("github")}
-        linkedinLabel={t("linkedin")}
-        websiteLabel={t("website")}
-        verifiedLabel={t("verified")}
+  if (frame.kind === "setup") {
+    return (
+      <EmptyState
+        className="items-start px-0 py-4 text-left [&_p]:mx-0"
+        title={tSetup("title")}
+        description={tSetup("description")}
+        action={
+          <Button asChild size="sm" variant="outline">
+            <Link href={PROFILE_SETTINGS_HREF}>{tSetup("cta")}</Link>
+          </Button>
+        }
       />
+    );
+  }
 
-      {/* Bio */}
-      {profile.bio && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / {t("bio").toUpperCase()}
-            </h2>
-          </div>
-          <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-            {profile.bio}
-          </p>
-        </div>
-      )}
+  const { data } = frame;
+  const { profile } = data;
+  const isOwner = data.audience === "owner";
+  const showcase = data.badges.slice(0, SHOWCASE_COUNT);
 
-      {/* Skills */}
-      {profile.skills.length > 0 && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / {t("skills").toUpperCase()}
-            </h2>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {profile.skills.map((skill) => (
-              <span
-                key={skill}
-                className="border-border text-muted-foreground rounded border px-2.5 py-0.5 font-mono text-xs tracking-wider"
-              >
-                {skill}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+  return (
+    <div className="space-y-10">
+      <DashboardSection
+        title={t("bio")}
+        status={{ kind: profile.bio ? "ready" : "empty" }}
+        empty={
+          <ProfileEmpty
+            isOwner={isOwner}
+            title={t("bioEmptyOwnerTitle")}
+            description={t("bioEmptyOwnerDescription")}
+            action={<SettingsAction>{t("bioEmptyOwnerCta")}</SettingsAction>}
+            visitorText={t("bioEmptyVisitor")}
+          />
+        }
+      >
+        <p className="max-w-prose text-sm leading-relaxed whitespace-pre-line">
+          {profile.bio}
+        </p>
+      </DashboardSection>
 
-      {/* Badges */}
-      {badges.length > 0 && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / {t("badges").toUpperCase()}
-            </h2>
-          </div>
-          <div className="mt-6 flex flex-wrap gap-6">
-            {badges.map((badge) => (
-              <AchievementBadge
-                key={badge.slug}
-                badgeSize="default"
-                achievement={{
-                  id: badge.slug,
-                  name: tBadges(badge.slug),
-                  trigger: "metric",
-                  progress: 100,
-                  achievedAt: badge.earnedAt
-                    ? new Date(badge.earnedAt).toISOString()
-                    : null,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <DashboardSection
+        title={t("showcase")}
+        action={
+          showcase.length > 0 ? (
+            <TabLink href={profileTabHref(id, "badges")}>
+              {t("showcaseAll")}
+            </TabLink>
+          ) : undefined
+        }
+        status={{ kind: showcase.length > 0 ? "ready" : "empty" }}
+        empty={
+          <ProfileEmpty
+            isOwner={isOwner}
+            title={t("showcaseEmptyOwnerTitle")}
+            description={t("showcaseEmptyOwnerDescription")}
+            action={
+              <Button asChild size="sm" variant="outline">
+                <Link href={profileTabHref(id, "badges")}>
+                  {t("showcaseEmptyOwnerCta")}
+                </Link>
+              </Button>
+            }
+            visitorText={t("showcaseEmptyVisitor")}
+          />
+        }
+      >
+        <BadgeGrid badges={showcase} size="lg" />
+      </DashboardSection>
 
-      {/* Hackathon certificates */}
-      {certificates.length > 0 && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / {t("certificates").toUpperCase()}
-            </h2>
-          </div>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {certificates.map((cert) => (
-              <div
-                key={cert.id}
-                className="border-border rounded border border-dashed px-3 py-2.5"
-              >
-                <p className="font-mono text-xs font-medium">
-                  {cert.challengeTitle ?? t("certificateUntitled")}
-                </p>
-                <p className="text-muted-foreground mt-0.5 font-mono text-xs tracking-wider">
-                  {(cert.kind === "winner"
-                    ? t("certificateWinner")
-                    : t("certificateParticipant")
-                  ).toUpperCase()}
-                  {" · "}
-                  {new Date(cert.issuedAt).toLocaleDateString()}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="border-border mt-8 border-t pt-8">
-        <div className="flex gap-8">
-          <div>
-            <span className="text-muted-foreground font-mono text-xs tracking-wider">
-              {t("eventsAttended").toUpperCase()}
-            </span>
-            <p className="mt-1 text-2xl font-semibold">{eventsAttended}</p>
-          </div>
-          <div>
-            <span className="text-muted-foreground font-mono text-xs tracking-wider">
-              {t("badges").toUpperCase()}
-            </span>
-            <p className="mt-1 text-2xl font-semibold">{badges.length}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* AI Agent */}
-      {agentProfile?.status === "active" &&
-        (data.audience === "owner" ||
-          hasAgentOnPublicRoster({
-            userId: id,
-            ownedActiveAgentId: agentProfile.id,
-          })) && (
-          <div className="border-border mt-8 border-t pt-8">
-            <div className="border-border border-b pb-4">
-              <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-                / AI AGENT
-              </h2>
-            </div>
-            <Link
-              href={`/members/${id}/agent`}
-              className="border-border hover:bg-secondary/50 mt-4 flex items-center gap-4 rounded border p-4 transition-colors"
+      <DashboardSection
+        title={t("skills")}
+        status={{ kind: profile.skills.length > 0 ? "ready" : "empty" }}
+        empty={
+          <ProfileEmpty
+            isOwner={isOwner}
+            title={t("skillsEmptyOwnerTitle")}
+            description={t("skillsEmptyOwnerDescription")}
+            action={<SettingsAction>{t("skillsEmptyOwnerCta")}</SettingsAction>}
+            visitorText={t("skillsEmptyVisitor")}
+          />
+        }
+      >
+        <ul className="flex flex-wrap gap-2">
+          {profile.skills.map((skill) => (
+            <li
+              key={skill}
+              className="border-border rounded-full border px-2.5 py-0.5 text-xs"
             >
-              {agentProfile.avatar ? (
-                <Image
-                  src={agentProfile.avatar}
-                  alt={agentProfile.name}
-                  className="h-10 w-10 rounded-full"
-                  width={40}
-                  height={40}
-                />
-              ) : (
-                <div className="bg-secondary text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full text-lg">
-                  🤖
-                </div>
-              )}
-              <div className="flex-1">
-                <p className="font-medium">{agentProfile.name}</p>
-                <p className="text-muted-foreground font-mono text-xs tracking-wider">
-                  {agentProfile.totalContributions} contributions
-                </p>
-              </div>
-              <span className="text-muted-foreground font-mono text-xs">→</span>
-            </Link>
-          </div>
-        )}
+              {skill}
+            </li>
+          ))}
+        </ul>
+      </DashboardSection>
+
+      <Suspense
+        fallback={
+          <DashboardSection
+            title={t("recentWork")}
+            status={{ kind: "loading" }}
+          />
+        }
+      >
+        <RecentWorkSection userId={id} locale={locale} isOwner={isOwner} />
+      </Suspense>
     </div>
   );
 }

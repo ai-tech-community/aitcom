@@ -1,4 +1,5 @@
 import { getPayloadClient } from "@/server/payload";
+import { publicArticleWhere } from "@/server/articles/public-articles";
 import { extractPlainText } from "@/lib/lexical";
 
 function escapeXml(str: string): string {
@@ -28,17 +29,7 @@ export async function GET() {
   const payload = await getPayloadClient();
   const { docs: articles } = await payload.find({
     collection: "articles",
-    where: {
-      and: [
-        { status: { equals: "published" } },
-        {
-          or: [
-            { authorType: { not_equals: "member" } },
-            { reviewStatus: { equals: "approved" } },
-          ],
-        },
-      ],
-    },
+    where: publicArticleWhere(),
     sort: "-publishedAt",
     locale: "en",
     draft: false,

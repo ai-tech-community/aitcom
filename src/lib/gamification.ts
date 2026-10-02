@@ -270,6 +270,26 @@ export interface StreakData {
   streak: StreakPeriod[];
 }
 
+const DAY_MS = 86_400_000;
+const toUtc = (day: string) => Date.parse(`${day}T00:00:00Z`);
+
+/**
+ * Collapse a sorted-ascending list of unique active days (YYYY-MM-DD) into
+ * runs of consecutive days, for a streak calendar.
+ */
+export function toStreakPeriods(days: readonly string[]): StreakPeriod[] {
+  const periods: StreakPeriod[] = [];
+  for (const day of days) {
+    const last = periods[periods.length - 1];
+    if (last && toUtc(day) - toUtc(last.periodEnd) === DAY_MS) {
+      last.periodEnd = day;
+    } else {
+      periods.push({ periodStart: day, periodEnd: day });
+    }
+  }
+  return periods;
+}
+
 /**
  * Collapse a sorted-ascending list of unique active days (YYYY-MM-DD) into
  * consecutive-day periods plus streak stats. An "active day" is any day with
@@ -279,18 +299,7 @@ export interface StreakData {
  * not done yet").
  */
 export function computeStreakData(days: string[], today: string): StreakData {
-  const DAY_MS = 86_400_000;
-  const toUtc = (s: string) => Date.parse(`${s}T00:00:00Z`);
-  const periods: StreakPeriod[] = [];
-
-  for (const day of days) {
-    const last = periods[periods.length - 1];
-    if (last && toUtc(day) - toUtc(last.periodEnd) === DAY_MS) {
-      last.periodEnd = day;
-    } else {
-      periods.push({ periodStart: day, periodEnd: day });
-    }
-  }
+  const periods = toStreakPeriods(days);
 
   if (periods.length === 0) {
     return { currentStreak: 0, longestStreak: 0, total: 0, streak: [] };

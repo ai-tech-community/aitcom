@@ -143,6 +143,10 @@ beforeEach(() => {
 afterEach(() => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
+  // The composer saves an unsent draft after a short delay; a draft left by
+  // one test must not be restored into the next one's composer. Storage is
+  // missing under some Node versions' jsdom, where drafts are not kept.
+  window.localStorage?.clear();
 });
 
 describe("PostComposer video", () => {
@@ -740,8 +744,9 @@ describe("PostComposer posts without words", () => {
       target: { files: [new File(["x"], "a.png", { type: "image/png" })] },
     });
     expect(postButton()).toBeDisabled();
+    // The hint appears once the picture has uploaded, which is async.
     expect(
-      screen.getByText(/No words\? Describe each picture/),
+      await screen.findByText(/No words\? Describe each picture/),
     ).toBeInTheDocument();
     const alt = screen.getByRole("textbox", {
       name: "Description of picture 1",

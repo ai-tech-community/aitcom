@@ -1,5 +1,6 @@
-import { sql, type SQL } from "drizzle-orm";
+import { and, eq, sql, type SQL } from "drizzle-orm";
 
+import type { db as appDb } from "@/server/db";
 import { memberProfiles } from "@/server/db/schema";
 import {
   notHiddenByStaff,
@@ -59,4 +60,29 @@ export function profileReach(row: {
   if (row.hiddenByStaff) return { kind: "ownerOnly", reason: "hiddenByStaff" };
   if (!row.isPublic) return { kind: "ownerOnly", reason: "private" };
   return { kind: "public" };
+}
+
+/** Who is looking, and whether visitors can see the profile. */
+export interface ProfileGate {
+  audience: ProfileAudience;
+  reach: ProfileReach;
+}
+
+/**
+ * The one visibility check for a member's public surfaces that are loaded on
+ * their own (identity panel communities, Activity, Work): null when this
+ * viewer may not see the profile (or it does not exist), otherwise who is
+ * looking and whether visitors can see it. Same rule as the profile itself.
+ */
+export async function loadProfileGate(
+  database: typeof appDb,
+  { userId, viewerId }: { userId: string; viewerId: string | null | undefined },
+): Promise<ProfileGate | null> {
+  const audience = profileAudience(viewerId, userId);
+  const [row] = await database
+    .select(profileReachColumns())
+    .from(memberProfiles)
+    .where(and(eq(memberProfiles.userId, userId), profileReadableBy(audience)))
+    .limit(1);
+  return row ? { audience, reach: profileReach(row) } : null;
 }

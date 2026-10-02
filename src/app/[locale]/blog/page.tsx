@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
+import { publicArticleWhere } from "@/server/articles/public-articles";
 import type { Where } from "payload";
 import { Link } from "@/i18n/navigation";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
@@ -45,15 +46,7 @@ export default async function BlogPage({
   const tag = typeof params.tag === "string" ? params.tag.trim() : "";
 
   // Build where conditions
-  const conditions: Where[] = [
-    { status: { equals: "published" } },
-    {
-      or: [
-        { authorType: { not_equals: "member" } },
-        { reviewStatus: { equals: "approved" } },
-      ],
-    },
-  ];
+  const conditions: Where[] = [publicArticleWhere()];
 
   // Search: title or tags match query
   if (q) {
