@@ -274,6 +274,19 @@ describe.skipIf(!RUN_DB)("badge backfill [DB integration]", () => {
     // Retroactive: no notifications and no XP.
     expect(await rows.notices()).toEqual([]);
     expect(await rows.points()).toEqual([]);
+    // ...and no earning moment: written tiers and moved awards are seen.
+    const { db, schema, drizzle } = m;
+    const written = await db
+      .select({ seenAt: schema.memberBadges.seenAt })
+      .from(schema.memberBadges)
+      .where(drizzle.eq(schema.memberBadges.userId, u.regular));
+    expect(written).toHaveLength(2);
+    for (const row of written) expect(row.seenAt).toBeInstanceOf(Date);
+    const [moved] = await db
+      .select({ seenAt: schema.memberAwards.seenAt })
+      .from(schema.memberAwards)
+      .where(drizzle.eq(schema.memberAwards.userId, u.winner));
+    expect(moved?.seenAt).toBeInstanceOf(Date);
   });
 
   it("a re-run writes nothing", async () => {

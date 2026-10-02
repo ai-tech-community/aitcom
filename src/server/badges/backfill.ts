@@ -7,14 +7,15 @@
  * - Dry-run by default: reads only, and reports what `apply` would write.
  * - Idempotent: earning skips held badges, and a moved prize row is gone
  *   from `member_badge`, so a re-run writes nothing.
- * - Retroactive: backfilled badges get no XP bonus, activity event or
- *   notification (see `recordRetroactiveTiers`).
+ * - Retroactive: backfilled badges and moved awards are recorded as seen,
+ *   with no XP bonus, activity event, notification or earning moment (see
+ *   `recordRetroactiveTiers`).
  * - Never deletes a stored badge row it cannot match to a challenge.
  * - Reports every failure (a metric read, a badge write, a prize move),
  *   continues with the rest, and `backfillSucceeded` is then false, so the
  *   CLI exits non-zero.
  */
-import { and, asc, eq, gt, inArray } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Payload } from "payload";
 
 import {
@@ -284,7 +285,11 @@ async function matchOffCatalogRows(
   };
 }
 
-/** Moves one matched prize row into `member_award`, keeping its date. */
+/**
+ * Moves one matched prize row into `member_award`, keeping its date. A
+ * moved award is retroactive, so it is recorded as already seen: the
+ * earning moment never celebrates it.
+ */
 async function moveToAward(
   db: Db,
   row: OffCatalogRow & { challengeId: number },
@@ -299,6 +304,7 @@ async function moveToAward(
         challengeId: row.challengeId,
         label,
         earnedAt: row.earnedAt,
+        seenAt: sql`now()`,
       })
       .onConflictDoNothing();
     await tx.delete(memberBadges).where(eq(memberBadges.id, row.id));

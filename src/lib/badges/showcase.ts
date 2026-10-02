@@ -173,3 +173,18 @@ export function planUnpin(stored: readonly string[], slug: string): string[] {
       !(isBadgeSlug(s) && isBadgeSlug(slug) && sameBadgeLine(s, slug)),
   );
 }
+
+/**
+ * Whether a just-earned badge can go on the showcase: already shown (its
+ * line is pinned, so the showcase raises it to this tier), open, or full.
+ * `pins` are the effective pins.
+ */
+export type ShowcasePinState = "pinned" | "open" | "full";
+
+export function showcasePinState(
+  pins: readonly BadgeSlug[],
+  slug: BadgeSlug,
+): ShowcasePinState {
+  if (pins.some((pin) => sameBadgeLine(pin, slug))) return "pinned";
+  return pins.length >= SHOWCASE_LIMIT ? "full" : "open";
+}

@@ -64,8 +64,9 @@ const CATALOG_ORDER = new Map(BADGE_SLUGS.map((slug, index) => [slug, index]));
 
 /**
  * Inserts the given badges, skipping the ones the member holds. New rows
- * marked `celebrate` get their XP bonus, activity event and notification;
- * the others are recorded silently.
+ * marked `celebrate` get their XP bonus, activity event and notification,
+ * and stay unseen (`seen_at` null) so the earning moment shows them once;
+ * the others are recorded silently, already seen.
  */
 async function recordEarned(
   db: BadgeDb,
@@ -78,7 +79,13 @@ async function recordEarned(
   );
   const rows = await db
     .insert(memberBadges)
-    .values(earnings.map(({ slug }) => ({ userId, badgeSlug: slug })))
+    .values(
+      earnings.map(({ slug, celebrate: celebrated }) => ({
+        userId,
+        badgeSlug: slug,
+        seenAt: celebrated ? null : sql`now()`,
+      })),
+    )
     .onConflictDoNothing()
     .returning({ id: memberBadges.id, badgeSlug: memberBadges.badgeSlug });
   const earned = rows

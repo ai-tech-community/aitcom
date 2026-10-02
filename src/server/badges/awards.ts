@@ -21,6 +21,8 @@ export function awardLabel(
 
 /**
  * Gives a member a challenge's award, once per (member, challenge, label).
+ * A live award is celebrated: it stays unseen (`seen_at` null) until the
+ * earning moment shows it.
  * Never breaks the caller: it runs in its own savepoint and logs failures.
  * Returns whether a new award was recorded.
  */

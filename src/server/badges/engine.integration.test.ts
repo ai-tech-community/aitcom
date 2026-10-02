@@ -561,6 +561,43 @@ describe.skipIf(!RUN_DB)("badge engine [DB integration]", () => {
       ]);
     });
 
+    it("leaves only the celebrated tier unseen for the earning moment", async () => {
+      const { db, schema, drizzle } = m;
+      // u.three: Regular I passed silently, Regular II reached (above).
+      const rows = await db
+        .select({
+          slug: schema.memberBadges.badgeSlug,
+          seenAt: schema.memberBadges.seenAt,
+        })
+        .from(schema.memberBadges)
+        .where(drizzle.eq(schema.memberBadges.userId, u.three));
+      const seen = Object.fromEntries(
+        rows.map((row) => [row.slug, row.seenAt !== null]),
+      );
+      expect(seen).toEqual({ first_event: true, regular: false });
+    });
+
+    it("records backfill tiers as seen", async () => {
+      const { db, schema, drizzle, engine } = m;
+      expect(
+        await engine.recordRetroactiveTiers(db, u.three, "learner", 3),
+      ).toEqual(["course_complete", "learner_2"]);
+      const rows = await db
+        .select({ seenAt: schema.memberBadges.seenAt })
+        .from(schema.memberBadges)
+        .where(
+          drizzle.and(
+            drizzle.eq(schema.memberBadges.userId, u.three),
+            drizzle.inArray(schema.memberBadges.badgeSlug, [
+              "course_complete",
+              "learner_2",
+            ]),
+          ),
+        );
+      expect(rows).toHaveLength(2);
+      for (const row of rows) expect(row.seenAt).toBeInstanceOf(Date);
+    });
+
     it("a 40-day longest streak records Streak I and II silently", async () => {
       const { db, schema, engine } = m;
       await db.insert(schema.activityEvents).values(
@@ -789,10 +826,12 @@ describe.skipIf(!RUN_DB)("badge engine [DB integration]", () => {
         .select({
           challengeId: schema.memberAwards.challengeId,
           label: schema.memberAwards.label,
+          seenAt: schema.memberAwards.seenAt,
         })
         .from(schema.memberAwards)
         .where(drizzle.eq(schema.memberAwards.userId, u.player));
-      expect(awards).toEqual([{ challengeId, label: prize }]);
+      // A live award is celebrated: unseen until the earning moment.
+      expect(awards).toEqual([{ challengeId, label: prize, seenAt: null }]);
     });
   });
 

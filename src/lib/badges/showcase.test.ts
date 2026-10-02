@@ -10,6 +10,7 @@ import {
   planUnpin,
   rarestBadges,
   resolveShowcase,
+  showcasePinState,
 } from "./showcase";
 
 const HOLDERS: Partial<Record<BadgeSlug, number>> = {
@@ -218,5 +219,27 @@ describe("without rarity (it failed to load)", () => {
       slugs: ["early_adopter"],
       source: "pinned",
     });
+  });
+});
+
+describe("showcasePinState", () => {
+  it("is pinned when the badge's track is pinned at any tier", () => {
+    expect(showcasePinState(["first_event"], "veteran")).toBe("pinned");
+    expect(showcasePinState(["early_adopter"], "early_adopter")).toBe("pinned");
+  });
+
+  it("is open below the limit and full at it", () => {
+    expect(showcasePinState([], "article_author")).toBe("open");
+    expect(
+      showcasePinState(["first_event", "early_adopter"], "article_author"),
+    ).toBe("open");
+    const full: BadgeSlug[] = [
+      "first_event",
+      "early_adopter",
+      "course_complete",
+    ];
+    expect(full).toHaveLength(SHOWCASE_LIMIT);
+    expect(showcasePinState(full, "article_author")).toBe("full");
+    expect(showcasePinState(full, "learner_2")).toBe("pinned");
   });
 });
