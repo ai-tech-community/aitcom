@@ -106,3 +106,53 @@ describe("groupAdjacentJoins", () => {
     ).toEqual(["joins:a,b", "post:1", "joins:c"]);
   });
 });
+
+describe("merging several communities", () => {
+  const scoped = (
+    kind: ActivityKind,
+    id: string,
+    at: string,
+    scope: string,
+  ): ActivityEntry => ({ kind, id, at, data: { id }, scope });
+
+  const makers = [
+    scoped("post", "10", "2026-09-23T12:00:00.000Z", "makers"),
+    scoped("post", "11", "2026-09-21T12:00:00.000Z", "makers"),
+  ];
+  const builders = [
+    scoped("post", "20", "2026-09-22T12:00:00.000Z", "builders"),
+    scoped("thread", "5", "2026-09-21T12:00:00.000Z", "builders"),
+  ];
+
+  it("interleaves communities by time and pages without gaps or repeats", () => {
+    const seen: string[] = [];
+    let cursor = null as ReturnType<typeof mergeActivityPage>["nextCursor"];
+    do {
+      const page = mergeActivityPage([makers, builders], cursor, 1);
+      seen.push(...page.entries.map((e) => `${e.scope}/${e.kind}:${e.id}`));
+      cursor = page.nextCursor;
+    } while (cursor);
+    expect(seen).toEqual([
+      "makers/post:10",
+      "builders/post:20",
+      // Same instant: the key breaks the tie, whatever the community.
+      "builders/thread:5",
+      "makers/post:11",
+    ]);
+  });
+
+  it("never folds joins of different communities into one group", () => {
+    const groups = groupAdjacentJoins<{ id: string }>([
+      scoped("join", "m1", "2026-09-23T03:00:00.000Z", "makers"),
+      scoped("join", "m2", "2026-09-23T02:00:00.000Z", "makers"),
+      scoped("join", "b1", "2026-09-23T01:00:00.000Z", "builders"),
+    ]);
+    expect(
+      groups.map((group) =>
+        group.kind === "joins"
+          ? `${group.scope}:${group.members.map((m) => m.id).join(",")}`
+          : "single",
+      ),
+    ).toEqual(["makers:m1,m2", "builders:b1"]);
+  });
+});

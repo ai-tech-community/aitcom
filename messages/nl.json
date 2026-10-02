@@ -864,7 +864,10 @@
         "freeze": "reeksbevriezing gebruikt",
         "idle": "geen activiteit",
         "future": "nog niet geweest"
-      }
+      },
+      "recentTitle": "Je recente activiteit",
+      "recentEmpty": "Nog niets. Je discussies, evenementen en ideeën verschijnen hier.",
+      "recentAction": "{action, select, thread_create {Een discussie gestart} thread_created {Een discussie gestart} thread_reply {Gereageerd in een discussie} feed_post_created {Iets geplaatst in een community} feed_post_liked {Een bericht geliket} feed_comment_created {Gereageerd op een bericht} comment_created {Een reactie geplaatst} message_sent {Een bericht gestuurd} message_created {Een bericht gestuurd} event_register {Aangemeld voor een evenement} event_intent {Laten weten dat je naar een evenement gaat} event_check_in {Ingecheckt bij een evenement} event_create {Een evenement aangemaakt} event_submit {Een evenement ingediend} community_created {Een community gestart} community_joined {Lid geworden van een community} member_joined {Lid geworden van een community} community_join_requested {Gevraagd om lid te worden van een community} community_left {Een community verlaten} idea_submitted {Een idee gedeeld} idea_voted {Op een idee gestemd} challenge_enrolled {Meegedaan aan een uitdaging} challenge_completed {Een uitdaging voltooid} challenge_objective_completed {Een doel van een uitdaging gehaald} challenge_solution_submitted {Een oplossing ingeleverd} challenge_proposed {Een uitdaging voorgesteld} challenge_abandoned {Gestopt met een uitdaging} course_enroll {Aan een cursus begonnen} badge_earned {Een badge verdiend} agent_created {Je AI-agent ingesteld} knowledge_share {Kennis gedeeld} feed_posted {Iets geplaatst in een community} feed_commented {Gereageerd op een bericht} community_member_approved {Een lidmaatschapsaanvraag goedgekeurd} community_member_banned {Een lid verbannen} community_member_unbanned {Een verbanning opgeheven} community_member_removed {Een lid verwijderd} community_role_changed {De rol van een lid gewijzigd} community_ownership_transferred {Een community overgedragen} community_settings_updated {Community-instellingen bijgewerkt} community_invite_created {Iemand uitgenodigd voor een community} event_approve {Een evenement goedgekeurd} event_reject {Een evenement afgewezen} event_cancel {Een evenement geannuleerd} event_update {Een evenement bijgewerkt} event_resubmit {Een evenement opnieuw ingediend} event_organizer_change {De organisatoren van een evenement gewijzigd} event_check_in_undo {Een check-in ongedaan gemaakt} article_submitted {Een artikel ingediend} article_published {Een artikel gepubliceerd} article_approved {Een artikel goedgekeurd} article_rejected {Een artikel afgewezen} article_changes_requested {Om wijzigingen in een artikel gevraagd} launchpad_project_published {Een project gepubliceerd} launchpad_update_posted {Een projectupdate geplaatst} launchpad_project_voted {Op een project gestemd} launchpad_comment_created {Gereageerd op een project} course_published {Een cursus gepubliceerd} course_complete {Een cursus afgerond} challenge_created {Een uitdaging aangemaakt} challenge_channel_post {Iets geplaatst in een uitdaging} agent_registered {Een AI-agent geregistreerd} other {Meegedaan}}"
     },
     "getStarted": {
       "title": "Aan de slag"
@@ -921,11 +924,17 @@
         "notificationsAction": "Bekijk meldingen",
         "messagesAction": "Open inbox"
       }
+    },
+    "communityActivity": {
+      "title": "Uit je communities",
+      "notJoinedTitle": "Je bent nog geen lid van een community.",
+      "notJoinedDescription": "Nieuws uit de communities waar je lid van wordt, verschijnt hier.",
+      "findCommunity": "Zoek een community",
+      "quietTitle": "Het is nu stil in je communities.",
+      "quietDescription": "Nieuwe berichten, vragen en evenementen verschijnen hier.",
+      "exploreCommunities": "Ontdek meer communities",
+      "loadMore": "Meer laden"
     }
-  },
-  "activity": {
-    "empty": "Nog geen activiteit. Begin met deelnemen om je feed te zien!",
-    "sectionTitle": "Activiteit"
   },
   "inbox": {
     "title": "Inbox",
@@ -3578,6 +3587,7 @@
   "common": {
     "loading": "Laden…",
     "loadMore": "Meer laden",
+    "loadMoreError": "Meer laden is niet gelukt.",
     "viewAll": "Alles bekijken",
     "retry": "Opnieuw",
     "somethingWentWrong": "Er ging iets mis",

@@ -8,6 +8,7 @@ const { mutate, invalidate } = vi.hoisted(() => ({
   mutate: vi.fn(),
   invalidate: {
     getActivity: vi.fn(),
+    getHomeActivity: vi.fn(),
     getFeed: vi.fn(),
     getReels: vi.fn(),
   },
@@ -18,6 +19,7 @@ vi.mock("@/trpc/react", () => ({
     useUtils: () => ({
       feed: {
         getActivity: { invalidate: invalidate.getActivity },
+        getHomeActivity: { invalidate: invalidate.getHomeActivity },
         getFeed: { invalidate: invalidate.getFeed },
         getReels: { invalidate: invalidate.getReels },
       },
@@ -75,6 +77,7 @@ describe("ReportDialog", () => {
     ];
     callbacks.onSuccess();
     expect(invalidate.getActivity).toHaveBeenCalled();
+    expect(invalidate.getHomeActivity).toHaveBeenCalled();
     expect(invalidate.getFeed).toHaveBeenCalled();
     expect(invalidate.getReels).toHaveBeenCalled();
   });

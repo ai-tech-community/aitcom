@@ -75,6 +75,14 @@ interface FeedPost {
   announcedAt?: string | null;
 }
 
+/**
+ * What a card changed about its post, so a list can update that one post in
+ * its cache instead of reloading every page it has loaded.
+ */
+export type FeedPostChange =
+  | { kind: "liked"; postId: number; liked: boolean; likeCount: number }
+  | { kind: "deleted"; postId: number };
+
 interface FeedPostCardProps {
   post: FeedPost;
   currentUserId?: string | null;
@@ -82,6 +90,11 @@ interface FeedPostCardProps {
   communitySlug: string;
   /** Refetches the feed; resolves once the fresh posts are in. */
   onRefresh: () => Promise<unknown>;
+  /**
+   * Applies a like or a delete to the list in place. Without it, the card
+   * refetches the feed for those too.
+   */
+  onPostChange?: (change: FeedPostChange) => void;
   onToggleComments: (postId: number) => void;
   showComments: boolean;
 }
@@ -92,6 +105,7 @@ export function FeedPostCard({
   memberRole,
   communitySlug,
   onRefresh,
+  onPostChange,
   onToggleComments,
   showComments,
 }: FeedPostCardProps) {
@@ -115,14 +129,21 @@ export function FeedPostCard({
     memberRole === "moderator";
 
   const toggleLike = api.feed.toggleLike.useMutation({
-    onSuccess: () => void onRefresh(),
+    onSuccess: ({ liked, likeCount }) => {
+      if (onPostChange) {
+        onPostChange({ kind: "liked", postId: post.id, liked, likeCount });
+      } else {
+        void onRefresh();
+      }
+    },
     onError: () => toast.error(t("toastLikeError")),
   });
 
   const deletePost = api.feed.deletePost.useMutation({
     onSuccess: () => {
       toast.success(t("postDeleted"));
-      void onRefresh();
+      if (onPostChange) onPostChange({ kind: "deleted", postId: post.id });
+      else void onRefresh();
     },
     onError: () => toast.error(t("toastPostDeleteError")),
   });

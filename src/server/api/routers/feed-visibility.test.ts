@@ -105,10 +105,12 @@ describe("feed.toggleLike", () => {
     );
   });
 
-  it("lets a member like a visible post", async () => {
+  it("lets a member like a visible post, and returns the new count", async () => {
     hooks.membership = { role: "member" };
+    payload.count.mockResolvedValue({ totalDocs: 1 });
     await expect(caller().feed.toggleLike({ postId: 5 })).resolves.toEqual({
       liked: true,
+      likeCount: 1,
     });
   });
 });

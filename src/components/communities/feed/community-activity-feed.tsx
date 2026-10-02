@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, MessageSquarePlus } from "lucide-react";
+import { MessageSquarePlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
+import { LoadMore } from "@/components/ui/load-more";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/trpc/react";
 import { ActivityRow } from "./activity-row";
@@ -41,6 +42,7 @@ export function CommunityActivityFeed({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
   } = api.feed.getActivity.useInfiniteQuery(
     { communitySlug: slug, limit: 15 },
     { getNextPageParam: (last) => last.nextCursor ?? undefined },
@@ -105,21 +107,15 @@ export function CommunityActivityFeed({
           <ActivityRow key={item.key} item={item} slug={slug} />
         ),
       )}
-      {hasNextPage ? (
-        <div className="flex justify-center pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void fetchNextPage()}
-            disabled={isFetchingNextPage}
-          >
-            {isFetchingNextPage ? (
-              <Loader2 aria-hidden="true" className="animate-spin" />
-            ) : null}
-            {t("loadMore")}
-          </Button>
-        </div>
-      ) : null}
+      <LoadMore
+        query={{
+          hasNextPage,
+          isFetchingNextPage,
+          isFetchNextPageError,
+          fetchNextPage,
+        }}
+        label={t("loadMore")}
+      />
     </div>
   );
 }

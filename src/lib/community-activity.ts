@@ -16,6 +16,11 @@ export type ActivityEntry<
   /** ISO timestamp the row is ordered by (created / joined). */
   at: string;
   data: T;
+  /**
+   * The community the row belongs to, when a stream spans several. Joins
+   * fold into one group only within the same scope.
+   */
+  scope?: string;
 };
 
 /** Position after the last item shown. Exclusive: that item is not repeated. */
@@ -81,11 +86,19 @@ export function mergeActivityPage(
 /** A feed item: every kind as-is, except neighbouring joins fold into one. */
 export type ActivityGroup<J> =
   | { kind: "single"; entry: ActivityEntry }
-  | { kind: "joins"; at: string; key: string; members: J[] };
+  | {
+      kind: "joins";
+      at: string;
+      key: string;
+      /** The scope shared by every join in the group. */
+      scope: string | undefined;
+      members: J[];
+    };
 
 /**
  * Fold runs of adjacent join entries into one group ("3 people joined"),
- * so a burst of joins reads as one moment instead of a wall of rows.
+ * so a burst of joins reads as one moment instead of a wall of rows. Joins
+ * of different scopes (communities) never share a group.
  */
 export function groupAdjacentJoins<J>(
   entries: ReadonlyArray<ActivityEntry>,
@@ -94,7 +107,7 @@ export function groupAdjacentJoins<J>(
   for (const entry of entries) {
     const last = groups.at(-1);
     if (entry.kind === "join") {
-      if (last?.kind === "joins") {
+      if (last?.kind === "joins" && last.scope === entry.scope) {
         last.members.push(entry.data as J);
         continue;
       }
@@ -102,6 +115,7 @@ export function groupAdjacentJoins<J>(
         kind: "joins",
         at: entry.at,
         key: activityKey(entry),
+        scope: entry.scope,
         members: [entry.data as J],
       });
       continue;

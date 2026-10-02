@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { HUB_SLUG } from "./hub";
 import {
+  forumThreadCommunitiesWhere,
+  forumThreadCommunityOf,
   forumThreadCommunityWhere,
   forumThreadMatchesCommunity,
   forumThreadSitemapPath,
@@ -108,5 +110,35 @@ describe("forumThreadSitemapPath", () => {
   it("returns null when the thread has no slug", () => {
     expect(forumThreadSitemapPath({ slug: null }, slugs)).toBeNull();
     expect(forumThreadSitemapPath({}, slugs)).toBeNull();
+  });
+});
+
+describe("forumThreadCommunitiesWhere", () => {
+  it("matches only the given communities when the Hub is not among them", () => {
+    expect(forumThreadCommunitiesWhere([NETHERLANDS])).toEqual({
+      communityId: { in: [NETHERLANDS.id] },
+    });
+  });
+
+  it("adds the unscoped threads when the Hub is in the set", () => {
+    expect(forumThreadCommunitiesWhere([NETHERLANDS, HUB])).toEqual({
+      or: [
+        { communityId: { in: [NETHERLANDS.id, HUB.id] } },
+        { communityId: { exists: false } },
+      ],
+    });
+  });
+});
+
+describe("forumThreadCommunityOf", () => {
+  it("finds the thread's own community", () => {
+    expect(forumThreadCommunityOf(NETHERLANDS.id, [HUB, NETHERLANDS])).toBe(
+      NETHERLANDS,
+    );
+  });
+
+  it("gives unscoped threads to the Hub, and to no one without it", () => {
+    expect(forumThreadCommunityOf(null, [NETHERLANDS, HUB])).toBe(HUB);
+    expect(forumThreadCommunityOf(null, [NETHERLANDS])).toBeNull();
   });
 });
