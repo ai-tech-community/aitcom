@@ -19,10 +19,13 @@ import {
  * - Active streak days use the SUCCESS token (consistency = a healthy/positive
  *   state per the Semantic-Status Rule), not the brand accent. A year of active
  *   cells in Signal Orange would shatter the One Voice ≤10% budget.
- * - "Today" keeps Signal Orange — it's the single wayfinding focus, the
- *   sanctioned One Voice use. (Green = your streak history, orange = you-are-here.)
+ * - "Today" is an Ink ring, not Signal Orange: the calendar lives in the
+ *   dashboard side panel, where the one orange is the live XP boost (One Voice
+ *   Rule). (Green = your streak history, ink ring = you-are-here.)
  * - Freezes use the INFO token (an informational state).
  * - Labels (weekdays, month markers) adopt the Geist Mono machine voice.
+ * - Localized: dates and weekday names follow `locale`, and every visible or
+ *   screen-reader word comes from `labels` (English defaults).
  * - Reuses the in-house <Tooltip> (the upstream imported @radix-ui/react-tooltip
  *   directly, which this project doesn't install — it uses the unified radix-ui).
  * - Token radii (rounded-md / rounded-sm) instead of arbitrary values.
@@ -75,6 +78,32 @@ function getFirstDayOfMonth(year: number, month: number): number {
   return new Date(year, month, 1).getDay();
 }
 
+/** Every word the calendar says, so callers can pass translated copy. */
+interface StreakCalendarLabels {
+  /** Accessible name of the calendar grid. */
+  calendar: string;
+  today: string;
+  active: string;
+  freeze: string;
+  idle: string;
+  future: string;
+  /** Year-view heading. */
+  lastYear: string;
+  /** Year-view subheading; receives the formatted end date. */
+  endingOn: (date: string) => string;
+}
+
+const DEFAULT_LABELS: StreakCalendarLabels = {
+  calendar: "Streak calendar",
+  today: "today",
+  active: "streak active",
+  freeze: "freeze used",
+  idle: "no activity",
+  future: "future",
+  lastYear: "Last 365 days",
+  endingOn: (date) => `Ending ${date}`,
+};
+
 interface StreakCalendarProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Streak periods (wire to existing activity/XP data). */
   streak: StreakPeriod[];
@@ -90,10 +119,20 @@ interface StreakCalendarProps extends React.HTMLAttributes<HTMLDivElement> {
   startOfWeek?: 0 | 1;
   /** Callback when a day is clicked. */
   onDayClick?: (date: Date, wasActive: boolean) => void;
+  /** BCP 47 locale for dates and weekday names. */
+  locale?: string;
+  /** Translated copy; missing entries fall back to English. */
+  labels?: Partial<StreakCalendarLabels>;
 }
 
-const WEEKDAYS_SUNDAY = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-const WEEKDAYS_MONDAY = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+/** Short weekday names in calendar order, e.g. ["Mo", …] or ["ma", …]. */
+function getWeekdayNames(locale: string, startOfWeek: 0 | 1): string[] {
+  const format = new Intl.DateTimeFormat(locale, { weekday: "short" });
+  // 2024-01-07 is a Sunday.
+  return Array.from({ length: 7 }, (_, index) =>
+    format.format(new Date(2024, 0, 7 + index + startOfWeek)),
+  );
+}
 
 function getDateKey(date: Date): string {
   return formatDateKey(date);
@@ -163,6 +202,8 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
       showFreezes = true,
       startOfWeek = 0,
       onDayClick,
+      locale = "en-US",
+      labels: labelOverrides,
       ...props
     },
     ref,
@@ -175,7 +216,20 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
     const adjustedFirstDay =
       startOfWeek === 1 ? (firstDayOfMonth + 6) % 7 : firstDayOfMonth;
 
-    const weekdays = startOfWeek === 1 ? WEEKDAYS_MONDAY : WEEKDAYS_SUNDAY;
+    const labels = { ...DEFAULT_LABELS, ...labelOverrides };
+    const weekdays = getWeekdayNames(locale, startOfWeek);
+    const statusLabel = (state: {
+      isActive: boolean;
+      usedFreeze: boolean;
+      isFuture: boolean;
+    }) =>
+      state.usedFreeze
+        ? labels.freeze
+        : state.isActive
+          ? labels.active
+          : state.isFuture
+            ? labels.future
+            : labels.idle;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -197,7 +251,7 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
         seenGitMonths.add(monthKey);
         gitMonthLabels.push({
           column: Math.floor(cellIndex / 7),
-          label: date.toLocaleDateString("en-US", { month: "short" }),
+          label: date.toLocaleDateString(locale, { month: "short" }),
         });
       }
     });
@@ -208,7 +262,7 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
       if (!seenGitMonths.has(firstMonthKey)) {
         gitMonthLabels.unshift({
           column: 0,
-          label: firstDate.toLocaleDateString("en-US", { month: "short" }),
+          label: firstDate.toLocaleDateString(locale, { month: "short" }),
         });
       }
     }
@@ -221,9 +275,10 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
       days.push(day);
     }
 
-    const monthName = month.toLocaleDateString("en-US", { month: "long" });
-    const gitEndMonthName = today.toLocaleDateString("en-US", {
+    const monthName = month.toLocaleDateString(locale, { month: "long" });
+    const gitEndDate = today.toLocaleDateString(locale, {
       month: "long",
+      day: "numeric",
     });
 
     // Freeze = informational state → INFO token.
@@ -244,7 +299,7 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
       <div
         ref={ref}
         role="grid"
-        aria-label={`Streak calendar ${view} view`}
+        aria-label={labels.calendar}
         className={cn(
           "w-full",
           view === "month" ? "max-w-sm" : "max-w-3xl",
@@ -280,33 +335,26 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                 const date = new Date(year, monthIndex, day);
                 const { isToday, isFuture, isActive, usedFreeze } =
                   getCellState(date);
-                const dateLabel = date.toLocaleDateString("en-US", {
+                const dateLabel = date.toLocaleDateString(locale, {
                   weekday: "long",
                   month: "long",
                   day: "numeric",
                 });
-                const statusLabel = usedFreeze
-                  ? "freeze used"
-                  : isActive
-                    ? "streak active"
-                    : isFuture
-                      ? "future"
-                      : "no activity";
                 return (
                   <button
                     key={day}
                     type="button"
                     role="gridcell"
-                    aria-label={`${dateLabel}${isToday ? ", today" : ""}, ${statusLabel}`}
+                    aria-label={`${dateLabel}${isToday ? `, ${labels.today}` : ""}, ${statusLabel({ isActive, usedFreeze, isFuture })}`}
                     aria-current={isToday ? "date" : undefined}
                     onClick={() => onDayClick?.(date, isActive)}
                     disabled={isFuture}
                     className={cn(
                       "relative flex aspect-square items-center justify-center rounded-md p-1 text-sm transition-colors",
                       "hover:bg-muted focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-                      // Today = the one wayfinding focus → Signal Orange.
+                      // Today = you-are-here → an Ink ring (no orange; see above).
                       isToday &&
-                        "ring-primary !text-primary !bg-primary-foreground ring-2 ring-inset",
+                        "ring-foreground font-semibold ring-2 ring-inset",
                       isFuture && "text-muted-foreground/50 cursor-not-allowed",
                       // Active streak = success (healthy/consistent), not the accent.
                       isActive &&
@@ -330,7 +378,7 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
             {weekDates.map((date) => {
               const { isToday, isFuture, isActive, usedFreeze } =
                 getCellState(date);
-              const dayLabel = date.toLocaleDateString("en-US", {
+              const dayLabel = date.toLocaleDateString(locale, {
                 weekday: "short",
               });
               return (
@@ -342,19 +390,18 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                     type="button"
                     role="gridcell"
                     aria-current={isToday ? "date" : undefined}
-                    aria-label={`${date.toLocaleDateString("en-US", {
+                    aria-label={`${date.toLocaleDateString(locale, {
                       weekday: "long",
                       month: "long",
                       day: "numeric",
-                    })}, ${usedFreeze ? "freeze used" : isActive ? "streak active" : isFuture ? "future" : "no activity"}`}
+                    })}${isToday ? `, ${labels.today}` : ""}, ${statusLabel({ isActive, usedFreeze, isFuture })}`}
                     onClick={() => onDayClick?.(date, isActive)}
                     disabled={isFuture}
                     className={cn(
                       "relative flex h-12 w-12 items-center justify-center rounded-full border-2 transition-colors",
                       "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
                       !isFuture && "hover:opacity-90",
-                      isToday &&
-                        "border-primary !text-primary !bg-primary-foreground",
+                      isToday && "border-foreground",
                       isFuture &&
                         "border-border/40 bg-muted/20 text-muted-foreground/40 cursor-not-allowed",
                       isActive &&
@@ -407,10 +454,10 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
           <>
             <div className="mb-4 text-center">
               <h3 className="text-lg font-semibold" id="streak-calendar-title">
-                Last 365 days
+                {labels.lastYear}
               </h3>
               <p className="text-muted-foreground font-mono text-xs">
-                Ending {gitEndMonthName} {today.getDate()}
+                {labels.endingOn(gitEndDate)}
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -444,7 +491,7 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                       }
                       const { isToday, isActive, usedFreeze } =
                         getCellState(date);
-                      const dateLabel = date.toLocaleDateString("en-US", {
+                      const dateLabel = date.toLocaleDateString(locale, {
                         weekday: "long",
                         month: "long",
                         day: "numeric",
@@ -457,12 +504,13 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                               type="button"
                               role="gridcell"
                               aria-current={isToday ? "date" : undefined}
-                              aria-label={`${dateLabel}, ${usedFreeze ? "freeze used" : isActive ? "streak active" : "no activity"}`}
+                              aria-label={`${dateLabel}${isToday ? `, ${labels.today}` : ""}, ${statusLabel({ isActive, usedFreeze, isFuture: false })}`}
                               onClick={() => onDayClick?.(date, isActive)}
                               className={cn(
                                 "border-border/40 h-4 w-4 rounded-sm border transition-colors",
                                 "hover:ring-ring hover:ring-1",
-                                isToday && "border-primary ring-primary ring-1",
+                                isToday &&
+                                  "border-foreground ring-foreground ring-1",
                                 isActive &&
                                   !usedFreeze &&
                                   "bg-success border-success/80",
@@ -491,5 +539,5 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
 );
 StreakCalendar.displayName = "StreakCalendar";
 
-export { StreakCalendar };
-export type { StreakCalendarProps, StreakPeriod };
+export { StreakCalendar, didUseFreezeOnDate, getWeekDates, wasDateActive };
+export type { StreakCalendarLabels, StreakCalendarProps, StreakPeriod };

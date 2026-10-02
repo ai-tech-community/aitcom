@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
 
 import { ConnectedIdentities } from "@/components/connected-identities";
+import { ProfileSettings } from "@/components/dashboard/profile-settings";
 import { ChecklistSetting } from "@/components/onboarding/checklist-setting";
-import { SectionLabel } from "@/components/ui/section-label";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function DashboardSettingsPage() {
-  const t = await getTranslations("dashboard");
+export default function DashboardSettingsPage() {
   return (
-    <div className="space-y-8">
-      <SectionLabel>{t("settings")}</SectionLabel>
+    <div className="space-y-10">
+      <ProfileSettings />
       <ConnectedIdentities />
       <ChecklistSetting />
     </div>

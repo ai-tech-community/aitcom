@@ -25,7 +25,7 @@ const LEARNING_STEPS: ChecklistStep[] = [
   {
     slug: "complete_profile",
     labelKey: "completeProfile",
-    href: "/dashboard",
+    href: "/dashboard/settings#profile",
     autoDetect: true,
   },
   { slug: "browse_events", labelKey: "browseEvents", href: "/events" },
@@ -48,7 +48,7 @@ const NETWORKING_STEPS: ChecklistStep[] = [
   {
     slug: "complete_profile",
     labelKey: "completeProfile",
-    href: "/dashboard",
+    href: "/dashboard/settings#profile",
     autoDetect: true,
   },
   { slug: "browse_members", labelKey: "browseMembers", href: "/members" },
@@ -71,7 +71,7 @@ const EXPERTISE_STEPS: ChecklistStep[] = [
   {
     slug: "complete_profile",
     labelKey: "completeProfile",
-    href: "/dashboard",
+    href: "/dashboard/settings#profile",
     autoDetect: true,
   },
   {

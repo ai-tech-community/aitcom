@@ -33,7 +33,9 @@ export function OnboardingProgress({
         value={percent}
         aria-label={label}
         className="bg-secondary h-1 flex-1"
-        indicatorClassName="motion-reduce:transition-none"
+        // Neutral fill: progress is not an action, and the surfaces this sits
+        // on keep their one Signal Orange for something else (One Voice Rule).
+        indicatorClassName="bg-foreground motion-reduce:transition-none"
       />
       <span
         aria-hidden
@@ -125,9 +127,9 @@ export function OnboardingWelcome({ onFollow }: { onFollow?: () => void }) {
         <p className="text-muted-foreground mt-1 text-sm">
           {t("welcomeCardDescription")}
         </p>
-        {/* Ink text for contrast (small orange text on white is ~3:1, and
-            so is white on the orange button). Orange stays on the arrow, a
-            non-text marker for the one action here. */}
+        {/* Ink text and arrow: small orange text on white is ~3:1, and the
+            dashboard side panel spends its one orange on the live XP boost
+            (One Voice Rule). */}
         <Link
           href="/dashboard/onboarding"
           onClick={onFollow}
@@ -136,7 +138,7 @@ export function OnboardingWelcome({ onFollow }: { onFollow?: () => void }) {
           {t("welcomeCardCta")}
           <ArrowRight
             aria-hidden
-            className="text-primary h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
+            className="text-foreground h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
           />
         </Link>
       </div>

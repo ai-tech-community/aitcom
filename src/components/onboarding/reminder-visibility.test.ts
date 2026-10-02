@@ -12,16 +12,27 @@ const incomplete: OnboardingChecklistView = {
 };
 
 describe("isReminderRoute", () => {
-  it.each(["/", "/events", "/community", "/dashboard/agent", "/members/"])(
-    "shows on %s",
-    (path) => {
-      expect(isReminderRoute(path)).toBe(true);
-    },
-  );
+  it.each([
+    "/",
+    "/events",
+    "/community",
+    "/members/",
+    // The agent workspace is outside the member dashboard frame.
+    "/dashboard/agent",
+    "/dashboard/agent/",
+    "/dashboard/agent/settings",
+  ])("shows on %s", (path) => {
+    expect(isReminderRoute(path)).toBe(true);
+  });
 
   it.each([
     "/dashboard",
     "/dashboard/",
+    "/dashboard/communities",
+    "/dashboard/events",
+    "/dashboard/jobs",
+    "/dashboard/notifications",
+    "/dashboard/settings",
     "/dashboard/onboarding",
     "/auth/signin",
     "/auth/signup",
@@ -31,8 +42,10 @@ describe("isReminderRoute", () => {
     expect(isReminderRoute(path)).toBe(false);
   });
 
-  it("does not treat look-alike paths as auth pages", () => {
+  it("does not treat look-alike paths as auth or dashboard pages", () => {
     expect(isReminderRoute("/authors")).toBe(true);
+    expect(isReminderRoute("/dashboards")).toBe(true);
+    expect(isReminderRoute("/dashboard/agents")).toBe(false);
   });
 });
 
@@ -67,15 +80,18 @@ describe("shouldShowReminder", () => {
     ).toBe(false);
   });
 
-  it("hides on the dashboard, where the full checklist is shown", () => {
-    expect(
-      shouldShowReminder({
-        pathname: "/dashboard",
-        view: incomplete,
-        hiddenForVisit: false,
-      }),
-    ).toBe(false);
-  });
+  it.each(["/dashboard", "/dashboard/events", "/dashboard/settings"])(
+    "hides on dashboard tab %s, where the side panel shows the checklist",
+    (pathname) => {
+      expect(
+        shouldShowReminder({
+          pathname,
+          view: incomplete,
+          hiddenForVisit: false,
+        }),
+      ).toBe(false);
+    },
+  );
 
   it("hides on auth pages", () => {
     expect(
