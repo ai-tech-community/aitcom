@@ -37,6 +37,35 @@ export function forumThreadCommunityWhere(community: CommunityRef): Where {
   return { communityId: { equals: community.id } };
 }
 
+/**
+ * Payload `where` for the threads of several community forums at once. The
+ * Hub's unscoped threads come along only when the Hub is in the set.
+ */
+export function forumThreadCommunitiesWhere(
+  communities: readonly CommunityRef[],
+): Where {
+  const inSet: Where = {
+    communityId: { in: communities.map((community) => community.id) },
+  };
+  if (!communities.some(isHubCommunity)) return inSet;
+  return { or: [inSet, { communityId: { exists: false } }] };
+}
+
+/**
+ * Which of `communities` a thread's forum belongs to: its own community, or
+ * the Hub for an unscoped thread. Null when none of them is its forum.
+ */
+export function forumThreadCommunityOf<C extends CommunityRef>(
+  threadCommunityId: string | null | undefined,
+  communities: readonly C[],
+): C | null {
+  return (
+    communities.find((community) =>
+      forumThreadMatchesCommunity(threadCommunityId, community),
+    ) ?? null
+  );
+}
+
 export function forumThreadSitemapPath(
   thread: { slug?: string | null; communityId?: string | null },
   communitySlugById: ReadonlyMap<string, string> = new Map(),

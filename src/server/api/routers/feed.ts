@@ -23,6 +23,7 @@ import {
 } from "@/lib/feed-post-rules";
 import { MAX_PINS } from "@/lib/feed-sort";
 import { loadCommunityActivity } from "@/server/communities/activity-feed";
+import { loadHomeActivity } from "@/server/communities/home-activity";
 import {
   decorateFeedPosts,
   requireActiveFeedMember,
@@ -332,6 +333,30 @@ export const feedRouter = createTRPCRouter({
         limit: input.limit,
       });
     }),
+
+  // ── getHomeActivity ─────────────────────────────────────────────────────────
+  /**
+   * Home's "From your communities": the Overview stream across every
+   * community the viewer is an active member of, each item labelled with
+   * its community. Same cursor as getActivity; no pinned posts.
+   */
+  getHomeActivity: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(30).default(15),
+        cursor: z.object({ at: z.string(), key: z.string() }).nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) =>
+      loadHomeActivity({
+        database: ctx.db,
+        payload: await getPayloadClient(),
+        userId: ctx.session.user.id,
+        storage: getVideoStorage,
+        cursor: input.cursor ?? null,
+        limit: input.limit,
+      }),
+    ),
 
   // ── getReels ────────────────────────────────────────────────────────────────
   /**

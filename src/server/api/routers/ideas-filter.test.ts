@@ -8,6 +8,12 @@ describe("buildIdeasWhere", () => {
     });
   });
 
+  it("scopes to a set of communities when given several ids", () => {
+    expect(buildIdeasWhere({ communityId: ["c1", "c2"] })).toEqual({
+      communityId: { in: ["c1", "c2"] },
+    });
+  });
+
   it("scopes to hub (communityId absent) when no communityId", () => {
     expect(buildIdeasWhere({})).toEqual({
       communityId: { exists: false },

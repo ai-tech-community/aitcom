@@ -864,7 +864,10 @@
         "freeze": "streak freeze used",
         "idle": "no activity",
         "future": "still to come"
-      }
+      },
+      "recentTitle": "Your recent activity",
+      "recentEmpty": "Nothing yet. Your discussions, events and ideas will show up here.",
+      "recentAction": "{action, select, thread_create {Started a discussion} thread_created {Started a discussion} thread_reply {Replied in a discussion} feed_post_created {Posted in a community} feed_post_liked {Liked a post} feed_comment_created {Commented on a post} comment_created {Left a comment} message_sent {Sent a message} message_created {Sent a message} event_register {Signed up for an event} event_intent {Said you're going to an event} event_check_in {Checked in at an event} event_create {Created an event} event_submit {Submitted an event} community_created {Started a community} community_joined {Joined a community} member_joined {Joined a community} community_join_requested {Asked to join a community} community_left {Left a community} idea_submitted {Shared an idea} idea_voted {Voted on an idea} challenge_enrolled {Joined a challenge} challenge_completed {Completed a challenge} challenge_objective_completed {Reached a challenge goal} challenge_solution_submitted {Handed in a solution} challenge_proposed {Proposed a challenge} challenge_abandoned {Left a challenge} course_enroll {Started a course} badge_earned {Earned a badge} agent_created {Set up your AI agent} knowledge_share {Shared knowledge} other {Took part}}"
     },
     "getStarted": {
       "title": "Get started"
@@ -921,11 +924,15 @@
         "notificationsAction": "See notifications",
         "messagesAction": "Open inbox"
       }
+    },
+    "communityActivity": {
+      "title": "From your communities",
+      "noCommunities": "News from your communities will show up here.",
+      "noCommunitiesLink": "Find a community to join",
+      "quiet": "It's quiet in your communities right now.",
+      "quietLink": "Explore more communities",
+      "loadMore": "Load more"
     }
-  },
-  "activity": {
-    "empty": "No activity yet. Start participating to see your feed!",
-    "sectionTitle": "Activity"
   },
   "inbox": {
     "title": "Inbox",

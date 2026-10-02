@@ -11,6 +11,7 @@ import {
   statusFromQueries,
   type SectionStatus,
 } from "@/components/dashboard/dashboard-section";
+import { RelativeTime } from "@/components/ui/relative-time";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type PointsEvent = RouterOutputs["members"]["getMyPointsHistory"][number];
@@ -19,6 +20,7 @@ type MyStreak = RouterOutputs["members"]["getMyStreak"];
 /** Reason codes with a dedicated `points.<key>` label; others read "Activity". */
 const KNOWN_REASONS = new Set(["activity", "course_complete"]);
 const RECENT_XP_COUNT = 5;
+const RECENT_ACTIVITY_COUNT = 5;
 
 const TRIGGER_ICONS: Record<PointsEvent["type"], LucideIcon> = {
   metric: Target,
@@ -47,8 +49,9 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
 
 /**
  * Everything behind "See your progress": the streak calendar, the XP chart,
- * recent XP and badges, sized for the 20rem side panel. Mounted only while
- * open, so the chart and history are fetched on demand.
+ * recent XP, badges and the member's own recent activity, sized for the
+ * 20rem side panel. Mounted only while open, so the chart and history are
+ * fetched on demand.
  */
 export function YouProgress({
   streak,
@@ -69,6 +72,10 @@ export function YouProgress({
 
   const chart = api.members.getMyPointsChart.useQuery();
   const history = api.members.getMyPointsHistory.useQuery();
+  const activity = api.activity.getFeed.useQuery({
+    limit: RECENT_ACTIVITY_COUNT,
+  });
+  const activityItems = activity.data?.items ?? [];
 
   const formatDay = (date: string) =>
     format.dateTime(new Date(`${date}T00:00:00`), {
@@ -175,6 +182,47 @@ export function YouProgress({
                       month: "short",
                     })}
                   </time>
+                </li>
+              );
+            })}
+          </ul>
+        </SectionBody>
+      </div>
+
+      <div className="space-y-3">
+        <BlockHeading>{t("recentTitle")}</BlockHeading>
+        <SectionBody
+          status={statusFromQueries(activity, {
+            isEmpty: activityItems.length === 0,
+          })}
+          empty={
+            <p className="text-muted-foreground text-sm">{t("recentEmpty")}</p>
+          }
+        >
+          <ul className="divide-border divide-y">
+            {activityItems.map((item) => {
+              const title =
+                typeof item.metadata?.title === "string"
+                  ? item.metadata.title
+                  : null;
+              return (
+                <li key={item.id} className="flex items-start gap-2 py-2">
+                  <span className="min-w-0 flex-1 text-sm">
+                    <span className="block">
+                      {t("recentAction", {
+                        action: item.action.replace(/\./g, "_"),
+                      })}
+                    </span>
+                    {title && (
+                      <span className="text-muted-foreground block truncate text-xs">
+                        {title}
+                      </span>
+                    )}
+                  </span>
+                  <RelativeTime
+                    date={item.createdAt}
+                    className="text-muted-foreground shrink-0 pt-0.5 text-xs whitespace-nowrap"
+                  />
                 </li>
               );
             })}

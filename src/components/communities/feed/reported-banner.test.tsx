@@ -13,6 +13,7 @@ vi.mock("@/trpc/react", () => ({
     useUtils: () => ({
       feed: {
         getActivity: { invalidate: vi.fn() },
+        getHomeActivity: { invalidate: vi.fn() },
         getFeed: { invalidate: vi.fn() },
         getReels: { invalidate: vi.fn() },
       },

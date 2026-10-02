@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
-import { ActivityFeed } from "@/components/activity-feed";
+import { getSession } from "@/server/better-auth/server";
+import { CommunityActivity } from "@/components/dashboard/community-activity/community-activity";
 import { NextUp } from "@/components/dashboard/next-up/next-up";
 
 export const metadata: Metadata = {
@@ -9,14 +10,17 @@ export const metadata: Metadata = {
 
 /**
  * Home tab: the main column only — the frame (greeting, tabs, side panel)
- * comes from the member layout. Next up leads; personal activity holds the
- * second place until "From your communities" replaces it.
+ * comes from the member layout. Next up leads; "From your communities"
+ * follows. The member's own activity lives in the You card.
  */
-export default function DashboardHomePage() {
+export default async function DashboardHomePage() {
+  // The parent dashboard layout redirects guests before this renders.
+  const session = await getSession();
+
   return (
     <div className="space-y-10">
       <NextUp />
-      <ActivityFeed />
+      <CommunityActivity currentUserId={session!.user.id} />
     </div>
   );
 }

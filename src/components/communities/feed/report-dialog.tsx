@@ -48,6 +48,7 @@ export function ReportDialog({
           setNote("");
           onOpenChange(false);
           void utils.feed.getActivity.invalidate();
+          void utils.feed.getHomeActivity.invalidate();
           void utils.feed.getFeed.invalidate();
           void utils.feed.getReels.invalidate();
         },

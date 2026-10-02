@@ -17,7 +17,10 @@ const queries = vi.hoisted(() => ({
   boost: {} as Query,
   chart: {} as Query,
   history: {} as Query,
+  activity: {} as Query,
 }));
+
+const activityInput = vi.hoisted(() => ({ current: undefined as unknown }));
 
 vi.mock("@/trpc/react", () => ({
   api: {
@@ -27,6 +30,14 @@ vi.mock("@/trpc/react", () => ({
       getActiveBoost: { useQuery: () => queries.boost },
       getMyPointsChart: { useQuery: () => queries.chart },
       getMyPointsHistory: { useQuery: () => queries.history },
+    },
+    activity: {
+      getFeed: {
+        useQuery: (input: unknown) => {
+          activityInput.current = input;
+          return queries.activity;
+        },
+      },
     },
   },
 }));
@@ -83,6 +94,8 @@ beforeEach(() => {
   queries.boost = loaded(null);
   queries.chart = loaded([]);
   queries.history = loaded([]);
+  queries.activity = loaded({ items: [], nextCursor: null });
+  activityInput.current = undefined;
 });
 
 describe("YouCard", () => {
@@ -241,5 +254,52 @@ describe("YouCard", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("9 days")).toBeInTheDocument();
     expect(screen.getByText(en.badges.regular)).toBeInTheDocument();
+  });
+
+  it("lists the member's own recent activity behind the progress toggle", () => {
+    queries.activity = loaded({
+      items: [
+        {
+          id: "a1",
+          action: "thread.create",
+          metadata: { title: "How do you test agents?" },
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: "a2",
+          action: "something.new",
+          metadata: null,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      nextCursor: null,
+    });
+    renderCard();
+    expect(
+      screen.queryByText(en.dashboard.progress.recentTitle),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: en.dashboard.you.seeProgress }),
+    );
+
+    expect(activityInput.current).toEqual({ limit: 5 });
+    expect(
+      screen.getByText(en.dashboard.progress.recentTitle),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Started a discussion")).toBeInTheDocument();
+    expect(screen.getByText("How do you test agents?")).toBeInTheDocument();
+    // An action without its own wording still reads as a sentence.
+    expect(screen.getByText("Took part")).toBeInTheDocument();
+  });
+
+  it("says so when the member has no activity yet", () => {
+    renderCard();
+    fireEvent.click(
+      screen.getByRole("button", { name: en.dashboard.you.seeProgress }),
+    );
+    expect(
+      screen.getByText(en.dashboard.progress.recentEmpty),
+    ).toBeInTheDocument();
   });
 });

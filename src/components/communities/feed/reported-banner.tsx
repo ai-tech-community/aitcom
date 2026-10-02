@@ -35,6 +35,7 @@ export function ReportedBanner({
   const review = api.feed.reviewReport.useMutation({
     onSuccess: () => {
       void utils.feed.getActivity.invalidate();
+      void utils.feed.getHomeActivity.invalidate();
       void utils.feed.getFeed.invalidate();
       void utils.feed.getReels.invalidate();
     },
