@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
+import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import en from "../../../../messages/en.json";
+import nl from "../../../../messages/nl.json";
 
 type Query = {
   data: unknown;
@@ -301,5 +302,58 @@ describe("YouCard", () => {
     expect(
       screen.getByText(en.dashboard.progress.recentEmpty),
     ).toBeInTheDocument();
+  });
+
+  it("names organizer and moderator actions instead of a generic line", () => {
+    const at = new Date().toISOString();
+    queries.activity = loaded({
+      items: [
+        {
+          id: "b",
+          action: "community.member_banned",
+          metadata: null,
+          createdAt: at,
+        },
+        { id: "e", action: "event.approve", metadata: null, createdAt: at },
+        {
+          id: "l",
+          action: "launchpad.project.published",
+          metadata: null,
+          createdAt: at,
+        },
+        { id: "c", action: "course.published", metadata: null, createdAt: at },
+        { id: "a", action: "article.submitted", metadata: null, createdAt: at },
+      ],
+      nextCursor: null,
+    });
+    renderCard();
+    fireEvent.click(
+      screen.getByRole("button", { name: en.dashboard.you.seeProgress }),
+    );
+    for (const line of [
+      "Banned a member",
+      "Approved an event",
+      "Published a project",
+      "Published a course",
+      "Submitted an article",
+    ]) {
+      expect(screen.getByText(line)).toBeInTheDocument();
+    }
+    expect(screen.queryByText("Took part")).not.toBeInTheDocument();
+  });
+
+  it("words actions in Dutch too, with the same fallback", () => {
+    const t = createTranslator({
+      locale: "nl",
+      messages: nl,
+      namespace: "dashboard.progress",
+    });
+    expect(t("recentAction", { action: "community_role_changed" })).toBe(
+      "De rol van een lid gewijzigd",
+    );
+    expect(t("recentAction", { action: "event_intent" })).toBe(
+      "Laten weten dat je naar een evenement gaat",
+    );
+    expect(t("recentAction", { action: "something_new" })).toBe("Meegedaan");
   });
 });

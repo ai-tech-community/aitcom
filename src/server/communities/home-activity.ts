@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 import type { ActivityCursor } from "@/lib/community-activity";
 import type { db as Db } from "@/server/db";
@@ -7,6 +7,7 @@ import type { getPayloadClient } from "@/server/payload";
 import type { VideoStorageSource } from "@/server/media/video-storage";
 
 import { loadActivityStream, type CommunityFeedItem } from "./activity-feed";
+import { HUB_SLUG } from "./hub";
 import { feedViewerFor } from "./post-visibility";
 import type { CommunityRole } from "./role-utils";
 
@@ -16,8 +17,10 @@ type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 /**
  * At most this many communities feed Home. The cap bounds the `IN (...)`
  * list each source query carries; the query count is the same for 1 or 50
- * communities. Past the cap, the most recently joined communities win: they
- * are the ones a member is most likely following right now.
+ * communities. The Hub always stays in (every member is enrolled in it, and
+ * usually first, so "newest" would drop it first); past it, the most
+ * recently joined communities win: they are the ones a member is most
+ * likely following right now.
  */
 export const HOME_COMMUNITY_CAP = 50;
 
@@ -38,8 +41,11 @@ export type HomeFeedItem = CommunityFeedItem & {
 export type HomeActivityPage = {
   items: HomeFeedItem[];
   nextCursor: ActivityCursor | null;
-  /** False when the viewer is an active member of no community at all. */
-  hasCommunities: boolean;
+  /**
+   * False when the viewer has joined no community besides the Hub (every
+   * member is enrolled in the Hub on sign-up), so Home can invite them to.
+   */
+  hasJoinedCommunities: boolean;
 };
 
 /**
@@ -72,7 +78,11 @@ export async function loadHomeCommunities(
         isNull(communities.deletedAt),
       ),
     )
-    .orderBy(desc(communityMemberships.joinedAt), communities.id)
+    .orderBy(
+      desc(sql<boolean>`${communities.slug} = ${HUB_SLUG}`),
+      desc(communityMemberships.joinedAt),
+      communities.id,
+    )
     .limit(HOME_COMMUNITY_CAP);
   return rows.map((row) => ({
     id: row.id,
@@ -104,8 +114,13 @@ export async function loadHomeActivity({
   limit: number;
 }): Promise<HomeActivityPage> {
   const memberOf = await loadHomeCommunities(database, userId);
+  // The Hub comes first and the rest fill the cap, so any other active
+  // membership is in this list when one exists.
+  const hasJoinedCommunities = memberOf.some(
+    (community) => community.slug !== HUB_SLUG,
+  );
   if (memberOf.length === 0) {
-    return { items: [], nextCursor: null, hasCommunities: false };
+    return { items: [], nextCursor: null, hasJoinedCommunities };
   }
   const byId = new Map(memberOf.map((community) => [community.id, community]));
   const { items, nextCursor } = await loadActivityStream({
@@ -120,6 +135,7 @@ export async function loadHomeActivity({
     storage,
     cursor,
     limit,
+    pinned: "inStream",
   });
   return {
     // Every item comes from one of the scopes, so its community is known.
@@ -128,6 +144,6 @@ export async function loadHomeActivity({
       community: byId.get(item.communityId)!,
     })),
     nextCursor,
-    hasCommunities: true,
+    hasJoinedCommunities,
   };
 }

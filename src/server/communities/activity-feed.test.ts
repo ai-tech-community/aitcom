@@ -100,6 +100,7 @@ describe("loadActivityStream across communities", () => {
   async function streamQueries(
     scopes: Parameters<typeof loadActivityStream>[0]["scopes"],
     docs: Record<string, unknown[]> = {},
+    pinned: "apart" | "inStream" = "inStream",
   ) {
     const find = vi.fn(async (args: FindArgs) => ({
       docs: docs[args.collection] ?? [],
@@ -112,6 +113,7 @@ describe("loadActivityStream across communities", () => {
       storage: () => storage,
       cursor: null,
       limit: 15,
+      pinned,
     });
     const byCollection = (name: string) =>
       find.mock.calls
@@ -204,5 +206,27 @@ describe("loadActivityStream across communities", () => {
     const { find, page } = await streamQueries([]);
     expect(find).not.toHaveBeenCalled();
     expect(page).toEqual({ items: [], nextCursor: null });
+  });
+
+  it("leaves pinned posts out only when they are shown apart", async () => {
+    const scopes = [{ id: "c1", slug: "makers", viewer: member("u1") }];
+    const pinnedOut = '{"isPinned":{"not_equals":true}}';
+    const postWhere = async (pinned: "apart" | "inStream") =>
+      JSON.stringify(
+        (await streamQueries(scopes, {}, pinned)).byCollection("feed-posts")[0]!
+          .where,
+      );
+
+    expect(await postWhere("apart")).toContain(pinnedOut);
+    expect(await postWhere("inStream")).not.toContain(pinnedOut);
+  });
+
+  it("skips Payload's page count on every source", async () => {
+    const { find } = await streamQueries([
+      { id: "c1", slug: "makers", viewer: member("u1") },
+    ]);
+    for (const [args] of find.mock.calls) {
+      expect(args).toMatchObject({ pagination: false });
+    }
   });
 });

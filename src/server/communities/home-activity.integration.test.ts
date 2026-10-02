@@ -36,6 +36,8 @@ describe.skipIf(!RUN_DB)("feed.getHomeActivity [DB integration]", () => {
       ReturnType<typeof import("@/server/payload").getPayloadClient>
     >;
     plainTextToLexical: typeof import("@/server/challenge-engine/lexical").plainTextToLexical;
+    ensureHub: typeof import("@/server/db/enroll-in-hub").ensureHub;
+    home: typeof import("./home-activity");
     eq: typeof import("drizzle-orm").eq;
     inArray: typeof import("drizzle-orm").inArray;
     sql: typeof import("drizzle-orm").sql;
@@ -60,6 +62,8 @@ describe.skipIf(!RUN_DB)("feed.getHomeActivity [DB integration]", () => {
       { getPayloadClient },
       lexical,
       drizzle,
+      hubEnrollment,
+      home,
     ] = await Promise.all([
       import("@/server/db"),
       import("@/server/db/schema"),
@@ -67,6 +71,8 @@ describe.skipIf(!RUN_DB)("feed.getHomeActivity [DB integration]", () => {
       import("@/server/payload"),
       import("@/server/challenge-engine/lexical"),
       import("drizzle-orm"),
+      import("@/server/db/enroll-in-hub"),
+      import("./home-activity"),
     ]);
     m = {
       db,
@@ -74,6 +80,8 @@ describe.skipIf(!RUN_DB)("feed.getHomeActivity [DB integration]", () => {
       createCaller,
       payload: await getPayloadClient(),
       plainTextToLexical: lexical.plainTextToLexical,
+      ensureHub: hubEnrollment.ensureHub,
+      home,
       eq: drizzle.eq,
       inArray: drizzle.inArray,
       sql: drizzle.sql,
@@ -114,6 +122,12 @@ describe.skipIf(!RUN_DB)("feed.getHomeActivity [DB integration]", () => {
         .where(m.inArray(m.schema.communities.id, communityIds));
     }
     communityIds.length = 0;
+    // The Hub itself stays: other tests and fixtures share it.
+    await m.db
+      .delete(m.schema.communityMemberships)
+      .where(
+        m.inArray(m.schema.communityMemberships.userId, [viewerId, authorId]),
+      );
     await m.db
       .delete(m.schema.user)
       .where(m.inArray(m.schema.user.id, [viewerId, authorId]));
@@ -160,6 +174,7 @@ describe.skipIf(!RUN_DB)("feed.getHomeActivity [DB integration]", () => {
     options: {
       visibility?: "community" | "public";
       hidden?: boolean;
+      pinned?: boolean;
       at?: string;
     } = {},
   ) {
@@ -173,6 +188,7 @@ describe.skipIf(!RUN_DB)("feed.getHomeActivity [DB integration]", () => {
         topicSlug: "general",
         visibility: options.visibility ?? "public",
         ...(options.hidden ? { hiddenAt: new Date().toISOString() } : {}),
+        ...(options.pinned ? { isPinned: true } : {}),
       },
     });
     postIds.push(doc.id);
@@ -277,8 +293,109 @@ describe.skipIf(!RUN_DB)("feed.getHomeActivity [DB integration]", () => {
     expect(page).toEqual({
       items: [],
       nextCursor: null,
-      hasCommunities: false,
+      hasJoinedCommunities: false,
     });
+  });
+
+  /** The viewer's Hub membership, joined at `joinedAt`. */
+  async function joinHub(joinedAt = new Date()) {
+    const hub = await m.ensureHub(m.db);
+    await m.db.insert(m.schema.communityMemberships).values({
+      communityId: hub.id,
+      userId: viewerId,
+      status: "active",
+      joinedAt,
+    });
+    return hub.id;
+  }
+
+  it("counts only communities besides the Hub as joined, and keeps the Hub in the stream", async () => {
+    const hubId = await joinHub();
+    const hubOnly = await m.home.loadHomeCommunities(m.db, viewerId);
+    expect(hubOnly.map((c) => c.id)).toEqual([hubId]);
+    expect(
+      (await asViewer().feed.getHomeActivity({ limit: 15 }))
+        .hasJoinedCommunities,
+    ).toBe(false);
+
+    await community("joined", { status: "active" });
+    expect(
+      (await asViewer().feed.getHomeActivity({ limit: 15 }))
+        .hasJoinedCommunities,
+    ).toBe(true);
+  });
+
+  it("keeps the Hub and the most recently joined communities past the cap", async () => {
+    const cap = m.home.HOME_COMMUNITY_CAP;
+    const start = Date.UTC(2026, 0, 1);
+    // The Hub is the oldest membership, as it is for most members.
+    const hubId = await joinHub(new Date(start));
+    const rows = await m.db
+      .insert(m.schema.communities)
+      .values(
+        Array.from({ length: cap + 1 }, (_, i) => ({
+          name: `cap ${i} ${sfx}`,
+          slug: `cap-${i}-${sfx}`,
+          createdBy: authorId,
+        })),
+      )
+      .returning({
+        id: m.schema.communities.id,
+        slug: m.schema.communities.slug,
+      });
+    const bySlug = new Map(rows.map((row) => [row.slug, row.id]));
+    const ids = Array.from(
+      { length: cap + 1 },
+      (_, i) => bySlug.get(`cap-${i}-${sfx}`)!,
+    );
+    communityIds.push(...ids);
+    await m.db.insert(m.schema.communityMemberships).values(
+      ids.map((communityId, i) => ({
+        communityId,
+        userId: viewerId,
+        status: "active" as const,
+        // Community i was joined i minutes after the Hub.
+        joinedAt: new Date(start + (i + 1) * 60_000),
+      })),
+    );
+
+    const kept = (await m.home.loadHomeCommunities(m.db, viewerId)).map(
+      (c) => c.id,
+    );
+
+    expect(kept).toHaveLength(cap);
+    expect(kept[0]).toBe(hubId);
+    // Hub + the newest cap-1: the two oldest non-Hub memberships drop out.
+    expect(kept.slice(1)).toEqual(ids.slice(2).reverse());
+  });
+
+  it("shows pinned posts at their own time on Home, but apart on the Overview", async () => {
+    const memberOf = await community("pins", { status: "active" });
+    const older = await post(memberOf, "Older", {
+      at: new Date(Date.UTC(2026, 8, 20, 9)).toISOString(),
+    });
+    const pinned = await post(memberOf, "Pinned", {
+      pinned: true,
+      at: new Date(Date.UTC(2026, 8, 20, 10)).toISOString(),
+    });
+    const newer = await post(memberOf, "Newer", {
+      at: new Date(Date.UTC(2026, 8, 20, 11)).toISOString(),
+    });
+
+    const home = (await allItems()).flatMap((item) =>
+      item.kind === "post" ? [item.post.id] : [],
+    );
+    expect(home).toEqual([newer, pinned, older]);
+
+    const overview = await asViewer().feed.getActivity({
+      communitySlug: `pins-${sfx}`,
+    });
+    expect(overview.pinned.map((p) => p.id)).toEqual([pinned]);
+    expect(
+      overview.items.flatMap((item) =>
+        item.kind === "post" ? [item.post.id] : [],
+      ),
+    ).toEqual([newer, older]);
   });
 
   it("applies the post rule per community: members-only shows, reported posts only where the viewer moderates", async () => {

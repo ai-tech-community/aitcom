@@ -201,6 +201,7 @@ async function loadImageViews(
     collection: "media",
     where: { id: { in: ids } },
     limit: ids.length,
+    pagination: false,
     depth: 0,
     select: {
       url: true,
@@ -294,6 +295,7 @@ export async function decorateFeedPosts(
         and: [{ userId: { equals: viewerId } }, { post: { in: postIds } }],
       },
       limit: postIds.length,
+      pagination: false,
       depth: 0,
     });
     liked = new Set(

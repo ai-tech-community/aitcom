@@ -1020,14 +1020,19 @@ export const feedRouter = createTRPCRouter({
         { requireMembership: true },
       );
 
-      const { liked } = await toggleFeedPostLike(payload, input.postId, userId);
+      const { liked, likeCount } = await toggleFeedPostLike(
+        payload,
+        input.postId,
+        userId,
+      );
 
       // Award XP to post author (only if author is different from liker)
       if (liked && post.authorId && post.authorId !== userId) {
         await awardXp(ctx.db, post.authorId, XP_AMOUNTS.FEED_RECEIVE_LIKE);
       }
 
-      return { liked };
+      // The new count lets a list update this one post in place.
+      return { liked, likeCount };
     }),
 
   // ── votePoll ────────────────────────────────────────────────────────────────

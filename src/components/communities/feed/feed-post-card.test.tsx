@@ -4,14 +4,22 @@ import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../../messages/en.json";
 
+const mutationOptions = vi.hoisted(
+  () => ({}) as Record<string, { onSuccess?: (data: unknown) => void }>,
+);
 vi.mock("@/trpc/react", () => {
   const mutation = () => ({ mutate: vi.fn(), isPending: false });
+  const capturing =
+    (name: string) => (options: { onSuccess?: (data: unknown) => void }) => {
+      mutationOptions[name] = options;
+      return mutation();
+    };
   return {
     api: {
       feed: {
-        toggleLike: { useMutation: mutation },
+        toggleLike: { useMutation: capturing("toggleLike") },
         editPost: { useMutation: mutation },
-        deletePost: { useMutation: mutation },
+        deletePost: { useMutation: capturing("deletePost") },
         pinPost: { useMutation: mutation },
       },
     },
@@ -245,5 +253,33 @@ describe("FeedPostCard links", () => {
   it("shows no card for a post without a link", () => {
     renderCard({ content: "Just words" });
     expect(screen.queryByRole("link")).toBeNull();
+  });
+});
+
+describe("FeedPostCard list updates", () => {
+  it("hands a like and a delete to the list when it can apply them in place", () => {
+    const onPostChange = vi.fn();
+    const { onRefresh } = renderCard({}, { onPostChange });
+
+    mutationOptions.toggleLike!.onSuccess!({ liked: true, likeCount: 3 });
+    mutationOptions.deletePost!.onSuccess!(undefined);
+
+    expect(onPostChange).toHaveBeenNthCalledWith(1, {
+      kind: "liked",
+      postId: 7,
+      liked: true,
+      likeCount: 3,
+    });
+    expect(onPostChange).toHaveBeenNthCalledWith(2, {
+      kind: "deleted",
+      postId: 7,
+    });
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
+  it("refetches the feed when the list has no in-place update", () => {
+    const { onRefresh } = renderCard();
+    mutationOptions.toggleLike!.onSuccess!({ liked: true, likeCount: 3 });
+    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 });

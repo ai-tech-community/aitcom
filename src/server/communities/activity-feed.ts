@@ -137,7 +137,8 @@ export function scopedPostVisibilityWhere(
  * tables (not the activity log, which misses most history). Each source is
  * one query over the whole set (`communityId IN (...)`), so the query count
  * does not grow with the number of communities. Deleted posts and threads,
- * unpublished events, pinned posts, and inactive memberships never appear.
+ * unpublished events, and inactive memberships never appear; pinned posts
+ * appear or not as `pinned` says.
  *
  * Callers decide which communities the viewer may read; this reads exactly
  * the scopes it is given.
@@ -150,6 +151,7 @@ export async function loadActivityStream({
   storage,
   cursor,
   limit,
+  pinned,
 }: {
   database: Database;
   payload: Payload;
@@ -158,6 +160,11 @@ export async function loadActivityStream({
   storage: VideoStorageSource;
   cursor: ActivityCursor | null;
   limit: number;
+  /**
+   * `apart`: pinned posts are left out (a community Overview shows them on
+   * top). `inStream`: they appear at their own time like any post.
+   */
+  pinned: "apart" | "inStream";
 }): Promise<ActivityStreamPage> {
   if (scopes.length === 0) return { items: [], nextCursor: null };
 
@@ -178,11 +185,13 @@ export async function loadActivityStream({
       where: withCursor([
         { communityId: { in: ids } },
         { isDeleted: { not_equals: true } },
-        { isPinned: { not_equals: true } },
+        ...(pinned === "apart" ? [{ isPinned: { not_equals: true } }] : []),
         scopedPostVisibilityWhere(scopes),
       ]),
       sort: "-createdAt",
       limit: perSource,
+      // The page is cut by the merge; Payload's total count is never used.
+      pagination: false,
       depth: 0,
     }),
     payload.find({
@@ -193,6 +202,7 @@ export async function loadActivityStream({
       ]),
       sort: "-createdAt",
       limit: perSource,
+      pagination: false,
       depth: 0,
     }),
     payload.find({
@@ -200,6 +210,7 @@ export async function loadActivityStream({
       where: withCursor([buildIdeasWhere({ communityId: ids })]),
       sort: "-createdAt",
       limit: perSource,
+      pagination: false,
       depth: 0,
     }),
     payload.find({
@@ -210,6 +221,7 @@ export async function loadActivityStream({
       ]),
       sort: "-createdAt",
       limit: perSource,
+      pagination: false,
       draft: false,
       depth: 0,
     }),
@@ -437,6 +449,7 @@ async function loadPinnedPosts({
     },
     sort: "-createdAt",
     limit: MAX_PINS,
+    pagination: false,
     depth: 0,
   });
   return decorateFeedPosts(database, payload, docs, viewerId, storage);
@@ -476,6 +489,7 @@ export async function loadCommunityActivity({
       storage,
       cursor,
       limit,
+      pinned: "apart",
     }),
     cursor
       ? Promise.resolve([])

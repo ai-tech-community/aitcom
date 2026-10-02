@@ -72,6 +72,9 @@ export function FeedComments({
       setNewComment("");
       void utils.feed.getComments.invalidate({ postId });
       void utils.feed.getFeed.invalidate({ communitySlug });
+      // The comment count also shows on the Overview and on Home.
+      void utils.feed.getActivity.invalidate({ communitySlug });
+      void utils.feed.getHomeActivity.invalidate();
     },
     onError: () => toast.error(t("toastCommentAddError")),
   });
@@ -90,6 +93,9 @@ export function FeedComments({
       toast.success(t("commentDeleted"));
       void utils.feed.getComments.invalidate({ postId });
       void utils.feed.getFeed.invalidate({ communitySlug });
+      // The comment count also shows on the Overview and on Home.
+      void utils.feed.getActivity.invalidate({ communitySlug });
+      void utils.feed.getHomeActivity.invalidate();
     },
     onError: () => toast.error(t("toastCommentDeleteError")),
   });

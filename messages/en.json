@@ -867,7 +867,7 @@
       },
       "recentTitle": "Your recent activity",
       "recentEmpty": "Nothing yet. Your discussions, events and ideas will show up here.",
-      "recentAction": "{action, select, thread_create {Started a discussion} thread_created {Started a discussion} thread_reply {Replied in a discussion} feed_post_created {Posted in a community} feed_post_liked {Liked a post} feed_comment_created {Commented on a post} comment_created {Left a comment} message_sent {Sent a message} message_created {Sent a message} event_register {Signed up for an event} event_intent {Said you're going to an event} event_check_in {Checked in at an event} event_create {Created an event} event_submit {Submitted an event} community_created {Started a community} community_joined {Joined a community} member_joined {Joined a community} community_join_requested {Asked to join a community} community_left {Left a community} idea_submitted {Shared an idea} idea_voted {Voted on an idea} challenge_enrolled {Joined a challenge} challenge_completed {Completed a challenge} challenge_objective_completed {Reached a challenge goal} challenge_solution_submitted {Handed in a solution} challenge_proposed {Proposed a challenge} challenge_abandoned {Left a challenge} course_enroll {Started a course} badge_earned {Earned a badge} agent_created {Set up your AI agent} knowledge_share {Shared knowledge} other {Took part}}"
+      "recentAction": "{action, select, thread_create {Started a discussion} thread_created {Started a discussion} thread_reply {Replied in a discussion} feed_post_created {Posted in a community} feed_post_liked {Liked a post} feed_comment_created {Commented on a post} comment_created {Left a comment} message_sent {Sent a message} message_created {Sent a message} event_register {Signed up for an event} event_intent {Said you're going to an event} event_check_in {Checked in at an event} event_create {Created an event} event_submit {Submitted an event} community_created {Started a community} community_joined {Joined a community} member_joined {Joined a community} community_join_requested {Asked to join a community} community_left {Left a community} idea_submitted {Shared an idea} idea_voted {Voted on an idea} challenge_enrolled {Joined a challenge} challenge_completed {Completed a challenge} challenge_objective_completed {Reached a challenge goal} challenge_solution_submitted {Handed in a solution} challenge_proposed {Proposed a challenge} challenge_abandoned {Left a challenge} course_enroll {Started a course} badge_earned {Earned a badge} agent_created {Set up your AI agent} knowledge_share {Shared knowledge} feed_posted {Posted in a community} feed_commented {Commented on a post} community_member_approved {Approved a join request} community_member_banned {Banned a member} community_member_unbanned {Lifted a ban} community_member_removed {Removed a member} community_role_changed {Changed a member's role} community_ownership_transferred {Handed over a community} community_settings_updated {Updated community settings} community_invite_created {Invited someone to a community} event_approve {Approved an event} event_reject {Turned down an event} event_cancel {Cancelled an event} event_update {Updated an event} event_resubmit {Resubmitted an event} event_organizer_change {Changed an event's organizers} event_check_in_undo {Undid a check-in} article_submitted {Submitted an article} article_published {Published an article} article_approved {Approved an article} article_rejected {Turned down an article} article_changes_requested {Asked for changes to an article} launchpad_project_published {Published a project} launchpad_update_posted {Posted a project update} launchpad_project_voted {Voted for a project} launchpad_comment_created {Commented on a project} course_published {Published a course} course_complete {Finished a course} challenge_created {Created a challenge} challenge_channel_post {Posted in a challenge} agent_registered {Registered an AI agent} other {Took part}}"
     },
     "getStarted": {
       "title": "Get started"
@@ -927,10 +927,12 @@
     },
     "communityActivity": {
       "title": "From your communities",
-      "noCommunities": "News from your communities will show up here.",
-      "noCommunitiesLink": "Find a community to join",
-      "quiet": "It's quiet in your communities right now.",
-      "quietLink": "Explore more communities",
+      "notJoinedTitle": "You haven't joined a community yet.",
+      "notJoinedDescription": "News from the communities you join will show up here.",
+      "findCommunity": "Find a community",
+      "quietTitle": "It's quiet in your communities right now.",
+      "quietDescription": "New posts, questions and events will show up here.",
+      "exploreCommunities": "Explore more communities",
       "loadMore": "Load more"
     }
   },
@@ -3585,6 +3587,7 @@
   "common": {
     "loading": "Loading…",
     "loadMore": "Load more",
+    "loadMoreError": "Couldn't load more.",
     "viewAll": "View all",
     "retry": "Retry",
     "somethingWentWrong": "Something went wrong",
