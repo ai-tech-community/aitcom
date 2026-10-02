@@ -8,16 +8,18 @@
  * notification. Rows that match no challenge are reported and kept.
  *
  * Dry run (reads only; prints what would be written):
- *   pnpm payload run scripts/backfill-badges.ts
+ *   pnpm exec tsx --env-file=.env scripts/backfill-badges.ts
  *
  * Apply (writes; both flags are required):
- *   pnpm payload run scripts/backfill-badges.ts --apply --i-understand-this-writes
+ *   pnpm exec tsx --env-file=.env scripts/backfill-badges.ts \
+ *     --apply --i-understand-this-writes
  *
  * Options:
  *   --batch-size=<n>   members per batch (default 100)
  *
- * `payload run` loads the environment from `.env`, so DATABASE_URL decides
- * which database this touches. Idempotent: a second run writes nothing.
+ * The env file's DATABASE_URL decides which database this touches; the
+ * first line printed names its host. Idempotent: a second run writes
+ * nothing.
  * Core logic and tests: src/server/badges/backfill.ts.
  */
 import { db } from "@/server/db";

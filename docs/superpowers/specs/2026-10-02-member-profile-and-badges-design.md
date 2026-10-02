@@ -54,7 +54,7 @@ tuned without a migration (an already-earned badge is never revoked).
 | Track | Measures (source) | I | II | III | Existing slugs kept |
 |---|---|---|---|---|---|
 | Regular | events attended (`event_registration.status = attended`) | 1 | 3 | 10 | `first_event`, `regular`, `veteran` |
-| Host | native events organised that took place (Payload `events.organizerId`, past, not cancelled) | 1 | 5 | 15 | — |
+| Host | native events organised that took place (Payload `events.organizerId`, published or completed, not from Luma, and started or with a member checked in) | 1 | 5 | 15 | — |
 | Challenger | challenges completed (`challenge_enrollment.status = completed`) | 1 | 5 | 15 | `first_challenge` |
 | Writer | articles published and approved (Payload `articles`) | 1 | 5 | 15 | `article_author`, `prolific_writer` |
 | Builder | launchpad projects published | 1 | 3 | 10 | `first_launch` |
@@ -94,9 +94,25 @@ is renamed.
   removed.
 - **XP on earning** stays where it is today (e.g. first event bonus) and is
   granted only when the insert actually created the row.
-- **Backfill.** A script evaluates every track for every member, so
-  members get what they already qualify for. It is a production action:
-  prepared and tested against the test database, run by the owner.
+- **Never in the way.** Each evaluation runs in its own transaction (a
+  savepoint inside a caller's transaction); a failure is logged and the
+  user's action goes on.
+- **Where each track is evaluated.** Check-in: the attendee's Regular and
+  the organizer's Host (a check-in means the event took place, even before
+  its start time). Article approval: Writer (and Tutorial creator for a
+  tutorial). Challenge completion: Challenger. Launchpad publish: Builder.
+  Course certificate: Learner. Enrolment by another member: the author's
+  Teacher. Referral credit: Connector. Benchmark coverage recompute:
+  Benchmarker. A member's first activity of the day: Streak. Agent
+  wrangler has no live trigger: nothing increments
+  `agent_profile.totalContributions` since agents draft instead of post
+  (ADR-0015), so only the backfill evaluates it until contributions are
+  counted again.
+- **Backfill.** A script (`scripts/backfill-badges.ts`) evaluates every
+  track for every member, so members get what they already qualify for.
+  It is retroactive: no XP, activity event or notification. It is a
+  production action: prepared and tested against the test database, run
+  by the owner.
 - **Notifications.** Earning a badge creates a notification ("You earned
   Writer II"), which also feeds the earning moment in slice 5.
 
