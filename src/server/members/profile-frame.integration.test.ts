@@ -65,6 +65,7 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
     getPayloadClient: typeof import("@/server/payload").getPayloadClient;
     drizzle: typeof import("drizzle-orm");
     hubSlug: string;
+    agent: typeof import("@/server/members/agent-profile");
   };
   let m: Mods;
   const suffix = `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
@@ -79,6 +80,8 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
     coMember: `pf-co-${suffix}`,
     /** Signed-in member of nothing in particular. */
     outsider: `pf-out-${suffix}`,
+    /** Has an agent but no profile row. */
+    noProfile: `pf-noprofile-${suffix}`,
   };
   const c = {} as {
     listed: string;
@@ -114,6 +117,7 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
       { getPayloadClient },
       drizzle,
       { HUB_SLUG },
+      agent,
     ] = await Promise.all([
       import("@/server/db"),
       import("@/server/db/schema"),
@@ -121,6 +125,7 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
       import("@/server/payload"),
       import("drizzle-orm"),
       import("@/server/communities/hub"),
+      import("@/server/members/agent-profile"),
     ]);
     m = {
       db,
@@ -129,6 +134,7 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
       getPayloadClient,
       drizzle,
       hubSlug: HUB_SLUG,
+      agent,
     };
 
     await db.insert(schema.user).values(
@@ -208,46 +214,34 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
       .values({ communityId: c.hub, userId: u.member })
       .onConflictDoNothing();
 
-    // Activity: a 4-day run long ago, and the last three days up to today.
+    await db
+      .insert(schema.agentProfiles)
+      .values({ ownerId: u.noProfile, name: `PF agent ${suffix}` });
+
+    // Activity: a 4-day run long ago, and the last three days up to today
+    // (two things today). Each row carries details that must stay private.
     const at = (day: string) => new Date(`${day}T12:00:00Z`);
-    await db.insert(schema.pointsEvents).values([
-      ...[-500, -499, -498, -497].map((offset) => ({
-        userId: u.active,
-        amount: 5,
-        reason: SECRET_REASON,
-        createdAt: at(utcDay(offset)),
-      })),
-      {
-        userId: u.active,
-        amount: 10,
-        reason: SECRET_REASON,
-        createdAt: at(utcDay(-2)),
-      },
-      {
-        userId: u.active,
-        amount: 15,
-        reason: SECRET_REASON,
-        createdAt: at(utcDay(-1)),
-      },
-      {
-        userId: u.active,
-        amount: 20,
-        reason: SECRET_REASON,
-        createdAt: at(utcDay(0)),
-      },
-      {
-        userId: u.active,
-        amount: 5,
-        reason: SECRET_REASON,
-        createdAt: at(utcDay(0)),
-      },
-      {
-        userId: u.priv,
-        amount: 5,
-        reason: SECRET_REASON,
-        createdAt: at(utcDay(0)),
-      },
-    ]);
+    const did = (userId: string, day: string) => ({
+      actorId: userId,
+      actorType: "member",
+      action: "thread.create",
+      targetType: "forum-threads",
+      targetId: SECRET_REASON,
+      metadata: { title: SECRET_REASON },
+      createdAt: at(day),
+    });
+    await db
+      .insert(schema.activityEvents)
+      .values([
+        ...[-500, -499, -498, -497].map((offset) =>
+          did(u.active, utcDay(offset)),
+        ),
+        did(u.active, utcDay(-2)),
+        did(u.active, utcDay(-1)),
+        did(u.active, utcDay(0)),
+        did(u.active, utcDay(0)),
+        did(u.priv, utcDay(0)),
+      ]);
 
     // Work.
     const payload = await getPayloadClient();
@@ -318,6 +312,10 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
       isPublic: false,
     });
     await courseDoc("draft", { communityId: c.listed, status: "draft" });
+    await courseDoc("unlisted-public", {
+      communityId: c.unlisted,
+      isPublic: true,
+    });
 
     const event = (label: string, data: Record<string, unknown>) =>
       create(
@@ -342,6 +340,10 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
     await event("luma", { communityId: c.listed, discoverySource: "luma" });
     await event("unlisted", { communityId: c.unlisted });
     await event("completed", { status: "completed" });
+    await event("upcoming", {
+      communityId: c.listed,
+      date: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+    });
 
     challengeId = await create("challenges", {
       title: `PF challenge ${suffix}`,
@@ -386,6 +388,9 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
         // Best-effort teardown.
       }
     }
+    await db
+      .delete(schema.agentProfiles)
+      .where(inArray(schema.agentProfiles.ownerId, ids));
     await db
       .delete(schema.hackathonCertificates)
       .where(inArray(schema.hackathonCertificates.userId, ids));
@@ -477,7 +482,7 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
   });
 
   describe("getPublicActivity", () => {
-    it("returns dates and day totals only, never reasons", async () => {
+    it("returns active dates only, never what was done", async () => {
       const activity = await callerAs(null).members.getPublicActivity({
         userId: u.active,
       });
@@ -487,11 +492,7 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
         "days",
         "longestStreak",
       ]);
-      expect(activity!.days).toEqual([
-        { date: utcDay(-2), xp: 10 },
-        { date: utcDay(-1), xp: 15 },
-        { date: utcDay(0), xp: 25 },
-      ]);
+      expect(activity!.days).toEqual([utcDay(-2), utcDay(-1), utcDay(0)]);
       expect(JSON.stringify(activity)).not.toContain(SECRET_REASON);
     });
 
@@ -503,6 +504,16 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
       expect(activity!.longestStreak).toBe(4);
     });
 
+    it("matches the owner's dashboard streak", async () => {
+      const caller = callerAs(u.active);
+      const [activity, streak] = await Promise.all([
+        caller.members.getPublicActivity({ userId: u.active }),
+        caller.members.getMyStreak(),
+      ]);
+      expect(activity!.currentStreak).toBe(streak.currentStreak);
+      expect(activity!.longestStreak).toBe(streak.longestStreak);
+    });
+
     it("follows the profile's visibility", async () => {
       for (const viewer of [null, u.outsider]) {
         await expect(
@@ -512,7 +523,7 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
       const own = await callerAs(u.priv).members.getPublicActivity({
         userId: u.priv,
       });
-      expect(own?.days).toEqual([{ date: utcDay(0), xp: 5 }]);
+      expect(own?.days).toEqual([utcDay(0)]);
     });
   });
 
@@ -539,7 +550,11 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
       );
       expect(titles(work!.courses)).toEqual([`PF course public ${suffix}`]);
       expect(titles(work!.events)).toEqual(
-        [`PF event completed ${suffix}`, `PF event listed ${suffix}`].sort(),
+        [
+          `PF event completed ${suffix}`,
+          `PF event listed ${suffix}`,
+          `PF event upcoming ${suffix}`,
+        ].sort(),
       );
       expect(
         work!.certificates.items.map((cert) => [cert.kind, cert.title]),
@@ -604,6 +619,9 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
       });
       expect(titles(work!.projects)).toContain(`PF unlisted ${suffix}`);
       expect(titles(work!.courses)).toContain(`PF course members ${suffix}`);
+      expect(titles(work!.courses)).toContain(
+        `PF course unlisted-public ${suffix}`,
+      );
       expect(titles(work!.events)).toContain(`PF event unlisted ${suffix}`);
       expect(work!.certificates.items.map((cert) => cert.title)).toContain(
         `PF course members ${suffix}`,
@@ -667,6 +685,83 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
           locale: "en",
         }),
       ).resolves.not.toBeNull();
+    });
+  });
+  describe("courses in a community the viewer may not read", () => {
+    it("hides a public course there from visitors, link included", async () => {
+      for (const viewer of [null, u.outsider]) {
+        const work = await callerAs(viewer).members.getPublicWork({
+          userId: u.member,
+          locale: "en",
+        });
+        expect(work!.courses.items.map((i) => i.title)).not.toContain(
+          `PF course unlisted-public ${suffix}`,
+        );
+        expect(JSON.stringify(work)).not.toContain(`pf-unlisted-${suffix}`);
+      }
+    });
+  });
+
+  describe("getPublicRecentWork", () => {
+    it("is capped short and lists no upcoming event", async () => {
+      const recent = await callerAs(u.outsider).members.getPublicRecentWork({
+        userId: u.member,
+        locale: "en",
+      });
+      expect(recent).not.toBeNull();
+      for (const list of Object.values(recent!)) {
+        expect(list.items.length).toBeLessThanOrEqual(3);
+      }
+      expect(recent!.events.items.map((e) => e.title)).not.toContain(
+        `PF event upcoming ${suffix}`,
+      );
+      // Same per-source rules as Work.
+      expect(recent!.projects.items.map((p) => p.title)).not.toContain(
+        `PF unlisted ${suffix}`,
+      );
+    });
+
+    it("returns nothing for a private profile", async () => {
+      await expect(
+        callerAs(null).members.getPublicRecentWork({
+          userId: u.priv,
+          locale: "en",
+        }),
+      ).resolves.toBeNull();
+    });
+  });
+
+  describe("agent page of an owner without a profile", () => {
+    it("lets the owner in and keeps visitors out", async () => {
+      const access = (viewerId: string | null) =>
+        m.agent.loadAgentPageAccess(m.db, { ownerId: u.noProfile, viewerId });
+      await expect(access(null)).resolves.toBeNull();
+      await expect(access(u.outsider)).resolves.toBeNull();
+      const own = await access(u.noProfile);
+      expect(own).toMatchObject({
+        audience: "owner",
+        ownerDisplayName: null,
+        reach: { kind: "ownerOnly", reason: "private" },
+      });
+
+      const page = await m.agent.loadAgentProfilePage(m.db, {
+        ownerId: u.noProfile,
+        viewerId: u.noProfile,
+      });
+      expect(page?.agent.name).toBe(`PF agent ${suffix}`);
+      expect(page?.owner).toBeNull();
+    });
+
+    it("has no access when the member has no agent", async () => {
+      // No agent: no access, no page, for anyone.
+      for (const viewer of [null, u.member]) {
+        await expect(
+          m.agent.loadAgentPageAccess(m.db, {
+            ownerId: u.member,
+            viewerId: viewer,
+          }),
+        ).resolves.toBeNull();
+      }
     });
   });
 });

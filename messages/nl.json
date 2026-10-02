@@ -777,7 +777,6 @@
   },
   "memberProfile": {
     "tabsLabel": "Profielonderdelen",
-    "identityLabel": "Over {name}",
     "tabs": {
       "overview": "Overzicht",
       "badges": "Badges",
@@ -792,6 +791,11 @@
     "company": "@ {company}",
     "memberSince": "Lid sinds {date}",
     "editProfile": "Profiel bewerken",
+    "setup": {
+      "title": "Maak je profiel aan",
+      "description": "Voeg een naam, een paar regels over jezelf en je vaardigheden toe zodat andere leden je kunnen vinden. Tot die tijd kun alleen jij deze pagina zien.",
+      "cta": "Profiel aanmaken"
+    },
     "communities": {
       "title": "Communities",
       "ownerEmpty": "Je bent nog geen lid van een community.",
@@ -840,13 +844,11 @@
       "title": "Activiteit",
       "currentStreak": "Huidige reeks",
       "longestStreak": "Langste reeks",
-      "activeDays": "Actieve dagen dit jaar",
-      "xpThisYear": "XP dit jaar",
+      "activeDays": "Actieve dagen in de afgelopen 365 dagen",
       "days": "{count, plural, one {# dag} other {# dagen}}",
-      "xp": "{xp} XP",
-      "explainer": "Een dag telt als er die dag XP is verdiend (UTC).",
+      "explainer": "Een dag telt als het lid die dag minstens één ding hier heeft gedaan (UTC).",
       "emptyOwnerTitle": "Nog geen activiteit",
-      "emptyOwnerDescription": "Elke dag waarop je XP verdient, licht hier een dag op.",
+      "emptyOwnerDescription": "Elke dag dat je hier meedoet, licht een dag op deze kalender op.",
       "emptyOwnerCta": "Vind iets om te doen",
       "emptyVisitor": "Nog geen activiteit.",
       "calendar": {
@@ -888,6 +890,7 @@
       "certificateParticipant": "Hackathondeelnemer",
       "certificateCourse": "Cursus afgerond",
       "hackathonUntitled": "Hackathon",
+      "upcoming": "Binnenkort",
       "kind": {
         "article": "Artikel",
         "project": "Project",

@@ -159,9 +159,10 @@ editions show the absolute number ("1 of 100").
 - **Badges**: earned badges grouped by kind (tracks, milestones, limited
   editions, awards), each with tier, date and rarity. For the owner, locked
   tiers with progress, and a "Pin to showcase" action.
-- **Activity**: a public year calendar of days with activity, from
-  `points_event` (amounts and dates only — reasons are not shown), plus
-  current and longest streak.
+- **Activity**: a public calendar of active days over the last 365 days,
+  plus current and longest streak. Active days come from one shared source
+  (`memberActiveDays`), the same one the dashboard streak uses, so the
+  owner never sees two different streaks.
 - **Work**: published articles, launchpad projects, courses authored,
   certificates (hackathon and course), and events hosted.
 - **Agent**: the member's agent, as today.
@@ -174,10 +175,11 @@ editions show the absolute number ("1 of 100").
   ones only when the viewer is an active member too
   (`content-visibility.ts`). The Hub is not listed (ADR-0019).
 - **Work items** respect their own visibility: articles published and
-  approved; launchpad projects and forum content only from communities the
-  viewer can read (`communityContentReadableWhere`).
-- **Activity calendar** reads `points_event`, never `activity_event`,
-  whose rows carry private context.
+  approved; launchpad projects, events, courses and certificates only from
+  communities the viewer can read (`communityContentReadableWhere`), and
+  courses also by the course rule.
+- **Activity calendar**: only dates leave the server, never what was done
+  on a day (no actions, targets, metadata or amounts).
 - Every public procedure returns an explicit DTO (slice 1 pattern).
 
 ### Owner affordances

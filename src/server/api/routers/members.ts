@@ -66,8 +66,10 @@ import {
 } from "@/server/members/profile-activity";
 import {
   loadProfileWork,
+  RECENT_WORK_LIMIT,
   type ProfileWork,
 } from "@/server/members/profile-work";
+import { memberActiveDays } from "@/server/members/active-days";
 import { routing } from "@/i18n/routing";
 import {
   publicRosterColumns,
@@ -171,32 +173,13 @@ export const membersRouter = createTRPCRouter({
   getAuthProviders: publicProcedure.query(() => enabledOAuthProviders()),
 
   /**
-   * The current user's activity streak, derived from activityEvents (no
-   * dedicated streak table) — an "active day" is any day with >=1 event.
+   * The current user's activity streak, from the shared active days
+   * (`memberActiveDays`, also behind the profile's Activity tab).
    */
   getMyStreak: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
-
-    const rows = await ctx.db
-      .selectDistinct({
-        day: sql<string>`to_char(${activityEvents.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
-      })
-      .from(activityEvents)
-      .where(
-        and(
-          eq(activityEvents.actorId, userId),
-          eq(activityEvents.actorType, "member"),
-        ),
-      )
-      .orderBy(
-        sql`to_char(${activityEvents.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
-      );
-
+    const days = await memberActiveDays(ctx.db, ctx.session.user.id);
     const today = new Date().toISOString().slice(0, 10);
-    return computeStreakData(
-      rows.map((r) => r.day),
-      today,
-    );
+    return computeStreakData(days, today);
   }),
 
   /** Recent XP awards for the current user (points history). */
@@ -536,6 +519,37 @@ export const membersRouter = createTRPCRouter({
       return loadProfileWork(
         { db: ctx.db, payload: await getPayloadClient() },
         { userId: input.userId, viewerId, locale: input.locale },
+      );
+    }),
+
+  /**
+   * The few newest items of a member's Work for the Overview: the same
+   * lists and rules as `getPublicWork`, capped short, and only events that
+   * have started. Null when the viewer may not see the profile.
+   */
+  getPublicRecentWork: publicProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        locale: z.enum(routing.locales).default(routing.defaultLocale),
+      }),
+    )
+    .query(async ({ ctx, input }): Promise<ProfileWork | null> => {
+      const viewerId = ctx.session?.user.id ?? null;
+      const gate = await loadProfileGate(ctx.db, {
+        userId: input.userId,
+        viewerId,
+      });
+      if (!gate) return null;
+      return loadProfileWork(
+        { db: ctx.db, payload: await getPayloadClient() },
+        {
+          userId: input.userId,
+          viewerId,
+          locale: input.locale,
+          limit: RECENT_WORK_LIMIT,
+          startedBy: new Date().toISOString(),
+        },
       );
     }),
 

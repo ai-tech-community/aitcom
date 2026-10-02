@@ -340,7 +340,8 @@ default is `true`.
 `/dashboard/settings`
 
 **Code:** `members.getPublicProfile`, `getPublicCommunities`,
-`getPublicActivity`, `getPublicWork`, `getMyProfile`,
+`getPublicActivity`, `getPublicWork`, `getPublicRecentWork`,
+`getMyProfile`,
 `upsertProfile`, `disconnectSocial`; `src/server/members/profile-page.ts`
 (per-request loaders for the frame); `docs/social-identity.md`
 

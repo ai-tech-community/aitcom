@@ -29,7 +29,7 @@ import { ProfileTabs, profileTabs } from "./profile-tabs";
 
 describe("profileTabs", () => {
   it("lists every tab in order when the viewer may see the agent", () => {
-    expect(profileTabs("u1", { showAgent: true })).toEqual([
+    expect(profileTabs("u1", { showAgent: true, hasProfile: true })).toEqual([
       { tab: "overview", href: "/members/u1", match: "exact" },
       { tab: "badges", href: "/members/u1/badges" },
       { tab: "activity", href: "/members/u1/activity" },
@@ -40,14 +40,25 @@ describe("profileTabs", () => {
 
   it("leaves out the Agent tab otherwise", () => {
     expect(
-      profileTabs("u1", { showAgent: false }).map((t) => t.tab),
+      profileTabs("u1", { showAgent: false, hasProfile: true }).map(
+        (t) => t.tab,
+      ),
     ).not.toContain("agent");
   });
 
+  it("shows an owner without a profile only Overview and Agent", () => {
+    expect(
+      profileTabs("u1", { showAgent: true, hasProfile: false }).map(
+        (t) => t.tab,
+      ),
+    ).toEqual(["overview", "agent"]);
+  });
+
   it("keeps Overview inactive on the other tabs", () => {
-    const [overview, badges] = profileTabs("u1", { showAgent: false }).map(
-      (tab) => ({ ...tab, label: tab.tab }),
-    );
+    const [overview, badges] = profileTabs("u1", {
+      showAgent: false,
+      hasProfile: true,
+    }).map((tab) => ({ ...tab, label: tab.tab }));
     expect(isRouteTabActive("/members/u1/badges", overview!)).toBe(false);
     expect(isRouteTabActive("/members/u1", overview!)).toBe(true);
     expect(isRouteTabActive("/members/u1/badges", badges!)).toBe(true);
@@ -64,7 +75,7 @@ describe("ProfileTabs", () => {
       pathname.current = "/members/u1/work";
       render(
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <ProfileTabs userId="u1" showAgent />
+          <ProfileTabs userId="u1" showAgent hasProfile />
         </NextIntlClientProvider>,
       );
       const links = screen.getAllByRole("link");

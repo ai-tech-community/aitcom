@@ -24,6 +24,9 @@ type Locale = "en" | "nl";
 /** How many items each Work list shows. */
 export const WORK_LIST_LIMIT = 6;
 
+/** How many items Recent work on the Overview shows. */
+export const RECENT_WORK_LIMIT = 3;
+
 /**
  * How many published courses of one author are read before the viewer's
  * access is applied in code (the course rule lives in `resolveCourseAccess`,
@@ -101,7 +104,7 @@ export interface ProfileWork {
 /** Event statuses that count as hosted: not draft, rejected or cancelled. */
 export const HOSTED_EVENT_STATUSES = ["published", "completed"] as const;
 
-function capped<T>(items: readonly T[], limit = WORK_LIST_LIMIT): WorkList<T> {
+function capped<T>(items: readonly T[], limit: number): WorkList<T> {
   return { items: items.slice(0, limit), hasMore: items.length > limit };
 }
 
@@ -128,16 +131,20 @@ export function profileProjectsWhere(
 /**
  * Native events this member organises that are (or were) live, in
  * communities the viewer may read. Persisted Luma rows are not native.
+ * With `startedBy`, only events whose date is on or before it (no upcoming
+ * ones).
  */
 export function profileEventsWhere(
   userId: string,
   hiddenCommunityIds: readonly string[],
+  { startedBy }: { startedBy?: string } = {},
 ): Where {
   return withReadable(
     [
       { organizerId: { equals: userId } },
       { status: { in: [...HOSTED_EVENT_STATUSES] } },
       { discoverySource: { not_equals: "luma" } },
+      ...(startedBy ? [{ date: { less_than_equal: startedBy } }] : []),
     ],
     communityContentReadableWhere(hiddenCommunityIds),
   );
@@ -169,26 +176,31 @@ type CourseDoc = Pick<
 >;
 
 /**
- * The community context course access needs: the live communities' slugs
- * and the viewer's memberships in them.
+ * The community context course access needs: the live communities' slugs,
+ * the viewer's memberships in them, and the communities whose content the
+ * viewer may not read.
  */
 export interface CourseCommunityContext {
   viewerId: string | null;
   communitySlugById: ReadonlyMap<string, string>;
   membershipByCommunityId: ReadonlyMap<string, CourseAccessMembership>;
+  hiddenCommunityIds: ReadonlySet<string>;
 }
 
 /**
- * Whether the viewer may read this published course, and where it lives.
- * Null when they may not (or its community is gone): the course rule
- * (`resolveCourseAccess`) is the only judge, and only published courses
- * are shown on a profile, whoever is looking.
+ * Whether the viewer may see this published course on a profile, and where
+ * it lives. Null when they may not: the course sits in a community whose
+ * content the viewer may not read (the same rule as projects and events, so
+ * Work never names a community the identity panel hides), its community is
+ * gone, or the course rule (`resolveCourseAccess`) says no. Only published
+ * courses are shown on a profile, whoever is looking.
  */
 export function readableCourseCommunitySlug(
   course: CourseDoc,
   context: CourseCommunityContext,
 ): string | null {
   if (course.status !== "published") return null;
+  if (context.hiddenCommunityIds.has(course.communityId)) return null;
   const communitySlug = context.communitySlugById.get(course.communityId);
   if (!communitySlug) return null;
   const access = resolveCourseAccess({
@@ -201,7 +213,10 @@ export function readableCourseCommunitySlug(
 
 async function loadCourseCommunityContext(
   database: Db,
-  viewerId: string | null,
+  {
+    viewerId,
+    hiddenCommunityIds,
+  }: { viewerId: string | null; hiddenCommunityIds: ReadonlySet<string> },
   communityIds: readonly string[],
 ): Promise<CourseCommunityContext> {
   const ids = [...new Set(communityIds)];
@@ -210,6 +225,7 @@ async function loadCourseCommunityContext(
       viewerId,
       communitySlugById: new Map(),
       membershipByCommunityId: new Map(),
+      hiddenCommunityIds,
     };
   }
   const [communityRows, membershipRows] = await Promise.all([
@@ -235,6 +251,7 @@ async function loadCourseCommunityContext(
   ]);
   return {
     viewerId,
+    hiddenCommunityIds,
     communitySlugById: new Map(communityRows.map((row) => [row.id, row.slug])),
     membershipByCommunityId: new Map(
       membershipRows.map((row) => [
@@ -250,9 +267,12 @@ async function loadCourseCommunityContext(
  * profile is visible to the viewer first.
  *
  * Every visibility rule is the shared one: the blog rule for articles,
- * community content readability for projects, events and hackathon
- * certificates, and the course rule for courses and course certificates.
- * Payload is queried once per collection (no per-item reads).
+ * community content readability for projects, events and both kinds of
+ * certificate and courses, and the course rule for courses and course
+ * certificates. Payload is queried once per collection (no per-item reads).
+ *
+ * `limit` caps each list (the Work tab, or Recent work on the Overview);
+ * `startedBy` (ISO) drops events that have not started yet.
  */
 export async function loadProfileWork(
   deps: { db: Db; payload: Pick<Payload, "find"> },
@@ -260,10 +280,18 @@ export async function loadProfileWork(
     userId,
     viewerId,
     locale,
-  }: { userId: string; viewerId: string | null; locale: Locale },
+    limit = WORK_LIST_LIMIT,
+    startedBy,
+  }: {
+    userId: string;
+    viewerId: string | null;
+    locale: Locale;
+    limit?: number;
+    startedBy?: string;
+  },
 ): Promise<ProfileWork> {
   const { db: database, payload } = deps;
-  const listLimit = WORK_LIST_LIMIT + 1;
+  const listLimit = limit + 1;
 
   const [hidden, hackathonRows, courseCertRows] = await Promise.all([
     hiddenContentCommunityIds(database, viewerId),
@@ -312,7 +340,7 @@ export async function loadProfileWork(
       }),
       payload.find({
         collection: "events",
-        where: profileEventsWhere(userId, hidden),
+        where: profileEventsWhere(userId, hidden, { startedBy }),
         sort: "-date",
         limit: listLimit,
         locale,
@@ -346,10 +374,14 @@ export async function loadProfileWork(
         : null,
     ]);
 
-  const courseContext = await loadCourseCommunityContext(database, viewerId, [
-    ...authored.docs.map((course) => course.communityId),
-    ...(certCourses?.docs ?? []).map((course) => course.communityId),
-  ]);
+  const courseContext = await loadCourseCommunityContext(
+    database,
+    { viewerId, hiddenCommunityIds: hiddenSet },
+    [
+      ...authored.docs.map((course) => course.communityId),
+      ...(certCourses?.docs ?? []).map((course) => course.communityId),
+    ],
+  );
 
   const courses = authored.docs.flatMap((course) => {
     const communitySlug = readableCourseCommunitySlug(course, courseContext);
@@ -416,6 +448,7 @@ export async function loadProfileWork(
         slug: article.slug,
         publishedAt: article.publishedAt ?? null,
       })),
+      limit,
     ),
     projects: capped(
       projects.docs.map((project) => ({
@@ -425,9 +458,10 @@ export async function loadProfileWork(
         stage: project.stage,
         createdAt: project.createdAt,
       })),
+      limit,
     ),
-    courses: capped(courses),
-    certificates: capped(certificates),
+    courses: capped(courses, limit),
+    certificates: capped(certificates, limit),
     events: capped(
       events.docs.map((event) => ({
         id: event.id,
@@ -435,6 +469,7 @@ export async function loadProfileWork(
         slug: event.slug,
         date: event.date,
       })),
+      limit,
     ),
   };
 }

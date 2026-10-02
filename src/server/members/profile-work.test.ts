@@ -42,6 +42,19 @@ describe("Work queries", () => {
     });
   });
 
+  it("can leave out events that have not started", () => {
+    expect(
+      profileEventsWhere("u1", [], { startedBy: "2026-10-02T12:00:00.000Z" }),
+    ).toEqual({
+      and: [
+        { organizerId: { equals: "u1" } },
+        { status: { in: ["published", "completed"] } },
+        { discoverySource: { not_equals: "luma" } },
+        { date: { less_than_equal: "2026-10-02T12:00:00.000Z" } },
+      ],
+    });
+  });
+
   it("lists native, live or past events the member organises", () => {
     expect(profileEventsWhere("u1", ["hidden-1"])).toEqual({
       and: [
@@ -80,6 +93,7 @@ describe("readableCourseCommunitySlug", () => {
     viewerId: "viewer",
     communitySlugById: new Map([["c1", "club"]]),
     membershipByCommunityId: new Map(),
+    hiddenCommunityIds: new Set(),
     ...over,
   });
 
@@ -127,6 +141,15 @@ describe("readableCourseCommunitySlug", () => {
       readableCourseCommunitySlug(
         { ...course, status: "draft", isPublic: true },
         context({ viewerId: "author" }),
+      ),
+    ).toBeNull();
+  });
+
+  it("hides even a public course in a community the viewer may not read", () => {
+    expect(
+      readableCourseCommunitySlug(
+        { ...course, isPublic: true },
+        context({ hiddenCommunityIds: new Set(["c1"]) }),
       ),
     ).toBeNull();
   });

@@ -777,7 +777,6 @@
   },
   "memberProfile": {
     "tabsLabel": "Profile sections",
-    "identityLabel": "About {name}",
     "tabs": {
       "overview": "Overview",
       "badges": "Badges",
@@ -792,6 +791,11 @@
     "company": "@ {company}",
     "memberSince": "Member since {date}",
     "editProfile": "Edit profile",
+    "setup": {
+      "title": "Set up your profile",
+      "description": "Add a name, a few lines about you and your skills so other members can find you. Until then, only you can see this page.",
+      "cta": "Set up profile"
+    },
     "communities": {
       "title": "Communities",
       "ownerEmpty": "You have not joined a community yet.",
@@ -840,13 +844,11 @@
       "title": "Activity",
       "currentStreak": "Current streak",
       "longestStreak": "Longest streak",
-      "activeDays": "Active days this year",
-      "xpThisYear": "XP this year",
+      "activeDays": "Active days in the last 365 days",
       "days": "{count, plural, one {# day} other {# days}}",
-      "xp": "{xp} XP",
-      "explainer": "A day counts when XP was earned that day (UTC).",
+      "explainer": "A day counts when the member did at least one thing here that day (UTC).",
       "emptyOwnerTitle": "No activity yet",
-      "emptyOwnerDescription": "Each day you earn XP lights up a day on this calendar.",
+      "emptyOwnerDescription": "Each day you take part here lights up a day on this calendar.",
       "emptyOwnerCta": "Find something to do",
       "emptyVisitor": "No activity yet.",
       "calendar": {
@@ -888,6 +890,7 @@
       "certificateParticipant": "Hackathon participant",
       "certificateCourse": "Course completed",
       "hackathonUntitled": "Hackathon",
+      "upcoming": "Upcoming",
       "kind": {
         "article": "Article",
         "project": "Project",

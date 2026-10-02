@@ -1,24 +1,26 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
 import { PROFILE_SETTINGS_HREF } from "@/lib/dashboard-routes";
 import { profileTabHref } from "@/lib/member-profile-routes";
 import {
-  getMemberWork,
+  getMemberRecentWork,
   profileTabMetadata,
-  requireMemberProfile,
+  requireMemberFrame,
 } from "@/server/members/profile-page";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { BadgeGrid } from "@/components/members/profile/badge-grid";
 import { ProfileEmpty } from "@/components/members/profile/profile-empty";
 import { recentWork } from "@/components/members/profile/work-entries";
+import { RECENT_WORK_LIMIT } from "@/server/members/profile-work";
 import { WorkEntryList } from "@/components/members/profile/work-entry-list";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 
 /** Badges in the showcase: the most recent until members can pin them. */
 const SHOWCASE_COUNT = 3;
-const RECENT_WORK_COUNT = 3;
 
 type Params = Promise<{ id: string; locale: string }>;
 
@@ -50,21 +52,87 @@ function SettingsAction({ children }: { children: string }) {
   );
 }
 
+/**
+ * Recent work: supplementary, so it streams in after the rest of the
+ * Overview and a failed load hides the section instead of failing the page.
+ */
+async function RecentWorkSection({
+  userId,
+  locale,
+  isOwner,
+}: {
+  userId: string;
+  locale: string;
+  isOwner: boolean;
+}) {
+  const t = await getTranslations("memberProfile.overview");
+  const work = await getMemberRecentWork(userId, locale).catch(
+    (error: unknown) => {
+      console.error("Profile recent work failed to load", error);
+      return undefined;
+    },
+  );
+  const recent = work ? recentWork(work, RECENT_WORK_LIMIT, new Date()) : [];
+
+  return (
+    <DashboardSection
+      title={t("recentWork")}
+      optional
+      action={
+        recent.length > 0 ? (
+          <TabLink href={profileTabHref(userId, "work")}>
+            {t("recentWorkAll")}
+          </TabLink>
+        ) : undefined
+      }
+      status={{
+        kind: !work ? "error" : recent.length > 0 ? "ready" : "empty",
+      }}
+      empty={
+        <ProfileEmpty
+          isOwner={isOwner}
+          title={t("recentWorkEmptyOwnerTitle")}
+          description={t("recentWorkEmptyOwnerDescription")}
+          visitorText={t("recentWorkEmptyVisitor")}
+        />
+      }
+    >
+      <WorkEntryList entries={recent} showKind />
+    </DashboardSection>
+  );
+}
+
 export default async function MemberOverviewPage({
   params,
 }: {
   params: Params;
 }) {
   const { id, locale } = await params;
-  const [data, work, t] = await Promise.all([
-    requireMemberProfile(id),
-    getMemberWork(id, locale),
+  const [frame, t, tSetup] = await Promise.all([
+    requireMemberFrame(id),
     getTranslations("memberProfile.overview"),
+    getTranslations("memberProfile.setup"),
   ]);
+
+  if (frame.kind === "setup") {
+    return (
+      <EmptyState
+        className="items-start px-0 py-4 text-left [&_p]:mx-0"
+        title={tSetup("title")}
+        description={tSetup("description")}
+        action={
+          <Button asChild size="sm" variant="outline">
+            <Link href={PROFILE_SETTINGS_HREF}>{tSetup("cta")}</Link>
+          </Button>
+        }
+      />
+    );
+  }
+
+  const { data } = frame;
   const { profile } = data;
   const isOwner = data.audience === "owner";
   const showcase = data.badges.slice(0, SHOWCASE_COUNT);
-  const recent = work ? recentWork(work, RECENT_WORK_COUNT) : [];
 
   return (
     <div className="space-y-10">
@@ -140,27 +208,16 @@ export default async function MemberOverviewPage({
         </ul>
       </DashboardSection>
 
-      <DashboardSection
-        title={t("recentWork")}
-        action={
-          recent.length > 0 ? (
-            <TabLink href={profileTabHref(id, "work")}>
-              {t("recentWorkAll")}
-            </TabLink>
-          ) : undefined
-        }
-        status={{ kind: recent.length > 0 ? "ready" : "empty" }}
-        empty={
-          <ProfileEmpty
-            isOwner={isOwner}
-            title={t("recentWorkEmptyOwnerTitle")}
-            description={t("recentWorkEmptyOwnerDescription")}
-            visitorText={t("recentWorkEmptyVisitor")}
+      <Suspense
+        fallback={
+          <DashboardSection
+            title={t("recentWork")}
+            status={{ kind: "loading" }}
           />
         }
       >
-        <WorkEntryList entries={recent} showKind />
-      </DashboardSection>
+        <RecentWorkSection userId={id} locale={locale} isOwner={isOwner} />
+      </Suspense>
     </div>
   );
 }

@@ -78,44 +78,47 @@ export function agentPageReach(input: {
   return { kind: "public" };
 }
 
+/** Who may see a member's agent page, read with as little as possible. */
+export interface AgentPageAccess {
+  audience: ProfileAudience;
+  reach: AgentPageReach;
+  agentId: string;
+  /** Null when the owner has no profile (only the owner gets this far). */
+  ownerDisplayName: string | null;
+}
+
 /**
- * Data for /members/[id]/agent. Visitors get null unless `agentPageReach`
- * is public; the owner always sees their own agent page, in any status.
+ * Whether this viewer may see the member's agent page: visitors only when
+ * `agentPageReach` is public; the owner always, in any agent status. Null
+ * when they may not, or there is no agent. Selects only what the rule needs,
+ * so the profile frame can decide the Agent tab without loading the page.
  */
-export async function loadAgentProfilePage(
+export async function loadAgentPageAccess(
   database: Db,
   { ownerId, viewerId }: { ownerId: string; viewerId: string | null },
-): Promise<AgentProfilePage | null> {
+): Promise<AgentPageAccess | null> {
   const audience = profileAudience(viewerId, ownerId);
 
-  const [ownerRow] = await database
-    .select({
-      displayName: memberProfiles.displayName,
-      ...profileReachColumns(),
-    })
-    .from(memberProfiles)
-    .where(and(eq(memberProfiles.userId, ownerId), profileReadableBy(audience)))
-    .limit(1);
-
-  if (!ownerRow && audience === "visitor") return null;
-
-  const [agent] = await database
-    .select({
-      id: agentProfiles.id,
-      name: agentProfiles.name,
-      avatar: agentProfiles.avatar,
-      bio: agentProfiles.bio,
-      description: agentProfiles.description,
-      expertiseTags: agentProfiles.expertiseTags,
-      totalContributions: agentProfiles.totalContributions,
-      createdAt: agentProfiles.createdAt,
-      status: agentProfiles.status,
-    })
-    .from(agentProfiles)
-    .where(eq(agentProfiles.ownerId, ownerId))
-    .limit(1);
+  const [[ownerRow], [agent]] = await Promise.all([
+    database
+      .select({
+        displayName: memberProfiles.displayName,
+        ...profileReachColumns(),
+      })
+      .from(memberProfiles)
+      .where(
+        and(eq(memberProfiles.userId, ownerId), profileReadableBy(audience)),
+      )
+      .limit(1),
+    database
+      .select({ id: agentProfiles.id, status: agentProfiles.status })
+      .from(agentProfiles)
+      .where(eq(agentProfiles.ownerId, ownerId))
+      .limit(1),
+  ]);
 
   if (!agent) return null;
+  if (!ownerRow && audience === "visitor") return null;
 
   const reach = agentPageReach({
     ownerId,
@@ -123,6 +126,39 @@ export async function loadAgentProfilePage(
     agent,
   });
   if (audience === "visitor" && reach.kind !== "public") return null;
+
+  return {
+    audience,
+    reach,
+    agentId: agent.id,
+    ownerDisplayName: ownerRow?.displayName ?? null,
+  };
+}
+
+/**
+ * Data for /members/[id]/agent: the access check, then the page's fields.
+ */
+export async function loadAgentProfilePage(
+  database: Db,
+  { ownerId, viewerId }: { ownerId: string; viewerId: string | null },
+): Promise<AgentProfilePage | null> {
+  const access = await loadAgentPageAccess(database, { ownerId, viewerId });
+  if (!access) return null;
+
+  const [agent] = await database
+    .select({
+      name: agentProfiles.name,
+      avatar: agentProfiles.avatar,
+      bio: agentProfiles.bio,
+      description: agentProfiles.description,
+      expertiseTags: agentProfiles.expertiseTags,
+      totalContributions: agentProfiles.totalContributions,
+      createdAt: agentProfiles.createdAt,
+    })
+    .from(agentProfiles)
+    .where(eq(agentProfiles.id, access.agentId))
+    .limit(1);
+  if (!agent) return null;
 
   const [identitiesByUser, githubAccountIds] = await Promise.all([
     loadSocialIdentitiesForUsers(database, [ownerId]),
@@ -149,9 +185,12 @@ export async function loadAgentProfilePage(
       totalContributions: agent.totalContributions,
       createdAt: agent.createdAt,
     },
-    owner: ownerRow ? { displayName: ownerRow.displayName } : null,
+    owner:
+      access.ownerDisplayName !== null
+        ? { displayName: access.ownerDisplayName }
+        : null,
     social,
-    audience,
-    reach,
+    audience: access.audience,
+    reach: access.reach,
   };
 }

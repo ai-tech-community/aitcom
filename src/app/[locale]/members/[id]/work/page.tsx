@@ -58,7 +58,7 @@ export default async function MemberWorkPage({ params }: { params: Params }) {
   ]);
   if (!work) notFound();
   const isOwner = data.audience === "owner";
-  const entries = toWorkEntries(work);
+  const entries = toWorkEntries(work, new Date());
 
   return (
     <div className="space-y-10">

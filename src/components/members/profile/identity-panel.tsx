@@ -147,3 +147,29 @@ export async function IdentityPanel({
     </div>
   );
 }
+
+/**
+ * The panel for an owner who has no profile yet: only their account name
+ * and avatar. The Overview tells them how to set the profile up.
+ */
+export function SetupIdentityPanel({
+  name,
+  avatarUrl,
+}: {
+  name: string;
+  avatarUrl: string | null;
+}) {
+  return (
+    <div className="flex items-center gap-4 lg:flex-col lg:items-start">
+      <Avatar className="size-14 lg:size-20">
+        {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
+        <AvatarFallback className="font-mono text-base lg:text-xl">
+          {getInitials(name)}
+        </AvatarFallback>
+      </Avatar>
+      <h1 className="min-w-0 text-2xl font-semibold tracking-tight text-balance wrap-break-word">
+        {name}
+      </h1>
+    </div>
+  );
+}

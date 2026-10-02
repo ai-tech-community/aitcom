@@ -28,6 +28,7 @@ export async function WorkEntryList({
     if (detail.type === "stage") {
       return tStage.has(detail.stage) ? tStage(detail.stage) : null;
     }
+    if (detail.type === "upcoming") return t("upcoming");
     switch (detail.outcome) {
       case "winner":
         return t("certificateWinner");

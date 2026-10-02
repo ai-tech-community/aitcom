@@ -14,6 +14,7 @@ export type WorkKind =
 export type WorkEntryDetail =
   | { type: "stage"; stage: string }
   | { type: "certificate"; outcome: "winner" | "participant" | "course" }
+  | { type: "upcoming" }
   | null;
 
 /** One row of the Work tab or Recent work, whatever its source. */
@@ -50,9 +51,13 @@ function certificateEntry(cert: ProfileWorkCertificate): WorkEntry {
   };
 }
 
-/** Each Work list as rows, in the order the server returned them. */
+/**
+ * Each Work list as rows, in the order the server returned them. An event
+ * that has not started by `now` is marked upcoming.
+ */
 export function toWorkEntries(
   work: ProfileWork,
+  now: Date,
 ): Record<keyof ProfileWork, WorkEntry[]> {
   return {
     articles: work.articles.items.map((article) => ({
@@ -86,17 +91,28 @@ export function toWorkEntries(
       title: event.title,
       href: `/events/${event.slug}`,
       date: event.date,
-      detail: null,
+      detail:
+        new Date(event.date).getTime() > now.getTime()
+          ? { type: "upcoming" }
+          : null,
     })),
   };
 }
 
-/** The newest `count` rows across every Work list (undated rows last). */
-export function recentWork(work: ProfileWork, count: number): WorkEntry[] {
+/**
+ * The newest `count` rows across every Work list (undated rows last). Only
+ * what has happened: an upcoming event is not recent work.
+ */
+export function recentWork(
+  work: ProfileWork,
+  count: number,
+  now: Date,
+): WorkEntry[] {
   const time = (entry: WorkEntry) =>
     entry.date ? new Date(entry.date).getTime() : Number.NEGATIVE_INFINITY;
-  return Object.values(toWorkEntries(work))
+  return Object.values(toWorkEntries(work, now))
     .flat()
+    .filter((entry) => entry.detail?.type !== "upcoming")
     .sort((a, b) => time(b) - time(a))
     .slice(0, count);
 }

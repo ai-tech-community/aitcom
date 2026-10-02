@@ -49,8 +49,7 @@ export default async function MemberActivityPage({
   if (!activity) notFound();
 
   const days = activity.days;
-  const periods = toStreakPeriods(days.map((day) => day.date));
-  const xpThisYear = days.reduce((sum, day) => sum + day.xp, 0);
+  const periods = toStreakPeriods(days);
 
   return (
     <DashboardSection
@@ -71,7 +70,7 @@ export default async function MemberActivityPage({
       }
     >
       <div className="space-y-6">
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Stat
             label={t("currentStreak")}
             value={t("days", { count: activity.currentStreak })}
@@ -84,7 +83,6 @@ export default async function MemberActivityPage({
             label={t("activeDays")}
             value={t("days", { count: days.length })}
           />
-          <Stat label={t("xpThisYear")} value={t("xp", { xp: xpThisYear })} />
         </dl>
         <ActivityCalendar periods={periods} />
         <p className="text-muted-foreground text-xs">{t("explainer")}</p>

@@ -6,6 +6,7 @@ import type { ProfileWork } from "@/server/members/profile-work";
 import { recentWork, toWorkEntries } from "./work-entries";
 
 const empty = { items: [], hasMore: false };
+const NOW = new Date("2026-10-02T12:00:00Z");
 
 const work: ProfileWork = {
   articles: {
@@ -67,7 +68,7 @@ const work: ProfileWork = {
 
 describe("toWorkEntries", () => {
   it("links each item to its own page", () => {
-    const entries = toWorkEntries(work);
+    const entries = toWorkEntries(work, NOW);
     expect(entries.articles[0]?.href).toBe("/blog/a");
     expect(entries.projects[0]?.href).toBe("/launchpad/p");
     expect(entries.courses[0]?.href).toBe("/communities/club/classroom/c");
@@ -85,7 +86,7 @@ describe("toWorkEntries", () => {
 
 describe("recentWork", () => {
   it("takes the newest items across every list", () => {
-    expect(recentWork(work, 3).map((e) => e.key)).toEqual([
+    expect(recentWork(work, 3, NOW).map((e) => e.key)).toEqual([
       "event-4",
       "project-2",
       "certificate-h1",
@@ -103,9 +104,34 @@ describe("recentWork", () => {
       courses: empty,
       certificates: empty,
     };
-    expect(recentWork(undated, 5).map((e) => e.key)).toEqual([
+    expect(recentWork(undated, 5, NOW).map((e) => e.key)).toEqual([
       "event-4",
       "article-9",
     ]);
+  });
+});
+
+describe("upcoming events", () => {
+  const withUpcoming: ProfileWork = {
+    ...work,
+    events: {
+      items: [
+        { id: 4, title: "E", slug: "e", date: "2026-06-01T00:00:00Z" },
+        { id: 5, title: "Soon", slug: "soon", date: "2026-11-01T00:00:00Z" },
+      ],
+      hasMore: false,
+    },
+  };
+
+  it("labels an event that has not started as upcoming", () => {
+    expect(
+      toWorkEntries(withUpcoming, NOW).events.map((e) => e.detail),
+    ).toEqual([null, { type: "upcoming" }]);
+  });
+
+  it("never lists an upcoming event as recent work", () => {
+    expect(recentWork(withUpcoming, 10, NOW).map((e) => e.key)).not.toContain(
+      "event-5",
+    );
   });
 });
