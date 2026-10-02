@@ -53,7 +53,11 @@ function loaded(data: unknown): Query {
 }
 
 const PROFILE = {
-  profile: { displayName: "Ada", xp: 450, level: 3 },
+  profile: { displayName: "Ada", xp: 450, level: 3, company: "Lovelace Labs" },
+  social: {
+    github: { handle: "ada", url: "https://github.com/ada", verified: true },
+    linkedin: null,
+  },
   badges: [
     { slug: "regular", description: "Attended 3 events", earnedAt: "x" },
   ],
@@ -137,22 +141,87 @@ describe("YouCard", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the live boost as one line, the panel's only orange", () => {
-    queries.boost = loaded({
-      name: "Launch week",
-      multiplier: "2",
-      description: null,
-      ctaText: null,
-      ctaLink: "/events",
-      endsAt: null,
-    });
-    const { container } = renderCard();
+  it("shows company and verified GitHub compactly", () => {
+    renderCard();
+    expect(screen.getByText("@ Lovelace Labs")).not.toHaveClass("font-mono");
     expect(
-      screen.getByRole("link", { name: /2× XP: Launch week/ }),
-    ).toHaveAttribute("href", "/events");
+      screen.getByRole("link", { name: "GitHub @ada (Verified)" }),
+    ).toHaveAttribute("href", "https://github.com/ada");
+  });
+
+  const BOOST = {
+    name: "Launch week",
+    multiplier: "2",
+    description: "Every post counts double.",
+    ctaText: "Write a post",
+    ctaLink: "/community",
+    endsAt: null,
+  };
+
+  it("shows the live boost with its description and action, in ink", () => {
+    queries.boost = loaded(BOOST);
+    const { container } = renderCard();
+    expect(screen.getByText("2× XP: Launch week")).toBeInTheDocument();
+    expect(screen.getByText(BOOST.description)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Write a post" })).toHaveAttribute(
+      "href",
+      "/community",
+    );
+    // The dashboard's one orange is the active tab, not the boost.
     expect(
       container.querySelectorAll(".text-primary, .bg-primary"),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
+  });
+
+  it("falls back to a default action label", () => {
+    queries.boost = loaded({ ...BOOST, ctaText: null });
+    renderCard();
+    expect(
+      screen.getByRole("link", { name: en.dashboard.you.boostCta }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a live boost to a member without a profile", () => {
+    queries.profile = loaded({ ...PROFILE, profile: null });
+    queries.boost = loaded(BOOST);
+    renderCard();
+    expect(screen.getByText(en.dashboard.you.noProfileTitle)).toBeVisible();
+    expect(screen.getByText("2× XP: Launch week")).toBeInTheDocument();
+  });
+
+  it("shows a live boost while the streak has failed", () => {
+    queries.streak = {
+      data: undefined,
+      isPending: false,
+      isError: true,
+      refetch: vi.fn(),
+    };
+    queries.boost = loaded(BOOST);
+    renderCard();
+    expect(screen.getByText("2× XP: Launch week")).toBeInTheDocument();
+  });
+
+  it("degrades only the streak row when the streak fails", () => {
+    const refetch = vi.fn();
+    queries.streak = {
+      data: undefined,
+      isPending: false,
+      isError: true,
+      refetch,
+    };
+    renderCard();
+    // The rest of the card still renders.
+    expect(screen.getByText("Ada")).toBeInTheDocument();
+    expect(
+      screen.getByRole("progressbar", { name: "XP towards level 4" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("list", { name: en.dashboard.you.thisWeek }),
+    ).not.toBeInTheDocument();
+    // The streak row offers its own retry.
+    expect(screen.getByRole("alert")).toHaveTextContent(en.common.errorTitle);
+    fireEvent.click(screen.getByRole("button", { name: en.common.retry }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("expands the full progress in place", () => {

@@ -19,13 +19,11 @@ export const DASHBOARD_TABS = [
 })[];
 
 /** Tab bar for the member dashboard frame, built on the shared RouteTabs. */
-export function DashboardTabs({ className }: { className?: string }) {
+export function DashboardTabs() {
   const t = useTranslations("dashboard");
   const tabs: RouteTab[] = DASHBOARD_TABS.map(({ labelKey, ...tab }) => ({
     ...tab,
     label: t(`tabs.${labelKey}`),
   }));
-  return (
-    <RouteTabs aria-label={t("tabsLabel")} tabs={tabs} className={className} />
-  );
+  return <RouteTabs aria-label={t("tabsLabel")} tabs={tabs} />;
 }

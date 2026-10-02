@@ -848,7 +848,9 @@
       "boost": "{multiplier}× XP: {name}",
       "boostEnds": "eindigt {relative}",
       "seeProgress": "Bekijk je voortgang",
-      "hideProgress": "Verberg je voortgang"
+      "hideProgress": "Verberg je voortgang",
+      "boostCta": "Verdien XP",
+      "company": "@ {company}"
     },
     "progress": {
       "streakTitle": "Reeks",
@@ -876,6 +878,11 @@
     },
     "profile": {
       "title": "Profiel"
+    },
+    "answers": {
+      "title": "Je interesses en doelen",
+      "description": "Je antwoorden op de welkomstvragen bepalen je eerste stappen en de mensen die we je voorstellen.",
+      "cta": "Wijzig je antwoorden"
     }
   },
   "activity": {
@@ -990,7 +997,7 @@
     },
     "welcomeCardTitle": "Personaliseer je ervaring",
     "welcomeCardDescription": "Beantwoord een paar snelle vragen zodat we de juiste evenementen, leden en content voor je kunnen aanbevelen.",
-    "welcomeCardCta": "Aan de slag"
+    "welcomeCardCta": "Beantwoord drie korte vragen"
   },
   "challenges": {
     "title": "Uitdagingen",

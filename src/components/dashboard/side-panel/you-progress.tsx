@@ -5,17 +5,16 @@ import { useFormatter, useLocale, useTranslations } from "next-intl";
 
 import { api, type RouterOutputs } from "@/trpc/react";
 import { PointsChart } from "@/components/gamification/points-chart";
-import {
-  StreakCalendar,
-  type StreakPeriod,
-} from "@/components/ui/streak-calendar";
+import { StreakCalendar } from "@/components/ui/streak-calendar";
 import {
   SectionBody,
   statusFromQueries,
+  type SectionStatus,
 } from "@/components/dashboard/dashboard-section";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type PointsEvent = RouterOutputs["members"]["getMyPointsHistory"][number];
+type MyStreak = RouterOutputs["members"]["getMyStreak"];
 
 /** Reason codes with a dedicated `points.<key>` label; others read "Activity". */
 const KNOWN_REASONS = new Set(["activity", "course_complete"]);
@@ -53,13 +52,12 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
  */
 export function YouProgress({
   streak,
+  streakStatus,
   badges,
 }: {
-  streak: {
-    longestStreak: number;
-    total: number;
-    periods: readonly StreakPeriod[];
-  };
+  /** Loaded by the "You" card; undefined while loading or after a failure. */
+  streak: MyStreak | undefined;
+  streakStatus: SectionStatus;
   badges: readonly EarnedBadge[];
 }) {
   const t = useTranslations("dashboard.progress");
@@ -82,31 +80,37 @@ export function YouProgress({
     <div className="space-y-6">
       <div className="space-y-3">
         <BlockHeading>{t("streakTitle")}</BlockHeading>
-        <dl className="grid grid-cols-2 gap-3">
-          <Stat
-            label={tStreak("longest")}
-            value={t("days", { count: streak.longestStreak })}
-          />
-          <Stat
-            label={tStreak("total")}
-            value={t("days", { count: streak.total })}
-          />
-        </dl>
-        <StreakCalendar
-          streak={[...streak.periods]}
-          view="month"
-          startOfWeek={1}
-          locale={locale}
-          labels={{
-            calendar: t("calendar.label"),
-            today: t("calendar.today"),
-            active: t("calendar.active"),
-            freeze: t("calendar.freeze"),
-            idle: t("calendar.idle"),
-            future: t("calendar.future"),
-          }}
-          className="max-w-none [&_h3]:text-sm [&_h3]:font-medium"
-        />
+        <SectionBody status={streakStatus} size="compact">
+          {streak && (
+            <>
+              <dl className="grid grid-cols-2 gap-3">
+                <Stat
+                  label={tStreak("longest")}
+                  value={t("days", { count: streak.longestStreak })}
+                />
+                <Stat
+                  label={tStreak("total")}
+                  value={t("days", { count: streak.total })}
+                />
+              </dl>
+              <StreakCalendar
+                streak={streak.streak}
+                view="month"
+                startOfWeek={1}
+                locale={locale}
+                labels={{
+                  calendar: t("calendar.label"),
+                  today: t("calendar.today"),
+                  active: t("calendar.active"),
+                  freeze: t("calendar.freeze"),
+                  idle: t("calendar.idle"),
+                  future: t("calendar.future"),
+                }}
+                className="max-w-none [&_h3]:text-sm [&_h3]:font-medium"
+              />
+            </>
+          )}
+        </SectionBody>
         <p className="text-muted-foreground text-xs">{tStreak("how1")}</p>
       </div>
 

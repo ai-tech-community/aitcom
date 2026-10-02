@@ -39,11 +39,11 @@ export function GetStartedCard() {
         <button
           type="button"
           onClick={dismiss}
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 rounded p-1 transition-colors outline-none focus-visible:ring-[3px]"
+          className="text-muted-foreground hover:text-foreground hover:bg-secondary/50 focus-visible:ring-ring/50 -my-1 inline-flex size-8 items-center justify-center rounded-md transition-colors outline-none focus-visible:ring-[3px]"
           aria-label={t("reminder.dontShowAgain")}
           title={t("reminder.dontShowAgain")}
         >
-          <X aria-hidden className="h-3.5 w-3.5" />
+          <X aria-hidden className="size-4" />
         </button>
       }
     >

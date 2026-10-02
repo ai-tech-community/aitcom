@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, Circle, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
+import { ONBOARDING_HREF } from "@/lib/dashboard-routes";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { OnboardingStep } from "./checklist-view";
@@ -127,11 +128,10 @@ export function OnboardingWelcome({ onFollow }: { onFollow?: () => void }) {
         <p className="text-muted-foreground mt-1 text-sm">
           {t("welcomeCardDescription")}
         </p>
-        {/* Ink text and arrow: small orange text on white is ~3:1, and the
-            dashboard side panel spends its one orange on the live XP boost
-            (One Voice Rule). */}
+        {/* Ink text and arrow: small orange text on white is ~3:1, and on
+            the dashboard the one orange is the active tab (One Voice Rule). */}
         <Link
-          href="/dashboard/onboarding"
+          href={ONBOARDING_HREF}
           onClick={onFollow}
           className="text-foreground focus-visible:ring-ring/50 group mt-3 inline-flex min-h-6 items-center gap-1.5 rounded-sm text-sm font-medium underline-offset-4 outline-none hover:underline focus-visible:ring-[3px]"
         >

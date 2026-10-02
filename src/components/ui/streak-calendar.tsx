@@ -20,8 +20,10 @@ import {
  *   state per the Semantic-Status Rule), not the brand accent. A year of active
  *   cells in Signal Orange would shatter the One Voice ≤10% budget.
  * - "Today" is an Ink ring, not Signal Orange: the calendar lives in the
- *   dashboard side panel, where the one orange is the live XP boost (One Voice
- *   Rule). (Green = your streak history, ink ring = you-are-here.)
+ *   dashboard side panel, and the dashboard's one orange is the active tab
+ *   (One Voice Rule). (Green = your streak history, ink ring = you-are-here.)
+ * - Days are plain cells unless `onDayClick` is given, so a read-only
+ *   calendar adds no tab stops.
  * - Freezes use the INFO token (an informational state).
  * - Labels (weekdays, month markers) adopt the Geist Mono machine voice.
  * - Localized: dates and weekday names follow `locale`, and every visible or
@@ -191,6 +193,32 @@ function getGitCells(
   return { cells, dates };
 }
 
+type DayCellProps = Omit<React.HTMLAttributes<HTMLElement>, "onClick"> & {
+  /**
+   * Click handler. Without one the day is a plain, non-focusable cell, so a
+   * read-only calendar does not put a tab stop on every day.
+   */
+  onSelect?: () => void;
+  disabled?: boolean;
+};
+
+/** One day: a button when the calendar is interactive, a div otherwise. */
+const DayCell = React.forwardRef<HTMLElement, DayCellProps>(
+  ({ onSelect, disabled, ...props }, ref) =>
+    onSelect ? (
+      <button
+        ref={ref as React.Ref<HTMLButtonElement>}
+        type="button"
+        onClick={onSelect}
+        disabled={disabled}
+        {...props}
+      />
+    ) : (
+      <div ref={ref as React.Ref<HTMLDivElement>} {...props} />
+    ),
+);
+DayCell.displayName = "DayCell";
+
 const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
   (
     {
@@ -341,32 +369,38 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                   day: "numeric",
                 });
                 return (
-                  <button
+                  <DayCell
                     key={day}
-                    type="button"
                     role="gridcell"
                     aria-label={`${dateLabel}${isToday ? `, ${labels.today}` : ""}, ${statusLabel({ isActive, usedFreeze, isFuture })}`}
                     aria-current={isToday ? "date" : undefined}
-                    onClick={() => onDayClick?.(date, isActive)}
+                    onSelect={onDayClick && (() => onDayClick(date, isActive))}
                     disabled={isFuture}
                     className={cn(
                       "relative flex aspect-square items-center justify-center rounded-md p-1 text-sm transition-colors",
-                      "hover:bg-muted focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+                      onDayClick &&
+                        "hover:bg-muted focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
                       // Today = you-are-here → an Ink ring (no orange; see above).
                       isToday &&
                         "ring-foreground font-semibold ring-2 ring-inset",
-                      isFuture && "text-muted-foreground/50 cursor-not-allowed",
+                      isFuture && "text-muted-foreground/50",
+                      isFuture && onDayClick && "cursor-not-allowed",
                       // Active streak = success (healthy/consistent), not the accent.
                       isActive &&
                         !usedFreeze &&
-                        "bg-success text-success-foreground hover:bg-success/90",
+                        "bg-success text-success-foreground",
+                      isActive &&
+                        !usedFreeze &&
+                        onDayClick &&
+                        "hover:bg-success/90",
                       usedFreeze &&
-                        "bg-[var(--freeze-color)] text-[var(--freeze-foreground-color)] hover:opacity-90",
+                        "bg-[var(--freeze-color)] text-[var(--freeze-foreground-color)]",
+                      usedFreeze && onDayClick && "hover:opacity-90",
                     )}
                     style={usedFreeze ? freezeColorStyles : undefined}
                   >
                     {day}
-                  </button>
+                  </DayCell>
                 );
               })}
             </div>
@@ -386,8 +420,7 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                   key={getDateKey(date)}
                   className="flex flex-col items-center gap-2"
                 >
-                  <button
-                    type="button"
+                  <DayCell
                     role="gridcell"
                     aria-current={isToday ? "date" : undefined}
                     aria-label={`${date.toLocaleDateString(locale, {
@@ -395,15 +428,17 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                       month: "long",
                       day: "numeric",
                     })}${isToday ? `, ${labels.today}` : ""}, ${statusLabel({ isActive, usedFreeze, isFuture })}`}
-                    onClick={() => onDayClick?.(date, isActive)}
+                    onSelect={onDayClick && (() => onDayClick(date, isActive))}
                     disabled={isFuture}
                     className={cn(
                       "relative flex h-12 w-12 items-center justify-center rounded-full border-2 transition-colors",
-                      "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-                      !isFuture && "hover:opacity-90",
+                      onDayClick &&
+                        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+                      onDayClick && !isFuture && "hover:opacity-90",
                       isToday && "border-foreground",
                       isFuture &&
-                        "border-border/40 bg-muted/20 text-muted-foreground/40 cursor-not-allowed",
+                        "border-border/40 bg-muted/20 text-muted-foreground/40",
+                      isFuture && onDayClick && "cursor-not-allowed",
                       isActive &&
                         !usedFreeze &&
                         "border-success bg-success text-success-foreground",
@@ -433,7 +468,7 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                         />
                       )
                     )}
-                  </button>
+                  </DayCell>
                   <span
                     className={cn(
                       "font-mono text-xs tracking-wider uppercase",
@@ -500,15 +535,16 @@ const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
                       return (
                         <Tooltip key={getDateKey(date)}>
                           <TooltipTrigger asChild>
-                            <button
-                              type="button"
+                            <DayCell
                               role="gridcell"
                               aria-current={isToday ? "date" : undefined}
                               aria-label={`${dateLabel}${isToday ? `, ${labels.today}` : ""}, ${statusLabel({ isActive, usedFreeze, isFuture: false })}`}
-                              onClick={() => onDayClick?.(date, isActive)}
+                              onSelect={
+                                onDayClick && (() => onDayClick(date, isActive))
+                              }
                               className={cn(
                                 "border-border/40 h-4 w-4 rounded-sm border transition-colors",
-                                "hover:ring-ring hover:ring-1",
+                                onDayClick && "hover:ring-ring hover:ring-1",
                                 isToday &&
                                   "border-foreground ring-foreground ring-1",
                                 isActive &&

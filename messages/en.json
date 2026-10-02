@@ -848,7 +848,9 @@
       "boost": "{multiplier}× XP: {name}",
       "boostEnds": "ends {relative}",
       "seeProgress": "See your progress",
-      "hideProgress": "Hide your progress"
+      "hideProgress": "Hide your progress",
+      "boostCta": "Earn XP",
+      "company": "@ {company}"
     },
     "progress": {
       "streakTitle": "Streak",
@@ -876,6 +878,11 @@
     },
     "profile": {
       "title": "Profile"
+    },
+    "answers": {
+      "title": "Your interests and goals",
+      "description": "Your answers to the welcome questions shape your getting-started steps and the people we suggest.",
+      "cta": "Change your answers"
     }
   },
   "activity": {
@@ -990,7 +997,7 @@
     },
     "welcomeCardTitle": "Personalize your experience",
     "welcomeCardDescription": "Answer a few quick questions so we can recommend the right events, members, and content for you.",
-    "welcomeCardCta": "Get started"
+    "welcomeCardCta": "Answer three quick questions"
   },
   "challenges": {
     "title": "Challenges",

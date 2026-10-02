@@ -1,8 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { AlertTriangleIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,6 +78,11 @@ type SectionBodyProps = {
   optional?: boolean;
   /** Content-shaped loading placeholder. Defaults to three text bars. */
   skeleton?: React.ReactNode;
+  /**
+   * `compact` for a single row inside a larger block (one skeleton bar, an
+   * inline error with retry) so a failed part degrades only its own row.
+   */
+  size?: "default" | "compact";
   children?: React.ReactNode;
 };
 
@@ -99,6 +107,33 @@ function DefaultSkeleton() {
   );
 }
 
+function CompactError({ retry }: { retry?: () => void }) {
+  const t = useTranslations("common");
+  return (
+    <p
+      role="alert"
+      className="text-muted-foreground flex min-h-8 items-center gap-2 text-sm"
+    >
+      <AlertTriangleIcon
+        aria-hidden
+        className="text-destructive size-4 shrink-0"
+      />
+      <span className="min-w-0 flex-1">{t("errorTitle")}</span>
+      {retry && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 shrink-0"
+          onClick={retry}
+        >
+          {t("retry")}
+        </Button>
+      )}
+    </p>
+  );
+}
+
 /**
  * The state switch on its own: skeleton, error with retry, empty, or the
  * content. `DashboardSection` uses it for its body; use it directly for a
@@ -109,15 +144,29 @@ function SectionBody({
   empty,
   optional,
   skeleton,
+  size = "default",
   children,
 }: SectionBodyProps) {
   if (isHidden({ status, empty, optional })) return null;
 
   switch (status.kind) {
     case "loading":
-      return <div aria-busy="true">{skeleton ?? <DefaultSkeleton />}</div>;
+      return (
+        <div aria-busy="true">
+          {skeleton ??
+            (size === "compact" ? (
+              <Skeleton className="h-8 w-full" />
+            ) : (
+              <DefaultSkeleton />
+            ))}
+        </div>
+      );
     case "error":
-      return <ErrorState className="px-0 py-6" onRetry={status.retry} />;
+      return size === "compact" ? (
+        <CompactError retry={status.retry} />
+      ) : (
+        <ErrorState className="px-0 py-6" onRetry={status.retry} />
+      );
     case "empty":
       return <>{empty}</>;
     case "ready":
@@ -137,6 +186,12 @@ type DashboardSectionProps = Omit<SectionBodyProps, "status"> & {
    * panel (a flat, border-defined card).
    */
   variant?: "plain" | "card";
+  /**
+   * Shown under the body whenever the section renders (loading, error, empty
+   * or ready): for content that does not depend on the section's own data.
+   * A hidden section hides its footer too.
+   */
+  footer?: React.ReactNode;
   className?: string;
 };
 
@@ -155,6 +210,8 @@ function DashboardSection({
   empty,
   optional,
   skeleton,
+  size,
+  footer,
   children,
 }: DashboardSectionProps) {
   const headingId = React.useId();
@@ -182,10 +239,12 @@ function DashboardSection({
           empty={empty}
           optional={optional}
           skeleton={skeleton}
+          size={size}
         >
           {children}
         </SectionBody>
       </div>
+      {footer}
     </section>
   );
 }

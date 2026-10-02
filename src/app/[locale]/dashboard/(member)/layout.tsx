@@ -32,7 +32,9 @@ export default async function MemberDashboardLayout({
         {t("greeting", { name })}
       </h1>
 
-      <DashboardTabs className="mt-6" />
+      <div className="mt-6">
+        <DashboardTabs />
+      </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         {/* Not <main>: the root layout already provides the main landmark. */}

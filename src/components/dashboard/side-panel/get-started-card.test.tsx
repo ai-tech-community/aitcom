@@ -94,7 +94,10 @@ describe("GetStartedCard", () => {
 
   it("uses the same account-level dismissal as the reminder", () => {
     renderCard();
-    fireEvent.click(screen.getByRole("button", { name: "Don't show again" }));
+    const dismiss = screen.getByRole("button", { name: "Don't show again" });
+    // A 32px target (WCAG 2.2 target size, with room to spare).
+    expect(dismiss).toHaveClass("size-8");
+    fireEvent.click(dismiss);
     expect(controller.dismiss).toHaveBeenCalledTimes(1);
   });
 
@@ -114,8 +117,8 @@ describe("GetStartedCard", () => {
       name: en.onboarding.welcomeCardCta,
     });
     expect(cta).toHaveAttribute("href", "/dashboard/onboarding");
-    // Contrast and One Voice: ink text and arrow; the panel's one orange is
-    // the live XP boost.
+    // Contrast and One Voice: ink text and arrow; the dashboard's one
+    // orange is the active tab.
     expect(cta).toHaveClass("text-foreground");
     expect(cta).not.toHaveClass("text-primary");
     expect(cta.querySelector("svg")).not.toHaveClass("text-primary");
