@@ -63,7 +63,6 @@ export function ActivityFeed() {
     <div>
       <SectionLabel className="pb-4">{t("sectionTitle")}</SectionLabel>
 
-
       {/* Feed items */}
       <div className="mt-4">
         {isLoading && (
