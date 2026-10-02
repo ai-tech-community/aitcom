@@ -19,11 +19,13 @@
  *
  * The env file's DATABASE_URL decides which database this touches; the
  * first line printed names its host. Idempotent: a second run writes
- * nothing.
+ * nothing. A failed write is reported and the run goes on; the exit code
+ * is then 1.
  * Core logic and tests: src/server/badges/backfill.ts.
  */
 import { db } from "@/server/db";
 import {
+  backfillSucceeded,
   formatBackfillReport,
   runBadgeBackfill,
 } from "@/server/badges/backfill";
@@ -68,10 +70,11 @@ async function main() {
     { apply, batchSize, log: (line) => console.log(line) },
   );
   console.log(formatBackfillReport(report).join("\n"));
+  return backfillSucceeded(report);
 }
 
 main()
-  .then(() => process.exit(0))
+  .then((succeeded) => process.exit(succeeded ? 0 : 1))
   .catch((err: unknown) => {
     console.error("Badge backfill failed:", err);
     process.exit(1);

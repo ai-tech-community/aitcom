@@ -86,17 +86,17 @@ export const Articles: CollectionConfig = {
           previousDoc?.reviewStatus !== "approved"
         ) {
           const { awardXp, XP_AMOUNTS } = await import("@/lib/gamification");
-          const { onArticleApproved } =
+          const { onArticleApprovedAfterSave } =
             await import("@/server/badges/article-approved");
 
+          // The one place approval XP is granted: an admin approval and a
+          // trusted author's direct publish both pass through here.
           await awardXp(db, doc.authorId, XP_AMOUNTS.ARTICLE_PUBLISHED);
 
-          // `req` carries this save's transaction, so the Writer count
-          // includes the article just approved.
-          await onArticleApproved(
+          await onArticleApprovedAfterSave(
             db,
             { authorId: doc.authorId, type: doc.type },
-            { req },
+            req,
           );
 
           await logActivity(db, {

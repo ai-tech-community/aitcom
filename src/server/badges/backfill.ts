@@ -8,8 +8,11 @@
  * - Idempotent: earning skips held badges, and a moved prize row is gone
  *   from `member_badge`, so a re-run writes nothing.
  * - Retroactive: backfilled badges get no XP bonus, activity event or
- *   notification (see `EarnOptions.retroactive`).
+ *   notification (see `recordRetroactiveTiers`).
  * - Never deletes a stored badge row it cannot match to a challenge.
+ * - Reports every failure (a metric read, a badge write, a prize move),
+ *   continues with the rest, and `backfillSucceeded` is then false, so the
+ *   CLI exits non-zero.
  */
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import type { Payload } from "payload";
@@ -29,7 +32,7 @@ import {
 } from "@/server/db/schema";
 
 import { awardLabel } from "./awards";
-import { recordTrackMetric } from "./engine";
+import { recordRetroactiveTiers } from "./engine";
 import { TRACK_METRICS, type BadgeSources } from "./metrics";
 
 type Db = typeof appDb;
@@ -59,6 +62,12 @@ export interface OffCatalogSlug {
   awards: Record<AwardMatch, number>;
 }
 
+/** A write the backfill could not make; the run went on without it. */
+export type BackfillFailure =
+  | { kind: "metrics"; userId: string; error: string }
+  | { kind: "badges"; userId: string; track: BadgeTrackId; error: string }
+  | { kind: "award"; userId: string; slug: string; error: string };
+
 export interface BackfillReport {
   apply: boolean;
   members: number;
@@ -66,12 +75,21 @@ export interface BackfillReport {
   newTiers: Record<BadgeTrackId, Record<string, number>>;
   /** Badge rows written (apply only). */
   inserted: number;
-  /** Members whose metrics could not be read; they were skipped. */
-  failedMembers: string[];
   /** Stored badge rows whose slug is not in the catalog, by slug. */
   offCatalog: OffCatalogSlug[];
   /** Prize rows moved to `member_award` (apply only). */
   awardsMoved: number;
+  /** Everything that failed, in the order it happened. */
+  failures: BackfillFailure[];
+}
+
+/** Whether the run did everything it set out to do. */
+export function backfillSucceeded(report: BackfillReport): boolean {
+  return report.failures.length === 0;
+}
+
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 const DEFAULT_BATCH = 100;
@@ -130,8 +148,12 @@ async function backfillTracks(
         metrics.push([track, await TRACK_METRICS[track](sources, userId)]);
       }
     } catch (err) {
-      report.failedMembers.push(userId);
-      options.log?.(`  ! ${userId}: metrics failed: ${String(err)}`);
+      report.failures.push({
+        kind: "metrics",
+        userId,
+        error: errorText(err),
+      });
+      options.log?.(`  ! ${userId}: metrics failed: ${errorText(err)}`);
       continue;
     }
 
@@ -145,10 +167,25 @@ async function backfillTracks(
           (report.newTiers[track][badge.slug] ?? 0) + 1;
       }
       if (options.apply) {
-        const earned = await recordTrackMetric(db, userId, track, metric, {
-          retroactive: true,
-        });
-        report.inserted += earned.length;
+        try {
+          const earned = await recordRetroactiveTiers(
+            db,
+            userId,
+            track,
+            metric,
+          );
+          report.inserted += earned.length;
+        } catch (err) {
+          report.failures.push({
+            kind: "badges",
+            userId,
+            track,
+            error: errorText(err),
+          });
+          options.log?.(
+            `  ! ${userId}: ${track} badges not written: ${errorText(err)}`,
+          );
+        }
       }
     }
   }
@@ -280,9 +317,9 @@ export async function runBadgeBackfill(
     members: 0,
     newTiers: emptyNewTiers(),
     inserted: 0,
-    failedMembers: [],
     offCatalog: [],
     awardsMoved: 0,
+    failures: [],
   };
 
   // Off-catalog rows are reported as found; matched prize rows then move.
@@ -298,8 +335,20 @@ export async function runBadgeBackfill(
     entry.awards[row.match] += 1;
     bySlug.set(row.slug, entry);
     if (options.apply && row.match === "matched" && row.challengeId !== null) {
-      if (await moveToAward(db, { ...row, challengeId: row.challengeId })) {
-        report.awardsMoved += 1;
+      try {
+        if (await moveToAward(db, { ...row, challengeId: row.challengeId })) {
+          report.awardsMoved += 1;
+        }
+      } catch (err) {
+        report.failures.push({
+          kind: "award",
+          userId: row.userId,
+          slug: row.slug,
+          error: errorText(err),
+        });
+        options.log?.(
+          `  ! ${row.userId}: prize ${JSON.stringify(row.slug)} not moved: ${errorText(err)}`,
+        );
       }
     }
   }
@@ -339,11 +388,6 @@ export function formatBackfillReport(report: BackfillReport): string[] {
     );
   }
   if (report.apply) lines.push(`Badge rows written: ${report.inserted}`);
-  if (report.failedMembers.length > 0) {
-    lines.push(
-      `Members skipped (metrics failed): ${report.failedMembers.join(", ")}`,
-    );
-  }
   lines.push("", "Stored badge rows not in the catalog:");
   if (report.offCatalog.length === 0) lines.push("  none");
   for (const entry of report.offCatalog) {
@@ -355,6 +399,19 @@ export function formatBackfillReport(report: BackfillReport): string[] {
   }
   if (report.apply) {
     lines.push(`Prize rows moved to member_award: ${report.awardsMoved}`);
+  }
+  lines.push("", `Failures: ${report.failures.length}`);
+  for (const failure of report.failures) {
+    const what =
+      failure.kind === "metrics"
+        ? "metrics not read (member skipped)"
+        : failure.kind === "badges"
+          ? `${failure.track} badges not written`
+          : `prize ${JSON.stringify(failure.slug)} not moved`;
+    lines.push(`  ${failure.userId}: ${what} — ${failure.error}`);
+  }
+  if (!backfillSucceeded(report)) {
+    lines.push("Some writes failed; fix the cause and re-run (it is safe).");
   }
   return lines;
 }

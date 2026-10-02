@@ -210,7 +210,7 @@ describe.skipIf(!RUN_DB)("badge backfill [DB integration]", () => {
 
     expect(report.apply).toBe(false);
     expect(report.members).toBe(ids.length);
-    expect(report.failedMembers).toEqual([]);
+    expect(report.failures).toEqual([]);
     expect(report.newTiers.regular).toEqual({ first_event: 1, regular: 1 });
     expect(report.newTiers.writer).toEqual({});
     expect(report.offCatalog).toEqual(
@@ -245,6 +245,7 @@ describe.skipIf(!RUN_DB)("badge backfill [DB integration]", () => {
 
   it("apply writes tiers silently, moves matched prizes, keeps the rest", async () => {
     const report = await run(true);
+    expect(m.backfill.backfillSucceeded(report)).toBe(true);
     expect(report.inserted).toBe(2);
     expect(report.awardsMoved).toBe(1);
 
@@ -284,5 +285,128 @@ describe.skipIf(!RUN_DB)("badge backfill [DB integration]", () => {
     expect(report.newTiers.regular).toEqual({});
     expect(await rows.badges()).toEqual(badgesBefore);
     expect(await rows.awards()).toEqual(awardsBefore);
+  });
+  describe("when writes fail", () => {
+    const f = {
+      /** Badge and award writes for this member fail (a test trigger). */
+      failing: `bf-failing-${suffix}`,
+      /** Written normally in the same run. */
+      fine: `bf-fine-${suffix}`,
+    };
+    const fIds = Object.values(f);
+    const fn = `bf_fail_${suffix}`;
+    const ddl = (statement: string) =>
+      m.db.execute(m.drizzle.sql.raw(statement));
+    const dropTriggers = async () => {
+      await ddl(`DROP TRIGGER IF EXISTS ${fn} ON "app"."member_badge"`);
+      await ddl(`DROP TRIGGER IF EXISTS ${fn} ON "app"."member_award"`);
+      await ddl(`DROP FUNCTION IF EXISTS "app".${fn}()`);
+    };
+    const runScoped = () =>
+      m.backfill.runBadgeBackfill(
+        { db: m.db, payload: m.getPayloadClient },
+        { apply: true, userIds: fIds },
+      );
+
+    beforeAll(async () => {
+      const { db, schema } = m;
+      await db
+        .insert(schema.user)
+        .values(
+          fIds.map((id) => ({ id, email: `${id}@aitcom.test`, name: id })),
+        );
+      await db
+        .insert(schema.memberProfiles)
+        .values(fIds.map((id) => ({ userId: id, displayName: id })));
+      await db.insert(schema.eventRegistrations).values(
+        fIds.map((userId, i) => ({
+          eventId: 920_000 + i,
+          userId,
+          status: "attended" as const,
+        })),
+      );
+      await db
+        .insert(schema.challengeEnrollments)
+        .values({ challengeId, userId: f.failing });
+      // Inserted before the trigger exists.
+      await db
+        .insert(schema.memberBadges)
+        .values({ userId: f.failing, badgeSlug: prize });
+      await ddl(`
+        CREATE FUNCTION "app".${fn}() RETURNS trigger AS $$
+        BEGIN
+          IF NEW.user_id = '${f.failing}' THEN
+            RAISE EXCEPTION 'test: write refused';
+          END IF;
+          RETURN NEW;
+        END $$ LANGUAGE plpgsql`);
+      await ddl(`CREATE TRIGGER ${fn} BEFORE INSERT ON "app"."member_badge"
+        FOR EACH ROW EXECUTE FUNCTION "app".${fn}()`);
+      await ddl(`CREATE TRIGGER ${fn} BEFORE INSERT ON "app"."member_award"
+        FOR EACH ROW EXECUTE FUNCTION "app".${fn}()`);
+    }, 120_000);
+
+    afterAll(async () => {
+      if (!m) return;
+      await dropTriggers();
+      const { db, schema } = m;
+      const { inArray } = m.drizzle;
+      for (const [table, column] of [
+        [schema.challengeEnrollments, schema.challengeEnrollments.userId],
+        [schema.eventRegistrations, schema.eventRegistrations.userId],
+        [schema.memberBadges, schema.memberBadges.userId],
+        [schema.memberAwards, schema.memberAwards.userId],
+      ] as const) {
+        await db.delete(table).where(inArray(column, fIds));
+      }
+      await db
+        .delete(schema.memberProfiles)
+        .where(inArray(schema.memberProfiles.userId, fIds));
+      await db.delete(schema.user).where(inArray(schema.user.id, fIds));
+    }, 120_000);
+
+    it("reports each failed write, keeps going, and is not a success", async () => {
+      const report = await runScoped();
+
+      expect(m.backfill.backfillSucceeded(report)).toBe(false);
+      expect(report.failures).toEqual([
+        {
+          kind: "award",
+          userId: f.failing,
+          slug: prize,
+          error: expect.stringContaining("write refused"),
+        },
+        {
+          kind: "badges",
+          userId: f.failing,
+          track: "regular",
+          error: expect.stringContaining("write refused"),
+        },
+      ]);
+      // The other member was written; the failing prize row was kept.
+      expect(report.inserted).toBe(1);
+      expect(report.awardsMoved).toBe(0);
+      const kept = await m.db
+        .select({
+          userId: m.schema.memberBadges.userId,
+          slug: m.schema.memberBadges.badgeSlug,
+        })
+        .from(m.schema.memberBadges)
+        .where(m.drizzle.inArray(m.schema.memberBadges.userId, fIds));
+      expect(kept.map((row) => `${row.userId}:${row.slug}`).sort()).toEqual(
+        [`${f.failing}:${prize}`, `${f.fine}:first_event`].sort(),
+      );
+      const text = m.backfill.formatBackfillReport(report).join("\n");
+      expect(text).toContain("Failures: 2");
+      expect(text).toContain("regular badges not written");
+    });
+
+    it("a re-run after the cause is fixed completes the work", async () => {
+      await dropTriggers();
+      const report = await runScoped();
+      expect(m.backfill.backfillSucceeded(report)).toBe(true);
+      expect(report.inserted).toBe(1);
+      expect(report.awardsMoved).toBe(1);
+    });
   });
 });

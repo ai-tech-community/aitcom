@@ -5,7 +5,8 @@
  * (`evaluateBadges(db, userId, ["writer"])`); the engine reads the track's
  * metric from its source of truth and inserts every tier now reached. The
  * `(user_id, badge_slug)` unique index makes it idempotent, so calling it
- * twice, or over every member as a backfill, is safe.
+ * twice, or over every member as a backfill, is safe. Only the tier the
+ * triggering action reached is celebrated (see `trackEarnings`).
  *
  * Earning never breaks the action that triggered it: each call runs in its
  * own transaction (a savepoint when the caller passes a transaction), and a
@@ -30,22 +31,28 @@ import {
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 
+import { trackEarnings, type Earning } from "./celebration";
 import { TRACK_METRICS, type BadgeDb, type BadgeSources } from "./metrics";
 import { notifyBadgesEarned } from "./notify";
 
 export type { BadgeDb } from "./metrics";
+export { trackEarnings, type Earning } from "./celebration";
 
 export interface EarnOptions {
   /** A collection hook's request, so metrics see its uncommitted write. */
   req?: BadgeSources["req"];
-  /**
-   * Retroactive earning (the backfill): record the badge only. No XP
-   * bonus, activity event or notification for something earned long ago.
-   */
-  retroactive?: boolean;
 }
 
-/** XP granted once, when the badge row is actually created. */
+/** What one evaluation did. It never throws; `ok` is false when it failed. */
+export interface EarnOutcome {
+  ok: boolean;
+  /** Badges newly recorded, in catalog order. */
+  earned: BadgeSlug[];
+  /** The subset this action reached: XP bonus, event and notification. */
+  celebrated: BadgeSlug[];
+}
+
+/** XP granted once, when a celebrated badge row is actually created. */
 const EARNING_XP: Partial<Record<BadgeSlug, number>> = {
   first_event: XP_AMOUNTS.FIRST_EVENT_BONUS,
   profile_complete: XP_AMOUNTS.PROFILE_COMPLETE,
@@ -55,20 +62,22 @@ const EARNING_XP: Partial<Record<BadgeSlug, number>> = {
 const CATALOG_ORDER = new Map(BADGE_SLUGS.map((slug, index) => [slug, index]));
 
 /**
- * Inserts the given badges, skipping the ones the member holds, and
- * returns the newly earned slugs in catalog order. Only new rows get their
- * XP bonus, activity event and notification.
+ * Inserts the given badges, skipping the ones the member holds. New rows
+ * marked `celebrate` get their XP bonus, activity event and notification;
+ * the others are recorded silently.
  */
 async function recordEarned(
   db: BadgeDb,
   userId: string,
-  slugs: readonly BadgeSlug[],
-  options: EarnOptions,
-): Promise<BadgeSlug[]> {
-  if (slugs.length === 0) return [];
+  earnings: readonly Earning[],
+): Promise<Omit<EarnOutcome, "ok">> {
+  if (earnings.length === 0) return { earned: [], celebrated: [] };
+  const celebrate = new Set(
+    earnings.filter((e) => e.celebrate).map((e) => e.slug),
+  );
   const rows = await db
     .insert(memberBadges)
-    .values(slugs.map((badgeSlug) => ({ userId, badgeSlug })))
+    .values(earnings.map(({ slug }) => ({ userId, badgeSlug: slug })))
     .onConflictDoNothing()
     .returning({ id: memberBadges.id, badgeSlug: memberBadges.badgeSlug });
   const earned = rows
@@ -78,74 +87,64 @@ async function recordEarned(
         (CATALOG_ORDER.get(a.badgeSlug) ?? 0) -
         (CATALOG_ORDER.get(b.badgeSlug) ?? 0),
     );
-  if (earned.length === 0 || options.retroactive) {
-    return earned.map((row) => row.badgeSlug);
-  }
+  const celebrated = earned.filter((row) => celebrate.has(row.badgeSlug));
 
-  for (const row of earned) {
+  for (const row of celebrated) {
     const xp = EARNING_XP[row.badgeSlug];
     if (xp) await awardXp(db, userId, xp);
   }
-  // A system event: earning is a consequence, not something the member
-  // did, so it never counts as an active day.
-  await db.insert(activityEvents).values(
-    earned.map((row) => ({
-      actorId: userId,
-      actorType: "system",
-      action: "badge.earned",
-      targetType: "member_badge",
-      targetId: row.id,
-      metadata: { badgeSlug: row.badgeSlug },
-    })),
-  );
-  await notifyBadgesEarned(
-    db,
-    userId,
-    earned.map((row) => row.badgeSlug),
-  );
-  return earned.map((row) => row.badgeSlug);
-}
-
-/** Runs `work` in its own transaction or savepoint; logs and swallows failure. */
-async function safely(
-  db: BadgeDb,
-  label: string,
-  work: (tx: BadgeDb) => Promise<BadgeSlug[]>,
-): Promise<BadgeSlug[]> {
-  try {
-    return await db.transaction((tx) => work(tx));
-  } catch (err) {
-    console.error(`badges: ${label} failed`, err);
-    return [];
+  if (celebrated.length > 0) {
+    // A system event: earning is a consequence, not something the member
+    // did, so it never counts as an active day.
+    await db.insert(activityEvents).values(
+      celebrated.map((row) => ({
+        actorId: userId,
+        actorType: "system",
+        action: "badge.earned",
+        targetType: "member_badge",
+        targetId: row.id,
+        metadata: { badgeSlug: row.badgeSlug },
+      })),
+    );
+    await notifyBadgesEarned(
+      db,
+      userId,
+      celebrated.map((row) => row.badgeSlug),
+    );
   }
-}
-
-/** The track tiers a metric value reaches, recorded for the member. */
-async function recordTiers(
-  db: BadgeDb,
-  userId: string,
-  track: BadgeTrackId,
-  metric: number,
-  options: EarnOptions,
-): Promise<BadgeSlug[]> {
-  return recordEarned(
-    db,
-    userId,
-    reachedTiers(track, metric).map((badge) => badge.slug),
-    options,
-  );
+  return {
+    earned: earned.map((row) => row.badgeSlug),
+    celebrated: celebrated.map((row) => row.badgeSlug),
+  };
 }
 
 /**
- * Reads each track's metric for the member and records every tier reached.
- * Returns the badges newly earned by this call.
+ * Runs `work` in its own transaction or savepoint, so a failure rolls back
+ * only the badge writes; logs and reports it instead of throwing.
+ */
+async function safely(
+  db: BadgeDb,
+  label: string,
+  work: (tx: BadgeDb) => Promise<Omit<EarnOutcome, "ok">>,
+): Promise<EarnOutcome> {
+  try {
+    return { ok: true, ...(await db.transaction((tx) => work(tx))) };
+  } catch (err) {
+    console.error(`badges: ${label} failed`, err);
+    return { ok: false, earned: [], celebrated: [] };
+  }
+}
+
+/**
+ * Reads each track's metric for the member and records every tier reached,
+ * celebrating only the tier this action reached.
  */
 export async function evaluateBadges(
   db: BadgeDb,
   userId: string,
   tracks: readonly BadgeTrackId[],
   options: EarnOptions = {},
-): Promise<BadgeSlug[]> {
+): Promise<EarnOutcome> {
   return safely(
     db,
     `evaluating ${tracks.join(", ")} for ${userId}`,
@@ -155,12 +154,12 @@ export async function evaluateBadges(
         payload: getPayloadClient,
         req: options.req,
       };
-      const earned: BadgeSlug[] = [];
+      const earnings: Earning[] = [];
       for (const track of tracks) {
         const metric = await TRACK_METRICS[track](sources, userId);
-        earned.push(...(await recordTiers(tx, userId, track, metric, options)));
+        earnings.push(...trackEarnings(track, metric));
       }
-      return earned;
+      return recordEarned(tx, userId, earnings);
     },
   );
 }
@@ -168,34 +167,57 @@ export async function evaluateBadges(
 /**
  * Records the tiers a metric the caller already computed reaches, for a
  * caller that reads one track for many members at once (benchmark
- * coverage). Returns the badges newly earned.
+ * coverage). Same celebration rule as `evaluateBadges`.
  */
 export async function recordTrackMetric(
   db: BadgeDb,
   userId: string,
   track: BadgeTrackId,
   metric: number,
-  options: EarnOptions = {},
-): Promise<BadgeSlug[]> {
+): Promise<EarnOutcome> {
   return safely(db, `recording ${track} for ${userId}`, (tx) =>
-    recordTiers(tx, userId, track, metric, options),
+    recordEarned(tx, userId, trackEarnings(track, metric)),
   );
 }
 
 /**
+ * The backfill's write: records every tier the metric reaches silently, in
+ * one transaction. Unlike the live entry points it throws on failure, so
+ * the backfill can report it. Returns the badges newly recorded.
+ */
+export async function recordRetroactiveTiers(
+  db: BadgeDb,
+  userId: string,
+  track: BadgeTrackId,
+  metric: number,
+): Promise<BadgeSlug[]> {
+  const { earned } = await db.transaction((tx) =>
+    recordEarned(
+      tx,
+      userId,
+      reachedTiers(track, metric).map((badge) => ({
+        slug: badge.slug,
+        celebrate: false,
+      })),
+    ),
+  );
+  return earned;
+}
+
+/**
  * Records a milestone the caller has just seen happen (its trigger stays
- * at the source). Returns whether it was newly earned.
+ * at the source); it is always celebrated. Returns whether it was newly
+ * earned.
  */
 export async function awardMilestone(
   db: BadgeDb,
   userId: string,
   slug: MilestoneSlug,
-  options: EarnOptions = {},
 ): Promise<boolean> {
-  const earned = await safely(db, `awarding ${slug} to ${userId}`, (tx) =>
-    recordEarned(tx, userId, [slug], options),
+  const outcome = await safely(db, `awarding ${slug} to ${userId}`, (tx) =>
+    recordEarned(tx, userId, [{ slug, celebrate: true }]),
   );
-  return earned.length > 0;
+  return outcome.earned.length > 0;
 }
 
 /**
@@ -207,16 +229,18 @@ export async function awardEarlyAdopterIfEligible(
   userId: string,
 ): Promise<boolean> {
   const slug: LimitedEditionSlug = "early_adopter";
-  const earned = await safely(
+  const outcome = await safely(
     db,
     `awarding ${slug} to ${userId}`,
     async (tx) => {
       const [row] = await tx
         .select({ n: sql<number>`count(*)::int` })
         .from(memberProfiles);
-      if (Number(row?.n ?? 0) > LIMITED_EDITIONS[slug].editionSize) return [];
-      return recordEarned(tx, userId, [slug], {});
+      if (Number(row?.n ?? 0) > LIMITED_EDITIONS[slug].editionSize) {
+        return { earned: [], celebrated: [] };
+      }
+      return recordEarned(tx, userId, [{ slug, celebrate: true }]);
     },
   );
-  return earned.length > 0;
+  return outcome.earned.length > 0;
 }

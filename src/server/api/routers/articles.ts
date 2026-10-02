@@ -226,14 +226,10 @@ export const articlesRouter = createTRPCRouter({
           },
         });
 
-        await awardXp(
-          ctx.db,
-          ctx.session.user.id,
-          XP_AMOUNTS.ARTICLE_PUBLISHED,
-        );
-
-        // The collection hook evaluates too when the review status
-        // changed; earning is idempotent, and this covers a re-publish.
+        // Approval XP comes from the Articles collection hook, which this
+        // update triggers. The hook also evaluates badges when the review
+        // status changed; earning is idempotent, and this covers a
+        // re-publish of an article approved before.
         await onArticleApproved(ctx.db, {
           authorId: ctx.session.user.id,
           type: article.type,

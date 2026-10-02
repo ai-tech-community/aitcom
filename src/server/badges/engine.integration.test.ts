@@ -80,6 +80,14 @@ describe.skipIf(!RUN_DB)("badge engine [DB integration]", () => {
     author: `be-author-${suffix}`,
     /** Challenge participant for the completion hook. */
     player: `be-player-${suffix}`,
+    /** Jumps from 0 to 10 attended events in one evaluation. */
+    jump: `be-jump-${suffix}`,
+    /** Three attended events on a fresh member. */
+    three: `be-three-${suffix}`,
+    /** A 40-day streak long ago. */
+    streaker: `be-streak-${suffix}`,
+    /** A trusted author who publishes directly. */
+    trusted: `be-trusted-${suffix}`,
   };
   const ids = Object.values(u);
   const payloadIds: { collection: string; id: number }[] = [];
@@ -424,7 +432,42 @@ describe.skipIf(!RUN_DB)("badge engine [DB integration]", () => {
   });
 
   describe("evaluateBadges", () => {
-    it("records every tier reached at once, and nothing twice", async () => {
+    const notices = (userId: string) =>
+      m.db
+        .select()
+        .from(m.schema.notifications)
+        .where(
+          m.drizzle.and(
+            m.drizzle.eq(m.schema.notifications.userId, userId),
+            m.drizzle.eq(m.schema.notifications.type, "badge_earned"),
+          ),
+        );
+    const points = (userId: string) =>
+      m.db
+        .select({ amount: m.schema.pointsEvents.amount })
+        .from(m.schema.pointsEvents)
+        .where(m.drizzle.eq(m.schema.pointsEvents.userId, userId));
+    const earnedEvents = (userId: string) =>
+      m.db
+        .select({ actorType: m.schema.activityEvents.actorType })
+        .from(m.schema.activityEvents)
+        .where(
+          m.drizzle.and(
+            m.drizzle.eq(m.schema.activityEvents.actorId, userId),
+            m.drizzle.eq(m.schema.activityEvents.action, "badge.earned"),
+          ),
+        );
+    const attend = (userId: string, count: number, base: number) =>
+      m.db.insert(m.schema.eventRegistrations).values(
+        Array.from({ length: count }, (_, i) => ({
+          eventId: base + i,
+          userId,
+          status: "attended" as const,
+        })),
+      );
+    const nothing = { ok: true, earned: [], celebrated: [] };
+
+    it("records tiers the action passed silently, and nothing twice", async () => {
       const { db, schema, engine } = m;
       await db.insert(schema.agentProfiles).values({
         ownerId: u.engine,
@@ -432,67 +475,47 @@ describe.skipIf(!RUN_DB)("badge engine [DB integration]", () => {
         totalContributions: 300,
       });
 
-      const first = await engine.evaluateBadges(db, u.engine, [
-        "agent_wrangler",
-      ]);
-      expect(first).toEqual([
-        "agent_master",
-        "agent_wrangler_2",
-        "agent_wrangler_3",
-      ]);
       expect(
         await engine.evaluateBadges(db, u.engine, ["agent_wrangler"]),
-      ).toEqual([]);
+      ).toEqual({
+        ok: true,
+        earned: ["agent_master", "agent_wrangler_2", "agent_wrangler_3"],
+        celebrated: [],
+      });
+      expect(
+        await engine.evaluateBadges(db, u.engine, ["agent_wrangler"]),
+      ).toEqual(nothing);
       expect(await slugsOf(u.engine)).toEqual([
         "agent_master",
         "agent_wrangler_2",
         "agent_wrangler_3",
       ]);
+      expect(await notices(u.engine)).toEqual([]);
+      expect(await earnedEvents(u.engine)).toEqual([]);
     });
 
-    it("grants the earning XP and one notification only for new rows", async () => {
-      const { db, schema, engine, drizzle } = m;
-      await db.insert(schema.eventRegistrations).values({
-        eventId: 900_010,
-        userId: u.engine,
-        status: "attended",
-      });
-      const xpBefore = await db
-        .select({ amount: schema.pointsEvents.amount })
-        .from(schema.pointsEvents)
-        .where(drizzle.eq(schema.pointsEvents.userId, u.engine));
+    it("celebrates the tier this action reached: XP, one notification, one event", async () => {
+      const { db, engine } = m;
+      await attend(u.engine, 1, 900_010);
+      const xpBefore = await points(u.engine);
 
-      expect(await engine.evaluateBadges(db, u.engine, ["regular"])).toEqual([
-        "first_event",
-      ]);
+      expect(await engine.evaluateBadges(db, u.engine, ["regular"])).toEqual({
+        ok: true,
+        earned: ["first_event"],
+        celebrated: ["first_event"],
+      });
       expect(await engine.evaluateBadges(db, u.engine, ["regular"])).toEqual(
-        [],
+        nothing,
       );
 
-      const xpAfter = await db
-        .select({ amount: schema.pointsEvents.amount })
-        .from(schema.pointsEvents)
-        .where(drizzle.eq(schema.pointsEvents.userId, u.engine));
+      const xpAfter = await points(u.engine);
       expect(xpAfter.length - xpBefore.length).toBe(1);
       expect(xpAfter.map((row) => row.amount)).toContain(
         m.XP_AMOUNTS.FIRST_EVENT_BONUS,
       );
-
-      const notices = await db
-        .select()
-        .from(schema.notifications)
-        .where(
-          drizzle.and(
-            drizzle.eq(schema.notifications.userId, u.engine),
-            drizzle.eq(schema.notifications.type, "badge_earned"),
-          ),
-        );
-      const forFirstEvent = notices.filter(
-        (n) =>
-          (n.metadata as { badgeSlug?: string }).badgeSlug === "first_event",
-      );
-      expect(forFirstEvent).toHaveLength(1);
-      expect(forFirstEvent[0]).toMatchObject({
+      const sent = await notices(u.engine);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({
         title: "You earned Regular I",
         content: "Attended 1 event",
         metadata: {
@@ -500,39 +523,76 @@ describe.skipIf(!RUN_DB)("badge engine [DB integration]", () => {
           reviewPath: `/members/${u.engine}/badges`,
         },
       });
-      // One per new badge: the three agent tiers earned earlier, plus this.
-      expect(notices).toHaveLength(4);
-
       // Earning is a system event, so it never counts as an active day.
-      const earnedEvents = await db
-        .select({ actorType: schema.activityEvents.actorType })
-        .from(schema.activityEvents)
-        .where(
-          drizzle.and(
-            drizzle.eq(schema.activityEvents.actorId, u.engine),
-            drizzle.eq(schema.activityEvents.action, "badge.earned"),
-          ),
-        );
-      expect(earnedEvents).toHaveLength(4);
-      expect(new Set(earnedEvents.map((e) => e.actorType))).toEqual(
-        new Set(["system"]),
+      expect(await earnedEvents(u.engine)).toEqual([{ actorType: "system" }]);
+    });
+
+    it("a jump from 0 to 10 celebrates only the tier at exactly 10", async () => {
+      const { db, engine } = m;
+      await attend(u.jump, 10, 900_100);
+
+      expect(await engine.evaluateBadges(db, u.jump, ["regular"])).toEqual({
+        ok: true,
+        earned: ["first_event", "regular", "veteran"],
+        celebrated: ["veteran"],
+      });
+      // Regular I was passed, not reached: no first-event XP bonus.
+      expect(await points(u.jump)).toEqual([]);
+      const sent = await notices(u.jump);
+      expect(sent.map((n) => n.title)).toEqual(["You earned Regular III"]);
+      expect(await engine.evaluateBadges(db, u.jump, ["regular"])).toEqual(
+        nothing,
+      );
+      expect(await notices(u.jump)).toHaveLength(1);
+    });
+
+    it("metric 3 on a fresh member: Regular I silent, Regular II celebrated", async () => {
+      const { db, engine } = m;
+      await attend(u.three, 3, 900_200);
+
+      expect(await engine.evaluateBadges(db, u.three, ["regular"])).toEqual({
+        ok: true,
+        earned: ["first_event", "regular"],
+        celebrated: ["regular"],
+      });
+      expect(await points(u.three)).toEqual([]);
+      expect((await notices(u.three)).map((n) => n.title)).toEqual([
+        "You earned Regular II",
+      ]);
+    });
+
+    it("a 40-day longest streak records Streak I and II silently", async () => {
+      const { db, schema, engine } = m;
+      await db.insert(schema.activityEvents).values(
+        Array.from({ length: 40 }, (_, i) => ({
+          actorId: u.streaker,
+          actorType: "member",
+          action: "thread.create",
+          createdAt: new Date(Date.now() - (60 - i) * DAY_MS),
+        })),
+      );
+
+      expect(await engine.evaluateBadges(db, u.streaker, ["streak"])).toEqual({
+        ok: true,
+        earned: ["streak_1", "streak_2"],
+        celebrated: [],
+      });
+      expect(await notices(u.streaker)).toEqual([]);
+      expect(await engine.evaluateBadges(db, u.streaker, ["streak"])).toEqual(
+        nothing,
       );
     });
 
-    it("records a retroactive badge without XP, event or notification", async () => {
-      const { db, schema, engine, drizzle } = m;
-      const notices = () =>
-        db
-          .select({ id: schema.notifications.id })
-          .from(schema.notifications)
-          .where(drizzle.eq(schema.notifications.userId, u.engine));
-      const before = (await notices()).length;
+    it("records backfill tiers silently, and throws on a failed write", async () => {
+      const { db, engine } = m;
+      const before = (await notices(u.engine)).length;
       expect(
-        await engine.recordTrackMetric(db, u.engine, "learner", 1, {
-          retroactive: true,
-        }),
+        await engine.recordRetroactiveTiers(db, u.engine, "learner", 1),
       ).toEqual(["course_complete"]);
-      expect((await notices()).length).toBe(before);
+      expect((await notices(u.engine)).length).toBe(before);
+      await expect(
+        engine.recordRetroactiveTiers(db, `missing-${suffix}`, "learner", 1),
+      ).rejects.toThrow();
     });
 
     it("never breaks the caller's transaction", async () => {
@@ -547,6 +607,29 @@ describe.skipIf(!RUN_DB)("badge engine [DB integration]", () => {
             "profile_complete",
           ),
         ).toBe(false);
+        await tx.insert(schema.activityEvents).values({
+          actorId: u.engine,
+          actorType: "member",
+          action: marker,
+        });
+      });
+      const rows = await db
+        .select({ id: schema.activityEvents.id })
+        .from(schema.activityEvents)
+        .where(drizzle.eq(schema.activityEvents.action, marker));
+      expect(rows).toHaveLength(1);
+    });
+
+    it("a failed guarded read (the XP boost lookup) falls back without aborting the transaction", async () => {
+      const { db, schema, drizzle } = m;
+      const { readOrFallback } = await import("@/lib/gamification");
+      const marker = `be-boost-${suffix}`;
+      await db.transaction(async (tx) => {
+        const value = await readOrFallback(tx, 1, async (sp) => {
+          await sp.execute(drizzle.sql`SELECT 1 / 0`);
+          return 2;
+        });
+        expect(value).toBe(1);
         await tx.insert(schema.activityEvents).values({
           actorId: u.engine,
           actorType: "member",
@@ -616,6 +699,48 @@ describe.skipIf(!RUN_DB)("badge engine [DB integration]", () => {
       expect(await slugsOf(u.author)).toEqual(
         ["article_author", "tutorial_creator"].sort(),
       );
+    });
+
+    it("a trusted author's direct publish grants approval XP exactly once", async () => {
+      const { db, schema, drizzle, createCaller } = m;
+      await db
+        .update(schema.memberProfiles)
+        .set({ xp: 1000, level: 6 })
+        .where(drizzle.eq(schema.memberProfiles.userId, u.trusted));
+      await db
+        .insert(schema.memberBadges)
+        .values({ userId: u.trusted, badgeSlug: "article_author" });
+      const id = await create("articles", {
+        title: `BE trusted ${suffix}`,
+        slug: `be-article-trusted-${suffix}`,
+        content: RICH_TEXT,
+        type: "article",
+        authorId: u.trusted,
+        authorType: "member",
+        status: "draft",
+      });
+      const pointsOf = () =>
+        db
+          .select({ reason: schema.pointsEvents.reason })
+          .from(schema.pointsEvents)
+          .where(drizzle.eq(schema.pointsEvents.userId, u.trusted));
+      const before = await pointsOf();
+
+      const author = createCaller({
+        db,
+        session: { user: { id: u.trusted, name: u.trusted } } as never,
+        headers: new Headers(),
+      });
+      await author.articles.submit({ id });
+
+      const payload = await m.getPayloadClient();
+      const published = await payload.findByID({ collection: "articles", id });
+      expect(published).toMatchObject({
+        status: "published",
+        reviewStatus: "approved",
+      });
+      // One XP grant (from the collection hook), not one per code path.
+      expect((await pointsOf()).length - before.length).toBe(1);
     });
 
     it("completing a challenge earns Challenger I and records its award", async () => {

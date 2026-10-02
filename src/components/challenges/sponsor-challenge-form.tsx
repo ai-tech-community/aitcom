@@ -596,12 +596,12 @@ export function SponsorChallengeForm({
 
           <div className="space-y-2">
             <label className="text-muted-foreground font-mono text-xs tracking-wider">
-              Badge Reward
+              Award label
             </label>
             <Input
               value={badgeReward}
               onChange={(e) => setBadgeReward(e.target.value)}
-              placeholder="badge slug"
+              placeholder="e.g. Winner — RAG Hack 2026"
             />
           </div>
 

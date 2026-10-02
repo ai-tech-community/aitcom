@@ -174,13 +174,31 @@ type Tx = Parameters<
 type DB = NeonDatabase<typeof schema> | Tx;
 
 /**
+ * Runs a read in its own savepoint (a transaction on the root db) and
+ * returns `fallback` if it fails. A failed statement inside a caller's
+ * transaction aborts that whole transaction even when the error is caught,
+ * so a guarded read must roll back to its own savepoint instead.
+ */
+export async function readOrFallback<T>(
+  db: DB,
+  fallback: T,
+  read: (tx: DB) => Promise<T>,
+): Promise<T> {
+  try {
+    return await db.transaction((tx) => read(tx));
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Resolve the multiplier of the currently-active XP boost (admin-managed
  * campaign), or 1 if none. Guarded so a missing table / failed read never
- * breaks XP awarding.
+ * breaks XP awarding, nor the caller's transaction.
  */
 async function activeBoostMultiplier(db: DB): Promise<number> {
-  try {
-    const res = await db.execute(sql`
+  return readOrFallback(db, 1, async (tx) => {
+    const res = await tx.execute(sql`
       SELECT "multiplier" FROM "public"."points_boosts"
       WHERE "enabled" = true AND now() >= "starts_at" AND now() <= "ends_at"
       ORDER BY "multiplier" DESC
@@ -189,9 +207,7 @@ async function activeBoostMultiplier(db: DB): Promise<number> {
     const raw = res.rows[0]?.multiplier;
     const m = raw == null ? 1 : Number(raw);
     return Number.isFinite(m) && m >= 1 ? m : 1;
-  } catch {
-    return 1;
-  }
+  });
 }
 
 /**

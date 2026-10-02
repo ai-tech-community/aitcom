@@ -80,6 +80,7 @@ import {
 } from "@/server/events/organizer-attendees";
 import { checkInTransition } from "@/server/events/check-in";
 import { evaluateBadges } from "@/server/badges/engine";
+import { isFirstCheckIn } from "@/server/events/first-check-in";
 import {
   canSeeEventOrganizers,
   canSetEventOrganizer,
@@ -1199,11 +1200,15 @@ export const eventsRouter = createTRPCRouter({
         metadata: { registrationId: registration.id },
       });
 
-      // Attending counts for the member's Regular track; a check-in also
-      // means the organizer's event took place (Host). Undo revokes nothing.
-      if (next.status === "attended") {
+      // Attending counts for the member's Regular track. The event's first
+      // check-in means it took place, which is the one moment the
+      // organizer's Host track can move (later check-ins of the same event
+      // cannot). Undo revokes nothing.
+      if (next.status === "attended" && registration.status !== "attended") {
         await evaluateBadges(ctx.db, registration.userId, ["regular"]);
-        await evaluateBadges(ctx.db, userId, ["host"]);
+        if (await isFirstCheckIn(ctx.db, registration.eventId)) {
+          await evaluateBadges(ctx.db, userId, ["host"]);
+        }
       }
 
       return next;
