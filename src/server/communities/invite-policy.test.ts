@@ -65,13 +65,16 @@ describe("viewerJoinAction", () => {
     ).toEqual({ kind: "invite_only" });
   });
 
-  it("treats an open invitation like no membership (the invite link accepts it)", () => {
-    expect(
-      viewerJoinAction({ joinPolicy: "open", status: "invited" }).kind,
-    ).toBe("join");
-    expect(
-      viewerJoinAction({ joinPolicy: "invite_only", status: "invited" }).kind,
-    ).toBe("invite_only");
+  it("offers an open invitation to accept or decline, whatever the policy", () => {
+    for (const joinPolicy of [
+      "open",
+      "approval_required",
+      "invite_only",
+    ] as const) {
+      expect(viewerJoinAction({ joinPolicy, status: "invited" })).toEqual({
+        kind: "invited",
+      });
+    }
   });
 
   it("shows a pending request as pending, whatever the policy", () => {

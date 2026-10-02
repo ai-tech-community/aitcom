@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -28,21 +34,55 @@ const state = vi.hoisted(() => ({
     { communityId: string; slug: string; name: string; count: number }[]
   >,
   requestsArgs: [] as unknown[],
+  accept: vi.fn((_: { slug: string }) => Promise.resolve({ success: true })),
+  decline: vi.fn((_: { slug: string }) => Promise.resolve({ success: true })),
+  confirm: vi.fn((_: unknown) => Promise.resolve(true)),
+  invalidated: [] as string[],
 }));
 
-vi.mock("@/trpc/react", () => ({
-  api: {
-    communities: {
-      getMyCommunities: { useQuery: () => state.communities },
-      getMyPendingJoinRequests: {
-        useQuery: (...args: unknown[]) => {
-          state.requestsArgs = args;
-          return state.requests;
+vi.mock("@/trpc/react", () => {
+  const invalidate = (name: string) => () => {
+    state.invalidated.push(name);
+    return Promise.resolve();
+  };
+  return {
+    api: {
+      useUtils: () => ({
+        communities: {
+          getMyCommunities: { invalidate: invalidate("getMyCommunities") },
+          getBySlug: { invalidate: invalidate("getBySlug") },
+          getMembers: { invalidate: invalidate("getMembers") },
+        },
+        home: { nextUp: { invalidate: invalidate("home.nextUp") } },
+        feed: {
+          getHomeActivity: { invalidate: invalidate("feed.getHomeActivity") },
+        },
+      }),
+      communities: {
+        getMyCommunities: { useQuery: () => state.communities },
+        getMyPendingJoinRequests: {
+          useQuery: (...args: unknown[]) => {
+            state.requestsArgs = args;
+            return state.requests;
+          },
+        },
+        join: { useMutation: () => ({ mutateAsync: vi.fn() }) },
+        requestToJoin: { useMutation: () => ({ mutateAsync: vi.fn() }) },
+        leave: { useMutation: () => ({ mutateAsync: vi.fn() }) },
+        acceptInvite: { useMutation: () => ({ mutateAsync: state.accept }) },
+        declineInvite: {
+          useMutation: () => ({ mutateAsync: state.decline }),
         },
       },
     },
-  },
+  };
+});
+
+vi.mock("@/components/confirm-dialog", () => ({
+  useConfirm: () => state.confirm,
 }));
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock("@/i18n/navigation", () => ({
   Link: ({
@@ -81,15 +121,19 @@ function membership(
   };
 }
 
-function renderTab(locale: "en" | "nl" = "en") {
-  return render(
+function tab(locale: "en" | "nl" = "en") {
+  return (
     <NextIntlClientProvider
       locale={locale}
       messages={locale === "en" ? en : nl}
     >
       <MyCommunities />
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
+}
+
+function renderTab(locale: "en" | "nl" = "en") {
+  return render(tab(locale));
 }
 
 function rowFor(name: string): HTMLElement {
@@ -102,6 +146,11 @@ describe("MyCommunities", () => {
   beforeEach(() => {
     state.requests = loaded([]);
     state.requestsArgs = [];
+    state.invalidated = [];
+    state.confirm.mockReset();
+    state.confirm.mockImplementation(() => Promise.resolve(true));
+    state.accept.mockClear();
+    state.decline.mockClear();
   });
 
   it("shows a skeleton while loading", () => {
@@ -180,6 +229,101 @@ describe("MyCommunities", () => {
     expect(screen.getByText(en.communities.dashboard.onlyWaiting)).toBeTruthy();
     expect(screen.getByText("Request sent")).toBeTruthy();
     expect(screen.getByText("You're invited")).toBeTruthy();
+  });
+
+  it("accepts an invitation from its row, and refreshes Home and the list", async () => {
+    state.communities = loaded([
+      membership("pending", "member", "pending_approval"),
+      membership("invite", "member", "invited"),
+    ]);
+    renderTab();
+
+    // A request waits on the organizers: nothing to answer on its row.
+    expect(
+      within(rowFor("Pending")).queryByRole("button", { name: "Accept" }),
+    ).toBeNull();
+
+    fireEvent.click(
+      within(rowFor("Invite")).getByRole("button", { name: "Accept" }),
+    );
+    await waitFor(() =>
+      expect(state.accept).toHaveBeenCalledWith({ slug: "invite" }),
+    );
+    expect(state.confirm).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(state.invalidated).toEqual(
+        expect.arrayContaining([
+          "getMyCommunities",
+          "home.nextUp",
+          "feed.getHomeActivity",
+        ]),
+      ),
+    );
+  });
+
+  it("asks before declining an invitation, and declines only on yes", async () => {
+    state.communities = loaded([membership("invite", "member", "invited")]);
+    renderTab();
+    const decline = within(rowFor("Invite")).getByRole("button", {
+      name: "Decline",
+    });
+
+    state.confirm.mockImplementationOnce(() => Promise.resolve(false));
+    fireEvent.click(decline);
+    await waitFor(() => expect(state.confirm).toHaveBeenCalledTimes(1));
+    expect(state.confirm.mock.calls[0]![0]).toMatchObject({
+      title: "Decline the invitation to Invite?",
+      destructive: true,
+    });
+    expect(state.decline).not.toHaveBeenCalled();
+
+    fireEvent.click(decline);
+    await waitFor(() =>
+      expect(state.decline).toHaveBeenCalledWith({ slug: "invite" }),
+    );
+    expect(state.confirm).toHaveBeenCalledTimes(2);
+  });
+
+  it("after accepting, focus follows the community into Your communities", async () => {
+    state.communities = loaded([
+      membership("readers", "member"),
+      membership("invite", "member", "invited"),
+    ]);
+    const { rerender } = renderTab();
+    fireEvent.click(
+      within(rowFor("Invite")).getByRole("button", { name: "Accept" }),
+    );
+    await waitFor(() => expect(state.accept).toHaveBeenCalled());
+
+    // The list reloads with the invitation accepted.
+    state.communities = loaded([
+      membership("readers", "member"),
+      membership("invite", "member", "active"),
+    ]);
+    rerender(tab());
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: /^Invite/ })).toHaveFocus(),
+    );
+  });
+
+  it("after declining, focus moves to the next row still waiting", async () => {
+    state.communities = loaded([
+      membership("invite", "member", "invited"),
+      membership("pending", "member", "pending_approval"),
+    ]);
+    const { rerender } = renderTab();
+    fireEvent.click(
+      within(rowFor("Invite")).getByRole("button", { name: "Decline" }),
+    );
+    await waitFor(() => expect(state.decline).toHaveBeenCalled());
+
+    state.communities = loaded([
+      membership("pending", "member", "pending_approval"),
+    ]);
+    rerender(tab());
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: /^Pending/ })).toHaveFocus(),
+    );
   });
 
   it("shows join requests only on rows the member owns or administers", () => {

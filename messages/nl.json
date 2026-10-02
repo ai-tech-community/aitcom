@@ -2721,7 +2721,14 @@
       "stopUsingLocation": "Stop met mijn locatie gebruiken",
       "locationPrivacy": "We ronden haar af op ongeveer een kilometer en bewaren haar niet.",
       "locationDenied": "Je browser heeft je locatie niet gedeeld. Je kunt dit toestaan in de site-instellingen van je browser.",
-      "locationFailedPlaces": "We konden je locatie niet bepalen. Je kunt hierboven nog steeds een plaats kiezen."
+      "locationFailedPlaces": "We konden je locatie niet bepalen. Je kunt hierboven nog steeds een plaats kiezen.",
+      "invitedAction": "Je bent uitgenodigd",
+      "acceptFailed": "De uitnodiging voor {community} accepteren is niet gelukt. Probeer het opnieuw.",
+      "acceptFailedGeneric": "De uitnodiging accepteren is niet gelukt. Probeer het opnieuw.",
+      "declined": "Je hebt de uitnodiging voor {community} afgewezen",
+      "declinedGeneric": "Je hebt de uitnodiging afgewezen",
+      "declineFailed": "De uitnodiging voor {community} afwijzen is niet gelukt. Probeer het opnieuw.",
+      "declineFailedGeneric": "De uitnodiging afwijzen is niet gelukt. Probeer het opnieuw."
     },
     "stack": {
       "memberFallback": "Lid",
@@ -2972,7 +2979,15 @@
     "invite": {
       "pendingTitle": "Verzoek ingediend",
       "pendingBody": "Je verzoek om lid te worden wacht op goedkeuring. Je krijgt toegang zodra een beheerder het goedkeurt.",
-      "browse": "Communities bekijken"
+      "browse": "Communities bekijken",
+      "invitedTitle": "Je bent uitgenodigd om lid te worden van {community}",
+      "invitedTitleGeneric": "Je bent uitgenodigd om lid te worden van deze community",
+      "accept": "Accepteren",
+      "decline": "Afwijzen",
+      "declineConfirmTitle": "Uitnodiging voor {community} afwijzen?",
+      "declineConfirmTitleGeneric": "Deze uitnodiging afwijzen?",
+      "declineConfirmBody": "De uitnodiging wordt verwijderd. Om later lid te worden, heb je een nieuwe uitnodiging nodig.",
+      "invitedShort": "Je bent uitgenodigd"
     },
     "feed": {
       "title": "Feed",

@@ -410,6 +410,7 @@ export function ReelsViewer({
                   joinPolicy={joinPolicy}
                   membershipStatus={membershipStatus}
                   memberRole={memberRole}
+                  size="compact"
                 />
               ) : null}
               <Button

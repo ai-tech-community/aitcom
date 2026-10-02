@@ -11,8 +11,9 @@ import { cn } from "@/lib/utils";
 /**
  * The directory's join control for one community: a quiet button to join
  * or request, or a short status ("Request sent", "By invitation",
- * "You're in"). Outline, never orange: a page of cards would otherwise be a
- * page of primary buttons. Leaving lives on the community page, not here.
+ * "You're invited", "You're in"). Outline, never orange: a page of cards
+ * would otherwise be a page of primary buttons. Leaving and answering an
+ * invitation live on the community page, not here.
  *
  * When a press succeeds the button becomes a status; focus moves to that
  * status, so keyboard and screen-reader users stay where they were.
@@ -97,6 +98,12 @@ export function JoinAction({
       return status(
         <Clock aria-hidden="true" className="size-4" />,
         t("pendingAction"),
+      );
+    case "invited":
+      // Answered on the community page, where the card links.
+      return status(
+        <Mail aria-hidden="true" className="size-4" />,
+        t("invitedAction"),
       );
     case "invite_only":
       return status(

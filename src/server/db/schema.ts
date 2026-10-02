@@ -550,7 +550,7 @@ export const notifications = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "event_conflict" | "introduction_request" | "referral_credited" | "webhook_proposed"
+    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "event_conflict" | "introduction_request" | "referral_credited" | "webhook_proposed" | "community_invite"
     title: d.varchar({ length: 255 }).notNull(),
     content: d.text().notNull(),
     metadata: d.json().$type<Record<string, unknown>>().default({}).notNull(),

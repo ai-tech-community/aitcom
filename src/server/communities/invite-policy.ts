@@ -53,16 +53,18 @@ export type ViewerJoinAction =
   | { kind: "join" }
   | { kind: "request" }
   | { kind: "pending" }
+  | { kind: "invited" }
   | { kind: "invite_only" }
   | { kind: "member"; canLeave: boolean }
   | { kind: "unavailable" };
 
 /**
  * The one rule every join control follows (community page, directory cards,
- * the Explore street). `status` is null for a guest or a non-member. An
- * open invitation does not skip the community's policy here: accepting an
- * invite runs through the invite link. Owners and members of the Hub root
- * cannot leave (the Hub is where every member belongs).
+ * the Explore street). `status` is null for a guest or a non-member. A
+ * direct invitation (an organizer invited them by name) is answered with
+ * Accept or Decline under every join policy: the invitation is the
+ * organizer's consent. Owners and members of the Hub root cannot leave (the
+ * Hub is where every member belongs).
  */
 export function viewerJoinAction({
   joinPolicy,
@@ -80,6 +82,7 @@ export function viewerJoinAction({
     return { kind: "member", canLeave: role !== "owner" && !isHub };
   }
   if (status === "pending_approval") return { kind: "pending" };
+  if (status === "invited") return { kind: "invited" };
   switch (joinPolicy) {
     case "open":
       return { kind: "join" };
