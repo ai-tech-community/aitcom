@@ -108,3 +108,11 @@ export function getBadgeRarity(db: typeof appDb): Promise<BadgeRarityReport> {
 export function clearBadgeRarityCache(): void {
   memo.clear();
 }
+
+/** Holders of each badge from a report, for ranking badges by rarity. */
+export function holdersOf(
+  report: BadgeRarityReport,
+): (slug: BadgeSlug) => number {
+  const bySlug = new Map(report.badges.map((b) => [b.slug, b.holders]));
+  return (slug) => bySlug.get(slug) ?? 0;
+}

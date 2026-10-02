@@ -3,11 +3,14 @@ import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
 import {
+  getBadgeRarityReport,
+  getMemberAwards,
+  getMyBadgeProgress,
   profileTabMetadata,
   requireMemberProfile,
 } from "@/server/members/profile-page";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
-import { BadgeGrid } from "@/components/members/profile/badge-grid";
+import { BadgesTab } from "@/components/members/profile/badges-tab";
 import { ProfileEmpty } from "@/components/members/profile/profile-empty";
 import { Button } from "@/components/ui/button";
 
@@ -22,14 +25,36 @@ export async function generateMetadata({
   return profileTabMetadata({ userId: id, locale, tab: "badges" });
 }
 
-/** Every badge the member earned, newest first; the count is the grid's. */
+/** Logs a failed supplementary load and carries on without it. */
+function orNull<T>(load: Promise<T>, label: string): Promise<T | null> {
+  return load.catch((error: unknown) => {
+    console.error(`Profile badges: ${label} failed to load`, error);
+    return null;
+  });
+}
+
+/**
+ * Every badge the member earned, by kind, with date and rarity; the count
+ * is the badges shown. The owner also sees locked tiers with their own
+ * progress (never requested for a visitor) and pins the showcase.
+ */
 export default async function MemberBadgesPage({ params }: { params: Params }) {
   const { id } = await params;
   const [data, t] = await Promise.all([
     requireMemberProfile(id),
     getTranslations("memberProfile.badges"),
   ]);
+  const isOwner = data.audience === "owner";
+
+  // Rarity and awards are supplementary: a failure drops them, not the tab.
+  const [rarity, awards, progress] = await Promise.all([
+    orNull(getBadgeRarityReport(), "rarity"),
+    orNull(getMemberAwards(id), "awards"),
+    isOwner ? orNull(getMyBadgeProgress(), "progress") : null,
+  ]);
+  const shownAwards = awards ?? [];
   const { badges } = data;
+  const isEmpty = !isOwner && badges.length === 0 && shownAwards.length === 0;
 
   return (
     <DashboardSection
@@ -41,10 +66,10 @@ export default async function MemberBadgesPage({ params }: { params: Params }) {
           </span>
         ) : undefined
       }
-      status={{ kind: badges.length > 0 ? "ready" : "empty" }}
+      status={{ kind: isEmpty ? "empty" : "ready" }}
       empty={
         <ProfileEmpty
-          isOwner={data.audience === "owner"}
+          isOwner={isOwner}
           title={t("emptyOwnerTitle")}
           description={t("emptyOwnerDescription")}
           action={
@@ -56,7 +81,17 @@ export default async function MemberBadgesPage({ params }: { params: Params }) {
         />
       }
     >
-      <BadgeGrid badges={badges} />
+      <BadgesTab
+        held={badges}
+        awards={shownAwards}
+        rarity={rarity}
+        viewer={
+          isOwner
+            ? { kind: "owner", progress: progress ?? [] }
+            : { kind: "visitor" }
+        }
+        showcase={data.showcase}
+      />
     </DashboardSection>
   );
 }

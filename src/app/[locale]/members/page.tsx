@@ -10,6 +10,7 @@ import { LeaderboardPodium } from "@/components/gamification/leaderboard-podium"
 import { BotIcon } from "lucide-react";
 import { VerifiedSocials } from "@/components/verified-socials";
 import { leaderboardSkills } from "@/server/social/present";
+import { RosterBadges } from "@/components/members/roster-badges";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -141,10 +142,12 @@ export default async function MembersPage({
                         {member.profile.xp} XP
                       </span>
                       {member.badgeCount > 0 && (
-                        <span className="text-muted-foreground font-mono text-xs">
-                          {member.badgeCount}{" "}
-                          {member.badgeCount === 1 ? "badge" : "badges"}
-                        </span>
+                        <RosterBadges
+                          slugs={member.topBadges}
+                          label={t("topBadges")}
+                        >
+                          {t("badgeCount", { count: member.badgeCount })}
+                        </RosterBadges>
                       )}
                       {skills.map((skill) => (
                         <span
@@ -275,9 +278,19 @@ export default async function MembersPage({
                         </span>
                       </td>
                       <td className="py-3 pr-6 align-top">
-                        <span className="text-muted-foreground">
-                          {member.badgeCount > 0 ? member.badgeCount : "-"}
-                        </span>
+                        {member.badgeCount > 0 ? (
+                          <RosterBadges
+                            slugs={member.topBadges}
+                            label={t("topBadges")}
+                          >
+                            <span className="sr-only">
+                              {t("badgeCount", { count: member.badgeCount })}
+                            </span>
+                            <span aria-hidden>{member.badgeCount}</span>
+                          </RosterBadges>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </td>
                       <td className="py-3 align-top">
                         <div className="flex flex-wrap gap-1">

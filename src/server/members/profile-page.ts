@@ -121,6 +121,19 @@ export const getMemberRecentWork = cache((userId: string, locale: string) =>
   api.members.getPublicRecentWork({ userId, locale: toLocale(locale) }),
 );
 
+export const getMemberAwards = cache((userId: string) =>
+  api.members.getPublicAwards({ userId }),
+);
+
+/** Badge rarity for every catalog badge (cached for an hour on the server). */
+export const getBadgeRarityReport = cache(() => api.badges.rarity());
+
+/**
+ * The signed-in member's own progress on every track. Call it only for the
+ * owner's view: it is the caller's progress, never the profile's member's.
+ */
+export const getMyBadgeProgress = cache(() => api.badges.myProgress());
+
 /**
  * Metadata for a profile tab: the member's name (with the tab for the
  * others), their bio as description, and no indexing while visitors cannot

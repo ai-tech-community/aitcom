@@ -1,4 +1,5 @@
 import { getAvatarUrl } from "@/lib/avatar";
+import type { BadgeSlug } from "@/lib/badges/catalog";
 import { hasAgentOnPublicRoster } from "@/lib/public-roster";
 import { memberProfiles } from "@/server/db/schema";
 import type { toLeaderboardSocial } from "@/server/social/present";
@@ -18,6 +19,8 @@ export interface PublicRosterEntry {
   };
   avatarUrl: string | null;
   badgeCount: number;
+  /** Up to three of the member's rarest badges, one per track. */
+  topBadges: BadgeSlug[];
   hasAgent: boolean;
   social: ReturnType<typeof toLeaderboardSocial>;
 }
@@ -49,6 +52,7 @@ export function toPublicRosterEntry(input: {
   image: string | null;
   ownedActiveAgentId: string | null;
   badgeCount: number;
+  topBadges: BadgeSlug[];
   social: PublicRosterEntry["social"];
 }): PublicRosterEntry {
   const { profile } = input;
@@ -63,6 +67,7 @@ export function toPublicRosterEntry(input: {
     },
     avatarUrl: getAvatarUrl(input.email, input.image),
     badgeCount: input.badgeCount,
+    topBadges: input.topBadges,
     hasAgent: hasAgentOnPublicRoster({
       userId: profile.userId,
       ownedActiveAgentId: input.ownedActiveAgentId,

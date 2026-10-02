@@ -773,7 +773,9 @@
     "ownerOnlyNotice": "Only you can see your profile. <link>Make it public in Settings.</link>",
     "message": "Message",
     "ownerHiddenByStaffNotice": "Your profile is hidden from the public. Contact us if you think this is a mistake.",
-    "agentNotActiveNotice": "Only you can see this agent page. Your agent is not active (status: <mono>{status}</mono>)."
+    "agentNotActiveNotice": "Only you can see this agent page. Your agent is not active (status: <mono>{status}</mono>).",
+    "badgeCount": "{count, plural, one {# badge} other {# badges}}",
+    "topBadges": "Rarest badges"
   },
   "memberProfile": {
     "tabsLabel": "Profile sections",
@@ -818,7 +820,7 @@
       "showcase": "Showcase",
       "showcaseAll": "All badges",
       "showcaseEmptyOwnerTitle": "No badges yet",
-      "showcaseEmptyOwnerDescription": "Your three most recent badges show here.",
+      "showcaseEmptyOwnerDescription": "Your rarest badges show here, or the ones you pin from the Badges tab.",
       "showcaseEmptyOwnerCta": "How to earn badges",
       "showcaseEmptyVisitor": "No badges yet.",
       "skills": "Skills",
@@ -830,7 +832,9 @@
       "recentWorkAll": "All work",
       "recentWorkEmptyOwnerTitle": "Nothing here yet",
       "recentWorkEmptyOwnerDescription": "Articles, projects, courses, certificates and events you host show up here.",
-      "recentWorkEmptyVisitor": "No work to show yet."
+      "recentWorkEmptyVisitor": "No work to show yet.",
+      "showcaseRarestHint": "Showing your rarest badges.",
+      "showcasePinCta": "Choose your own"
     },
     "badges": {
       "title": "Badges",
@@ -838,7 +842,28 @@
       "emptyOwnerTitle": "No badges yet",
       "emptyOwnerDescription": "You earn badges by joining events, finishing challenges, writing articles and completing your profile.",
       "emptyOwnerCta": "Find an event",
-      "emptyVisitor": "No badges yet."
+      "emptyVisitor": "No badges yet.",
+      "groups": {
+        "tracks": "Tracks",
+        "milestones": "Milestones",
+        "limitedEditions": "Limited editions",
+        "awards": "Awards"
+      },
+      "earnedOn": "Earned {date}",
+      "notEarned": "Not earned yet",
+      "otherTiers": "Other tiers of {track}",
+      "next": "Next: {name}, {progress}",
+      "awardFrom": "From <link>{challenge}</link>",
+      "showcaseNone": "Pin up to {limit, number} badges to the showcase on your Overview. Until you do, it shows your rarest.",
+      "showcaseSome": "{count, number} of {limit, number} pinned to your showcase.",
+      "showcaseFull": "Your showcase is full ({limit, number} of {limit, number}). Unpin a badge to pin another.",
+      "pin": "Pin to showcase",
+      "unpin": "Unpin",
+      "pinLabel": "Pin {name} to your showcase",
+      "unpinLabel": "Unpin {name} from your showcase",
+      "pinning": "Pinning…",
+      "unpinning": "Unpinning…",
+      "pinError": "Could not update your showcase. Try again."
     },
     "activity": {
       "title": "Activity",
@@ -980,7 +1005,9 @@
       "seeProgress": "See your progress",
       "hideProgress": "Hide your progress",
       "boostCta": "Earn XP",
-      "company": "@ {company}"
+      "company": "@ {company}",
+      "recentBadges": "Recent badges",
+      "allBadges": "All badges"
     },
     "progress": {
       "streakTitle": "Streak",
@@ -1302,13 +1329,20 @@
     "notification": {
       "title": "You earned {badge}",
       "linkLabel": "View your badges"
+    },
+    "progress": {
+      "regular": "{current, number} of {count, plural, one {# event} other {# events}}",
+      "host": "{current, number} of {count, plural, one {# event hosted} other {# events hosted}}",
+      "challenger": "{current, number} of {count, plural, one {# challenge} other {# challenges}}",
+      "writer": "{current, number} of {count, plural, one {# article} other {# articles}}",
+      "builder": "{current, number} of {count, plural, one {# project} other {# projects}}",
+      "learner": "{current, number} of {count, plural, one {# course} other {# courses}}",
+      "teacher": "{current, number} of {count, plural, one {# enrolment} other {# enrolments}}",
+      "connector": "{current, number} of {count, plural, one {# referral} other {# referrals}}",
+      "agent_wrangler": "{current, number} of {count, plural, one {# contribution} other {# contributions}}",
+      "benchmarker": "{current, number} of {count, plural, one {# benchmark cell} other {# benchmark cells}}",
+      "streak": "{current, number} of {count, plural, one {# day in a row} other {# days in a row}}"
     }
-  },
-  "achievementBadge": {
-    "earned": "Earned",
-    "locked": "Locked",
-    "rarity": "{percent}% of members",
-    "imageAlt": "{name} badge, {status}"
   },
   "sponsors": {
     "title": "Sponsors",
@@ -4013,5 +4047,18 @@
     "noQuiz": "This lesson has no quiz.",
     "errorLessonChangedElsewhere": "This lesson changed somewhere else, maybe in another tab. Reload to get the latest version.",
     "resourceUrlMissing": "Add the link's address. We'll save it once it has one."
+  },
+  "badgeEmblem": {
+    "tier": "{track}, tier {tier}",
+    "limited": "{name}, limited edition",
+    "award": "Award: {label}",
+    "earned": "{name}, earned {date}",
+    "locked": "{name}, locked",
+    "lockedProgress": "{name}, locked, {current, number} of {threshold, number}"
+  },
+  "badgeRarity": {
+    "share": "Earned by {percent} of members",
+    "fewerThanOnePercent": "Fewer than 1% of members",
+    "edition": "{holders, number} of {size, number} claimed"
   }
 }

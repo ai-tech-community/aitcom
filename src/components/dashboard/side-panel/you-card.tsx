@@ -9,6 +9,7 @@ import { api, type RouterOutputs } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 import { getInitials } from "@/lib/avatar";
 import { PROFILE_SETTINGS_HREF } from "@/lib/dashboard-routes";
+import { profileTabHref } from "@/lib/member-profile-routes";
 import { xpForNextLevel } from "@/lib/gamification";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VerifiedSocials } from "@/components/verified-socials";
+import { BadgeEmblem } from "@/components/badges/badge-emblem";
 import {
   DashboardSection,
   SectionBody,
@@ -32,6 +34,9 @@ import { StreakSummary } from "./streak-summary";
 import { YouProgress, type EarnedBadge } from "./you-progress";
 
 type MyProfile = RouterOutputs["members"]["getMyProfile"];
+
+/** Badges in the card's compact row, newest first. */
+const RECENT_BADGE_COUNT = 5;
 type MyStreak = RouterOutputs["members"]["getMyStreak"];
 
 function YouSkeleton() {
@@ -116,6 +121,7 @@ export function YouCard({
           streak={streakQuery.data}
           streakStatus={statusFromQueries(streakQuery)}
           badges={data.badges}
+          badgesHref={profileTabHref(profile.userId, "badges")}
         />
       )}
     </DashboardSection>
@@ -132,6 +138,7 @@ function YouSummary({
   streak,
   streakStatus,
   badges,
+  badgesHref,
 }: {
   name: string;
   avatarUrl: string | null;
@@ -142,6 +149,8 @@ function YouSummary({
   streak: MyStreak | undefined;
   streakStatus: SectionStatus;
   badges: EarnedBadge[];
+  /** The member's own Badges tab. */
+  badgesHref: string;
 }) {
   const t = useTranslations("dashboard.you");
   const tMembers = useTranslations("members");
@@ -209,6 +218,31 @@ function YouSummary({
           />
         )}
       </SectionBody>
+
+      {badges.length > 0 && (
+        <div className="flex items-center justify-between gap-3">
+          <ul
+            aria-label={t("recentBadges")}
+            className="flex items-center gap-1.5"
+          >
+            {badges.slice(0, RECENT_BADGE_COUNT).map(({ slug, earnedAt }) => (
+              <li key={slug} className="flex">
+                <BadgeEmblem
+                  subject={{ kind: "badge", slug }}
+                  state={{ earned: true, earnedAt }}
+                  size="sm"
+                />
+              </li>
+            ))}
+          </ul>
+          <Link
+            href={badgesHref}
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex min-h-8 shrink-0 items-center rounded-sm text-xs underline-offset-4 outline-none hover:underline focus-visible:ring-[3px]"
+          >
+            {t("allBadges")}
+          </Link>
+        </div>
+      )}
 
       <Collapsible open={progressOpen} onOpenChange={setProgressOpen}>
         <CollapsibleTrigger asChild>

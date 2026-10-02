@@ -6,21 +6,19 @@ import { Link } from "@/i18n/navigation";
 import { PROFILE_SETTINGS_HREF } from "@/lib/dashboard-routes";
 import { profileTabHref } from "@/lib/member-profile-routes";
 import {
+  getBadgeRarityReport,
   getMemberRecentWork,
   profileTabMetadata,
   requireMemberFrame,
 } from "@/server/members/profile-page";
 import { DashboardSection } from "@/components/dashboard/dashboard-section";
-import { BadgeGrid } from "@/components/members/profile/badge-grid";
+import { BadgeShowcase } from "@/components/members/profile/badge-showcase";
 import { ProfileEmpty } from "@/components/members/profile/profile-empty";
 import { recentWork } from "@/components/members/profile/work-entries";
 import { RECENT_WORK_LIMIT } from "@/server/members/profile-work";
 import { WorkEntryList } from "@/components/members/profile/work-entry-list";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-
-/** Badges in the showcase: the most recent until members can pin them. */
-const SHOWCASE_COUNT = 3;
 
 type Params = Promise<{ id: string; locale: string }>;
 
@@ -108,10 +106,15 @@ export default async function MemberOverviewPage({
   params: Params;
 }) {
   const { id, locale } = await params;
-  const [frame, t, tSetup] = await Promise.all([
+  const [frame, t, tSetup, rarity] = await Promise.all([
     requireMemberFrame(id),
     getTranslations("memberProfile.overview"),
     getTranslations("memberProfile.setup"),
+    // Rarity is a caption: without it the showcase still shows the badges.
+    getBadgeRarityReport().catch((error: unknown) => {
+      console.error("Profile showcase rarity failed to load", error);
+      return null;
+    }),
   ]);
 
   if (frame.kind === "setup") {
@@ -130,9 +133,9 @@ export default async function MemberOverviewPage({
   }
 
   const { data } = frame;
-  const { profile } = data;
+  const { profile, showcase } = data;
   const isOwner = data.audience === "owner";
-  const showcase = data.badges.slice(0, SHOWCASE_COUNT);
+  const earnedAt = new Map(data.badges.map((b) => [b.slug, b.earnedAt]));
 
   return (
     <div className="space-y-10">
@@ -157,13 +160,13 @@ export default async function MemberOverviewPage({
       <DashboardSection
         title={t("showcase")}
         action={
-          showcase.length > 0 ? (
+          showcase.slugs.length > 0 ? (
             <TabLink href={profileTabHref(id, "badges")}>
               {t("showcaseAll")}
             </TabLink>
           ) : undefined
         }
-        status={{ kind: showcase.length > 0 ? "ready" : "empty" }}
+        status={{ kind: showcase.slugs.length > 0 ? "ready" : "empty" }}
         empty={
           <ProfileEmpty
             isOwner={isOwner}
@@ -180,7 +183,24 @@ export default async function MemberOverviewPage({
           />
         }
       >
-        <BadgeGrid badges={showcase} size="lg" />
+        <div className="space-y-4">
+          <BadgeShowcase
+            slugs={showcase.slugs}
+            earnedAt={earnedAt}
+            rarity={rarity}
+          />
+          {isOwner && showcase.source === "rarest" && (
+            <p className="text-muted-foreground text-xs">
+              {t("showcaseRarestHint")}{" "}
+              <Link
+                href={profileTabHref(id, "badges")}
+                className="text-foreground underline underline-offset-4"
+              >
+                {t("showcasePinCta")}
+              </Link>
+            </p>
+          )}
+        </div>
       </DashboardSection>
 
       <DashboardSection

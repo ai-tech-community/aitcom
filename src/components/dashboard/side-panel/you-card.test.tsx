@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -65,12 +65,18 @@ function loaded(data: unknown): Query {
 }
 
 const PROFILE = {
-  profile: { displayName: "Ada", xp: 450, level: 3, company: "Lovelace Labs" },
+  profile: {
+    userId: "u-ada",
+    displayName: "Ada",
+    xp: 450,
+    level: 3,
+    company: "Lovelace Labs",
+  },
   social: {
     github: { handle: "ada", url: "https://github.com/ada", verified: true },
     linkedin: null,
   },
-  badges: [{ slug: "regular", earnedAt: "x" }],
+  badges: [{ slug: "regular", earnedAt: "2026-03-03T12:00:00Z" }],
   names: null,
 };
 
@@ -252,8 +258,24 @@ describe("YouCard", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("9 days")).toBeInTheDocument();
-    const badge = screen.getByText(en.badges.names.regular);
-    expect(badge).toHaveAttribute("title", "Attended 3 events");
+    // Behind the toggle, each badge is named and described in words.
+    expect(screen.getByText(en.badges.names.regular)).toBeInTheDocument();
+    expect(screen.getByText("Attended 3 events")).toBeInTheDocument();
+  });
+
+  it("shows a compact row of recent badge emblems linking to the Badges tab", () => {
+    renderCard();
+    const row = screen.getByRole("list", {
+      name: en.dashboard.you.recentBadges,
+    });
+    expect(
+      within(row).getByRole("img", {
+        name: "Regular, tier II, earned March 3, 2026",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: en.dashboard.you.allBadges }),
+    ).toHaveAttribute("href", "/members/u-ada/badges");
   });
 
   it("lists the member's own recent activity behind the progress toggle", () => {

@@ -5,7 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
@@ -95,6 +96,31 @@
   /* Homepage town square at night: a cool dusk behind the rooftops.
      Illustration only (never UI chrome); never warm, never orange. */
   --night-sky: oklch(0.9 0.035 262);
+  /* Badge emblems (BadgeEmblem) — a documented Chart-Containment exception,
+     like the heat ramp: one quiet hue per badge track (milestones stay
+     neutral), never Signal Orange (hues 20–80 are skipped). Each hue is a bare OKLCH angle; the theme sets
+     lightness and chroma, so a track keeps its hue in light and dark.
+     Shape and glyph carry the identity; the hue is a second cue only.
+     See DESIGN.md §Colors (Emblem hues). */
+  --emblem-hue-award: 85;
+  --emblem-hue-teacher: 108;
+  --emblem-hue-learner: 131;
+  --emblem-hue-builder: 154;
+  --emblem-hue-benchmarker: 177;
+  --emblem-hue-writer: 200;
+  --emblem-hue-regular: 223;
+  --emblem-hue-agent-wrangler: 269;
+  --emblem-hue-host: 292;
+  --emblem-hue-limited: 315;
+  --emblem-hue-challenger: 338;
+  --emblem-hue-streak: 1;
+  --emblem-hue-connector: 246;
+  /* Ink (rings, glyph) on tint (body): >= 4.5:1 in both themes. */
+  --emblem-ink-l: 0.45;
+  --emblem-ink-c: 0.075;
+  --emblem-tint-l: 0.96;
+  --emblem-tint-c: 0.02;
+  --emblem-sheen: oklch(1 0 0 / 0.8);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.705 0.213 47.604);
@@ -142,6 +168,11 @@
   --heat-2: oklch(0.52 0.13 150);
   --heat-3: oklch(0.72 0.16 150);
   --night-sky: oklch(0.25 0.05 264);
+  --emblem-ink-l: 0.84;
+  --emblem-ink-c: 0.07;
+  --emblem-tint-l: 0.27;
+  --emblem-tint-c: 0.03;
+  --emblem-sheen: oklch(1 0 0 / 0.18);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.646 0.222 41.116);

@@ -162,6 +162,8 @@ A near-monochrome canvas of true white through ink, lit by a single warm orange.
 - **Charts 1–5** (`oklch(0.646 0.222 41.116)` orange, `oklch(0.6 0.118 184.704)` teal, `oklch(0.398 0.07 227.392)` deep blue, `oklch(0.828 0.189 84.429)` yellow, `oklch(0.769 0.188 70.08)` amber): Reserved for data visualization (Recharts) only. **Never** borrow chart colors into UI chrome — that's how a clean palette turns into confetti.
 - **Heat 1–3** (`--heat-1/2/3`, a contained success-green intensity ramp light→mid→dark; brightened in dark mode): the one sanctioned heatmap ramp, used **only** by the hackathon team-heatmap (`cell-heat.ts`) to encode claimed → completed → verified as data intensity. A documented exception to the Chart-Containment Rule — like the chart hues, these tokens never appear in UI chrome.
 
+- **Emblem hues** (`--emblem-hue-*`, with `--emblem-ink-l/-c` and `--emblem-tint-l/-c` per theme): one quiet hue per badge track, drawn only by `BadgeEmblem` (`src/components/badges/badge-emblem.tsx`). Each hue token is a bare OKLCH angle; the theme sets lightness and chroma (ink ≈ L 0.45 / C 0.075 on a tint ≈ L 0.96 / C 0.02 in light, ink L 0.84 on tint L 0.27 in dark), so a track keeps its hue in both themes and ink on tint stays ≥4.5:1. Hues 20–80 are never used, so no emblem reads as Signal Orange (One Voice Rule); milestones are neutral (no chroma). Shape and glyph carry a badge's identity, the hue is only a second cue (Pair-With-A-Cue). A documented exception to the Chart-Containment Rule, like the heat ramp: these tokens never appear in UI chrome. The chart tokens themselves are not used: there are five for eleven tracks, chart-1 is orange in light mode, and their hues change between themes.
+
 ### Illustration (the town square only)
 - **Night Sky** (`--night-sky`, `bg-night-sky`; light `oklch(0.9 0.035 262)`, dark `oklch(0.25 0.05 264)`): the cool dusk tint behind the homepage town square's rooftops when a visitor turns night on. Cool blue-grey on purpose — never warm (No-Cream Rule), never orange (One Voice Rule). It fades in with the night level, only above the street and right of the hero copy's keep-clear zone, so it never sits under text. Lit windows and stars stay legible on it in both themes (ink on the light tint, near-white on the dark one). Like the chart hues, it never appears in UI chrome.
 
@@ -182,7 +184,7 @@ A fixed four-color vocabulary. Each is WCAG AA verified both as colored text on 
 
 **The No-Cream Rule.** The body background is pure white (`oklch(1 0 0)`) or true dark (`oklch(0.145 0 0)`). Never a warm-tinted near-white. The instant a surface drifts toward cream/sand/parchment, it reads as a generic AI-generated landing page — the exact anti-reference.
 
-**The Chart-Containment Rule.** The five chart hues live inside data viz and nowhere else. UI chrome is neutral + Signal Orange, full stop.
+**The Chart-Containment Rule.** The five chart hues live inside data viz and nowhere else. UI chrome is neutral + Signal Orange, full stop. (Documented exceptions with their own tokens: the heat ramp and the emblem hues above.)
 
 ## 3. Typography
 
@@ -248,6 +250,14 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 - **Shape:** Pill (`rounded-full`), 0.75rem, font-medium, padding 2px 8px, optional 12px leading icon.
 - **Variants:** Default (Signal Orange fill), Secondary (muted), Destructive, **Success / Warning / Info** (soft status pills — `bg-{token}/15 text-{token}`, built on the semantic status tokens), Outline (bordered, transparent), Ghost, Link.
 - **Status vs. category:** use `success`/`warning`/`info`/`destructive` for *states*; use `secondary` (neutral) for *categories* (difficulty, type, tags) and let the label carry the meaning.
+
+### Badge emblems
+- **One component:** `BadgeEmblem` draws every earned badge, award and (owner-only) locked badge in code from catalog data — never a trophy icon, image or pill. Sizes `sm` 24px (compact rows: dashboard You card, `/members` roster, other tiers), `md` 48px (milestones, limited editions, awards on the Badges tab), `lg` 96px (a track's highest tier, the Overview showcase). Stroke weights are set per size in screen pixels, so each size is drawn crisp rather than scaled; the tier III pattern is dropped at `sm`.
+- **Silhouette per track:** Regular ticket, Host arch, Challenger shield, Writer dog-eared page, Builder hexagon, Learner pentagon, Teacher octagon, Connector quatrefoil, Agent wrangler rounded square, Benchmarker diamond, Streak drop. Milestones share a plain circle, the limited edition is a rosette, awards are a medal on a ribbon. Glyphs are lucide line icons, one per track.
+- **Tier ring:** I a hairline outline, II a double hairline, III a solid band in the track's ink with a fine dotted pattern. The silhouette never changes with the tier.
+- **Flat:** emblems carry no shadow. The limited edition's sheen is the one motion: it sweeps across on hover, and under `prefers-reduced-motion` rests as a static highlight.
+- **Locked (owner only):** an outline in `muted-foreground`, no fill, with progress to that tier traced along the outline in `foreground` from the top. Visitors never see locked badges.
+- **Accessible name:** "Writer, tier II, earned March 3, 2026" / "Writer, tier III, locked, 3 of 15" (EN and NL, locale dates). Pass `decorative` only where adjacent text already says all of it.
 
 ### Navigation
 - **Style:** Quiet by default — Geist Sans or the mono `/ LABEL` for context nav, `text-muted` at rest, Ink/Signal-Orange on active. Hover is a subtle `bg-secondary/50` bed, never an aggressive fill.
