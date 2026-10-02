@@ -13,8 +13,12 @@ const s = vi.hoisted(() => ({
   join: vi.fn(() => Promise.resolve({ success: true })),
   request: vi.fn(() => Promise.resolve({ success: true })),
   leave: vi.fn(() => Promise.resolve({ success: true })),
+  accept: vi.fn((_: { slug: string }) => Promise.resolve({ success: true })),
   fetchCommunity: vi.fn(() =>
-    Promise.resolve({ name: "ACME", joinPolicy: "open" as const }),
+    Promise.resolve({
+      name: "ACME",
+      joinPolicy: "open" as "open" | "invite_only",
+    }),
   ),
   toast: vi.fn(),
   toastError: vi.fn(),
@@ -50,6 +54,8 @@ vi.mock("@/trpc/react", () => {
           getMembers: { invalidate },
           directory: { invalidate },
         },
+        home: { nextUp: { invalidate } },
+        feed: { getHomeActivity: { invalidate } },
       }),
       communities: {
         getMyCommunities: {
@@ -60,7 +66,7 @@ vi.mock("@/trpc/react", () => {
         join: { useMutation: () => ({ mutateAsync: s.join }) },
         requestToJoin: { useMutation: () => ({ mutateAsync: s.request }) },
         leave: { useMutation: () => ({ mutateAsync: s.leave }) },
-        acceptInvite: { useMutation: () => ({ mutateAsync: vi.fn() }) },
+        acceptInvite: { useMutation: () => ({ mutateAsync: s.accept }) },
         declineInvite: { useMutation: () => ({ mutateAsync: vi.fn() }) },
       },
     },
@@ -206,6 +212,26 @@ describe("useJoinDeepLink", () => {
     await waitFor(() => expect(window.location.search).toBe(""));
     expect(s.fetchCommunity).not.toHaveBeenCalled();
     expect(s.join).not.toHaveBeenCalled();
+  });
+
+  it("accepts the invitation waiting for a member who pressed Join signed out", async () => {
+    rememberJoinIntent("acme");
+    s.fetchCommunity.mockImplementationOnce(() =>
+      Promise.resolve({ name: "ACME", joinPolicy: "invite_only" }),
+    );
+    s.mine = [{ slug: "acme", status: "invited", role: "member" }];
+    window.history.replaceState(null, "", "/en/communities/acme?join=acme");
+    const onDone = vi.fn();
+    renderHook(() => useJoinDeepLink(onDone));
+    await waitFor(() =>
+      expect(s.accept).toHaveBeenCalledWith({ slug: "acme" }),
+    );
+    expect(s.join).not.toHaveBeenCalled();
+    // The same feedback as a join.
+    await waitFor(() =>
+      expect(s.toast).toHaveBeenCalledWith('joined:{"community":"ACME"}'),
+    );
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
   });
 
   it("does not join again when already a member", async () => {

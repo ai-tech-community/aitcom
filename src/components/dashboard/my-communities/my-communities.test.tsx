@@ -121,15 +121,19 @@ function membership(
   };
 }
 
-function renderTab(locale: "en" | "nl" = "en") {
-  return render(
+function tab(locale: "en" | "nl" = "en") {
+  return (
     <NextIntlClientProvider
       locale={locale}
       messages={locale === "en" ? en : nl}
     >
       <MyCommunities />
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
+}
+
+function renderTab(locale: "en" | "nl" = "en") {
+  return render(tab(locale));
 }
 
 function rowFor(name: string): HTMLElement {
@@ -278,6 +282,48 @@ describe("MyCommunities", () => {
       expect(state.decline).toHaveBeenCalledWith({ slug: "invite" }),
     );
     expect(state.confirm).toHaveBeenCalledTimes(2);
+  });
+
+  it("after accepting, focus follows the community into Your communities", async () => {
+    state.communities = loaded([
+      membership("readers", "member"),
+      membership("invite", "member", "invited"),
+    ]);
+    const { rerender } = renderTab();
+    fireEvent.click(
+      within(rowFor("Invite")).getByRole("button", { name: "Accept" }),
+    );
+    await waitFor(() => expect(state.accept).toHaveBeenCalled());
+
+    // The list reloads with the invitation accepted.
+    state.communities = loaded([
+      membership("readers", "member"),
+      membership("invite", "member", "active"),
+    ]);
+    rerender(tab());
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: /^Invite/ })).toHaveFocus(),
+    );
+  });
+
+  it("after declining, focus moves to the next row still waiting", async () => {
+    state.communities = loaded([
+      membership("invite", "member", "invited"),
+      membership("pending", "member", "pending_approval"),
+    ]);
+    const { rerender } = renderTab();
+    fireEvent.click(
+      within(rowFor("Invite")).getByRole("button", { name: "Decline" }),
+    );
+    await waitFor(() => expect(state.decline).toHaveBeenCalled());
+
+    state.communities = loaded([
+      membership("pending", "member", "pending_approval"),
+    ]);
+    rerender(tab());
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: /^Pending/ })).toHaveFocus(),
+    );
   });
 
   it("shows join requests only on rows the member owns or administers", () => {

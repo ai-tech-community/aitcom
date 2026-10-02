@@ -1,16 +1,8 @@
+import { clipText, oneLine } from "@/lib/text-utils";
 import type { HubMailLocale } from "./hub-dm-mail-copy";
 
 /** The longest piece of the post in the subject line. */
 const MAX_SUBJECT_TEXT = 80;
-
-/** A member-chosen name on one line (a subject line must not break). */
-function oneLine(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
-}
-
-function clip(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
-}
 
 /**
  * The words of an "@everyone" announcement: a subject that leads with the
@@ -35,7 +27,7 @@ export function postAnnouncementCopy(
       .replace(/(^|\s)@everyone\b[:,]?/g, "$1")
       .trim(),
   );
-  const lead = firstLine ? clip(firstLine, MAX_SUBJECT_TEXT) : "";
+  const lead = firstLine ? clipText(firstLine, MAX_SUBJECT_TEXT) : "";
   if (locale === "nl") {
     return {
       subject: lead

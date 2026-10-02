@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InviteResponse } from "@/components/communities/invite-response";
+import type { InviteAnswer } from "@/components/communities/use-community-join";
 import { ArrowLink } from "@/components/dashboard/arrow-link";
 import {
   DashboardSection,
@@ -41,6 +42,7 @@ function CommunityIdentity({
   return (
     <Link
       href={communityHref(membership.slug) as never}
+      data-community-link={membership.slug}
       className="focus-visible:ring-ring/50 group flex min-w-0 flex-1 items-center gap-3 rounded-sm outline-none focus-visible:ring-[3px]"
     >
       <Avatar aria-hidden className="size-9 rounded-md">
@@ -88,6 +90,7 @@ function ActiveRow({
   return (
     <li
       data-slot="my-community-row"
+      data-list="active"
       className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:gap-4"
     >
       <CommunityIdentity membership={membership} nameId={nameId} />
@@ -124,13 +127,20 @@ function ActiveRow({
  * invitation is answered right here (Accept / Decline); a request waits on
  * the organizers.
  */
-function WaitingRow({ membership }: { membership: Membership }) {
+function WaitingRow({
+  membership,
+  onAnswered,
+}: {
+  membership: Membership;
+  onAnswered: (answer: InviteAnswer) => void;
+}) {
   const t = useTranslations("communities.dashboard");
   const nameId = React.useId();
   const invited = membership.status === "invited";
   return (
     <li
       data-slot="my-community-row"
+      data-list="waiting"
       className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:gap-4"
     >
       <CommunityIdentity membership={membership} nameId={nameId} />
@@ -144,11 +154,56 @@ function WaitingRow({ membership }: { membership: Membership }) {
             slug={membership.slug}
             name={membership.name}
             describedBy={nameId}
+            onAnswered={onAnswered}
           />
         )}
       </div>
     </li>
   );
+}
+
+/**
+ * Keeps keyboard and screen-reader users in place after they answer an
+ * invitation, whose row then moves or goes away. Once the list has
+ * reloaded: an accepted community's link (now among "Your communities"),
+ * or after a decline the first invitation or request still waiting, else
+ * the tab itself.
+ */
+function useFocusAfterAnswer(listKey: string) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [target, setTarget] = React.useState<{
+    slug: string;
+    answer: InviteAnswer;
+  } | null>(null);
+
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!target || !container) return;
+    const links = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-community-link]"),
+    );
+    const inList = (link: HTMLElement, list: "active" | "waiting") =>
+      link.closest<HTMLElement>("[data-list]")?.dataset.list === list;
+    const own = links.find((l) => l.dataset.communityLink === target.slug);
+
+    if (target.answer === "accept") {
+      // Wait for the reload that moves the row into the active list.
+      if (!own || !inList(own, "active")) return;
+      own.focus();
+    } else {
+      // Wait for the reload that removes the row.
+      if (own) return;
+      const next = links.find((l) => inList(l, "waiting"));
+      (next ?? container).focus();
+    }
+    setTarget(null);
+  }, [target, listKey]);
+
+  return {
+    containerRef,
+    answered: (slug: string, answer: InviteAnswer) =>
+      setTarget({ slug, answer }),
+  };
 }
 
 function MyCommunitiesEmpty() {
@@ -178,6 +233,9 @@ export function MyCommunities() {
     (m) => m.status === "pending_approval" || m.status === "invited",
   );
   const runsAny = active.some(runsCommunity);
+  const focusAfterAnswer = useFocusAfterAnswer(
+    memberships.map((m) => `${m.slug}:${m.status}`).join(","),
+  );
 
   // Supplementary to the rows: only asked for when the member runs a
   // community, and a failed count leaves the rows as they are (Next up on
@@ -191,7 +249,11 @@ export function MyCommunities() {
   );
 
   return (
-    <div className="space-y-10">
+    <div
+      ref={focusAfterAnswer.containerRef}
+      tabIndex={-1}
+      className="space-y-10 outline-none"
+    >
       <DashboardSection
         title={t("title")}
         // "Haven't joined" only when there is nothing at all; a member who
@@ -226,6 +288,9 @@ export function MyCommunities() {
               <WaitingRow
                 key={membership.communityId}
                 membership={membership}
+                onAnswered={(answer) =>
+                  focusAfterAnswer.answered(membership.slug, answer)
+                }
               />
             ))}
           </ul>

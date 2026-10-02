@@ -1,6 +1,7 @@
 "use client";
 
 import type { MembershipStatus as ViewerMembershipStatus } from "@/server/communities/invite-policy";
+import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Users } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -27,6 +28,9 @@ export function CommunityHeader({
   const t = useTranslations("communities.profile");
 
   const initials = getInitials(community.name);
+  // Focus lands here after answering an invitation: the heading gains the
+  // Member badge (or stays as it was, after a decline).
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   return (
     <div className="bg-background/60 border-b backdrop-blur-sm">
@@ -44,7 +48,11 @@ export function CommunityHeader({
 
             <div className="flex flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                <h1
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="text-2xl font-semibold tracking-tight outline-none sm:text-3xl"
+                >
                   {community.name}
                 </h1>
                 {membershipStatus === "active" ? (
@@ -79,6 +87,7 @@ export function CommunityHeader({
               joinPolicy={community.joinPolicy}
               membershipStatus={membershipStatus}
               memberRole={memberRole}
+              focusAfterAnswer={headingRef}
             />
           </div>
         </div>

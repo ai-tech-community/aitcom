@@ -2986,7 +2986,8 @@
       "decline": "Decline",
       "declineConfirmTitle": "Decline the invitation to {community}?",
       "declineConfirmTitleGeneric": "Decline this invitation?",
-      "declineConfirmBody": "The invitation will be removed. To join later, you need a new invitation."
+      "declineConfirmBody": "The invitation will be removed. To join later, you need a new invitation.",
+      "invitedShort": "You're invited"
     },
     "feed": {
       "title": "Feed",

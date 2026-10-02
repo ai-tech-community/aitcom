@@ -230,11 +230,14 @@ export function useCommunityJoin({
   return { action, run, leave, busy: busy || finishing === slug };
 }
 
+export type InviteAnswer = "accept" | "decline";
+
 export type InviteResponse = {
   accept: () => Promise<void>;
   /** Asks the member to confirm first; nothing happens if they cancel. */
   decline: () => Promise<void>;
-  busy: boolean;
+  /** The answer being sent, so only its button shows it is working. */
+  pending: InviteAnswer | null;
 };
 
 /**
@@ -249,22 +252,23 @@ export function useInviteResponse({
   slug: string;
   /** For messages; generic wording when absent. */
   name?: string;
-  /** After a successful accept or decline (e.g. refresh server data). */
-  onChange?: () => void;
+  /** After a successful accept or decline (e.g. refresh, move focus). */
+  onChange?: (answer: InviteAnswer) => void;
 }): InviteResponse {
   const t = useTranslations("communities.invite");
   const confirm = useConfirm();
   const runMembership = useMembershipRunner();
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<InviteAnswer | null>(null);
 
-  const perform = async (verb: "accept" | "decline") => {
-    setBusy(true);
-    const ok = await runMembership(verb, slug, name);
-    setBusy(false);
-    if (ok) onChange?.();
+  const perform = async (answer: InviteAnswer) => {
+    setPending(answer);
+    const ok = await runMembership(answer, slug, name);
+    setPending(null);
+    if (ok) onChange?.(answer);
   };
 
   const decline = async () => {
+    if (pending) return;
     const sure = await confirm({
       title: name
         ? t("declineConfirmTitle", { community: name })
@@ -276,12 +280,18 @@ export function useInviteResponse({
     if (sure) await perform("decline");
   };
 
-  return { accept: () => perform("accept"), decline, busy };
+  const accept = async () => {
+    if (pending) return;
+    await perform("accept");
+  };
+
+  return { accept, decline, pending };
 }
 
 /**
  * Finishes a join a guest started before signing in. On `?join=<slug>`,
- * once signed in, it joins (or requests to join) that community — but only
+ * once signed in, it joins (or requests to join, or accepts the invitation
+ * already waiting for them in) that community — but only
  * when this browser recorded that intent when Join was pressed, so a link
  * someone else sent can never make a member join anything. The param is
  * always dropped, so refresh or Back does not repeat it. Mounted wherever a
@@ -326,12 +336,16 @@ export function useJoinDeepLink(onDone?: () => void): void {
           role: membership?.role ?? null,
           isHub: slug === HUB_SLUG,
         });
+        // Pressing Join was the intent to join: an invitation waiting for
+        // them is accepted, with the same feedback as a join.
         const verb =
           action.kind === "join"
             ? "join"
             : action.kind === "request"
               ? "request"
-              : null;
+              : action.kind === "invited"
+                ? "accept"
+                : null;
         if (verb) {
           const ok = await latest.current.runMembership(
             verb,

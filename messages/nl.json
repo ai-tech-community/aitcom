@@ -2986,7 +2986,8 @@
       "decline": "Afwijzen",
       "declineConfirmTitle": "Uitnodiging voor {community} afwijzen?",
       "declineConfirmTitleGeneric": "Deze uitnodiging afwijzen?",
-      "declineConfirmBody": "De uitnodiging wordt verwijderd. Om later lid te worden, heb je een nieuwe uitnodiging nodig."
+      "declineConfirmBody": "De uitnodiging wordt verwijderd. Om later lid te worden, heb je een nieuwe uitnodiging nodig.",
+      "invitedShort": "Je bent uitgenodigd"
     },
     "feed": {
       "title": "Feed",

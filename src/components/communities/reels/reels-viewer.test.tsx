@@ -95,7 +95,11 @@ vi.mock("../feed/report-dialog", () => ({
     open ? <div data-testid="report-dialog">{postId}</div> : null,
 }));
 vi.mock("../join-button", () => ({
-  JoinButton: () => <button type="button">Join Community</button>,
+  JoinButton: ({ size }: { size?: string }) => (
+    <button type="button" data-join-size={size ?? "default"}>
+      Join Community
+    </button>
+  ),
 }));
 
 import { ReelsViewer } from "./reels-viewer";
@@ -308,6 +312,14 @@ describe("ReelsViewer", () => {
       screen.getByRole("button", { name: "Join Community" }),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("player")).not.toBeInTheDocument();
+  });
+
+  it("uses the compact join control in the header (an invitation fits one line)", () => {
+    renderViewer([page([reel(1)])], OUTSIDER);
+    const header = document.querySelector("header")!;
+    expect(
+      within(header).getByRole("button", { name: "Join Community" }),
+    ).toHaveAttribute("data-join-size", "compact");
   });
 
   it("says when a linked video is not available", () => {

@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -60,12 +66,15 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 import { JoinButton } from "./join-button";
 import type { JoinPolicy } from "@/server/communities/invite-policy";
 
-function renderButton(
+type Props = Partial<React.ComponentProps<typeof JoinButton>>;
+
+function ui(
   joinPolicy: JoinPolicy,
-  membershipStatus: "invited" | null,
+  membershipStatus: "invited" | "active" | null,
   locale: "en" | "nl" = "en",
+  props: Props = {},
 ) {
-  return render(
+  return (
     <NextIntlClientProvider
       locale={locale}
       messages={locale === "en" ? en : nl}
@@ -75,9 +84,26 @@ function renderButton(
         name="Makers"
         joinPolicy={joinPolicy}
         membershipStatus={membershipStatus}
+        {...props}
       />
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
+}
+
+function renderButton(
+  joinPolicy: JoinPolicy,
+  membershipStatus: "invited" | "active" | null,
+  locale: "en" | "nl" = "en",
+  props: Props = {},
+) {
+  return render(ui(joinPolicy, membershipStatus, locale, props));
+}
+
+/** A promise the test settles by hand, to look at a pending answer. */
+function deferred() {
+  let resolve!: (value: { success: boolean }) => void;
+  const promise = new Promise<{ success: boolean }>((r) => (resolve = r));
+  return { promise, resolve };
 }
 
 describe("JoinButton for an invited member", () => {
@@ -143,6 +169,68 @@ describe("JoinButton for an invited member", () => {
   it("shows nothing to an uninvited visitor of an invite-only community", () => {
     const { container } = renderButton("invite_only", null);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows only the pending answer as busy: declining never spins Accept", async () => {
+    const pending = deferred();
+    s.decline.mockImplementationOnce(() => pending.promise);
+    renderButton("invite_only", "invited");
+    const accept = screen.getByRole("button", { name: "Accept" });
+    const decline = screen.getByRole("button", { name: "Decline" });
+
+    fireEvent.click(decline);
+    await waitFor(() => expect(decline).toHaveAttribute("aria-busy", "true"));
+    expect(accept).not.toHaveAttribute("aria-busy");
+    expect(accept.querySelector(".animate-spin")).toBeNull();
+    expect(decline.querySelector(".animate-spin")).not.toBeNull();
+    // Neither answer can be sent twice while one is on its way.
+    expect(accept).toBeDisabled();
+    expect(decline).toBeDisabled();
+
+    await act(async () => pending.resolve({ success: true }));
+    await waitFor(() => expect(decline).not.toHaveAttribute("aria-busy"));
+  });
+
+  it("moves focus to the given target (the community heading) after accepting", async () => {
+    const heading = document.createElement("h1");
+    heading.tabIndex = -1;
+    document.body.appendChild(heading);
+    const ref = { current: heading };
+    try {
+      renderButton("invite_only", "invited", "en", { focusAfterAnswer: ref });
+      fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+      await waitFor(() => expect(heading).toHaveFocus());
+    } finally {
+      heading.remove();
+    }
+  });
+
+  it("without a target, focuses the control that replaces the answer", async () => {
+    const { rerender } = renderButton("invite_only", "invited");
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => expect(s.refresh).toHaveBeenCalled());
+    // The membership reloads as active: Leave takes the answer's place.
+    rerender(ui("invite_only", "active"));
+    expect(
+      screen.getByRole("button", { name: "Leave Community" }),
+    ).toHaveFocus();
+  });
+
+  it("fits a tight header in its compact size: one line, small buttons", () => {
+    const { container } = renderButton("invite_only", "invited", "en", {
+      size: "compact",
+    });
+    const block = container.querySelector('[data-slot="invite-response"]');
+    expect(block).toHaveAttribute("data-variant", "compact");
+    expect(screen.getByText("You're invited")).toBeInTheDocument();
+    // The full sentence stays for screen readers.
+    expect(screen.getByRole("button", { name: "Accept" })).toHaveAttribute(
+      "data-size",
+      "sm",
+    );
+    expect(
+      screen.getByRole("button", { name: "Accept" }),
+    ).toHaveAccessibleDescription("You're invited to join Makers");
   });
 
   it("renders in Dutch", () => {

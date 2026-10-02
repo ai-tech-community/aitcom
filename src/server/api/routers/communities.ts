@@ -57,7 +57,17 @@ import { listMyCommunities } from "@/server/communities/my-communities";
 import { countPendingJoinRequests } from "@/server/communities/pending-join-requests";
 import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
 import { activateMembership } from "@/server/communities/activate-membership";
-import { notifyCommunityInvite } from "@/server/communities/invite-notification";
+import {
+  notifyCommunityInvite,
+  resolveCommunityInviteNotices,
+} from "@/server/communities/invite-notification";
+import { consumeInviteUse } from "@/server/communities/invite-uses";
+import {
+  INVITE_DECLINE_COOLDOWN_DAYS,
+  checkInviteRateLimit,
+  declinedInviteRecently,
+  recordInviteDeclined,
+} from "@/server/communities/invite-limits";
 import type { db as Database } from "@/server/db";
 
 /** The membership changed between reading and writing it (e.g. a ban). */
@@ -555,35 +565,61 @@ export const communitiesRouter = createTRPCRouter({
         input.slug,
         ctx.session.user.id,
       );
+      const userId = ctx.session.user.id;
       const activated = await activateMembership(ctx.db, {
         communityId: community.id,
-        userId: ctx.session.user.id,
+        userId,
         existing: membership,
         metadata: { via: "direct_invite" },
+        alongside: (tx) =>
+          resolveCommunityInviteNotices(tx, {
+            userId,
+            communityId: community.id,
+            resolution: "accepted",
+          }),
       });
       if (!activated) throw membershipChanged();
       return { success: true };
     }),
 
-  /** Decline a direct invitation: the invitation is removed, nothing else. */
+  /**
+   * Decline a direct invitation: the invitation is removed, its notices
+   * are resolved, and the decline is recorded, which keeps this community
+   * from inviting the member again for a while (INVITE_DECLINE_COOLDOWN_DAYS).
+   */
   declineInvite: protectedProcedure
     .input(z.object({ slug: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const { membership } = await findOpenInvitation(
+      const userId = ctx.session.user.id;
+      const { community, membership } = await findOpenInvitation(
         ctx.db,
         input.slug,
-        ctx.session.user.id,
+        userId,
       );
-      const deleted = await ctx.db
-        .delete(communityMemberships)
-        .where(
-          and(
-            eq(communityMemberships.id, membership.id),
-            eq(communityMemberships.status, "invited"),
-          ),
-        )
-        .returning({ id: communityMemberships.id });
-      if (deleted.length === 0) throw membershipChanged();
+      const declined = await ctx.db.transaction(async (tx) => {
+        const deleted = await tx
+          .delete(communityMemberships)
+          .where(
+            and(
+              eq(communityMemberships.id, membership.id),
+              eq(communityMemberships.status, "invited"),
+            ),
+          )
+          .returning({ id: communityMemberships.id });
+        if (deleted.length === 0) return false;
+        await recordInviteDeclined(tx, {
+          userId,
+          communityId: community.id,
+          invitedBy: membership.invitedBy,
+        });
+        await resolveCommunityInviteNotices(tx, {
+          userId,
+          communityId: community.id,
+          resolution: "declined",
+        });
+        return true;
+      });
+      if (!declined) throw membershipChanged();
       return { success: true };
     }),
 
@@ -647,30 +683,6 @@ export const communitiesRouter = createTRPCRouter({
           };
         }
 
-        // Atomic max-uses guard (prevents race condition).
-        if (invite.maxUses !== null) {
-          const [updated] = await ctx.db
-            .update(communityInvites)
-            .set({ useCount: sql`${communityInvites.useCount} + 1` })
-            .where(
-              and(
-                eq(communityInvites.id, invite.id),
-                sql`${communityInvites.useCount} < ${invite.maxUses}`,
-              ),
-            )
-            .returning();
-          if (!updated) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "Invite has reached max uses",
-            });
-          }
-        } else {
-          await ctx.db
-            .update(communityInvites)
-            .set({ useCount: sql`${communityInvites.useCount} + 1` })
-            .where(eq(communityInvites.id, invite.id));
-        }
         // Upgrade-only: never lower the rank of a member who already outranks
         // the invite's granted role.
         const existingRole = existing?.role as CommunityRole | undefined;
@@ -686,6 +698,15 @@ export const communitiesRouter = createTRPCRouter({
           role: nextRole,
           invitedBy: existing?.invitedBy ?? invite.createdBy,
           metadata: { via: "invite", role: grantedRole },
+          // A use is spent only when the member really joins.
+          alongside: async (tx) => {
+            if (!(await consumeInviteUse(tx, invite))) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "Invite has reached max uses",
+              });
+            }
+          },
         });
         if (!activated) throw membershipChanged();
 
@@ -1368,30 +1389,74 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "User is banned" });
       }
 
-      if (existing) {
-        await ctx.db
-          .update(communityMemberships)
-          .set({ status: "invited", invitedBy: ctx.session.user.id })
-          .where(eq(communityMemberships.id, existing.id));
-      } else {
-        await ctx.db.insert(communityMemberships).values({
-          communityId: ctx.community.id,
+      if (
+        await declinedInviteRecently(ctx.db, {
           userId: input.userId,
-          role: "member",
-          status: "invited",
-          invitedBy: ctx.session.user.id,
+          communityId: ctx.community.id,
+        })
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `This person declined an invitation recently. You can invite them again ${INVITE_DECLINE_COOLDOWN_DAYS} days after they declined.`,
         });
       }
 
-      // Told once per invitation: inviting someone already invited again
-      // does not repeat the notice.
-      if (existing?.status !== "invited") {
-        await notifyCommunityInvite(ctx.db, {
-          inviteeId: input.userId,
-          inviterId: ctx.session.user.id,
-          community: ctx.community,
+      const limit = checkInviteRateLimit(ctx.session.user.id);
+      if (!limit.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `You've sent a lot of invitations. Try again in ${Math.ceil(limit.retryAfterSecs / 60)} minutes.`,
         });
       }
+
+      const inviterId = ctx.session.user.id;
+      const community = ctx.community;
+      // The invitation and its notice land together, or neither does.
+      const written = await ctx.db.transaction(async (tx) => {
+        if (existing) {
+          const updated = await tx
+            .update(communityMemberships)
+            .set({ status: "invited", invitedBy: inviterId })
+            .where(
+              and(
+                eq(communityMemberships.id, existing.id),
+                eq(communityMemberships.status, existing.status),
+              ),
+            )
+            .returning({ id: communityMemberships.id });
+          if (updated.length === 0) return false;
+        } else {
+          const inserted = await tx
+            .insert(communityMemberships)
+            .values({
+              communityId: community.id,
+              userId: input.userId,
+              role: "member",
+              status: "invited",
+              invitedBy: inviterId,
+            })
+            .onConflictDoNothing({
+              target: [
+                communityMemberships.communityId,
+                communityMemberships.userId,
+              ],
+            })
+            .returning({ id: communityMemberships.id });
+          if (inserted.length === 0) return false;
+        }
+
+        // Told once per invitation: inviting someone already invited again
+        // does not repeat the notice.
+        if (existing?.status !== "invited") {
+          await notifyCommunityInvite(tx, {
+            inviteeId: input.userId,
+            inviterId,
+            community,
+          });
+        }
+        return true;
+      });
+      if (!written) throw membershipChanged();
 
       return { success: true };
     }),

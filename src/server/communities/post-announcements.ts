@@ -10,6 +10,7 @@ import { sendCommunityBroadcast } from "@/server/notifications/broadcast-send";
 import { postAnnouncementCopy } from "@/server/notifications/post-announcement-copy";
 import { EVERYONE, mentionsEveryone, readMentions } from "@/lib/post-mentions";
 import { plainPostText } from "@/lib/post-format";
+import { clipText } from "@/lib/text-utils";
 
 import { canBroadcast } from "./role-utils";
 
@@ -39,10 +40,6 @@ type AnnouncedPost = {
 
 /** What `sendCommunityBroadcast` takes for an announced post. */
 export type PostAnnouncement = Parameters<typeof sendCommunityBroadcast>[1];
-
-function clip(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
-}
 
 /** Whether "@everyone" in the post means the community, not a member. */
 function saysEveryone(post: AnnouncedPost): boolean {
@@ -99,7 +96,7 @@ export async function announceToEveryone(
     communityId: post.communityId,
     authorId: post.authorId,
     subject: copy.subject,
-    body: `${clip(text, MAX_BODY)}\n\n${copy.why}`,
+    body: `${clipText(text, MAX_BODY)}\n\n${copy.why}`,
     link: {
       label: copy.cta,
       path: isVideo

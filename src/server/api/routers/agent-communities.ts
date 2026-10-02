@@ -14,6 +14,7 @@ import {
   communityMemberships,
   communityInvites,
   agentSuggestions,
+  user,
 } from "@/server/db/schema";
 import { generateSlug } from "@/server/communities/slug-utils";
 import {
@@ -22,6 +23,8 @@ import {
 } from "@/server/communities/role-utils";
 import { logActivity } from "@/server/agent/activity";
 import { activateMembership } from "@/server/communities/activate-membership";
+import { consumeInviteUse } from "@/server/communities/invite-uses";
+import { canRedeemInvite } from "@/server/communities/invite-policy";
 import { canAdvise } from "@/server/agents/advisory";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -456,6 +459,21 @@ export const agentCommunityRouter = {
         });
       }
 
+      // An email-bound invite is the owner's only if it names their email,
+      // exactly as when they redeem it themselves.
+      if (invite.targetEmail) {
+        const owner = await ctx.db.query.user.findFirst({
+          where: eq(user.id, ownerId),
+          columns: { email: true },
+        });
+        if (!canRedeemInvite(invite.targetEmail, owner?.email ?? null)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "This invite is reserved for a different email address",
+          });
+        }
+      }
+
       // Check existing membership BEFORE consuming invite use
       const existing = await ctx.db.query.communityMemberships.findFirst({
         where: and(
@@ -471,32 +489,7 @@ export const agentCommunityRouter = {
         });
       }
 
-      // Atomic: increment useCount only if under maxUses
-      if (invite.maxUses !== null) {
-        const [updated] = await ctx.db
-          .update(communityInvites)
-          .set({ useCount: sql`${communityInvites.useCount} + 1` })
-          .where(
-            and(
-              eq(communityInvites.id, invite.id),
-              sql`${communityInvites.useCount} < ${invite.maxUses}`,
-            ),
-          )
-          .returning();
-
-        if (!updated) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Invite has reached max uses",
-          });
-        }
-      } else {
-        await ctx.db
-          .update(communityInvites)
-          .set({ useCount: sql`${communityInvites.useCount} + 1` })
-          .where(eq(communityInvites.id, invite.id));
-      }
-
+      // Already a member: nothing to do, and no use of the link is spent.
       if (existing?.status === "active") {
         return { success: true, communitySlug: invite.community.slug };
       }
@@ -505,9 +498,19 @@ export const agentCommunityRouter = {
         communityId: invite.communityId,
         userId: ownerId,
         existing: existing ?? null,
-        invitedBy: existing?.invitedBy ?? invite.createdBy,
+        // An existing row keeps its inviter; a new one records the link's maker.
+        invitedBy: existing ? undefined : invite.createdBy,
         actor: { id: ctx.agent.agentId, type: "agent" },
         metadata: { via: "invite", onBehalfOf: ownerId },
+        // A use is spent only when the owner really joins.
+        alongside: async (tx) => {
+          if (!(await consumeInviteUse(tx, invite))) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Invite has reached max uses",
+            });
+          }
+        },
       });
       if (!activated) {
         throw new TRPCError({
