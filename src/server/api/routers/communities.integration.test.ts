@@ -102,9 +102,8 @@ describe.skipIf(!RUN_DB)("communities discover [DB integration]", () => {
     // The 'largest' order itself is the pure comparator in directory.ts
     // (unit-tested in directory.test.ts); it compares memberCount with
     // subtraction, so the DB read must hand it real numbers.
-    const { loadDiscoveryCandidates } = await import(
-      "@/server/communities/discovery-queries"
-    );
+    const { loadDiscoveryCandidates } =
+      await import("@/server/communities/discovery-queries");
     const candidates = await loadDiscoveryCandidates(db, new Date());
     const [smallId, largeId] = ids;
     const small = candidates.find((c) => c.communityId === smallId);
