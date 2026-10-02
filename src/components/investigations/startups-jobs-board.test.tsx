@@ -22,7 +22,24 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
-const { setStatusMutate } = vi.hoisted(() => ({ setStatusMutate: vi.fn() }));
+const { setStatusMutate, setStatusOptions, refresh, toastError } = vi.hoisted(
+  () => ({
+    setStatusMutate: vi.fn(),
+    setStatusOptions: {
+      current: undefined as { onError?: () => void } | undefined,
+    },
+    refresh: vi.fn(),
+    toastError: vi.fn(),
+  }),
+);
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh }),
+}));
+
+vi.mock("sonner", () => ({
+  toast: { error: toastError, success: vi.fn() },
+}));
 
 vi.mock("@/trpc/react", () => ({
   api: {
@@ -36,7 +53,10 @@ vi.mock("@/trpc/react", () => ({
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       setMyTrackedRoleStatus: {
-        useMutation: () => ({ mutate: setStatusMutate, isPending: false }),
+        useMutation: (options?: { onError?: () => void }) => {
+          setStatusOptions.current = options;
+          return { mutate: setStatusMutate, isPending: false };
+        },
       },
       askMyTrackedRoleHelp: {
         useMutation: (options?: {
@@ -192,8 +212,37 @@ describe("StartupsJobsBoard", () => {
   it("teaches the next action when nothing is tracked", () => {
     renderBoard({ tracked: [] });
     expect(screen.getByText("Nothing tracked yet")).toBeInTheDocument();
+    // One way forward: the empty state's link, not a second one in the heading.
     expect(
-      screen.getAllByRole("link", { name: "Open positions" }).length,
-    ).toBeGreaterThan(0);
+      screen.getAllByRole("link", { name: "Open positions" }),
+    ).toHaveLength(1);
+  });
+
+  it("sits in the shared dashboard section with an h2 heading", () => {
+    renderBoard();
+    expect(
+      screen.getByRole("heading", { level: 2, name: /your board/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open positions" }),
+    ).toHaveAttribute("href", "/jobs");
+  });
+
+  it("shows an error with retry, not an empty board, when the load failed", () => {
+    refresh.mockClear();
+    renderBoard({ tracked: [], loadFailed: true });
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing tracked yet")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("says a failed move in words, never the server's raw message", () => {
+    toastError.mockClear();
+    renderBoard();
+    setStatusOptions.current?.onError?.();
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't move that role. Please try again.",
+    );
   });
 });

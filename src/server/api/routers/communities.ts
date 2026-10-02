@@ -54,6 +54,7 @@ import {
 } from "@/server/communities/member-stack-queries";
 import { HUB_SLUG } from "@/server/api/trpc";
 import { listMyCommunities } from "@/server/communities/my-communities";
+import { countPendingJoinRequests } from "@/server/communities/pending-join-requests";
 import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
 
 export const communitiesRouter = createTRPCRouter({
@@ -762,6 +763,15 @@ export const communitiesRouter = createTRPCRouter({
   getMyCommunities: protectedProcedure.query(async ({ ctx }) => {
     return listMyCommunities(ctx.db, ctx.session.user.id);
   }),
+
+  /**
+   * Join requests waiting in each community I run (active owner or admin):
+   * one row per community with at least one request. My communities shows
+   * the count on those rows.
+   */
+  getMyPendingJoinRequests: protectedProcedure.query(({ ctx }) =>
+    countPendingJoinRequests(ctx.db, ctx.session.user.id),
+  ),
 
   // ─── Admin Procedures ─────────────────────────────────────────────
 

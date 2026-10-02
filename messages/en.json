@@ -265,11 +265,14 @@
     "placeToBeAnnounced": "Place to be announced",
     "eventCancelError": "Could not cancel the event. It may already have taken place.",
     "myEvents": {
-      "label": "My events",
-      "upcoming": "Upcoming ({count})",
-      "past": "Past ({count})",
-      "noUpcoming": "No upcoming events.",
-      "noPast": "No past events yet.",
+      "label": "Your events",
+      "filterLabel": "Which events",
+      "upcoming": "Upcoming",
+      "past": "Past",
+      "noUpcomingTitle": "No upcoming events",
+      "noUpcomingDescription": "Events you register for show up here, with the time in the event's own zone.",
+      "noPastTitle": "No past events yet",
+      "noPastDescription": "Events you went to stay here, so you can find them again.",
       "browse": "Browse events",
       "external": "External",
       "status": {
@@ -779,7 +782,7 @@
   },
   "dashboard": {
     "completeProfile": "Complete your profile to earn 50 XP!",
-    "displayName": "Display Name",
+    "displayName": "Display name",
     "bio": "Bio",
     "skills": "Skills (comma-separated)",
     "company": "Company",
@@ -788,7 +791,7 @@
     "websiteUrl": "Website URL",
     "publicProfile": "Public profile",
     "saveProfile": "Save",
-    "saving": "Saving...",
+    "saving": "Saving…",
     "profileSaved": "Profile saved!",
     "profileError": "Failed to save profile.",
     "agent": "Agent",
@@ -796,15 +799,15 @@
     "impact": "Impact",
     "qa": "QA",
     "settingsComingSoon": "Settings coming soon.",
-    "connectedIdentities": "CONNECTED IDENTITIES",
+    "connectedIdentities": "Connected identities",
     "connectedIdentitiesHelp": "GitHub and LinkedIn are verified when you sign in or connect them here. A pasted URL is not enough. Google is only a way to sign in and is never shown on your profile.",
     "googleIdentity": "Google",
-    "connectGoogle": "CONNECT GOOGLE",
+    "connectGoogle": "Connect Google",
     "githubIdentity": "GitHub",
     "linkedinIdentity": "LinkedIn",
-    "connectGithub": "CONNECT GITHUB",
-    "disconnect": "DISCONNECT",
-    "connectLinkedin": "CONNECT LINKEDIN",
+    "connectGithub": "Connect GitHub",
+    "disconnect": "Disconnect",
+    "connectLinkedin": "Connect LinkedIn",
     "verified": "Verified",
     "connected": "Connected",
     "disconnectNeedAnotherSignIn": "Add a password or another sign-in method before disconnecting.",
@@ -934,6 +937,27 @@
       "quietDescription": "New posts, questions and events will show up here.",
       "exploreCommunities": "Explore more communities",
       "loadMore": "Load more"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "introductionsTitle": "Introductions",
+      "markAllRead": "Mark all read",
+      "clearRead": "Clear read",
+      "clearAll": "Clear all",
+      "clearAllConfirmTitle": "Clear all notifications?",
+      "clearAllConfirmDescription": "This deletes every notification, read and unread. You can't undo this.",
+      "clearReadConfirmTitle": "Clear read notifications?",
+      "clearReadConfirmDescription": "This deletes the notifications you've already read. You can't undo this.",
+      "clearConfirm": "Clear",
+      "unread": "New",
+      "markRead": "Mark as read",
+      "markUnread": "Mark as unread",
+      "delete": "Delete",
+      "reviewSuggestion": "Review suggestion",
+      "emptyTitle": "No notifications yet",
+      "emptyDescription": "Replies, mentions and news from your communities show up here.",
+      "emptyAction": "Explore communities",
+      "actionFailed": "Couldn't update your notifications. Please try again."
     }
   },
   "inbox": {
@@ -1698,7 +1722,6 @@
     "factLocation": "Location"
   },
   "jobsBoard": {
-    "kicker": "Jobs",
     "title": "Your board",
     "lead": "Roles you track on open positions land here. Only you can see this board.",
     "open": "Open positions",
@@ -1732,7 +1755,10 @@
     "classroomMissing": "That classroom is not in this community.",
     "sheetLead": "Posts a question in the community you pick.",
     "previewTitle": "What the community sees",
-    "member": "A member"
+    "member": "A member",
+    "moveFailed": "Couldn't move that role. Please try again.",
+    "removeFailed": "Couldn't remove that role. Please try again.",
+    "askFailed": "Couldn't post your question. Please try again."
   },
   "publicEvents": {
     "kicker": "Events",
@@ -2990,13 +3016,15 @@
       "picture": "picture"
     },
     "dashboard": {
-      "title": "My Communities",
-      "active": "Active",
-      "pending": "Pending",
+      "title": "Your communities",
+      "waitingTitle": "Waiting for a reply",
+      "requested": "Request sent",
+      "invited": "You're invited",
       "manage": "Manage",
-      "view": "View",
-      "noCommunities": "You are not a member of any communities yet.",
-      "exploreCommunities": "Explore Communities"
+      "joinRequests": "{count, plural, one {# join request} other {# join requests}}",
+      "emptyTitle": "You haven't joined a community yet",
+      "emptyDescription": "Communities are where members meet, share what they build and run events together.",
+      "explore": "Explore communities"
     },
     "roles": {
       "owner": "Owner",
@@ -3214,7 +3242,10 @@
     }
   },
   "notificationPrefs": {
-    "title": "Notifications",
+    "settingsTitle": "Email notifications",
+    "hubMailTitle": "Hub emails",
+    "digestTitle": "Weekly digest and announcements",
+    "saveFailed": "Couldn't save that change. Please try again.",
     "description": "Choose what reaches your inbox. You can opt out of the weekly digest globally or per community, and stop a community's announcements.",
     "globalDigest": "Weekly digest email",
     "globalDigestHint": "One consolidated email with a section per community.",
@@ -3222,8 +3253,6 @@
     "digestColumn": "Digest section",
     "broadcastColumn": "Announcements",
     "saved": "Saved",
-    "sectionTitle": "Notifications",
-    "hubMailKicker": "Email",
     "hubMailHint": "We email you Hub messages and mentions — a link back in, never the message itself. The other switches are saved for later.",
     "hubMailDm": "Hub messages",
     "hubMailDmHint": "When someone sends you a direct message.",

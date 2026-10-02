@@ -62,6 +62,27 @@ export function statusFromQueries(
   return isEmpty ? { kind: "empty" } : READY;
 }
 
+/**
+ * The same decision for a section whose data a server component loaded
+ * (the page caught the failure and passed `failed`). `refreshing` is a
+ * retry or a filter change on its way back from the server.
+ */
+export function statusFromServerLoad({
+  failed,
+  refreshing = false,
+  isEmpty = false,
+  retry,
+}: {
+  failed: boolean;
+  refreshing?: boolean;
+  isEmpty?: boolean;
+  retry: () => void;
+}): SectionStatus {
+  if (refreshing) return { kind: "loading" };
+  if (failed) return { kind: "error", retry };
+  return isEmpty ? { kind: "empty" } : READY;
+}
+
 type SectionBodyProps = {
   status: SectionStatus;
   /**

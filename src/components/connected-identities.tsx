@@ -7,8 +7,13 @@ import { BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { OAuthProviderIcon } from "@/components/auth/oauth-provider-icon";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SectionLabel } from "@/components/ui/section-label";
+import {
+  DashboardSection,
+  statusFromQueries,
+} from "@/components/dashboard/dashboard-section";
+import { ListSkeleton } from "@/components/dashboard/list-skeleton";
 import { oauthErrorCallbackURL, oauthErrorMessageKey } from "@/lib/auth-errors";
 import { OAUTH_PROVIDERS, type OAuthProvider } from "@/lib/oauth-providers";
 import { isSocialProvider } from "@/lib/social-identity";
@@ -21,6 +26,10 @@ const COPY_KEYS: Record<OAuthProvider, { title: string; connect: string }> = {
   linkedin: { title: "linkedinIdentity", connect: "connectLinkedin" },
 };
 
+/**
+ * The Settings tab's sign-in identities: connect or disconnect Google,
+ * GitHub and LinkedIn. GitHub and LinkedIn also verify the profile links.
+ */
 export function ConnectedIdentities() {
   const t = useTranslations("dashboard");
   const tAuth = useTranslations("auth");
@@ -29,8 +38,9 @@ export function ConnectedIdentities() {
   // A failed connect comes back to Settings with ?error=<code>.
   const linkErrorKey = oauthErrorMessageKey(searchParams.get("error"));
   const utils = api.useUtils();
-  const { data, isLoading } = api.members.getMyProfile.useQuery();
+  const profile = api.members.getMyProfile.useQuery();
   const providers = api.members.getAuthProviders.useQuery();
+  const data = profile.data;
   const [pending, setPending] = useState<OAuthProvider | null>(null);
 
   const disconnect = api.members.disconnectSocial.useMutation({
@@ -38,8 +48,8 @@ export function ConnectedIdentities() {
       toast.success(t("socialDisconnected"));
       await utils.members.getMyProfile.invalidate();
     },
-    onError: (error) => {
-      toast.error(error.message || t("socialDisconnectError"));
+    onError: () => {
+      toast.error(t("socialDisconnectError"));
     },
     onSettled: () => setPending(null),
   });
@@ -52,29 +62,34 @@ export function ConnectedIdentities() {
       errorCallbackURL: oauthErrorCallbackURL(pathname, searchParams),
     });
     if (error) {
-      toast.error(error.message ?? t("socialConnectError"));
+      toast.error(t("socialConnectError"));
       setPending(null);
     }
   }
 
-  if (isLoading || !data) return null;
-
   const handles: Record<OAuthProvider, string | null> = {
     google: null,
-    github: data.social.github?.handle ? `@${data.social.github.handle}` : null,
-    linkedin: data.social.linkedin?.handle ?? null,
+    github: data?.social.github?.handle
+      ? `@${data.social.github.handle}`
+      : null,
+    linkedin: data?.social.linkedin?.handle ?? null,
   };
 
   // A connected provider stays listed even if its keys are later removed, so
   // the member can still disconnect it.
-  const visible = OAUTH_PROVIDERS.filter(
-    (provider) => data.accounts[provider] || providers.data?.[provider],
-  );
+  const visible = data
+    ? OAUTH_PROVIDERS.filter(
+        (provider) => data.accounts[provider] || providers.data?.[provider],
+      )
+    : [];
 
   return (
-    <div>
-      <SectionLabel>{t("connectedIdentities")}</SectionLabel>
-      <p className="text-muted-foreground mt-3 text-sm">
+    <DashboardSection
+      title={t("connectedIdentities")}
+      status={statusFromQueries([profile, providers])}
+      skeleton={<ListSkeleton rows={2} />}
+    >
+      <p className="text-muted-foreground max-w-prose text-sm text-pretty">
         {t("connectedIdentitiesHelp")}
       </p>
       {linkErrorKey && (
@@ -83,39 +98,40 @@ export function ConnectedIdentities() {
         </p>
       )}
 
-      <div className="mt-4 space-y-3">
-        {visible.map((provider) => {
-          const connected = data.accounts[provider];
-          return (
-            <IdentityRow
-              key={provider}
-              icon={<OAuthProviderIcon provider={provider} />}
-              title={t(COPY_KEYS[provider].title)}
-              connected={connected}
-              handle={handles[provider]}
-              verified={isSocialProvider(provider)}
-              connectedLabel={
-                isSocialProvider(provider) ? t("verified") : t("connected")
-              }
-              actionLabel={
-                connected ? t("disconnect") : t(COPY_KEYS[provider].connect)
-              }
-              pending={pending === provider || disconnect.isPending}
-              disabled={connected && !data.canDisconnect[provider]}
-              disabledReason={t("disconnectNeedAnotherSignIn")}
-              onClick={() => {
-                if (connected) {
-                  setPending(provider);
-                  disconnect.mutate({ provider });
-                  return;
+      <ul className="divide-border mt-2 divide-y">
+        {data &&
+          visible.map((provider) => {
+            const connected = data.accounts[provider];
+            return (
+              <IdentityRow
+                key={provider}
+                icon={<OAuthProviderIcon provider={provider} />}
+                title={t(COPY_KEYS[provider].title)}
+                connected={connected}
+                handle={handles[provider]}
+                verified={isSocialProvider(provider)}
+                connectedLabel={
+                  isSocialProvider(provider) ? t("verified") : t("connected")
                 }
-                void connect(provider);
-              }}
-            />
-          );
-        })}
-      </div>
-    </div>
+                actionLabel={
+                  connected ? t("disconnect") : t(COPY_KEYS[provider].connect)
+                }
+                pending={pending === provider || disconnect.isPending}
+                disabled={connected && !data.canDisconnect[provider]}
+                disabledReason={t("disconnectNeedAnotherSignIn")}
+                onClick={() => {
+                  if (connected) {
+                    setPending(provider);
+                    disconnect.mutate({ provider });
+                    return;
+                  }
+                  void connect(provider);
+                }}
+              />
+            );
+          })}
+      </ul>
+    </DashboardSection>
   );
 }
 
@@ -146,22 +162,23 @@ function IdentityRow({
   onClick: () => void;
 }) {
   return (
-    <div className="border-border flex flex-col gap-3 rounded border px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <li
+      data-slot="identity-row"
+      className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+    >
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {icon}
           <span className="text-sm font-medium">{title}</span>
           {connected && (
-            <span className="border-border text-foreground inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-xs tracking-wider uppercase">
-              {verified && (
-                <BadgeCheck className="h-3 w-3" aria-hidden="true" />
-              )}
+            <Badge variant="outline">
+              {verified && <BadgeCheck aria-hidden="true" />}
               {connectedLabel}
-            </span>
+            </Badge>
           )}
         </div>
         {handle && (
-          <p className="text-muted-foreground mt-1 font-mono text-xs tracking-wider">
+          <p className="text-muted-foreground mt-1 font-mono text-xs">
             {handle}
           </p>
         )}
@@ -173,12 +190,12 @@ function IdentityRow({
         type="button"
         variant="outline"
         size="sm"
-        className="font-mono text-xs tracking-wider"
+        className="w-fit"
         disabled={pending || disabled}
         onClick={onClick}
       >
         {actionLabel}
       </Button>
-    </div>
+    </li>
   );
 }

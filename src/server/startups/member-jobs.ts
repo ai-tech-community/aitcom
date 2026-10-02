@@ -164,47 +164,47 @@ export async function listMyTrackedRoleIds(userId: string): Promise<string[]> {
   }
 }
 
+/**
+ * Throws when the read fails: the Job tracker shows an error with retry
+ * instead of an empty board (DESIGN.md No-Silent-Failure Rule).
+ */
 export async function listMyTrackedStartupRoles(
   userId: string,
 ): Promise<TrackedStartupRole[]> {
-  try {
-    const rows = await db
-      .select({
-        role: startupRoles,
-        startupSlug: startups.slug,
-        startupName: startups.name,
-        startupLogoUrl: startups.logoUrl,
-        trackStatus: startupRoleApplications.status,
-        trackedAt: startupRoleApplications.createdAt,
-      })
-      .from(startupRoleApplications)
-      .innerJoin(
-        startupRoles,
-        eq(startupRoleApplications.roleId, startupRoles.id),
-      )
-      .innerJoin(startups, eq(startupRoles.startupId, startups.id))
-      .where(
-        and(
-          eq(startupRoleApplications.userId, userId),
-          eq(startups.status, "approved"),
-        ),
-      )
-      .orderBy(desc(startupRoleApplications.createdAt));
-    return rows.flatMap((row) => {
-      const role = toPublicRole(row.role, {
-        slug: row.startupSlug,
-        name: row.startupName,
-        logoUrl: row.startupLogoUrl,
-      });
-      if (!role) return [];
-      const status = isTrackingStatus(row.trackStatus)
-        ? row.trackStatus
-        : "applying";
-      return [{ role, status, trackedAt: row.trackedAt.toISOString() }];
+  const rows = await db
+    .select({
+      role: startupRoles,
+      startupSlug: startups.slug,
+      startupName: startups.name,
+      startupLogoUrl: startups.logoUrl,
+      trackStatus: startupRoleApplications.status,
+      trackedAt: startupRoleApplications.createdAt,
+    })
+    .from(startupRoleApplications)
+    .innerJoin(
+      startupRoles,
+      eq(startupRoleApplications.roleId, startupRoles.id),
+    )
+    .innerJoin(startups, eq(startupRoles.startupId, startups.id))
+    .where(
+      and(
+        eq(startupRoleApplications.userId, userId),
+        eq(startups.status, "approved"),
+      ),
+    )
+    .orderBy(desc(startupRoleApplications.createdAt));
+  return rows.flatMap((row) => {
+    const role = toPublicRole(row.role, {
+      slug: row.startupSlug,
+      name: row.startupName,
+      logoUrl: row.startupLogoUrl,
     });
-  } catch {
-    return [];
-  }
+    if (!role) return [];
+    const status = isTrackingStatus(row.trackStatus)
+      ? row.trackStatus
+      : "applying";
+    return [{ role, status, trackedAt: row.trackedAt.toISOString() }];
+  });
 }
 
 export async function setMyTrackedRoleStatus(input: {

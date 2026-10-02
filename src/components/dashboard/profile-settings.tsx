@@ -24,7 +24,7 @@ export function ProfileSettings() {
         status={statusFromQueries(query)}
       >
         {!query.data?.profile && (
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground mb-4 text-sm">
             {t("completeProfile")}
           </p>
         )}

@@ -69,36 +69,36 @@ function threadSlug(title: string): string {
   return `${base || "help"}-${Date.now()}`;
 }
 
+/**
+ * Throws when the read fails: the Job tracker shows an error with retry
+ * instead of an empty board (DESIGN.md No-Silent-Failure Rule).
+ */
 export async function listMyRoleHelp(
   userId: string,
 ): Promise<RoleHelpRequest[]> {
-  try {
-    const rows = await db
-      .select({
-        roleId: startupRoleHelp.roleId,
-        note: startupRoleHelp.note,
-        classroomTitle: startupRoleHelp.classroomTitle,
-        threadSlug: startupRoleHelp.threadSlug,
-        communitySlug: communities.slug,
-        communityName: communities.name,
-      })
-      .from(startupRoleHelp)
-      .innerJoin(communities, eq(startupRoleHelp.communityId, communities.id))
-      .where(
-        and(eq(startupRoleHelp.userId, userId), isNull(communities.deletedAt)),
-      )
-      .orderBy(desc(startupRoleHelp.createdAt));
-    return rows.map((row) => ({
-      roleId: row.roleId,
-      communitySlug: row.communitySlug,
-      communityName: row.communityName,
-      note: row.note,
-      classroom: row.classroomTitle,
-      path: roleHelpThreadPath(row.communitySlug, row.threadSlug),
-    }));
-  } catch {
-    return [];
-  }
+  const rows = await db
+    .select({
+      roleId: startupRoleHelp.roleId,
+      note: startupRoleHelp.note,
+      classroomTitle: startupRoleHelp.classroomTitle,
+      threadSlug: startupRoleHelp.threadSlug,
+      communitySlug: communities.slug,
+      communityName: communities.name,
+    })
+    .from(startupRoleHelp)
+    .innerJoin(communities, eq(startupRoleHelp.communityId, communities.id))
+    .where(
+      and(eq(startupRoleHelp.userId, userId), isNull(communities.deletedAt)),
+    )
+    .orderBy(desc(startupRoleHelp.createdAt));
+  return rows.map((row) => ({
+    roleId: row.roleId,
+    communitySlug: row.communitySlug,
+    communityName: row.communityName,
+    note: row.note,
+    classroom: row.classroomTitle,
+    path: roleHelpThreadPath(row.communitySlug, row.threadSlug),
+  }));
 }
 
 export async function askMyTrackedRoleHelp(input: {
