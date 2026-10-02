@@ -80,6 +80,16 @@ import {
   displayableBadgeRows,
   toDisplayableBadges,
 } from "@/server/members/displayable-badges";
+import {
+  loadProfileAwards,
+  type ProfileAward,
+} from "@/server/members/profile-awards";
+import type { BadgeSlug } from "@/lib/badges/catalog";
+import { featuredBadges, resolveShowcase } from "@/lib/badges/showcase";
+import { holdersOf, optionalBadgeRarity } from "@/server/badges/rarity";
+
+/** Emblems shown per member on the /members roster. */
+const ROSTER_BADGE_LIMIT = 3;
 
 const upsertProfileInput = z.object({
   displayName: z.string().min(1).max(255),
@@ -113,7 +123,8 @@ export const membersRouter = createTRPCRouter({
         earnedAt: memberBadges.earnedAt,
       })
       .from(memberBadges)
-      .where(and(eq(memberBadges.userId, userId), displayableBadgeRows()));
+      .where(and(eq(memberBadges.userId, userId), displayableBadgeRows()))
+      .orderBy(desc(memberBadges.earnedAt), memberBadges.badgeSlug);
 
     const [names] = await ctx.db
       .select({ firstName: user.firstName, lastName: user.lastName })
@@ -392,6 +403,7 @@ export const membersRouter = createTRPCRouter({
         .select({
           ...publicMemberProfileColumns,
           ...profileReachColumns(),
+          showcaseBadges: memberProfiles.showcaseBadges,
         })
         .from(memberProfiles)
         .where(
@@ -423,10 +435,12 @@ export const membersRouter = createTRPCRouter({
         )
         .orderBy(desc(memberBadges.earnedAt), memberBadges.badgeSlug);
 
-      const [identitiesByUser, githubAccountIds] = await Promise.all([
+      const [identitiesByUser, githubAccountIds, rarity] = await Promise.all([
         loadSocialIdentitiesForUsers(ctx.db, [input.userId]),
         loadGithubAccountIds(ctx.db, [input.userId]),
+        optionalBadgeRarity(ctx.db),
       ]);
+      const earned = toDisplayableBadges(badges);
 
       const social = presentMemberSocials({
         userId: input.userId,
@@ -450,9 +464,33 @@ export const membersRouter = createTRPCRouter({
               avatarUrl: getAvatarUrl(memberUser.email, memberUser.image),
             }
           : null,
-        badges: toDisplayableBadges(badges),
+        badges: earned,
+        showcase: resolveShowcase(
+          profile.showcaseBadges,
+          earned.map((badge) => badge.slug),
+          rarity && holdersOf(rarity),
+        ),
         social: toPublicSocialJson(social),
       };
+    }),
+
+  /**
+   * A member's awards (prizes from challenges), as this viewer may see
+   * them. Null when the viewer may not see the profile.
+   */
+  getPublicAwards: publicProcedure
+    .input(z.object({ userId: z.string() }))
+    .query(async ({ ctx, input }): Promise<ProfileAward[] | null> => {
+      const viewerId = ctx.session?.user.id ?? null;
+      const gate = await loadProfileGate(ctx.db, {
+        userId: input.userId,
+        viewerId,
+      });
+      if (!gate) return null;
+      return loadProfileAwards(
+        { db: ctx.db, payload: await getPayloadClient() },
+        { userId: input.userId, viewerId },
+      );
     }),
 
   /**
@@ -611,33 +649,45 @@ export const membersRouter = createTRPCRouter({
             )
           : items;
 
-        // Get badge counts for each member
+        // Each member's displayable badges: the count and the rarest few.
         const memberIds = filtered.map((m) => m.profile.userId);
-        const badgeCounts =
-          memberIds.length > 0
-            ? await ctx.db
-                .select({
-                  userId: memberBadges.userId,
-                  count: sql<number>`count(*)`.mapWith(Number),
-                })
-                .from(memberBadges)
-                .where(
-                  and(
-                    inArray(memberBadges.userId, memberIds),
-                    displayableBadgeRows(),
-                  ),
-                )
-                .groupBy(memberBadges.userId)
-            : [];
-
-        const badgeCountMap = new Map(
-          badgeCounts.map((bc) => [bc.userId, bc.count]),
-        );
-
-        const [identitiesByUser, githubAccountIds] = await Promise.all([
-          loadSocialIdentitiesForUsers(ctx.db, memberIds),
-          loadGithubAccountIds(ctx.db, memberIds),
-        ]);
+        const [badgeRows, rarity, identitiesByUser, githubAccountIds] =
+          await Promise.all([
+            memberIds.length > 0
+              ? ctx.db
+                  .select({
+                    userId: memberBadges.userId,
+                    badgeSlug: memberBadges.badgeSlug,
+                    earnedAt: memberBadges.earnedAt,
+                  })
+                  .from(memberBadges)
+                  .where(
+                    and(
+                      inArray(memberBadges.userId, memberIds),
+                      displayableBadgeRows(),
+                    ),
+                  )
+                  // Newest first, then by slug: a stable order for the
+                  // recent fallback and for equally rare badges.
+                  .orderBy(
+                    memberBadges.userId,
+                    desc(memberBadges.earnedAt),
+                    memberBadges.badgeSlug,
+                  )
+              : Promise.resolve([]),
+            optionalBadgeRarity(ctx.db),
+            loadSocialIdentitiesForUsers(ctx.db, memberIds),
+            loadGithubAccountIds(ctx.db, memberIds),
+          ]);
+        const heldByMember = new Map<string, BadgeSlug[]>();
+        for (const badge of badgeRows) {
+          const [displayable] = toDisplayableBadges([badge]);
+          if (!displayable) continue;
+          const held = heldByMember.get(badge.userId) ?? [];
+          held.push(displayable.slug);
+          heldByMember.set(badge.userId, held);
+        }
+        const holders = rarity && holdersOf(rarity);
 
         return {
           items: filtered.map((m) => {
@@ -657,7 +707,12 @@ export const membersRouter = createTRPCRouter({
               email: m.email,
               image: m.image,
               ownedActiveAgentId: m.agentId,
-              badgeCount: badgeCountMap.get(m.profile.userId) ?? 0,
+              badgeCount: heldByMember.get(m.profile.userId)?.length ?? 0,
+              topBadges: featuredBadges(
+                heldByMember.get(m.profile.userId) ?? [],
+                holders,
+                ROSTER_BADGE_LIMIT,
+              ),
               social: toLeaderboardSocial(social),
             });
           }),

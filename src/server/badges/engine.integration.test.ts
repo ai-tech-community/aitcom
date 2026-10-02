@@ -799,17 +799,45 @@ describe.skipIf(!RUN_DB)("badge engine [DB integration]", () => {
   describe("rarity", () => {
     it("counts holders among members with a profile, editions as numbers", async () => {
       const { db, schema, rarity } = m;
-      const before = await rarity.loadBadgeRarity(db);
-      await db
-        .insert(schema.memberBadges)
-        .values({ userId: u.other, badgeSlug: "early_adopter" });
-      await db
-        .insert(schema.memberBadges)
-        .values({ userId: u.other, badgeSlug: "veteran" });
-      const after = await rarity.loadBadgeRarity(db);
-
-      const of = (report: typeof after, slug: string) =>
+      type Report = Awaited<ReturnType<typeof rarity.loadBadgeRarity>>;
+      const of = (report: Report, slug: string) =>
         report.badges.find((badge) => badge.slug === slug)!;
+      /** Every share is holders ÷ the report's own denominator. */
+      const consistent = (report: Report) => {
+        for (const badge of report.badges) {
+          if (badge.measure === "share") {
+            expect(badge.share, badge.slug).toBeCloseTo(
+              report.members > 0 ? badge.holders / report.members : 0,
+              12,
+            );
+          }
+        }
+      };
+
+      // Other DB suites add and remove members on the shared test database
+      // while this runs. One repeatable-read snapshot sees none of their
+      // commits, so the before/after difference is exactly this test's
+      // writes; rolling back leaves nothing behind.
+      class Rollback extends Error {}
+      let reports: { before: Report; after: Report } | undefined;
+      await db
+        .transaction(
+          async (tx) => {
+            const before = await rarity.loadBadgeRarity(tx);
+            await tx.insert(schema.memberBadges).values([
+              { userId: u.other, badgeSlug: "early_adopter" },
+              { userId: u.other, badgeSlug: "veteran" },
+            ]);
+            reports = { before, after: await rarity.loadBadgeRarity(tx) };
+            throw new Rollback();
+          },
+          { isolationLevel: "repeatable read" },
+        )
+        .catch((error: unknown) => {
+          if (!(error instanceof Rollback)) throw error;
+        });
+      const { before, after } = reports!;
+
       expect(after.members).toBe(before.members);
       expect(of(after, "veteran").holders).toBe(
         of(before, "veteran").holders + 1,
@@ -822,15 +850,22 @@ describe.skipIf(!RUN_DB)("badge engine [DB integration]", () => {
         editionSize: 100,
       });
       expect(after.badges).toHaveLength(before.badges.length);
+      consistent(before);
+      consistent(after);
 
-      // The public procedure returns the same DTO.
+      // The public procedure returns the same DTO shape, internally
+      // consistent (its totals are global, so not compared by value).
       rarity.clearBadgeRarityCache();
       const caller = m.createCaller({
         db,
         session: null,
         headers: new Headers(),
       });
-      expect(await caller.badges.rarity()).toEqual(after);
+      const report = await caller.badges.rarity();
+      expect(report.badges.map((b) => b.slug)).toEqual(
+        after.badges.map((b) => b.slug),
+      );
+      consistent(report);
     });
   });
 });

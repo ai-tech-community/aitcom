@@ -143,8 +143,11 @@ editions show the absolute number ("1 of 100").
 - **Tier ring**: I a hairline ring, II a double ring, III a solid band with
   a fine pattern. The shape stays the same, so a member recognises the
   track at a glance.
-- **Colour** comes from the chart tokens (`--chart-*`), one hue per track,
-  low chroma, on a neutral fill. Signal Orange is not used (One Voice).
+- **Colour**: one quiet hue per track, low chroma, on a neutral tint, from
+  dedicated `--emblem-hue-*` tokens (a documented Chart-Containment
+  exception in DESIGN.md). Not the chart tokens themselves: there are five
+  for eleven tracks, chart-1 is orange in light mode, and their hues change
+  between themes. Signal Orange's hue band is never used (One Voice).
   Limited editions get a subtle sheen that moves on hover; with
   `prefers-reduced-motion` it is static.
 - **Locked** (owner only): outline only, muted, with the progress to the
@@ -184,7 +187,10 @@ editions show the absolute number ("1 of 100").
 
 - **Overview**: bio, a showcase of up to three badges the owner pins (the
   three rarest when nothing is pinned), skills, and the latest three items
-  from Work.
+  from Work. Pinning a track badge pins the track: the showcase shows the
+  highest tier of it the member holds. The rarest fallback takes one badge
+  per track. With three pinned, "Pin" is disabled with a hint to unpin one
+  first (no replace dialog: the pins are on the same page).
 - **Badges**: earned badges grouped by kind (tracks, milestones, limited
   editions, awards), each with tier, date and rarity. For the owner, locked
   tiers with progress, and a "Pin to showcase" action.

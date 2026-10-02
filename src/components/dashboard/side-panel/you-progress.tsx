@@ -5,6 +5,7 @@ import { useFormatter, useLocale, useTranslations } from "next-intl";
 
 import { api, type RouterOutputs } from "@/trpc/react";
 import { catalogBadge, type BadgeSlug } from "@/lib/badges/catalog";
+import { BadgeEmblem } from "@/components/badges/badge-emblem";
 import { PointsChart } from "@/components/gamification/points-chart";
 import { StreakCalendar } from "@/components/ui/streak-calendar";
 import {
@@ -32,6 +33,7 @@ const TRIGGER_ICONS: Record<PointsEvent["type"], LucideIcon> = {
 
 export interface EarnedBadge {
   slug: BadgeSlug;
+  earnedAt: Date | string;
 }
 
 function BlockHeading({ children }: { children: React.ReactNode }) {
@@ -233,20 +235,28 @@ export function YouProgress({
       {badges.length > 0 && (
         <div className="space-y-3">
           <BlockHeading>{t("badgesTitle")}</BlockHeading>
-          <ul className="flex flex-wrap gap-1.5">
-            {badges.flatMap(({ slug }) => {
+          <ul className="space-y-2.5">
+            {badges.flatMap(({ slug, earnedAt }) => {
               const badge = catalogBadge(slug);
               return badge
                 ? [
-                    <li
-                      key={badge.slug}
-                      title={tBadges(
-                        badge.descriptionKey,
-                        badge.descriptionValues,
-                      )}
-                      className="border-border rounded-full border px-2 py-0.5 text-xs"
-                    >
-                      {tBadges(badge.nameKey)}
+                    <li key={badge.slug} className="flex items-start gap-2.5">
+                      <BadgeEmblem
+                        subject={{ kind: "badge", slug: badge.slug }}
+                        state={{ earned: true, earnedAt }}
+                        size="sm"
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm leading-tight">
+                          {tBadges(badge.nameKey)}
+                        </span>
+                        <span className="text-muted-foreground block text-xs">
+                          {tBadges(
+                            badge.descriptionKey,
+                            badge.descriptionValues,
+                          )}
+                        </span>
+                      </span>
                     </li>,
                   ]
                 : [];

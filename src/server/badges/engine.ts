@@ -34,6 +34,7 @@ import { getPayloadClient } from "@/server/payload";
 import { trackEarnings, type Earning } from "./celebration";
 import { TRACK_METRICS, type BadgeDb, type BadgeSources } from "./metrics";
 import { notifyBadgesEarned } from "./notify";
+import { clearBadgeRarityCache } from "./rarity";
 
 export type { BadgeDb } from "./metrics";
 export { trackEarnings, type Earning } from "./celebration";
@@ -128,7 +129,11 @@ async function safely(
   work: (tx: BadgeDb) => Promise<Omit<EarnOutcome, "ok">>,
 ): Promise<EarnOutcome> {
   try {
-    return { ok: true, ...(await db.transaction((tx) => work(tx))) };
+    const outcome = await db.transaction((tx) => work(tx));
+    // After the commit: clearing inside the transaction could let another
+    // request re-cache a count without the new row for the whole TTL.
+    if (outcome.earned.length > 0) clearBadgeRarityCache();
+    return { ok: true, ...outcome };
   } catch (err) {
     console.error(`badges: ${label} failed`, err);
     return { ok: false, earned: [], celebrated: [] };
@@ -201,6 +206,7 @@ export async function recordRetroactiveTiers(
       })),
     ),
   );
+  if (earned.length > 0) clearBadgeRarityCache();
   return earned;
 }
 

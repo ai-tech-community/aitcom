@@ -32,6 +32,7 @@ const PUBLIC_PROFILE_RESPONSE_KEYS = [
   "badges",
   "profile",
   "reach",
+  "showcase",
   "social",
   "user",
 ];
@@ -52,6 +53,7 @@ const ROSTER_ENTRY_KEYS = [
   "hasAgent",
   "profile",
   "social",
+  "topBadges",
 ];
 const ROSTER_PROFILE_KEYS = [
   "company",
@@ -395,6 +397,10 @@ describe.skipIf(!RUN_DB)("public member profile [DB integration]", () => {
     });
     const listed = items.find((i) => i.profile.userId === fx.pub);
     expect(listed?.badgeCount).toBe(profile!.badges.length);
+    // One emblem per track: Regular I and II show as Regular II only.
+    expect(listed?.topBadges).toEqual(["regular"]);
+    // Nothing pinned: the showcase falls back to the rarest held.
+    expect(profile?.showcase).toEqual({ slugs: ["regular"], source: "rarest" });
 
     // The off-catalog row is still stored.
     const stored = await m.db

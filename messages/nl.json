@@ -773,7 +773,9 @@
     "ownerOnlyNotice": "Alleen jij kunt je profiel zien. <link>Maak het openbaar in Instellingen.</link>",
     "message": "Bericht",
     "ownerHiddenByStaffNotice": "Je profiel is verborgen voor het publiek. Neem contact met ons op als je denkt dat dit een vergissing is.",
-    "agentNotActiveNotice": "Alleen jij kunt deze agentpagina zien. Je agent is niet actief (status: <mono>{status}</mono>)."
+    "agentNotActiveNotice": "Alleen jij kunt deze agentpagina zien. Je agent is niet actief (status: <mono>{status}</mono>).",
+    "badgeCount": "{count, plural, one {# badge} other {# badges}}",
+    "topBadges": "Zeldzaamste badges"
   },
   "memberProfile": {
     "tabsLabel": "Profielonderdelen",
@@ -818,7 +820,7 @@
       "showcase": "Uitgelicht",
       "showcaseAll": "Alle badges",
       "showcaseEmptyOwnerTitle": "Nog geen badges",
-      "showcaseEmptyOwnerDescription": "Je drie nieuwste badges staan hier.",
+      "showcaseEmptyOwnerDescription": "Hier staan je zeldzaamste badges, of de badges die je uitlicht op het tabblad Badges.",
       "showcaseEmptyOwnerCta": "Zo verdien je badges",
       "showcaseEmptyVisitor": "Nog geen badges.",
       "skills": "Vaardigheden",
@@ -830,7 +832,10 @@
       "recentWorkAll": "Al het werk",
       "recentWorkEmptyOwnerTitle": "Hier staat nog niets",
       "recentWorkEmptyOwnerDescription": "Artikelen, projecten, cursussen, certificaten en evenementen die je organiseert verschijnen hier.",
-      "recentWorkEmptyVisitor": "Nog geen werk om te tonen."
+      "recentWorkEmptyVisitor": "Nog geen werk om te tonen.",
+      "showcaseRarestHint": "Je zeldzaamste badges.",
+      "showcaseRecentHint": "Je nieuwste badges.",
+      "showcasePinCta": "Kies zelf"
     },
     "badges": {
       "title": "Badges",
@@ -838,7 +843,30 @@
       "emptyOwnerTitle": "Nog geen badges",
       "emptyOwnerDescription": "Je verdient badges door naar evenementen te gaan, challenges af te ronden, artikelen te schrijven en je profiel compleet te maken.",
       "emptyOwnerCta": "Vind een evenement",
-      "emptyVisitor": "Nog geen badges."
+      "emptyVisitor": "Nog geen badges.",
+      "groups": {
+        "tracks": "Sporen",
+        "milestones": "Mijlpalen",
+        "limitedEditions": "Gelimiteerde edities",
+        "awards": "Prijzen"
+      },
+      "earnedOn": "Verdiend op {date}",
+      "notEarned": "Nog niet verdiend",
+      "otherTiers": "Andere niveaus van {track}",
+      "next": "Volgende: {name}, {progress}",
+      "awardFrom": "Van <link>{challenge}</link>",
+      "showcaseNone": "Licht tot {limit, number} badges uit op je Overzicht. Tot je dat doet, staan je zeldzaamste badges daar.",
+      "showcaseSome": "{count, number} van {limit, number} badges uitgelicht.",
+      "showcaseFull": "Je hebt al {limit, number} badges uitgelicht. Haal er een weg om een andere uit te lichten.",
+      "pin": "Uitlichten",
+      "unpin": "Niet meer uitlichten",
+      "pinLabel": "Licht {name} uit op je profiel",
+      "unpinLabel": "Licht {name} niet meer uit",
+      "pinning": "Bezig met uitlichten…",
+      "unpinning": "Bezig met weghalen…",
+      "pinError": "Je uitgelichte badges konden niet worden bijgewerkt. Probeer het opnieuw.",
+      "beingAdded": "wordt toegevoegd",
+      "beingAddedFact": "Wordt toegevoegd"
     },
     "activity": {
       "title": "Activiteit",
@@ -980,7 +1008,9 @@
       "seeProgress": "Bekijk je voortgang",
       "hideProgress": "Verberg je voortgang",
       "boostCta": "Verdien XP",
-      "company": "@ {company}"
+      "company": "@ {company}",
+      "recentBadges": "Recente badges",
+      "allBadges": "Alle badges"
     },
     "progress": {
       "streakTitle": "Reeks",
@@ -1302,13 +1332,20 @@
     "notification": {
       "title": "Je hebt {badge} verdiend",
       "linkLabel": "Bekijk je badges"
+    },
+    "progress": {
+      "regular": "{current, number} van {count, plural, one {# evenement} other {# evenementen}}",
+      "host": "{current, number} van {count, plural, one {# georganiseerd evenement} other {# georganiseerde evenementen}}",
+      "challenger": "{current, number} van {count, plural, one {# challenge} other {# challenges}}",
+      "writer": "{current, number} van {count, plural, one {# artikel} other {# artikelen}}",
+      "builder": "{current, number} van {count, plural, one {# project} other {# projecten}}",
+      "learner": "{current, number} van {count, plural, one {# cursus} other {# cursussen}}",
+      "teacher": "{current, number} van {count, plural, one {# inschrijving} other {# inschrijvingen}}",
+      "connector": "{current, number} van {count, plural, one {# doorverwijzing} other {# doorverwijzingen}}",
+      "agent_wrangler": "{current, number} van {count, plural, one {# bijdrage} other {# bijdragen}}",
+      "benchmarker": "{current, number} van {count, plural, one {# benchmarkcel} other {# benchmarkcellen}}",
+      "streak": "{current, number} van {count, plural, one {# dag op rij} other {# dagen op rij}}"
     }
-  },
-  "achievementBadge": {
-    "earned": "Verdiend",
-    "locked": "Vergrendeld",
-    "rarity": "{percent}% van de leden",
-    "imageAlt": "Badge {name}, {status}"
   },
   "sponsors": {
     "title": "Sponsors",
@@ -4013,5 +4050,19 @@
     "noQuiz": "Deze les heeft geen quiz.",
     "errorLessonChangedElsewhere": "Deze les is ergens anders gewijzigd, misschien in een ander tabblad. Laad opnieuw om de nieuwste versie te zien.",
     "resourceUrlMissing": "Voeg het adres van de link toe. We slaan hem op zodra hij er een heeft."
+  },
+  "badgeEmblem": {
+    "tier": "{track}, niveau {tier}",
+    "limited": "{name}, gelimiteerde editie",
+    "award": "Prijs: {label}",
+    "earned": "{name}, verdiend op {date}",
+    "locked": "{name}, vergrendeld",
+    "lockedProgress": "{name}, vergrendeld, {current, number} van {threshold, number}",
+    "beingAdded": "{name}, wordt toegevoegd"
+  },
+  "badgeRarity": {
+    "share": "Verdiend door {percent} van de leden",
+    "fewerThanOnePercent": "Minder dan 1% van de leden",
+    "edition": "{holders, number} van {size, number} vergeven"
   }
 }

@@ -7,6 +7,7 @@ import type {
 } from "../communities/rituals";
 import {
   boolean,
+  check,
   date,
   index,
   integer,
@@ -256,13 +257,29 @@ export const memberProfiles = appSchema.table(
      * N days" rule needs no new column.
      */
     onboardingDismissedAt: d.timestamp({ withTimezone: true }),
+    /**
+     * Badge slugs the member pinned to their profile showcase, in pin
+     * order (at most three, also enforced by a CHECK). Empty: the showcase
+     * shows the member's rarest badges instead.
+     */
+    showcaseBadges: d
+      .text()
+      .array()
+      .default(sql`'{}'::text[]`)
+      .notNull(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
-  (t) => [index("member_profile_xp_idx").on(t.xp)],
+  (t) => [
+    index("member_profile_xp_idx").on(t.xp),
+    check(
+      "member_profile_showcase_badges_max",
+      sql`cardinality(${t.showcaseBadges}) <= 3`,
+    ),
+  ],
 );
 
 export const memberProfileRelations = relations(memberProfiles, ({ one }) => ({

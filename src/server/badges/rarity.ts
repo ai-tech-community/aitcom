@@ -8,6 +8,8 @@ import {
 import type { db as appDb } from "@/server/db";
 import { createTtlMemo } from "@/server/ttl-memo";
 
+import type { BadgeDb } from "./metrics";
+
 /** How rare a badge is, as shown on the badge detail and the Badges tab. */
 export type BadgeRarity =
   | {
@@ -64,9 +66,7 @@ export function toBadgeRarityReport(
  * Holders of each catalog badge among members with a profile, and the
  * number of such members, in one grouped query.
  */
-export async function loadBadgeRarity(
-  db: typeof appDb,
-): Promise<BadgeRarityReport> {
+export async function loadBadgeRarity(db: BadgeDb): Promise<BadgeRarityReport> {
   const slugs = sql.join(
     BADGE_SLUGS.map((slug) => sql`${slug}`),
     sql`, `,
@@ -104,7 +104,34 @@ export function getBadgeRarity(db: typeof appDb): Promise<BadgeRarityReport> {
   return memo.get("all", () => loadBadgeRarity(db));
 }
 
-/** Test seam: drop the cached report. */
+/**
+ * Rarity for surfaces where it is a caption, not the content (profile,
+ * roster): a failed load is logged and yields null, so the page still
+ * renders without rarity text.
+ */
+export function optionalBadgeRarity(
+  db: typeof appDb,
+): Promise<BadgeRarityReport | null> {
+  return getBadgeRarity(db).catch((error: unknown) => {
+    console.error("badges: rarity failed to load", error);
+    return null;
+  });
+}
+
+/**
+ * Drops this instance's cached report, so the next read recounts. The
+ * engine calls it after a new badge row is committed, so a just-earned
+ * badge is not shown with an hour-old count; other instances catch up
+ * within the TTL.
+ */
 export function clearBadgeRarityCache(): void {
   memo.clear();
+}
+
+/** Holders of each badge from a report, for ranking badges by rarity. */
+export function holdersOf(
+  report: BadgeRarityReport,
+): (slug: BadgeSlug) => number {
+  const bySlug = new Map(report.badges.map((b) => [b.slug, b.holders]));
+  return (slug) => bySlug.get(slug) ?? 0;
 }
