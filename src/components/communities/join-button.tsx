@@ -8,6 +8,7 @@ import type {
   JoinPolicy,
   MembershipStatus as ViewerMembershipStatus,
 } from "@/server/communities/invite-policy";
+import { InviteResponse } from "./invite-response";
 import { useCommunityJoin } from "./use-community-join";
 
 /** Includes "banned", so the shared rule can hide the button for them. */
@@ -23,7 +24,8 @@ interface JoinButtonProps {
 }
 
 /**
- * The community page's join control: join, request, pending, or leave.
+ * The community page's join control: join, request, pending, answer an
+ * invitation, or leave.
  * Follows the shared `viewerJoinAction` rule through `useCommunityJoin`,
  * with the membership the page already loaded on the server.
  */
@@ -50,6 +52,14 @@ export function JoinButton({
     case "invite_only":
     case "unavailable":
       return null;
+    case "invited":
+      return (
+        <InviteResponse
+          slug={slug}
+          name={name}
+          onChange={() => router.refresh()}
+        />
+      );
     case "pending":
       return (
         <Button variant="outline" disabled>

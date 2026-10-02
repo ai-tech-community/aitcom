@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
+import { useConfirm } from "@/components/confirm-dialog";
 import { useInitialAuthUser } from "@/components/auth/session-provider";
 import { HUB_SLUG } from "@/server/communities/hub";
 import {
@@ -89,21 +90,27 @@ function useFinishingSlug(): string | null {
   );
 }
 
-// ─── The one way a join, request or leave is performed ─────────────────────
+// ─── The one way a membership change is performed ──────────────────────────
 
-type Verb = "join" | "request" | "leave";
+type Verb = "join" | "request" | "leave" | "accept" | "decline";
 
 const SAID: Record<Verb, { done: string; failed: string }> = {
   join: { done: "joined", failed: "joinFailed" },
   request: { done: "requested", failed: "requestFailed" },
   leave: { done: "left", failed: "leaveFailed" },
+  accept: { done: "joined", failed: "acceptFailed" },
+  decline: { done: "declined", failed: "declineFailed" },
 };
+
+/** Answering an invitation also changes Home: its Next up and community feed. */
+const CHANGES_HOME: ReadonlySet<Verb> = new Set(["accept", "decline"]);
 
 /**
  * Runs a membership change for a community and refreshes what reads it:
- * the viewer's memberships and that community's page data. The directory
- * is left alone — its counts come from a cached snapshot, and re-sorting it
- * under the pointer would move the card that was just joined.
+ * the viewer's memberships and that community's page data (and Home, when
+ * an invitation is answered). The directory is left alone — its counts
+ * come from a cached snapshot, and re-sorting it under the pointer would
+ * move the card that was just joined.
  */
 function useMembershipRunner() {
   const t = useTranslations("communities.discover");
@@ -111,6 +118,8 @@ function useMembershipRunner() {
   const join = api.communities.join.useMutation();
   const request = api.communities.requestToJoin.useMutation();
   const leave = api.communities.leave.useMutation();
+  const accept = api.communities.acceptInvite.useMutation();
+  const decline = api.communities.declineInvite.useMutation();
 
   return async (
     verb: Verb,
@@ -119,13 +128,17 @@ function useMembershipRunner() {
   ): Promise<boolean> => {
     const said = (key: string) =>
       name ? t(key, { community: name }) : t(`${key}Generic`);
-    const mutation = { join, request, leave }[verb];
+    const mutation = { join, request, leave, accept, decline }[verb];
     try {
       await mutation.mutateAsync({ slug });
       toast.success(said(SAID[verb].done));
       void utils.communities.getMyCommunities.invalidate();
       void utils.communities.getBySlug.invalidate({ slug });
       void utils.communities.getMembers.invalidate({ slug });
+      if (CHANGES_HOME.has(verb)) {
+        void utils.home.nextUp.invalidate();
+        void utils.feed.getHomeActivity.invalidate();
+      }
       return true;
     } catch {
       // Name the problem and the way forward; never the raw server error.
@@ -215,6 +228,55 @@ export function useCommunityJoin({
   };
 
   return { action, run, leave, busy: busy || finishing === slug };
+}
+
+export type InviteResponse = {
+  accept: () => Promise<void>;
+  /** Asks the member to confirm first; nothing happens if they cancel. */
+  decline: () => Promise<void>;
+  busy: boolean;
+};
+
+/**
+ * Accepting or declining a direct invitation to a community. Declining
+ * removes the invitation, so it is confirmed first.
+ */
+export function useInviteResponse({
+  slug,
+  name,
+  onChange,
+}: {
+  slug: string;
+  /** For messages; generic wording when absent. */
+  name?: string;
+  /** After a successful accept or decline (e.g. refresh server data). */
+  onChange?: () => void;
+}): InviteResponse {
+  const t = useTranslations("communities.invite");
+  const confirm = useConfirm();
+  const runMembership = useMembershipRunner();
+  const [busy, setBusy] = useState(false);
+
+  const perform = async (verb: "accept" | "decline") => {
+    setBusy(true);
+    const ok = await runMembership(verb, slug, name);
+    setBusy(false);
+    if (ok) onChange?.();
+  };
+
+  const decline = async () => {
+    const sure = await confirm({
+      title: name
+        ? t("declineConfirmTitle", { community: name })
+        : t("declineConfirmTitleGeneric"),
+      description: t("declineConfirmBody"),
+      confirmLabel: t("decline"),
+      destructive: true,
+    });
+    if (sure) await perform("decline");
+  };
+
+  return { accept: () => perform("accept"), decline, busy };
 }
 
 /**

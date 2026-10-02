@@ -21,6 +21,7 @@ import {
   type CommunityRole,
 } from "@/server/communities/role-utils";
 import { logActivity } from "@/server/agent/activity";
+import { activateMembership } from "@/server/communities/activate-membership";
 import { canAdvise } from "@/server/agents/advisory";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -236,29 +237,22 @@ export const agentCommunityRouter = {
             message: "Already a member",
           });
         }
-        // Existing invited/pending_approval -> activate
-        await ctx.db
-          .update(communityMemberships)
-          .set({ status: "active" })
-          .where(eq(communityMemberships.id, existing.id));
-      } else {
-        await ctx.db.insert(communityMemberships).values({
-          communityId: community.id,
-          userId: ownerId,
-          role: "member",
-          status: "active",
-        });
       }
 
-      await logActivity(ctx.db, {
-        actorId: ctx.agent.agentId,
-        actorType: "agent",
-        action: "community.joined",
-        targetType: "community",
-        targetId: community.id,
+      // An existing invited/pending_approval row is activated, never duplicated.
+      const activated = await activateMembership(ctx.db, {
         communityId: community.id,
+        userId: ownerId,
+        existing: existing ?? null,
+        actor: { id: ctx.agent.agentId, type: "agent" },
         metadata: { onBehalfOf: ownerId },
       });
+      if (!activated) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "The owner's membership changed. Please try again.",
+        });
+      }
 
       return { success: true };
     }),
@@ -507,30 +501,20 @@ export const agentCommunityRouter = {
         return { success: true, communitySlug: invite.community.slug };
       }
 
-      if (existing) {
-        await ctx.db
-          .update(communityMemberships)
-          .set({ status: "active" })
-          .where(eq(communityMemberships.id, existing.id));
-      } else {
-        await ctx.db.insert(communityMemberships).values({
-          communityId: invite.communityId,
-          userId: ownerId,
-          role: "member",
-          status: "active",
-          invitedBy: invite.createdBy,
-        });
-      }
-
-      await logActivity(ctx.db, {
-        actorId: ctx.agent.agentId,
-        actorType: "agent",
-        action: "community.joined",
-        targetType: "community",
-        targetId: invite.communityId,
+      const activated = await activateMembership(ctx.db, {
         communityId: invite.communityId,
+        userId: ownerId,
+        existing: existing ?? null,
+        invitedBy: existing?.invitedBy ?? invite.createdBy,
+        actor: { id: ctx.agent.agentId, type: "agent" },
         metadata: { via: "invite", onBehalfOf: ownerId },
       });
+      if (!activated) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "The owner's membership changed. Please try again.",
+        });
+      }
 
       return { success: true, communitySlug: invite.community.slug };
     }),

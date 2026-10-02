@@ -78,6 +78,7 @@ describe("JoinAction", () => {
   it.each([
     [{ kind: "pending" } as const, "pendingAction"],
     [{ kind: "invite_only" } as const, "inviteOnly"],
+    [{ kind: "invited" } as const, "invitedAction"],
     [{ kind: "member", canLeave: true } as const, "youreIn"],
   ])("shows %o as plain status, not a button", (action, label) => {
     s.action = action;

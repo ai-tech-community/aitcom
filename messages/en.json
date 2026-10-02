@@ -2721,7 +2721,14 @@
       "stopUsingLocation": "Stop using my location",
       "locationPrivacy": "We round it to about a kilometre and don't save it.",
       "locationDenied": "Your browser didn't share your location. You can allow it in the browser's site settings.",
-      "locationFailedPlaces": "We couldn't get your location. You can still choose a place above."
+      "locationFailedPlaces": "We couldn't get your location. You can still choose a place above.",
+      "invitedAction": "You're invited",
+      "acceptFailed": "Couldn't accept the invitation to {community}. Please try again.",
+      "acceptFailedGeneric": "Couldn't accept the invitation. Please try again.",
+      "declined": "You declined the invitation to {community}",
+      "declinedGeneric": "You declined the invitation",
+      "declineFailed": "Couldn't decline the invitation to {community}. Please try again.",
+      "declineFailedGeneric": "Couldn't decline the invitation. Please try again."
     },
     "stack": {
       "memberFallback": "Member",
@@ -2972,7 +2979,14 @@
     "invite": {
       "pendingTitle": "Request submitted",
       "pendingBody": "Your request to join is pending approval. You'll get access once an admin approves it.",
-      "browse": "Browse communities"
+      "browse": "Browse communities",
+      "invitedTitle": "You're invited to join {community}",
+      "invitedTitleGeneric": "You're invited to join this community",
+      "accept": "Accept",
+      "decline": "Decline",
+      "declineConfirmTitle": "Decline the invitation to {community}?",
+      "declineConfirmTitleGeneric": "Decline this invitation?",
+      "declineConfirmBody": "The invitation will be removed. To join later, you need a new invitation."
     },
     "feed": {
       "title": "Feed",

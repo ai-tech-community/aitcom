@@ -60,6 +60,8 @@ vi.mock("@/trpc/react", () => {
         join: { useMutation: () => ({ mutateAsync: s.join }) },
         requestToJoin: { useMutation: () => ({ mutateAsync: s.request }) },
         leave: { useMutation: () => ({ mutateAsync: s.leave }) },
+        acceptInvite: { useMutation: () => ({ mutateAsync: vi.fn() }) },
+        declineInvite: { useMutation: () => ({ mutateAsync: vi.fn() }) },
       },
     },
   };

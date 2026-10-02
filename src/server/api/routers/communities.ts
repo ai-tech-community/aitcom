@@ -56,6 +56,57 @@ import { HUB_SLUG } from "@/server/api/trpc";
 import { listMyCommunities } from "@/server/communities/my-communities";
 import { countPendingJoinRequests } from "@/server/communities/pending-join-requests";
 import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
+import { activateMembership } from "@/server/communities/activate-membership";
+import { notifyCommunityInvite } from "@/server/communities/invite-notification";
+import type { db as Database } from "@/server/db";
+
+/** The membership changed between reading and writing it (e.g. a ban). */
+function membershipChanged(): TRPCError {
+  return new TRPCError({
+    code: "CONFLICT",
+    message: "Your membership changed. Please reload and try again.",
+  });
+}
+
+/**
+ * The caller's open invitation to a community, for accepting or declining
+ * it. A banned member, a member, and someone never invited (or only waiting
+ * on a join request) each get a clear error.
+ */
+async function findOpenInvitation(
+  db: typeof Database,
+  slug: string,
+  userId: string,
+) {
+  const community = await db.query.communities.findFirst({
+    where: and(eq(communities.slug, slug), isNull(communities.deletedAt)),
+  });
+  if (!community) {
+    throw new TRPCError({ code: "NOT_FOUND" });
+  }
+  const membership = await db.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, community.id),
+      eq(communityMemberships.userId, userId),
+    ),
+  });
+  if (membership?.status === "banned") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You are banned from this community",
+    });
+  }
+  if (membership?.status === "active") {
+    throw new TRPCError({ code: "CONFLICT", message: "Already a member" });
+  }
+  if (membership?.status !== "invited") {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "You have no invitation to this community",
+    });
+  }
+  return { community, membership };
+}
 
 export const communitiesRouter = createTRPCRouter({
   /**
@@ -401,28 +452,15 @@ export const communitiesRouter = createTRPCRouter({
             message: "Already a member",
           });
         }
-        // Existing invited/pending_approval → activate instead of duplicate insert
-        await ctx.db
-          .update(communityMemberships)
-          .set({ status: "active" })
-          .where(eq(communityMemberships.id, existing.id));
-      } else {
-        await ctx.db.insert(communityMemberships).values({
-          communityId: community.id,
-          userId: ctx.session.user.id,
-          role: "member",
-          status: "active",
-        });
       }
 
-      await logActivity(ctx.db, {
-        actorId: ctx.session.user.id,
-        actorType: "member",
-        action: "community.joined",
-        targetType: "community",
-        targetId: community.id,
+      // An existing invited/pending_approval row is activated, never duplicated.
+      const activated = await activateMembership(ctx.db, {
         communityId: community.id,
+        userId: ctx.session.user.id,
+        existing: existing ?? null,
       });
+      if (!activated) throw membershipChanged();
 
       return { success: true };
     }),
@@ -501,6 +539,51 @@ export const communitiesRouter = createTRPCRouter({
         communityId: community.id,
       });
 
+      return { success: true };
+    }),
+
+  /**
+   * Accept a direct invitation (an organizer invited the caller by name).
+   * Works under every join policy: the invitation is the organizer's
+   * consent, as an invite link is.
+   */
+  acceptInvite: protectedProcedure
+    .input(z.object({ slug: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { community, membership } = await findOpenInvitation(
+        ctx.db,
+        input.slug,
+        ctx.session.user.id,
+      );
+      const activated = await activateMembership(ctx.db, {
+        communityId: community.id,
+        userId: ctx.session.user.id,
+        existing: membership,
+        metadata: { via: "direct_invite" },
+      });
+      if (!activated) throw membershipChanged();
+      return { success: true };
+    }),
+
+  /** Decline a direct invitation: the invitation is removed, nothing else. */
+  declineInvite: protectedProcedure
+    .input(z.object({ slug: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { membership } = await findOpenInvitation(
+        ctx.db,
+        input.slug,
+        ctx.session.user.id,
+      );
+      const deleted = await ctx.db
+        .delete(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.id, membership.id),
+            eq(communityMemberships.status, "invited"),
+          ),
+        )
+        .returning({ id: communityMemberships.id });
+      if (deleted.length === 0) throw membershipChanged();
       return { success: true };
     }),
 
@@ -588,41 +671,23 @@ export const communitiesRouter = createTRPCRouter({
             .set({ useCount: sql`${communityInvites.useCount} + 1` })
             .where(eq(communityInvites.id, invite.id));
         }
-        if (existing) {
-          // Upgrade-only: never lower the rank of a member who already outranks
-          // the invite's granted role.
-          const existingRole = existing.role as CommunityRole;
-          const nextRole =
-            ROLE_HIERARCHY[grantedRole] > ROLE_HIERARCHY[existingRole]
-              ? grantedRole
-              : existingRole;
-          await ctx.db
-            .update(communityMemberships)
-            .set({
-              status: "active",
-              role: nextRole,
-              invitedBy: existing.invitedBy ?? invite.createdBy,
-            })
-            .where(eq(communityMemberships.id, existing.id));
-        } else {
-          await ctx.db.insert(communityMemberships).values({
-            communityId: invite.communityId,
-            userId,
-            role: grantedRole,
-            status: "active",
-            invitedBy: invite.createdBy,
-          });
-        }
-
-        await logActivity(ctx.db, {
-          actorId: userId,
-          actorType: "member",
-          action: "community.joined",
-          targetType: "community",
-          targetId: invite.communityId,
+        // Upgrade-only: never lower the rank of a member who already outranks
+        // the invite's granted role.
+        const existingRole = existing?.role as CommunityRole | undefined;
+        const nextRole =
+          existingRole &&
+          ROLE_HIERARCHY[grantedRole] <= ROLE_HIERARCHY[existingRole]
+            ? existingRole
+            : grantedRole;
+        const activated = await activateMembership(ctx.db, {
           communityId: invite.communityId,
+          userId,
+          existing: existing ?? null,
+          role: nextRole,
+          invitedBy: existing?.invitedBy ?? invite.createdBy,
           metadata: { via: "invite", role: grantedRole },
         });
+        if (!activated) throw membershipChanged();
 
         return {
           communitySlug: invite.community.slug,
@@ -1318,6 +1383,16 @@ export const communitiesRouter = createTRPCRouter({
         });
       }
 
+      // Told once per invitation: inviting someone already invited again
+      // does not repeat the notice.
+      if (existing?.status !== "invited") {
+        await notifyCommunityInvite(ctx.db, {
+          inviteeId: input.userId,
+          inviterId: ctx.session.user.id,
+          community: ctx.community,
+        });
+      }
+
       return { success: true };
     }),
 
@@ -1360,34 +1435,15 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "User is banned" });
       }
 
-      if (existing) {
-        await ctx.db
-          .update(communityMemberships)
-          .set({
-            status: "active",
-            role: input.role,
-            invitedBy: ctx.session.user.id,
-          })
-          .where(eq(communityMemberships.id, existing.id));
-      } else {
-        await ctx.db.insert(communityMemberships).values({
-          communityId: ctx.community.id,
-          userId: targetUser.id,
-          role: input.role,
-          status: "active",
-          invitedBy: ctx.session.user.id,
-        });
-      }
-
-      await logActivity(ctx.db, {
-        actorId: targetUser.id,
-        actorType: "member",
-        action: "community.joined",
-        targetType: "community",
-        targetId: ctx.community.id,
+      const activated = await activateMembership(ctx.db, {
         communityId: ctx.community.id,
+        userId: targetUser.id,
+        existing: existing ?? null,
+        role: input.role,
+        invitedBy: ctx.session.user.id,
         metadata: { via: "admin_add", role: input.role },
       });
+      if (!activated) throw membershipChanged();
 
       return { success: true };
     }),

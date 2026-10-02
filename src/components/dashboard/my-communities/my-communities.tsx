@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { InviteResponse } from "@/components/communities/invite-response";
 import { ArrowLink } from "@/components/dashboard/arrow-link";
 import {
   DashboardSection,
@@ -118,19 +119,34 @@ function ActiveRow({
   );
 }
 
-/** A request the member sent, or an invitation they have not answered. */
+/**
+ * A request the member sent, or an invitation they have not answered. An
+ * invitation is answered right here (Accept / Decline); a request waits on
+ * the organizers.
+ */
 function WaitingRow({ membership }: { membership: Membership }) {
   const t = useTranslations("communities.dashboard");
   const nameId = React.useId();
+  const invited = membership.status === "invited";
   return (
     <li
       data-slot="my-community-row"
       className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:gap-4"
     >
       <CommunityIdentity membership={membership} nameId={nameId} />
-      <Badge variant="outline" className="sm:shrink-0">
-        {membership.status === "invited" ? t("invited") : t("requested")}
-      </Badge>
+      <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+        <Badge variant="outline">
+          {invited ? t("invited") : t("requested")}
+        </Badge>
+        {invited && (
+          <InviteResponse
+            variant="row"
+            slug={membership.slug}
+            name={membership.name}
+            describedBy={nameId}
+          />
+        )}
+      </div>
     </li>
   );
 }
