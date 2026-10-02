@@ -780,7 +780,9 @@
     "website": "Website",
     "verified": "Geverifieerd",
     "ownerOnlyNotice": "Alleen jij kunt je profiel zien. <link>Maak het openbaar in Instellingen.</link>",
-    "message": "Bericht"
+    "message": "Bericht",
+    "ownerHiddenByStaffNotice": "Je profiel is verborgen voor het publiek. Neem contact met ons op als je denkt dat dit een vergissing is.",
+    "agentNotActiveNotice": "Alleen jij kunt deze agentpagina zien. Je agent is niet actief (status: <mono>{status}</mono>)."
   },
   "dashboard": {
     "completeProfile": "Vul je profiel in en verdien 50 XP!",
@@ -1110,7 +1112,25 @@
     "early_adopter": "Vroege Gebruiker",
     "speaker": "Spreker",
     "onboarding_complete": "Onboarding Compleet",
-    "course_complete": "Cursus afgerond"
+    "course_complete": "Cursus afgerond",
+    "agent_master": "Agentmeester",
+    "first_challenge": "Eerste Challenge",
+    "challenge_streak_3": "Reeksmeester",
+    "challenge_streak_10": "Onstuitbaar",
+    "challenge_proposer": "Challenge-voorsteller",
+    "mission_impossible": "Mission Impossible",
+    "repo_first": "Repo-strijder",
+    "test_perfect": "Testmeester",
+    "challenge_helper": "Helpende Hand",
+    "sponsor_pick": "Keuze van de Sponsor",
+    "challenge_author": "Challenge-auteur",
+    "speed_demon": "Snelheidsduivel",
+    "agent_collab": "Full-stack Agent",
+    "streak_10": "Reeksmeester",
+    "article_author": "Artikelauteur",
+    "prolific_writer": "Productieve Schrijver",
+    "tutorial_creator": "Tutorialmaker",
+    "first_launch": "Eerste Lancering"
   },
   "sponsors": {
     "title": "Sponsors",

@@ -780,7 +780,9 @@
     "website": "Website",
     "verified": "Verified",
     "ownerOnlyNotice": "Only you can see your profile. <link>Make it public in Settings.</link>",
-    "message": "Message"
+    "message": "Message",
+    "ownerHiddenByStaffNotice": "Your profile is hidden from the public. Contact us if you think this is a mistake.",
+    "agentNotActiveNotice": "Only you can see this agent page. Your agent is not active (status: <mono>{status}</mono>)."
   },
   "dashboard": {
     "completeProfile": "Complete your profile to earn 50 XP!",
@@ -1110,7 +1112,25 @@
     "early_adopter": "Early Adopter",
     "speaker": "Speaker",
     "onboarding_complete": "Onboarding Complete",
-    "course_complete": "Course Graduate"
+    "course_complete": "Course Graduate",
+    "agent_master": "Agent Master",
+    "first_challenge": "First Challenge",
+    "challenge_streak_3": "Streak Master",
+    "challenge_streak_10": "Unstoppable",
+    "challenge_proposer": "Challenge Proposer",
+    "mission_impossible": "Mission Impossible",
+    "repo_first": "Repo Warrior",
+    "test_perfect": "Test Master",
+    "challenge_helper": "Helpful Hand",
+    "sponsor_pick": "Sponsor's Pick",
+    "challenge_author": "Challenge Author",
+    "speed_demon": "Speed Demon",
+    "agent_collab": "Full Stack Agent",
+    "streak_10": "Streak Master",
+    "article_author": "Article Author",
+    "prolific_writer": "Prolific Writer",
+    "tutorial_creator": "Tutorial Creator",
+    "first_launch": "First Launch"
   },
   "sponsors": {
     "title": "Sponsors",

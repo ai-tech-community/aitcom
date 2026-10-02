@@ -15,9 +15,8 @@ import { Link } from "@/i18n/navigation";
 import { getSession } from "@/server/better-auth/server";
 import { MessageMemberButton } from "@/components/message-member-button";
 import { cache } from "react";
-import { Lock } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { PROFILE_SETTINGS_HREF } from "@/lib/dashboard-routes";
+import { OwnerOnlyNotice } from "@/components/members/owner-only-notice";
+import { hasAgentOnPublicRoster } from "@/lib/public-roster";
 
 /**
  * One profile load per request, shared by generateMetadata and the page, so
@@ -46,7 +45,7 @@ export async function generateMetadata({
     ...buildOgMeta(data.profile.displayName, description),
     alternates: await localeAlternates(`/members/${id}`),
     // Only the owner can load a profile visitors cannot see; keep it unindexed.
-    ...(data.reach === "owner-only"
+    ...(data.reach.kind !== "public"
       ? { robots: { index: false, follow: false } }
       : {}),
   };
@@ -92,25 +91,7 @@ export default async function MemberProfilePage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
-      {reach === "owner-only" && (
-        <Alert role="status" className="mb-8">
-          <Lock aria-hidden="true" />
-          <AlertDescription>
-            <p>
-              {t.rich("ownerOnlyNotice", {
-                link: (chunks) => (
-                  <Link
-                    href={PROFILE_SETTINGS_HREF}
-                    className="text-foreground underline underline-offset-4"
-                  >
-                    {chunks}
-                  </Link>
-                ),
-              })}
-            </p>
-          </AlertDescription>
-        </Alert>
-      )}
+      <OwnerOnlyNotice reach={reach} />
 
       {/* Header */}
       <div className="flex items-start gap-3 sm:gap-5">
@@ -288,40 +269,45 @@ export default async function MemberProfilePage({
       </div>
 
       {/* AI Agent */}
-      {agentProfile?.status === "active" && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / AI AGENT
-            </h2>
-          </div>
-          <Link
-            href={`/members/${id}/agent`}
-            className="border-border hover:bg-secondary/50 mt-4 flex items-center gap-4 rounded border p-4 transition-colors"
-          >
-            {agentProfile.avatar ? (
-              <Image
-                src={agentProfile.avatar}
-                alt={agentProfile.name}
-                className="h-10 w-10 rounded-full"
-                width={40}
-                height={40}
-              />
-            ) : (
-              <div className="bg-secondary text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full text-lg">
-                🤖
-              </div>
-            )}
-            <div className="flex-1">
-              <p className="font-medium">{agentProfile.name}</p>
-              <p className="text-muted-foreground font-mono text-xs tracking-wider">
-                {agentProfile.totalContributions} contributions
-              </p>
+      {agentProfile?.status === "active" &&
+        (data.audience === "owner" ||
+          hasAgentOnPublicRoster({
+            userId: id,
+            ownedActiveAgentId: agentProfile.id,
+          })) && (
+          <div className="border-border mt-8 border-t pt-8">
+            <div className="border-border border-b pb-4">
+              <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+                / AI AGENT
+              </h2>
             </div>
-            <span className="text-muted-foreground font-mono text-xs">→</span>
-          </Link>
-        </div>
-      )}
+            <Link
+              href={`/members/${id}/agent`}
+              className="border-border hover:bg-secondary/50 mt-4 flex items-center gap-4 rounded border p-4 transition-colors"
+            >
+              {agentProfile.avatar ? (
+                <Image
+                  src={agentProfile.avatar}
+                  alt={agentProfile.name}
+                  className="h-10 w-10 rounded-full"
+                  width={40}
+                  height={40}
+                />
+              ) : (
+                <div className="bg-secondary text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full text-lg">
+                  🤖
+                </div>
+              )}
+              <div className="flex-1">
+                <p className="font-medium">{agentProfile.name}</p>
+                <p className="text-muted-foreground font-mono text-xs tracking-wider">
+                  {agentProfile.totalContributions} contributions
+                </p>
+              </div>
+              <span className="text-muted-foreground font-mono text-xs">→</span>
+            </Link>
+          </div>
+        )}
     </div>
   );
 }

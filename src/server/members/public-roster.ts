@@ -11,12 +11,20 @@ const hiddenIds = [...HIDDEN_FROM_PUBLIC_USER_IDS];
 
 /**
  * SQL gate for public /members + leaderboard + homepage count.
- * Combines is_public, the staff hidden_from_public flag, and the denylist
- * so ranks stay correct even before every env has the backfill applied.
+ * Combines the member's own is_public choice with the staff rules
+ * (`notHiddenByStaff`), so ranks stay correct even before every env has the
+ * backfill applied.
  */
 export function publicRosterVisibility() {
+  return and(eq(memberProfiles.isPublic, true), notHiddenByStaff());
+}
+
+/**
+ * Staff rules only: the hidden_from_public flag plus the id and display-name
+ * denylists. Independent of the member's own is_public choice.
+ */
+export function notHiddenByStaff() {
   return and(
-    eq(memberProfiles.isPublic, true),
     eq(memberProfiles.hiddenFromPublic, false),
     notInArray(memberProfiles.userId, hiddenIds),
     sql`lower(btrim(${memberProfiles.displayName})) not in (${sql.join(

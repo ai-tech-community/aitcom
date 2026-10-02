@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { VerifiedSocials } from "@/components/verified-socials";
 import { getSession } from "@/server/better-auth/server";
 import { loadAgentProfilePage } from "@/server/members/agent-profile";
+import { OwnerOnlyNotice } from "@/components/members/owner-only-notice";
 
 /** One load per request, shared by generateMetadata and the page. */
 const getAgentData = cache(async (ownerId: string) => {
@@ -36,6 +37,10 @@ export async function generateMetadata({
     description,
     ...buildOgMeta(`${data.agent.name} (AI Agent)`, description),
     alternates: await localeAlternates(`/members/${id}/agent`),
+    // Only the owner can load an agent page visitors cannot see.
+    ...(data.reach.kind !== "public"
+      ? { robots: { index: false, follow: false } }
+      : {}),
   };
 }
 
@@ -48,11 +53,13 @@ export default async function AgentProfilePage({
   const data = await getAgentData(id);
   if (!data) notFound();
 
-  const { agent, owner, social } = data;
-  const expertiseTags = agent.expertiseTags ?? [];
+  const { agent, owner, social, reach } = data;
+  const expertiseTags = agent.expertiseTags;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+      <OwnerOnlyNotice reach={reach} />
+
       {/* Header */}
       <div className="flex items-start gap-5">
         {agent.avatar ? (

@@ -47,7 +47,6 @@ import {
   toLeaderboardSocial,
   toPublicSocialJson,
 } from "@/server/social/present";
-import { hasAgentOnPublicRoster } from "@/lib/public-roster";
 import {
   publicRosterEmailVisibility,
   publicRosterVisibility,
@@ -55,9 +54,14 @@ import {
 import {
   profileAudience,
   profileReach,
+  profileReachColumns,
   profileReadableBy,
-  publiclyVisibleColumn,
 } from "@/server/members/profile-access";
+import {
+  publicRosterColumns,
+  toPublicRosterEntry,
+  type PublicRosterEntry,
+} from "@/server/members/public-roster-entry";
 import {
   publicMemberProfileColumns,
   toPublicMemberProfile,
@@ -399,7 +403,7 @@ export const membersRouter = createTRPCRouter({
       const [profile] = await ctx.db
         .select({
           ...publicMemberProfileColumns,
-          publiclyVisible: publiclyVisibleColumn(),
+          ...profileReachColumns(),
         })
         .from(memberProfiles)
         .where(
@@ -481,7 +485,7 @@ export const membersRouter = createTRPCRouter({
       return {
         profile: toPublicMemberProfile(profile),
         audience,
-        reach: profileReach(profile.publiclyVisible),
+        reach: profileReach(profile),
         user: memberUser
           ? {
               image: memberUser.image,
@@ -511,173 +515,113 @@ export const membersRouter = createTRPCRouter({
         limit: z.number().min(1).max(50).default(20),
       }),
     )
-    .query(async ({ ctx, input }) => {
-      const conditions = [
-        publicRosterVisibility(),
-        publicRosterEmailVisibility(),
-      ];
+    .query(
+      async ({
+        ctx,
+        input,
+      }): Promise<{
+        items: PublicRosterEntry[];
+        nextCursor: number | null;
+      }> => {
+        const conditions = [
+          publicRosterVisibility(),
+          publicRosterEmailVisibility(),
+        ];
 
-      if (input.search) {
-        conditions.push(
-          or(
-            ilike(memberProfiles.displayName, `%${input.search}%`),
-            ilike(memberProfiles.company, `%${input.search}%`),
-          ),
-        );
-      }
+        if (input.search) {
+          conditions.push(
+            or(
+              ilike(memberProfiles.displayName, `%${input.search}%`),
+              ilike(memberProfiles.company, `%${input.search}%`),
+            ),
+          );
+        }
 
-      const profiles = await ctx.db
-        .select({
-          profile: publicMemberProfileColumns,
-          email: user.email,
-          image: user.image,
-          agentId: agentProfiles.id,
-        })
-        .from(memberProfiles)
-        .innerJoin(user, eq(memberProfiles.userId, user.id))
-        .leftJoin(
-          agentProfiles,
-          and(
-            eq(agentProfiles.ownerId, memberProfiles.userId),
-            eq(agentProfiles.status, "active"),
-          ),
-        )
-        .where(and(...conditions))
-        .orderBy(sql`${memberProfiles.xp} DESC`)
-        .offset(input.cursor)
-        .limit(input.limit + 1); // +1 to check if there are more
-
-      const hasMore = profiles.length > input.limit;
-      const items = hasMore ? profiles.slice(0, input.limit) : profiles;
-
-      // Filter by skill in application layer (JSON column)
-      const filtered = input.skill
-        ? items.filter((item) =>
-            (item.profile.skills ?? []).some(
-              (s) => s.toLowerCase() === input.skill?.toLowerCase(),
+        const profiles = await ctx.db
+          .select({
+            profile: publicRosterColumns,
+            email: user.email,
+            image: user.image,
+            agentId: agentProfiles.id,
+          })
+          .from(memberProfiles)
+          .innerJoin(user, eq(memberProfiles.userId, user.id))
+          .leftJoin(
+            agentProfiles,
+            and(
+              eq(agentProfiles.ownerId, memberProfiles.userId),
+              eq(agentProfiles.status, "active"),
             ),
           )
-        : items;
+          .where(and(...conditions))
+          .orderBy(sql`${memberProfiles.xp} DESC`)
+          .offset(input.cursor)
+          .limit(input.limit + 1); // +1 to check if there are more
 
-      // Get badge counts for each member
-      const memberIds = filtered.map((m) => m.profile.userId);
-      const badgeCounts =
-        memberIds.length > 0
-          ? await ctx.db
-              .select({
-                userId: memberBadges.userId,
-                count: sql<number>`count(*)`.mapWith(Number),
-              })
-              .from(memberBadges)
-              .where(
-                and(
-                  inArray(memberBadges.userId, memberIds),
-                  displayableBadgeRows(),
-                ),
-              )
-              .groupBy(memberBadges.userId)
-          : [];
+        const hasMore = profiles.length > input.limit;
+        const items = hasMore ? profiles.slice(0, input.limit) : profiles;
 
-      const badgeCountMap = new Map(
-        badgeCounts.map((bc) => [bc.userId, bc.count]),
-      );
-
-      const [identitiesByUser, githubAccountIds] = await Promise.all([
-        loadSocialIdentitiesForUsers(ctx.db, memberIds),
-        loadGithubAccountIds(ctx.db, memberIds),
-      ]);
-
-      return {
-        items: filtered.map((m) => {
-          const social = presentMemberSocials({
-            userId: m.profile.userId,
-            identities: identitiesByUser.get(m.profile.userId) ?? [],
-            hasGithubAccount: githubAccountIds.has(m.profile.userId),
-            pasted: {
-              githubUrl: m.profile.githubUrl,
-              linkedinUrl: m.profile.linkedinUrl,
-              websiteUrl: m.profile.websiteUrl,
-            },
-            subject: "member",
-          });
-          return {
-            profile: toPublicMemberProfile(m.profile),
-            image: m.image,
-            avatarUrl: getAvatarUrl(m.email, m.image),
-            agentId: m.agentId,
-            badgeCount: badgeCountMap.get(m.profile.userId) ?? 0,
-            hasAgent: hasAgentOnPublicRoster({
-              userId: m.profile.userId,
-              ownedActiveAgentId: m.agentId,
-            }),
-            social: toLeaderboardSocial(social),
-          };
-        }),
-        nextCursor: hasMore ? input.cursor + input.limit : null,
-      };
-    }),
-
-  /** Top 5 members by XP for leaderboard. */
-  getLeaderboard: publicProcedure.query(async ({ ctx }) => {
-    const top = await ctx.db
-      .select({
-        profile: publicMemberProfileColumns,
-        email: user.email,
-        image: user.image,
-      })
-      .from(memberProfiles)
-      .innerJoin(user, eq(memberProfiles.userId, user.id))
-      .where(and(publicRosterVisibility(), publicRosterEmailVisibility()))
-      .orderBy(sql`${memberProfiles.xp} DESC`)
-      .limit(5);
-
-    // Get badge counts
-    const userIds = top.map((t) => t.profile.userId);
-    const badgeCounts =
-      userIds.length > 0
-        ? await ctx.db
-            .select({
-              userId: memberBadges.userId,
-              count: sql<number>`count(*)`.mapWith(Number),
-            })
-            .from(memberBadges)
-            .where(
-              and(
-                inArray(memberBadges.userId, userIds),
-                displayableBadgeRows(),
+        // Filter by skill in application layer (JSON column)
+        const filtered = input.skill
+          ? items.filter((item) =>
+              (item.profile.skills ?? []).some(
+                (s) => s.toLowerCase() === input.skill?.toLowerCase(),
               ),
             )
-            .groupBy(memberBadges.userId)
-        : [];
+          : items;
 
-    const badgeCountMap = new Map(
-      badgeCounts.map((bc) => [bc.userId, bc.count]),
-    );
+        // Get badge counts for each member
+        const memberIds = filtered.map((m) => m.profile.userId);
+        const badgeCounts =
+          memberIds.length > 0
+            ? await ctx.db
+                .select({
+                  userId: memberBadges.userId,
+                  count: sql<number>`count(*)`.mapWith(Number),
+                })
+                .from(memberBadges)
+                .where(
+                  and(
+                    inArray(memberBadges.userId, memberIds),
+                    displayableBadgeRows(),
+                  ),
+                )
+                .groupBy(memberBadges.userId)
+            : [];
 
-    const [identitiesByUser, githubAccountIds] = await Promise.all([
-      loadSocialIdentitiesForUsers(ctx.db, userIds),
-      loadGithubAccountIds(ctx.db, userIds),
-    ]);
+        const badgeCountMap = new Map(
+          badgeCounts.map((bc) => [bc.userId, bc.count]),
+        );
 
-    return top.map((t) => {
-      const social = presentMemberSocials({
-        userId: t.profile.userId,
-        identities: identitiesByUser.get(t.profile.userId) ?? [],
-        hasGithubAccount: githubAccountIds.has(t.profile.userId),
-        pasted: {
-          githubUrl: t.profile.githubUrl,
-          linkedinUrl: t.profile.linkedinUrl,
-          websiteUrl: t.profile.websiteUrl,
-        },
-        subject: "member",
-      });
-      return {
-        profile: toPublicMemberProfile(t.profile),
-        image: t.image,
-        avatarUrl: getAvatarUrl(t.email, t.image),
-        badgeCount: badgeCountMap.get(t.profile.userId) ?? 0,
-        social: toLeaderboardSocial(social),
-      };
-    });
-  }),
+        const [identitiesByUser, githubAccountIds] = await Promise.all([
+          loadSocialIdentitiesForUsers(ctx.db, memberIds),
+          loadGithubAccountIds(ctx.db, memberIds),
+        ]);
+
+        return {
+          items: filtered.map((m) => {
+            const social = presentMemberSocials({
+              userId: m.profile.userId,
+              identities: identitiesByUser.get(m.profile.userId) ?? [],
+              hasGithubAccount: githubAccountIds.has(m.profile.userId),
+              pasted: {
+                githubUrl: m.profile.githubUrl,
+                linkedinUrl: m.profile.linkedinUrl,
+                websiteUrl: m.profile.websiteUrl,
+              },
+              subject: "member",
+            });
+            return toPublicRosterEntry({
+              profile: m.profile,
+              email: m.email,
+              image: m.image,
+              ownedActiveAgentId: m.agentId,
+              badgeCount: badgeCountMap.get(m.profile.userId) ?? 0,
+              social: toLeaderboardSocial(social),
+            });
+          }),
+          nextCursor: hasMore ? input.cursor + input.limit : null,
+        };
+      },
+    ),
 });

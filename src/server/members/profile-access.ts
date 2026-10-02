@@ -1,6 +1,10 @@
 import { sql, type SQL } from "drizzle-orm";
 
-import { publicRosterVisibility } from "@/server/members/public-roster";
+import { memberProfiles } from "@/server/db/schema";
+import {
+  notHiddenByStaff,
+  publicRosterVisibility,
+} from "@/server/members/public-roster";
 
 /**
  * Who is looking at a member's public surfaces (profile page, agent page,
@@ -14,12 +18,14 @@ import { publicRosterVisibility } from "@/server/members/public-roster";
 export type ProfileAudience = "owner" | "visitor";
 
 /**
- * What the viewer is told about reach:
- * - `public`: visitors can see this profile.
- * - `owner-only`: only the owner can see it (private, staff-hidden, or
- *   kept off the public roster).
+ * Whether visitors can see a profile, and if not, why — told to the owner
+ * so the notice can point at the right fix.
+ * - `private`: the member turned their profile off; Settings fixes it.
+ * - `hiddenByStaff`: staff keep it off the public roster; Settings does not.
  */
-export type ProfileReach = "public" | "owner-only";
+export type ProfileReach =
+  | { kind: "public" }
+  | { kind: "ownerOnly"; reason: "private" | "hiddenByStaff" };
 
 export function profileAudience(
   viewerId: string | null | undefined,
@@ -37,11 +43,20 @@ export function profileReadableBy(audience: ProfileAudience): SQL | undefined {
   return audience === "owner" ? undefined : publicRosterVisibility();
 }
 
-/** Select column: true when visitors can see this profile row. */
-export function publiclyVisibleColumn() {
-  return sql<boolean>`(${publicRosterVisibility()})`.mapWith(Boolean);
+/** Columns `profileReach` needs; spread into a `member_profile` select. */
+export function profileReachColumns() {
+  return {
+    isPublic: memberProfiles.isPublic,
+    hiddenByStaff: sql<boolean>`not (${notHiddenByStaff()})`.mapWith(Boolean),
+  };
 }
 
-export function profileReach(publiclyVisible: boolean): ProfileReach {
-  return publiclyVisible ? "public" : "owner-only";
+export function profileReach(row: {
+  isPublic: boolean;
+  hiddenByStaff: boolean;
+}): ProfileReach {
+  // Staff hiding wins: turning the profile public would not help.
+  if (row.hiddenByStaff) return { kind: "ownerOnly", reason: "hiddenByStaff" };
+  if (!row.isPublic) return { kind: "ownerOnly", reason: "private" };
+  return { kind: "public" };
 }
