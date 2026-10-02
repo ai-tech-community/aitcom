@@ -9,7 +9,8 @@ import {
   activityEvents,
   user,
 } from "@/server/db/schema";
-import { awardXp, awardBadge, XP_AMOUNTS } from "@/lib/gamification";
+import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { awardMilestone } from "@/server/badges/engine";
 import { defaultDisplayName } from "@/server/members/default-display-name";
 import { PROFILE_SETTINGS_HREF } from "@/lib/dashboard-routes";
 
@@ -378,8 +379,7 @@ export const onboardingRouter = createTRPCRouter({
             .set({ onboardingCompleted: true })
             .where(eq(memberProfiles.userId, userId));
 
-          await awardBadge(ctx.db, userId, "onboarding_complete");
-          await awardXp(ctx.db, userId, XP_AMOUNTS.ONBOARDING_COMPLETE);
+          await awardMilestone(ctx.db, userId, "onboarding_complete");
         }
       }
 
@@ -499,8 +499,7 @@ export const onboardingRouter = createTRPCRouter({
           .set({ onboardingCompleted: true })
           .where(eq(memberProfiles.userId, userId));
 
-        await awardBadge(ctx.db, userId, "onboarding_complete");
-        await awardXp(ctx.db, userId, XP_AMOUNTS.ONBOARDING_COMPLETE);
+        await awardMilestone(ctx.db, userId, "onboarding_complete");
       }
     }
 

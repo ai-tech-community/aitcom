@@ -1,5 +1,6 @@
 import { activityRouter } from "@/server/api/routers/activity";
 import { audiencesRouter } from "@/server/api/routers/audiences";
+import { badgesRouter } from "@/server/api/routers/badges";
 import { communitiesRouter } from "@/server/api/routers/communities";
 import { feedRouter } from "./routers/feed";
 import { commentsRouter } from "@/server/api/routers/comments";
@@ -60,6 +61,7 @@ export const appRouter = createTRPCRouter({
   events: eventsRouter,
   audiences: audiencesRouter,
   members: membersRouter,
+  badges: badgesRouter,
   forum: forumRouter,
   home: homeRouter,
   sponsors: sponsorsRouter,

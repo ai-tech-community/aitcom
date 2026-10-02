@@ -88,7 +88,8 @@ import {
 } from "@/server/hackathon/analytics";
 import { cellHeatState } from "@/server/hackathon/cell-state";
 import { mergeAgentStats } from "@/server/hackathon/agent-stats";
-import { awardXp, awardBadge } from "@/lib/gamification";
+import { awardXp } from "@/lib/gamification";
+import { grantChallengeAward } from "@/server/badges/awards";
 import { normalizeEmail, inviteExpiry } from "@/server/hackathon/staff-invite";
 import { sendHackathonStaffInvite } from "@/server/email";
 import { env } from "@/env";
@@ -1769,8 +1770,11 @@ export const hackathonRouter = createTRPCRouter({
               const share = prizeSplit(xpReward, members.length);
               for (const member of members) {
                 if (share > 0) await awardXp(tx, member.userId, share);
-                if (badgeReward)
-                  await awardBadge(tx, member.userId, badgeReward);
+                await grantChallengeAward(tx, {
+                  userId: member.userId,
+                  challengeId: input.challengeId,
+                  prizeText: badgeReward,
+                });
               }
             }
           }

@@ -56,6 +56,8 @@ vi.mock("@/server/better-auth", () => ({
 }));
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => payload }));
 vi.mock("@/server/agent/activity", () => ({ logActivity }));
+const evaluateBadges = vi.fn(async () => []);
+vi.mock("@/server/badges/engine", () => ({ evaluateBadges }));
 
 const { createCaller } = await import("@/server/api/root");
 
@@ -241,6 +243,7 @@ describe("events.setCheckedIn", () => {
   const REGISTERED = {
     id: "r1",
     eventId: 7,
+    userId: "member-1",
     status: "registered",
     checkedInAt: null,
   };
@@ -261,6 +264,11 @@ describe("events.setCheckedIn", () => {
       fakeDb,
       expect.objectContaining({ action: "event.check_in", targetId: "7" }),
     );
+    // The attendee's Regular track and the organizer's Host track.
+    expect(evaluateBadges.mock.calls).toEqual([
+      [fakeDb, "member-1", ["regular"]],
+      [fakeDb, "org-1", ["host"]],
+    ]);
   });
 
   it("undoes a check-in", async () => {
@@ -274,6 +282,7 @@ describe("events.setCheckedIn", () => {
     });
 
     expect(updates).toEqual([{ status: "registered", checkedInAt: null }]);
+    expect(evaluateBadges).not.toHaveBeenCalled();
   });
 
   it("refuses to check in someone on the waitlist", async () => {

@@ -1,32 +1,18 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import {
-  BADGES,
-  DISPLAYABLE_BADGE_SLUGS,
-  displayableBadge,
-} from "@/lib/gamification";
 import { toDisplayableBadges } from "@/server/members/displayable-badges";
 
 describe("displayable badges", () => {
-  it("are exactly the catalog slugs", () => {
-    expect([...DISPLAYABLE_BADGE_SLUGS].sort()).toEqual(
-      Object.keys(BADGES).sort(),
-    );
-  });
-
-  it("looks up catalog entries and rejects other slugs", () => {
-    expect(displayableBadge("first_event")?.slug).toBe("first_event");
-    expect(displayableBadge("not_in_catalog")).toBeNull();
-    expect(displayableBadge("toString")).toBeNull();
-  });
-
-  it("keeps only rows whose slug is in the catalog", () => {
+  it("keeps only rows whose slug is in the catalog, as slug and date", () => {
     const earnedAt = new Date("2026-01-01T00:00:00Z");
     const shown = toDisplayableBadges([
       { badgeSlug: "first_event", earnedAt },
       { badgeSlug: "not_in_catalog", earnedAt },
+      { badgeSlug: "toString", earnedAt },
+      // Removed from the catalog (never awardable): stored, not shown.
+      { badgeSlug: "speaker", earnedAt },
     ]);
-    expect(shown).toEqual([{ ...BADGES.first_event, earnedAt }]);
+    expect(shown).toEqual([{ slug: "first_event", earnedAt }]);
   });
 });

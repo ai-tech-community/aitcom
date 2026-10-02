@@ -5,12 +5,8 @@ import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { memberProfiles, memberBadges } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
-import {
-  isTrustedAuthor,
-  awardXp,
-  checkArticleBadges,
-  XP_AMOUNTS,
-} from "@/lib/gamification";
+import { isTrustedAuthor, awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { onArticleApproved } from "@/server/badges/article-approved";
 
 export const articlesRouter = createTRPCRouter({
   // ── My Articles ─────────────────────────────────────────────────────────────
@@ -236,23 +232,12 @@ export const articlesRouter = createTRPCRouter({
           XP_AMOUNTS.ARTICLE_PUBLISHED,
         );
 
-        const { totalDocs } = await payload.find({
-          collection: "articles",
-          where: {
-            and: [
-              { authorId: { equals: ctx.session.user.id } },
-              { status: { equals: "published" } },
-            ],
-          },
-          limit: 0,
-          depth: 0,
+        // The collection hook evaluates too when the review status
+        // changed; earning is idempotent, and this covers a re-publish.
+        await onArticleApproved(ctx.db, {
+          authorId: ctx.session.user.id,
+          type: article.type,
         });
-        await checkArticleBadges(
-          ctx.db,
-          ctx.session.user.id,
-          totalDocs,
-          article.type,
-        );
 
         await logActivity(ctx.db, {
           actorId: ctx.session.user.id,

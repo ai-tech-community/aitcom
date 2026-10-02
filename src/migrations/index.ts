@@ -133,6 +133,7 @@ import * as migration_20261001e_feed_post_mentions from "./20261001e_feed_post_m
 import * as migration_20261001f_feed_post_polls from "./20261001f_feed_post_polls";
 import * as migration_20261001g_mention_mail_on_by_default from "./20261001g_mention_mail_on_by_default";
 import * as migration_20261001h_feed_post_announced_at from "./20261001h_feed_post_announced_at";
+import * as migration_20261002a_member_awards from "./20261002a_member_awards";
 
 export const migrations = [
   {
@@ -809,5 +810,10 @@ export const migrations = [
     up: migration_20261001h_feed_post_announced_at.up,
     down: migration_20261001h_feed_post_announced_at.down,
     name: "20261001h_feed_post_announced_at",
+  },
+  {
+    up: migration_20261002a_member_awards.up,
+    down: migration_20261002a_member_awards.down,
+    name: "20261002a_member_awards",
   },
 ];

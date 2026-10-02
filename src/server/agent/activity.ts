@@ -6,7 +6,10 @@ import {
 } from "@/server/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getPayloadClient } from "@/server/payload";
-import { awardXp, awardBadge } from "@/lib/gamification";
+import { awardXp } from "@/lib/gamification";
+import { grantChallengeAward } from "@/server/badges/awards";
+import { evaluateBadges } from "@/server/badges/engine";
+import { evaluateStreakOncePerDay } from "@/server/badges/streak";
 import { classifyPersonality, deriveContextType } from "@/lib/impact-metrics";
 import { computeCommissionedCellXp } from "./commissioned-cell-xp";
 
@@ -133,6 +136,9 @@ export async function logActivity(
       event.action,
       event.metadata,
     ).catch((err) => console.error("[challenges] progress check failed:", err));
+    // An active day may extend the member's streak. Awaited, because `db`
+    // may be the caller's transaction; earning never throws.
+    await evaluateStreakOncePerDay(db, event.actorId);
   }
 
   return row!;
@@ -359,8 +365,13 @@ export async function checkEnrollmentCompletion(
     }
   }
 
+  await evaluateBadges(db, userId, ["challenger"]);
   if (rewards?.badgeReward && typeof rewards.badgeReward === "string") {
-    await awardBadge(db, userId, rewards.badgeReward);
+    await grantChallengeAward(db, {
+      userId,
+      challengeId,
+      prizeText: rewards.badgeReward,
+    });
   }
 
   await db.insert(activityEvents).values({

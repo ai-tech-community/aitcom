@@ -79,6 +79,7 @@ import {
   resolveOrganizerEvent,
 } from "@/server/events/organizer-attendees";
 import { checkInTransition } from "@/server/events/check-in";
+import { evaluateBadges } from "@/server/badges/engine";
 import {
   canSeeEventOrganizers,
   canSetEventOrganizer,
@@ -1156,6 +1157,7 @@ export const eventsRouter = createTRPCRouter({
         .select({
           id: eventRegistrations.id,
           eventId: eventRegistrations.eventId,
+          userId: eventRegistrations.userId,
           status: eventRegistrations.status,
           checkedInAt: eventRegistrations.checkedInAt,
         })
@@ -1196,6 +1198,13 @@ export const eventsRouter = createTRPCRouter({
         communityId: access.community.id,
         metadata: { registrationId: registration.id },
       });
+
+      // Attending counts for the member's Regular track; a check-in also
+      // means the organizer's event took place (Host). Undo revokes nothing.
+      if (next.status === "attended") {
+        await evaluateBadges(ctx.db, registration.userId, ["regular"]);
+        await evaluateBadges(ctx.db, userId, ["host"]);
+      }
 
       return next;
     }),

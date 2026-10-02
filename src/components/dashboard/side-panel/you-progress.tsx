@@ -4,6 +4,7 @@ import { Award, Clock, Flame, Target, type LucideIcon } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 
 import { api, type RouterOutputs } from "@/trpc/react";
+import { catalogBadge, type BadgeSlug } from "@/lib/badges/catalog";
 import { PointsChart } from "@/components/gamification/points-chart";
 import { StreakCalendar } from "@/components/ui/streak-calendar";
 import {
@@ -30,8 +31,7 @@ const TRIGGER_ICONS: Record<PointsEvent["type"], LucideIcon> = {
 };
 
 export interface EarnedBadge {
-  slug: string;
-  description: string;
+  slug: BadgeSlug;
 }
 
 function BlockHeading({ children }: { children: React.ReactNode }) {
@@ -234,15 +234,23 @@ export function YouProgress({
         <div className="space-y-3">
           <BlockHeading>{t("badgesTitle")}</BlockHeading>
           <ul className="flex flex-wrap gap-1.5">
-            {badges.map((badge) => (
-              <li
-                key={badge.slug}
-                title={badge.description}
-                className="border-border rounded-full border px-2 py-0.5 text-xs"
-              >
-                {tBadges(badge.slug)}
-              </li>
-            ))}
+            {badges.flatMap(({ slug }) => {
+              const badge = catalogBadge(slug);
+              return badge
+                ? [
+                    <li
+                      key={badge.slug}
+                      title={tBadges(
+                        badge.descriptionKey,
+                        badge.descriptionValues,
+                      )}
+                      className="border-border rounded-full border px-2 py-0.5 text-xs"
+                    >
+                      {tBadges(badge.nameKey)}
+                    </li>,
+                  ]
+                : [];
+            })}
           </ul>
         </div>
       )}

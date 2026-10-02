@@ -68,7 +68,7 @@ export const Articles: CollectionConfig = {
       },
     ],
     afterChange: [
-      async ({ doc, previousDoc }) => {
+      async ({ doc, previousDoc, req }) => {
         if (
           doc.authorType !== "member" ||
           !doc.authorId ||
@@ -85,27 +85,19 @@ export const Articles: CollectionConfig = {
           doc.reviewStatus === "approved" &&
           previousDoc?.reviewStatus !== "approved"
         ) {
-          const { awardXp, checkArticleBadges, XP_AMOUNTS } =
-            await import("@/lib/gamification");
-          const { getPayloadClient } = await import("@/server/payload");
+          const { awardXp, XP_AMOUNTS } = await import("@/lib/gamification");
+          const { onArticleApproved } =
+            await import("@/server/badges/article-approved");
 
           await awardXp(db, doc.authorId, XP_AMOUNTS.ARTICLE_PUBLISHED);
 
-          const payload = await getPayloadClient();
-          const { totalDocs } = await payload.find({
-            collection: "articles",
-            where: {
-              and: [
-                { authorId: { equals: doc.authorId } },
-                { status: { equals: "published" } },
-                { reviewStatus: { equals: "approved" } },
-              ],
-            },
-            limit: 0,
-            depth: 0,
-          });
-
-          await checkArticleBadges(db, doc.authorId, totalDocs, doc.type);
+          // `req` carries this save's transaction, so the Writer count
+          // includes the article just approved.
+          await onArticleApproved(
+            db,
+            { authorId: doc.authorId, type: doc.type },
+            { req },
+          );
 
           await logActivity(db, {
             actorId: doc.authorId,

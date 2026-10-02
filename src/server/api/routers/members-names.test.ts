@@ -39,8 +39,13 @@ vi.mock("@/server/better-auth", () => ({
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => ({}) }));
 vi.mock("@/lib/gamification", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/gamification")>()),
-  awardBadge: vi.fn(async () => false),
   awardXp: vi.fn(),
+}));
+vi.mock("@/server/badges/engine", () => ({
+  awardMilestone: vi.fn(async () => false),
+  awardEarlyAdopterIfEligible: vi.fn(async () => false),
+  evaluateBadges: vi.fn(async () => []),
+  recordTrackMetric: vi.fn(async () => []),
 }));
 
 const { createCaller } = await import("@/server/api/root");
