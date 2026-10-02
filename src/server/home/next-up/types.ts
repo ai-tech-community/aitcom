@@ -48,6 +48,12 @@ export type NextUpEventItem = NextUpBase<"event"> & {
   title: string;
   /** ISO instant, judged in the event's own zone. */
   startsAt: string;
+  /** ISO instant the event ends; null when it has no end time. */
+  endsAt: string | null;
+  /** No start time: `startsAt` is local midnight of the event's day. */
+  allDay: boolean;
+  /** Started (or, all day, its day has come) and not over yet. */
+  happeningNow: boolean;
   registration: UpcomingRegistrationStatus;
 };
 

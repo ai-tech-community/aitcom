@@ -19,6 +19,9 @@ function event(key: string, at: string): NextUpItem {
     slug: key,
     title: key,
     startsAt: at,
+    endsAt: null,
+    allDay: false,
+    happeningNow: false,
     registration: "registered",
   };
 }

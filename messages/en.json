@@ -886,7 +886,8 @@
     },
     "nextUp": {
       "title": "Next up",
-      "partial": "Some of your next steps could not load right now. They will be back on your next visit.",
+      "partial": "Some items could not load.",
+      "retryPartial": "Try again",
       "emptyTitle": "You're all caught up.",
       "emptyLink": "Find an event to look forward to",
       "event": {
@@ -894,7 +895,10 @@
         "intent": "You're going to {title}",
         "waitlisted": "You're on the waitlist for {title}",
         "pending_payment": "Finish paying for your spot at {title}",
-        "action": "View event"
+        "action": "View event",
+        "happeningNow": "Happening now: {title}",
+        "today": "Today: {title}",
+        "ends": "Ends <time></time>"
       },
       "challenge": {
         "sentence": "Keep going on {title}",

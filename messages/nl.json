@@ -886,7 +886,8 @@
     },
     "nextUp": {
       "title": "Als volgende",
-      "partial": "Een deel van je volgende stappen kon nu niet laden. Bij je volgende bezoek zijn ze er weer.",
+      "partial": "Een deel kon niet laden.",
+      "retryPartial": "Opnieuw proberen",
       "emptyTitle": "Je bent helemaal bij.",
       "emptyLink": "Zoek een evenement om naar uit te kijken",
       "event": {
@@ -894,7 +895,10 @@
         "intent": "Je gaat naar {title}",
         "waitlisted": "Je staat op de wachtlijst voor {title}",
         "pending_payment": "Rond de betaling af voor je plek bij {title}",
-        "action": "Bekijk evenement"
+        "action": "Bekijk evenement",
+        "happeningNow": "Nu bezig: {title}",
+        "today": "Vandaag: {title}",
+        "ends": "Eindigt <time></time>"
       },
       "challenge": {
         "sentence": "Ga verder met {title}",

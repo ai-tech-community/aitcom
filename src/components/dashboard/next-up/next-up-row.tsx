@@ -26,7 +26,10 @@ export const nextUpHref = {
 type RowLayoutProps = {
   /** The human sentence: what is next, in Geist Sans. */
   sentence: React.ReactNode;
-  /** Machine data under the sentence (a time, a count), in Geist Mono. */
+  /**
+   * The line under the sentence, in Geist Sans. Timestamps inside it
+   * (`RelativeTime`) carry their own Geist Mono; words stay sans.
+   */
   meta?: React.ReactNode;
   href: string;
   action: string;
@@ -47,7 +50,7 @@ function RowLayout({ sentence, meta, href, action, primary }: RowLayoutProps) {
           {sentence}
         </p>
         {meta && (
-          <p className="text-muted-foreground mt-0.5 font-mono text-xs tabular-nums">
+          <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
             {meta}
           </p>
         )}
@@ -71,12 +74,30 @@ type RowProps<K extends NextUpItem["kind"]> = {
   primary: boolean;
 };
 
+/**
+ * An event the member is going to. One that is already running says so and
+ * shows when it ends, instead of a start time in the past.
+ */
 function EventRow({ item, primary }: RowProps<"event">) {
   const t = useTranslations("dashboard.nextUp.event");
+  const { endsAt } = item;
+  let sentence: string;
+  let meta: React.ReactNode;
+  if (!item.happeningNow) {
+    sentence = t(item.registration, { title: item.title });
+    meta = <RelativeTime date={item.startsAt} />;
+  } else if (item.allDay) {
+    sentence = t("today", { title: item.title });
+  } else {
+    sentence = t("happeningNow", { title: item.title });
+    meta = endsAt
+      ? t.rich("ends", { time: () => <RelativeTime date={endsAt} /> })
+      : undefined;
+  }
   return (
     <RowLayout
-      sentence={t(item.registration, { title: item.title })}
-      meta={<RelativeTime date={item.startsAt} />}
+      sentence={sentence}
+      meta={meta}
       href={nextUpHref.event(item.slug)}
       action={t("action")}
       primary={primary}

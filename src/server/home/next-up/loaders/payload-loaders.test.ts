@@ -55,7 +55,7 @@ function eventDoc(id: number, date: string, startTime: string | null = null) {
 }
 
 describe("loadEventItems", () => {
-  it("looks up all registered events in one localized Payload call, skipping cancelled and old ones", async () => {
+  it("looks up all registered events in one localized Payload call, skipping draft, rejected, cancelled and old ones", async () => {
     const { db } = dbReturning([
       registration("r1", 11),
       registration("r2", 12, "waitlisted"),
@@ -72,10 +72,8 @@ describe("loadEventItems", () => {
       where: {
         and: [
           { id: { in: [11, 12] } },
-          {
-            status: { not_equals: "cancelled" },
-            date: { greater_than_equal: "2026-09-30T10:00:00.000Z" },
-          },
+          { status: { not_in: ["draft", "rejected", "cancelled"] } },
+          { date: { greater_than_equal: "2026-09-30T10:00:00.000Z" } },
         ],
       },
       locale: "nl",
@@ -117,8 +115,53 @@ describe("loadEventItems", () => {
       slug: "event-3",
       title: "Event 3",
       startsAt: "2026-10-03T16:00:00.000Z",
+      endsAt: null,
+      allDay: false,
+      happeningNow: false,
       registration: "waitlisted",
     });
+  });
+
+  it("marks an event that has started but not ended as happening now, ahead of later ones", async () => {
+    const { db } = dbReturning([
+      registration("r-later", 1),
+      registration("r-live", 2),
+      registration("r-today", 3),
+    ]);
+    const { payload } = payloadReturning([
+      eventDoc(1, "2026-10-02T00:00:00.000Z", "18:00"),
+      // 11:00–13:00 Amsterdam = 09:00–11:00 UTC; now is 10:00 UTC.
+      { ...eventDoc(2, "2026-10-02T00:00:00.000Z", "11:00"), endTime: "13:00" },
+      // No start time: runs all of its day.
+      eventDoc(3, "2026-10-02T00:00:00.000Z"),
+    ]);
+    const { ctx } = context(db, payload);
+
+    const items = await loadEventItems(ctx);
+
+    expect(
+      items.map(({ key, happeningNow, allDay, endsAt }) => ({
+        key,
+        happeningNow,
+        allDay,
+        endsAt,
+      })),
+    ).toEqual([
+      // All day starts at local midnight, so it sorts first.
+      { key: "event:r-today", happeningNow: true, allDay: true, endsAt: null },
+      {
+        key: "event:r-live",
+        happeningNow: true,
+        allDay: false,
+        endsAt: "2026-10-02T11:00:00.000Z",
+      },
+      {
+        key: "event:r-later",
+        happeningNow: false,
+        allDay: false,
+        endsAt: null,
+      },
+    ]);
   });
 
   it("does not start Payload when the member has no registrations", async () => {

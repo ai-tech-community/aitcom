@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { AppLocale } from "@/i18n/messages";
 import { Link } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DashboardSection,
@@ -53,7 +54,7 @@ function NextUpEmpty() {
  * Home's first section: what the member could do next (home.nextUp), already
  * ordered on the server. Only the first, most urgent row's action is Signal
  * Orange; every other row is neutral. When a source failed the rest still
- * shows, with a quiet note.
+ * shows, with a quiet note and a retry that reloads the whole list.
  */
 export function NextUp() {
   const t = useTranslations("dashboard.nextUp");
@@ -81,9 +82,19 @@ export function NextUp() {
       {partial && (
         <p
           role="status"
-          className="text-muted-foreground mt-3 text-xs text-pretty"
+          className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-2 text-xs text-pretty"
         >
-          {t("partial")}
+          <span>{t("partial")}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-foreground h-8 px-2"
+            onClick={() => void query.refetch()}
+            disabled={query.isFetching}
+          >
+            {t("retryPartial")}
+          </Button>
         </p>
       )}
     </DashboardSection>

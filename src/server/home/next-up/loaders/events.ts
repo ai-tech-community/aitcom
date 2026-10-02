@@ -1,5 +1,9 @@
 import { splitMyEvents } from "@/lib/events/split-my-events";
-import { eventStartInstant, upcomingEventsQueryFloor } from "@/lib/event-time";
+import {
+  eventEndInstant,
+  eventStartInstant,
+  upcomingEventsQueryFloor,
+} from "@/lib/event-time";
 import { loadMyEventPairs } from "@/server/events/my-event-pairs";
 
 import type {
@@ -12,11 +16,12 @@ import type {
 export const NEXT_UP_EVENT_LIMIT = 3;
 
 /**
- * The member's next registered events, soonest first: the same pairs and the
+ * The member's next registered events, soonest first (one already running
+ * comes first and is marked `happeningNow`): the same pairs and the
  * same upcoming rule as the My events tab (`loadMyEventPairs` +
- * `splitMyEvents`). Cancelled events are left out at the query: there is
- * nothing to go to. The date floor only trims old rows; `splitMyEvents`
- * does the exact "not over yet" check in each event's own zone.
+ * `splitMyEvents`, which also leave out draft, rejected and cancelled
+ * events). The date floor only trims old rows; `splitMyEvents` does the
+ * exact "not over yet" check in each event's own zone.
  */
 export async function loadEventItems(
   ctx: NextUpContext,
@@ -24,10 +29,7 @@ export async function loadEventItems(
   const pairs = await loadMyEventPairs(ctx, {
     userId: ctx.userId,
     locale: ctx.locale,
-    where: {
-      status: { not_equals: "cancelled" },
-      date: { greater_than_equal: upcomingEventsQueryFloor(ctx.now) },
-    },
+    where: { date: { greater_than_equal: upcomingEventsQueryFloor(ctx.now) } },
   });
 
   const { upcoming } = splitMyEvents(pairs, ctx.now);
@@ -39,6 +41,8 @@ export async function loadEventItems(
       const start = eventStartInstant(event);
       if (!start || registration.status === "attended") return [];
       const startsAt = start.toISOString();
+      // Upcoming means "not over yet", so one that has started is running.
+      const happeningNow = start.getTime() <= ctx.now.getTime();
       return [
         {
           kind: "event",
@@ -48,6 +52,9 @@ export async function loadEventItems(
           slug: event.slug,
           title: event.title,
           startsAt,
+          endsAt: eventEndInstant(event)?.toISOString() ?? null,
+          allDay: !event.startTime?.trim(),
+          happeningNow,
           registration:
             registration.status satisfies UpcomingRegistrationStatus,
         },

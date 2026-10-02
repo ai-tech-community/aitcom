@@ -30,6 +30,18 @@ export type MyEventRegistration = typeof eventRegistrations.$inferSelect & {
   status: MyEventRegistrationStatus;
 };
 
+/**
+ * Event statuses that never count as "one of my events": not approved
+ * (draft, rejected — the event page 404s on them) or called off
+ * (cancelled — there is nothing to go to, and the rows would still read
+ * "Registered").
+ */
+export const EXCLUDED_MY_EVENT_STATUSES = [
+  "draft",
+  "rejected",
+  "cancelled",
+] as const;
+
 /** A member's registration paired with the event it is for. */
 export interface MyEventRegistrationPair {
   registration: MyEventRegistration;
@@ -38,7 +50,8 @@ export interface MyEventRegistrationPair {
 
 /**
  * The member's registrations (see `MY_EVENT_REGISTRATION_STATUSES`), each
- * paired with its event in the member's locale. One registration query and
+ * paired with its event in the member's locale. Events in an
+ * `EXCLUDED_MY_EVENT_STATUSES` status are left out. One registration query and
  * one batched Payload lookup; Payload is not touched when there is nothing
  * to look up. A registration whose event no longer exists (or is filtered
  * out by `where`) is dropped. Split the result with `splitMyEvents`.
@@ -70,10 +83,14 @@ export async function loadMyEventPairs(
   if (eventIds.length === 0) return [];
 
   const payload = await getPayload();
-  const byId: Where = { id: { in: eventIds } };
+  const conditions: Where[] = [
+    { id: { in: eventIds } },
+    { status: { not_in: [...EXCLUDED_MY_EVENT_STATUSES] } },
+  ];
+  if (where) conditions.push(where);
   const { docs } = await payload.find({
     collection: "events",
-    where: where ? { and: [byId, where] } : byId,
+    where: { and: conditions },
     locale,
     limit: eventIds.length,
     depth: 0,

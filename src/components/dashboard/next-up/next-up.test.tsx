@@ -10,6 +10,7 @@ type Query = {
   data: { items: NextUpItem[]; partial: boolean } | undefined;
   isPending: boolean;
   isError: boolean;
+  isFetching?: boolean;
   refetch: () => void;
 };
 
@@ -80,6 +81,9 @@ const EVENT: NextUpItem = {
   slug: "ai-meetup",
   title: "AI Meetup",
   startsAt: "2026-10-04T16:00:00.000Z",
+  endsAt: null,
+  allDay: false,
+  happeningNow: false,
   registration: "waitlisted",
 };
 
@@ -256,13 +260,84 @@ describe("NextUp", () => {
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 
-  it("keeps the rows and adds a quiet note when some sources failed", () => {
+  it("keeps the rows and adds a quiet note with a retry when some sources failed", () => {
     state.query = loaded([INVITE], true);
     renderNextUp();
     expect(rows()).toHaveLength(1);
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /could not load right now/i,
+    const note = screen.getByRole("status");
+    expect(note).toHaveTextContent(/some items could not load/i);
+    fireEvent.click(within(note).getByRole("button", { name: "Try again" }));
+    expect(state.query.refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables the partial retry while the list reloads", () => {
+    state.query = { ...loaded([INVITE], true), isFetching: true };
+    renderNextUp();
+    expect(
+      within(screen.getByRole("status")).getByRole("button", {
+        name: "Try again",
+      }),
+    ).toBeDisabled();
+  });
+
+  it("says an event is happening now and when it ends, not when it started", () => {
+    state.query = loaded([
+      {
+        ...EVENT,
+        key: "event:live",
+        registration: "registered",
+        // Started 1 hour ago, ends in 2 hours.
+        startsAt: "2026-10-02T09:00:00.000Z",
+        urgency: { tier: "timeBound", at: "2026-10-02T09:00:00.000Z" },
+        endsAt: "2026-10-02T12:00:00.000Z",
+        happeningNow: true,
+      },
+      {
+        ...EVENT,
+        key: "event:today",
+        title: "Hack day",
+        startsAt: "2026-10-01T22:00:00.000Z",
+        urgency: { tier: "timeBound", at: "2026-10-01T22:00:00.000Z" },
+        allDay: true,
+        happeningNow: true,
+      },
+    ]);
+    renderNextUp();
+    const [live, today] = rows();
+
+    expect(live).toHaveTextContent("Happening now: AI Meetup");
+    expect(live).toHaveTextContent("Ends in 2 hours");
+    expect(live).not.toHaveTextContent("ago");
+    expect(within(live!).getByText("in 2 hours")).toHaveAttribute(
+      "datetime",
+      "2026-10-02T12:00:00.000Z",
     );
+    expect(today).toHaveTextContent("Today: Hack day");
+    expect(today).not.toHaveTextContent("ago");
+  });
+
+  it("says it in Dutch too", () => {
+    state.query = loaded([
+      {
+        ...EVENT,
+        startsAt: "2026-10-02T09:00:00.000Z",
+        endsAt: "2026-10-02T12:00:00.000Z",
+        happeningNow: true,
+      },
+    ]);
+    renderNextUp("nl");
+    expect(rows()[0]).toHaveTextContent("Nu bezig: AI Meetup");
+    expect(rows()[0]).toHaveTextContent("Eindigt over 2 uur");
+  });
+
+  it("sets only timestamps in mono; words in the meta line stay sans", () => {
+    state.query = loaded([CHALLENGE, OPEN_CHALLENGE]);
+    renderNextUp();
+    const [deadline, open] = rows();
+    const time = within(deadline!).getByText("in 1 week");
+    expect(time).toHaveClass("font-mono");
+    expect(time.parentElement).not.toHaveClass("font-mono");
+    expect(within(open!).getByText("No deadline")).not.toHaveClass("font-mono");
   });
 
   it("does not claim the member is caught up when the only sources that had items failed", () => {
@@ -270,7 +345,7 @@ describe("NextUp", () => {
     renderNextUp();
     expect(screen.queryByText(/you're all caught up/i)).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(
-      /could not load right now/i,
+      /some items could not load/i,
     );
   });
 
