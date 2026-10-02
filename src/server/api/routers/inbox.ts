@@ -29,6 +29,7 @@ import { dispatchEventImmediately } from "@/server/agent/dispatch-immediate";
 import { resolveProducerTrust } from "@/lib/chat/trust";
 import type { UiResource } from "@/lib/chat/types";
 import { runUiTool } from "@/server/inbox/ui-tools";
+import { countInboxUnread } from "@/server/inbox/unread-count";
 import { isHubDmConversation } from "@/server/notifications/hub-mail-prefs";
 import {
   localeFromCookieHeader,
@@ -771,45 +772,9 @@ export const inboxRouter = createTRPCRouter({
   /**
    * totalUnreadCount - sum of unread messages across all conversations.
    */
-  totalUnreadCount: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
-
-    // Two unread sources, UNION ALL'd then summed: DM/agent conversations
-    // (tracked on conversationParticipants) and room conversations (no
-    // participant rows — tracked on the caller's active spaceMembership, the
-    // same marker getMessages/listConversations use). Without the room arm the
-    // global badge silently undercounts room unread.
-    const [result] = await ctx.db
-      .select({ total: sql<number>`coalesce(sum(sub.cnt), 0)::int` })
-      .from(
-        sql`(
-          SELECT count(*) as cnt
-          FROM ${messages} m
-          JOIN ${conversationParticipants} cp
-            ON cp.conversation_id = m.conversation_id
-          WHERE cp.user_id = ${userId}
-            AND (m.sender_id != ${userId} OR m.sender_type != 'human')
-            AND (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at)
-          GROUP BY m.conversation_id
-
-          UNION ALL
-
-          SELECT count(*) as cnt
-          FROM ${messages} m
-          JOIN ${conversations} c
-            ON c.id = m.conversation_id AND c.type = 'space'
-          JOIN ${spaceMemberships} sm
-            ON sm.space_id = c.space_id
-            AND sm.user_id = ${userId}
-            AND sm.status = 'active'
-          WHERE (m.sender_id != ${userId} OR m.sender_type != 'human')
-            AND (sm.last_read_at IS NULL OR m.created_at > sm.last_read_at)
-          GROUP BY m.conversation_id
-        ) sub`,
-      );
-
-    return { count: result?.total ?? 0 };
-  }),
+  totalUnreadCount: protectedProcedure.query(async ({ ctx }) => ({
+    count: await countInboxUnread(ctx.db, ctx.session.user.id),
+  })),
 
   /**
    * searchMembers - search for members by displayName or user.name.

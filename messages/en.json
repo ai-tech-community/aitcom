@@ -883,6 +883,44 @@
       "title": "Your interests and goals",
       "description": "Your answers to the welcome questions shape your getting-started steps and the people we suggest.",
       "cta": "Change your answers"
+    },
+    "nextUp": {
+      "title": "Next up",
+      "partial": "Some items could not load.",
+      "retryPartial": "Try again",
+      "emptyTitle": "You're all caught up.",
+      "emptyLink": "Find an event to look forward to",
+      "event": {
+        "registered": "You're going to {title}",
+        "intent": "You're going to {title}",
+        "waitlisted": "You're on the waitlist for {title}",
+        "pending_payment": "Finish paying for your spot at {title}",
+        "action": "View event",
+        "happeningNow": "Happening now: {title}",
+        "today": "Today: {title}",
+        "ends": "Ends <time></time>"
+      },
+      "challenge": {
+        "sentence": "Keep going on {title}",
+        "deadline": "Deadline <time></time>",
+        "openEnded": "No deadline",
+        "action": "Open challenge"
+      },
+      "invite": {
+        "sentence": "You're invited to join {name}",
+        "action": "View community"
+      },
+      "joinRequests": {
+        "sentence": "{count, plural, one {# person wants} other {# people want}} to join {name}",
+        "action": "Review requests"
+      },
+      "unread": {
+        "both": "You have {notifications, plural, one {# unread notification} other {# unread notifications}} and {messages, plural, one {# unread message} other {# unread messages}}",
+        "notifications": "You have {count, plural, one {# unread notification} other {# unread notifications}}",
+        "messages": "You have {count, plural, one {# unread message} other {# unread messages}}",
+        "notificationsAction": "See notifications",
+        "messagesAction": "Open inbox"
+      }
     }
   },
   "activity": {
@@ -1025,7 +1063,6 @@
     "myChallenges": "My Challenges",
     "muteAdvice": "Mute agent advice",
     "unmuteAdvice": "Unmute agent advice",
-    "activeChallenges": "Active Challenges",
     "channel": {
       "sectionTitle": "Channel",
       "newThread": "New Thread",

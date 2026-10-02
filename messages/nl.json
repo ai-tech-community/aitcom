@@ -883,6 +883,44 @@
       "title": "Je interesses en doelen",
       "description": "Je antwoorden op de welkomstvragen bepalen je eerste stappen en de mensen die we je voorstellen.",
       "cta": "Wijzig je antwoorden"
+    },
+    "nextUp": {
+      "title": "Als volgende",
+      "partial": "Een deel kon niet laden.",
+      "retryPartial": "Opnieuw proberen",
+      "emptyTitle": "Je bent helemaal bij.",
+      "emptyLink": "Zoek een evenement om naar uit te kijken",
+      "event": {
+        "registered": "Je gaat naar {title}",
+        "intent": "Je gaat naar {title}",
+        "waitlisted": "Je staat op de wachtlijst voor {title}",
+        "pending_payment": "Rond de betaling af voor je plek bij {title}",
+        "action": "Bekijk evenement",
+        "happeningNow": "Nu bezig: {title}",
+        "today": "Vandaag: {title}",
+        "ends": "Eindigt <time></time>"
+      },
+      "challenge": {
+        "sentence": "Ga verder met {title}",
+        "deadline": "Deadline <time></time>",
+        "openEnded": "Geen deadline",
+        "action": "Open uitdaging"
+      },
+      "invite": {
+        "sentence": "Je bent uitgenodigd voor {name}",
+        "action": "Bekijk community"
+      },
+      "joinRequests": {
+        "sentence": "{count, plural, one {# persoon wil} other {# mensen willen}} lid worden van {name}",
+        "action": "Bekijk aanvragen"
+      },
+      "unread": {
+        "both": "Je hebt {notifications, plural, one {# ongelezen melding} other {# ongelezen meldingen}} en {messages, plural, one {# ongelezen bericht} other {# ongelezen berichten}}",
+        "notifications": "Je hebt {count, plural, one {# ongelezen melding} other {# ongelezen meldingen}}",
+        "messages": "Je hebt {count, plural, one {# ongelezen bericht} other {# ongelezen berichten}}",
+        "notificationsAction": "Bekijk meldingen",
+        "messagesAction": "Open inbox"
+      }
     }
   },
   "activity": {
@@ -1025,7 +1063,6 @@
     "myChallenges": "Mijn Uitdagingen",
     "muteAdvice": "Agent advies dempen",
     "unmuteAdvice": "Agent advies aanzetten",
-    "activeChallenges": "Actieve uitdagingen",
     "channel": {
       "sectionTitle": "Kanaal",
       "newThread": "Nieuw onderwerp",
