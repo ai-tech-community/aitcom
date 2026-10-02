@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { SectionLabel } from "@/components/ui/section-label";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { getInitials } from "@/lib/avatar";
 
 const ACTION_VERBS: Record<string, string> = {
@@ -47,13 +45,12 @@ function getActorImage(actor: Actor): string | null {
 }
 
 export function ActivityFeed() {
-  const [mode, setMode] = useState<"personal" | "community">("personal");
   const t = useTranslations("activity");
   const tc = useTranslations("common");
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     api.activity.getFeed.useInfiniteQuery(
-      { mode, limit: 20 },
+      { limit: 20 },
       {
         getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
         initialCursor: null,
@@ -65,20 +62,6 @@ export function ActivityFeed() {
   return (
     <div>
       <SectionLabel className="pb-4">{t("sectionTitle")}</SectionLabel>
-
-      <div className="mt-4">
-        <SegmentedControl
-          aria-label={t("scopeLabel")}
-          size="sm"
-          value={mode}
-          onValueChange={setMode}
-          className="font-mono tracking-wider"
-          options={[
-            { value: "personal", label: t("personal") },
-            { value: "community", label: t("community") },
-          ]}
-        />
-      </div>
 
       {/* Feed items */}
       <div className="mt-4">

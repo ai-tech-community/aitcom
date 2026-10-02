@@ -924,9 +924,6 @@
     }
   },
   "activity": {
-    "scopeLabel": "Activity scope",
-    "personal": "My Activity",
-    "community": "Community",
     "empty": "No activity yet. Start participating to see your feed!",
     "sectionTitle": "Activity"
   },
