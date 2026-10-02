@@ -1,4 +1,4 @@
-import { splitMyEvents } from "@/components/events/my-events/split-my-events";
+import { splitMyEvents } from "@/lib/events/split-my-events";
 import { eventStartInstant, upcomingEventsQueryFloor } from "@/lib/event-time";
 import { loadMyEventPairs } from "@/server/events/my-event-pairs";
 

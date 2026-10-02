@@ -10,7 +10,7 @@ import { Link } from "@/i18n/navigation";
 import { SectionLabel } from "@/components/ui/section-label";
 import { toEventRowInput } from "@/components/events/rows/to-event-row-input";
 import { loadEventHostNames } from "@/server/events/event-hosts-queries";
-import { splitMyEvents } from "@/components/events/my-events/split-my-events";
+import { splitMyEvents } from "@/lib/events/split-my-events";
 import {
   MyEventsList,
   type MyEventItem,
