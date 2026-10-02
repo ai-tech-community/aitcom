@@ -2,13 +2,11 @@ import type { Metadata } from "next";
 import { getSession } from "@/server/better-auth/server";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
-import { eventRegistrations } from "@/server/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
-import { getPayload } from "payload";
-import config from "@payload-config";
+import { getPayloadClient } from "@/server/payload";
+import { loadMyEventPairs } from "@/server/events/my-event-pairs";
+import { resolveLocale } from "@/i18n/messages";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import type { Event } from "@/payload-types";
 import { SectionLabel } from "@/components/ui/section-label";
 import { toEventRowInput } from "@/components/events/rows/to-event-row-input";
 import { loadEventHostNames } from "@/server/events/event-hosts-queries";
@@ -21,8 +19,6 @@ import {
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
-
-type Registration = typeof eventRegistrations.$inferSelect;
 
 type SP = Record<string, string | string[] | undefined>;
 
@@ -46,42 +42,10 @@ export default async function DashboardEventsPage({
 
   const isPast = firstParam(sp, "past") === "1";
 
-  const registrations = await db
-    .select()
-    .from(eventRegistrations)
-    .where(
-      and(
-        eq(eventRegistrations.userId, session.user.id),
-        inArray(eventRegistrations.status, [
-          "registered",
-          "waitlisted",
-          "attended",
-          "intent",
-          "pending_payment",
-        ]),
-      ),
-    );
-
-  const eventIds = registrations.map((r) => r.eventId);
-  let events: Event[] = [];
-
-  if (eventIds.length > 0) {
-    const payload = await getPayload({ config });
-    const { docs } = await payload.find({
-      collection: "events",
-      where: { id: { in: eventIds } },
-      locale: locale as "en" | "nl",
-      limit: eventIds.length,
-      depth: 0,
-    });
-    events = docs;
-  }
-
-  const pairs: Array<{ registration: Registration; event: Event }> = [];
-  for (const reg of registrations) {
-    const event = events.find((e) => e.id === reg.eventId);
-    if (event) pairs.push({ registration: reg, event });
-  }
+  const pairs = await loadMyEventPairs(
+    { db, getPayload: getPayloadClient },
+    { userId: session.user.id, locale: resolveLocale(locale) },
+  );
 
   // Upcoming and past judged in each event's own zone, so an event later
   // today stays upcoming after 00:00 UTC.
