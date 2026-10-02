@@ -25,7 +25,6 @@ import {
   awardBadge,
   isProfileComplete,
   XP_AMOUNTS,
-  BADGES,
 } from "@/lib/gamification";
 import { getAvatarUrl } from "@/lib/avatar";
 import { personNameSchema } from "@/lib/person-name";
@@ -53,6 +52,20 @@ import {
   publicRosterEmailVisibility,
   publicRosterVisibility,
 } from "@/server/members/public-roster";
+import {
+  profileAudience,
+  profileReach,
+  profileReadableBy,
+  publiclyVisibleColumn,
+} from "@/server/members/profile-access";
+import {
+  publicMemberProfileColumns,
+  toPublicMemberProfile,
+} from "@/server/members/public-member-profile";
+import {
+  displayableBadgeRows,
+  toDisplayableBadges,
+} from "@/server/members/displayable-badges";
 
 const upsertProfileInput = z.object({
   displayName: z.string().min(1).max(255),
@@ -81,9 +94,12 @@ export const membersRouter = createTRPCRouter({
       .limit(1);
 
     const badges = await ctx.db
-      .select()
+      .select({
+        badgeSlug: memberBadges.badgeSlug,
+        earnedAt: memberBadges.earnedAt,
+      })
       .from(memberBadges)
-      .where(eq(memberBadges.userId, userId));
+      .where(and(eq(memberBadges.userId, userId), displayableBadgeRows()));
 
     const [names] = await ctx.db
       .select({ firstName: user.firstName, lastName: user.lastName })
@@ -120,10 +136,7 @@ export const membersRouter = createTRPCRouter({
         firstName: names?.firstName ?? null,
         lastName: names?.lastName ?? null,
       },
-      badges: badges.map((b) => ({
-        ...BADGES[b.badgeSlug],
-        earnedAt: b.earnedAt,
-      })),
+      badges: toDisplayableBadges(badges),
       social: toPublicSocialJson(social),
       accounts: {
         ...mapOAuthProviders((provider) =>
@@ -374,17 +387,25 @@ export const membersRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  /** Get a public member profile by userId. */
+  /**
+   * A member's public profile by userId. Visitors get it only when the
+   * profile is on the public roster; the owner always gets their own, with
+   * `reach` telling them whether visitors can see it.
+   */
   getPublicProfile: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const audience = profileAudience(ctx.session?.user.id, input.userId);
       const [profile] = await ctx.db
-        .select()
+        .select({
+          ...publicMemberProfileColumns,
+          publiclyVisible: publiclyVisibleColumn(),
+        })
         .from(memberProfiles)
         .where(
           and(
             eq(memberProfiles.userId, input.userId),
-            publicRosterVisibility(),
+            profileReadableBy(audience),
           ),
         )
         .limit(1);
@@ -400,9 +421,14 @@ export const membersRouter = createTRPCRouter({
         .limit(1);
 
       const badges = await ctx.db
-        .select()
+        .select({
+          badgeSlug: memberBadges.badgeSlug,
+          earnedAt: memberBadges.earnedAt,
+        })
         .from(memberBadges)
-        .where(eq(memberBadges.userId, input.userId));
+        .where(
+          and(eq(memberBadges.userId, input.userId), displayableBadgeRows()),
+        );
 
       const [attendedCount] = await ctx.db
         .select({ count: sql<number>`count(*)` })
@@ -415,7 +441,7 @@ export const membersRouter = createTRPCRouter({
         );
 
       // Hackathon certificates (issued at finalize), shown alongside badges.
-      // Same isPublic gate as the rest of the profile (early return above).
+      // Same visibility rule as the rest of the profile (early return above).
       const certificates = await ctx.db
         .select()
         .from(hackathonCertificates)
@@ -453,17 +479,16 @@ export const membersRouter = createTRPCRouter({
       });
 
       return {
-        profile,
+        profile: toPublicMemberProfile(profile),
+        audience,
+        reach: profileReach(profile.publiclyVisible),
         user: memberUser
           ? {
               image: memberUser.image,
               avatarUrl: getAvatarUrl(memberUser.email, memberUser.image),
             }
           : null,
-        badges: badges.map((b) => ({
-          ...BADGES[b.badgeSlug],
-          earnedAt: b.earnedAt,
-        })),
+        badges: toDisplayableBadges(badges),
         certificates: certificates.map((c) => ({
           id: c.id,
           challengeId: c.challengeId,
@@ -503,7 +528,7 @@ export const membersRouter = createTRPCRouter({
 
       const profiles = await ctx.db
         .select({
-          profile: memberProfiles,
+          profile: publicMemberProfileColumns,
           email: user.email,
           image: user.image,
           agentId: agentProfiles.id,
@@ -541,10 +566,15 @@ export const membersRouter = createTRPCRouter({
           ? await ctx.db
               .select({
                 userId: memberBadges.userId,
-                count: sql<number>`count(*)`,
+                count: sql<number>`count(*)`.mapWith(Number),
               })
               .from(memberBadges)
-              .where(inArray(memberBadges.userId, memberIds))
+              .where(
+                and(
+                  inArray(memberBadges.userId, memberIds),
+                  displayableBadgeRows(),
+                ),
+              )
               .groupBy(memberBadges.userId)
           : [];
 
@@ -571,7 +601,7 @@ export const membersRouter = createTRPCRouter({
             subject: "member",
           });
           return {
-            profile: m.profile,
+            profile: toPublicMemberProfile(m.profile),
             image: m.image,
             avatarUrl: getAvatarUrl(m.email, m.image),
             agentId: m.agentId,
@@ -591,7 +621,7 @@ export const membersRouter = createTRPCRouter({
   getLeaderboard: publicProcedure.query(async ({ ctx }) => {
     const top = await ctx.db
       .select({
-        profile: memberProfiles,
+        profile: publicMemberProfileColumns,
         email: user.email,
         image: user.image,
       })
@@ -608,10 +638,15 @@ export const membersRouter = createTRPCRouter({
         ? await ctx.db
             .select({
               userId: memberBadges.userId,
-              count: sql<number>`count(*)`,
+              count: sql<number>`count(*)`.mapWith(Number),
             })
             .from(memberBadges)
-            .where(inArray(memberBadges.userId, userIds))
+            .where(
+              and(
+                inArray(memberBadges.userId, userIds),
+                displayableBadgeRows(),
+              ),
+            )
             .groupBy(memberBadges.userId)
         : [];
 
@@ -637,7 +672,7 @@ export const membersRouter = createTRPCRouter({
         subject: "member",
       });
       return {
-        profile: t.profile,
+        profile: toPublicMemberProfile(t.profile),
         image: t.image,
         avatarUrl: getAvatarUrl(t.email, t.image),
         badgeCount: badgeCountMap.get(t.profile.userId) ?? 0,

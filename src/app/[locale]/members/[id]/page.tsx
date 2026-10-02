@@ -14,6 +14,18 @@ import { eq } from "drizzle-orm";
 import { Link } from "@/i18n/navigation";
 import { getSession } from "@/server/better-auth/server";
 import { MessageMemberButton } from "@/components/message-member-button";
+import { cache } from "react";
+import { Lock } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PROFILE_SETTINGS_HREF } from "@/lib/dashboard-routes";
+
+/**
+ * One profile load per request, shared by generateMetadata and the page, so
+ * the procedure (and its GitHub identity check) runs once per view.
+ */
+const getProfile = cache((userId: string) =>
+  api.members.getPublicProfile({ userId }),
+);
 
 export async function generateMetadata({
   params,
@@ -21,7 +33,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const data = await api.members.getPublicProfile({ userId: id });
+  const data = await getProfile(id);
   if (!data) return {};
 
   const description = data.profile.bio
@@ -33,6 +45,10 @@ export async function generateMetadata({
     description,
     ...buildOgMeta(data.profile.displayName, description),
     alternates: await localeAlternates(`/members/${id}`),
+    // Only the owner can load a profile visitors cannot see; keep it unindexed.
+    ...(data.reach === "owner-only"
+      ? { robots: { index: false, follow: false } }
+      : {}),
   };
 }
 
@@ -49,7 +65,7 @@ export default async function MemberProfilePage({
   ]);
 
   const [data, [agentProfile], session] = await Promise.all([
-    api.members.getPublicProfile({ userId: id }),
+    getProfile(id),
     db
       .select()
       .from(agentProfiles)
@@ -66,12 +82,8 @@ export default async function MemberProfilePage({
     certificates,
     eventsAttended,
     social,
+    reach,
   } = data;
-
-  // Filter out badges where the BADGES lookup returned undefined (noUncheckedIndexedAccess)
-  const validBadges = badges.filter(
-    (b): b is typeof b & { slug: string } => b.slug != null,
-  );
 
   const avatarUrl = memberUser?.avatarUrl ?? memberUser?.image ?? null;
   const initials = getInitials(profile.displayName);
@@ -80,6 +92,26 @@ export default async function MemberProfilePage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+      {reach === "owner-only" && (
+        <Alert role="status" className="mb-8">
+          <Lock aria-hidden="true" />
+          <AlertDescription>
+            <p>
+              {t.rich("ownerOnlyNotice", {
+                link: (chunks) => (
+                  <Link
+                    href={PROFILE_SETTINGS_HREF}
+                    className="text-foreground underline underline-offset-4"
+                  >
+                    {chunks}
+                  </Link>
+                ),
+              })}
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="flex items-start gap-3 sm:gap-5">
         {avatarUrl ? (
@@ -179,7 +211,7 @@ export default async function MemberProfilePage({
       )}
 
       {/* Badges */}
-      {validBadges.length > 0 && (
+      {badges.length > 0 && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
             <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
@@ -187,7 +219,7 @@ export default async function MemberProfilePage({
             </h2>
           </div>
           <div className="mt-6 flex flex-wrap gap-6">
-            {validBadges.map((badge) => (
+            {badges.map((badge) => (
               <AchievementBadge
                 key={badge.slug}
                 badgeSize="default"

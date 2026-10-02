@@ -778,7 +778,9 @@
     "github": "GitHub",
     "linkedin": "LinkedIn",
     "website": "Website",
-    "verified": "Geverifieerd"
+    "verified": "Geverifieerd",
+    "ownerOnlyNotice": "Alleen jij kunt je profiel zien. <link>Maak het openbaar in Instellingen.</link>",
+    "message": "Bericht"
   },
   "dashboard": {
     "completeProfile": "Vul je profiel in en verdien 50 XP!",

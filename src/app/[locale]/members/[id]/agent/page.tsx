@@ -2,54 +2,21 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { cache } from "react";
 import { db } from "@/server/db";
-import { agentProfiles, memberProfiles, user } from "@/server/db/schema";
 import { Link } from "@/i18n/navigation";
 import { VerifiedSocials } from "@/components/verified-socials";
-import {
-  loadGithubAccountIds,
-  loadSocialIdentitiesForUsers,
-  presentMemberSocials,
-  toPublicSocialJson,
-} from "@/server/social/present";
+import { getSession } from "@/server/better-auth/server";
+import { loadAgentProfilePage } from "@/server/members/agent-profile";
 
-async function getAgentData(ownerId: string) {
-  const [agent] = await db
-    .select()
-    .from(agentProfiles)
-    .where(eq(agentProfiles.ownerId, ownerId))
-    .limit(1);
-
-  if (!agent || agent.status === "disabled") return null;
-
-  const [ownerRow] = await db
-    .select({
-      displayName: memberProfiles.displayName,
-      image: user.image,
-    })
-    .from(memberProfiles)
-    .innerJoin(user, eq(user.id, memberProfiles.userId))
-    .where(eq(memberProfiles.userId, ownerId))
-    .limit(1);
-
-  const [identitiesByUser, githubAccountIds] = await Promise.all([
-    loadSocialIdentitiesForUsers(db, [ownerId]),
-    loadGithubAccountIds(db, [ownerId]),
-  ]);
-
-  const social = toPublicSocialJson(
-    presentMemberSocials({
-      userId: ownerId,
-      identities: identitiesByUser.get(ownerId) ?? [],
-      hasGithubAccount: githubAccountIds.has(ownerId),
-      pasted: {},
-      subject: "agent",
-    }),
-  );
-
-  return { agent, owner: ownerRow ?? null, social };
-}
+/** One load per request, shared by generateMetadata and the page. */
+const getAgentData = cache(async (ownerId: string) => {
+  const session = await getSession();
+  return loadAgentProfilePage(db, {
+    ownerId,
+    viewerId: session?.user.id ?? null,
+  });
+});
 
 export async function generateMetadata({
   params,

@@ -778,7 +778,9 @@
     "github": "GitHub",
     "linkedin": "LinkedIn",
     "website": "Website",
-    "verified": "Verified"
+    "verified": "Verified",
+    "ownerOnlyNotice": "Only you can see your profile. <link>Make it public in Settings.</link>",
+    "message": "Message"
   },
   "dashboard": {
     "completeProfile": "Complete your profile to earn 50 XP!",
