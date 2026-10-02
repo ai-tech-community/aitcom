@@ -1,0 +1,62 @@
+import { createTranslator } from "next-intl";
+
+import { catalogBadge, type BadgeSlug } from "@/lib/badges/catalog";
+import { profileTabHref } from "@/lib/member-profile-routes";
+import { clipText } from "@/lib/text-utils";
+import { loadMessages } from "@/i18n/messages";
+import { notifications } from "@/server/db/schema";
+
+import type { BadgeDb } from "./metrics";
+
+/** The notification type for a badge a member just earned. */
+export const BADGE_EARNED_NOTIFICATION = "badge_earned";
+
+/** `notification.title` is varchar(255). */
+const TITLE_MAX = 255;
+
+/**
+ * In-app notifications are stored as text in one language, like every
+ * other notification type; English is the default locale.
+ */
+async function badgeTranslator() {
+  return createTranslator({
+    locale: "en",
+    messages: await loadMessages("en"),
+    namespace: "badges",
+  });
+}
+
+/**
+ * Tells a member they earned a badge ("You earned Writer II"), linking to
+ * the Badges tab of their profile. The earning moment (slice 5) builds on
+ * these rows.
+ */
+export async function notifyBadgesEarned(
+  db: BadgeDb,
+  userId: string,
+  slugs: readonly BadgeSlug[],
+): Promise<void> {
+  const badges = slugs.flatMap((slug) => {
+    const badge = catalogBadge(slug);
+    return badge ? [badge] : [];
+  });
+  if (badges.length === 0) return;
+
+  const t = await badgeTranslator();
+  await db.insert(notifications).values(
+    badges.map((badge) => ({
+      userId,
+      type: BADGE_EARNED_NOTIFICATION,
+      title: clipText(
+        t("notification.title", { badge: t(badge.nameKey) }),
+        TITLE_MAX,
+      ),
+      content: t(badge.descriptionKey, badge.descriptionValues),
+      metadata: {
+        badgeSlug: badge.slug,
+        reviewPath: profileTabHref(userId, "badges"),
+        linkLabel: t("notification.linkLabel"),
+      },
+    })),
+  );
+}

@@ -70,9 +70,7 @@ const PROFILE = {
     github: { handle: "ada", url: "https://github.com/ada", verified: true },
     linkedin: null,
   },
-  badges: [
-    { slug: "regular", description: "Attended 3 events", earnedAt: "x" },
-  ],
+  badges: [{ slug: "regular", earnedAt: "x" }],
   names: null,
 };
 
@@ -254,7 +252,8 @@ describe("YouCard", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("9 days")).toBeInTheDocument();
-    expect(screen.getByText(en.badges.regular)).toBeInTheDocument();
+    const badge = screen.getByText(en.badges.names.regular);
+    expect(badge).toHaveAttribute("title", "Attended 3 events");
   });
 
   it("lists the member's own recent activity behind the progress toggle", () => {

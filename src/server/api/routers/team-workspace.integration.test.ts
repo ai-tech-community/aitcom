@@ -369,6 +369,14 @@ describe.skipIf(!RUN_DB)(
         fx.outsiderUserId,
         fx.sponsorId,
       ]) {
+        // A completed enrollment earns a badge (row + notification), which
+        // references user.id without cascade.
+        await db
+          .delete(schema.memberBadges)
+          .where(eq(schema.memberBadges.userId, id));
+        await db
+          .delete(schema.notifications)
+          .where(eq(schema.notifications.userId, id));
         await db
           .delete(schema.memberProfiles)
           .where(eq(schema.memberProfiles.userId, id));

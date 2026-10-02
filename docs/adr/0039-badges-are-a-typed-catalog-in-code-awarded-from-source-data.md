@@ -47,4 +47,12 @@ tables. Design: `docs/superpowers/specs/2026-10-02-member-profile-and-badges-des
   catalog after the backfill confirms no member holds them.
 - Free-text prize rows in `member_badge` move to `member_award`.
 - Lowering a threshold later grants the badge on the next evaluation;
-  raising one never revokes an earned badge.
+  raising one never revokes an earned badge. Such a grant is silent (see
+  the next point).
+- Only the tier an action reached is celebrated. Because earning is read
+  from the source, an evaluation can find tiers the member passed long
+  ago (a first check-in after ten past events, a long streak from last
+  year). A tier is celebrated (XP bonus, notification, earned event) only
+  when the metric equals its threshold; tiers below the metric are
+  recorded silently, as the backfill records them. The result is the same
+  whether or not the backfill ran first.

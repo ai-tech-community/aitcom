@@ -54,7 +54,7 @@ tuned without a migration (an already-earned badge is never revoked).
 | Track | Measures (source) | I | II | III | Existing slugs kept |
 |---|---|---|---|---|---|
 | Regular | events attended (`event_registration.status = attended`) | 1 | 3 | 10 | `first_event`, `regular`, `veteran` |
-| Host | native events organised that took place (Payload `events.organizerId`, past, not cancelled) | 1 | 5 | 15 | — |
+| Host | native events organised that took place (Payload `events.organizerId`, published or completed, not from Luma, and started or with a member checked in) | 1 | 5 | 15 | — |
 | Challenger | challenges completed (`challenge_enrollment.status = completed`) | 1 | 5 | 15 | `first_challenge` |
 | Writer | articles published and approved (Payload `articles`) | 1 | 5 | 15 | `article_author`, `prolific_writer` |
 | Builder | launchpad projects published | 1 | 3 | 10 | `first_launch` |
@@ -94,8 +94,37 @@ is renamed.
   removed.
 - **XP on earning** stays where it is today (e.g. first event bonus) and is
   granted only when the insert actually created the row.
-- **Backfill.** A script evaluates every track for every member, so
-  members get what they already qualify for. It is a production action:
+- **Celebrate only what the action reached.** A tier is celebrated (XP
+  bonus, notification, `badge.earned` event) only when the metric now
+  equals its threshold, i.e. the action that triggered the evaluation is
+  what reached it. Tiers whose threshold is below the metric are recorded
+  silently (the row only), exactly as the backfill records them. So a
+  member with ten past events who is checked in once more gets Regular I
+  and II quietly, and the outcome does not depend on whether the backfill
+  ran before or after deploy. Milestones and the limited edition are
+  always celebrated: their trigger is the moment itself. The rule lives
+  once in the engine (`src/server/badges/celebration.ts`).
+- **Never in the way.** Each evaluation runs in its own transaction (a
+  savepoint inside a caller's transaction); a failure is logged and the
+  user's action goes on.
+- **Where each track is evaluated.** Check-in: the attendee's Regular, and
+  on an event's first check-in the organizer's Host (it means the event
+  took place, even before its start time). Article approval: Writer (and Tutorial creator for a
+  tutorial), after Payload commits the save, so a rolled-back approval
+  earns nothing. Challenge completion: Challenger. Launchpad publish: Builder.
+  Course certificate: Learner. Enrolment by another member: the author's
+  Teacher. Referral credit: Connector. Benchmark coverage recompute:
+  Benchmarker. A member's first activity of the day: Streak (marked done
+  for the day only after a successful evaluation). Agent
+  wrangler has no live trigger: nothing increments
+  `agent_profile.totalContributions` since agents draft instead of post
+  (ADR-0015), so only the backfill evaluates it until contributions are
+  counted again.
+- **Backfill.** A script (`scripts/backfill-badges.ts`) evaluates every
+  track for every member, so members get what they already qualify for.
+  It is retroactive: no XP, activity event or notification. A failed
+  write is reported per member and track, the run continues, and the
+  script exits non-zero; a re-run is safe. It is a production action:
   prepared and tested against the test database, run by the owner.
 - **Notifications.** Earning a badge creates a notification ("You earned
   Writer II"), which also feeds the earning moment in slice 5.

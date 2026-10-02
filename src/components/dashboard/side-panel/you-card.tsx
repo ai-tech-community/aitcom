@@ -115,10 +115,7 @@ export function YouCard({
           level={profile.level}
           streak={streakQuery.data}
           streakStatus={statusFromQueries(streakQuery)}
-          badges={data.badges.filter(
-            (b): b is typeof b & EarnedBadge =>
-              b.slug != null && b.description != null,
-          )}
+          badges={data.badges}
         />
       )}
     </DashboardSection>

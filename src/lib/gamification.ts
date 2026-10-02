@@ -1,181 +1,7 @@
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { NeonDatabase } from "drizzle-orm/neon-serverless";
 import type * as schema from "@/server/db/schema";
-import {
-  memberProfiles,
-  memberBadges,
-  eventRegistrations,
-  activityEvents,
-  pointsEvents,
-} from "@/server/db/schema";
-
-// --- Badge Definitions ---
-
-export interface BadgeDefinition {
-  slug: string;
-  name: string;
-  description: string;
-  icon?: string;
-}
-
-export const BADGES: Record<string, BadgeDefinition> = {
-  profile_complete: {
-    slug: "profile_complete",
-    name: "Profile Complete",
-    description: "Filled out all profile fields",
-  },
-  first_event: {
-    slug: "first_event",
-    name: "First Event",
-    description: "Attended your first event",
-  },
-  regular: {
-    slug: "regular",
-    name: "Regular",
-    description: "Attended 3 events",
-  },
-  veteran: {
-    slug: "veteran",
-    name: "Veteran",
-    description: "Attended 10 events",
-  },
-  early_adopter: {
-    slug: "early_adopter",
-    name: "Early Adopter",
-    description: "Among the first 100 members",
-  },
-  speaker: {
-    slug: "speaker",
-    name: "Speaker",
-    description: "Listed as a speaker at an event",
-  },
-  agent_master: {
-    slug: "agent_master",
-    name: "Agent Master",
-    description: "Your AI agent made 10+ contributions",
-    icon: "🤖",
-  },
-  onboarding_complete: {
-    slug: "onboarding_complete",
-    name: "Onboarding Complete",
-    description: "Finished all onboarding steps",
-  },
-  first_challenge: {
-    slug: "first_challenge",
-    name: "First Challenge",
-    description: "Completed your first challenge",
-  },
-  challenge_streak_3: {
-    slug: "challenge_streak_3",
-    name: "Streak Master",
-    description: "Completed 3 consecutive weekly challenges",
-  },
-  challenge_streak_10: {
-    slug: "challenge_streak_10",
-    name: "Unstoppable",
-    description: "Completed 10 consecutive weekly challenges",
-  },
-  challenge_proposer: {
-    slug: "challenge_proposer",
-    name: "Challenge Proposer",
-    description: "Your proposed challenge was published",
-  },
-  mission_impossible: {
-    slug: "mission_impossible",
-    name: "Mission Impossible",
-    description: "Completed a monthly challenge in the first week",
-  },
-  repo_first: {
-    slug: "repo_first",
-    name: "Repo Warrior",
-    description: "Completed your first repo-based challenge",
-    icon: "🏗️",
-  },
-  test_perfect: {
-    slug: "test_perfect",
-    name: "Test Master",
-    description: "100% test pass on a challenge with 10+ tests",
-    icon: "✅",
-  },
-  challenge_helper: {
-    slug: "challenge_helper",
-    name: "Helpful Hand",
-    description: "Answered 10 questions across challenge channels",
-    icon: "🤝",
-  },
-  sponsor_pick: {
-    slug: "sponsor_pick",
-    name: "Sponsor's Pick",
-    description: "A sponsor approved your peer-review solution",
-    icon: "⭐",
-  },
-  challenge_author: {
-    slug: "challenge_author",
-    name: "Challenge Author",
-    description: "Published a challenge that got 5+ enrollments",
-    icon: "📝",
-  },
-  speed_demon: {
-    slug: "speed_demon",
-    name: "Speed Demon",
-    description: "Completed a weekly challenge in under 24 hours",
-    icon: "⚡",
-  },
-  agent_collab: {
-    slug: "agent_collab",
-    name: "Full Stack Agent",
-    description:
-      "Completed a challenge where your agent posted 5+ progress updates",
-    icon: "🤖",
-  },
-  streak_10: {
-    slug: "streak_10",
-    name: "Streak Master",
-    description: "Completed 10 challenges",
-    icon: "🔥",
-  },
-  article_author: {
-    slug: "article_author",
-    name: "Article Author",
-    description: "Had your first article approved and published",
-    icon: "✍️",
-  },
-  prolific_writer: {
-    slug: "prolific_writer",
-    name: "Prolific Writer",
-    description: "Published 5 articles",
-    icon: "📚",
-  },
-  tutorial_creator: {
-    slug: "tutorial_creator",
-    name: "Tutorial Creator",
-    description: "Published your first tutorial",
-    icon: "🎓",
-  },
-  first_launch: {
-    slug: "first_launch",
-    name: "First Launch",
-    description: "Published your first project on Launchpad",
-    icon: "🚀",
-  },
-  course_complete: {
-    slug: "course_complete",
-    name: "Course Graduate",
-    description: "Completed every lesson in a classroom course",
-    icon: "🎓",
-  },
-};
-
-/**
- * Badge slugs the app can show. A stored `member_badge` row whose slug is not
- * in the catalog stays in the database but is neither shown nor counted.
- */
-export const DISPLAYABLE_BADGE_SLUGS: readonly string[] = Object.keys(BADGES);
-
-/** The catalog entry for a stored badge slug, or null when it is not shown. */
-export function displayableBadge(slug: string): BadgeDefinition | null {
-  return Object.hasOwn(BADGES, slug) ? (BADGES[slug] ?? null) : null;
-}
+import { memberProfiles, pointsEvents } from "@/server/db/schema";
 
 // --- XP Amounts ---
 
@@ -348,13 +174,31 @@ type Tx = Parameters<
 type DB = NeonDatabase<typeof schema> | Tx;
 
 /**
+ * Runs a read in its own savepoint (a transaction on the root db) and
+ * returns `fallback` if it fails. A failed statement inside a caller's
+ * transaction aborts that whole transaction even when the error is caught,
+ * so a guarded read must roll back to its own savepoint instead.
+ */
+export async function readOrFallback<T>(
+  db: DB,
+  fallback: T,
+  read: (tx: DB) => Promise<T>,
+): Promise<T> {
+  try {
+    return await db.transaction((tx) => read(tx));
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Resolve the multiplier of the currently-active XP boost (admin-managed
  * campaign), or 1 if none. Guarded so a missing table / failed read never
- * breaks XP awarding.
+ * breaks XP awarding, nor the caller's transaction.
  */
 async function activeBoostMultiplier(db: DB): Promise<number> {
-  try {
-    const res = await db.execute(sql`
+  return readOrFallback(db, 1, async (tx) => {
+    const res = await tx.execute(sql`
       SELECT "multiplier" FROM "public"."points_boosts"
       WHERE "enabled" = true AND now() >= "starts_at" AND now() <= "ends_at"
       ORDER BY "multiplier" DESC
@@ -363,9 +207,7 @@ async function activeBoostMultiplier(db: DB): Promise<number> {
     const raw = res.rows[0]?.multiplier;
     const m = raw == null ? 1 : Number(raw);
     return Number.isFinite(m) && m >= 1 ? m : 1;
-  } catch {
-    return 1;
-  }
+  });
 }
 
 /**
@@ -406,113 +248,6 @@ export async function awardXp(
 }
 
 /**
- * Award a badge if not already earned. Returns true if newly awarded.
- * Uses INSERT ... ON CONFLICT DO NOTHING to avoid race conditions.
- */
-export async function awardBadge(
-  db: DB,
-  userId: string,
-  badgeSlug: string,
-): Promise<boolean> {
-  const [result] = await db
-    .insert(memberBadges)
-    .values({ userId, badgeSlug })
-    .onConflictDoNothing()
-    .returning();
-
-  if (result) {
-    await db.insert(activityEvents).values({
-      actorId: userId,
-      actorType: "member",
-      action: "badge.earned",
-      targetType: "member_badge",
-      targetId: result.id,
-      metadata: { badgeSlug, badgeName: BADGES[badgeSlug]?.name ?? badgeSlug },
-    });
-  }
-
-  return !!result;
-}
-
-/**
- * Check and award attendance-based badges based on current count.
- */
-export async function checkAttendanceBadges(db: DB, userId: string) {
-  const [countResult] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(eventRegistrations)
-    .where(
-      and(
-        eq(eventRegistrations.userId, userId),
-        eq(eventRegistrations.status, "attended"),
-      ),
-    );
-
-  const attended = countResult?.count ?? 0;
-
-  if (attended >= 1) {
-    const isFirst = await awardBadge(db, userId, "first_event");
-    if (isFirst) {
-      await awardXp(db, userId, XP_AMOUNTS.FIRST_EVENT_BONUS);
-    }
-  }
-  if (attended >= 3) await awardBadge(db, userId, "regular");
-  if (attended >= 10) await awardBadge(db, userId, "veteran");
-}
-
-/**
- * Check if user qualifies for the early_adopter badge.
- */
-export async function checkEarlyAdopterBadge(db: DB, userId: string) {
-  const [countResult] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(memberProfiles);
-
-  const totalProfiles = countResult?.count ?? 0;
-  if (totalProfiles <= 100) {
-    await awardBadge(db, userId, "early_adopter");
-  }
-}
-
-/**
- * Check and award the agent_master badge based on agent contributions.
- */
-export async function checkAgentBadge(
-  db: DB,
-  userId: string,
-  agentContributions: number,
-) {
-  if (agentContributions >= 10) {
-    await awardBadge(db, userId, "agent_master");
-  }
-}
-
-/**
- * Check and award challenge-related badges based on completion count.
- */
-export async function checkChallengeBadges(
-  db: DB,
-  userId: string,
-  completedCount: number,
-  consecutiveWeekly: number,
-  challengeType: "weekly" | "monthly",
-  daysToComplete: number,
-) {
-  if (completedCount >= 1) {
-    await awardBadge(db, userId, "first_challenge");
-  }
-  if (consecutiveWeekly >= 3) {
-    await awardBadge(db, userId, "challenge_streak_3");
-  }
-  if (consecutiveWeekly >= 10) {
-    await awardBadge(db, userId, "challenge_streak_10");
-  }
-  if (challengeType === "monthly" && daysToComplete <= 7) {
-    await awardBadge(db, userId, "mission_impossible");
-  }
-}
-
-/**
  * Check if profile is complete (all key fields filled).
  */
 export function isProfileComplete(profile: {
@@ -542,24 +277,4 @@ export function isTrustedAuthor(
   const level = calculateLevel(xp);
   const hasAuthorBadge = badges.some((b) => b.badgeSlug === "article_author");
   return level >= 5 && hasAuthorBadge;
-}
-
-/**
- * Check and award article-related badges based on published count and type.
- */
-export async function checkArticleBadges(
-  db: DB,
-  userId: string,
-  publishedCount: number,
-  articleType: string,
-) {
-  if (publishedCount >= 1) {
-    await awardBadge(db, userId, "article_author");
-  }
-  if (publishedCount >= 5) {
-    await awardBadge(db, userId, "prolific_writer");
-  }
-  if (articleType === "tutorial") {
-    await awardBadge(db, userId, "tutorial_creator");
-  }
 }

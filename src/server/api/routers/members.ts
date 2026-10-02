@@ -18,12 +18,8 @@ import {
 } from "@/server/db/schema";
 import { computeStreakData, pointsTriggerType } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
-import {
-  awardXp,
-  awardBadge,
-  isProfileComplete,
-  XP_AMOUNTS,
-} from "@/lib/gamification";
+import { isProfileComplete } from "@/lib/gamification";
+import { awardMilestone } from "@/server/badges/engine";
 import { getAvatarUrl } from "@/lib/avatar";
 import { personNameSchema } from "@/lib/person-name";
 import {
@@ -328,7 +324,7 @@ export const membersRouter = createTRPCRouter({
           .where(eq(memberProfiles.userId, userId));
       }
 
-      // Check profile completion for XP and badge
+      // A complete profile earns its milestone (and, once, its XP bonus).
       if (
         isProfileComplete({
           displayName: input.displayName,
@@ -337,10 +333,7 @@ export const membersRouter = createTRPCRouter({
           company: input.company,
         })
       ) {
-        const awarded = await awardBadge(ctx.db, userId, "profile_complete");
-        if (awarded) {
-          await awardXp(ctx.db, userId, XP_AMOUNTS.PROFILE_COMPLETE);
-        }
+        await awardMilestone(ctx.db, userId, "profile_complete");
       }
 
       return { success: true, isNew };

@@ -10,7 +10,8 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
-import { awardXp, awardBadge, XP_AMOUNTS } from "@/lib/gamification";
+import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { evaluateBadges } from "@/server/badges/engine";
 import {
   launchpadUpdates,
   launchpadComments,
@@ -323,7 +324,7 @@ export const launchpadRouter = createTRPCRouter({
           ctx.session.user.id,
           XP_AMOUNTS.LAUNCHPAD_PROJECT_CREATE,
         );
-        await awardBadge(ctx.db, ctx.session.user.id, "first_launch");
+        await evaluateBadges(ctx.db, ctx.session.user.id, ["builder"]);
       }
 
       return { id: project.id, slug };
@@ -382,6 +383,10 @@ export const launchpadRouter = createTRPCRouter({
         id: input.projectId,
         data,
       });
+
+      if (input.status === "published" && project.status !== "published") {
+        await evaluateBadges(ctx.db, ctx.session.user.id, ["builder"]);
+      }
 
       return { success: true };
     }),

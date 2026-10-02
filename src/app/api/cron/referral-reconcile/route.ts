@@ -10,6 +10,7 @@ import { loadReferralCandidates } from "@/server/communities/referral-queries";
 import { decideReferralCredit } from "@/server/communities/referral";
 import { computeActivationStage } from "@/server/communities/activation";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { evaluateBadges } from "@/server/badges/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,6 +82,7 @@ export async function GET(req: Request) {
           xp: XP_AMOUNTS.REFERRAL_ACTIVATED,
         },
       });
+      await evaluateBadges(db, c.referrerId, ["connector"]);
       credited++;
     } catch (err) {
       console.error(`referral-reconcile: failed for ${c.referredUserId}`, err);

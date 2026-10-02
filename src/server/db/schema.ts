@@ -340,6 +340,8 @@ export const memberBadges = appSchema.table(
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
+    // When the member saw the earning moment for this badge; null = unseen.
+    seenAt: d.timestamp({ withTimezone: true }),
   }),
   (t) => [
     uniqueIndex("member_badge_user_slug_uidx").on(t.userId, t.badgeSlug),
@@ -354,6 +356,39 @@ export const memberBadgeRelations = relations(memberBadges, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+// Member awards: prizes from a specific challenge or hackathon ("Winner —
+// RAG Hack 2026"), with the challenge they came from (ADR-0039). Not in the
+// badge catalog; the label is the challenge's prize text.
+export const memberAwards = appSchema.table(
+  "member_award",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    challengeId: d.integer().notNull(), // References Payload challenges table
+    label: d.varchar({ length: 200 }).notNull(),
+    earnedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    seenAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [
+    uniqueIndex("member_award_user_challenge_label_uidx").on(
+      t.userId,
+      t.challengeId,
+      t.label,
+    ),
+    index("member_award_challenge_idx").on(t.challengeId),
+  ],
+);
 
 // Onboarding steps (per-user step completion tracking)
 export const onboardingSteps = appSchema.table(
@@ -550,7 +585,7 @@ export const notifications = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "event_conflict" | "introduction_request" | "referral_credited" | "webhook_proposed" | "community_invite"
+    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "event_conflict" | "introduction_request" | "referral_credited" | "webhook_proposed" | "community_invite" | "badge_earned"
     title: d.varchar({ length: 255 }).notNull(),
     content: d.text().notNull(),
     metadata: d.json().$type<Record<string, unknown>>().default({}).notNull(),

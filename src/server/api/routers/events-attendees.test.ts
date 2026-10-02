@@ -56,6 +56,14 @@ vi.mock("@/server/better-auth", () => ({
 }));
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => payload }));
 vi.mock("@/server/agent/activity", () => ({ logActivity }));
+const evaluateBadges = vi.fn(async () => ({
+  ok: true,
+  earned: [],
+  celebrated: [],
+}));
+vi.mock("@/server/badges/engine", () => ({ evaluateBadges }));
+const isFirstCheckIn = vi.fn(async () => true);
+vi.mock("@/server/events/first-check-in", () => ({ isFirstCheckIn }));
 
 const { createCaller } = await import("@/server/api/root");
 
@@ -241,6 +249,7 @@ describe("events.setCheckedIn", () => {
   const REGISTERED = {
     id: "r1",
     eventId: 7,
+    userId: "member-1",
     status: "registered",
     checkedInAt: null,
   };
@@ -261,6 +270,41 @@ describe("events.setCheckedIn", () => {
       fakeDb,
       expect.objectContaining({ action: "event.check_in", targetId: "7" }),
     );
+    // The attendee's Regular track and, on the event's first check-in,
+    // the organizer's Host track.
+    expect(isFirstCheckIn).toHaveBeenCalledWith(fakeDb, 7);
+    expect(evaluateBadges.mock.calls).toEqual([
+      [fakeDb, "member-1", ["regular"]],
+      [fakeDb, "org-1", ["host"]],
+    ]);
+  });
+
+  it("leaves the Host track alone after the event's first check-in", async () => {
+    isFirstCheckIn.mockResolvedValueOnce(false);
+    dbResults.push([REGISTERED]);
+
+    await caller("org-1").events.setCheckedIn({
+      registrationId: "r1",
+      checkedIn: true,
+    });
+
+    expect(evaluateBadges.mock.calls).toEqual([
+      [fakeDb, "member-1", ["regular"]],
+    ]);
+  });
+
+  it("evaluates nothing when the member was already checked in", async () => {
+    dbResults.push([
+      { ...REGISTERED, status: "attended", checkedInAt: new Date() },
+    ]);
+
+    await caller("org-1").events.setCheckedIn({
+      registrationId: "r1",
+      checkedIn: true,
+    });
+
+    expect(evaluateBadges).not.toHaveBeenCalled();
+    expect(isFirstCheckIn).not.toHaveBeenCalled();
   });
 
   it("undoes a check-in", async () => {
@@ -274,6 +318,7 @@ describe("events.setCheckedIn", () => {
     });
 
     expect(updates).toEqual([{ status: "registered", checkedInAt: null }]);
+    expect(evaluateBadges).not.toHaveBeenCalled();
   });
 
   it("refuses to check in someone on the waitlist", async () => {

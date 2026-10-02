@@ -37,7 +37,8 @@ import {
   type CommunityRole,
   type ExamQuestion,
 } from "@/lib/classroom";
-import { awardXp, awardBadge, XP_AMOUNTS } from "@/lib/gamification";
+import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { evaluateBadges } from "@/server/badges/engine";
 import { invalidEmbedUrls } from "@/lib/classroom/lesson-body";
 import { mayUploadMaterials } from "@/server/classroom/hosted-files";
 import {
@@ -125,11 +126,11 @@ async function issueCertificateIfComplete(
     .onConflictDoNothing()
     .returning();
 
-  // Only on first completion (certificate newly issued): award the graduate
-  // badge + XP. awardBadge is idempotent; awardXp is not, so it must be gated
-  // on the newly-issued certificate to avoid double-awarding on re-checks.
+  // Only on first completion (certificate newly issued): evaluate the
+  // Learner track and award XP. Earning is idempotent; awardXp is not, so it
+  // must be gated on the newly-issued certificate to avoid double-awarding.
   if (certificate) {
-    await awardBadge(database, userId, "course_complete");
+    await evaluateBadges(database, userId, ["learner"]);
     await awardXp(
       database,
       userId,
@@ -1269,6 +1270,7 @@ export const classroomsRouter = createTRPCRouter({
           course.authorId,
           XP_AMOUNTS.COURSE_RECEIVE_ENROLLMENT,
         );
+        await evaluateBadges(ctx.db, course.authorId, ["teacher"]);
       }
       await logActivity(ctx.db, {
         actorId: userId,

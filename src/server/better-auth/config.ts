@@ -13,7 +13,7 @@ import {
 } from "@/server/db/enroll-on-auth";
 import { account as accountTable, memberProfiles } from "@/server/db/schema";
 import { defaultDisplayName } from "@/server/members/default-display-name";
-import { checkEarlyAdopterBadge } from "@/lib/gamification";
+import { awardEarlyAdopterIfEligible } from "@/server/badges/engine";
 import { logActivity } from "@/server/agent/activity";
 import { sendMemberWelcome } from "@/server/email";
 import { getResend } from "@/server/email";
@@ -151,7 +151,7 @@ export const auth = betterAuth({
           await enrollForCreatedUser(user).catch(() => {
             /* retried on verify, first session, and getMyCommunities */
           });
-          await checkEarlyAdopterBadge(db, user.id);
+          await awardEarlyAdopterIfEligible(db, user.id);
           await logActivity(db, {
             actorId: user.id,
             actorType: "member",

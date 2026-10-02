@@ -169,11 +169,15 @@ describe.skipIf(!RUN_DB)("classroom course access [DB integration]", () => {
       .delete(schema.communities)
       .where(eq(schema.communities.id, fx.communityId));
     const userIds = [fx.authorId, fx.memberId, fx.moderatorId, fx.outsiderId];
-    // A passed course issues a certificate, which awards a badge row that
-    // references user.id without cascade — remove it before the users.
+    // A passed course issues a certificate, which earns a badge: its row and
+    // its notification reference user.id without cascade — remove them
+    // before the users.
     await db
       .delete(schema.memberBadges)
       .where(inArray(schema.memberBadges.userId, userIds));
+    await db
+      .delete(schema.notifications)
+      .where(inArray(schema.notifications.userId, userIds));
     for (const id of userIds) {
       await db.delete(schema.user).where(eq(schema.user.id, id));
     }

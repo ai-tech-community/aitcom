@@ -994,7 +994,7 @@ export interface Challenge {
      */
     xpReward: number;
     /**
-     * Badge slug to award on completion (optional).
+     * Optional. The award members receive on completion (or winning a hackathon), shown on their profile as written, e.g. "Winner — RAG Hack 2026". Plain text, not a badge slug: catalog badges are earned automatically.
      */
     badgeReward?: string | null;
     /**
