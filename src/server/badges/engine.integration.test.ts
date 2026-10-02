@@ -830,8 +830,37 @@ describe.skipIf(!RUN_DB)("badge engine [DB integration]", () => {
         })
         .from(schema.memberAwards)
         .where(drizzle.eq(schema.memberAwards.userId, u.player));
-      // A live award is celebrated: unseen until the earning moment.
+      // A live award is celebrated: unseen until the earning moment, with
+      // the award_won notification that marks it as celebrated.
       expect(awards).toEqual([{ challengeId, label: prize, seenAt: null }]);
+      const [award] = await db
+        .select({ id: schema.memberAwards.id })
+        .from(schema.memberAwards)
+        .where(drizzle.eq(schema.memberAwards.userId, u.player));
+      const won = await db
+        .select({
+          title: schema.notifications.title,
+          content: schema.notifications.content,
+          metadata: schema.notifications.metadata,
+        })
+        .from(schema.notifications)
+        .where(
+          drizzle.and(
+            drizzle.eq(schema.notifications.userId, u.player),
+            drizzle.eq(schema.notifications.type, "award_won"),
+          ),
+        );
+      expect(won).toEqual([
+        {
+          title: "You won an award",
+          content: prize,
+          metadata: {
+            awardId: award!.id,
+            reviewPath: `/members/${u.player}/badges`,
+            linkLabel: "View your badges",
+          },
+        },
+      ]);
     });
   });
 

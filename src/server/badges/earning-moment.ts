@@ -2,20 +2,40 @@
  * The earning moment (ADR-0039, slice 5): what the celebration dialog
  * shows a member, and the write that makes it fire once.
  *
- * A badge or award row is unseen while its `seen_at` is null. The engine
- * leaves it null only for a tier the triggering action reached (and a live
- * challenge award); silent tiers and backfill writes are stored as seen,
- * and migration 20261002c marked every row from before this slice seen.
+ * A row is celebrated only when both hold:
+ * - its `seen_at` is null, and
+ * - the live path that celebrated it left its marker: a `badge_earned`
+ *   notification for that member and badge slug, or an `award_won`
+ *   notification for that award row.
+ *
+ * The engine stores silent tiers and backfill writes as seen and writes
+ * the notification only for a celebrated tier; awards are notified only by
+ * `grantChallengeAward`, never by the backfill. Requiring the marker too
+ * keeps a null `seen_at` written by anything else (an older deployment
+ * during a build, a preview or a local run sharing the database, an older
+ * backfill) from ever being celebrated. Migration 20261002c marked every
+ * row from before this slice seen.
  */
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 
 import { isBadgeSlug, type BadgeSlug } from "@/lib/badges/catalog";
 import { effectivePins } from "@/lib/badges/showcase";
-import { memberAwards, memberBadges, memberProfiles } from "@/server/db/schema";
+import {
+  memberAwards,
+  memberBadges,
+  memberProfiles,
+  notifications,
+} from "@/server/db/schema";
 import { displayableBadgeRows } from "@/server/members/displayable-badges";
+import {
+  profileReach,
+  profileReachColumns,
+  type ProfileReach,
+} from "@/server/members/profile-access";
 
 import type { BadgeDb } from "./metrics";
 import type { BadgeRarity, BadgeRarityReport } from "./rarity";
+import { AWARD_WON_NOTIFICATION, BADGE_EARNED_NOTIFICATION } from "./notify";
 import { loadHeldBadgeSlugs } from "./showcase";
 
 /** Earnings the dialog walks through, one at a time, oldest first. */
@@ -57,12 +77,26 @@ export interface UnseenEarnings {
    */
   moreIds: string[];
   /**
-   * The member's showcase as it stands (effective pins), so the dialog
-   * knows whether "Show on my profile" can pin. Null when the member has
-   * no profile yet, so there is no showcase to pin to.
+   * The member's profile, or null when they have none yet (no showcase to
+   * pin to, no badge page to share).
    */
-  pins: BadgeSlug[] | null;
+  profile: {
+    /**
+     * The showcase as it stands (effective pins), so the dialog knows
+     * whether "Show on my profile" can pin.
+     */
+    pins: BadgeSlug[];
+    /** Whether visitors can see it: a badge page exists only when public. */
+    reach: ProfileReach;
+  } | null;
 }
+
+/** Nothing to celebrate. */
+export const NO_UNSEEN_EARNINGS: UnseenEarnings = {
+  items: [],
+  moreIds: [],
+  profile: null,
+};
 
 interface UnseenRow {
   id: string;
@@ -79,7 +113,7 @@ export function toUnseenEarnings(
   badges: readonly { id: string; badgeSlug: string; earnedAt: Date }[],
   awards: readonly { id: string; label: string; earnedAt: Date }[],
   rarity: BadgeRarityReport | null,
-  pins: BadgeSlug[] | null,
+  profile: UnseenEarnings["profile"],
 ): UnseenEarnings {
   const raritiesBySlug = new Map(
     (rarity?.badges ?? []).map((entry) => [entry.slug, entry]),
@@ -114,32 +148,56 @@ export function toUnseenEarnings(
   return {
     items,
     moreIds: rows.slice(CELEBRATION_LIMIT).map((row) => row.id),
-    pins,
+    profile,
   };
 }
 
-/** The member's effective showcase pins, or null without a profile. */
-async function loadPins(
+/** The member's effective showcase pins and reach, or null without a profile. */
+async function loadProfile(
   db: BadgeDb,
   userId: string,
-): Promise<BadgeSlug[] | null> {
+): Promise<UnseenEarnings["profile"]> {
   const [profile] = await db
-    .select({ pins: memberProfiles.showcaseBadges })
+    .select({ pins: memberProfiles.showcaseBadges, ...profileReachColumns() })
     .from(memberProfiles)
     .where(eq(memberProfiles.userId, userId))
     .limit(1);
   if (!profile) return null;
-  return effectivePins(profile.pins, await loadHeldBadgeSlugs(db, userId));
+  return {
+    pins: effectivePins(profile.pins, await loadHeldBadgeSlugs(db, userId)),
+    reach: profileReach(profile),
+  };
+}
+
+/** A `badge_earned` notification exists for this badge row. */
+function celebratedBadge(): SQL {
+  return sql`exists (
+    select 1 from ${notifications}
+    where ${notifications.userId} = ${memberBadges.userId}
+      and ${notifications.type} = ${BADGE_EARNED_NOTIFICATION}
+      and ${notifications.metadata}->>'badgeSlug' = ${memberBadges.badgeSlug}
+  )`;
+}
+
+/** An `award_won` notification exists for this award row. */
+function celebratedAward(): SQL {
+  return sql`exists (
+    select 1 from ${notifications}
+    where ${notifications.userId} = ${memberAwards.userId}
+      and ${notifications.type} = ${AWARD_WON_NOTIFICATION}
+      and ${notifications.metadata}->>'awardId' = ${memberAwards.id}
+  )`;
 }
 
 /**
- * The member's unseen badges and awards. `rarity` is supplementary: pass
+ * The member's unseen badges and awards. Rarity is supplementary and only
+ * loaded when there is something to celebrate: `loadRarity` resolves to
  * null when it could not be loaded.
  */
 export async function loadUnseenEarnings(
   db: BadgeDb,
   userId: string,
-  rarity: BadgeRarityReport | null,
+  loadRarity: () => Promise<BadgeRarityReport | null>,
 ): Promise<UnseenEarnings> {
   const [badges, awards] = await Promise.all([
     db
@@ -154,6 +212,7 @@ export async function loadUnseenEarnings(
           eq(memberBadges.userId, userId),
           isNull(memberBadges.seenAt),
           displayableBadgeRows(),
+          celebratedBadge(),
         ),
       )
       .orderBy(asc(memberBadges.earnedAt), asc(memberBadges.id))
@@ -165,14 +224,22 @@ export async function loadUnseenEarnings(
         earnedAt: memberAwards.earnedAt,
       })
       .from(memberAwards)
-      .where(and(eq(memberAwards.userId, userId), isNull(memberAwards.seenAt)))
+      .where(
+        and(
+          eq(memberAwards.userId, userId),
+          isNull(memberAwards.seenAt),
+          celebratedAward(),
+        ),
+      )
       .orderBy(asc(memberAwards.earnedAt), asc(memberAwards.id))
       .limit(UNSEEN_READ_CAP),
   ]);
-  if (badges.length === 0 && awards.length === 0) {
-    return { items: [], moreIds: [], pins: null };
-  }
-  return toUnseenEarnings(badges, awards, rarity, await loadPins(db, userId));
+  if (badges.length === 0 && awards.length === 0) return NO_UNSEEN_EARNINGS;
+  const [rarity, profile] = await Promise.all([
+    badges.length > 0 ? loadRarity() : Promise.resolve(null),
+    loadProfile(db, userId),
+  ]);
+  return toUnseenEarnings(badges, awards, rarity, profile);
 }
 
 /**

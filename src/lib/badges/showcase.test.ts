@@ -243,3 +243,41 @@ describe("showcasePinState", () => {
     expect(showcasePinState(full, "learner_2")).toBe("pinned");
   });
 });
+
+describe("planPin with nothing pinned yet", () => {
+  const held: BadgeSlug[] = [
+    "early_adopter",
+    "profile_complete",
+    "course_complete",
+    "article_author",
+  ];
+
+  it("keeps the fallback showcase with the new badge first", () => {
+    expect(
+      planPin([], "article_author", held, [
+        "early_adopter",
+        "profile_complete",
+        "course_complete",
+      ]),
+    ).toEqual({
+      ok: true,
+      next: ["article_author", "early_adopter", "profile_complete"],
+    });
+  });
+
+  it("does not repeat the badge's track when the fallback already shows it", () => {
+    expect(
+      planPin([], "course_complete", held, [
+        "course_complete",
+        "early_adopter",
+      ]),
+    ).toEqual({ ok: true, next: ["course_complete", "early_adopter"] });
+  });
+
+  it("pins just the badge without a fallback, and ignores stale stored pins", () => {
+    expect(planPin(["speaker"], "article_author", held)).toEqual({
+      ok: true,
+      next: ["article_author"],
+    });
+  });
+});

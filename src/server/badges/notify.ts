@@ -8,8 +8,18 @@ import { notifications } from "@/server/db/schema";
 
 import type { BadgeDb } from "./metrics";
 
-/** The notification type for a badge a member just earned. */
+/**
+ * The notification type for a badge a member just earned. Its metadata
+ * carries `badgeSlug`; the earning moment celebrates a badge row only when
+ * such a notification exists (`earning-moment.ts`).
+ */
 export const BADGE_EARNED_NOTIFICATION = "badge_earned";
+
+/**
+ * The notification type for an award a member just won in a challenge.
+ * Its metadata carries `awardId`, the earning moment's marker for awards.
+ */
+export const AWARD_WON_NOTIFICATION = "award_won";
 
 /** `notification.title` is varchar(255). */
 const TITLE_MAX = 255;
@@ -59,4 +69,28 @@ export async function notifyBadgesEarned(
       },
     })),
   );
+}
+
+/**
+ * Tells a member they won a challenge's award ("You won an award"), linking
+ * to the Badges tab of their profile. Created only for a live award (never
+ * by the backfill), so the earning moment celebrates exactly these.
+ */
+export async function notifyAwardWon(
+  db: BadgeDb,
+  userId: string,
+  award: { id: string; label: string },
+): Promise<void> {
+  const t = await badgeTranslator();
+  await db.insert(notifications).values({
+    userId,
+    type: AWARD_WON_NOTIFICATION,
+    title: clipText(t("notification.awardTitle"), TITLE_MAX),
+    content: award.label,
+    metadata: {
+      awardId: award.id,
+      reviewPath: profileTabHref(userId, "badges"),
+      linkLabel: t("notification.linkLabel"),
+    },
+  });
 }

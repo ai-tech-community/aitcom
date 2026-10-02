@@ -4,8 +4,9 @@ import { Check } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { Link, usePathname } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { catalogBadge } from "@/lib/badges/catalog";
+import { PROFILE_SETTINGS_HREF } from "@/lib/dashboard-routes";
 import { showcasePinState } from "@/lib/badges/showcase";
 import { badgeShareHref, profileTabHref } from "@/lib/member-profile-routes";
 import { cn } from "@/lib/utils";
@@ -24,97 +25,20 @@ import {
 import { Input } from "@/components/ui/input";
 
 import { BadgeEmblem, emblemOutline, type EmblemSubject } from "./badge-emblem";
-import { isCelebrationRoute } from "./celebration-route";
 import { useBadgeText } from "./use-badge-text";
 import { useRarityLabel } from "./use-rarity-label";
-
-/** When the browser has no idle callback: after first paint has settled. */
-const FALLBACK_DELAY_MS = 1000;
-/** Longest wait for an idle moment before asking anyway. */
-const IDLE_TIMEOUT_MS = 3000;
-
-type IdleWindow = Window & {
-  requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-  cancelIdleCallback?: (id: number) => void;
-};
-
-/**
- * True once the page has painted and the browser is idle, so the unseen
- * query never competes with navigation or hydration.
- */
-function useIdleReady(): boolean {
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const w = window as IdleWindow;
-    if (w.requestIdleCallback) {
-      const id = w.requestIdleCallback(() => setReady(true), {
-        timeout: IDLE_TIMEOUT_MS,
-      });
-      return () => w.cancelIdleCallback?.(id);
-    }
-    const id = window.setTimeout(() => setReady(true), FALLBACK_DELAY_MS);
-    return () => window.clearTimeout(id);
-  }, []);
-  return ready;
-}
-
-/**
- * The earning moment (ADR-0039): once per page load, a signed-in member
- * with unseen badges or awards gets a short celebration of them. Mounted
- * once in the session chrome, for signed-in members only.
- *
- * It asks for unseen earnings only after first paint, when the browser is
- * idle, and never on routes that need the member's focus (sign-in,
- * onboarding). It asks once: after the dialog closes (or when there is
- * nothing to show) it stays quiet until the next full page load.
- */
-export function BadgeCelebration({ userId }: { userId: string }) {
-  const pathname = usePathname();
-  const ready = useIdleReady();
-  const [phase, setPhase] = useState<
-    | { kind: "waiting" }
-    | { kind: "open"; earnings: UnseenEarnings }
-    | { kind: "done" }
-  >({ kind: "waiting" });
-  const onRoute = isCelebrationRoute(pathname);
-  const waiting = phase.kind === "waiting";
-  const unseen = api.badges.unseen.useQuery(undefined, {
-    enabled: ready && onRoute && waiting,
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: false,
-  });
-
-  useEffect(() => {
-    if (!waiting) return;
-    // Supplementary: a failed load just means no celebration this time.
-    if (unseen.isError) setPhase({ kind: "done" });
-    if (!unseen.data || !onRoute) return;
-    setPhase(
-      unseen.data.items.length > 0
-        ? { kind: "open", earnings: unseen.data }
-        : { kind: "done" },
-    );
-  }, [waiting, unseen.data, unseen.isError, onRoute]);
-
-  if (phase.kind !== "open") return null;
-  return (
-    <BadgeCelebrationDialog
-      userId={userId}
-      earnings={phase.earnings}
-      onDone={() => setPhase({ kind: "done" })}
-    />
-  );
-}
 
 type CopyState = "idle" | "copied" | "manual";
 
 /**
- * The celebration itself: one earning at a time (emblem, name, kind,
- * rarity, description), with "Show on my profile", "Share" and Close.
- * Closing it in any way (Close, Esc, outside click, a link) marks every
- * earning it covered as seen; pinning or sharing marks that one at once.
+ * The earning moment's dialog (ADR-0039), loaded by `BadgeCelebrationProbe`
+ * only when there is something to celebrate: one earning at a time
+ * (emblem, name, kind, rarity, description), with "Show on my profile",
+ * "Share" (public profiles only: a private one has no badge page) and
+ * Close. Closing it in any way (Close, Esc, outside click, a link) marks
+ * every earning it covered as seen; pinning or sharing marks that one at
+ * once. When an action replaces the control that had focus, focus moves to
+ * what replaced it.
  */
 export function BadgeCelebrationDialog({
   userId,
@@ -132,11 +56,28 @@ export function BadgeCelebrationDialog({
   const { items, moreIds } = earnings;
   const [open, setOpen] = useState(true);
   const [index, setIndex] = useState(0);
-  const [pins, setPins] = useState(earnings.pins);
+  const profile = earnings.profile;
+  const [pins, setPins] = useState(profile?.pins ?? null);
   const [pinFailed, setPinFailed] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copy, setCopy] = useState<CopyState>("idle");
   const inputRef = useRef<HTMLInputElement>(null);
+  const pinnedRef = useRef<HTMLParagraphElement>(null);
+  const seeBadgesRef = useRef<HTMLAnchorElement>(null);
+  // The control to focus after an action removed the one that had focus.
+  const [focusNext, setFocusNext] = useState<
+    "share" | "pinned" | "seeBadges" | null
+  >(null);
+  useEffect(() => {
+    if (!focusNext) return;
+    const target = {
+      share: inputRef,
+      pinned: pinnedRef,
+      seeBadges: seeBadgesRef,
+    }[focusNext].current;
+    target?.focus();
+    setFocusNext(null);
+  }, [focusNext]);
   const shareId = useId();
   const marked = useRef(new Set<string>());
   // Where focus was when the celebration opened; it returns there after.
@@ -191,8 +132,14 @@ export function BadgeCelebrationDialog({
     pin.mutate(
       { slug: item.slug },
       {
-        onSuccess: (result) => setPins(result.pins),
-        onError: () => setPinFailed(item.id),
+        onSuccess: (result) => {
+          setPins(result.pins);
+          setFocusNext("pinned");
+        },
+        onError: () => {
+          setPinFailed(item.id);
+          setFocusNext("seeBadges");
+        },
       },
     );
   }
@@ -203,6 +150,7 @@ export function BadgeCelebrationDialog({
     setShareUrl(
       `${window.location.origin}/${locale}${badgeShareHref(userId, slug)}`,
     );
+    setFocusNext("share");
   }
 
   function copyLink() {
@@ -231,7 +179,7 @@ export function BadgeCelebrationDialog({
       : null;
   const seeBadges = (
     <Button asChild variant="outline">
-      <Link href={badgesHref} onClick={close}>
+      <Link ref={seeBadgesRef} href={badgesHref} onClick={close}>
         {t("seeBadges")}
       </Link>
     </Button>
@@ -395,15 +343,17 @@ export function BadgeCelebrationDialog({
             )}
             {pinState === "full" && seeBadges}
             {current.kind === "award" && seeBadges}
-            {current.kind === "badge" && pins !== null && !shareUrl && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => openShare(current.slug)}
-              >
-                {t("share")}
-              </Button>
-            )}
+            {current.kind === "badge" &&
+              profile?.reach.kind === "public" &&
+              !shareUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => openShare(current.slug)}
+                >
+                  {t("share")}
+                </Button>
+              )}
             {last ? (
               <Button type="button" variant="ghost" onClick={close}>
                 {t("close")}
@@ -416,6 +366,8 @@ export function BadgeCelebrationDialog({
           </div>
           {pinState === "pinned" && (
             <p
+              ref={pinnedRef}
+              tabIndex={-1}
               role="status"
               className="text-muted-foreground flex items-center justify-center gap-1.5 text-sm"
             >
@@ -423,6 +375,25 @@ export function BadgeCelebrationDialog({
               {t("pinned")}
             </p>
           )}
+          {current.kind === "badge" &&
+            profile &&
+            profile.reach.kind !== "public" && (
+              <p className="text-muted-foreground text-center text-sm">
+                {profile.reach.reason === "private"
+                  ? t.rich("privateNoShare", {
+                      link: (chunks) => (
+                        <Link
+                          href={PROFILE_SETTINGS_HREF}
+                          onClick={close}
+                          className="text-foreground underline underline-offset-4"
+                        >
+                          {chunks}
+                        </Link>
+                      ),
+                    })
+                  : t("hiddenNoShare")}
+              </p>
+            )}
           {pinState === "full" && (
             <p
               role={pinFailed === current.id ? "alert" : undefined}

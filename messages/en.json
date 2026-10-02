@@ -1331,6 +1331,7 @@
     },
     "notification": {
       "title": "You earned {badge}",
+      "awardTitle": "You won an award",
       "linkLabel": "View your badges"
     },
     "progress": {
@@ -4092,7 +4093,9 @@
       "openPage": "Open the badge page",
       "next": "Next",
       "close": "Close",
-      "more": "{count, plural, one {# more is} other {# more are}} waiting on your <link>Badges tab</link>."
+      "more": "{count, plural, one {# more is} other {# more are}} waiting on your <link>Badges tab</link>.",
+      "privateNoShare": "Your profile is private, so this badge has no public page. <link>Profile settings</link>",
+      "hiddenNoShare": "Your profile is not public, so this badge has no public page."
     },
     "share": {
       "metaTitle": "{name} earned {badge}",

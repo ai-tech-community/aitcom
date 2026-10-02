@@ -17,6 +17,7 @@ import {
 import { loadTrackProgress } from "@/server/badges/progress";
 import {
   getBadgeRarity,
+  holdersOf,
   optionalBadgeRarity,
   type BadgeRarityReport,
 } from "@/server/badges/rarity";
@@ -70,12 +71,22 @@ export const badgesRouter = createTRPCRouter({
       loadTrackProgress(ctx.db, ctx.session.user.id),
   ),
 
-  /** Pins a badge the caller holds to their profile showcase (max three). */
+  /**
+   * Pins a badge the caller holds to their profile showcase (max three).
+   * The first pin keeps the showcase the profile shows now, new badge first.
+   */
   pin: protectedProcedure
     .input(slugInput)
     .mutation(async ({ ctx, input }) =>
       showcasePins(
-        await pinShowcaseBadge(ctx.db, ctx.session.user.id, input.slug),
+        await pinShowcaseBadge(
+          ctx.db,
+          ctx.session.user.id,
+          input.slug,
+          await optionalBadgeRarity(ctx.db).then(
+            (report) => report && holdersOf(report),
+          ),
+        ),
       ),
     ),
 
@@ -86,10 +97,8 @@ export const badgesRouter = createTRPCRouter({
    */
   unseen: protectedProcedure.query(
     async ({ ctx }): Promise<UnseenEarnings> =>
-      loadUnseenEarnings(
-        ctx.db,
-        ctx.session.user.id,
-        await optionalBadgeRarity(ctx.db),
+      loadUnseenEarnings(ctx.db, ctx.session.user.id, () =>
+        optionalBadgeRarity(ctx.db),
       ),
   ),
 

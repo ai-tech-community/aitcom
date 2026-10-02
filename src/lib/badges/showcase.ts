@@ -143,11 +143,17 @@ export type PinOutcome =
  * The stored pins after pinning `slug`. Stale pins (no longer held, or no
  * longer in the catalog) are dropped first; pinning another tier of an
  * already pinned track replaces that pin in place.
+ *
+ * With nothing pinned yet, the profile shows `fallback` (its rarest
+ * badges), so the first pin keeps that showcase and puts the new badge
+ * first, dropping the last fallback badge if needed, instead of shrinking
+ * the showcase to one badge.
  */
 export function planPin(
   stored: readonly string[],
   slug: string,
   held: readonly BadgeSlug[],
+  fallback: readonly BadgeSlug[] = [],
 ): PinOutcome {
   if (!isBadgeSlug(slug) || !held.includes(slug)) {
     return { ok: false, reason: "not_held" };
@@ -155,6 +161,12 @@ export function planPin(
   const current = stored.filter(
     (s): s is BadgeSlug => isBadgeSlug(s) && held.includes(s),
   );
+  if (current.length === 0) {
+    const kept = fallback.filter(
+      (s) => held.includes(s) && !sameBadgeLine(s, slug),
+    );
+    return { ok: true, next: [slug, ...kept].slice(0, SHOWCASE_LIMIT) };
+  }
   const sameLine = current.findIndex((s) => sameBadgeLine(s, slug));
   if (sameLine >= 0) {
     const next = [...current];

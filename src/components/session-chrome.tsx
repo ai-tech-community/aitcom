@@ -18,9 +18,11 @@ const OnboardingReminder = dynamic(() =>
   ),
 );
 
-const BadgeCelebration = dynamic(() =>
-  import("@/components/badges/badge-celebration").then(
-    (m) => m.BadgeCelebration,
+// A small probe: the celebration dialog itself loads only when there is
+// something to celebrate.
+const BadgeCelebrationProbe = dynamic(() =>
+  import("@/components/badges/badge-celebration-probe").then(
+    (m) => m.BadgeCelebrationProbe,
   ),
 );
 
@@ -50,7 +52,7 @@ export function SessionChrome({
     <>
       <InboxRoot dockLeading={<OnboardingReminder />} />
       <SpaceWindowRoot />
-      <BadgeCelebration userId={user.id} />
+      <BadgeCelebrationProbe userId={user.id} />
     </>
   );
 }

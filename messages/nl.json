@@ -1331,6 +1331,7 @@
     },
     "notification": {
       "title": "Je hebt {badge} verdiend",
+      "awardTitle": "Je hebt een prijs gewonnen",
       "linkLabel": "Bekijk je badges"
     },
     "progress": {
@@ -4092,7 +4093,9 @@
       "openPage": "Open de badgepagina",
       "next": "Volgende",
       "close": "Sluiten",
-      "more": "Er {count, plural, one {wacht nog # badge} other {wachten nog # badges}} op je <link>tabblad Badges</link>."
+      "more": "{count, plural, one {Nog # wacht} other {Nog # wachten}} op je <link>tabblad Badges</link>.",
+      "privateNoShare": "Je profiel is privé, dus deze badge heeft geen openbare pagina. <link>Profielinstellingen</link>",
+      "hiddenNoShare": "Je profiel is niet openbaar, dus deze badge heeft geen openbare pagina."
     },
     "share": {
       "metaTitle": "{name} heeft {badge} verdiend",

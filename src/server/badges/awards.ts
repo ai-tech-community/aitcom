@@ -7,6 +7,7 @@ import { clipText, oneLine } from "@/lib/text-utils";
 import { memberAwards } from "@/server/db/schema";
 
 import type { BadgeDb } from "./metrics";
+import { notifyAwardWon } from "./notify";
 
 /** `member_award.label` is varchar(200). */
 export const AWARD_LABEL_MAX = 200;
@@ -21,8 +22,8 @@ export function awardLabel(
 
 /**
  * Gives a member a challenge's award, once per (member, challenge, label).
- * A live award is celebrated: it stays unseen (`seen_at` null) until the
- * earning moment shows it.
+ * A live award is celebrated: it stays unseen (`seen_at` null) and gets an
+ * `award_won` notification, the earning moment's marker for awards.
  * Never breaks the caller: it runs in its own savepoint and logs failures.
  * Returns whether a new award was recorded.
  */
@@ -34,12 +35,14 @@ export async function grantChallengeAward(
   if (!label) return false;
   try {
     return await db.transaction(async (tx) => {
-      const rows = await tx
+      const [row] = await tx
         .insert(memberAwards)
         .values({ userId: input.userId, challengeId: input.challengeId, label })
         .onConflictDoNothing()
         .returning({ id: memberAwards.id });
-      return rows.length > 0;
+      if (!row) return false;
+      await notifyAwardWon(tx, input.userId, { id: row.id, label });
+      return true;
     });
   } catch (err) {
     console.error(

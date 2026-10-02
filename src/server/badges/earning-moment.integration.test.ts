@@ -3,7 +3,9 @@
  * DB-INTEGRATION test: the earning moment's procedures (ADR-0039, slice 5).
  *
  * - `badges.unseen` returns only the caller's unseen, displayable badges
- *   and awards, oldest first, capped, with the rest as ids.
+ *   and awards that their live path celebrated (a `badge_earned` or
+ *   `award_won` notification), oldest first, capped, with the rest as ids,
+ *   and loads rarity only when there is something to celebrate.
  * - `badges.markSeen` marks only the caller's own rows; other members' ids
  *   are ignored.
  *
@@ -12,7 +14,7 @@
  *     DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test \
  *     pnpm exec vitest run src/server/badges/earning-moment.integration.test.ts
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -33,6 +35,7 @@ describe.skipIf(!RUN_DB)("earning moment [DB integration]", () => {
     schema: typeof import("@/server/db/schema");
     drizzle: typeof import("drizzle-orm");
     createCaller: typeof import("@/server/api/root").createCaller;
+    moment: typeof import("@/server/badges/earning-moment");
   };
   let m: Mods;
   const suffix = `${Date.now()}${Math.floor(Math.random() * 1e6)}`;
@@ -47,13 +50,20 @@ describe.skipIf(!RUN_DB)("earning moment [DB integration]", () => {
     if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
       throw new Error("Refusing to run against a cloud Neon DATABASE_URL.");
     }
-    const [dbMod, schema, drizzle, root] = await Promise.all([
+    const [dbMod, schema, drizzle, root, moment] = await Promise.all([
       import("@/server/db"),
       import("@/server/db/schema"),
       import("drizzle-orm"),
       import("@/server/api/root"),
+      import("@/server/badges/earning-moment"),
     ]);
-    m = { db: dbMod.db, schema, drizzle, createCaller: root.createCaller };
+    m = {
+      db: dbMod.db,
+      schema,
+      drizzle,
+      createCaller: root.createCaller,
+      moment,
+    };
     const { db } = m;
     await db
       .insert(schema.user)
@@ -66,7 +76,7 @@ describe.skipIf(!RUN_DB)("earning moment [DB integration]", () => {
         displayName: `Owner ${suffix}`,
         showcaseBadges: ["first_event"],
       },
-      { userId: other, displayName: `Other ${suffix}` },
+      { userId: other, displayName: `Other ${suffix}`, isPublic: false },
     ]);
     await db.insert(schema.memberBadges).values([
       // Already seen: never shown again.
@@ -101,6 +111,14 @@ describe.skipIf(!RUN_DB)("earning moment [DB integration]", () => {
         userId: owner,
         badgeSlug: "first_launch",
         earnedAt: day(7),
+      },
+      // Unseen but silent (no notification, e.g. written by an older
+      // deployment): never celebrated.
+      {
+        id: id("silent"),
+        userId: owner,
+        badgeSlug: "teacher_1",
+        earnedAt: day(1),
       },
       // Stored but not in the catalog: never shown or celebrated.
       {
@@ -138,12 +156,51 @@ describe.skipIf(!RUN_DB)("earning moment [DB integration]", () => {
         label: `Winner ${suffix}`,
         earnedAt: day(1),
       },
+      // Unseen but not from a live completion (no notification).
+      {
+        id: id("moved-award"),
+        userId: owner,
+        challengeId: 2,
+        label: `Runner-up ${suffix}`,
+        earnedAt: day(1),
+      },
+    ]);
+    // The live paths' markers, as the engine and grantChallengeAward write.
+    const badgeNotice = (userId: string, badgeSlug: string) => ({
+      userId,
+      type: "badge_earned",
+      title: "You earned it",
+      content: "",
+      metadata: { badgeSlug },
+    });
+    await db.insert(schema.notifications).values([
+      badgeNotice(owner, "first_event"),
+      badgeNotice(owner, "regular"),
+      badgeNotice(owner, "article_author"),
+      badgeNotice(owner, "host_1"),
+      badgeNotice(owner, "first_launch"),
+      badgeNotice(owner, "speaker"),
+      badgeNotice(other, "veteran"),
+      badgeNotice(noProfile, "first_event"),
+      ...[
+        [owner, id("award")],
+        [other, id("their-award")],
+      ].map(([userId, awardId]) => ({
+        userId: userId!,
+        type: "award_won",
+        title: "You won an award",
+        content: "",
+        metadata: { awardId },
+      })),
     ]);
   }, 120_000);
 
   afterAll(async () => {
     if (!m) return;
     const { db, schema, drizzle } = m;
+    await db
+      .delete(schema.notifications)
+      .where(drizzle.inArray(schema.notifications.userId, users));
     await db
       .delete(schema.memberAwards)
       .where(drizzle.inArray(schema.memberAwards.userId, users));
@@ -214,13 +271,40 @@ describe.skipIf(!RUN_DB)("earning moment [DB integration]", () => {
     });
     expect(unseen.moreIds).toEqual([id("host"), id("builder")]);
     // Pinning Regular I pins the track, shown at its highest tier held.
-    expect(unseen.pins).toEqual(["regular"]);
+    expect(unseen.profile).toEqual({
+      pins: ["regular"],
+      reach: { kind: "public" },
+    });
   });
 
-  it("returns no pins for a member without a profile", async () => {
+  it("never returns an unseen row its live path did not celebrate", async () => {
+    const unseen = await as(owner).badges.unseen();
+    const ids = [...unseen.items.map((item) => item.id), ...unseen.moreIds];
+    expect(ids).not.toContain(id("silent"));
+    expect(ids).not.toContain(id("moved-award"));
+    expect(ids).not.toContain(id("offcatalog"));
+  });
+
+  it("tells a private profile apart, and has no profile for a member without one", async () => {
+    expect((await as(other).badges.unseen()).profile).toEqual({
+      pins: [],
+      reach: { kind: "ownerOnly", reason: "private" },
+    });
     const unseen = await as(noProfile).badges.unseen();
     expect(unseen.items.map((item) => item.id)).toEqual([id("noprof")]);
-    expect(unseen.pins).toBeNull();
+    expect(unseen.profile).toBeNull();
+  });
+
+  it("loads rarity only when there is a badge to celebrate", async () => {
+    const empty = `em-empty-${suffix}`;
+    const loadRarity = vi.fn(async () => null);
+    expect(await m.moment.loadUnseenEarnings(m.db, empty, loadRarity)).toEqual(
+      m.moment.NO_UNSEEN_EARNINGS,
+    );
+    expect(loadRarity).not.toHaveBeenCalled();
+
+    await m.moment.loadUnseenEarnings(m.db, owner, loadRarity);
+    expect(loadRarity).toHaveBeenCalledTimes(1);
   });
 
   it("markSeen marks only the caller's own rows and ignores other ids", async () => {

@@ -1,10 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,24 +8,12 @@ import type { UnseenEarnings } from "@/server/badges/earning-moment";
 const calls = vi.hoisted(() => ({
   pin: [] as unknown[],
   markSeen: [] as unknown[],
-  queryOptions: [] as { enabled?: boolean }[],
   pinResult: { pins: [] as string[] } as { pins: string[] } | Error,
-  unseen: undefined as UnseenEarnings | undefined,
-  pathname: "/",
 }));
 
 vi.mock("@/trpc/react", () => ({
   api: {
     badges: {
-      unseen: {
-        useQuery: (_input: unknown, opts: { enabled?: boolean }) => {
-          calls.queryOptions.push(opts);
-          return {
-            data: opts.enabled ? calls.unseen : undefined,
-            isError: false,
-          };
-        },
-      },
       markSeen: {
         useMutation: () => ({
           mutate: (input: unknown) => calls.markSeen.push(input),
@@ -59,7 +41,6 @@ vi.mock("@/trpc/react", () => ({
 }));
 
 vi.mock("@/i18n/navigation", () => ({
-  usePathname: () => calls.pathname,
   Link: ({
     href,
     children,
@@ -74,7 +55,7 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
-import { BadgeCelebration, BadgeCelebrationDialog } from "./badge-celebration";
+import { BadgeCelebrationDialog } from "./badge-celebration";
 
 const USER = "u1";
 
@@ -102,7 +83,7 @@ function earnings(overrides: Partial<UnseenEarnings> = {}): UnseenEarnings {
       },
     ],
     moreIds: ["b3", "b4"],
-    pins: [],
+    profile: { pins: [], reach: { kind: "public" } },
     ...overrides,
   };
 }
@@ -118,10 +99,7 @@ function wrap(ui: React.ReactNode) {
 beforeEach(() => {
   calls.pin = [];
   calls.markSeen = [];
-  calls.queryOptions = [];
   calls.pinResult = { pins: [] };
-  calls.unseen = undefined;
-  calls.pathname = "/";
 });
 
 afterEach(() => {
@@ -173,10 +151,15 @@ describe("BadgeCelebrationDialog", () => {
         />,
       ),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Show on my profile" }));
+    const button = screen.getByRole("button", { name: "Show on my profile" });
+    button.focus();
+    fireEvent.click(button);
     expect(calls.pin).toEqual([{ slug: "article_author" }]);
     expect(calls.markSeen).toEqual([{ ids: ["b1"] }]);
-    expect(screen.getByRole("status")).toHaveTextContent("On your profile");
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("On your profile");
+    // The button that had focus is gone: focus moves to what replaced it.
+    expect(document.activeElement).toBe(status);
     expect(
       screen.queryByRole("button", { name: "Show on my profile" }),
     ).toBeNull();
@@ -188,7 +171,10 @@ describe("BadgeCelebrationDialog", () => {
         <BadgeCelebrationDialog
           userId={USER}
           earnings={earnings({
-            pins: ["first_event", "early_adopter", "course_complete"],
+            profile: {
+              pins: ["first_event", "early_adopter", "course_complete"],
+              reach: { kind: "public" },
+            },
           })}
           onDone={() => undefined}
         />,
@@ -219,7 +205,9 @@ describe("BadgeCelebrationDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Could not add it to your profile",
     );
-    expect(screen.getByRole("link", { name: "See badges" })).toBeVisible();
+    const seeBadges = screen.getByRole("link", { name: "See badges" });
+    expect(seeBadges).toBeVisible();
+    expect(document.activeElement).toBe(seeBadges);
   });
 
   it("Share shows the badge page link and copies it from the click", async () => {
@@ -237,6 +225,9 @@ describe("BadgeCelebrationDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Share" }));
     const url = `${window.location.origin}/en/members/u1/badges/article_author`;
     expect(screen.getByLabelText("Link to share")).toHaveValue(url);
+    // Share hides itself: focus goes to the link it revealed.
+    expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByLabelText("Link to share"));
     expect(calls.markSeen).toEqual([{ ids: ["b1"] }]);
     expect(
       screen.getByRole("link", { name: "Open the badge page" }),
@@ -370,59 +361,58 @@ describe("BadgeCelebrationDialog", () => {
   });
 });
 
-describe("BadgeCelebration", () => {
-  it("asks for unseen earnings only after first paint, then opens once", async () => {
-    vi.useFakeTimers();
-    calls.unseen = earnings();
-    const { rerender } = render(wrap(<BadgeCelebration userId={USER} />));
-    expect(calls.queryOptions.at(-1)?.enabled).toBe(false);
-    expect(screen.queryByRole("dialog")).toBeNull();
-
-    await act(async () => {
-      vi.advanceTimersByTime(1000);
-    });
-    expect(calls.queryOptions.find((opts) => opts.enabled)).toMatchObject({
-      enabled: true,
-      staleTime: Infinity,
-      refetchOnWindowFocus: false,
-    });
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    // Asked once: open means it stops asking.
-    expect(calls.queryOptions.at(-1)?.enabled).toBe(false);
-
-    vi.useRealTimers();
-    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    // Never again in this page load, even if the query still has data.
-    rerender(wrap(<BadgeCelebration userId={USER} />));
-    expect(calls.queryOptions.at(-1)?.enabled).toBe(false);
-    expect(screen.queryByRole("dialog")).toBeNull();
+describe("BadgeCelebrationDialog on a profile visitors cannot see", () => {
+  it("offers no Share and says why, linking to profile settings", () => {
+    render(
+      wrap(
+        <BadgeCelebrationDialog
+          userId={USER}
+          earnings={earnings({
+            profile: {
+              pins: [],
+              reach: { kind: "ownerOnly", reason: "private" },
+            },
+          })}
+          onDone={() => undefined}
+        />,
+      ),
+    );
+    expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
+    expect(
+      screen.getByText(
+        /Your profile is private, so this badge has no public page/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Profile settings" }),
+    ).toHaveAttribute("href", "/dashboard/settings#profile");
+    // Pinning still works: the owner sees their own showcase.
+    expect(
+      screen.getByRole("button", { name: "Show on my profile" }),
+    ).toBeVisible();
   });
 
-  it("does not ask on sign-in or onboarding routes", async () => {
-    vi.useFakeTimers();
-    calls.unseen = earnings();
-    for (const path of ["/auth/signin", "/dashboard/onboarding"]) {
-      calls.pathname = path;
-      const { unmount } = render(wrap(<BadgeCelebration userId={USER} />));
-      await act(async () => {
-        vi.advanceTimersByTime(5000);
-      });
-      expect(calls.queryOptions.at(-1)?.enabled).toBe(false);
-      expect(screen.queryByRole("dialog")).toBeNull();
-      unmount();
-    }
-  });
-
-  it("stays closed when there is nothing unseen", async () => {
-    vi.useFakeTimers();
-    calls.unseen = { items: [], moreIds: [], pins: null };
-    render(wrap(<BadgeCelebration userId={USER} />));
-    await act(async () => {
-      vi.advanceTimersByTime(1000);
-    });
-    expect(calls.queryOptions.some((opts) => opts.enabled)).toBe(true);
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(calls.queryOptions.at(-1)?.enabled).toBe(false);
+  it("says so without a settings link when staff keep the profile hidden", () => {
+    render(
+      wrap(
+        <BadgeCelebrationDialog
+          userId={USER}
+          earnings={earnings({
+            profile: {
+              pins: [],
+              reach: { kind: "ownerOnly", reason: "hiddenByStaff" },
+            },
+          })}
+          onDone={() => undefined}
+        />,
+      ),
+    );
+    expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
+    expect(
+      screen.getByText(
+        "Your profile is not public, so this badge has no public page.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Profile settings" })).toBeNull();
   });
 });
