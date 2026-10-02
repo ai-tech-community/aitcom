@@ -13,21 +13,18 @@ export const activityRouter = createTRPCRouter({
   getFeed: protectedProcedure
     .input(
       z.object({
-        mode: z.enum(["personal", "community"]),
         cursor: z.string().nullable().default(null),
         limit: z.number().min(1).max(50).default(20),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const { mode, cursor, limit } = input;
+      const { cursor, limit } = input;
       const userId = ctx.session.user.id;
 
-      // Build conditions
-      const conditions = [];
-
-      if (mode === "personal") {
-        conditions.push(eq(activityEvents.actorId, userId));
-      }
+      // Only the viewer's own activity. Rows carry private context (DM
+      // conversations, moderation, members-only communities), so this
+      // procedure never returns other actors' rows.
+      const conditions = [eq(activityEvents.actorId, userId)];
 
       if (cursor) {
         conditions.push(lt(activityEvents.createdAt, new Date(cursor)));
@@ -37,7 +34,7 @@ export const activityRouter = createTRPCRouter({
       const rows = await ctx.db
         .select()
         .from(activityEvents)
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .where(and(...conditions))
         .orderBy(desc(activityEvents.createdAt))
         .limit(limit + 1);
 
