@@ -166,6 +166,17 @@ export const BADGES: Record<string, BadgeDefinition> = {
   },
 };
 
+/**
+ * Badge slugs the app can show. A stored `member_badge` row whose slug is not
+ * in the catalog stays in the database but is neither shown nor counted.
+ */
+export const DISPLAYABLE_BADGE_SLUGS: readonly string[] = Object.keys(BADGES);
+
+/** The catalog entry for a stored badge slug, or null when it is not shown. */
+export function displayableBadge(slug: string): BadgeDefinition | null {
+  return Object.hasOwn(BADGES, slug) ? (BADGES[slug] ?? null) : null;
+}
+
 // --- XP Amounts ---
 
 export const XP_AMOUNTS = {

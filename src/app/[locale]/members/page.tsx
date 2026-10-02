@@ -58,7 +58,7 @@ export default async function MembersPage({
               userName: member.profile.displayName,
               rank: i + 1,
               value: member.profile.xp,
-              avatarUrl: member.avatarUrl ?? member.image ?? null,
+              avatarUrl: member.avatarUrl,
             }))}
           />
         </div>
@@ -75,7 +75,7 @@ export default async function MembersPage({
           <div className="mt-6 space-y-0 sm:hidden">
             {members.items.map((member, i) => {
               const rank = i + 1;
-              const avatarUrl = member.avatarUrl ?? member.image ?? null;
+              const avatarUrl = member.avatarUrl;
               const initials = getInitials(member.profile.displayName);
               const skills = leaderboardSkills(member.profile.skills);
               const isTopThree = rank <= 3;
@@ -189,7 +189,7 @@ export default async function MembersPage({
               <tbody>
                 {members.items.map((member, i) => {
                   const rank = i + 1;
-                  const avatarUrl = member.avatarUrl ?? member.image ?? null;
+                  const avatarUrl = member.avatarUrl;
                   const initials = getInitials(member.profile.displayName);
                   const skills = leaderboardSkills(member.profile.skills);
                   const isTopThree = rank <= 3;

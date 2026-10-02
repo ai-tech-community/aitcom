@@ -14,6 +14,17 @@ import { eq } from "drizzle-orm";
 import { Link } from "@/i18n/navigation";
 import { getSession } from "@/server/better-auth/server";
 import { MessageMemberButton } from "@/components/message-member-button";
+import { cache } from "react";
+import { OwnerOnlyNotice } from "@/components/members/owner-only-notice";
+import { hasAgentOnPublicRoster } from "@/lib/public-roster";
+
+/**
+ * One profile load per request, shared by generateMetadata and the page, so
+ * the procedure (and its GitHub identity check) runs once per view.
+ */
+const getProfile = cache((userId: string) =>
+  api.members.getPublicProfile({ userId }),
+);
 
 export async function generateMetadata({
   params,
@@ -21,7 +32,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const data = await api.members.getPublicProfile({ userId: id });
+  const data = await getProfile(id);
   if (!data) return {};
 
   const description = data.profile.bio
@@ -33,6 +44,10 @@ export async function generateMetadata({
     description,
     ...buildOgMeta(data.profile.displayName, description),
     alternates: await localeAlternates(`/members/${id}`),
+    // Only the owner can load a profile visitors cannot see; keep it unindexed.
+    ...(data.reach.kind !== "public"
+      ? { robots: { index: false, follow: false } }
+      : {}),
   };
 }
 
@@ -49,7 +64,7 @@ export default async function MemberProfilePage({
   ]);
 
   const [data, [agentProfile], session] = await Promise.all([
-    api.members.getPublicProfile({ userId: id }),
+    getProfile(id),
     db
       .select()
       .from(agentProfiles)
@@ -66,12 +81,8 @@ export default async function MemberProfilePage({
     certificates,
     eventsAttended,
     social,
+    reach,
   } = data;
-
-  // Filter out badges where the BADGES lookup returned undefined (noUncheckedIndexedAccess)
-  const validBadges = badges.filter(
-    (b): b is typeof b & { slug: string } => b.slug != null,
-  );
 
   const avatarUrl = memberUser?.avatarUrl ?? memberUser?.image ?? null;
   const initials = getInitials(profile.displayName);
@@ -80,6 +91,8 @@ export default async function MemberProfilePage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+      <OwnerOnlyNotice reach={reach} />
+
       {/* Header */}
       <div className="flex items-start gap-3 sm:gap-5">
         {avatarUrl ? (
@@ -179,7 +192,7 @@ export default async function MemberProfilePage({
       )}
 
       {/* Badges */}
-      {validBadges.length > 0 && (
+      {badges.length > 0 && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
             <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
@@ -187,7 +200,7 @@ export default async function MemberProfilePage({
             </h2>
           </div>
           <div className="mt-6 flex flex-wrap gap-6">
-            {validBadges.map((badge) => (
+            {badges.map((badge) => (
               <AchievementBadge
                 key={badge.slug}
                 badgeSize="default"
@@ -256,40 +269,45 @@ export default async function MemberProfilePage({
       </div>
 
       {/* AI Agent */}
-      {agentProfile?.status === "active" && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / AI AGENT
-            </h2>
-          </div>
-          <Link
-            href={`/members/${id}/agent`}
-            className="border-border hover:bg-secondary/50 mt-4 flex items-center gap-4 rounded border p-4 transition-colors"
-          >
-            {agentProfile.avatar ? (
-              <Image
-                src={agentProfile.avatar}
-                alt={agentProfile.name}
-                className="h-10 w-10 rounded-full"
-                width={40}
-                height={40}
-              />
-            ) : (
-              <div className="bg-secondary text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full text-lg">
-                🤖
-              </div>
-            )}
-            <div className="flex-1">
-              <p className="font-medium">{agentProfile.name}</p>
-              <p className="text-muted-foreground font-mono text-xs tracking-wider">
-                {agentProfile.totalContributions} contributions
-              </p>
+      {agentProfile?.status === "active" &&
+        (data.audience === "owner" ||
+          hasAgentOnPublicRoster({
+            userId: id,
+            ownedActiveAgentId: agentProfile.id,
+          })) && (
+          <div className="border-border mt-8 border-t pt-8">
+            <div className="border-border border-b pb-4">
+              <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+                / AI AGENT
+              </h2>
             </div>
-            <span className="text-muted-foreground font-mono text-xs">→</span>
-          </Link>
-        </div>
-      )}
+            <Link
+              href={`/members/${id}/agent`}
+              className="border-border hover:bg-secondary/50 mt-4 flex items-center gap-4 rounded border p-4 transition-colors"
+            >
+              {agentProfile.avatar ? (
+                <Image
+                  src={agentProfile.avatar}
+                  alt={agentProfile.name}
+                  className="h-10 w-10 rounded-full"
+                  width={40}
+                  height={40}
+                />
+              ) : (
+                <div className="bg-secondary text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full text-lg">
+                  🤖
+                </div>
+              )}
+              <div className="flex-1">
+                <p className="font-medium">{agentProfile.name}</p>
+                <p className="text-muted-foreground font-mono text-xs tracking-wider">
+                  {agentProfile.totalContributions} contributions
+                </p>
+              </div>
+              <span className="text-muted-foreground font-mono text-xs">→</span>
+            </Link>
+          </div>
+        )}
     </div>
   );
 }

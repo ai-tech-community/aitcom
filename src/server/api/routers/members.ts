@@ -25,7 +25,6 @@ import {
   awardBadge,
   isProfileComplete,
   XP_AMOUNTS,
-  BADGES,
 } from "@/lib/gamification";
 import { getAvatarUrl } from "@/lib/avatar";
 import { personNameSchema } from "@/lib/person-name";
@@ -48,11 +47,29 @@ import {
   toLeaderboardSocial,
   toPublicSocialJson,
 } from "@/server/social/present";
-import { hasAgentOnPublicRoster } from "@/lib/public-roster";
 import {
   publicRosterEmailVisibility,
   publicRosterVisibility,
 } from "@/server/members/public-roster";
+import {
+  profileAudience,
+  profileReach,
+  profileReachColumns,
+  profileReadableBy,
+} from "@/server/members/profile-access";
+import {
+  publicRosterColumns,
+  toPublicRosterEntry,
+  type PublicRosterEntry,
+} from "@/server/members/public-roster-entry";
+import {
+  publicMemberProfileColumns,
+  toPublicMemberProfile,
+} from "@/server/members/public-member-profile";
+import {
+  displayableBadgeRows,
+  toDisplayableBadges,
+} from "@/server/members/displayable-badges";
 
 const upsertProfileInput = z.object({
   displayName: z.string().min(1).max(255),
@@ -81,9 +98,12 @@ export const membersRouter = createTRPCRouter({
       .limit(1);
 
     const badges = await ctx.db
-      .select()
+      .select({
+        badgeSlug: memberBadges.badgeSlug,
+        earnedAt: memberBadges.earnedAt,
+      })
       .from(memberBadges)
-      .where(eq(memberBadges.userId, userId));
+      .where(and(eq(memberBadges.userId, userId), displayableBadgeRows()));
 
     const [names] = await ctx.db
       .select({ firstName: user.firstName, lastName: user.lastName })
@@ -120,10 +140,7 @@ export const membersRouter = createTRPCRouter({
         firstName: names?.firstName ?? null,
         lastName: names?.lastName ?? null,
       },
-      badges: badges.map((b) => ({
-        ...BADGES[b.badgeSlug],
-        earnedAt: b.earnedAt,
-      })),
+      badges: toDisplayableBadges(badges),
       social: toPublicSocialJson(social),
       accounts: {
         ...mapOAuthProviders((provider) =>
@@ -374,17 +391,25 @@ export const membersRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  /** Get a public member profile by userId. */
+  /**
+   * A member's public profile by userId. Visitors get it only when the
+   * profile is on the public roster; the owner always gets their own, with
+   * `reach` telling them whether visitors can see it.
+   */
   getPublicProfile: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
+      const audience = profileAudience(ctx.session?.user.id, input.userId);
       const [profile] = await ctx.db
-        .select()
+        .select({
+          ...publicMemberProfileColumns,
+          ...profileReachColumns(),
+        })
         .from(memberProfiles)
         .where(
           and(
             eq(memberProfiles.userId, input.userId),
-            publicRosterVisibility(),
+            profileReadableBy(audience),
           ),
         )
         .limit(1);
@@ -400,9 +425,14 @@ export const membersRouter = createTRPCRouter({
         .limit(1);
 
       const badges = await ctx.db
-        .select()
+        .select({
+          badgeSlug: memberBadges.badgeSlug,
+          earnedAt: memberBadges.earnedAt,
+        })
         .from(memberBadges)
-        .where(eq(memberBadges.userId, input.userId));
+        .where(
+          and(eq(memberBadges.userId, input.userId), displayableBadgeRows()),
+        );
 
       const [attendedCount] = await ctx.db
         .select({ count: sql<number>`count(*)` })
@@ -415,7 +445,7 @@ export const membersRouter = createTRPCRouter({
         );
 
       // Hackathon certificates (issued at finalize), shown alongside badges.
-      // Same isPublic gate as the rest of the profile (early return above).
+      // Same visibility rule as the rest of the profile (early return above).
       const certificates = await ctx.db
         .select()
         .from(hackathonCertificates)
@@ -453,17 +483,16 @@ export const membersRouter = createTRPCRouter({
       });
 
       return {
-        profile,
+        profile: toPublicMemberProfile(profile),
+        audience,
+        reach: profileReach(profile),
         user: memberUser
           ? {
               image: memberUser.image,
               avatarUrl: getAvatarUrl(memberUser.email, memberUser.image),
             }
           : null,
-        badges: badges.map((b) => ({
-          ...BADGES[b.badgeSlug],
-          earnedAt: b.earnedAt,
-        })),
+        badges: toDisplayableBadges(badges),
         certificates: certificates.map((c) => ({
           id: c.id,
           challengeId: c.challengeId,
@@ -486,163 +515,113 @@ export const membersRouter = createTRPCRouter({
         limit: z.number().min(1).max(50).default(20),
       }),
     )
-    .query(async ({ ctx, input }) => {
-      const conditions = [
-        publicRosterVisibility(),
-        publicRosterEmailVisibility(),
-      ];
+    .query(
+      async ({
+        ctx,
+        input,
+      }): Promise<{
+        items: PublicRosterEntry[];
+        nextCursor: number | null;
+      }> => {
+        const conditions = [
+          publicRosterVisibility(),
+          publicRosterEmailVisibility(),
+        ];
 
-      if (input.search) {
-        conditions.push(
-          or(
-            ilike(memberProfiles.displayName, `%${input.search}%`),
-            ilike(memberProfiles.company, `%${input.search}%`),
-          ),
-        );
-      }
+        if (input.search) {
+          conditions.push(
+            or(
+              ilike(memberProfiles.displayName, `%${input.search}%`),
+              ilike(memberProfiles.company, `%${input.search}%`),
+            ),
+          );
+        }
 
-      const profiles = await ctx.db
-        .select({
-          profile: memberProfiles,
-          email: user.email,
-          image: user.image,
-          agentId: agentProfiles.id,
-        })
-        .from(memberProfiles)
-        .innerJoin(user, eq(memberProfiles.userId, user.id))
-        .leftJoin(
-          agentProfiles,
-          and(
-            eq(agentProfiles.ownerId, memberProfiles.userId),
-            eq(agentProfiles.status, "active"),
-          ),
-        )
-        .where(and(...conditions))
-        .orderBy(sql`${memberProfiles.xp} DESC`)
-        .offset(input.cursor)
-        .limit(input.limit + 1); // +1 to check if there are more
-
-      const hasMore = profiles.length > input.limit;
-      const items = hasMore ? profiles.slice(0, input.limit) : profiles;
-
-      // Filter by skill in application layer (JSON column)
-      const filtered = input.skill
-        ? items.filter((item) =>
-            (item.profile.skills ?? []).some(
-              (s) => s.toLowerCase() === input.skill?.toLowerCase(),
+        const profiles = await ctx.db
+          .select({
+            profile: publicRosterColumns,
+            email: user.email,
+            image: user.image,
+            agentId: agentProfiles.id,
+          })
+          .from(memberProfiles)
+          .innerJoin(user, eq(memberProfiles.userId, user.id))
+          .leftJoin(
+            agentProfiles,
+            and(
+              eq(agentProfiles.ownerId, memberProfiles.userId),
+              eq(agentProfiles.status, "active"),
             ),
           )
-        : items;
+          .where(and(...conditions))
+          .orderBy(sql`${memberProfiles.xp} DESC`)
+          .offset(input.cursor)
+          .limit(input.limit + 1); // +1 to check if there are more
 
-      // Get badge counts for each member
-      const memberIds = filtered.map((m) => m.profile.userId);
-      const badgeCounts =
-        memberIds.length > 0
-          ? await ctx.db
-              .select({
-                userId: memberBadges.userId,
-                count: sql<number>`count(*)`,
-              })
-              .from(memberBadges)
-              .where(inArray(memberBadges.userId, memberIds))
-              .groupBy(memberBadges.userId)
-          : [];
+        const hasMore = profiles.length > input.limit;
+        const items = hasMore ? profiles.slice(0, input.limit) : profiles;
 
-      const badgeCountMap = new Map(
-        badgeCounts.map((bc) => [bc.userId, bc.count]),
-      );
+        // Filter by skill in application layer (JSON column)
+        const filtered = input.skill
+          ? items.filter((item) =>
+              (item.profile.skills ?? []).some(
+                (s) => s.toLowerCase() === input.skill?.toLowerCase(),
+              ),
+            )
+          : items;
 
-      const [identitiesByUser, githubAccountIds] = await Promise.all([
-        loadSocialIdentitiesForUsers(ctx.db, memberIds),
-        loadGithubAccountIds(ctx.db, memberIds),
-      ]);
+        // Get badge counts for each member
+        const memberIds = filtered.map((m) => m.profile.userId);
+        const badgeCounts =
+          memberIds.length > 0
+            ? await ctx.db
+                .select({
+                  userId: memberBadges.userId,
+                  count: sql<number>`count(*)`.mapWith(Number),
+                })
+                .from(memberBadges)
+                .where(
+                  and(
+                    inArray(memberBadges.userId, memberIds),
+                    displayableBadgeRows(),
+                  ),
+                )
+                .groupBy(memberBadges.userId)
+            : [];
 
-      return {
-        items: filtered.map((m) => {
-          const social = presentMemberSocials({
-            userId: m.profile.userId,
-            identities: identitiesByUser.get(m.profile.userId) ?? [],
-            hasGithubAccount: githubAccountIds.has(m.profile.userId),
-            pasted: {
-              githubUrl: m.profile.githubUrl,
-              linkedinUrl: m.profile.linkedinUrl,
-              websiteUrl: m.profile.websiteUrl,
-            },
-            subject: "member",
-          });
-          return {
-            profile: m.profile,
-            image: m.image,
-            avatarUrl: getAvatarUrl(m.email, m.image),
-            agentId: m.agentId,
-            badgeCount: badgeCountMap.get(m.profile.userId) ?? 0,
-            hasAgent: hasAgentOnPublicRoster({
+        const badgeCountMap = new Map(
+          badgeCounts.map((bc) => [bc.userId, bc.count]),
+        );
+
+        const [identitiesByUser, githubAccountIds] = await Promise.all([
+          loadSocialIdentitiesForUsers(ctx.db, memberIds),
+          loadGithubAccountIds(ctx.db, memberIds),
+        ]);
+
+        return {
+          items: filtered.map((m) => {
+            const social = presentMemberSocials({
               userId: m.profile.userId,
+              identities: identitiesByUser.get(m.profile.userId) ?? [],
+              hasGithubAccount: githubAccountIds.has(m.profile.userId),
+              pasted: {
+                githubUrl: m.profile.githubUrl,
+                linkedinUrl: m.profile.linkedinUrl,
+                websiteUrl: m.profile.websiteUrl,
+              },
+              subject: "member",
+            });
+            return toPublicRosterEntry({
+              profile: m.profile,
+              email: m.email,
+              image: m.image,
               ownedActiveAgentId: m.agentId,
-            }),
-            social: toLeaderboardSocial(social),
-          };
-        }),
-        nextCursor: hasMore ? input.cursor + input.limit : null,
-      };
-    }),
-
-  /** Top 5 members by XP for leaderboard. */
-  getLeaderboard: publicProcedure.query(async ({ ctx }) => {
-    const top = await ctx.db
-      .select({
-        profile: memberProfiles,
-        email: user.email,
-        image: user.image,
-      })
-      .from(memberProfiles)
-      .innerJoin(user, eq(memberProfiles.userId, user.id))
-      .where(and(publicRosterVisibility(), publicRosterEmailVisibility()))
-      .orderBy(sql`${memberProfiles.xp} DESC`)
-      .limit(5);
-
-    // Get badge counts
-    const userIds = top.map((t) => t.profile.userId);
-    const badgeCounts =
-      userIds.length > 0
-        ? await ctx.db
-            .select({
-              userId: memberBadges.userId,
-              count: sql<number>`count(*)`,
-            })
-            .from(memberBadges)
-            .where(inArray(memberBadges.userId, userIds))
-            .groupBy(memberBadges.userId)
-        : [];
-
-    const badgeCountMap = new Map(
-      badgeCounts.map((bc) => [bc.userId, bc.count]),
-    );
-
-    const [identitiesByUser, githubAccountIds] = await Promise.all([
-      loadSocialIdentitiesForUsers(ctx.db, userIds),
-      loadGithubAccountIds(ctx.db, userIds),
-    ]);
-
-    return top.map((t) => {
-      const social = presentMemberSocials({
-        userId: t.profile.userId,
-        identities: identitiesByUser.get(t.profile.userId) ?? [],
-        hasGithubAccount: githubAccountIds.has(t.profile.userId),
-        pasted: {
-          githubUrl: t.profile.githubUrl,
-          linkedinUrl: t.profile.linkedinUrl,
-          websiteUrl: t.profile.websiteUrl,
-        },
-        subject: "member",
-      });
-      return {
-        profile: t.profile,
-        image: t.image,
-        avatarUrl: getAvatarUrl(t.email, t.image),
-        badgeCount: badgeCountMap.get(t.profile.userId) ?? 0,
-        social: toLeaderboardSocial(social),
-      };
-    });
-  }),
+              badgeCount: badgeCountMap.get(m.profile.userId) ?? 0,
+              social: toLeaderboardSocial(social),
+            });
+          }),
+          nextCursor: hasMore ? input.cursor + input.limit : null,
+        };
+      },
+    ),
 });
