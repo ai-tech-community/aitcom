@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
-import { getSession } from "@/server/better-auth/server";
+import { requireDashboardSession } from "@/server/dashboard/require-dashboard-session";
 import { getAvatarUrl } from "@/lib/avatar";
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs";
 import { DashboardSidePanel } from "@/components/dashboard/side-panel/dashboard-side-panel";
@@ -19,11 +19,10 @@ export default async function MemberDashboardLayout({
   children: React.ReactNode;
 }) {
   const [session, t] = await Promise.all([
-    getSession(),
+    requireDashboardSession(),
     getTranslations("dashboard"),
   ]);
-  // The parent dashboard layout redirects guests before this renders.
-  const user = session!.user;
+  const user = session.user;
   const name = user.name || user.email;
 
   return (

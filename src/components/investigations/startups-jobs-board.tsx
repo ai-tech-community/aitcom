@@ -17,7 +17,10 @@ import {
   StartupsJobsHelpSheet,
   type RoleHelpDraft,
 } from "@/components/investigations/startups-jobs-help-sheet";
-import type { RoleHelpRequest } from "@/lib/investigations/startup-role-help";
+import {
+  roleHelpErrorOf,
+  type RoleHelpRequest,
+} from "@/lib/investigations/startup-role-help";
 import type { StartupRolePublic } from "@/lib/investigations/startup-roles";
 import {
   TRACKING_STATUSES,
@@ -96,15 +99,9 @@ export function StartupsJobsBoard({
       toast.success(t("posted"));
     },
     onError: (error) => {
-      if (error.message === "RULES_NOT_ACCEPTED") {
-        toast.error(t("rules"));
-        return;
-      }
-      if (error.message === "CLASSROOM_NOT_FOUND") {
-        toast.error(t("classroomMissing"));
-        return;
-      }
-      toast.error(t("askFailed"));
+      // A known refusal says what to do; anything else is a plain retry.
+      const reason = roleHelpErrorOf(error.message);
+      toast.error(reason ? t(`askError.${reason}`) : t("askFailed"));
     },
   });
 

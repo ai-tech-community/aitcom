@@ -22,16 +22,16 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
-const { setStatusMutate, setStatusOptions, refresh, toastError } = vi.hoisted(
-  () => ({
+const { setStatusMutate, setStatusOptions, refresh, toastError, askFailsWith } =
+  vi.hoisted(() => ({
     setStatusMutate: vi.fn(),
     setStatusOptions: {
       current: undefined as { onError?: () => void } | undefined,
     },
     refresh: vi.fn(),
     toastError: vi.fn(),
-  }),
-);
+    askFailsWith: { current: null as string | null },
+  }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
@@ -60,6 +60,7 @@ vi.mock("@/trpc/react", () => ({
       },
       askMyTrackedRoleHelp: {
         useMutation: (options?: {
+          onError?: (error: { message: string }) => void;
           onSuccess?: (data: {
             roleId: string;
             communitySlug: string;
@@ -75,6 +76,10 @@ vi.mock("@/trpc/react", () => ({
             note: string;
             classroom?: string;
           }) => {
+            if (askFailsWith.current) {
+              options?.onError?.({ message: askFailsWith.current });
+              return;
+            }
             options?.onSuccess?.({
               roleId: input.roleId,
               communitySlug: input.communitySlug,
@@ -244,5 +249,24 @@ describe("StartupsJobsBoard", () => {
     expect(toastError).toHaveBeenCalledWith(
       "Couldn't move that role. Please try again.",
     );
+  });
+  it.each([
+    ["NOT_A_MEMBER", "Join that community before you ask there."],
+    ["ROLE_NOT_TRACKED", "Track this role first, then ask for help."],
+    ["NOTE_REQUIRED", "Write what you want help with first."],
+    ["Database is down", "Couldn't post your question. Please try again."],
+  ])("explains a refused help post (%s) in words", (message, expected) => {
+    toastError.mockClear();
+    askFailsWith.current = message;
+    renderBoard();
+    openMenu();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Ask for help" }));
+    fireEvent.change(screen.getByLabelText("What do you want help with?"), {
+      target: { value: "Interview prep" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Post to community" }));
+    askFailsWith.current = null;
+
+    expect(toastError).toHaveBeenCalledWith(expected);
   });
 });

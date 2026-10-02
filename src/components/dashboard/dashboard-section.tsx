@@ -97,6 +97,13 @@ type SectionBodyProps = {
    * off so a failure stays distinguishable from "nothing here".
    */
   optional?: boolean;
+  /**
+   * For supplementary content that is usually absent (e.g. an invitation
+   * to answer): render nothing at all, heading included, until the data
+   * says there is something to show, so most visits never see a heading
+   * and skeleton flash by.
+   */
+  appearWhenReady?: boolean;
   /** Content-shaped loading placeholder. Defaults to three text bars. */
   skeleton?: React.ReactNode;
   /**
@@ -112,7 +119,12 @@ function isHidden({
   status,
   empty,
   optional,
-}: Pick<SectionBodyProps, "status" | "empty" | "optional">): boolean {
+  appearWhenReady,
+}: Pick<
+  SectionBodyProps,
+  "status" | "empty" | "optional" | "appearWhenReady"
+>): boolean {
+  if (status.kind === "loading") return appearWhenReady === true;
   if (status.kind === "empty") return empty === undefined || empty === null;
   if (status.kind === "error") return optional === true;
   return false;
@@ -164,11 +176,12 @@ function SectionBody({
   status,
   empty,
   optional,
+  appearWhenReady,
   skeleton,
   size = "default",
   children,
 }: SectionBodyProps) {
-  if (isHidden({ status, empty, optional })) return null;
+  if (isHidden({ status, empty, optional, appearWhenReady })) return null;
 
   switch (status.kind) {
     case "loading":
@@ -213,6 +226,11 @@ type DashboardSectionProps = Omit<SectionBodyProps, "status"> & {
    * A hidden section hides its footer too.
    */
   footer?: React.ReactNode;
+  /**
+   * Anchor id, for links that jump to this section (e.g. `#profile`). The
+   * section keeps clear of the sticky top bar when scrolled to.
+   */
+  id?: string;
   className?: string;
 };
 
@@ -230,20 +248,24 @@ function DashboardSection({
   status = READY,
   empty,
   optional,
+  appearWhenReady,
   skeleton,
   size,
   footer,
+  id,
   children,
 }: DashboardSectionProps) {
   const headingId = React.useId();
-  if (isHidden({ status, empty, optional })) return null;
+  if (isHidden({ status, empty, optional, appearWhenReady })) return null;
 
   return (
     <section
+      id={id}
       aria-labelledby={headingId}
       data-slot="dashboard-section"
       data-variant={variant}
       className={cn(
+        id && "scroll-mt-24",
         variant === "card" && "border-border bg-card rounded-xl border p-4",
         className,
       )}

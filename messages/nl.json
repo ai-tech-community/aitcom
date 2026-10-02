@@ -1751,14 +1751,21 @@
     "post": "Plaats in community",
     "posting": "Plaatsen…",
     "posted": "Geplaatst in de community",
-    "rules": "Accepteer eerst de regels van die community.",
-    "classroomMissing": "Die classroom staat niet in deze community.",
     "sheetLead": "Plaatst een vraag in de community die je kiest.",
     "previewTitle": "Wat de community ziet",
     "member": "Een lid",
     "moveFailed": "Kon die rol niet verplaatsen. Probeer het opnieuw.",
     "removeFailed": "Kon die rol niet verwijderen. Probeer het opnieuw.",
-    "askFailed": "Kon je vraag niet plaatsen. Probeer het opnieuw."
+    "askFailed": "Kon je vraag niet plaatsen. Probeer het opnieuw.",
+    "askError": {
+      "NOTE_REQUIRED": "Schrijf eerst waar je hulp bij wilt.",
+      "ROLE_NOT_TRACKED": "Volg deze rol eerst, en vraag dan om hulp.",
+      "ROLE_NOT_FOUND": "Deze rol staat niet meer online.",
+      "COMMUNITY_NOT_FOUND": "Die community bestaat niet meer. Kies een andere.",
+      "NOT_A_MEMBER": "Word eerst lid van die community voordat je daar iets vraagt.",
+      "RULES_NOT_ACCEPTED": "Accepteer eerst de regels van die community.",
+      "CLASSROOM_NOT_FOUND": "Die classroom staat niet in deze community."
+    }
   },
   "publicEvents": {
     "kicker": "Evenementen",
@@ -3024,6 +3031,7 @@
       "joinRequests": "{count, plural, one {# aanvraag} other {# aanvragen}}",
       "emptyTitle": "Je bent nog geen lid van een community",
       "emptyDescription": "In communities ontmoeten leden elkaar, delen ze wat ze bouwen en organiseren ze samen evenementen.",
+      "onlyWaiting": "Je bent nog geen lid van een community. Je aanvragen en uitnodigingen staan hieronder.",
       "explore": "Communities ontdekken"
     },
     "roles": {

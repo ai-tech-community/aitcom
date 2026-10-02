@@ -193,6 +193,37 @@ describe("DashboardSection", () => {
   });
 });
 
+describe("DashboardSection appearWhenReady", () => {
+  it("renders nothing while loading, then the section once it has content", () => {
+    const { container, rerender } = renderWithIntl(
+      <DashboardSection
+        title="Introductions"
+        status={{ kind: "loading" }}
+        appearWhenReady
+      >
+        <p>One to answer</p>
+      </DashboardSection>,
+    );
+    expect(container.innerHTML).toBe("");
+
+    rerender(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <DashboardSection
+          title="Introductions"
+          status={{ kind: "ready" }}
+          appearWhenReady
+        >
+          <p>One to answer</p>
+        </DashboardSection>
+      </NextIntlClientProvider>,
+    );
+    expect(
+      screen.getByRole("heading", { name: /introductions/i }),
+    ).toBeTruthy();
+    expect(screen.getByText("One to answer")).toBeTruthy();
+  });
+});
+
 describe("SectionBody", () => {
   it("renders the content only when ready", () => {
     renderWithIntl(

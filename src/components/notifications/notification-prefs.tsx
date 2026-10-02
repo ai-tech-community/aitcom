@@ -9,8 +9,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
   DashboardSection,
+  SectionBody,
   statusFromQueries,
 } from "@/components/dashboard/dashboard-section";
+import { NOTIFICATION_SETTINGS_ANCHOR } from "@/lib/dashboard-routes";
 import type { HubMailCase } from "@/server/notifications/hub-mail-prefs";
 
 const HUB_MAIL_ROWS: {
@@ -114,8 +116,11 @@ export function NotificationPrefs() {
 
   return (
     <DashboardSection
+      id={NOTIFICATION_SETTINGS_ANCHOR}
       title={t("settingsTitle")}
-      status={statusFromQueries([prefs, communities])}
+      // The community list only feeds the per-community switches: if it
+      // fails, the Hub and digest switches still show.
+      status={statusFromQueries(prefs)}
       skeleton={<PrefsSkeleton />}
     >
       {data && (
@@ -175,7 +180,12 @@ export function NotificationPrefs() {
               />
             </ul>
 
-            {myCommunities.length > 0 && (
+            <SectionBody
+              status={statusFromQueries(communities, {
+                isEmpty: myCommunities.length === 0,
+              })}
+              size="compact"
+            >
               <div className="mt-4">
                 <div className="text-muted-foreground border-border grid grid-cols-[1fr_auto_auto] gap-4 border-b pb-2 text-xs font-medium">
                   <span>{t("perCommunity")}</span>
@@ -219,7 +229,7 @@ export function NotificationPrefs() {
                   ))}
                 </ul>
               </div>
-            )}
+            </SectionBody>
           </div>
         </div>
       )}

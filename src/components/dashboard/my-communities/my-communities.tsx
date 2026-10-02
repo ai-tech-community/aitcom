@@ -6,6 +6,12 @@ import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import { getInitials } from "@/lib/avatar";
+import { isCommunityOrganizer } from "@/lib/communities/organizer-roles";
+import {
+  communityHref,
+  communityMemberSettingsHref,
+  communitySettingsHref,
+} from "@/lib/communities/routes";
 import { api, type RouterOutputs } from "@/trpc/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -20,21 +26,9 @@ import { ListSkeleton } from "@/components/dashboard/list-skeleton";
 
 type Membership = RouterOutputs["communities"]["getMyCommunities"][number];
 
-/** Roles that run a community: they manage it and review join requests. */
-const ORGANIZER_ROLES: ReadonlySet<Membership["role"]> = new Set([
-  "owner",
-  "admin",
-]);
-
-export function runsCommunity(membership: Membership): boolean {
-  return ORGANIZER_ROLES.has(membership.role);
+function runsCommunity(membership: Membership): boolean {
+  return isCommunityOrganizer(membership.role);
 }
-
-export const myCommunitiesHref = {
-  community: (slug: string) => `/communities/${slug}`,
-  settings: (slug: string) => `/communities/${slug}/settings`,
-  members: (slug: string) => `/communities/${slug}/settings/members`,
-} as const;
 
 function CommunityIdentity({
   membership,
@@ -45,7 +39,7 @@ function CommunityIdentity({
 }) {
   return (
     <Link
-      href={myCommunitiesHref.community(membership.slug) as never}
+      href={communityHref(membership.slug) as never}
       className="focus-visible:ring-ring/50 group flex min-w-0 flex-1 items-center gap-3 rounded-sm outline-none focus-visible:ring-[3px]"
     >
       <Avatar aria-hidden className="size-9 rounded-md">
@@ -101,7 +95,7 @@ function ActiveRow({
         {runs && joinRequests > 0 && (
           <Button asChild size="sm" variant="secondary">
             <Link
-              href={myCommunitiesHref.members(membership.slug) as never}
+              href={communityMemberSettingsHref(membership.slug) as never}
               aria-describedby={nameId}
             >
               {t("joinRequests", { count: joinRequests })}
@@ -111,7 +105,7 @@ function ActiveRow({
         {runs && (
           <Button asChild size="sm" variant="outline">
             <Link
-              href={myCommunitiesHref.settings(membership.slug) as never}
+              href={communitySettingsHref(membership.slug) as never}
               aria-describedby={nameId}
             >
               <Settings aria-hidden />
@@ -184,19 +178,29 @@ export function MyCommunities() {
     <div className="space-y-10">
       <DashboardSection
         title={t("title")}
-        status={statusFromQueries(query, { isEmpty: active.length === 0 })}
+        // "Haven't joined" only when there is nothing at all; a member who
+        // is only waiting gets a neutral line and the waiting list below.
+        status={statusFromQueries(query, {
+          isEmpty: active.length === 0 && waiting.length === 0,
+        })}
         skeleton={<ListSkeleton />}
         empty={<MyCommunitiesEmpty />}
       >
-        <ul className="divide-border -mt-3 divide-y">
-          {active.map((membership) => (
-            <ActiveRow
-              key={membership.communityId}
-              membership={membership}
-              joinRequests={requestCounts.get(membership.communityId) ?? 0}
-            />
-          ))}
-        </ul>
+        {active.length > 0 ? (
+          <ul className="divide-border -mt-3 divide-y">
+            {active.map((membership) => (
+              <ActiveRow
+                key={membership.communityId}
+                membership={membership}
+                joinRequests={requestCounts.get(membership.communityId) ?? 0}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p className="text-muted-foreground text-sm text-pretty">
+            {t("onlyWaiting")}
+          </p>
+        )}
       </DashboardSection>
 
       {waiting.length > 0 && (

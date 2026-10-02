@@ -1751,14 +1751,21 @@
     "post": "Post to community",
     "posting": "Posting…",
     "posted": "Posted to the community",
-    "rules": "Accept that community's rules, then try again.",
-    "classroomMissing": "That classroom is not in this community.",
     "sheetLead": "Posts a question in the community you pick.",
     "previewTitle": "What the community sees",
     "member": "A member",
     "moveFailed": "Couldn't move that role. Please try again.",
     "removeFailed": "Couldn't remove that role. Please try again.",
-    "askFailed": "Couldn't post your question. Please try again."
+    "askFailed": "Couldn't post your question. Please try again.",
+    "askError": {
+      "NOTE_REQUIRED": "Write what you want help with first.",
+      "ROLE_NOT_TRACKED": "Track this role first, then ask for help.",
+      "ROLE_NOT_FOUND": "This role is no longer listed.",
+      "COMMUNITY_NOT_FOUND": "That community no longer exists. Pick another one.",
+      "NOT_A_MEMBER": "Join that community before you ask there.",
+      "RULES_NOT_ACCEPTED": "Accept that community's rules, then try again.",
+      "CLASSROOM_NOT_FOUND": "That classroom is not in this community."
+    }
   },
   "publicEvents": {
     "kicker": "Events",
@@ -3024,6 +3031,7 @@
       "joinRequests": "{count, plural, one {# join request} other {# join requests}}",
       "emptyTitle": "You haven't joined a community yet",
       "emptyDescription": "Communities are where members meet, share what they build and run events together.",
+      "onlyWaiting": "You're not in a community yet. Your requests and invitations are below.",
       "explore": "Explore communities"
     },
     "roles": {

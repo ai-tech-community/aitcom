@@ -18,23 +18,22 @@ export function ProfileSettings() {
   const query = api.members.getMyProfile.useQuery();
 
   return (
-    <div id="profile" className="scroll-mt-24">
-      <DashboardSection
-        title={t("profile.title")}
-        status={statusFromQueries(query)}
-      >
-        {!query.data?.profile && (
-          <p className="text-muted-foreground mb-4 text-sm">
-            {t("completeProfile")}
-          </p>
-        )}
-        <ProfileEditForm
-          // Remount when the profile first appears so the form picks it up.
-          key={query.data?.profile ? "edit" : "create"}
-          initialData={query.data?.profile ?? null}
-          names={query.data?.names}
-        />
-      </DashboardSection>
-    </div>
+    <DashboardSection
+      id="profile"
+      title={t("profile.title")}
+      status={statusFromQueries(query)}
+    >
+      {!query.data?.profile && (
+        <p className="text-muted-foreground mb-4 text-sm">
+          {t("completeProfile")}
+        </p>
+      )}
+      <ProfileEditForm
+        // Remount when the profile first appears so the form picks it up.
+        key={query.data?.profile ? "edit" : "create"}
+        initialData={query.data?.profile ?? null}
+        names={query.data?.names}
+      />
+    </DashboardSection>
   );
 }

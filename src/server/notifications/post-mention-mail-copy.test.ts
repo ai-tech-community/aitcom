@@ -12,7 +12,7 @@ const mail = {
 };
 const urls = {
   post: "/en/communities/gif-lab",
-  manage: "/en/dashboard/notifications",
+  manage: "/en/dashboard/settings#notifications",
 };
 
 describe("post mention mail", () => {
@@ -33,7 +33,7 @@ describe("post mention mail", () => {
     expect(html).not.toContain("<b>");
     expect(html).toContain("Jane &lt;b&gt;Doe&lt;/b&gt;");
     expect(html).toContain('href="/en/communities/gif-lab"');
-    expect(html).toContain('href="/en/dashboard/notifications"');
+    expect(html).toContain('href="/en/dashboard/settings#notifications"');
     expect(html).toContain("Open the feed");
     expect(html).toContain('<span aria-hidden="true"> →</span>');
     expect(html).toContain('lang="en"');
@@ -50,7 +50,7 @@ describe("post mention plain text", () => {
         "Open the feed: /en/communities/gif-lab",
         "",
         "—",
-        "AIT Community · Manage notifications: /en/dashboard/notifications",
+        "AIT Community · Manage notifications: /en/dashboard/settings#notifications",
       ].join("\n"),
     );
   });

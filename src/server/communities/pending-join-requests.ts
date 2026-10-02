@@ -1,17 +1,11 @@
 import { and, asc, count, eq, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
+import { COMMUNITY_ORGANIZER_ROLES } from "@/lib/communities/organizer-roles";
 import type { db as _db } from "@/server/db";
 import { communities, communityMemberships } from "@/server/db/schema";
 
 type DB = typeof _db;
-
-/**
- * Roles that review join requests. Matches who can open the community's
- * member settings (`communities/[slug]/settings` admits owner and admin),
- * where the requests are approved.
- */
-export const JOIN_REQUEST_REVIEWER_ROLES = ["owner", "admin"] as const;
 
 /** Join requests waiting in one community the member runs. */
 export type PendingJoinRequests = {
@@ -23,7 +17,7 @@ export type PendingJoinRequests = {
 };
 
 /**
- * For each community the member runs (active owner or admin), how many
+ * For each community the member runs (an active organizer role), how many
  * people are waiting for approval. One grouped query, ordered by community
  * name; communities with no pending requests do not appear.
  *
@@ -60,7 +54,7 @@ export async function countPendingJoinRequests(
       and(
         eq(mine.userId, userId),
         eq(mine.status, "active"),
-        inArray(mine.role, [...JOIN_REQUEST_REVIEWER_ROLES]),
+        inArray(mine.role, [...COMMUNITY_ORGANIZER_ROLES]),
       ),
     )
     .groupBy(communities.id, communities.slug, communities.name)

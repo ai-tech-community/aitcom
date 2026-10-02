@@ -6,6 +6,8 @@ import { hubMailPrefs, postMentionMailLog, user } from "@/server/db/schema";
 import { sendPostMentionEmail } from "@/server/email";
 
 import type { HubMailLocale } from "./hub-dm-mail-copy";
+import { NOTIFICATION_SETTINGS_HREF } from "@/lib/dashboard-routes";
+
 import { pinHubConversationUrl } from "./hub-dm-mail";
 import { canSendHubMail, resolveHubMailPrefs } from "./hub-mail-prefs";
 import type { PostMentionMail } from "./post-mention-mail-copy";
@@ -92,7 +94,7 @@ export async function emailMentionedMembers(
 
   const urls = {
     post: pinHubConversationUrl(`/${locale}${input.path}`),
-    manage: pinHubConversationUrl(`/${locale}/dashboard/notifications`),
+    manage: pinHubConversationUrl(`/${locale}${NOTIFICATION_SETTINGS_HREF}`),
   };
   let sent = 0;
   for (const { userId, email } of wanted) {

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DashboardSection,
+  SectionBody,
   statusFromQueries,
 } from "@/components/dashboard/dashboard-section";
 import { ListSkeleton } from "@/components/dashboard/list-skeleton";
@@ -75,8 +76,9 @@ export function ConnectedIdentities() {
     linkedin: data?.social.linkedin?.handle ?? null,
   };
 
-  // A connected provider stays listed even if its keys are later removed, so
-  // the member can still disconnect it.
+  // A connected provider stays listed even if its keys are later removed (or
+  // the enabled-provider list fails to load), so the member can still
+  // disconnect it.
   const visible = data
     ? OAUTH_PROVIDERS.filter(
         (provider) => data.accounts[provider] || providers.data?.[provider],
@@ -86,7 +88,7 @@ export function ConnectedIdentities() {
   return (
     <DashboardSection
       title={t("connectedIdentities")}
-      status={statusFromQueries([profile, providers])}
+      status={statusFromQueries(profile)}
       skeleton={<ListSkeleton rows={2} />}
     >
       <p className="text-muted-foreground max-w-prose text-sm text-pretty">
@@ -131,6 +133,8 @@ export function ConnectedIdentities() {
             );
           })}
       </ul>
+      {/* Which providers can be connected; a failure only hides those rows. */}
+      <SectionBody status={statusFromQueries(providers)} size="compact" />
     </DashboardSection>
   );
 }

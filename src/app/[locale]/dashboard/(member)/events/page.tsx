@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 
-import { getSession } from "@/server/better-auth/server";
+import { requireDashboardSession } from "@/server/dashboard/require-dashboard-session";
 import { db } from "@/server/db";
 import { getPayloadClient } from "@/server/payload";
 import { loadMyEventPairs } from "@/server/events/my-event-pairs";
@@ -65,12 +65,11 @@ export default async function DashboardEventsPage({
   searchParams: Promise<SP>;
 }) {
   const [session, locale, sp] = await Promise.all([
-    getSession(),
+    requireDashboardSession(),
     getLocale(),
     searchParams,
   ]);
-  // The parent dashboard layout redirects guests before this renders.
-  const userId = session!.user.id;
+  const userId = session.user.id;
   const view: MyEventsView =
     firstParam(sp, "past") === "1" ? "past" : "upcoming";
 

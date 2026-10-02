@@ -1,3 +1,30 @@
+/**
+ * Why asking a community for help with a tracked role was refused. The
+ * server throws these as the TRPCError message; the Job tracker maps each
+ * to its own translated sentence. `RULES_NOT_ACCEPTED` is the code every
+ * community write uses.
+ */
+export const ROLE_HELP_ERRORS = [
+  "NOTE_REQUIRED",
+  "ROLE_NOT_TRACKED",
+  "ROLE_NOT_FOUND",
+  "COMMUNITY_NOT_FOUND",
+  "NOT_A_MEMBER",
+  "RULES_NOT_ACCEPTED",
+  "CLASSROOM_NOT_FOUND",
+] as const;
+
+export type RoleHelpError = (typeof ROLE_HELP_ERRORS)[number];
+
+/** The known refusal behind an error message, or null for anything else. */
+export function roleHelpErrorOf(
+  message: string | null | undefined,
+): RoleHelpError | null {
+  return (ROLE_HELP_ERRORS as readonly string[]).includes(message ?? "")
+    ? (message as RoleHelpError)
+    : null;
+}
+
 export type RoleHelpPost = {
   title: string;
   content: string;

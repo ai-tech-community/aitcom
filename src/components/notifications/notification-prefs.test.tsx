@@ -144,4 +144,23 @@ describe("NotificationPrefs", () => {
       "Couldn't save that change. Please try again.",
     );
   });
+  it("keeps the Hub and digest switches when only the community list fails", () => {
+    const refetch = vi.fn();
+    state.communities = { ...loaded(undefined), isError: true, refetch };
+    renderPrefs();
+
+    expect(screen.getByRole("switch", { name: "Hub messages" })).toBeTruthy();
+    expect(
+      screen.getByRole("switch", { name: "Weekly digest email" }),
+    ).toBeTruthy();
+    expect(screen.queryByText("Per community")).toBeNull();
+    expect(screen.getByRole("alert")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("is reachable from the emails' 'Manage notifications' link", () => {
+    const { container } = renderPrefs();
+    expect(container.querySelector("section#notifications")).not.toBeNull();
+  });
 });

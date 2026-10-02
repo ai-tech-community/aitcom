@@ -12,8 +12,9 @@ import {
 
 /**
  * Introductions an organizer suggested, waiting for the member's yes or no.
- * Supplementary: it shows only while there is one to answer, and a failed
- * load leaves it out instead of taking space from the notifications.
+ * Supplementary and usually absent: nothing renders (no heading, no
+ * skeleton) until there is one to answer, and a failed load leaves it out
+ * instead of taking space from the notifications.
  */
 export function IntroductionConsent() {
   const t = useTranslations("advisory");
@@ -36,6 +37,7 @@ export function IntroductionConsent() {
       title={tSection("introductionsTitle")}
       status={statusFromQueries(pending, { isEmpty: items.length === 0 })}
       optional
+      appearWhenReady
     >
       <ul className="divide-border -mt-3 divide-y">
         {items.map((p) => (

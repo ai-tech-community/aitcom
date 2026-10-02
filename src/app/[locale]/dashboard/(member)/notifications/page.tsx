@@ -14,6 +14,7 @@ export const metadata: Metadata = {
  * preferences live on the Settings tab.
  */
 export default async function NotificationsPage() {
+  void api.advisory.myPendingIntroductions.prefetch();
   void api.notifications.list.prefetchInfinite({
     limit: NOTIFICATIONS_PAGE_SIZE,
     cursor: null,

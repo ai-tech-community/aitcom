@@ -5,7 +5,7 @@ import {
   type TrackedBoardRole,
 } from "@/components/investigations/startups-jobs-board";
 import type { RoleHelpRequest } from "@/lib/investigations/startup-role-help";
-import { getSession } from "@/server/better-auth/server";
+import { requireDashboardSession } from "@/server/dashboard/require-dashboard-session";
 import { listMyCommunities } from "@/server/communities/my-communities";
 import { db } from "@/server/db";
 import { listMyTrackedStartupRoles } from "@/server/startups/member-jobs";
@@ -36,9 +36,11 @@ async function loadBoard(userId: string): Promise<Loaded> {
 
 /** Job tracker tab: the main column only; the frame is the layout's. */
 export default async function DashboardJobsPage() {
-  const [session, locale] = await Promise.all([getSession(), getLocale()]);
-  // The parent dashboard layout redirects guests before this renders.
-  const userId = session!.user.id;
+  const [session, locale] = await Promise.all([
+    requireDashboardSession(),
+    getLocale(),
+  ]);
+  const userId = session.user.id;
 
   let loaded: Loaded | null = null;
   try {

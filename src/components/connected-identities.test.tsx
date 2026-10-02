@@ -218,4 +218,24 @@ describe("ConnectedIdentities", () => {
       ),
     ).toBeTruthy();
   });
+  it("still lists connected accounts when the provider list fails", () => {
+    const refetch = vi.fn();
+    mockProvidersQuery.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      refetch,
+    });
+    mockProfileQuery.mockReturnValue(profile({ accounts: { google: true } }));
+    renderSettings();
+
+    fireEvent.click(
+      within(rowFor("Google")).getByRole("button", { name: "Disconnect" }),
+    );
+    expect(mockDisconnect).toHaveBeenCalledWith({ provider: "google" });
+    expect(screen.queryByText("GitHub", { selector: "span" })).toBeNull();
+    expect(screen.getByRole("alert")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
 });

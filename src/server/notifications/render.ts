@@ -1,3 +1,5 @@
+import { NOTIFICATION_SETTINGS_HREF } from "@/lib/dashboard-routes";
+
 import type { HubDigest } from "./digest";
 
 function esc(s: string): string {
@@ -44,7 +46,7 @@ export function renderHubDigestHtml(digest: HubDigest): string {
       <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
       <p style="font-size: 12px; color: #999;">
         AIT Community ·
-        <a href="${baseUrl}/en/dashboard/notifications" style="color:#999;">Manage notifications</a>
+        <a href="${baseUrl}/en${NOTIFICATION_SETTINGS_HREF}" style="color:#999;">Manage notifications</a>
       </p>
     </div>`;
 }

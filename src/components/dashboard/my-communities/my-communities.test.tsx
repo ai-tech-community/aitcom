@@ -169,6 +169,19 @@ describe("MyCommunities", () => {
     expect(screen.queryByText("Banned")).toBeNull();
   });
 
+  it("shows a member who is only waiting their requests, not 'haven't joined'", () => {
+    state.communities = loaded([
+      membership("pending", "member", "pending_approval"),
+      membership("invite", "member", "invited"),
+    ]);
+    renderTab();
+
+    expect(screen.queryByText(en.communities.dashboard.emptyTitle)).toBeNull();
+    expect(screen.getByText(en.communities.dashboard.onlyWaiting)).toBeTruthy();
+    expect(screen.getByText("Request sent")).toBeTruthy();
+    expect(screen.getByText("You're invited")).toBeTruthy();
+  });
+
   it("shows join requests only on rows the member owns or administers", () => {
     state.communities = loaded([
       membership("makers", "owner"),
