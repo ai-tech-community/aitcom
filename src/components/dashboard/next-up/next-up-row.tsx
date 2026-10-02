@@ -4,6 +4,10 @@ import * as React from "react";
 import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
+import {
+  communityHref,
+  communityMemberSettingsHref,
+} from "@/lib/communities/routes";
 import type { RouterOutputs } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { RelativeTime } from "@/components/ui/relative-time";
@@ -16,9 +20,8 @@ type ItemOf<K extends NextUpItem["kind"]> = Extract<NextUpItem, { kind: K }>;
 export const nextUpHref = {
   event: (slug: string) => `/events/${slug}`,
   challenge: (slug: string) => `/challenges/${slug}`,
-  community: (slug: string) => `/communities/${slug}`,
-  communityMemberSettings: (slug: string) =>
-    `/communities/${slug}/settings/members`,
+  community: communityHref,
+  communityMemberSettings: communityMemberSettingsHref,
   notifications: "/dashboard/notifications",
   inbox: "/messages",
 } as const;

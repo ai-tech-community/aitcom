@@ -1,11 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
+/** A form field: its label (Geist Sans, tied to the control) above it. */
+function Field({
+  id,
+  label,
+  children,
+}: {
+  id: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+    </div>
+  );
+}
 
 interface ProfileEditFormProps {
   initialData?: {
@@ -25,6 +47,8 @@ interface ProfileEditFormProps {
 export function ProfileEditForm({ initialData, names }: ProfileEditFormProps) {
   const t = useTranslations("dashboard");
   const utils = api.useUtils();
+  const id = useId();
+  const field = (name: string) => `${id}-${name}`;
 
   const [displayName, setDisplayName] = useState(
     initialData?.displayName ?? "",
@@ -75,142 +99,103 @@ export function ProfileEditForm({ initialData, names }: ProfileEditFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-      <div>
-        <label className="text-muted-foreground font-mono text-xs tracking-wider">
-          {t("displayName")}
-        </label>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Field id={field("display-name")} label={t("displayName")}>
         <Input
+          id={field("display-name")}
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           required
-          className="mt-1"
         />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label
-            htmlFor="profile-first-name"
-            className="text-muted-foreground font-mono text-xs tracking-wider"
-          >
-            {t("firstName")}
-          </label>
+      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id={field("first-name")} label={t("firstName")}>
           <Input
-            id="profile-first-name"
+            id={field("first-name")}
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             maxLength={100}
             autoComplete="given-name"
-            className="mt-1"
+            aria-describedby={field("names-hint")}
           />
-        </div>
-        <div>
-          <label
-            htmlFor="profile-last-name"
-            className="text-muted-foreground font-mono text-xs tracking-wider"
-          >
-            {t("lastName")}
-          </label>
+        </Field>
+        <Field id={field("last-name")} label={t("lastName")}>
           <Input
-            id="profile-last-name"
+            id={field("last-name")}
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             maxLength={100}
             autoComplete="family-name"
-            className="mt-1"
+            aria-describedby={field("names-hint")}
           />
-        </div>
-        <p className="text-muted-foreground text-xs sm:col-span-2">
+        </Field>
+        <p
+          id={field("names-hint")}
+          className="text-muted-foreground -mt-2 text-xs sm:col-span-2"
+        >
           {t("namesHint")}
         </p>
       </div>
-      <div>
-        <label className="text-muted-foreground font-mono text-xs tracking-wider">
-          {t("bio")}
-        </label>
-        <textarea
+      <Field id={field("bio")} label={t("bio")}>
+        <Textarea
+          id={field("bio")}
           value={bio}
           onChange={(e) => setBio(e.target.value)}
           rows={3}
-          className="border-border bg-background mt-1 w-full rounded border px-3 py-2 text-sm"
         />
-      </div>
-      <div>
-        <label className="text-muted-foreground font-mono text-xs tracking-wider">
-          {t("skills")}
-        </label>
+      </Field>
+      <Field id={field("skills")} label={t("skills")}>
         <Input
+          id={field("skills")}
           value={skillsText}
           onChange={(e) => setSkillsText(e.target.value)}
           placeholder="AI, Python, LLMs"
-          className="mt-1"
         />
-      </div>
-      <div>
-        <label className="text-muted-foreground font-mono text-xs tracking-wider">
-          {t("company")}
-        </label>
+      </Field>
+      <Field id={field("company")} label={t("company")}>
         <Input
+          id={field("company")}
           value={company}
           onChange={(e) => setCompany(e.target.value)}
-          className="mt-1"
+          autoComplete="organization"
         />
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div>
-          <label className="text-muted-foreground font-mono text-xs tracking-wider">
-            {t("linkedinUrl")}
-          </label>
+      </Field>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Field id={field("linkedin")} label={t("linkedinUrl")}>
           <Input
+            id={field("linkedin")}
             value={linkedinUrl}
             onChange={(e) => setLinkedinUrl(e.target.value)}
             type="url"
-            className="mt-1"
           />
-        </div>
-        <div>
-          <label className="text-muted-foreground font-mono text-xs tracking-wider">
-            {t("githubUrl")}
-          </label>
+        </Field>
+        <Field id={field("github")} label={t("githubUrl")}>
           <Input
+            id={field("github")}
             value={githubUrl}
             onChange={(e) => setGithubUrl(e.target.value)}
             type="url"
-            className="mt-1"
           />
-        </div>
-        <div>
-          <label className="text-muted-foreground font-mono text-xs tracking-wider">
-            {t("websiteUrl")}
-          </label>
+        </Field>
+        <Field id={field("website")} label={t("websiteUrl")}>
           <Input
+            id={field("website")}
             value={websiteUrl}
             onChange={(e) => setWebsiteUrl(e.target.value)}
             type="url"
-            className="mt-1"
           />
-        </div>
+        </Field>
       </div>
       <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
+        <Checkbox
+          id={field("public")}
+          tone="ink"
           checked={isPublic}
-          onChange={(e) => setIsPublic(e.target.checked)}
-          id="isPublic"
-          className="rounded"
+          onCheckedChange={(checked) => setIsPublic(checked === true)}
         />
-        <label
-          htmlFor="isPublic"
-          className="text-muted-foreground font-mono text-xs tracking-wider"
-        >
-          {t("publicProfile")}
-        </label>
+        <Label htmlFor={field("public")}>{t("publicProfile")}</Label>
       </div>
-      <Button
-        type="submit"
-        className="w-full font-mono text-xs tracking-wider"
-        disabled={upsertMutation.isPending}
-      >
+      <Button type="submit" disabled={upsertMutation.isPending}>
         {upsertMutation.isPending ? t("saving") : t("saveProfile")}
       </Button>
     </form>

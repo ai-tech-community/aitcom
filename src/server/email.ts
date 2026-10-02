@@ -7,6 +7,7 @@ import {
   renderEmailFromTemplate,
   REGISTRATION_CONFIRMATION_TEMPLATE_KEY,
 } from "@/server/email-template";
+import { NOTIFICATION_SETTINGS_HREF } from "@/lib/dashboard-routes";
 import { STAFF_INVITE_TTL_DAYS } from "@/server/hackathon/staff-invite";
 import {
   hubDmMailCopy,
@@ -558,7 +559,7 @@ export async function sendBroadcastEmail(
 ) {
   const resend = getResend();
   if (!resend) return false;
-  const manage = "https://www.aitcommunity.org/en/dashboard/notifications";
+  const manage = `https://www.aitcommunity.org/en${NOTIFICATION_SETTINGS_HREF}`;
   const { error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,

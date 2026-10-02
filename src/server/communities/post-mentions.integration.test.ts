@@ -278,7 +278,7 @@ describe.skipIf(!RUN_DB)("@mentions in feed posts [DB integration]", () => {
       },
       urls: {
         post: `/en/communities/${fx.slug}`,
-        manage: "/en/dashboard/notifications",
+        manage: "/en/dashboard/settings#notifications",
       },
     });
 

@@ -6,6 +6,7 @@ import {
   buildRoleHelpPost,
   matchCommunityClassroom,
   roleHelpThreadPath,
+  type RoleHelpError,
   type RoleHelpRequest,
 } from "@/lib/investigations/startup-role-help";
 import { logActivity } from "@/server/agent/activity";
@@ -55,7 +56,7 @@ async function assertCommunityRulesAccepted(
   if (acceptanceDocs.length === 0) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "RULES_NOT_ACCEPTED",
+      message: "RULES_NOT_ACCEPTED" satisfies RoleHelpError,
     });
   }
 }
@@ -69,36 +70,36 @@ function threadSlug(title: string): string {
   return `${base || "help"}-${Date.now()}`;
 }
 
+/**
+ * Throws when the read fails: the Job tracker shows an error with retry
+ * instead of an empty board (DESIGN.md No-Silent-Failure Rule).
+ */
 export async function listMyRoleHelp(
   userId: string,
 ): Promise<RoleHelpRequest[]> {
-  try {
-    const rows = await db
-      .select({
-        roleId: startupRoleHelp.roleId,
-        note: startupRoleHelp.note,
-        classroomTitle: startupRoleHelp.classroomTitle,
-        threadSlug: startupRoleHelp.threadSlug,
-        communitySlug: communities.slug,
-        communityName: communities.name,
-      })
-      .from(startupRoleHelp)
-      .innerJoin(communities, eq(startupRoleHelp.communityId, communities.id))
-      .where(
-        and(eq(startupRoleHelp.userId, userId), isNull(communities.deletedAt)),
-      )
-      .orderBy(desc(startupRoleHelp.createdAt));
-    return rows.map((row) => ({
-      roleId: row.roleId,
-      communitySlug: row.communitySlug,
-      communityName: row.communityName,
-      note: row.note,
-      classroom: row.classroomTitle,
-      path: roleHelpThreadPath(row.communitySlug, row.threadSlug),
-    }));
-  } catch {
-    return [];
-  }
+  const rows = await db
+    .select({
+      roleId: startupRoleHelp.roleId,
+      note: startupRoleHelp.note,
+      classroomTitle: startupRoleHelp.classroomTitle,
+      threadSlug: startupRoleHelp.threadSlug,
+      communitySlug: communities.slug,
+      communityName: communities.name,
+    })
+    .from(startupRoleHelp)
+    .innerJoin(communities, eq(startupRoleHelp.communityId, communities.id))
+    .where(
+      and(eq(startupRoleHelp.userId, userId), isNull(communities.deletedAt)),
+    )
+    .orderBy(desc(startupRoleHelp.createdAt));
+  return rows.map((row) => ({
+    roleId: row.roleId,
+    communitySlug: row.communitySlug,
+    communityName: row.communityName,
+    note: row.note,
+    classroom: row.classroomTitle,
+    path: roleHelpThreadPath(row.communitySlug, row.threadSlug),
+  }));
 }
 
 export async function askMyTrackedRoleHelp(input: {
@@ -114,7 +115,7 @@ export async function askMyTrackedRoleHelp(input: {
   if (!note) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Write what you want help with",
+      message: "NOTE_REQUIRED" satisfies RoleHelpError,
     });
   }
 
@@ -122,7 +123,7 @@ export async function askMyTrackedRoleHelp(input: {
   if (!tracked) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Track this role first",
+      message: "ROLE_NOT_TRACKED" satisfies RoleHelpError,
     });
   }
 
@@ -147,7 +148,10 @@ export async function askMyTrackedRoleHelp(input: {
       })
     : null;
   if (!role) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Role not found" });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "ROLE_NOT_FOUND" satisfies RoleHelpError,
+    });
   }
 
   const community = await db.query.communities.findFirst({
@@ -158,7 +162,10 @@ export async function askMyTrackedRoleHelp(input: {
     columns: { id: true, slug: true, name: true },
   });
   if (!community) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "COMMUNITY_NOT_FOUND" satisfies RoleHelpError,
+    });
   }
 
   const membership = await db.query.communityMemberships.findFirst({
@@ -172,7 +179,7 @@ export async function askMyTrackedRoleHelp(input: {
   if (!membership) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Join that community before asking",
+      message: "NOT_A_MEMBER" satisfies RoleHelpError,
     });
   }
 
@@ -206,7 +213,7 @@ export async function askMyTrackedRoleHelp(input: {
     if (!match) {
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "CLASSROOM_NOT_FOUND",
+        message: "CLASSROOM_NOT_FOUND" satisfies RoleHelpError,
       });
     }
     classroomTitle = match.title;

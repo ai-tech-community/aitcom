@@ -8,6 +8,7 @@ import {
   DashboardSection,
   SectionBody,
   statusFromQueries,
+  statusFromServerLoad,
   type SectionQuery,
 } from "./dashboard-section";
 
@@ -28,6 +29,30 @@ function query(overrides: Partial<SectionQuery> = {}): SectionQuery {
     ...overrides,
   };
 }
+
+describe("statusFromServerLoad", () => {
+  const retry = vi.fn();
+
+  it("shows a failed server load as an error that retries", () => {
+    const status = statusFromServerLoad({ failed: true, retry });
+    expect(status).toEqual({ kind: "error", retry });
+  });
+
+  it("is loading while a retry or a new view is on its way", () => {
+    expect(
+      statusFromServerLoad({ failed: true, refreshing: true, retry }),
+    ).toEqual({ kind: "loading" });
+  });
+
+  it("is empty or ready once loaded", () => {
+    expect(
+      statusFromServerLoad({ failed: false, isEmpty: true, retry }),
+    ).toEqual({ kind: "empty" });
+    expect(statusFromServerLoad({ failed: false, retry })).toEqual({
+      kind: "ready",
+    });
+  });
+});
 
 describe("statusFromQueries", () => {
   it("is loading while a query has no data yet", () => {
@@ -165,6 +190,37 @@ describe("DashboardSection", () => {
       </NextIntlClientProvider>,
     );
     expect(container.querySelector("section")).not.toHaveClass("border");
+  });
+});
+
+describe("DashboardSection appearWhenReady", () => {
+  it("renders nothing while loading, then the section once it has content", () => {
+    const { container, rerender } = renderWithIntl(
+      <DashboardSection
+        title="Introductions"
+        status={{ kind: "loading" }}
+        appearWhenReady
+      >
+        <p>One to answer</p>
+      </DashboardSection>,
+    );
+    expect(container.innerHTML).toBe("");
+
+    rerender(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <DashboardSection
+          title="Introductions"
+          status={{ kind: "ready" }}
+          appearWhenReady
+        >
+          <p>One to answer</p>
+        </DashboardSection>
+      </NextIntlClientProvider>,
+    );
+    expect(
+      screen.getByRole("heading", { name: /introductions/i }),
+    ).toBeTruthy();
+    expect(screen.getByText("One to answer")).toBeTruthy();
   });
 });
 

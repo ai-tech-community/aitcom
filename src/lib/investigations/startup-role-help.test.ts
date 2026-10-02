@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildRoleHelpPost,
   matchCommunityClassroom,
+  roleHelpErrorOf,
 } from "./startup-role-help";
 
 describe("matchCommunityClassroom", () => {
@@ -43,5 +44,14 @@ describe("buildRoleHelpPost", () => {
     expect(post.content).toContain("https://fixture.example/careers/staff");
     expect(post.content).toContain("System design");
     expect(post.content).not.toMatch(/fit score|salary/i);
+  });
+});
+
+describe("roleHelpErrorOf", () => {
+  it("recognises the server's refusal codes and nothing else", () => {
+    expect(roleHelpErrorOf("NOT_A_MEMBER")).toBe("NOT_A_MEMBER");
+    expect(roleHelpErrorOf("RULES_NOT_ACCEPTED")).toBe("RULES_NOT_ACCEPTED");
+    expect(roleHelpErrorOf("Join that community before asking")).toBeNull();
+    expect(roleHelpErrorOf(undefined)).toBeNull();
   });
 });

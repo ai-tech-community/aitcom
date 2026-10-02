@@ -7,5 +7,14 @@
 /** The profile form on the Settings tab. */
 export const PROFILE_SETTINGS_HREF = "/dashboard/settings#profile";
 
+/**
+ * Email preferences (Hub emails, weekly digest, community announcements) on
+ * the Settings tab. Every email's "Manage notifications" link points here.
+ */
+export const NOTIFICATION_SETTINGS_HREF = "/dashboard/settings#notifications";
+
+/** The anchor id of the email preferences section. */
+export const NOTIFICATION_SETTINGS_ANCHOR = "notifications";
+
 /** The intent ("what brings you here") questions. */
 export const ONBOARDING_HREF = "/dashboard/onboarding";

@@ -3,11 +3,13 @@
 import { useId } from "react";
 import { useTranslations } from "next-intl";
 
-import { ErrorState } from "@/components/ui/error-state";
 import { Label } from "@/components/ui/label";
-import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import {
+  DashboardSection,
+  statusFromQueries,
+} from "@/components/dashboard/dashboard-section";
 import { api } from "@/trpc/react";
 import {
   presentChecklistSetting,
@@ -28,30 +30,23 @@ export function ChecklistSetting() {
   const status = api.onboarding.getStatus.useQuery();
   const { dismiss, restore, isPending } = useOnboardingDismissal();
   const [hiddenForVisit] = useHiddenForVisit();
-  const headingId = useId();
 
   return (
-    <section aria-labelledby={headingId}>
-      <SectionLabel id={headingId}>{t("kicker")}</SectionLabel>
-      <div className="mt-4">
-        {status.isPending ? (
-          <Skeleton className="h-[4.5rem] rounded" />
-        ) : status.isError ? (
-          <ErrorState
-            className="border-border rounded border py-6"
-            onRetry={() => void status.refetch()}
-          />
-        ) : (
-          <ChecklistSettingRow
-            view={presentChecklistSetting(status.data, { hiddenForVisit })}
-            pending={isPending}
-            onDismiss={dismiss}
-            onRestore={restore}
-            onUnhide={clearHiddenForVisit}
-          />
-        )}
-      </div>
-    </section>
+    <DashboardSection
+      title={t("kicker")}
+      status={statusFromQueries(status)}
+      skeleton={<Skeleton className="h-12 w-full" />}
+    >
+      {status.data && (
+        <ChecklistSettingRow
+          view={presentChecklistSetting(status.data, { hiddenForVisit })}
+          pending={isPending}
+          onDismiss={dismiss}
+          onRestore={restore}
+          onUnhide={clearHiddenForVisit}
+        />
+      )}
+    </DashboardSection>
   );
 }
 
@@ -84,7 +79,7 @@ function ChecklistSettingRow({
   };
 
   return (
-    <div className="border-border flex items-start justify-between gap-4 rounded border px-3 py-3">
+    <div className="flex items-start justify-between gap-4">
       <div className="min-w-0">
         <Label htmlFor={switchId} className="leading-snug text-balance">
           {t("label")}

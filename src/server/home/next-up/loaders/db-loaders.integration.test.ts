@@ -21,6 +21,7 @@ import type { NextUpContext } from "../types";
 import type { loadInviteItems } from "./invites";
 import type { loadJoinRequestItems } from "./join-requests";
 import type { loadUnreadItems } from "./unread";
+import type { countPendingJoinRequests as CountPendingJoinRequests } from "@/server/communities/pending-join-requests";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -43,6 +44,7 @@ describe.skipIf(!RUN_DB)("Next up DB loaders [DB integration]", () => {
   let db: typeof Db;
   let schema: typeof Schema;
   let inArray: typeof InArray;
+  let countPendingJoinRequests: typeof CountPendingJoinRequests;
   let loaders: {
     invites: typeof loadInviteItems;
     joinRequests: typeof loadJoinRequestItems;
@@ -56,7 +58,7 @@ describe.skipIf(!RUN_DB)("Next up DB loaders [DB integration]", () => {
   const conversationIds: string[] = [];
 
   beforeAll(async () => {
-    const [dbMod, schemaMod, orm, invites, joinRequests, unread] =
+    const [dbMod, schemaMod, orm, invites, joinRequests, unread, pendingMod] =
       await Promise.all([
         import("@/server/db"),
         import("@/server/db/schema"),
@@ -64,7 +66,9 @@ describe.skipIf(!RUN_DB)("Next up DB loaders [DB integration]", () => {
         import("./invites"),
         import("./join-requests"),
         import("./unread"),
+        import("@/server/communities/pending-join-requests"),
       ]);
+    countPendingJoinRequests = pendingMod.countPendingJoinRequests;
     db = dbMod.db;
     schema = schemaMod;
     inArray = orm.inArray;
@@ -259,6 +263,24 @@ describe.skipIf(!RUN_DB)("Next up DB loaders [DB integration]", () => {
       await addPending(asModerator.id, 2);
 
       expect(await loaders.joinRequests(ctx())).toEqual([]);
+    });
+
+    it("gives My communities the same counts, keyed by community", async () => {
+      const owned = await addCommunity("SharedOwned");
+      const asMember = await addCommunity("SharedMember");
+      await addMembership(owned.id, me, "owner", "active");
+      await addMembership(asMember.id, me, "member", "active");
+      await addPending(owned.id, 2);
+      await addPending(asMember.id, 4);
+
+      expect(await countPendingJoinRequests(db, me)).toEqual([
+        {
+          communityId: owned.id,
+          slug: owned.slug,
+          name: owned.name,
+          count: 2,
+        },
+      ]);
     });
 
     it("ignores admin roles I do not hold yet, and deleted communities", async () => {

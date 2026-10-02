@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { getSession } from "@/server/better-auth/server";
-import { redirect } from "next/navigation";
+import { requireDashboardSession } from "@/server/dashboard/require-dashboard-session";
 import { api, HydrateClient } from "@/trpc/server";
 import { AgentDashboardContent } from "./content";
 
@@ -9,8 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AgentDashboardPage() {
-  const session = await getSession();
-  if (!session?.user) redirect("/auth/signin");
+  await requireDashboardSession();
 
   const agent = await api.agentManagement.getMyAgent();
 

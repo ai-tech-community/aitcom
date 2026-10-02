@@ -1,5 +1,4 @@
-import { getSession } from "@/server/better-auth/server";
-import { redirect } from "next/navigation";
+import { requireDashboardSession } from "@/server/dashboard/require-dashboard-session";
 
 /**
  * Auth gate for every dashboard route. The page frame (width, gutters) is
@@ -11,8 +10,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
-  if (!session?.user) redirect("/auth/signin");
+  await requireDashboardSession();
 
   return children;
 }
