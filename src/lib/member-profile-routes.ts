@@ -17,3 +17,13 @@ export function profileTabHref(userId: string, tab: ProfileTab): string {
   const root = `/members/${userId}`;
   return tab === "overview" ? root : `${root}/${tab}`;
 }
+
+/** The share page of a badge a member holds (under their Badges tab). */
+export function badgeShareHref(userId: string, slug: string): string {
+  return `${profileTabHref(userId, "badges")}/${encodeURIComponent(slug)}`;
+}
+
+/** The Open Graph image of a badge's share page. */
+export function badgeShareImageHref(userId: string, slug: string): string {
+  return `${badgeShareHref(userId, slug)}/image`;
+}

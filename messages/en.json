@@ -4064,5 +4064,47 @@
     "share": "Earned by {percent} of members",
     "fewerThanOnePercent": "Fewer than 1% of members",
     "edition": "{holders, number} of {size, number} claimed"
+  },
+  "badgeMoment": {
+    "kind": {
+      "track": "{track} · tier {tier}",
+      "milestone": "Milestone",
+      "limitedEdition": "Limited edition",
+      "award": "Award"
+    },
+    "earnedOn": "Earned {date}",
+    "celebration": {
+      "progress": "{current, number} of {total, number}",
+      "title": "You earned {badge}",
+      "awardTitle": "You won an award",
+      "pin": "Show on my profile",
+      "pinning": "Adding…",
+      "pinned": "On your profile",
+      "full": "Your profile showcase is full. Choose what it shows on your Badges tab.",
+      "pinError": "Could not add it to your profile. You can pin it from your Badges tab.",
+      "seeBadges": "See badges",
+      "share": "Share",
+      "shareLabel": "Link to share",
+      "copy": "Copy link",
+      "copied": "Copied",
+      "copiedStatus": "Link copied.",
+      "copyManual": "The link is selected. Copy it with your keyboard.",
+      "openPage": "Open the badge page",
+      "next": "Next",
+      "close": "Close",
+      "more": "{count, plural, one {# more is} other {# more are}} waiting on your <link>Badges tab</link>."
+    },
+    "share": {
+      "metaTitle": "{name} earned {badge}",
+      "imageEarned": "earned {badge}",
+      "earnedLabel": "Earned",
+      "rarityLabel": "Rarity",
+      "earnedBy": "Earned by",
+      "joinText": "Earn badges like this one by joining events, finishing challenges and sharing what you build.",
+      "joinCta": "Join AIT Community",
+      "myBadgesCta": "See your badges",
+      "allBadges": "All badges of {name}",
+      "ownerAllBadges": "Back to your badges"
+    }
   }
 }

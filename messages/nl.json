@@ -4064,5 +4064,47 @@
     "share": "Verdiend door {percent} van de leden",
     "fewerThanOnePercent": "Minder dan 1% van de leden",
     "edition": "{holders, number} van {size, number} vergeven"
+  },
+  "badgeMoment": {
+    "kind": {
+      "track": "{track} · niveau {tier}",
+      "milestone": "Mijlpaal",
+      "limitedEdition": "Beperkte oplage",
+      "award": "Prijs"
+    },
+    "earnedOn": "Verdiend op {date}",
+    "celebration": {
+      "progress": "{current, number} van {total, number}",
+      "title": "Je hebt {badge} verdiend",
+      "awardTitle": "Je hebt een prijs gewonnen",
+      "pin": "Toon op mijn profiel",
+      "pinning": "Toevoegen…",
+      "pinned": "Op je profiel",
+      "full": "Je profielvitrine is vol. Kies op je tabblad Badges wat erin staat.",
+      "pinError": "Toevoegen aan je profiel is niet gelukt. Je kunt hem vastzetten via je tabblad Badges.",
+      "seeBadges": "Bekijk badges",
+      "share": "Delen",
+      "shareLabel": "Link om te delen",
+      "copy": "Kopieer link",
+      "copied": "Gekopieerd",
+      "copiedStatus": "Link gekopieerd.",
+      "copyManual": "De link is geselecteerd. Kopieer hem met je toetsenbord.",
+      "openPage": "Open de badgepagina",
+      "next": "Volgende",
+      "close": "Sluiten",
+      "more": "Er {count, plural, one {wacht nog # badge} other {wachten nog # badges}} op je <link>tabblad Badges</link>."
+    },
+    "share": {
+      "metaTitle": "{name} heeft {badge} verdiend",
+      "imageEarned": "heeft {badge} verdiend",
+      "earnedLabel": "Verdiend",
+      "rarityLabel": "Zeldzaamheid",
+      "earnedBy": "Verdiend door",
+      "joinText": "Verdien zelf badges zoals deze door naar events te gaan, challenges af te ronden en te delen wat je bouwt.",
+      "joinCta": "Word lid van AIT Community",
+      "myBadgesCta": "Bekijk je badges",
+      "allBadges": "Alle badges van {name}",
+      "ownerAllBadges": "Terug naar je badges"
+    }
   }
 }
