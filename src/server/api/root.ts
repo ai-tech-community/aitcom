@@ -13,6 +13,7 @@ import { challengeChannelRouter } from "@/server/api/routers/challenge-channel";
 import { challengeEngineRouter } from "@/server/api/routers/challenge-engine";
 import { challengesRouter } from "@/server/api/routers/challenges";
 import { forumRouter } from "@/server/api/routers/forum";
+import { homeRouter } from "@/server/api/routers/home";
 import { eventsRouter } from "@/server/api/routers/events";
 import { lumaRouter } from "@/server/api/routers/luma";
 import { membersRouter } from "@/server/api/routers/members";
@@ -60,6 +61,7 @@ export const appRouter = createTRPCRouter({
   audiences: audiencesRouter,
   members: membersRouter,
   forum: forumRouter,
+  home: homeRouter,
   sponsors: sponsorsRouter,
   articles: articlesRouter,
   agentManagement: agentManagementRouter,
