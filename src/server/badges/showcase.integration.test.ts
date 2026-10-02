@@ -38,6 +38,8 @@ describe.skipIf(!RUN_DB)(
       metrics: typeof import("@/server/badges/metrics");
       catalog: typeof import("@/lib/badges/catalog");
       rarity: typeof import("@/server/badges/rarity");
+      engine: typeof import("@/server/badges/engine");
+      showcase: typeof import("@/lib/badges/showcase");
       createCaller: typeof import("@/server/api/root").createCaller;
       getPayloadClient: typeof import("@/server/payload").getPayloadClient;
     };
@@ -53,17 +55,29 @@ describe.skipIf(!RUN_DB)(
       if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
         throw new Error("Refusing to run against a cloud Neon DATABASE_URL.");
       }
-      const [dbMod, schema, drizzle, metrics, catalog, rarity, root, payload] =
-        await Promise.all([
-          import("@/server/db"),
-          import("@/server/db/schema"),
-          import("drizzle-orm"),
-          import("@/server/badges/metrics"),
-          import("@/lib/badges/catalog"),
-          import("@/server/badges/rarity"),
-          import("@/server/api/root"),
-          import("@/server/payload"),
-        ]);
+      const [
+        dbMod,
+        schema,
+        drizzle,
+        metrics,
+        catalog,
+        rarity,
+        root,
+        payload,
+        engine,
+        showcase,
+      ] = await Promise.all([
+        import("@/server/db"),
+        import("@/server/db/schema"),
+        import("drizzle-orm"),
+        import("@/server/badges/metrics"),
+        import("@/lib/badges/catalog"),
+        import("@/server/badges/rarity"),
+        import("@/server/api/root"),
+        import("@/server/payload"),
+        import("@/server/badges/engine"),
+        import("@/lib/badges/showcase"),
+      ]);
       m = {
         db: dbMod.db,
         schema,
@@ -73,6 +87,8 @@ describe.skipIf(!RUN_DB)(
         rarity,
         createCaller: root.createCaller,
         getPayloadClient: payload.getPayloadClient,
+        engine,
+        showcase,
       };
       const { db } = m;
       await db
@@ -81,7 +97,7 @@ describe.skipIf(!RUN_DB)(
           users.map((id) => ({ id, email: `${id}@example.test`, name: id })),
         );
       await db.insert(schema.memberProfiles).values([
-        { userId: owner, displayName: "Owner" },
+        { userId: owner, displayName: `Owner ${suffix}` },
         { userId: other, displayName: "Other" },
       ]);
       // Learner metric: the other member completed four courses, the owner one.
@@ -101,7 +117,12 @@ describe.skipIf(!RUN_DB)(
           "early_adopter",
           // Stored but not in the catalog: never pinnable.
           "speaker",
-        ].map((badgeSlug) => ({ userId: owner, badgeSlug })),
+        ].map((badgeSlug, i) => ({
+          userId: owner,
+          badgeSlug,
+          // A day apart, so "newest first" is unambiguous.
+          earnedAt: new Date(Date.UTC(2026, 0, 1 + i)),
+        })),
       );
       await db
         .insert(schema.memberBadges)
@@ -111,6 +132,15 @@ describe.skipIf(!RUN_DB)(
     afterAll(async () => {
       if (!m) return;
       const { db, schema, drizzle } = m;
+      await db
+        .delete(schema.activityEvents)
+        .where(drizzle.inArray(schema.activityEvents.actorId, users));
+      await db
+        .delete(schema.notifications)
+        .where(drizzle.inArray(schema.notifications.userId, users));
+      await db
+        .delete(schema.pointsEvents)
+        .where(drizzle.inArray(schema.pointsEvents.userId, users));
       await db
         .delete(schema.memberBadges)
         .where(drizzle.inArray(schema.memberBadges.userId, users));
@@ -148,11 +178,7 @@ describe.skipIf(!RUN_DB)(
         expect(entry.current, entry.track).toBe(engine);
       }
       const learner = progress.find((p) => p.track === "learner")!;
-      expect(learner).toEqual({
-        track: "learner",
-        current: 1,
-        next: { tier: 2, slug: "learner_2", threshold: 3 },
-      });
+      expect(learner).toEqual({ track: "learner", current: 1 });
 
       const theirs = await as(other).badges.myProgress();
       expect(theirs.find((p) => p.track === "learner")?.current).toBe(4);
@@ -235,6 +261,60 @@ describe.skipIf(!RUN_DB)(
       expect(profile?.showcase.source).toBe("rarest");
       expect(profile?.showcase.slugs).toHaveLength(3);
       expect(profile?.showcase.slugs).not.toContain("first_event");
+    });
+    it("orders the roster's emblems deterministically", async () => {
+      const { rarity, showcase } = m;
+      const caller = as(null);
+      // One cached report for every call below, as on a server instance.
+      const report = await rarity.getBadgeRarity(m.db);
+      const tops = [];
+      for (let i = 0; i < 3; i++) {
+        const { items } = await caller.members.listMembers({
+          search: suffix,
+          limit: 50,
+        });
+        tops.push(
+          items.find((item) => item.profile.userId === owner)?.topBadges,
+        );
+      }
+      // Held newest first (the query's order), then ranked by rarity.
+      const expected = showcase.featuredBadges(
+        [
+          "early_adopter",
+          "profile_complete",
+          "course_complete",
+          "regular",
+          "first_event",
+        ],
+        rarity.holdersOf(report),
+        3,
+      );
+      expect(expected).toHaveLength(3);
+      expect(tops).toEqual([expected, expected, expected]);
+    });
+
+    it("a newly earned badge drops the cached rarity; nothing earned keeps it", async () => {
+      const { rarity, engine } = m;
+      rarity.clearBadgeRarityCache();
+      const first = rarity.getBadgeRarity(m.db);
+      await first;
+      expect(rarity.getBadgeRarity(m.db)).toBe(first);
+
+      expect(
+        await engine.awardMilestone(m.db, owner, "onboarding_complete"),
+      ).toBe(true);
+      const fresh = rarity.getBadgeRarity(m.db);
+      expect(fresh).not.toBe(first);
+      expect(
+        (await fresh).badges.find((b) => b.slug === "onboarding_complete")!
+          .holders,
+      ).toBeGreaterThanOrEqual(1);
+
+      // Already held: no new row, so the cached report stays.
+      expect(
+        await engine.awardMilestone(m.db, owner, "onboarding_complete"),
+      ).toBe(false);
+      expect(rarity.getBadgeRarity(m.db)).toBe(fresh);
     });
   },
 );

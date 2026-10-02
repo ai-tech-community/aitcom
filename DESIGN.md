@@ -257,7 +257,8 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 - **Tier ring:** I a hairline outline, II a double hairline, III a solid band in the track's ink with a fine dotted pattern. The silhouette never changes with the tier.
 - **Flat:** emblems carry no shadow. The limited edition's sheen is the one motion: it sweeps across on hover, and under `prefers-reduced-motion` rests as a static highlight.
 - **Locked (owner only):** an outline in `muted-foreground`, no fill, with progress to that tier traced along the outline in `foreground` from the top. Visitors never see locked badges.
-- **Accessible name:** "Writer, tier II, earned March 3, 2026" / "Writer, tier III, locked, 3 of 15" (EN and NL, locale dates). Pass `decorative` only where adjacent text already says all of it.
+- **Accessible name:** "Writer, tier II, earned March 3, 2026" / "Writer, tier III, locked, 3 of 15" / "Writer, tier I, being added" when the metric already meets a tier the engine has not recorded yet (progress never reads "12 of 1"). EN and NL, locale dates, built by `useEmblemLabel()` and passed as `label`; leave `label` out only where adjacent text already says all of it.
+- **Server-rendered:** `BadgeEmblem` has no client hooks, so lists like the `/members` roster hydrate nothing; only the limited-edition sheen (`EmblemSheen`, needs `useId`) is a client child.
 
 ### Navigation
 - **Style:** Quiet by default — Geist Sans or the mono `/ LABEL` for context nav, `text-muted` at rest, Ink/Signal-Orange on active. Hover is a subtle `bg-secondary/50` bed, never an aggressive fill.

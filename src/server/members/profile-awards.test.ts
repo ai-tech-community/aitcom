@@ -9,66 +9,70 @@ const row = (id: string, challengeId: number) => ({
   earnedAt: new Date("2026-04-01T00:00:00Z"),
 });
 
-describe("toProfileAwards", () => {
-  const challenges = new Map([
-    [
-      1,
-      {
-        id: 1,
-        title: "Open",
-        slug: "open",
-        status: "completed" as const,
-        communityId: null,
-      },
-    ],
-    [
-      2,
-      {
-        id: 2,
-        title: "Draft",
-        slug: "draft",
-        status: "draft" as const,
-        communityId: null,
-      },
-    ],
-    [
-      3,
-      {
-        id: 3,
-        title: "Secret",
-        slug: "secret",
-        status: "active" as const,
-        communityId: "c-hidden",
-      },
-    ],
-  ]);
+const challenges = new Map([
+  [
+    1,
+    {
+      id: 1,
+      title: "Open",
+      slug: "open",
+      status: "completed" as const,
+      communityId: null,
+    },
+  ],
+  [
+    2,
+    {
+      id: 2,
+      title: "Draft",
+      slug: "draft",
+      status: "draft" as const,
+      communityId: null,
+    },
+  ],
+  [
+    3,
+    {
+      id: 3,
+      title: "Secret",
+      slug: "secret",
+      status: "active" as const,
+      communityId: "c-hidden",
+    },
+  ],
+]);
+const rows = [row("a", 1), row("b", 2), row("c", 3), row("d", 99)];
+const hidden = new Set(["c-hidden"]);
+const at = "2026-04-01T00:00:00.000Z";
 
-  it("links a published challenge, keeps a draft or missing one without a link, and hides one the viewer cannot read", () => {
+describe("toProfileAwards", () => {
+  it("shows a visitor linked and draft awards, and hides hidden-community and missing challenges", () => {
     expect(
-      toProfileAwards(
-        [row("a", 1), row("b", 2), row("c", 3), row("d", 99)],
-        challenges,
-        new Set(["c-hidden"]),
-      ),
+      toProfileAwards(rows, challenges, {
+        hiddenCommunityIds: hidden,
+        isOwner: false,
+      }),
     ).toEqual([
       {
         id: "a",
         label: "Winner a",
-        earnedAt: "2026-04-01T00:00:00.000Z",
+        earnedAt: at,
         challenge: { title: "Open", slug: "open" },
       },
-      {
-        id: "b",
-        label: "Winner b",
-        earnedAt: "2026-04-01T00:00:00.000Z",
-        challenge: null,
-      },
-      {
-        id: "d",
-        label: "Winner d",
-        earnedAt: "2026-04-01T00:00:00.000Z",
-        challenge: null,
-      },
+      { id: "b", label: "Winner b", earnedAt: at, challenge: null },
+    ]);
+  });
+
+  it("still shows the owner an award whose challenge is gone, without a link", () => {
+    expect(
+      toProfileAwards(rows, challenges, {
+        hiddenCommunityIds: hidden,
+        isOwner: true,
+      }).map((award) => [award.id, award.challenge]),
+    ).toEqual([
+      ["a", { title: "Open", slug: "open" }],
+      ["b", null],
+      ["d", null],
     ]);
   });
 });

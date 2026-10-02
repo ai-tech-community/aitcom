@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { api } from "@/trpc/react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 /**
  * The owner's "Pin to showcase" / "Unpin" control on a badge (Badges tab).
- * When the showcase is full, Pin is disabled and points at the hint that
- * says why; the three pins are on the same page with their own Unpin.
+ * When the showcase is full, Pin is aria-disabled (still focusable) and
+ * described by the hint that says why; the three pins are on the same page
+ * with their own Unpin.
  * The server re-checks everything (held, displayable, at most three).
  */
 export function ShowcasePinButton({
@@ -45,7 +47,11 @@ export function ShowcasePinButton({
         type="button"
         size="sm"
         variant={pinned ? "ghost" : "outline"}
-        disabled={busy || blocked}
+        // Blocked stays focusable (aria-disabled, not disabled) so a
+        // keyboard or screen-reader user reaches it and hears the hint.
+        disabled={busy}
+        aria-disabled={blocked || undefined}
+        className={cn(blocked && "cursor-not-allowed opacity-50")}
         aria-label={
           pinned
             ? t("unpinLabel", { name: badgeName })
@@ -53,6 +59,7 @@ export function ShowcasePinButton({
         }
         aria-describedby={blocked ? hintId : undefined}
         onClick={() => {
+          if (blocked) return;
           pin.reset();
           unpin.reset();
           if (pinnedSlug !== null) unpin.mutate({ slug: pinnedSlug });

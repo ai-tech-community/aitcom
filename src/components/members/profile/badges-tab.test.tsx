@@ -260,7 +260,7 @@ describe("BadgesTab — owner", () => {
     expect(calls.unpin).toEqual([{ slug: "regular" }]);
   });
 
-  it("disables Pin when the showcase is full and points at the hint", () => {
+  it("marks Pin unavailable when the showcase is full, keeps it focusable and describes why", () => {
     renderTab({
       viewer: { kind: "owner", progress: ownerProgress },
       showcase: {
@@ -271,11 +271,42 @@ describe("BadgesTab — owner", () => {
     const pin = screen.getByRole("button", {
       name: "Pin Early adopter to your showcase",
     });
-    expect(pin).toBeDisabled();
+    expect(pin).toHaveAttribute("aria-disabled", "true");
+    expect(pin).not.toBeDisabled();
+    pin.focus();
+    expect(pin).toHaveFocus();
+    fireEvent.click(pin);
+    expect(calls.pin).toEqual([]);
     const hint = document.getElementById(pin.getAttribute("aria-describedby")!);
     expect(hint).toHaveTextContent("Your showcase is full (3 of 3)");
     expect(
       screen.getByRole("button", { name: "Unpin Writer I from your showcase" }),
     ).toBeEnabled();
+  });
+
+  it("caps progress: a tier the metric already meets reads 'being added', never '12 of 1'", () => {
+    const { container } = renderTab({
+      viewer: {
+        kind: "owner",
+        progress: [toTrackProgress("writer", 12)],
+      },
+      held: HELD.filter((b) => b.slug !== "article_author"),
+    });
+    const writer = container.querySelector<HTMLElement>(
+      '[data-track="writer"]',
+    )!;
+    expect(within(writer).getByText("Being added")).toBeInTheDocument();
+    expect(within(writer).getByTestId("track-next")).toHaveTextContent(
+      "Next: Writer I, being added",
+    );
+    expect(
+      within(writer).getByRole("img", { name: "Writer, tier II, being added" }),
+    ).toBeInTheDocument();
+    expect(
+      within(writer).getByRole("img", {
+        name: "Writer, tier III, locked, 12 of 15",
+      }),
+    ).toBeInTheDocument();
+    expect(writer.textContent).not.toMatch(/12 of (1|5)\b/);
   });
 });

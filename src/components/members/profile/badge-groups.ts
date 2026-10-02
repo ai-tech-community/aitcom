@@ -27,8 +27,21 @@ export interface TierEntry {
   badge: TrackBadge;
   /** Null: locked (owner only). */
   earnedAt: Date | string | null;
-  /** For a locked tier with a known metric: progress towards it. */
+  /**
+   * For a locked tier with a known metric: progress towards it, capped at
+   * the threshold. `current === threshold` means the metric already meets
+   * it and the engine has not recorded it yet ("being added").
+   */
   progress: { current: number; threshold: number } | null;
+}
+
+/** A locked tier the member already qualifies for, not yet recorded. */
+export function isBeingAdded(entry: Pick<TierEntry, "earnedAt" | "progress">) {
+  return (
+    entry.earnedAt === null &&
+    entry.progress !== null &&
+    entry.progress.current >= entry.progress.threshold
+  );
 }
 
 export interface TrackGroup {
@@ -50,8 +63,6 @@ export interface BadgeGroups {
   tracks: TrackGroup[];
   milestones: SingleEntry<MilestoneBadge>[];
   limitedEditions: SingleEntry<LimitedEditionBadge>[];
-  /** Earned catalog badges shown: the tab's badge count. */
-  earnedCount: number;
 }
 
 export type BadgeViewer =
@@ -79,7 +90,10 @@ export function groupBadges(
         progress:
           earnedAt.has(badge.slug) || current === undefined
             ? null
-            : { current, threshold: badge.threshold },
+            : {
+                current: Math.min(current, badge.threshold),
+                threshold: badge.threshold,
+              },
       }),
     );
     const tiers = owner ? all : all.filter((tier) => tier.earnedAt !== null);
@@ -124,8 +138,5 @@ export function groupBadges(
     tracks: [...tracks, ...unstarted],
     milestones,
     limitedEditions,
-    earnedCount: held.filter((b) =>
-      BADGE_CATALOG.some((badge) => badge.slug === b.slug),
-    ).length,
   };
 }

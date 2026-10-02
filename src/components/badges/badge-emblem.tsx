@@ -1,6 +1,4 @@
-"use client";
-
-import { useId, type CSSProperties, type ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   BookOpen,
   Bot,
@@ -20,7 +18,6 @@ import {
   Trophy,
   type LucideIcon,
 } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
 
 import {
   catalogBadge,
@@ -39,6 +36,10 @@ import {
 } from "@/lib/badges/emblem-shapes";
 import { tierFraction } from "@/lib/badges/progress";
 import { cn } from "@/lib/utils";
+
+import { EmblemSheen } from "./emblem-sheen";
+
+export { SHEEN_CLASS } from "./emblem-sheen";
 
 /** The glyph drawn inside each emblem: one line-icon family, one stroke. */
 const GLYPHS: Record<BadgeGlyph | "award", LucideIcon> = {
@@ -84,8 +85,6 @@ const WEIGHTS: Record<
   lg: { hair: 1.25, gap: 5, band: 7, glyph: 2.25, arc: 2.5, pattern: true },
 };
 
-const TIER_NUMERALS = { 1: "I", 2: "II", 3: "III" } as const;
-
 /** What the emblem stands for: a catalog badge or a challenge award. */
 export type EmblemSubject =
   | { kind: "badge"; slug: BadgeSlug }
@@ -111,10 +110,12 @@ export interface BadgeEmblemProps {
   state: EmblemState;
   size?: EmblemSize;
   /**
-   * Hide the emblem from assistive technology when text right next to it
-   * already says everything its accessible name would.
+   * The accessible name, from `useEmblemLabel()` ("Writer, tier II, earned
+   * March 3, 2026"). Leave it out only when text right next to the emblem
+   * already says all of it: the emblem is then hidden from assistive
+   * technology.
    */
-  decorative?: boolean;
+  label?: string;
   className?: string;
 }
 
@@ -176,21 +177,17 @@ function scaleAbout(shape: EmblemShape, s: number): string {
  * reduced motion); awards hang from a ribbon. Locked badges (owner only)
  * are an outline with the progress traced along it.
  *
- * Purely presentational: the caller says what is earned or locked.
+ * Purely presentational and server-renderable: the caller says what is
+ * earned or locked, and passes the accessible name (`useEmblemLabel`).
+ * Only the limited-edition sheen is a client child (it needs `useId`).
  */
 export function BadgeEmblem({
   subject,
   state,
   size = "md",
-  decorative = false,
+  label,
   className,
 }: BadgeEmblemProps) {
-  const t = useTranslations("badgeEmblem");
-  const tBadges = useTranslations("badges");
-  const format = useFormatter();
-  // useId() contains characters that break url(#…) references.
-  const ids = `emblem-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
-
   const badge = subject.kind === "badge" ? catalogBadge(subject.slug) : null;
   const { style, glyph, variant } = styleOf(subject, badge);
   const shape = EMBLEM_SHAPES[style.shape];
@@ -199,39 +196,6 @@ export function BadgeEmblem({
   /** User units (of the 100-unit box) per screen pixel. */
   const unit = 100 / px;
   const inset = (pxIn: number) => 1 - (pxIn * unit) / shape.r;
-
-  // Accessible name.
-  const name =
-    subject.kind === "award"
-      ? t("award", { label: subject.label })
-      : badge?.kind === "track"
-        ? t("tier", {
-            track: tBadges(`tracks.${badge.track}`),
-            tier: TIER_NUMERALS[badge.tier],
-          })
-        : badge?.kind === "limitedEdition"
-          ? t("limited", { name: tBadges(badge.nameKey) })
-          : badge
-            ? tBadges(badge.nameKey)
-            : "";
-  const label = state.earned
-    ? state.earnedAt === null
-      ? name
-      : t("earned", {
-          name,
-          date: format.dateTime(new Date(state.earnedAt), {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          }),
-        })
-    : state.progress
-      ? t("lockedProgress", {
-          name,
-          current: state.progress.current,
-          threshold: state.progress.threshold,
-        })
-      : t("locked", { name });
 
   const Glyph = GLYPHS[glyph];
   const glyphBox = shape.glyph.size;
@@ -251,9 +215,10 @@ export function BadgeEmblem({
     />
   );
 
-  const a11y = decorative
-    ? { "aria-hidden": true as const }
-    : { role: "img" as const, "aria-label": label };
+  const a11y =
+    label === undefined
+      ? { "aria-hidden": true as const }
+      : { role: "img" as const, "aria-label": label };
 
   if (!state.earned) {
     const fraction = state.progress
@@ -348,9 +313,6 @@ export function BadgeEmblem({
     rings = ring(1, w.hair);
   }
 
-  const sheenClip = `${ids}-clip`;
-  const sheenFill = `${ids}-sheen`;
-
   return (
     <svg
       viewBox="0 0 100 100"
@@ -382,53 +344,11 @@ export function BadgeEmblem({
         data-emblem-part="body"
       />
       {rings}
-      {variant.kind === "limited" && (
-        <>
-          <defs>
-            <clipPath id={sheenClip}>
-              <path d={shape.d} />
-            </clipPath>
-            <linearGradient id={sheenFill} x1="0" x2="1" y1="0" y2="0">
-              <stop
-                offset="0"
-                style={{ stopColor: "var(--emblem-sheen)" }}
-                stopOpacity={0}
-              />
-              <stop offset="0.5" style={{ stopColor: "var(--emblem-sheen)" }} />
-              <stop
-                offset="1"
-                style={{ stopColor: "var(--emblem-sheen)" }}
-                stopOpacity={0}
-              />
-            </linearGradient>
-          </defs>
-          <g clipPath={`url(#${sheenClip})`}>
-            <g transform="rotate(20 50 50)">
-              <rect
-                x={10}
-                y={-20}
-                width={36}
-                height={140}
-                fill={`url(#${sheenFill})`}
-                data-emblem-part="sheen"
-                className={SHEEN_CLASS}
-              />
-            </g>
-          </g>
-        </>
-      )}
+      {variant.kind === "limited" && <EmblemSheen d={shape.d} />}
       {glyphNode}
     </svg>
   );
 }
-
-/**
- * The limited-edition sheen: off the emblem at rest, sweeping across on
- * hover. Under reduced motion it never moves; it rests across the emblem
- * as a static highlight instead.
- */
-export const SHEEN_CLASS =
-  "-translate-x-[70px] motion-safe:transition-transform motion-safe:duration-700 motion-safe:ease-out motion-safe:group-hover/emblem:translate-x-[110px] motion-reduce:translate-x-[30px]";
 
 function round(n: number): number {
   return Math.round(n * 100) / 100;

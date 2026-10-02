@@ -62,8 +62,16 @@ function regularPolygon(
   });
 }
 
-/** A closed polygon whose corners are rounded with radius `r`. */
-function roundedPolygon(points: readonly Point[], r: number): string {
+/**
+ * A closed polygon whose corners are rounded with radius `r`, clockwise.
+ * It starts at the first corner, or with `fromEdge` at the middle of the
+ * edge into the first corner (for a polygon whose top is a flat edge).
+ */
+function roundedPolygon(
+  points: readonly Point[],
+  r: number,
+  { fromEdge = false } = {},
+): string {
   const n = points.length;
   const toward = (from: Point, to: Point): Point => {
     const dx = to[0] - from[0];
@@ -74,9 +82,14 @@ function roundedPolygon(points: readonly Point[], r: number): string {
   const parts = points.map((p, i) => {
     const before = toward(p, points[(i - 1 + n) % n]!);
     const after = toward(p, points[(i + 1) % n]!);
-    return `${i === 0 ? "M" : "L"}${pt(before)} Q${pt(p)} ${pt(after)}`;
+    const lead = i === 0 && !fromEdge ? "M" : "L";
+    return `${lead}${pt(before)} Q${pt(p)} ${pt(after)}`;
   });
-  return `${parts.join(" ")} Z`;
+  if (!fromEdge) return `${parts.join(" ")} Z`;
+  const last = points[n - 1]!;
+  const first = points[0]!;
+  const mid: Point = [(last[0] + first[0]) / 2, (last[1] + first[1]) / 2];
+  return `M${pt(mid)} ${parts.join(" ")} Z`;
 }
 
 /** A circle drawn from the top, clockwise. */
@@ -151,7 +164,9 @@ export const EMBLEM_SHAPES: Record<EmblemShapeId, EmblemShape> = {
   },
   octagon: {
     id: "octagon",
-    d: roundedPolygon(regularPolygon(8, 50, CENTRE, 22.5), 5),
+    d: roundedPolygon(regularPolygon(8, 50, CENTRE, 22.5), 5, {
+      fromEdge: true,
+    }),
     cx: 50,
     cy: 50,
     r: 46,
@@ -159,7 +174,7 @@ export const EMBLEM_SHAPES: Record<EmblemShapeId, EmblemShape> = {
   },
   quatrefoil: {
     id: "quatrefoil",
-    d: "M26.1 26.1 A24 24 0 1 1 73.9 26.1 A24 24 0 1 1 73.9 73.9 A24 24 0 1 1 26.1 73.9 A24 24 0 1 1 26.1 26.1 Z",
+    d: "M50 4 A24 24 0 0 1 73.9 26.1 A24 24 0 1 1 73.9 73.9 A24 24 0 1 1 26.1 73.9 A24 24 0 1 1 26.1 26.1 A24 24 0 0 1 50 4 Z",
     cx: 50,
     cy: 50,
     r: 40,

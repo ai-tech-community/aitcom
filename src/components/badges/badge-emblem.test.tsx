@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { render, screen } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it } from "vitest";
 
@@ -6,6 +9,7 @@ import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
 import { BADGE_CATALOG, BADGE_TRACK_IDS } from "@/lib/badges/catalog";
 
+import { useEmblemLabel } from "./use-emblem-label";
 import {
   BadgeEmblem,
   SHEEN_CLASS,
@@ -13,14 +17,29 @@ import {
   type EmblemSize,
 } from "./badge-emblem";
 
-function renderEmblem(props: BadgeEmblemProps, locale: "en" | "nl" = "en") {
+/** Renders the emblem named by `useEmblemLabel`, as callers do. */
+function Named(props: BadgeEmblemProps & { unnamed?: boolean }) {
+  const label = useEmblemLabel();
+  const { unnamed, ...rest } = props;
+  return (
+    <BadgeEmblem
+      {...rest}
+      label={unnamed ? undefined : label(props.subject, props.state)}
+    />
+  );
+}
+
+function renderEmblem(
+  props: BadgeEmblemProps & { unnamed?: boolean },
+  locale: "en" | "nl" = "en",
+) {
   return render(
     <NextIntlClientProvider
       locale={locale}
       messages={locale === "en" ? en : nl}
       timeZone="UTC"
     >
-      <BadgeEmblem {...props} />
+      <Named {...props} />
     </NextIntlClientProvider>,
   );
 }
@@ -170,11 +189,11 @@ describe("BadgeEmblem", () => {
     expect(parts(container, "ribbon")).toHaveLength(1);
   });
 
-  it("is hidden from assistive technology when decorative", () => {
+  it("is hidden from assistive technology without a name", () => {
     const { container } = renderEmblem({
       subject: { kind: "badge", slug: "regular" },
       state: { earned: true, earnedAt: "2026-03-03" },
-      decorative: true,
+      unnamed: true,
     });
     expect(screen.queryByRole("img")).toBeNull();
     expect(container.querySelector("svg")).toHaveAttribute(
@@ -223,4 +242,53 @@ describe("BadgeEmblem", () => {
       expect(seen.size).toBe(BADGE_TRACK_IDS.length);
     },
   );
+  it("shows a met-but-unrecorded tier as being added, with a full arc, never 12 of 1", () => {
+    const { container } = renderEmblem({
+      subject: { kind: "badge", slug: "article_author" },
+      state: { earned: false, progress: { current: 12, threshold: 1 } },
+    });
+    expect(
+      screen.getByRole("img", { name: "Writer, tier I, being added" }),
+    ).toBeInTheDocument();
+    expect(parts(container, "progress")[0]).toHaveAttribute(
+      "stroke-dasharray",
+      "100 100",
+    );
+    expect(container.innerHTML).not.toMatch(/12 of 1/);
+  });
+
+  it("says 'being added' in Dutch too", () => {
+    renderEmblem(
+      {
+        subject: { kind: "badge", slug: "article_author" },
+        state: { earned: false, progress: { current: 1, threshold: 1 } },
+      },
+      "nl",
+    );
+    expect(
+      screen.getByRole("img", {
+        name: "Schrijver, niveau I, wordt toegevoegd",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("is a server component: no client directive, no translation hooks", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/components/badges/badge-emblem.tsx"),
+      "utf8",
+    );
+    expect(source).not.toMatch(/^["']use client["']/m);
+    expect(source).not.toMatch(/from "next-intl"/);
+    expect(source).not.toMatch(/\buse(Id|State|Effect|Translations)\(/);
+    // Renders with no intl provider at all, the sheen child included.
+    const html = renderToStaticMarkup(
+      <BadgeEmblem
+        subject={{ kind: "badge", slug: "early_adopter" }}
+        state={{ earned: true, earnedAt: "2026-03-03" }}
+        label="Early adopter"
+      />,
+    );
+    expect(html).toContain('aria-label="Early adopter"');
+    expect(html).toContain('data-emblem-part="sheen"');
+  });
 });

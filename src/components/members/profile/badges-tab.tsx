@@ -17,10 +17,12 @@ import {
   BadgeEmblem,
   type EmblemState,
 } from "@/components/badges/badge-emblem";
+import { useEmblemLabel } from "@/components/badges/use-emblem-label";
 import { useRarityLabel } from "@/components/badges/use-rarity-label";
 
 import {
   groupBadges,
+  isBeingAdded,
   type BadgeViewer,
   type HeldBadge,
   type SingleEntry,
@@ -108,6 +110,7 @@ export function BadgesTab({
   const tBadges = useTranslations("badges");
   const format = useFormatter();
   const rarityOf = useRarityLabel(rarity);
+  const emblemLabel = useEmblemLabel();
   const groups = groupBadges(held, viewer);
   const owner = viewer.kind === "owner";
 
@@ -116,9 +119,11 @@ export function BadgesTab({
     ? { showcase, full: pinnedCount >= SHOWCASE_LIMIT }
     : null;
 
-  const earnedOn = (earnedAt: Date | string | null) =>
+  const earnedOn = (earnedAt: Date | string | null, beingAdded = false) =>
     earnedAt === null
-      ? t("notEarned")
+      ? beingAdded
+        ? t("beingAddedFact")
+        : t("notEarned")
       : t("earnedOn", {
           date: format.dateTime(new Date(earnedAt), DATE_FORMAT),
         });
@@ -152,7 +157,6 @@ export function BadgesTab({
           subject={{ kind: "badge", slug: lead.badge.slug }}
           state={emblemState(lead)}
           size="lg"
-          decorative
         />
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-start justify-between gap-3">
@@ -169,7 +173,7 @@ export function BadgesTab({
           </div>
           <Facts
             items={[
-              earnedOn(lead.earnedAt),
+              earnedOn(lead.earnedAt, isBeingAdded(lead)),
               earned ? rarityOf(lead.badge.slug) : null,
             ]}
           />
@@ -186,6 +190,10 @@ export function BadgesTab({
                     subject={{ kind: "badge", slug: tier.badge.slug }}
                     state={emblemState(tier)}
                     size="sm"
+                    label={emblemLabel(
+                      { kind: "badge", slug: tier.badge.slug },
+                      emblemState(tier),
+                    )}
                   />
                 </li>
               ))}
@@ -195,10 +203,12 @@ export function BadgesTab({
             <p className="text-sm" data-testid="track-next">
               {t("next", {
                 name: tBadges(nextLocked.badge.nameKey),
-                progress: tBadges(`progress.${group.track}`, {
-                  current: nextLocked.progress.current,
-                  count: nextLocked.progress.threshold,
-                }),
+                progress: isBeingAdded(nextLocked)
+                  ? t("beingAdded")
+                  : tBadges(`progress.${group.track}`, {
+                      current: nextLocked.progress.current,
+                      count: nextLocked.progress.threshold,
+                    }),
               })}
             </p>
           )}
@@ -222,7 +232,6 @@ export function BadgesTab({
           subject={{ kind: "badge", slug: entry.badge.slug }}
           state={emblemState(entry)}
           size="md"
-          decorative
         />
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-start justify-between gap-3">
@@ -316,7 +325,6 @@ export function BadgesTab({
                   subject={{ kind: "award", label: award.label }}
                   state={{ earned: true, earnedAt: award.earnedAt }}
                   size="md"
-                  decorative
                 />
                 <div className="min-w-0 flex-1 space-y-1">
                   <p className="font-medium break-words">{award.label}</p>

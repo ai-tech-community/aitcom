@@ -834,6 +834,7 @@
       "recentWorkEmptyOwnerDescription": "Artikelen, projecten, cursussen, certificaten en evenementen die je organiseert verschijnen hier.",
       "recentWorkEmptyVisitor": "Nog geen werk om te tonen.",
       "showcaseRarestHint": "Je zeldzaamste badges.",
+      "showcaseRecentHint": "Je nieuwste badges.",
       "showcasePinCta": "Kies zelf"
     },
     "badges": {
@@ -863,7 +864,9 @@
       "unpinLabel": "Licht {name} niet meer uit",
       "pinning": "Bezig met uitlichten…",
       "unpinning": "Bezig met weghalen…",
-      "pinError": "Je uitgelichte badges konden niet worden bijgewerkt. Probeer het opnieuw."
+      "pinError": "Je uitgelichte badges konden niet worden bijgewerkt. Probeer het opnieuw.",
+      "beingAdded": "wordt toegevoegd",
+      "beingAddedFact": "Wordt toegevoegd"
     },
     "activity": {
       "title": "Activiteit",
@@ -4054,7 +4057,8 @@
     "award": "Prijs: {label}",
     "earned": "{name}, verdiend op {date}",
     "locked": "{name}, vergrendeld",
-    "lockedProgress": "{name}, vergrendeld, {current, number} van {threshold, number}"
+    "lockedProgress": "{name}, vergrendeld, {current, number} van {threshold, number}",
+    "beingAdded": "{name}, wordt toegevoegd"
   },
   "badgeRarity": {
     "share": "Verdiend door {percent} van de leden",

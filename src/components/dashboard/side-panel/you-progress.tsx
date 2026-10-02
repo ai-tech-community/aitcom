@@ -245,7 +245,6 @@ export function YouProgress({
                         subject={{ kind: "badge", slug: badge.slug }}
                         state={{ earned: true, earnedAt }}
                         size="sm"
-                        decorative
                       />
                       <span className="min-w-0">
                         <span className="block text-sm leading-tight">

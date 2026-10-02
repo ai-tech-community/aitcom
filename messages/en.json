@@ -834,6 +834,7 @@
       "recentWorkEmptyOwnerDescription": "Articles, projects, courses, certificates and events you host show up here.",
       "recentWorkEmptyVisitor": "No work to show yet.",
       "showcaseRarestHint": "Showing your rarest badges.",
+      "showcaseRecentHint": "Showing your newest badges.",
       "showcasePinCta": "Choose your own"
     },
     "badges": {
@@ -863,7 +864,9 @@
       "unpinLabel": "Unpin {name} from your showcase",
       "pinning": "Pinning…",
       "unpinning": "Unpinning…",
-      "pinError": "Could not update your showcase. Try again."
+      "pinError": "Could not update your showcase. Try again.",
+      "beingAdded": "being added",
+      "beingAddedFact": "Being added"
     },
     "activity": {
       "title": "Activity",
@@ -4054,7 +4057,8 @@
     "award": "Award: {label}",
     "earned": "{name}, earned {date}",
     "locked": "{name}, locked",
-    "lockedProgress": "{name}, locked, {current, number} of {threshold, number}"
+    "lockedProgress": "{name}, locked, {current, number} of {threshold, number}",
+    "beingAdded": "{name}, being added"
   },
   "badgeRarity": {
     "share": "Earned by {percent} of members",

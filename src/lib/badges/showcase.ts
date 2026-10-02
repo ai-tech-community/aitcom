@@ -77,6 +77,21 @@ export function rarestBadges(
 }
 
 /**
+ * The badges a compact view shows when the member chose none: the rarest,
+ * or — when rarity could not be loaded — the most recent. `held` must be
+ * newest first for that fallback.
+ */
+export function featuredBadges(
+  held: readonly BadgeSlug[],
+  holders: HoldersOf | null,
+  count = SHOWCASE_LIMIT,
+): BadgeSlug[] {
+  return holders
+    ? rarestBadges(held, holders, count)
+    : highestTiers(held).slice(0, count);
+}
+
+/**
  * The stored pins that still apply, in pin order: slugs the member holds,
  * each track badge raised to the highest tier held, one per track.
  */
@@ -96,20 +111,28 @@ export function effectivePins(
 
 export interface Showcase {
   slugs: BadgeSlug[];
-  /** Whether the member chose these, or they are the rarest held. */
-  source: "pinned" | "rarest";
+  /**
+   * Whether the member chose these, or they are the rarest held (the most
+   * recent when rarity is unavailable).
+   */
+  source: "pinned" | "rarest" | "recent";
 }
 
-/** What the Overview showcase shows. */
+/**
+ * What the Overview showcase shows. `held` is newest first; `holders` is
+ * null when rarity could not be loaded.
+ */
 export function resolveShowcase(
   pinned: readonly string[],
   held: readonly BadgeSlug[],
-  holders: HoldersOf,
+  holders: HoldersOf | null,
 ): Showcase {
   const pins = effectivePins(pinned, held);
-  return pins.length > 0
-    ? { slugs: pins, source: "pinned" }
-    : { slugs: rarestBadges(held, holders), source: "rarest" };
+  if (pins.length > 0) return { slugs: pins, source: "pinned" };
+  return {
+    slugs: featuredBadges(held, holders),
+    source: holders ? "rarest" : "recent",
+  };
 }
 
 export type PinOutcome =

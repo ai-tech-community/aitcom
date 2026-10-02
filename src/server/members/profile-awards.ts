@@ -26,11 +26,12 @@ type ChallengeRef = Pick<
 >;
 
 /**
- * Applies the viewer's visibility to award rows. Like hackathon
- * certificates on the Work tab, an award from a challenge in a community
- * the viewer cannot read is left out entirely: its label often names the
- * challenge. A draft (or deleted) challenge keeps the award but drops the
- * link.
+ * Applies the viewer's visibility to award rows (fail-closed). Like
+ * hackathon certificates on the Work tab, an award from a challenge in a
+ * community the viewer cannot read is left out: its label often names the
+ * challenge. So is an award whose challenge no longer exists, since its
+ * visibility can no longer be checked; only its owner still sees it. A
+ * draft challenge keeps the award but drops the link.
  */
 export function toProfileAwards(
   rows: readonly {
@@ -40,13 +41,14 @@ export function toProfileAwards(
     earnedAt: Date;
   }[],
   challenges: ReadonlyMap<number, ChallengeRef>,
-  hiddenCommunityIds: ReadonlySet<string>,
+  viewer: { hiddenCommunityIds: ReadonlySet<string>; isOwner: boolean },
 ): ProfileAward[] {
   return rows.flatMap((row): ProfileAward[] => {
     const challenge = challenges.get(row.challengeId);
+    if (!challenge && !viewer.isOwner) return [];
     if (
       challenge?.communityId &&
-      hiddenCommunityIds.has(challenge.communityId)
+      viewer.hiddenCommunityIds.has(challenge.communityId)
     ) {
       return [];
     }
@@ -97,6 +99,6 @@ export async function loadProfileAwards(
   return toProfileAwards(
     rows,
     new Map(challenges.docs.map((doc) => [doc.id, doc as ChallengeRef])),
-    new Set(hidden),
+    { hiddenCommunityIds: new Set(hidden), isOwner: viewerId === userId },
   );
 }

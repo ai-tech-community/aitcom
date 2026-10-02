@@ -189,9 +189,11 @@ export default async function MemberOverviewPage({
             earnedAt={earnedAt}
             rarity={rarity}
           />
-          {isOwner && showcase.source === "rarest" && (
+          {isOwner && showcase.source !== "pinned" && (
             <p className="text-muted-foreground text-xs">
-              {t("showcaseRarestHint")}{" "}
+              {showcase.source === "rarest"
+                ? t("showcaseRarestHint")
+                : t("showcaseRecentHint")}{" "}
               <Link
                 href={profileTabHref(id, "badges")}
                 className="text-foreground underline underline-offset-4"

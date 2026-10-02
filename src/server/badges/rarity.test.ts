@@ -1,8 +1,12 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { BADGE_SLUGS } from "@/lib/badges/catalog";
-import { toBadgeRarityReport } from "@/server/badges/rarity";
+import {
+  clearBadgeRarityCache,
+  optionalBadgeRarity,
+  toBadgeRarityReport,
+} from "@/server/badges/rarity";
 
 describe("toBadgeRarityReport", () => {
   it("lists every catalog badge, shares for most, counts for editions", () => {
@@ -45,5 +49,24 @@ describe("toBadgeRarityReport", () => {
         (badge) => badge.measure === "count" || badge.share === 0,
       ),
     ).toBe(true);
+  });
+});
+
+describe("optionalBadgeRarity", () => {
+  it("logs a failed load and yields null instead of failing the page", async () => {
+    clearBadgeRarityCache();
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const db = {
+      execute: () => Promise.reject(new Error("db down")),
+    } as never;
+    await expect(optionalBadgeRarity(db)).resolves.toBeNull();
+    expect(error).toHaveBeenCalledWith(
+      "badges: rarity failed to load",
+      expect.any(Error),
+    );
+    error.mockRestore();
+    clearBadgeRarityCache();
   });
 });

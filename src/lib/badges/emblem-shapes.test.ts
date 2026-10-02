@@ -40,9 +40,13 @@ describe("emblem shapes", () => {
     for (const shape of Object.values(EMBLEM_SHAPES)) {
       expect(shape.d, shape.id).toMatch(/^M[\d.]+ [\d.]+ .* Z$/);
       expect(shape.d, shape.id).not.toMatch(/NaN|Infinity/);
-      const startY = Number(/^M[\d.]+ ([\d.]+)/.exec(shape.d)![1]);
-      // Starts in the top third, so the progress arc grows from the top.
+      const [, startX, startY] = /^M([\d.]+) ([\d.]+)/
+        .exec(shape.d)!
+        .map(Number);
+      // Starts at the top, near the centre line, so the progress arc grows
+      // from the top like a clock hand.
       expect(startY, shape.id).toBeLessThan(34);
+      expect(Math.abs(startX! - 50), shape.id).toBeLessThanOrEqual(10);
       expect(shape.r, shape.id).toBeGreaterThan(0);
     }
   });

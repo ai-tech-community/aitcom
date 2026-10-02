@@ -85,8 +85,8 @@ import {
   type ProfileAward,
 } from "@/server/members/profile-awards";
 import type { BadgeSlug } from "@/lib/badges/catalog";
-import { rarestBadges, resolveShowcase } from "@/lib/badges/showcase";
-import { getBadgeRarity, holdersOf } from "@/server/badges/rarity";
+import { featuredBadges, resolveShowcase } from "@/lib/badges/showcase";
+import { holdersOf, optionalBadgeRarity } from "@/server/badges/rarity";
 
 /** Emblems shown per member on the /members roster. */
 const ROSTER_BADGE_LIMIT = 3;
@@ -438,7 +438,7 @@ export const membersRouter = createTRPCRouter({
       const [identitiesByUser, githubAccountIds, rarity] = await Promise.all([
         loadSocialIdentitiesForUsers(ctx.db, [input.userId]),
         loadGithubAccountIds(ctx.db, [input.userId]),
-        getBadgeRarity(ctx.db),
+        optionalBadgeRarity(ctx.db),
       ]);
       const earned = toDisplayableBadges(badges);
 
@@ -468,7 +468,7 @@ export const membersRouter = createTRPCRouter({
         showcase: resolveShowcase(
           profile.showcaseBadges,
           earned.map((badge) => badge.slug),
-          holdersOf(rarity),
+          rarity && holdersOf(rarity),
         ),
         social: toPublicSocialJson(social),
       };
@@ -667,8 +667,15 @@ export const membersRouter = createTRPCRouter({
                       displayableBadgeRows(),
                     ),
                   )
+                  // Newest first, then by slug: a stable order for the
+                  // recent fallback and for equally rare badges.
+                  .orderBy(
+                    memberBadges.userId,
+                    desc(memberBadges.earnedAt),
+                    memberBadges.badgeSlug,
+                  )
               : Promise.resolve([]),
-            getBadgeRarity(ctx.db),
+            optionalBadgeRarity(ctx.db),
             loadSocialIdentitiesForUsers(ctx.db, memberIds),
             loadGithubAccountIds(ctx.db, memberIds),
           ]);
@@ -680,7 +687,7 @@ export const membersRouter = createTRPCRouter({
           held.push(displayable.slug);
           heldByMember.set(badge.userId, held);
         }
-        const holders = holdersOf(rarity);
+        const holders = rarity && holdersOf(rarity);
 
         return {
           items: filtered.map((m) => {
@@ -701,7 +708,7 @@ export const membersRouter = createTRPCRouter({
               image: m.image,
               ownedActiveAgentId: m.agentId,
               badgeCount: heldByMember.get(m.profile.userId)?.length ?? 0,
-              topBadges: rarestBadges(
+              topBadges: featuredBadges(
                 heldByMember.get(m.profile.userId) ?? [],
                 holders,
                 ROSTER_BADGE_LIMIT,

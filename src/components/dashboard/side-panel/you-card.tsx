@@ -23,6 +23,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VerifiedSocials } from "@/components/verified-socials";
 import { BadgeEmblem } from "@/components/badges/badge-emblem";
+import { useEmblemLabel } from "@/components/badges/use-emblem-label";
 import {
   DashboardSection,
   SectionBody,
@@ -154,6 +155,7 @@ function YouSummary({
 }) {
   const t = useTranslations("dashboard.you");
   const tMembers = useTranslations("members");
+  const emblemLabel = useEmblemLabel();
   const [progressOpen, setProgressOpen] = useState(false);
   const toNext = xpForNextLevel(xp);
   const percent = Math.round((toNext.current / toNext.needed) * 100);
@@ -231,6 +233,10 @@ function YouSummary({
                   subject={{ kind: "badge", slug }}
                   state={{ earned: true, earnedAt }}
                   size="sm"
+                  label={emblemLabel(
+                    { kind: "badge", slug },
+                    { earned: true, earnedAt },
+                  )}
                 />
               </li>
             ))}

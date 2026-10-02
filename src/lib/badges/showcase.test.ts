@@ -4,6 +4,7 @@ import type { BadgeSlug } from "./catalog";
 import {
   SHOWCASE_LIMIT,
   effectivePins,
+  featuredBadges,
   highestTiers,
   planPin,
   planUnpin,
@@ -184,5 +185,38 @@ describe("planUnpin", () => {
 
   it("removes a pin that is no longer in the catalog", () => {
     expect(planUnpin(["speaker", "regular"], "speaker")).toEqual(["regular"]);
+  });
+});
+
+describe("without rarity (it failed to load)", () => {
+  // Held newest first, as the profile and roster queries return them.
+  const newestFirst: BadgeSlug[] = [
+    "article_author",
+    "regular",
+    "profile_complete",
+    "first_event",
+    "early_adopter",
+  ];
+
+  it("features the most recent badges, one per track", () => {
+    expect(featuredBadges(newestFirst, null)).toEqual([
+      "article_author",
+      "regular",
+      "profile_complete",
+    ]);
+  });
+
+  it("falls back to the most recent in the showcase, and says so", () => {
+    expect(resolveShowcase([], newestFirst, null)).toEqual({
+      slugs: ["article_author", "regular", "profile_complete"],
+      source: "recent",
+    });
+  });
+
+  it("still shows the pins", () => {
+    expect(resolveShowcase(["early_adopter"], newestFirst, null)).toEqual({
+      slugs: ["early_adopter"],
+      source: "pinned",
+    });
   });
 });

@@ -1,21 +1,15 @@
 /**
  * A member's own progress on each badge track (ADR-0039), as the owner's
  * Badges tab shows it on locked tiers ("3 of 5 articles"). Only ever sent
- * to the member themself (`badges.myProgress`).
+ * to the member themself (`badges.myProgress`). Thresholds come from the
+ * catalog, so the DTO carries only the metric.
  */
-import {
-  badgesOfTrack,
-  type BadgeTier,
-  type BadgeTrackId,
-  type TrackBadgeSlug,
-} from "./catalog";
+import type { BadgeTrackId } from "./catalog";
 
 export interface TrackProgress {
   track: BadgeTrackId;
   /** The track's metric now, read by the engine's own metric. */
   current: number;
-  /** The lowest tier the metric has not reached yet; null past tier III. */
-  next: { tier: BadgeTier; slug: TrackBadgeSlug; threshold: number } | null;
 }
 
 /** The progress DTO for one track's metric value. */
@@ -23,14 +17,7 @@ export function toTrackProgress(
   track: BadgeTrackId,
   current: number,
 ): TrackProgress {
-  const next = badgesOfTrack(track).find((tier) => current < tier.threshold);
-  return {
-    track,
-    current,
-    next: next
-      ? { tier: next.tier, slug: next.slug, threshold: next.threshold }
-      : null,
-  };
+  return { track, current };
 }
 
 /** Progress towards one tier, 0–1, for the locked emblem's arc. */
