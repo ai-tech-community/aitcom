@@ -30,8 +30,6 @@ const sorted = (o: object) => Object.keys(o).sort();
 const PUBLIC_PROFILE_RESPONSE_KEYS = [
   "audience",
   "badges",
-  "certificates",
-  "eventsAttended",
   "profile",
   "reach",
   "social",

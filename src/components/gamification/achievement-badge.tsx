@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Trophy } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 
@@ -60,6 +61,7 @@ const AchievementBadge = React.forwardRef<
     },
     ref,
   ) => {
+    const t = useTranslations("achievementBadge");
     const isUnlocked = achievement.achievedAt !== null;
 
     const hasProgress = isUnlocked && typeof achievement.progress === "number";
@@ -77,8 +79,8 @@ const AchievementBadge = React.forwardRef<
     const ringDashoffset =
       ringCircumference - (progress / 100) * ringCircumference;
 
-    const statusLabel = isUnlocked ? "Earned" : "Locked";
-    const itemLabel = `${achievement.name} - ${statusLabel}`;
+    const statusLabel = isUnlocked ? t("earned") : t("locked");
+    const itemLabel = `${achievement.name}, ${statusLabel}`;
 
     return (
       <div
@@ -136,7 +138,10 @@ const AchievementBadge = React.forwardRef<
           {achievement.badgeUrl ? (
             <img
               src={achievement.badgeUrl}
-              alt={`${achievement.name} badge - ${statusLabel}`}
+              alt={t("imageAlt", {
+                name: achievement.name,
+                status: statusLabel,
+              })}
               className={cn(
                 badgeSizeMap[badgeSize],
                 "relative z-10 rounded-full object-cover",
@@ -149,9 +154,10 @@ const AchievementBadge = React.forwardRef<
               className={cn(
                 badgeSizeMap[badgeSize],
                 "relative z-10 flex items-center justify-center rounded-full",
+                // Earned reads as a positive state; locked stays muted.
                 isUnlocked
-                  ? "bg-muted text-muted-foreground"
-                  : "bg-success text-success-foreground",
+                  ? "bg-success/15 text-success"
+                  : "bg-muted text-muted-foreground",
               )}
             >
               <Trophy className={iconSizeMap[badgeSize]} />
@@ -161,7 +167,7 @@ const AchievementBadge = React.forwardRef<
 
         {rarity !== null ? (
           <span className="text-muted-foreground text-xs font-medium">
-            {rarity}% of users
+            {t("rarity", { percent: rarity })}
           </span>
         ) : null}
 
@@ -172,6 +178,10 @@ const AchievementBadge = React.forwardRef<
           )}
         >
           {achievement.name}
+          {/* The trophy is decorative; say the status in words too. */}
+          {!onAchievementClick && (
+            <span className="sr-only">, {statusLabel}</span>
+          )}
         </span>
       </div>
     );

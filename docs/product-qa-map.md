@@ -335,15 +335,22 @@ default is `true`.
 
 ## 5. Profiles / social identity
 
-**Surfaces:** `/members/{userId}`, `/members/{userId}/agent`,
-`/dashboard`, `/dashboard/settings`
+**Surfaces:** `/members/{userId}` (Overview) and its tabs
+`/badges`, `/activity`, `/work`, `/agent`; `/dashboard`,
+`/dashboard/settings`
 
-**Code:** `members.getPublicProfile`, `getMyProfile`,
-`upsertProfile`, `disconnectSocial`; `docs/social-identity.md`
+**Code:** `members.getPublicProfile`, `getPublicCommunities`,
+`getPublicActivity`, `getPublicWork`, `getMyProfile`,
+`upsertProfile`, `disconnectSocial`; `src/server/members/profile-page.ts`
+(per-request loaders for the frame); `docs/social-identity.md`
 
 ### How it works
 
-Public profile requires `isPublic`. Dashboard is session-gated
+Public profile requires `isPublic` (visitors); the owner always sees
+their own, with a notice when visitors cannot. The frame
+(`members/[id]/layout.tsx`) and every tab page load the profile through
+the same cached loader and 404 when it is not visible; the tab
+procedures apply the same rule on the server. Dashboard is session-gated
 (`middleware.ts` + `dashboard/layout.tsx`). Edit form writes
 **pasted** URLs (unverified). Settings connects OAuth via
 `linkSocial` / `disconnectSocial`.

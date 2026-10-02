@@ -3,6 +3,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
+import {
+  isPublicArticle,
+  publicArticleWhere,
+} from "@/server/articles/public-articles";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import type { Where } from "payload";
@@ -73,8 +77,7 @@ export default async function ArticleDetailPage({
 
   const article = await getArticleBySlug(slug, locale);
   if (!article) return notFound();
-  if (article.authorType === "member" && article.reviewStatus !== "approved")
-    return notFound();
+  if (!isPublicArticle(article)) return notFound();
 
   const typeLabels: Record<string, string> = {
     article: t("article"),
@@ -91,15 +94,7 @@ export default async function ArticleDetailPage({
 
   // Fetch related articles
   const payload = await getPayloadClient();
-  const publishedFilter: Where[] = [
-    { status: { equals: "published" } },
-    {
-      or: [
-        { authorType: { not_equals: "member" } },
-        { reviewStatus: { equals: "approved" } },
-      ],
-    },
-  ];
+  const publishedFilter: Where[] = [publicArticleWhere()];
 
   let relatedArticles: (typeof article)[] = [];
 

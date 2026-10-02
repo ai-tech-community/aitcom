@@ -11,9 +11,7 @@ import {
   memberProfiles,
   memberBadges,
   user,
-  eventRegistrations,
   agentProfiles,
-  hackathonCertificates,
   activityEvents,
   pointsEvents,
   account,
@@ -52,11 +50,25 @@ import {
   publicRosterVisibility,
 } from "@/server/members/public-roster";
 import {
+  loadProfileGate,
   profileAudience,
   profileReach,
   profileReachColumns,
   profileReadableBy,
 } from "@/server/members/profile-access";
+import {
+  loadProfileCommunities,
+  type ProfileCommunity,
+} from "@/server/members/profile-communities";
+import {
+  loadProfileActivity,
+  type ProfileActivity,
+} from "@/server/members/profile-activity";
+import {
+  loadProfileWork,
+  type ProfileWork,
+} from "@/server/members/profile-work";
+import { routing } from "@/i18n/routing";
 import {
   publicRosterColumns,
   toPublicRosterEntry,
@@ -432,38 +444,8 @@ export const membersRouter = createTRPCRouter({
         .from(memberBadges)
         .where(
           and(eq(memberBadges.userId, input.userId), displayableBadgeRows()),
-        );
-
-      const [attendedCount] = await ctx.db
-        .select({ count: sql<number>`count(*)` })
-        .from(eventRegistrations)
-        .where(
-          and(
-            eq(eventRegistrations.userId, input.userId),
-            eq(eventRegistrations.status, "attended"),
-          ),
-        );
-
-      // Hackathon certificates (issued at finalize), shown alongside badges.
-      // Same visibility rule as the rest of the profile (early return above).
-      const certificates = await ctx.db
-        .select()
-        .from(hackathonCertificates)
-        .where(eq(hackathonCertificates.userId, input.userId))
-        .orderBy(desc(hackathonCertificates.issuedAt));
-
-      let challengeTitleById = new Map<number, string>();
-      if (certificates.length > 0) {
-        const payload = await getPayloadClient();
-        const { docs } = await payload.find({
-          collection: "challenges",
-          where: { id: { in: certificates.map((c) => c.challengeId) } },
-          depth: 0,
-          limit: certificates.length,
-          pagination: false,
-        });
-        challengeTitleById = new Map(docs.map((d) => [d.id, d.title]));
-      }
+        )
+        .orderBy(desc(memberBadges.earnedAt), memberBadges.badgeSlug);
 
       const [identitiesByUser, githubAccountIds] = await Promise.all([
         loadSocialIdentitiesForUsers(ctx.db, [input.userId]),
@@ -493,16 +475,68 @@ export const membersRouter = createTRPCRouter({
             }
           : null,
         badges: toDisplayableBadges(badges),
-        certificates: certificates.map((c) => ({
-          id: c.id,
-          challengeId: c.challengeId,
-          challengeTitle: challengeTitleById.get(c.challengeId) ?? null,
-          kind: c.kind,
-          issuedAt: c.issuedAt,
-        })),
-        eventsAttended: attendedCount?.count ?? 0,
         social: toPublicSocialJson(social),
       };
+    }),
+
+  /**
+   * The communities shown in a member's identity panel, as this viewer may
+   * see them. Null when the viewer may not see the profile.
+   */
+  getPublicCommunities: publicProcedure
+    .input(z.object({ userId: z.string() }))
+    .query(async ({ ctx, input }): Promise<ProfileCommunity[] | null> => {
+      const viewerId = ctx.session?.user.id ?? null;
+      const gate = await loadProfileGate(ctx.db, {
+        userId: input.userId,
+        viewerId,
+      });
+      if (!gate) return null;
+      return loadProfileCommunities(ctx.db, { userId: input.userId, viewerId });
+    }),
+
+  /**
+   * A member's public activity calendar: active days with their XP totals
+   * and the streaks, from points only. Null when the viewer may not see the
+   * profile.
+   */
+  getPublicActivity: publicProcedure
+    .input(z.object({ userId: z.string() }))
+    .query(async ({ ctx, input }): Promise<ProfileActivity | null> => {
+      const gate = await loadProfileGate(ctx.db, {
+        userId: input.userId,
+        viewerId: ctx.session?.user.id,
+      });
+      if (!gate) return null;
+      return loadProfileActivity(ctx.db, {
+        userId: input.userId,
+        today: new Date().toISOString().slice(0, 10),
+      });
+    }),
+
+  /**
+   * A member's Work (articles, projects, courses, certificates, events
+   * hosted), as this viewer may see it. Null when the viewer may not see the
+   * profile.
+   */
+  getPublicWork: publicProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        locale: z.enum(routing.locales).default(routing.defaultLocale),
+      }),
+    )
+    .query(async ({ ctx, input }): Promise<ProfileWork | null> => {
+      const viewerId = ctx.session?.user.id ?? null;
+      const gate = await loadProfileGate(ctx.db, {
+        userId: input.userId,
+        viewerId,
+      });
+      if (!gate) return null;
+      return loadProfileWork(
+        { db: ctx.db, payload: await getPayloadClient() },
+        { userId: input.userId, viewerId, locale: input.locale },
+      );
     }),
 
   /** List public members, paginated, with search and skill filter. Sorted by XP. */

@@ -4,7 +4,23 @@ import {
   computeStreakData,
   tierForXp,
   pointsTriggerType,
+  toStreakPeriods,
 } from "@/lib/gamification";
+
+describe("toStreakPeriods", () => {
+  it("collapses consecutive days into runs", () => {
+    expect(toStreakPeriods(["2026-01-01", "2026-01-02", "2026-01-04"])).toEqual(
+      [
+        { periodStart: "2026-01-01", periodEnd: "2026-01-02" },
+        { periodStart: "2026-01-04", periodEnd: "2026-01-04" },
+      ],
+    );
+  });
+
+  it("is empty for no days", () => {
+    expect(toStreakPeriods([])).toEqual([]);
+  });
+});
 
 describe("computeStreakData", () => {
   it("returns zeros for no activity", () => {
