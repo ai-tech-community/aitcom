@@ -44,7 +44,9 @@ export interface SafeResponse {
  * undici is not a dependency here. We accept the window because it is heavily
  * mitigated: callers are reachable only by active community members and are
  * rate limited, and the guard re-runs on every redirect hop. Revisit with
- * IP-pinning if a caller is ever exposed more broadly.
+ * IP-pinning if a caller is ever exposed more broadly. Data collectors are
+ * such a broader exposure: pinning the connection to the validated IP is a
+ * gate before they are enabled (ADR-0040).
  */
 export async function safeFetch(
   url: string,

@@ -40,8 +40,8 @@ general scraping platform:
 - Member UI in the dashboard: collector list, start-run form, run page with
   preview and CSV/JSON download, run history.
 - MCP tools for the member's agent under a new `collect` scope.
-- Safety: SSRF guard, robots.txt, shared per-site rate limit, budgets, quota,
-  domain blocklist, feature flag, per-collector disable.
+- Safety: https only, SSRF guard, robots.txt, shared per-site rate limit,
+  budgets, quota, domain blocklist, feature flag, per-collector disable.
 - Public page for site owners explaining our visitor and how to opt out.
 - 30-day retention.
 
@@ -184,6 +184,10 @@ interface CollectorResponse {
 }
 ```
 
+**Collectors are https-only.** Input schemas accept only `https` addresses and
+the context refuses any other scheme ("Only https addresses can be
+collected."), since the SSRF guard in `safeFetch` refuses plain `http` anyway.
+
 Every request hop runs these checks in order, then delegates. **Redirects
 are followed by the context, not by `safeFetch`**, so a redirect into an
 opted-out site or a robots-disallowed path is caught before it is requested
@@ -191,9 +195,18 @@ opted-out site or a robots-disallowed path is caught before it is requested
 
 1. **Run budget.** Page count < `maxPages`, time left, signal not aborted.
 2. **Blocklist.** Host is not on the opted-out list.
-3. **robots.txt.** Fetched once per host per run (through `safeFetch`), cached
-   for the run, checked for our user agent. Unreachable robots.txt (4xx) means
-   allowed; 5xx or timeout means disallowed for this run (conservative).
+3. **robots.txt.** Fetched once per origin per run (through `safeFetch`),
+   cached for the run, checked for our user agent. The robots.txt request
+   obeys the same rules as a page: it is made only after the run budget check
+   (a run that has spent its budget never fetches robots.txt for a new site);
+   it takes the shared per-site rate-limit slot for its host; it follows
+   redirects itself (max 5 hops) and never contacts an opted-out site on any
+   hop (such a redirect counts as disallowed); its bytes are added to
+   `bytes_fetched` (not to `pages_fetched`). Outcomes: rules (2xx) decide per
+   page; a missing robots.txt (4xx) allows everything; anything else (5xx, a
+   redirect left after 5 hops, timeout, network error, SSRF guard refusal)
+   ends the run `failed` with `stop_reason = 'robots_unreachable'` — we do not
+   guess either way.
 4. **Shared per-site rate limit.** At most 1 request per second per host
    **across all runs and instances**, via Upstash Redis (already used in
    `server/inbox/publish.ts`). The context waits for its slot rather than
@@ -205,7 +218,8 @@ opted-out site or a robots-disallowed path is caught before it is requested
    `stop_reason = 'site_refused'`.
 
 Counters (`pages_fetched`, `bytes_fetched`) are incremented here, so metering
-cannot be skipped by a collector.
+cannot be skipped by a collector. robots.txt bytes count; robots.txt requests
+are not pages.
 
 **Required change to `src/server/net/safe-fetch.ts`** (extend, not fork):
 
@@ -243,9 +257,16 @@ is written back to the run) → re-validate input
    WHERE id = (SELECT id FROM app.collector_run WHERE status='queued'
    OR (status='running' AND lease_until < now())
    ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *`.
-  An expired lease means the worker died; the run is re-claimed. Rows from the
-  earlier attempt are deleted before re-running (a run is all-or-nothing per
-  attempt; resumable runs are a later seam).
+  An expired lease means the worker died; the run is re-claimed. Rows and the
+  item counters (`item_count`, `invalid_item_count`) from the earlier attempt
+  are reset before re-running (a run's dataset is all-or-nothing per attempt;
+  resumable runs are a later seam). `pages_fetched` and `bytes_fetched` are
+  **cumulative across attempts**: they measure real traffic, which an
+  interrupted attempt still caused.
+- **Fencing.** Every write matches on `attempts`, so a worker whose lease
+  expired and whose run was re-claimed writes nothing. A worker that is
+  already fenced out when it starts returns without running the collector, so
+  it never contacts a site.
 - **Attempts** are counted; after 2 failed attempts the run is `failed` with
   `stop_reason = 'worker_lost'`.
 - **Time budget.** The worker route has `maxDuration = 300`; a run's effective
@@ -253,7 +274,8 @@ is written back to the run) → re-validate input
   the run as `succeeded` with `stop_reason = 'time_limit'` (partial, honest).
 - **Errors.** A thrown error inside a collector ends the run `failed` with a
   user-safe message mapped from known error kinds; the raw error goes to the
-  server log only.
+  server log only. The stored message is cut to 500 characters (the column
+  size).
 
 ### Run lifecycle (`run-status.ts`)
 
@@ -268,7 +290,8 @@ is written back to the run) → re-validate input
 `assertTransition(from, to)` is the only way status changes.
 
 `stop_reason`: `complete | page_limit | item_limit | time_limit |
-site_refused | robots_disallowed | blocked_domain | error | worker_lost`.
+site_refused | robots_disallowed | robots_unreachable | blocked_domain |
+error | worker_lost`.
 
 ### CollectorRuns (Facade)
 
@@ -291,7 +314,9 @@ exportRun({ userId, runId, format: "csv" | "json" })        // streamed
 - **Kick:** inside `after()`, a fire-and-forget authenticated POST to the worker
   route (2-second timeout, errors swallowed). The per-minute cron is the
   guarantee; the kick only cuts latency. Same shape as
-  `server/agent/dispatch-immediate.ts`.
+  `server/agent/dispatch-immediate.ts`. A kick that throws is logged and never
+  turns a committed start into an error. Target: the production domain in
+  production, else the deployment URL, else `NEXT_PUBLIC_APP_URL`.
 
 ### Quota policy (`quota.ts`)
 
@@ -306,7 +331,10 @@ quota):
 - at most **2 active** (`queued` or `running`) runs per user;
 - at most **10 active runs** platform-wide.
 
-Numbers are constants in `quota.ts`, tuned after launch.
+Numbers are constants in `quota.ts`, tuned after launch. A `daily_limit`
+refusal carries `retryAt`: when the run that leaves the 24-hour window first
+(the oldest one, when the member is exactly at the limit) is 24 hours old.
+The facade passes it on as an ISO 8601 string. Other refusals have none.
 
 ### Export (Strategy)
 
@@ -387,7 +415,8 @@ uses `GITHUB_TOKEN` when set (as `server/awesome-ai-oss/refresh-stars.ts` does),
 unauthenticated (60 requests/hour — `maxPages` set accordingly). Row: name,
 url, description, language, stars, forks, topics, pushedAt, archived.
 
-**`feed-items`** (`feed`). Input: feed URL. Accepts RSS 2.0 and Atom.
+**`feed-items`** (`feed`). Input: feed URL (https only). Accepts RSS 2.0 and
+Atom.
 Row: title, url, publishedAt, author, summary (plain text, HTML stripped).
 One page only (`maxPages = 1`).
 
@@ -457,6 +486,14 @@ agents.
 - `COLLECTORS_DISABLED` — per-collector disable.
 - `collector_blocked_domain` — per-site opt-out.
 
+**Gate before enabling.** `FEATURE_COLLECTORS` must not be turned on, and
+`page-list` must not ship, until `safeFetch` pins each connection to the IP
+address it validated. Today the SSRF guard resolves DNS to check the address
+and `fetch()` resolves it again, leaving the DNS-rebinding window documented
+in `src/server/net/safe-fetch.ts`. Data collectors let members point our
+servers at arbitrary sites, a broader exposure than the callers that window
+was accepted for (ADR-0040).
+
 ## Extension seams
 
 | Future change | Seam | What changes |
@@ -476,6 +513,12 @@ agents.
 - Quota exceeded → typed refusal with reason and retry time, shown as plain text.
 - Robots disallow / blocked domain (also when reached through a redirect) →
   run `failed`, `stop_reason` explains, the page is never requested.
+- robots.txt cannot be read (5xx, timeout, network error, too many
+  redirects) → run `failed` with `stop_reason = 'robots_unreachable'` ("We
+  could not read this site's robots.txt, so we did not collect from it."),
+  the page is never requested.
+- A non-https address → refused at `startRun` (input schema) and by the
+  context.
 - Network / parse errors in a collector → `failed` with a mapped user-safe
   message; raw error in the server log.
 - Invalid rows → skipped and counted in `invalid_item_count`, shown on the run
@@ -490,8 +533,9 @@ agents.
   injection; quota rules; robots parsing edge cases; catalog completeness
   (EN/NL, schemas present, sample item validates against item schema).
 - **Proxy:** the context with a fake transport — budget stop, blocklist,
-  robots disallow, 429 back-off sequence, rate-limit wait, counters
-  incremented.
+  robots disallow and unreachable, the robots.txt request's budget check,
+  rate-limit slot, redirect blocklist and metering, 429 back-off sequence,
+  rate-limit wait, counters incremented.
 - **Integration (test DB on 127.0.0.1:55432):** migration up/down; claim with
   `SKIP LOCKED` under two concurrent workers; lease expiry re-claim; item
   batching and caps; ownership scoping on every facade read; retention
