@@ -14,6 +14,15 @@ vi.mock("./validate-webhook-url", () => ({
   validateWebhookUrl: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
+vi.mock("@/server/net/pinned-transport", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/server/net/pinned-transport")>()),
+  pinnedFetch: vi.fn(),
+}));
+
+import { pinnedFetch } from "@/server/net/pinned-transport";
+
+const fetchMock = vi.mocked(pinnedFetch);
+
 // ── Opt-in gate (pure, no db import) ────────────────────────────────────────
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -116,6 +125,7 @@ describe.skipIf(!RUN_DB)("dispatchEventImmediately [DB integration]", () => {
       .where(eq(schema.memberProfiles.userId, fx.ownerId));
     await db.delete(schema.user).where(eq(schema.user.id, fx.ownerId));
     vi.restoreAllMocks();
+    fetchMock.mockReset();
   });
 
   async function insertMessageEvent(
@@ -153,9 +163,7 @@ describe.skipIf(!RUN_DB)("dispatchEventImmediately [DB integration]", () => {
   }
 
   it("POSTs a signed wake to a matching webhook and leaves the cursor to the cron", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue({ ok: true, status: 200 } as Response);
+    fetchMock.mockResolvedValue({ ok: true, status: 200 } as never);
 
     const evt = await insertMessageEvent(new Date());
     await m.dispatchEventImmediately(m.db, evt);
@@ -179,9 +187,7 @@ describe.skipIf(!RUN_DB)("dispatchEventImmediately [DB integration]", () => {
   });
 
   it("does not deliver to a webhook whose owner isn't the recipient", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue({ ok: true, status: 200 } as Response);
+    fetchMock.mockResolvedValue({ ok: true, status: 200 } as never);
 
     const evt = await insertMessageEvent(new Date(), "some-other-owner");
     await m.dispatchEventImmediately(m.db, evt);
@@ -190,7 +196,6 @@ describe.skipIf(!RUN_DB)("dispatchEventImmediately [DB integration]", () => {
   });
 
   it("ignores non-message events", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch");
     const { db, schema } = m;
     const [evt] = await db
       .insert(schema.activityEvents)

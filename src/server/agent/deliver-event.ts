@@ -9,6 +9,8 @@ import {
   memberProfiles,
 } from "@/server/db/schema";
 
+import { pinnedFetch } from "@/server/net/pinned-transport";
+
 import { deliverableMetadata, deliveryRuleFor } from "./event-delivery-policy";
 
 type Tx = Parameters<Parameters<(typeof _db)["transaction"]>[0]>[0];
@@ -81,7 +83,9 @@ export async function resolveActorName(
 /**
  * Sign and POST one event to one webhook. db-free and side-effect-only: callers
  * own gating, failure counters, and cursor advancement. The metadata carries
- * only the fields the delivery policy lists for the action. Never throws.
+ * only the fields the delivery policy lists for the action. Goes through the
+ * pinned transport, so every address it connects to is checked; a redirect
+ * is a failed delivery and is never followed. Never throws.
  */
 export async function deliverEvent(
   webhook: AgentWebhook,
@@ -107,7 +111,7 @@ export async function deliverEvent(
     .digest("hex");
 
   try {
-    const res = await fetch(webhook.url, {
+    const res = await pinnedFetch(webhook.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -117,7 +121,8 @@ export async function deliverEvent(
       body: payload,
       signal: AbortSignal.timeout(5000),
     });
-    return { ok: res.ok, status: res.status };
+    // Only 2xx counts: a 3xx is not followed, so it delivered nothing.
+    return { ok: res.status >= 200 && res.status < 300, status: res.status };
   } catch {
     return { ok: false };
   }
