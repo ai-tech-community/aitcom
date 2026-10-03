@@ -107,11 +107,11 @@ function pageKey(url: string): string | null {
 }
 
 /**
- * Where paging goes next: the next page's address, or null when the page has
- * no next link. A link we cannot follow ends paging with its own reason;
- * the rows read so far stand (the run succeeds).
+ * The next page's address, given the page has a next link. A link we cannot
+ * follow ends paging with its own reason; the rows read so far stand (the
+ * run succeeds).
  */
-function followable(nextUrl: string | null, tooLong: boolean): string | null {
+function followable(nextUrl: string | null, tooLong: boolean): string {
   if (tooLong) {
     throw new CollectorStop(
       "next_page_too_long",
@@ -119,7 +119,7 @@ function followable(nextUrl: string | null, tooLong: boolean): string | null {
       "Stopped: the next-page link's address is too long to follow.",
     );
   }
-  if (nextUrl === null) return null;
+  if (nextUrl === null) throw new Error("followable: no next link");
   // Every fetch must be https (the context refuses anything else), so a
   // plain-http link would fail the whole run; end paging instead.
   if (new URL(nextUrl).protocol !== "https:") {
@@ -231,13 +231,6 @@ export const pageList: Collector<PageListInput, PageRow> = {
     for (let n = 1; ; n += 1) {
       const key = pageKey(url);
       if (key === null || visited.has(key)) return;
-      if (n > input.maxPages) {
-        throw new CollectorStop(
-          "page_limit",
-          "succeeded",
-          "Stopped at the page limit.",
-        );
-      }
       visited.add(key);
 
       const res = await ctx.fetch(url, { accept: PAGE_ACCEPT });
@@ -273,9 +266,17 @@ export const pageList: Collector<PageListInput, PageRow> = {
         );
       }
       yield* rows;
-      const next = followable(nextUrl, nextUrlTooLong);
-      if (next === null) return;
-      url = next;
+      if (nextUrl === null && !nextUrlTooLong) return;
+      // The member's page cap comes first: on the last allowed page, any
+      // remaining next link (followable or not) ends with page_limit.
+      if (n >= input.maxPages) {
+        throw new CollectorStop(
+          "page_limit",
+          "succeeded",
+          "Stopped at the page limit.",
+        );
+      }
+      url = followable(nextUrl, nextUrlTooLong);
     }
   },
 };

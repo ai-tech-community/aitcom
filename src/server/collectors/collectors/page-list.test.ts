@@ -262,6 +262,25 @@ describe("page-list collector", () => {
     expect(requests.map((r) => r.url)).toEqual(["https://e.com/jobs"]);
   });
 
+  it.each([
+    ["not https", "http://e.com/jobs?page=2"],
+    ["too long", `/jobs?q=${"x".repeat(2_100)}`],
+  ])(
+    "ends at the page limit on the last allowed page even when the next link is %s",
+    async (_case, next) => {
+      const { ctx } = fakeContext({
+        "https://e.com/jobs": { body: page(["a"], next) },
+      });
+      const { stop } = await rowsUntilStop(
+        pageList.run(input({ maxPages: 1 }), ctx),
+      );
+      expect(stop).toMatchObject({
+        reason: "page_limit",
+        outcome: "succeeded",
+      } satisfies Partial<CollectorStop>);
+    },
+  );
+
   it("reads text/html with a charset as a web page", async () => {
     const { ctx } = fakeContext({
       "https://e.com/jobs": {
