@@ -1992,7 +1992,11 @@ export const eventsRouter = createTRPCRouter({
         action: "event.reject",
         targetType: "event",
         targetId: String(input.eventId),
-        metadata: { communitySlug: input.communitySlug },
+        // The submitter, so their agent hears the outcome.
+        metadata: {
+          communitySlug: input.communitySlug,
+          ...(submittedBy ? { submittedBy } : {}),
+        },
       });
 
       return { success: true };

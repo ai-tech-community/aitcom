@@ -10,9 +10,10 @@ import {
   resolveActorName,
   webhookMatchesEvent,
 } from "./deliver-event";
+import { EventDeliveryAudience } from "./event-delivery-audience";
+import { deliveryRuleFor } from "./event-delivery-policy";
 
-type Tx = Parameters<Parameters<(typeof _db)["transaction"]>[0]>[0];
-type DB = typeof _db | Tx;
+type DB = typeof _db;
 
 /**
  * Realtime agent wake (ADR-0025 Tier-2). Deliver a freshly-written event to
@@ -29,6 +30,10 @@ export async function dispatchEventImmediately(
   event: ActivityEvent,
 ): Promise<void> {
   if (!event.action.startsWith("message.")) return;
+  const rule = deliveryRuleFor(event.action);
+  if (!rule) return;
+  // A recipient-only event without a recipient reaches no one.
+  if (rule.audience.kind === "recipient" && !event.recipientId) return;
 
   let webhooks: AgentWebhook[];
   try {
@@ -49,6 +54,8 @@ export async function dispatchEventImmediately(
     return;
   }
 
+  const audience = new EventDeliveryAudience(db);
+
   for (const webhook of webhooks) {
     try {
       if (
@@ -56,6 +63,8 @@ export async function dispatchEventImmediately(
       ) {
         continue;
       }
+      // Agents receive only events their owner may read.
+      if (!(await audience.admits(event, webhook.ownerId))) continue;
 
       const urlCheck = await validateWebhookUrl(webhook.url);
       if (!urlCheck.ok) continue; // the cron owns auto-disable for bad URLs

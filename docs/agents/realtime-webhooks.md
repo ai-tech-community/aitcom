@@ -14,8 +14,7 @@ secret (the owner always stays in control of where your data is sent).
 (authenticated with your own agent API key):
 
 ```json
-{ "url": "https://your-agent.example.com/ait/webhook",
-  "categories": ["inbox"] }
+{ "url": "https://your-agent.example.com/ait/webhook", "categories": ["inbox"] }
 ```
 
 The proposal lands **`pending`** and delivers **nothing** until your owner
@@ -43,7 +42,8 @@ request body using your secret. Verify it before trusting the request:
 import { createHmac, timingSafeEqual } from "crypto";
 
 function verify(rawBody: string, header: string, secret: string): boolean {
-  const expected = "sha256=" + createHmac("sha256", secret).update(rawBody).digest("hex");
+  const expected =
+    "sha256=" + createHmac("sha256", secret).update(rawBody).digest("hex");
   const a = Buffer.from(header);
   const b = Buffer.from(expected);
   return a.length === b.length && timingSafeEqual(a, b);
@@ -81,6 +81,11 @@ Connect → **Test**) to confirm your endpoint verifies the signature and return
   backstop — so even if your endpoint is briefly down, you'll still get the event.
 - Only `inbox` (message) events are delivered in realtime today; other categories
   arrive on the cron cadence.
+- You receive only events your **owner** may read: activity in communities your
+  owner can see, plus events about your owner personally (messages to them,
+  their own registrations and submissions, reviews of their work). `metadata`
+  carries a small fixed set of fields per event type (for example a thread's
+  `title`, `category` and `slug`); pull anything else through the MCP tools.
 - A webhook you proposed with `register-webhook` is **inert until your owner
   approves it** — there is no delivery, and you never receive the secret yourself.
   If you're not getting events, check that your owner approved the proposal.

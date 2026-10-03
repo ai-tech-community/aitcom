@@ -15,7 +15,6 @@ import {
   agentSuggestions,
   agentSessionLogs,
   memberProfiles,
-  activityEvents,
   conversations,
   conversationParticipants,
   messages,
@@ -44,6 +43,12 @@ import {
   logActivity,
   checkEnrollmentCompletion,
 } from "@/server/agent/activity";
+import {
+  EVENT_DELIVERY_POLICY,
+  deliverableMetadata,
+} from "@/server/agent/event-delivery-policy";
+import type { ActivityEvent } from "@/server/agent/deliver-event";
+import { readableActivity } from "@/server/agent/readable-activity";
 import { agentFeedRouter } from "./agent-feed";
 import { agentCommunityRouter } from "./agent-communities";
 import { publicRosterVisibility } from "@/server/members/public-roster";
@@ -91,6 +96,101 @@ function getMetadataString(
  * trailing days upcomingFromCandidates() drops from a full page.
  */
 const BROWSE_EVENT_CANDIDATES = 60;
+
+/** The activity actions getNotifications turns into notifications. */
+const NOTIFICATION_ACTIONS = [
+  "thread.create",
+  "thread.reply",
+  "challenge.objective_completed",
+  "challenge.completed",
+  "idea.submitted",
+] as const;
+
+/** Pages getNotifications reads before returning what it has. */
+const NOTIFICATION_MAX_PAGES = 5;
+
+/**
+ * Admitted activity rows getBriefing counts before reporting "N+". The
+ * count reads at most BRIEFING_MAX_PAGES pages of BRIEFING_PAGE_SIZE rows.
+ */
+const BRIEFING_COUNT_CAP = 99;
+const BRIEFING_PAGE_SIZE = 100;
+const BRIEFING_MAX_PAGES = 5;
+
+interface ActivityNotification {
+  id: string;
+  type: string;
+  title: string;
+  targetType: string | null;
+  targetId: string | null;
+  actorType: string;
+  relevance: string;
+  createdAt: string;
+}
+
+/** The notification an admitted activity row becomes, or null for none. */
+function activityNotification(
+  event: ActivityEvent,
+  ownerId: string,
+  expertiseTags: readonly string[],
+): ActivityNotification | null {
+  const meta = deliverableMetadata(event.action, event.metadata);
+  const metaTitle = getMetadataString(meta, "title");
+  const metaCategory = getMetadataString(meta, "category");
+  let type: string;
+  let title: string;
+  let relevance = "";
+
+  switch (event.action) {
+    case "thread.create": {
+      type = "new_thread";
+      title = `New thread: ${metaTitle ?? "Untitled"}`;
+      if (expertiseTags.length > 0 && metaCategory) {
+        const match = expertiseTags.find((t) =>
+          metaCategory.toLowerCase().includes(t.toLowerCase()),
+        );
+        if (match) relevance = `Matches expertise: ${match}`;
+      }
+      if (!relevance) relevance = "New community thread";
+      break;
+    }
+    case "thread.reply":
+      type = "thread_reply";
+      title = `New reply in thread ${event.targetId ?? ""}`;
+      relevance = "New reply in thread";
+      break;
+    case "challenge.objective_completed":
+      if (event.actorId !== ownerId) return null;
+      type = "challenge_update";
+      title = `Challenge progress: ${metaTitle ?? ""}`;
+      relevance = "Owner completed a challenge objective";
+      break;
+    case "challenge.completed":
+      if (event.actorId !== ownerId) return null;
+      type = "challenge_update";
+      title = `Challenge completed: ${metaTitle ?? ""}`;
+      relevance = "Owner completed a challenge";
+      break;
+    case "idea.submitted":
+      type = "idea_posted";
+      title = `New idea: ${metaTitle ?? "Untitled"}`;
+      relevance = "New community idea";
+      break;
+    default:
+      return null;
+  }
+
+  return {
+    id: event.id,
+    type,
+    title,
+    targetType: event.targetType,
+    targetId: event.targetId,
+    actorType: event.actorType,
+    relevance,
+    createdAt: event.createdAt.toISOString(),
+  };
+}
 
 export const agentRouter = createTRPCRouter({
   // ═══════════════════════════════════════════════════════════════════════════
@@ -607,109 +707,22 @@ export const agentRouter = createTRPCRouter({
 
       const expertiseTags = agent.expertiseTags ?? [];
 
-      // Query activity events since the cursor
-      const events = await ctx.db
-        .select()
-        .from(activityEvents)
-        .where(
-          and(
-            sql`${activityEvents.createdAt} > ${sinceDate}`,
-            // Exclude this agent's own actions
-            sql`NOT (${activityEvents.actorId} = ${ctx.agent.agentId} AND ${activityEvents.actorType} = 'agent')`,
-            // Exclude private events not meant for this agent's owner.
-            // Reciprocity actions are public despite carrying a recipientId,
-            // so they stay visible regardless of the named recipient.
-            sql`(${activityEvents.recipientId} IS NULL OR ${activityEvents.recipientId} = ${ownerId} OR ${activityEvents.action} IN ('thread.reply', 'feed.comment_created', 'launchpad.comment.created'))`,
-          ),
-        )
-        .orderBy(desc(activityEvents.createdAt))
-        .limit(input.limit * 2); // over-fetch, then filter for relevance
-
-      // Build notifications with relevance filtering
-      const notifications: {
-        id: string;
-        type: string;
-        title: string;
-        targetType: string | null;
-        targetId: string | null;
-        actorType: string;
-        relevance: string;
-        createdAt: string;
-      }[] = [];
-
-      for (const event of events) {
-        const meta = event.metadata ?? {};
-        const metaTitle = getMetadataString(meta, "title");
-        const metaCategory = getMetadataString(meta, "category");
-        const metaAgentName = getMetadataString(meta, "agentName");
-        let type: string | null = null;
-        let title = "";
-        let relevance = "";
-
-        switch (event.action) {
-          case "thread.created": {
-            type = "new_thread";
-            title = `New thread: ${metaTitle ?? "Untitled"}`;
-            if (expertiseTags.length > 0 && metaCategory) {
-              const match = expertiseTags.find((t) =>
-                metaCategory.toLowerCase().includes(t.toLowerCase()),
-              );
-              if (match) {
-                relevance = `Matches expertise: ${match}`;
-              }
-            }
-            if (!relevance) relevance = "New community thread";
-            break;
-          }
-          case "thread.reply": {
-            type = "thread_reply";
-            title = `New reply in thread ${event.targetId ?? ""}`;
-            relevance = metaAgentName
-              ? `Reply by ${metaAgentName}`
-              : "New reply in thread";
-            break;
-          }
-          case "challenge.objective_completed": {
-            if (event.actorId === ownerId) {
-              type = "challenge_update";
-              title = `Challenge progress: ${metaTitle ?? ""}`;
-              relevance = "Owner completed a challenge objective";
-            }
-            break;
-          }
-          case "challenge.completed": {
-            if (event.actorId === ownerId) {
-              type = "challenge_update";
-              title = `Challenge completed: ${metaTitle ?? ""}`;
-              relevance = "Owner completed a challenge";
-            }
-            break;
-          }
-          case "idea.created": {
-            type = "idea_posted";
-            title = `New idea: ${metaTitle ?? "Untitled"}`;
-            relevance = "New community idea";
-            break;
-          }
-          default:
-            continue;
-        }
-
-        if (type) {
-          notifications.push({
-            id: event.id,
-            type,
-            title,
-            targetType: event.targetType,
-            targetId: event.targetId,
-            actorType: event.actorType,
-            relevance,
-            createdAt: event.createdAt.toISOString(),
-          });
-        }
-
-        if (notifications.length >= input.limit) break;
-      }
+      // Page newest-first through events the owner may read (the webhook
+      // delivery policy) until `limit` notifications are collected.
+      const { events } = await readableActivity(ctx.db, {
+        agentId: ctx.agent.agentId,
+        ownerId,
+        since: sinceDate,
+        actions: NOTIFICATION_ACTIONS,
+        want: input.limit,
+        accept: (event) =>
+          activityNotification(event, ownerId, expertiseTags) !== null,
+        pageSize: Math.max(input.limit * 2, 50),
+        maxPages: NOTIFICATION_MAX_PAGES,
+      });
+      const notifications: ActivityNotification[] = events.map(
+        (event) => activityNotification(event, ownerId, expertiseTags)!,
+      );
 
       // Also check for unread inbox messages
       const [agentConv] = await ctx.db
@@ -797,16 +810,18 @@ export const agentRouter = createTRPCRouter({
 
       const now = new Date();
 
-      // Count activity events since cursor
-      const [eventCount] = await ctx.db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(activityEvents)
-        .where(
-          and(
-            sql`${activityEvents.createdAt} > ${sinceDate}`,
-            sql`NOT (${activityEvents.actorId} = ${ctx.agent.agentId} AND ${activityEvents.actorType} = 'agent')`,
-          ),
-        );
+      // Count activity since the cursor that the owner may read, under the
+      // webhook delivery policy. Bounded: past the cap it reads "N+".
+      const activity = await readableActivity(ctx.db, {
+        agentId: ctx.agent.agentId,
+        ownerId,
+        since: sinceDate,
+        actions: Object.keys(EVENT_DELIVERY_POLICY),
+        want: BRIEFING_COUNT_CAP + 1,
+        pageSize: BRIEFING_PAGE_SIZE,
+        maxPages: BRIEFING_MAX_PAGES,
+      });
+      const notificationsCapped = !activity.exhausted;
 
       // Count unread inbox messages
       let unreadInbox = 0;
@@ -958,14 +973,17 @@ export const agentRouter = createTRPCRouter({
         newChannelActivity = channelActivity?.count ?? 0;
       }
 
-      const notifications = eventCount?.count ?? 0;
+      const notifications = Math.min(
+        activity.events.length,
+        BRIEFING_COUNT_CAP,
+      );
       const pendingDrafts = draftCount?.count ?? 0;
 
       // Build human-readable summary
       const parts: string[] = [];
       if (notifications > 0)
         parts.push(
-          `${notifications} new activity event${notifications !== 1 ? "s" : ""}`,
+          `${notifications}${notificationsCapped ? "+" : ""} new activity event${notifications !== 1 || notificationsCapped ? "s" : ""}`,
         );
       if (unreadInbox > 0)
         parts.push(
@@ -994,6 +1012,7 @@ export const agentRouter = createTRPCRouter({
       return {
         summary,
         notifications,
+        notificationsCapped,
         unreadInbox,
         pendingDrafts,
         activeChallenges,
