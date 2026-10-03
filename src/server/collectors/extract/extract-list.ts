@@ -52,6 +52,7 @@ export function extractList(html: string, spec: ExtractSpec): ExtractResult {
     throw new ExtractError("extract_failed", "page did not parse");
   }
   assertDepthWithin(document, MAX_DEPTH);
+  dropTemplateContent($);
 
   const rows: Row[] = [];
   let outputChars = 0;
@@ -129,6 +130,16 @@ function assertDepthWithin(root: DocumentNode, maxDepth: number): void {
       stack.push({ node: child, depth });
     }
   }
+}
+
+/**
+ * Empties every `<template>`: its content is inert markup a browser never
+ * shows, so no item, field or next-page link may match inside it. The
+ * element itself stays (a field matching it reads ""). Runs after the depth
+ * check, which counts template content too.
+ */
+function dropTemplateContent($: CheerioAPI): void {
+  $.root().find("template").empty();
 }
 
 function readRow(

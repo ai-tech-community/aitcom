@@ -202,6 +202,30 @@ describe("extractList", () => {
     expect(rows).toEqual([{ card: "Opening keynote Ada Lovelace" }]);
   });
 
+  it("ignores items, fields and next-page links inside a <template>", () => {
+    const html = `<ul>
+      <template><li class="speaker"><a href="/s/hidden">Hidden</a></li></template>
+      <li class="speaker">
+        <template><a href="/s/inert">Inert</a><span class="role">Inert</span></template>
+        <a href="/s/ada">Ada</a><span class="role">CTO</span>
+      </li>
+    </ul>
+    <template><a class="next" href="?page=9">Next</a></template>
+    <a class="next" href="?page=2">Next</a>`;
+    expect(extractList(html, SPEAKERS_SPEC)).toEqual({
+      rows: [{ name: "Ada", link: "https://conf.example/s/ada", role: "CTO" }],
+      nextUrl: "https://conf.example/talks?page=2",
+      truncated: false,
+    });
+  });
+
+  it("ignores matches inside a <template> nested in another one", () => {
+    const html = `<ul><template><div><template>
+      <li class="speaker"><a href="/s/deep">Deep</a></li>
+    </template></div></template></ul>`;
+    expect(extractList(html, SPEAKERS_SPEC).rows).toEqual([]);
+  });
+
   it("uses the first match in document order for a field", () => {
     const html = `<ul><li class="item">
       <div class="x"><div class="x">inner</div> outer</div>
