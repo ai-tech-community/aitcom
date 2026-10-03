@@ -1,11 +1,12 @@
-import { isIP } from "node:net";
-
 import type { Response as PinnedResponse } from "undici";
 
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 
-import { isPublicAddress } from "./address-policy";
-import { BlockedAddressError, pinnedFetch } from "./pinned-transport";
+import {
+  BlockedAddressError,
+  pinnedFetch,
+  refusedLiteralHost,
+} from "./pinned-transport";
 
 const MAX_REDIRECTS = 5;
 /** Callers match the "Refusing to fetch URL" prefix (collectors/errors.ts). */
@@ -70,7 +71,8 @@ export async function safeFetch(
     if (!guard.ok) {
       throw new Error(`Refusing to fetch URL: ${guard.reason}`);
     }
-    if (isNonPublicIpLiteral(current)) {
+    // Checked here too so safeFetch is safe on its own, before any request.
+    if (refusedLiteralHost(current) !== null) {
       throw new Error(NON_PUBLIC_REFUSAL);
     }
     const res = await pinnedFetch(current, {
@@ -99,15 +101,6 @@ export async function safeFetch(
     return { response: res, url: current };
   }
   throw new Error("Too many redirects");
-}
-
-/**
- * An IP-literal host that is not public. The pre-check refuses these too;
- * checking here as well keeps safeFetch safe on its own, before any request.
- */
-function isNonPublicIpLiteral(url: string): boolean {
-  const host = new URL(url).hostname.replace(/^\[|\]$/g, "");
-  return isIP(host) !== 0 && !isPublicAddress(host);
 }
 
 /** The pinned transport refused the address (it rejects with this cause). */

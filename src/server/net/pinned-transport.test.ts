@@ -15,6 +15,7 @@ import {
   BlockedAddressError,
   createPinnedFetch,
   createPinnedLookup,
+  refusedLiteralHost,
   type Resolver,
 } from "./pinned-transport";
 
@@ -194,5 +195,150 @@ describe("pinned fetch (real sockets)", () => {
     const fetch = createPinnedFetch();
     expectBlocked(await rejectionOf(fetch(urlFor(port))));
     expect(hits).toHaveLength(0);
+  });
+});
+
+describe("pinned fetch against DNS rebinding (real sockets)", () => {
+  let server: Server;
+  let port = 0;
+  const hits: string[] = [];
+
+  beforeAll(async () => {
+    server = createServer((req, res) => {
+      hits.push(req.url ?? "");
+      res.writeHead(200, { connection: "close" });
+      res.end("ok");
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    port = (server.address() as AddressInfo).port;
+  });
+  beforeEach(() => {
+    hits.length = 0;
+  });
+  afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
+
+  /** Public on the first question, loopback on every later one. */
+  function rebindingResolver() {
+    let calls = 0;
+    return vi.fn<Resolver>((_host, options, callback) => {
+      calls += 1;
+      const address = calls === 1 ? "93.184.216.34" : "127.0.0.1";
+      if (options.all) callback(null, [{ address, family: 4 }]);
+      else callback(null, address, 4);
+    });
+  }
+
+  it("refuses a host that was public at check time and private at connect time", async () => {
+    const resolve = rebindingResolver();
+    // The early check (validateWebhookUrl) asks DNS first and sees a public
+    // address.
+    const checked = await new Promise<unknown>((done) => {
+      resolve("rebind.test", { all: true }, (_err, address) => done(address));
+    });
+    expect(checked).toEqual([{ address: "93.184.216.34", family: 4 }]);
+
+    const fetch = createPinnedFetch({ resolve });
+    const err = await rejectionOf(fetch(`http://rebind.test:${port}/secret`));
+    expectBlocked(err);
+    expect(hits).toHaveLength(0);
+    // The connection asked DNS exactly once more and used that answer.
+    expect(resolve).toHaveBeenCalledTimes(2);
+  });
+
+  it("resolves exactly once per new connection", async () => {
+    const resolve = vi.fn<Resolver>((_host, options, callback) => {
+      if (options.all) callback(null, [{ address: "127.0.0.1", family: 4 }]);
+      else callback(null, "127.0.0.1", 4);
+    });
+    const fetch = createPinnedFetch({
+      resolve,
+      isAllowed: (ip) => ip === "127.0.0.1",
+    });
+    // The server closes every connection, so each request opens a new one.
+    for (let i = 1; i <= 2; i++) {
+      const res = await fetch(`http://once.test:${port}/${i}`);
+      await res.text();
+      expect(resolve).toHaveBeenCalledTimes(i);
+    }
+    expect(hits).toEqual(["/1", "/2"]);
+  });
+});
+
+describe("pinned fetch aborts (real sockets)", () => {
+  let server: Server;
+  let port = 0;
+  let hung = 0;
+
+  beforeAll(async () => {
+    // Accepts the request and never answers.
+    server = createServer(() => {
+      hung += 1;
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    port = (server.address() as AddressInfo).port;
+  });
+  afterAll(
+    () =>
+      new Promise<void>((resolve) => {
+        server.closeAllConnections();
+        server.close(() => resolve());
+      }),
+  );
+
+  const loopbackOnly = () =>
+    createPinnedFetch({ isAllowed: (ip) => ip === "127.0.0.1" });
+
+  it("stops with AbortError when the caller's signal aborts", async () => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 50);
+    const before = hung;
+    const err = await rejectionOf(
+      loopbackOnly()(`http://127.0.0.1:${port}/`, {
+        signal: controller.signal,
+      }),
+    );
+    expect((err as Error).name).toBe("AbortError");
+    expect(hung).toBe(before + 1);
+  });
+
+  it("stops with TimeoutError when AbortSignal.timeout fires", async () => {
+    const err = await rejectionOf(
+      loopbackOnly()(`http://127.0.0.1:${port}/`, {
+        signal: AbortSignal.timeout(50),
+      }),
+    );
+    expect((err as Error).name).toBe("TimeoutError");
+  });
+});
+
+describe("refusedLiteralHost", () => {
+  it.each([
+    ["https://127.0.0.1/", "127.0.0.1"],
+    ["https://127.1/", "127.0.0.1"],
+    ["https://2130706433/", "127.0.0.1"],
+    ["https://0x7f000001/", "127.0.0.1"],
+    ["https://[::1]/", "::1"],
+    ["https://[::ffff:127.0.0.1]/", "::ffff:7f00:1"],
+    ["https://169.254.169.254/latest", "169.254.169.254"],
+    ["https://10.0.0.1/jobs", "10.0.0.1"],
+  ])("refuses %s", (url, host) => {
+    expect(refusedLiteralHost(url)).toBe(host);
+    expect(refusedLiteralHost(new URL(url))).toBe(host);
+  });
+
+  it.each([
+    "https://93.184.216.34/",
+    "https://[2606:4700:4700::1111]/",
+    "https://example.com/",
+  ])("lets %s through", (url) => {
+    expect(refusedLiteralHost(url)).toBeNull();
+  });
+
+  it("uses the policy it is given", () => {
+    expect(refusedLiteralHost("http://127.0.0.1/", () => true)).toBeNull();
   });
 });

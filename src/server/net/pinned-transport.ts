@@ -87,10 +87,9 @@ export function createPinnedFetch(
     init: RequestInit = {},
   ): Promise<Response> => {
     // An IP-literal host never reaches connect.lookup (there is nothing to
-    // resolve), so check it here. The WHATWG parser has already normalised
-    // short, decimal, hex and octal IPv4 forms to dotted form.
-    const host = stripBrackets(new URL(url).hostname);
-    if (isIP(host) !== 0 && !isAllowed(host)) {
+    // resolve), so check it here.
+    const host = refusedLiteralHost(url, isAllowed);
+    if (host !== null) {
       // Same shape undici gives when the lookup refuses an answer.
       throw new TypeError("fetch failed", {
         cause: new BlockedAddressError(host),
@@ -100,10 +99,23 @@ export function createPinnedFetch(
   };
 }
 
-function stripBrackets(hostname: string): string {
-  return hostname.startsWith("[") && hostname.endsWith("]")
-    ? hostname.slice(1, -1)
-    : hostname;
+/**
+ * The one IP-literal check: returns the host when the URL names a non-public
+ * IP address directly, else null (a DNS name, or a public literal). Literals
+ * skip DNS, so the pinned lookup never sees them; every caller that refuses
+ * them early uses this so the rule cannot drift. The WHATWG parser has already
+ * normalised short, decimal, hex and octal IPv4 forms to dotted form.
+ */
+export function refusedLiteralHost(
+  url: string | URL,
+  isAllowed: (ip: string) => boolean = isPublicAddress,
+): string | null {
+  const hostname = new URL(url).hostname;
+  const host =
+    hostname.startsWith("[") && hostname.endsWith("]")
+      ? hostname.slice(1, -1)
+      : hostname;
+  return isIP(host) !== 0 && !isAllowed(host) ? host : null;
 }
 
 /** The shared pinned fetch for every outbound request to a supplied URL. */
