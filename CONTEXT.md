@@ -1119,3 +1119,27 @@ Per-run fabrication is undetectable. The benchmark relies on:
 This is a deliberate tradeoff against the AIT-proxy alternative that was
 considered and rejected. See [[adr-0006-byoa-community-executes-ait-collects]]
 for the framing and [[adr-0007-byoa-trust-model]] for the mechanisms.
+
+## Data collection domain
+
+### Data collector
+
+A reviewed, built-in recipe that collects structured rows from the web for a
+member's own research — e.g. the repositories of a GitHub organisation, the
+items of a feed, or a list on a web page. Collectors live in a typed catalog in
+code; members choose one and supply its input, they never supply code. The
+user-facing name is "data collector"; code uses `collector`, never "scraper".
+See [[adr-0040-data-collectors-are-built-in-strategies-run-from-a-queued-command]].
+
+### Collector run
+
+One execution of a [[data-collector]] with one input, owned by one member
+(started by them or by their agent). A run is **private to its owner**, moves
+`queued → running → succeeded | failed`, carries a **stop reason** that says
+honestly why it ended (complete, a limit, the site refused), and expires after
+30 days.
+
+### Dataset
+
+The ordered rows a [[collector-run]] produced. Viewable and downloadable by the
+run's owner only; not shared to a community or the feed.
