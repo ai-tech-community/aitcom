@@ -373,7 +373,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         run!,
         Date.now() + 60_000,
       );
-      expect(result.stopReason).toBe("item_limit");
+      expect(result?.stopReason).toBe("item_limit");
       expect(await items(id)).toHaveLength(250);
       expect((await runRow(id)).itemCount).toBe(250);
     });
@@ -397,6 +397,25 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         error: "Not allowed here.",
         itemCount: 1,
       });
+    });
+
+    it("cuts a long stop message to the 500 characters the error column holds", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield { n: 1 };
+        throw new m.errors.CollectorStop("error", "failed", "x".repeat(600));
+      });
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      const result = await m.executor.executeRun(
+        deps(collector),
+        run!,
+        Date.now() + 60_000,
+      );
+      expect(result).toEqual({ status: "failed", stopReason: "error" });
+      const row = await runRow(id);
+      expect(row.status).toBe("failed");
+      expect(row.error).toBe("x".repeat(500));
     });
 
     it("hides an unexpected error's text from the member", async () => {
@@ -449,7 +468,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       expect(stored).toBeLessThan(100);
     });
 
-    it("wipes an earlier attempt's rows and counters before re-running", async () => {
+    it("wipes an earlier attempt's rows and item counters, keeping page and byte totals", async () => {
       const userId = await makeUser();
       const id = await insertRun(userId, {
         status: "running",
@@ -457,6 +476,8 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         leaseUntil: new Date(Date.now() - 1),
         itemCount: 2,
         invalidItemCount: 5,
+        pagesFetched: 3,
+        bytesFetched: 100,
       });
       await m.db.insert(m.schema.collectorItems).values([
         { runId: id, seq: 0, data: { n: 99 } },
@@ -468,9 +489,12 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       const run = await m.executor.claimNextRun(m.db, new Date());
       await m.executor.executeRun(deps(collector), run!, Date.now() + 60_000);
       expect((await items(id)).map((i) => i.data)).toEqual([{ n: 1 }]);
+      // Pages and bytes are cumulative across attempts: 3 + 4 and 100 + 1234.
       expect(await runRow(id)).toMatchObject({
         itemCount: 1,
         invalidItemCount: 0,
+        pagesFetched: 7,
+        bytesFetched: 1334,
       });
     });
 
@@ -505,24 +529,54 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         status: "failed",
         itemCount: 0,
         invalidItemCount: 0,
-        pagesFetched: 0,
-        bytesFetched: 0,
+        pagesFetched: 3,
+        bytesFetched: 4_096,
         log: ["page 1", "page 2"],
       });
     });
 
-    it("turns a worker's writes into no-ops once another worker re-claimed its run", async () => {
+    it("does not run the collector at all when another worker already re-claimed the run", async () => {
       const userId = await makeUser();
       const id = await insertRun(userId);
+      let started = false;
       const collector = testCollector(async function* () {
-        for (let n = 0; n < 150; n++) yield { n };
+        started = true;
+        yield { n: 1 };
       });
+      const built = vi.fn(deps(collector).buildContext);
       const stale = await m.executor.claimNextRun(m.db, new Date());
       // Another worker re-claims the run after this worker's lease expired.
       await m.db
         .update(m.schema.collectorRuns)
         .set({ attempts: 2, leaseUntil: new Date(Date.now() + 60_000) })
         .where(m.drizzle.eq(m.schema.collectorRuns.id, id));
+      const result = await m.executor.executeRun(
+        { ...deps(collector), buildContext: built },
+        stale!,
+        Date.now() + 60_000,
+      );
+      expect(result).toBeNull();
+      expect(built).not.toHaveBeenCalled();
+      expect(started).toBe(false);
+      expect(await runRow(id)).toMatchObject({
+        status: "running",
+        attempts: 2,
+        stopReason: null,
+      });
+    });
+
+    it("turns a worker's writes into no-ops once another worker re-claimed its run mid-run", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        // Another worker re-claims the run after this worker's lease expired.
+        await m.db
+          .update(m.schema.collectorRuns)
+          .set({ attempts: 2, leaseUntil: new Date(Date.now() + 60_000) })
+          .where(m.drizzle.eq(m.schema.collectorRuns.id, id));
+        for (let n = 0; n < 150; n++) yield { n };
+      });
+      const stale = await m.executor.claimNextRun(m.db, new Date());
       await m.executor.executeRun(deps(collector), stale!, Date.now() + 60_000);
       expect(await items(id)).toHaveLength(0);
       expect(await runRow(id)).toMatchObject({

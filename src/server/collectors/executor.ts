@@ -15,6 +15,8 @@ export const MAX_ITEMS_PER_RUN = 5_000;
 const FLUSH_EVERY = 100;
 const MAX_LOG_LINES = 50;
 const MAX_LOG_LINE = 300;
+/** The `error` column is varchar(500). */
+const MAX_ERROR_LENGTH = 500;
 /** A tick only starts another run while this much of it has passed. */
 const START_NEW_RUN_WITHIN_MS = 20_000;
 
@@ -36,6 +38,11 @@ type Outcome = {
   status: "succeeded" | "failed";
   stopReason: StopReason;
   error: string | null;
+};
+
+export type RunResult = {
+  status: "succeeded" | "failed";
+  stopReason: StopReason;
 };
 
 /**
@@ -92,17 +99,21 @@ function createRunLog() {
 /**
  * Run one claimed Command: resolve the Strategy, give it the Proxy, iterate
  * its rows, validate and store them in batches, then record the outcome.
- * Rows and counters from an earlier attempt are removed first, so a re-run
- * never duplicates. Rows gathered before a stop or failure are kept.
+ * Rows and item counters from an earlier attempt are removed first, so a
+ * re-run never duplicates. Pages and bytes fetched are cumulative across
+ * attempts: they measure real traffic, which an interrupted attempt still
+ * caused. Rows gathered before a stop or failure are kept.
  *
  * Every write is fenced on `attempts`: once another worker re-claims the run
  * (after this worker's lease expired), this worker's writes match nothing.
+ * A worker that is already fenced out at the start returns null without
+ * running the collector, so it never contacts a site.
  */
 export async function executeRun(
   deps: ExecutorDeps,
   run: CollectorRunRow,
   tickDeadline: number,
-): Promise<{ status: "succeeded" | "failed"; stopReason: StopReason }> {
+): Promise<RunResult | null> {
   const startedAt = deps.now();
   const log = createRunLog();
 
@@ -114,35 +125,33 @@ export async function executeRun(
       eq(collectorRuns.attempts, run.attempts),
     );
 
-  /** Remove an earlier attempt's rows and zero its counters, together. */
-  const clearEarlierAttempt = () =>
+  /**
+   * Remove an earlier attempt's rows and zero its item counters, together.
+   * False when another worker already holds the run.
+   */
+  const clearEarlierAttempt = (): Promise<boolean> =>
     deps.db.transaction(async (tx) => {
       const [held] = await tx
         .update(collectorRuns)
-        .set({
-          itemCount: 0,
-          invalidItemCount: 0,
-          pagesFetched: 0,
-          bytesFetched: 0,
-        })
+        .set({ itemCount: 0, invalidItemCount: 0 })
         .where(heldByThisWorker())
         .returning({ id: collectorRuns.id });
-      if (held) {
-        await tx.delete(collectorItems).where(eq(collectorItems.runId, run.id));
-      }
+      if (!held) return false;
+      await tx.delete(collectorItems).where(eq(collectorItems.runId, run.id));
+      return true;
     });
 
   const finish = async (
     outcome: Outcome,
     opts: { version?: number; keepLog?: boolean } = {},
-  ) => {
+  ): Promise<RunResult> => {
     assertTransition("running", outcome.status);
     await deps.db
       .update(collectorRuns)
       .set({
         status: outcome.status,
         stopReason: outcome.stopReason,
-        error: outcome.error,
+        error: outcome.error?.slice(0, MAX_ERROR_LENGTH) ?? null,
         durationMs: deps.now() - startedAt,
         finishedAt: new Date(deps.now()),
         leaseUntil: null,
@@ -155,7 +164,7 @@ export async function executeRun(
     return { status: outcome.status, stopReason: outcome.stopReason };
   };
 
-  await clearEarlierAttempt();
+  if (!(await clearEarlierAttempt())) return null;
   if (run.attempts > MAX_ATTEMPTS) {
     // Keep the last attempt's log: it shows the member how far it got.
     return finish(
@@ -212,8 +221,8 @@ export async function executeRun(
         .set({
           itemCount: seq,
           invalidItemCount: invalid,
-          pagesFetched: meter.pagesFetched,
-          bytesFetched: meter.bytesFetched,
+          pagesFetched: run.pagesFetched + meter.pagesFetched,
+          bytesFetched: run.bytesFetched + meter.bytesFetched,
           log: log.lines(),
           leaseUntil: new Date(deps.now() + LEASE_MS),
         })
@@ -307,8 +316,7 @@ export async function runWorkerTick(
     const run = await claimNextRun(deps.db, new Date(deps.now()));
     if (!run) break;
     try {
-      await executeRun(deps, run, tickDeadline);
-      executed += 1;
+      if (await executeRun(deps, run, tickDeadline)) executed += 1;
     } catch (err) {
       // e.g. the database failed mid-run. The run keeps its lease and is
       // re-claimed once the lease expires; the tick moves on.
