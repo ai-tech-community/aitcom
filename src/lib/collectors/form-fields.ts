@@ -40,8 +40,12 @@ type FieldShape =
 /** A field the form can draw. */
 export type FormField = FieldBase & FieldShape;
 
-/** One row of a rows field, as typed: a cell per column name. */
-export type RowValue = Record<string, string>;
+/**
+ * One row of a rows field, as typed. `id` stays with the row while rows
+ * are added and removed (React keys, and placing a server problem on the
+ * row the member typed it in); `cells` holds a value per column name.
+ */
+export type RowValue = { id: string; cells: Record<string, string> };
 
 export type FieldValue = string | boolean | RowValue[];
 
@@ -171,13 +175,21 @@ export function formFieldsFor(summary: {
   return unsupported.length ? { ok: false, unsupported } : { ok: true, fields };
 }
 
+let rowsMade = 0;
+
+/** A new, empty row, with an id no other row on the page has. */
+export function newRow(): RowValue {
+  rowsMade += 1;
+  return { id: `row-${rowsMade}`, cells: {} };
+}
+
 /** What a field holds before the member touches it. */
 export function initialValue(field: FormField): FieldValue {
   switch (field.kind) {
     case "checkbox":
       return false;
     case "rows":
-      return Array.from({ length: Math.max(field.min, 1) }, () => ({}));
+      return Array.from({ length: Math.max(field.min, 1) }, newRow);
     default:
       return "";
   }
@@ -197,16 +209,32 @@ function coerceScalar(
   return field.kind === "number" ? Number(text) : text;
 }
 
-/** A row as an object, or null when the member left every cell empty. */
+function isFilled(columns: FormColumn[], row: RowValue): boolean {
+  return columns.some((c) => (row.cells[c.name] ?? "").trim() !== "");
+}
+
+/**
+ * The rows `coerceInput` sends for a rows field, in order: the member's
+ * rows minus those with every cell empty. The server's problems name rows
+ * by their place in this list.
+ */
+export function rowsToSend(
+  field: Extract<FormField, { kind: "rows" }>,
+  value: FieldValue | undefined,
+): RowValue[] {
+  return (Array.isArray(value) ? value : []).filter((row) =>
+    isFilled(field.columns, row),
+  );
+}
+
+/** A row as the object the collector's input expects. */
 function coerceRow(
   columns: FormColumn[],
   row: RowValue,
-): Record<string, unknown> | null {
-  const filled = columns.some((c) => (row[c.name] ?? "").trim() !== "");
-  if (!filled) return null;
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const column of columns) {
-    const value = coerceScalar(column, row[column.name]);
+    const value = coerceScalar(column, row.cells[column.name]);
     if (value !== undefined) out[column.name] = value;
   }
   return out;
@@ -225,9 +253,9 @@ export function coerceInput(
         input[field.name] = value === true;
         break;
       case "rows": {
-        const rows = (Array.isArray(value) ? value : [])
-          .map((row) => coerceRow(field.columns, row))
-          .filter((row) => row !== null);
+        const rows = rowsToSend(field, value).map((row) =>
+          coerceRow(field.columns, row),
+        );
         if (rows.length > 0 || field.required) input[field.name] = rows;
         break;
       }

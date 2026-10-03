@@ -3,7 +3,21 @@ import { z } from "zod";
 
 import { allCollectors } from "@/server/collectors/catalog";
 import type { FieldHint } from "@/server/collectors/collector";
-import { coerceInput, type FormField, formFieldsFor } from "./form-fields";
+import {
+  coerceInput,
+  type FormField,
+  formFieldsFor,
+  initialValue,
+  newRow,
+  type RowValue,
+  rowsToSend,
+} from "./form-fields";
+
+/** A typed row, as the form holds it. */
+const row = (cells: Record<string, string>): RowValue => ({
+  ...newRow(),
+  cells,
+});
 
 const hint = (name: string) => ({
   name,
@@ -309,10 +323,15 @@ describe("coerceInput", () => {
     expect(
       coerceInput([rows], {
         fields: [
-          { name: " title ", selector: " h3 a ", attribute: "  " },
-          { name: "", selector: "", attribute: "", weight: " " },
-          { name: "link", selector: "h3 a", attribute: "href", weight: "2.5" },
-          {},
+          row({ name: " title ", selector: " h3 a ", attribute: "  " }),
+          row({ name: "", selector: "", attribute: "", weight: " " }),
+          row({
+            name: "link",
+            selector: "h3 a",
+            attribute: "href",
+            weight: "2.5",
+          }),
+          row({}),
         ],
       }),
     ).toEqual({
@@ -324,7 +343,7 @@ describe("coerceInput", () => {
   });
 
   it("keeps an empty required cell so the server can point at it", () => {
-    expect(coerceInput([rows], { fields: [{ name: "title" }] })).toEqual({
+    expect(coerceInput([rows], { fields: [row({ name: "title" })] })).toEqual({
       fields: [{ name: "title", selector: "" }],
     });
   });
@@ -332,5 +351,44 @@ describe("coerceInput", () => {
   it("sends an empty list for required rows the member never filled", () => {
     expect(coerceInput([rows], {})).toEqual({ fields: [] });
     expect(coerceInput([{ ...rows, required: false }], {})).toEqual({});
+  });
+
+  it("sends exactly the rows rowsToSend names, in order", () => {
+    const kept = row({ name: "title" });
+    const value = [row({}), kept, row({ name: " " }), row({ attribute: "x" })];
+    expect(rowsToSend(rows, value).map((r) => r.id)).toEqual([
+      kept.id,
+      value[3]!.id,
+    ]);
+    expect(coerceInput([rows], { fields: value })).toEqual({
+      fields: [
+        { name: "title", selector: "" },
+        { name: "", selector: "", attribute: "x" },
+      ],
+    });
+  });
+});
+
+describe("rows", () => {
+  it("gives every new row its own id", () => {
+    const ids = [newRow(), newRow(), newRow()].map((r) => r.id);
+    expect(new Set(ids).size).toBe(3);
+  });
+
+  it("starts a rows field with its minimum number of empty rows, at least one", () => {
+    const field: FormField = {
+      ...column("fields"),
+      kind: "rows",
+      required: true,
+      min: 2,
+      max: 5,
+      columns: [{ ...column("name"), kind: "text", required: true }],
+    };
+    const value = initialValue(field) as RowValue[];
+    expect(value.map((r) => r.cells)).toEqual([{}, {}]);
+    expect(new Set(value.map((r) => r.id)).size).toBe(2);
+    expect(
+      (initialValue({ ...field, min: 0 }) as RowValue[]).map((r) => r.cells),
+    ).toEqual([{}]);
   });
 });

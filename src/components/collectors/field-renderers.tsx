@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type {
-  FieldKind,
-  FieldValue,
-  FormColumn,
-  FormField,
-  RowValue,
+import {
+  type FieldKind,
+  type FieldValue,
+  type FormColumn,
+  type FormField,
+  newRow,
+  type RowValue,
 } from "@/lib/collectors/form-fields";
 
 export type FieldRendererProps = {
@@ -117,9 +118,11 @@ function CheckboxField({
 /**
  * A list the member builds row by row, such as the columns of a table: one
  * labelled input per column in each row, with buttons to add and remove rows
- * within the field's bounds. The column names and their help show once, as
- * headings on wide screens and as a short key above stacked rows on narrow
- * ones; each input keeps its own label (visible only on narrow screens).
+ * within the field's bounds. Column names and help show once per layout: on
+ * wide screens as a heading row above the grid; on narrow screens, where the
+ * rows stack, each input shows its own label and the help sits under the
+ * first row's inputs. Rows are keyed by their id, so an input stays with its
+ * row when an earlier row is removed.
  */
 function RowsField({ field, id, value, error, onChange }: FieldRendererProps) {
   const t = useTranslations("collectors.start");
@@ -146,12 +149,16 @@ function RowsField({ field, id, value, error, onChange }: FieldRendererProps) {
     "grid gap-3 md:grid-cols-[repeat(var(--row-columns),minmax(0,1fr))_2.25rem] md:items-start";
 
   function setCell(row: number, column: string, cell: string) {
-    onChange(rows.map((r, i) => (i === row ? { ...r, [column]: cell } : r)));
+    onChange(
+      rows.map((r, i) =>
+        i === row ? { ...r, cells: { ...r.cells, [column]: cell } } : r,
+      ),
+    );
   }
 
   function addRow() {
     focusNext.current = cellId(rows.length, columns[0]!.name);
-    onChange([...rows, {}]);
+    onChange([...rows, newRow()]);
   }
 
   function removeRow(row: number) {
@@ -179,7 +186,12 @@ function RowsField({ field, id, value, error, onChange }: FieldRendererProps) {
         </p>
       ) : null}
 
-      <div aria-hidden="true" className={gridClass} style={grid}>
+      <div
+        aria-hidden="true"
+        data-testid="rows-heading"
+        className={`hidden md:grid ${gridClass}`}
+        style={grid}
+      >
         {columns.map((column) => (
           <div key={column.name} className="flex flex-col gap-1">
             <span className="text-sm leading-none font-medium">
@@ -200,7 +212,7 @@ function RowsField({ field, id, value, error, onChange }: FieldRendererProps) {
       <div className="flex flex-col gap-3">
         {rows.map((row, i) => (
           <div
-            key={i}
+            key={row.id}
             role="group"
             aria-label={t("row", { n: i + 1 })}
             className={`${gridClass} border-border border-t pt-3 first:border-t-0 first:pt-0 md:border-t-0 md:pt-0`}
@@ -217,12 +229,23 @@ function RowsField({ field, id, value, error, onChange }: FieldRendererProps) {
                   {...numberHints(column)}
                   required={column.required}
                   placeholder={column.placeholder ?? undefined}
-                  value={row[column.name] ?? ""}
+                  value={row.cells[column.name] ?? ""}
                   aria-describedby={
                     column.help ? columnHelpId(column.name) : undefined
                   }
                   onChange={(e) => setCell(i, column.name, e.target.value)}
                 />
+                {i === 0 && column.help ? (
+                  // The heading row is hidden on narrow screens; its help
+                  // shows here once instead. Screen readers get it from the
+                  // input's description, so this copy is hidden from them.
+                  <span
+                    aria-hidden="true"
+                    className="text-muted-foreground text-[13px] md:hidden"
+                  >
+                    {column.help}
+                  </span>
+                ) : null}
               </div>
             ))}
             <Button

@@ -7,6 +7,7 @@ import {
   type FieldValue,
   type FormField,
   initialValue,
+  type RowValue,
 } from "@/lib/collectors/form-fields";
 
 import en from "../../../messages/en.json";
@@ -115,6 +116,12 @@ function renderRows(error: string | null = null) {
   return { onChange };
 }
 
+/** The cells of the rows last sent to onChange. */
+function cellsOf(onChange: ReturnType<typeof vi.fn>) {
+  const rows = onChange.mock.lastCall?.[0] as RowValue[];
+  return rows.map((row) => row.cells);
+}
+
 const addButton = () =>
   screen.getByRole("button", { name: en.collectors.start.addRow });
 const removeButton = (n: number) =>
@@ -149,15 +156,83 @@ describe("FIELD_RENDERERS.rows", () => {
     fireEvent.change(within(row2).getByLabelText("Column name"), {
       target: { value: "link" },
     });
-    expect(onChange).toHaveBeenLastCalledWith([{}, { name: "link" }, {}]);
+    expect(cellsOf(onChange)).toEqual([{}, { name: "link" }, {}]);
 
     fireEvent.click(removeButton(1));
-    expect(onChange).toHaveBeenLastCalledWith([{ name: "link" }, {}]);
+    expect(cellsOf(onChange)).toEqual([{ name: "link" }, {}]);
     expect(addButton()).toBeEnabled();
     expect(screen.getAllByLabelText("Column name")[0]).toHaveValue("link");
     fireEvent.click(removeButton(2));
     expect(screen.getAllByLabelText("Column name")).toHaveLength(1);
     expect(removeButton(1)).toBeDisabled();
+  });
+
+  it("keeps each row's inputs with that row when an earlier row is removed", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    const second = within(
+      screen.getByRole("group", { name: "Column 2" }),
+    ).getByLabelText("Column name");
+    fireEvent.click(removeButton(1));
+    expect(screen.getByLabelText("Column name")).toBe(second);
+  });
+
+  it("moves focus to the new row's first input when a row is added", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    const row2 = screen.getByRole("group", { name: "Column 2" });
+    expect(within(row2).getByLabelText("Column name")).toHaveFocus();
+  });
+
+  it("keeps focus on a remove button at the same place after removing a row", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    fireEvent.click(addButton());
+    fireEvent.click(removeButton(2));
+    expect(removeButton(2)).toHaveFocus();
+  });
+
+  it("steps focus back one row when the last row is removed", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    fireEvent.click(addButton());
+    fireEvent.click(removeButton(3));
+    expect(removeButton(2)).toHaveFocus();
+  });
+
+  it("moves focus to Add once no row can be removed any more", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    fireEvent.click(removeButton(2));
+    expect(addButton()).toHaveFocus();
+  });
+
+  it("names the columns once on narrow screens: the heading row is for wide screens", () => {
+    renderRows();
+    const heading = screen.getByTestId("rows-heading");
+    expect(heading).toHaveAttribute("aria-hidden", "true");
+    expect(heading).toHaveClass("hidden", "md:grid");
+    // Each input keeps its own label, visible only on narrow screens.
+    expect(screen.getByText("Column name", { selector: "label" })).toHaveClass(
+      "md:sr-only",
+    );
+  });
+
+  it("shows each column's help once on narrow screens, under the first row", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    const narrowHelp = screen
+      .getAllByText("Start with a letter.")
+      .filter(
+        (element) => element.closest('[data-testid="rows-heading"]') === null,
+      );
+    expect(narrowHelp).toHaveLength(1);
+    expect(narrowHelp[0]).toHaveClass("md:hidden");
+    expect(
+      within(screen.getByRole("group", { name: "Column 1" })).getByText(
+        "Start with a letter.",
+      ),
+    ).toBe(narrowHelp[0]);
   });
 
   it("shows the field's error under the group and points the group at it", () => {
