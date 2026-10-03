@@ -34,6 +34,10 @@ describe("isPublicAddress", () => {
     ["6to4", "2002:7f00:1::1"],
     ["Teredo", "2001::1"],
     ["documentation", "2001:db8::1"],
+    ["IPv4-compatible ::/96", "::7f00:1"],
+    ["local-use NAT64 64:ff9b:1::/48", "64:ff9b:1::1"],
+    ["site-local fec0::/10", "fec0::1"],
+    ["documentation 3fff::/20", "3fff::1"],
     ["not an address", "example.com"],
     ["empty", ""],
   ])("refuses %s (%s)", (_label, ip) => {

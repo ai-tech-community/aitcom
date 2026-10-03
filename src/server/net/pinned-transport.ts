@@ -4,6 +4,7 @@ import {
   type LookupAllOptions,
   type LookupOneOptions,
 } from "node:dns";
+import { isIP } from "node:net";
 
 import {
   Agent,
@@ -80,8 +81,29 @@ export function createPinnedFetch(
   const dispatcher = new Agent({
     connect: { lookup: createPinnedLookup(options.resolve, options.isAllowed) },
   });
-  return (url: string | URL, init: RequestInit = {}): Promise<Response> =>
-    undiciFetch(url, { ...init, dispatcher, redirect: "manual" });
+  const isAllowed = options.isAllowed ?? isPublicAddress;
+  return async (
+    url: string | URL,
+    init: RequestInit = {},
+  ): Promise<Response> => {
+    // An IP-literal host never reaches connect.lookup (there is nothing to
+    // resolve), so check it here. The WHATWG parser has already normalised
+    // short, decimal, hex and octal IPv4 forms to dotted form.
+    const host = stripBrackets(new URL(url).hostname);
+    if (isIP(host) !== 0 && !isAllowed(host)) {
+      // Same shape undici gives when the lookup refuses an answer.
+      throw new TypeError("fetch failed", {
+        cause: new BlockedAddressError(host),
+      });
+    }
+    return undiciFetch(url, { ...init, dispatcher, redirect: "manual" });
+  };
+}
+
+function stripBrackets(hostname: string): string {
+  return hostname.startsWith("[") && hostname.endsWith("]")
+    ? hostname.slice(1, -1)
+    : hostname;
 }
 
 /** The shared pinned fetch for every outbound request to a supplied URL. */

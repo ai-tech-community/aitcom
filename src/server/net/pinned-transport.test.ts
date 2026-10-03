@@ -1,7 +1,15 @@
 // @vitest-environment node
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import {
   BlockedAddressError,
@@ -17,6 +25,21 @@ function resolverReturning(
     if (options.all) callback(null, addresses);
     else callback(null, addresses[0]!.address, addresses[0]!.family);
   }) as unknown as Resolver;
+}
+
+async function rejectionOf(promise: Promise<unknown>): Promise<unknown> {
+  try {
+    await promise;
+  } catch (err) {
+    return err;
+  }
+  throw new Error("expected the request to be refused");
+}
+
+function expectBlocked(err: unknown) {
+  expect(err).toBeInstanceOf(TypeError);
+  expect((err as TypeError).message).toBe("fetch failed");
+  expect((err as TypeError).cause).toBeInstanceOf(BlockedAddressError);
 }
 
 function lookupOnce(
@@ -72,6 +95,20 @@ describe("pinned lookup", () => {
     expect((result.err as BlockedAddressError).hostname).toBe("example.test");
   });
 
+  it("refuses an empty answer", async () => {
+    const lookup = createPinnedLookup(resolverReturning([]));
+    const result = await lookupOnce(lookup, true);
+    expect(result.err).toBeInstanceOf(BlockedAddressError);
+  });
+
+  it("refuses a single-address answer when every address was asked for", async () => {
+    const singleOnly = vi.fn<Resolver>((_h, _o, cb) => {
+      cb(null, "93.184.216.34", 4);
+    });
+    const result = await lookupOnce(createPinnedLookup(singleOnly), true);
+    expect(result.err).toBeInstanceOf(BlockedAddressError);
+  });
+
   it("passes DNS errors through", async () => {
     const failing = vi.fn<Resolver>((_h, _o, cb) => {
       cb(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" }), []);
@@ -97,6 +134,9 @@ describe("pinned fetch (real sockets)", () => {
     );
     port = (server.address() as AddressInfo).port;
   });
+  beforeEach(() => {
+    hits.length = 0;
+  });
   afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
 
   it("connects to the address the lookup checked, never re-resolving", async () => {
@@ -113,12 +153,11 @@ describe("pinned fetch (real sockets)", () => {
   });
 
   it("never connects when the answer is not public", async () => {
-    const before = hits.length;
     const fetch = createPinnedFetch({
       resolve: resolverReturning([{ address: "127.0.0.1", family: 4 }]),
     });
-    await expect(fetch(`http://example.test:${port}/`)).rejects.toBeDefined();
-    expect(hits.length).toBe(before);
+    expectBlocked(await rejectionOf(fetch(`http://example.test:${port}/`)));
+    expect(hits).toHaveLength(0);
   });
 
   it("never follows redirects", async () => {
@@ -126,11 +165,34 @@ describe("pinned fetch (real sockets)", () => {
       resolve: resolverReturning([{ address: "127.0.0.1", family: 4 }]),
       isAllowed: () => true,
     });
-    const before = hits.length;
     const res = await fetch(`http://example.test:${port}/`, {
       redirect: "follow",
     });
     expect(res.status).toBe(302);
-    expect(hits.length).toBe(before + 1);
+    expect(hits).toHaveLength(1);
+  });
+
+  it("connects to an allowed IP-literal host (control for the literal cases)", async () => {
+    const fetch = createPinnedFetch({ isAllowed: (ip) => ip === "127.0.0.1" });
+    const res = await fetch(`http://127.0.0.1:${port}/`);
+    expect(res.status).toBe(302);
+    expect(hits).toHaveLength(1);
+  });
+
+  it("refuses the cloud metadata literal without connecting", async () => {
+    const resolve = vi.fn<Resolver>();
+    const fetch = createPinnedFetch({ resolve });
+    expectBlocked(await rejectionOf(fetch("http://169.254.169.254/")));
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["short-form loopback", (p: number) => `http://127.1:${p}/`],
+    ["decimal loopback", (p: number) => `http://2130706433:${p}/`],
+    ["IPv4-mapped loopback", (p: number) => `http://[::ffff:127.0.0.1]:${p}/`],
+  ])("refuses the %s literal without connecting", async (_label, urlFor) => {
+    const fetch = createPinnedFetch();
+    expectBlocked(await rejectionOf(fetch(urlFor(port))));
+    expect(hits).toHaveLength(0);
   });
 });
