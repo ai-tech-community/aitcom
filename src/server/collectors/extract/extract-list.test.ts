@@ -104,6 +104,38 @@ describe("extractList", () => {
     expect(rows).toEqual([{ bio: "Ada Lovelace wrote the first program" }]);
   });
 
+  it("puts one space between block elements and at <br>", () => {
+    const html = `<section><div class="card"><h3>Engineer</h3><p>Amsterdam</p><div>Full<br>time</div><ul><li>Remote</li><li>Hybrid</li></ul><table><tr><td>A</td><td>B</td></tr></table></div></section>`;
+    const { rows } = extractList(html, {
+      baseUrl: BASE_URL,
+      itemSelector: "section",
+      fields: [{ name: "all", selector: ".card" }],
+    });
+    expect(rows).toEqual([
+      { all: "Engineer Amsterdam Full time Remote Hybrid A B" },
+    ]);
+  });
+
+  it("joins inline elements without adding a space", () => {
+    const html = `<ul><li class="item"><p><b>Engi</b><i>neer</i>, <a href="#">Amster</a><span>dam</span></p></li></ul>`;
+    const { rows } = extractList(html, {
+      baseUrl: BASE_URL,
+      itemSelector: "li.item",
+      fields: [{ name: "text", selector: "p" }],
+    });
+    expect(rows).toEqual([{ text: "Engineer, Amsterdam" }]);
+  });
+
+  it("does not add a space at the edges of a cell or twice in a row", () => {
+    const html = `<ul><li class="item"><div><div><p> Engineer </p></div>  <div><p>Amsterdam</p></div></div></li></ul>`;
+    const { rows } = extractList(html, {
+      baseUrl: BASE_URL,
+      itemSelector: "li.item",
+      fields: [{ name: "text", selector: "div" }],
+    });
+    expect(rows).toEqual([{ text: "Engineer Amsterdam" }]);
+  });
+
   it("caps a text cell at MAX_CELL_CHARS characters", () => {
     const html = `<ul><li class="item"><p>${"x".repeat(3_000)}</p></li></ul>`;
     const { rows } = extractList(html, {

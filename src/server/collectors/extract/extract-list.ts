@@ -39,6 +39,60 @@ const NON_TEXT_ELEMENTS: ReadonlySet<string> = new Set([
   "template",
 ]);
 
+/**
+ * Elements a browser draws on their own line (or, for table cells, apart
+ * from their neighbours). Their text is kept apart from the text around
+ * them by one space, as a member sees it: `<h3>Engineer</h3><p>Amsterdam</p>`
+ * reads "Engineer Amsterdam". Inline elements add nothing.
+ */
+const BLOCK_ELEMENTS: ReadonlySet<string> = new Set([
+  "address",
+  "article",
+  "aside",
+  "blockquote",
+  "br",
+  "caption",
+  "dd",
+  "details",
+  "dialog",
+  "div",
+  "dl",
+  "dt",
+  "fieldset",
+  "figcaption",
+  "figure",
+  "footer",
+  "form",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "header",
+  "hgroup",
+  "hr",
+  "li",
+  "main",
+  "nav",
+  "ol",
+  "p",
+  "pre",
+  "section",
+  "summary",
+  "table",
+  "tbody",
+  "td",
+  "tfoot",
+  "th",
+  "thead",
+  "tr",
+  "ul",
+]);
+
+/** Marks the end of a block element on the text walk's stack. */
+const BLOCK_END = Symbol("block end");
+
 /** Characters of one text value scanned per step. */
 const SCAN_CHUNK_CHARS = 4_096;
 
@@ -224,21 +278,28 @@ function isHttp(url: URL): boolean {
 /**
  * Text content in document order, collected with an explicit stack (not
  * cheerio's recursive `.text()`). Skips script, style, noscript and template
- * content. Stops as soon as the cell is full.
+ * content, and keeps the text of block elements apart by one space. Stops as
+ * soon as the cell is full.
  */
 function textOf(element: ElementNode): string {
   const cell = new CellText();
-  const stack: TreeNode[] = [element];
+  const stack: (TreeNode | typeof BLOCK_END)[] = [element];
   for (
     let node = stack.pop();
     node !== undefined && !cell.isFull();
     node = stack.pop()
   ) {
-    if ((node.type as string) === "text" && "data" in node) {
+    if (node === BLOCK_END) {
+      cell.breakText();
+    } else if ((node.type as string) === "text" && "data" in node) {
       cell.append(node.data);
     } else if ("attribs" in node && NON_TEXT_ELEMENTS.has(node.name)) {
       continue;
     } else if ("children" in node) {
+      if ("attribs" in node && BLOCK_ELEMENTS.has(node.name)) {
+        cell.breakText();
+        stack.push(BLOCK_END);
+      }
       // Pushed last-to-first, so the first child pops first (document
       // order). A loop, not push(...children): a spread of a very wide
       // node would exceed the engine's argument limit.
@@ -287,6 +348,14 @@ class CellText {
 
   isFull(): boolean {
     return this.full || this.codes.length >= MAX_CELL_CHARS;
+  }
+
+  /**
+   * A boundary between two pieces of text (a block element starts or ends):
+   * counts as whitespace, so it becomes one space only between characters.
+   */
+  breakText(): void {
+    this.pendingSpace = true;
   }
 
   append(text: string): void {
