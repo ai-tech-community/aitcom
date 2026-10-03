@@ -82,8 +82,8 @@ const itemSchema = z.record(z.string(), z.string().nullable());
 
 function isHtml(contentType: string | null): boolean {
   if (contentType === null || contentType.trim() === "") return true;
-  const type = contentType.toLowerCase();
-  return HTML_TYPES.some((t) => type.includes(t));
+  const mediaType = contentType.split(";")[0]!.trim().toLowerCase();
+  return HTML_TYPES.includes(mediaType);
 }
 
 /** The page a URL names, for the visited set: http(s) only, no `#hash`. */
@@ -191,10 +191,20 @@ export const pageList: Collector<PageListInput, PageRow> = {
       nextPageSelector: input.nextPageSelector,
     };
     const visited = new Set<string>();
-    let url: string | null = input.url;
-    for (let n = 1; url !== null && n <= input.maxPages; n += 1) {
+    let url = input.url;
+    // `n` counts pages read, not requests: redirect hops and 429/503 retries
+    // count toward the context's own page budget (limits.maxPages), so a run
+    // may end with page_limit before input.maxPages pages.
+    for (let n = 1; ; n += 1) {
       const key = pageKey(url);
       if (key === null || visited.has(key)) return;
+      if (n > input.maxPages) {
+        throw new CollectorStop(
+          "page_limit",
+          "succeeded",
+          "Stopped at the page limit.",
+        );
+      }
       visited.add(key);
 
       const res = await ctx.fetch(url, { accept: PAGE_ACCEPT });
@@ -214,9 +224,12 @@ export const pageList: Collector<PageListInput, PageRow> = {
           { code: "not_a_page" },
         );
       }
-      // A redirect lands on another page; don't read that one twice.
+      // A redirect onto a page already read would repeat its rows: stop.
       const landed = pageKey(res.url);
-      if (landed !== null) visited.add(landed);
+      if (landed !== null && landed !== key) {
+        if (visited.has(landed)) return;
+        visited.add(landed);
+      }
 
       const { rows, nextUrl, truncated } = await ctx.extractList(
         { html: await res.text(), url: res.url },
@@ -229,6 +242,7 @@ export const pageList: Collector<PageListInput, PageRow> = {
         );
       }
       yield* rows;
+      if (nextUrl === null) return;
       url = nextUrl;
     }
   },

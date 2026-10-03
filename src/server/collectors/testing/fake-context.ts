@@ -3,6 +3,8 @@ import { extractListVia } from "../context/extract-capability";
 import { extractList } from "../extract/extract-list";
 
 type FakePage = {
+  /** Where the request landed after redirects; the requested URL if absent. */
+  url?: string;
   status?: number;
   body: string;
   headers?: Record<string, string>;
@@ -29,7 +31,7 @@ export function fakeContext(pages: Record<string, FakePage>) {
       const page = pages[url];
       if (!page) throw new Error(`unexpected request ${url}`);
       return {
-        url,
+        url: page.url ?? url,
         status: page.status ?? 200,
         headers: new Headers(page.headers),
         text: async () => page.body,

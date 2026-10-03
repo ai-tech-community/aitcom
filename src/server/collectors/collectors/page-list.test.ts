@@ -74,16 +74,6 @@ describe("page-list collector", () => {
     },
   );
 
-  it("reads only one page when maxPages is 1", async () => {
-    const { ctx, requests } = fakeContext({
-      "https://e.com/jobs": { body: page(["a"], "/jobs?page=2") },
-      "https://e.com/jobs?page=2": { body: page(["b"]) },
-    });
-    const rows = await collectAll(pageList.run(input({ maxPages: 1 }), ctx));
-    expect(rows.map((r) => r.title)).toEqual(["a"]);
-    expect(requests.map((r) => r.url)).toEqual(["https://e.com/jobs"]);
-  });
-
   it("reads up to five pages by default", () => {
     expect(input().maxPages).toBe(5);
   });
@@ -147,6 +137,62 @@ describe("page-list collector", () => {
       "Page 1 had more than we can keep, so some items were left out.",
       "Page 2: 1 items.",
     ]);
+  });
+  it("stops when a page's address redirects onto a page it already read", async () => {
+    const { ctx, requests } = fakeContext({
+      "https://e.com/jobs": { body: page(["a"], "/jobs?page=2") },
+      "https://e.com/jobs?page=2": {
+        url: "https://e.com/jobs",
+        body: page(["a"], "/jobs?page=2"),
+      },
+    });
+    const rows = await collectAll(pageList.run(input(), ctx));
+    expect(rows.map((r) => r.title)).toEqual(["a"]);
+    expect(requests.map((r) => r.url)).toEqual([
+      "https://e.com/jobs",
+      "https://e.com/jobs?page=2",
+    ]);
+  });
+
+  it("ends at the page limit while a next link remains", async () => {
+    const { ctx, requests } = fakeContext({
+      "https://e.com/jobs": { body: page(["a"], "/jobs?page=2") },
+    });
+    const rows: unknown[] = [];
+    await expect(async () => {
+      for await (const row of pageList.run(input({ maxPages: 1 }), ctx)) {
+        rows.push(row);
+      }
+    }).rejects.toMatchObject({
+      reason: "page_limit",
+      outcome: "succeeded",
+      message: "Stopped at the page limit.",
+    } satisfies Partial<CollectorStop>);
+    expect(rows).toEqual([{ title: "a", link: "https://e.com/jobs/a" }]);
+    expect(requests.map((r) => r.url)).toEqual(["https://e.com/jobs"]);
+  });
+
+  it("reads text/html with a charset as a web page", async () => {
+    const { ctx } = fakeContext({
+      "https://e.com/jobs": {
+        body: page(["a"]),
+        headers: { "content-type": "text/html; charset=utf-8" },
+      },
+    });
+    const rows = await collectAll(pageList.run(input(), ctx));
+    expect(rows.map((r) => r.title)).toEqual(["a"]);
+  });
+
+  it("fails with not_a_page for a type that only starts like HTML", async () => {
+    const { ctx } = fakeContext({
+      "https://e.com/jobs": {
+        body: page(["a"]),
+        headers: { "content-type": "text/html-fragment" },
+      },
+    });
+    await expect(collectAll(pageList.run(input(), ctx))).rejects.toMatchObject({
+      detail: { code: "not_a_page" },
+    } satisfies Partial<CollectorStop>);
   });
 });
 
