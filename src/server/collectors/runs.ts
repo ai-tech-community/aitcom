@@ -35,6 +35,8 @@ export type StartRunResult =
       reason: "disabled" | "unknown_collector" | "invalid_input" | "quota";
       message: string;
       fieldErrors?: Record<string, string[]>;
+      /** Quota only: when a new start will be allowed (ISO 8601), if known. */
+      retryAt?: string;
     };
 
 export type RunView = {
@@ -218,7 +220,14 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
           );
           const decision = await canStartRun(tx, args.userId, now, quota);
           if (!decision.allowed) {
-            return { ok: false, reason: "quota", message: decision.message };
+            return {
+              ok: false,
+              reason: "quota",
+              message: decision.message,
+              ...(decision.retryAt
+                ? { retryAt: decision.retryAt.toISOString() }
+                : {}),
+            };
           }
           const [row] = await tx
             .insert(collectorRuns)
@@ -237,7 +246,15 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
           return { ok: true, runId: row!.id };
         },
       );
-      if (result.ok) deps.kick();
+      if (result.ok) {
+        // The run is committed; a failed wake-up must not turn that into an
+        // error. The per-minute cron picks the run up anyway.
+        try {
+          deps.kick();
+        } catch (err) {
+          console.error("[collectors] could not wake the worker", err);
+        }
+      }
       return result;
     },
 

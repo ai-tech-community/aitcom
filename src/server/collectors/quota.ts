@@ -1,4 +1,4 @@
-import { and, count, eq, gt, inArray } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray } from "drizzle-orm";
 
 import { collectorRuns } from "@/server/db/schema";
 
@@ -24,6 +24,8 @@ export type QuotaDecision =
       allowed: false;
       reason: "daily_limit" | "active_limit" | "platform_busy";
       message: string;
+      /** When a new start will be allowed, if that is known (daily limit). */
+      retryAt?: Date;
     };
 
 const DAY_MS = 86_400_000;
@@ -46,17 +48,32 @@ export async function canStartRun(
   limits: QuotaLimits = DEFAULT_QUOTA,
 ): Promise<QuotaDecision> {
   const since = new Date(now.getTime() - DAY_MS);
+  const inWindow = and(
+    eq(collectorRuns.userId, userId),
+    gt(collectorRuns.createdAt, since),
+  );
   const [recent] = await db
     .select({ n: count() })
     .from(collectorRuns)
-    .where(
-      and(eq(collectorRuns.userId, userId), gt(collectorRuns.createdAt, since)),
-    );
-  if ((recent?.n ?? 0) >= limits.runsPerDay) {
+    .where(inWindow);
+  const runsToday = recent?.n ?? 0;
+  if (runsToday >= limits.runsPerDay) {
+    // A start is allowed again once enough runs leave the window. With
+    // exactly the limit (the usual case) that is the oldest one.
+    const [leaving] = await db
+      .select({ createdAt: collectorRuns.createdAt })
+      .from(collectorRuns)
+      .where(inWindow)
+      .orderBy(asc(collectorRuns.createdAt))
+      .offset(runsToday - limits.runsPerDay)
+      .limit(1);
     return {
       allowed: false,
       reason: "daily_limit",
       message: `You can start ${limits.runsPerDay} runs per 24 hours. Try again later.`,
+      ...(leaving
+        ? { retryAt: new Date(leaving.createdAt.getTime() + DAY_MS) }
+        : {}),
     };
   }
   const [mine] = await db

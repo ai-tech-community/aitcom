@@ -92,6 +92,17 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         import("./runs"),
       ]);
     m = { db, schema, drizzle, quota, executor, errors, runs };
+    // These tests delete every collector run. Refuse any database but the
+    // dedicated test one, whatever DATABASE_URL looks like.
+    const { rows } = await m.db.execute<{ name: string }>(
+      m.drizzle.sql`select current_database() as name`,
+    );
+    const name = rows[0]?.name;
+    if (name !== "aitcom_test") {
+      throw new Error(
+        `Refusing to run collector DB tests against "${name}"; use aitcom_test.`,
+      );
+    }
   }, 120_000);
 
   beforeEach(async () => {
@@ -129,7 +140,13 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       }
       await insertRun(other, { status: "succeeded", createdAt: now });
       const decision = await m.quota.canStartRun(m.db, userId, now, roomy);
-      expect(decision).toMatchObject({ allowed: false, reason: "daily_limit" });
+      // The oldest of the 20 (20 minutes ago) leaves the window first.
+      expect(decision).toEqual({
+        allowed: false,
+        reason: "daily_limit",
+        message: "You can start 20 runs per 24 hours. Try again later.",
+        retryAt: new Date(now.getTime() - 20 * 60_000 + 86_400_000),
+      });
       expect(await m.quota.canStartRun(m.db, other, now, roomy)).toEqual({
         allowed: true,
       });
@@ -152,12 +169,12 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       const userId = await makeUser();
       await insertRun(userId, { status: "queued", createdAt: now });
       await insertRun(userId, { status: "running", createdAt: now });
-      expect(await m.quota.canStartRun(m.db, userId, now, roomy)).toMatchObject(
-        {
-          allowed: false,
-          reason: "active_limit",
-        },
-      );
+      const decision = await m.quota.canStartRun(m.db, userId, now, roomy);
+      expect(decision).toMatchObject({
+        allowed: false,
+        reason: "active_limit",
+      });
+      expect(decision).not.toHaveProperty("retryAt");
     });
 
     it("does not count finished runs toward the active limit", async () => {
@@ -748,7 +765,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
 
     it("never lets simultaneous starts pass the active limit", async () => {
       const userId = await makeUser();
-      const { runs } = facade();
+      const { runs, kicks } = facade();
       const results = await Promise.all(
         Array.from({ length: 4 }, () =>
           runs.startRun({
@@ -763,6 +780,63 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       expect(results.filter((r) => !r.ok && r.reason === "quota")).toHaveLength(
         2,
       );
+      expect(kicks).toHaveLength(2);
+    });
+
+    it("tells the member when the daily limit frees up", async () => {
+      const userId = await makeUser();
+      await insertRun(userId, {
+        status: "succeeded",
+        createdAt: new Date("2026-10-03T11:00:00Z"),
+      });
+      const { runs, kicks } = facade({
+        quota: { runsPerDay: 1, activePerUser: 2, activePlatform: 1_000 },
+      });
+      expect(
+        await runs.startRun({
+          userId,
+          origin: "web",
+          collectorId: "feed-items",
+          input: feedInput,
+        }),
+      ).toEqual({
+        ok: false,
+        reason: "quota",
+        message: "You can start 1 runs per 24 hours. Try again later.",
+        retryAt: "2026-10-04T11:00:00.000Z",
+      });
+      expect(kicks).toHaveLength(0);
+    });
+
+    it("still reports a committed start when waking the worker fails", async () => {
+      const userId = await makeUser();
+      const { runs } = facade({
+        kick: () => {
+          throw new Error("after() outside a request");
+        },
+      });
+      const serverLog = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      try {
+        const result = await runs.startRun({
+          userId,
+          origin: "web",
+          collectorId: "feed-items",
+          input: feedInput,
+        });
+        expect(result.ok).toBe(true);
+        const runId = (result as { runId: string }).runId;
+        expect(await runs.getRun(userId, runId)).toMatchObject({
+          status: "queued",
+        });
+        expect(serverLog).toHaveBeenCalledWith(
+          "[collectors] could not wake the worker",
+          expect.objectContaining({ message: "after() outside a request" }),
+        );
+      } finally {
+        serverLog.mockRestore();
+      }
     });
 
     it("shows a run only to its owner", async () => {
