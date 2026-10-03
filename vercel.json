@@ -18,6 +18,10 @@
       "schedule": "* * * * *"
     },
     {
+      "path": "/api/cron/collector-worker",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/benchmark-aggregate",
       "schedule": "0 * * * *"
     },
