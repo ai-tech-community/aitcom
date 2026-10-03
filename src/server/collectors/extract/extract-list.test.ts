@@ -166,6 +166,28 @@ describe("extractList", () => {
     expect(rows).toEqual([{ name: "Ada" }, { name: "Grace" }]);
   });
 
+  it("gives an empty cell when a field matches a script, style, noscript or template", () => {
+    const html = `<ul><li class="item">
+      <script>var secret = 1;</script>
+      <style>.a { color: red }</style>
+      <noscript>Enable JS</noscript>
+      <template><b>Hidden</b></template>
+    </li></ul>`;
+    const { rows } = extractList(html, {
+      baseUrl: BASE_URL,
+      itemSelector: "li.item",
+      fields: [
+        { name: "script", selector: "script" },
+        { name: "style", selector: "style" },
+        { name: "noscript", selector: "noscript" },
+        { name: "template", selector: "template" },
+      ],
+    });
+    expect(rows).toEqual([
+      { script: "", style: "", noscript: "", template: "" },
+    ]);
+  });
+
   it("leaves a JSON-LD block out of a card's text", () => {
     const html = `<ul class="talks"><li class="card">
       <h3>Opening keynote</h3>
@@ -349,6 +371,18 @@ describe("extractList", () => {
     expect(deep.rows).toEqual([{ text: "deep" }]);
   });
 
+  it("counts nesting inside a <template> against the depth cap", () => {
+    const html = `<html><body><ul><li class="item">x</li></ul><template>${"<div>".repeat(600)}deep${"</div>".repeat(600)}</template></body></html>`;
+    const error = captureError(() =>
+      extractList(html, {
+        baseUrl: BASE_URL,
+        itemSelector: "li.item",
+        fields: [{ name: "text", selector: "li" }],
+      }),
+    );
+    expect(error.code).toBe("page_too_deep");
+  });
+
   it("refuses a page 5 000 levels deep without a stack overflow", () => {
     const error = captureError(() =>
       extractList(nestedDivs(5_000), {
@@ -375,13 +409,14 @@ describe("extractList", () => {
       { length: 6_000 },
       (_, i) => `<li class="item"><span>${i}</span></li>`,
     ).join("");
-    const { rows } = extractList(`<ul>${items}</ul>`, {
+    const { rows, truncated } = extractList(`<ul>${items}</ul>`, {
       baseUrl: BASE_URL,
       itemSelector: "li.item",
       fields: [{ name: "n", selector: "span" }],
     });
     expect(MAX_ROWS_PER_PAGE).toBe(5_000);
     expect(rows).toHaveLength(5_000);
+    expect(truncated).toBe(true);
     expect(rows[0]).toEqual({ n: "0" });
     expect(rows[4_999]).toEqual({ n: "4999" });
   });

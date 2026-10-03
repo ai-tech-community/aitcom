@@ -55,11 +55,12 @@ export function extractList(html: string, spec: ExtractSpec): ExtractResult {
 
   const rows: Row[] = [];
   let outputChars = 0;
-  let truncated = false;
   // `root().find()`, not `$(selector)`: `$()` would treat a string starting
   // with "<" as HTML to build, not as a selector.
   const items = $.root().find(spec.itemSelector);
   const itemCount = Math.min(items.length, MAX_ROWS_PER_PAGE);
+  // Any cut is visible: too many items here, or the output budget below.
+  let truncated = items.length > MAX_ROWS_PER_PAGE;
   for (let index = 0; index < itemCount; index += 1) {
     const row = readRow(items.eq(index), spec.fields, baseUrl);
     const rowChars = charsIn(row);
@@ -111,7 +112,9 @@ function parseBaseUrl(raw: string): URL {
 
 /**
  * Iterative element-depth measure (`<html>` is depth 1); throws
- * page_too_deep past `maxDepth`. Only elements go on the stack.
+ * page_too_deep past `maxDepth`. Every node with children is walked, so
+ * nesting inside a `<template>` (whose content parse5 keeps in a fragment
+ * node with no attributes) is counted too; only elements add depth.
  */
 function assertDepthWithin(root: DocumentNode, maxDepth: number): void {
   const stack: { node: TreeNode; depth: number }[] = [{ node: root, depth: 0 }];
@@ -121,9 +124,9 @@ function assertDepthWithin(root: DocumentNode, maxDepth: number): void {
     }
     if (!("children" in entry.node)) continue;
     for (const child of entry.node.children) {
-      if ("attribs" in child) {
-        stack.push({ node: child, depth: entry.depth + 1 });
-      }
+      if (!("children" in child)) continue;
+      const depth = "attribs" in child ? entry.depth + 1 : entry.depth;
+      stack.push({ node: child, depth });
     }
   }
 }

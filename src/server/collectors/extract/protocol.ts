@@ -6,7 +6,7 @@
 
 /** Deepest element nesting a page may have; deeper pages are refused. */
 export const MAX_DEPTH = 512;
-/** Most rows kept from one page; further items are ignored. */
+/** Most rows kept from one page; further items are dropped (`truncated`). */
 export const MAX_ROWS_PER_PAGE = 5_000;
 /** Longest cell value, in characters, after trimming and collapsing. */
 export const MAX_CELL_CHARS = 2_000;
@@ -38,7 +38,10 @@ export type ExtractSpec = {
 export type ExtractResult = {
   rows: Record<string, string | null>[];
   nextUrl: string | null;
-  /** True when rows were dropped to stay within MAX_OUTPUT_CHARS_PER_PAGE. */
+  /**
+   * True when rows were dropped: the page had more than MAX_ROWS_PER_PAGE
+   * items, or the rows would pass MAX_OUTPUT_CHARS_PER_PAGE.
+   */
   truncated: boolean;
 };
 
