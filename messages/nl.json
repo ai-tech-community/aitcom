@@ -4208,6 +4208,17 @@
       "fixFields": "Sommige velden hebben aandacht nodig.",
       "invalidField": "Controleer dit veld.",
       "invalidUrl": "Gebruik een webadres dat begint met https://.",
+      "problem": {
+        "selector": {
+          "empty": "Vul een selector in.",
+          "too_long": "Deze selector is te lang. Gebruik hooguit {max} tekens.",
+          "invalid": "Dit is geen geldige CSS-selector. Kijk of er een typefout in zit.",
+          "list": "Gebruik hier één selector, zonder komma's.",
+          "too_complex": "Deze selector heeft te veel delen. Gebruik er hooguit {max}.",
+          "not_allowed": "Deze selector gebruikt iets wat we niet toestaan. Gebruik tagnamen, klassen, id's en attributen."
+        },
+        "duplicate_name": "Elke kolom heeft een eigen naam nodig."
+      },
       "addRow": "Kolom toevoegen",
       "removeRow": "Kolom {n} weghalen",
       "row": "Kolom {n}",

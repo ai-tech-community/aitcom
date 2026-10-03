@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 import {
-  checkSelector,
-  MAX_COMPOUNDS,
-  MAX_SELECTOR_LENGTH,
-  type SelectorProblem,
-} from "@/lib/collectors/selector-policy";
+  DUPLICATE_NAME,
+  problemIssue,
+  selectorRefused,
+} from "@/lib/collectors/input-problems";
+import { checkSelector } from "@/lib/collectors/selector-policy";
 
 import type { Collector } from "../collector";
 import { CollectorStop } from "../errors";
@@ -16,22 +16,14 @@ const PAGE_ACCEPT = "text/html,application/xhtml+xml";
 /** Content types read as a web page. A missing type counts as one. */
 const HTML_TYPES = ["text/html", "application/xhtml+xml"];
 
-/** Why a selector was refused, in words a member can act on. */
-const SELECTOR_MESSAGES: Record<SelectorProblem, string> = {
-  empty: "Enter a selector.",
-  too_long: `This selector is too long. Use at most ${MAX_SELECTOR_LENGTH} characters.`,
-  invalid: "This is not a valid CSS selector.",
-  list: "Use one selector here, without commas.",
-  too_complex: `This selector has too many parts. Use at most ${MAX_COMPOUNDS}.`,
-  not_allowed:
-    "This selector uses a feature we don't allow. Use tag names, classes, ids and attributes.",
-};
+/*
+ * Refusals carry codes, not sentences (input-problems.ts): the start form
+ * words them in the member's language at the exact input.
+ */
 
 function refineSelector(value: string, ctx: z.RefinementCtx): void {
   const check = checkSelector(value);
-  if (!check.ok) {
-    ctx.addIssue({ code: "custom", message: SELECTOR_MESSAGES[check.reason] });
-  }
+  if (!check.ok) ctx.addIssue(problemIssue(selectorRefused(check.reason)));
 }
 
 const isBlank = (value: string | undefined) => !value?.trim();
@@ -52,19 +44,11 @@ const columnSelector = z
   .optional();
 
 const column = z.object({
-  name: z
-    .string()
-    .regex(
-      /^[a-zA-Z][a-zA-Z0-9_]{0,39}$/,
-      "Start the column name with a letter; use only letters, digits and _ (at most 40).",
-    ),
+  name: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/),
   selector: columnSelector,
   attribute: z
     .string()
-    .regex(
-      /^[a-zA-Z_:][-a-zA-Z0-9_:.]{0,39}$/,
-      "This is not a valid attribute name.",
-    )
+    .regex(/^[a-zA-Z_:][-a-zA-Z0-9_:.]{0,39}$/)
     .optional(),
 });
 
@@ -73,17 +57,13 @@ const inputSchema = z.object({
   itemSelector: selector,
   fields: z
     .array(column)
-    .min(1, "Add at least one column.")
-    .max(20, "Use at most 20 columns.")
+    .min(1)
+    .max(20)
     .superRefine((columns, ctx) => {
       const seen = new Set<string>();
       columns.forEach((c, i) => {
         if (seen.has(c.name)) {
-          ctx.addIssue({
-            code: "custom",
-            path: [i, "name"],
-            message: "Each column needs its own name.",
-          });
+          ctx.addIssue({ ...problemIssue(DUPLICATE_NAME), path: [i, "name"] });
         }
         seen.add(c.name);
       });

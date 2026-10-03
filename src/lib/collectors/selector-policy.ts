@@ -31,13 +31,17 @@ import { parse, SelectorType, type Selector } from "css-what";
 export const MAX_SELECTOR_LENGTH = 200;
 export const MAX_COMPOUNDS = 8;
 
-export type SelectorProblem =
-  | "empty"
-  | "too_long"
-  | "invalid"
-  | "list"
-  | "too_complex"
-  | "not_allowed";
+/** Why a selector was refused. A runtime list, so a code can be checked. */
+export const SELECTOR_PROBLEMS = [
+  "empty",
+  "too_long",
+  "invalid",
+  "list",
+  "too_complex",
+  "not_allowed",
+] as const;
+
+export type SelectorProblem = (typeof SELECTOR_PROBLEMS)[number];
 
 export type SelectorCheck =
   | { ok: true }

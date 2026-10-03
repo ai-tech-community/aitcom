@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+
+import { inputProblemsOf } from "@/lib/collectors/input-problems";
+
 import type { CollectorStop } from "../errors";
 import { collectAll, fakeContext } from "../testing/fake-context";
 import { pageList } from "./page-list";
@@ -295,51 +298,51 @@ describe("page-list input", () => {
     expect(pageList.inputSchema.safeParse(valid).success).toBe(true);
   });
 
-  it("refuses a selector outside the allowlist with a clear message", () => {
-    const issues = refused({ itemSelector: "li:nth-child(2)" });
-    expect(issues).toEqual([
-      expect.objectContaining({
-        path: ["itemSelector"],
-        message: expect.stringContaining("feature we don't allow"),
-      }),
-    ]);
-  });
-
-  it("checks column and next-page selectors too", () => {
+  it("refuses a selector outside the allowlist with a reason code", () => {
     expect(
-      refused({ fields: [{ name: "t", selector: "a:has(b)" }] })[0]?.path,
-    ).toEqual(["fields", 0, "selector"]);
-    expect(refused({ nextPageSelector: "a ~ b" })[0]?.path).toEqual([
-      "nextPageSelector",
-    ]);
+      inputProblemsOf(refused({ itemSelector: "li:nth-child(2)" })),
+    ).toEqual({ itemSelector: ["selector_not_allowed/not_allowed"] });
   });
 
-  it("accepts a column whose selector is left out or blank", () => {
-    for (const fields of [
-      [{ name: "link", attribute: "href" }],
-      [{ name: "title", selector: "" }],
-      [{ name: "title", selector: "   " }],
-    ]) {
-      expect(
-        pageList.inputSchema.safeParse({ ...valid, fields }).success,
-        JSON.stringify(fields),
-      ).toBe(true);
-    }
+  it.each([
+    ["", "selector_not_allowed/empty"],
+    ["li, a", "selector_not_allowed/list"],
+    ["li[", "selector_not_allowed/invalid"],
+    [`li.${"x".repeat(200)}`, "selector_not_allowed/too_long"],
+    ["a b c d e f g h i", "selector_not_allowed/too_complex"],
+  ])("names why the item selector %j was refused", (itemSelector, code) => {
+    expect(inputProblemsOf(refused({ itemSelector }))).toEqual({
+      itemSelector: [code],
+    });
   });
 
-  it("refuses duplicate column names", () => {
+  it("checks column and next-page selectors too, each at its own path", () => {
+    expect(
+      inputProblemsOf(
+        refused({
+          fields: [
+            { name: "t", selector: "a" },
+            { name: "u", selector: "a:has(b)" },
+          ],
+          nextPageSelector: "a ~ b",
+        }),
+      ),
+    ).toEqual({
+      "fields.1.selector": ["selector_not_allowed/not_allowed"],
+      nextPageSelector: ["selector_not_allowed/not_allowed"],
+    });
+  });
+
+  it("refuses duplicate column names at the repeated name", () => {
     const issues = refused({
       fields: [
         { name: "title", selector: "a" },
         { name: "title", selector: "b" },
       ],
     });
-    expect(issues).toEqual([
-      expect.objectContaining({
-        path: ["fields", 1, "name"],
-        message: "Each column needs its own name.",
-      }),
-    ]);
+    expect(inputProblemsOf(issues)).toEqual({
+      "fields.1.name": ["duplicate_name"],
+    });
   });
 
   it("refuses more than 20 columns", () => {

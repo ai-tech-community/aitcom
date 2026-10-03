@@ -4208,6 +4208,17 @@
       "fixFields": "Some fields need attention.",
       "invalidField": "Check this field.",
       "invalidUrl": "Use a web address that starts with https://.",
+      "problem": {
+        "selector": {
+          "empty": "Enter a selector.",
+          "too_long": "This selector is too long. Use at most {max} characters.",
+          "invalid": "This is not a valid CSS selector. Check it for typos.",
+          "list": "Use one selector here, without commas.",
+          "too_complex": "This selector has too many parts. Use at most {max}.",
+          "not_allowed": "This selector uses a feature we don't allow. Use tag names, classes, ids and attributes."
+        },
+        "duplicate_name": "Each column needs its own name."
+      },
       "addRow": "Add column",
       "removeRow": "Remove column {n}",
       "row": "Column {n}",

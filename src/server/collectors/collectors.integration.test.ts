@@ -963,11 +963,45 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         collectorId: "feed-items",
         input: { url: "ftp://x" },
       });
-      expect(invalid).toMatchObject({ ok: false, reason: "invalid_input" });
-      expect(
-        invalid.ok === false && invalid.fieldErrors?.url?.length,
-      ).toBeTruthy();
+      expect(invalid).toMatchObject({
+        ok: false,
+        reason: "invalid_input",
+        fieldErrors: { url: ["invalid_format"] },
+      });
       expect((await runs.listRuns(userId)).runs).toHaveLength(0);
+    });
+
+    it("names each refused page-list input by its path and a code, not a sentence", async () => {
+      const userId = await makeUser();
+      const pageList = getCollector("page-list")!;
+      const { runs } = facade({
+        catalog: { all: () => [pageList], get: () => pageList },
+      });
+      const result = await runs.startRun({
+        userId,
+        origin: "web",
+        collectorId: "page-list",
+        input: {
+          url: "https://e.com/jobs",
+          itemSelector: "li, a",
+          fields: [
+            { name: "title", selector: "h3" },
+            { name: "title", selector: "a:has(b)" },
+          ],
+          nextPageSelector: "",
+        },
+      });
+      expect(result).toEqual({
+        ok: false,
+        reason: "invalid_input",
+        message: "Some fields need attention.",
+        fieldErrors: {
+          itemSelector: ["selector_not_allowed/list"],
+          "fields.1.selector": ["selector_not_allowed/not_allowed"],
+          "fields.1.name": ["duplicate_name"],
+          nextPageSelector: ["selector_not_allowed/empty"],
+        },
+      });
     });
 
     it("queues a run with its version, origin, agent and expiry, then kicks the worker", async () => {

@@ -21,7 +21,10 @@ export type FieldRendererProps = {
   field: FormField;
   id: string;
   value: FieldValue;
+  /** The message for the field as a whole. */
   error: string | null;
+  /** Rows field only: the message at a cell, by row id, then column name. */
+  cellErrors?: Record<string, Record<string, string>>;
   onChange: (value: FieldValue) => void;
 };
 
@@ -124,7 +127,14 @@ function CheckboxField({
  * first row's inputs. Rows are keyed by their id, so an input stays with its
  * row when an earlier row is removed.
  */
-function RowsField({ field, id, value, error, onChange }: FieldRendererProps) {
+function RowsField({
+  field,
+  id,
+  value,
+  error,
+  cellErrors,
+  onChange,
+}: FieldRendererProps) {
   const t = useTranslations("collectors.start");
   // After adding or removing a row, focus moves to the element with this id,
   // so keyboard users are never left on a button that has gone away.
@@ -218,36 +228,54 @@ function RowsField({ field, id, value, error, onChange }: FieldRendererProps) {
             className={`${gridClass} border-border border-t pt-3 first:border-t-0 first:pt-0 md:border-t-0 md:pt-0`}
             style={grid}
           >
-            {columns.map((column) => (
-              <div key={column.name} className="flex flex-col gap-1.5">
-                <Label htmlFor={cellId(i, column.name)} className="md:sr-only">
-                  {column.label}
-                </Label>
-                <Input
-                  id={cellId(i, column.name)}
-                  type={column.kind}
-                  {...numberHints(column)}
-                  required={column.required}
-                  placeholder={column.placeholder ?? undefined}
-                  value={row.cells[column.name] ?? ""}
-                  aria-describedby={
-                    column.help ? columnHelpId(column.name) : undefined
-                  }
-                  onChange={(e) => setCell(i, column.name, e.target.value)}
-                />
-                {i === 0 && column.help ? (
-                  // The heading row is hidden on narrow screens; its help
-                  // shows here once instead. Screen readers get it from the
-                  // input's description, so this copy is hidden from them.
-                  <span
-                    aria-hidden="true"
-                    className="text-muted-foreground text-[13px] md:hidden"
-                  >
-                    {column.help}
-                  </span>
-                ) : null}
-              </div>
-            ))}
+            {columns.map((column) => {
+              const cell = cellId(i, column.name);
+              const cellError = cellErrors?.[row.id]?.[column.name] ?? null;
+              return (
+                <div key={column.name} className="flex flex-col gap-1.5">
+                  <Label htmlFor={cell} className="md:sr-only">
+                    {column.label}
+                  </Label>
+                  <Input
+                    id={cell}
+                    type={column.kind}
+                    {...numberHints(column)}
+                    required={column.required}
+                    placeholder={column.placeholder ?? undefined}
+                    value={row.cells[column.name] ?? ""}
+                    aria-invalid={cellError ? true : undefined}
+                    aria-describedby={
+                      [
+                        column.help ? columnHelpId(column.name) : null,
+                        cellError ? `${cell}-error` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || undefined
+                    }
+                    onChange={(e) => setCell(i, column.name, e.target.value)}
+                  />
+                  {cellError ? (
+                    <p
+                      id={`${cell}-error`}
+                      className="text-destructive text-[13px]"
+                    >
+                      {cellError}
+                    </p>
+                  ) : null}
+                  {i === 0 && column.help ? (
+                    // The heading row is hidden on narrow screens; its help
+                    // shows here once instead. Screen readers get it from the
+                    // input's description, so this copy is hidden from them.
+                    <span
+                      aria-hidden="true"
+                      className="text-muted-foreground text-[13px] md:hidden"
+                    >
+                      {column.help}
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
             <Button
               id={removeId(i)}
               type="button"

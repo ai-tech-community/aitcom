@@ -22,9 +22,15 @@ import { Link, useRouter } from "@/i18n/navigation";
 import {
   coerceInput,
   type FieldValue,
+  type FormField,
   formFieldsFor,
   initialValue,
 } from "@/lib/collectors/form-fields";
+import {
+  type PlacedProblems,
+  placeProblems,
+  problemCopy,
+} from "@/lib/collectors/input-problems";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 type StartResult = RouterOutputs["collectors"]["start"];
@@ -69,14 +75,31 @@ export function StartRunForm({ collectorId }: { collectorId: string }) {
   const overview = api.collectors.overview.useQuery({ locale });
   const data = overview.data;
   const collector = data?.collectors.find((c) => c.id === collectorId);
-  const fields = collector ? formFieldsFor(collector) : null;
+  const fields = React.useMemo(
+    () => (collector ? formFieldsFor(collector) : null),
+    [collector],
+  );
+  // Made once per form: a rows field's starting rows carry ids, and new ids
+  // on every render would remount their inputs.
+  const initialValues = React.useMemo(
+    () =>
+      Object.fromEntries(
+        (fields?.ok ? fields.fields : []).map((f) => [f.name, initialValue(f)]),
+      ),
+    [fields],
+  );
 
   const [values, setValues] = React.useState<Record<string, FieldValue>>({});
   const [acknowledged, setAcknowledged] = React.useState(false);
-  const [rejected, setRejected] = React.useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
+  const [placed, setPlaced] = React.useState<PlacedProblems | null>(null);
   const [problem, setProblem] = React.useState<Problem | null>(null);
+  // What the last start sent: the server names rows by their place in it.
+  const sent = React.useRef<Record<string, FieldValue> | null>(null);
+
+  const valueOf = (field: FormField): FieldValue =>
+    values[field.name] ?? initialValues[field.name] ?? initialValue(field);
+  const currentValues = (formFields: FormField[]) =>
+    Object.fromEntries(formFields.map((f) => [f.name, valueOf(f)]));
 
   const start = api.collectors.start.useMutation({
     onSuccess: (result: StartResult) => {
@@ -84,7 +107,14 @@ export function StartRunForm({ collectorId }: { collectorId: string }) {
         router.push(`/dashboard/collectors/runs/${result.runId}`);
         return;
       }
-      setRejected(new Set(Object.keys(result.fieldErrors ?? {})));
+      const formFields = fields?.ok ? fields.fields : [];
+      setPlaced(
+        placeProblems(
+          formFields,
+          sent.current ?? currentValues(formFields),
+          result.fieldErrors ?? {},
+        ),
+      );
       setProblem(problemOf(result));
     },
     onError: (error) => {
@@ -97,6 +127,31 @@ export function StartRunForm({ collectorId }: { collectorId: string }) {
 
   const needsAck = data?.needsAcknowledgement ?? false;
   const runsPerDay = data?.usage.runsPerDay ?? 0;
+
+  /** A server problem in words: its own, else the field's general note. */
+  function problemWords(code: string | undefined, field: FormField) {
+    if (code === undefined) return null;
+    const copy = problemCopy(code);
+    return copy
+      ? t(copy.key, copy.values)
+      : t(FIELD_REJECTION_KEYS[field.kind]);
+  }
+
+  function cellErrorsOf(field: FormField) {
+    const rows = placed?.cells[field.name];
+    if (!rows) return undefined;
+    return Object.fromEntries(
+      Object.entries(rows).map(([rowId, columns]) => [
+        rowId,
+        Object.fromEntries(
+          Object.entries(columns).map(([column, codes]) => [
+            column,
+            problemWords(codes[0], field) ?? "",
+          ]),
+        ),
+      ]),
+    );
+  }
 
   function problemMessage(p: Problem): string {
     switch (p.kind) {
@@ -208,11 +263,12 @@ export function StartRunForm({ collectorId }: { collectorId: string }) {
               className="border-border flex flex-col gap-5 rounded-xl border p-6 shadow-sm"
               onSubmit={(e) => {
                 e.preventDefault();
-                setRejected(new Set());
+                setPlaced(null);
                 setProblem(null);
+                sent.current = currentValues(fields.fields);
                 start.mutate({
                   collectorId,
-                  input: coerceInput(fields.fields, values),
+                  input: coerceInput(fields.fields, sent.current),
                   acknowledged,
                 });
               }}
@@ -224,12 +280,9 @@ export function StartRunForm({ collectorId }: { collectorId: string }) {
                     key={field.name}
                     field={field}
                     id={`field-${field.name}`}
-                    value={values[field.name] ?? initialValue(field)}
-                    error={
-                      rejected.has(field.name)
-                        ? t(FIELD_REJECTION_KEYS[field.kind])
-                        : null
-                    }
+                    value={valueOf(field)}
+                    error={problemWords(placed?.fields[field.name]?.[0], field)}
+                    cellErrors={cellErrorsOf(field)}
                     onChange={(v) =>
                       setValues((prev) => ({ ...prev, [field.name]: v }))
                     }

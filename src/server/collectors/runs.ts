@@ -1,6 +1,11 @@
 import { and, asc, desc, eq, gt, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import {
+  type InputProblems,
+  inputProblemsOf,
+} from "@/lib/collectors/input-problems";
+
 import type { db as appDb } from "@/server/db";
 import { collectorItems, collectorRuns } from "@/server/db/schema";
 
@@ -40,7 +45,11 @@ export type StartRunResult =
       ok: false;
       reason: "disabled" | "unknown_collector" | "invalid_input" | "quota";
       message: string;
-      fieldErrors?: Record<string, string[]>;
+      /**
+       * invalid_input only: why each input was refused, as codes by full
+       * path ("fields.2.selector" → ["selector_not_allowed/not_allowed"]).
+       */
+      fieldErrors?: InputProblems;
       /** Quota only: which limit refused the start. */
       quotaReason?: "daily_limit" | "active_limit" | "platform_busy";
       /** Quota only: when a new start will be allowed (ISO 8601), if known. */
@@ -246,10 +255,7 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
           ok: false,
           reason: "invalid_input",
           message: "Some fields need attention.",
-          fieldErrors: z.flattenError(parsed.error).fieldErrors as Record<
-            string,
-            string[]
-          >,
+          fieldErrors: inputProblemsOf(parsed.error.issues),
         };
       }
       const now = deps.now();
