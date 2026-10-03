@@ -1,5 +1,6 @@
 import { createHmac } from "crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as PinnedTransport from "@/server/net/pinned-transport";
 
 const dbHooks = vi.hoisted(() => ({
   selectResults: [] as unknown[][],
@@ -50,7 +51,7 @@ vi.mock("@/server/agent/validate-webhook-url", () => ({
 }));
 
 vi.mock("@/server/net/pinned-transport", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/server/net/pinned-transport")>()),
+  ...(await importOriginal<typeof PinnedTransport>()),
   pinnedFetch: vi.fn(),
 }));
 

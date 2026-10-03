@@ -20,13 +20,15 @@ import {
   it,
   vi,
 } from "vitest";
+import type * as Nominatim from "@/server/geocoding/nominatim";
+import type * as PinnedTransport from "@/server/net/pinned-transport";
 
 vi.mock("./validate-webhook-url", () => ({
   validateWebhookUrl: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
 vi.mock("@/server/net/pinned-transport", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/server/net/pinned-transport")>()),
+  ...(await importOriginal<typeof PinnedTransport>()),
   pinnedFetch: vi.fn(),
 }));
 
@@ -37,7 +39,7 @@ const fetchMock = vi.mocked(pinnedFetch);
 // Updating an event runs the Events geocode hook, which calls the public
 // Nominatim service. Keep the suite offline: no place resolves.
 vi.mock("@/server/geocoding/nominatim", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/server/geocoding/nominatim")>()),
+  ...(await importOriginal<typeof Nominatim>()),
   geocodeEvent: vi.fn().mockResolvedValue(null),
 }));
 

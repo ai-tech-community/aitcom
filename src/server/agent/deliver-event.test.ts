@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type * as PinnedTransport from "@/server/net/pinned-transport";
 import { createHmac } from "crypto";
 
 vi.mock("@/server/net/pinned-transport", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/server/net/pinned-transport")>()),
+  ...(await importOriginal<typeof PinnedTransport>()),
   pinnedFetch: vi.fn(),
 }));
 

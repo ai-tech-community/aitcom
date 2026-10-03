@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type * as PinnedTransport from "@/server/net/pinned-transport";
 
 vi.mock("@/server/agent/validate-webhook-url", () => ({
   validateWebhookUrl: vi.fn(),
 }));
-vi.mock("@/server/net/pinned-transport", () => ({ pinnedFetch: vi.fn() }));
+vi.mock("@/server/net/pinned-transport", async (importOriginal) => ({
+  ...(await importOriginal<typeof PinnedTransport>()),
+  pinnedFetch: vi.fn(),
+}));
 
 import {
   fetchEventPageHtml,

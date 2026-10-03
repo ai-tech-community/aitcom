@@ -7,6 +7,7 @@ import {
   it,
   vi,
 } from "vitest";
+import type * as PinnedTransport from "@/server/net/pinned-transport";
 import { createHmac } from "crypto";
 
 // Mock the SSRF check so tests don't depend on DNS for example.com.
@@ -15,7 +16,7 @@ vi.mock("./validate-webhook-url", () => ({
 }));
 
 vi.mock("@/server/net/pinned-transport", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/server/net/pinned-transport")>()),
+  ...(await importOriginal<typeof PinnedTransport>()),
   pinnedFetch: vi.fn(),
 }));
 
