@@ -8,20 +8,14 @@ import {
   agentWebhooks,
   memberProfiles,
 } from "@/server/db/schema";
-import { RESPONSE_ACTIONS } from "@/server/communities/activation";
+
+import { deliverableMetadata, deliveryRuleFor } from "./event-delivery-policy";
 
 type Tx = Parameters<Parameters<(typeof _db)["transaction"]>[0]>[0];
 type DB = typeof _db | Tx;
 
 export type AgentWebhook = typeof agentWebhooks.$inferSelect;
 export type ActivityEvent = typeof activityEvents.$inferSelect;
-
-/**
- * Reciprocity actions carry a `recipientId` (the contribution author) for the
- * activation funnel, but they are still PUBLIC events that must fan out to
- * forum-subscribed webhooks regardless of who the named recipient is.
- */
-export const RECIPROCITY_ACTIONS: string[] = [...RESPONSE_ACTIONS];
 
 /** Map category names to activity_event action prefixes. */
 export const CATEGORY_PREFIXES: Record<string, string[]> = {
@@ -39,9 +33,11 @@ function categoryPrefixes(webhook: AgentWebhook): string[] {
 }
 
 /**
- * Whether this webhook should receive this event. Pure (no db). Identical gating
- * for the cron and the immediate path: recipient isolation, exclude the agent's
- * own actions, category-prefix match, and cross-agent ping-pong damping.
+ * Whether this webhook subscribes to this event. Pure (no db). Identical gating
+ * for the cron and the immediate path: the action is deliverable at all,
+ * exclude the agent's own actions, category-prefix match, and cross-agent
+ * ping-pong damping. Who may receive the event is decided separately by
+ * `EventDeliveryAudience`, which both paths apply after this check.
  */
 export function webhookMatchesEvent(
   webhook: AgentWebhook,
@@ -51,14 +47,7 @@ export function webhookMatchesEvent(
   if (webhook.status !== "active") return false;
   const prefixes = categoryPrefixes(webhook);
   if (prefixes.length === 0) return false;
-
-  if (
-    event.recipientId &&
-    !RECIPROCITY_ACTIONS.includes(event.action) &&
-    event.recipientId !== webhook.ownerId
-  ) {
-    return false;
-  }
+  if (!deliveryRuleFor(event.action)) return false;
   if (event.actorId === webhook.agentId) return false;
   if (!prefixes.some((prefix) => event.action.startsWith(prefix))) return false;
   if (event.actorType === "agent" && consecutiveAgentEvents >= 2) return false;
@@ -91,7 +80,8 @@ export async function resolveActorName(
 
 /**
  * Sign and POST one event to one webhook. db-free and side-effect-only: callers
- * own gating, failure counters, and cursor advancement. Never throws.
+ * own gating, failure counters, and cursor advancement. The metadata carries
+ * only the fields the delivery policy lists for the action. Never throws.
  */
 export async function deliverEvent(
   webhook: AgentWebhook,
@@ -106,7 +96,7 @@ export async function deliverEvent(
       actorName,
       targetType: event.targetType,
       targetId: event.targetId,
-      metadata: event.metadata,
+      metadata: deliverableMetadata(event.action, event.metadata),
     },
     eventId: event.id,
     timestamp: event.createdAt.toISOString(),

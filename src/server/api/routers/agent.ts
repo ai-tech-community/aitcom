@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, ilike, sql, isNull } from "drizzle-orm";
+import { eq, and, desc, ilike, inArray, sql, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import type { Where } from "payload";
 
@@ -44,6 +44,8 @@ import {
   logActivity,
   checkEnrollmentCompletion,
 } from "@/server/agent/activity";
+import { EventDeliveryAudience } from "@/server/agent/event-delivery-audience";
+import { deliverableMetadata } from "@/server/agent/event-delivery-policy";
 import { agentFeedRouter } from "./agent-feed";
 import { agentCommunityRouter } from "./agent-communities";
 import { publicRosterVisibility } from "@/server/members/public-roster";
@@ -91,6 +93,15 @@ function getMetadataString(
  * trailing days upcomingFromCandidates() drops from a full page.
  */
 const BROWSE_EVENT_CANDIDATES = 60;
+
+/** The activity actions getNotifications turns into notifications. */
+const NOTIFICATION_ACTIONS = [
+  "thread.create",
+  "thread.reply",
+  "challenge.objective_completed",
+  "challenge.completed",
+  "idea.submitted",
+] as const;
 
 export const agentRouter = createTRPCRouter({
   // ═══════════════════════════════════════════════════════════════════════════
@@ -608,22 +619,26 @@ export const agentRouter = createTRPCRouter({
       const expertiseTags = agent.expertiseTags ?? [];
 
       // Query activity events since the cursor
-      const events = await ctx.db
+      const candidates = await ctx.db
         .select()
         .from(activityEvents)
         .where(
           and(
             sql`${activityEvents.createdAt} > ${sinceDate}`,
+            inArray(activityEvents.action, [...NOTIFICATION_ACTIONS]),
             // Exclude this agent's own actions
             sql`NOT (${activityEvents.actorId} = ${ctx.agent.agentId} AND ${activityEvents.actorType} = 'agent')`,
-            // Exclude private events not meant for this agent's owner.
-            // Reciprocity actions are public despite carrying a recipientId,
-            // so they stay visible regardless of the named recipient.
-            sql`(${activityEvents.recipientId} IS NULL OR ${activityEvents.recipientId} = ${ownerId} OR ${activityEvents.action} IN ('thread.reply', 'feed.comment_created', 'launchpad.comment.created'))`,
           ),
         )
         .orderBy(desc(activityEvents.createdAt))
         .limit(input.limit * 2); // over-fetch, then filter for relevance
+
+      // The agent sees only events its owner may read, under the same policy
+      // as webhook delivery.
+      const events = await new EventDeliveryAudience(ctx.db).admitted(
+        candidates,
+        ownerId,
+      );
 
       // Build notifications with relevance filtering
       const notifications: {
@@ -638,16 +653,15 @@ export const agentRouter = createTRPCRouter({
       }[] = [];
 
       for (const event of events) {
-        const meta = event.metadata ?? {};
+        const meta = deliverableMetadata(event.action, event.metadata);
         const metaTitle = getMetadataString(meta, "title");
         const metaCategory = getMetadataString(meta, "category");
-        const metaAgentName = getMetadataString(meta, "agentName");
         let type: string | null = null;
         let title = "";
         let relevance = "";
 
         switch (event.action) {
-          case "thread.created": {
+          case "thread.create": {
             type = "new_thread";
             title = `New thread: ${metaTitle ?? "Untitled"}`;
             if (expertiseTags.length > 0 && metaCategory) {
@@ -664,9 +678,7 @@ export const agentRouter = createTRPCRouter({
           case "thread.reply": {
             type = "thread_reply";
             title = `New reply in thread ${event.targetId ?? ""}`;
-            relevance = metaAgentName
-              ? `Reply by ${metaAgentName}`
-              : "New reply in thread";
+            relevance = "New reply in thread";
             break;
           }
           case "challenge.objective_completed": {
@@ -685,7 +697,7 @@ export const agentRouter = createTRPCRouter({
             }
             break;
           }
-          case "idea.created": {
+          case "idea.submitted": {
             type = "idea_posted";
             title = `New idea: ${metaTitle ?? "Untitled"}`;
             relevance = "New community idea";

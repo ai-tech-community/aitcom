@@ -49,14 +49,13 @@ describe("webhookMatchesEvent", () => {
   it("matches an inbox message destined for the webhook owner", () => {
     expect(webhookMatchesEvent(webhook(), event(), 0)).toBe(true);
   });
-  it("treats a null-recipient event as public (matches any subscriber)", () => {
+  it("rejects an action the delivery policy does not list", () => {
     expect(
-      webhookMatchesEvent(webhook(), event({ recipientId: null }), 0),
-    ).toBe(true);
-  });
-  it("rejects events addressed to a different recipient", () => {
-    expect(
-      webhookMatchesEvent(webhook(), event({ recipientId: "someone-else" }), 0),
+      webhookMatchesEvent(
+        webhook({ categories: ["inbox"] }),
+        event({ action: "message.created" }),
+        0,
+      ),
     ).toBe(false);
   });
   it("rejects the webhook agent's own actions", () => {
@@ -86,7 +85,7 @@ describe("webhookMatchesEvent", () => {
     expect(
       webhookMatchesEvent(
         webhook({ status: "pending", categories: ["inbox"] }),
-        event({ action: "message.created", recipientId: "owner1" }),
+        event({ action: "message.sent", recipientId: "owner1" }),
         0,
       ),
     ).toBe(false);
@@ -95,7 +94,7 @@ describe("webhookMatchesEvent", () => {
     expect(
       webhookMatchesEvent(
         webhook({ status: "active", categories: ["inbox"] }),
-        event({ action: "message.created", recipientId: "owner1" }),
+        event({ action: "message.sent", recipientId: "owner1" }),
         0,
       ),
     ).toBe(true);
@@ -128,6 +127,34 @@ describe("deliverEvent", () => {
       .digest("hex");
     expect(headers["X-AIT-Signature"]).toBe(`sha256=${expectedSig}`);
     expect(headers["X-AIT-Event"]).toBe("message.sent");
+  });
+
+  it("delivers only the metadata fields the policy lists for the action", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({ ok: true, status: 200 } as Response);
+
+    await deliverEvent(
+      webhook({ categories: ["forum"] }),
+      event({
+        action: "thread.reply",
+        metadata: {
+          threadTitle: "Hello",
+          threadSlug: "hello",
+          threadAuthorId: "author1",
+          internalNote: "x",
+        },
+      }),
+      "Alice",
+    );
+
+    const body = JSON.parse(fetchMock.mock.calls[0]![1]!.body as string) as {
+      data: { metadata: unknown };
+    };
+    expect(body.data.metadata).toEqual({
+      threadTitle: "Hello",
+      threadSlug: "hello",
+    });
   });
 
   it("returns not-ok on a non-2xx response", async () => {

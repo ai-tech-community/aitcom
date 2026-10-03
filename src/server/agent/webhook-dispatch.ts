@@ -8,6 +8,7 @@ import {
   resolveActorName,
   webhookMatchesEvent,
 } from "./deliver-event";
+import { EventDeliveryAudience } from "./event-delivery-audience";
 
 type DB = typeof _db;
 
@@ -29,6 +30,10 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
     failures: 0,
     disabled: 0,
   };
+
+  // One audience per run: event communities and each owner's hidden
+  // communities are resolved once and shared across webhooks.
+  const audience = new EventDeliveryAudience(db);
 
   const webhooks = await db
     .select()
@@ -73,8 +78,12 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
             .limit(MAX_EVENTS_PER_RUN);
 
       let consecutiveAgentEvents = webhook.consecutiveAgentEvents;
-      const matchingEvents = events.filter((evt) =>
-        webhookMatchesEvent(webhook, evt, consecutiveAgentEvents),
+      // Agents receive only events their owner may read.
+      const matchingEvents = await audience.admitted(
+        events.filter((evt) =>
+          webhookMatchesEvent(webhook, evt, consecutiveAgentEvents),
+        ),
+        webhook.ownerId,
       );
 
       let consecutiveFailures = webhook.consecutiveFailures;
