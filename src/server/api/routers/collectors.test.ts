@@ -85,7 +85,9 @@ describe("collectors router", () => {
       code: "NOT_FOUND",
       message: "COLLECTORS_OFF",
     });
-    expect(h.facade.startRun).not.toHaveBeenCalled();
+    for (const [method, fn] of Object.entries(h.facade)) {
+      expect(fn, method).not.toHaveBeenCalled();
+    }
   });
 
   it("overview combines collectors, the last three runs, usage and the first-use flag", async () => {
@@ -132,6 +134,23 @@ describe("collectors router", () => {
       origin: "web",
       collectorId: "feed-items",
       input,
+    });
+    expect(result).toEqual({ ok: true, runId: "run-2" });
+  });
+
+  it("starts an acknowledged first run without looking up earlier runs", async () => {
+    h.facade.listRuns.mockResolvedValue({ runs: [], nextCursor: null });
+    const result = await caller().collectors.start({
+      collectorId: "feed-items",
+      input: { url: "https://e.com/f" },
+      acknowledged: true,
+    });
+    expect(h.facade.listRuns).not.toHaveBeenCalled();
+    expect(h.facade.startRun).toHaveBeenCalledWith({
+      userId: "user-1",
+      origin: "web",
+      collectorId: "feed-items",
+      input: { url: "https://e.com/f" },
     });
     expect(result).toEqual({ ok: true, runId: "run-2" });
   });
