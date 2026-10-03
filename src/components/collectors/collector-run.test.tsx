@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -64,8 +64,8 @@ const ok = (data: unknown) => ({
   refetch: vi.fn(),
 });
 
-function renderRun() {
-  return render(
+function runTree() {
+  return (
     <NextIntlClientProvider
       locale="en"
       messages={en}
@@ -73,9 +73,26 @@ function renderRun() {
       timeZone="UTC"
     >
       <CollectorRun runId="run-1" />
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
 }
+
+function renderRun() {
+  return render(runTree());
+}
+
+type RunOptions = {
+  refetchInterval: (q: {
+    state: { status?: string; data: unknown };
+  }) => unknown;
+  retry: (count: number, error: { data?: { code?: string } }) => boolean;
+};
+
+const runOptions = () => h.run.mock.calls[0]![1] as RunOptions;
+
+/** The `afterSeq` of the latest items request. */
+const lastAfterSeq = () =>
+  (h.items.mock.calls.at(-1)![0] as { afterSeq: number }).afterSeq;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -178,5 +195,144 @@ describe("CollectorRun", () => {
     });
     renderRun();
     expect(screen.getByText(en.collectors.run.notFound)).toBeInTheDocument();
+    const options = runOptions();
+    expect(
+      options.refetchInterval({ state: { status: "error", data: undefined } }),
+    ).toBe(false);
+    expect(options.retry(0, { data: { code: "NOT_FOUND" } })).toBe(false);
+    expect(options.retry(0, { data: { code: "INTERNAL_SERVER_ERROR" } })).toBe(
+      true,
+    );
+    expect(options.retry(3, { data: { code: "INTERNAL_SERVER_ERROR" } })).toBe(
+      false,
+    );
+  });
+
+  it("announces the final status, not only the live ones", () => {
+    h.run.mockReturnValue(
+      ok({ ...base, status: "succeeded", stopReason: "complete" }),
+    );
+    renderRun();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      en.collectors.status.finished,
+    );
+  });
+
+  it("leaves the current breadcrumb out until the run's title is known", () => {
+    h.run.mockReturnValue({ ...ok(undefined), isPending: true });
+    h.overview.mockReturnValue({ ...ok(undefined), isPending: true });
+    renderRun();
+    const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(nav.querySelector('[aria-current="page"]')).toBeNull();
+    expect(nav.textContent).toBe(
+      `${en.collectors.breadcrumb.collectors}/${en.collectors.breadcrumb.runs}`,
+    );
+  });
+
+  it("keeps polling a run that is still loading", () => {
+    h.run.mockReturnValue({
+      ...ok(undefined),
+      isPending: true,
+    });
+    renderRun();
+    expect(
+      runOptions().refetchInterval({
+        state: { status: "pending", data: undefined },
+      }),
+    ).toBe(3000);
+  });
+
+  it("says a queued run is waiting and that the page updates by itself", () => {
+    h.run.mockReturnValue(
+      ok({ ...base, status: "queued", stopReason: null, itemCount: 0 }),
+    );
+    renderRun();
+    expect(screen.getByText(en.collectors.run.waiting)).toBeInTheDocument();
+    expect(
+      screen.getByText(en.collectors.run.collectingHelp),
+    ).toBeInTheDocument();
+  });
+
+  it("says a running run is collecting and hides downloads until it ends", () => {
+    h.run.mockReturnValue(ok({ ...base, status: "running", stopReason: null }));
+    renderRun();
+    expect(screen.getByText(en.collectors.run.collecting)).toBeInTheDocument();
+    expect(
+      screen.getByText(en.collectors.run.collectingHelp),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("cell", { name: "Release notes" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: en.collectors.run.downloadCsv }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: en.collectors.run.downloadJson }),
+    ).toBeNull();
+  });
+
+  it("fetches the rows once more when the run ends", () => {
+    const refetchItems = vi.fn();
+    h.items.mockReturnValue({
+      ...ok({ items: [{ title: "Release notes" }], nextSeq: null }),
+      refetch: refetchItems,
+    });
+    h.run.mockReturnValue(ok({ ...base, status: "running", stopReason: null }));
+    const { rerender } = renderRun();
+    rerender(runTree());
+    expect(refetchItems).not.toHaveBeenCalled();
+
+    h.run.mockReturnValue(
+      ok({ ...base, status: "succeeded", stopReason: "complete" }),
+    );
+    rerender(runTree());
+    expect(refetchItems).toHaveBeenCalledTimes(1);
+
+    rerender(runTree());
+    expect(refetchItems).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not refetch the rows for a run that had already ended when opened", () => {
+    const refetchItems = vi.fn();
+    h.items.mockReturnValue({
+      ...ok({ items: [{ title: "Release notes" }], nextSeq: null }),
+      refetch: refetchItems,
+    });
+    h.run.mockReturnValue(
+      ok({ ...base, status: "succeeded", stopReason: "complete" }),
+    );
+    const { rerender } = renderRun();
+    rerender(runTree());
+    expect(refetchItems).not.toHaveBeenCalled();
+  });
+
+  it("pages forward by the next seq and back to the first rows", () => {
+    h.run.mockReturnValue(
+      ok({
+        ...base,
+        status: "succeeded",
+        stopReason: "complete",
+        itemCount: 120,
+      }),
+    );
+    h.items.mockReturnValue(
+      ok({ items: [{ title: "Release notes" }], nextSeq: 49 }),
+    );
+    renderRun();
+    expect(lastAfterSeq()).toBe(-1);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: en.collectors.run.nextRows }),
+    );
+    expect(lastAfterSeq()).toBe(49);
+    expect(screen.getByText("Showing 51–51 of 120")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: en.collectors.run.firstRows }),
+    );
+    expect(lastAfterSeq()).toBe(-1);
+    expect(
+      screen.queryByRole("button", { name: en.collectors.run.firstRows }),
+    ).toBeNull();
   });
 });

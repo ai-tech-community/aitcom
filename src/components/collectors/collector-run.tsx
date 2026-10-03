@@ -23,6 +23,7 @@ type Row = RouterOutputs["collectors"]["items"]["items"][number];
 
 export const ITEMS_PAGE = 50;
 const POLL_MS = 3_000;
+const MAX_RETRIES = 3;
 
 /** Poll while a run is active (or not loaded yet); stop once it ends. */
 export function runPollInterval(
@@ -62,7 +63,16 @@ export function CollectorRun({ runId }: { runId: string }) {
   const locale = useLocale() === "nl" ? "nl" : "en";
   const run = api.collectors.run.useQuery(
     { runId },
-    { refetchInterval: (query) => runPollInterval(query.state.data) },
+    {
+      // A missing or foreign run will not appear later: do not retry it, and
+      // stop polling once the query has failed.
+      retry: (count, error) =>
+        error.data?.code !== "NOT_FOUND" && count < MAX_RETRIES,
+      refetchInterval: (query) =>
+        query.state.status === "error"
+          ? false
+          : runPollInterval(query.state.data),
+    },
   );
   const overview = api.collectors.overview.useQuery({ locale });
 
@@ -78,6 +88,21 @@ export function CollectorRun({ runId }: { runId: string }) {
       refetchInterval: active ? POLL_MS : false,
     },
   );
+
+  // The rows stop polling when the run ends, so the last poll may predate the
+  // final rows: fetch them once more on the transition, so the table agrees
+  // with the final count and the download.
+  // Only a run seen active counts: a first load of an ended run is not a
+  // transition.
+  const seenActive = data !== undefined && isRunActive(data.status);
+  const ended = data !== undefined && !seenActive;
+  const hasRows = (data?.itemCount ?? 0) > 0;
+  const wasActive = React.useRef(seenActive);
+  const refetchItems = items.refetch;
+  React.useEffect(() => {
+    if (wasActive.current && ended && hasRows) void refetchItems();
+    if (seenActive || ended) wasActive.current = seenActive;
+  }, [seenActive, ended, hasRows, refetchItems]);
 
   const runsLink = (
     <Button asChild variant="outline">
@@ -120,12 +145,16 @@ export function CollectorRun({ runId }: { runId: string }) {
         >
           {t("breadcrumb.runs")}
         </Link>
-        <span aria-hidden="true" className="text-muted-foreground">
-          /
-        </span>
-        <span aria-current="page" className="text-foreground/80 truncate">
-          {title}
-        </span>
+        {title ? (
+          <>
+            <span aria-hidden="true" className="text-muted-foreground">
+              /
+            </span>
+            <span aria-current="page" className="text-foreground/80 truncate">
+              {title}
+            </span>
+          </>
+        ) : null}
       </nav>
 
       <DashboardSection title={t("title")} status={statusFromQueries(run)}>
@@ -136,7 +165,7 @@ export function CollectorRun({ runId }: { runId: string }) {
                 <h3 className="text-2xl font-semibold tracking-tight">
                   {title}
                 </h3>
-                <span role={active ? "status" : undefined}>
+                <span role="status">
                   <RunStatusBadge
                     status={data.status}
                     stopReason={data.stopReason}
