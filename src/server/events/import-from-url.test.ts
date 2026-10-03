@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/server/agent/validate-webhook-url", () => ({
   validateWebhookUrl: vi.fn(),
 }));
+vi.mock("@/server/net/pinned-transport", () => ({ pinnedFetch: vi.fn() }));
 
 import {
   fetchEventPageHtml,
@@ -10,15 +11,15 @@ import {
   runEventImport,
 } from "./import-from-url";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
+import { pinnedFetch } from "@/server/net/pinned-transport";
 
 const mockGuard = vi.mocked(validateWebhookUrl);
+const fetchMock = vi.mocked(pinnedFetch);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fetchMock.mockReset();
   mockGuard.mockResolvedValue({ ok: true });
-});
-afterEach(() => {
-  vi.unstubAllGlobals();
 });
 
 describe("fetchEventPageHtml", () => {
@@ -30,14 +31,11 @@ describe("fetchEventPageHtml", () => {
   });
 
   it("rejects a non-HTML response", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response("{}", {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-      ),
+    fetchMock.mockResolvedValue(
+      new Response("{}", {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }) as never,
     );
     await expect(
       fetchEventPageHtml("https://lu.ma/ai-builders"),
@@ -45,14 +43,11 @@ describe("fetchEventPageHtml", () => {
   });
 
   it("rejects a non-200 status", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response("nope", {
-          status: 404,
-          headers: { "content-type": "text/html" },
-        }),
-      ),
+    fetchMock.mockResolvedValue(
+      new Response("nope", {
+        status: 404,
+        headers: { "content-type": "text/html" },
+      }) as never,
     );
     await expect(fetchEventPageHtml("https://lu.ma/missing")).rejects.toThrow(
       /status 404/i,
@@ -60,14 +55,11 @@ describe("fetchEventPageHtml", () => {
   });
 
   it("returns HTML on success", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response("<html>ok</html>", {
-          status: 200,
-          headers: { "content-type": "text/html; charset=utf-8" },
-        }),
-      ),
+    fetchMock.mockResolvedValue(
+      new Response("<html>ok</html>", {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }) as never,
     );
     const html = await fetchEventPageHtml("https://lu.ma/ai-builders");
     expect(html).toContain("<html>ok</html>");
@@ -75,14 +67,11 @@ describe("fetchEventPageHtml", () => {
 
   it("aborts when the body exceeds the size cap (no content-length)", async () => {
     const huge = "x".repeat(3 * 1024 * 1024); // 3 MB > 2 MB html cap
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(`<html>${huge}</html>`, {
-          status: 200,
-          headers: { "content-type": "text/html" },
-        }),
-      ),
+    fetchMock.mockResolvedValue(
+      new Response(`<html>${huge}</html>`, {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }) as never,
     );
     await expect(
       fetchEventPageHtml("https://lu.ma/ai-builders"),
@@ -90,21 +79,19 @@ describe("fetchEventPageHtml", () => {
   });
 
   it("follows a redirect to an allowed host", async () => {
-    const fetchMock = vi
-      .fn()
+    fetchMock
       .mockResolvedValueOnce(
         new Response(null, {
           status: 301,
           headers: { location: "https://lu.ma/final" },
-        }),
+        }) as never,
       )
       .mockResolvedValueOnce(
         new Response("<html>final</html>", {
           status: 200,
           headers: { "content-type": "text/html" },
-        }),
+        }) as never,
       );
-    vi.stubGlobal("fetch", fetchMock);
     const html = await fetchEventPageHtml("https://lu.ma/start");
     expect(html).toContain("final");
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -116,14 +103,11 @@ describe("fetchEventPageHtml", () => {
         ? { ok: false, reason: "blocked" }
         : { ok: true },
     );
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(null, {
-          status: 302,
-          headers: { location: "http://169.254.169.254/latest/meta-data" },
-        }),
-      ),
+    fetchMock.mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { location: "http://169.254.169.254/latest/meta-data" },
+      }) as never,
     );
     await expect(fetchEventPageHtml("https://evil.example/x")).rejects.toThrow(
       /blocked|refusing/i,
@@ -133,14 +117,11 @@ describe("fetchEventPageHtml", () => {
 
 describe("ingestRemoteImage", () => {
   it("downloads an image and creates a media doc", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(new Uint8Array([1, 2, 3]), {
-          status: 200,
-          headers: { "content-type": "image/png" },
-        }),
-      ),
+    fetchMock.mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      }) as never,
     );
     const payload = {
       create: vi.fn().mockResolvedValue({ id: 7, url: "/media/7.png" }),
@@ -155,14 +136,11 @@ describe("ingestRemoteImage", () => {
   });
 
   it("strips charset from the content-type for mimetype + extension", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(new Uint8Array([1]), {
-          status: 200,
-          headers: { "content-type": "image/jpeg; charset=binary" },
-        }),
-      ),
+    fetchMock.mockResolvedValue(
+      new Response(new Uint8Array([1]), {
+        status: 200,
+        headers: { "content-type": "image/jpeg; charset=binary" },
+      }) as never,
     );
     const create = vi.fn().mockResolvedValue({ id: 1, url: "/m/1.jpeg" });
     await ingestRemoteImage(
@@ -181,14 +159,11 @@ describe("ingestRemoteImage", () => {
   });
 
   it("returns null when the URL is not an image", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response("<html></html>", {
-          status: 200,
-          headers: { "content-type": "text/html" },
-        }),
-      ),
+    fetchMock.mockResolvedValue(
+      new Response("<html></html>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }) as never,
     );
     const payload = { create: vi.fn() };
     const result = await ingestRemoteImage(
@@ -219,21 +194,19 @@ describe("runEventImport", () => {
       {"@type":"Event","name":"Imported Event","startDate":"2026-06-12T18:00",
        "image":"https://cdn.example.com/cover.png"}
       </script>`;
-    const fetchMock = vi
-      .fn()
+    fetchMock
       .mockResolvedValueOnce(
         new Response(html, {
           status: 200,
           headers: { "content-type": "text/html" },
-        }),
+        }) as never,
       )
       .mockResolvedValueOnce(
         new Response(new Uint8Array([1, 2, 3]), {
           status: 200,
           headers: { "content-type": "image/png" },
-        }),
+        }) as never,
       );
-    vi.stubGlobal("fetch", fetchMock);
     const payload = {
       create: vi.fn().mockResolvedValue({ id: 9, url: "/media/9.png" }),
     };
@@ -253,21 +226,19 @@ describe("runEventImport", () => {
       {"@type":"Event","name":"No Image Event","startDate":"2026-06-12T18:00",
        "image":"https://cdn.example.com/cover.png"}
       </script>`;
-    const fetchMock = vi
-      .fn()
+    fetchMock
       .mockResolvedValueOnce(
         new Response(html, {
           status: 200,
           headers: { "content-type": "text/html" },
-        }),
+        }) as never,
       )
       .mockResolvedValueOnce(
         new Response("not-an-image", {
           status: 200,
           headers: { "content-type": "text/html" },
-        }),
+        }) as never,
       );
-    vi.stubGlobal("fetch", fetchMock);
     const payload = { create: vi.fn() };
     const result = await runEventImport(
       "https://lu.ma/imported",

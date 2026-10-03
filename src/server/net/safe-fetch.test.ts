@@ -1,60 +1,61 @@
-// src/server/net/safe-fetch.test.ts
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/agent/validate-webhook-url", () => ({
   validateWebhookUrl: vi.fn(),
 }));
+vi.mock("@/server/net/pinned-transport", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/server/net/pinned-transport")>();
+  return { ...actual, pinnedFetch: vi.fn() };
+});
 
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
+import {
+  BlockedAddressError,
+  pinnedFetch,
+} from "@/server/net/pinned-transport";
 import { safeFetch } from "./safe-fetch";
 
 const guard = vi.mocked(validateWebhookUrl);
+const fetchMock = vi.mocked(pinnedFetch);
 const base = { userAgent: "test-agent/1.0", timeoutMs: 5_000 };
 
-function headersOf(mock: ReturnType<typeof vi.fn>, call = 0) {
-  return mock.mock.calls[call]?.[1]?.headers as Record<string, string>;
+function headersOf(call = 0) {
+  return fetchMock.mock.calls[call]?.[1]?.headers as Record<string, string>;
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+  fetchMock.mockReset();
   guard.mockResolvedValue({ ok: true });
-});
-afterEach(() => {
-  vi.unstubAllGlobals();
 });
 
 describe("safeFetch", () => {
   it("keeps the HTML Accept header by default", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response("ok"));
-    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockResolvedValue(new Response("ok") as never);
     await safeFetch("https://example.com/", base);
-    expect(headersOf(fetchMock).accept).toMatch(/^text\/html/);
+    expect(headersOf().accept).toMatch(/^text\/html/);
   });
 
   it("sends a caller-supplied Accept header", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response("ok"));
-    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockResolvedValue(new Response("ok") as never);
     await safeFetch("https://example.com/feed", {
       ...base,
       accept: "application/rss+xml",
     });
-    expect(headersOf(fetchMock).accept).toBe("application/rss+xml");
+    expect(headersOf().accept).toBe("application/rss+xml");
   });
 
   it("throws on an error status by default", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response("no", { status: 404 })),
-    );
+    fetchMock.mockResolvedValue(new Response("no", { status: 404 }) as never);
     await expect(safeFetch("https://example.com/", base)).rejects.toThrow(
       "Request failed with status 404",
     );
   });
 
   it("returns an error status when allowErrorStatus is set", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response("slow down", { status: 429 })),
+    fetchMock.mockResolvedValue(
+      new Response("slow down", { status: 429 }) as never,
     );
     const { response } = await safeFetch("https://example.com/", {
       ...base,
@@ -64,13 +65,12 @@ describe("safeFetch", () => {
   });
 
   it("returns a redirect to the caller when redirects is 'return'", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
+    fetchMock.mockResolvedValue(
       new Response(null, {
         status: 302,
         headers: { location: "https://other.example/next" },
-      }),
+      }) as never,
     );
-    vi.stubGlobal("fetch", fetchMock);
     const { response, url } = await safeFetch("https://example.com/a", {
       ...base,
       redirects: "return",
@@ -84,14 +84,11 @@ describe("safeFetch", () => {
     guard
       .mockResolvedValueOnce({ ok: true })
       .mockResolvedValueOnce({ ok: false, reason: "private address" });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(null, {
-          status: 302,
-          headers: { location: "http://10.0.0.1/" },
-        }),
-      ),
+    fetchMock.mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { location: "http://10.0.0.1/" },
+      }) as never,
     );
     await expect(safeFetch("https://example.com/", base)).rejects.toThrow(
       "Refusing to fetch URL: private address",
@@ -99,15 +96,14 @@ describe("safeFetch", () => {
   });
 
   it("stops when the caller's signal aborts", async () => {
-    const fetchMock = vi.fn(
-      (_url: string, init: RequestInit) =>
+    fetchMock.mockImplementation(
+      (_url, init) =>
         new Promise((_resolve, reject) => {
-          init.signal?.addEventListener("abort", () =>
+          init?.signal?.addEventListener("abort", () =>
             reject(init.signal?.reason as DOMException),
           );
         }),
     );
-    vi.stubGlobal("fetch", fetchMock);
     const controller = new AbortController();
     const pending = safeFetch("https://example.com/", {
       ...base,
@@ -119,5 +115,47 @@ describe("safeFetch", () => {
     controller.abort();
     // The caller's abort, not the timeout (which would be a TimeoutError).
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("refuses an IPv4-mapped loopback literal without a request", async () => {
+    await expect(
+      safeFetch("https://[::ffff:127.0.0.1]/", base),
+    ).rejects.toThrow("Refusing to fetch URL");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("sends every hop through the pinned transport", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 302,
+          headers: { location: "https://b.example/next" },
+        }) as never,
+      )
+      .mockResolvedValueOnce(new Response("ok") as never);
+    await safeFetch("https://a.example/", base);
+    expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual([
+      "https://a.example/",
+      "https://b.example/next",
+    ]);
+  });
+
+  it("reports a connect-time refusal with the 'Refusing to fetch URL' prefix", async () => {
+    fetchMock.mockRejectedValue(
+      new TypeError("fetch failed", {
+        cause: new BlockedAddressError("rebind.example"),
+      }),
+    );
+    await expect(safeFetch("https://rebind.example/", base)).rejects.toThrow(
+      "Refusing to fetch URL: it resolves to a non-public address",
+    );
+  });
+
+  it("passes other network errors through unchanged", async () => {
+    const failure = new TypeError("fetch failed", {
+      cause: new Error("ECONNREFUSED"),
+    });
+    fetchMock.mockRejectedValue(failure);
+    await expect(safeFetch("https://example.com/", base)).rejects.toBe(failure);
   });
 });
