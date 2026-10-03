@@ -4185,7 +4185,9 @@
       "robots_unreachable": "Site rules couldn't be read",
       "blocked_domain": "Site opted out",
       "error": "Something went wrong",
-      "worker_lost": "Interrupted"
+      "worker_lost": "Interrupted",
+      "next_page_not_secure": "Next page isn't secure",
+      "next_page_too_long": "Next page link too long"
     },
     "breadcrumb": {
       "collectors": "Data collectors",

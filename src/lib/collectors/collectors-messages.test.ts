@@ -23,7 +23,7 @@ describe("collectors copy", () => {
     },
   );
 
-  it.each(["stop", "status", "failure"] as const)(
+  it.each(["stop", "stopShort", "status", "failure"] as const)(
     "translates every collectors.%s value into Dutch",
     (group) => {
       const english: Record<string, string> = en.collectors[group];
@@ -46,15 +46,18 @@ describe("collectors copy", () => {
     expect(nl.dashboard.tabs.collectors).toBeTruthy();
   });
 
-  it("words every stop reason", () => {
-    const english: Record<string, string> = en.collectors.stop;
-    const dutch: Record<string, string> = nl.collectors.stop;
-    for (const reason of STOP_REASONS) {
-      expect(english[reason], reason).toBeTruthy();
-      expect(dutch[reason], reason).toBeTruthy();
-    }
-    expect(Object.keys(english).sort()).toEqual([...STOP_REASONS].sort());
-  });
+  it.each(["stop", "stopShort"] as const)(
+    "words every stop reason in collectors.%s",
+    (group) => {
+      const english: Record<string, string> = en.collectors[group];
+      const dutch: Record<string, string> = nl.collectors[group];
+      for (const reason of STOP_REASONS) {
+        expect(english[reason], reason).toBeTruthy();
+        expect(dutch[reason], reason).toBeTruthy();
+      }
+      expect(Object.keys(english).sort()).toEqual([...STOP_REASONS].sort());
+    },
+  );
 
   it("words every failure detail code", () => {
     const english: Record<string, string> = en.collectors.failure;

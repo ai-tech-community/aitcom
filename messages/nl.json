@@ -4185,7 +4185,9 @@
       "robots_unreachable": "Siteregels konden niet worden gelezen",
       "blocked_domain": "Site heeft zich afgemeld",
       "error": "Er ging iets mis",
-      "worker_lost": "Onderbroken"
+      "worker_lost": "Onderbroken",
+      "next_page_not_secure": "Volgende pagina niet beveiligd",
+      "next_page_too_long": "Link naar volgende pagina te lang"
     },
     "breadcrumb": {
       "collectors": "Dataverzamelaars",
