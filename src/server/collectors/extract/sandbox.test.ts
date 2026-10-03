@@ -109,6 +109,16 @@ describe("createExtractSandbox", () => {
     ]);
   });
 
+  it("counts worker start-up against the deadline", async () => {
+    // Starting a worker takes tens of milliseconds, so a 1 ms deadline passes
+    // before the worker can even say it is ready.
+    const box = sandbox({ deadlineMs: 1 });
+
+    expect((await rejection(box.extract(page(["cold"]), spec))).code).toBe(
+      "page_too_slow",
+    );
+  });
+
   it("does not block the main thread while a slow page is parsed", async () => {
     const box = sandbox({ deadlineMs: 2_000 });
     await box.extract(page(["warm"]), spec);

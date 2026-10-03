@@ -45,11 +45,26 @@ export type ExtractResult = {
   truncated: boolean;
 };
 
-export type ExtractErrorCode =
-  | "page_too_deep"
-  | "page_too_slow"
-  | "selector_not_allowed"
-  | "extract_failed";
+/**
+ * Why a page could not be read. The worker answers with one of these; the
+ * sandbox adds its own (the deadline passed, the worker ran out of memory or
+ * crashed). Runtime list, so a code read off the wire can be checked.
+ */
+export const EXTRACT_ERROR_CODES = [
+  "page_too_deep",
+  "page_too_slow",
+  "selector_not_allowed",
+  "extract_failed",
+] as const;
+
+export type ExtractErrorCode = (typeof EXTRACT_ERROR_CODES)[number];
+
+export function isExtractErrorCode(value: unknown): value is ExtractErrorCode {
+  return (
+    typeof value === "string" &&
+    (EXTRACT_ERROR_CODES as readonly string[]).includes(value)
+  );
+}
 
 export class ExtractError extends Error {
   readonly code: ExtractErrorCode;

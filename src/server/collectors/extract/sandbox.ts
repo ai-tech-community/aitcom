@@ -1,7 +1,7 @@
 import { Worker } from "node:worker_threads";
 import {
   ExtractError,
-  type ExtractErrorCode,
+  isExtractErrorCode,
   type ExtractResult,
   type ExtractSpec,
   type WorkerRequest,
@@ -31,20 +31,18 @@ export interface ExtractSandbox {
    * worker crashes or the sandbox is closed.
    */
   extract(html: string, spec: ExtractSpec): Promise<ExtractResult>;
-  /** Ends the worker. Calls still waiting, and later calls, fail. */
+  /**
+   * Ends the worker. The call in flight and calls still waiting fail with
+   * `extract_failed`, as do later calls. Resolves once the worker has ended;
+   * it does not wait for those calls to settle.
+   */
   close(): Promise<void>;
 }
 
-const ERROR_CODES: ReadonlySet<string> = new Set<ExtractErrorCode>([
-  "page_too_deep",
-  "page_too_slow",
-  "selector_not_allowed",
-  "extract_failed",
-]);
-
-function isErrorCode(value: unknown): value is ExtractErrorCode {
-  return typeof value === "string" && ERROR_CODES.has(value);
-}
+/** What a worker thread is started with. */
+type WorkerSettings = Pick<ExtractSandboxOptions, "workerPath" | "execArgv"> & {
+  maxOldGenerationSizeMb: number;
+};
 
 /** The worker crashed, ran out of memory, or exited. */
 class WorkerGone extends Error {}
@@ -64,11 +62,7 @@ class WorkerSlot {
     reject: (error: Error) => void;
   } | null = null;
 
-  constructor(
-    options: Required<Omit<ExtractSandboxOptions, "execArgv">> & {
-      execArgv?: string[];
-    },
-  ) {
+  constructor(options: WorkerSettings) {
     let markReady!: () => void;
     let markGone!: (error: Error) => void;
     this.ready = new Promise<void>((resolve) => (markReady = resolve));
@@ -101,10 +95,20 @@ class WorkerSlot {
       } else {
         pending.reject(
           new ExtractError(
-            isErrorCode(reply.code) ? reply.code : "extract_failed",
+            isExtractErrorCode(reply.code) ? reply.code : "extract_failed",
           ),
         );
       }
+    });
+    // A reply that cannot be deserialized never reaches "message"; fail the
+    // call it answered instead of letting it run into the deadline.
+    this.worker.on("messageerror", () => {
+      const pending = this.inFlight;
+      if (!pending) return;
+      this.inFlight = null;
+      pending.reject(
+        new ExtractError("extract_failed", "worker reply was unreadable"),
+      );
     });
     // An `error` (uncaught throw, ERR_WORKER_OUT_OF_MEMORY) is followed by
     // `exit`; whichever comes first ends the slot.
@@ -143,10 +147,10 @@ class WorkerSlot {
 export function createExtractSandbox(
   options: ExtractSandboxOptions,
 ): ExtractSandbox {
-  const settings = {
+  const deadlineMs = options.deadlineMs ?? DEFAULT_DEADLINE_MS;
+  const settings: WorkerSettings = {
     workerPath: options.workerPath,
     execArgv: options.execArgv,
-    deadlineMs: options.deadlineMs ?? DEFAULT_DEADLINE_MS,
     maxOldGenerationSizeMb:
       options.maxOldGenerationSizeMb ?? DEFAULT_MAX_OLD_GENERATION_SIZE_MB,
   };
@@ -175,7 +179,7 @@ export function createExtractSandbox(
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<"deadline">((resolve) => {
-      timer = setTimeout(() => resolve("deadline"), settings.deadlineMs);
+      timer = setTimeout(() => resolve("deadline"), deadlineMs);
     });
     const answer = current.request({ id: nextId++, html, spec });
     // The answer may settle after the deadline has already won.
@@ -184,7 +188,8 @@ export function createExtractSandbox(
     try {
       const outcome = await Promise.race([answer, deadline]);
       if (outcome === "deadline") {
-        await drop(current);
+        // The page was too slow whatever happens to the worker now.
+        await drop(current).catch(() => undefined);
         throw new ExtractError("page_too_slow");
       }
       return outcome;
