@@ -32,4 +32,7 @@ const IPV6_NOT_PUBLIC: [ipaddr.IPv6, number][] = [
   "fec0::/10",
   // Documentation (RFC 9637).
   "3fff::/20",
+  // SRv6 SIDs (RFC 9602): segment-routing identifiers inside an operator's
+  // domain, never a public destination.
+  "5f00::/16",
 ].map((cidr) => ipaddr.IPv6.parseCIDR(cidr));

@@ -38,6 +38,7 @@ describe("isPublicAddress", () => {
     ["local-use NAT64 64:ff9b:1::/48", "64:ff9b:1::1"],
     ["site-local fec0::/10", "fec0::1"],
     ["documentation 3fff::/20", "3fff::1"],
+    ["SRv6 SID block 5f00::/16", "5f00::1"],
     ["not an address", "example.com"],
     ["empty", ""],
   ])("refuses %s (%s)", (_label, ip) => {
