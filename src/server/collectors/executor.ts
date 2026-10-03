@@ -1,0 +1,327 @@
+import { and, asc, eq, lt, or, sql } from "drizzle-orm";
+
+import type { db as appDb } from "@/server/db";
+import { collectorItems, collectorRuns } from "@/server/db/schema";
+
+import type { AnyCollector, CollectorContext } from "./collector";
+import type { ContextMeter } from "./context/collector-context";
+import { CollectorStop, userMessageFor } from "./errors";
+import { type StopReason, assertTransition } from "./run-status";
+
+export const TICK_BUDGET_MS = 240_000;
+export const LEASE_MS = 300_000;
+export const MAX_ATTEMPTS = 2;
+export const MAX_ITEMS_PER_RUN = 5_000;
+const FLUSH_EVERY = 100;
+const MAX_LOG_LINES = 50;
+const MAX_LOG_LINE = 300;
+/** The `error` column is varchar(500). */
+const MAX_ERROR_LENGTH = 500;
+/** A tick only starts another run while this much of it has passed. */
+const START_NEW_RUN_WITHIN_MS = 20_000;
+
+export type CollectorRunRow = typeof collectorRuns.$inferSelect;
+
+export interface ExecutorDeps {
+  db: typeof appDb;
+  getCollector(id: string): AnyCollector | undefined;
+  buildContext(args: {
+    collector: AnyCollector;
+    signal: AbortSignal;
+    deadline: number;
+    onLog: (line: string) => void;
+  }): Promise<{ ctx: CollectorContext; meter: ContextMeter }>;
+  now(): number;
+}
+
+type Outcome = {
+  status: "succeeded" | "failed";
+  stopReason: StopReason;
+  error: string | null;
+};
+
+export type RunResult = {
+  status: "succeeded" | "failed";
+  stopReason: StopReason;
+};
+
+/**
+ * Take the oldest queued run, or a running one whose lease expired (its
+ * worker died). SKIP LOCKED lets concurrent workers each take a different
+ * run. Each claim counts as an attempt.
+ */
+export async function claimNextRun(
+  db: typeof appDb,
+  now: Date,
+): Promise<CollectorRunRow | null> {
+  return db.transaction(async (tx) => {
+    const [next] = await tx
+      .select({ id: collectorRuns.id })
+      .from(collectorRuns)
+      .where(
+        or(
+          eq(collectorRuns.status, "queued"),
+          and(
+            eq(collectorRuns.status, "running"),
+            lt(collectorRuns.leaseUntil, now),
+          ),
+        ),
+      )
+      .orderBy(asc(collectorRuns.createdAt))
+      .limit(1)
+      .for("update", { skipLocked: true });
+    if (!next) return null;
+    const [claimed] = await tx
+      .update(collectorRuns)
+      .set({
+        status: "running",
+        leaseUntil: new Date(now.getTime() + LEASE_MS),
+        startedAt: now,
+        attempts: sql`${collectorRuns.attempts} + 1`,
+      })
+      .where(eq(collectorRuns.id, next.id))
+      .returning();
+    return claimed ?? null;
+  });
+}
+
+function createRunLog() {
+  const lines: string[] = [];
+  return {
+    add: (line: string) => {
+      lines.push(line.slice(0, MAX_LOG_LINE));
+      if (lines.length > MAX_LOG_LINES) lines.shift();
+    },
+    lines: () => [...lines],
+  };
+}
+
+/**
+ * Run one claimed Command: resolve the Strategy, give it the Proxy, iterate
+ * its rows, validate and store them in batches, then record the outcome.
+ * Rows and item counters from an earlier attempt are removed first, so a
+ * re-run never duplicates. Pages and bytes fetched are cumulative across
+ * attempts: they measure real traffic, which an interrupted attempt still
+ * caused. Rows gathered before a stop or failure are kept.
+ *
+ * Every write is fenced on `attempts`: once another worker re-claims the run
+ * (after this worker's lease expired), this worker's writes match nothing.
+ * A worker that is already fenced out at the start returns null without
+ * running the collector, so it never contacts a site.
+ */
+export async function executeRun(
+  deps: ExecutorDeps,
+  run: CollectorRunRow,
+  tickDeadline: number,
+): Promise<RunResult | null> {
+  const startedAt = deps.now();
+  const log = createRunLog();
+
+  /** Matches the run only while this worker still holds it. */
+  const heldByThisWorker = () =>
+    and(
+      eq(collectorRuns.id, run.id),
+      eq(collectorRuns.status, "running"),
+      eq(collectorRuns.attempts, run.attempts),
+    );
+
+  /**
+   * Remove an earlier attempt's rows and zero its item counters, together.
+   * False when another worker already holds the run.
+   */
+  const clearEarlierAttempt = (): Promise<boolean> =>
+    deps.db.transaction(async (tx) => {
+      const [held] = await tx
+        .update(collectorRuns)
+        .set({ itemCount: 0, invalidItemCount: 0 })
+        .where(heldByThisWorker())
+        .returning({ id: collectorRuns.id });
+      if (!held) return false;
+      await tx.delete(collectorItems).where(eq(collectorItems.runId, run.id));
+      return true;
+    });
+
+  const finish = async (
+    outcome: Outcome,
+    opts: { version?: number; keepLog?: boolean } = {},
+  ): Promise<RunResult> => {
+    assertTransition("running", outcome.status);
+    await deps.db
+      .update(collectorRuns)
+      .set({
+        status: outcome.status,
+        stopReason: outcome.stopReason,
+        error: outcome.error?.slice(0, MAX_ERROR_LENGTH) ?? null,
+        durationMs: deps.now() - startedAt,
+        finishedAt: new Date(deps.now()),
+        leaseUntil: null,
+        ...(opts.keepLog ? {} : { log: log.lines() }),
+        ...(opts.version === undefined
+          ? {}
+          : { collectorVersion: opts.version }),
+      })
+      .where(heldByThisWorker());
+    return { status: outcome.status, stopReason: outcome.stopReason };
+  };
+
+  if (!(await clearEarlierAttempt())) return null;
+  if (run.attempts > MAX_ATTEMPTS) {
+    // Keep the last attempt's log: it shows the member how far it got.
+    return finish(
+      {
+        status: "failed",
+        stopReason: "worker_lost",
+        error: "The run was interrupted twice, so it was stopped.",
+      },
+      { keepLog: true },
+    );
+  }
+
+  const collector = deps.getCollector(run.collectorId);
+  if (!collector) {
+    return finish({
+      status: "failed",
+      stopReason: "error",
+      error: "This collector is not available any more.",
+    });
+  }
+  const input = collector.inputSchema.safeParse(run.input);
+  if (!input.success) {
+    return finish(
+      {
+        status: "failed",
+        stopReason: "error",
+        error: "The saved input is no longer valid for this collector.",
+      },
+      { version: collector.version },
+    );
+  }
+
+  const deadline = Math.min(
+    startedAt + collector.limits.maxDurationMs,
+    tickDeadline,
+  );
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(),
+    Math.max(0, deadline - startedAt),
+  );
+  const maxItems = Math.min(collector.limits.maxItems, MAX_ITEMS_PER_RUN);
+  let meter: ContextMeter = { pagesFetched: 0, bytesFetched: 0 };
+  let seq = 0;
+  let invalid = 0;
+  let buffer: (typeof collectorItems.$inferInsert)[] = [];
+  let leaseLost = false;
+
+  /** Store buffered rows and progress; a no-op once another worker re-claimed. */
+  const flush = async () => {
+    await deps.db.transaction(async (tx) => {
+      const [held] = await tx
+        .update(collectorRuns)
+        .set({
+          itemCount: seq,
+          invalidItemCount: invalid,
+          pagesFetched: run.pagesFetched + meter.pagesFetched,
+          bytesFetched: run.bytesFetched + meter.bytesFetched,
+          log: log.lines(),
+          leaseUntil: new Date(deps.now() + LEASE_MS),
+        })
+        .where(heldByThisWorker())
+        .returning({ id: collectorRuns.id });
+      if (!held) {
+        leaseLost = true;
+        return;
+      }
+      if (buffer.length) await tx.insert(collectorItems).values(buffer);
+    });
+    buffer = [];
+  };
+
+  let outcome: Outcome = {
+    status: "succeeded",
+    stopReason: "complete",
+    error: null,
+  };
+  try {
+    const built = await deps.buildContext({
+      collector,
+      signal: controller.signal,
+      deadline,
+      onLog: log.add,
+    });
+    meter = built.meter;
+    for await (const raw of collector.run(input.data, built.ctx)) {
+      const row = collector.itemSchema.safeParse(raw);
+      if (row.success) {
+        buffer.push({
+          runId: run.id,
+          seq,
+          data: row.data as Record<string, unknown>,
+        });
+        seq += 1;
+        if (buffer.length >= FLUSH_EVERY) {
+          await flush();
+          if (leaseLost) break;
+        }
+      } else {
+        invalid += 1;
+      }
+      if (seq >= maxItems) {
+        outcome = {
+          status: "succeeded",
+          stopReason: "item_limit",
+          error: null,
+        };
+        break;
+      }
+      if (controller.signal.aborted) {
+        outcome = {
+          status: "succeeded",
+          stopReason: "time_limit",
+          error: null,
+        };
+        break;
+      }
+    }
+  } catch (err) {
+    if (err instanceof CollectorStop) {
+      outcome = {
+        status: err.outcome,
+        stopReason: err.reason,
+        error: err.outcome === "failed" ? err.message : null,
+      };
+    } else {
+      console.error(`[collectors] run ${run.id} failed`, err);
+      outcome = {
+        status: "failed",
+        stopReason: "error",
+        error: userMessageFor(err),
+      };
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+  await flush();
+  return finish(outcome, { version: collector.version });
+}
+
+/** One worker invocation: drain queued runs within the tick budget. */
+export async function runWorkerTick(
+  deps: ExecutorDeps,
+): Promise<{ executed: number }> {
+  const tickStart = deps.now();
+  const tickDeadline = tickStart + TICK_BUDGET_MS;
+  let executed = 0;
+  while (deps.now() - tickStart < START_NEW_RUN_WITHIN_MS) {
+    const run = await claimNextRun(deps.db, new Date(deps.now()));
+    if (!run) break;
+    try {
+      if (await executeRun(deps, run, tickDeadline)) executed += 1;
+    } catch (err) {
+      // e.g. the database failed mid-run. The run keeps its lease and is
+      // re-claimed once the lease expires; the tick moves on.
+      console.error(`[collectors] run ${run.id} could not be executed`, err);
+    }
+  }
+  return { executed };
+}
