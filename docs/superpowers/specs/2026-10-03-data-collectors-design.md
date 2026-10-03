@@ -184,7 +184,10 @@ interface CollectorResponse {
 }
 ```
 
-Every `ctx.fetch` runs these checks in order, then delegates:
+Every request hop runs these checks in order, then delegates. **Redirects
+are followed by the context, not by `safeFetch`**, so a redirect into an
+opted-out site or a robots-disallowed path is caught before it is requested
+(max 5 hops, each counted as a page):
 
 1. **Run budget.** Page count < `maxPages`, time left, signal not aborted.
 2. **Blocklist.** Host is not on the opted-out list.
@@ -208,8 +211,12 @@ cannot be skipped by a collector.
 
 - an optional `accept` header (today it is fixed to HTML/image types);
 - an option to return non-2xx responses to the caller instead of throwing, so
-  the context can see 429/503 and robots.txt 404. Existing callers keep the
-  current default behaviour.
+  the context can see 429/503 and robots.txt 404;
+- `redirects: "return"`, handing a 3xx back so the context can apply its
+  per-hop rules;
+- an optional `signal`, so the run's time budget aborts an in-flight request.
+
+Existing callers keep the current default behaviour.
 
 User agent: `aitcom-collector/1.0 (+https://<site>/collectors/about)`.
 
@@ -222,7 +229,8 @@ ids) without a deploy of code changes.
 ### RunExecutor (Context)
 
 ```
-claim run (lease) → resolve collector by id+version → re-validate input
+claim run (lease) → resolve collector by id (the version that actually ran
+is written back to the run) → re-validate input
 → build ctx → for await (row of collector.run(input, ctx)):
      validate row against itemSchema (invalid rows are counted and skipped)
      buffer; flush every 100 rows (collector_item insert + counters update)
@@ -260,7 +268,7 @@ claim run (lease) → resolve collector by id+version → re-validate input
 `assertTransition(from, to)` is the only way status changes.
 
 `stop_reason`: `complete | page_limit | item_limit | time_limit |
-site_refused | robots_disallowed | error | worker_lost`.
+site_refused | robots_disallowed | blocked_domain | error | worker_lost`.
 
 ### CollectorRuns (Facade)
 
@@ -276,7 +284,10 @@ exportRun({ userId, runId, format: "csv" | "json" })        // streamed
 - Every read is scoped to `user_id`; another member's run id returns
   not-found, never forbidden (no existence leak).
 - `startRun`: feature flag on → collector exists and is enabled → input parses
-  → `canStartRun` allows → insert `queued` row → kick the worker.
+  → inside one transaction holding a per-member advisory lock,
+  `canStartRun` allows → insert `queued` row → kick the worker. The lock stops
+  two simultaneous starts (a double click, or a member and their agent) from
+  both passing the quota.
 - **Kick:** inside `after()`, a fire-and-forget authenticated POST to the worker
   route (2-second timeout, errors swallowed). The per-minute cron is the
   guarantee; the kick only cuts latency. Same shape as
@@ -463,8 +474,8 @@ agents.
 
 - Invalid input → rejected at `startRun` with field errors; nothing stored.
 - Quota exceeded → typed refusal with reason and retry time, shown as plain text.
-- Robots disallow / blocked domain → run `failed`, `stop_reason` explains, no
-  further requests to that host.
+- Robots disallow / blocked domain (also when reached through a redirect) →
+  run `failed`, `stop_reason` explains, the page is never requested.
 - Network / parse errors in a collector → `failed` with a mapped user-safe
   message; raw error in the server log.
 - Invalid rows → skipped and counted in `invalid_item_count`, shown on the run
@@ -496,8 +507,12 @@ agents.
 
 1. **Core and first collector:** tables + migration, catalog, interface,
    context (Proxy) with all safety rules, executor, worker route + cron,
-   facade, `feed-items`, about page, flag. Tested end to end without UI.
-2. **Member UI:** dashboard tab, generated form, run page, history, export.
+   facade, `feed-items`, flag. Tested end to end without UI. Plan:
+   `docs/superpowers/plans/2026-10-03-data-collectors-core.md`.
+2. **Member UI and the public about page**, preceded by a visual review of
+   mockups: dashboard tab, generated form, run page, history, export,
+   `/collectors/about`. The flag stays off until this slice ships, so no
+   collector contacts a site before the about page exists.
 3. **More collectors:** `github-org-repos`, `page-list`.
 4. **MCP tools** under the `collect` scope.
 5. **Retention cron and blocklist admin.**
