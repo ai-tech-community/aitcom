@@ -116,3 +116,18 @@ export const FIELD_RENDERERS: Record<FieldKind, FieldRenderer> = {
   number: textual("number"),
   checkbox: CheckboxField,
 };
+
+/**
+ * The note a field shows when the server rejects its value, as a key in the
+ * `collectors` messages. An address has one fixed rule, so it says it; other
+ * kinds ask the member to check the field.
+ */
+export const FIELD_REJECTION_KEYS: Record<
+  FieldKind,
+  "start.invalidUrl" | "start.invalidField"
+> = {
+  url: "start.invalidUrl",
+  text: "start.invalidField",
+  number: "start.invalidField",
+  checkbox: "start.invalidField",
+};

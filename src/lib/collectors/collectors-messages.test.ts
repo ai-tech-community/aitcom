@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { FAILURE_CODES } from "@/server/collectors/errors";
+
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
 
@@ -33,7 +35,7 @@ describe("collectors copy", () => {
     },
   );
 
-  it.each(["stop", "status"] as const)(
+  it.each(["stop", "status", "failure"] as const)(
     "translates every collectors.%s value into Dutch",
     (group) => {
       const english: Record<string, string> = en.collectors[group];
@@ -61,5 +63,20 @@ describe("collectors copy", () => {
       expect(en.collectors.stop[reason], reason).toBeTruthy();
       expect(nl.collectors.stop[reason], reason).toBeTruthy();
     }
+  });
+
+  it("words every failure detail code", () => {
+    const english: Record<string, string> = en.collectors.failure;
+    const dutch: Record<string, string> = nl.collectors.failure;
+    for (const code of FAILURE_CODES) {
+      expect(english[code], code).toBeTruthy();
+      expect(dutch[code], code).toBeTruthy();
+    }
+    expect(Object.keys(english).sort()).toEqual([...FAILURE_CODES].sort());
+  });
+
+  it("puts the feed's answer in the feed_status sentence", () => {
+    expect(en.collectors.failure.feed_status).toContain("{status}");
+    expect(nl.collectors.failure.feed_status).toContain("{status}");
   });
 });

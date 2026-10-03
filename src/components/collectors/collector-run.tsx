@@ -15,6 +15,7 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@/i18n/navigation";
 import { isRunActive, presentRun } from "@/lib/collectors/run-presentation";
+import { FAILURE_CODES, type FailureCode } from "@/server/collectors/errors";
 import type { RunStatus } from "@/server/collectors/run-status";
 import { api, type RouterOutputs } from "@/trpc/react";
 
@@ -31,6 +32,20 @@ export function runPollInterval(
 ): number | false {
   return !run || isRunActive(run.status) ? POLL_MS : false;
 }
+
+/**
+ * A missing or foreign run will not appear later, so NOT_FOUND ends polling.
+ * Any other error may pass (a deploy, a network blip): keep polling.
+ */
+function isNotFound(error: unknown): boolean {
+  return (
+    (error as { data?: { code?: string } } | null | undefined)?.data?.code ===
+    "NOT_FOUND"
+  );
+}
+
+const isFailureCode = (code: unknown): code is FailureCode =>
+  (FAILURE_CODES as readonly unknown[]).includes(code);
 
 /** Every column any row on the page has, in first-seen order. */
 function columnsOf(rows: readonly Row[]): string[] {
@@ -56,20 +71,35 @@ function useStatusSentence(): (run: Run) => string {
   };
 }
 
+/**
+ * Why a failed run failed, translated from its stable code. An unknown code
+ * (a newer server) shows nothing extra; the server's English never shows.
+ */
+function useFailureDetail(): (run: Run) => string | null {
+  const t = useTranslations("collectors");
+  return (run) => {
+    const detail = run.errorDetail;
+    if (run.status !== "failed" || !detail || !isFailureCode(detail.code)) {
+      return null;
+    }
+    return t(`failure.${detail.code}`, detail.params ?? {});
+  };
+}
+
 /** The run page: live status, why it stopped, its rows, downloads and log. */
 export function CollectorRun({ runId }: { runId: string }) {
   const t = useTranslations("collectors");
   const statusSentence = useStatusSentence();
+  const failureDetail = useFailureDetail();
   const locale = useLocale() === "nl" ? "nl" : "en";
   const run = api.collectors.run.useQuery(
     { runId },
     {
-      // A missing or foreign run will not appear later: do not retry it, and
-      // stop polling once the query has failed.
-      retry: (count, error) =>
-        error.data?.code !== "NOT_FOUND" && count < MAX_RETRIES,
+      // A missing or foreign run will not appear later: do not retry it or
+      // poll it. Any other error keeps polling by the last known status.
+      retry: (count, error) => !isNotFound(error) && count < MAX_RETRIES,
       refetchInterval: (query) =>
-        query.state.status === "error"
+        isNotFound(query.state.error)
           ? false
           : runPollInterval(query.state.data),
     },
@@ -85,7 +115,8 @@ export function CollectorRun({ runId }: { runId: string }) {
     { runId, afterSeq, limit: ITEMS_PAGE },
     {
       enabled: (data?.itemCount ?? 0) > 0,
-      refetchInterval: active ? POLL_MS : false,
+      refetchInterval: (query) =>
+        !isNotFound(query.state.error) && active ? POLL_MS : false,
     },
   );
 
@@ -110,7 +141,7 @@ export function CollectorRun({ runId }: { runId: string }) {
     </Button>
   );
 
-  if (run.isError && run.error?.data?.code === "NOT_FOUND") {
+  if (run.isError && isNotFound(run.error)) {
     return <EmptyState title={t("run.notFound")} action={runsLink} />;
   }
 
@@ -119,6 +150,7 @@ export function CollectorRun({ runId }: { runId: string }) {
     data?.collectorId ??
     "";
   const target = data ? runTarget(data.input) : null;
+  const detail = data ? failureDetail(data) : null;
   const rows = items.data?.items ?? [];
   const columns = columnsOf(rows);
   const nextSeq = items.data?.nextSeq ?? null;
@@ -197,6 +229,11 @@ export function CollectorRun({ runId }: { runId: string }) {
 
             <div className="border-border flex flex-col gap-1.5 rounded-xl border px-5 py-4">
               <p className="text-[15px] font-medium">{statusSentence(data)}</p>
+              {detail ? (
+                <p data-testid="failure-detail" className="text-sm">
+                  {detail}
+                </p>
+              ) : null}
               {active ? (
                 <p className="text-muted-foreground text-sm">
                   {t("run.collectingHelp")}

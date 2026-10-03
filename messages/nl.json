@@ -4149,6 +4149,24 @@
       "error": "Mislukt: er ging iets mis tijdens het verzamelen.",
       "worker_lost": "Mislukt: de run werd twee keer onderbroken en is daarom gestopt."
     },
+    "failure": {
+      "not_a_feed": "Dit adres is geen RSS- of Atom-feed. Controleer of je het adres van de feed hebt gekopieerd, en niet dat van de website.",
+      "feed_status": "De feed antwoordde met fout {status}. Controleer het adres, of probeer het later opnieuw.",
+      "https_only": "Alleen adressen die beginnen met https:// kunnen worden verzameld.",
+      "invalid_address": "De verzamelaar vond een adres dat geen geldig webadres is.",
+      "redirect_loop": "Een pagina stuurde ons te vaak door naar andere pagina's.",
+      "too_large": "Een pagina was groter dan de limiet van 5 MB.",
+      "timeout": "Een site deed er te lang over om te antwoorden. Probeer het later opnieuw.",
+      "unreachable_address": "We kunnen dit adres niet bereiken vanaf onze servers. Gebruik het adres van een openbare website.",
+      "site_refused": "Wacht een tijdje voordat je deze site opnieuw probeert.",
+      "robots_disallowed": "Probeer een andere pagina, of een site die automatische bezoekers welkom heet.",
+      "robots_unreachable": "De site is misschien onbereikbaar. Probeer het later opnieuw.",
+      "blocked_domain": "Kies een andere site.",
+      "collector_unavailable": "Deze verzamelaar is niet meer beschikbaar.",
+      "input_invalid": "Wat je hebt ingevuld past niet meer bij deze verzamelaar. Start een nieuwe run.",
+      "worker_lost": "Start de run opnieuw.",
+      "generic": "Probeer het later opnieuw."
+    },
     "stopShort": {
       "complete": "Alles gelezen",
       "page_limit": "Gestopt bij de paginalimiet",
@@ -4181,6 +4199,7 @@
       "unsupported": "Deze verzamelaar kan hier nog niet worden gestart.",
       "fixFields": "Sommige velden hebben aandacht nodig.",
       "invalidField": "Controleer dit veld.",
+      "invalidUrl": "Gebruik een webadres dat begint met https://.",
       "quota": {
         "daily_limit": "Je hebt alle {limit} runs van de afgelopen 24 uur gebruikt.",
         "daily_limit_retry": "Je hebt alle {limit} runs van de afgelopen 24 uur gebruikt. Je kunt {when} weer starten.",

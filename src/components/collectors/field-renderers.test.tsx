@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { FormField } from "@/lib/collectors/form-fields";
-import { FIELD_RENDERERS } from "./field-renderers";
+import { FIELD_REJECTION_KEYS, FIELD_RENDERERS } from "./field-renderers";
 
 function renderNumber(integer: boolean) {
   const field: FormField = {
@@ -39,5 +39,17 @@ describe("FIELD_RENDERERS.number", () => {
     const input = renderNumber(false);
     expect(input).toHaveAttribute("inputmode", "decimal");
     expect(input).toHaveAttribute("step", "any");
+  });
+});
+
+describe("FIELD_REJECTION_KEYS", () => {
+  it("tells an address field what a valid address looks like", () => {
+    expect(FIELD_REJECTION_KEYS.url).toBe("start.invalidUrl");
+  });
+
+  it("keeps the general note for every other kind", () => {
+    expect(FIELD_REJECTION_KEYS.text).toBe("start.invalidField");
+    expect(FIELD_REJECTION_KEYS.number).toBe("start.invalidField");
+    expect(FIELD_REJECTION_KEYS.checkbox).toBe("start.invalidField");
   });
 });

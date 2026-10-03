@@ -159,7 +159,7 @@ describe("StartRunForm", () => {
       message: "x",
       fieldErrors: { url: ["Invalid URL"] },
     });
-    return screen.findByText(en.collectors.start.invalidField).then((note) => {
+    return screen.findByText(en.collectors.start.invalidUrl).then((note) => {
       expect(screen.getByLabelText("Feed address")).toHaveAttribute(
         "aria-invalid",
         "true",
@@ -169,6 +169,29 @@ describe("StartRunForm", () => {
         expect.stringContaining(note.id),
       );
     });
+  });
+
+  it("keeps the general note for a rejected field that is not an address", async () => {
+    overview(false, [
+      {
+        ...feed,
+        fields: [
+          { name: "topic", label: "Topic", help: null, placeholder: null },
+        ],
+        inputJsonSchema: z.toJSONSchema(z.object({ topic: z.string() })),
+      },
+    ]);
+    renderForm();
+    h.options.onSuccess?.({
+      ok: false,
+      reason: "invalid_input",
+      message: "x",
+      fieldErrors: { topic: ["Too short"] },
+    });
+    expect(
+      await screen.findByText(en.collectors.start.invalidField),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(en.collectors.start.invalidUrl)).toBeNull();
   });
 
   it("says which limit refused the start and when to try again, keeping the input", async () => {

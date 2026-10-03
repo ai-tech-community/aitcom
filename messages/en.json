@@ -4149,6 +4149,24 @@
       "error": "Failed: something went wrong while collecting.",
       "worker_lost": "Failed: the run was interrupted twice, so it was stopped."
     },
+    "failure": {
+      "not_a_feed": "This address is not an RSS or Atom feed. Check that you copied the feed's address, not the website's.",
+      "feed_status": "The feed answered with error {status}. Check the address, or try again later.",
+      "https_only": "Only addresses that start with https:// can be collected.",
+      "invalid_address": "The collector found an address that is not a valid web address.",
+      "redirect_loop": "A page sent us on to other pages too many times.",
+      "too_large": "A page was bigger than the 5 MB limit.",
+      "timeout": "A site took too long to answer. Try again later.",
+      "unreachable_address": "We can't reach this address from our servers. Use the address of a public website.",
+      "site_refused": "Wait a while before you try this site again.",
+      "robots_disallowed": "Try a different page, or a site that welcomes automated visitors.",
+      "robots_unreachable": "The site may be down. Try again later.",
+      "blocked_domain": "Choose a different site.",
+      "collector_unavailable": "This collector is not available any more.",
+      "input_invalid": "What you entered no longer fits this collector. Start a new run.",
+      "worker_lost": "Start the run again.",
+      "generic": "Try again later."
+    },
     "stopShort": {
       "complete": "Read everything",
       "page_limit": "Stopped at the page limit",
@@ -4181,6 +4199,7 @@
       "unsupported": "This collector can't be started from here yet.",
       "fixFields": "Some fields need attention.",
       "invalidField": "Check this field.",
+      "invalidUrl": "Use a web address that starts with https://.",
       "quota": {
         "daily_limit": "You've used all {limit} runs for the last 24 hours.",
         "daily_limit_retry": "You've used all {limit} runs for the last 24 hours. You can start again {when}.",

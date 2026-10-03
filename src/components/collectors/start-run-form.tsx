@@ -4,7 +4,10 @@ import * as React from "react";
 import { CircleAlertIcon, InfoIcon } from "lucide-react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 
-import { FIELD_RENDERERS } from "@/components/collectors/field-renderers";
+import {
+  FIELD_REJECTION_KEYS,
+  FIELD_RENDERERS,
+} from "@/components/collectors/field-renderers";
 import {
   DashboardSection,
   statusFromQueries,
@@ -225,7 +228,9 @@ export function StartRunForm({ collectorId }: { collectorId: string }) {
                       (field.kind === "checkbox" ? false : "")
                     }
                     error={
-                      rejected.has(field.name) ? t("start.invalidField") : null
+                      rejected.has(field.name)
+                        ? t(FIELD_REJECTION_KEYS[field.kind])
+                        : null
                     }
                     onChange={(v) =>
                       setValues((prev) => ({ ...prev, [field.name]: v }))

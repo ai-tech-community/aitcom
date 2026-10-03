@@ -83,7 +83,11 @@ function renderRun() {
 
 type RunOptions = {
   refetchInterval: (q: {
-    state: { status?: string; data: unknown };
+    state: {
+      status?: string;
+      data: unknown;
+      error?: { data?: { code?: string } } | null;
+    };
   }) => unknown;
   retry: (count: number, error: { data?: { code?: string } }) => boolean;
 };
@@ -185,6 +189,81 @@ describe("CollectorRun", () => {
     ).toBeNull();
   });
 
+  it("says why a failed run failed, in the member's words", () => {
+    h.run.mockReturnValue(
+      ok({
+        ...base,
+        status: "failed",
+        stopReason: "error",
+        itemCount: 0,
+        error: "The feed answered with status 404.",
+        errorDetail: { code: "feed_status", params: { status: 404 } },
+      }),
+    );
+    renderRun();
+    expect(screen.getByText(en.collectors.stop.error)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        en.collectors.failure.feed_status.replace("{status}", "404"),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("The feed answered with status 404.")).toBeNull();
+  });
+
+  it("never shows the server's English for an unknown failure code", () => {
+    h.run.mockReturnValue(
+      ok({
+        ...base,
+        status: "failed",
+        stopReason: "error",
+        itemCount: 0,
+        error: "Some new server sentence.",
+        errorDetail: { code: "something_new" },
+      }),
+    );
+    renderRun();
+    expect(screen.getByText(en.collectors.stop.error)).toBeInTheDocument();
+    expect(screen.queryByText("Some new server sentence.")).toBeNull();
+    expect(screen.queryByTestId("failure-detail")).toBeNull();
+  });
+
+  it("adds no failure detail when the run has none", () => {
+    h.run.mockReturnValue(
+      ok({
+        ...base,
+        status: "failed",
+        stopReason: "robots_disallowed",
+        itemCount: 0,
+        errorDetail: null,
+      }),
+    );
+    renderRun();
+    expect(screen.queryByTestId("failure-detail")).toBeNull();
+  });
+
+  it("keeps polling through a passing error and stops only for a missing run", () => {
+    const active = { ...base, status: "running", stopReason: null };
+    h.run.mockReturnValue(ok(active));
+    renderRun();
+    const transient = {
+      status: "error",
+      data: active,
+      error: { data: { code: "INTERNAL_SERVER_ERROR" } },
+    };
+    const missing = {
+      status: "error",
+      data: active,
+      error: { data: { code: "NOT_FOUND" } },
+    };
+    expect(runOptions().refetchInterval({ state: transient })).toBe(3000);
+    expect(runOptions().refetchInterval({ state: missing })).toBe(false);
+    const itemOptions = h.items.mock.calls.at(-1)![1] as {
+      refetchInterval: (q: { state: unknown }) => unknown;
+    };
+    expect(itemOptions.refetchInterval({ state: transient })).toBe(3000);
+    expect(itemOptions.refetchInterval({ state: missing })).toBe(false);
+  });
+
   it("says the run was not found for a missing or foreign run", () => {
     h.run.mockReturnValue({
       data: undefined,
@@ -197,7 +276,13 @@ describe("CollectorRun", () => {
     expect(screen.getByText(en.collectors.run.notFound)).toBeInTheDocument();
     const options = runOptions();
     expect(
-      options.refetchInterval({ state: { status: "error", data: undefined } }),
+      options.refetchInterval({
+        state: {
+          status: "error",
+          data: undefined,
+          error: { data: { code: "NOT_FOUND" } },
+        },
+      }),
     ).toBe(false);
     expect(options.retry(0, { data: { code: "NOT_FOUND" } })).toBe(false);
     expect(options.retry(0, { data: { code: "INTERNAL_SERVER_ERROR" } })).toBe(
