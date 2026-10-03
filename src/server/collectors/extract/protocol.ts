@@ -19,8 +19,11 @@ export const MAX_OUTPUT_CHARS_PER_PAGE = 2_000_000;
 export type ExtractField = {
   /** Column name in the output row. */
   name: string;
-  /** CSS selector, matched inside each item; the first match is used. */
-  selector: string;
+  /**
+   * CSS selector, matched inside each item; the first match is used. `null`
+   * reads the item element itself (its text, or its own attribute).
+   */
+  selector: string | null;
   /** Attribute to read; the element's text is used when absent. */
   attribute?: string;
 };

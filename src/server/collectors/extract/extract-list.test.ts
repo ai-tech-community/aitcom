@@ -299,6 +299,45 @@ describe("extractList", () => {
     expect(extractList(html, SPEAKERS_SPEC).rows).toEqual([]);
   });
 
+  it("reads the item itself for a field without a selector", () => {
+    const html = `<div class="grid">
+      <a class="job" href="/jobs/1"><h3>Engineer</h3><p>Amsterdam</p></a>
+      <a class="job" href="https://elsewhere.example/jobs/2"><h3>Designer</h3></a>
+    </div>`;
+    const { rows } = extractList(html, {
+      baseUrl: BASE_URL,
+      itemSelector: "a.job",
+      fields: [
+        { name: "card", selector: null },
+        { name: "link", selector: null, attribute: "href" },
+        { name: "title", selector: "h3" },
+      ],
+    });
+    expect(rows).toEqual([
+      {
+        card: "Engineer Amsterdam",
+        link: "https://conf.example/jobs/1",
+        title: "Engineer",
+      },
+      {
+        card: "Designer",
+        link: "https://elsewhere.example/jobs/2",
+        title: "Designer",
+      },
+    ]);
+  });
+
+  it("still checks the other selectors when a field reads the item itself", () => {
+    const error = captureError(() =>
+      extractList("<ul><li>x</li></ul>", {
+        baseUrl: BASE_URL,
+        itemSelector: "li:nth-child(2)",
+        fields: [{ name: "all", selector: null }],
+      }),
+    );
+    expect(error.code).toBe("selector_not_allowed");
+  });
+
   it("uses the first match in document order for a field", () => {
     const html = `<ul><li class="item">
       <div class="x"><div class="x">inner</div> outer</div>

@@ -225,6 +225,29 @@ describe("formFieldsFor", () => {
     ).toEqual({ ok: false, unsupported: ["fields"] });
   });
 
+  it("lets a page-list column leave its selector empty", () => {
+    const pageList = allCollectors().find((c) => c.id === "page-list")!;
+    const result = formFieldsFor({
+      fields: [
+        {
+          ...hint("fields"),
+          columns: ["name", "selector", "attribute"].map(column),
+        },
+      ],
+      inputJsonSchema: z.toJSONSchema(pageList.inputSchema),
+    });
+    const rows = result.ok ? result.fields[0] : undefined;
+    expect(
+      rows?.kind === "rows"
+        ? rows.columns.map((c) => [c.name, c.required])
+        : null,
+    ).toEqual([
+      ["name", true],
+      ["selector", false],
+      ["attribute", false],
+    ]);
+  });
+
   it.each(allCollectors().map((c) => [c.id, c] as const))(
     "can draw every field of %s",
     (_id, c) => {

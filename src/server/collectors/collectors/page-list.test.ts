@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { CollectorStop } from "../errors";
 import { collectAll, fakeContext } from "../testing/fake-context";
 import { pageList } from "./page-list";
@@ -73,6 +73,39 @@ describe("page-list collector", () => {
       expect(requests.map((r) => r.url)).toEqual(["https://e.com/jobs"]);
     },
   );
+
+  it("reads the item itself for a column without a selector", async () => {
+    const { ctx } = fakeContext({
+      "https://e.com/jobs": {
+        body: `<div><a class="job" href="/jobs/1">Engineer</a><a class="job" href="/jobs/2">Designer</a></div>`,
+      },
+    });
+    const extractList = vi.spyOn(ctx, "extractList");
+    const rows = await collectAll(
+      pageList.run(
+        input({
+          itemSelector: "a.job",
+          fields: [
+            { name: "title", selector: "" },
+            { name: "link", attribute: "href" },
+          ],
+        }),
+        ctx,
+      ),
+    );
+    expect(extractList).toHaveBeenCalledWith(expect.anything(), {
+      itemSelector: "a.job",
+      fields: [
+        { name: "title", selector: null },
+        { name: "link", selector: null, attribute: "href" },
+      ],
+      nextPageSelector: "a.next",
+    });
+    expect(rows).toEqual([
+      { title: "Engineer", link: "https://e.com/jobs/1" },
+      { title: "Designer", link: "https://e.com/jobs/2" },
+    ]);
+  });
 
   it("reads up to five pages by default", () => {
     expect(input().maxPages).toBe(5);
@@ -225,6 +258,19 @@ describe("page-list input", () => {
     expect(refused({ nextPageSelector: "a ~ b" })[0]?.path).toEqual([
       "nextPageSelector",
     ]);
+  });
+
+  it("accepts a column whose selector is left out or blank", () => {
+    for (const fields of [
+      [{ name: "link", attribute: "href" }],
+      [{ name: "title", selector: "" }],
+      [{ name: "title", selector: "   " }],
+    ]) {
+      expect(
+        pageList.inputSchema.safeParse({ ...valid, fields }).success,
+        JSON.stringify(fields),
+      ).toBe(true);
+    }
   });
 
   it("refuses duplicate column names", () => {

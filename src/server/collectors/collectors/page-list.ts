@@ -9,6 +9,7 @@ import {
 
 import type { Collector } from "../collector";
 import { CollectorStop } from "../errors";
+import type { ExtractField } from "../extract/protocol";
 
 const PAGE_ACCEPT = "text/html,application/xhtml+xml";
 
@@ -26,13 +27,29 @@ const SELECTOR_MESSAGES: Record<SelectorProblem, string> = {
     "This selector uses a feature we don't allow. Use tag names, classes, ids and attributes.",
 };
 
-/** A CSS selector that passes the allowlist (selector-policy.ts). */
-const selector = z.string().superRefine((value, ctx) => {
+function refineSelector(value: string, ctx: z.RefinementCtx): void {
   const check = checkSelector(value);
   if (!check.ok) {
     ctx.addIssue({ code: "custom", message: SELECTOR_MESSAGES[check.reason] });
   }
-});
+}
+
+const isBlank = (value: string | undefined) => !value?.trim();
+
+/** A CSS selector that passes the allowlist (selector-policy.ts). */
+const selector = z.string().superRefine(refineSelector);
+
+/**
+ * A column's selector. Blank or left out means "the item itself", so a list
+ * whose items are links (`<a class="job" href="…">`) can still have a link
+ * column. Only a selector that is given goes through the allowlist.
+ */
+const columnSelector = z
+  .string()
+  .superRefine((value, ctx) => {
+    if (!isBlank(value)) refineSelector(value, ctx);
+  })
+  .optional();
 
 const column = z.object({
   name: z
@@ -41,7 +58,7 @@ const column = z.object({
       /^[a-zA-Z][a-zA-Z0-9_]{0,39}$/,
       "Start the column name with a letter; use only letters, digits and _ (at most 40).",
     ),
-  selector,
+  selector: columnSelector,
   attribute: z
     .string()
     .regex(
@@ -76,9 +93,19 @@ const inputSchema = z.object({
 });
 
 type PageListInput = z.infer<typeof inputSchema>;
+type Column = z.infer<typeof column>;
 type PageRow = Record<string, string | null>;
 
 const itemSchema = z.record(z.string(), z.string().nullable());
+
+/** A column as the extractor reads it: a blank selector is the item itself. */
+function toExtractField({ name, selector, attribute }: Column): ExtractField {
+  return {
+    name,
+    selector: selector === undefined || isBlank(selector) ? null : selector,
+    ...(attribute === undefined ? {} : { attribute }),
+  };
+}
 
 function isHtml(contentType: string | null): boolean {
   if (contentType === null || contentType.trim() === "") return true;
@@ -146,8 +173,8 @@ export const pageList: Collector<PageListInput, PageRow> = {
         selector: {
           label: { en: "Selector", nl: "Selector" },
           help: {
-            en: "Where the value sits inside the item.",
-            nl: "Waar de waarde in het item staat.",
+            en: "Where the value sits inside the item. Leave empty to read the item itself — for example its link.",
+            nl: "Waar de waarde in het item staat. Laat leeg om het item zelf te lezen, bijvoorbeeld de link als het item een link is.",
           },
           placeholder: "h3 a",
         },
@@ -187,7 +214,7 @@ export const pageList: Collector<PageListInput, PageRow> = {
   async *run(input, ctx) {
     const spec = {
       itemSelector: input.itemSelector,
-      fields: input.fields,
+      fields: input.fields.map(toExtractField),
       nextPageSelector: input.nextPageSelector,
     };
     const visited = new Set<string>();

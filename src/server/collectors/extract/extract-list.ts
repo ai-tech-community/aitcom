@@ -138,7 +138,9 @@ export function extractList(html: string, spec: ExtractSpec): ExtractResult {
 function assertSelectorsAllowed(spec: ExtractSpec): void {
   const selectors = [
     spec.itemSelector,
-    ...spec.fields.map((field) => field.selector),
+    ...spec.fields.flatMap((field) =>
+      field.selector === null ? [] : [field.selector],
+    ),
     ...(spec.nextPageSelector === undefined ? [] : [spec.nextPageSelector]),
   ];
   for (const selector of selectors) {
@@ -221,7 +223,8 @@ function readField(
   field: ExtractField,
   baseUrl: URL,
 ): string | null {
-  const match = firstMatch(item, field.selector);
+  const match =
+    field.selector === null ? item[0] : firstMatch(item, field.selector);
   if (match === undefined) return null;
   if (field.attribute === undefined) return textOf(match);
   return attributeOf(match, field.attribute, baseUrl);
