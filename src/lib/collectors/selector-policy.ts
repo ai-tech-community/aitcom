@@ -2,9 +2,13 @@ import { parse, SelectorType, type Selector } from "css-what";
 
 /**
  * Which CSS selectors a member may give the "list on a web page" collector.
- * Only features that css-select evaluates in linear time and without deep
- * recursion: the `:nth-*` family is quadratic in sibling count, `:has()` and
- * `:contains()` recurse and overflow the stack on deep pages (measured).
+ * Only features whose css-select cost is bounded (at worst quadratic in the
+ * sibling count) and that do not recurse deeply. Refused, all measured:
+ * the `:nth-*` family, `:has()` and `:contains()` (recurse and overflow the
+ * stack on deep pages), and chained `~` (the sibling scan is uncached, so
+ * `x ~ * ~ * ~ *` grows polynomially: 1.2 s at 200 siblings, 19.8 s at 400).
+ * The extraction also runs under a deadline enforced from outside the
+ * worker; this policy keeps a single page well inside it.
  * Used by the form schema and again inside the extraction worker.
  *
  * This is an allowlist: any token type or pseudo-class not named here is
@@ -12,6 +16,8 @@ import { parse, SelectorType, type Selector } from "css-what";
  */
 export const MAX_SELECTOR_LENGTH = 200;
 export const MAX_COMPOUNDS = 8;
+/** `~` combinators allowed in the whole selector, nested ones included. */
+export const MAX_GENERAL_SIBLING_COMBINATORS = 1;
 
 export type SelectorProblem =
   | "empty"
@@ -51,25 +57,43 @@ const ALLOWED_COMBINATORS: ReadonlySet<Selector["type"]> = new Set([
   SelectorType.Sibling,
 ]);
 
-/** Simple selectors: tag, `*`, and attribute (class and id are attributes). */
-const ALLOWED_SIMPLE: ReadonlySet<Selector["type"]> = new Set([
-  SelectorType.Tag,
-  SelectorType.Universal,
-  SelectorType.Attribute,
-]);
+/** Counts shared by a selector and everything nested inside it. */
+interface WholeSelectorTally {
+  generalSiblings: number;
+}
 
 /**
  * Checks one complex selector (no top-level list). Nested `:not/:is/:where`
- * selectors are checked with the same rules, including the compound limit.
+ * selectors are checked with the same rules: the compound limit applies to
+ * each of them, the `~` limit to the whole selector (via `tally`).
  */
-function checkComplex(tokens: Selector[]): SelectorProblem | null {
+function checkComplex(
+  tokens: Selector[],
+  tally: WholeSelectorTally,
+): SelectorProblem | null {
   let compounds = 1;
   for (const token of tokens) {
     if (ALLOWED_COMBINATORS.has(token.type)) {
       compounds += 1;
+      if (token.type === SelectorType.Sibling) {
+        tally.generalSiblings += 1;
+        if (tally.generalSiblings > MAX_GENERAL_SIBLING_COMBINATORS)
+          return "too_complex";
+      }
       continue;
     }
-    if (ALLOWED_SIMPLE.has(token.type)) continue;
+    // Simple selectors: tag, `*`, attribute (class and id are attributes).
+    if (
+      token.type === SelectorType.Tag ||
+      token.type === SelectorType.Universal ||
+      token.type === SelectorType.Attribute
+    ) {
+      // Namespaced names (`svg|rect`, `*|rect`, `|rect`, `[xlink|href]`)
+      // are refused: members never need them and they widen what we check.
+      if (token.namespace !== null && token.namespace !== undefined)
+        return "not_allowed";
+      continue;
+    }
     if (token.type !== SelectorType.Pseudo) return "not_allowed";
 
     if (BARE_PSEUDOS.has(token.name)) {
@@ -78,7 +102,7 @@ function checkComplex(tokens: Selector[]): SelectorProblem | null {
     }
     if (SELECTOR_LIST_PSEUDOS.has(token.name) && Array.isArray(token.data)) {
       for (const inner of token.data) {
-        const problem = checkComplex(inner);
+        const problem = checkComplex(inner, tally);
         if (problem) return problem;
       }
       continue;
@@ -101,10 +125,12 @@ export function checkSelector(selector: string): SelectorCheck {
     return { ok: false, reason: "invalid" };
   }
 
+  // css-what throws on empty parts ("li,", ","), so `only.length === 0`
+  // cannot happen today; it stays as a guard against a parser change.
   const [only] = parsed;
   if (parsed.length !== 1 || !only || only.length === 0)
     return { ok: false, reason: "list" };
 
-  const problem = checkComplex(only);
+  const problem = checkComplex(only, { generalSiblings: 0 });
   return problem ? { ok: false, reason: problem } : { ok: true };
 }

@@ -65,4 +65,26 @@ describe("checkSelector", () => {
   it("allows exactly MAX_SELECTOR_LENGTH characters", () => {
     expect(checkSelector("a".repeat(200))).toEqual({ ok: true });
   });
+
+  it.each(["a ~ b", "li:is(a ~ b)", ":NOT(.a)", "li:IS(a)"])(
+    "allows %s (fix round 1)",
+    (selector) => {
+      expect(checkSelector(selector)).toEqual({ ok: true });
+    },
+  );
+
+  it.each([
+    ["a ~ b ~ c", "too_complex"],
+    ["p:not(a ~ b) ~ c", "too_complex"],
+    ["li:is(a ~ b, c ~ d)", "too_complex"],
+    ["svg|rect", "not_allowed"],
+    ["*|rect", "not_allowed"],
+    ["|rect", "not_allowed"],
+    ["[xlink|href]", "not_allowed"],
+    ["[*|href]", "not_allowed"],
+    ["li:not(svg|rect)", "not_allowed"],
+    [":NTH-CHILD(2)", "not_allowed"],
+  ] as const)("refuses %j (%s) (fix round 1)", (selector, reason) => {
+    expect(checkSelector(selector)).toEqual({ ok: false, reason });
+  });
 });
