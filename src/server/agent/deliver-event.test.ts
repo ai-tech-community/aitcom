@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type * as PinnedTransport from "@/server/net/pinned-transport";
 import { createHmac } from "crypto";
+
+vi.mock("@/server/net/pinned-transport", async (importOriginal) => ({
+  ...(await importOriginal<typeof PinnedTransport>()),
+  pinnedFetch: vi.fn(),
+}));
+
+import { pinnedFetch } from "@/server/net/pinned-transport";
 
 import {
   type ActivityEvent,
@@ -7,6 +15,8 @@ import {
   deliverEvent,
   webhookMatchesEvent,
 } from "./deliver-event";
+
+const fetchMock = vi.mocked(pinnedFetch);
 
 function webhook(p: Partial<AgentWebhook> = {}): AgentWebhook {
   return {
@@ -102,12 +112,10 @@ describe("webhookMatchesEvent", () => {
 });
 
 describe("deliverEvent", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => fetchMock.mockReset());
 
   it("POSTs a signed wake payload and returns ok on 2xx", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue({ ok: true, status: 200 } as Response);
+    fetchMock.mockResolvedValue({ ok: true, status: 200 } as never);
 
     const outcome = await deliverEvent(webhook(), event(), "Alice");
 
@@ -130,9 +138,7 @@ describe("deliverEvent", () => {
   });
 
   it("delivers only the metadata fields the policy lists for the action", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue({ ok: true, status: 200 } as Response);
+    fetchMock.mockResolvedValue({ ok: true, status: 200 } as never);
 
     await deliverEvent(
       webhook({ categories: ["forum"] }),
@@ -157,21 +163,34 @@ describe("deliverEvent", () => {
     });
   });
 
-  it("returns not-ok on a non-2xx response", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: false,
-      status: 500,
-    } as Response);
+  it("returns not-ok on a non-2xx response and releases its body", async () => {
+    const failed = new Response("boom", { status: 500 });
+    const cancel = vi.spyOn(failed.body!, "cancel");
+    fetchMock.mockResolvedValue(failed as never);
     expect(await deliverEvent(webhook(), event(), "Alice")).toEqual({
       ok: false,
       status: 500,
     });
+    expect(cancel).toHaveBeenCalledTimes(1);
   });
 
   it("returns not-ok when the request throws", async () => {
-    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network"));
+    fetchMock.mockRejectedValue(new Error("network"));
     expect(await deliverEvent(webhook(), event(), "Alice")).toEqual({
       ok: false,
     });
+  });
+
+  it("treats a redirect as a failed delivery and never follows it", async () => {
+    const redirect = new Response("moved", {
+      status: 302,
+      headers: { location: "https://10.0.0.1/" },
+    });
+    const cancel = vi.spyOn(redirect.body!, "cancel");
+    fetchMock.mockResolvedValue(redirect as never);
+    const result = await deliverEvent(webhook(), event(), "Alice");
+    expect(result).toEqual({ ok: false, status: 302 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(cancel).toHaveBeenCalledTimes(1);
   });
 });

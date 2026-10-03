@@ -1,12 +1,20 @@
 import { resolve4, resolve6 } from "node:dns/promises";
 
+import ipaddr from "ipaddr.js";
+
+import { isPublicAddress } from "@/server/net/address-policy";
+
 /**
- * Validate that a webhook URL is safe to make outbound requests to.
- * Blocks private/internal IPs and non-HTTPS URLs to prevent SSRF.
+ * An early, friendly refusal for a supplied URL: non-HTTPS, localhost, cloud
+ * metadata names, non-public IP literals (per `isPublicAddress`, including
+ * IPv6-mapped IPv4, decimal/octal/hex IPv4 and bracketed IPv6), and hostnames
+ * whose DNS answer today is not public. It gives the member a clear reason
+ * before anything is sent.
  *
- * Defends against: direct private IPs, IPv6-mapped IPv4, decimal/octal/hex
- * IP notation, bracket-enclosed IPv6, cloud metadata endpoints, and DNS
- * rebinding (by resolving the hostname and checking resolved IPs).
+ * It is not the connection guard. DNS can answer differently a moment later
+ * (rebinding), so the address actually connected to is checked by the pinned
+ * transport in src/server/net/pinned-transport.ts, which every outbound
+ * request to a supplied URL goes through.
  */
 export async function validateWebhookUrl(
   raw: string,
@@ -47,7 +55,8 @@ export async function validateWebhookUrl(
     };
   }
 
-  // Block private/internal IP ranges (RFC 1918, link-local, etc.)
+  // Block IP literals that are not public addresses (private, loopback,
+  // link-local, multicast, reserved, IPv6 transition ranges, ...)
   if (isPrivateHostname(hostname)) {
     return {
       ok: false,
@@ -55,8 +64,9 @@ export async function validateWebhookUrl(
     };
   }
 
-  // DNS resolution check — resolve hostname and verify all IPs are public.
-  // Catches DNS rebinding where hostname resolves to internal IP.
+  // DNS resolution check: refuse early, with a clear reason, a hostname whose
+  // current answer is not public. Not a rebinding defence (DNS may answer
+  // differently at connect time); the pinned transport is the guard.
   const dnsCheck = await checkResolvedIPs(hostname);
   if (!dnsCheck.ok) {
     return dnsCheck;
@@ -120,90 +130,58 @@ export function validateWebhookUrlSync(
 // Private helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Is the hostname an IP literal that is not a public address? Hostnames that
+ * are not IP literals return false here; their DNS answers are checked later.
+ */
 function isPrivateHostname(hostname: string): boolean {
-  // Strip brackets from IPv6 notation [::ffff:127.0.0.1]
+  const ip = ipLiteralOf(hostname);
+  return ip !== null && !isPublicAddress(ip);
+}
+
+/**
+ * The IP address a hostname spells, or null when it is not an IP literal.
+ * Strips IPv6 brackets ([::ffff:127.0.0.1]) and normalises decimal
+ * (2130706433), hex (0x7f000001) and octal (0177.0.0.1) IPv4 notations to
+ * dotted form. The WHATWG URL parser already does this for URLs; these
+ * helpers keep the check correct for any hostname string.
+ */
+function ipLiteralOf(hostname: string): string | null {
   const stripped = hostname.replace(/^\[|\]$/g, "");
+  const ip = numericIPv4(stripped) ?? stripped;
+  return ipaddr.isValid(ip) ? ip : null;
+}
 
-  // Block IPv6-mapped IPv4 (::ffff:127.0.0.1, ::ffff:10.0.0.1, etc.)
-  const mappedV4 = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(
-    stripped,
-  );
-  if (mappedV4) {
-    return isPrivateIPv4(mappedV4[1]!);
-  }
-
-  // Block decimal IP notation (e.g. 2130706433 = 127.0.0.1)
+function numericIPv4(stripped: string): string | null {
+  // Decimal IP notation (e.g. 2130706433 = 127.0.0.1)
   if (/^\d+$/.test(stripped) && stripped.length <= 10) {
     const num = Number(stripped);
-    if (num >= 0 && num <= 0xffffffff) {
-      const a = (num >>> 24) & 0xff;
-      const b = (num >>> 16) & 0xff;
-      const c = (num >>> 8) & 0xff;
-      const d = num & 0xff;
-      return isPrivateIPv4(`${a}.${b}.${c}.${d}`);
-    }
+    if (num >= 0 && num <= 0xffffffff) return dottedIPv4(num);
   }
 
-  // Block hex IP notation (e.g. 0x7f000001 = 127.0.0.1)
+  // Hex IP notation (e.g. 0x7f000001 = 127.0.0.1)
   if (/^0x[0-9a-f]+$/i.test(stripped) && stripped.length <= 12) {
     const num = Number(stripped);
-    if (!isNaN(num) && num >= 0 && num <= 0xffffffff) {
-      const a = (num >>> 24) & 0xff;
-      const b = (num >>> 16) & 0xff;
-      const c = (num >>> 8) & 0xff;
-      const d = num & 0xff;
-      return isPrivateIPv4(`${a}.${b}.${c}.${d}`);
-    }
+    if (!isNaN(num) && num >= 0 && num <= 0xffffffff) return dottedIPv4(num);
   }
 
-  // Block octal IP notation (e.g. 0177.0.0.1 = 127.0.0.1)
+  // Octal IP notation (e.g. 0177.0.0.1 = 127.0.0.1)
   if (/^0\d{1,3}(\.\d{1,3}){3}$/.test(stripped)) {
     const parts = stripped.split(".").map((p) => parseInt(p, 8));
     if (parts.every((p) => !isNaN(p) && p >= 0 && p <= 255)) {
-      return isPrivateIPv4(parts.join("."));
+      return parts.join(".");
     }
   }
 
-  // Standard dotted-decimal IPv4
-  if (isPrivateIPv4(stripped)) return true;
-
-  // Block IPv6 private ranges: ULA (fc/fd), link-local (fe80), loopback (::1)
-  if (
-    stripped === "::1" ||
-    stripped.startsWith("fc") ||
-    stripped.startsWith("fd") ||
-    stripped.startsWith("fe80")
-  ) {
-    return true;
-  }
-
-  return false;
+  return null;
 }
 
-function isPrivateIPv4(ip: string): boolean {
-  const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip);
-  if (!match) return false;
-
-  const [, aStr, bStr] = match;
-  const a = Number(aStr);
-  const b = Number(bStr);
-
-  // 127.0.0.0/8 (loopback)
-  if (a === 127) return true;
-  // 10.0.0.0/8
-  if (a === 10) return true;
-  // 172.16.0.0/12
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  // 192.168.0.0/16
-  if (a === 192 && b === 168) return true;
-  // 169.254.0.0/16 (link-local)
-  if (a === 169 && b === 254) return true;
-  // 100.64.0.0/10 (carrier-grade NAT / Tailscale)
-  if (a === 100 && b >= 64 && b <= 127) return true;
-  // 0.0.0.0/8
-  if (a === 0) return true;
-
-  return false;
+function dottedIPv4(num: number): string {
+  const a = (num >>> 24) & 0xff;
+  const b = (num >>> 16) & 0xff;
+  const c = (num >>> 8) & 0xff;
+  const d = num & 0xff;
+  return `${a}.${b}.${c}.${d}`;
 }
 
 async function checkResolvedIPs(
@@ -234,29 +212,11 @@ async function checkResolvedIPs(
     };
   }
 
-  for (const ip of ipv4s) {
-    if (isPrivateIPv4(ip)) {
-      return {
-        ok: false,
-        reason: "Webhook hostname resolves to a private/internal IP address",
-      };
-    }
-  }
-
-  for (const ip of ipv6s) {
-    const lower = ip.toLowerCase();
-    if (
-      lower === "::1" ||
-      lower.startsWith("fc") ||
-      lower.startsWith("fd") ||
-      lower.startsWith("fe80") ||
-      lower.startsWith("::ffff:")
-    ) {
-      return {
-        ok: false,
-        reason: "Webhook hostname resolves to a private/internal IP address",
-      };
-    }
+  if ([...ipv4s, ...ipv6s].some((ip) => !isPublicAddress(ip))) {
+    return {
+      ok: false,
+      reason: "Webhook hostname resolves to a private/internal IP address",
+    };
   }
 
   return { ok: true };

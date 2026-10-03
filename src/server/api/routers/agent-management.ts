@@ -30,6 +30,11 @@ import { syncFeedPostCounters } from "@/server/communities/feed-post-counters";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 import {
+  isBlockedAddress,
+  pinnedFetch,
+  releaseBody,
+} from "@/server/net/pinned-transport";
+import {
   TWEET_URL_REGEX,
   verifyOembed,
   type TweetOembed,
@@ -634,7 +639,9 @@ export const agentManagementRouter = createTRPCRouter({
       .update(payload)
       .digest("hex");
 
-    const res = await fetch(webhook.url, {
+    // The pinned transport checks every address it connects to and never
+    // follows a redirect, so a 3xx fails the test instead of being chased.
+    const res = await pinnedFetch(webhook.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -643,16 +650,29 @@ export const agentManagementRouter = createTRPCRouter({
       },
       body: payload,
       signal: AbortSignal.timeout(5000),
-    }).catch((err: Error) => ({
-      ok: false as const,
-      status: 0,
-      statusText: String(err),
-    }));
+    }).catch((err: Error) => {
+      // The address check at connect time refused what DNS answered.
+      if (isBlockedAddress(err)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Webhook URL resolves to a private/internal address",
+        });
+      }
+      return { ok: false as const, status: 0, statusText: String(err) };
+    });
 
-    if (!("ok" in res) || !res.ok) {
+    if (res.status >= 300 && res.status < 400) {
+      if ("body" in res) await releaseBody(res);
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: `Webhook test failed: ${"statusText" in res ? res.statusText : "Connection failed"}`,
+        message: "Webhook test failed: redirects are not followed",
+      });
+    }
+    if (!res.ok) {
+      if ("body" in res) await releaseBody(res);
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Webhook test failed: ${res.statusText}`,
       });
     }
 

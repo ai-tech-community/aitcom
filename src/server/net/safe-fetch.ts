@@ -1,6 +1,18 @@
+import type { Response as PinnedResponse } from "undici";
+
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 
+import {
+  isBlockedAddress,
+  pinnedFetch,
+  refusedLiteralHost,
+  releaseBody,
+} from "./pinned-transport";
+
 const MAX_REDIRECTS = 5;
+/** Callers match the "Refusing to fetch URL" prefix (collectors/errors.ts). */
+const NON_PUBLIC_REFUSAL =
+  "Refusing to fetch URL: it resolves to a non-public address";
 const DEFAULT_ACCEPT =
   "text/html,application/xhtml+xml,image/*;q=0.9,*/*;q=0.5";
 
@@ -24,29 +36,27 @@ export interface SafeFetchOptions {
 }
 
 export interface SafeResponse {
-  response: Response;
+  /** undici's Response: the pinned transport is undici's own fetch. */
+  response: PinnedResponse;
   /** The URL that finally answered, after redirects. */
   url: string;
 }
 
 /**
  * Fetch a user-supplied URL behind the SSRF guard. Re-validates EVERY hop:
- * fetch() uses redirect:"manual" so each redirect's Location is validated
- * before we follow it, preventing a public URL from redirecting into an
- * internal host. One abort signal covers all hops and the body read, so a
- * slow server cannot hold the request open past `timeoutMs`.
+ * the pinned transport never follows redirects, so each redirect's Location
+ * is validated before we follow it, preventing a public URL from redirecting
+ * into an internal host. One abort signal covers all hops and the body read,
+ * so a slow server cannot hold the request open past `timeoutMs`.
  *
- * Residual risk (accepted): validateWebhookUrl resolves DNS to check the IP,
- * then fetch() resolves the hostname again independently, leaving a narrow
- * TOCTOU window where a hostile low-TTL DNS server could rebind to an internal
- * IP between the two lookups. Fully closing this requires pinning the
- * connection to the validated IP (a custom undici Agent.connect.lookup), and
- * undici is not a dependency here. We accept the window because it is heavily
- * mitigated: callers are reachable only by active community members and are
- * rate limited, and the guard re-runs on every redirect hop. Revisit with
- * IP-pinning if a caller is ever exposed more broadly. Data collectors are
- * such a broader exposure: pinning the connection to the validated IP is a
- * gate before they are enabled (ADR-0040).
+ * DNS rebinding: validateWebhookUrl resolves the hostname as a friendly
+ * pre-check, but the connection does not trust that answer. Every hop goes
+ * through `pinnedFetch` (pinned-transport.ts), which resolves once at
+ * connect time, checks every answer against the address policy, and
+ * connects only to the answers it checked. A DNS server cannot switch to an
+ * internal address between the check and the connection, so that window is
+ * closed. IP-literal URLs never reach DNS; they are refused by the pre-check
+ * (and again here and in the transport) unless they are public.
  */
 export async function safeFetch(
   url: string,
@@ -62,19 +72,25 @@ export async function safeFetch(
     if (!guard.ok) {
       throw new Error(`Refusing to fetch URL: ${guard.reason}`);
     }
-    const res = await fetch(current, {
+    // Checked here too so safeFetch is safe on its own, before any request.
+    if (refusedLiteralHost(current) !== null) {
+      throw new Error(NON_PUBLIC_REFUSAL);
+    }
+    const res = await pinnedFetch(current, {
       signal,
-      redirect: "manual",
       headers: {
         "user-agent": options.userAgent,
         accept: options.accept ?? DEFAULT_ACCEPT,
       },
+    }).catch((err: unknown) => {
+      throw isBlockedAddress(err) ? new Error(NON_PUBLIC_REFUSAL) : err;
     });
     if (res.status >= 300 && res.status < 400) {
       if (options.redirects === "return") {
         return { response: res, url: current };
       }
       const location = res.headers.get("location");
+      await releaseBody(res);
       if (!location) {
         throw new Error(`Redirect with no Location (status ${res.status})`);
       }
@@ -95,7 +111,7 @@ export async function safeFetch(
  * callers that only need the start of a document (its <head>).
  */
 export async function readBodyCapped(
-  res: Response,
+  res: PinnedResponse | Response,
   maxBytes: number,
   { truncate = false }: { truncate?: boolean } = {},
 ): Promise<Buffer> {

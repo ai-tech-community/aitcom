@@ -219,7 +219,8 @@ opted-out site or a robots-disallowed path is caught before it is requested
    **across all runs and instances**, via Upstash Redis (already used in
    `server/inbox/publish.ts`). The context waits for its slot rather than
    failing.
-5. **`safeFetch`** with the SSRF guard on every redirect hop; body read through
+5. **`safeFetch`** with the SSRF guard on every redirect hop, each connection
+   pinned to the addresses it checked (`pinnedFetch`); body read through
    `readBodyCapped` (5 MB per response).
 6. **Back-off.** On 429/503, honour `Retry-After` (capped by remaining
    budget); after 3 consecutive back-offs on a host the run stops with
@@ -651,13 +652,21 @@ agents.
 - `COLLECTORS_DISABLED` — per-collector disable.
 - `collector_blocked_domain` — per-site opt-out.
 
-**Gate before enabling.** `FEATURE_COLLECTORS` must not be turned on, and
-`page-list` must not ship, until `safeFetch` pins each connection to the IP
-address it validated. Today the SSRF guard resolves DNS to check the address
-and `fetch()` resolves it again, leaving the DNS-rebinding window documented
-in `src/server/net/safe-fetch.ts`. Data collectors let members point our
-servers at arbitrary sites, a broader exposure than the callers that window
-was accepted for (ADR-0040).
+**Gate before enabling (met, #419).** `FEATURE_COLLECTORS` was not to be
+turned on, and `page-list` was not to ship, until `safeFetch` pinned each
+connection to an address it had checked, because data collectors let members
+point our servers at arbitrary sites (ADR-0040). That condition is now met:
+`safeFetch` connects through `pinnedFetch`
+(`src/server/net/pinned-transport.ts`), which resolves DNS once at connect
+time, checks every answer against the public-address policy
+(`src/server/net/address-policy.ts`) and connects only to the answers it
+checked, so a DNS server can no longer switch to an internal address between
+the check and the connection. IP-literal hosts skip DNS and are refused unless
+public, and the transport never follows redirects itself. The URL pre-check in
+`validateWebhookUrl` stays as a friendly early refusal, not the guard. The
+member UI and the public about page have shipped (#421), so turning
+`FEATURE_COLLECTORS` on is now the owner's decision. The `page-list` collector
+ships only together with its parse sandbox (slice 3).
 
 ## Extension seams
 
@@ -734,9 +743,10 @@ was accepted for (ADR-0040).
    `docs/superpowers/plans/2026-10-03-data-collectors-core.md`.
 2. **Member UI and the public about page** (built), preceded by a visual
    review of mockups: dashboard tab, generated form, run page, history,
-   export, `/collectors/about`. The flag stays off until this slice ships, so
-   no collector contacts a site before the about page exists. Plan:
+   export, `/collectors/about`. Shipped in #421; the flag stayed off until
+   then, so no collector contacted a site before the about page existed. Plan:
    `docs/superpowers/plans/2026-10-03-data-collectors-screens.md`.
-3. **More collectors:** `github-org-repos`, `page-list`.
+3. **More collectors:** `github-org-repos`, and `page-list` together with its
+   parse sandbox (`page-list` does not ship without it).
 4. **MCP tools** under the `collect` scope.
 5. **Retention cron and blocklist admin.**

@@ -1,17 +1,30 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as PinnedTransport from "@/server/net/pinned-transport";
 
 vi.mock("@/server/db", () => ({ db: { __fake: true } }));
+// The default fetch goes through safeFetch; only the network call is stubbed,
+// so the address checks (and BlockedAddressError) stay real.
+vi.mock("@/server/agent/validate-webhook-url", () => ({
+  validateWebhookUrl: vi.fn(async () => ({ ok: true })),
+}));
+vi.mock("@/server/net/pinned-transport", async (importOriginal) => ({
+  ...(await importOriginal<typeof PinnedTransport>()),
+  pinnedFetch: vi.fn(),
+}));
 
+import { pinnedFetch } from "@/server/net/pinned-transport";
 import {
+  defaultJobFetch,
   listingsFromJobsUrl,
   readJobsUrlListings,
   startupJobsScanTablePatch,
 } from "@/server/startups/scan-jobs";
 import {
   STARTUP_ROLE_ENRICH_CAP,
+  STARTUP_ROLE_USER_AGENT,
   STARTUP_ROLES_PER_COMPANY_CAP,
 } from "@/lib/investigations/startup-roles";
 
@@ -534,12 +547,108 @@ describe("startup jobs scan locks", () => {
     expect(src).toContain("openRoleCount");
     expect(src).toContain("readJobsUrlListings");
     expect(src).toContain(
-      'Accept: "text/html, application/json;q=0.9, */*;q=0.8"',
+      'accept: "text/html, application/json;q=0.9, */*;q=0.8"',
     );
     expect(src).toContain("extractInertiaJobBoard");
     expect(src).toContain("ripplingJobsIndexUrl");
     expect(src).toContain("ocrPostingPage");
     expect(src).toContain("STARTUP_ROLE_VISUAL_BACKUP");
     expect(src).toMatch(/if \(fetched\)/);
+  });
+});
+
+describe("defaultJobFetch", () => {
+  const pinned = vi.mocked(pinnedFetch);
+  const globalFetch = vi.spyOn(globalThis, "fetch");
+
+  beforeEach(() => {
+    pinned.mockReset();
+    globalFetch.mockReset();
+    globalFetch.mockRejectedValue(new Error("global fetch must not be used"));
+  });
+
+  it("fetches through the pinned transport with its own identity", async () => {
+    pinned.mockResolvedValue(
+      new Response("<h1>Jobs</h1>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }) as never,
+    );
+    await expect(
+      defaultJobFetch("https://careers.example/jobs"),
+    ).resolves.toEqual({
+      ok: true,
+      status: 200,
+      text: "<h1>Jobs</h1>",
+      contentType: "text/html",
+    });
+    const [url, init] = pinned.mock.calls[0]!;
+    expect(String(url)).toBe("https://careers.example/jobs");
+    const headers = init!.headers as Record<string, string>;
+    expect(headers["user-agent"]).toBe(STARTUP_ROLE_USER_AGENT);
+    expect(headers.accept).toBe("text/html, application/json;q=0.9, */*;q=0.8");
+    expect(init!.signal).toBeInstanceOf(AbortSignal);
+    expect(globalFetch).not.toHaveBeenCalled();
+  });
+
+  it("hands an error status back instead of failing the fetch", async () => {
+    pinned.mockResolvedValue(new Response("gone", { status: 404 }) as never);
+    await expect(
+      defaultJobFetch("https://careers.example/old"),
+    ).resolves.toMatchObject({ ok: false, status: 404, text: "gone" });
+  });
+
+  it("refuses a follow-up URL on an internal address without requesting it", async () => {
+    pinned.mockImplementation(async (url) => {
+      if (String(url).startsWith("https://boards-api.greenhouse.io/")) {
+        return new Response(
+          JSON.stringify({
+            jobs: [
+              {
+                id: 1,
+                title: "Platform Engineer",
+                absolute_url: "https://10.0.0.1/jobs",
+                location: { name: "Remote" },
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ) as never;
+      }
+      throw new Error(`unexpected request to ${String(url)}`);
+    });
+
+    const listings = await listingsFromJobsUrl(
+      "https://boards.greenhouse.io/acme",
+    );
+
+    // The board answered; its posting link points inside the network, so
+    // the enrichment fetch is refused and the listing keeps its board data.
+    expect(listings.map((l) => l.title)).toEqual(["Platform Engineer"]);
+    const requested = pinned.mock.calls.map((c) => String(c[0]));
+    expect(requested).toHaveLength(1);
+    expect(requested[0]).toMatch(/^https:\/\/boards-api\.greenhouse\.io\//);
+    expect(requested.some((u) => u.includes("10.0.0.1"))).toBe(false);
+    expect(globalFetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses an internal literal directly", async () => {
+    await expect(defaultJobFetch("https://10.0.0.1/jobs")).resolves.toEqual({
+      ok: false,
+      status: 0,
+      text: "",
+      contentType: "",
+    });
+    expect(pinned).not.toHaveBeenCalled();
+    expect(globalFetch).not.toHaveBeenCalled();
+  });
+
+  it("gives up on a body over the size cap", async () => {
+    pinned.mockResolvedValue(
+      new Response("x".repeat(5 * 1024 * 1024 + 1)) as never,
+    );
+    await expect(
+      defaultJobFetch("https://careers.example/huge"),
+    ).resolves.toMatchObject({ ok: false, status: 0 });
   });
 });

@@ -19,11 +19,28 @@ import {
   expect,
   it,
   vi,
-  type MockInstance,
 } from "vitest";
+import type * as Nominatim from "@/server/geocoding/nominatim";
+import type * as PinnedTransport from "@/server/net/pinned-transport";
 
 vi.mock("./validate-webhook-url", () => ({
   validateWebhookUrl: vi.fn().mockResolvedValue({ ok: true }),
+}));
+
+vi.mock("@/server/net/pinned-transport", async (importOriginal) => ({
+  ...(await importOriginal<typeof PinnedTransport>()),
+  pinnedFetch: vi.fn(),
+}));
+
+import { pinnedFetch } from "@/server/net/pinned-transport";
+
+const fetchMock = vi.mocked(pinnedFetch);
+
+// Updating an event runs the Events geocode hook, which calls the public
+// Nominatim service. Keep the suite offline: no place resolves.
+vi.mock("@/server/geocoding/nominatim", async (importOriginal) => ({
+  ...(await importOriginal<typeof Nominatim>()),
+  geocodeEvent: vi.fn().mockResolvedValue(null),
 }));
 
 // Agent calls authenticate with an API key; stub only the key lookup so a
@@ -108,7 +125,6 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
   const payloadEventIds: number[] = [];
   const extraCommunityIds: string[] = [];
   const activityIds: string[] = [];
-  let fetchMock: MockInstance<typeof fetch>;
 
   beforeAll(async () => {
     if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
@@ -260,14 +276,13 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
       },
       { communityId: unlisted.id, userId: coMember.userId, status: "active" },
     ]);
-    fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue({ ok: true, status: 200 } as Response);
+    fetchMock.mockResolvedValue({ ok: true, status: 200 } as never);
   });
 
   afterEach(async () => {
     const { db, schema, eq, inArray } = m;
     vi.restoreAllMocks();
+    fetchMock.mockReset();
     if (activityIds.length > 0) {
       await db
         .delete(schema.activityEvents)

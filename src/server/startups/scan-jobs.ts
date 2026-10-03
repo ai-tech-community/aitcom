@@ -32,6 +32,7 @@ import {
 import { presentText } from "@/lib/investigations/startups";
 import { db } from "@/server/db";
 import { startupRoles, startups } from "@/server/db/schema";
+import { readBodyCapped, safeFetch } from "@/server/net/safe-fetch";
 import {
   STARTUP_ROLE_VISUAL_BACKUP_CAP,
   armVisualBackup,
@@ -39,6 +40,9 @@ import {
 } from "@/server/startups/posting-visual-backup";
 
 let inVisualBatch = false;
+
+/** Same page cap the data collectors use; board JSON fits well inside it. */
+const JOB_PAGE_MAX_BYTES = 5 * 1024 * 1024;
 
 export type JobFetchResult = {
   ok: boolean;
@@ -88,32 +92,29 @@ export function startupJobsScanTablePatch(input: {
   };
 }
 
+/**
+ * Fetch one jobs page or board API. URLs come from staff-entered careers
+ * links and from the pages and board JSON they return, so every request goes
+ * through safeFetch: HTTPS only, every redirect hop checked, and the
+ * connection pinned to an address that passed the public-address check.
+ */
 export async function defaultJobFetch(url: string): Promise<JobFetchResult> {
-  const controller = new AbortController();
-  const timer = setTimeout(
-    () => controller.abort(),
-    STARTUP_ROLE_FETCH_TIMEOUT_MS,
-  );
   try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        Accept: "text/html, application/json;q=0.9, */*;q=0.8",
-        "User-Agent": STARTUP_ROLE_USER_AGENT,
-      },
-      redirect: "follow",
+    const { response } = await safeFetch(url, {
+      userAgent: STARTUP_ROLE_USER_AGENT,
+      timeoutMs: STARTUP_ROLE_FETCH_TIMEOUT_MS,
+      accept: "text/html, application/json;q=0.9, */*;q=0.8",
+      allowErrorStatus: true,
     });
-    const text = await response.text();
+    const body = await readBodyCapped(response, JOB_PAGE_MAX_BYTES);
     return {
       ok: response.ok,
       status: response.status,
-      text,
+      text: body.toString("utf8"),
       contentType: response.headers.get("content-type") ?? "",
     };
   } catch {
     return { ok: false, status: 0, text: "", contentType: "" };
-  } finally {
-    clearTimeout(timer);
   }
 }
 
