@@ -79,6 +79,15 @@ export class CollectorStop extends Error {
   }
 }
 
+/** The run's time budget is spent: the rows so far stand. */
+export function timeLimitStop(): CollectorStop {
+  return new CollectorStop(
+    "time_limit",
+    "succeeded",
+    "Stopped at the time limit.",
+  );
+}
+
 /** Stop reasons that are failure codes of the same name. */
 const REASON_CODES: Partial<Record<StopReason, FailureCode>> = {
   site_refused: "site_refused",

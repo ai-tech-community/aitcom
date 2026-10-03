@@ -756,6 +756,46 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       });
     });
 
+    it("fails the run when its context cannot be built, without running the collector", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const run = vi.fn(async function* () {
+        yield { n: 1 };
+      });
+      const collector = testCollector(run);
+      const serverLog = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      const claimed = await m.executor.claimNextRun(m.db, new Date());
+      try {
+        await expect(
+          m.executor.executeRun(
+            {
+              ...deps(collector),
+              buildContext: async () => {
+                throw new Error("blocklist unavailable");
+              },
+            },
+            claimed!,
+            Date.now() + 60_000,
+          ),
+        ).resolves.toEqual({ status: "failed", stopReason: "error" });
+        expect(serverLog).toHaveBeenCalledWith(
+          `[collectors] run ${id} failed`,
+          expect.objectContaining({ message: "blocklist unavailable" }),
+        );
+      } finally {
+        serverLog.mockRestore();
+      }
+      expect(run).not.toHaveBeenCalled();
+      expect(await runRow(id)).toMatchObject({
+        status: "failed",
+        stopReason: "error",
+        errorDetail: { code: "generic" },
+        itemCount: 0,
+      });
+    });
+
     it("logs a dispose that throws and still records the run's outcome", async () => {
       const userId = await makeUser();
       const id = await insertRun(userId);

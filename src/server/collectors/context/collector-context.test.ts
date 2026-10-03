@@ -448,6 +448,38 @@ describe("collector context extractList", () => {
     },
   );
 
+  it("stops at the time limit before extracting once the run's time is up", async () => {
+    const t = setup();
+    t.advance(60_000);
+    const stop = await stopOf(t.ctx.extractList(page, spec));
+    expect([stop.reason, stop.outcome]).toEqual(["time_limit", "succeeded"]);
+    expect(t.extract).not.toHaveBeenCalled();
+  });
+
+  it("stops at the time limit before extracting once the run is aborted", async () => {
+    const t = setup();
+    t.controller.abort();
+    const stop = await stopOf(t.ctx.extractList(page, spec));
+    expect([stop.reason, stop.outcome]).toEqual(["time_limit", "succeeded"]);
+    expect(t.extract).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["an extraction refusal", new ExtractError("extract_failed")],
+    ["any other error", new Error("worker gone")],
+  ])(
+    "reports %s after the run was aborted as the time limit",
+    async (_name, error) => {
+      const t = setup();
+      t.extract.mockImplementationOnce(async () => {
+        t.controller.abort();
+        throw error;
+      });
+      const stop = await stopOf(t.ctx.extractList(page, spec));
+      expect([stop.reason, stop.outcome]).toEqual(["time_limit", "succeeded"]);
+    },
+  );
+
   it("lets any other extractor error through unchanged", async () => {
     const t = setup();
     const boom = new Error("boom");

@@ -20,14 +20,16 @@ type FakePage = {
 export function fakeContext(pages: Record<string, FakePage>) {
   const requests: { url: string; accept?: string }[] = [];
   const logs: string[] = [];
+  const signal = new AbortController().signal;
   const ctx: CollectorContext = {
-    signal: new AbortController().signal,
+    signal,
     log: (message) => {
       logs.push(message);
     },
-    extractList: extractListVia({
-      extract: async (html, spec) => extractList(html, spec),
-    }),
+    extractList: extractListVia(
+      { extract: async (html, spec) => extractList(html, spec) },
+      { isOver: () => signal.aborted },
+    ),
     async fetch(url, opts) {
       requests.push({ url, accept: opts?.accept });
       const page = pages[url];

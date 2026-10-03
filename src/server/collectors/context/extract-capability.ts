@@ -1,5 +1,5 @@
 import type { CollectorContext } from "../collector";
-import { CollectorStop, type FailureCode } from "../errors";
+import { CollectorStop, type FailureCode, timeLimitStop } from "../errors";
 import {
   ExtractError,
   type ExtractErrorCode,
@@ -10,6 +10,12 @@ import {
 /** Whatever reads a page's list: the sandboxed worker, or the pure extractor. */
 export interface PageExtractor {
   extract(html: string, spec: ExtractSpec): Promise<ExtractResult>;
+}
+
+/** The run's time budget, as extraction needs to see it. */
+export interface RunClock {
+  /** True once the run's deadline has passed or the run was aborted. */
+  isOver(): boolean;
 }
 
 /** Each extraction refusal as the stop a member sees. */
@@ -42,19 +48,24 @@ const EXTRACT_FAILURES: Record<
 /**
  * The context's `extractList`, served by `extractor`. Links resolve against
  * the page's own URL, and an extraction refusal ends the run as a failed
- * CollectorStop with a translatable code. Shared by the live context and the
- * test fake, so both report refusals the same way.
+ * CollectorStop with a translatable code. A run whose time is up stops at
+ * the time limit instead: before extracting, and when extraction fails after
+ * the run was ended (the failure is then a symptom of the abort). Shared by
+ * the live context and the test fake, so both report refusals the same way.
  */
 export function extractListVia(
   extractor: PageExtractor,
+  clock: RunClock,
 ): CollectorContext["extractList"] {
   return async (page, spec) => {
+    if (clock.isOver()) throw timeLimitStop();
     try {
       return await extractor.extract(page.html, {
         ...spec,
         baseUrl: page.url,
       });
     } catch (err) {
+      if (clock.isOver()) throw timeLimitStop();
       if (!(err instanceof ExtractError)) throw err;
       const failure = EXTRACT_FAILURES[err.code];
       throw new CollectorStop("error", "failed", failure.message, {
