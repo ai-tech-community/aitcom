@@ -139,14 +139,52 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       );
     });
 
-    it("refuses when the platform is at its active cap", async () => {
+    it("does not count finished runs toward the active limit", async () => {
       const userId = await makeUser();
+      await insertRun(userId, { status: "queued", createdAt: now });
+      await insertRun(userId, { status: "succeeded", createdAt: now });
+      await insertRun(userId, { status: "failed", createdAt: now });
+      expect(await m.quota.canStartRun(m.db, userId, now, roomy)).toEqual({
+        allowed: true,
+      });
+    });
+
+    it("does not count another member's active runs toward this member's active limit", async () => {
+      const userId = await makeUser();
+      const other = await makeUser();
+      await insertRun(userId, { status: "running", createdAt: now });
+      await insertRun(other, { status: "queued", createdAt: now });
+      await insertRun(other, { status: "running", createdAt: now });
+      expect(await m.quota.canStartRun(m.db, userId, now, roomy)).toEqual({
+        allowed: true,
+      });
+    });
+
+    it("refuses when the platform is at its active cap, counting only active runs", async () => {
+      const a = await makeUser();
+      const b = await makeUser();
+      const c = await makeUser();
+      // Three active runs across other members, plus finished runs that must not count.
+      await insertRun(a, { status: "queued", createdAt: now });
+      await insertRun(b, { status: "running", createdAt: now });
+      await insertRun(c, { status: "queued", createdAt: now });
+      await insertRun(a, { status: "succeeded", createdAt: now });
+      await insertRun(b, { status: "failed", createdAt: now });
+      await insertRun(c, { status: "succeeded", createdAt: now });
+      const active = 3;
+      const fresh = await makeUser();
       expect(
-        await m.quota.canStartRun(m.db, userId, now, {
+        await m.quota.canStartRun(m.db, fresh, now, {
           ...roomy,
-          activePlatform: 0,
+          activePlatform: active,
         }),
       ).toMatchObject({ allowed: false, reason: "platform_busy" });
+      expect(
+        await m.quota.canStartRun(m.db, fresh, now, {
+          ...roomy,
+          activePlatform: active + 1,
+        }),
+      ).toEqual({ allowed: true });
     });
   });
 });

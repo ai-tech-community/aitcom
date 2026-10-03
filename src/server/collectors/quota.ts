@@ -3,6 +3,7 @@ import { and, count, eq, gt, inArray } from "drizzle-orm";
 import { collectorRuns } from "@/server/db/schema";
 
 import type { CollectorDb } from "./db";
+import type { RunStatus } from "./run-status";
 
 export type QuotaLimits = {
   runsPerDay: number;
@@ -26,14 +27,17 @@ export type QuotaDecision =
     };
 
 const DAY_MS = 86_400_000;
-const ACTIVE = ["queued", "running"] as const;
+const ACTIVE = ["queued", "running"] as const satisfies readonly RunStatus[];
 
 /**
  * May this member start one more run? Counted from the database, so it holds
  * across server instances. Agent-started runs count against the owner. Call
- * inside the per-member advisory lock (see `CollectorRuns.startRun`) so two
- * simultaneous starts cannot both pass. Marketplace seam: a plan or credit
- * check slots in here.
+ * inside the per-member advisory lock (see `CollectorRuns.startRun`): that
+ * lock makes the per-member limits (daily and active) exact, so two
+ * simultaneous starts by one member cannot both pass. The platform-wide cap
+ * is a soft cap by decision: simultaneous starts by different members hold
+ * different locks and can exceed it slightly. Marketplace seam: a plan or
+ * credit check slots in here.
  */
 export async function canStartRun(
   db: CollectorDb,
