@@ -354,8 +354,23 @@ Commit `"docs: ADR-0041 extraction sandbox; spec for the page-list collector"`.
 
 **Owner check after deploy (manual, not part of the build):** with `FEATURE_COLLECTORS` still off in production, the owner may enable it for the Preview environment only and run "List on a web page" against a known public page and a hostile test page on the preview, to confirm the worker on real Vercel. The plan does not change any environment variable.
 
+---
+
+### Task 11: Real-world test on startup careers pages
+
+**Purpose:** prove the collector on real, messy HTML against known answers: the roles our startup jobs scan already collected.
+
+**Input (prepared by the controller, not in the repo):** a JSON file in the controller's scratch folder with ~30 startups sampled read-only from production: `{ slug, jobsUrl, board, knownTitles: string[] }`. Mix: ~20 "own website", 4 Personio, 3 Greenhouse, 3 Lever, 2 Ashby, 1 Workable. Ashby and Workable are expected to fail (JavaScript-rendered boards) and are included to document the limit.
+
+**Steps (no repo commits except the report summary in the spec):**
+- [ ] For each page: fetch it once through `safeFetch` with the collector user agent (respect robots.txt via the collector context — run through the real engine, not a raw fetch), inspect the HTML, and write the `page-list` input a member would write (item selector, columns `title` and `link` at least, next-page selector if any). Selectors must pass the allowlist; if a page needs a refused feature, record that as a finding — do not loosen the allowlist.
+- [ ] Run each input through the real engine locally (`createCollectorRuns` + `runWorkerTick` with live context wiring, the built worker bundle, `FEATURE_COLLECTORS=on`, DATABASE_URL = the local test database only), so robots.txt, the per-site limit, budgets and the sandbox all apply.
+- [ ] Compare extracted titles with `knownTitles` (case- and whitespace-insensitive): recall (known found / known), noise (extracted not known), and outcome per page: works (recall ≥ 0.9) / partial / blocked by site rules / needs JavaScript / selector feature refused / other failure.
+- [ ] Write the full per-page results to the controller's scratch folder (not the repo). Add a short aggregate to the spec under the page-list section ("Real-world check, 2026-10"): counts per outcome and per board, and any limit that blocked real pages. Commit only that spec change: `"docs: page-list real-world check results"`.
+- [ ] Never write to production; never run against `.env`'s `DATABASE_URL`.
+
 ## Self-review
 
 - Spec coverage: page-list inputs/limits (Task 6), extraction safety (Tasks 1–4), capability + failure codes (Task 5), form (Task 7), screens (Task 8), docs (Task 9), packaging proof (Tasks 3, 10).
-- Review Focus 1–5 owned by Tasks 4/6, 1/2/6, 2, 6, 3/10.
+- Review Focus 1–5 owned by Tasks 4/6, 1/2/6, 2, 6, 3/10. Real-world behaviour: Task 11.
 - Types: `ExtractSpec`/`ExtractResult` defined once in `protocol.ts` and reused by worker, sandbox, context and collector.
