@@ -27,10 +27,13 @@ function cellText(value: unknown): string {
   return "";
 }
 
-/** One CSV cell: formula-safe (OWASP CSV injection) and RFC 4180 quoted. */
+/**
+ * One CSV cell: formula-safe (OWASP CSV injection) and RFC 4180 quoted.
+ * A number cannot carry a formula, so -5 stays -5; text "-5" is guarded.
+ */
 export function csvCell(value: unknown): string {
   let text = cellText(value);
-  if (FORMULA_START.test(text)) text = `'${text}`;
+  if (typeof value !== "number" && FORMULA_START.test(text)) text = `'${text}`;
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

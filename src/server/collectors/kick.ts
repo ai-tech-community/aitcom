@@ -2,10 +2,27 @@ import { after } from "next/server";
 
 import { env } from "@/env";
 
-function workerUrl(): string | null {
-  const base = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : env.NEXT_PUBLIC_APP_URL;
+export type WorkerUrlEnv = {
+  VERCEL_ENV?: string;
+  VERCEL_PROJECT_PRODUCTION_URL?: string;
+  VERCEL_URL?: string;
+  NEXT_PUBLIC_APP_URL?: string;
+};
+
+/**
+ * Where to wake the worker. In production, the stable production domain
+ * rather than one deployment's URL; elsewhere, this deployment; off Vercel,
+ * the app URL; otherwise nowhere.
+ */
+export function workerUrl(e: WorkerUrlEnv): string | null {
+  let base: string | undefined;
+  if (e.VERCEL_ENV === "production" && e.VERCEL_PROJECT_PRODUCTION_URL) {
+    base = `https://${e.VERCEL_PROJECT_PRODUCTION_URL}`;
+  } else if (e.VERCEL_URL) {
+    base = `https://${e.VERCEL_URL}`;
+  } else {
+    base = e.NEXT_PUBLIC_APP_URL;
+  }
   return base ? `${base}/api/cron/collector-worker` : null;
 }
 
@@ -17,7 +34,12 @@ function workerUrl(): string | null {
  */
 export function kickCollectorWorker(): void {
   const secret = process.env.CRON_SECRET;
-  const url = workerUrl();
+  const url = workerUrl({
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    VERCEL_PROJECT_PRODUCTION_URL: process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    VERCEL_URL: process.env.VERCEL_URL,
+    NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
+  });
   if (!secret || !url) return;
   after(async () => {
     try {

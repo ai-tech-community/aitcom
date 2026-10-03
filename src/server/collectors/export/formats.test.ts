@@ -24,10 +24,26 @@ describe("csvCell", () => {
     expect(csvCell(value)).toBe(expected);
   });
 
-  it.each(["=SUM(A1)", "+1", "-1", "@cmd", "\tx", "\rx"])(
-    "neutralises spreadsheet formulas: %j",
-    (value) => {
-      expect(csvCell(value).replace(/^"/, "").startsWith("'")).toBe(true);
+  it.each([
+    ["=SUM(A1)", "'=SUM(A1)"],
+    ["+1", "'+1"],
+    ["-1", "'-1"],
+    ["-5", "'-5"],
+    ["@cmd", "'@cmd"],
+    ["\tx", "'\tx"],
+    ["\rx", `"'\rx"`],
+    ["=1,2", `"'=1,2"`],
+  ])("neutralises spreadsheet formulas in text: %j → %j", (value, expected) => {
+    expect(csvCell(value)).toBe(expected);
+  });
+
+  it.each([
+    [-5, "-5"],
+    [-0.25, "-0.25"],
+  ])(
+    "leaves numbers alone, they cannot carry a formula: %j",
+    (value, expected) => {
+      expect(csvCell(value)).toBe(expected);
     },
   );
 });
