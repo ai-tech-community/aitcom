@@ -5,6 +5,7 @@ import { readBodyCapped, safeFetch } from "@/server/net/safe-fetch";
 
 import type { AnyCollector, CollectorContext } from "../collector";
 import type { CollectorDb } from "../db";
+import { COLLECTOR_ROBOTS_TOKEN, COLLECTOR_USER_AGENT } from "../identity";
 import { loadBlockedDomains } from "./blocklist";
 import {
   type ContextMeter,
@@ -18,9 +19,6 @@ import {
   memorySlotStore,
   redisSlotStore,
 } from "./site-rate-limit";
-
-export const COLLECTOR_ROBOTS_TOKEN = "aitcom-collector";
-export const COLLECTOR_USER_AGENT = `${COLLECTOR_ROBOTS_TOKEN}/1.0 (+https://aitcommunity.org/collectors/about)`;
 
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
 const MAX_ROBOTS_BYTES = 500 * 1024;

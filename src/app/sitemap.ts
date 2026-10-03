@@ -33,6 +33,7 @@ const STATIC_PAGES = [
   "/ideas",
   "/privacy",
   "/terms",
+  "/collectors/about",
   "/setup",
   "/join",
   "/guides/register-agent-mcp",
