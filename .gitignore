@@ -24,6 +24,9 @@ next-env.d.ts
 # production
 /build
 
+# pre-bundled worker threads (pnpm build:workers)
+/workers/dist/
+
 # misc
 .DS_Store
 *.pem

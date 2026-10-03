@@ -18,6 +18,15 @@ const config = {
   // ≥48 bytes ("TypeError: b.mask is not a function"). Keep these external so
   // Node loads them at runtime (native if present, JS fallback otherwise).
   serverExternalPackages: ["ws", "bufferutil", "utf-8-validate"],
+  // The collector worker route starts the HTML extraction worker from a file
+  // read at runtime (`process.cwd()` + HTML_EXTRACT_BUNDLE in
+  // src/server/collectors/extract/sandbox-paths.ts). File tracing does not
+  // follow a worker's own requires, so the worker ships as one pre-bundled
+  // file (built by `pnpm build:workers`) and is listed here explicitly.
+  // Keep this path equal to HTML_EXTRACT_BUNDLE (a test checks it).
+  outputFileTracingIncludes: {
+    "/api/cron/collector-worker": ["./workers/dist/html-extract.bundle.cjs"],
+  },
   async redirects() {
     return [
       {

@@ -60,3 +60,20 @@ export class ExtractError extends Error {
     this.code = code;
   }
 }
+
+/** Main thread → worker: extract one page. */
+export type WorkerRequest = {
+  id: number;
+  html: string;
+  spec: ExtractSpec;
+};
+
+/** Worker → main thread: sent once, when the worker can take requests. */
+export type WorkerReady = { type: "ready" };
+
+/** Worker → main thread: the answer to the request with the same `id`. */
+export type WorkerResponse =
+  | { id: number; ok: true; result: ExtractResult }
+  | { id: number; ok: false; code: ExtractErrorCode };
+
+export type WorkerMessage = WorkerReady | WorkerResponse;

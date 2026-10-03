@@ -23,6 +23,7 @@ export default tseslint.config(
   {
     ignores: [
       ".next",
+      "workers/dist",
       "src/payload-types.ts",
       "src/payload-generated-schema.ts",
     ],
