@@ -16,6 +16,8 @@ const COLLECTOR_NO_DYNAMIC_CODE =
   "Collectors cannot load or build code at run time (ADR-0040).";
 const COLLECTOR_NO_GLOBALS =
   "Collectors get no global objects; use input and ctx only (ADR-0040).";
+const COLLECTOR_NO_WIRING =
+  "Collectors cannot reach the runner or its wiring (live, context/live, executor, runs); use input and ctx only (ADR-0040).";
 
 export default tseslint.config(
   {
@@ -121,6 +123,16 @@ export default tseslint.config(
               ].join("|"),
               message: COLLECTOR_NO_ENV,
             },
+            {
+              // The composition roots and the runner hold the database,
+              // the real network and the facade.
+              regex: [
+                "^(@/|src/)server/collectors/(context/)?live(\\.[jt]s)?$",
+                "^(@/|src/)server/collectors/(executor|runs)(\\.[jt]s)?$",
+                "^(\\.{1,2}/)+(.+/)?(live|executor|runs)(\\.[jt]s)?$",
+              ].join("|"),
+              message: COLLECTOR_NO_WIRING,
+            },
           ],
         },
       ],
@@ -131,8 +143,9 @@ export default tseslint.config(
         { name: "WebSocket", message: COLLECTOR_NET_VIA_CTX },
         { name: "EventSource", message: COLLECTOR_NET_VIA_CTX },
         { name: "process", message: COLLECTOR_NO_ENV },
-        // Code built from strings escapes every rule here ((0, eval)("fetch")).
-        ...["eval", "Function"].map((name) => ({
+        // Code built from strings, or loaded by CommonJS require(), escapes
+        // every rule here ((0, eval)("fetch"), require("node:http")).
+        ...["eval", "Function", "require"].map((name) => ({
           name,
           message: COLLECTOR_NO_DYNAMIC_CODE,
         })),
