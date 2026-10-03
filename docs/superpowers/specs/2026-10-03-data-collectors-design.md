@@ -109,7 +109,7 @@ catalog's own guidance.
   right size. Revisit if pause/resume/retry states appear.
 - **Template Method** for shared pagination/parsing. It relies on inheritance
   and grows hard to maintain as steps accumulate. Shared behaviour is provided
-  as composable helpers (`paginate`, `parseFeed`) that collectors call, and
+  as composable helpers (such as `parseFeed`) that collectors call, and
   HTML extraction as a context capability (`ctx.extractList`) — composition,
   consistent with Strategy.
 
@@ -124,7 +124,6 @@ src/server/collectors/
     feed-items.ts
     page-list.ts
   helpers/                composable helpers used by collectors (no base class)
-    paginate.ts
     feed.ts               RSS/Atom parsing
   extract/                HTML list extraction (ADR-0041); never imported by collectors
     protocol.ts           ExtractSpec/Result/Error, worker messages, extraction limits
@@ -133,7 +132,8 @@ src/server/collectors/
     sandbox-paths.ts      where the pre-bundled worker lives
   context/                the Proxy and its rules
     collector-context.ts  builds the ctx a collector receives
-    extract-capability.ts ctx.extractList: extraction refusals → failed stops
+    extract-capability.ts ctx.extractList: time budget, refusals → failed stops
+    html-charset.ts       which encoding a page is in (BOM, header, <meta>, UTF-8)
     robots.ts             robots.txt fetch + check, cached per run
     site-rate-limit.ts    shared per-site limit (Upstash Redis)
     blocklist.ts          opted-out domains
@@ -156,6 +156,7 @@ src/app/[locale]/collectors/about/page.tsx            public page
 src/components/collectors/                             member screens
 src/lib/collectors/
   form-fields.ts          JSON Schema + field hints → drawable form fields
+  input-problems.ts       refused input: codes by path, placed on the form, worded
   run-presentation.ts     run status / stop reason → one presentation model
   selector-policy.ts      CSS selector allowlist (form schema and worker)
 workers/html-extract.worker.ts                         worker entry around extractList
@@ -202,14 +203,16 @@ interface CollectorContext {
   fetch(url: string, opts?: { accept?: string }): Promise<CollectorResponse>;
   extractList(                   // reads a list out of a fetched page, in the sandbox
     page: { html: string; url: string },
-    spec: { itemSelector; fields: { name; selector; attribute? }[]; nextPageSelector? },
-  ): Promise<{ rows: Record<string, string | null>[]; nextUrl: string | null; truncated: boolean }>;
+    spec: { itemSelector; fields: { name; selector /* null: the item */; attribute? }[]; nextPageSelector? },
+  ): Promise<{ rows: Record<string, string | null>[]; nextUrl: string | null; nextUrlTooLong: boolean; truncated: boolean }>;
   log(message: string): void;    // capped, user-visible
   signal: AbortSignal;           // aborts on time budget or cancellation
 }
 interface CollectorResponse {
   url: string; status: number; headers: Headers;
-  text(): Promise<string>; json(): Promise<unknown>;
+  text(): Promise<string>;       // UTF-8
+  html(): Promise<string>;       // by the page's declared charset (page-list)
+  json(): Promise<unknown>;
 }
 ```
 
@@ -269,38 +272,59 @@ to the collector's own code:
 - **One worker per run, started lazily.** The live context creates the
   sandbox; its `worker_threads` Worker starts on the run's first
   `extractList` call (about 35–55 ms) and serves the run's later pages, one at
-  a time. Heap limit `maxOldGenerationSizeMb: 256`. The executor awaits the
-  context's `dispose` in a `finally`, which ends the worker; a failing
-  dispose is logged and never changes the run's outcome.
+  a time. Heap limit `maxOldGenerationSizeMb: 256`. A worker that dies while
+  idle is replaced on the next call. The executor awaits the context's
+  `dispose` in a `finally`, which ends the worker; a failing dispose is
+  logged and never changes the run's outcome.
 - **Per-page deadline 5 000 ms, enforced from outside.** The main thread
   races each page (worker start-up included) against a timer. When the timer
   wins it terminates the worker and the call fails with `page_too_slow`; the
   next page gets a fresh worker. This deadline is the real bound on parse and
   match time; the limits below make ordinary pages fast and refuse what can
   be refused early.
+- **Out of memory is its own outcome.** A worker that reaches its heap limit
+  (`ERR_WORKER_OUT_OF_MEMORY`) fails the call with `page_too_complex`: the
+  page has too many elements for 256 MB, so trying again would not help.
+  Measured: 3 MB of `<p></p>` (well inside the 5 MB body cap) runs out of
+  memory in about 0.4 s; a 5 MB table with three cells per row does too,
+  while a 5 MB `<li>` list is read. Any other crash, or a closed sandbox,
+  is `extract_failed`.
 - **Inside the worker** the pure `extractList(html, spec)` first re-checks
   every selector against the allowlist (`selector_not_allowed`), parses with
   cheerio (parse5, the browser's tree), measures the element depth
   iteratively and refuses a page deeper than **512** (`page_too_deep`; a very
   deep page may end as `page_too_slow` instead, because the parse runs
-  first). Then: at most **5 000 rows** per page; each cell trimmed,
-  whitespace collapsed, at most **2 000 characters**; at most
-  **2 000 000 characters** per page summed over all cells. Rows past either
-  page limit are dropped and the result says `truncated: true`. Text inside
-  `script`, `style`, `noscript` and `template` is skipped (a column that
-  matches such an element itself is `""`). `href`, `src` and `action`
-  attributes are resolved against the page's final URL and kept only when
-  http(s); the next-page link likewise.
-- **Refusals become failed stops** (`context/extract-capability.ts`):
-  `page_too_slow`, `page_too_deep` and `selector_not_allowed` keep their
-  codes; a worker crash or out-of-memory exit (`extract_failed`) becomes
-  `generic`.
+  first). It then empties every `<template>`: its content is inert markup a
+  browser never shows, so no item, column or next-page link matches inside
+  it. Then: at most **5 000 rows** per page; each cell trimmed, whitespace
+  collapsed, at most **2 000 characters**, cut on a whole character (never
+  inside a surrogate pair or between a letter and its combining marks); at
+  most **2 000 000 characters** per page summed over all cells. Rows past
+  either page limit are dropped and the result says `truncated: true`.
+  Text keeps block elements apart by one space
+  (`<h3>Engineer</h3><p>Amsterdam</p>` reads "Engineer Amsterdam"; `<br>`
+  too; inline elements add nothing). Text inside `script`, `style`,
+  `noscript` and `template` is skipped (a column that matches such an
+  element itself is `""`). `href`, `src` and `action` attributes are
+  resolved against the page's final URL and kept only when http(s) and at
+  most 2 000 characters long. The next-page link likewise; one that is too
+  long is reported (`nextUrlTooLong`) so paging can end with a reason.
+- **The run's time budget comes first** (`context/extract-capability.ts`):
+  once the run's deadline has passed or the run was aborted, `extractList`
+  stops at `time_limit` without extracting, and an extraction failure after
+  the abort is reported as `time_limit` too.
+- **Refusals become failed stops** (same file): `page_too_slow`,
+  `page_too_deep`, `page_too_complex` and `selector_not_allowed` keep their
+  codes; a worker crash (`extract_failed`) becomes `generic`.
 - **Packaging.** The worker is bundled by esbuild (`pnpm build:workers`, run
   by `build` and `dev`) into `workers/dist/html-extract.bundle.cjs` and
   shipped with `/api/cron/collector-worker` through
   `outputFileTracingIncludes` in `next.config.js` (file tracing does not
   follow a worker's own requires). A test keeps the config path equal to
-  `HTML_EXTRACT_BUNDLE`.
+  `HTML_EXTRACT_BUNDLE`. That the route's trace file
+  (`route.js.nft.json`) lists the bundle was proven once, by hand, in a
+  local production build (Task 10 of the page-list plan, 2026-10-03); it is
+  not a recurring step.
 
 User agent: `aitcom-collector/1.0 (+https://aitcommunity.org/collectors/about)`.
 It is built in `src/server/collectors/identity.ts` from the robots.txt token
@@ -380,6 +404,7 @@ EN/NL copy (`collectors.failure.<code>`); screens never show the English
 | `not_a_page` | a list page is not HTML (content type other than `text/html` / `application/xhtml+xml`) |
 | `page_too_slow` | reading one page passed the 5 000 ms extraction deadline |
 | `page_too_deep` | a page is nested deeper than 512 elements |
+| `page_too_complex` | the extraction worker ran out of memory on a page (too many elements for the 256 MB heap) |
 | `selector_not_allowed` | a selector failed the allowlist inside the worker (the form refuses it first) |
 | `generic` | anything else, including an extraction worker crash |
 
@@ -401,8 +426,10 @@ errors `failureDetailFor(err)` maps the same known kinds as
 `assertTransition(from, to)` is the only way status changes.
 
 `stop_reason`: `complete | page_limit | item_limit | time_limit |
-site_refused | robots_disallowed | robots_unreachable | blocked_domain |
-error | worker_lost`.
+next_page_not_secure | next_page_too_long | site_refused |
+robots_disallowed | robots_unreachable | blocked_domain | error |
+worker_lost` (runtime list `STOP_REASONS`). The two `next_page_*` reasons
+end a `page-list` run as a partial success (see `page-list` "Paging").
 
 ### CollectorRuns (Facade)
 
@@ -418,10 +445,11 @@ exportRun(userId, runId, "csv" | "json")        // streamed body, or null
 ```
 
 A refusal carries a reason code (`disabled | unknown_collector |
-invalid_input | quota`), field errors for invalid input, and for quota the
-`quotaReason` and, when known, `retryAt`. It also carries an English
-`message` for logs and agents; the web UI never shows it and maps the codes
-to its own EN/NL strings.
+invalid_input | quota`), field errors for invalid input (codes by full
+path, such as `fields.2.selector: selector_not_allowed/too_long`; see
+"Member UI"), and for quota the `quotaReason` and, when known, `retryAt`.
+It also carries an English `message` for logs and agents; the web UI never
+shows it and maps the codes to its own EN/NL strings.
 
 - Every read is scoped to `user_id`; another member's run id returns
   not-found, never forbidden (no existence leak).
@@ -560,12 +588,15 @@ web page into rows; parsing happens only in the extraction sandbox (see
 "CollectorContext", ADR-0041).
 
 - **Input.** `url` (https only, ≤ 2 048 characters); `itemSelector` (one
-  item = one row); `fields`, 1–20 columns of `{ name, selector, attribute? }`
+  item = one row); `fields`, 1–20 columns of `{ name, selector?, attribute? }`
   — `name` matches `^[a-zA-Z][a-zA-Z0-9_]{0,39}$` and is unique, `attribute`
-  matches `^[a-zA-Z_:][-a-zA-Z0-9_:.]{0,39}$`; optional `nextPageSelector`;
-  `maxPages` 1–20, default 5. Collector limits: 20 pages, 5 000 rows,
-  120 s. The start form draws `fields` as a **rows** field (see "Member
-  UI").
+  matches `^[a-zA-Z_:][-a-zA-Z0-9_:.]{0,39}$`, and a `selector` that is left
+  out or blank means **the item itself** (for a list whose items are links,
+  a `link` column with attribute `href` and no selector); optional
+  `nextPageSelector`; `maxPages` 1–20, default 5. Collector limits:
+  20 pages, 5 000 rows, 120 s. The start form draws `fields` as a **rows**
+  field (see "Member UI"); its selector help says "Leave empty to read the
+  item itself — for example its link."
 - **Selector allowlist** (`src/lib/collectors/selector-policy.ts`, checked
   in the input schema and again in the worker). Allowed: tag, `*`, class, id,
   attribute selectors (all operators, no namespaces); combinators descendant,
@@ -575,34 +606,58 @@ web page into rows; parsing happens only in the extraction sandbox (see
   `:icontains()`, `:first-of-type`, `:last-of-type`, `:only-of-type`,
   `:only-child`, `:last-child`, `:eq`/`:gt`/`:lt` and other positionals,
   pseudo-elements, the `<` parent combinator, namespaces. One selector per
-  field (no comma lists), ≤ 200 characters, ≤ 8 compound parts. Each refused
-  feature's measured reason is in ADR-0041. The form names the problem in
-  plain words (empty, too long, not valid, a list, too many parts, a feature
-  we don't allow).
-- **Row.** An object with the member's column names. Each value is the first
-  match of the column's selector inside the item: its text (trimmed,
-  whitespace collapsed, ≤ 2 000 characters) or the named attribute; link
+  field (no comma lists), ≤ 200 characters, ≤ 8 compound parts. A blank
+  column selector skips the check for that column only. Each refused
+  feature's measured reason is in ADR-0041. A refusal comes back as a code
+  per input path (`fields.2.selector: selector_not_allowed/too_long`), and
+  the form names the problem in plain words at that input (empty, too long,
+  not valid, a list, too many parts, a feature we don't allow; see "Member
+  UI").
+- **Row.** An object with the member's column names. Each value is read
+  from the first match of the column's selector inside the item, or from the
+  item itself when the column has no selector: its text (trimmed, block
+  elements kept apart by one space, whitespace collapsed, ≤ 2 000
+  characters cut on a whole character) or the named attribute; link
   attributes (`href`, `src`, `action`) resolved against the page's final URL
-  and kept only when http(s). No match, or a missing attribute, is `null`.
-  Item schema: `record<string, string | null>`.
+  and kept only when http(s) and at most 2 000 characters (a cut link would
+  be broken). No match, or a missing attribute, is `null`. Matches inside a
+  `<template>` do not count. Item schema: `record<string, string | null>`.
 - **Paging.** Pages are read in order from `url`, following the `href` of
   the first `nextPageSelector` match that has one (resolved against the
   page; a `javascript:`, `mailto:` or other non-http(s) link, or no link,
-  ends paging as `complete`). A visited set of page addresses (without `#hash`) stops paging
-  cleanly (`complete`) when the next link points back to a page already
-  read, **or when a page redirects onto a page already read** (its rows would
-  repeat). When `maxPages` pages have been read and a new next link remains,
-  the run stops with `page_limit` (`succeeded`, partial), so it never claims
-  to have read everything. Redirect hops and 429/503 retries count toward the
-  context's own page budget (`limits.maxPages`), so a run can reach
-  `page_limit` before `input.maxPages` pages.
+  ends paging as `complete`). A next link we cannot follow ends paging, not
+  the run: a plain-`http` link stops with `next_page_not_secure` and one
+  longer than 2 000 characters with `next_page_too_long` (both `succeeded`,
+  partial; the run page says why in plain words). A visited set of page
+  addresses (without `#hash`) stops paging cleanly (`complete`) when the
+  next link points back to a page already read, **or when a page redirects
+  onto a page already read** (its rows would repeat). When `maxPages` pages
+  have been read and a new next link remains, the run stops with
+  `page_limit` (`succeeded`, partial), so it never claims to have read
+  everything. Redirect hops and 429/503 retries count toward the context's
+  own page budget (`limits.maxPages`), so a run can reach `page_limit`
+  before `input.maxPages` pages.
 - **Each page.** A non-2xx answer fails the run with `page_status`
   (`params.status`); a content type other than `text/html` or
   `application/xhtml+xml` (a missing type counts as HTML) fails it with
-  `not_a_page`. The log gets "Page n: k items." and, when a page was cut
-  (`truncated`), a line saying some items were left out. Extraction refusals
-  fail the run with `page_too_slow`, `page_too_deep` or
-  `selector_not_allowed`; rows from earlier pages stay in the run's table.
+  `not_a_page`. The body is decoded by the charset the page declares
+  (`res.html()`, `context/html-charset.ts`): a byte order mark, else the
+  `charset` in `Content-Type`, else `<meta charset>` or `<meta http-equiv>`
+  in the first 1024 bytes, else UTF-8; labels are WHATWG labels
+  (`TextDecoder`), and an unknown label counts as undeclared. Other
+  collectors keep `res.text()` (UTF-8). The log gets "Page n: k items."
+  and, when a page was cut (`truncated`), a line saying some items were
+  left out. Extraction refusals fail the run with `page_too_slow`,
+  `page_too_deep`, `page_too_complex` or `selector_not_allowed`; rows from
+  earlier pages stay in the run's table.
+- **Empty result.** A run that ends `succeeded` with 0 rows shows, under
+  "No rows were collected.", that some pages build their list in the
+  browser after loading and this collector reads the page as the site sends
+  it (chosen by collector kind `page`; generic, no detection).
+- **Working on it locally.** `pnpm dev` builds the worker bundle once, at
+  start; there is no watcher. After editing `workers/` or the extractor
+  (`extract-list.ts`, `protocol.ts`, `selector-policy.ts`), restart
+  `pnpm dev`.
 
 **Real-world check, 2026-10.** 33 startup careers pages (20 own website,
 4 Personio, 3 Greenhouse, 3 Lever, 2 Ashby, 1 Workable), each with an input
@@ -630,13 +685,14 @@ reference was the role titles our startup jobs scan had stored.
 - **Needs JavaScript (6).** Ashby and Workable boards, and own websites that
   embed an Ashby board, send no role list in the HTML; Ashby keeps it only
   in a script's JSON, which `page-list` does not read by design. These runs
-  end `complete` with 0 (or a few empty) rows and no hint why.
+  end `complete` with 0 (or a few empty) rows. *Since addressed:* the run
+  page now explains an empty result (see "Empty result" above).
 - **Limit that blocked real pages: the item's own link.** A column selector
-  matches only *inside* the item, so when each item is itself the link (a
-  card `<a href>` with no wrapper per item), the `link` column cannot be
+  matched only *inside* the item, so when each item is itself the link (a
+  card `<a href>` with no wrapper per item), the `link` column could not be
   read. 6 of the 27 working pages lost their links this way (one more page
-  has no link in its HTML at all). A way to read an attribute of the item
-  itself would fix it.
+  has no link in its HTML at all). *Since fixed:* a column with no selector
+  reads the item itself (see "Input").
 - **Smaller notes.** Without `:has()`, a generic wrapper as item gives some
   all-empty rows on 2 pages. A redirect (such as an added trailing slash)
   counts as a fetched page, so 3 one-page runs show 2 pages. No sampled
@@ -710,7 +766,16 @@ validation stay in the facade, so MCP behaves the same.
    the retention cron (slice 5), so once all of a member's runs have been
    removed the note shows again.
 
-   **Refusals.** Field errors are shown on their fields. A quota refusal
+   **Refusals.** The facade returns field errors as codes by full path
+   (`itemSelector`, `fields.2.selector`, `fields.1.name`), never English
+   sentences; a collector's own checks give their own codes (each selector
+   refusal reason, `duplicate_name`), other checks Zod's issue code
+   (`src/lib/collectors/input-problems.ts`). The form maps a rows field's
+   row number back to the member's row (empty rows are not sent), shows the
+   EN/NL words at that exact input with `aria-invalid`, and falls back to
+   "Check this field." under the whole field for a problem with no precise
+   input. Rows keep an id, so a message stays with its row when an earlier
+   row is removed. A quota refusal
    names the limit: "You've used all 20 runs for the last 24 hours. You can
    start again in 3 hours." for the daily limit (the retry time comes from
    `retryAt`; without it the sentence ends after the limit), and plain
@@ -725,8 +790,9 @@ validation stay in the facade, so MCP behaves the same.
    a paged table preview (50 rows per page, by `seq`; its columns are every
    key the rows on screen have, in first-seen order, so `page-list` shows the
    member's own columns, and an empty cell shows "—"), and a
-   collapsible log. The status is announced to screen readers
-   (`role="status"`).
+   collapsible log. A page collector's run that finished with no rows also
+   explains why that can happen (see `page-list` "Empty result"). The
+   status is announced to screen readers (`role="status"`).
 
    **Polling.** The run and its rows refetch every 3 seconds while the run
    is `queued` or `running`, and stop when it ends. At that moment the rows
@@ -862,11 +928,14 @@ selector allowlist checked twice and a depth cap of 512 (see
 - Network / parse errors in a collector → `failed` with a mapped English
   message and a failure code (see "Failure detail") the screens translate;
   raw error in the server log.
-- A list page that is too slow to read, nested too deeply, or given a
-  selector outside the allowlist → `failed` with `page_too_slow`,
-  `page_too_deep` or `selector_not_allowed`; the extraction worker is
-  replaced after a timeout or crash; rows from earlier pages are kept. A
-  refused selector is normally caught earlier, by the form.
+- A list page that is too slow to read, nested too deeply, too large for
+  the worker's memory, or given a selector outside the allowlist → `failed`
+  with `page_too_slow`, `page_too_deep`, `page_too_complex` or
+  `selector_not_allowed`; the extraction worker is replaced after a
+  timeout or crash, or when it died while idle; rows from earlier pages are
+  kept. A refused selector is normally caught earlier, by the form.
+- A next-page link that is plain `http` or too long → paging ends,
+  `succeeded` (partial) with `next_page_not_secure` / `next_page_too_long`.
 - Download of a run still in progress → 409; a failure mid-download is
   logged with the run id and errors the stream.
 - Invalid rows → skipped and counted in `invalid_item_count`, shown on the run
@@ -891,12 +960,16 @@ selector allowlist checked twice and a depth cap of 512 (see
 - **Extraction:** the selector allowlist (each allowed and refused
   feature); `extractList` on fixtures (text, attributes, link resolution,
   the depth cap without a stack overflow, row and output-budget cuts with
-  `truncated`, skipped script/style/noscript/template text); the worker run
-  from the **built bundle** in a directory with no `node_modules`; the
-  sandbox's deadline (a hostile page ends `page_too_slow` and the next call
-  gets a fresh worker; the main thread stays responsive), crash handling and
-  close; `next.config.js` tracing path equal to `HTML_EXTRACT_BUNDLE`; the
-  local build check confirms the route's trace file lists the bundle.
+  `truncated`, skipped script/style/noscript/template text, template content
+  never matched, block spacing, whole-character cuts, a column that reads
+  the item itself, an over-long next link); the charset decision
+  (windows-1252, `<meta>`-only, unknown label); the worker run from the
+  **built bundle** in a directory with no `node_modules`; the sandbox's
+  deadline (a hostile page ends `page_too_slow` and the next call gets a
+  fresh worker; the main thread stays responsive; start-up counts), out of
+  memory as `page_too_complex`, crash handling, an idle worker that died,
+  and close; `next.config.js` tracing path equal to `HTML_EXTRACT_BUNDLE`.
+  The route's trace file was checked once by hand (see "Packaging").
 - **MCP:** tools listed under `collect` only; agent runs count against the
   owner's quota.
 - **UI:** the generated form renders each collector's fields and refuses
@@ -907,8 +980,10 @@ selector allowlist checked twice and a depth cap of 512 (see
   error and stops only for a missing run; the lists poll while a run is
   active; downloads appear only for an ended run with rows; the export
   route's owner, format, flag and in-progress (409) checks, its lazy,
-  cancellable stream and its mid-stream failure; member copy never says "robots.txt"; EN/NL key parity
-  (`scripts/check-i18n-parity.mjs`); the three data states.
+  cancellable stream and its mid-stream failure; a refused input shown at
+  its exact input (column rows mapped past empty rows); the empty-result
+  hint for page runs; member copy never says "robots.txt"; EN/NL key
+  parity (`scripts/check-i18n-parity.mjs`); the three data states.
 - Full existing suites of every touched workspace, including `safeFetch`
   callers after the option change.
 

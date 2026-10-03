@@ -57,16 +57,18 @@ Only something outside the thread doing the work can.
    extraction sandbox (`src/server/collectors/extract/sandbox.ts`): a Node
    `worker_threads` Worker with `resourceLimits.maxOldGenerationSizeMb: 256`,
    started on the run's first `extractList` call and reused for its later
-   pages, one page at a time. The executor disposes it after the run, in a
-   `finally`.
+   pages, one page at a time. A worker that dies while idle is replaced on
+   the next call. The executor disposes it after the run, in a `finally`.
 3. **A 5 000 ms per-page deadline, enforced from outside.** The main thread
    races each request against a timer (worker start-up included). When the
    timer wins, it **terminates the worker** (a busy parser cannot be asked to
    stop) and the call fails with `page_too_slow`; the next call starts a fresh
-   worker. A crash, an out-of-memory exit or a closed sandbox fails the call
-   with `extract_failed`. **This deadline is the real bound** on extraction
-   time; every other limit below exists to make ordinary pages fast and to
-   refuse what we can refuse early with a clearer message, not to replace it.
+   worker. A worker that reaches its heap limit (`ERR_WORKER_OUT_OF_MEMORY`)
+   fails the call with `page_too_complex`; any other crash, or a closed
+   sandbox, with `extract_failed`. **This deadline is the real bound** on
+   extraction time; every other limit below exists to make ordinary pages
+   fast and to refuse what we can refuse early with a clearer message, not
+   to replace it.
    The spike measured the mechanism: a 49 s hostile parse was stopped at
    2.06 s with a 2 s deadline, and the main thread answered a ping in 1–7 ms
    throughout. In the shipped tests a hostile page with a 400 ms deadline
@@ -74,9 +76,9 @@ Only something outside the thread doing the work can.
    under 200 ms while the worker is busy.
 4. **The worker runs a pure function.** `extractList(html, spec)`
    (`src/server/collectors/extract/extract-list.ts`) takes HTML and a spec and
-   returns `{ rows, nextUrl, truncated }`. It imports nothing Node-only or
-   Next-only, so it is tested directly and bundled unchanged. The worker
-   answers with codes only, never error messages.
+   returns `{ rows, nextUrl, nextUrlTooLong, truncated }`. It imports
+   nothing Node-only or Next-only, so it is tested directly and bundled
+   unchanged. The worker answers with codes only, never error messages.
 5. **A selector allowlist, checked twice.** `checkSelector`
    (`src/lib/collectors/selector-policy.ts`, built on `css-what`) runs in the
    input schema (the form refuses the selector) and again inside the worker
@@ -94,11 +96,22 @@ Only something outside the thread doing the work can.
      dropped and the result carries `truncated: true`; the collector writes a
      line in the run log. This closes the rows × columns × cell-size memory
      gap: the answer posted back to the main thread is bounded.
-   - **Cells:** text trimmed, whitespace runs collapsed to one space, at most
-     2 000 characters. Text is read in bounded chunks and never copied whole,
-     so a single 4 MB text node costs about 340 ms. Link attributes (`href`,
-     `src`, `action`) are resolved against the page URL and kept only when
-     http(s) and short enough to stay whole.
+   - **Cells:** text trimmed, block elements and `<br>` kept apart by one
+     space, whitespace runs collapsed to one space, at most 2 000 characters,
+     cut on a whole character (never inside a surrogate pair or between a
+     letter and its combining marks). Text is read in bounded chunks and
+     never copied whole, so a single 4 MB text node costs about 340 ms. Link
+     attributes (`href`, `src`, `action`) are resolved against the page URL
+     and kept only when http(s) and short enough to stay whole. A next-page
+     link too long to keep is reported (`nextUrlTooLong`), so the collector
+     can end paging with a reason instead of silently.
+   - **A column with no selector reads the item itself** (`selector: null`
+     in the spec): its text or its own attribute, so a list whose items are
+     links can have a link column. Only selectors that are given pass the
+     allowlist; there is no magic selector string.
+   - **`<template>` content is emptied** right after the depth check. It is
+     inert markup a browser never shows, so no item, column or next-page
+     link may match inside it.
    - **Text inside `script`, `style`, `noscript` and `template` is skipped.**
      A field that matches one of those elements itself yields `""`, so
      member-facing data never contains code (a consequence: JSON-LD cannot be
@@ -168,27 +181,42 @@ compound part. On the probe pages (5 000 distinct-tag siblings each holding a
 ## Consequences
 
 - **A build step.** `pnpm build` and `pnpm dev` run esbuild first; esbuild is a
-  devDependency (Vercel installs devDependencies). A missing bundle breaks the
-  worker route, so the local build check confirms the route's trace file
-  (`route.js.nft.json`) lists `workers/dist/html-extract.bundle.cjs`.
+  devDependency (Vercel installs devDependencies). `pnpm dev` builds once,
+  with no watcher, so editing `workers/` or the extractor needs a dev
+  restart. A missing bundle breaks the worker route. That the route's trace
+  file (`route.js.nft.json`) lists `workers/dist/html-extract.bundle.cjs`
+  was proven once, by hand, in a local production build (Task 10 of the
+  page-list plan, 2026-10-03); it is not a recurring check. The owner's
+  Preview check is the remaining guard.
 - **One worker per run, started lazily**, about 35–55 ms once per run that
   reads a page, plus one more after each `page_too_slow`. 5 000 rows post back
   to the main thread in 3–6 ms.
 - **The worker shares the function's CPU and memory.** It is isolated from a
   stalled event loop and from a crash, not from resource use: its heap is
   capped at 256 MB and its time per page at 5 s, inside the same function.
+- **Element-dense pages can run out of memory inside the body cap.**
+  Measured with the built bundle at 256 MB: 3 MB of `<p></p>` runs out of
+  memory in about 0.4 s, and so does a 5 MB table with three cells per row,
+  while a 5 MB `<li>` list is read. Such pages end `page_too_complex`, with
+  copy that asks for a smaller page (not "try again later": the outcome is
+  deterministic). We keep the 256 MB heap and the 5 MB body cap as they are.
 - **Re-verify packaging on a Next major upgrade.** The packaging was proven on
   Next 15.4 with webpack. A new major (or a switch to Turbopack builds) can
   change file tracing; repeat the isolated-build check then.
 - **Accepted adversarial cases.** Plain descendant chains on deep, wide pages
   and items with tens of thousands of direct children stay slow by design.
   The run ends `failed` with `page_too_slow` within about the deadline, and
-  the rows already collected from earlier pages stay in its table. Tightening further would mean a different
-  matching engine or new caps that ordinary pages would hit.
+  the rows already collected from earlier pages stay in its table.
+  Tightening further would mean a different matching engine or new caps
+  that ordinary pages would hit.
 - **The selector language is smaller than CSS.** Members cannot use `~`,
   `:nth-*`, `:has()`, `:last-child` or `*-of-type`. Ordinary list pages do not
-  need them; the form names the problem in plain words.
+  need them. A refused selector comes back as a code per input
+  (`selector_not_allowed/<reason>`), and the form names the problem in
+  plain words at that input.
 - **New failure codes** the screens translate: `page_too_slow`,
-  `page_too_deep`, `selector_not_allowed` (from the sandbox) and
-  `page_status`, `not_a_page` (from the collector). A worker crash maps to
-  `generic`.
+  `page_too_deep`, `page_too_complex`, `selector_not_allowed` (from the
+  sandbox) and `page_status`, `not_a_page` (from the collector). A worker
+  crash (`extract_failed`) maps to `generic`. Two new stop reasons end
+  paging as a partial success: `next_page_not_secure` (a plain-`http` next
+  link) and `next_page_too_long`.
