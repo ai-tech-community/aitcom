@@ -330,9 +330,35 @@ function isWhitespace(code: number): boolean {
   );
 }
 
+function isHighSurrogate(code: number | undefined): boolean {
+  return code !== undefined && code >= 0xd800 && code <= 0xdbff;
+}
+
+function isLowSurrogate(code: number | undefined): boolean {
+  return code !== undefined && code >= 0xdc00 && code <= 0xdfff;
+}
+
+/**
+ * Code units that belong to the character before them: the common blocks of
+ * combining marks, and variation selectors. Not every grapheme rule, only the
+ * cheap cases that show as a visibly broken letter or emoji.
+ */
+function attachesToPrevious(code: number | undefined): boolean {
+  return (
+    code !== undefined &&
+    ((code >= 0x0300 && code <= 0x036f) ||
+      (code >= 0x1ab0 && code <= 0x1aff) ||
+      (code >= 0x1dc0 && code <= 0x1dff) ||
+      (code >= 0x20d0 && code <= 0x20ff) ||
+      (code >= 0xfe00 && code <= 0xfe0f) ||
+      (code >= 0xfe20 && code <= 0xfe2f))
+  );
+}
+
 /**
  * Builds one cell value: whitespace runs collapsed to one space, leading
- * and trailing whitespace dropped, at most MAX_CELL_CHARS characters.
+ * and trailing whitespace dropped, at most MAX_CELL_CHARS characters. The
+ * cap never splits a surrogate pair or a letter from its combining marks.
  *
  * Input is scanned in SCAN_CHUNK_CHARS steps and copied code unit by code
  * unit, so a huge text value is never copied whole, scanning stops once
@@ -397,8 +423,29 @@ class CellText {
       }
       this.pendingSpace = false;
       this.codes.push(code);
-      if (this.isFull()) return;
+      if (this.isFull()) {
+        this.cutBefore(text.charCodeAt(index + 1));
+        return;
+      }
     }
+  }
+
+  /**
+   * The cell is full and `next` is the code unit that did not fit. Drop the
+   * end of the cell when `next` belongs to the character already there,
+   * then any space left at the end.
+   */
+  private cutBefore(next: number): void {
+    const { codes } = this;
+    if (isHighSurrogate(codes.at(-1)) && isLowSurrogate(next)) {
+      codes.pop();
+    } else if (attachesToPrevious(next)) {
+      while (attachesToPrevious(codes.at(-1))) codes.pop();
+      const base = codes.pop();
+      if (isLowSurrogate(base) && isHighSurrogate(codes.at(-1))) codes.pop();
+    }
+    while (codes.at(-1) === 0x20) codes.pop();
+    this.full = true;
   }
 }
 

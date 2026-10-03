@@ -167,6 +167,47 @@ describe("extractList", () => {
     expect(rows[0]?.text).toBe("a".repeat(1_999));
   });
 
+  it("never cuts a capped cell inside a surrogate pair", () => {
+    const html = `<ul><li class="item"><p>${"a".repeat(1_999)}😀z</p></li></ul>`;
+    const { rows } = extractList(html, {
+      baseUrl: BASE_URL,
+      itemSelector: "li.item",
+      fields: [{ name: "text", selector: "p" }],
+    });
+    expect(rows[0]?.text).toBe("a".repeat(1_999));
+  });
+
+  it("keeps a whole surrogate pair that fits exactly", () => {
+    const html = `<ul><li class="item"><p>${"a".repeat(1_998)}😀z</p></li></ul>`;
+    const { rows } = extractList(html, {
+      baseUrl: BASE_URL,
+      itemSelector: "li.item",
+      fields: [{ name: "text", selector: "p" }],
+    });
+    expect(rows[0]?.text).toBe(`${"a".repeat(1_998)}😀`);
+  });
+
+  it("never cuts a letter off its combining accent", () => {
+    // "e" + U+0301 is "é"; the cap falls right after the "e".
+    const html = `<ul><li class="item"><p>${"a".repeat(1_998)} e\u0301tude</p></li></ul>`;
+    const { rows } = extractList(html, {
+      baseUrl: BASE_URL,
+      itemSelector: "li.item",
+      fields: [{ name: "text", selector: "p" }],
+    });
+    expect(rows[0]?.text).toBe("a".repeat(1_998));
+  });
+
+  it("cuts a plain attribute value on a whole character too", () => {
+    const html = `<ul><li class="item" data-x="${"a".repeat(1_999)}😀"></li></ul>`;
+    const { rows } = extractList(html, {
+      baseUrl: BASE_URL,
+      itemSelector: "ul",
+      fields: [{ name: "x", selector: "li", attribute: "data-x" }],
+    });
+    expect(rows[0]?.x).toBe("a".repeat(1_999));
+  });
+
   it("reads a capped cell from a ~4 MB text node quickly", () => {
     const hugeText = "word ".repeat(800_000);
     expect(hugeText.length).toBe(4_000_000);
