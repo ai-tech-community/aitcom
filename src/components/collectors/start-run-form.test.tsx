@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+import { getCollector } from "@/server/collectors/catalog";
 import type { CollectorSummary } from "@/server/collectors/runs";
 
 import en from "../../../messages/en.json";
@@ -59,11 +60,48 @@ const feed: CollectorSummary = {
       label: "Feed address",
       help: "The web address of the feed.",
       placeholder: "https://example.com/feed.xml",
+      columns: null,
     },
   ],
   inputJsonSchema: z.toJSONSchema(z.object({ url: z.url() })),
   sampleItem: {},
   limits: { maxPages: 1, maxItems: 1000, maxDurationMs: 60000 },
+};
+
+const plain = (name: string, label: string) => ({
+  name,
+  label,
+  help: null,
+  placeholder: null,
+  columns: null,
+});
+
+/** The page-list collector, with its real input schema. */
+const pageList: CollectorSummary = {
+  ...feed,
+  id: "page-list",
+  kind: "page",
+  title: "List on a web page",
+  fields: [
+    plain("url", "Page address"),
+    plain("itemSelector", "Item selector"),
+    {
+      ...plain("fields", "Columns"),
+      columns: [
+        { name: "name", label: "Column name", help: null, placeholder: null },
+        { name: "selector", label: "Selector", help: null, placeholder: null },
+        {
+          name: "attribute",
+          label: "Attribute",
+          help: null,
+          placeholder: null,
+        },
+      ],
+    },
+    plain("nextPageSelector", "Next-page link"),
+    plain("maxPages", "Pages to read"),
+  ],
+  inputJsonSchema: z.toJSONSchema(getCollector("page-list")!.inputSchema),
 };
 
 function overview(
@@ -123,6 +161,178 @@ describe("StartRunForm", () => {
     });
   });
 
+  it("sends the columns of a filled page-list form as a list of objects", () => {
+    overview(false, [pageList]);
+    renderForm("page-list");
+    fireEvent.change(screen.getByLabelText("Page address"), {
+      target: { value: "https://example.com/jobs" },
+    });
+    fireEvent.change(screen.getByLabelText("Item selector"), {
+      target: { value: "li.job" },
+    });
+    const columns = screen.getByRole("group", { name: "Columns" });
+    fireEvent.change(within(columns).getByLabelText("Column name"), {
+      target: { value: " title " },
+    });
+    fireEvent.change(within(columns).getByLabelText("Selector"), {
+      target: { value: "h3 a" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: en.collectors.start.addRow }),
+    );
+    const second = screen.getByRole("group", { name: "Column 2" });
+    fireEvent.change(within(second).getByLabelText("Column name"), {
+      target: { value: "link" },
+    });
+    fireEvent.change(within(second).getByLabelText("Selector"), {
+      target: { value: "h3 a" },
+    });
+    fireEvent.change(within(second).getByLabelText("Attribute"), {
+      target: { value: "href" },
+    });
+    fireEvent.click(startButton());
+    expect(h.mutate).toHaveBeenCalledTimes(1);
+    expect(h.mutate).toHaveBeenCalledWith({
+      collectorId: "page-list",
+      input: {
+        url: "https://example.com/jobs",
+        itemSelector: "li.job",
+        fields: [
+          { name: "title", selector: "h3 a" },
+          { name: "link", selector: "h3 a", attribute: "href" },
+        ],
+      },
+      acknowledged: false,
+    });
+  });
+
+  it("marks the whole list of columns for a problem with no precise column", async () => {
+    overview(false, [pageList]);
+    renderForm("page-list");
+    h.options.onSuccess?.({
+      ok: false,
+      reason: "invalid_input",
+      message: "x",
+      fieldErrors: { fields: ["too_small"] },
+    });
+    const note = await screen.findByText(en.collectors.start.invalidField);
+    expect(screen.getByRole("group", { name: "Columns" })).toHaveAttribute(
+      "aria-describedby",
+      expect.stringContaining(note.id),
+    );
+  });
+
+  /** Fills the page-list form's columns, one row per entry. */
+  function fillColumns(rows: Record<string, string>[]) {
+    for (let i = 1; i < rows.length; i += 1) {
+      fireEvent.click(
+        screen.getByRole("button", { name: en.collectors.start.addRow }),
+      );
+    }
+    rows.forEach((cells, i) => {
+      const row = screen.getByRole("group", { name: `Column ${i + 1}` });
+      for (const [label, value] of Object.entries(cells)) {
+        fireEvent.change(within(row).getByLabelText(label), {
+          target: { value },
+        });
+      }
+    });
+  }
+
+  const columnInput = (n: number, label: string) =>
+    within(screen.getByRole("group", { name: `Column ${n}` })).getByLabelText(
+      label,
+    );
+
+  function expectProblemAt(input: HTMLElement, text: string) {
+    const note = screen.getByText(text);
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAttribute(
+      "aria-describedby",
+      expect.stringContaining(note.id),
+    );
+  }
+
+  it("shows why a column selector was refused at that column's selector", async () => {
+    overview(false, [pageList]);
+    renderForm("page-list");
+    fillColumns([
+      { "Column name": "title", Selector: "h3" },
+      { "Column name": "link", Selector: "a:has(b)" },
+    ]);
+    fireEvent.click(startButton());
+    h.options.onSuccess?.({
+      ok: false,
+      reason: "invalid_input",
+      message: "x",
+      fieldErrors: {
+        "fields.1.selector": ["selector_not_allowed/not_allowed"],
+      },
+    });
+    await screen.findByText(en.collectors.start.problem.selector.not_allowed);
+    expectProblemAt(
+      columnInput(2, "Selector"),
+      en.collectors.start.problem.selector.not_allowed,
+    );
+    expect(columnInput(1, "Selector")).not.toHaveAttribute("aria-invalid");
+    expect(columnInput(2, "Column name")).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText(en.collectors.start.invalidField)).toBeNull();
+  });
+
+  it("counts only the columns it sent when placing a problem", async () => {
+    overview(false, [pageList]);
+    renderForm("page-list");
+    fillColumns([
+      { "Column name": "title", Selector: "h3" },
+      {},
+      { "Column name": "title", Selector: "a" },
+    ]);
+    fireEvent.click(startButton());
+    h.options.onSuccess?.({
+      ok: false,
+      reason: "invalid_input",
+      message: "x",
+      fieldErrors: { "fields.1.name": ["duplicate_name"] },
+    });
+    await screen.findByText(en.collectors.start.problem.duplicate_name);
+    expectProblemAt(
+      columnInput(3, "Column name"),
+      en.collectors.start.problem.duplicate_name,
+    );
+    expect(columnInput(2, "Column name")).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("names the problem at the item and next-page selectors", async () => {
+    overview(false, [pageList]);
+    renderForm("page-list");
+    h.options.onSuccess?.({
+      ok: false,
+      reason: "invalid_input",
+      message: "x",
+      fieldErrors: {
+        itemSelector: ["selector_not_allowed/too_long"],
+        nextPageSelector: ["selector_not_allowed/list"],
+      },
+    });
+    const tooLong = "This selector is too long. Use at most 200 characters.";
+    await screen.findByText(tooLong);
+    expectProblemAt(screen.getByLabelText("Item selector"), tooLong);
+    expectProblemAt(
+      screen.getByLabelText("Next-page link"),
+      en.collectors.start.problem.selector.list,
+    );
+  });
+
+  it("keeps the first column's inputs in place while other fields change", () => {
+    overview(false, [pageList]);
+    renderForm("page-list");
+    const name = columnInput(1, "Column name");
+    fireEvent.change(screen.getByLabelText("Page address"), {
+      target: { value: "https://example.com/jobs" },
+    });
+    expect(columnInput(1, "Column name")).toBe(name);
+  });
+
   it("holds Start until a first-time member acknowledges the note", () => {
     overview(true);
     renderForm();
@@ -157,7 +367,7 @@ describe("StartRunForm", () => {
       ok: false,
       reason: "invalid_input",
       message: "x",
-      fieldErrors: { url: ["Invalid URL"] },
+      fieldErrors: { url: ["invalid_format"] },
     });
     return screen.findByText(en.collectors.start.invalidUrl).then((note) => {
       expect(screen.getByLabelText("Feed address")).toHaveAttribute(
@@ -176,7 +386,13 @@ describe("StartRunForm", () => {
       {
         ...feed,
         fields: [
-          { name: "topic", label: "Topic", help: null, placeholder: null },
+          {
+            name: "topic",
+            label: "Topic",
+            help: null,
+            placeholder: null,
+            columns: null,
+          },
         ],
         inputJsonSchema: z.toJSONSchema(z.object({ topic: z.string() })),
       },
@@ -186,7 +402,7 @@ describe("StartRunForm", () => {
       ok: false,
       reason: "invalid_input",
       message: "x",
-      fieldErrors: { topic: ["Too short"] },
+      fieldErrors: { topic: ["too_small"] },
     });
     expect(
       await screen.findByText(en.collectors.start.invalidField),
@@ -264,7 +480,13 @@ describe("StartRunForm", () => {
       {
         ...feed,
         fields: [
-          { name: "fields", label: "Fields", help: null, placeholder: null },
+          {
+            name: "fields",
+            label: "Fields",
+            help: null,
+            placeholder: null,
+            columns: null,
+          },
         ],
         inputJsonSchema: z.toJSONSchema(
           z.object({ fields: z.array(z.string()) }),

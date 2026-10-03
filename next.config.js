@@ -11,6 +11,12 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 /** @type {import("next").NextConfig} */
 const config = {
   poweredByHeader: false,
+  // Next's default lint dirs plus `workers` (the sandboxed extraction
+  // worker). `scripts` stays out: it is not in tsconfig, so typed lint rules
+  // cannot parse it.
+  eslint: {
+    dirs: ["app", "pages", "components", "lib", "src", "workers"],
+  },
   // `ws` (used by the Neon serverless driver) lazily `require()`s the native
   // `bufferutil`/`utf-8-validate` addons. Webpack-bundling them yields a broken
   // module whose `.mask` is not a function — ws's internal try/catch can't see
@@ -18,6 +24,15 @@ const config = {
   // ≥48 bytes ("TypeError: b.mask is not a function"). Keep these external so
   // Node loads them at runtime (native if present, JS fallback otherwise).
   serverExternalPackages: ["ws", "bufferutil", "utf-8-validate"],
+  // The collector worker route starts the HTML extraction worker from a file
+  // read at runtime (`process.cwd()` + HTML_EXTRACT_BUNDLE in
+  // src/server/collectors/extract/sandbox-paths.ts). File tracing does not
+  // follow a worker's own requires, so the worker ships as one pre-bundled
+  // file (built by `pnpm build:workers`) and is listed here explicitly.
+  // Keep this path equal to HTML_EXTRACT_BUNDLE (a test checks it).
+  outputFileTracingIncludes: {
+    "/api/cron/collector-worker": ["./workers/dist/html-extract.bundle.cjs"],
+  },
   async redirects() {
     return [
       {

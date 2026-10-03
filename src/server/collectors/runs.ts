@@ -1,6 +1,11 @@
 import { and, asc, desc, eq, gt, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import {
+  type InputProblems,
+  inputProblemsOf,
+} from "@/lib/collectors/input-problems";
+
 import type { db as appDb } from "@/server/db";
 import { collectorItems, collectorRuns } from "@/server/db/schema";
 
@@ -40,7 +45,11 @@ export type StartRunResult =
       ok: false;
       reason: "disabled" | "unknown_collector" | "invalid_input" | "quota";
       message: string;
-      fieldErrors?: Record<string, string[]>;
+      /**
+       * invalid_input only: why each input was refused, as codes by full
+       * path ("fields.2.selector" → ["selector_not_allowed/not_allowed"]).
+       */
+      fieldErrors?: InputProblems;
       /** Quota only: which limit refused the start. */
       quotaReason?: "daily_limit" | "active_limit" | "platform_busy";
       /** Quota only: when a new start will be allowed (ISO 8601), if known. */
@@ -71,17 +80,36 @@ export type RunView = {
   expiresAt: string;
 };
 
+/** A field (or column) hint in the member's language. */
+export type FieldHintSummary = {
+  name: string;
+  label: string;
+  help: string | null;
+  placeholder: string | null;
+};
+
+function localiseHint(
+  name: string,
+  hint: FieldHint,
+  locale: "en" | "nl",
+): FieldHintSummary {
+  return {
+    name,
+    label: hint.label[locale],
+    help: hint.help?.[locale] ?? null,
+    placeholder: hint.placeholder ?? null,
+  };
+}
+
 export type CollectorSummary = {
   id: string;
   kind: AnyCollector["kind"];
   title: string;
   description: string;
-  fields: {
-    name: string;
-    label: string;
-    help: string | null;
-    placeholder: string | null;
-  }[];
+  fields: (FieldHintSummary & {
+    /** For a list-of-rows field, its columns; null for any other field. */
+    columns: FieldHintSummary[] | null;
+  })[];
   inputJsonSchema: unknown;
   sampleItem: Record<string, unknown>;
   limits: AnyCollector["limits"];
@@ -185,10 +213,12 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
         description: c.description[locale],
         fields: Object.entries(c.fieldHints as Record<string, FieldHint>).map(
           ([name, hint]) => ({
-            name,
-            label: hint.label[locale],
-            help: hint.help?.[locale] ?? null,
-            placeholder: hint.placeholder ?? null,
+            ...localiseHint(name, hint, locale),
+            columns: hint.columns
+              ? Object.entries(hint.columns).map(([column, columnHint]) =>
+                  localiseHint(column, columnHint, locale),
+                )
+              : null,
           }),
         ),
         inputJsonSchema: z.toJSONSchema(c.inputSchema),
@@ -225,10 +255,7 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
           ok: false,
           reason: "invalid_input",
           message: "Some fields need attention.",
-          fieldErrors: z.flattenError(parsed.error).fieldErrors as Record<
-            string,
-            string[]
-          >,
+          fieldErrors: inputProblemsOf(parsed.error.issues),
         };
       }
       const now = deps.now();

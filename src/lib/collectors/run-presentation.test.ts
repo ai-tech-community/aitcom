@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isRunActive, presentRun } from "./run-presentation";
+import { emptyRunHint, isRunActive, presentRun } from "./run-presentation";
 
 describe("presentRun", () => {
   it.each([
@@ -28,6 +28,14 @@ describe("presentRun", () => {
       { tone: "warning", label: "partial", stop: "time_limit" },
     ],
     [
+      { status: "succeeded", stopReason: "next_page_not_secure" },
+      { tone: "warning", label: "partial", stop: "next_page_not_secure" },
+    ],
+    [
+      { status: "succeeded", stopReason: "next_page_too_long" },
+      { tone: "warning", label: "partial", stop: "next_page_too_long" },
+    ],
+    [
       { status: "succeeded", stopReason: null },
       { tone: "success", label: "finished", stop: null },
     ],
@@ -52,5 +60,24 @@ describe("presentRun", () => {
     expect(isRunActive("running")).toBe(true);
     expect(isRunActive("succeeded")).toBe(false);
     expect(isRunActive("failed")).toBe(false);
+  });
+});
+
+describe("emptyRunHint", () => {
+  it("explains a finished page run with no rows", () => {
+    expect(emptyRunHint({ status: "succeeded", itemCount: 0 }, "page")).toBe(
+      "run.noRowsHint.page",
+    );
+  });
+
+  it.each([
+    [{ status: "succeeded", itemCount: 0 }, "feed"],
+    [{ status: "succeeded", itemCount: 0 }, "api"],
+    [{ status: "succeeded", itemCount: 3 }, "page"],
+    [{ status: "failed", itemCount: 0 }, "page"],
+    [{ status: "running", itemCount: 0 }, "page"],
+    [{ status: "succeeded", itemCount: 0 }, undefined],
+  ] as const)("adds nothing for %o of a %s collector", (run, kind) => {
+    expect(emptyRunHint(run, kind)).toBeNull();
   });
 });

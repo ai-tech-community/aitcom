@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { FAILURE_CODES } from "@/server/collectors/errors";
+import { STOP_REASONS } from "@/server/collectors/run-status";
 
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
@@ -12,19 +13,6 @@ function keyPaths(value: unknown, prefix = ""): string[] {
   );
 }
 
-const STOP_REASONS = [
-  "complete",
-  "page_limit",
-  "item_limit",
-  "time_limit",
-  "site_refused",
-  "robots_disallowed",
-  "robots_unreachable",
-  "blocked_domain",
-  "error",
-  "worker_lost",
-] as const;
-
 describe("collectors copy", () => {
   it.each(["collectors", "collectorsAbout"] as const)(
     "%s has the same keys in English and Dutch",
@@ -35,7 +23,7 @@ describe("collectors copy", () => {
     },
   );
 
-  it.each(["stop", "status", "failure"] as const)(
+  it.each(["stop", "stopShort", "status", "failure"] as const)(
     "translates every collectors.%s value into Dutch",
     (group) => {
       const english: Record<string, string> = en.collectors[group];
@@ -58,12 +46,18 @@ describe("collectors copy", () => {
     expect(nl.dashboard.tabs.collectors).toBeTruthy();
   });
 
-  it("words every stop reason", () => {
-    for (const reason of STOP_REASONS) {
-      expect(en.collectors.stop[reason], reason).toBeTruthy();
-      expect(nl.collectors.stop[reason], reason).toBeTruthy();
-    }
-  });
+  it.each(["stop", "stopShort"] as const)(
+    "words every stop reason in collectors.%s",
+    (group) => {
+      const english: Record<string, string> = en.collectors[group];
+      const dutch: Record<string, string> = nl.collectors[group];
+      for (const reason of STOP_REASONS) {
+        expect(english[reason], reason).toBeTruthy();
+        expect(dutch[reason], reason).toBeTruthy();
+      }
+      expect(Object.keys(english).sort()).toEqual([...STOP_REASONS].sort());
+    },
+  );
 
   it("words every failure detail code", () => {
     const english: Record<string, string> = en.collectors.failure;
@@ -73,6 +67,21 @@ describe("collectors copy", () => {
       expect(dutch[code], code).toBeTruthy();
     }
     expect(Object.keys(english).sort()).toEqual([...FAILURE_CODES].sort());
+  });
+
+  it.each([
+    "page_too_slow",
+    "page_too_deep",
+    "page_too_complex",
+    "selector_not_allowed",
+    "not_a_page",
+  ])("words the %s failure in everyday words", (code) => {
+    const english: Record<string, string> = en.collectors.failure;
+    const dutch: Record<string, string> = nl.collectors.failure;
+    for (const text of [english[code], dutch[code]]) {
+      expect(text, code).toBeTruthy();
+      expect(text, code).not.toMatch(/\bDOM\b|pars|engine|worker|sandbox/i);
+    }
   });
 
   it("puts the feed's answer in the feed_status sentence", () => {

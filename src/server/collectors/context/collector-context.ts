@@ -1,6 +1,8 @@
 import type { CollectorContext, CollectorResponse } from "../collector";
-import { CollectorStop } from "../errors";
+import { CollectorStop, timeLimitStop } from "../errors";
 import { isBlockedHost } from "./blocklist";
+import { type PageExtractor, extractListVia } from "./extract-capability";
+import { decodeHtml } from "./html-charset";
 import { createRobotsCheck } from "./robots";
 import type { SiteRateLimiter, Sleep } from "./site-rate-limit";
 
@@ -31,6 +33,8 @@ export interface ContextDeps {
   sleep: Sleep;
   signal: AbortSignal;
   onLog: (line: string) => void;
+  /** Reads lists out of pages; the live one is a sandboxed worker. */
+  extractor: PageExtractor;
 }
 
 export interface ContextMeter {
@@ -63,7 +67,8 @@ export function retryAfterMs(
  * for the per-site slot, never follows a redirect into an opted-out site,
  * and its bytes are metered (it is not a page). 429/503 are honoured with
  * Retry-After; the third in a row from one host stops the run. Metering
- * happens here, so a collector cannot skip it.
+ * happens here, so a collector cannot skip it. `extractList` hands pages to
+ * the extractor and turns its refusals into failed stops.
  */
 export function createCollectorContext(deps: ContextDeps): {
   ctx: CollectorContext;
@@ -72,11 +77,12 @@ export function createCollectorContext(deps: ContextDeps): {
   const meter: ContextMeter = { pagesFetched: 0, bytesFetched: 0 };
   const backoffs = new Map<string, number>();
 
-  const timeLimit = () =>
-    new CollectorStop("time_limit", "succeeded", "Stopped at the time limit.");
+  const clock = {
+    isOver: () => deps.signal.aborted || deps.now() >= deps.deadline,
+  };
 
   function checkBudget(): void {
-    if (deps.signal.aborted || deps.now() >= deps.deadline) throw timeLimit();
+    if (clock.isOver()) throw timeLimitStop();
     if (meter.pagesFetched >= deps.maxPages) {
       throw new CollectorStop(
         "page_limit",
@@ -124,7 +130,7 @@ export function createCollectorContext(deps: ContextDeps): {
     if (verdict !== "allow") {
       // An abort mid-check reads as "unreachable"; report it as the time
       // limit it really is.
-      if (deps.signal.aborted) throw timeLimit();
+      if (deps.signal.aborted) throw timeLimitStop();
       if (verdict === "unreachable") {
         throw new CollectorStop(
           "robots_unreachable",
@@ -166,7 +172,7 @@ export function createCollectorContext(deps: ContextDeps): {
       const wait =
         retryAfterMs(res.headers.get("retry-after"), deps.now()) ??
         DEFAULT_BACKOFF_MS;
-      if (deps.now() + wait >= deps.deadline) throw timeLimit();
+      if (deps.now() + wait >= deps.deadline) throw timeLimitStop();
       deps.onLog(
         `${url.hostname} asked us to wait ${Math.ceil(wait / 1_000)}s.`,
       );
@@ -177,6 +183,7 @@ export function createCollectorContext(deps: ContextDeps): {
   const ctx: CollectorContext = {
     signal: deps.signal,
     log: deps.onLog,
+    extractList: extractListVia(deps.extractor, clock),
     async fetch(rawUrl, opts) {
       try {
         let url = parseWebUrl(rawUrl);
@@ -198,7 +205,7 @@ export function createCollectorContext(deps: ContextDeps): {
         }
       } catch (err) {
         if (err instanceof CollectorStop) throw err;
-        if (deps.signal.aborted) throw timeLimit();
+        if (deps.signal.aborted) throw timeLimitStop();
         throw err;
       }
     },
@@ -230,12 +237,14 @@ function parseWebUrl(raw: string): URL {
   return url;
 }
 
-function toCollectorResponse(res: TransportResponse): CollectorResponse {
+/** A transport answer as collectors see it. Shared with the test fake. */
+export function toCollectorResponse(res: TransportResponse): CollectorResponse {
   return {
     url: res.url,
     status: res.status,
     headers: res.headers,
     text: async () => res.body.toString("utf8"),
+    html: async () => decodeHtml(res.body, res.headers.get("content-type")),
     json: async () => JSON.parse(res.body.toString("utf8")) as unknown,
   };
 }

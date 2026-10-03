@@ -260,7 +260,10 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       };
     }
 
-    function deps(collector: AnyCollector | undefined) {
+    function deps(
+      collector: AnyCollector | undefined,
+      dispose?: () => Promise<void>,
+    ) {
       const meter = { pagesFetched: 4, bytesFetched: 1234 };
       return {
         db: m.db,
@@ -279,8 +282,12 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
             fetch: async () => {
               throw new Error("no network in tests");
             },
+            extractList: async () => {
+              throw new Error("no extraction in tests");
+            },
           },
           meter,
+          dispose,
         }),
         now: Date.now,
       };
@@ -701,6 +708,128 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       expect((await runRow(id)).collectorVersion).toBe(3);
     });
 
+    it("disposes of the run's context after the run, and waits for it", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield { n: 1 };
+      });
+      let disposed = false;
+      const dispose = vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        disposed = true;
+      });
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      await m.executor.executeRun(
+        deps(collector, dispose),
+        run!,
+        Date.now() + 60_000,
+      );
+      expect(dispose).toHaveBeenCalledTimes(1);
+      expect(disposed).toBe(true);
+      expect(await runRow(id)).toMatchObject({ status: "succeeded" });
+    });
+
+    it("disposes of the run's context when the collector fails too", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield* [];
+        throw new m.errors.CollectorStop(
+          "error",
+          "failed",
+          "This page took too long to read, so we stopped.",
+          { code: "page_too_slow" },
+        );
+      });
+      const dispose = vi.fn(async () => undefined);
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      await m.executor.executeRun(
+        deps(collector, dispose),
+        run!,
+        Date.now() + 60_000,
+      );
+      expect(dispose).toHaveBeenCalledTimes(1);
+      expect(await runRow(id)).toMatchObject({
+        status: "failed",
+        errorDetail: { code: "page_too_slow" },
+      });
+    });
+
+    it("fails the run when its context cannot be built, without running the collector", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const run = vi.fn(async function* () {
+        yield { n: 1 };
+      });
+      const collector = testCollector(run);
+      const serverLog = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      const claimed = await m.executor.claimNextRun(m.db, new Date());
+      try {
+        await expect(
+          m.executor.executeRun(
+            {
+              ...deps(collector),
+              buildContext: async () => {
+                throw new Error("blocklist unavailable");
+              },
+            },
+            claimed!,
+            Date.now() + 60_000,
+          ),
+        ).resolves.toEqual({ status: "failed", stopReason: "error" });
+        expect(serverLog).toHaveBeenCalledWith(
+          `[collectors] run ${id} failed`,
+          expect.objectContaining({ message: "blocklist unavailable" }),
+        );
+      } finally {
+        serverLog.mockRestore();
+      }
+      expect(run).not.toHaveBeenCalled();
+      expect(await runRow(id)).toMatchObject({
+        status: "failed",
+        stopReason: "error",
+        errorDetail: { code: "generic" },
+        itemCount: 0,
+      });
+    });
+
+    it("logs a dispose that throws and still records the run's outcome", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield { n: 1 };
+      });
+      const dispose = vi.fn(async () => {
+        throw new Error("worker would not stop");
+      });
+      const serverLog = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      try {
+        await expect(
+          m.executor.executeRun(
+            deps(collector, dispose),
+            run!,
+            Date.now() + 60_000,
+          ),
+        ).resolves.toEqual({ status: "succeeded", stopReason: "complete" });
+        expect(serverLog).toHaveBeenCalledWith(
+          `[collectors] run ${id} could not release its resources`,
+          expect.objectContaining({ message: "worker would not stop" }),
+        );
+      } finally {
+        serverLog.mockRestore();
+      }
+      expect(await runRow(id)).toMatchObject({
+        status: "succeeded",
+        itemCount: 1,
+      });
+    });
+
     it("a worker tick drains the queue", async () => {
       const userId = await makeUser();
       await insertRun(userId);
@@ -834,11 +963,45 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         collectorId: "feed-items",
         input: { url: "ftp://x" },
       });
-      expect(invalid).toMatchObject({ ok: false, reason: "invalid_input" });
-      expect(
-        invalid.ok === false && invalid.fieldErrors?.url?.length,
-      ).toBeTruthy();
+      expect(invalid).toMatchObject({
+        ok: false,
+        reason: "invalid_input",
+        fieldErrors: { url: ["invalid_format"] },
+      });
       expect((await runs.listRuns(userId)).runs).toHaveLength(0);
+    });
+
+    it("names each refused page-list input by its path and a code, not a sentence", async () => {
+      const userId = await makeUser();
+      const pageList = getCollector("page-list")!;
+      const { runs } = facade({
+        catalog: { all: () => [pageList], get: () => pageList },
+      });
+      const result = await runs.startRun({
+        userId,
+        origin: "web",
+        collectorId: "page-list",
+        input: {
+          url: "https://e.com/jobs",
+          itemSelector: "li, a",
+          fields: [
+            { name: "title", selector: "h3" },
+            { name: "title", selector: "a:has(b)" },
+          ],
+          nextPageSelector: "",
+        },
+      });
+      expect(result).toEqual({
+        ok: false,
+        reason: "invalid_input",
+        message: "Some fields need attention.",
+        fieldErrors: {
+          itemSelector: ["selector_not_allowed/list"],
+          "fields.1.selector": ["selector_not_allowed/not_allowed"],
+          "fields.1.name": ["duplicate_name"],
+          nextPageSelector: ["selector_not_allowed/empty"],
+        },
+      });
     });
 
     it("queues a run with its version, origin, agent and expiry, then kicks the worker", async () => {
@@ -1021,6 +1184,29 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         fields: [{ name: "url", label: "Feedadres" }],
       });
       expect(summary!.inputJsonSchema).toMatchObject({ type: "object" });
+    });
+
+    it("names the columns of a list field in the member's language", () => {
+      const pageListCollector = getCollector("page-list")!;
+      const { runs } = facade({
+        catalog: {
+          all: () => [pageListCollector],
+          get: () => pageListCollector,
+        },
+      });
+      const [pageList] = runs.listCollectors("nl");
+      const byName = new Map(pageList!.fields.map((f) => [f.name, f]));
+      expect(byName.get("url")!.columns).toBeNull();
+      expect(byName.get("fields")!.columns).toEqual([
+        expect.objectContaining({ name: "name", label: "Naam van de kolom" }),
+        expect.objectContaining({ name: "selector", label: "Selector" }),
+        expect.objectContaining({
+          name: "attribute",
+          label: "Attribuut",
+          placeholder: "href",
+          help: "Laat leeg om de tekst te lezen. Gebruik href voor het adres van een link.",
+        }),
+      ]);
     });
   });
 });

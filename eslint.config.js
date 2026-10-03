@@ -16,6 +16,8 @@ const COLLECTOR_NO_DYNAMIC_CODE =
   "Collectors cannot load or build code at run time (ADR-0040).";
 const COLLECTOR_NO_GLOBALS =
   "Collectors get no global objects; use input and ctx only (ADR-0040).";
+const COLLECTOR_NO_HTML_PARSING =
+  "Collectors never parse HTML themselves; use ctx.extractList, which runs in a sandbox with a deadline (ADR-0041).";
 const COLLECTOR_NO_WIRING =
   "Collectors cannot reach the runner or its wiring (live, context/live, executor, runs); use input and ctx only (ADR-0040).";
 
@@ -23,6 +25,7 @@ export default tseslint.config(
   {
     ignores: [
       ".next",
+      "workers/dist",
       "src/payload-types.ts",
       "src/payload-generated-schema.ts",
     ],
@@ -132,6 +135,12 @@ export default tseslint.config(
                 "^(\\.{1,2}/)+(.+/)?(live|executor|runs)(\\.[jt]s)?$",
               ].join("|"),
               message: COLLECTOR_NO_WIRING,
+            },
+            {
+              // HTML is parsed only inside the extraction sandbox.
+              regex:
+                "^(cheerio|parse5|htmlparser2|css-select|css-what|domutils|domhandler)(/.*)?$",
+              message: COLLECTOR_NO_HTML_PARSING,
             },
           ],
         },

@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { Redis } from "@upstash/redis";
 
 import { env } from "@/env";
@@ -5,6 +7,8 @@ import { readBodyCapped, safeFetch } from "@/server/net/safe-fetch";
 
 import type { AnyCollector, CollectorContext } from "../collector";
 import type { CollectorDb } from "../db";
+import { createExtractSandbox } from "../extract/sandbox";
+import { HTML_EXTRACT_BUNDLE } from "../extract/sandbox-paths";
 import { COLLECTOR_ROBOTS_TOKEN, COLLECTOR_USER_AGENT } from "../identity";
 import { loadBlockedDomains } from "./blocklist";
 import {
@@ -85,16 +89,27 @@ function liveSiteRateLimiter(): SiteRateLimiter {
   return limiter;
 }
 
-/** The real Proxy for one run: live network, shared limiter, current blocklist. */
+/**
+ * The real Proxy for one run: live network, shared limiter, current
+ * blocklist, and its own extraction sandbox. The sandbox starts its worker
+ * only when a collector first calls `extractList`; `dispose` ends it.
+ */
 export async function buildLiveContext(args: {
   db: CollectorDb;
   collector: AnyCollector;
   signal: AbortSignal;
   deadline: number;
   onLog: (line: string) => void;
-}): Promise<{ ctx: CollectorContext; meter: ContextMeter }> {
+}): Promise<{
+  ctx: CollectorContext;
+  meter: ContextMeter;
+  dispose: () => Promise<void>;
+}> {
   const blockedDomains = await loadBlockedDomains(args.db);
-  return createCollectorContext({
+  const sandbox = createExtractSandbox({
+    workerPath: path.join(process.cwd(), HTML_EXTRACT_BUNDLE),
+  });
+  const { ctx, meter } = createCollectorContext({
     transport: liveTransport,
     robotsTransport: liveRobotsTransport,
     robotsToken: COLLECTOR_ROBOTS_TOKEN,
@@ -106,5 +121,7 @@ export async function buildLiveContext(args: {
     sleep: abortableSleep,
     signal: args.signal,
     onLog: args.onLog,
+    extractor: sandbox,
   });
+  return { ctx, meter, dispose: () => sandbox.close() };
 }

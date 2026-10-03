@@ -391,6 +391,77 @@ describe("CollectorRun", () => {
     expect(refetchItems).not.toHaveBeenCalled();
   });
 
+  it("shows a page-list run's member-chosen columns and its page address", () => {
+    h.overview.mockReturnValue(
+      ok({
+        collectors: [{ id: "page-list", title: "List on a web page" }],
+        recentRuns: [],
+        usage: { runsToday: 0, runsPerDay: 20 },
+        needsAcknowledgement: false,
+      }),
+    );
+    h.run.mockReturnValue(
+      ok({
+        ...base,
+        collectorId: "page-list",
+        input: {
+          url: "https://jobs.example.com/careers",
+          itemSelector: "li.job",
+          fields: [
+            { name: "title", selector: "h3 a" },
+            { name: "link", selector: "h3 a", attribute: "href" },
+            { name: "location", selector: ".where" },
+          ],
+          maxPages: 5,
+        },
+        status: "succeeded",
+        stopReason: "complete",
+        itemCount: 2,
+      }),
+    );
+    h.items.mockReturnValue(
+      ok({
+        items: [
+          {
+            title: "Frontend engineer",
+            link: "https://jobs.example.com/jobs/frontend",
+            location: null,
+          },
+          {
+            title: "Designer",
+            link: "https://jobs.example.com/jobs/designer",
+            location: "Utrecht",
+          },
+        ],
+        nextSeq: null,
+      }),
+    );
+    renderRun();
+
+    expect(
+      screen.getAllByRole("columnheader").map((th) => th.textContent),
+    ).toEqual(["title", "link", "location"]);
+    const [, first, second] = screen.getAllByRole("row");
+    expect(
+      [...first!.querySelectorAll("td")].map((td) => td.textContent),
+    ).toEqual([
+      "Frontend engineer",
+      "https://jobs.example.com/jobs/frontend",
+      "—",
+    ]);
+    expect(
+      [...second!.querySelectorAll("td")].map((td) => td.textContent),
+    ).toEqual([
+      "Designer",
+      "https://jobs.example.com/jobs/designer",
+      "Utrecht",
+    ]);
+    expect(screen.getByText("jobs.example.com/careers")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "List on a web page" }),
+    ).toBeInTheDocument();
+  });
+
   it("pages forward by the next seq and back to the first rows", () => {
     h.run.mockReturnValue(
       ok({
@@ -419,5 +490,56 @@ describe("CollectorRun", () => {
     expect(
       screen.queryByRole("button", { name: en.collectors.run.firstRows }),
     ).toBeNull();
+  });
+
+  it("explains why a page run found no rows", () => {
+    h.overview.mockReturnValue(
+      ok({
+        collectors: [
+          { id: "page-list", title: "List on a web page", kind: "page" },
+        ],
+        recentRuns: [],
+        usage: { runsToday: 0, runsPerDay: 20 },
+        needsAcknowledgement: false,
+      }),
+    );
+    h.run.mockReturnValue(
+      ok({
+        ...base,
+        collectorId: "page-list",
+        status: "succeeded",
+        stopReason: "complete",
+        itemCount: 0,
+      }),
+    );
+    renderRun();
+    expect(screen.getByText(en.collectors.run.noRows)).toBeInTheDocument();
+    expect(
+      screen.getByText(en.collectors.run.noRowsHint.page),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the plain empty note for a feed run", () => {
+    h.overview.mockReturnValue(
+      ok({
+        collectors: [{ id: "feed-items", title: "Feed items", kind: "feed" }],
+        recentRuns: [],
+        usage: { runsToday: 0, runsPerDay: 20 },
+        needsAcknowledgement: false,
+      }),
+    );
+    h.run.mockReturnValue(
+      ok({
+        ...base,
+        status: "succeeded",
+        stopReason: "complete",
+        itemCount: 0,
+      }),
+    );
+    renderRun();
+    expect(screen.getByText(en.collectors.run.noRows)).toBeInTheDocument();
+    expect(
+      screen.queryByText(en.collectors.run.noRowsHint.page),
+    ).not.toBeInTheDocument();
   });
 });

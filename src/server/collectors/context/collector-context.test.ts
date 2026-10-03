@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CollectorStop } from "../errors";
 import {
+  ExtractError,
+  type ExtractErrorCode,
+  type ExtractResult,
+  type ExtractSpec,
+} from "../extract/protocol";
+import {
   type ContextDeps,
   type Transport,
   type TransportResponse,
@@ -46,6 +52,14 @@ function setup(
     ...(over.robotsReply ?? NO_ROBOTS),
     url,
   }));
+  const extract = vi.fn(
+    async (_html: string, _spec: ExtractSpec): Promise<ExtractResult> => ({
+      rows: [],
+      nextUrl: null,
+      nextUrlTooLong: false,
+      truncated: false,
+    }),
+  );
   const controller = new AbortController();
   const deps: ContextDeps = {
     transport,
@@ -61,6 +75,7 @@ function setup(
     },
     signal: controller.signal,
     onLog: vi.fn(),
+    extractor: { extract },
     ...over,
   };
   const { ctx, meter } = createCollectorContext(deps);
@@ -70,6 +85,7 @@ function setup(
     transport,
     acquire,
     robotsTransport,
+    extract,
     controller,
     deps,
     advance: (ms: number) => (now += ms),
@@ -99,6 +115,23 @@ describe("collector context", () => {
       signal: t.deps.signal,
     });
     expect(t.meter).toEqual({ pagesFetched: 1, bytesFetched: 5 });
+  });
+
+  it("decodes html() by the page's charset and keeps text() UTF-8", async () => {
+    const latin = Buffer.from([0x43, 0x61, 0x66, 0xe9]); // "Café" in windows-1252
+    const t = setup({
+      replies: [
+        {
+          ...reply(200, "", {
+            "content-type": "text/html; charset=windows-1252",
+          }),
+          body: latin,
+        },
+      ],
+    });
+    const res = await t.ctx.fetch("https://e.com/a");
+    expect(await res.html()).toBe("Café");
+    expect(await res.text()).toBe(latin.toString("utf8"));
   });
 
   it("stops at the page limit as a partial success", async () => {
@@ -348,6 +381,110 @@ describe("collector context failure details", () => {
     await t.ctx.fetch("https://e.com/1");
     const stop = await stopOf(t.ctx.fetch("https://e.com/2"));
     expect(stop.detail).toBeUndefined();
+  });
+});
+
+describe("collector context extractList", () => {
+  const page = { html: "<ul><li>One</li></ul>", url: "https://e.com/list" };
+  const spec = {
+    itemSelector: "li",
+    fields: [{ name: "title", selector: "*" }],
+  };
+
+  it("reads the page through the extractor, resolving links against the page's URL", async () => {
+    const result: ExtractResult = {
+      rows: [{ title: "One" }],
+      nextUrl: "https://e.com/list?page=2",
+      nextUrlTooLong: false,
+      truncated: false,
+    };
+    const t = setup();
+    t.extract.mockResolvedValueOnce(result);
+    await expect(t.ctx.extractList(page, spec)).resolves.toEqual(result);
+    expect(t.extract).toHaveBeenCalledWith(page.html, {
+      ...spec,
+      baseUrl: "https://e.com/list",
+    });
+  });
+
+  it.each<[ExtractErrorCode, string, string]>([
+    [
+      "page_too_slow",
+      "page_too_slow",
+      "This page took too long to read, so we stopped.",
+    ],
+    [
+      "page_too_deep",
+      "page_too_deep",
+      "This page is nested too deeply to read safely.",
+    ],
+    [
+      "selector_not_allowed",
+      "selector_not_allowed",
+      "One of the selectors uses a feature we don't allow.",
+    ],
+    [
+      "page_too_complex",
+      "page_too_complex",
+      "This page is too large or complex for us to read.",
+    ],
+    [
+      "extract_failed",
+      "generic",
+      "Something went wrong while reading this page.",
+    ],
+  ])(
+    "turns the extractor's %s into a failed stop with the %s detail",
+    async (extractCode, failureCode, message) => {
+      const t = setup();
+      t.extract.mockRejectedValueOnce(new ExtractError(extractCode));
+      const stop = await stopOf(t.ctx.extractList(page, spec));
+      expect([stop.reason, stop.outcome, stop.message]).toEqual([
+        "error",
+        "failed",
+        message,
+      ]);
+      expect(stop.detail).toEqual({ code: failureCode });
+    },
+  );
+
+  it("stops at the time limit before extracting once the run's time is up", async () => {
+    const t = setup();
+    t.advance(60_000);
+    const stop = await stopOf(t.ctx.extractList(page, spec));
+    expect([stop.reason, stop.outcome]).toEqual(["time_limit", "succeeded"]);
+    expect(t.extract).not.toHaveBeenCalled();
+  });
+
+  it("stops at the time limit before extracting once the run is aborted", async () => {
+    const t = setup();
+    t.controller.abort();
+    const stop = await stopOf(t.ctx.extractList(page, spec));
+    expect([stop.reason, stop.outcome]).toEqual(["time_limit", "succeeded"]);
+    expect(t.extract).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["an extraction refusal", new ExtractError("extract_failed")],
+    ["any other error", new Error("worker gone")],
+  ])(
+    "reports %s after the run was aborted as the time limit",
+    async (_name, error) => {
+      const t = setup();
+      t.extract.mockImplementationOnce(async () => {
+        t.controller.abort();
+        throw error;
+      });
+      const stop = await stopOf(t.ctx.extractList(page, spec));
+      expect([stop.reason, stop.outcome]).toEqual(["time_limit", "succeeded"]);
+    },
+  );
+
+  it("lets any other extractor error through unchanged", async () => {
+    const t = setup();
+    const boom = new Error("boom");
+    t.extract.mockRejectedValueOnce(boom);
+    await expect(t.ctx.extractList(page, spec)).rejects.toBe(boom);
   });
 });
 

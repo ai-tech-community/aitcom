@@ -4142,6 +4142,8 @@
       "page_limit": "Gedeeltelijk: gestopt bij de paginalimiet.",
       "item_limit": "Gedeeltelijk: gestopt bij de rijenlimiet.",
       "time_limit": "Gedeeltelijk: gestopt bij de tijdslimiet.",
+      "next_page_not_secure": "Gedeeltelijk: het adres van de volgende pagina is niet beveiligd (het begint niet met https://), dus we konden die pagina niet lezen.",
+      "next_page_too_long": "Gedeeltelijk: de link naar de volgende pagina is te lang om te volgen, dus we zijn daar gestopt.",
       "site_refused": "Mislukt: de site vroeg ons meerdere keren om rustiger aan te doen, dus zijn we gestopt.",
       "robots_disallowed": "Mislukt: de regels van deze site voor automatische bezoekers staan niet toe dat deze pagina wordt verzameld.",
       "robots_unreachable": "Mislukt: we konden de regels van deze site voor automatische bezoekers niet lezen, dus hebben we er niets verzameld.",
@@ -4165,6 +4167,12 @@
       "collector_unavailable": "Deze verzamelaar is niet meer beschikbaar.",
       "input_invalid": "Wat je hebt ingevuld past niet meer bij deze verzamelaar. Start een nieuwe run.",
       "worker_lost": "Start de run opnieuw.",
+      "page_too_slow": "Het lezen van deze pagina duurde te lang, dus we zijn gestopt. Probeer een pagina met minder items.",
+      "page_too_deep": "Deze pagina is te diep opgebouwd om veilig te lezen. Probeer een andere pagina.",
+      "page_too_complex": "Deze pagina is te groot of te ingewikkeld voor ons om te lezen. Probeer een kleinere pagina, of een pagina met minder items.",
+      "selector_not_allowed": "Een van de selectors gebruikt iets wat we niet toestaan. Gebruik eenvoudige selectors: tagnamen, classes, id's en attributen.",
+      "not_a_page": "Dit adres is geen webpagina. Controleer of je het adres van de pagina met de lijst hebt gekopieerd.",
+      "page_status": "De pagina antwoordde met fout {status}. Controleer het adres, of probeer het later opnieuw.",
       "generic": "Probeer het later opnieuw."
     },
     "stopShort": {
@@ -4177,7 +4185,9 @@
       "robots_unreachable": "Siteregels konden niet worden gelezen",
       "blocked_domain": "Site heeft zich afgemeld",
       "error": "Er ging iets mis",
-      "worker_lost": "Onderbroken"
+      "worker_lost": "Onderbroken",
+      "next_page_not_secure": "Volgende pagina niet beveiligd",
+      "next_page_too_long": "Link naar volgende pagina te lang"
     },
     "breadcrumb": {
       "collectors": "Dataverzamelaars",
@@ -4200,6 +4210,20 @@
       "fixFields": "Sommige velden hebben aandacht nodig.",
       "invalidField": "Controleer dit veld.",
       "invalidUrl": "Gebruik een webadres dat begint met https://.",
+      "problem": {
+        "selector": {
+          "empty": "Vul een selector in.",
+          "too_long": "Deze selector is te lang. Gebruik hooguit {max} tekens.",
+          "invalid": "Dit is geen geldige CSS-selector. Kijk of er een typefout in zit.",
+          "list": "Gebruik hier één selector, zonder komma's.",
+          "too_complex": "Deze selector heeft te veel delen. Gebruik er hooguit {max}.",
+          "not_allowed": "Deze selector gebruikt iets wat we niet toestaan. Gebruik tagnamen, klassen, id's en attributen."
+        },
+        "duplicate_name": "Elke kolom heeft een eigen naam nodig."
+      },
+      "addRow": "Kolom toevoegen",
+      "removeRow": "Kolom {n} weghalen",
+      "row": "Kolom {n}",
       "quota": {
         "daily_limit": "Je hebt alle {limit} runs van de afgelopen 24 uur gebruikt.",
         "daily_limit_retry": "Je hebt alle {limit} runs van de afgelopen 24 uur gebruikt. Je kunt {when} weer starten.",
@@ -4220,6 +4244,9 @@
       "waiting": "Wachten op een vrije verzamelaar…",
       "rows": "Rijen",
       "noRows": "Er zijn geen rijen verzameld.",
+      "noRowsHint": {
+        "page": "Sommige pagina's bouwen hun lijst pas in de browser op, nadat ze geladen zijn. Deze verzamelaar leest de pagina zoals de site die verstuurt, dus zulke lijsten ziet hij niet."
+      },
       "showing": "{from}–{to} van {total} weergegeven",
       "nextRows": "Volgende rijen",
       "firstRows": "Eerste rijen",

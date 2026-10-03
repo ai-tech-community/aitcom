@@ -4142,6 +4142,8 @@
       "page_limit": "Partial: stopped at the page limit.",
       "item_limit": "Partial: stopped at the row limit.",
       "time_limit": "Partial: stopped at the time limit.",
+      "next_page_not_secure": "Partial: the next page's address isn't secure (it doesn't start with https://), so we couldn't read it.",
+      "next_page_too_long": "Partial: the link to the next page is too long to follow, so we stopped there.",
       "site_refused": "Failed: the site asked us to slow down several times, so we stopped.",
       "robots_disallowed": "Failed: this site's rules for automated visitors don't allow collecting this page.",
       "robots_unreachable": "Failed: we could not read this site's rules for automated visitors, so we did not collect from it.",
@@ -4165,6 +4167,12 @@
       "collector_unavailable": "This collector is not available any more.",
       "input_invalid": "What you entered no longer fits this collector. Start a new run.",
       "worker_lost": "Start the run again.",
+      "page_too_slow": "This page took too long to read, so we stopped. Try a page with fewer items.",
+      "page_too_deep": "This page is nested too deeply to read safely. Try a different page.",
+      "page_too_complex": "This page is too large or complex for us to read. Try a smaller page, or a page that lists fewer items.",
+      "selector_not_allowed": "One of the selectors uses a feature we don't allow. Use simple selectors: tag names, classes, ids and attributes.",
+      "not_a_page": "This address is not a web page. Check that you copied the address of the page with the list.",
+      "page_status": "The page answered with error {status}. Check the address, or try again later.",
       "generic": "Try again later."
     },
     "stopShort": {
@@ -4177,7 +4185,9 @@
       "robots_unreachable": "Site rules couldn't be read",
       "blocked_domain": "Site opted out",
       "error": "Something went wrong",
-      "worker_lost": "Interrupted"
+      "worker_lost": "Interrupted",
+      "next_page_not_secure": "Next page isn't secure",
+      "next_page_too_long": "Next page link too long"
     },
     "breadcrumb": {
       "collectors": "Data collectors",
@@ -4200,6 +4210,20 @@
       "fixFields": "Some fields need attention.",
       "invalidField": "Check this field.",
       "invalidUrl": "Use a web address that starts with https://.",
+      "problem": {
+        "selector": {
+          "empty": "Enter a selector.",
+          "too_long": "This selector is too long. Use at most {max} characters.",
+          "invalid": "This is not a valid CSS selector. Check it for typos.",
+          "list": "Use one selector here, without commas.",
+          "too_complex": "This selector has too many parts. Use at most {max}.",
+          "not_allowed": "This selector uses a feature we don't allow. Use tag names, classes, ids and attributes."
+        },
+        "duplicate_name": "Each column needs its own name."
+      },
+      "addRow": "Add column",
+      "removeRow": "Remove column {n}",
+      "row": "Column {n}",
       "quota": {
         "daily_limit": "You've used all {limit} runs for the last 24 hours.",
         "daily_limit_retry": "You've used all {limit} runs for the last 24 hours. You can start again {when}.",
@@ -4220,6 +4244,9 @@
       "waiting": "Waiting for a free collector…",
       "rows": "Rows",
       "noRows": "No rows were collected.",
+      "noRowsHint": {
+        "page": "Some pages build their list in the browser after they load. This collector reads the page as the site sends it, so it can't see those lists."
+      },
       "showing": "Showing {from}–{to} of {total}",
       "nextRows": "Next rows",
       "firstRows": "First rows",

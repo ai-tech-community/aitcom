@@ -22,6 +22,12 @@ export type FailureCode =
   | "collector_unavailable"
   | "input_invalid"
   | "worker_lost"
+  | "page_too_slow"
+  | "page_too_deep"
+  | "page_too_complex"
+  | "selector_not_allowed"
+  | "not_a_page"
+  | "page_status"
   | "generic";
 
 export const FAILURE_CODES = [
@@ -40,6 +46,12 @@ export const FAILURE_CODES = [
   "collector_unavailable",
   "input_invalid",
   "worker_lost",
+  "page_too_slow",
+  "page_too_deep",
+  "page_too_complex",
+  "selector_not_allowed",
+  "not_a_page",
+  "page_status",
   "generic",
 ] as const satisfies readonly FailureCode[];
 
@@ -65,6 +77,15 @@ export class CollectorStop extends Error {
     super(message);
     this.name = "CollectorStop";
   }
+}
+
+/** The run's time budget is spent: the rows so far stand. */
+export function timeLimitStop(): CollectorStop {
+  return new CollectorStop(
+    "time_limit",
+    "succeeded",
+    "Stopped at the time limit.",
+  );
 }
 
 /** Stop reasons that are failure codes of the same name. */

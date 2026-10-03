@@ -35,7 +35,12 @@ export interface ExecutorDeps {
     signal: AbortSignal;
     deadline: number;
     onLog: (line: string) => void;
-  }): Promise<{ ctx: CollectorContext; meter: ContextMeter }>;
+  }): Promise<{
+    ctx: CollectorContext;
+    meter: ContextMeter;
+    /** Frees what the context holds (the extraction worker); awaited after the run. */
+    dispose?: () => Promise<void>;
+  }>;
   now(): number;
 }
 
@@ -224,6 +229,7 @@ export async function executeRun(
   let invalid = 0;
   let buffer: (typeof collectorItems.$inferInsert)[] = [];
   let leaseLost = false;
+  let dispose: (() => Promise<void>) | undefined;
 
   /** Store buffered rows and progress; a no-op once another worker re-claimed. */
   const flush = async () => {
@@ -263,6 +269,7 @@ export async function executeRun(
       onLog: log.add,
     });
     meter = built.meter;
+    dispose = built.dispose;
     for await (const raw of collector.run(input.data, built.ctx)) {
       const row = collector.itemSchema.safeParse(raw);
       if (row.success) {
@@ -317,6 +324,17 @@ export async function executeRun(
     }
   } finally {
     clearTimeout(timer);
+    if (dispose) {
+      try {
+        await dispose();
+      } catch (err) {
+        // The run's outcome stands; this failure is for the server log only.
+        console.error(
+          `[collectors] run ${run.id} could not release its resources`,
+          err,
+        );
+      }
+    }
   }
   await flush();
   return finish(outcome, { version: collector.version });

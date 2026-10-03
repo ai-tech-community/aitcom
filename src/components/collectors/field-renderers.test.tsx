@@ -1,7 +1,16 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { FormField } from "@/lib/collectors/form-fields";
+import {
+  type FieldValue,
+  type FormField,
+  initialValue,
+  type RowValue,
+} from "@/lib/collectors/form-fields";
+
+import en from "../../../messages/en.json";
 import { FIELD_REJECTION_KEYS, FIELD_RENDERERS } from "./field-renderers";
 
 function renderNumber(integer: boolean) {
@@ -42,6 +51,199 @@ describe("FIELD_RENDERERS.number", () => {
   });
 });
 
+const columnsField: FormField = {
+  name: "fields",
+  label: "Columns",
+  help: "What to read from each item.",
+  placeholder: null,
+  kind: "rows",
+  required: true,
+  min: 1,
+  max: 3,
+  columns: [
+    {
+      name: "name",
+      label: "Column name",
+      help: "Start with a letter.",
+      placeholder: "title",
+      kind: "text",
+      required: true,
+    },
+    {
+      name: "selector",
+      label: "Selector",
+      help: null,
+      placeholder: "h3 a",
+      kind: "text",
+      required: true,
+    },
+  ],
+};
+
+/** The rows renderer, holding its value the way the start form does. */
+function RowsHarness({
+  error,
+  onChange,
+}: {
+  error: string | null;
+  onChange: (v: FieldValue) => void;
+}) {
+  const Render = FIELD_RENDERERS.rows;
+  const [value, setValue] = React.useState<FieldValue>(() =>
+    initialValue(columnsField),
+  );
+  return (
+    <Render
+      field={columnsField}
+      id="field-fields"
+      value={value}
+      error={error}
+      onChange={(v) => {
+        setValue(v);
+        onChange(v);
+      }}
+    />
+  );
+}
+
+function renderRows(error: string | null = null) {
+  const onChange = vi.fn();
+  render(
+    <NextIntlClientProvider locale="en" messages={en}>
+      <RowsHarness error={error} onChange={onChange} />
+    </NextIntlClientProvider>,
+  );
+  return { onChange };
+}
+
+/** The cells of the rows last sent to onChange. */
+function cellsOf(onChange: ReturnType<typeof vi.fn>) {
+  const rows = onChange.mock.lastCall?.[0] as RowValue[];
+  return rows.map((row) => row.cells);
+}
+
+const addButton = () =>
+  screen.getByRole("button", { name: en.collectors.start.addRow });
+const removeButton = (n: number) =>
+  screen.getByRole("button", { name: `Remove column ${n}` });
+
+describe("FIELD_RENDERERS.rows", () => {
+  it("draws a labelled group with one row to start and a label on every input", () => {
+    renderRows();
+    const group = screen.getByRole("group", { name: "Columns" });
+    expect(group).toHaveAccessibleDescription("What to read from each item.");
+    expect(within(group).getAllByLabelText("Column name")).toHaveLength(1);
+    expect(within(group).getAllByLabelText("Selector")).toHaveLength(1);
+    expect(screen.getByLabelText("Column name")).toHaveAccessibleDescription(
+      "Start with a letter.",
+    );
+    expect(screen.getByLabelText("Column name")).toHaveAttribute(
+      "placeholder",
+      "title",
+    );
+  });
+
+  it("adds rows up to the maximum and removes them down to the minimum", () => {
+    const { onChange } = renderRows();
+    expect(removeButton(1)).toBeDisabled();
+    fireEvent.click(addButton());
+    fireEvent.click(addButton());
+    expect(screen.getAllByLabelText("Column name")).toHaveLength(3);
+    expect(addButton()).toBeDisabled();
+    expect(removeButton(1)).toBeEnabled();
+
+    const row2 = screen.getByRole("group", { name: "Column 2" });
+    fireEvent.change(within(row2).getByLabelText("Column name"), {
+      target: { value: "link" },
+    });
+    expect(cellsOf(onChange)).toEqual([{}, { name: "link" }, {}]);
+
+    fireEvent.click(removeButton(1));
+    expect(cellsOf(onChange)).toEqual([{ name: "link" }, {}]);
+    expect(addButton()).toBeEnabled();
+    expect(screen.getAllByLabelText("Column name")[0]).toHaveValue("link");
+    fireEvent.click(removeButton(2));
+    expect(screen.getAllByLabelText("Column name")).toHaveLength(1);
+    expect(removeButton(1)).toBeDisabled();
+  });
+
+  it("keeps each row's inputs with that row when an earlier row is removed", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    const second = within(
+      screen.getByRole("group", { name: "Column 2" }),
+    ).getByLabelText("Column name");
+    fireEvent.click(removeButton(1));
+    expect(screen.getByLabelText("Column name")).toBe(second);
+  });
+
+  it("moves focus to the new row's first input when a row is added", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    const row2 = screen.getByRole("group", { name: "Column 2" });
+    expect(within(row2).getByLabelText("Column name")).toHaveFocus();
+  });
+
+  it("keeps focus on a remove button at the same place after removing a row", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    fireEvent.click(addButton());
+    fireEvent.click(removeButton(2));
+    expect(removeButton(2)).toHaveFocus();
+  });
+
+  it("steps focus back one row when the last row is removed", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    fireEvent.click(addButton());
+    fireEvent.click(removeButton(3));
+    expect(removeButton(2)).toHaveFocus();
+  });
+
+  it("moves focus to Add once no row can be removed any more", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    fireEvent.click(removeButton(2));
+    expect(addButton()).toHaveFocus();
+  });
+
+  it("names the columns once on narrow screens: the heading row is for wide screens", () => {
+    renderRows();
+    const heading = screen.getByTestId("rows-heading");
+    expect(heading).toHaveAttribute("aria-hidden", "true");
+    expect(heading).toHaveClass("hidden", "md:grid");
+    // Each input keeps its own label, visible only on narrow screens.
+    expect(screen.getByText("Column name", { selector: "label" })).toHaveClass(
+      "md:sr-only",
+    );
+  });
+
+  it("shows each column's help once on narrow screens, under the first row", () => {
+    renderRows();
+    fireEvent.click(addButton());
+    const narrowHelp = screen
+      .getAllByText("Start with a letter.")
+      .filter(
+        (element) => element.closest('[data-testid="rows-heading"]') === null,
+      );
+    expect(narrowHelp).toHaveLength(1);
+    expect(narrowHelp[0]).toHaveClass("md:hidden");
+    expect(
+      within(screen.getByRole("group", { name: "Column 1" })).getByText(
+        "Start with a letter.",
+      ),
+    ).toBe(narrowHelp[0]);
+  });
+
+  it("shows the field's error under the group and points the group at it", () => {
+    renderRows("Check this field.");
+    const group = screen.getByRole("group", { name: "Columns" });
+    expect(group).toHaveAccessibleDescription(
+      "What to read from each item. Check this field.",
+    );
+  });
+});
+
 describe("FIELD_REJECTION_KEYS", () => {
   it("tells an address field what a valid address looks like", () => {
     expect(FIELD_REJECTION_KEYS.url).toBe("start.invalidUrl");
@@ -51,5 +253,6 @@ describe("FIELD_REJECTION_KEYS", () => {
     expect(FIELD_REJECTION_KEYS.text).toBe("start.invalidField");
     expect(FIELD_REJECTION_KEYS.number).toBe("start.invalidField");
     expect(FIELD_REJECTION_KEYS.checkbox).toBe("start.invalidField");
+    expect(FIELD_REJECTION_KEYS.rows).toBe("start.invalidField");
   });
 });
