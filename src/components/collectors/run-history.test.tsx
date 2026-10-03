@@ -90,7 +90,7 @@ describe("RunHistory", () => {
       }),
     );
     renderHistory();
-    expect(h.runs).toHaveBeenCalledWith({ limit: 20 });
+    expect(h.runs).toHaveBeenCalledWith({ limit: 20 }, expect.anything());
     expect(
       screen.getAllByRole("link", { name: /Feed items/ })[0],
     ).toHaveAttribute("href", "/dashboard/collectors/runs/r1");
@@ -116,6 +116,7 @@ describe("RunHistory", () => {
       screen.getByRole("button", { name: en.collectors.history.older }),
     );
     expect(h.runs).toHaveBeenCalledWith({ limit: 20, cursor: "c1" });
+    expect(screen.getAllByRole("link", { name: /Feed items/ })).toHaveLength(2);
     expect(
       screen.queryByRole("button", { name: en.collectors.history.older }),
     ).toBeNull();
@@ -149,5 +150,62 @@ describe("RunHistory", () => {
     expect(
       screen.getByRole("link", { name: en.collectors.history.chooseCollector }),
     ).toHaveAttribute("href", "/dashboard/collectors");
+  });
+
+  it("polls the newest runs every 5 seconds while one is active", () => {
+    h.runs.mockReturnValue(
+      ok({ runs: [run("r1", { status: "running" })], nextCursor: null }),
+    );
+    renderHistory();
+    const options = h.runs.mock.calls[0]![1] as {
+      refetchInterval: (q: { state: { data: unknown } }) => unknown;
+    };
+    const page = (status: string) => ({
+      state: { data: { runs: [run("r1", { status }), run("r0")] } },
+    });
+    expect(options.refetchInterval(page("queued"))).toBe(5000);
+    expect(options.refetchInterval(page("running"))).toBe(5000);
+    expect(options.refetchInterval(page("succeeded"))).toBe(false);
+    expect(options.refetchInterval({ state: { data: undefined } })).toBe(false);
+  });
+
+  it("starts the older pages again when a new run appears on top", () => {
+    let newest = "r1";
+    h.runs.mockImplementation((input: { cursor?: string }) =>
+      ok(
+        input.cursor
+          ? { runs: [run("r3")], nextCursor: null }
+          : { runs: [run(newest)], nextCursor: `after-${newest}` },
+      ),
+    );
+    const view = renderHistory();
+    fireEvent.click(
+      screen.getByRole("button", { name: en.collectors.history.older }),
+    );
+    expect(h.runs).toHaveBeenCalledWith({ limit: 20, cursor: "after-r1" });
+
+    newest = "r0";
+    h.runs.mockClear();
+    view.rerender(
+      <NextIntlClientProvider
+        locale="en"
+        messages={en}
+        now={new Date("2026-10-03T12:00:00Z")}
+        timeZone="UTC"
+      >
+        <RunHistory />
+      </NextIntlClientProvider>,
+    );
+    // The stale older page (cut at the old top) is gone; paging restarts
+    // from the new first page's cursor.
+    expect(h.runs).not.toHaveBeenCalledWith({
+      limit: 20,
+      cursor: "after-r1",
+    });
+    expect(screen.getAllByRole("link", { name: /Feed items/ })).toHaveLength(1);
+    fireEvent.click(
+      screen.getByRole("button", { name: en.collectors.history.older }),
+    );
+    expect(h.runs).toHaveBeenCalledWith({ limit: 20, cursor: "after-r0" });
   });
 });

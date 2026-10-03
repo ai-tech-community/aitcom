@@ -30,11 +30,13 @@ describe("collector about page", () => {
   it("shows the exact user agent, the robots.txt block and the opt-out address", async () => {
     render(await CollectorAboutPage());
     expect(screen.getByText(COLLECTOR_USER_AGENT)).toBeInTheDocument();
-    expect(
-      screen.getByText(`User-agent: ${COLLECTOR_ROBOTS_TOKEN}`, {
-        exact: false,
-      }),
-    ).toBeInTheDocument();
+    // The whole block a site owner copies: both lines, nothing else.
+    const block = screen.getByText(
+      (_, el) =>
+        el?.tagName === "PRE" &&
+        el.textContent === `User-agent: ${COLLECTOR_ROBOTS_TOKEN}\nDisallow: /`,
+    );
+    expect(block.textContent).toBe("User-agent: aitcom-collector\nDisallow: /");
     expect(
       screen.getByRole("link", { name: COLLECTOR_OPT_OUT_EMAIL }),
     ).toHaveAttribute("href", `mailto:${COLLECTOR_OPT_OUT_EMAIL}`);

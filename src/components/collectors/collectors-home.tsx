@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { Link } from "@/i18n/navigation";
+import { runListPollInterval } from "@/lib/collectors/run-presentation";
+import { COLLECTOR_ABOUT_PATH } from "@/server/collectors/identity";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 type Overview = RouterOutputs["collectors"]["overview"];
@@ -50,8 +52,15 @@ function sampleValue(value: unknown): string {
 export function CollectorsHome() {
   const t = useTranslations("collectors");
   const locale = useLocale() === "nl" ? "nl" : "en";
-  const overview = api.collectors.overview.useQuery({ locale });
+  const overview = api.collectors.overview.useQuery(
+    { locale },
+    {
+      refetchInterval: (query) =>
+        runListPollInterval(query.state.data?.recentRuns),
+    },
+  );
   const data = overview.data;
+  const hasCollectors = (data?.collectors.length ?? 0) > 0;
   const titles = new Map(data?.collectors.map((c) => [c.id, c.title]));
 
   return (
@@ -76,7 +85,7 @@ export function CollectorsHome() {
         <p className="max-w-prose text-[15px] leading-relaxed">
           {t("intro")}{" "}
           <Link
-            href="/collectors/about"
+            href={COLLECTOR_ABOUT_PATH}
             className="text-primary underline-offset-4 hover:underline"
           >
             {t("aboutLink")}
@@ -101,7 +110,9 @@ export function CollectorsHome() {
           <EmptyState
             className="py-6"
             title={t("noRecentRuns")}
-            description={t("noRecentRunsHint")}
+            // The hint points at the collectors above; with none, it would
+            // point at nothing.
+            description={hasCollectors ? t("noRecentRunsHint") : undefined}
           />
         }
         action={

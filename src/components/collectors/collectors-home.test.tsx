@@ -71,7 +71,7 @@ describe("CollectorsHome", () => {
       }),
     );
     renderHome();
-    expect(overview).toHaveBeenCalledWith({ locale: "en" });
+    expect(overview).toHaveBeenCalledWith({ locale: "en" }, expect.anything());
   });
 
   it("lists collectors with a link to start each one", () => {
@@ -126,6 +126,57 @@ describe("CollectorsHome", () => {
     expect(
       screen.getByText(en.collectors.noRecentRunsHint),
     ).toBeInTheDocument();
+  });
+
+  it("does not point at collectors above when there are none", () => {
+    overview.mockReturnValue(
+      ok({
+        collectors: [],
+        recentRuns: [],
+        usage: { runsToday: 0, runsPerDay: 20 },
+        needsAcknowledgement: true,
+      }),
+    );
+    renderHome();
+    expect(screen.getByText(en.collectors.noCollectors)).toBeInTheDocument();
+    expect(screen.queryByText(en.collectors.noRecentRunsHint)).toBeNull();
+  });
+
+  it("links to the public page about how collecting works", () => {
+    overview.mockReturnValue(
+      ok({
+        collectors: [feed],
+        recentRuns: [],
+        usage: { runsToday: 0, runsPerDay: 20 },
+        needsAcknowledgement: false,
+      }),
+    );
+    renderHome();
+    expect(
+      screen.getByRole("link", { name: en.collectors.aboutLink }),
+    ).toHaveAttribute("href", "/collectors/about");
+  });
+
+  it("polls the overview every 5 seconds while a recent run is active", () => {
+    overview.mockReturnValue(
+      ok({
+        collectors: [feed],
+        recentRuns: [],
+        usage: { runsToday: 0, runsPerDay: 20 },
+        needsAcknowledgement: false,
+      }),
+    );
+    renderHome();
+    const options = overview.mock.calls[0]![1] as {
+      refetchInterval: (q: { state: { data: unknown } }) => unknown;
+    };
+    const withRun = (status: string) => ({
+      state: { data: { recentRuns: [{ id: "r1", status }] } },
+    });
+    expect(options.refetchInterval(withRun("queued"))).toBe(5000);
+    expect(options.refetchInterval(withRun("running"))).toBe(5000);
+    expect(options.refetchInterval(withRun("failed"))).toBe(false);
+    expect(options.refetchInterval({ state: { data: undefined } })).toBe(false);
   });
 
   it("shows recent runs with their status and a link to each run", () => {

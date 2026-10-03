@@ -15,7 +15,10 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { Link } from "@/i18n/navigation";
-import { presentRun } from "@/lib/collectors/run-presentation";
+import {
+  presentRun,
+  runListPollInterval,
+} from "@/lib/collectors/run-presentation";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 const PAGE = 20;
@@ -38,13 +41,28 @@ export function RunHistory() {
   const locale = useLocale() === "nl" ? "nl" : "en";
   const overview = api.collectors.overview.useQuery({ locale });
   const titles = new Map(overview.data?.collectors.map((c) => [c.id, c.title]));
-  const first = api.collectors.runs.useQuery({ limit: PAGE });
+  const first = api.collectors.runs.useQuery(
+    { limit: PAGE },
+    {
+      refetchInterval: (query) => runListPollInterval(query.state.data?.runs),
+    },
+  );
   // Cursors of the older pages loaded so far, oldest last.
   const [cursors, setCursors] = React.useState<string[]>([]);
   // The last loaded page's next cursor; undefined while that page loads.
   const [tailNext, setTailNext] = React.useState<string | null | undefined>(
     undefined,
   );
+  // Older pages are cut relative to the first page. When a new run lands on
+  // top, the first page shifts and a run could fall between it and the
+  // loaded older pages, so paging starts again from the new first page.
+  const newestId = first.data?.runs[0]?.id;
+  const [pagedFrom, setPagedFrom] = React.useState(newestId);
+  if (newestId !== pagedFrom) {
+    setPagedFrom(newestId);
+    setCursors([]);
+    setTailNext(undefined);
+  }
   const ignore = React.useCallback(() => undefined, []);
   const nextCursor = cursors.length ? tailNext : first.data?.nextCursor;
 
@@ -74,7 +92,7 @@ export function RunHistory() {
           isEmpty: first.data?.runs.length === 0,
         })}
         action={
-          <span className="text-muted-foreground font-mono text-xs">
+          <span className="text-muted-foreground text-xs">
             {t("history.retention")}
           </span>
         }

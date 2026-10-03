@@ -34,3 +34,17 @@ export function presentRun(run: {
 export function isRunActive(status: RunStatus): boolean {
   return status === "queued" || status === "running";
 }
+
+const RUN_LIST_POLL_MS = 5_000;
+
+/**
+ * Lists of runs (the dashboard's recent runs, the history's first page)
+ * refresh while any listed run is queued or running, and stop once none is.
+ */
+export function runListPollInterval(
+  runs: readonly { status: RunStatus }[] | undefined,
+): number | false {
+  return runs?.some((run) => isRunActive(run.status))
+    ? RUN_LIST_POLL_MS
+    : false;
+}

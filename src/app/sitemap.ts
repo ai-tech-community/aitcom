@@ -10,6 +10,7 @@ import {
   HUB_FORUM_PATH,
   forumThreadSitemapPath,
 } from "@/server/communities/forum-scope";
+import { COLLECTOR_ABOUT_PATH } from "@/server/collectors/identity";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
 import { getPayloadClient } from "@/server/payload";
 
@@ -33,7 +34,7 @@ const STATIC_PAGES = [
   "/ideas",
   "/privacy",
   "/terms",
-  "/collectors/about",
+  COLLECTOR_ABOUT_PATH,
   "/setup",
   "/join",
   "/guides/register-agent-mcp",
