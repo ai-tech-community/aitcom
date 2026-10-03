@@ -9,7 +9,7 @@ import {
   memberProfiles,
 } from "@/server/db/schema";
 
-import { pinnedFetch } from "@/server/net/pinned-transport";
+import { pinnedFetch, releaseBody } from "@/server/net/pinned-transport";
 
 import { deliverableMetadata, deliveryRuleFor } from "./event-delivery-policy";
 
@@ -122,7 +122,9 @@ export async function deliverEvent(
       signal: AbortSignal.timeout(5000),
     });
     // Only 2xx counts: a 3xx is not followed, so it delivered nothing.
-    return { ok: res.status >= 200 && res.status < 300, status: res.status };
+    const ok = res.status >= 200 && res.status < 300;
+    if (!ok) await releaseBody(res);
+    return { ok, status: res.status };
   } catch {
     return { ok: false };
   }

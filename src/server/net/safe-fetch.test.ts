@@ -140,6 +140,37 @@ describe("safeFetch", () => {
     ]);
   });
 
+  it("releases a redirect's unread body before following it", async () => {
+    const redirect = new Response("moved", {
+      status: 301,
+      headers: { location: "https://b.example/next" },
+    });
+    const cancel = vi.spyOn(redirect.body!, "cancel");
+    fetchMock
+      .mockResolvedValueOnce(redirect as never)
+      .mockImplementationOnce(async () => {
+        // Released before the next hop starts.
+        expect(cancel).toHaveBeenCalledTimes(1);
+        return new Response("ok") as never;
+      });
+    await safeFetch("https://a.example/", base);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("follows the redirect even if releasing its body fails", async () => {
+    const redirect = new Response("moved", {
+      status: 302,
+      headers: { location: "https://b.example/next" },
+    });
+    vi.spyOn(redirect.body!, "cancel").mockRejectedValue(new Error("gone"));
+    fetchMock
+      .mockResolvedValueOnce(redirect as never)
+      .mockResolvedValueOnce(new Response("ok") as never);
+    const { url } = await safeFetch("https://a.example/", base);
+    expect(url).toBe("https://b.example/next");
+  });
+
   it("reports a connect-time refusal with the 'Refusing to fetch URL' prefix", async () => {
     fetchMock.mockRejectedValue(
       new TypeError("fetch failed", {

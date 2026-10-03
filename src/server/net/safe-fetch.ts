@@ -3,9 +3,10 @@ import type { Response as PinnedResponse } from "undici";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 
 import {
-  BlockedAddressError,
+  isBlockedAddress,
   pinnedFetch,
   refusedLiteralHost,
+  releaseBody,
 } from "./pinned-transport";
 
 const MAX_REDIRECTS = 5;
@@ -89,6 +90,7 @@ export async function safeFetch(
         return { response: res, url: current };
       }
       const location = res.headers.get("location");
+      await releaseBody(res);
       if (!location) {
         throw new Error(`Redirect with no Location (status ${res.status})`);
       }
@@ -101,14 +103,6 @@ export async function safeFetch(
     return { response: res, url: current };
   }
   throw new Error("Too many redirects");
-}
-
-/** The pinned transport refused the address (it rejects with this cause). */
-function isBlockedAddress(err: unknown): boolean {
-  return (
-    err instanceof BlockedAddressError ||
-    (err instanceof Error && err.cause instanceof BlockedAddressError)
-  );
 }
 
 /**

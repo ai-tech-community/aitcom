@@ -58,7 +58,10 @@ vi.mock("@/server/net/pinned-transport", async (importOriginal) => ({
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 import { createCaller } from "@/server/api/root";
 import { db as mockedDb } from "@/server/db";
-import { pinnedFetch } from "@/server/net/pinned-transport";
+import {
+  BlockedAddressError,
+  pinnedFetch,
+} from "@/server/net/pinned-transport";
 
 const fetchMock = vi.mocked(pinnedFetch);
 const validateMock = vi.mocked(validateWebhookUrl);
@@ -118,33 +121,61 @@ describe("agentManagement.testWebhook", () => {
   });
 
   it("fails a redirect without following it", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(null, {
-        status: 302,
-        headers: { location: "https://10.0.0.1/" },
-      }) as never,
-    );
+    const redirect = new Response("moved", {
+      status: 302,
+      headers: { location: "https://10.0.0.1/" },
+    });
+    const cancel = vi.spyOn(redirect.body!, "cancel");
+    fetchMock.mockResolvedValue(redirect as never);
 
     await expect(caller().agentManagement.testWebhook()).rejects.toMatchObject({
       code: "BAD_REQUEST",
       message: "Webhook test failed: redirects are not followed",
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(dbHooks.updates).toEqual([]);
+  });
+
+  it("reports a connect-time address refusal as a private/internal address", async () => {
+    fetchMock.mockRejectedValue(
+      new TypeError("fetch failed", {
+        cause: new BlockedAddressError("example.com"),
+      }),
+    );
+
+    await expect(caller().agentManagement.testWebhook()).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Webhook URL resolves to a private/internal address",
+    });
+    expect(dbHooks.updates).toEqual([]);
+  });
+
+  it("reports any other network failure as before", async () => {
+    fetchMock.mockRejectedValue(
+      new TypeError("fetch failed", { cause: new Error("ECONNREFUSED") }),
+    );
+
+    await expect(caller().agentManagement.testWebhook()).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Webhook test failed: TypeError: fetch failed",
+    });
     expect(dbHooks.updates).toEqual([]);
   });
 
   it("reports a non-2xx response with its status text", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(null, {
-        status: 500,
-        statusText: "Internal Server Error",
-      }) as never,
-    );
+    const failed = new Response("boom", {
+      status: 500,
+      statusText: "Internal Server Error",
+    });
+    const cancel = vi.spyOn(failed.body!, "cancel");
+    fetchMock.mockResolvedValue(failed as never);
 
     await expect(caller().agentManagement.testWebhook()).rejects.toMatchObject({
       code: "BAD_REQUEST",
       message: "Webhook test failed: Internal Server Error",
     });
+    expect(cancel).toHaveBeenCalledTimes(1);
     expect(dbHooks.updates).toEqual([]);
   });
 

@@ -38,6 +38,31 @@ export class BlockedAddressError extends Error {
 }
 
 /**
+ * Did the pinned transport refuse the address? It rejects the way undici
+ * does, a TypeError whose cause is the BlockedAddressError.
+ */
+export function isBlockedAddress(err: unknown): boolean {
+  return (
+    err instanceof BlockedAddressError ||
+    (err instanceof Error && err.cause instanceof BlockedAddressError)
+  );
+}
+
+/**
+ * Drop a response body nobody will read, so its connection is released now
+ * rather than whenever the garbage collector gets to it. Never throws.
+ */
+export async function releaseBody(res: {
+  body?: { cancel(): Promise<void> } | null;
+}): Promise<void> {
+  try {
+    await res.body?.cancel();
+  } catch {
+    // Already consumed, locked or errored: nothing left to release.
+  }
+}
+
+/**
  * The connect-time DNS step: resolve once, check every answer, and give the
  * socket only answers that passed. The check and the connection use the same
  * answer, so a DNS server cannot switch to an internal address in between.

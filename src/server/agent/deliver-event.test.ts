@@ -163,15 +163,15 @@ describe("deliverEvent", () => {
     });
   });
 
-  it("returns not-ok on a non-2xx response", async () => {
-    fetchMock.mockResolvedValue({
-      ok: false,
-      status: 500,
-    } as never);
+  it("returns not-ok on a non-2xx response and releases its body", async () => {
+    const failed = new Response("boom", { status: 500 });
+    const cancel = vi.spyOn(failed.body!, "cancel");
+    fetchMock.mockResolvedValue(failed as never);
     expect(await deliverEvent(webhook(), event(), "Alice")).toEqual({
       ok: false,
       status: 500,
     });
+    expect(cancel).toHaveBeenCalledTimes(1);
   });
 
   it("returns not-ok when the request throws", async () => {
@@ -182,14 +182,15 @@ describe("deliverEvent", () => {
   });
 
   it("treats a redirect as a failed delivery and never follows it", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(null, {
-        status: 302,
-        headers: { location: "https://10.0.0.1/" },
-      }) as never,
-    );
+    const redirect = new Response("moved", {
+      status: 302,
+      headers: { location: "https://10.0.0.1/" },
+    });
+    const cancel = vi.spyOn(redirect.body!, "cancel");
+    fetchMock.mockResolvedValue(redirect as never);
     const result = await deliverEvent(webhook(), event(), "Alice");
     expect(result).toEqual({ ok: false, status: 302 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(cancel).toHaveBeenCalledTimes(1);
   });
 });

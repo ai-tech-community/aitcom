@@ -29,7 +29,11 @@ import { importFeedImage } from "@/server/communities/feed-images";
 import { syncFeedPostCounters } from "@/server/communities/feed-post-counters";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
-import { pinnedFetch } from "@/server/net/pinned-transport";
+import {
+  isBlockedAddress,
+  pinnedFetch,
+  releaseBody,
+} from "@/server/net/pinned-transport";
 import {
   TWEET_URL_REGEX,
   verifyOembed,
@@ -646,19 +650,26 @@ export const agentManagementRouter = createTRPCRouter({
       },
       body: payload,
       signal: AbortSignal.timeout(5000),
-    }).catch((err: Error) => ({
-      ok: false as const,
-      status: 0,
-      statusText: String(err),
-    }));
+    }).catch((err: Error) => {
+      // The address check at connect time refused what DNS answered.
+      if (isBlockedAddress(err)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Webhook URL resolves to a private/internal address",
+        });
+      }
+      return { ok: false as const, status: 0, statusText: String(err) };
+    });
 
     if (res.status >= 300 && res.status < 400) {
+      if ("body" in res) await releaseBody(res);
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "Webhook test failed: redirects are not followed",
       });
     }
     if (!res.ok) {
+      if ("body" in res) await releaseBody(res);
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: `Webhook test failed: ${res.statusText}`,
