@@ -980,6 +980,7 @@
       "communities": "Mijn community's",
       "events": "Mijn evenementen",
       "jobs": "Vacaturetracker",
+      "collectors": "Dataverzamelaars",
       "notifications": "Meldingen",
       "settings": "Instellingen"
     },
@@ -4109,5 +4110,139 @@
       "allBadges": "Alle badges van {name}",
       "ownerAllBadges": "Terug naar je badges"
     }
+  },
+  "collectors": {
+    "title": "Dataverzamelaars",
+    "intro": "Verzamel openbare gegevens van het web voor je eigen onderzoek. Kies een verzamelaar, vul een paar velden in en krijg een tabel die je hier kunt bekijken of downloaden.",
+    "aboutLink": "Hoe onze verzamelaar websites bezoekt",
+    "usage": "{used} van {limit} runs gebruikt · afgelopen 24 uur",
+    "kind": {
+      "api": "API",
+      "feed": "Feed",
+      "page": "Webpagina"
+    },
+    "youGive": "Jij geeft: {fields}",
+    "youGet": "Je krijgt: tot {count, plural, one {# rij} other {# rijen}}",
+    "exampleRow": "Voorbeeldrij",
+    "useCollector": "Gebruik deze verzamelaar",
+    "recentRuns": "Recente runs",
+    "seeAllRuns": "Alle runs bekijken",
+    "noRecentRuns": "Je runs verschijnen hier.",
+    "noCollectors": "Er zijn op dit moment geen verzamelaars beschikbaar.",
+    "status": {
+      "queued": "In de wachtrij",
+      "running": "Bezig",
+      "finished": "Klaar",
+      "partial": "Gedeeltelijk",
+      "failed": "Mislukt"
+    },
+    "stop": {
+      "complete": "Klaar: de verzamelaar heeft alles gelezen wat gevraagd was.",
+      "page_limit": "Gedeeltelijk: gestopt bij de paginalimiet.",
+      "item_limit": "Gedeeltelijk: gestopt bij de rijenlimiet.",
+      "time_limit": "Gedeeltelijk: gestopt bij de tijdslimiet.",
+      "site_refused": "Mislukt: de site vroeg ons meerdere keren om rustiger aan te doen, dus zijn we gestopt.",
+      "robots_disallowed": "Mislukt: de robots.txt van deze site staat niet toe dat deze pagina wordt verzameld.",
+      "robots_unreachable": "Mislukt: we konden de robots.txt van deze site niet lezen, dus hebben we er niets verzameld.",
+      "blocked_domain": "Mislukt: deze site heeft gevraagd om er geen gegevens te verzamelen.",
+      "error": "Mislukt: er ging iets mis tijdens het verzamelen.",
+      "worker_lost": "Mislukt: de run werd twee keer onderbroken en is daarom gestopt."
+    },
+    "stopShort": {
+      "complete": "Alles gelezen",
+      "page_limit": "Gestopt bij de paginalimiet",
+      "item_limit": "Gestopt bij de rijenlimiet",
+      "time_limit": "Gestopt bij de tijdslimiet",
+      "site_refused": "De site weigerde",
+      "robots_disallowed": "Niet toegestaan door robots.txt",
+      "robots_unreachable": "robots.txt kon niet worden gelezen",
+      "blocked_domain": "Site heeft zich afgemeld",
+      "error": "Er ging iets mis",
+      "worker_lost": "Onderbroken"
+    },
+    "breadcrumb": {
+      "collectors": "Dataverzamelaars",
+      "runs": "Mijn runs"
+    },
+    "start": {
+      "firstUseTitle": "Voor je eerste run",
+      "firstUse1": "Gebruik wat je verzamelt voor je eigen onderzoek.",
+      "firstUse2": "Respecteer de voorwaarden van elke site. We volgen robots.txt en bezoeken elke site hooguit één keer per seconde.",
+      "firstUse3": "Verzamel geen persoonsgegevens over mensen.",
+      "firstUse4": "Alleen jij kunt je runs zien. We verwijderen ze na 30 dagen.",
+      "acknowledge": "Ik begrijp het en ga verantwoord om met verzamelde gegevens.",
+      "limits": "Tot {items} rijen · {pages, plural, one {# pagina} other {# pagina's}} · stopt na {seconds, plural, one {# seconde} other {# seconden}} · gebruikt 1 van je {perDay} runs per 24 uur",
+      "submit": "Run starten",
+      "submitting": "Bezig met starten…",
+      "cancel": "Annuleren",
+      "notFound": "Deze verzamelaar bestaat niet of staat uit.",
+      "backToList": "Terug naar verzamelaars",
+      "unsupported": "Deze verzamelaar kan hier nog niet worden gestart.",
+      "fixFields": "Sommige velden hebben aandacht nodig.",
+      "invalidField": "Controleer dit veld.",
+      "quota": {
+        "daily_limit": "Je hebt alle {limit} runs van de afgelopen 24 uur gebruikt.",
+        "daily_limit_retry": "Je hebt alle {limit} runs van de afgelopen 24 uur gebruikt. Je kunt {when} weer starten.",
+        "active_limit": "Je hebt al runs die bezig zijn. Wacht tot er een klaar is.",
+        "platform_busy": "De dataverzamelaars zijn nu erg druk. Probeer het over een paar minuten opnieuw."
+      },
+      "failed": "We konden de run niet starten. Probeer het opnieuw."
+    },
+    "run": {
+      "notFound": "We konden deze run niet vinden. Misschien is hij na 30 dagen verwijderd.",
+      "started": "Gestart",
+      "took": "duurde {seconds, plural, one {# seconde} other {# seconden}}",
+      "deleted": "Verwijderd",
+      "input": "Invoer",
+      "counts": "{rows, plural, one {# rij} other {# rijen}} · {pages, plural, one {# pagina} other {# pagina's}} opgehaald · {skipped, plural, one {# rij} other {# rijen}} overgeslagen",
+      "collecting": "Bezig met verzamelen…",
+      "collectingHelp": "Deze pagina werkt zichzelf bij. Je kunt weggaan; de run gaat gewoon door.",
+      "waiting": "Wachten op een vrije verzamelaar…",
+      "rows": "Rijen",
+      "noRows": "Er zijn geen rijen verzameld.",
+      "showing": "{from}–{to} van {total} weergegeven",
+      "nextRows": "Volgende rijen",
+      "firstRows": "Eerste rijen",
+      "downloadCsv": "CSV downloaden",
+      "downloadJson": "JSON downloaden",
+      "log": "Runlogboek",
+      "emptyLog": "Niets gelogd."
+    },
+    "history": {
+      "title": "Mijn runs",
+      "retention": "Runs worden na 30 dagen verwijderd",
+      "collector": "Verzamelaar",
+      "started": "Gestart",
+      "status": "Status",
+      "rows": "Rijen",
+      "why": "Waarom gestopt",
+      "deleted": "Verwijderd",
+      "older": "Oudere runs",
+      "emptyTitle": "Nog geen runs",
+      "emptyText": "Kies een verzamelaar, geef een adres op en je tabel verschijnt hier.",
+      "chooseCollector": "Kies een verzamelaar"
+    }
+  },
+  "collectorsAbout": {
+    "metaTitle": "Over onze dataverzamelaar",
+    "metaDescription": "Wat de dataverzamelaar van AIT Community is, hoe hij zich gedraagt en hoe je hem blokkeert.",
+    "lastUpdated": "2026.10.03",
+    "name": "Naam",
+    "nameText": "aitcom-collector — de dataverzamelaar van AIT Community",
+    "description": "Beschrijving",
+    "descriptionText1": "AIT Community is een non-profitcommunity voor mensen die met AI bouwen. Onze leden gebruiken de dataverzamelaar om openbare informatie te verzamelen voor hun eigen onderzoek, zoals de berichten in een feed of de repositories van een opensourceorganisatie.",
+    "descriptionText2": "Zag je dit adres in je serverlogs? Dan heeft een van onze leden ons gevraagd een openbare pagina op je site te lezen.",
+    "behaves": "Hoe hij zich gedraagt",
+    "behaves1": "Hij leest eerst je robots.txt en volgt die.",
+    "behaves2": "Hij bezoekt elke site hooguit één keer per seconde, voor al onze leden samen.",
+    "behaves3": "Als je site vraagt om rustiger aan te doen (429 of 503), wacht hij, en na de derde keer stopt hij.",
+    "behaves4": "Hij leest alleen openbare pagina's via https. Hij logt nooit in en vult nooit formulieren in.",
+    "behaves5": "Hij laat altijd weten wie hij is (zie hieronder).",
+    "userAgent": "User agent",
+    "blocking": "Hem blokkeren",
+    "blockingText": "Voeg dit toe aan je robots.txt om de verzamelaar van je hele site te weren:",
+    "blockingPartial": "Je kunt ook alleen een deel van je site blokkeren, bijvoorbeeld <example></example>.",
+    "optOut": "Afmelden",
+    "optOutText": "Wil je liever dat we je domein nooit bezoeken? Mail <email></email> met je domeinnaam. We zetten het op onze blokkeerlijst, die ook alle subdomeinen dekt."
   }
 }

@@ -980,6 +980,7 @@
       "communities": "My communities",
       "events": "My events",
       "jobs": "Job tracker",
+      "collectors": "Data collectors",
       "notifications": "Notifications",
       "settings": "Settings"
     },
@@ -4109,5 +4110,139 @@
       "allBadges": "All badges of {name}",
       "ownerAllBadges": "Back to your badges"
     }
+  },
+  "collectors": {
+    "title": "Data collectors",
+    "intro": "Collect public data from the web for your own research. Pick a collector, fill in a few fields, and get a table you can read here or download.",
+    "aboutLink": "How our collector visits sites",
+    "usage": "{used} of {limit} runs used · last 24 hours",
+    "kind": {
+      "api": "API",
+      "feed": "Feed",
+      "page": "Web page"
+    },
+    "youGive": "You give: {fields}",
+    "youGet": "You get: up to {count, plural, one {# row} other {# rows}}",
+    "exampleRow": "Example row",
+    "useCollector": "Use this collector",
+    "recentRuns": "Recent runs",
+    "seeAllRuns": "See all runs",
+    "noRecentRuns": "Your runs will show up here.",
+    "noCollectors": "No collectors are available right now.",
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "finished": "Finished",
+      "partial": "Partial",
+      "failed": "Failed"
+    },
+    "stop": {
+      "complete": "Finished: the collector read everything it was asked to.",
+      "page_limit": "Partial: stopped at the page limit.",
+      "item_limit": "Partial: stopped at the row limit.",
+      "time_limit": "Partial: stopped at the time limit.",
+      "site_refused": "Failed: the site asked us to slow down several times, so we stopped.",
+      "robots_disallowed": "Failed: this site's robots.txt does not allow collecting this page.",
+      "robots_unreachable": "Failed: we could not read this site's robots.txt, so we did not collect from it.",
+      "blocked_domain": "Failed: this site has asked not to be collected.",
+      "error": "Failed: something went wrong while collecting.",
+      "worker_lost": "Failed: the run was interrupted twice, so it was stopped."
+    },
+    "stopShort": {
+      "complete": "Read everything",
+      "page_limit": "Stopped at the page limit",
+      "item_limit": "Stopped at the row limit",
+      "time_limit": "Stopped at the time limit",
+      "site_refused": "The site refused",
+      "robots_disallowed": "Not allowed by robots.txt",
+      "robots_unreachable": "robots.txt could not be read",
+      "blocked_domain": "Site opted out",
+      "error": "Something went wrong",
+      "worker_lost": "Interrupted"
+    },
+    "breadcrumb": {
+      "collectors": "Data collectors",
+      "runs": "My runs"
+    },
+    "start": {
+      "firstUseTitle": "Before your first run",
+      "firstUse1": "Use what you collect for your own research.",
+      "firstUse2": "Respect each site's terms. We follow robots.txt and visit each site at most once a second.",
+      "firstUse3": "Avoid collecting personal details about people.",
+      "firstUse4": "Only you can see your runs. We delete them after 30 days.",
+      "acknowledge": "I understand, and I'll use collected data responsibly.",
+      "limits": "Up to {items} rows · {pages, plural, one {# page} other {# pages}} · stops after {seconds, plural, one {# second} other {# seconds}} · uses 1 of your {perDay} runs per 24 hours",
+      "submit": "Start run",
+      "submitting": "Starting…",
+      "cancel": "Cancel",
+      "notFound": "This collector does not exist or is switched off.",
+      "backToList": "Back to collectors",
+      "unsupported": "This collector can't be started from here yet.",
+      "fixFields": "Some fields need attention.",
+      "invalidField": "Check this field.",
+      "quota": {
+        "daily_limit": "You've used all {limit} runs for the last 24 hours.",
+        "daily_limit_retry": "You've used all {limit} runs for the last 24 hours. You can start again {when}.",
+        "active_limit": "You already have runs in progress. Wait for one to finish.",
+        "platform_busy": "Data collectors are busy right now. Try again in a few minutes."
+      },
+      "failed": "We couldn't start the run. Try again."
+    },
+    "run": {
+      "notFound": "We couldn't find this run. It may have been deleted after 30 days.",
+      "started": "Started",
+      "took": "took {seconds, plural, one {# second} other {# seconds}}",
+      "deleted": "Deleted",
+      "input": "Input",
+      "counts": "{rows, plural, one {# row} other {# rows}} · {pages, plural, one {# page} other {# pages}} fetched · {skipped, plural, one {# row} other {# rows}} skipped",
+      "collecting": "Collecting…",
+      "collectingHelp": "This page updates by itself. You can leave; the run keeps going.",
+      "waiting": "Waiting for a free collector…",
+      "rows": "Rows",
+      "noRows": "No rows were collected.",
+      "showing": "Showing {from}–{to} of {total}",
+      "nextRows": "Next rows",
+      "firstRows": "First rows",
+      "downloadCsv": "Download CSV",
+      "downloadJson": "Download JSON",
+      "log": "Run log",
+      "emptyLog": "Nothing logged."
+    },
+    "history": {
+      "title": "My runs",
+      "retention": "Runs are deleted after 30 days",
+      "collector": "Collector",
+      "started": "Started",
+      "status": "Status",
+      "rows": "Rows",
+      "why": "Why it ended",
+      "deleted": "Deleted",
+      "older": "Older runs",
+      "emptyTitle": "No runs yet",
+      "emptyText": "Pick a collector, give it an address, and your table shows up here.",
+      "chooseCollector": "Choose a collector"
+    }
+  },
+  "collectorsAbout": {
+    "metaTitle": "About our data collector",
+    "metaDescription": "What the AIT Community data collector is, how it behaves, and how to block it.",
+    "lastUpdated": "2026.10.03",
+    "name": "Name",
+    "nameText": "aitcom-collector — the AIT Community data collector",
+    "description": "Description",
+    "descriptionText1": "AIT Community is a non-profit community for people who build with AI. Our members use the data collector to gather public information for their own research, such as the posts of a feed or the repositories of an open-source organization.",
+    "descriptionText2": "If you saw this address in your server logs, one of our members asked us to read a public page on your site.",
+    "behaves": "How it behaves",
+    "behaves1": "It reads your robots.txt first and follows it.",
+    "behaves2": "It visits each site at most once a second, counting all our members together.",
+    "behaves3": "When your site asks it to slow down (429 or 503), it waits, and it stops after the third time.",
+    "behaves4": "It only reads public pages over https. It never logs in and never fills in forms.",
+    "behaves5": "It always tells you who it is (see below).",
+    "userAgent": "User agent",
+    "blocking": "Blocking it",
+    "blockingText": "Add this to your robots.txt to keep the collector away from your whole site:",
+    "blockingPartial": "You can also block only part of your site, for example <example></example>.",
+    "optOut": "Opting out",
+    "optOutText": "Prefer that we never visit your domain? Email <email></email> with your domain name. We add it to our block list, which also covers its subdomains."
   }
 }

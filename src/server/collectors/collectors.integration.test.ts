@@ -224,6 +224,17 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         }),
       ).toEqual({ allowed: true });
     });
+
+    it("counts this member's runs in the rolling 24 hours", async () => {
+      const userId = await makeUser();
+      const other = await makeUser();
+      await insertRun(userId, { createdAt: new Date(now.getTime() - 60_000) });
+      await insertRun(userId, {
+        createdAt: new Date(now.getTime() - 25 * 3_600_000),
+      });
+      await insertRun(other, { createdAt: now });
+      expect(await m.quota.countRunsInWindow(m.db, userId, now)).toBe(1);
+    });
   });
 
   describe("executor", () => {
@@ -698,6 +709,38 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
     }
     const feedInput = { url: "https://example.com/feed.xml" };
 
+    it("reports usage and names the quota limit that refused a start", async () => {
+      const userId = await makeUser();
+      const { runs } = facade({
+        quota: { runsPerDay: 20, activePerUser: 1, activePlatform: 1_000 },
+      });
+      expect(await runs.usage(userId)).toEqual({
+        runsToday: 0,
+        runsPerDay: 20,
+      });
+      await runs.startRun({
+        userId,
+        origin: "web",
+        collectorId: "feed-items",
+        input: feedInput,
+      });
+      expect(await runs.usage(userId)).toEqual({
+        runsToday: 1,
+        runsPerDay: 20,
+      });
+      const refused = await runs.startRun({
+        userId,
+        origin: "web",
+        collectorId: "feed-items",
+        input: feedInput,
+      });
+      expect(refused).toMatchObject({
+        ok: false,
+        reason: "quota",
+        quotaReason: "active_limit",
+      });
+    });
+
     it("refuses everything while the feature is off", async () => {
       const userId = await makeUser();
       const { runs, kicks } = facade({ enabled: () => false });
@@ -802,6 +845,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       ).toEqual({
         ok: false,
         reason: "quota",
+        quotaReason: "daily_limit",
         message: "You can start 1 runs per 24 hours. Try again later.",
         retryAt: "2026-10-04T11:00:00.000Z",
       });

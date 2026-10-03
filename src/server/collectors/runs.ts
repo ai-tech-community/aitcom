@@ -7,7 +7,12 @@ import { collectorItems, collectorRuns } from "@/server/db/schema";
 import { allCollectors, columnsOf } from "./catalog";
 import type { AnyCollector, FieldHint } from "./collector";
 import { EXPORT_FORMATS, type ExportFormatId } from "./export/formats";
-import { DEFAULT_QUOTA, type QuotaLimits, canStartRun } from "./quota";
+import {
+  DEFAULT_QUOTA,
+  type QuotaLimits,
+  canStartRun,
+  countRunsInWindow,
+} from "./quota";
 import type { RunStatus, StopReason } from "./run-status";
 
 const RETENTION_MS = 30 * 86_400_000;
@@ -35,6 +40,8 @@ export type StartRunResult =
       reason: "disabled" | "unknown_collector" | "invalid_input" | "quota";
       message: string;
       fieldErrors?: Record<string, string[]>;
+      /** Quota only: which limit refused the start. */
+      quotaReason?: "daily_limit" | "active_limit" | "platform_busy";
       /** Quota only: when a new start will be allowed (ISO 8601), if known. */
       retryAt?: string;
     };
@@ -157,6 +164,15 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
   }
 
   return {
+    async usage(
+      userId: string,
+    ): Promise<{ runsToday: number; runsPerDay: number }> {
+      return {
+        runsToday: await countRunsInWindow(db, userId, deps.now()),
+        runsPerDay: quota.runsPerDay,
+      };
+    },
+
     listCollectors(locale: "en" | "nl"): CollectorSummary[] {
       return deps.catalog.all().map((c) => ({
         id: c.id,
@@ -223,6 +239,7 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
             return {
               ok: false,
               reason: "quota",
+              quotaReason: decision.reason,
               message: decision.message,
               ...(decision.retryAt
                 ? { retryAt: decision.retryAt.toISOString() }
