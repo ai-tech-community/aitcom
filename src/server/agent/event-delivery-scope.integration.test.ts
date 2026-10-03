@@ -92,6 +92,7 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
     dispatchWebhooks: typeof import("./webhook-dispatch").dispatchWebhooks;
     dispatchEventImmediately: typeof import("./dispatch-immediate").dispatchEventImmediately;
     eq: typeof import("drizzle-orm").eq;
+    and: typeof import("drizzle-orm").and;
     inArray: typeof import("drizzle-orm").inArray;
   };
   let m: Mods;
@@ -105,6 +106,7 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
   let unlisted: { id: string; slug: string };
   let listed: { id: string; slug: string };
   const payloadEventIds: number[] = [];
+  const extraCommunityIds: string[] = [];
   const activityIds: string[] = [];
   let fetchMock: MockInstance<typeof fetch>;
 
@@ -137,6 +139,7 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
       dispatchWebhooks,
       dispatchEventImmediately,
       eq: drizzle.eq,
+      and: drizzle.and,
       inArray: drizzle.inArray,
     };
   }, 120_000);
@@ -177,6 +180,7 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
     label: string,
     communityId: string,
     status: "published" | "draft",
+    extra: Record<string, unknown> = {},
   ): Promise<number> {
     const doc = await m.payload.create({
       collection: "events",
@@ -191,6 +195,7 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
         timezone: "Europe/Amsterdam",
         location: "Test Lab",
         communityId,
+        ...extra,
       } as never,
       context: { skipGeocode: true },
     });
@@ -247,7 +252,12 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
     listed = { id: l!.id, slug: l!.slug };
     await db.insert(schema.communityMemberships).values([
       { communityId: unlisted.id, userId: member.userId, status: "active" },
-      { communityId: listed.id, userId: member.userId, status: "active" },
+      {
+        communityId: listed.id,
+        userId: member.userId,
+        status: "active",
+        role: "admin",
+      },
       { communityId: unlisted.id, userId: coMember.userId, status: "active" },
     ]);
     fetchMock = vi
@@ -270,7 +280,8 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
         .catch(() => null);
     }
     payloadEventIds.length = 0;
-    const communityIds = [unlisted.id, listed.id];
+    const communityIds = [unlisted.id, listed.id, ...extraCommunityIds];
+    extraCommunityIds.length = 0;
     await db
       .delete(schema.communityMemberships)
       .where(inArray(schema.communityMemberships.communityId, communityIds));
@@ -278,6 +289,9 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
       .delete(schema.communities)
       .where(inArray(schema.communities.id, communityIds));
     for (const p of [member, coMember, outsider]) {
+      await db
+        .delete(schema.notifications)
+        .where(eq(schema.notifications.userId, p.userId));
       await db
         .delete(schema.agentWebhooks)
         .where(eq(schema.agentWebhooks.agentId, p.agentId));
@@ -432,6 +446,9 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
           e.hubThread,
           e.replyToMember,
           e.listedRegister,
+          // The actor's own agents keep their own activity.
+          e.draftEventUpdate,
+          e.unknownCommunityThread,
         ]),
       );
       expect(idsDeliveredTo(coMember)).toEqual(
@@ -498,9 +515,116 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
           e.hubThread,
           e.dmToCoMember,
           e.approvalForCoMember,
+          // Their own reply stays with them.
+          e.replyToMember,
         ]),
       );
     });
+  });
+
+  describe("person-scoped and membership rules", () => {
+    it("never sends an idea vote to other members' agents", async () => {
+      const id = await activity({
+        action: "idea.voted",
+        communityId: listed.id,
+        targetType: "community-ideas",
+        targetId: "1",
+        metadata: { title: "Listed idea" },
+      });
+      await m.dispatchWebhooks(m.db);
+      expect(idsDeliveredTo(member)).toEqual([id]);
+      expect(idsDeliveredTo(coMember)).toEqual([]);
+      expect(idsDeliveredTo(outsider)).toEqual([]);
+    });
+
+    it("sends an event rejection to the submitter's agent", async () => {
+      const eventId = await createEvent("rejected", listed.id, "draft", {
+        submittedBy: coMember.userId,
+      });
+      const caller = m.createCaller({
+        db: m.db,
+        headers: new Headers(),
+        session: { user: { id: member.userId }, session: {} } as never,
+      });
+      await caller.events.rejectEvent({
+        eventId,
+        communitySlug: listed.slug,
+      });
+      // Move the router's row into this test's window.
+      const [row] = await m.db
+        .update(m.schema.activityEvents)
+        .set({ createdAt: new Date(base + seq++ * 1000) })
+        .where(
+          m.and(
+            m.eq(m.schema.activityEvents.action, "event.reject"),
+            m.eq(m.schema.activityEvents.targetId, String(eventId)),
+          ),
+        )
+        .returning();
+      activityIds.push(row!.id);
+      expect(row!.metadata).toMatchObject({ submittedBy: coMember.userId });
+
+      await m.dispatchWebhooks(m.db);
+
+      expect(idsDeliveredTo(coMember)).toEqual([row!.id]);
+      expect(idsDeliveredTo(member)).toEqual([row!.id]);
+      expect(idsDeliveredTo(outsider)).toEqual([]);
+      expect(deliveredTo(coMember)[0]!.data.metadata).toEqual({
+        communitySlug: listed.slug,
+      });
+    });
+
+    it("keeps a public actor's own challenge events in a community their owner cannot read", async () => {
+      const [other] = await m.db
+        .insert(m.schema.communities)
+        .values({
+          name: `Scope other ${sfx}`,
+          slug: `scope-other-${sfx}`,
+          createdBy: coMember.userId,
+          isListedInDirectory: false,
+        })
+        .returning();
+      extraCommunityIds.push(other!.id);
+      const ids = [
+        await activity({
+          action: "challenge.enrolled",
+          communityId: other!.id,
+          metadata: { title: "Race" },
+        }),
+        await activity({
+          action: "challenge.completed",
+          communityId: other!.id,
+          metadata: { title: "Race" },
+        }),
+      ];
+      await m.dispatchWebhooks(m.db);
+      expect(idsDeliveredTo(member)).toEqual(sorted(ids));
+      expect(idsDeliveredTo(coMember)).toEqual([]);
+      expect(idsDeliveredTo(outsider)).toEqual([]);
+    });
+
+    it.each(["pending_approval", "invited", "banned"] as const)(
+      "treats a %s membership as unable to read an unlisted community",
+      async (status) => {
+        await m.db
+          .update(m.schema.communityMemberships)
+          .set({ status })
+          .where(
+            m.and(
+              m.eq(m.schema.communityMemberships.userId, coMember.userId),
+              m.eq(m.schema.communityMemberships.communityId, unlisted.id),
+            ),
+          );
+        const id = await activity({
+          action: "thread.create",
+          communityId: unlisted.id,
+          metadata: { title: "Members only", category: "general", slug: "mo" },
+        });
+        await m.dispatchWebhooks(m.db);
+        expect(idsDeliveredTo(member)).toEqual([id]);
+        expect(idsDeliveredTo(coMember)).toEqual([]);
+      },
+    );
   });
 
   describe("challenge race events and profile visibility", () => {
@@ -620,6 +744,57 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
       return res.map((n) => n.id).sort();
     }
 
+    it("returns readable rows older than a page of unreadable ones", async () => {
+      const readable = await activity({
+        action: "thread.create",
+        communityId: listed.id,
+        metadata: { title: "Listed", category: "general", slug: "l" },
+      });
+      const rows = Array.from({ length: 60 }, () => ({
+        actorId: member.userId,
+        actorType: "member",
+        action: "thread.create",
+        communityId: unlisted.id,
+        metadata: { title: "Hidden", category: "general", slug: "h" },
+        createdAt: new Date(base + seq++ * 1000),
+      }));
+      const inserted = await m.db
+        .insert(m.schema.activityEvents)
+        .values(rows)
+        .returning({ id: m.schema.activityEvents.id });
+      activityIds.push(...inserted.map((r) => r.id));
+
+      agentKey.agentId = outsider.agentId;
+      agentKey.ownerId = outsider.userId;
+      const res = await m
+        .createCaller({
+          db: m.db,
+          headers: new Headers({ authorization: "Bearer test-key" }),
+          session: null,
+        })
+        .agent.getNotifications({
+          since: new Date(base - 1000).toISOString(),
+          limit: 5,
+        });
+      expect(res.map((n) => n.id)).toEqual([readable]);
+    });
+
+    it("counts in the briefing only activity the owner may read", async () => {
+      await seedEvents();
+      agentKey.agentId = outsider.agentId;
+      agentKey.ownerId = outsider.userId;
+      const briefing = await m
+        .createCaller({
+          db: m.db,
+          headers: new Headers({ authorization: "Bearer test-key" }),
+          session: null,
+        })
+        .agent.getBriefing({ since: new Date(base - 1000).toISOString() });
+      // listedThread and hubThread only.
+      expect(briefing.notifications).toBe(2);
+      expect(briefing.notificationsCapped).toBe(false);
+    });
+
     it("follows the same rules as webhook delivery", async () => {
       const e = await seedEvents();
 
@@ -630,6 +805,7 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
           e.listedThread,
           e.hubThread,
           e.replyToMember,
+          e.unknownCommunityThread,
         ]),
       );
       expect(await notificationIds(coMember)).toEqual(

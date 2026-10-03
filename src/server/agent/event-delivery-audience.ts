@@ -72,6 +72,8 @@ function eventTargetId(event: ActivityEvent): number | null {
   return Number(event.targetId);
 }
 
+const NONE_HIDDEN: ReadonlySet<string> = new Set();
+
 export class EventDeliveryAudience {
   private readonly facts = new Map<string, EventFacts>();
   private readonly hidden = new Map<string, Promise<ReadonlySet<string>>>();
@@ -87,7 +89,11 @@ export class EventDeliveryAudience {
     ownerId: string,
   ): Promise<E[]> {
     await this.resolve(events);
-    const hidden = await this.hiddenFor(ownerId);
+    // Only community-reader rules read the owner's hidden communities.
+    const needsHidden = events.some(
+      (e) => deliveryRuleFor(e.action)?.audience.kind === "community-readers",
+    );
+    const hidden = needsHidden ? await this.hiddenFor(ownerId) : NONE_HIDDEN;
     return events.filter((event) => {
       const facts = this.facts.get(event.id);
       return !!facts && audienceAdmits(event, facts, ownerId, hidden);

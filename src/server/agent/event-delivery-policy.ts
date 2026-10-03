@@ -35,9 +35,10 @@ export type CommunitySource =
 
 export type DeliveryAudience =
   /**
-   * Any agent whose owner may read the event's community. With
-   * `actorMustBePublic`, only while the actor is on the public roster
-   * (`publicRosterVisibility`); otherwise only the actor's own agents.
+   * Any agent whose owner may read the event's community, and always the
+   * actor's own agents (it is their own activity). With `actorMustBePublic`,
+   * other agents receive it only while the actor is on the public roster
+   * (`publicRosterVisibility`).
    */
   | {
       kind: "community-readers";
@@ -48,8 +49,11 @@ export type DeliveryAudience =
   | { kind: "recipient" }
   /** Only the agent(s) of the human behind the actor. */
   | { kind: "actor" }
-  /** Only the agent of the user named in `metadata[metadataKey]`. */
-  | { kind: "named-user"; metadataKey: string };
+  /**
+   * Only the agent of the user named in `metadata[metadataKey]`, plus the
+   * actor's own agents when `alsoActor` is set.
+   */
+  | { kind: "named-user"; metadataKey: string; alsoActor?: boolean };
 
 export interface DeliveryRule {
   audience: DeliveryAudience;
@@ -95,7 +99,8 @@ export const EVENT_DELIVERY_POLICY: Readonly<Record<string, DeliveryRule>> = {
 
   // ── Community ideas ──────────────────────────────────────────────────────
   "idea.submitted": readers(COLUMN, ["title"]),
-  "idea.voted": readers(COLUMN, ["title"]),
+  // Who voted is never shown; only the voter's own agents hear of it.
+  "idea.voted": actorOnly(["title"]),
 
   // ── Challenges ───────────────────────────────────────────────────────────
   // The race (who joined, objectives done, finishers) is readable where the
@@ -156,7 +161,16 @@ export const EVENT_DELIVERY_POLICY: Readonly<Record<string, DeliveryRule>> = {
   // Submissions are pending until a community admin reviews them.
   "event.submit": actorOnly(["title", "communitySlug"]),
   "event.resubmit": actorOnly(["communitySlug"]),
-  "event.reject": actorOnly(["communitySlug"]),
+  // To the submitter, and to the reviewer as event.approve does. Rows
+  // written without `submittedBy` reach the reviewer only.
+  "event.reject": {
+    audience: {
+      kind: "named-user",
+      metadataKey: "submittedBy",
+      alsoActor: true,
+    },
+    fields: ["communitySlug"],
+  },
   "event.organizer_change": {
     audience: { kind: "named-user", metadataKey: "to" },
     fields: ["eventTitle"],
@@ -233,6 +247,19 @@ function isActorOwner(
   );
 }
 
+/** Whether the actor's own agents always receive events of this audience. */
+export function actorAlwaysReceives(audience: DeliveryAudience): boolean {
+  switch (audience.kind) {
+    case "community-readers":
+    case "actor":
+      return true;
+    case "named-user":
+      return audience.alsoActor === true;
+    case "recipient":
+      return false;
+  }
+}
+
 /**
  * Whether the agent of `ownerId` may receive this event. `hiddenCommunityIds`
  * are the communities whose content that owner may not read
@@ -247,18 +274,21 @@ export function audienceAdmits(
   const rule = deliveryRuleFor(event.action);
   if (!rule) return false;
   const audience = rule.audience;
+  // Checked before any community rule: the actor's own agents keep their
+  // own activity even where the owner can no longer read the community.
+  if (actorAlwaysReceives(audience) && isActorOwner(event, facts, ownerId)) {
+    return true;
+  }
   switch (audience.kind) {
     case "community-readers":
-      if (audience.actorMustBePublic && !facts.actorIsPublic) {
-        return isActorOwner(event, facts, ownerId);
-      }
+      if (audience.actorMustBePublic && !facts.actorIsPublic) return false;
       if (facts.communityId === undefined) return false;
       if (facts.communityId === null) return true;
       return !hiddenCommunityIds.has(facts.communityId);
     case "recipient":
       return event.recipientId !== null && event.recipientId === ownerId;
     case "actor":
-      return isActorOwner(event, facts, ownerId);
+      return false; // only the actor, handled above
     case "named-user": {
       const named = event.metadata?.[audience.metadataKey];
       return typeof named === "string" && named === ownerId;

@@ -5,6 +5,7 @@ import {
   type AudienceEvent,
   type EventFacts,
   EVENT_DELIVERY_POLICY,
+  actorAlwaysReceives,
   audienceAdmits,
   deliverableMetadata,
   deliveryRuleFor,
@@ -95,6 +96,67 @@ describe("challenge race events", () => {
     expect(
       audience?.kind === "community-readers" && audience.actorMustBePublic,
     ).toBeFalsy();
+  });
+});
+
+describe("person-scoped rules", () => {
+  it("sends an idea vote only to the voter's own agents", () => {
+    const vote = evt({ action: "idea.voted", actorId: "voter" });
+    expect(deliveryRuleFor("idea.voted")?.audience.kind).toBe("actor");
+    expect(audienceAdmits(vote, facts(), OWNER, NO_HIDDEN)).toBe(false);
+    expect(audienceAdmits(vote, facts(), "voter", NO_HIDDEN)).toBe(true);
+  });
+
+  it("sends an event rejection to the submitter and the reviewer", () => {
+    const reject = (metadata: Record<string, unknown> | null) =>
+      evt({ action: "event.reject", actorId: "reviewer", metadata });
+    const withSubmitter = reject({ submittedBy: "submitter" });
+    expect(audienceAdmits(withSubmitter, facts(), "submitter", NO_HIDDEN)).toBe(
+      true,
+    );
+    expect(audienceAdmits(withSubmitter, facts(), "reviewer", NO_HIDDEN)).toBe(
+      true,
+    );
+    expect(audienceAdmits(withSubmitter, facts(), OWNER, NO_HIDDEN)).toBe(
+      false,
+    );
+    // Rows written before the submitter was recorded reach no one else.
+    expect(audienceAdmits(reject(null), facts(), OWNER, NO_HIDDEN)).toBe(false);
+    expect(audienceAdmits(reject(null), facts(), "reviewer", NO_HIDDEN)).toBe(
+      true,
+    );
+  });
+
+  it("does not deliver the submitter id itself", () => {
+    expect(
+      deliverableMetadata("event.reject", {
+        communitySlug: "c",
+        submittedBy: "submitter",
+      }),
+    ).toEqual({ communitySlug: "c" });
+  });
+});
+
+describe("actorAlwaysReceives", () => {
+  it("holds for community readers, actor rules and opted-in named users", () => {
+    expect(
+      actorAlwaysReceives({
+        kind: "community-readers",
+        community: { from: "column" },
+      }),
+    ).toBe(true);
+    expect(actorAlwaysReceives({ kind: "actor" })).toBe(true);
+    expect(
+      actorAlwaysReceives({
+        kind: "named-user",
+        metadataKey: "k",
+        alsoActor: true,
+      }),
+    ).toBe(true);
+    expect(actorAlwaysReceives({ kind: "named-user", metadataKey: "k" })).toBe(
+      false,
+    );
+    expect(actorAlwaysReceives({ kind: "recipient" })).toBe(false);
   });
 });
 
@@ -212,6 +274,16 @@ describe("audienceAdmits", () => {
           facts({ actorIsPublic: false, actorOwnerId: OWNER }),
           OWNER,
           NO_HIDDEN,
+        ),
+      ).toBe(true);
+    });
+    it("keeps a public actor's own event where their owner cannot read the community", () => {
+      expect(
+        audienceAdmits(
+          evt(completed),
+          facts({ communityId: "c-unlisted" }),
+          "racer",
+          new Set(["c-unlisted"]),
         ),
       ).toBe(true);
     });

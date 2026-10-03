@@ -11,6 +11,7 @@ import {
   webhookMatchesEvent,
 } from "./deliver-event";
 import { EventDeliveryAudience } from "./event-delivery-audience";
+import { deliveryRuleFor } from "./event-delivery-policy";
 
 type DB = typeof _db;
 
@@ -29,6 +30,10 @@ export async function dispatchEventImmediately(
   event: ActivityEvent,
 ): Promise<void> {
   if (!event.action.startsWith("message.")) return;
+  const rule = deliveryRuleFor(event.action);
+  if (!rule) return;
+  // A recipient-only event without a recipient reaches no one.
+  if (rule.audience.kind === "recipient" && !event.recipientId) return;
 
   let webhooks: AgentWebhook[];
   try {
