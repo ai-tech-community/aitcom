@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { requireDashboardSession } from "@/server/dashboard/require-dashboard-session";
 import { getAvatarUrl } from "@/lib/avatar";
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs";
+import { collectorsEnabled } from "@/server/collectors/flags";
 import { DashboardSidePanel } from "@/components/dashboard/side-panel/dashboard-side-panel";
 
 /**
@@ -32,7 +33,7 @@ export default async function MemberDashboardLayout({
       </h1>
 
       <div className="mt-6">
-        <DashboardTabs />
+        <DashboardTabs showCollectors={collectorsEnabled()} />
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
