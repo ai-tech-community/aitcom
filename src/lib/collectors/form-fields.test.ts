@@ -30,19 +30,68 @@ describe("formFieldsFor", () => {
       fields: [
         { ...hint("url"), kind: "url", required: true },
         { ...hint("name"), kind: "text", required: true },
-        { ...hint("count"), kind: "number", required: false },
+        { ...hint("count"), kind: "number", integer: true, required: false },
         { ...hint("forks"), kind: "checkbox", required: false },
+      ],
+    });
+  });
+
+  it("tells whole numbers from decimal numbers", () => {
+    const schema = z.toJSONSchema(
+      z.object({ pages: z.number().int(), ratio: z.number() }),
+    );
+    expect(
+      formFieldsFor({
+        fields: ["pages", "ratio"].map(hint),
+        inputJsonSchema: schema,
+      }),
+    ).toEqual({
+      ok: true,
+      fields: [
+        { ...hint("pages"), kind: "number", integer: true, required: true },
+        { ...hint("ratio"), kind: "number", integer: false, required: true },
+      ],
+    });
+  });
+
+  it("treats a field with a default as optional, even when the schema lists it as required", () => {
+    const schema = z.toJSONSchema(
+      z.object({ url: z.url(), limit: z.number().int().default(25) }),
+    );
+    expect(schema).toMatchObject({ required: ["url", "limit"] });
+    expect(
+      formFieldsFor({
+        fields: ["url", "limit"].map(hint),
+        inputJsonSchema: schema,
+      }),
+    ).toEqual({
+      ok: true,
+      fields: [
+        { ...hint("url"), kind: "url", required: true },
+        { ...hint("limit"), kind: "number", integer: true, required: false },
       ],
     });
   });
 
   it("refuses a schema with a field it cannot draw", () => {
     const schema = z.toJSONSchema(
-      z.object({ fields: z.array(z.object({ name: z.string() })) }),
+      z.object({
+        url: z.url(),
+        fields: z.array(z.object({ name: z.string() })),
+        mode: z.enum(["fast", "deep"]),
+        contact: z.email(),
+        fixed: z.literal("v1"),
+      }),
     );
     expect(
-      formFieldsFor({ fields: [hint("fields")], inputJsonSchema: schema }),
-    ).toEqual({ ok: false, unsupported: ["fields"] });
+      formFieldsFor({
+        fields: ["url", "fields", "mode", "contact", "fixed"].map(hint),
+        inputJsonSchema: schema,
+      }),
+    ).toEqual({
+      ok: false,
+      unsupported: ["fields", "mode", "contact", "fixed"],
+    });
   });
 
   it.each(allCollectors().map((c) => [c.id, c] as const))(
@@ -62,7 +111,12 @@ describe("formFieldsFor", () => {
 describe("coerceInput", () => {
   const fields = [
     { ...hint("url"), kind: "url" as const, required: true },
-    { ...hint("count"), kind: "number" as const, required: false },
+    {
+      ...hint("count"),
+      kind: "number" as const,
+      integer: true,
+      required: false,
+    },
     { ...hint("forks"), kind: "checkbox" as const, required: false },
   ];
 

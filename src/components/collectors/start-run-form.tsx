@@ -122,16 +122,20 @@ export function StartRunForm({ collectorId }: { collectorId: string }) {
     <div className="flex max-w-3xl flex-col gap-6">
       <nav
         aria-label="Breadcrumb"
-        className="text-muted-foreground text-[13px]"
+        className="flex items-center gap-2 text-[13px]"
       >
         <Link
           href="/dashboard/collectors"
-          className="text-primary underline-offset-4 hover:underline"
+          className="text-muted-foreground hover:text-foreground transition-colors"
         >
           {t("breadcrumb.collectors")}
         </Link>
-        <span aria-hidden="true"> / </span>
-        <span aria-current="page">{collector?.title ?? collectorId}</span>
+        <span aria-hidden="true" className="text-muted-foreground">
+          /
+        </span>
+        <span aria-current="page" className="text-foreground/80 truncate">
+          {collector?.title ?? collectorId}
+        </span>
       </nav>
 
       <DashboardSection

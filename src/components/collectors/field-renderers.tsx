@@ -54,6 +54,14 @@ function FieldNotes({
   );
 }
 
+/** Whole numbers get a digits-only keypad; decimals keep the decimal point. */
+function numberHints(field: FormField) {
+  if (field.kind !== "number") return {};
+  return field.integer
+    ? { inputMode: "numeric" as const, step: 1 }
+    : { inputMode: "decimal" as const, step: "any" };
+}
+
 function textual(type: "url" | "text" | "number"): FieldRenderer {
   return function TextualField({ field, id, value, error, onChange }) {
     return (
@@ -62,7 +70,7 @@ function textual(type: "url" | "text" | "number"): FieldRenderer {
         <Input
           id={id}
           type={type}
-          inputMode={type === "number" ? "numeric" : undefined}
+          {...numberHints(field)}
           required={field.required}
           placeholder={field.placeholder ?? undefined}
           value={typeof value === "string" ? value : ""}

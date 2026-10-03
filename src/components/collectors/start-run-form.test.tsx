@@ -70,6 +70,7 @@ function overview(
   needsAcknowledgement: boolean,
   collectors: CollectorSummary[] = [feed],
 ) {
+  const refetch = vi.fn();
   h.overview.mockReturnValue({
     data: {
       collectors,
@@ -79,8 +80,9 @@ function overview(
     },
     isPending: false,
     isError: false,
-    refetch: vi.fn(),
+    refetch,
   });
+  return { refetch };
 }
 
 function renderForm(collectorId = "feed-items") {
@@ -187,6 +189,41 @@ describe("StartRunForm", () => {
     );
     expect(screen.getByLabelText("Feed address")).toHaveValue(
       "https://e.com/f",
+    );
+  });
+
+  it.each([
+    ["active_limit", en.collectors.start.quota.active_limit],
+    ["platform_busy", en.collectors.start.quota.platform_busy],
+  ])("explains the %s refusal", async (quotaReason, text) => {
+    overview(false);
+    renderForm();
+    h.options.onSuccess?.({
+      ok: false,
+      reason: "quota",
+      quotaReason,
+      message: "x",
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(text);
+  });
+
+  it("says the start failed when the request itself fails", async () => {
+    const { refetch } = overview(false);
+    renderForm();
+    h.options.onError?.({ message: "Network error" });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      en.collectors.start.failed,
+    );
+    expect(refetch).not.toHaveBeenCalled();
+  });
+
+  it("reloads the overview when the server asks for the first-use acknowledgement", async () => {
+    const { refetch } = overview(false);
+    renderForm();
+    h.options.onError?.({ message: "ACKNOWLEDGEMENT_REQUIRED" });
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      en.collectors.start.failed,
     );
   });
 

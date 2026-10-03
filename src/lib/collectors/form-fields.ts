@@ -8,28 +8,51 @@ import type { CollectorSummary } from "@/server/collectors/runs";
  */
 export type FieldKind = "url" | "text" | "number" | "checkbox";
 
-export type FormField = {
+type FieldBase = {
   name: string;
   label: string;
   help: string | null;
   placeholder: string | null;
-  kind: FieldKind;
   required: boolean;
 };
 
+/**
+ * How a field is drawn. A number field also says whether it takes whole
+ * numbers only, so the renderer can pick the right keypad and step.
+ */
+type FieldShape =
+  | { kind: Exclude<FieldKind, "number"> }
+  | { kind: "number"; integer: boolean };
+
+/** A field the form can draw. */
+export type FormField = FieldBase & FieldShape;
+
 export type FieldValue = string | boolean;
 
-type SchemaProperty = { type?: unknown; format?: unknown };
+type SchemaProperty = {
+  type?: unknown;
+  format?: unknown;
+  enum?: unknown;
+  const?: unknown;
+  default?: unknown;
+};
 
-function kindOf(property: SchemaProperty | undefined): FieldKind | null {
+/**
+ * How a schema property is drawn, or null when no field kind fits it. A fixed
+ * set of choices (`enum`/`const`) or a string format other than a web address
+ * would need its own control and its own checks, so it is refused rather than
+ * offered as free text the server would then reject.
+ */
+function drawnAs(property: SchemaProperty | undefined): FieldShape | null {
   if (!property) return null;
+  if ("enum" in property || "const" in property) return null;
   if (property.type === "string") {
-    return property.format === "uri" ? "url" : "text";
+    if (property.format === undefined) return { kind: "text" };
+    return property.format === "uri" ? { kind: "url" } : null;
   }
-  if (property.type === "number" || property.type === "integer") {
-    return "number";
-  }
-  if (property.type === "boolean") return "checkbox";
+  if (property.type === "integer") return { kind: "number", integer: true };
+  if (property.type === "number") return { kind: "number", integer: false };
+  if (property.type === "boolean") return { kind: "checkbox" };
   return null;
 }
 
@@ -47,9 +70,20 @@ export function formFieldsFor(summary: {
   const fields: FormField[] = [];
   const unsupported: string[] = [];
   for (const hint of summary.fields) {
-    const kind = kindOf(schema.properties?.[hint.name]);
-    if (kind) fields.push({ ...hint, kind, required: required.has(hint.name) });
-    else unsupported.push(hint.name);
+    const property = schema.properties?.[hint.name];
+    const drawn = drawnAs(property);
+    if (!drawn) {
+      unsupported.push(hint.name);
+      continue;
+    }
+    // z.toJSONSchema lists a field with a default as required (it describes
+    // the parsed output), but the member may leave it empty.
+    const hasDefault = property !== undefined && "default" in property;
+    fields.push({
+      ...hint,
+      ...drawn,
+      required: required.has(hint.name) && !hasDefault,
+    });
   }
   return unsupported.length ? { ok: false, unsupported } : { ok: true, fields };
 }
