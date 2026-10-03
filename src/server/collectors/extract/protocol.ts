@@ -40,7 +40,13 @@ export type ExtractSpec = {
 
 export type ExtractResult = {
   rows: Record<string, string | null>[];
+  /** The next-page link's address, resolved; null when there is none. */
   nextUrl: string | null;
+  /**
+   * True when a next-page link was found but its address was longer than
+   * MAX_CELL_CHARS, so it was dropped and `nextUrl` is null.
+   */
+  nextUrlTooLong: boolean;
   /**
    * True when rows were dropped: the page had more than MAX_ROWS_PER_PAGE
    * items, or the rows would pass MAX_OUTPUT_CHARS_PER_PAGE.

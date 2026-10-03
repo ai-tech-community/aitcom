@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { FAILURE_CODES } from "@/server/collectors/errors";
+import { STOP_REASONS } from "@/server/collectors/run-status";
 
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
@@ -11,19 +12,6 @@ function keyPaths(value: unknown, prefix = ""): string[] {
     keyPaths(v, prefix ? `${prefix}.${k}` : k),
   );
 }
-
-const STOP_REASONS = [
-  "complete",
-  "page_limit",
-  "item_limit",
-  "time_limit",
-  "site_refused",
-  "robots_disallowed",
-  "robots_unreachable",
-  "blocked_domain",
-  "error",
-  "worker_lost",
-] as const;
 
 describe("collectors copy", () => {
   it.each(["collectors", "collectorsAbout"] as const)(
@@ -59,10 +47,13 @@ describe("collectors copy", () => {
   });
 
   it("words every stop reason", () => {
+    const english: Record<string, string> = en.collectors.stop;
+    const dutch: Record<string, string> = nl.collectors.stop;
     for (const reason of STOP_REASONS) {
-      expect(en.collectors.stop[reason], reason).toBeTruthy();
-      expect(nl.collectors.stop[reason], reason).toBeTruthy();
+      expect(english[reason], reason).toBeTruthy();
+      expect(dutch[reason], reason).toBeTruthy();
     }
+    expect(Object.keys(english).sort()).toEqual([...STOP_REASONS].sort());
   });
 
   it("words every failure detail code", () => {

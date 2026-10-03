@@ -28,6 +28,14 @@ describe("presentRun", () => {
       { tone: "warning", label: "partial", stop: "time_limit" },
     ],
     [
+      { status: "succeeded", stopReason: "next_page_not_secure" },
+      { tone: "warning", label: "partial", stop: "next_page_not_secure" },
+    ],
+    [
+      { status: "succeeded", stopReason: "next_page_too_long" },
+      { tone: "warning", label: "partial", stop: "next_page_too_long" },
+    ],
+    [
       { status: "succeeded", stopReason: null },
       { tone: "success", label: "finished", stop: null },
     ],

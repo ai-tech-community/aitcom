@@ -56,6 +56,7 @@ function setup(
     async (_html: string, _spec: ExtractSpec): Promise<ExtractResult> => ({
       rows: [],
       nextUrl: null,
+      nextUrlTooLong: false,
       truncated: false,
     }),
   );
@@ -377,6 +378,7 @@ describe("collector context extractList", () => {
     const result: ExtractResult = {
       rows: [{ title: "One" }],
       nextUrl: "https://e.com/list?page=2",
+      nextUrlTooLong: false,
       truncated: false,
     };
     const t = setup();

@@ -41,7 +41,12 @@ const spec: ExtractSpec = {
   fields: [{ name: "title", selector: "a" }],
 };
 
-const emptyResult = { rows: [], nextUrl: null, truncated: false };
+const emptyResult = {
+  rows: [],
+  nextUrl: null,
+  nextUrlTooLong: false,
+  truncated: false,
+};
 
 /** Lets queued promise callbacks and microtasks run. */
 async function settle(): Promise<void> {

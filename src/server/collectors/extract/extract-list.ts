@@ -127,11 +127,7 @@ export function extractList(html: string, spec: ExtractSpec): ExtractResult {
     rows.push(row);
   }
 
-  return {
-    rows,
-    nextUrl: findNextUrl($, spec.nextPageSelector, baseUrl),
-    truncated,
-  };
+  return { rows, ...findNextUrl($, spec.nextPageSelector, baseUrl), truncated };
 }
 
 /** Every selector in the spec must pass the allowlist before any parsing. */
@@ -264,14 +260,19 @@ function attributeOf(
  * fits in a cell (a cut URL would be a broken link).
  */
 function resolveHttpUrl(raw: string, baseUrl: URL): string | null {
+  const href = resolveHttpHref(raw, baseUrl);
+  return href === null || href.length > MAX_CELL_CHARS ? null : href;
+}
+
+/** Resolves `raw` against `baseUrl`; null unless the result is http(s). */
+function resolveHttpHref(raw: string, baseUrl: URL): string | null {
   let url: URL;
   try {
     url = new URL(raw.trim(), baseUrl);
   } catch {
     return null;
   }
-  if (!isHttp(url) || url.href.length > MAX_CELL_CHARS) return null;
-  return url.href;
+  return isHttp(url) ? url.href : null;
 }
 
 function isHttp(url: URL): boolean {
@@ -452,16 +453,25 @@ class CellText {
   }
 }
 
-/** First next-page match carrying an href, resolved; null unless http(s). */
+/**
+ * First next-page match carrying an href, resolved; null unless http(s).
+ * A link too long to keep is reported, so paging can end with a reason.
+ */
 function findNextUrl(
   $: CheerioAPI,
   selector: string | undefined,
   baseUrl: URL,
-): string | null {
-  if (selector === undefined) return null;
+): Pick<ExtractResult, "nextUrl" | "nextUrlTooLong"> {
+  const none = { nextUrl: null, nextUrlTooLong: false };
+  if (selector === undefined) return none;
   for (const match of $.root().find(selector)) {
-    const href = match.attribs.href;
-    if (href !== undefined) return resolveHttpUrl(href, baseUrl);
+    const raw = match.attribs.href;
+    if (raw === undefined) continue;
+    const href = resolveHttpHref(raw, baseUrl);
+    if (href === null) return none;
+    return href.length > MAX_CELL_CHARS
+      ? { nextUrl: null, nextUrlTooLong: true }
+      : { nextUrl: href, nextUrlTooLong: false };
   }
-  return null;
+  return none;
 }

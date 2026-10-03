@@ -4142,6 +4142,8 @@
       "page_limit": "Gedeeltelijk: gestopt bij de paginalimiet.",
       "item_limit": "Gedeeltelijk: gestopt bij de rijenlimiet.",
       "time_limit": "Gedeeltelijk: gestopt bij de tijdslimiet.",
+      "next_page_not_secure": "Gedeeltelijk: het adres van de volgende pagina is niet beveiligd (het begint niet met https://), dus we konden die pagina niet lezen.",
+      "next_page_too_long": "Gedeeltelijk: de link naar de volgende pagina is te lang om te volgen, dus we zijn daar gestopt.",
       "site_refused": "Mislukt: de site vroeg ons meerdere keren om rustiger aan te doen, dus zijn we gestopt.",
       "robots_disallowed": "Mislukt: de regels van deze site voor automatische bezoekers staan niet toe dat deze pagina wordt verzameld.",
       "robots_unreachable": "Mislukt: we konden de regels van deze site voor automatische bezoekers niet lezen, dus hebben we er niets verzameld.",

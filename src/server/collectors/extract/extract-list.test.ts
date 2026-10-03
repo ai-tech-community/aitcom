@@ -63,6 +63,7 @@ describe("extractList", () => {
         },
       ],
       nextUrl: "https://conf.example/talks?page=2",
+      nextUrlTooLong: false,
       truncated: false,
     });
   });
@@ -288,6 +289,7 @@ describe("extractList", () => {
     expect(extractList(html, SPEAKERS_SPEC)).toEqual({
       rows: [{ name: "Ada", link: "https://conf.example/s/ada", role: "CTO" }],
       nextUrl: "https://conf.example/talks?page=2",
+      nextUrlTooLong: false,
       truncated: false,
     });
   });
@@ -444,6 +446,24 @@ describe("extractList", () => {
     expect(extractList(html, SPEAKERS_SPEC).nextUrl).toBe(
       "https://conf.example/talks?page=3",
     );
+  });
+
+  it("keeps a plain-http next link for the collector to judge", () => {
+    const html = `<ul><li class="speaker">x</li></ul>
+      <a class="next" href="http://conf.example/talks?page=2">Next</a>`;
+    expect(extractList(html, SPEAKERS_SPEC)).toMatchObject({
+      nextUrl: "http://conf.example/talks?page=2",
+      nextUrlTooLong: false,
+    });
+  });
+
+  it("says so when the next link is too long to keep", () => {
+    const html = `<ul><li class="speaker">x</li></ul>
+      <a class="next" href="?q=${"x".repeat(MAX_CELL_CHARS)}">Next</a>`;
+    expect(extractList(html, SPEAKERS_SPEC)).toMatchObject({
+      nextUrl: null,
+      nextUrlTooLong: true,
+    });
   });
 
   it("gives a null nextUrl for a javascript: next link", () => {

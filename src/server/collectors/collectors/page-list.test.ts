@@ -107,6 +107,45 @@ describe("page-list collector", () => {
     ]);
   });
 
+  /** Rows yielded before the run stopped, and the stop itself. */
+  async function rowsUntilStop(rows: AsyncIterable<Record<string, unknown>>) {
+    const seen: Record<string, unknown>[] = [];
+    try {
+      for await (const row of rows) seen.push(row);
+    } catch (stop) {
+      return { rows: seen, stop: stop as CollectorStop };
+    }
+    throw new Error("expected the run to stop");
+  }
+
+  it("ends paging, not the run, at a next link that is not https", async () => {
+    const { ctx, requests } = fakeContext({
+      "https://e.com/jobs": { body: page(["a"], "http://e.com/jobs?page=2") },
+    });
+    const { rows, stop } = await rowsUntilStop(pageList.run(input(), ctx));
+    expect(rows.map((r) => r.title)).toEqual(["a"]);
+    expect(stop).toMatchObject({
+      reason: "next_page_not_secure",
+      outcome: "succeeded",
+    } satisfies Partial<CollectorStop>);
+    expect(requests.map((r) => r.url)).toEqual(["https://e.com/jobs"]);
+  });
+
+  it("ends paging, not the run, at a next link too long to follow", async () => {
+    const { ctx, requests } = fakeContext({
+      "https://e.com/jobs": {
+        body: page(["a"], `/jobs?q=${"x".repeat(2_100)}`),
+      },
+    });
+    const { rows, stop } = await rowsUntilStop(pageList.run(input(), ctx));
+    expect(rows.map((r) => r.title)).toEqual(["a"]);
+    expect(stop).toMatchObject({
+      reason: "next_page_too_long",
+      outcome: "succeeded",
+    } satisfies Partial<CollectorStop>);
+    expect(requests.map((r) => r.url)).toEqual(["https://e.com/jobs"]);
+  });
+
   it("reads up to five pages by default", () => {
     expect(input().maxPages).toBe(5);
   });

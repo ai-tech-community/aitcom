@@ -87,6 +87,7 @@ describe("html-extract worker bundle", () => {
           { title: "Second", link: "https://other.example/b" },
         ],
         nextUrl: null,
+        nextUrlTooLong: false,
         truncated: false,
       },
     });
@@ -144,7 +145,12 @@ describe("html-extract worker message handling", () => {
       expect(answer).toEqual({
         id: 10,
         ok: true,
-        result: { rows: [{ text: "ok" }], nextUrl: null, truncated: false },
+        result: {
+          rows: [{ text: "ok" }],
+          nextUrl: null,
+          nextUrlTooLong: false,
+          truncated: false,
+        },
       });
       expect(replies).toEqual([answer]);
     } finally {

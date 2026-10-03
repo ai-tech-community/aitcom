@@ -28,6 +28,7 @@ describe("fake context extractList", () => {
         { title: "B", link: "https://e.com/list/b" },
       ],
       nextUrl: "https://e.com/list/?page=2",
+      nextUrlTooLong: false,
       truncated: false,
     });
   });

@@ -126,6 +126,32 @@ function pageKey(url: string): string | null {
   return parsed.href;
 }
 
+/**
+ * Where paging goes next: the next page's address, or null when the page has
+ * no next link. A link we cannot follow ends paging with its own reason;
+ * the rows read so far stand (the run succeeds).
+ */
+function followable(nextUrl: string | null, tooLong: boolean): string | null {
+  if (tooLong) {
+    throw new CollectorStop(
+      "next_page_too_long",
+      "succeeded",
+      "Stopped: the next-page link's address is too long to follow.",
+    );
+  }
+  if (nextUrl === null) return null;
+  // Every fetch must be https (the context refuses anything else), so a
+  // plain-http link would fail the whole run; end paging instead.
+  if (new URL(nextUrl).protocol !== "https:") {
+    throw new CollectorStop(
+      "next_page_not_secure",
+      "succeeded",
+      "Stopped: the next page's address is not https, so it can't be read.",
+    );
+  }
+  return nextUrl;
+}
+
 export const pageList: Collector<PageListInput, PageRow> = {
   id: "page-list",
   version: 1,
@@ -258,10 +284,8 @@ export const pageList: Collector<PageListInput, PageRow> = {
         visited.add(landed);
       }
 
-      const { rows, nextUrl, truncated } = await ctx.extractList(
-        { html: await res.text(), url: res.url },
-        spec,
-      );
+      const { rows, nextUrl, nextUrlTooLong, truncated } =
+        await ctx.extractList({ html: await res.text(), url: res.url }, spec);
       ctx.log(`Page ${n}: ${rows.length} items.`);
       if (truncated) {
         ctx.log(
@@ -269,8 +293,9 @@ export const pageList: Collector<PageListInput, PageRow> = {
         );
       }
       yield* rows;
-      if (nextUrl === null) return;
-      url = nextUrl;
+      const next = followable(nextUrl, nextUrlTooLong);
+      if (next === null) return;
+      url = next;
     }
   },
 };

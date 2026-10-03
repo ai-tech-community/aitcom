@@ -4142,6 +4142,8 @@
       "page_limit": "Partial: stopped at the page limit.",
       "item_limit": "Partial: stopped at the row limit.",
       "time_limit": "Partial: stopped at the time limit.",
+      "next_page_not_secure": "Partial: the next page's address isn't secure (it doesn't start with https://), so we couldn't read it.",
+      "next_page_too_long": "Partial: the link to the next page is too long to follow, so we stopped there.",
       "site_refused": "Failed: the site asked us to slow down several times, so we stopped.",
       "robots_disallowed": "Failed: this site's rules for automated visitors don't allow collecting this page.",
       "robots_unreachable": "Failed: we could not read this site's rules for automated visitors, so we did not collect from it.",

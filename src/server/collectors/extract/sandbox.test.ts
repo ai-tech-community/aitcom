@@ -86,6 +86,7 @@ describe("createExtractSandbox", () => {
         { title: "two", link: "https://example.com/two" },
       ],
       nextUrl: null,
+      nextUrlTooLong: false,
       truncated: false,
     });
   });
