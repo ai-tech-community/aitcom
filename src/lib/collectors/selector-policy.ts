@@ -13,7 +13,12 @@ import { parse, SelectorType, type Selector } from "css-what";
  * - a `~` together with any sibling-scanning pseudo-class
  *   (`:not(:only-of-type) ~ *` took 13 s at 1 200 siblings);
  * - more than two sibling-scanning pseudo-classes (15x `:only-of-type`
- *   took 6.1 s at 5 000 siblings).
+ *   took 6.1 s at 5 000 siblings);
+ * - any combinator inside `:not()`, `:is()` or `:where()`: there css-select
+ *   skips its descendant cache, so the cost is exponential in page depth
+ *   (`:not(a div div div div div div div)` took 4.2 s at depth 40, 25 s at
+ *   depth 50, over 60 s at 100). Their arguments must be single compound
+ *   selectors such as `.ad`, `[hidden]` or `a.ad:first-child`.
  *
  * What remains can still be slow on a hostile page (two sibling-scanning
  * pseudo-classes stay quadratic: about 0.9 s at 5 000 siblings with all
@@ -25,11 +30,11 @@ import { parse, SelectorType, type Selector } from "css-what";
  */
 export const MAX_SELECTOR_LENGTH = 200;
 export const MAX_COMPOUNDS = 8;
-/** `~` combinators allowed in the whole selector, nested ones included. */
+/** `~` combinators allowed in the selector (only possible at top level). */
 export const MAX_GENERAL_SIBLING_COMBINATORS = 1;
 /**
  * Sibling-scanning pseudo-classes allowed in the whole selector, nested ones
- * included, when it has no `~`. With a `~` anywhere, none are allowed.
+ * included, when it has no `~`. With a `~`, none are allowed.
  */
 export const MAX_SIBLING_SCANNING_PSEUDOS = 2;
 
@@ -54,7 +59,10 @@ export type SelectorCheck =
   | { ok: true }
   | { ok: false; reason: SelectorProblem };
 
-/** Pseudo-classes whose argument is a nested selector list. */
+/**
+ * Pseudo-classes whose argument is a list of compound selectors (no
+ * combinators inside).
+ */
 const SELECTOR_LIST_PSEUDOS: ReadonlySet<string> = new Set([
   "not",
   "is",
@@ -87,10 +95,51 @@ interface WholeSelectorTally {
 }
 
 /**
- * Checks one complex selector (no top-level list). Nested `:not/:is/:where`
- * selectors are checked with the same rules. The compound limit applies to
- * each of them; the whole-selector counts go into `tally` and are judged by
- * `checkTally` once the walk is done.
+ * Checks one token of a compound selector (anything but a combinator).
+ * `:not/:is/:where` arguments are checked here too: each must be a single
+ * compound selector, so a combinator inside them is refused.
+ */
+function checkCompoundToken(
+  token: Selector,
+  tally: WholeSelectorTally,
+): SelectorProblem | null {
+  // Simple selectors: tag, `*`, attribute (class and id are attributes).
+  if (
+    token.type === SelectorType.Tag ||
+    token.type === SelectorType.Universal ||
+    token.type === SelectorType.Attribute
+  ) {
+    // Namespaced names (`svg|rect`, `*|rect`, `|rect`, `[xlink|href]`)
+    // are refused: members never need them and they widen what we check.
+    if (token.namespace !== null && token.namespace !== undefined)
+      return "not_allowed";
+    return null;
+  }
+  if (token.type !== SelectorType.Pseudo) return "not_allowed";
+
+  if (BARE_PSEUDOS.has(token.name)) {
+    if (token.data !== null) return "not_allowed";
+    if (SIBLING_SCANNING_PSEUDOS.has(token.name))
+      tally.siblingScanningPseudos += 1;
+    return null;
+  }
+  if (SELECTOR_LIST_PSEUDOS.has(token.name) && Array.isArray(token.data)) {
+    for (const compound of token.data) {
+      for (const inner of compound) {
+        if (ALLOWED_COMBINATORS.has(inner.type)) return "not_allowed";
+        const problem = checkCompoundToken(inner, tally);
+        if (problem) return problem;
+      }
+    }
+    return null;
+  }
+  return "not_allowed";
+}
+
+/**
+ * Checks one complex selector (no top-level list): compounds joined by the
+ * allowed combinators. The whole-selector counts go into `tally` and are
+ * judged by `checkTally` once the walk is done.
  */
 function checkComplex(
   tokens: Selector[],
@@ -103,34 +152,8 @@ function checkComplex(
       if (token.type === SelectorType.Sibling) tally.generalSiblings += 1;
       continue;
     }
-    // Simple selectors: tag, `*`, attribute (class and id are attributes).
-    if (
-      token.type === SelectorType.Tag ||
-      token.type === SelectorType.Universal ||
-      token.type === SelectorType.Attribute
-    ) {
-      // Namespaced names (`svg|rect`, `*|rect`, `|rect`, `[xlink|href]`)
-      // are refused: members never need them and they widen what we check.
-      if (token.namespace !== null && token.namespace !== undefined)
-        return "not_allowed";
-      continue;
-    }
-    if (token.type !== SelectorType.Pseudo) return "not_allowed";
-
-    if (BARE_PSEUDOS.has(token.name)) {
-      if (token.data !== null) return "not_allowed";
-      if (SIBLING_SCANNING_PSEUDOS.has(token.name))
-        tally.siblingScanningPseudos += 1;
-      continue;
-    }
-    if (SELECTOR_LIST_PSEUDOS.has(token.name) && Array.isArray(token.data)) {
-      for (const inner of token.data) {
-        const problem = checkComplex(inner, tally);
-        if (problem) return problem;
-      }
-      continue;
-    }
-    return "not_allowed";
+    const problem = checkCompoundToken(token, tally);
+    if (problem) return problem;
   }
   return compounds > MAX_COMPOUNDS ? "too_complex" : null;
 }

@@ -56,8 +56,9 @@ describe("checkSelector", () => {
     ["li:lt(1)", "not_allowed"],
     ["a:link", "not_allowed"],
     ["li:empty(x)", "not_allowed"],
-    ["li:not(a b c d e f g h i)", "too_complex"],
-    ["li:is(.a, a b c d e f g h i)", "too_complex"],
+    // Round 3: combinators inside :not/:is/:where are refused outright.
+    ["li:not(a b c d e f g h i)", "not_allowed"],
+    ["li:is(.a, a b c d e f g h i)", "not_allowed"],
   ] as const)("also refuses %j (%s)", (selector, reason) => {
     expect(checkSelector(selector)).toEqual({ ok: false, reason });
   });
@@ -66,7 +67,7 @@ describe("checkSelector", () => {
     expect(checkSelector("a".repeat(200))).toEqual({ ok: true });
   });
 
-  it.each(["a ~ b", "li:is(a ~ b)", ":NOT(.a)", "li:IS(a)"])(
+  it.each(["a ~ b", ":NOT(.a)", "li:IS(a)"])(
     "allows %s (fix round 1)",
     (selector) => {
       expect(checkSelector(selector)).toEqual({ ok: true });
@@ -75,8 +76,9 @@ describe("checkSelector", () => {
 
   it.each([
     ["a ~ b ~ c", "too_complex"],
-    ["p:not(a ~ b) ~ c", "too_complex"],
-    ["li:is(a ~ b, c ~ d)", "too_complex"],
+    // Round 3: any combinator inside :not/:is/:where is not_allowed.
+    ["p:not(a ~ b) ~ c", "not_allowed"],
+    ["li:is(a ~ b, c ~ d)", "not_allowed"],
     ["svg|rect", "not_allowed"],
     ["*|rect", "not_allowed"],
     ["|rect", "not_allowed"],
@@ -105,6 +107,31 @@ describe("checkSelector", () => {
     expect(checkSelector(selector)).toEqual({
       ok: false,
       reason: "too_complex",
+    });
+  });
+
+  it.each([
+    "li:not(.ad)",
+    "li:is(.a, .b)",
+    ":where(article, section)",
+    "li:not([hidden])",
+    "li:not(a.ad[hidden]:first-child)",
+  ])("allows %s (fix round 3)", (selector) => {
+    expect(checkSelector(selector)).toEqual({ ok: true });
+  });
+
+  it.each([
+    ":not(a div)",
+    ":is(a > b)",
+    "li:where(a + b)",
+    "p:not(a ~ b)",
+    "li:is(a ~ b)",
+    "li:is(.a, .b .c)",
+    "li:not(:is(a b))",
+  ])("refuses %j as not_allowed (fix round 3)", (selector) => {
+    expect(checkSelector(selector)).toEqual({
+      ok: false,
+      reason: "not_allowed",
     });
   });
 });
