@@ -5,6 +5,7 @@ import type {
   RitualMode,
   RitualStatus,
 } from "../communities/rituals";
+import type { RunStatus, StopReason } from "../collectors/run-status";
 import {
   boolean,
   check,
@@ -405,6 +406,92 @@ export const memberAwards = appSchema.table(
     ),
     index("member_award_challenge_idx").on(t.challengeId),
   ],
+);
+
+// Data collectors (ADR-0040). Migration 20261003a.
+export const collectorRuns = appSchema.table(
+  "collector_run",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    agentId: d.varchar({ length: 255 }),
+    origin: d.varchar({ length: 16 }).notNull().$type<"web" | "mcp">(),
+    collectorId: d.varchar({ length: 64 }).notNull(),
+    collectorVersion: d.integer().notNull(),
+    input: d.jsonb().notNull().$type<unknown>(),
+    status: d.varchar({ length: 16 }).notNull().$type<RunStatus>(),
+    stopReason: d.varchar({ length: 32 }).$type<StopReason>(),
+    attempts: d.integer().notNull().default(0),
+    leaseUntil: d.timestamp({ withTimezone: true }),
+    pagesFetched: d.integer().notNull().default(0),
+    bytesFetched: d.bigint({ mode: "number" }).notNull().default(0),
+    itemCount: d.integer().notNull().default(0),
+    invalidItemCount: d.integer().notNull().default(0),
+    durationMs: d.integer(),
+    error: d.varchar({ length: 500 }),
+    log: d
+      .jsonb()
+      .notNull()
+      .$type<string[]>()
+      .default(sql`'[]'::jsonb`),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    startedAt: d.timestamp({ withTimezone: true }),
+    finishedAt: d.timestamp({ withTimezone: true }),
+    expiresAt: d.timestamp({ withTimezone: true }).notNull(),
+  }),
+  (t) => [
+    index("collector_run_user_created_idx").on(
+      t.userId,
+      t.createdAt.desc().nullsFirst(),
+    ),
+    index("collector_run_status_created_idx").on(t.status, t.createdAt),
+    index("collector_run_expires_idx").on(t.expiresAt),
+    check("collector_run_origin_chk", sql`${t.origin} IN ('web', 'mcp')`),
+    check(
+      "collector_run_status_chk",
+      sql`${t.status} IN ('queued', 'running', 'succeeded', 'failed')`,
+    ),
+  ],
+);
+
+export const collectorItems = appSchema.table(
+  "collector_item",
+  (d) => ({
+    runId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => collectorRuns.id, { onDelete: "cascade" }),
+    seq: d.integer().notNull(),
+    data: d.jsonb().notNull().$type<Record<string, unknown>>(),
+  }),
+  (t) => [
+    primaryKey({
+      name: "collector_item_run_id_seq_pk",
+      columns: [t.runId, t.seq],
+    }),
+  ],
+);
+
+export const collectorBlockedDomains = appSchema.table(
+  "collector_blocked_domain",
+  (d) => ({
+    domain: d.varchar({ length: 255 }).notNull().primaryKey(),
+    reason: d.varchar({ length: 200 }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
 );
 
 // Onboarding steps (per-user step completion tracking)

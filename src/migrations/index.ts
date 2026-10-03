@@ -136,6 +136,7 @@ import * as migration_20261001h_feed_post_announced_at from "./20261001h_feed_po
 import * as migration_20261002a_member_awards from "./20261002a_member_awards";
 import * as migration_20261002b_member_showcase_badges from "./20261002b_member_showcase_badges";
 import * as migration_20261002c_badges_seen_backfill from "./20261002c_badges_seen_backfill";
+import * as migration_20261003a_collector_runs from "./20261003a_collector_runs";
 
 export const migrations = [
   {
@@ -827,5 +828,10 @@ export const migrations = [
     up: migration_20261002c_badges_seen_backfill.up,
     down: migration_20261002c_badges_seen_backfill.down,
     name: "20261002c_badges_seen_backfill",
+  },
+  {
+    up: migration_20261003a_collector_runs.up,
+    down: migration_20261003a_collector_runs.down,
+    name: "20261003a_collector_runs",
   },
 ];
