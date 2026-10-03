@@ -4128,6 +4128,7 @@
     "recentRuns": "Recent runs",
     "seeAllRuns": "See all runs",
     "noRecentRuns": "Your runs will show up here.",
+    "noRecentRunsHint": "Pick a collector above to start your first run.",
     "noCollectors": "No collectors are available right now.",
     "status": {
       "queued": "Queued",

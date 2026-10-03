@@ -4128,6 +4128,7 @@
     "recentRuns": "Recente runs",
     "seeAllRuns": "Alle runs bekijken",
     "noRecentRuns": "Je runs verschijnen hier.",
+    "noRecentRunsHint": "Kies hierboven een verzamelaar om je eerste run te starten.",
     "noCollectors": "Er zijn op dit moment geen verzamelaars beschikbaar.",
     "status": {
       "queued": "In de wachtrij",

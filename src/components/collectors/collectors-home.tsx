@@ -97,7 +97,13 @@ export function CollectorsHome() {
         status={statusFromQueries(overview, {
           isEmpty: data?.recentRuns.length === 0,
         })}
-        empty={<EmptyState className="py-6" title={t("noRecentRuns")} />}
+        empty={
+          <EmptyState
+            className="py-6"
+            title={t("noRecentRuns")}
+            description={t("noRecentRunsHint")}
+          />
+        }
         action={
           <Link
             href="/dashboard/collectors/runs"
@@ -151,7 +157,7 @@ function CollectorRow({ collector }: { collector: Summary }) {
       <div className="flex min-w-0 flex-1 basis-96 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2.5">
           <h3 className="text-base font-semibold">{collector.title}</h3>
-          <Badge variant="outline">{t(`kind.${collector.kind}`)}</Badge>
+          <Badge variant="secondary">{t(`kind.${collector.kind}`)}</Badge>
         </div>
         <p className="text-muted-foreground text-sm leading-relaxed">
           {collector.description}
