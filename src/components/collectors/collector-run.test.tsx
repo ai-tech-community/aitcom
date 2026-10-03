@@ -391,6 +391,77 @@ describe("CollectorRun", () => {
     expect(refetchItems).not.toHaveBeenCalled();
   });
 
+  it("shows a page-list run's member-chosen columns and its page address", () => {
+    h.overview.mockReturnValue(
+      ok({
+        collectors: [{ id: "page-list", title: "List on a web page" }],
+        recentRuns: [],
+        usage: { runsToday: 0, runsPerDay: 20 },
+        needsAcknowledgement: false,
+      }),
+    );
+    h.run.mockReturnValue(
+      ok({
+        ...base,
+        collectorId: "page-list",
+        input: {
+          url: "https://jobs.example.com/careers",
+          itemSelector: "li.job",
+          fields: [
+            { name: "title", selector: "h3 a" },
+            { name: "link", selector: "h3 a", attribute: "href" },
+            { name: "location", selector: ".where" },
+          ],
+          maxPages: 5,
+        },
+        status: "succeeded",
+        stopReason: "complete",
+        itemCount: 2,
+      }),
+    );
+    h.items.mockReturnValue(
+      ok({
+        items: [
+          {
+            title: "Frontend engineer",
+            link: "https://jobs.example.com/jobs/frontend",
+            location: null,
+          },
+          {
+            title: "Designer",
+            link: "https://jobs.example.com/jobs/designer",
+            location: "Utrecht",
+          },
+        ],
+        nextSeq: null,
+      }),
+    );
+    renderRun();
+
+    expect(
+      screen.getAllByRole("columnheader").map((th) => th.textContent),
+    ).toEqual(["title", "link", "location"]);
+    const [, first, second] = screen.getAllByRole("row");
+    expect(
+      [...first!.querySelectorAll("td")].map((td) => td.textContent),
+    ).toEqual([
+      "Frontend engineer",
+      "https://jobs.example.com/jobs/frontend",
+      "—",
+    ]);
+    expect(
+      [...second!.querySelectorAll("td")].map((td) => td.textContent),
+    ).toEqual([
+      "Designer",
+      "https://jobs.example.com/jobs/designer",
+      "Utrecht",
+    ]);
+    expect(screen.getByText("jobs.example.com/careers")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "List on a web page" }),
+    ).toBeInTheDocument();
+  });
+
   it("pages forward by the next seq and back to the first rows", () => {
     h.run.mockReturnValue(
       ok({
