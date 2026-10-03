@@ -16,10 +16,6 @@ describe("checkSelector", () => {
     "li:is(.a, .b)",
     ":where(article) h2",
     "tr:first-child",
-    "tr:last-child td:only-child",
-    "td:first-of-type",
-    "td:last-of-type",
-    "p:only-of-type",
     "div:empty",
     "div p span a b i em strong",
   ])("allows %s", (selector) => {
@@ -85,23 +81,6 @@ describe("checkSelector", () => {
     expect(checkSelector(selector)).toEqual({ ok: false, reason });
   });
 
-  it.each(["li:first-of-type:last-of-type"])(
-    "allows %s (fix round 2)",
-    (selector) => {
-      expect(checkSelector(selector)).toEqual({ ok: true });
-    },
-  );
-
-  it.each([
-    "li:only-of-type:only-child:last-child",
-    "li:is(:only-of-type, :last-of-type):not(:only-child)",
-  ])("refuses %j as too_complex (fix round 2)", (selector) => {
-    expect(checkSelector(selector)).toEqual({
-      ok: false,
-      reason: "too_complex",
-    });
-  });
-
   it.each([
     "li:not(.ad)",
     "li:is(.a, .b)",
@@ -146,13 +125,12 @@ describe("checkSelector", () => {
     });
   });
 
-  it.each([
-    "h2 + p",
-    "a + b + c + d + e + f + g + h",
-    "li:first-of-type + li:last-of-type",
-  ])("allows %s (fix round 4)", (selector) => {
-    expect(checkSelector(selector)).toEqual({ ok: true });
-  });
+  it.each(["h2 + p", "a + b + c + d + e + f + g + h", "li:first-child + li"])(
+    "allows %s (fix round 4)",
+    (selector) => {
+      expect(checkSelector(selector)).toEqual({ ok: true });
+    },
+  );
 
   it("refuses eight `+` in a row as too_complex (fix round 4)", () => {
     expect(checkSelector("a + b + c + d + e + f + g + h + i")).toEqual({
@@ -161,9 +139,37 @@ describe("checkSelector", () => {
     });
   });
 
-  it("still caps sibling-scanning pseudos with `+` (fix round 4)", () => {
-    expect(
-      checkSelector("li:only-of-type + li:last-child + li:only-child"),
-    ).toEqual({ ok: false, reason: "too_complex" });
+  // Round 5: sibling-scanning pseudo-classes are refused everywhere.
+  it.each([
+    "td:first-of-type",
+    "td:last-of-type",
+    "p:only-of-type",
+    "tr:last-child",
+    "li:only-child",
+    "li:not(:last-child)",
+    "tr:last-child td:only-child",
+    "li:first-of-type:last-of-type",
+    "li:only-of-type:only-child:last-child",
+    "li:is(:only-of-type, :last-of-type):not(:only-child)",
+    "li:first-of-type + li:last-of-type",
+    "li:only-of-type + li:last-child + li:only-child",
+    "* + :only-of-type *",
+    "li:where(.a:last-of-type)",
+    "LI:LAST-CHILD",
+  ])("refuses %j as not_allowed (fix round 5)", (selector) => {
+    expect(checkSelector(selector)).toEqual({
+      ok: false,
+      reason: "not_allowed",
+    });
+  });
+
+  it.each([
+    "tr:first-child",
+    "div:empty",
+    "li:not(:first-child)",
+    "li:first-child + li + li",
+    "li:is(:first-child, :empty)",
+  ])("allows %s (fix round 5)", (selector) => {
+    expect(checkSelector(selector)).toEqual({ ok: true });
   });
 });
