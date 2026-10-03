@@ -24,6 +24,7 @@ export type FailureCode =
   | "worker_lost"
   | "page_too_slow"
   | "page_too_deep"
+  | "page_too_complex"
   | "selector_not_allowed"
   | "not_a_page"
   | "page_status"
@@ -47,6 +48,7 @@ export const FAILURE_CODES = [
   "worker_lost",
   "page_too_slow",
   "page_too_deep",
+  "page_too_complex",
   "selector_not_allowed",
   "not_a_page",
   "page_status",

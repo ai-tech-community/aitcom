@@ -25,6 +25,10 @@ const EXTRACT_FAILURES: Record<
     code: "page_too_deep",
     message: "This page is nested too deeply to read safely.",
   },
+  page_too_complex: {
+    code: "page_too_complex",
+    message: "This page is too large or complex for us to read.",
+  },
   selector_not_allowed: {
     code: "selector_not_allowed",
     message: "One of the selectors uses a feature we don't allow.",

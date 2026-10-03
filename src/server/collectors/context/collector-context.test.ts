@@ -405,6 +405,11 @@ describe("collector context extractList", () => {
       "One of the selectors uses a feature we don't allow.",
     ],
     [
+      "page_too_complex",
+      "page_too_complex",
+      "This page is too large or complex for us to read.",
+    ],
+    [
       "extract_failed",
       "generic",
       "Something went wrong while reading this page.",

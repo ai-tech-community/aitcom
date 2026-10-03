@@ -26,9 +26,10 @@ export type ExtractSandboxOptions = {
 export interface ExtractSandbox {
   /**
    * Extracts one page in the worker. Calls run one at a time, in call order.
-   * Rejects with ExtractError: `page_too_slow` when the deadline passes, the
-   * worker's own code when it refuses the page, `extract_failed` when the
-   * worker crashes or the sandbox is closed.
+   * Rejects with ExtractError: `page_too_slow` when the deadline passes,
+   * `page_too_complex` when the worker runs out of memory, the worker's own
+   * code when it refuses the page, `extract_failed` when the worker crashes
+   * another way or the sandbox is closed.
    */
   extract(html: string, spec: ExtractSpec): Promise<ExtractResult>;
   /**
@@ -45,7 +46,18 @@ type WorkerSettings = Pick<ExtractSandboxOptions, "workerPath" | "execArgv"> & {
 };
 
 /** The worker crashed, ran out of memory, or exited. */
-class WorkerGone extends Error {}
+class WorkerGone extends Error {
+  constructor(
+    message: string,
+    /** It hit its heap limit: the page, not the code, was the problem. */
+    readonly outOfMemory = false,
+  ) {
+    super(message);
+  }
+}
+
+/** Node's code for a worker that reached `resourceLimits`. */
+const OUT_OF_MEMORY = "ERR_WORKER_OUT_OF_MEMORY";
 
 /**
  * One worker thread. It answers one request at a time; the sandbox makes sure
@@ -112,8 +124,8 @@ class WorkerSlot {
     });
     // An `error` (uncaught throw, ERR_WORKER_OUT_OF_MEMORY) is followed by
     // `exit`; whichever comes first ends the slot.
-    this.worker.on("error", (error: Error) => {
-      markGone(new WorkerGone(error.message));
+    this.worker.on("error", (error: Error & { code?: unknown }) => {
+      markGone(new WorkerGone(error.message, error.code === OUT_OF_MEMORY));
     });
     this.worker.on("exit", (exitCode: number) => {
       markGone(new WorkerGone(`worker exited with code ${exitCode}`));
@@ -196,8 +208,12 @@ export function createExtractSandbox(
     } catch (error) {
       if (error instanceof ExtractError) throw error;
       await drop(current);
+      // Out of memory is deterministic for this page (too many elements for
+      // the heap limit), so it gets its own code; any other crash does not.
       throw new ExtractError(
-        "extract_failed",
+        error instanceof WorkerGone && error.outOfMemory
+          ? "page_too_complex"
+          : "extract_failed",
         error instanceof Error ? error.message : undefined,
       );
     } finally {

@@ -171,16 +171,28 @@ describe("createExtractSandbox", () => {
     expect(next.rows).toHaveLength(1);
   });
 
-  it("maps a worker that runs out of memory to extract_failed, then recovers", async () => {
+  it("maps a worker that runs out of memory to page_too_complex, then recovers", async () => {
     const box = sandbox({ maxOldGenerationSizeMb: 16, deadlineMs: 20_000 });
     const huge = page(Array.from({ length: 200_000 }, (_, i) => `item${i}`));
 
     const error = await rejection(box.extract(huge, spec));
-    expect(error.code).toBe("extract_failed");
+    expect(error.code).toBe("page_too_complex");
 
     const next = await box.extract(page(["ok"]), spec);
     expect(next.rows).toHaveLength(1);
   }, 30_000);
+
+  it("says page_too_complex for 3 MB of empty paragraphs at the default heap", async () => {
+    // Inside the 5 MB body cap, yet the parsed tree outgrows 256 MB
+    // (measured: out of memory after about 0.4 s).
+    const box = sandbox();
+    const html = "<p></p>".repeat(Math.floor((3 * 1024 * 1024) / 7));
+
+    const error = await rejection(
+      box.extract(html, { ...spec, itemSelector: "p" }),
+    );
+    expect(error.code).toBe("page_too_complex");
+  }, 20_000);
 
   it("rejects calls with extract_failed after close()", async () => {
     const box = sandbox();

@@ -4167,6 +4167,7 @@
       "worker_lost": "Start de run opnieuw.",
       "page_too_slow": "Het lezen van deze pagina duurde te lang, dus we zijn gestopt. Probeer een pagina met minder items.",
       "page_too_deep": "Deze pagina is te diep opgebouwd om veilig te lezen. Probeer een andere pagina.",
+      "page_too_complex": "Deze pagina is te groot of te ingewikkeld voor ons om te lezen. Probeer een kleinere pagina, of een pagina met minder items.",
       "selector_not_allowed": "Een van de selectors gebruikt iets wat we niet toestaan. Gebruik eenvoudige selectors: tagnamen, classes, id's en attributen.",
       "not_a_page": "Dit adres is geen webpagina. Controleer of je het adres van de pagina met de lijst hebt gekopieerd.",
       "page_status": "De pagina antwoordde met fout {status}. Controleer het adres, of probeer het later opnieuw.",

@@ -78,6 +78,7 @@ describe("collectors copy", () => {
   it.each([
     "page_too_slow",
     "page_too_deep",
+    "page_too_complex",
     "selector_not_allowed",
     "not_a_page",
   ])("words the %s failure in everyday words", (code) => {

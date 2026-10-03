@@ -46,13 +46,15 @@ export type ExtractResult = {
 };
 
 /**
- * Why a page could not be read. The worker answers with one of these; the
- * sandbox adds its own (the deadline passed, the worker ran out of memory or
- * crashed). Runtime list, so a code read off the wire can be checked.
+ * Why a page could not be read. The worker answers with its own codes; the
+ * sandbox adds `page_too_slow` (the deadline passed), `page_too_complex` (the
+ * worker ran out of memory) and `extract_failed` (it crashed or was closed).
+ * A runtime list, so a code read off the wire can be checked.
  */
 export const EXTRACT_ERROR_CODES = [
   "page_too_deep",
   "page_too_slow",
+  "page_too_complex",
   "selector_not_allowed",
   "extract_failed",
 ] as const;

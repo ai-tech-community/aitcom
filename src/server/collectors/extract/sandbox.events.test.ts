@@ -120,4 +120,31 @@ describe("createExtractSandbox (worker events)", () => {
     expect((await rejection(call)).code).toBe("page_too_slow");
     expect(worker.terminate).toHaveBeenCalledTimes(1);
   });
+
+  it("says page_too_complex when the worker runs out of memory", async () => {
+    const box = createExtractSandbox({ workerPath: "/w.cjs" });
+    const call = box.extract("<li></li>", spec);
+    const worker = await startedWorker();
+
+    worker.emit(
+      "error",
+      Object.assign(new Error("JS heap out of memory"), {
+        code: "ERR_WORKER_OUT_OF_MEMORY",
+      }),
+    );
+    worker.emit("exit", 1);
+
+    expect((await rejection(call)).code).toBe("page_too_complex");
+  });
+
+  it("keeps extract_failed for a worker that crashes another way", async () => {
+    const box = createExtractSandbox({ workerPath: "/w.cjs" });
+    const call = box.extract("<li></li>", spec);
+    const worker = await startedWorker();
+
+    worker.emit("error", new Error("boom"));
+    worker.emit("exit", 1);
+
+    expect((await rejection(call)).code).toBe("extract_failed");
+  });
 });
