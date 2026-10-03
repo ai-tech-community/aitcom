@@ -1,12 +1,26 @@
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 
 const MAX_REDIRECTS = 5;
+const DEFAULT_ACCEPT =
+  "text/html,application/xhtml+xml,image/*;q=0.9,*/*;q=0.5";
 
 export interface SafeFetchOptions {
   /** Honest identification of the feature making the request. */
   userAgent: string;
   /** Budget for the whole request: every redirect hop and the body read. */
   timeoutMs: number;
+  /** Overrides the default Accept header (HTML and images). */
+  accept?: string;
+  /** Return non-2xx answers to the caller instead of throwing. */
+  allowErrorStatus?: boolean;
+  /** Aborts the request early, in addition to `timeoutMs`. */
+  signal?: AbortSignal;
+  /**
+   * "follow" (default) follows up to 5 redirects, validating each hop.
+   * "return" hands the first 3xx back so the caller can apply its own
+   * per-hop rules (the data-collector context does this).
+   */
+  redirects?: "follow" | "return";
 }
 
 export interface SafeResponse {
@@ -36,7 +50,10 @@ export async function safeFetch(
   url: string,
   options: SafeFetchOptions,
 ): Promise<SafeResponse> {
-  const signal = AbortSignal.timeout(options.timeoutMs);
+  const timeout = AbortSignal.timeout(options.timeoutMs);
+  const signal = options.signal
+    ? AbortSignal.any([timeout, options.signal])
+    : timeout;
   let current = url;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const guard = await validateWebhookUrl(current);
@@ -48,10 +65,13 @@ export async function safeFetch(
       redirect: "manual",
       headers: {
         "user-agent": options.userAgent,
-        accept: "text/html,application/xhtml+xml,image/*;q=0.9,*/*;q=0.5",
+        accept: options.accept ?? DEFAULT_ACCEPT,
       },
     });
     if (res.status >= 300 && res.status < 400) {
+      if (options.redirects === "return") {
+        return { response: res, url: current };
+      }
       const location = res.headers.get("location");
       if (!location) {
         throw new Error(`Redirect with no Location (status ${res.status})`);
@@ -59,7 +79,7 @@ export async function safeFetch(
       current = new URL(location, current).href;
       continue;
     }
-    if (!res.ok) {
+    if (!res.ok && !options.allowErrorStatus) {
       throw new Error(`Request failed with status ${res.status}`);
     }
     return { response: res, url: current };
