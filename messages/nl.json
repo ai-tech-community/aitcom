@@ -4121,7 +4121,7 @@
       "feed": "Feed",
       "page": "Webpagina"
     },
-    "youGive": "Jij geeft: {fields}",
+    "youGive": "Je geeft: {fields}",
     "youGet": "Je krijgt: tot {count, plural, one {# rij} other {# rijen}}",
     "exampleRow": "Voorbeeldrij",
     "useCollector": "Gebruik deze verzamelaar",
@@ -4142,8 +4142,8 @@
       "item_limit": "Gedeeltelijk: gestopt bij de rijenlimiet.",
       "time_limit": "Gedeeltelijk: gestopt bij de tijdslimiet.",
       "site_refused": "Mislukt: de site vroeg ons meerdere keren om rustiger aan te doen, dus zijn we gestopt.",
-      "robots_disallowed": "Mislukt: de robots.txt van deze site staat niet toe dat deze pagina wordt verzameld.",
-      "robots_unreachable": "Mislukt: we konden de robots.txt van deze site niet lezen, dus hebben we er niets verzameld.",
+      "robots_disallowed": "Mislukt: de regels van deze site voor automatische bezoekers staan niet toe dat deze pagina wordt verzameld.",
+      "robots_unreachable": "Mislukt: we konden de regels van deze site voor automatische bezoekers niet lezen, dus hebben we er niets verzameld.",
       "blocked_domain": "Mislukt: deze site heeft gevraagd om er geen gegevens te verzamelen.",
       "error": "Mislukt: er ging iets mis tijdens het verzamelen.",
       "worker_lost": "Mislukt: de run werd twee keer onderbroken en is daarom gestopt."
@@ -4154,8 +4154,8 @@
       "item_limit": "Gestopt bij de rijenlimiet",
       "time_limit": "Gestopt bij de tijdslimiet",
       "site_refused": "De site weigerde",
-      "robots_disallowed": "Niet toegestaan door robots.txt",
-      "robots_unreachable": "robots.txt kon niet worden gelezen",
+      "robots_disallowed": "Niet toegestaan door de siteregels",
+      "robots_unreachable": "Siteregels konden niet worden gelezen",
       "blocked_domain": "Site heeft zich afgemeld",
       "error": "Er ging iets mis",
       "worker_lost": "Onderbroken"
@@ -4167,7 +4167,7 @@
     "start": {
       "firstUseTitle": "Voor je eerste run",
       "firstUse1": "Gebruik wat je verzamelt voor je eigen onderzoek.",
-      "firstUse2": "Respecteer de voorwaarden van elke site. We volgen robots.txt en bezoeken elke site hooguit één keer per seconde.",
+      "firstUse2": "Respecteer de voorwaarden van elke site. We volgen de regels van elke site voor automatische bezoekers en bezoeken een site hooguit één keer per seconde.",
       "firstUse3": "Verzamel geen persoonsgegevens over mensen.",
       "firstUse4": "Alleen jij kunt je runs zien. We verwijderen ze na 30 dagen.",
       "acknowledge": "Ik begrijp het en ga verantwoord om met verzamelde gegevens.",
@@ -4184,7 +4184,7 @@
         "daily_limit": "Je hebt alle {limit} runs van de afgelopen 24 uur gebruikt.",
         "daily_limit_retry": "Je hebt alle {limit} runs van de afgelopen 24 uur gebruikt. Je kunt {when} weer starten.",
         "active_limit": "Je hebt al runs die bezig zijn. Wacht tot er een klaar is.",
-        "platform_busy": "De dataverzamelaars zijn nu erg druk. Probeer het over een paar minuten opnieuw."
+        "platform_busy": "Het is nu erg druk bij de dataverzamelaars. Probeer het over een paar minuten opnieuw."
       },
       "failed": "We konden de run niet starten. Probeer het opnieuw."
     },

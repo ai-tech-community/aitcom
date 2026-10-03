@@ -28,6 +28,14 @@ describe("presentRun", () => {
       { tone: "warning", label: "partial", stop: "time_limit" },
     ],
     [
+      { status: "succeeded", stopReason: null },
+      { tone: "success", label: "finished", stop: null },
+    ],
+    [
+      { status: "succeeded", stopReason: "error" },
+      { tone: "warning", label: "partial", stop: "error" },
+    ],
+    [
       { status: "failed", stopReason: "robots_disallowed" },
       { tone: "destructive", label: "failed", stop: "robots_disallowed" },
     ],

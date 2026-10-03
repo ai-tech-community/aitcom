@@ -4142,8 +4142,8 @@
       "item_limit": "Partial: stopped at the row limit.",
       "time_limit": "Partial: stopped at the time limit.",
       "site_refused": "Failed: the site asked us to slow down several times, so we stopped.",
-      "robots_disallowed": "Failed: this site's robots.txt does not allow collecting this page.",
-      "robots_unreachable": "Failed: we could not read this site's robots.txt, so we did not collect from it.",
+      "robots_disallowed": "Failed: this site's rules for automated visitors don't allow collecting this page.",
+      "robots_unreachable": "Failed: we could not read this site's rules for automated visitors, so we did not collect from it.",
       "blocked_domain": "Failed: this site has asked not to be collected.",
       "error": "Failed: something went wrong while collecting.",
       "worker_lost": "Failed: the run was interrupted twice, so it was stopped."
@@ -4154,8 +4154,8 @@
       "item_limit": "Stopped at the row limit",
       "time_limit": "Stopped at the time limit",
       "site_refused": "The site refused",
-      "robots_disallowed": "Not allowed by robots.txt",
-      "robots_unreachable": "robots.txt could not be read",
+      "robots_disallowed": "Site rules don't allow it",
+      "robots_unreachable": "Site rules couldn't be read",
       "blocked_domain": "Site opted out",
       "error": "Something went wrong",
       "worker_lost": "Interrupted"
@@ -4167,7 +4167,7 @@
     "start": {
       "firstUseTitle": "Before your first run",
       "firstUse1": "Use what you collect for your own research.",
-      "firstUse2": "Respect each site's terms. We follow robots.txt and visit each site at most once a second.",
+      "firstUse2": "Respect each site's terms. We follow every site's rules for automated visitors and visit a site at most once a second.",
       "firstUse3": "Avoid collecting personal details about people.",
       "firstUse4": "Only you can see your runs. We delete them after 30 days.",
       "acknowledge": "I understand, and I'll use collected data responsibly.",
