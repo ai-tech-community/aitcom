@@ -5,13 +5,16 @@ import ipaddr from "ipaddr.js";
 import { isPublicAddress } from "@/server/net/address-policy";
 
 /**
- * Validate that a webhook URL is safe to make outbound requests to.
- * Blocks non-public IPs (per `isPublicAddress`) and non-HTTPS URLs to
- * prevent SSRF.
+ * An early, friendly refusal for a supplied URL: non-HTTPS, localhost, cloud
+ * metadata names, non-public IP literals (per `isPublicAddress`, including
+ * IPv6-mapped IPv4, decimal/octal/hex IPv4 and bracketed IPv6), and hostnames
+ * whose DNS answer today is not public. It gives the member a clear reason
+ * before anything is sent.
  *
- * Defends against: direct private IPs, IPv6-mapped IPv4, decimal/octal/hex
- * IP notation, bracket-enclosed IPv6, cloud metadata endpoints, and DNS
- * rebinding (by resolving the hostname and checking resolved IPs).
+ * It is not the connection guard. DNS can answer differently a moment later
+ * (rebinding), so the address actually connected to is checked by the pinned
+ * transport in src/server/net/pinned-transport.ts, which every outbound
+ * request to a supplied URL goes through.
  */
 export async function validateWebhookUrl(
   raw: string,
@@ -61,8 +64,9 @@ export async function validateWebhookUrl(
     };
   }
 
-  // DNS resolution check — resolve hostname and verify all IPs are public.
-  // Catches DNS rebinding where hostname resolves to internal IP.
+  // DNS resolution check: refuse early, with a clear reason, a hostname whose
+  // current answer is not public. Not a rebinding defence (DNS may answer
+  // differently at connect time); the pinned transport is the guard.
   const dnsCheck = await checkResolvedIPs(hostname);
   if (!dnsCheck.ok) {
     return dnsCheck;

@@ -664,8 +664,9 @@ checked, so a DNS server can no longer switch to an internal address between
 the check and the connection. IP-literal hosts skip DNS and are refused unless
 public, and the transport never follows redirects itself. The URL pre-check in
 `validateWebhookUrl` stays as a friendly early refusal, not the guard. The
-other rule still holds: the flag stays off until the member UI and the public
-about page ship (see "Delivery slices").
+member UI and the public about page have shipped (#421), so turning
+`FEATURE_COLLECTORS` on is now the owner's decision. The `page-list` collector
+ships only together with its parse sandbox (slice 3).
 
 ## Extension seams
 
@@ -742,9 +743,10 @@ about page ship (see "Delivery slices").
    `docs/superpowers/plans/2026-10-03-data-collectors-core.md`.
 2. **Member UI and the public about page** (built), preceded by a visual
    review of mockups: dashboard tab, generated form, run page, history,
-   export, `/collectors/about`. The flag stays off until this slice ships, so
-   no collector contacts a site before the about page exists. Plan:
+   export, `/collectors/about`. Shipped in #421; the flag stayed off until
+   then, so no collector contacted a site before the about page existed. Plan:
    `docs/superpowers/plans/2026-10-03-data-collectors-screens.md`.
-3. **More collectors:** `github-org-repos`, `page-list`.
+3. **More collectors:** `github-org-repos`, and `page-list` together with its
+   parse sandbox (`page-list` does not ship without it).
 4. **MCP tools** under the `collect` scope.
 5. **Retention cron and blocklist admin.**
