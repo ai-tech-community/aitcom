@@ -72,3 +72,6 @@ receives only its input and the Proxy — no database handle or environment.
   is a policy change in `canStartRun`, not a data migration.
 - Coverage is limited to static HTML, feeds and public APIs until a headless
   runner exists.
+- Every collector connection is pinned to an address that passed the
+  public-address check at connect time, closing the DNS-rebinding window
+  (#419): `src/server/net/pinned-transport.ts`.

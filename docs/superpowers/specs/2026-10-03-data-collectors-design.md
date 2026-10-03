@@ -219,7 +219,8 @@ opted-out site or a robots-disallowed path is caught before it is requested
    **across all runs and instances**, via Upstash Redis (already used in
    `server/inbox/publish.ts`). The context waits for its slot rather than
    failing.
-5. **`safeFetch`** with the SSRF guard on every redirect hop; body read through
+5. **`safeFetch`** with the SSRF guard on every redirect hop, each connection
+   pinned to the addresses it checked (`pinnedFetch`); body read through
    `readBodyCapped` (5 MB per response).
 6. **Back-off.** On 429/503, honour `Retry-After` (capped by remaining
    budget); after 3 consecutive back-offs on a host the run stops with
@@ -651,13 +652,20 @@ agents.
 - `COLLECTORS_DISABLED` — per-collector disable.
 - `collector_blocked_domain` — per-site opt-out.
 
-**Gate before enabling.** `FEATURE_COLLECTORS` must not be turned on, and
-`page-list` must not ship, until `safeFetch` pins each connection to the IP
-address it validated. Today the SSRF guard resolves DNS to check the address
-and `fetch()` resolves it again, leaving the DNS-rebinding window documented
-in `src/server/net/safe-fetch.ts`. Data collectors let members point our
-servers at arbitrary sites, a broader exposure than the callers that window
-was accepted for (ADR-0040).
+**Gate before enabling (met, #419).** `FEATURE_COLLECTORS` was not to be
+turned on, and `page-list` was not to ship, until `safeFetch` pinned each
+connection to an address it had checked, because data collectors let members
+point our servers at arbitrary sites (ADR-0040). That condition is now met:
+`safeFetch` connects through `pinnedFetch`
+(`src/server/net/pinned-transport.ts`), which resolves DNS once at connect
+time, checks every answer against the public-address policy
+(`src/server/net/address-policy.ts`) and connects only to the answers it
+checked, so a DNS server can no longer switch to an internal address between
+the check and the connection. IP-literal hosts skip DNS and are refused unless
+public, and the transport never follows redirects itself. The URL pre-check in
+`validateWebhookUrl` stays as a friendly early refusal, not the guard. The
+other rule still holds: the flag stays off until the member UI and the public
+about page ship (see "Delivery slices").
 
 ## Extension seams
 
