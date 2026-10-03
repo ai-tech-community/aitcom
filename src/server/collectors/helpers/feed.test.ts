@@ -93,6 +93,19 @@ describe("parseFeed", () => {
     expect(Date.now() - started).toBeLessThan(100);
   });
 
+  it("keeps out-of-range character references as text instead of failing", () => {
+    const rss = `<rss><channel>
+      <item><title>Bad &#99999999; ref</title></item>
+      <item><title>Hex &#x110000; &#xD800; ok &#x41;</title></item>
+      <item><title>Fine</title></item>
+    </channel></rss>`;
+    expect(parseFeed(rss, "https://e.com/").map((e) => e.title)).toEqual([
+      "Bad &#99999999; ref",
+      "Hex &#x110000; &#xD800; ok A",
+      "Fine",
+    ]);
+  });
+
   it("drops non-web links", () => {
     const rss = `<rss><channel><item><title>x</title><link>javascript:alert(1)</link></item></channel></rss>`;
     expect(parseFeed(rss, "https://e.com/")[0]?.url).toBeNull();
@@ -102,6 +115,27 @@ describe("parseFeed", () => {
 describe("plainText", () => {
   it("removes scripts and styles with their content", () => {
     expect(plainText("<style>p{}</style>a<script>x()</script> b")).toBe("a b");
+  });
+
+  it("removes a script or style block even when its tags use other cases", () => {
+    expect(
+      plainText("a<SCRIPT type=x>bad()</Script>b<style>p{}</STYLE>c"),
+    ).toBe("a b c");
+  });
+
+  it("keeps the text after an unclosed script tag, like any other tag", () => {
+    expect(plainText("a<script>b")).toBe("a b");
+  });
+
+  it.each([
+    ["unclosed script tags", "<script>x".repeat(120_000)],
+    ["unclosed style tags", "<style>x".repeat(130_000)],
+    ["tags that never close", "<a".repeat(500_000)],
+  ])("stays fast on ~1 MB of %s", (_name, hostile) => {
+    const started = performance.now();
+    const out = plainText(hostile);
+    expect(performance.now() - started).toBeLessThan(250);
+    expect(out.length).toBeLessThanOrEqual(1_000);
   });
 
   it("truncates with an ellipsis", () => {

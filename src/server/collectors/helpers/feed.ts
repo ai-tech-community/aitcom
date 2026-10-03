@@ -123,18 +123,84 @@ const NAMED_ENTITIES: Record<string, string> = {
 
 /** HTML → one line of plain text, capped at `max` characters. */
 export function plainText(html: string, max = 1_000): string {
-  const stripped = html
-    .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, entity: string) => {
-      if (entity.startsWith("#x") || entity.startsWith("#X")) {
-        return String.fromCodePoint(parseInt(entity.slice(2), 16));
-      }
+  const decoded = stripTags(html).replace(
+    /&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,
+    (match, entity: string) => {
       if (entity.startsWith("#")) {
-        return String.fromCodePoint(parseInt(entity.slice(1), 10));
+        const hex = entity[1] === "x" || entity[1] === "X";
+        const codePoint = parseInt(entity.slice(hex ? 2 : 1), hex ? 16 : 10);
+        return isScalarValue(codePoint)
+          ? String.fromCodePoint(codePoint)
+          : match;
       }
       return NAMED_ENTITIES[entity.toLowerCase()] ?? match;
-    });
-  const collapsed = stripped.replace(/\s+/g, " ").trim();
+    },
+  );
+  const collapsed = decoded.replace(/\s+/g, " ").trim();
   return collapsed.length > max ? `${collapsed.slice(0, max - 1)}…` : collapsed;
+}
+
+/** A Unicode scalar value: in range and not a lone surrogate. */
+function isScalarValue(codePoint: number): boolean {
+  return (
+    Number.isInteger(codePoint) &&
+    codePoint >= 0 &&
+    codePoint <= 0x10ffff &&
+    (codePoint < 0xd800 || codePoint > 0xdfff)
+  );
+}
+
+const RAW_TEXT_OPEN = /^<(script|style)(?![\w-])/i;
+const RAW_TEXT_CLOSE: Record<string, RegExp> = {
+  script: /<\/script>/gi,
+  style: /<\/style>/gi,
+};
+
+/**
+ * Replace every tag with a space and drop script/style blocks with their
+ * content. A single forward scan: the next ">" and the next closing tag are
+ * remembered between steps, so hostile input (thousands of unclosed tags)
+ * costs linear time instead of the quadratic backtracking of a regex.
+ */
+function stripTags(html: string): string {
+  const parts: string[] = [];
+  /** Index of the next ">" at or after the current tag; -1 when none is left. */
+  let nextGt = -2;
+  /** Index of the next closing tag per raw-text element; -1 when none is left. */
+  const nextClose: Record<string, number> = {};
+  let i = 0;
+  while (i < html.length) {
+    const lt = html.indexOf("<", i);
+    if (lt === -1) {
+      parts.push(html.slice(i));
+      break;
+    }
+    parts.push(html.slice(i, lt));
+    if (nextGt !== -1 && nextGt < lt) nextGt = html.indexOf(">", lt);
+    // No ">" left: nothing after this point is a tag.
+    if (nextGt === -1) {
+      parts.push(html.slice(lt));
+      break;
+    }
+    parts.push(" ");
+    const rawText = RAW_TEXT_OPEN.exec(
+      html.slice(lt, lt + 8),
+    )?.[1]?.toLowerCase();
+    if (rawText) {
+      const close = RAW_TEXT_CLOSE[rawText]!;
+      let at = nextClose[rawText] ?? -2;
+      if (at !== -1 && at < lt) {
+        close.lastIndex = lt;
+        at = close.exec(html)?.index ?? -1;
+        nextClose[rawText] = at;
+      }
+      if (at !== -1) {
+        i = at + `</${rawText}>`.length;
+        continue;
+      }
+    }
+    // An ordinary tag, or a script/style that never closes.
+    i = nextGt + 1;
+  }
+  return parts.join("");
 }

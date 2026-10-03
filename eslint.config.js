@@ -7,6 +7,14 @@ const compat = new FlatCompat({
   baseDirectory: import.meta.dirname,
 });
 
+const COLLECTOR_NO_DB =
+  "Collectors get no database access; use input and ctx only (ADR-0040).";
+const COLLECTOR_NET_VIA_CTX =
+  "Use ctx.fetch: it enforces robots.txt, rate limits and budgets (ADR-0040).";
+const COLLECTOR_NO_ENV = "Collectors get no environment access (ADR-0040).";
+const COLLECTOR_NO_GLOBALS =
+  "Collectors get no global objects; use input and ctx only (ADR-0040).";
+
 export default tseslint.config(
   {
     ignores: [
@@ -67,7 +75,9 @@ export default tseslint.config(
     },
   },
   {
-    // Collectors receive only their input and ctx (ADR-0040).
+    // Collectors receive only their input and ctx (ADR-0040). Imports are
+    // matched by specifier, so each rule names the alias, the relative path
+    // and the package that reach the same module.
     files: [
       "src/server/collectors/collectors/**/*.ts",
       "src/server/collectors/helpers/**/*.ts",
@@ -79,33 +89,58 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: [
-                "@/server/db",
-                "@/server/db/*",
-                "drizzle-orm",
-                "drizzle-orm/*",
-              ],
-              message:
-                "Collectors get no database access; use input and ctx only (ADR-0040).",
+              regex: [
+                "^@/server/db(/.*)?$",
+                "^(\\.{1,2}/)+(.+/)?db(\\.[jt]s)?(/.*)?$",
+                "^drizzle-orm(/.*)?$",
+                "^@neondatabase/",
+                "^(pg|postgres)$",
+                "^payload(/.*)?$",
+                "^@payload-config$",
+                "^@upstash/",
+              ].join("|"),
+              message: COLLECTOR_NO_DB,
             },
             {
-              group: ["@/env", "@/server/net/*"],
-              message:
-                "Collectors reach the network only through ctx.fetch (ADR-0040).",
+              regex: [
+                "^@/server/net(/.*)?$",
+                "^(\\.{1,2}/)+(.+/)?net(/.*)?$",
+                "^undici(/.*)?$",
+                "^(node:)?(http|https|http2|net|tls|dgram|dns|child_process|worker_threads)(/.*)?$",
+              ].join("|"),
+              message: COLLECTOR_NET_VIA_CTX,
+            },
+            {
+              regex: [
+                "^@/env(\\.js)?$",
+                "^(\\.{1,2}/)+(.+/)?env(\\.[jt]s)?$",
+                "^(node:)?process$",
+              ].join("|"),
+              message: COLLECTOR_NO_ENV,
             },
           ],
         },
       ],
       "no-restricted-globals": [
         "error",
+        { name: "fetch", message: COLLECTOR_NET_VIA_CTX },
+        { name: "XMLHttpRequest", message: COLLECTOR_NET_VIA_CTX },
+        { name: "WebSocket", message: COLLECTOR_NET_VIA_CTX },
+        { name: "EventSource", message: COLLECTOR_NET_VIA_CTX },
+        { name: "process", message: COLLECTOR_NO_ENV },
+        // The global objects are a side door to all of the above
+        // (globalThis.fetch, window.fetch, global.process, …).
+        ...["globalThis", "window", "self", "global"].map((name) => ({
+          name,
+          message: COLLECTOR_NO_GLOBALS,
+        })),
+      ],
+      "no-restricted-syntax": [
+        "error",
         {
-          name: "fetch",
+          selector: "ImportExpression",
           message:
-            "Use ctx.fetch: it enforces robots.txt, rate limits and budgets (ADR-0040).",
-        },
-        {
-          name: "process",
-          message: "Collectors get no environment access (ADR-0040).",
+            "Collectors cannot load modules at run time; use static imports (ADR-0040).",
         },
       ],
     },
