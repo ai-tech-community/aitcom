@@ -93,4 +93,22 @@ describe("decodeHtml", () => {
     ]);
     expect(decodeHtml(body, null)).toBe("Café");
   });
+
+  it("keeps the five bytes windows-1252 leaves undefined as they are", () => {
+    expect(
+      decodeHtml(
+        bytes([0x81, 0x8d, 0x8f, 0x90, 0x9d]),
+        "text/html; charset=windows-1252",
+      ),
+    ).toBe("\u0081\u008d\u008f\u0090\u009d");
+  });
+
+  it("decodes curly quotes from windows-1252", () => {
+    expect(
+      decodeHtml(
+        bytes([0x93, 0x68, 0x69, 0x94, 0x92]),
+        "text/html; charset=windows-1252",
+      ),
+    ).toBe("“hi”’");
+  });
 });

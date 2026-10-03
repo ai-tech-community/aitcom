@@ -66,10 +66,29 @@ export function htmlEncoding(
   );
 }
 
+/**
+ * WHATWG windows-1252 for bytes 0x80–0x9F (the five it leaves undefined map
+ * to themselves). Node 20's TextDecoder decodes "windows-1252" as
+ * ISO-8859-1, turning these bytes into C1 control characters instead of
+ * € – “ ” ’ (measured on Node 20.20). Mapping them here gives the right text
+ * on every runtime; where the decoder is correct, there is nothing to map.
+ */
+const WINDOWS_1252_HIGH =
+  "€\u0081‚ƒ„…†‡ˆ‰Š‹Œ\u008dŽ\u008f\u0090‘’“”•–—˜™š›œ\u009džŸ";
+
+const C1_CONTROLS = /[\u0080-\u009f]/g;
+
 /** The page's text, decoded by its declared encoding (see `htmlEncoding`). */
 export function decodeHtml(
   body: Uint8Array,
   contentType: string | null,
 ): string {
-  return new TextDecoder(htmlEncoding(body, contentType)).decode(body);
+  const encoding = htmlEncoding(body, contentType);
+  const text = new TextDecoder(encoding).decode(body);
+  return encoding === "windows-1252"
+    ? text.replace(
+        C1_CONTROLS,
+        (c) => WINDOWS_1252_HIGH[c.charCodeAt(0) - 0x80] ?? c,
+      )
+    : text;
 }

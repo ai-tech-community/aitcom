@@ -644,7 +644,9 @@ web page into rows; parsing happens only in the extraction sandbox (see
   (`res.html()`, `context/html-charset.ts`): a byte order mark, else the
   `charset` in `Content-Type`, else `<meta charset>` or `<meta http-equiv>`
   in the first 1024 bytes, else UTF-8; labels are WHATWG labels
-  (`TextDecoder`), and an unknown label counts as undeclared. Other
+  (`TextDecoder`), and an unknown label counts as undeclared. Bytes
+  0x80–0x9F of windows-1252 (€, –, curly quotes) are mapped by the helper
+  itself, because Node 20's decoder reads them as ISO-8859-1. Other
   collectors keep `res.text()` (UTF-8). The log gets "Page n: k items."
   and, when a page was cut (`truncated`), a line saying some items were
   left out. Extraction refusals fail the run with `page_too_slow`,
