@@ -146,6 +146,21 @@ describe("page-list collector", () => {
     expect(requests.map((r) => r.url)).toEqual(["https://e.com/jobs"]);
   });
 
+  it("reads a page in the charset it declares", async () => {
+    const { ctx } = fakeContext({
+      "https://e.com/jobs": {
+        body: Buffer.concat([
+          Buffer.from('<ul><li class="job"><a href="/jobs/1">Caf'),
+          Buffer.from([0xe9]), // "é" in windows-1252
+          Buffer.from("</a></li></ul>"),
+        ]),
+        headers: { "content-type": "text/html; charset=windows-1252" },
+      },
+    });
+    const rows = await collectAll(pageList.run(input(), ctx));
+    expect(rows).toEqual([{ title: "Café", link: "https://e.com/jobs/1" }]);
+  });
+
   it("reads up to five pages by default", () => {
     expect(input().maxPages).toBe(5);
   });

@@ -23,7 +23,13 @@ export interface CollectorResponse {
   url: string;
   status: number;
   headers: Headers;
+  /** The body as UTF-8 text. */
   text(): Promise<string>;
+  /**
+   * The body as an HTML page: decoded by the charset the page declares
+   * (Content-Type header, then `<meta>`), else UTF-8.
+   */
+  html(): Promise<string>;
   json(): Promise<unknown>;
 }
 

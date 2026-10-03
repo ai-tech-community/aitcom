@@ -1,4 +1,5 @@
 import type { CollectorContext } from "../collector";
+import { toCollectorResponse } from "../context/collector-context";
 import { extractListVia } from "../context/extract-capability";
 import { extractList } from "../extract/extract-list";
 
@@ -6,7 +7,8 @@ type FakePage = {
   /** Where the request landed after redirects; the requested URL if absent. */
   url?: string;
   status?: number;
-  body: string;
+  /** Text is sent as UTF-8; bytes as they are (to test other charsets). */
+  body: string | Uint8Array;
   headers?: Record<string, string>;
 };
 
@@ -30,13 +32,12 @@ export function fakeContext(pages: Record<string, FakePage>) {
       requests.push({ url, accept: opts?.accept });
       const page = pages[url];
       if (!page) throw new Error(`unexpected request ${url}`);
-      return {
+      return toCollectorResponse({
         url: page.url ?? url,
         status: page.status ?? 200,
         headers: new Headers(page.headers),
-        text: async () => page.body,
-        json: async () => JSON.parse(page.body) as unknown,
-      };
+        body: Buffer.from(page.body),
+      });
     },
   };
   return { ctx, requests, logs };

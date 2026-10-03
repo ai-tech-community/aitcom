@@ -2,6 +2,7 @@ import type { CollectorContext, CollectorResponse } from "../collector";
 import { CollectorStop } from "../errors";
 import { isBlockedHost } from "./blocklist";
 import { type PageExtractor, extractListVia } from "./extract-capability";
+import { decodeHtml } from "./html-charset";
 import { createRobotsCheck } from "./robots";
 import type { SiteRateLimiter, Sleep } from "./site-rate-limit";
 
@@ -235,12 +236,14 @@ function parseWebUrl(raw: string): URL {
   return url;
 }
 
-function toCollectorResponse(res: TransportResponse): CollectorResponse {
+/** A transport answer as collectors see it. Shared with the test fake. */
+export function toCollectorResponse(res: TransportResponse): CollectorResponse {
   return {
     url: res.url,
     status: res.status,
     headers: res.headers,
     text: async () => res.body.toString("utf8"),
+    html: async () => decodeHtml(res.body, res.headers.get("content-type")),
     json: async () => JSON.parse(res.body.toString("utf8")) as unknown,
   };
 }

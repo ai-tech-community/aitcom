@@ -117,6 +117,23 @@ describe("collector context", () => {
     expect(t.meter).toEqual({ pagesFetched: 1, bytesFetched: 5 });
   });
 
+  it("decodes html() by the page's charset and keeps text() UTF-8", async () => {
+    const latin = Buffer.from([0x43, 0x61, 0x66, 0xe9]); // "Café" in windows-1252
+    const t = setup({
+      replies: [
+        {
+          ...reply(200, "", {
+            "content-type": "text/html; charset=windows-1252",
+          }),
+          body: latin,
+        },
+      ],
+    });
+    const res = await t.ctx.fetch("https://e.com/a");
+    expect(await res.html()).toBe("Café");
+    expect(await res.text()).toBe(latin.toString("utf8"));
+  });
+
   it("stops at the page limit as a partial success", async () => {
     const t = setup({ maxPages: 1, replies: [reply(200), reply(200)] });
     await t.ctx.fetch("https://e.com/1");

@@ -285,7 +285,7 @@ export const pageList: Collector<PageListInput, PageRow> = {
       }
 
       const { rows, nextUrl, nextUrlTooLong, truncated } =
-        await ctx.extractList({ html: await res.text(), url: res.url }, spec);
+        await ctx.extractList({ html: await res.html(), url: res.url }, spec);
       ctx.log(`Page ${n}: ${rows.length} items.`);
       if (truncated) {
         ctx.log(
