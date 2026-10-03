@@ -4242,6 +4242,9 @@
       "waiting": "Waiting for a free collector…",
       "rows": "Rows",
       "noRows": "No rows were collected.",
+      "noRowsHint": {
+        "page": "Some pages build their list in the browser after they load. This collector reads the page as the site sends it, so it can't see those lists."
+      },
       "showing": "Showing {from}–{to} of {total}",
       "nextRows": "Next rows",
       "firstRows": "First rows",

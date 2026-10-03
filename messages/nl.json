@@ -4242,6 +4242,9 @@
       "waiting": "Wachten op een vrije verzamelaar…",
       "rows": "Rijen",
       "noRows": "Er zijn geen rijen verzameld.",
+      "noRowsHint": {
+        "page": "Sommige pagina's bouwen hun lijst pas in de browser op, nadat ze geladen zijn. Deze verzamelaar leest de pagina zoals de site die verstuurt, dus zulke lijsten ziet hij niet."
+      },
       "showing": "{from}–{to} van {total} weergegeven",
       "nextRows": "Volgende rijen",
       "firstRows": "Eerste rijen",

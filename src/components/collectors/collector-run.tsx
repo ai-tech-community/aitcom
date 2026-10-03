@@ -14,7 +14,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@/i18n/navigation";
-import { isRunActive, presentRun } from "@/lib/collectors/run-presentation";
+import {
+  emptyRunHint,
+  isRunActive,
+  presentRun,
+} from "@/lib/collectors/run-presentation";
 import { FAILURE_CODES, type FailureCode } from "@/server/collectors/errors";
 import type { RunStatus } from "@/server/collectors/run-status";
 import { api, type RouterOutputs } from "@/trpc/react";
@@ -145,10 +149,11 @@ export function CollectorRun({ runId }: { runId: string }) {
     return <EmptyState title={t("run.notFound")} action={runsLink} />;
   }
 
-  const title =
-    overview.data?.collectors.find((c) => c.id === data?.collectorId)?.title ??
-    data?.collectorId ??
-    "";
+  const summary = overview.data?.collectors.find(
+    (c) => c.id === data?.collectorId,
+  );
+  const title = summary?.title ?? data?.collectorId ?? "";
+  const emptyHint = data ? emptyRunHint(data, summary?.kind) : null;
   const target = data ? runTarget(data.input) : null;
   const detail = data ? failureDetail(data) : null;
   const rows = items.data?.items ?? [];
@@ -347,7 +352,10 @@ export function CollectorRun({ runId }: { runId: string }) {
                 <Skeleton className="h-3.5 w-2/3" />
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm">{t("run.noRows")}</p>
+              <div className="flex max-w-prose flex-col gap-1.5 text-sm">
+                <p className="text-muted-foreground">{t("run.noRows")}</p>
+                {emptyHint ? <p>{t(emptyHint)}</p> : null}
+              </div>
             )}
 
             <details className="border-border border-t pt-3">

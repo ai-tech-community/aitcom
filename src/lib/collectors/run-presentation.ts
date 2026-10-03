@@ -1,3 +1,4 @@
+import type { AnyCollector } from "@/server/collectors/collector";
 import type { RunStatus, StopReason } from "@/server/collectors/run-status";
 
 export type BadgeTone = "info" | "success" | "warning" | "destructive";
@@ -29,6 +30,32 @@ export function presentRun(run: {
         ? { tone: "success", label: "finished", stop }
         : { tone: "warning", label: "partial", stop };
   }
+}
+
+/**
+ * The sentence (a key in the `collectors` messages) that explains an empty
+ * result, per collector kind. A page collector reads the page as the site
+ * sends it, so a list the browser builds after loading is invisible to it;
+ * members hear that instead of guessing. Generic on purpose: nothing tries
+ * to detect such pages.
+ */
+const EMPTY_RUN_HINTS = {
+  page: "run.noRowsHint.page",
+} as const satisfies Partial<Record<AnyCollector["kind"], string>>;
+
+type EmptyRunHint = (typeof EMPTY_RUN_HINTS)[keyof typeof EMPTY_RUN_HINTS];
+
+/** The hint under "No rows were collected." for a run that finished empty. */
+export function emptyRunHint(
+  run: { status: RunStatus; itemCount: number },
+  kind: AnyCollector["kind"] | undefined,
+): EmptyRunHint | null {
+  if (run.status !== "succeeded" || run.itemCount > 0 || kind === undefined) {
+    return null;
+  }
+  return (
+    (EMPTY_RUN_HINTS as Partial<Record<string, EmptyRunHint>>)[kind] ?? null
+  );
 }
 
 export function isRunActive(status: RunStatus): boolean {
