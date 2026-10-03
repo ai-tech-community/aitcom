@@ -12,6 +12,8 @@ const COLLECTOR_NO_DB =
 const COLLECTOR_NET_VIA_CTX =
   "Use ctx.fetch: it enforces robots.txt, rate limits and budgets (ADR-0040).";
 const COLLECTOR_NO_ENV = "Collectors get no environment access (ADR-0040).";
+const COLLECTOR_NO_DYNAMIC_CODE =
+  "Collectors cannot load or build code at run time (ADR-0040).";
 const COLLECTOR_NO_GLOBALS =
   "Collectors get no global objects; use input and ctx only (ADR-0040).";
 
@@ -77,7 +79,8 @@ export default tseslint.config(
   {
     // Collectors receive only their input and ctx (ADR-0040). Imports are
     // matched by specifier, so each rule names the alias, the relative path
-    // and the package that reach the same module.
+    // and the package that reach the same module. `src/…` is listed
+    // because tsconfig sets baseUrl ".".
     files: [
       "src/server/collectors/collectors/**/*.ts",
       "src/server/collectors/helpers/**/*.ts",
@@ -90,7 +93,7 @@ export default tseslint.config(
           patterns: [
             {
               regex: [
-                "^@/server/db(/.*)?$",
+                "^(@/|src/)(.+/)?db(\\.[jt]s)?(/.*)?$",
                 "^(\\.{1,2}/)+(.+/)?db(\\.[jt]s)?(/.*)?$",
                 "^drizzle-orm(/.*)?$",
                 "^@neondatabase/",
@@ -103,7 +106,7 @@ export default tseslint.config(
             },
             {
               regex: [
-                "^@/server/net(/.*)?$",
+                "^(@/|src/)(.+/)?net(/.*)?$",
                 "^(\\.{1,2}/)+(.+/)?net(/.*)?$",
                 "^undici(/.*)?$",
                 "^(node:)?(http|https|http2|net|tls|dgram|dns|child_process|worker_threads)(/.*)?$",
@@ -112,7 +115,7 @@ export default tseslint.config(
             },
             {
               regex: [
-                "^@/env(\\.js)?$",
+                "^(@/|src/)env(\\.[jt]s)?$",
                 "^(\\.{1,2}/)+(.+/)?env(\\.[jt]s)?$",
                 "^(node:)?process$",
               ].join("|"),
@@ -128,6 +131,11 @@ export default tseslint.config(
         { name: "WebSocket", message: COLLECTOR_NET_VIA_CTX },
         { name: "EventSource", message: COLLECTOR_NET_VIA_CTX },
         { name: "process", message: COLLECTOR_NO_ENV },
+        // Code built from strings escapes every rule here ((0, eval)("fetch")).
+        ...["eval", "Function"].map((name) => ({
+          name,
+          message: COLLECTOR_NO_DYNAMIC_CODE,
+        })),
         // The global objects are a side door to all of the above
         // (globalThis.fetch, window.fetch, global.process, …).
         ...["globalThis", "window", "self", "global"].map((name) => ({
@@ -139,8 +147,7 @@ export default tseslint.config(
         "error",
         {
           selector: "ImportExpression",
-          message:
-            "Collectors cannot load modules at run time; use static imports (ADR-0040).",
+          message: COLLECTOR_NO_DYNAMIC_CODE,
         },
       ],
     },
