@@ -68,6 +68,7 @@ class WorkerSlot {
   private readonly worker: Worker;
   private readonly ready: Promise<void>;
   private readonly gone: Promise<never>;
+  private ended = false;
   private inFlight: {
     id: number;
     resolve: (result: ExtractResult) => void;
@@ -78,7 +79,12 @@ class WorkerSlot {
     let markReady!: () => void;
     let markGone!: (error: Error) => void;
     this.ready = new Promise<void>((resolve) => (markReady = resolve));
-    this.gone = new Promise<never>((_, reject) => (markGone = reject));
+    this.gone = new Promise<never>((_, reject) => {
+      markGone = (error) => {
+        this.ended = true;
+        reject(error);
+      };
+    });
     // Always observed through a race, but may settle when nobody waits.
     this.gone.catch(() => undefined);
 
@@ -132,6 +138,11 @@ class WorkerSlot {
     });
   }
 
+  /** False once the worker crashed or exited, even while it was idle. */
+  get alive(): boolean {
+    return !this.ended;
+  }
+
   /** Waits for the worker to start, then sends one request. */
   async request(request: WorkerRequest): Promise<ExtractResult> {
     await Promise.race([this.ready, this.gone]);
@@ -182,6 +193,9 @@ export function createExtractSandbox(
   ): Promise<ExtractResult> {
     if (closed) throw new ExtractError("extract_failed", "sandbox is closed");
 
+    // A worker can die between calls (it was idle); start a fresh one then
+    // instead of failing this call on the dead one.
+    if (slot && !slot.alive) slot = null;
     let current: WorkerSlot;
     try {
       current = slot ??= new WorkerSlot(settings);

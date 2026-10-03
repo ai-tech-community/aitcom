@@ -147,4 +147,29 @@ describe("createExtractSandbox (worker events)", () => {
 
     expect((await rejection(call)).code).toBe("extract_failed");
   });
+
+  it("starts a fresh worker when the last one died while idle", async () => {
+    const box = createExtractSandbox({ workerPath: "/w.cjs" });
+    const first = box.extract("<li></li>", spec);
+    const idle = await startedWorker();
+    idle.emit("message", {
+      id: lastRequestId(idle),
+      ok: true,
+      result: emptyResult,
+    });
+    await first;
+
+    idle.emit("exit", 1);
+    const second = box.extract("<li></li>", spec);
+    const fresh = await startedWorker();
+    fresh.emit("message", {
+      id: lastRequestId(fresh),
+      ok: true,
+      result: emptyResult,
+    });
+
+    await expect(second).resolves.toEqual(emptyResult);
+    expect(fresh).not.toBe(idle);
+    expect(idle.posted).toHaveLength(1);
+  });
 });
