@@ -10,6 +10,11 @@ export const MAX_DEPTH = 512;
 export const MAX_ROWS_PER_PAGE = 5_000;
 /** Longest cell value, in characters, after trimming and collapsing. */
 export const MAX_CELL_CHARS = 2_000;
+/**
+ * Most characters kept from one page, summed over every cell value. Rows
+ * that would go past it are dropped and the result says `truncated`.
+ */
+export const MAX_OUTPUT_CHARS_PER_PAGE = 2_000_000;
 
 export type ExtractField = {
   /** Column name in the output row. */
@@ -33,6 +38,8 @@ export type ExtractSpec = {
 export type ExtractResult = {
   rows: Record<string, string | null>[];
   nextUrl: string | null;
+  /** True when rows were dropped to stay within MAX_OUTPUT_CHARS_PER_PAGE. */
+  truncated: boolean;
 };
 
 export type ExtractErrorCode =
