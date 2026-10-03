@@ -26,6 +26,7 @@ export type FailureCode =
   | "page_too_deep"
   | "selector_not_allowed"
   | "not_a_page"
+  | "page_status"
   | "generic";
 
 export const FAILURE_CODES = [
@@ -48,6 +49,7 @@ export const FAILURE_CODES = [
   "page_too_deep",
   "selector_not_allowed",
   "not_a_page",
+  "page_status",
   "generic",
 ] as const satisfies readonly FailureCode[];
 

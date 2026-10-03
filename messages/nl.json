@@ -4169,6 +4169,7 @@
       "page_too_deep": "Deze pagina is te diep opgebouwd om veilig te lezen. Probeer een andere pagina.",
       "selector_not_allowed": "Een van de selectors gebruikt iets wat we niet toestaan. Gebruik eenvoudige selectors: tagnamen, classes, id's en attributen.",
       "not_a_page": "Dit adres is geen webpagina. Controleer of je het adres van de pagina met de lijst hebt gekopieerd.",
+      "page_status": "De pagina antwoordde met fout {status}. Controleer het adres, of probeer het later opnieuw.",
       "generic": "Probeer het later opnieuw."
     },
     "stopShort": {

@@ -4169,6 +4169,7 @@
       "page_too_deep": "This page is nested too deeply to read safely. Try a different page.",
       "selector_not_allowed": "One of the selectors uses a feature we don't allow. Use simple selectors: tag names, classes, ids and attributes.",
       "not_a_page": "This address is not a web page. Check that you copied the address of the page with the list.",
+      "page_status": "The page answered with error {status}. Check the address, or try again later.",
       "generic": "Try again later."
     },
     "stopShort": {

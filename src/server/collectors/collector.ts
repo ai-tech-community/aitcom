@@ -8,6 +8,8 @@ export type FieldHint = {
   label: LocalizedText;
   help?: LocalizedText;
   placeholder?: string;
+  /** For a field that is a list of rows: a hint per column of a row. */
+  columns?: Record<string, FieldHint>;
 };
 
 export type CollectorLimits = {
