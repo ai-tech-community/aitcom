@@ -2,14 +2,23 @@ import { parse, SelectorType, type Selector } from "css-what";
 
 /**
  * Which CSS selectors a member may give the "list on a web page" collector.
- * Only features whose css-select cost is bounded (at worst quadratic in the
- * sibling count) and that do not recurse deeply. Refused, all measured:
- * the `:nth-*` family, `:has()` and `:contains()` (recurse and overflow the
- * stack on deep pages), and chained `~` (the sibling scan is uncached, so
- * `x ~ * ~ * ~ *` grows polynomially: 1.2 s at 200 siblings, 19.8 s at 400).
- * The extraction also runs under a deadline enforced from outside the
- * worker; this policy keeps a single page well inside it.
  * Used by the form schema and again inside the extraction worker.
+ *
+ * The policy refuses the feature combinations we measured as super-linear
+ * in css-select (cheerio 1.2.0):
+ * - the `:nth-*` family, and `:has()` / `:contains()` (they also recurse and
+ *   overflow the stack on deep pages);
+ * - more than one `~` (the sibling scan is uncached: `x ~ * ~ * ~ *` took
+ *   1.2 s at 200 siblings, 19.8 s at 400);
+ * - a `~` together with any sibling-scanning pseudo-class
+ *   (`:not(:only-of-type) ~ *` took 13 s at 1 200 siblings);
+ * - more than two sibling-scanning pseudo-classes (15x `:only-of-type`
+ *   took 6.1 s at 5 000 siblings).
+ *
+ * What remains can still be slow on a hostile page (two sibling-scanning
+ * pseudo-classes stay quadratic: about 0.9 s at 5 000 siblings with all
+ * different tag names). This policy is not the real bound; the real bound is
+ * the extraction deadline, enforced from outside the worker.
  *
  * This is an allowlist: any token type or pseudo-class not named here is
  * refused, so a newer css-what that learns a new feature stays refused.
@@ -18,6 +27,20 @@ export const MAX_SELECTOR_LENGTH = 200;
 export const MAX_COMPOUNDS = 8;
 /** `~` combinators allowed in the whole selector, nested ones included. */
 export const MAX_GENERAL_SIBLING_COMBINATORS = 1;
+/**
+ * Sibling-scanning pseudo-classes allowed in the whole selector, nested ones
+ * included, when it has no `~`. With a `~` anywhere, none are allowed.
+ */
+export const MAX_SIBLING_SCANNING_PSEUDOS = 2;
+
+/** Pseudo-classes that css-select answers by scanning the sibling list. */
+const SIBLING_SCANNING_PSEUDOS: ReadonlySet<string> = new Set([
+  "first-of-type",
+  "last-of-type",
+  "only-of-type",
+  "only-child",
+  "last-child",
+]);
 
 export type SelectorProblem =
   | "empty"
@@ -60,12 +83,14 @@ const ALLOWED_COMBINATORS: ReadonlySet<Selector["type"]> = new Set([
 /** Counts shared by a selector and everything nested inside it. */
 interface WholeSelectorTally {
   generalSiblings: number;
+  siblingScanningPseudos: number;
 }
 
 /**
  * Checks one complex selector (no top-level list). Nested `:not/:is/:where`
- * selectors are checked with the same rules: the compound limit applies to
- * each of them, the `~` limit to the whole selector (via `tally`).
+ * selectors are checked with the same rules. The compound limit applies to
+ * each of them; the whole-selector counts go into `tally` and are judged by
+ * `checkTally` once the walk is done.
  */
 function checkComplex(
   tokens: Selector[],
@@ -75,11 +100,7 @@ function checkComplex(
   for (const token of tokens) {
     if (ALLOWED_COMBINATORS.has(token.type)) {
       compounds += 1;
-      if (token.type === SelectorType.Sibling) {
-        tally.generalSiblings += 1;
-        if (tally.generalSiblings > MAX_GENERAL_SIBLING_COMBINATORS)
-          return "too_complex";
-      }
+      if (token.type === SelectorType.Sibling) tally.generalSiblings += 1;
       continue;
     }
     // Simple selectors: tag, `*`, attribute (class and id are attributes).
@@ -98,6 +119,8 @@ function checkComplex(
 
     if (BARE_PSEUDOS.has(token.name)) {
       if (token.data !== null) return "not_allowed";
+      if (SIBLING_SCANNING_PSEUDOS.has(token.name))
+        tally.siblingScanningPseudos += 1;
       continue;
     }
     if (SELECTOR_LIST_PSEUDOS.has(token.name) && Array.isArray(token.data)) {
@@ -110,6 +133,16 @@ function checkComplex(
     return "not_allowed";
   }
   return compounds > MAX_COMPOUNDS ? "too_complex" : null;
+}
+
+function checkTally(tally: WholeSelectorTally): SelectorProblem | null {
+  if (tally.generalSiblings > MAX_GENERAL_SIBLING_COMBINATORS)
+    return "too_complex";
+  if (tally.generalSiblings > 0 && tally.siblingScanningPseudos > 0)
+    return "too_complex";
+  if (tally.siblingScanningPseudos > MAX_SIBLING_SCANNING_PSEUDOS)
+    return "too_complex";
+  return null;
 }
 
 export function checkSelector(selector: string): SelectorCheck {
@@ -131,6 +164,10 @@ export function checkSelector(selector: string): SelectorCheck {
   if (parsed.length !== 1 || !only || only.length === 0)
     return { ok: false, reason: "list" };
 
-  const problem = checkComplex(only, { generalSiblings: 0 });
+  const tally: WholeSelectorTally = {
+    generalSiblings: 0,
+    siblingScanningPseudos: 0,
+  };
+  const problem = checkComplex(only, tally) ?? checkTally(tally);
   return problem ? { ok: false, reason: problem } : { ok: true };
 }

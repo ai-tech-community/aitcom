@@ -87,4 +87,24 @@ describe("checkSelector", () => {
   ] as const)("refuses %j (%s) (fix round 1)", (selector, reason) => {
     expect(checkSelector(selector)).toEqual({ ok: false, reason });
   });
+
+  it.each(["li:first-of-type:last-of-type", "li:first-child ~ li"])(
+    "allows %s (fix round 2)",
+    (selector) => {
+      expect(checkSelector(selector)).toEqual({ ok: true });
+    },
+  );
+
+  it.each([
+    ":not(:only-of-type) ~ *",
+    ":not(:first-of-type) ~ *",
+    "a ~ b:last-child",
+    "li:only-of-type:only-child:last-child",
+    "li:is(:only-of-type, :last-of-type):not(:only-child)",
+  ])("refuses %j as too_complex (fix round 2)", (selector) => {
+    expect(checkSelector(selector)).toEqual({
+      ok: false,
+      reason: "too_complex",
+    });
+  });
 });
