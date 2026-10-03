@@ -1,6 +1,6 @@
 # Data collectors — design
 
-**Status:** proposed
+**Status:** in delivery — slices 1–2 built
 **Date:** 2026-10-03
 **Decision record:** [ADR-0040](../../adr/0040-data-collectors-are-built-in-strategies-run-from-a-queued-command.md)
 
@@ -284,10 +284,42 @@ is written back to the run) → re-validate input
 - **Time budget.** The worker route has `maxDuration = 300`; a run's effective
   budget is `min(collector.limits.maxDurationMs, 240_000)`. Exceeding it ends
   the run as `succeeded` with `stop_reason = 'time_limit'` (partial, honest).
-- **Errors.** A thrown error inside a collector ends the run `failed` with a
-  user-safe message mapped from known error kinds; the raw error goes to the
-  server log only. The stored message is cut to 500 characters (the column
-  size).
+- **Errors.** A thrown error inside a collector ends the run `failed`. Two
+  things are stored: `error`, a plain English sentence for the server log
+  and MCP (cut to 500 characters, the column size), and `error_detail`, a
+  stable failure code the member's screen translates (see "Failure
+  detail"). The raw error goes to the server log only.
+
+### Failure detail (`errors.ts`)
+
+Every failed run stores `error_detail = { code, params? }`. The code is a
+closed union (`FailureCode`), so a new failure needs a new code and its
+EN/NL copy (`collectors.failure.<code>`); screens never show the English
+`error`.
+
+| Code | Produced when |
+|---|---|
+| `not_a_feed` | the address is not an RSS or Atom feed |
+| `feed_status` | the feed answered with a non-2xx status (`params.status`) |
+| `https_only` | an address is not https |
+| `invalid_address` | a collector produced something that is not a web address |
+| `redirect_loop` | more than 5 redirects |
+| `too_large` | a response was over the 5 MB limit |
+| `timeout` | a site took too long to answer |
+| `unreachable_address` | the SSRF guard refused the address (private or local) |
+| `site_refused` | the third 429/503 in a row from one site |
+| `robots_disallowed` | the site's robots.txt disallows the page |
+| `robots_unreachable` | the site's robots.txt could not be read |
+| `blocked_domain` | the site opted out |
+| `collector_unavailable` | the run's collector is gone or switched off |
+| `input_invalid` | the stored input no longer fits the collector |
+| `worker_lost` | the run was interrupted twice |
+| `generic` | anything else |
+
+`CollectorStop` carries its detail (optional 4th argument); for other
+errors `failureDetailFor(err)` maps the same known kinds as
+`userMessageFor(err)`. A partial (succeeded) run has neither `error` nor
+`error_detail`.
 
 ### Run lifecycle (`run-status.ts`)
 
@@ -366,9 +398,14 @@ The facade passes it on as an ISO 8601 string. Other refusals have none.
   time, so a 5,000-row run is never held in memory whole.
 - Download route: `GET /api/collectors/runs/[runId]/export?format=csv|json`.
   Signed-in owner only: no session → 401, unknown format → 400, another
-  member's or a missing run → 404 (never 403), flag off → 404. The response
-  is a `ReadableStream` pulled page by page, sent as an attachment with
-  `Cache-Control: private, no-store` and `X-Content-Type-Options: nosniff`.
+  member's or a missing run → 404 (never 403), flag off → 404, a run still
+  `queued` or `running` → 409 "Run still in progress" (its file would be
+  incomplete). The response is a `ReadableStream` pulled page by page, sent
+  as an attachment with `Cache-Control: private, no-store` and
+  `X-Content-Type-Options: nosniff`. A failure mid-stream is logged with the
+  run id and errors the stream, so the browser shows a failed download
+  rather than a silently short file; cancelling the download stops the
+  reads.
   The format is looked up in the export registry, so a new format needs no
   route change.
 
@@ -399,7 +436,8 @@ is high and nothing needs the admin UI.
 | `item_count` | integer NOT NULL DEFAULT 0 | |
 | `invalid_item_count` | integer NOT NULL DEFAULT 0 | rows rejected by item schema |
 | `duration_ms` | integer NULL | |
-| `error` | varchar(500) NULL | user-safe message |
+| `error` | varchar(500) NULL | plain English sentence (server log, MCP) |
+| `error_detail` | jsonb NULL | `{ code, params? }` failure code the screens translate (migration `20261003b`) |
 | `log` | jsonb NOT NULL DEFAULT '[]' | last 50 lines |
 | `created_at` | timestamptz NOT NULL DEFAULT now() | |
 | `started_at`, `finished_at` | timestamptz NULL | |
@@ -468,8 +506,9 @@ maintained option):
 
 A member-only tab in the dashboard, hard-gated like the other dashboard
 pages: every page calls `requireDashboardSession()` itself and every
-procedure is a `protectedProcedure`. User-facing name: **Data collector**.
-The tab appears after Job tracker only while the feature flag is on (see
+procedure is a `protectedProcedure`. User-facing name: **Data collectors**
+for the tab and the page title (one item is "a data collector"). The tab
+appears after Job tracker only while the feature flag is on (see
 "Feature flag and kill switches").
 
 Routes:
@@ -508,15 +547,16 @@ validation stay in the facade, so MCP behaves the same.
    runs) are shown above the button. **Start run** is the one Signal Orange
    action.
 
-   **First-use note.** While the member has no runs in their 30-day history,
+   **First-use note.** While the member has no stored runs,
    the form shows a short acceptable-use note (own research, respect each
    site's terms, avoid personal data, runs are private and deleted after
    30 days) with a checkbox the member must tick. The router enforces it:
    `start` without `acknowledged: true` from a member with no runs is
    refused with `BAD_REQUEST` / `ACKNOWLEDGEMENT_REQUIRED`, so a stale or
    crafted request cannot skip it. There is no separate stored flag; once
-   the member has a run the note is gone, and it comes back if all their
-   runs have expired.
+   the member has a run the note is gone. Runs are removed after 30 days by
+   the retention cron (slice 5), so once all of a member's runs have been
+   removed the note shows again.
 
    **Refusals.** Field errors are shown on their fields. A quota refusal
    names the limit: "You've used all 20 runs for the last 24 hours. You can
@@ -527,7 +567,10 @@ validation stay in the facade, so MCP behaves the same.
 3. **Run page** — status badge with icon + label (semantic tokens), one
    sentence saying where the run stands, counts (rows, pages fetched, rows
    skipped), stop reason in plain words ("Partial: stopped at the page
-   limit."), a paged table preview (50 rows per page, by `seq`), and a
+   limit."), and for a failed run the translated failure detail under it
+   ("The feed answered with error 404. Check the address, or try again
+   later."; an unknown code adds nothing, the English `error` never shows),
+   a paged table preview (50 rows per page, by `seq`), and a
    collapsible log. The status is announced to screen readers
    (`role="status"`).
 
@@ -535,8 +578,11 @@ validation stay in the facade, so MCP behaves the same.
    is `queued` or `running`, and stop when it ends. At that moment the rows
    are fetched once more, so the table agrees with the final count and the
    download (a first load of an already-ended run is not a transition and
-   does not refetch). A missing or foreign run shows "not found" with a link
-   to My runs; that query is not retried and not polled.
+   does not refetch). An error does not stop polling: a passing failure (a
+   deploy, a network blip) keeps the last known status and its interval.
+   Only `NOT_FOUND` stops it: a missing or foreign run shows "not found"
+   with a link to My runs; that query is not retried and not polled. The
+   rows query follows the same rule.
 
    **Downloads.** **Download CSV** / **Download JSON** are equal peers, so
    both use the `ink` button, not orange. They are offered only once the
@@ -544,8 +590,15 @@ validation stay in the facade, so MCP behaves the same.
 
 4. **My runs** — history table with collector, start time, status badge,
    row count, short stop reason ("Why it ended") and expiry as
-   `<RelativeTime>`; older runs load by cursor. Empty history teaches the
+   `<RelativeTime>`; older runs load by cursor. When a new run appears on
+   top of the first page, the loaded older pages are dropped and paging
+   starts again, so no run falls between pages. Empty history teaches the
    next action with **Choose a collector**, the one orange action there.
+
+   The dashboard's recent runs and the history's first page refetch every
+   5 seconds while any listed run is `queued` or `running`, and stop once
+   none is. The recent-runs empty hint ("Pick a collector above…") shows
+   only when there is at least one collector.
 
 All data views implement the three data states (`<Skeleton>`,
 `<ErrorState onRetry>`, `<EmptyState>`). All member-facing copy lives in
@@ -634,8 +687,11 @@ was accepted for (ADR-0040).
   we did not collect from it."), the page is never requested.
 - A non-https address → refused at `startRun` (input schema) and by the
   context.
-- Network / parse errors in a collector → `failed` with a mapped user-safe
-  message; raw error in the server log.
+- Network / parse errors in a collector → `failed` with a mapped English
+  message and a failure code (see "Failure detail") the screens translate;
+  raw error in the server log.
+- Download of a run still in progress → 409; a failure mid-download is
+  logged with the run id and errors the stream.
 - Invalid rows → skipped and counted in `invalid_item_count`, shown on the run
   page.
 - Worker crash → lease expiry → re-claimed once, then `worker_lost`.
@@ -660,10 +716,12 @@ was accepted for (ADR-0040).
 - **UI:** the generated form renders each collector's fields and refuses
   fields it cannot draw; defaults make a field optional; the first-use note
   and its router check; quota sentences; the run page shows all statuses and
-  stop reasons, stops polling when the run ends and refetches the rows once,
-  and does not poll a missing run; downloads appear only for an ended run
-  with rows; the export route's owner, format and flag checks and its
-  streamed body; member copy never says "robots.txt"; EN/NL key parity
+  stop reasons and the translated failure detail, stops polling when the
+  run ends and refetches the rows once, keeps polling through a passing
+  error and stops only for a missing run; the lists poll while a run is
+  active; downloads appear only for an ended run with rows; the export
+  route's owner, format, flag and in-progress (409) checks, its lazy,
+  cancellable stream and its mid-stream failure; member copy never says "robots.txt"; EN/NL key parity
   (`scripts/check-i18n-parity.mjs`); the three data states.
 - Full existing suites of every touched workspace, including `safeFetch`
   callers after the option change.
@@ -674,7 +732,7 @@ was accepted for (ADR-0040).
    context (Proxy) with all safety rules, executor, worker route + cron,
    facade, `feed-items`, flag. Tested end to end without UI. Plan:
    `docs/superpowers/plans/2026-10-03-data-collectors-core.md`.
-2. **Member UI and the public about page** (shipped), preceded by a visual
+2. **Member UI and the public about page** (built), preceded by a visual
    review of mockups: dashboard tab, generated form, run page, history,
    export, `/collectors/about`. The flag stays off until this slice ships, so
    no collector contacts a site before the about page exists. Plan:
