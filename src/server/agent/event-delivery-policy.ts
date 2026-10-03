@@ -34,8 +34,16 @@ export type CommunitySource =
   | { from: "platform-wide" };
 
 export type DeliveryAudience =
-  /** Any agent whose owner may read the event's community. */
-  | { kind: "community-readers"; community: CommunitySource }
+  /**
+   * Any agent whose owner may read the event's community. With
+   * `actorMustBePublic`, only while the actor is on the public roster
+   * (`publicRosterVisibility`); otherwise only the actor's own agents.
+   */
+  | {
+      kind: "community-readers";
+      community: CommunitySource;
+      actorMustBePublic?: boolean;
+    }
   /** Only the agent of the user in `recipientId`. */
   | { kind: "recipient" }
   /** Only the agent(s) of the human behind the actor. */
@@ -60,6 +68,20 @@ function readers(community: CommunitySource, fields: readonly string[]) {
   } satisfies DeliveryRule;
 }
 
+/**
+ * Community readers when the event names a person whose profile is public;
+ * the actor's own agents when it is not.
+ */
+function readersOfPublicActor(
+  community: CommunitySource,
+  fields: readonly string[],
+) {
+  return {
+    audience: { kind: "community-readers", community, actorMustBePublic: true },
+    fields,
+  } satisfies DeliveryRule;
+}
+
 function actorOnly(fields: readonly string[]) {
   return { audience: { kind: "actor" }, fields } satisfies DeliveryRule;
 }
@@ -77,14 +99,21 @@ export const EVENT_DELIVERY_POLICY: Readonly<Record<string, DeliveryRule>> = {
 
   // ── Challenges ───────────────────────────────────────────────────────────
   // The race (who joined, objectives done, finishers) is readable where the
-  // challenge is (ADR-0030); the work and its review stay with the people in it.
-  "challenge.enrolled": readers(COLUMN, ["title", "collaborationModel"]),
-  "challenge.objective_completed": readers(COLUMN, [
+  // challenge is (ADR-0030), naming only members with a public profile
+  // (ADR-0021); the work and its review stay with the people in it.
+  "challenge.enrolled": readersOfPublicActor(COLUMN, [
+    "title",
+    "collaborationModel",
+  ]),
+  "challenge.objective_completed": readersOfPublicActor(COLUMN, [
     "title",
     "objectiveIndex",
     "collaborationModel",
   ]),
-  "challenge.completed": readers(COLUMN, ["title", "collaborationModel"]),
+  "challenge.completed": readersOfPublicActor(COLUMN, [
+    "title",
+    "collaborationModel",
+  ]),
   "challenge.abandoned": actorOnly([
     "title",
     "completedObjectives",
@@ -186,6 +215,22 @@ export interface EventFacts {
   communityId: string | null | undefined;
   /** The human behind the actor: the member, or the acting agent's owner. */
   actorOwnerId: string | null;
+  /**
+   * Whether the actor is on the public roster: a member with a public
+   * profile, or an active, visible agent whose owner has one.
+   */
+  actorIsPublic: boolean;
+}
+
+function isActorOwner(
+  event: AudienceEvent,
+  facts: EventFacts,
+  ownerId: string,
+): boolean {
+  return (
+    event.actorId === ownerId ||
+    (facts.actorOwnerId !== null && facts.actorOwnerId === ownerId)
+  );
 }
 
 /**
@@ -204,16 +249,16 @@ export function audienceAdmits(
   const audience = rule.audience;
   switch (audience.kind) {
     case "community-readers":
+      if (audience.actorMustBePublic && !facts.actorIsPublic) {
+        return isActorOwner(event, facts, ownerId);
+      }
       if (facts.communityId === undefined) return false;
       if (facts.communityId === null) return true;
       return !hiddenCommunityIds.has(facts.communityId);
     case "recipient":
       return event.recipientId !== null && event.recipientId === ownerId;
     case "actor":
-      return (
-        event.actorId === ownerId ||
-        (facts.actorOwnerId !== null && facts.actorOwnerId === ownerId)
-      );
+      return isActorOwner(event, facts, ownerId);
     case "named-user": {
       const named = event.metadata?.[audience.metadataKey];
       return typeof named === "string" && named === ownerId;

@@ -24,7 +24,12 @@ function evt(p: Partial<AudienceEvent> = {}): AudienceEvent {
 }
 
 function facts(p: Partial<EventFacts> = {}): EventFacts {
-  return { communityId: "c-listed", actorOwnerId: null, ...p };
+  return {
+    communityId: "c-listed",
+    actorOwnerId: null,
+    actorIsPublic: true,
+    ...p,
+  };
 }
 
 describe("EVENT_DELIVERY_POLICY table", () => {
@@ -68,6 +73,28 @@ describe("EVENT_DELIVERY_POLICY table", () => {
         "community-readers",
       );
     }
+  });
+});
+
+describe("challenge race events", () => {
+  it.each([
+    "challenge.enrolled",
+    "challenge.objective_completed",
+    "challenge.completed",
+  ])("%s reaches community readers only for a public actor", (action) => {
+    expect(deliveryRuleFor(action)?.audience).toEqual({
+      kind: "community-readers",
+      community: { from: "column" },
+      actorMustBePublic: true,
+    });
+  });
+
+  it("keeps forum activity open to community readers regardless of profile", () => {
+    const audience = deliveryRuleFor("thread.create")?.audience;
+    expect(audience?.kind).toBe("community-readers");
+    expect(
+      audience?.kind === "community-readers" && audience.actorMustBePublic,
+    ).toBeFalsy();
   });
 });
 
@@ -161,6 +188,42 @@ describe("audienceAdmits", () => {
           NO_HIDDEN,
         ),
       ).toBe(true);
+    });
+  });
+
+  describe("community readers of a public actor", () => {
+    const completed = { action: "challenge.completed", actorId: "racer" };
+    it("admits a co-reader when the actor is public", () => {
+      expect(audienceAdmits(evt(completed), facts(), OWNER, NO_HIDDEN)).toBe(
+        true,
+      );
+    });
+    it("admits only the actor's own agents when the actor is private", () => {
+      const priv = facts({ actorIsPublic: false });
+      expect(audienceAdmits(evt(completed), priv, OWNER, NO_HIDDEN)).toBe(
+        false,
+      );
+      expect(audienceAdmits(evt(completed), priv, "racer", NO_HIDDEN)).toBe(
+        true,
+      );
+      expect(
+        audienceAdmits(
+          evt({ ...completed, actorId: "agent-r" }),
+          facts({ actorIsPublic: false, actorOwnerId: OWNER }),
+          OWNER,
+          NO_HIDDEN,
+        ),
+      ).toBe(true);
+    });
+    it("still denies a public actor's event in a hidden community", () => {
+      expect(
+        audienceAdmits(
+          evt(completed),
+          facts({ communityId: "c-unlisted" }),
+          OWNER,
+          new Set(["c-unlisted"]),
+        ),
+      ).toBe(false);
     });
   });
 

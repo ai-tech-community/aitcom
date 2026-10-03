@@ -147,6 +147,13 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
     await db
       .insert(schema.user)
       .values({ id: userId, email: `${userId}@example.test`, name: label });
+    await db.insert(schema.memberProfiles).values({
+      userId,
+      displayName: `Scope ${label} ${sfx}`,
+      xp: 0,
+      level: 1,
+      isPublic: true,
+    });
     const [agent] = await db
       .insert(schema.agentProfiles)
       .values({ ownerId: userId, name: `Agent ${label} ${sfx}` })
@@ -277,6 +284,9 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
       await db
         .delete(schema.agentProfiles)
         .where(eq(schema.agentProfiles.id, p.agentId));
+      await db
+        .delete(schema.memberProfiles)
+        .where(eq(schema.memberProfiles.userId, p.userId));
       await db.delete(schema.user).where(eq(schema.user.id, p.userId));
     }
     agentKey.agentId = null;
@@ -490,6 +500,69 @@ describe.skipIf(!RUN_DB)("agent event delivery scope [DB integration]", () => {
           e.approvalForCoMember,
         ]),
       );
+    });
+  });
+
+  describe("challenge race events and profile visibility", () => {
+    async function setPublic(p: Person, isPublic: boolean) {
+      await m.db
+        .update(m.schema.memberProfiles)
+        .set({ isPublic })
+        .where(m.eq(m.schema.memberProfiles.userId, p.userId));
+    }
+
+    it("sends a public member's challenge completion to co-members' agents", async () => {
+      const id = await activity({
+        action: "challenge.completed",
+        communityId: unlisted.id,
+        targetType: "challenges",
+        targetId: "1",
+        metadata: { title: "Race", xp: 50 },
+      });
+      await m.dispatchWebhooks(m.db);
+      expect(idsDeliveredTo(member)).toEqual([id]);
+      expect(idsDeliveredTo(coMember)).toEqual([id]);
+      expect(idsDeliveredTo(outsider)).toEqual([]);
+    });
+
+    it("sends a private member's challenge completion only to their own agent", async () => {
+      await setPublic(member, false);
+      const id = await activity({
+        action: "challenge.completed",
+        communityId: listed.id,
+        targetType: "challenges",
+        targetId: "1",
+        metadata: { title: "Race" },
+      });
+      await m.dispatchWebhooks(m.db);
+      expect(idsDeliveredTo(member)).toEqual([id]);
+      expect(idsDeliveredTo(coMember)).toEqual([]);
+      expect(idsDeliveredTo(outsider)).toEqual([]);
+    });
+
+    it("treats an acting agent as public only while it is visible and its owner is public", async () => {
+      const enrolledBy = () =>
+        activity({
+          action: "challenge.enrolled",
+          actorId: member.agentId,
+          actorType: "agent",
+          communityId: listed.id,
+          targetType: "challenges",
+          targetId: "1",
+          metadata: { title: "Race" },
+        });
+      const visible = await enrolledBy();
+      await m.dispatchWebhooks(m.db);
+      expect(idsDeliveredTo(outsider)).toEqual([visible]);
+
+      fetchMock.mockClear();
+      await m.db
+        .update(m.schema.agentProfiles)
+        .set({ visibilityMode: "ghost" })
+        .where(m.eq(m.schema.agentProfiles.id, member.agentId));
+      await enrolledBy();
+      await m.dispatchWebhooks(m.db);
+      expect(idsDeliveredTo(outsider)).toEqual([]);
     });
   });
 

@@ -2,16 +2,18 @@
  * Applies the event delivery policy (./event-delivery-policy) to real rows.
  *
  * One instance serves one delivery run: it resolves each event's community
- * and acting agent's owner in batch (one query per kind, never per row) and
- * computes each owner's hidden communities once, then answers "may the agent
- * of this owner receive this event?".
+ * and acting agent's owner in batch (one query per kind, never per row),
+ * checks which actors are on the public roster in one query, and computes
+ * each owner's hidden communities once, then answers "may the agent of this
+ * owner receive this event?".
  */
 
-import { inArray } from "drizzle-orm";
+import { and, inArray } from "drizzle-orm";
 
 import type { db as _db } from "@/server/db";
-import { agentProfiles, communities } from "@/server/db/schema";
+import { agentProfiles, communities, memberProfiles } from "@/server/db/schema";
 import { hiddenContentCommunityIds } from "@/server/communities/content-visibility-queries";
+import { publicRosterVisibility } from "@/server/members/public-roster";
 import { getPayloadClient } from "@/server/payload";
 
 import type { ActivityEvent } from "./deliver-event";
@@ -30,6 +32,13 @@ const LISTED_EVENT_STATUSES = new Set(["published", "cancelled", "completed"]);
 export interface EventTarget {
   communityId: string | null;
   status: string | null;
+}
+
+/** An acting agent's owner, and whether the agent itself is listed. */
+interface AgentActor {
+  ownerId: string;
+  /** Active and not in ghost mode. */
+  isListed: boolean;
 }
 
 /** Loads `events` docs by id. Docs that do not exist are absent. */
@@ -109,24 +118,36 @@ export class EventDeliveryAudience {
 
     const targetIds = new Set<number>();
     const agentActorIds = new Set<string>();
+    const publicChecks: ActivityEvent[] = [];
     for (const event of pending) {
       const audience = deliveryRuleFor(event.action)!.audience;
-      if (
-        audience.kind === "community-readers" &&
-        audience.community.from === "event-target"
-      ) {
+      const readers = audience.kind === "community-readers";
+      if (readers && audience.community.from === "event-target") {
         const id = eventTargetId(event);
         if (id !== null) targetIds.add(id);
       }
-      if (audience.kind === "actor" && event.actorType === "agent") {
+      const mustBePublic = readers && audience.actorMustBePublic === true;
+      if (mustBePublic) publicChecks.push(event);
+      if (
+        (audience.kind === "actor" || mustBePublic) &&
+        event.actorType === "agent"
+      ) {
         agentActorIds.add(event.actorId);
       }
     }
 
-    const [targets, agentOwners] = await Promise.all([
+    const [targets, agentActors] = await Promise.all([
       this.loadEventTargets([...targetIds]),
-      this.agentOwners([...agentActorIds]),
+      this.agentActors([...agentActorIds]),
     ]);
+
+    // The member a public-roster check asks about: the acting member, or the
+    // owner of an acting agent that is itself listed.
+    const rosterSubject = (event: ActivityEvent): string | null => {
+      if (event.actorType !== "agent") return event.actorId;
+      const agent = agentActors.get(event.actorId);
+      return agent?.isListed ? agent.ownerId : null;
+    };
 
     // The community each event claims, before checking that it exists.
     const claimed = new Map<string, string | null | undefined>();
@@ -154,16 +175,25 @@ export class EventDeliveryAudience {
       }
     }
 
-    const existing = await this.existingCommunityIds(
-      [...claimed.values()].filter((id): id is string => !!id),
-    );
+    const [existing, publicMembers] = await Promise.all([
+      this.existingCommunityIds(
+        [...claimed.values()].filter((id): id is string => !!id),
+      ),
+      this.publicMemberIds(
+        publicChecks
+          .map(rosterSubject)
+          .filter((id): id is string => id !== null),
+      ),
+    ]);
 
     for (const event of pending) {
       const claim = claimed.get(event.id);
+      const subject = rosterSubject(event);
       this.facts.set(event.id, {
         communityId:
           typeof claim === "string" && !existing.has(claim) ? undefined : claim,
-        actorOwnerId: agentOwners.get(event.actorId) ?? null,
+        actorOwnerId: agentActors.get(event.actorId)?.ownerId ?? null,
+        actorIsPublic: subject !== null && publicMembers.has(subject),
       });
     }
   }
@@ -177,16 +207,42 @@ export class EventDeliveryAudience {
     return new Set(rows.map((r) => r.id));
   }
 
-  private async agentOwners(agentIds: string[]): Promise<Map<string, string>> {
-    const out = new Map<string, string>();
+  private async agentActors(
+    agentIds: string[],
+  ): Promise<Map<string, AgentActor>> {
+    const out = new Map<string, AgentActor>();
     if (agentIds.length === 0) return out;
     const rows = await this.db
-      .select({ id: agentProfiles.id, ownerId: agentProfiles.ownerId })
+      .select({
+        id: agentProfiles.id,
+        ownerId: agentProfiles.ownerId,
+        status: agentProfiles.status,
+        visibilityMode: agentProfiles.visibilityMode,
+      })
       .from(agentProfiles)
       .where(inArray(agentProfiles.id, agentIds));
     for (const row of rows) {
-      if (row.ownerId) out.set(row.id, row.ownerId);
+      if (!row.ownerId) continue;
+      out.set(row.id, {
+        ownerId: row.ownerId,
+        isListed: row.status === "active" && row.visibilityMode === "visible",
+      });
     }
     return out;
+  }
+
+  /** Which of these members are on the public roster. */
+  private async publicMemberIds(userIds: string[]): Promise<Set<string>> {
+    if (userIds.length === 0) return new Set();
+    const rows = await this.db
+      .select({ userId: memberProfiles.userId })
+      .from(memberProfiles)
+      .where(
+        and(
+          inArray(memberProfiles.userId, [...new Set(userIds)]),
+          publicRosterVisibility(),
+        ),
+      );
+    return new Set(rows.map((r) => r.userId));
   }
 }
