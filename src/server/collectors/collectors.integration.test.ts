@@ -16,10 +16,12 @@ import { z } from "zod";
 import type { db as AppDb } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
 
+import { getCollector } from "./catalog";
 import type { AnyCollector, CollectorContext } from "./collector";
 import type * as Errors from "./errors";
 import type * as Executor from "./executor";
 import type * as Quota from "./quota";
+import type * as Runs from "./runs";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -41,6 +43,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
     quota: typeof Quota;
     executor: typeof Executor;
     errors: typeof Errors;
+    runs: typeof Runs;
   };
   let m: Mods;
   const userIds: string[] = [];
@@ -78,7 +81,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
   }
 
   beforeAll(async () => {
-    const [{ db }, schema, drizzle, quota, executor, errors] =
+    const [{ db }, schema, drizzle, quota, executor, errors, runs] =
       await Promise.all([
         import("@/server/db"),
         import("@/server/db/schema"),
@@ -86,8 +89,9 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         import("./quota"),
         import("./executor"),
         import("./errors"),
+        import("./runs"),
       ]);
-    m = { db, schema, drizzle, quota, executor, errors };
+    m = { db, schema, drizzle, quota, executor, errors, runs };
   }, 120_000);
 
   beforeEach(async () => {
@@ -600,6 +604,189 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       expect(await runRow(first)).toMatchObject({ status: "running" });
       expect((await runRow(first)).leaseUntil).not.toBeNull();
       expect(await runRow(second)).toMatchObject({ status: "succeeded" });
+    });
+  });
+
+  describe("CollectorRuns", () => {
+    function facade(over: Partial<Runs.CollectorRunsDeps> = {}) {
+      const kicks: number[] = [];
+      const collector = getCollector("feed-items")!;
+      const runs = m.runs.createCollectorRuns({
+        db: m.db,
+        enabled: () => true,
+        catalog: {
+          all: () => [collector],
+          get: (id) => (id === collector.id ? collector : undefined),
+        },
+        kick: () => kicks.push(1),
+        now: () => new Date("2026-10-03T12:00:00Z"),
+        quota: { runsPerDay: 20, activePerUser: 2, activePlatform: 1_000 },
+        ...over,
+      });
+      return { runs, kicks };
+    }
+    const feedInput = { url: "https://example.com/feed.xml" };
+
+    it("refuses everything while the feature is off", async () => {
+      const userId = await makeUser();
+      const { runs, kicks } = facade({ enabled: () => false });
+      expect(
+        await runs.startRun({
+          userId,
+          origin: "web",
+          collectorId: "feed-items",
+          input: feedInput,
+        }),
+      ).toMatchObject({ ok: false, reason: "disabled" });
+      expect(kicks).toHaveLength(0);
+    });
+
+    it("refuses an unknown collector and invalid input, storing nothing", async () => {
+      const userId = await makeUser();
+      const { runs } = facade();
+      expect(
+        await runs.startRun({
+          userId,
+          origin: "web",
+          collectorId: "nope",
+          input: {},
+        }),
+      ).toMatchObject({ ok: false, reason: "unknown_collector" });
+      const invalid = await runs.startRun({
+        userId,
+        origin: "web",
+        collectorId: "feed-items",
+        input: { url: "ftp://x" },
+      });
+      expect(invalid).toMatchObject({ ok: false, reason: "invalid_input" });
+      expect(
+        invalid.ok === false && invalid.fieldErrors?.url?.length,
+      ).toBeTruthy();
+      expect((await runs.listRuns(userId)).runs).toHaveLength(0);
+    });
+
+    it("queues a run with its version, origin, agent and expiry, then kicks the worker", async () => {
+      const userId = await makeUser();
+      const { runs, kicks } = facade();
+      const result = await runs.startRun({
+        userId,
+        agentId: "agent-1",
+        origin: "mcp",
+        collectorId: "feed-items",
+        input: feedInput,
+      });
+      expect(result.ok).toBe(true);
+      const view = await runs.getRun(
+        userId,
+        (result as { runId: string }).runId,
+      );
+      expect(view).toMatchObject({
+        collectorId: "feed-items",
+        collectorVersion: 1,
+        origin: "mcp",
+        agentId: "agent-1",
+        status: "queued",
+        input: feedInput,
+        expiresAt: "2026-11-02T12:00:00.000Z",
+      });
+      expect(kicks).toHaveLength(1);
+    });
+
+    it("never lets simultaneous starts pass the active limit", async () => {
+      const userId = await makeUser();
+      const { runs } = facade();
+      const results = await Promise.all(
+        Array.from({ length: 4 }, () =>
+          runs.startRun({
+            userId,
+            origin: "web",
+            collectorId: "feed-items",
+            input: feedInput,
+          }),
+        ),
+      );
+      expect(results.filter((r) => r.ok)).toHaveLength(2);
+      expect(results.filter((r) => !r.ok && r.reason === "quota")).toHaveLength(
+        2,
+      );
+    });
+
+    it("shows a run only to its owner", async () => {
+      const owner = await makeUser();
+      const other = await makeUser();
+      const id = await insertRun(owner, { collectorId: "feed-items" });
+      const { runs } = facade();
+      expect(await runs.getRun(owner, id)).not.toBeNull();
+      expect(await runs.getRun(other, id)).toBeNull();
+      expect(await runs.listItems(other, id)).toBeNull();
+      expect(await runs.exportRun(other, id, "csv")).toBeNull();
+    });
+
+    it("lists runs newest first with a working cursor", async () => {
+      const userId = await makeUser();
+      const ids: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        ids.push(
+          await insertRun(userId, {
+            createdAt: new Date(Date.UTC(2026, 9, 1, i)),
+          }),
+        );
+      }
+      const { runs } = facade();
+      const page1 = await runs.listRuns(userId, { limit: 2 });
+      expect(page1.runs.map((r) => r.id)).toEqual([ids[2], ids[1]]);
+      const page2 = await runs.listRuns(userId, {
+        limit: 2,
+        cursor: page1.nextCursor!,
+      });
+      expect(page2.runs.map((r) => r.id)).toEqual([ids[0]]);
+      expect(page2.nextCursor).toBeNull();
+    });
+
+    it("pages items by seq and exports them", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId, {
+        collectorId: "feed-items",
+        status: "succeeded",
+      });
+      const row = (n: number) => ({
+        title: `T${n}`,
+        url: null,
+        publishedAt: null,
+        author: null,
+        summary: n === 1 ? "=HYPERLINK()" : "",
+      });
+      await m.db
+        .insert(m.schema.collectorItems)
+        .values([0, 1, 2].map((seq) => ({ runId: id, seq, data: row(seq) })));
+      const { runs } = facade();
+      const first = await runs.listItems(userId, id, { limit: 2 });
+      expect(first?.items.map((i) => i.title)).toEqual(["T0", "T1"]);
+      const second = await runs.listItems(userId, id, {
+        afterSeq: first!.nextSeq!,
+        limit: 2,
+      });
+      expect(second).toEqual({ items: [row(2)], nextSeq: null });
+
+      const csv = await runs.exportRun(userId, id, "csv");
+      let out = "";
+      for await (const chunk of csv!.body) out += chunk;
+      expect(out.split("\r\n")[0]).toBe("title,url,publishedAt,author,summary");
+      expect(out).toContain("'=HYPERLINK()");
+      expect(csv!.filename).toMatch(/^feed-items-[0-9a-f]{8}\.csv$/);
+      expect(csv!.contentType).toBe("text/csv; charset=utf-8");
+    });
+
+    it("describes collectors in the member's language with a JSON input schema", () => {
+      const { runs } = facade();
+      const [summary] = runs.listCollectors("nl");
+      expect(summary).toMatchObject({
+        id: "feed-items",
+        kind: "feed",
+        title: "Feeditems",
+        fields: [{ name: "url", label: "Feedadres" }],
+      });
+      expect(summary!.inputJsonSchema).toMatchObject({ type: "object" });
     });
   });
 });
