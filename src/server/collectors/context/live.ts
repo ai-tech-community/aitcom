@@ -11,7 +11,6 @@ import {
   type Transport,
   createCollectorContext,
 } from "./collector-context";
-import { type RobotsFetch, createRobotsCheck } from "./robots";
 import {
   type SiteRateLimiter,
   abortableSleep,
@@ -46,21 +45,26 @@ const liveTransport: Transport = async (url, { accept, signal }) => {
   };
 };
 
-function liveRobotsFetch(signal: AbortSignal): RobotsFetch {
-  return async (robotsUrl) => {
-    const { response } = await safeFetch(robotsUrl, {
-      userAgent: COLLECTOR_USER_AGENT,
-      timeoutMs: ROBOTS_TIMEOUT_MS,
-      accept: "text/plain",
-      signal,
-      allowErrorStatus: true,
-    });
-    const body = await readBodyCapped(response, MAX_ROBOTS_BYTES, {
-      truncate: true,
-    });
-    return { status: response.status, body: body.toString("utf8") };
+/** robots.txt: shorter timeout, truncated at 500 KB, redirects returned. */
+const liveRobotsTransport: Transport = async (url, { accept, signal }) => {
+  const { response, url: answeredUrl } = await safeFetch(url, {
+    userAgent: COLLECTOR_USER_AGENT,
+    timeoutMs: ROBOTS_TIMEOUT_MS,
+    accept,
+    signal,
+    allowErrorStatus: true,
+    redirects: "return",
+  });
+  const body = await readBodyCapped(response, MAX_ROBOTS_BYTES, {
+    truncate: true,
+  });
+  return {
+    url: answeredUrl,
+    status: response.status,
+    headers: response.headers,
+    body,
   };
-}
+};
 
 let limiter: SiteRateLimiter | null = null;
 function liveSiteRateLimiter(): SiteRateLimiter {
@@ -94,10 +98,8 @@ export async function buildLiveContext(args: {
   const blockedDomains = await loadBlockedDomains(args.db);
   return createCollectorContext({
     transport: liveTransport,
-    isAllowedByRobots: createRobotsCheck(
-      liveRobotsFetch(args.signal),
-      COLLECTOR_ROBOTS_TOKEN,
-    ),
+    robotsTransport: liveRobotsTransport,
+    robotsToken: COLLECTOR_ROBOTS_TOKEN,
     rateLimiter: liveSiteRateLimiter(),
     blockedDomains,
     maxPages: args.collector.limits.maxPages,

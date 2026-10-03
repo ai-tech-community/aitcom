@@ -1,6 +1,7 @@
 import type { CollectorContext, CollectorResponse } from "../collector";
 import { CollectorStop } from "../errors";
 import { isBlockedHost } from "./blocklist";
+import { createRobotsCheck } from "./robots";
 import type { SiteRateLimiter, Sleep } from "./site-rate-limit";
 
 export type TransportResponse = {
@@ -18,7 +19,10 @@ export type Transport = (
 
 export interface ContextDeps {
   transport: Transport;
-  isAllowedByRobots: (url: string) => Promise<boolean>;
+  /** One robots.txt request (its own size and time caps), no redirects. */
+  robotsTransport: Transport;
+  /** The user-agent token robots.txt rules are matched against. */
+  robotsToken: string;
   rateLimiter: SiteRateLimiter;
   blockedDomains: ReadonlySet<string>;
   maxPages: number;
@@ -53,11 +57,13 @@ export function retryAfterMs(
 
 /**
  * The protection Proxy every collector receives (ADR-0040). Order per hop:
- * blocklist → robots.txt → budget → shared per-site rate limit → request.
+ * budget → blocklist → robots.txt → shared per-site rate limit → request.
  * Redirects are followed here, not in the transport, so every hop passes
- * the same rules. 429/503 are honoured with Retry-After; the third in a row
- * from one host stops the run. Metering happens here, so a collector cannot
- * skip it.
+ * the same rules. The robots.txt request itself obeys them too: it waits
+ * for the per-site slot, never follows a redirect into an opted-out site,
+ * and its bytes are metered (it is not a page). 429/503 are honoured with
+ * Retry-After; the third in a row from one host stops the run. Metering
+ * happens here, so a collector cannot skip it.
  */
 export function createCollectorContext(deps: ContextDeps): {
   ctx: CollectorContext;
@@ -80,21 +86,51 @@ export function createCollectorContext(deps: ContextDeps): {
     }
   }
 
+  const isBlocked = (host: string) => isBlockedHost(host, deps.blockedDomains);
+
+  const robotsVerdict = createRobotsCheck({
+    token: deps.robotsToken,
+    isBlocked,
+    async fetchOnce(robotsUrl) {
+      await deps.rateLimiter.acquire(new URL(robotsUrl).hostname, deps.signal);
+      const res = await deps.robotsTransport(robotsUrl, {
+        accept: "text/plain",
+        signal: deps.signal,
+      });
+      meter.bytesFetched += res.body.byteLength;
+      return {
+        status: res.status,
+        location: res.headers.get("location"),
+        body: res.body.toString("utf8"),
+      };
+    },
+  });
+
   async function fetchHop(
     url: URL,
     accept: string | undefined,
   ): Promise<TransportResponse> {
-    if (isBlockedHost(url.hostname, deps.blockedDomains)) {
+    // Budget first: a spent run must not even fetch robots.txt for a new site.
+    checkBudget();
+    if (isBlocked(url.hostname)) {
       throw new CollectorStop(
         "blocked_domain",
         "failed",
         "This site has asked not to be collected.",
       );
     }
-    if (!(await deps.isAllowedByRobots(url.href))) {
-      // The robots check fails closed, so an abort mid-check reads as
-      // "disallowed"; report it as the time limit it really is.
+    const verdict = await robotsVerdict(url.href);
+    if (verdict !== "allow") {
+      // An abort mid-check reads as "unreachable"; report it as the time
+      // limit it really is.
       if (deps.signal.aborted) throw timeLimit();
+      if (verdict === "unreachable") {
+        throw new CollectorStop(
+          "robots_unreachable",
+          "failed",
+          "We could not read this site's robots.txt, so we did not collect from it.",
+        );
+      }
       throw new CollectorStop(
         "robots_disallowed",
         "failed",
@@ -176,11 +212,12 @@ function parseWebUrl(raw: string): URL {
       "A collector produced an invalid web address.",
     );
   }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
+  // The SSRF guard in safeFetch refuses plain http, so only https can work.
+  if (url.protocol !== "https:") {
     throw new CollectorStop(
       "error",
       "failed",
-      "Only http and https addresses can be collected.",
+      "Only https addresses can be collected.",
     );
   }
   return url;

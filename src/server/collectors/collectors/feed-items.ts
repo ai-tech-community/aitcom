@@ -8,7 +8,7 @@ const FEED_ACCEPT =
   "application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.9, */*;q=0.5";
 
 const inputSchema = z.object({
-  url: z.url({ protocol: /^https?$/ }).max(2_048),
+  url: z.url({ protocol: /^https$/ }).max(2_048),
 });
 
 const itemSchema = z.object({

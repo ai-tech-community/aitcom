@@ -48,9 +48,12 @@ describe("feed-items collector", () => {
     ).rejects.toThrow("The feed answered with status 404.");
   });
 
-  it("accepts only http and https addresses as input", () => {
+  it("accepts only https addresses as input", () => {
     expect(
       feedItems.inputSchema.safeParse({ url: "ftp://e.com/f" }).success,
+    ).toBe(false);
+    expect(
+      feedItems.inputSchema.safeParse({ url: "http://e.com/f" }).success,
     ).toBe(false);
     expect(
       feedItems.inputSchema.safeParse({ url: "https://e.com/f" }).success,

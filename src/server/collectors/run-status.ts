@@ -13,6 +13,7 @@ export type StopReason =
   | "time_limit"
   | "site_refused"
   | "robots_disallowed"
+  | "robots_unreachable"
   | "blocked_domain"
   | "error"
   | "worker_lost";
