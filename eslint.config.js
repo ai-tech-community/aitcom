@@ -66,4 +66,48 @@ export default tseslint.config(
       },
     },
   },
+  {
+    // Collectors receive only their input and ctx (ADR-0040).
+    files: [
+      "src/server/collectors/collectors/**/*.ts",
+      "src/server/collectors/helpers/**/*.ts",
+    ],
+    ignores: ["**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "@/server/db",
+                "@/server/db/*",
+                "drizzle-orm",
+                "drizzle-orm/*",
+              ],
+              message:
+                "Collectors get no database access; use input and ctx only (ADR-0040).",
+            },
+            {
+              group: ["@/env", "@/server/net/*"],
+              message:
+                "Collectors reach the network only through ctx.fetch (ADR-0040).",
+            },
+          ],
+        },
+      ],
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "fetch",
+          message:
+            "Use ctx.fetch: it enforces robots.txt, rate limits and budgets (ADR-0040).",
+        },
+        {
+          name: "process",
+          message: "Collectors get no environment access (ADR-0040).",
+        },
+      ],
+    },
+  },
 );
