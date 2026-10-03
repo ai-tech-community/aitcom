@@ -11,6 +11,12 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 /** @type {import("next").NextConfig} */
 const config = {
   poweredByHeader: false,
+  // Next's default lint dirs plus `workers` (the sandboxed extraction
+  // worker). `scripts` stays out: it is not in tsconfig, so typed lint rules
+  // cannot parse it.
+  eslint: {
+    dirs: ["app", "pages", "components", "lib", "src", "workers"],
+  },
   // `ws` (used by the Neon serverless driver) lazily `require()`s the native
   // `bufferutil`/`utf-8-validate` addons. Webpack-bundling them yields a broken
   // module whose `.mask` is not a function — ws's internal try/catch can't see

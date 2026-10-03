@@ -7,23 +7,22 @@ import { promisify } from "node:util";
 import { Worker } from "node:worker_threads";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { HTML_EXTRACT_BUNDLE } from "../src/server/collectors/extract/sandbox-paths";
-import type { ExtractSpec } from "../src/server/collectors/extract/protocol";
+import type {
+  ExtractSpec,
+  WorkerMessage,
+  WorkerRequest,
+} from "../src/server/collectors/extract/protocol";
 
 const run = promisify(execFile);
 const repoRoot = path.resolve(__dirname, "..");
-
-type WorkerReply =
-  | { type: "ready" }
-  | { id: number; ok: true; result: unknown }
-  | { id: number; ok: false; code: string };
 
 let buildDir: string;
 let isolatedDir: string;
 let worker: Worker;
 
-function nextMessage(target: Worker): Promise<WorkerReply> {
+function nextMessage(target: Worker): Promise<WorkerMessage> {
   return new Promise((resolve, reject) => {
-    const onMessage = (message: WorkerReply) => {
+    const onMessage = (message: WorkerMessage) => {
       target.off("error", onError);
       resolve(message);
     };
@@ -77,7 +76,7 @@ describe("html-extract worker bundle", () => {
       '<li class="item"><a href="https://other.example/b">Second</a></li></ul>';
 
     const reply = nextMessage(worker);
-    worker.postMessage({ id: 1, html, spec });
+    worker.postMessage({ id: 1, html, spec } satisfies WorkerRequest);
 
     expect(await reply).toEqual({
       id: 1,
@@ -101,13 +100,70 @@ describe("html-extract worker bundle", () => {
     };
 
     const reply = nextMessage(worker);
-    worker.postMessage({ id: 2, html: "<div><p>x</p></div>", spec });
+    worker.postMessage({
+      id: 2,
+      html: "<div><p>x</p></div>",
+      spec,
+    } satisfies WorkerRequest);
 
     expect(await reply).toEqual({
       id: 2,
       ok: false,
       code: "selector_not_allowed",
     });
+  });
+});
+
+describe("html-extract worker message handling", () => {
+  const validSpec: ExtractSpec = {
+    baseUrl: "https://example.com/",
+    itemSelector: "p",
+    fields: [{ name: "text", selector: "b" }],
+  };
+
+  it.each([
+    ["null", null],
+    ["undefined", undefined],
+    ["a string", "hello"],
+    ["an empty object", {}],
+    ["an object with a non-numeric id", { id: "3", html: "", spec: validSpec }],
+  ])("drops %s without a reply and keeps answering", async (_label, junk) => {
+    const replies: WorkerMessage[] = [];
+    const collect = (message: WorkerMessage) => replies.push(message);
+    worker.on("message", collect);
+    try {
+      worker.postMessage(junk);
+      const reply = nextMessage(worker);
+      worker.postMessage({
+        id: 10,
+        html: "<p><b>ok</b></p>",
+        spec: validSpec,
+      } satisfies WorkerRequest);
+
+      const answer = await reply;
+      expect(answer).toEqual({
+        id: 10,
+        ok: true,
+        result: { rows: [{ text: "ok" }], nextUrl: null, truncated: false },
+      });
+      expect(replies).toEqual([answer]);
+    } finally {
+      worker.off("message", collect);
+    }
+  });
+
+  it("answers extract_failed when extraction throws a non-ExtractError", async () => {
+    const reply = nextMessage(worker);
+    worker.postMessage({ id: 11, html: 42, spec: validSpec });
+
+    expect(await reply).toEqual({ id: 11, ok: false, code: "extract_failed" });
+  });
+
+  it("answers extract_failed when the spec is missing", async () => {
+    const reply = nextMessage(worker);
+    worker.postMessage({ id: 12, html: "<p></p>" });
+
+    expect(await reply).toEqual({ id: 12, ok: false, code: "extract_failed" });
   });
 });
 

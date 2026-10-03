@@ -21,8 +21,25 @@ function send(message: WorkerMessage): void {
   port.postMessage(message);
 }
 
-port.on("message", ({ id, html, spec }: WorkerRequest) => {
+/**
+ * A message the worker can answer: an object with a numeric `id`. Anything
+ * else has no id to reply to, so it is dropped without a reply or a throw. A
+ * request with an id but a broken `html` or `spec` still gets an answer,
+ * because it fails inside the try below.
+ */
+function hasRequestId(message: unknown): message is { id: number } {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    typeof (message as { id?: unknown }).id === "number"
+  );
+}
+
+port.on("message", (message: unknown) => {
+  if (!hasRequestId(message)) return;
+  const { id } = message;
   try {
+    const { html, spec } = message as WorkerRequest;
     send({ id, ok: true, result: extractList(html, spec) });
   } catch (error) {
     send({
