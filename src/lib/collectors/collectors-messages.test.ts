@@ -75,6 +75,20 @@ describe("collectors copy", () => {
     expect(Object.keys(english).sort()).toEqual([...FAILURE_CODES].sort());
   });
 
+  it.each([
+    "page_too_slow",
+    "page_too_deep",
+    "selector_not_allowed",
+    "not_a_page",
+  ])("words the %s failure in everyday words", (code) => {
+    const english: Record<string, string> = en.collectors.failure;
+    const dutch: Record<string, string> = nl.collectors.failure;
+    for (const text of [english[code], dutch[code]]) {
+      expect(text, code).toBeTruthy();
+      expect(text, code).not.toMatch(/\bDOM\b|pars|engine|worker|sandbox/i);
+    }
+  });
+
   it("puts the feed's answer in the feed_status sentence", () => {
     expect(en.collectors.failure.feed_status).toContain("{status}");
     expect(nl.collectors.failure.feed_status).toContain("{status}");

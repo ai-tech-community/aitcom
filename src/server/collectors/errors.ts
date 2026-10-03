@@ -22,6 +22,10 @@ export type FailureCode =
   | "collector_unavailable"
   | "input_invalid"
   | "worker_lost"
+  | "page_too_slow"
+  | "page_too_deep"
+  | "selector_not_allowed"
+  | "not_a_page"
   | "generic";
 
 export const FAILURE_CODES = [
@@ -40,6 +44,10 @@ export const FAILURE_CODES = [
   "collector_unavailable",
   "input_invalid",
   "worker_lost",
+  "page_too_slow",
+  "page_too_deep",
+  "selector_not_allowed",
+  "not_a_page",
   "generic",
 ] as const satisfies readonly FailureCode[];
 

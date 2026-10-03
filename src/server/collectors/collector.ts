@@ -1,5 +1,7 @@
 import type { z } from "zod";
 
+import type { ExtractResult, ExtractSpec } from "./extract/protocol";
+
 export type LocalizedText = { en: string; nl: string };
 
 export type FieldHint = {
@@ -30,6 +32,15 @@ export interface CollectorResponse {
  */
 export interface CollectorContext {
   fetch(url: string, opts?: { accept?: string }): Promise<CollectorResponse>;
+  /**
+   * Reads a list out of a fetched page, outside the collector's own code
+   * (a sandboxed worker with a deadline). Links resolve against `page.url`.
+   * A page or selector it refuses ends the run.
+   */
+  extractList(
+    page: { html: string; url: string },
+    spec: Omit<ExtractSpec, "baseUrl">,
+  ): Promise<ExtractResult>;
   /** A short line the member sees on the run page. */
   log(message: string): void;
   /** Aborts when the run's time budget ends. */

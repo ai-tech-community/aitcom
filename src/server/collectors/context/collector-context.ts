@@ -1,6 +1,7 @@
 import type { CollectorContext, CollectorResponse } from "../collector";
 import { CollectorStop } from "../errors";
 import { isBlockedHost } from "./blocklist";
+import { type PageExtractor, extractListVia } from "./extract-capability";
 import { createRobotsCheck } from "./robots";
 import type { SiteRateLimiter, Sleep } from "./site-rate-limit";
 
@@ -31,6 +32,8 @@ export interface ContextDeps {
   sleep: Sleep;
   signal: AbortSignal;
   onLog: (line: string) => void;
+  /** Reads lists out of pages; the live one is a sandboxed worker. */
+  extractor: PageExtractor;
 }
 
 export interface ContextMeter {
@@ -63,7 +66,8 @@ export function retryAfterMs(
  * for the per-site slot, never follows a redirect into an opted-out site,
  * and its bytes are metered (it is not a page). 429/503 are honoured with
  * Retry-After; the third in a row from one host stops the run. Metering
- * happens here, so a collector cannot skip it.
+ * happens here, so a collector cannot skip it. `extractList` hands pages to
+ * the extractor and turns its refusals into failed stops.
  */
 export function createCollectorContext(deps: ContextDeps): {
   ctx: CollectorContext;
@@ -177,6 +181,7 @@ export function createCollectorContext(deps: ContextDeps): {
   const ctx: CollectorContext = {
     signal: deps.signal,
     log: deps.onLog,
+    extractList: extractListVia(deps.extractor),
     async fetch(rawUrl, opts) {
       try {
         let url = parseWebUrl(rawUrl);

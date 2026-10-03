@@ -260,7 +260,10 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       };
     }
 
-    function deps(collector: AnyCollector | undefined) {
+    function deps(
+      collector: AnyCollector | undefined,
+      dispose?: () => Promise<void>,
+    ) {
       const meter = { pagesFetched: 4, bytesFetched: 1234 };
       return {
         db: m.db,
@@ -279,8 +282,12 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
             fetch: async () => {
               throw new Error("no network in tests");
             },
+            extractList: async () => {
+              throw new Error("no extraction in tests");
+            },
           },
           meter,
+          dispose,
         }),
         now: Date.now,
       };
@@ -699,6 +706,88 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       const run = await m.executor.claimNextRun(m.db, new Date());
       await m.executor.executeRun(deps(collector), run!, Date.now() + 60_000);
       expect((await runRow(id)).collectorVersion).toBe(3);
+    });
+
+    it("disposes of the run's context after the run, and waits for it", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield { n: 1 };
+      });
+      let disposed = false;
+      const dispose = vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        disposed = true;
+      });
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      await m.executor.executeRun(
+        deps(collector, dispose),
+        run!,
+        Date.now() + 60_000,
+      );
+      expect(dispose).toHaveBeenCalledTimes(1);
+      expect(disposed).toBe(true);
+      expect(await runRow(id)).toMatchObject({ status: "succeeded" });
+    });
+
+    it("disposes of the run's context when the collector fails too", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield* [];
+        throw new m.errors.CollectorStop(
+          "error",
+          "failed",
+          "This page took too long to read, so we stopped.",
+          { code: "page_too_slow" },
+        );
+      });
+      const dispose = vi.fn(async () => undefined);
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      await m.executor.executeRun(
+        deps(collector, dispose),
+        run!,
+        Date.now() + 60_000,
+      );
+      expect(dispose).toHaveBeenCalledTimes(1);
+      expect(await runRow(id)).toMatchObject({
+        status: "failed",
+        errorDetail: { code: "page_too_slow" },
+      });
+    });
+
+    it("logs a dispose that throws and still records the run's outcome", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield { n: 1 };
+      });
+      const dispose = vi.fn(async () => {
+        throw new Error("worker would not stop");
+      });
+      const serverLog = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      try {
+        await expect(
+          m.executor.executeRun(
+            deps(collector, dispose),
+            run!,
+            Date.now() + 60_000,
+          ),
+        ).resolves.toEqual({ status: "succeeded", stopReason: "complete" });
+        expect(serverLog).toHaveBeenCalledWith(
+          `[collectors] run ${id} could not release its resources`,
+          expect.objectContaining({ message: "worker would not stop" }),
+        );
+      } finally {
+        serverLog.mockRestore();
+      }
+      expect(await runRow(id)).toMatchObject({
+        status: "succeeded",
+        itemCount: 1,
+      });
     });
 
     it("a worker tick drains the queue", async () => {

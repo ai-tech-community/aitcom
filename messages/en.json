@@ -4165,6 +4165,10 @@
       "collector_unavailable": "This collector is not available any more.",
       "input_invalid": "What you entered no longer fits this collector. Start a new run.",
       "worker_lost": "Start the run again.",
+      "page_too_slow": "This page took too long to read, so we stopped. Try a page with fewer items.",
+      "page_too_deep": "This page is nested too deeply to read safely. Try a different page.",
+      "selector_not_allowed": "One of the selectors uses a feature we don't allow. Use simple selectors: tag names, classes, ids and attributes.",
+      "not_a_page": "This address is not a web page. Check that you copied the address of the page with the list.",
       "generic": "Try again later."
     },
     "stopShort": {

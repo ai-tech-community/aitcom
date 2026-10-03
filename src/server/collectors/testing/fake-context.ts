@@ -1,4 +1,6 @@
 import type { CollectorContext } from "../collector";
+import { extractListVia } from "../context/extract-capability";
+import { extractList } from "../extract/extract-list";
 
 type FakePage = {
   status?: number;
@@ -6,7 +8,11 @@ type FakePage = {
   headers?: Record<string, string>;
 };
 
-/** A CollectorContext that serves canned pages and records every request. */
+/**
+ * A CollectorContext that serves canned pages and records every request.
+ * `extractList` runs the real pure extractor in-process (no worker), so
+ * collector tests exercise real extraction and its refusals.
+ */
 export function fakeContext(pages: Record<string, FakePage>) {
   const requests: { url: string; accept?: string }[] = [];
   const logs: string[] = [];
@@ -15,6 +21,9 @@ export function fakeContext(pages: Record<string, FakePage>) {
     log: (message) => {
       logs.push(message);
     },
+    extractList: extractListVia({
+      extract: async (html, spec) => extractList(html, spec),
+    }),
     async fetch(url, opts) {
       requests.push({ url, accept: opts?.accept });
       const page = pages[url];
