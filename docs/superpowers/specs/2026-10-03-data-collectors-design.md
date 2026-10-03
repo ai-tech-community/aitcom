@@ -604,6 +604,44 @@ web page into rows; parsing happens only in the extraction sandbox (see
   fail the run with `page_too_slow`, `page_too_deep` or
   `selector_not_allowed`; rows from earlier pages stay in the run's table.
 
+**Real-world check, 2026-10.** 33 startup careers pages (20 own website,
+4 Personio, 3 Greenhouse, 3 Lever, 2 Ashby, 1 Workable), each with an input
+written by hand from the fetched HTML and run through the real engine
+(robots.txt, per-site limit, budgets, sandbox) against a local database. The
+reference was the role titles our startup jobs scan had stored.
+
+- **Engine.** 33 of 33 runs ended `succeeded` / `complete`. No page was
+  refused by robots.txt, the block list, a 4xx/5xx, the depth cap, the
+  per-page deadline or the selector allowlist (largest page 0.74 MB; slowest
+  run 3.4 s). No input needed a refused selector feature.
+- **Outcomes by the plain metric** (recall of stored titles ≥ 0.9 = works):
+  works 10, partial 17, needs JavaScript 6, blocked by site rules 0,
+  selector feature refused 0, other failure 0. By board — own website:
+  7 works / 10 partial / 3 needs JavaScript; Personio: 0 / 4 / 0;
+  Greenhouse: 1 / 2 / 0; Lever: 2 / 1 / 0; Ashby: 0 / 0 / 2;
+  Workable: 0 / 0 / 1.
+- **Why "partial".** All 17 are reference problems, not missed items: every
+  stored title that still appears on the page was extracted, and every role
+  visible on the page became a row. The stored titles were often button or
+  subtitle text ("View details", "Apply now", a location line), filter
+  labels, or roles since closed or renamed. Judged against the roles visible
+  on the page: **works 27, needs JavaScript 6** (own website 17 / 3,
+  Personio 4, Greenhouse 3, Lever 3, Ashby 0 / 2, Workable 0 / 1).
+- **Needs JavaScript (6).** Ashby and Workable boards, and own websites that
+  embed an Ashby board, send no role list in the HTML; Ashby keeps it only
+  in a script's JSON, which `page-list` does not read by design. These runs
+  end `complete` with 0 (or a few empty) rows and no hint why.
+- **Limit that blocked real pages: the item's own link.** A column selector
+  matches only *inside* the item, so when each item is itself the link (a
+  card `<a href>` with no wrapper per item), the `link` column cannot be
+  read. 6 of the 27 working pages lost their links this way (one more page
+  has no link in its HTML at all). A way to read an attribute of the item
+  itself would fix it.
+- **Smaller notes.** Without `:has()`, a generic wrapper as item gives some
+  all-empty rows on 2 pages. A redirect (such as an added trailing slash)
+  counts as a fetched page, so 3 one-page runs show 2 pages. No sampled
+  page used a next-page link, so paging was not exercised on real pages.
+
 New dependencies: `fast-xml-parser` (feeds), `robots-parser` (robots.txt),
 `cheerio` with parse5 and `css-what` (HTML extraction and the selector
 allowlist; `cheerio/slim` and `node-html-parser` were rejected, see
