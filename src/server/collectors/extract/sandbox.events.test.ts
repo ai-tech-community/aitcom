@@ -26,7 +26,8 @@ class FakeWorker extends EventEmitter {
     this.posted.push(message);
   }
 
-  unref(): void {}
+  /** The sandbox unrefs every worker; the fake has nothing to release. */
+  readonly unref = vi.fn();
 }
 
 const workers: FakeWorker[] = [];
