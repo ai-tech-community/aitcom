@@ -9,7 +9,6 @@ describe("checkSelector", () => {
     "#speakers",
     "ul.list > li.item",
     "h2 + p",
-    "h2 ~ p",
     "a[href]",
     'a[href^="https://"]',
     "[data-id='3']",
@@ -67,15 +66,11 @@ describe("checkSelector", () => {
     expect(checkSelector("a".repeat(200))).toEqual({ ok: true });
   });
 
-  it.each(["a ~ b", ":NOT(.a)", "li:IS(a)"])(
-    "allows %s (fix round 1)",
-    (selector) => {
-      expect(checkSelector(selector)).toEqual({ ok: true });
-    },
-  );
+  it.each([":NOT(.a)", "li:IS(a)"])("allows %s (fix round 1)", (selector) => {
+    expect(checkSelector(selector)).toEqual({ ok: true });
+  });
 
   it.each([
-    ["a ~ b ~ c", "too_complex"],
     // Round 3: any combinator inside :not/:is/:where is not_allowed.
     ["p:not(a ~ b) ~ c", "not_allowed"],
     ["li:is(a ~ b, c ~ d)", "not_allowed"],
@@ -90,7 +85,7 @@ describe("checkSelector", () => {
     expect(checkSelector(selector)).toEqual({ ok: false, reason });
   });
 
-  it.each(["li:first-of-type:last-of-type", "li:first-child ~ li"])(
+  it.each(["li:first-of-type:last-of-type"])(
     "allows %s (fix round 2)",
     (selector) => {
       expect(checkSelector(selector)).toEqual({ ok: true });
@@ -98,9 +93,6 @@ describe("checkSelector", () => {
   );
 
   it.each([
-    ":not(:only-of-type) ~ *",
-    ":not(:first-of-type) ~ *",
-    "a ~ b:last-child",
     "li:only-of-type:only-child:last-child",
     "li:is(:only-of-type, :last-of-type):not(:only-child)",
   ])("refuses %j as too_complex (fix round 2)", (selector) => {
@@ -133,5 +125,45 @@ describe("checkSelector", () => {
       ok: false,
       reason: "not_allowed",
     });
+  });
+
+  // Round 4: the general sibling combinator `~` is refused everywhere.
+  it.each([
+    "a ~ b",
+    "h2 ~ p",
+    "a ~ b ~ c",
+    "li:first-child ~ li",
+    ":not(:only-of-type) ~ *",
+    ":not(:first-of-type) ~ *",
+    "a ~ b:last-child",
+    "section * ~ *",
+    "p * * * * * * ~ *",
+    "a ~ b c d e f g h i",
+  ])("refuses %j as not_allowed (fix round 4)", (selector) => {
+    expect(checkSelector(selector)).toEqual({
+      ok: false,
+      reason: "not_allowed",
+    });
+  });
+
+  it.each([
+    "h2 + p",
+    "a + b + c + d + e + f + g + h",
+    "li:first-of-type + li:last-of-type",
+  ])("allows %s (fix round 4)", (selector) => {
+    expect(checkSelector(selector)).toEqual({ ok: true });
+  });
+
+  it("refuses eight `+` in a row as too_complex (fix round 4)", () => {
+    expect(checkSelector("a + b + c + d + e + f + g + h + i")).toEqual({
+      ok: false,
+      reason: "too_complex",
+    });
+  });
+
+  it("still caps sibling-scanning pseudos with `+` (fix round 4)", () => {
+    expect(
+      checkSelector("li:only-of-type + li:last-child + li:only-child"),
+    ).toEqual({ ok: false, reason: "too_complex" });
   });
 });

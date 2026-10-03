@@ -4,14 +4,22 @@ import { parse, SelectorType, type Selector } from "css-what";
  * Which CSS selectors a member may give the "list on a web page" collector.
  * Used by the form schema and again inside the extraction worker.
  *
- * The policy refuses the feature combinations we measured as super-linear
- * in css-select (cheerio 1.2.0):
+ * Allowed: tag, `*`, class, id and attribute selectors (no namespaces);
+ * the combinators descendant (space), `>` and `+`; the pseudo-classes
+ * `:not()`, `:is()`, `:where()` (single compound arguments only),
+ * `:first-child`, `:last-child`, `:only-child`, `:first-of-type`,
+ * `:last-of-type`, `:only-of-type` and `:empty`. One selector, at most
+ * MAX_SELECTOR_LENGTH characters and MAX_COMPOUNDS compound parts.
+ *
+ * Everything else is refused, including what we measured as super-linear in
+ * css-select (cheerio 1.2.0):
  * - the `:nth-*` family, and `:has()` / `:contains()` (they also recurse and
  *   overflow the stack on deep pages);
- * - more than one `~` (the sibling scan is uncached: `x ~ * ~ * ~ *` took
- *   1.2 s at 200 siblings, 19.8 s at 400);
- * - a `~` together with any sibling-scanning pseudo-class
- *   (`:not(:only-of-type) ~ *` took 13 s at 1 200 siblings);
+ * - the general sibling combinator `~`, anywhere. Its sibling scan is
+ *   uncached: `x ~ * ~ * ~ *` took 19.8 s at 400 siblings,
+ *   `:not(:only-of-type) ~ *` 13 s at 1 200 siblings, and even a single `~`
+ *   after a descendant chain (`p * * * * * * ~ *`) costs siblings² × depth:
+ *   4.3 s at 5 000 siblings and depth 15, 135 s at depth 512;
  * - more than two sibling-scanning pseudo-classes (15x `:only-of-type`
  *   took 6.1 s at 5 000 siblings);
  * - any combinator inside `:not()`, `:is()` or `:where()`: there css-select
@@ -20,21 +28,22 @@ import { parse, SelectorType, type Selector } from "css-what";
  *   depth 50, over 60 s at 100). Their arguments must be single compound
  *   selectors such as `.ad`, `[hidden]` or `a.ad:first-child`.
  *
- * What remains can still be slow on a hostile page (two sibling-scanning
- * pseudo-classes stay quadratic: about 0.9 s at 5 000 siblings with all
- * different tag names). This policy is not the real bound; the real bound is
- * the extraction deadline, enforced from outside the worker.
+ * What remains can still be slow on a hostile page. Sibling-scanning
+ * pseudo-classes stay quadratic in sibling count (about 0.9 s at 5 000
+ * siblings with all different tag names), and a `+` that links such a
+ * pseudo-class to a descendant part costs siblings² × depth
+ * (`* + :only-of-type *` took 5.6 s at 5 000 siblings, each holding a
+ * 15-deep chain). This policy is not the real bound; the real bound is the
+ * extraction deadline, enforced from outside the worker.
  *
  * This is an allowlist: any token type or pseudo-class not named here is
  * refused, so a newer css-what that learns a new feature stays refused.
  */
 export const MAX_SELECTOR_LENGTH = 200;
 export const MAX_COMPOUNDS = 8;
-/** `~` combinators allowed in the selector (only possible at top level). */
-export const MAX_GENERAL_SIBLING_COMBINATORS = 1;
 /**
  * Sibling-scanning pseudo-classes allowed in the whole selector, nested ones
- * included, when it has no `~`. With a `~`, none are allowed.
+ * included.
  */
 export const MAX_SIBLING_SCANNING_PSEUDOS = 2;
 
@@ -80,17 +89,15 @@ const BARE_PSEUDOS: ReadonlySet<string> = new Set([
   "empty",
 ]);
 
-/** Combinators: descendant (space), `>`, `+`, `~`. Not `<` or `||`. */
+/** Combinators: descendant (space), `>`, `+`. Not `~`, `<` or `||`. */
 const ALLOWED_COMBINATORS: ReadonlySet<Selector["type"]> = new Set([
   SelectorType.Descendant,
   SelectorType.Child,
   SelectorType.Adjacent,
-  SelectorType.Sibling,
 ]);
 
 /** Counts shared by a selector and everything nested inside it. */
 interface WholeSelectorTally {
-  generalSiblings: number;
   siblingScanningPseudos: number;
 }
 
@@ -138,8 +145,9 @@ function checkCompoundToken(
 
 /**
  * Checks one complex selector (no top-level list): compounds joined by the
- * allowed combinators. The whole-selector counts go into `tally` and are
- * judged by `checkTally` once the walk is done.
+ * allowed combinators. Any other combinator (`~`, `<`, `||`) reaches
+ * `checkCompoundToken` and is refused there. Sibling-scanning pseudo-classes
+ * are counted into `tally` and judged once the walk is done.
  */
 function checkComplex(
   tokens: Selector[],
@@ -149,7 +157,6 @@ function checkComplex(
   for (const token of tokens) {
     if (ALLOWED_COMBINATORS.has(token.type)) {
       compounds += 1;
-      if (token.type === SelectorType.Sibling) tally.generalSiblings += 1;
       continue;
     }
     const problem = checkCompoundToken(token, tally);
@@ -159,13 +166,9 @@ function checkComplex(
 }
 
 function checkTally(tally: WholeSelectorTally): SelectorProblem | null {
-  if (tally.generalSiblings > MAX_GENERAL_SIBLING_COMBINATORS)
-    return "too_complex";
-  if (tally.generalSiblings > 0 && tally.siblingScanningPseudos > 0)
-    return "too_complex";
-  if (tally.siblingScanningPseudos > MAX_SIBLING_SCANNING_PSEUDOS)
-    return "too_complex";
-  return null;
+  return tally.siblingScanningPseudos > MAX_SIBLING_SCANNING_PSEUDOS
+    ? "too_complex"
+    : null;
 }
 
 export function checkSelector(selector: string): SelectorCheck {
@@ -187,10 +190,7 @@ export function checkSelector(selector: string): SelectorCheck {
   if (parsed.length !== 1 || !only || only.length === 0)
     return { ok: false, reason: "list" };
 
-  const tally: WholeSelectorTally = {
-    generalSiblings: 0,
-    siblingScanningPseudos: 0,
-  };
+  const tally: WholeSelectorTally = { siblingScanningPseudos: 0 };
   const problem = checkComplex(only, tally) ?? checkTally(tally);
   return problem ? { ok: false, reason: problem } : { ok: true };
 }
