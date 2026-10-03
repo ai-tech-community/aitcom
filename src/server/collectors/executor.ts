@@ -92,8 +92,11 @@ function createRunLog() {
 /**
  * Run one claimed Command: resolve the Strategy, give it the Proxy, iterate
  * its rows, validate and store them in batches, then record the outcome.
- * Rows from an earlier attempt are removed first, so a re-run never
- * duplicates. Rows gathered before a stop or failure are kept.
+ * Rows and counters from an earlier attempt are removed first, so a re-run
+ * never duplicates. Rows gathered before a stop or failure are kept.
+ *
+ * Every write is fenced on `attempts`: once another worker re-claims the run
+ * (after this worker's lease expired), this worker's writes match nothing.
  */
 export async function executeRun(
   deps: ExecutorDeps,
@@ -103,7 +106,36 @@ export async function executeRun(
   const startedAt = deps.now();
   const log = createRunLog();
 
-  const finish = async (outcome: Outcome, version?: number) => {
+  /** Matches the run only while this worker still holds it. */
+  const heldByThisWorker = () =>
+    and(
+      eq(collectorRuns.id, run.id),
+      eq(collectorRuns.status, "running"),
+      eq(collectorRuns.attempts, run.attempts),
+    );
+
+  /** Remove an earlier attempt's rows and zero its counters, together. */
+  const clearEarlierAttempt = () =>
+    deps.db.transaction(async (tx) => {
+      const [held] = await tx
+        .update(collectorRuns)
+        .set({
+          itemCount: 0,
+          invalidItemCount: 0,
+          pagesFetched: 0,
+          bytesFetched: 0,
+        })
+        .where(heldByThisWorker())
+        .returning({ id: collectorRuns.id });
+      if (held) {
+        await tx.delete(collectorItems).where(eq(collectorItems.runId, run.id));
+      }
+    });
+
+  const finish = async (
+    outcome: Outcome,
+    opts: { version?: number; keepLog?: boolean } = {},
+  ) => {
     assertTransition("running", outcome.status);
     await deps.db
       .update(collectorRuns)
@@ -114,26 +146,27 @@ export async function executeRun(
         durationMs: deps.now() - startedAt,
         finishedAt: new Date(deps.now()),
         leaseUntil: null,
-        log: log.lines(),
-        ...(version === undefined ? {} : { collectorVersion: version }),
+        ...(opts.keepLog ? {} : { log: log.lines() }),
+        ...(opts.version === undefined
+          ? {}
+          : { collectorVersion: opts.version }),
       })
-      .where(
-        and(eq(collectorRuns.id, run.id), eq(collectorRuns.status, "running")),
-      );
+      .where(heldByThisWorker());
     return { status: outcome.status, stopReason: outcome.stopReason };
   };
 
+  await clearEarlierAttempt();
   if (run.attempts > MAX_ATTEMPTS) {
-    await deps.db
-      .delete(collectorItems)
-      .where(eq(collectorItems.runId, run.id));
-    return finish({
-      status: "failed",
-      stopReason: "worker_lost",
-      error: "The run was interrupted twice, so it was stopped.",
-    });
+    // Keep the last attempt's log: it shows the member how far it got.
+    return finish(
+      {
+        status: "failed",
+        stopReason: "worker_lost",
+        error: "The run was interrupted twice, so it was stopped.",
+      },
+      { keepLog: true },
+    );
   }
-  await deps.db.delete(collectorItems).where(eq(collectorItems.runId, run.id));
 
   const collector = deps.getCollector(run.collectorId);
   if (!collector) {
@@ -151,7 +184,7 @@ export async function executeRun(
         stopReason: "error",
         error: "The saved input is no longer valid for this collector.",
       },
-      collector.version,
+      { version: collector.version },
     );
   }
 
@@ -169,23 +202,30 @@ export async function executeRun(
   let seq = 0;
   let invalid = 0;
   let buffer: (typeof collectorItems.$inferInsert)[] = [];
+  let leaseLost = false;
 
+  /** Store buffered rows and progress; a no-op once another worker re-claimed. */
   const flush = async () => {
-    if (buffer.length) {
-      await deps.db.insert(collectorItems).values(buffer);
-      buffer = [];
-    }
-    await deps.db
-      .update(collectorRuns)
-      .set({
-        itemCount: seq,
-        invalidItemCount: invalid,
-        pagesFetched: meter.pagesFetched,
-        bytesFetched: meter.bytesFetched,
-        log: log.lines(),
-        leaseUntil: new Date(deps.now() + LEASE_MS),
-      })
-      .where(eq(collectorRuns.id, run.id));
+    await deps.db.transaction(async (tx) => {
+      const [held] = await tx
+        .update(collectorRuns)
+        .set({
+          itemCount: seq,
+          invalidItemCount: invalid,
+          pagesFetched: meter.pagesFetched,
+          bytesFetched: meter.bytesFetched,
+          log: log.lines(),
+          leaseUntil: new Date(deps.now() + LEASE_MS),
+        })
+        .where(heldByThisWorker())
+        .returning({ id: collectorRuns.id });
+      if (!held) {
+        leaseLost = true;
+        return;
+      }
+      if (buffer.length) await tx.insert(collectorItems).values(buffer);
+    });
+    buffer = [];
   };
 
   let outcome: Outcome = {
@@ -210,7 +250,10 @@ export async function executeRun(
           data: row.data as Record<string, unknown>,
         });
         seq += 1;
-        if (buffer.length >= FLUSH_EVERY) await flush();
+        if (buffer.length >= FLUSH_EVERY) {
+          await flush();
+          if (leaseLost) break;
+        }
       } else {
         invalid += 1;
       }
@@ -250,7 +293,7 @@ export async function executeRun(
     clearTimeout(timer);
   }
   await flush();
-  return finish(outcome, collector.version);
+  return finish(outcome, { version: collector.version });
 }
 
 /** One worker invocation: drain queued runs within the tick budget. */
@@ -263,8 +306,14 @@ export async function runWorkerTick(
   while (deps.now() - tickStart < START_NEW_RUN_WITHIN_MS) {
     const run = await claimNextRun(deps.db, new Date(deps.now()));
     if (!run) break;
-    await executeRun(deps, run, tickDeadline);
-    executed += 1;
+    try {
+      await executeRun(deps, run, tickDeadline);
+      executed += 1;
+    } catch (err) {
+      // e.g. the database failed mid-run. The run keeps its lease and is
+      // re-claimed once the lease expires; the tick moves on.
+      console.error(`[collectors] run ${run.id} could not be executed`, err);
+    }
   }
   return { executed };
 }

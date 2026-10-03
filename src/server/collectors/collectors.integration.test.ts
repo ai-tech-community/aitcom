@@ -445,12 +445,14 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       expect(stored).toBeLessThan(100);
     });
 
-    it("wipes an earlier attempt's rows before re-running", async () => {
+    it("wipes an earlier attempt's rows and counters before re-running", async () => {
       const userId = await makeUser();
       const id = await insertRun(userId, {
         status: "running",
         attempts: 1,
         leaseUntil: new Date(Date.now() - 1),
+        itemCount: 2,
+        invalidItemCount: 5,
       });
       await m.db.insert(m.schema.collectorItems).values([
         { runId: id, seq: 0, data: { n: 99 } },
@@ -462,6 +464,10 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       const run = await m.executor.claimNextRun(m.db, new Date());
       await m.executor.executeRun(deps(collector), run!, Date.now() + 60_000);
       expect((await items(id)).map((i) => i.data)).toEqual([{ n: 1 }]);
+      expect(await runRow(id)).toMatchObject({
+        itemCount: 1,
+        invalidItemCount: 0,
+      });
     });
 
     it("gives up as worker_lost on the third claim", async () => {
@@ -470,7 +476,16 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         status: "running",
         attempts: 2,
         leaseUntil: new Date(Date.now() - 1),
+        itemCount: 2,
+        invalidItemCount: 1,
+        pagesFetched: 3,
+        bytesFetched: 4_096,
+        log: ["page 1", "page 2"],
       });
+      await m.db.insert(m.schema.collectorItems).values([
+        { runId: id, seq: 0, data: { n: 99 } },
+        { runId: id, seq: 1, data: { n: 98 } },
+      ]);
       const collector = testCollector(async function* () {
         yield { n: 1 };
       });
@@ -482,6 +497,37 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       );
       expect(result).toEqual({ status: "failed", stopReason: "worker_lost" });
       expect(await items(id)).toHaveLength(0);
+      expect(await runRow(id)).toMatchObject({
+        status: "failed",
+        itemCount: 0,
+        invalidItemCount: 0,
+        pagesFetched: 0,
+        bytesFetched: 0,
+        log: ["page 1", "page 2"],
+      });
+    });
+
+    it("turns a worker's writes into no-ops once another worker re-claimed its run", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        for (let n = 0; n < 150; n++) yield { n };
+      });
+      const stale = await m.executor.claimNextRun(m.db, new Date());
+      // Another worker re-claims the run after this worker's lease expired.
+      await m.db
+        .update(m.schema.collectorRuns)
+        .set({ attempts: 2, leaseUntil: new Date(Date.now() + 60_000) })
+        .where(m.drizzle.eq(m.schema.collectorRuns.id, id));
+      await m.executor.executeRun(deps(collector), stale!, Date.now() + 60_000);
+      expect(await items(id)).toHaveLength(0);
+      expect(await runRow(id)).toMatchObject({
+        status: "running",
+        attempts: 2,
+        itemCount: 0,
+        stopReason: null,
+        finishedAt: null,
+      });
     });
 
     it("fails a run whose collector is gone or switched off", async () => {
@@ -518,6 +564,42 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         executed: 2,
       });
       expect(await m.executor.claimNextRun(m.db, new Date())).toBeNull();
+    });
+
+    it("a worker tick moves on when one run cannot be executed", async () => {
+      const userId = await makeUser();
+      const first = await insertRun(userId, {
+        createdAt: new Date(Date.now() - 60_000),
+      });
+      const second = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield { n: 1 };
+      });
+      let calls = 0;
+      const flaky = {
+        ...deps(collector),
+        getCollector: (cid: string) => {
+          calls += 1;
+          if (calls === 1) throw new Error("connection terminated");
+          return cid === collector.id ? collector : undefined;
+        },
+      };
+      const serverLog = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      try {
+        expect(await m.executor.runWorkerTick(flaky)).toEqual({ executed: 1 });
+        expect(serverLog).toHaveBeenCalledWith(
+          `[collectors] run ${first} could not be executed`,
+          expect.objectContaining({ message: "connection terminated" }),
+        );
+      } finally {
+        serverLog.mockRestore();
+      }
+      // The failed run keeps its lease and is re-claimed after it expires.
+      expect(await runRow(first)).toMatchObject({ status: "running" });
+      expect((await runRow(first)).leaseUntil).not.toBeNull();
+      expect(await runRow(second)).toMatchObject({ status: "succeeded" });
     });
   });
 });
