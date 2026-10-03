@@ -93,4 +93,29 @@ describe("DashboardTabs", () => {
       screen.getByRole("link", { name: tabs.notifications }),
     ).toHaveAttribute("aria-current", "page");
   });
+  it("adds Data collectors after Job tracker when the feature is on", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <DashboardTabs showCollectors />
+      </NextIntlClientProvider>,
+    );
+    const nav = screen.getByRole("navigation", {
+      name: en.dashboard.tabsLabel,
+    });
+    const hrefs = Array.from(nav.querySelectorAll("a")).map((a) =>
+      a.getAttribute("href"),
+    );
+    expect(hrefs).toEqual([
+      "/dashboard",
+      "/dashboard/communities",
+      "/dashboard/events",
+      "/dashboard/jobs",
+      "/dashboard/collectors",
+      "/dashboard/notifications",
+      "/dashboard/settings",
+    ]);
+    expect(
+      screen.getByRole("link", { name: tabs.collectors }),
+    ).toBeInTheDocument();
+  });
 });

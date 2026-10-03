@@ -1,6 +1,6 @@
 # Data collectors — design
 
-**Status:** proposed
+**Status:** in delivery — slices 1–2 built
 **Date:** 2026-10-03
 **Decision record:** [ADR-0040](../../adr/0040-data-collectors-are-built-in-strategies-run-from-a-queued-command.md)
 
@@ -126,6 +126,9 @@ src/server/collectors/
     robots.ts             robots.txt fetch + check, cached per run
     site-rate-limit.ts    shared per-site limit (Upstash Redis)
     blocklist.ts          opted-out domains
+  identity.ts             user agent, robots.txt token, about path, opt-out
+                          address: one source for the worker and the about page
+  flags.ts                FEATURE_COLLECTORS and COLLECTORS_DISABLED
   run-status.ts           transition table + guard
   executor.ts             RunExecutor (Context of the Strategy)
   runs.ts                 CollectorRuns facade
@@ -134,10 +137,15 @@ src/server/collectors/
     csv.ts                formula-injection-safe CSV
     json.ts
 src/app/api/cron/collector-worker/route.ts
+src/app/api/collectors/runs/[runId]/export/route.ts   streamed download
 src/app/api/mcp/collector-tools.ts
 src/server/api/routers/collectors.ts
-src/app/[locale]/dashboard/(member)/collectors/...
-src/app/[locale]/collectors/about/page.tsx
+src/app/[locale]/dashboard/(member)/collectors/...    member pages
+src/app/[locale]/collectors/about/page.tsx            public page
+src/components/collectors/                             member screens
+src/lib/collectors/
+  form-fields.ts          JSON Schema + field hints → drawable form fields
+  run-presentation.ts     run status / stop reason → one presentation model
 ```
 
 ## Units
@@ -232,7 +240,11 @@ are not pages.
 
 Existing callers keep the current default behaviour.
 
-User agent: `aitcom-collector/1.0 (+https://<site>/collectors/about)`.
+User agent: `aitcom-collector/1.0 (+https://aitcommunity.org/collectors/about)`.
+It is built in `src/server/collectors/identity.ts` from the robots.txt token
+(`aitcom-collector`) and the about path (`/collectors/about`). The worker's
+context sends it and the public about page shows it from the same constants,
+so the two cannot drift apart.
 
 ### Collector catalog (Client)
 
@@ -272,10 +284,42 @@ is written back to the run) → re-validate input
 - **Time budget.** The worker route has `maxDuration = 300`; a run's effective
   budget is `min(collector.limits.maxDurationMs, 240_000)`. Exceeding it ends
   the run as `succeeded` with `stop_reason = 'time_limit'` (partial, honest).
-- **Errors.** A thrown error inside a collector ends the run `failed` with a
-  user-safe message mapped from known error kinds; the raw error goes to the
-  server log only. The stored message is cut to 500 characters (the column
-  size).
+- **Errors.** A thrown error inside a collector ends the run `failed`. Two
+  things are stored: `error`, a plain English sentence for the server log
+  and MCP (cut to 500 characters, the column size), and `error_detail`, a
+  stable failure code the member's screen translates (see "Failure
+  detail"). The raw error goes to the server log only.
+
+### Failure detail (`errors.ts`)
+
+Every failed run stores `error_detail = { code, params? }`. The code is a
+closed union (`FailureCode`), so a new failure needs a new code and its
+EN/NL copy (`collectors.failure.<code>`); screens never show the English
+`error`.
+
+| Code | Produced when |
+|---|---|
+| `not_a_feed` | the address is not an RSS or Atom feed |
+| `feed_status` | the feed answered with a non-2xx status (`params.status`) |
+| `https_only` | an address is not https |
+| `invalid_address` | a collector produced something that is not a web address |
+| `redirect_loop` | more than 5 redirects |
+| `too_large` | a response was over the 5 MB limit |
+| `timeout` | a site took too long to answer |
+| `unreachable_address` | the SSRF guard refused the address (private or local) |
+| `site_refused` | the third 429/503 in a row from one site |
+| `robots_disallowed` | the site's robots.txt disallows the page |
+| `robots_unreachable` | the site's robots.txt could not be read |
+| `blocked_domain` | the site opted out |
+| `collector_unavailable` | the run's collector is gone or switched off |
+| `input_invalid` | the stored input no longer fits the collector |
+| `worker_lost` | the run was interrupted twice |
+| `generic` | anything else |
+
+`CollectorStop` carries its detail (optional 4th argument); for other
+errors `failureDetailFor(err)` maps the same known kinds as
+`userMessageFor(err)`. A partial (succeeded) run has neither `error` nor
+`error_detail`.
 
 ### Run lifecycle (`run-status.ts`)
 
@@ -296,13 +340,21 @@ error | worker_lost`.
 ### CollectorRuns (Facade)
 
 ```ts
-listCollectors(locale)
-startRun({ userId, agentId?, origin, collectorId, input })  // → runId
-getRun({ userId, runId })
-listRuns({ userId, cursor })
-listItems({ userId, runId, cursor, limit })                 // paged by seq
-exportRun({ userId, runId, format: "csv" | "json" })        // streamed
+listCollectors(locale)                          // translated titles, field hints, input JSON Schema
+startRun({ userId, agentId?, origin, collectorId, input })
+                                                // → { ok: true, runId } | typed refusal
+getRun(userId, runId)                           // → run, or null when missing/foreign
+listRuns(userId, { cursor?, limit? })           // newest first, cursor-paged
+listItems(userId, runId, { afterSeq?, limit? }) // paged by seq
+usage(userId)                                   // { runsToday, runsPerDay }
+exportRun(userId, runId, "csv" | "json")        // streamed body, or null
 ```
+
+A refusal carries a reason code (`disabled | unknown_collector |
+invalid_input | quota`), field errors for invalid input, and for quota the
+`quotaReason` and, when known, `retryAt`. It also carries an English
+`message` for logs and agents; the web UI never shows it and maps the codes
+to its own EN/NL strings.
 
 - Every read is scoped to `user_id`; another member's run id returns
   not-found, never forbidden (no existence leak).
@@ -342,7 +394,20 @@ The facade passes it on as an ISO 8601 string. Other refusals have none.
   cell starting with `=`, `+`, `-`, `@`, tab or carriage return is prefixed
   with `'` (spreadsheet formula injection).
 - `json`: an array of row objects.
-- Both stream from `collector_item` ordered by `seq`.
+- Both stream from `collector_item` ordered by `seq`, read 500 rows at a
+  time, so a 5,000-row run is never held in memory whole.
+- Download route: `GET /api/collectors/runs/[runId]/export?format=csv|json`.
+  Signed-in owner only: no session → 401, unknown format → 400, another
+  member's or a missing run → 404 (never 403), flag off → 404, a run still
+  `queued` or `running` → 409 "Run still in progress" (its file would be
+  incomplete). The response is a `ReadableStream` pulled page by page, sent
+  as an attachment with `Cache-Control: private, no-store` and
+  `X-Content-Type-Options: nosniff`. A failure mid-stream is logged with the
+  run id and errors the stream, so the browser shows a failed download
+  rather than a silently short file; cancelling the download stops the
+  reads.
+  The format is looked up in the export registry, so a new format needs no
+  route change.
 
 ## Data model
 
@@ -371,7 +436,8 @@ is high and nothing needs the admin UI.
 | `item_count` | integer NOT NULL DEFAULT 0 | |
 | `invalid_item_count` | integer NOT NULL DEFAULT 0 | rows rejected by item schema |
 | `duration_ms` | integer NULL | |
-| `error` | varchar(500) NULL | user-safe message |
+| `error` | varchar(500) NULL | plain English sentence (server log, MCP) |
+| `error_detail` | jsonb NULL | `{ code, params? }` failure code the screens translate (migration `20261003b`) |
 | `log` | jsonb NOT NULL DEFAULT '[]' | last 50 lines |
 | `created_at` | timestamptz NOT NULL DEFAULT now() | |
 | `started_at`, `finished_at` | timestamptz NULL | |
@@ -438,31 +504,125 @@ maintained option):
 
 ### Member UI
 
-A member-only tab in the dashboard (`/dashboard/collectors`, hard-gated like
-the other dashboard pages). User-facing name: **Data collector**.
+A member-only tab in the dashboard, hard-gated like the other dashboard
+pages: every page calls `requireDashboardSession()` itself and every
+procedure is a `protectedProcedure`. User-facing name: **Data collectors**
+for the tab and the page title (one item is "a data collector"). The tab
+appears after Job tracker only while the feature flag is on (see
+"Feature flag and kill switches").
+
+Routes:
+
+| Route                                                  | Screen                              |
+| ------------------------------------------------------ | ----------------------------------- |
+| `/dashboard/collectors`                                | collectors list, recent runs, usage |
+| `/dashboard/collectors/new/[collectorId]`              | start a run                         |
+| `/dashboard/collectors/runs`                           | my runs (history)                   |
+| `/dashboard/collectors/runs/[runId]`                   | run page                            |
+| `/api/collectors/runs/[runId]/export?format=csv\|json` | download (see "Export")             |
+| `/collectors/about`                                    | public page for site owners         |
+
+The web talks to the facade through the `collectors` tRPC router
+(`overview`, `start`, `run`, `runs`, `items`). The router adds only the
+feature gate and the first-use acknowledgement; ownership, quota and
+validation stay in the facade, so MCP behaves the same.
 
 1. **Collectors** — a quiet list (not a card grid): title, one-line
-   description, kind as a neutral badge, sample row on expand.
-2. **Start a run** — form generated from `inputSchema` + `fieldHints`
-   (one generic renderer; adding a collector needs no UI code). First use shows
-   a short acceptable-use note (own research, respect site terms, avoid
-   personal data) that the member acknowledges once. **Start run** is the one
-   Signal Orange action.
-3. **Run page** — status with icon + label (semantic tokens), counts, stop
-   reason in plain words ("Stopped after 20 pages — the page limit"), a paged
-   table preview, **Download CSV** / **Download JSON**, collapsible log. Polls
-   every 3 seconds while `queued`/`running`, then stops.
-4. **My runs** — history with status, row count, expiry as `<RelativeTime>`.
+   description, kind as a neutral (`secondary`) badge — kind is a category,
+   never a status colour (DESIGN.md "Status vs. category") — and the sample
+   row on expand. The page also shows the member's last three runs and
+   their usage ("3 of 20 runs used · last 24 hours"), and links to the
+   about page.
+2. **Start a run** — form generated from the collector's input JSON Schema
+   plus its `fieldHints` (one generic renderer; adding a collector needs no
+   UI code). `src/lib/collectors/form-fields.ts` maps each property to a
+   field kind it can draw: plain text, web address (`format: "uri"`), number
+   (whole numbers get a numeric keypad and step 1) and checkbox. Anything
+   else — a choice list (`enum`), a fixed value (`const`), a string format
+   other than a web address, or an unknown type — is **refused**: the form
+   says the collector cannot be started from here yet, rather than drawing
+   it as free text the server would then reject. A field with a `default`
+   is optional even though `z.toJSONSchema` lists it as required. The limits
+   (rows, pages, seconds, and that the run uses one of the member's daily
+   runs) are shown above the button. **Start run** is the one Signal Orange
+   action.
+
+   **First-use note.** While the member has no stored runs,
+   the form shows a short acceptable-use note (own research, respect each
+   site's terms, avoid personal data, runs are private and deleted after
+   30 days) with a checkbox the member must tick. The router enforces it:
+   `start` without `acknowledged: true` from a member with no runs is
+   refused with `BAD_REQUEST` / `ACKNOWLEDGEMENT_REQUIRED`, so a stale or
+   crafted request cannot skip it. There is no separate stored flag; once
+   the member has a run the note is gone. Runs are removed after 30 days by
+   the retention cron (slice 5), so once all of a member's runs have been
+   removed the note shows again.
+
+   **Refusals.** Field errors are shown on their fields. A quota refusal
+   names the limit: "You've used all 20 runs for the last 24 hours. You can
+   start again in 3 hours." for the daily limit (the retry time comes from
+   `retryAt`; without it the sentence ends after the limit), and plain
+   sentences for the active-run and platform limits.
+
+3. **Run page** — status badge with icon + label (semantic tokens), one
+   sentence saying where the run stands, counts (rows, pages fetched, rows
+   skipped), stop reason in plain words ("Partial: stopped at the page
+   limit."), and for a failed run the translated failure detail under it
+   ("The feed answered with error 404. Check the address, or try again
+   later."; an unknown code adds nothing, the English `error` never shows),
+   a paged table preview (50 rows per page, by `seq`), and a
+   collapsible log. The status is announced to screen readers
+   (`role="status"`).
+
+   **Polling.** The run and its rows refetch every 3 seconds while the run
+   is `queued` or `running`, and stop when it ends. At that moment the rows
+   are fetched once more, so the table agrees with the final count and the
+   download (a first load of an already-ended run is not a transition and
+   does not refetch). An error does not stop polling: a passing failure (a
+   deploy, a network blip) keeps the last known status and its interval.
+   Only `NOT_FOUND` stops it: a missing or foreign run shows "not found"
+   with a link to My runs; that query is not retried and not polled. The
+   rows query follows the same rule.
+
+   **Downloads.** **Download CSV** / **Download JSON** are equal peers, so
+   both use the `ink` button, not orange. They are offered only once the
+   run has ended and has rows — a file of a half-finished run would mislead.
+
+4. **My runs** — history table with collector, start time, status badge,
+   row count, short stop reason ("Why it ended") and expiry as
+   `<RelativeTime>`; older runs load by cursor. When a new run appears on
+   top of the first page, the loaded older pages are dropped and paging
+   starts again, so no run falls between pages. Empty history teaches the
+   next action with **Choose a collector**, the one orange action there.
+
+   The dashboard's recent runs and the history's first page refetch every
+   5 seconds while any listed run is `queued` or `running`, and stop once
+   none is. The recent-runs empty hint ("Pick a collector above…") shows
+   only when there is at least one collector.
 
 All data views implement the three data states (`<Skeleton>`,
-`<ErrorState onRetry>`, `<EmptyState>`); empty history teaches the next action.
-EN + NL strings.
+`<ErrorState onRetry>`, `<EmptyState>`). All member-facing copy lives in
+`messages/en.json` and `messages/nl.json` (namespaces `collectors` and
+`collectorsAbout`, plus `dashboard.tabs.collectors`); collector titles,
+descriptions and field labels come translated from the catalog.
+
+**Words.** Member-facing copy uses everyday words: "this site's rules for
+automated visitors", never "robots.txt"; "rows", not "items". The about page
+for site owners (below) is written for a technical reader and keeps the
+technical terms (robots.txt, user agent, 429/503).
 
 ### Public page for site owners
 
-`/collectors/about`: what the visitor is, that it respects robots.txt and a
-1-request-per-second limit, the exact user-agent string, how to block it with
-robots.txt, and an email address for opt-out (added to the blocklist).
+`/collectors/about`, public (no sign-in) and shown whether or not the
+feature flag is on: what the visitor is, that it reads robots.txt first and
+follows it, the 1-request-per-second limit across all members, how it backs
+off on 429/503, that it only reads public https pages, the exact user-agent
+string, a robots.txt snippet to block it (whole site or part), and the
+opt-out address `info@klevox.com` (the domain and its subdomains are added
+to the blocklist). The user agent, robots.txt token and address come from
+`src/server/collectors/identity.ts`, the same module the worker uses. It uses
+technical terms on purpose: its readers are site operators. The collectors
+page links to it ("How our collector visits sites").
 
 ### MCP tools (`src/app/api/mcp/collector-tools.ts`)
 
@@ -480,9 +640,14 @@ agents.
 
 ## Feature flag and kill switches
 
-- `FEATURE_COLLECTORS` (server) and `NEXT_PUBLIC_FEATURE_COLLECTORS` (UI) —
-  off by default. When off: tab hidden, `startRun` refused, worker no-ops, MCP
-  tools return a clear "not available" error. Deleted once the feature is final.
+- `FEATURE_COLLECTORS=on` — one server flag, off by default, read only
+  through `collectorsEnabled()` in `src/server/collectors/flags.ts`. There is
+  no `NEXT_PUBLIC_` flag: the member dashboard layout reads the server flag
+  and passes it to the tab bar (`showCollectors`). When off: tab hidden, the
+  member pages call `notFound()`, every `collectors.*` procedure throws
+  `NOT_FOUND` with message `COLLECTORS_OFF`, the download route answers 404,
+  `startRun` is refused, the worker no-ops, and MCP tools return a clear "not
+  available" error. Deleted once the feature is final.
 - `COLLECTORS_DISABLED` — per-collector disable.
 - `collector_blocked_domain` — per-site opt-out.
 
@@ -510,17 +675,23 @@ was accepted for (ADR-0040).
 ## Error handling summary
 
 - Invalid input → rejected at `startRun` with field errors; nothing stored.
-- Quota exceeded → typed refusal with reason and retry time, shown as plain text.
+- Quota exceeded → typed refusal with reason and, for the daily limit, the
+  retry time; the form names the limit in plain words (see "Member UI").
+- First run without the acceptable-use acknowledgement → refused with
+  `ACKNOWLEDGEMENT_REQUIRED`; the form shows the note.
 - Robots disallow / blocked domain (also when reached through a redirect) →
   run `failed`, `stop_reason` explains, the page is never requested.
 - robots.txt cannot be read (5xx, timeout, network error, too many
-  redirects) → run `failed` with `stop_reason = 'robots_unreachable'` ("We
-  could not read this site's robots.txt, so we did not collect from it."),
-  the page is never requested.
+  redirects) → run `failed` with `stop_reason = 'robots_unreachable'`
+  ("Failed: we could not read this site's rules for automated visitors, so
+  we did not collect from it."), the page is never requested.
 - A non-https address → refused at `startRun` (input schema) and by the
   context.
-- Network / parse errors in a collector → `failed` with a mapped user-safe
-  message; raw error in the server log.
+- Network / parse errors in a collector → `failed` with a mapped English
+  message and a failure code (see "Failure detail") the screens translate;
+  raw error in the server log.
+- Download of a run still in progress → 409; a failure mid-download is
+  logged with the run id and errors the stream.
 - Invalid rows → skipped and counted in `invalid_item_count`, shown on the run
   page.
 - Worker crash → lease expiry → re-claimed once, then `worker_lost`.
@@ -542,8 +713,16 @@ was accepted for (ADR-0040).
   cleanup.
 - **MCP:** tools listed under `collect` only; agent runs count against the
   owner's quota.
-- **UI:** the generated form renders each collector's fields; the run page
-  shows all statuses and stop reasons; the three data states.
+- **UI:** the generated form renders each collector's fields and refuses
+  fields it cannot draw; defaults make a field optional; the first-use note
+  and its router check; quota sentences; the run page shows all statuses and
+  stop reasons and the translated failure detail, stops polling when the
+  run ends and refetches the rows once, keeps polling through a passing
+  error and stops only for a missing run; the lists poll while a run is
+  active; downloads appear only for an ended run with rows; the export
+  route's owner, format, flag and in-progress (409) checks, its lazy,
+  cancellable stream and its mid-stream failure; member copy never says "robots.txt"; EN/NL key parity
+  (`scripts/check-i18n-parity.mjs`); the three data states.
 - Full existing suites of every touched workspace, including `safeFetch`
   callers after the option change.
 
@@ -553,10 +732,11 @@ was accepted for (ADR-0040).
    context (Proxy) with all safety rules, executor, worker route + cron,
    facade, `feed-items`, flag. Tested end to end without UI. Plan:
    `docs/superpowers/plans/2026-10-03-data-collectors-core.md`.
-2. **Member UI and the public about page**, preceded by a visual review of
-   mockups: dashboard tab, generated form, run page, history, export,
-   `/collectors/about`. The flag stays off until this slice ships, so no
-   collector contacts a site before the about page exists.
+2. **Member UI and the public about page** (built), preceded by a visual
+   review of mockups: dashboard tab, generated form, run page, history,
+   export, `/collectors/about`. The flag stays off until this slice ships, so
+   no collector contacts a site before the about page exists. Plan:
+   `docs/superpowers/plans/2026-10-03-data-collectors-screens.md`.
 3. **More collectors:** `github-org-repos`, `page-list`.
 4. **MCP tools** under the `collect` scope.
 5. **Retention cron and blocklist admin.**

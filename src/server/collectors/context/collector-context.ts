@@ -117,6 +117,7 @@ export function createCollectorContext(deps: ContextDeps): {
         "blocked_domain",
         "failed",
         "This site has asked not to be collected.",
+        { code: "blocked_domain" },
       );
     }
     const verdict = await robotsVerdict(url.href);
@@ -129,12 +130,14 @@ export function createCollectorContext(deps: ContextDeps): {
           "robots_unreachable",
           "failed",
           "We could not read this site's robots.txt, so we did not collect from it.",
+          { code: "robots_unreachable" },
         );
       }
       throw new CollectorStop(
         "robots_disallowed",
         "failed",
         "This site's robots.txt does not allow collecting this page.",
+        { code: "robots_disallowed" },
       );
     }
     for (;;) {
@@ -157,6 +160,7 @@ export function createCollectorContext(deps: ContextDeps): {
           "site_refused",
           "failed",
           "The site asked us to slow down several times, so we stopped.",
+          { code: "site_refused" },
         );
       }
       const wait =
@@ -187,6 +191,7 @@ export function createCollectorContext(deps: ContextDeps): {
               "error",
               "failed",
               "A page redirected too many times.",
+              { code: "redirect_loop" },
             );
           }
           url = parseWebUrl(new URL(location, url).href);
@@ -210,6 +215,7 @@ function parseWebUrl(raw: string): URL {
       "error",
       "failed",
       "A collector produced an invalid web address.",
+      { code: "invalid_address" },
     );
   }
   // The SSRF guard in safeFetch refuses plain http, so only https can work.
@@ -218,6 +224,7 @@ function parseWebUrl(raw: string): URL {
       "error",
       "failed",
       "Only https addresses can be collected.",
+      { code: "https_only" },
     );
   }
   return url;

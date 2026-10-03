@@ -120,6 +120,7 @@ describe("collector context", () => {
     const t = setup({ blockedDomains: new Set(["e.com"]) });
     const stop = await stopOf(t.ctx.fetch("https://www.e.com/x"));
     expect([stop.reason, stop.outcome]).toEqual(["blocked_domain", "failed"]);
+    expect(stop.detail).toEqual({ code: "blocked_domain" });
     expect(t.transport).not.toHaveBeenCalled();
     expect(t.robotsTransport).not.toHaveBeenCalled();
   });
@@ -133,6 +134,7 @@ describe("collector context", () => {
       "robots_disallowed",
       "failed",
     ]);
+    expect(stop.detail).toEqual({ code: "robots_disallowed" });
     expect(t.transport).not.toHaveBeenCalled();
   });
 
@@ -182,6 +184,7 @@ describe("collector context", () => {
       "error",
       "A page redirected too many times.",
     ]);
+    expect(stop.detail).toEqual({ code: "redirect_loop" });
   });
 
   it("waits as long as Retry-After says, then retries", async () => {
@@ -199,6 +202,7 @@ describe("collector context", () => {
     const t = setup({ replies: [reply(429), reply(503), reply(429)] });
     const stop = await stopOf(t.ctx.fetch("https://e.com/"));
     expect([stop.reason, stop.outcome]).toEqual(["site_refused", "failed"]);
+    expect(stop.detail).toEqual({ code: "site_refused" });
   });
 
   it("ends as time_limit when Retry-After goes past the deadline", async () => {
@@ -242,6 +246,7 @@ describe("collector context", () => {
         "failed",
         "We could not read this site's robots.txt, so we did not collect from it.",
       ]);
+      expect(stop.detail).toEqual({ code: "robots_unreachable" });
       expect(t.transport).not.toHaveBeenCalled();
     },
   );
@@ -324,9 +329,26 @@ describe("collector context", () => {
         "error",
         "Only https addresses can be collected.",
       ]);
+      expect(stop.detail).toEqual({ code: "https_only" });
       expect(t.transport).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("collector context failure details", () => {
+  it("names an address that is not a web address", async () => {
+    const t = setup();
+    const stop = await stopOf(t.ctx.fetch("not a url"));
+    expect([stop.reason, stop.outcome]).toEqual(["error", "failed"]);
+    expect(stop.detail).toEqual({ code: "invalid_address" });
+  });
+
+  it("gives a partial stop no failure detail", async () => {
+    const t = setup({ maxPages: 1, replies: [reply(200), reply(200)] });
+    await t.ctx.fetch("https://e.com/1");
+    const stop = await stopOf(t.ctx.fetch("https://e.com/2"));
+    expect(stop.detail).toBeUndefined();
+  });
 });
 
 describe("retryAfterMs", () => {

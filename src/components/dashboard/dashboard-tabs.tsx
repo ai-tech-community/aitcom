@@ -18,10 +18,27 @@ export const DASHBOARD_TABS = [
   labelKey: string;
 })[];
 
+/** Shown after Job tracker only while data collectors are switched on. */
+const COLLECTORS_TAB = {
+  href: "/dashboard/collectors",
+  labelKey: "collectors",
+} as const;
+
+type DashboardTab = (typeof DASHBOARD_TABS)[number] | typeof COLLECTORS_TAB;
+
 /** Tab bar for the member dashboard frame, built on the shared RouteTabs. */
-export function DashboardTabs() {
+export function DashboardTabs({
+  showCollectors = false,
+}: {
+  showCollectors?: boolean;
+}) {
   const t = useTranslations("dashboard");
-  const tabs: RouteTab[] = DASHBOARD_TABS.map(({ labelKey, ...tab }) => ({
+  const source: readonly DashboardTab[] = showCollectors
+    ? DASHBOARD_TABS.flatMap<DashboardTab>((tab) =>
+        tab.labelKey === "jobs" ? [tab, COLLECTORS_TAB] : [tab],
+      )
+    : DASHBOARD_TABS;
+  const tabs: RouteTab[] = source.map(({ labelKey, ...tab }) => ({
     ...tab,
     label: t(`tabs.${labelKey}`),
   }));

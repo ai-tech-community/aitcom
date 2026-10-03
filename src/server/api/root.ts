@@ -3,6 +3,7 @@ import { audiencesRouter } from "@/server/api/routers/audiences";
 import { badgesRouter } from "@/server/api/routers/badges";
 import { communitiesRouter } from "@/server/api/routers/communities";
 import { feedRouter } from "./routers/feed";
+import { collectorsRouter } from "@/server/api/routers/collectors";
 import { commentsRouter } from "@/server/api/routers/comments";
 import { commissionsRouter } from "@/server/api/routers/commissions";
 import { benchmarkRouter } from "@/server/api/routers/benchmark";
@@ -79,6 +80,7 @@ export const appRouter = createTRPCRouter({
   challenges: challengesRouter,
   benchmark: benchmarkRouter,
   launchpad: launchpadRouter,
+  collectors: collectorsRouter,
   comments: commentsRouter,
   commissions: commissionsRouter,
   communities: communitiesRouter,

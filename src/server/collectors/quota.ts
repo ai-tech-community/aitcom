@@ -31,6 +31,26 @@ export type QuotaDecision =
 const DAY_MS = 86_400_000;
 const ACTIVE = ["queued", "running"] as const satisfies readonly RunStatus[];
 
+/** This member's runs created in the rolling 24-hour window. */
+export async function countRunsInWindow(
+  db: CollectorDb,
+  userId: string,
+  now: Date,
+): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(collectorRuns)
+    .where(inWindow(userId, now));
+  return row?.n ?? 0;
+}
+
+function inWindow(userId: string, now: Date) {
+  return and(
+    eq(collectorRuns.userId, userId),
+    gt(collectorRuns.createdAt, new Date(now.getTime() - DAY_MS)),
+  );
+}
+
 /**
  * May this member start one more run? Counted from the database, so it holds
  * across server instances. Agent-started runs count against the owner. Call
@@ -47,23 +67,14 @@ export async function canStartRun(
   now: Date,
   limits: QuotaLimits = DEFAULT_QUOTA,
 ): Promise<QuotaDecision> {
-  const since = new Date(now.getTime() - DAY_MS);
-  const inWindow = and(
-    eq(collectorRuns.userId, userId),
-    gt(collectorRuns.createdAt, since),
-  );
-  const [recent] = await db
-    .select({ n: count() })
-    .from(collectorRuns)
-    .where(inWindow);
-  const runsToday = recent?.n ?? 0;
+  const runsToday = await countRunsInWindow(db, userId, now);
   if (runsToday >= limits.runsPerDay) {
     // A start is allowed again once enough runs leave the window. With
     // exactly the limit (the usual case) that is the oldest one.
     const [leaving] = await db
       .select({ createdAt: collectorRuns.createdAt })
       .from(collectorRuns)
-      .where(inWindow)
+      .where(inWindow(userId, now))
       .orderBy(asc(collectorRuns.createdAt))
       .offset(runsToday - limits.runsPerDay)
       .limit(1);

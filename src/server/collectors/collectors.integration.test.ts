@@ -224,6 +224,17 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         }),
       ).toEqual({ allowed: true });
     });
+
+    it("counts this member's runs in the rolling 24 hours", async () => {
+      const userId = await makeUser();
+      const other = await makeUser();
+      await insertRun(userId, { createdAt: new Date(now.getTime() - 60_000) });
+      await insertRun(userId, {
+        createdAt: new Date(now.getTime() - 25 * 3_600_000),
+      });
+      await insertRun(other, { createdAt: now });
+      expect(await m.quota.countRunsInWindow(m.db, userId, now)).toBe(1);
+    });
   });
 
   describe("executor", () => {
@@ -412,7 +423,51 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         status: "failed",
         stopReason: "robots_disallowed",
         error: "Not allowed here.",
+        errorDetail: { code: "robots_disallowed" },
         itemCount: 1,
+      });
+    });
+
+    it("stores a stop's own failure detail for the member's screen", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield* [];
+        throw new m.errors.CollectorStop(
+          "error",
+          "failed",
+          "This address is not an RSS or Atom feed.",
+          { code: "not_a_feed" },
+        );
+      });
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      await m.executor.executeRun(deps(collector), run!, Date.now() + 60_000);
+      expect(await runRow(id)).toMatchObject({
+        status: "failed",
+        stopReason: "error",
+        error: "This address is not an RSS or Atom feed.",
+        errorDetail: { code: "not_a_feed" },
+      });
+    });
+
+    it("stores no failure detail for a partial stop", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield { n: 1 };
+        throw new m.errors.CollectorStop(
+          "page_limit",
+          "succeeded",
+          "Stopped at the page limit.",
+        );
+      });
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      await m.executor.executeRun(deps(collector), run!, Date.now() + 60_000);
+      expect(await runRow(id)).toMatchObject({
+        status: "succeeded",
+        stopReason: "page_limit",
+        error: null,
+        errorDetail: null,
       });
     });
 
@@ -462,6 +517,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       expect(row.error).toBe(
         "Something went wrong while collecting. Try again later.",
       );
+      expect(row.errorDetail).toEqual({ code: "generic" });
     });
 
     it("ends as time_limit when the tick deadline passes mid-run", async () => {
@@ -544,6 +600,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       expect(await items(id)).toHaveLength(0);
       expect(await runRow(id)).toMatchObject({
         status: "failed",
+        errorDetail: { code: "worker_lost" },
         itemCount: 0,
         invalidItemCount: 0,
         pagesFetched: 3,
@@ -614,6 +671,22 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         status: "failed",
         stopReason: "error",
         error: "This collector is not available any more.",
+        errorDetail: { code: "collector_unavailable" },
+      });
+    });
+
+    it("fails a run whose saved input no longer fits the collector", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId, { input: "not an object" });
+      const collector = testCollector(async function* () {
+        yield { n: 1 };
+      });
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      await m.executor.executeRun(deps(collector), run!, Date.now() + 60_000);
+      expect(await runRow(id)).toMatchObject({
+        status: "failed",
+        stopReason: "error",
+        errorDetail: { code: "input_invalid" },
       });
     });
 
@@ -697,6 +770,38 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       return { runs, kicks };
     }
     const feedInput = { url: "https://example.com/feed.xml" };
+
+    it("reports usage and names the quota limit that refused a start", async () => {
+      const userId = await makeUser();
+      const { runs } = facade({
+        quota: { runsPerDay: 20, activePerUser: 1, activePlatform: 1_000 },
+      });
+      expect(await runs.usage(userId)).toEqual({
+        runsToday: 0,
+        runsPerDay: 20,
+      });
+      await runs.startRun({
+        userId,
+        origin: "web",
+        collectorId: "feed-items",
+        input: feedInput,
+      });
+      expect(await runs.usage(userId)).toEqual({
+        runsToday: 1,
+        runsPerDay: 20,
+      });
+      const refused = await runs.startRun({
+        userId,
+        origin: "web",
+        collectorId: "feed-items",
+        input: feedInput,
+      });
+      expect(refused).toMatchObject({
+        ok: false,
+        reason: "quota",
+        quotaReason: "active_limit",
+      });
+    });
 
     it("refuses everything while the feature is off", async () => {
       const userId = await makeUser();
@@ -802,6 +907,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       ).toEqual({
         ok: false,
         reason: "quota",
+        quotaReason: "daily_limit",
         message: "You can start 1 runs per 24 hours. Try again later.",
         retryAt: "2026-10-04T11:00:00.000Z",
       });

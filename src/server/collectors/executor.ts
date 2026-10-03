@@ -5,7 +5,12 @@ import { collectorItems, collectorRuns } from "@/server/db/schema";
 
 import type { AnyCollector, CollectorContext } from "./collector";
 import type { ContextMeter } from "./context/collector-context";
-import { CollectorStop, userMessageFor } from "./errors";
+import {
+  CollectorStop,
+  type FailureDetail,
+  failureDetailFor,
+  userMessageFor,
+} from "./errors";
 import { type StopReason, assertTransition } from "./run-status";
 
 export const TICK_BUDGET_MS = 240_000;
@@ -37,7 +42,10 @@ export interface ExecutorDeps {
 type Outcome = {
   status: "succeeded" | "failed";
   stopReason: StopReason;
+  /** English, for the server log and MCP. */
   error: string | null;
+  /** What the member's screen translates; null exactly when `error` is. */
+  errorDetail: FailureDetail | null;
 };
 
 export type RunResult = {
@@ -152,6 +160,7 @@ export async function executeRun(
         status: outcome.status,
         stopReason: outcome.stopReason,
         error: outcome.error?.slice(0, MAX_ERROR_LENGTH) ?? null,
+        errorDetail: outcome.errorDetail,
         durationMs: deps.now() - startedAt,
         finishedAt: new Date(deps.now()),
         leaseUntil: null,
@@ -172,6 +181,7 @@ export async function executeRun(
         status: "failed",
         stopReason: "worker_lost",
         error: "The run was interrupted twice, so it was stopped.",
+        errorDetail: { code: "worker_lost" },
       },
       { keepLog: true },
     );
@@ -183,6 +193,7 @@ export async function executeRun(
       status: "failed",
       stopReason: "error",
       error: "This collector is not available any more.",
+      errorDetail: { code: "collector_unavailable" },
     });
   }
   const input = collector.inputSchema.safeParse(run.input);
@@ -192,6 +203,7 @@ export async function executeRun(
         status: "failed",
         stopReason: "error",
         error: "The saved input is no longer valid for this collector.",
+        errorDetail: { code: "input_invalid" },
       },
       { version: collector.version },
     );
@@ -241,6 +253,7 @@ export async function executeRun(
     status: "succeeded",
     stopReason: "complete",
     error: null,
+    errorDetail: null,
   };
   try {
     const built = await deps.buildContext({
@@ -271,6 +284,7 @@ export async function executeRun(
           status: "succeeded",
           stopReason: "item_limit",
           error: null,
+          errorDetail: null,
         };
         break;
       }
@@ -279,6 +293,7 @@ export async function executeRun(
           status: "succeeded",
           stopReason: "time_limit",
           error: null,
+          errorDetail: null,
         };
         break;
       }
@@ -289,6 +304,7 @@ export async function executeRun(
         status: err.outcome,
         stopReason: err.reason,
         error: err.outcome === "failed" ? err.message : null,
+        errorDetail: err.outcome === "failed" ? failureDetailFor(err) : null,
       };
     } else {
       console.error(`[collectors] run ${run.id} failed`, err);
@@ -296,6 +312,7 @@ export async function executeRun(
         status: "failed",
         stopReason: "error",
         error: userMessageFor(err),
+        errorDetail: failureDetailFor(err),
       };
     }
   } finally {

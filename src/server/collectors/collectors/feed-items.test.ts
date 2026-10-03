@@ -36,6 +36,7 @@ describe("feed-items collector", () => {
       reason: "error",
       outcome: "failed",
       message: "This address is not an RSS or Atom feed.",
+      detail: { code: "not_a_feed" },
     } satisfies Partial<CollectorStop>);
   });
 
@@ -45,7 +46,10 @@ describe("feed-items collector", () => {
     });
     await expect(
       collectAll(feedItems.run({ url: "https://e.com/feed" }, ctx)),
-    ).rejects.toThrow("The feed answered with status 404.");
+    ).rejects.toMatchObject({
+      message: "The feed answered with status 404.",
+      detail: { code: "feed_status", params: { status: 404 } },
+    } satisfies Partial<CollectorStop>);
   });
 
   it("accepts only https addresses as input", () => {

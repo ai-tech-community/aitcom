@@ -5,6 +5,7 @@ import type {
   RitualMode,
   RitualStatus,
 } from "../communities/rituals";
+import type { FailureDetail } from "../collectors/errors";
 import type { RunStatus, StopReason } from "../collectors/run-status";
 import {
   boolean,
@@ -436,6 +437,8 @@ export const collectorRuns = appSchema.table(
     invalidItemCount: d.integer().notNull().default(0),
     durationMs: d.integer(),
     error: d.varchar({ length: 500 }),
+    /** Migration 20261003b: the translatable code behind `error`. */
+    errorDetail: d.jsonb().$type<FailureDetail>(),
     log: d
       .jsonb()
       .notNull()
