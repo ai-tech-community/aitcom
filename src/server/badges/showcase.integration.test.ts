@@ -205,9 +205,37 @@ describe.skipIf(!RUN_DB)(
       ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     });
 
+    it("the first pin keeps the showcase the profile showed, new badge first", async () => {
+      const before = await as(null).members.getPublicProfile({
+        userId: owner,
+      });
+      expect(before?.showcase.source).toBe("rarest");
+      expect(before?.showcase.slugs).toHaveLength(3);
+
+      await as(owner).badges.pin({ slug: "profile_complete" });
+      const [row] = await m.db
+        .select({ pins: m.schema.memberProfiles.showcaseBadges })
+        .from(m.schema.memberProfiles)
+        .where(m.drizzle.eq(m.schema.memberProfiles.userId, owner));
+      expect(row?.pins).toEqual(
+        [
+          "profile_complete",
+          ...before!.showcase.slugs.filter((s) => s !== "profile_complete"),
+        ].slice(0, 3),
+      );
+      const after = await as(null).members.getPublicProfile({ userId: owner });
+      expect(after?.showcase.source).toBe("pinned");
+      expect(after?.showcase.slugs).toHaveLength(3);
+      expect(after?.showcase.slugs[0]).toBe("profile_complete");
+    });
+
     it("pins up to three, refuses a fourth, and the profile shows the pins", async () => {
       const caller = as(owner);
-      await caller.badges.pin({ slug: "early_adopter" });
+      // Start from one pin, so the next pins add to it.
+      await m.db
+        .update(m.schema.memberProfiles)
+        .set({ showcaseBadges: ["early_adopter"] })
+        .where(m.drizzle.eq(m.schema.memberProfiles.userId, owner));
       await caller.badges.pin({ slug: "first_event" });
       const { pins } = await caller.badges.pin({ slug: "course_complete" });
       // A pinned track shows its highest held tier.

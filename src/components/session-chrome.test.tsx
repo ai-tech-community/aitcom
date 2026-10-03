@@ -20,7 +20,7 @@ import { SessionChrome } from "./session-chrome";
 const USER = { id: "ada", name: "Ada Lovelace" };
 
 describe("SessionChrome", () => {
-  it("does not mount inbox or space-window chrome for a guest", () => {
+  it("does not mount inbox, space-window or badge celebration chrome for a guest", () => {
     render(
       <SessionProvider initialUser={null}>
         <SessionChrome />
@@ -37,9 +37,10 @@ describe("SessionChrome", () => {
       </SessionProvider>,
     );
 
-    // Inbox (with the getting-started reminder in its dock) + space windows.
+    // Inbox (with the getting-started reminder in its dock), space windows
+    // and the badge earning moment.
     const chrome = screen.getAllByTestId("lazy-chrome");
-    expect(chrome).toHaveLength(3);
+    expect(chrome).toHaveLength(4);
     expect(chrome[0]).toContainElement(chrome[1]!);
   });
 });

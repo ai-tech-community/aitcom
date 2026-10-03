@@ -5,13 +5,15 @@
  * and applies them under a row lock, so two pins at once cannot exceed the
  * limit (the column's CHECK backs that up).
  */
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import type { BadgeSlug } from "@/lib/badges/catalog";
 import {
   effectivePins,
+  featuredBadges,
   planPin,
   planUnpin,
+  type HoldersOf,
   type PinOutcome,
 } from "@/lib/badges/showcase";
 import { memberBadges, memberProfiles } from "@/server/db/schema";
@@ -22,7 +24,7 @@ import {
 
 import type { BadgeDb } from "./metrics";
 
-/** The displayable badges a member holds. */
+/** The displayable badges a member holds, newest first. */
 export async function loadHeldBadgeSlugs(
   db: BadgeDb,
   userId: string,
@@ -33,7 +35,8 @@ export async function loadHeldBadgeSlugs(
       earnedAt: memberBadges.earnedAt,
     })
     .from(memberBadges)
-    .where(and(eq(memberBadges.userId, userId), displayableBadgeRows()));
+    .where(and(eq(memberBadges.userId, userId), displayableBadgeRows()))
+    .orderBy(desc(memberBadges.earnedAt), memberBadges.badgeSlug);
   return toDisplayableBadges(rows).map((badge) => badge.slug);
 }
 
@@ -58,17 +61,27 @@ async function writePins(db: BadgeDb, userId: string, pins: string[]) {
     .where(eq(memberProfiles.userId, userId));
 }
 
-/** Pins a badge the member holds to their showcase. */
+/**
+ * Pins a badge the member holds to their showcase. With nothing pinned yet,
+ * the badges the showcase shows now (rarest, or most recent when `holders`
+ * is null because rarity could not load) are kept with the new one first.
+ */
 export function pinShowcaseBadge(
   db: BadgeDb,
   userId: string,
   slug: string,
+  holders: HoldersOf | null = null,
 ): Promise<ShowcaseWrite> {
   return db.transaction(async (tx) => {
     const stored = await lockPins(tx, userId);
     if (stored === null) return { ok: false, reason: "no_profile" };
     const held = await loadHeldBadgeSlugs(tx, userId);
-    const outcome: PinOutcome = planPin(stored, slug, held);
+    const outcome: PinOutcome = planPin(
+      stored,
+      slug,
+      held,
+      featuredBadges(held, holders),
+    );
     if (!outcome.ok) return outcome;
     await writePins(tx, userId, outcome.next);
     return { ok: true, pins: effectivePins(outcome.next, held) };

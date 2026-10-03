@@ -8,8 +8,19 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "@/server/api/trpc";
+import {
+  loadUnseenEarnings,
+  markEarningsSeen,
+  UNSEEN_READ_CAP,
+  type UnseenEarnings,
+} from "@/server/badges/earning-moment";
 import { loadTrackProgress } from "@/server/badges/progress";
-import { getBadgeRarity, type BadgeRarityReport } from "@/server/badges/rarity";
+import {
+  getBadgeRarity,
+  holdersOf,
+  optionalBadgeRarity,
+  type BadgeRarityReport,
+} from "@/server/badges/rarity";
 import {
   pinShowcaseBadge,
   unpinShowcaseBadge,
@@ -60,14 +71,50 @@ export const badgesRouter = createTRPCRouter({
       loadTrackProgress(ctx.db, ctx.session.user.id),
   ),
 
-  /** Pins a badge the caller holds to their profile showcase (max three). */
+  /**
+   * Pins a badge the caller holds to their profile showcase (max three).
+   * The first pin keeps the showcase the profile shows now, new badge first.
+   */
   pin: protectedProcedure
     .input(slugInput)
     .mutation(async ({ ctx, input }) =>
       showcasePins(
-        await pinShowcaseBadge(ctx.db, ctx.session.user.id, input.slug),
+        await pinShowcaseBadge(
+          ctx.db,
+          ctx.session.user.id,
+          input.slug,
+          await optionalBadgeRarity(ctx.db).then(
+            (report) => report && holdersOf(report),
+          ),
+        ),
       ),
     ),
+
+  /**
+   * The caller's unseen badges and awards for the earning moment: the
+   * oldest few to celebrate, the ids of the rest ("+N more"), and their
+   * showcase pins. Only ever the caller's own rows.
+   */
+  unseen: protectedProcedure.query(
+    async ({ ctx }): Promise<UnseenEarnings> =>
+      loadUnseenEarnings(ctx.db, ctx.session.user.id, () =>
+        optionalBadgeRarity(ctx.db),
+      ),
+  ),
+
+  /**
+   * Marks earnings seen after the celebration was shown and dismissed or
+   * acted on. Ids of other members' rows are ignored.
+   */
+  markSeen: protectedProcedure
+    .input(
+      z.object({
+        ids: z.array(z.string().min(1).max(255)).min(1).max(UNSEEN_READ_CAP),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => ({
+      marked: await markEarningsSeen(ctx.db, ctx.session.user.id, input.ids),
+    })),
 
   /** Removes a badge (or any tier of its track) from the caller's showcase. */
   unpin: protectedProcedure

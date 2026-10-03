@@ -18,6 +18,14 @@ const OnboardingReminder = dynamic(() =>
   ),
 );
 
+// A small probe: the celebration dialog itself loads only when there is
+// something to celebrate.
+const BadgeCelebrationProbe = dynamic(() =>
+  import("@/components/badges/badge-celebration-probe").then(
+    (m) => m.BadgeCelebrationProbe,
+  ),
+);
+
 const SpaceWindowRoot = dynamic(() =>
   import("@/components/communities/explore/space-window-root").then(
     (m) => m.SpaceWindowRoot,
@@ -26,7 +34,7 @@ const SpaceWindowRoot = dynamic(() =>
 
 /**
  * Signed-in overlay chrome (floating inbox + getting-started reminder in one
- * bottom-right dock, space windows). Guest homepage
+ * bottom-right dock, space windows, the badge earning moment). Guest homepage
  * visitors never download streamdown / mermaid / RoomView / framer-motion
  * from this path — next/dynamic only fetches after a user exists.
  */
@@ -44,6 +52,7 @@ export function SessionChrome({
     <>
       <InboxRoot dockLeading={<OnboardingReminder />} />
       <SpaceWindowRoot />
+      <BadgeCelebrationProbe userId={user.id} />
     </>
   );
 }

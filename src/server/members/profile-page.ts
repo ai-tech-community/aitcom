@@ -7,9 +7,21 @@ import { cache } from "react";
 
 import { routing } from "@/i18n/routing";
 import { getAvatarUrl } from "@/lib/avatar";
+import { catalogBadge, type CatalogBadge } from "@/lib/badges/catalog";
 import { calculateLevel } from "@/lib/gamification";
-import { buildOgMeta, localeAlternates } from "@/lib/metadata";
-import { profileTabHref, type ProfileTab } from "@/lib/member-profile-routes";
+import {
+  buildAlternates,
+  buildOgImageMeta,
+  buildOgMeta,
+  localeAlternates,
+} from "@/lib/metadata";
+import {
+  badgeShareHref,
+  badgeShareImageHref,
+  profileTabHref,
+  type ProfileTab,
+} from "@/lib/member-profile-routes";
+import type { DisplayableBadge } from "@/server/members/displayable-badges";
 import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
 import {
@@ -171,6 +183,81 @@ export async function profileTabMetadata({
     description,
     ...buildOgMeta(title, description),
     alternates: await localeAlternates(profileTabHref(userId, tab)),
+    ...(data.reach.kind !== "public"
+      ? { robots: { index: false, follow: false } }
+      : {}),
+  };
+}
+
+/** A badge a member holds, as its share page shows it. */
+export interface MemberBadgeShare {
+  data: MemberProfileData;
+  badge: CatalogBadge;
+  earnedAt: DisplayableBadge["earnedAt"];
+}
+
+/**
+ * A badge's share page: the member's profile (under the same visibility
+ * rule as every tab) and the badge, when the member holds it and it is
+ * displayable. Null otherwise, so the page, its metadata and its image all
+ * 404 alike.
+ */
+export const getMemberBadge = cache(
+  async (userId: string, slug: string): Promise<MemberBadgeShare | null> => {
+    const badge = catalogBadge(slug);
+    if (!badge) return null;
+    const data = await getMemberProfile(userId);
+    const held = data?.badges.find((entry) => entry.slug === badge.slug);
+    return data && held ? { data, badge, earnedAt: held.earnedAt } : null;
+  },
+);
+
+/** The badge share this viewer may see, or a 404. */
+export async function requireMemberBadge(
+  userId: string,
+  slug: string,
+): Promise<MemberBadgeShare> {
+  const share = await getMemberBadge(userId, slug);
+  if (!share) notFound();
+  return share;
+}
+
+/**
+ * Metadata for a badge's share page: "{name} earned {badge}", the badge's
+ * description, the badge's own Open Graph image, and no indexing while
+ * visitors cannot see the profile.
+ */
+export async function badgePageMetadata({
+  userId,
+  slug,
+  locale,
+}: {
+  userId: string;
+  slug: string;
+  locale: string;
+}): Promise<Metadata> {
+  const share = await getMemberBadge(userId, slug);
+  if (!share) return {};
+  const resolved = toLocale(locale);
+  const [t, tBadges] = await Promise.all([
+    getTranslations({ locale: resolved, namespace: "badgeMoment.share" }),
+    getTranslations({ locale: resolved, namespace: "badges" }),
+  ]);
+  const { badge, data } = share;
+  const title = t("metaTitle", {
+    name: data.profile.displayName,
+    badge: tBadges(badge.nameKey),
+  });
+  const description = tBadges(badge.descriptionKey, badge.descriptionValues);
+  return {
+    title,
+    description,
+    ...buildOgImageMeta(
+      title,
+      description,
+      `/${resolved}${badgeShareImageHref(userId, badge.slug)}`,
+    ),
+    alternates: buildAlternates(badgeShareHref(userId, badge.slug), resolved),
     ...(data.reach.kind !== "public"
       ? { robots: { index: false, follow: false } }
       : {}),

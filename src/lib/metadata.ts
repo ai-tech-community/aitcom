@@ -48,19 +48,35 @@ export function buildOgMeta(
     title,
     subtitle: subtitle ?? "AIT Community",
   });
+  return buildOgImageMeta(
+    title,
+    description,
+    `/en/og?${ogImageParams.toString()}`,
+  );
+}
+
+/**
+ * Open Graph and X card metadata with a page's own image (a route that
+ * draws it, like a badge's share image) instead of the generic one.
+ */
+export function buildOgImageMeta(
+  title: string,
+  description: string,
+  image: string,
+): Pick<Metadata, "openGraph" | "twitter"> {
   return {
     openGraph: {
       title,
       description,
       siteName: "AIT Community",
       type: "website",
-      images: [`/en/og?${ogImageParams.toString()}`],
+      images: [image],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [`/en/og?${ogImageParams.toString()}`],
+      images: [image],
     },
   };
 }

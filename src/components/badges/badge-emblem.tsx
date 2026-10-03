@@ -34,6 +34,7 @@ import {
   type EmblemShape,
   type EmblemStyle,
 } from "@/lib/badges/emblem-shapes";
+import type { EmblemPalette } from "@/lib/badges/emblem-palette";
 import { tierFraction } from "@/lib/badges/progress";
 import { cn } from "@/lib/utils";
 
@@ -116,6 +117,12 @@ export interface BadgeEmblemProps {
    * technology.
    */
   label?: string;
+  /**
+   * Literal colours, for renderers without CSS custom properties (the Open
+   * Graph image, via `emblemPalette`). The emblem then references no token
+   * and draws no hover sheen. Leave it out in the browser.
+   */
+  palette?: EmblemPalette;
   className?: string;
 }
 
@@ -154,6 +161,25 @@ function styleOf(subject: EmblemSubject, badge: CatalogBadge | null) {
   };
 }
 
+/** The silhouette and hue an emblem is drawn with. */
+export function emblemStyleOf(subject: EmblemSubject): EmblemStyle {
+  const badge = subject.kind === "badge" ? catalogBadge(subject.slug) : null;
+  return styleOf(subject, badge).style;
+}
+
+/**
+ * The emblem's silhouette and its theme-aware colours (`--emblem-ink`,
+ * `--emblem-tint` as custom properties), for a decoration drawn around an
+ * emblem in the same ink, like the earning moment's ring.
+ */
+export function emblemOutline(subject: EmblemSubject): {
+  shape: EmblemShape;
+  colours: CSSProperties;
+} {
+  const style = emblemStyleOf(subject);
+  return { shape: EMBLEM_SHAPES[style.shape], colours: colourVars(style) };
+}
+
 /** Theme-aware colours as custom properties on the emblem's root. */
 function colourVars(style: EmblemStyle): CSSProperties {
   const hue = style.hue ? `var(${style.hue})` : "0";
@@ -186,8 +212,11 @@ export function BadgeEmblem({
   state,
   size = "md",
   label,
+  palette,
   className,
 }: BadgeEmblemProps) {
+  const ink = palette?.ink ?? "var(--emblem-ink)";
+  const tint = palette?.tint ?? "var(--emblem-tint)";
   const badge = subject.kind === "badge" ? catalogBadge(subject.slug) : null;
   const { style, glyph, variant } = styleOf(subject, badge);
   const shape = EMBLEM_SHAPES[style.shape];
@@ -210,7 +239,7 @@ export function BadgeEmblem({
       aria-hidden
       focusable={false}
       data-emblem-part="glyph"
-      style={{ color: state.earned ? "var(--emblem-ink)" : undefined }}
+      style={{ color: state.earned ? ink : undefined }}
       className={cn(!state.earned && "text-muted-foreground")}
     />
   );
@@ -266,7 +295,7 @@ export function BadgeEmblem({
         fill="none"
         strokeLinejoin="round"
         strokeWidth={(width * unit) / scale}
-        style={{ stroke: "var(--emblem-ink)" }}
+        style={{ stroke: ink }}
         data-emblem-part="ring"
       />
     </g>
@@ -278,13 +307,9 @@ export function BadgeEmblem({
     const midScale = (1 + bandScale) / 2;
     rings = (
       <>
-        <path
-          d={shape.d}
-          style={{ fill: "var(--emblem-ink)" }}
-          data-emblem-part="band"
-        />
+        <path d={shape.d} style={{ fill: ink }} data-emblem-part="band" />
         <g transform={scaleAbout(shape, bandScale)}>
-          <path d={shape.d} style={{ fill: "var(--emblem-tint)" }} />
+          <path d={shape.d} style={{ fill: tint }} />
         </g>
         {w.pattern && (
           <g transform={scaleAbout(shape, midScale)}>
@@ -294,7 +319,7 @@ export function BadgeEmblem({
               strokeLinecap="round"
               strokeWidth={unit / midScale}
               strokeDasharray={`0 ${(2.5 * unit) / midScale}`}
-              style={{ stroke: "var(--emblem-tint)" }}
+              style={{ stroke: tint }}
               data-emblem-part="pattern"
             />
           </g>
@@ -322,29 +347,22 @@ export function BadgeEmblem({
       data-state="earned"
       data-shape={shape.id}
       data-tier={variant.kind === "tier" ? variant.tier : undefined}
-      style={colourVars(style)}
+      style={palette ? undefined : colourVars(style)}
       className={cn("group/emblem shrink-0 overflow-visible", className)}
     >
       {variant.kind === "award" && (
         <g data-emblem-part="ribbon">
-          <path
-            d="M22 4 H40 L56 34 H38 Z"
-            style={{ fill: "var(--emblem-ink)" }}
-          />
+          <path d="M22 4 H40 L56 34 H38 Z" style={{ fill: ink }} />
           <path
             d="M60 4 H78 L62 34 H44 Z"
-            style={{ fill: "var(--emblem-ink)" }}
+            style={{ fill: ink }}
             opacity={0.72}
           />
         </g>
       )}
-      <path
-        d={shape.d}
-        style={{ fill: "var(--emblem-tint)" }}
-        data-emblem-part="body"
-      />
+      <path d={shape.d} style={{ fill: tint }} data-emblem-part="body" />
       {rings}
-      {variant.kind === "limited" && <EmblemSheen d={shape.d} />}
+      {variant.kind === "limited" && !palette && <EmblemSheen d={shape.d} />}
       {glyphNode}
     </svg>
   );

@@ -10,6 +10,7 @@ import {
   planUnpin,
   rarestBadges,
   resolveShowcase,
+  showcasePinState,
 } from "./showcase";
 
 const HOLDERS: Partial<Record<BadgeSlug, number>> = {
@@ -217,6 +218,66 @@ describe("without rarity (it failed to load)", () => {
     expect(resolveShowcase(["early_adopter"], newestFirst, null)).toEqual({
       slugs: ["early_adopter"],
       source: "pinned",
+    });
+  });
+});
+
+describe("showcasePinState", () => {
+  it("is pinned when the badge's track is pinned at any tier", () => {
+    expect(showcasePinState(["first_event"], "veteran")).toBe("pinned");
+    expect(showcasePinState(["early_adopter"], "early_adopter")).toBe("pinned");
+  });
+
+  it("is open below the limit and full at it", () => {
+    expect(showcasePinState([], "article_author")).toBe("open");
+    expect(
+      showcasePinState(["first_event", "early_adopter"], "article_author"),
+    ).toBe("open");
+    const full: BadgeSlug[] = [
+      "first_event",
+      "early_adopter",
+      "course_complete",
+    ];
+    expect(full).toHaveLength(SHOWCASE_LIMIT);
+    expect(showcasePinState(full, "article_author")).toBe("full");
+    expect(showcasePinState(full, "learner_2")).toBe("pinned");
+  });
+});
+
+describe("planPin with nothing pinned yet", () => {
+  const held: BadgeSlug[] = [
+    "early_adopter",
+    "profile_complete",
+    "course_complete",
+    "article_author",
+  ];
+
+  it("keeps the fallback showcase with the new badge first", () => {
+    expect(
+      planPin([], "article_author", held, [
+        "early_adopter",
+        "profile_complete",
+        "course_complete",
+      ]),
+    ).toEqual({
+      ok: true,
+      next: ["article_author", "early_adopter", "profile_complete"],
+    });
+  });
+
+  it("does not repeat the badge's track when the fallback already shows it", () => {
+    expect(
+      planPin([], "course_complete", held, [
+        "course_complete",
+        "early_adopter",
+      ]),
+    ).toEqual({ ok: true, next: ["course_complete", "early_adopter"] });
+  });
+
+  it("pins just the badge without a fallback, and ignores stale stored pins", () => {
+    expect(planPin(["speaker"], "article_author", held)).toEqual({
+      ok: true,
+      next: ["article_author"],
     });
   });
 });
