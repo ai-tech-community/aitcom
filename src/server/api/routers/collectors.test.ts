@@ -39,7 +39,7 @@ const run = { id: "run-1", status: "running", stopReason: null };
 beforeEach(() => {
   vi.clearAllMocks();
   // The shared tRPC timing middleware logs every call; keep test output clean.
-  vi.spyOn(console, "log").mockImplementation(() => {});
+  vi.spyOn(console, "log").mockImplementation(() => undefined);
   h.enabled = true;
   h.facade.listCollectors.mockReturnValue([{ id: "feed-items" }]);
   h.facade.listRuns.mockResolvedValue({ runs: [run], nextCursor: null });
