@@ -423,7 +423,51 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         status: "failed",
         stopReason: "robots_disallowed",
         error: "Not allowed here.",
+        errorDetail: { code: "robots_disallowed" },
         itemCount: 1,
+      });
+    });
+
+    it("stores a stop's own failure detail for the member's screen", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield* [];
+        throw new m.errors.CollectorStop(
+          "error",
+          "failed",
+          "This address is not an RSS or Atom feed.",
+          { code: "not_a_feed" },
+        );
+      });
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      await m.executor.executeRun(deps(collector), run!, Date.now() + 60_000);
+      expect(await runRow(id)).toMatchObject({
+        status: "failed",
+        stopReason: "error",
+        error: "This address is not an RSS or Atom feed.",
+        errorDetail: { code: "not_a_feed" },
+      });
+    });
+
+    it("stores no failure detail for a partial stop", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId);
+      const collector = testCollector(async function* () {
+        yield { n: 1 };
+        throw new m.errors.CollectorStop(
+          "page_limit",
+          "succeeded",
+          "Stopped at the page limit.",
+        );
+      });
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      await m.executor.executeRun(deps(collector), run!, Date.now() + 60_000);
+      expect(await runRow(id)).toMatchObject({
+        status: "succeeded",
+        stopReason: "page_limit",
+        error: null,
+        errorDetail: null,
       });
     });
 
@@ -473,6 +517,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       expect(row.error).toBe(
         "Something went wrong while collecting. Try again later.",
       );
+      expect(row.errorDetail).toEqual({ code: "generic" });
     });
 
     it("ends as time_limit when the tick deadline passes mid-run", async () => {
@@ -555,6 +600,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       expect(await items(id)).toHaveLength(0);
       expect(await runRow(id)).toMatchObject({
         status: "failed",
+        errorDetail: { code: "worker_lost" },
         itemCount: 0,
         invalidItemCount: 0,
         pagesFetched: 3,
@@ -625,6 +671,22 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         status: "failed",
         stopReason: "error",
         error: "This collector is not available any more.",
+        errorDetail: { code: "collector_unavailable" },
+      });
+    });
+
+    it("fails a run whose saved input no longer fits the collector", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId, { input: "not an object" });
+      const collector = testCollector(async function* () {
+        yield { n: 1 };
+      });
+      const run = await m.executor.claimNextRun(m.db, new Date());
+      await m.executor.executeRun(deps(collector), run!, Date.now() + 60_000);
+      expect(await runRow(id)).toMatchObject({
+        status: "failed",
+        stopReason: "error",
+        errorDetail: { code: "input_invalid" },
       });
     });
 

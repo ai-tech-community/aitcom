@@ -56,6 +56,7 @@ export const feedItems: Collector<z.infer<typeof inputSchema>, FeedEntry> = {
         "error",
         "failed",
         `The feed answered with status ${res.status}.`,
+        { code: "feed_status", params: { status: res.status } },
       );
     }
     let entries: FeedEntry[];
@@ -67,6 +68,7 @@ export const feedItems: Collector<z.infer<typeof inputSchema>, FeedEntry> = {
           "error",
           "failed",
           "This address is not an RSS or Atom feed.",
+          { code: "not_a_feed" },
         );
       }
       throw err;

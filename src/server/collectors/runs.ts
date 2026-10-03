@@ -13,6 +13,7 @@ import {
   canStartRun,
   countRunsInWindow,
 } from "./quota";
+import type { FailureDetail } from "./errors";
 import type { RunStatus, StopReason } from "./run-status";
 
 const RETENTION_MS = 30 * 86_400_000;
@@ -60,7 +61,9 @@ export type RunView = {
   itemCount: number;
   invalidItemCount: number;
   durationMs: number | null;
+  /** English, for MCP and logs; screens show `errorDetail` instead. */
   error: string | null;
+  errorDetail: FailureDetail | null;
   log: string[];
   createdAt: string;
   startedAt: string | null;
@@ -102,6 +105,7 @@ function toView(row: RunRow): RunView {
     invalidItemCount: row.invalidItemCount,
     durationMs: row.durationMs,
     error: row.error,
+    errorDetail: row.errorDetail ?? null,
     log: row.log,
     createdAt: row.createdAt.toISOString(),
     startedAt: row.startedAt?.toISOString() ?? null,
