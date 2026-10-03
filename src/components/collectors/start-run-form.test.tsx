@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+import { getCollector } from "@/server/collectors/catalog";
 import type { CollectorSummary } from "@/server/collectors/runs";
 
 import en from "../../../messages/en.json";
@@ -59,11 +60,48 @@ const feed: CollectorSummary = {
       label: "Feed address",
       help: "The web address of the feed.",
       placeholder: "https://example.com/feed.xml",
+      columns: null,
     },
   ],
   inputJsonSchema: z.toJSONSchema(z.object({ url: z.url() })),
   sampleItem: {},
   limits: { maxPages: 1, maxItems: 1000, maxDurationMs: 60000 },
+};
+
+const plain = (name: string, label: string) => ({
+  name,
+  label,
+  help: null,
+  placeholder: null,
+  columns: null,
+});
+
+/** The page-list collector, with its real input schema. */
+const pageList: CollectorSummary = {
+  ...feed,
+  id: "page-list",
+  kind: "page",
+  title: "List on a web page",
+  fields: [
+    plain("url", "Page address"),
+    plain("itemSelector", "Item selector"),
+    {
+      ...plain("fields", "Columns"),
+      columns: [
+        { name: "name", label: "Column name", help: null, placeholder: null },
+        { name: "selector", label: "Selector", help: null, placeholder: null },
+        {
+          name: "attribute",
+          label: "Attribute",
+          help: null,
+          placeholder: null,
+        },
+      ],
+    },
+    plain("nextPageSelector", "Next-page link"),
+    plain("maxPages", "Pages to read"),
+  ],
+  inputJsonSchema: z.toJSONSchema(getCollector("page-list")!.inputSchema),
 };
 
 function overview(
@@ -123,6 +161,67 @@ describe("StartRunForm", () => {
     });
   });
 
+  it("sends the columns of a filled page-list form as a list of objects", () => {
+    overview(false, [pageList]);
+    renderForm("page-list");
+    fireEvent.change(screen.getByLabelText("Page address"), {
+      target: { value: "https://example.com/jobs" },
+    });
+    fireEvent.change(screen.getByLabelText("Item selector"), {
+      target: { value: "li.job" },
+    });
+    const columns = screen.getByRole("group", { name: "Columns" });
+    fireEvent.change(within(columns).getByLabelText("Column name"), {
+      target: { value: " title " },
+    });
+    fireEvent.change(within(columns).getByLabelText("Selector"), {
+      target: { value: "h3 a" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: en.collectors.start.addRow }),
+    );
+    const second = screen.getByRole("group", { name: "Column 2" });
+    fireEvent.change(within(second).getByLabelText("Column name"), {
+      target: { value: "link" },
+    });
+    fireEvent.change(within(second).getByLabelText("Selector"), {
+      target: { value: "h3 a" },
+    });
+    fireEvent.change(within(second).getByLabelText("Attribute"), {
+      target: { value: "href" },
+    });
+    fireEvent.click(startButton());
+    expect(h.mutate).toHaveBeenCalledTimes(1);
+    expect(h.mutate).toHaveBeenCalledWith({
+      collectorId: "page-list",
+      input: {
+        url: "https://example.com/jobs",
+        itemSelector: "li.job",
+        fields: [
+          { name: "title", selector: "h3 a" },
+          { name: "link", selector: "h3 a", attribute: "href" },
+        ],
+      },
+      acknowledged: false,
+    });
+  });
+
+  it("marks the columns when the server rejects them", async () => {
+    overview(false, [pageList]);
+    renderForm("page-list");
+    h.options.onSuccess?.({
+      ok: false,
+      reason: "invalid_input",
+      message: "x",
+      fieldErrors: { fields: ["Each column needs its own name."] },
+    });
+    const note = await screen.findByText(en.collectors.start.invalidField);
+    expect(screen.getByRole("group", { name: "Columns" })).toHaveAttribute(
+      "aria-describedby",
+      expect.stringContaining(note.id),
+    );
+  });
+
   it("holds Start until a first-time member acknowledges the note", () => {
     overview(true);
     renderForm();
@@ -176,7 +275,13 @@ describe("StartRunForm", () => {
       {
         ...feed,
         fields: [
-          { name: "topic", label: "Topic", help: null, placeholder: null },
+          {
+            name: "topic",
+            label: "Topic",
+            help: null,
+            placeholder: null,
+            columns: null,
+          },
         ],
         inputJsonSchema: z.toJSONSchema(z.object({ topic: z.string() })),
       },
@@ -264,7 +369,13 @@ describe("StartRunForm", () => {
       {
         ...feed,
         fields: [
-          { name: "fields", label: "Fields", help: null, placeholder: null },
+          {
+            name: "fields",
+            label: "Fields",
+            help: null,
+            placeholder: null,
+            columns: null,
+          },
         ],
         inputJsonSchema: z.toJSONSchema(
           z.object({ fields: z.array(z.string()) }),

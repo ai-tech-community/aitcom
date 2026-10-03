@@ -4205,6 +4205,9 @@
       "fixFields": "Some fields need attention.",
       "invalidField": "Check this field.",
       "invalidUrl": "Use a web address that starts with https://.",
+      "addRow": "Add column",
+      "removeRow": "Remove column {n}",
+      "row": "Column {n}",
       "quota": {
         "daily_limit": "You've used all {limit} runs for the last 24 hours.",
         "daily_limit_retry": "You've used all {limit} runs for the last 24 hours. You can start again {when}.",

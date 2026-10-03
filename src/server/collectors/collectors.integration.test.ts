@@ -1111,5 +1111,28 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       });
       expect(summary!.inputJsonSchema).toMatchObject({ type: "object" });
     });
+
+    it("names the columns of a list field in the member's language", () => {
+      const pageListCollector = getCollector("page-list")!;
+      const { runs } = facade({
+        catalog: {
+          all: () => [pageListCollector],
+          get: () => pageListCollector,
+        },
+      });
+      const [pageList] = runs.listCollectors("nl");
+      const byName = new Map(pageList!.fields.map((f) => [f.name, f]));
+      expect(byName.get("url")!.columns).toBeNull();
+      expect(byName.get("fields")!.columns).toEqual([
+        expect.objectContaining({ name: "name", label: "Naam van de kolom" }),
+        expect.objectContaining({ name: "selector", label: "Selector" }),
+        expect.objectContaining({
+          name: "attribute",
+          label: "Attribuut",
+          placeholder: "href",
+          help: "Laat leeg om de tekst te lezen. Gebruik href voor het adres van een link.",
+        }),
+      ]);
+    });
   });
 });

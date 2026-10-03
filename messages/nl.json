@@ -4205,6 +4205,9 @@
       "fixFields": "Sommige velden hebben aandacht nodig.",
       "invalidField": "Controleer dit veld.",
       "invalidUrl": "Gebruik een webadres dat begint met https://.",
+      "addRow": "Kolom toevoegen",
+      "removeRow": "Kolom {n} weghalen",
+      "row": "Kolom {n}",
       "quota": {
         "daily_limit": "Je hebt alle {limit} runs van de afgelopen 24 uur gebruikt.",
         "daily_limit_retry": "Je hebt alle {limit} runs van de afgelopen 24 uur gebruikt. Je kunt {when} weer starten.",

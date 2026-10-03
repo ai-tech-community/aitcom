@@ -32,7 +32,13 @@ const feed = {
   title: "Feed items",
   description: "The latest items of an RSS or Atom feed.",
   fields: [
-    { name: "url", label: "Feed address", help: null, placeholder: null },
+    {
+      name: "url",
+      label: "Feed address",
+      help: null,
+      placeholder: null,
+      columns: null,
+    },
   ],
   inputJsonSchema: {},
   sampleItem: { title: "Release notes", url: "https://example.com/r" },

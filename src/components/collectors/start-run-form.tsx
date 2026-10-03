@@ -23,6 +23,7 @@ import {
   coerceInput,
   type FieldValue,
   formFieldsFor,
+  initialValue,
 } from "@/lib/collectors/form-fields";
 import { api, type RouterOutputs } from "@/trpc/react";
 
@@ -223,10 +224,7 @@ export function StartRunForm({ collectorId }: { collectorId: string }) {
                     key={field.name}
                     field={field}
                     id={`field-${field.name}`}
-                    value={
-                      values[field.name] ??
-                      (field.kind === "checkbox" ? false : "")
-                    }
+                    value={values[field.name] ?? initialValue(field)}
                     error={
                       rejected.has(field.name)
                         ? t(FIELD_REJECTION_KEYS[field.kind])

@@ -2,13 +2,42 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import { allCollectors } from "@/server/collectors/catalog";
-import { coerceInput, formFieldsFor } from "./form-fields";
+import type { FieldHint } from "@/server/collectors/collector";
+import { coerceInput, type FormField, formFieldsFor } from "./form-fields";
 
 const hint = (name: string) => ({
   name,
   label: name,
   help: null,
   placeholder: null,
+  columns: null,
+});
+
+const column = (name: string) => ({
+  name,
+  label: name,
+  help: null,
+  placeholder: null,
+});
+
+/** The shape of a list of columns, as the page-list collector asks for it. */
+const columnList = z
+  .array(
+    z.object({
+      name: z.string().min(1).max(40),
+      selector: z.string().min(1).max(200),
+      attribute: z.string().optional(),
+    }),
+  )
+  .min(1)
+  .max(20);
+
+const rowsHint = (
+  name: string,
+  columns = ["name", "selector", "attribute"],
+) => ({
+  ...hint(name),
+  columns: columns.map(column),
 });
 
 describe("formFieldsFor", () => {
@@ -28,10 +57,10 @@ describe("formFieldsFor", () => {
     expect(result).toEqual({
       ok: true,
       fields: [
-        { ...hint("url"), kind: "url", required: true },
-        { ...hint("name"), kind: "text", required: true },
-        { ...hint("count"), kind: "number", integer: true, required: false },
-        { ...hint("forks"), kind: "checkbox", required: false },
+        { ...column("url"), kind: "url", required: true },
+        { ...column("name"), kind: "text", required: true },
+        { ...column("count"), kind: "number", integer: true, required: false },
+        { ...column("forks"), kind: "checkbox", required: false },
       ],
     });
   });
@@ -48,8 +77,8 @@ describe("formFieldsFor", () => {
     ).toEqual({
       ok: true,
       fields: [
-        { ...hint("pages"), kind: "number", integer: true, required: true },
-        { ...hint("ratio"), kind: "number", integer: false, required: true },
+        { ...column("pages"), kind: "number", integer: true, required: true },
+        { ...column("ratio"), kind: "number", integer: false, required: true },
       ],
     });
   });
@@ -67,8 +96,8 @@ describe("formFieldsFor", () => {
     ).toEqual({
       ok: true,
       fields: [
-        { ...hint("url"), kind: "url", required: true },
-        { ...hint("limit"), kind: "number", integer: true, required: false },
+        { ...column("url"), kind: "url", required: true },
+        { ...column("limit"), kind: "number", integer: true, required: false },
       ],
     });
   });
@@ -77,27 +106,134 @@ describe("formFieldsFor", () => {
     const schema = z.toJSONSchema(
       z.object({
         url: z.url(),
-        fields: z.array(z.object({ name: z.string() })),
+        tags: z.array(z.string()),
         mode: z.enum(["fast", "deep"]),
         contact: z.email(),
         fixed: z.literal("v1"),
+        always: z.literal(true),
       }),
     );
     expect(
       formFieldsFor({
-        fields: ["url", "fields", "mode", "contact", "fixed"].map(hint),
+        fields: ["url", "tags", "mode", "contact", "fixed", "always"].map(hint),
         inputJsonSchema: schema,
       }),
     ).toEqual({
       ok: false,
-      unsupported: ["fields", "mode", "contact", "fixed"],
+      unsupported: ["tags", "mode", "contact", "fixed", "always"],
     });
+  });
+
+  it("draws a list of objects as rows, with columns in hint order", () => {
+    const schema = z.toJSONSchema(z.object({ fields: columnList }));
+    expect(schema).toMatchObject({
+      properties: {
+        fields: {
+          type: "array",
+          minItems: 1,
+          maxItems: 20,
+          items: { type: "object", required: ["name", "selector"] },
+        },
+      },
+    });
+    expect(
+      formFieldsFor({
+        fields: [rowsHint("fields", ["selector", "name", "attribute"])],
+        inputJsonSchema: schema,
+      }),
+    ).toEqual({
+      ok: true,
+      fields: [
+        {
+          ...column("fields"),
+          kind: "rows",
+          required: true,
+          min: 1,
+          max: 20,
+          columns: [
+            { ...column("selector"), kind: "text", required: true },
+            { ...column("name"), kind: "text", required: true },
+            { ...column("attribute"), kind: "text", required: false },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("allows up to 20 rows when the schema sets no bounds", () => {
+    const schema = z.toJSONSchema(
+      z.object({
+        links: z.array(z.object({ href: z.url(), weight: z.number() })),
+      }),
+    );
+    const result = formFieldsFor({
+      fields: [rowsHint("links", ["href", "weight"])],
+      inputJsonSchema: schema,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      fields: [
+        {
+          kind: "rows",
+          min: 0,
+          max: 20,
+          columns: [
+            { name: "href", kind: "url" },
+            { name: "weight", kind: "number", integer: false },
+          ],
+        },
+      ],
+    });
+  });
+
+  it.each([
+    [
+      "a list without column hints",
+      z.object({ fields: columnList }),
+      hint("fields"),
+    ],
+    [
+      "nested rows",
+      z.object({
+        fields: z.array(
+          z.object({
+            name: z.string(),
+            parts: z.array(z.object({ a: z.string() })),
+          }),
+        ),
+      }),
+      rowsHint("fields", ["name", "parts"]),
+    ],
+    [
+      "a column it cannot draw",
+      z.object({
+        fields: z.array(z.object({ name: z.string(), on: z.boolean() })),
+      }),
+      rowsHint("fields", ["name", "on"]),
+    ],
+    [
+      "a column the schema does not have",
+      z.object({ fields: columnList }),
+      rowsHint("fields", ["name", "selector", "colour"]),
+    ],
+  ])("refuses %s", (_case, shape, fieldHint) => {
+    expect(
+      formFieldsFor({
+        fields: [fieldHint],
+        inputJsonSchema: z.toJSONSchema(shape),
+      }),
+    ).toEqual({ ok: false, unsupported: ["fields"] });
   });
 
   it.each(allCollectors().map((c) => [c.id, c] as const))(
     "can draw every field of %s",
     (_id, c) => {
-      const fields = Object.keys(c.fieldHints).map(hint);
+      const fields = Object.entries(
+        c.fieldHints as Record<string, FieldHint>,
+      ).map(([name, h]) => ({
+        ...hint(name),
+        columns: h.columns ? Object.keys(h.columns).map(column) : null,
+      }));
       expect(
         formFieldsFor({
           fields,
@@ -109,15 +245,10 @@ describe("formFieldsFor", () => {
 });
 
 describe("coerceInput", () => {
-  const fields = [
-    { ...hint("url"), kind: "url" as const, required: true },
-    {
-      ...hint("count"),
-      kind: "number" as const,
-      integer: true,
-      required: false,
-    },
-    { ...hint("forks"), kind: "checkbox" as const, required: false },
+  const fields: FormField[] = [
+    { ...column("url"), kind: "url", required: true },
+    { ...column("count"), kind: "number", integer: true, required: false },
+    { ...column("forks"), kind: "checkbox", required: false },
   ];
 
   it("trims text, turns numbers into numbers and leaves out empty optional fields", () => {
@@ -135,5 +266,48 @@ describe("coerceInput", () => {
         forks: false,
       }),
     ).toEqual({ url: "https://e.com/f", count: 25, forks: false });
+  });
+
+  const rows: FormField = {
+    ...column("fields"),
+    kind: "rows",
+    required: true,
+    min: 1,
+    max: 20,
+    columns: [
+      { ...column("name"), kind: "text", required: true },
+      { ...column("selector"), kind: "text", required: true },
+      { ...column("attribute"), kind: "text", required: false },
+      { ...column("weight"), kind: "number", integer: false, required: false },
+    ],
+  };
+
+  it("turns rows into objects: trimmed cells, no empty optional cells, no empty rows", () => {
+    expect(
+      coerceInput([rows], {
+        fields: [
+          { name: " title ", selector: " h3 a ", attribute: "  " },
+          { name: "", selector: "", attribute: "", weight: " " },
+          { name: "link", selector: "h3 a", attribute: "href", weight: "2.5" },
+          {},
+        ],
+      }),
+    ).toEqual({
+      fields: [
+        { name: "title", selector: "h3 a" },
+        { name: "link", selector: "h3 a", attribute: "href", weight: 2.5 },
+      ],
+    });
+  });
+
+  it("keeps an empty required cell so the server can point at it", () => {
+    expect(coerceInput([rows], { fields: [{ name: "title" }] })).toEqual({
+      fields: [{ name: "title", selector: "" }],
+    });
+  });
+
+  it("sends an empty list for required rows the member never filled", () => {
+    expect(coerceInput([rows], {})).toEqual({ fields: [] });
+    expect(coerceInput([{ ...rows, required: false }], {})).toEqual({});
   });
 });
