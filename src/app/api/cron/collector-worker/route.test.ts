@@ -1,3 +1,4 @@
+import type * as NextServer from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { runWorkerTick, collectorsEnabled, afterCallbacks } = vi.hoisted(() => ({
@@ -10,7 +11,7 @@ vi.mock("@/server/collectors/executor", () => ({ runWorkerTick }));
 vi.mock("@/server/collectors/live", () => ({ liveExecutorDeps: () => ({}) }));
 vi.mock("@/server/collectors/flags", () => ({ collectorsEnabled }));
 vi.mock("next/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("next/server")>()),
+  ...(await importOriginal<typeof NextServer>()),
   after: (cb: () => Promise<void>) => {
     afterCallbacks.push(cb);
   },
@@ -64,7 +65,9 @@ describe("collector worker route", () => {
   });
 
   it("GET reports a failed tick as 500", async () => {
-    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const logged = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     runWorkerTick.mockRejectedValue(new Error("db down"));
     expect((await GET(req("GET", "Bearer s3cret"))).status).toBe(500);
     expect(logged).toHaveBeenCalledWith(
