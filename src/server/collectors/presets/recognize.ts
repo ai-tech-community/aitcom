@@ -26,10 +26,7 @@ export function recognizePreset(
     let input: Record<string, unknown> | null;
     try {
       // Its own copy: a recognizer that changes the URL cannot affect the next.
-      input = preset.recognize(new URL(url.href)) as Record<
-        string,
-        unknown
-      > | null;
+      input = preset.recognize(new URL(url.href));
     } catch (err) {
       // A broken recognizer must not stop pasting: count it as no match.
       console.error(

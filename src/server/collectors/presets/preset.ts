@@ -1,4 +1,3 @@
-// src/server/collectors/presets/preset.ts
 import type { PresetGroup } from "@/lib/collectors/presets";
 
 import type { Collector, FieldHint, LocalizedText } from "../collector";

@@ -1,4 +1,3 @@
-// src/server/collectors/presets/catalog.test.ts
 import { describe, expect, it } from "vitest";
 import type { z } from "zod";
 

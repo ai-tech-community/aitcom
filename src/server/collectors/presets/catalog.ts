@@ -1,4 +1,3 @@
-// src/server/collectors/presets/catalog.ts
 import { CUSTOM_PAGE_PRESET_ID } from "@/lib/collectors/presets";
 
 import { feedItems } from "../collectors/feed-items";
@@ -34,7 +33,7 @@ const customPage = definePreset(pageList, {
  * collector catalog, ADR-0040). Order is rail order within a group and
  * recognition order. Adding a preset = one entry here.
  */
-const PRESETS: readonly AnyPreset[] = [feed, customPage];
+const PRESETS: readonly AnyPreset[] = Object.freeze([feed, customPage]);
 
 export function allPresets(): readonly AnyPreset[] {
   return PRESETS;

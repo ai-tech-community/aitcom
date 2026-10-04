@@ -4264,7 +4264,7 @@
     "history": {
       "title": "My runs",
       "retention": "Runs are deleted after 30 days",
-      "collector": "Run",
+      "run": "Run",
       "started": "Started",
       "status": "Status",
       "rows": "Rows",

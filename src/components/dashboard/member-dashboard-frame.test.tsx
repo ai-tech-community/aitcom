@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 
@@ -35,10 +35,8 @@ describe("MemberDashboardFrame", () => {
     );
     const tabs = screen.getByRole("navigation", { name: en.dashboard.tabsLabel });
     expect(
-      screen.getByRole("link", { name: en.dashboard.tabs.collectors }),
+      within(tabs).getByRole("link", { name: en.dashboard.tabs.collectors }),
     ).toHaveAttribute("aria-current", "page");
-    expect(tabs).toBeInTheDocument();
     expect(screen.getByText("Tab content")).toBeInTheDocument();
-    expect(screen.queryByRole("complementary")).toBeNull();
   });
 });

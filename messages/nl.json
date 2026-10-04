@@ -4264,7 +4264,7 @@
     "history": {
       "title": "Mijn runs",
       "retention": "Runs worden na 30 dagen verwijderd",
-      "collector": "Run",
+      "run": "Run",
       "started": "Gestart",
       "status": "Status",
       "rows": "Rijen",

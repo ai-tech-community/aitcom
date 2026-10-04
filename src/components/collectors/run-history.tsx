@@ -23,14 +23,7 @@ import { api, type RouterOutputs } from "@/trpc/react";
 
 const PAGE = 20;
 type Run = RouterOutputs["collectors"]["runs"]["runs"][number];
-const COLUMNS = [
-  "collector",
-  "started",
-  "status",
-  "rows",
-  "why",
-  "deleted",
-] as const;
+const COLUMNS = ["run", "started", "status", "rows", "why", "deleted"] as const;
 
 /**
  * My runs. The first page and every "older runs" page are separate queries

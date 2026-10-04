@@ -108,6 +108,9 @@ describe("RunHistory", () => {
       screen.getByText(en.collectors.stopShort.robots_disallowed),
     ).toBeInTheDocument();
     expect(screen.getByText(en.collectors.status.failed)).toBeInTheDocument();
+    expect(screen.getAllByRole("columnheader")[0]).toHaveTextContent(
+      en.collectors.history.run,
+    );
   });
 
   it("has My runs as its one heading, with no breadcrumb or kicker", () => {

@@ -219,7 +219,7 @@ function toView(row: RunRow): RunView {
     id: row.id,
     collectorId: row.collectorId,
     collectorVersion: row.collectorVersion,
-    presetId: row.presetId ?? null,
+    presetId: row.presetId,
     origin: row.origin,
     agentId: row.agentId,
     status: row.status,
