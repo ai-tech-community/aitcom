@@ -29,4 +29,20 @@ describe("parseAddress", () => {
   ])("refuses %j", (text) => {
     expect(parseAddress(text)).toBeNull();
   });
+
+  it("checks the length again after reading, when the scheme is added", () => {
+    const text = `example.com/${"a".repeat(MAX_ADDRESS_LENGTH - 12)}`;
+    expect(text).toHaveLength(MAX_ADDRESS_LENGTH);
+    expect(parseAddress(text)).toBeNull();
+    expect(parseAddress(text.slice(0, -8))?.href).toHaveLength(
+      MAX_ADDRESS_LENGTH,
+    );
+  });
+
+  it.each(["10.0.0.1", "https://127.0.0.1/", "https://localhost./"])(
+    "lets %j through: a shape check, not the network guard",
+    (text) => {
+      expect(parseAddress(text)).not.toBeNull();
+    },
+  );
 });
