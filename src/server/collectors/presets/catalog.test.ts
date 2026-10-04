@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { z } from "zod";
 
 import { checkSelector } from "@/lib/collectors/selector-policy";
+import { RECOGNISED_PARAM } from "@/lib/collectors/start-address";
 
 import { allCollectors, getCollector } from "../catalog";
 import { allPresets, getPreset } from "./catalog";
@@ -130,6 +131,14 @@ describe("preset catalog", () => {
     expect(presetIdForFormerId("constructor")).toBeNull();
     expect(presetIdForFormerId("__proto__")).toBeNull();
     expect(presetIdForFormerId("toString")).toBeNull();
+  });
+
+  it("names no collector input like the start page's reserved query key", () => {
+    for (const collector of allCollectors()) {
+      expect(inputNames(collector.id), collector.id).not.toContain(
+        RECOGNISED_PARAM,
+      );
+    }
   });
 
   it("finds nothing for an unknown id", () => {
