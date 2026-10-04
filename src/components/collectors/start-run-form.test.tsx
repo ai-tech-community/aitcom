@@ -493,9 +493,11 @@ describe("StartRunForm", () => {
       message: "x",
       retryAt: "2026-10-03T15:00:00.000Z",
     });
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "You've used all 20 runs for the last 24 hours. You can start again in 3 hours.",
-    );
+    expect(
+      await screen.findByRole("group", {
+        name: "You've used all 20 runs for the last 24 hours. You can start again in 3 hours.",
+      }),
+    ).toHaveFocus();
     expect(screen.getByLabelText("Feed address")).toHaveValue(
       "https://e.com/f",
     );
@@ -513,16 +515,16 @@ describe("StartRunForm", () => {
       quotaReason,
       message: "x",
     });
-    expect(await screen.findByRole("alert")).toHaveTextContent(text);
+    expect(await screen.findByRole("group", { name: text })).toHaveFocus();
   });
 
   it("says the start failed when the request itself fails", async () => {
     const { refetch } = overview(false);
     renderForm();
     h.options.onError?.({ message: "Network error" });
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      en.collectors.start.failed,
-    );
+    expect(
+      await screen.findByRole("group", { name: en.collectors.start.failed }),
+    ).toHaveFocus();
     expect(refetch).not.toHaveBeenCalled();
   });
 
@@ -531,9 +533,9 @@ describe("StartRunForm", () => {
     renderForm();
     h.options.onError?.({ message: "ACKNOWLEDGEMENT_REQUIRED" });
     expect(refetch).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      en.collectors.start.failed,
-    );
+    expect(
+      await screen.findByRole("group", { name: en.collectors.start.failed }),
+    ).toHaveFocus();
   });
 
   it("shows a way back when the collector does not exist", () => {
@@ -837,11 +839,35 @@ describe("StartRunForm", () => {
         }),
     ],
     ["a failed request", () => h.options.onError!({ message: "Network" })],
-  ])("moves focus to the alert for %s", (_, refuse) => {
+  ])("moves focus to the problem for %s, announced once", (_, refuse) => {
     overview(false);
     renderForm("feed");
     fireEvent.click(startButton());
     act(refuse);
-    expect(screen.getByRole("alert")).toHaveFocus();
+    // Focus reads it: a live alert on top would read it twice.
+    expect(screen.queryByRole("alert")).toBeNull();
+    const problem = document.activeElement as HTMLElement;
+    expect(problem).toHaveAttribute("role", "group");
+    expect(problem).toHaveAccessibleName();
+    expect(problem.className).toContain("focus-visible:ring-ring/50");
+    expect(problem.className).toContain("focus-visible:ring-[3px]");
+    expect(problem.className).toContain("outline-none");
+  });
+
+  it("keeps the problem a live alert, not focusable, when focus goes to a field", () => {
+    overview(false);
+    renderForm("feed");
+    fireEvent.click(startButton());
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: { url: ["invalid_format"] },
+      }),
+    );
+    const alert = screen.getByRole("alert");
+    expect(alert).not.toHaveAttribute("tabindex");
+    expect(screen.getByLabelText("Feed address")).toHaveFocus();
   });
 });

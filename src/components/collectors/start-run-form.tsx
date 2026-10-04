@@ -165,6 +165,7 @@ function PresetStart({
   const fieldAreas = React.useRef(new Map<string, HTMLElement>());
   const alertRef = React.useRef<HTMLDivElement>(null);
   const settingsId = React.useId();
+  const problemId = React.useId();
   // What the last start sent: the server names rows by their place in it.
   const sent = React.useRef<Record<string, FieldValue> | null>(null);
 
@@ -220,6 +221,8 @@ function PresetStart({
     target?.focus();
   }, [focusTarget]);
 
+  // The problem itself takes focus when no field needs fixing.
+  const problemFocused = focusTarget?.kind === "alert";
   const needsAck = data?.needsAcknowledgement ?? false;
   const runsPerDay = data?.usage.runsPerDay ?? 0;
 
@@ -435,9 +438,22 @@ function PresetStart({
             </p>
 
             {problem ? (
-              <Alert ref={alertRef} tabIndex={-1} variant="destructive">
+              // Focused (nothing else to fix): a labelled group, not a live
+              // alert, so it is read once, on focus, and shows the DESIGN.md
+              // focus ring. Otherwise a live alert, read beside the field
+              // that takes focus.
+              <Alert
+                ref={alertRef}
+                variant="destructive"
+                role={problemFocused ? "group" : "alert"}
+                aria-labelledby={problemFocused ? problemId : undefined}
+                tabIndex={problemFocused ? -1 : undefined}
+                className="focus-visible:border-ring focus-visible:ring-ring/50 outline-none focus-visible:ring-[3px]"
+              >
                 <CircleAlertIcon aria-hidden="true" />
-                <AlertDescription>{problemMessage(problem)}</AlertDescription>
+                <AlertDescription id={problemId}>
+                  {problemMessage(problem)}
+                </AlertDescription>
               </Alert>
             ) : null}
 
