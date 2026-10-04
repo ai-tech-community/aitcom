@@ -135,6 +135,30 @@ return the expected rows from that copy. Selector rot shows up to members as
 a 0-row run (with the existing "builds its list in the browser" note) and is
 fixed by editing one entry.
 
+### Event listings (`page-events`) — Slice D
+
+Upcoming events of one organizer or calendar on Luma, Eventbrite, Meetup
+and similar sites.
+
+- These sites' member-facing calendars are JavaScript-heavy, and their APIs
+  need the organizer's own key (our existing `src/server/luma/client.ts`
+  reads only calendars we own). What their public event pages commonly
+  publish is schema.org `Event` structured data (JSON-LD). One collector
+  reads that: fetch the page through `ctx.fetch`, take every `Event` (also
+  inside `ItemList` / `@graph`), and yield
+  `{ name, startsAt, endsAt, url, venue, city, online, organizer }`.
+- JSON-LD is read inside the extraction sandbox (ADR-0041), as a new
+  extraction kind, so no page content is parsed in the collector's process.
+- Presets per site (`luma-calendar`, `eventbrite-organizer`,
+  `meetup-group`), each asking for the calendar / organizer / group address
+  and with a `recognize` for its host. A generic `event-page` preset covers
+  any other site that publishes `Event` data.
+- **Measured before building, not assumed:** the slice starts with a check of
+  real public pages per site — does the HTML as sent contain `Event`
+  JSON-LD, and does robots.txt allow the path. A site that fails is left out
+  of the presets and listed in the spec with the reason.
+- Group "Events" joins "Jobs" and "Research" in the rail.
+
 ## Screens
 
 Full width, no side panel, no breadcrumbs, no section kickers on collector
@@ -226,6 +250,7 @@ change) so history can show the preset name.
 | A | Preset model + catalog with `feed` and `custom-page`; layout seam; workspace rail; full-width pages without breadcrumbs/kickers; paste box (recognition returns Custom page only); `preset_id` migration | screens only, flag-gated as today |
 | B | `job-board` collector, 5 adapters (Personio new), `board_not_found`, 5 presets with recognizers, real-world check | |
 | C | `hacker-news` collector + preset; first page-list presets with fixtures | |
+| D | `page-events` collector (schema.org `Event` from the page, read in the sandbox); "Events" group; Luma, Eventbrite, Meetup and generic presets for the sites that pass the check | |
 
 ## Patterns (refactoring.guru)
 
