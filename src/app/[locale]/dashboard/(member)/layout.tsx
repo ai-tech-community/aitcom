@@ -2,17 +2,13 @@ import { getTranslations } from "next-intl/server";
 
 import { requireDashboardSession } from "@/server/dashboard/require-dashboard-session";
 import { getAvatarUrl } from "@/lib/avatar";
-import { DashboardTabs } from "@/components/dashboard/dashboard-tabs";
-import { collectorsEnabled } from "@/server/collectors/flags";
+import { MemberDashboardFrame } from "@/components/dashboard/member-dashboard-frame";
 import { DashboardSidePanel } from "@/components/dashboard/side-panel/dashboard-side-panel";
 
 /**
- * The member dashboard frame, shared by every tab: greeting (the page's one
- * h1), tabs, then the tab's own content beside the side panel. Pages render
- * only their main column, so no tab can drift from the frame.
- *
- * Full width, aligned with the top nav's `px-4 sm:px-8` edges — a named
- * exception to the default page frame (DESIGN.md "Page frame").
+ * The member dashboard tabs with the side panel: the shared frame, then the
+ * tab's own content beside the panel. Pages render only their main column,
+ * so no tab can drift from the frame. Collector pages use `(member-wide)`.
  */
 export default async function MemberDashboardLayout({
   children,
@@ -27,16 +23,8 @@ export default async function MemberDashboardLayout({
   const name = user.name || user.email;
 
   return (
-    <div className="px-4 py-8 sm:px-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-        {t("greeting", { name })}
-      </h1>
-
-      <div className="mt-6">
-        <DashboardTabs showCollectors={collectorsEnabled()} />
-      </div>
-
-      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <MemberDashboardFrame name={name}>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         {/* Not <main>: the root layout already provides the main landmark. */}
         <div className="min-w-0">{children}</div>
         <aside
@@ -49,6 +37,6 @@ export default async function MemberDashboardLayout({
           />
         </aside>
       </div>
-    </div>
+    </MemberDashboardFrame>
   );
 }

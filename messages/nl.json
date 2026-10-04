@@ -4112,24 +4112,29 @@
     }
   },
   "collectors": {
-    "title": "Dataverzamelaars",
-    "intro": "Verzamel openbare gegevens van het web voor je eigen onderzoek. Kies een verzamelaar, vul een paar velden in en krijg een tabel die je hier kunt bekijken of downloaden.",
     "aboutLink": "Hoe onze verzamelaar websites bezoekt",
     "usage": "{used} van {limit} runs gebruikt · afgelopen 24 uur",
-    "kind": {
-      "api": "API",
-      "feed": "Feed",
-      "page": "Webpagina"
+    "workspace": {
+      "railLabel": "Sites om van te verzamelen",
+      "group": {
+        "jobs": "Vacatures",
+        "research": "Onderzoek"
+      },
+      "myRuns": "Mijn runs",
+      "picker": "Verzamel van:",
+      "pickerNone": "Kies een site",
+      "landing": "Kies een site uit de lijst, of plak een link.",
+      "latestRuns": "Je laatste runs",
+      "paste": {
+        "label": "Plak een link",
+        "help": "Wij openen er de juiste verzamelaar bij.",
+        "submit": "Link openen",
+        "checking": "Link controleren…",
+        "invalid": "Dit is geen webadres. Plak een volledige link, zoals https://example.com/jobs.",
+        "noPreset": "We kunnen op dit moment niet van dit adres verzamelen.",
+        "failed": "We konden deze link niet controleren. Probeer het opnieuw."
+      }
     },
-    "youGive": "Je geeft: {fields}",
-    "youGet": "Je krijgt: tot {count, plural, one {# rij} other {# rijen}}",
-    "exampleRow": "Voorbeeldrij",
-    "useCollector": "Gebruik deze verzamelaar",
-    "recentRuns": "Recente runs",
-    "seeAllRuns": "Alle runs bekijken",
-    "noRecentRuns": "Je runs verschijnen hier.",
-    "noRecentRunsHint": "Kies hierboven een verzamelaar om je eerste run te starten.",
-    "noCollectors": "Er zijn op dit moment geen verzamelaars beschikbaar.",
     "status": {
       "queued": "In de wachtrij",
       "running": "Bezig",
@@ -4189,10 +4194,6 @@
       "next_page_not_secure": "Volgende pagina niet beveiligd",
       "next_page_too_long": "Link naar volgende pagina te lang"
     },
-    "breadcrumb": {
-      "collectors": "Dataverzamelaars",
-      "runs": "Mijn runs"
-    },
     "start": {
       "firstUseTitle": "Voor je eerste run",
       "firstUse1": "Gebruik wat je verzamelt voor je eigen onderzoek.",
@@ -4204,12 +4205,17 @@
       "submit": "Run starten",
       "submitting": "Bezig met starten…",
       "cancel": "Annuleren",
-      "notFound": "Deze verzamelaar bestaat niet of staat uit.",
+      "notFound": "Dit soort verzameling is niet beschikbaar. Kies er een uit de lijst.",
       "backToList": "Terug naar verzamelaars",
       "unsupported": "Deze verzamelaar kan hier nog niet worden gestart.",
       "fixFields": "Sommige velden hebben aandacht nodig.",
       "invalidField": "Controleer dit veld.",
       "invalidUrl": "Gebruik een webadres dat begint met https://.",
+      "recognised": "Herkend als {name}.",
+      "recognisedDetail": "Herkend als {name} (<address>{detail}</address>).",
+      "pickAnother": "Klopt dit niet? Kies een andere.",
+      "showSettings": "Toon instellingen",
+      "hideSettings": "Verberg instellingen",
       "problem": {
         "selector": {
           "empty": "Vul een selector in.",
@@ -4237,7 +4243,6 @@
       "started": "Gestart",
       "took": "duurde {seconds, plural, one {# seconde} other {# seconden}}",
       "deleted": "Verwijderd",
-      "input": "Invoer",
       "counts": "{rows, plural, one {# rij} other {# rijen}} · {pages, plural, one {# pagina} other {# pagina's}} opgehaald · {skipped, plural, one {# rij} other {# rijen}} overgeslagen",
       "collecting": "Bezig met verzamelen…",
       "collectingHelp": "Deze pagina werkt zichzelf bij. Je kunt weggaan; de run gaat gewoon door.",
@@ -4253,12 +4258,13 @@
       "downloadCsv": "CSV downloaden",
       "downloadJson": "JSON downloaden",
       "log": "Runlogboek",
-      "emptyLog": "Niets gelogd."
+      "emptyLog": "Niets gelogd.",
+      "fallbackTitle": "Verzameling"
     },
     "history": {
       "title": "Mijn runs",
       "retention": "Runs worden na 30 dagen verwijderd",
-      "collector": "Verzamelaar",
+      "run": "Run",
       "started": "Gestart",
       "status": "Status",
       "rows": "Rijen",
@@ -4266,8 +4272,8 @@
       "deleted": "Verwijderd",
       "older": "Oudere runs",
       "emptyTitle": "Nog geen runs",
-      "emptyText": "Kies een verzamelaar, geef een adres op en je tabel verschijnt hier.",
-      "chooseCollector": "Kies een verzamelaar"
+      "emptyText": "Kies een site of plak een link, en je tabel verschijnt hier.",
+      "chooseCollector": "Kies een site"
     }
   },
   "collectorsAbout": {

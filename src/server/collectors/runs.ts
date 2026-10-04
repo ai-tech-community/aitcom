@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, gt, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { parseAddress } from "@/lib/collectors/address";
+import type { PresetGroup } from "@/lib/collectors/presets";
 import {
   type InputProblems,
   inputProblemsOf,
@@ -9,7 +11,7 @@ import {
 import type { db as appDb } from "@/server/db";
 import { collectorItems, collectorRuns } from "@/server/db/schema";
 
-import { allCollectors, columnsOf } from "./catalog";
+import { columnsOf } from "./catalog";
 import type { AnyCollector, FieldHint } from "./collector";
 import { EXPORT_FORMATS, type ExportFormatId } from "./export/formats";
 import {
@@ -19,25 +21,55 @@ import {
   countRunsInWindow,
 } from "./quota";
 import type { FailureDetail } from "./errors";
+import type { AnyPreset } from "./presets/preset";
+import { recognizePreset } from "./presets/recognize";
 import type { RunStatus, StopReason } from "./run-status";
 
 const RETENTION_MS = 30 * 86_400_000;
 const EXPORT_PAGE = 500;
 
 export interface CollectorCatalogPort {
+  /** The collectors members may start now (switched-off ones left out). */
   all(): readonly AnyCollector[];
+  /** One collector members may start now, or undefined. */
   get(id: string): AnyCollector | undefined;
+  /**
+   * The full catalog, switched-off collectors included: for what an existing
+   * run needs after its collector was switched off (its name, its columns).
+   */
+  everything(): readonly AnyCollector[];
+}
+
+export interface PresetCatalogPort {
+  all(): readonly AnyPreset[];
+  get(id: string): AnyPreset | undefined;
 }
 
 export interface CollectorRunsDeps {
   db: typeof appDb;
   enabled(): boolean;
   catalog: CollectorCatalogPort;
+  /** Presets; a preset whose collector the catalog hides is hidden too. */
+  presets: PresetCatalogPort;
   /** Best-effort wake of the worker; the per-minute cron is the guarantee. */
   kick(): void;
   now(): Date;
   quota?: QuotaLimits;
 }
+
+/**
+ * A start names a preset (the web: every start goes through one) or a
+ * collector (the agent, ADR-0040; no preset is recorded).
+ */
+export type StartRunArgs = {
+  userId: string;
+  agentId?: string | null;
+  origin: "web" | "mcp";
+  input: unknown;
+} & (
+  | { presetId: string; collectorId?: never }
+  | { collectorId: string; presetId?: never }
+);
 
 export type StartRunResult =
   | { ok: true; runId: string }
@@ -60,6 +92,8 @@ export type RunView = {
   id: string;
   collectorId: string;
   collectorVersion: number;
+  /** The preset the run was started from; null before presets and for agent starts. */
+  presetId: string | null;
   origin: "web" | "mcp";
   agentId: string | null;
   status: RunStatus;
@@ -115,6 +149,69 @@ export type CollectorSummary = {
   limits: AnyCollector["limits"];
 };
 
+export type PresetSummary = {
+  id: string;
+  group: PresetGroup;
+  title: string;
+  summary: string;
+  collectorId: string;
+  /** The prototype input the start form pre-fills. */
+  base: Record<string, unknown>;
+  /** Fields shown up front, in this order; the rest sit behind "Show settings". */
+  ask: string[];
+  /** The collector's fields, with this preset's hints applied. */
+  fields: CollectorSummary["fields"];
+};
+
+export type RecognizeResult =
+  | {
+      ok: true;
+      presetId: string;
+      /** False when nothing recognised the address (the Custom page). */
+      matched: boolean;
+      /** Input to pre-fill, as text for the start page's address. */
+      prefill: Record<string, string>;
+    }
+  | { ok: false; reason: "not_an_address" | "no_preset" };
+
+/**
+ * The title of every preset and collector by id, in the member's language,
+ * including switched-off ones, so an old run keeps its name. Titles only:
+ * this grants no start access.
+ */
+export type CatalogTitles = {
+  presets: Record<string, string>;
+  collectors: Record<string, string>;
+};
+
+/** Field hints as the start form reads them, in the member's language. */
+function fieldSummaries(
+  hints: Record<string, FieldHint>,
+  locale: "en" | "nl",
+): CollectorSummary["fields"] {
+  return Object.entries(hints).map(([name, hint]) => ({
+    ...localiseHint(name, hint, locale),
+    columns: hint.columns
+      ? Object.entries(hint.columns).map(([column, columnHint]) =>
+          localiseHint(column, columnHint, locale),
+        )
+      : null,
+  }));
+}
+
+/** A recognised input as text; values that are not single values are dropped. */
+function asPrefill(input: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(input).flatMap(([name, value]) =>
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+        ? [[name, String(value)]]
+        : [],
+    ),
+  );
+}
+
 type RunRow = typeof collectorRuns.$inferSelect;
 
 function toView(row: RunRow): RunView {
@@ -122,6 +219,7 @@ function toView(row: RunRow): RunView {
     id: row.id,
     collectorId: row.collectorId,
     collectorVersion: row.collectorVersion,
+    presetId: row.presetId,
     origin: row.origin,
     agentId: row.agentId,
     status: row.status,
@@ -195,6 +293,28 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
     }
   }
 
+  /** The collector a start names, and the preset it came through. */
+  function resolveStart(
+    args: StartRunArgs,
+  ): { collector: AnyCollector; presetId: string | null } | null {
+    if (args.presetId !== undefined) {
+      const preset = deps.presets.get(args.presetId);
+      const collector = preset
+        ? deps.catalog.get(preset.collectorId)
+        : undefined;
+      return preset && collector ? { collector, presetId: preset.id } : null;
+    }
+    const collector = deps.catalog.get(args.collectorId);
+    return collector ? { collector, presetId: null } : null;
+  }
+
+  /** Presets whose collector is available (a switched-off collector hides them). */
+  function availablePresets(): AnyPreset[] {
+    return deps.presets
+      .all()
+      .filter((p) => deps.catalog.get(p.collectorId) !== undefined);
+  }
+
   return {
     async usage(
       userId: string,
@@ -211,15 +331,9 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
         kind: c.kind,
         title: c.title[locale],
         description: c.description[locale],
-        fields: Object.entries(c.fieldHints as Record<string, FieldHint>).map(
-          ([name, hint]) => ({
-            ...localiseHint(name, hint, locale),
-            columns: hint.columns
-              ? Object.entries(hint.columns).map(([column, columnHint]) =>
-                  localiseHint(column, columnHint, locale),
-                )
-              : null,
-          }),
+        fields: fieldSummaries(
+          c.fieldHints as Record<string, FieldHint>,
+          locale,
         ),
         inputJsonSchema: z.toJSONSchema(c.inputSchema),
         sampleItem: c.sampleItem,
@@ -227,13 +341,60 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
       }));
     },
 
-    async startRun(args: {
-      userId: string;
-      agentId?: string | null;
-      origin: "web" | "mcp";
-      collectorId: string;
-      input: unknown;
-    }): Promise<StartRunResult> {
+    listPresets(locale: "en" | "nl"): PresetSummary[] {
+      return availablePresets().map((p) => {
+        const collector = deps.catalog.get(p.collectorId)!;
+        const hints = {
+          ...(collector.fieldHints as Record<string, FieldHint>),
+        };
+        for (const [name, hint] of Object.entries(
+          (p.hints ?? {}) as Record<string, FieldHint | undefined>,
+        )) {
+          if (hint) hints[name] = hint;
+        }
+        return {
+          id: p.id,
+          group: p.group,
+          title: p.title[locale],
+          summary: p.summary[locale],
+          collectorId: p.collectorId,
+          base: { ...(p.base as Record<string, unknown>) },
+          ask: [...p.ask],
+          fields: fieldSummaries(hints, locale),
+        };
+      });
+    },
+
+    /**
+     * Names for runs, from the full catalogs (not the enabled lists), so a
+     * run of a switched-off collector is still named, never shown as an id.
+     */
+    listTitles(locale: "en" | "nl"): CatalogTitles {
+      return {
+        presets: Object.fromEntries(
+          deps.presets.all().map((p) => [p.id, p.title[locale]]),
+        ),
+        collectors: Object.fromEntries(
+          deps.catalog.everything().map((c) => [c.id, c.title[locale]]),
+        ),
+      };
+    },
+
+    /** Which preset a pasted address opens. Pure: sends nothing to the site. */
+    recognize(text: string): RecognizeResult {
+      const url = parseAddress(text);
+      if (!url) return { ok: false, reason: "not_an_address" };
+      const match = recognizePreset(url, availablePresets());
+      if (!match) return { ok: false, reason: "no_preset" };
+      return {
+        ok: true,
+        presetId: match.presetId,
+        matched: match.matched,
+        prefill: asPrefill(match.input),
+      };
+    },
+
+    async startRun(args: StartRunArgs): Promise<StartRunResult> {
       if (!deps.enabled()) {
         return {
           ok: false,
@@ -241,14 +402,15 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
           message: "Data collectors are not available.",
         };
       }
-      const collector = deps.catalog.get(args.collectorId);
-      if (!collector) {
+      const resolved = resolveStart(args);
+      if (!resolved) {
         return {
           ok: false,
           reason: "unknown_collector",
           message: "This collector does not exist.",
         };
       }
+      const { collector, presetId } = resolved;
       const parsed = collector.inputSchema.safeParse(args.input);
       if (!parsed.success) {
         return {
@@ -285,6 +447,7 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
               origin: args.origin,
               collectorId: collector.id,
               collectorVersion: collector.version,
+              presetId,
               input: parsed.data,
               status: "queued",
               createdAt: now,
@@ -384,7 +547,9 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
       const run = await ownedRun(userId, runId);
       if (!run) return null;
       // Export still works if the collector was switched off since.
-      const collector = allCollectors().find((c) => c.id === run.collectorId);
+      const collector = deps.catalog
+        .everything()
+        .find((c) => c.id === run.collectorId);
       const formatter = EXPORT_FORMATS[format];
       return {
         filename: `${run.collectorId}-${run.id.slice(0, 8)}.${formatter.extension}`,

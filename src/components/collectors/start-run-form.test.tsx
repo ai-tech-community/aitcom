@@ -1,10 +1,18 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+import { inputProblemsOf } from "@/lib/collectors/input-problems";
 import { getCollector } from "@/server/collectors/catalog";
-import type { CollectorSummary } from "@/server/collectors/runs";
+import type { CollectorSummary, PresetSummary } from "@/server/collectors/runs";
 
 import en from "../../../messages/en.json";
 
@@ -104,14 +112,51 @@ const pageList: CollectorSummary = {
   inputJsonSchema: z.toJSONSchema(getCollector("page-list")!.inputSchema),
 };
 
+const feedPreset: PresetSummary = {
+  id: "feed",
+  group: "research",
+  title: "News or blog feed",
+  summary: "The latest items of a feed.",
+  collectorId: "feed-items",
+  base: {},
+  ask: ["url"],
+  fields: feed.fields,
+};
+const customPagePreset: PresetSummary = {
+  id: "custom-page",
+  group: "custom",
+  title: "Custom page",
+  summary: "Any list on a web page.",
+  collectorId: "page-list",
+  base: {},
+  ask: ["url", "itemSelector", "fields", "nextPageSelector", "maxPages"],
+  fields: pageList.fields,
+};
+/** Asks only the address; its saved selectors sit behind "Show settings". */
+const savedPage: PresetSummary = {
+  ...customPagePreset,
+  id: "saved-page",
+  group: "research",
+  title: "Saved page",
+  summary: "A page we know.",
+  ask: ["url"],
+  base: {
+    itemSelector: "li.job",
+    fields: [{ name: "title", selector: "h3" }],
+    maxPages: 2,
+  },
+};
+
 function overview(
   needsAcknowledgement: boolean,
-  collectors: CollectorSummary[] = [feed],
+  collectors: CollectorSummary[] = [feed, pageList],
+  presets: PresetSummary[] = [feedPreset, customPagePreset, savedPage],
 ) {
   const refetch = vi.fn();
   h.overview.mockReturnValue({
     data: {
       collectors,
+      presets,
       recentRuns: [],
       usage: { runsToday: 0, runsPerDay: 20 },
       needsAcknowledgement,
@@ -123,17 +168,33 @@ function overview(
   return { refetch };
 }
 
-function renderForm(collectorId = "feed-items") {
-  return render(
+function form(
+  presetId: string,
+  prefill: Record<string, string> = {},
+  recognised = false,
+) {
+  return (
     <NextIntlClientProvider
       locale="en"
       messages={en}
       now={new Date("2026-10-03T12:00:00Z")}
       timeZone="UTC"
     >
-      <StartRunForm collectorId={collectorId} />
-    </NextIntlClientProvider>,
+      <StartRunForm
+        presetId={presetId}
+        prefill={prefill}
+        recognised={recognised}
+      />
+    </NextIntlClientProvider>
   );
+}
+
+function renderForm(
+  presetId = "feed",
+  prefill: Record<string, string> = {},
+  recognised = false,
+) {
+  return render(form(presetId, prefill, recognised));
 }
 
 const startButton = () =>
@@ -155,15 +216,15 @@ describe("StartRunForm", () => {
     });
     fireEvent.click(startButton());
     expect(h.mutate).toHaveBeenCalledWith({
-      collectorId: "feed-items",
+      presetId: "feed",
       input: { url: "https://blog.example.org/feed.xml" },
       acknowledged: false,
     });
   });
 
   it("sends the columns of a filled page-list form as a list of objects", () => {
-    overview(false, [pageList]);
-    renderForm("page-list");
+    overview(false);
+    renderForm("custom-page");
     fireEvent.change(screen.getByLabelText("Page address"), {
       target: { value: "https://example.com/jobs" },
     });
@@ -193,7 +254,7 @@ describe("StartRunForm", () => {
     fireEvent.click(startButton());
     expect(h.mutate).toHaveBeenCalledTimes(1);
     expect(h.mutate).toHaveBeenCalledWith({
-      collectorId: "page-list",
+      presetId: "custom-page",
       input: {
         url: "https://example.com/jobs",
         itemSelector: "li.job",
@@ -207,8 +268,8 @@ describe("StartRunForm", () => {
   });
 
   it("marks the whole list of columns for a problem with no precise column", async () => {
-    overview(false, [pageList]);
-    renderForm("page-list");
+    overview(false);
+    renderForm("custom-page");
     h.options.onSuccess?.({
       ok: false,
       reason: "invalid_input",
@@ -254,8 +315,8 @@ describe("StartRunForm", () => {
   }
 
   it("shows why a column selector was refused at that column's selector", async () => {
-    overview(false, [pageList]);
-    renderForm("page-list");
+    overview(false);
+    renderForm("custom-page");
     fillColumns([
       { "Column name": "title", Selector: "h3" },
       { "Column name": "link", Selector: "a:has(b)" },
@@ -280,8 +341,8 @@ describe("StartRunForm", () => {
   });
 
   it("counts only the columns it sent when placing a problem", async () => {
-    overview(false, [pageList]);
-    renderForm("page-list");
+    overview(false);
+    renderForm("custom-page");
     fillColumns([
       { "Column name": "title", Selector: "h3" },
       {},
@@ -303,8 +364,8 @@ describe("StartRunForm", () => {
   });
 
   it("names the problem at the item and next-page selectors", async () => {
-    overview(false, [pageList]);
-    renderForm("page-list");
+    overview(false);
+    renderForm("custom-page");
     h.options.onSuccess?.({
       ok: false,
       reason: "invalid_input",
@@ -324,8 +385,8 @@ describe("StartRunForm", () => {
   });
 
   it("keeps the first column's inputs in place while other fields change", () => {
-    overview(false, [pageList]);
-    renderForm("page-list");
+    overview(false);
+    renderForm("custom-page");
     const name = columnInput(1, "Column name");
     fireEvent.change(screen.getByLabelText("Page address"), {
       target: { value: "https://example.com/jobs" },
@@ -382,32 +443,48 @@ describe("StartRunForm", () => {
   });
 
   it("keeps the general note for a rejected field that is not an address", async () => {
-    overview(false, [
-      {
-        ...feed,
-        fields: [
-          {
-            name: "topic",
-            label: "Topic",
-            help: null,
-            placeholder: null,
-            columns: null,
-          },
-        ],
-        inputJsonSchema: z.toJSONSchema(z.object({ topic: z.string() })),
-      },
-    ]);
-    renderForm();
+    overview(false);
+    renderForm("custom-page");
     h.options.onSuccess?.({
       ok: false,
       reason: "invalid_input",
       message: "x",
-      fieldErrors: { topic: ["too_small"] },
+      fieldErrors: { itemSelector: ["too_small"] },
     });
-    expect(
-      await screen.findByText(en.collectors.start.invalidField),
-    ).toBeInTheDocument();
+    const note = await screen.findByText(en.collectors.start.invalidField);
+    expectProblemAt(
+      screen.getByLabelText("Item selector"),
+      en.collectors.start.invalidField,
+    );
+    expect(note).toBeInTheDocument();
     expect(screen.queryByText(en.collectors.start.invalidUrl)).toBeNull();
+  });
+
+  it("keeps a pasted http:// address as typed and asks for https:// at that field", async () => {
+    overview(false);
+    renderForm("feed", { url: "http://example.com/feed.xml" }, true);
+    const field = screen.getByRole("textbox", { name: "Feed address" });
+    expect(field).toHaveValue("http://example.com/feed.xml");
+    fireEvent.click(startButton());
+    expect(h.mutate).toHaveBeenCalledWith({
+      presetId: "feed",
+      input: { url: "http://example.com/feed.xml" },
+      acknowledged: false,
+    });
+    // What the real feed collector says about this address.
+    const parsed = getCollector("feed-items")!.inputSchema.safeParse({
+      url: "http://example.com/feed.xml",
+    });
+    expect(parsed.success).toBe(false);
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: inputProblemsOf(parsed.error!.issues),
+      }),
+    );
+    expectProblemAt(field, en.collectors.start.invalidUrl);
   });
 
   it("says which limit refused the start and when to try again, keeping the input", async () => {
@@ -423,9 +500,11 @@ describe("StartRunForm", () => {
       message: "x",
       retryAt: "2026-10-03T15:00:00.000Z",
     });
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "You've used all 20 runs for the last 24 hours. You can start again in 3 hours.",
-    );
+    const problem = await screen.findByRole("group", {
+      name: "You've used all 20 runs for the last 24 hours. You can start again in 3 hours.",
+    });
+    // Focus moves in an effect after the render that shows the problem.
+    await waitFor(() => expect(problem).toHaveFocus());
     expect(screen.getByLabelText("Feed address")).toHaveValue(
       "https://e.com/f",
     );
@@ -443,16 +522,20 @@ describe("StartRunForm", () => {
       quotaReason,
       message: "x",
     });
-    expect(await screen.findByRole("alert")).toHaveTextContent(text);
+    const problem = await screen.findByRole("group", { name: text });
+    // Focus moves in an effect after the render that shows the problem.
+    await waitFor(() => expect(problem).toHaveFocus());
   });
 
   it("says the start failed when the request itself fails", async () => {
     const { refetch } = overview(false);
     renderForm();
     h.options.onError?.({ message: "Network error" });
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      en.collectors.start.failed,
-    );
+    const problem = await screen.findByRole("group", {
+      name: en.collectors.start.failed,
+    });
+    // Focus moves in an effect after the render that shows the problem.
+    await waitFor(() => expect(problem).toHaveFocus());
     expect(refetch).not.toHaveBeenCalled();
   });
 
@@ -461,13 +544,15 @@ describe("StartRunForm", () => {
     renderForm();
     h.options.onError?.({ message: "ACKNOWLEDGEMENT_REQUIRED" });
     expect(refetch).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      en.collectors.start.failed,
-    );
+    const problem = await screen.findByRole("group", {
+      name: en.collectors.start.failed,
+    });
+    // Focus moves in an effect after the render that shows the problem.
+    await waitFor(() => expect(problem).toHaveFocus());
   });
 
   it("shows a way back when the collector does not exist", () => {
-    overview(false, []);
+    overview(false);
     renderForm("nope");
     expect(screen.getByText(en.collectors.start.notFound)).toBeInTheDocument();
     expect(
@@ -476,29 +561,326 @@ describe("StartRunForm", () => {
   });
 
   it("shows an error instead of a broken form for a field it cannot draw", () => {
-    overview(false, [
-      {
-        ...feed,
-        fields: [
-          {
-            name: "fields",
-            label: "Fields",
-            help: null,
-            placeholder: null,
-            columns: null,
-          },
-        ],
-        inputJsonSchema: z.toJSONSchema(
-          z.object({ fields: z.array(z.string()) }),
-        ),
-      },
-    ]);
-    renderForm();
+    const odd: CollectorSummary = {
+      ...feed,
+      id: "odd-collector",
+      fields: [
+        {
+          name: "fields",
+          label: "Fields",
+          help: null,
+          placeholder: null,
+          columns: null,
+        },
+      ],
+      inputJsonSchema: z.toJSONSchema(
+        z.object({ fields: z.array(z.string()) }),
+      ),
+    };
+    overview(
+      false,
+      [odd],
+      [{ ...feedPreset, id: "odd", collectorId: odd.id, fields: odd.fields }],
+    );
+    renderForm("odd");
     expect(
       screen.getByText(en.collectors.start.unsupported),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: en.collectors.start.submit }),
     ).toBeNull();
+  });
+  it("shows the preset's title as the one heading, with its summary and no breadcrumb or kicker", () => {
+    overview(false);
+    renderForm("feed");
+    expect(screen.getAllByRole("heading").map((h) => h.textContent)).toEqual([
+      "News or blog feed",
+    ]);
+    expect(screen.getByText("The latest items of a feed.")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
+    expect(document.querySelector('[data-slot="section-label"]')).toBeNull();
+  });
+
+  it("asks only the preset's fields up front and keeps the rest, pre-filled, behind Show settings", () => {
+    overview(false);
+    renderForm("saved-page");
+    expect(
+      screen.getByRole("textbox", { name: "Page address" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Item selector" })).toBeNull();
+    const toggle = screen.getByRole("button", {
+      name: en.collectors.start.showSettings,
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(
+      screen.getByRole("button", { name: en.collectors.start.hideSettings }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("textbox", { name: "Item selector" })).toHaveValue(
+      "li.job",
+    );
+    expect(
+      screen.getByRole("spinbutton", { name: "Pages to read" }),
+    ).toHaveValue(2);
+  });
+
+  it("has no Show settings when the preset asks for everything", () => {
+    overview(false);
+    renderForm("custom-page");
+    expect(
+      screen.queryByRole("button", { name: en.collectors.start.showSettings }),
+    ).toBeNull();
+  });
+
+  it("sends the preset's settings with the member's answers while the settings stay closed", () => {
+    overview(false);
+    renderForm("saved-page");
+    fireEvent.change(screen.getByRole("textbox", { name: "Page address" }), {
+      target: { value: "https://jobs.example.com/" },
+    });
+    fireEvent.click(startButton());
+    expect(h.mutate).toHaveBeenCalledWith({
+      presetId: "saved-page",
+      input: {
+        url: "https://jobs.example.com/",
+        itemSelector: "li.job",
+        fields: [{ name: "title", selector: "h3" }],
+        maxPages: 2,
+      },
+      acknowledged: false,
+    });
+  });
+
+  it("opens the settings when the server refuses a value hidden there", () => {
+    overview(false);
+    renderForm("saved-page");
+    fireEvent.click(startButton());
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: { itemSelector: ["selector_not_allowed/not_allowed"] },
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: en.collectors.start.hideSettings }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByText(en.collectors.start.problem.selector.not_allowed),
+    ).toBeVisible();
+  });
+
+  it("fills the fields from a pasted link and says what it recognised", () => {
+    overview(false);
+    renderForm(
+      "feed",
+      { url: "https://example.com/feed.xml", bogus: "x" },
+      true,
+    );
+    expect(screen.getByRole("textbox", { name: "Feed address" })).toHaveValue(
+      "https://example.com/feed.xml",
+    );
+    // The address is machine text (Mono-is-machine); the sentence around it
+    // is one translated message, so translators own its order and brackets.
+    const detail = screen.getByText("example.com/feed.xml");
+    expect(detail).toHaveClass("font-mono");
+    expect(detail.closest("p")).toHaveTextContent(
+      "Recognised as News or blog feed (example.com/feed.xml).",
+    );
+    expect(
+      screen.getByRole("link", { name: en.collectors.start.pickAnother }),
+    ).toHaveAttribute("href", "/dashboard/collectors");
+    fireEvent.click(startButton());
+    expect(h.mutate).toHaveBeenCalledWith({
+      presetId: "feed",
+      input: { url: "https://example.com/feed.xml" },
+      acknowledged: false,
+    });
+  });
+
+  it("says nothing about recognising for a plain start", () => {
+    overview(false);
+    renderForm("custom-page", { url: "https://example.com/jobs" });
+    expect(screen.queryByText(/Recognised as/)).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Page address" })).toHaveValue(
+      "https://example.com/jobs",
+    );
+  });
+
+  it("starts afresh when the member moves to another preset", () => {
+    overview(false);
+    const { rerender } = renderForm("feed");
+    fireEvent.change(screen.getByRole("textbox", { name: "Feed address" }), {
+      target: { value: "https://typed.example/feed" },
+    });
+    rerender(form("custom-page"));
+    expect(screen.getByRole("textbox", { name: "Page address" })).toHaveValue(
+      "",
+    );
+  });
+  it("names only the preset when the paste gave no address to show", () => {
+    overview(false);
+    renderForm("feed", {}, true);
+    expect(
+      screen.getByText("Recognised as News or blog feed."),
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getByText("Recognised as News or blog feed.")
+        .querySelector(".font-mono"),
+    ).toBeNull();
+  });
+
+  it("starts afresh when a new paste opens the same preset", () => {
+    overview(false);
+    const { rerender } = renderForm(
+      "feed",
+      { url: "https://a.example/feed.xml" },
+      true,
+    );
+    const field = () => screen.getByRole("textbox", { name: "Feed address" });
+    fireEvent.change(field(), { target: { value: "https://typed.example/a" } });
+    fireEvent.click(startButton());
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: { url: ["invalid_format"] },
+      }),
+    );
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    rerender(form("feed", { url: "https://b.example/feed.xml" }, true));
+    expect(field()).toHaveValue("https://b.example/feed.xml");
+    expect(field()).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText(en.collectors.start.invalidUrl)).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("b.example/feed.xml")).toBeInTheDocument();
+  });
+
+  it("keeps what the member typed when the same paste comes back as a new object", () => {
+    overview(false);
+    const { rerender } = renderForm("custom-page", {
+      url: "https://example.com/jobs",
+    });
+    // Untouched rows hold their starting ids: a new prefill object with the
+    // same values must not make new ones (that would remount the inputs).
+    const name = columnInput(1, "Column name");
+    fireEvent.change(screen.getByRole("textbox", { name: "Page address" }), {
+      target: { value: "https://example.com/other" },
+    });
+    rerender(form("custom-page", { url: "https://example.com/jobs" }));
+    expect(screen.getByRole("textbox", { name: "Page address" })).toHaveValue(
+      "https://example.com/other",
+    );
+    expect(columnInput(1, "Column name")).toBe(name);
+  });
+
+  it("moves focus to the first refused field after a refused start", () => {
+    overview(false);
+    renderForm("custom-page");
+    fireEvent.click(startButton());
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: {
+          nextPageSelector: ["selector_not_allowed/list"],
+          itemSelector: ["selector_not_allowed/not_allowed"],
+        },
+      }),
+    );
+    expect(screen.getByLabelText("Item selector")).toHaveFocus();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      en.collectors.start.fixFields,
+    );
+  });
+
+  it("moves focus into the settings it opened for a refused hidden value", () => {
+    overview(false);
+    renderForm("saved-page");
+    fireEvent.click(startButton());
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: {
+          "fields.0.selector": ["selector_not_allowed/not_allowed"],
+        },
+      }),
+    );
+    expect(columnInput(1, "Selector")).toHaveFocus();
+  });
+
+  it("moves focus to the whole list of columns' first input for a problem with no precise column", () => {
+    overview(false);
+    renderForm("custom-page");
+    fireEvent.click(startButton());
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: { fields: ["too_small"] },
+      }),
+    );
+    expect(columnInput(1, "Column name")).toHaveFocus();
+  });
+
+  it.each([
+    [
+      "a quota refusal",
+      () =>
+        h.options.onSuccess!({
+          ok: false,
+          reason: "quota",
+          quotaReason: "active_limit",
+          message: "x",
+        }),
+    ],
+    [
+      "a refusal for a field the form does not draw",
+      () =>
+        h.options.onSuccess!({
+          ok: false,
+          reason: "invalid_input",
+          message: "x",
+          fieldErrors: { somethingElse: ["too_small"] },
+        }),
+    ],
+    ["a failed request", () => h.options.onError!({ message: "Network" })],
+  ])("moves focus to the problem for %s, announced once", (_, refuse) => {
+    overview(false);
+    renderForm("feed");
+    fireEvent.click(startButton());
+    act(refuse);
+    // Focus reads it: a live alert on top would read it twice.
+    expect(screen.queryByRole("alert")).toBeNull();
+    const problem = document.activeElement as HTMLElement;
+    expect(problem).toHaveAttribute("role", "group");
+    expect(problem).toHaveAccessibleName();
+    expect(problem.className).toContain("focus-visible:ring-ring/50");
+    expect(problem.className).toContain("focus-visible:ring-[3px]");
+    expect(problem.className).toContain("outline-none");
+  });
+
+  it("keeps the problem a live alert, not focusable, when focus goes to a field", () => {
+    overview(false);
+    renderForm("feed");
+    fireEvent.click(startButton());
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: { url: ["invalid_format"] },
+      }),
+    );
+    const alert = screen.getByRole("alert");
+    expect(alert).not.toHaveAttribute("tabindex");
+    expect(screen.getByLabelText("Feed address")).toHaveFocus();
   });
 });

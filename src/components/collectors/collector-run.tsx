@@ -3,10 +3,10 @@
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { runTarget } from "@/components/collectors/collectors-home";
 import { RunStatusBadge } from "@/components/collectors/run-status-badge";
+import { untilNamed, useRunNamer } from "@/components/collectors/use-run-namer";
 import {
-  DashboardSection,
+  SectionBody,
   statusFromQueries,
 } from "@/components/dashboard/dashboard-section";
 import { Button } from "@/components/ui/button";
@@ -95,6 +95,7 @@ export function CollectorRun({ runId }: { runId: string }) {
   const t = useTranslations("collectors");
   const statusSentence = useStatusSentence();
   const failureDetail = useFailureDetail();
+  const namer = useRunNamer();
   const locale = useLocale() === "nl" ? "nl" : "en";
   const run = api.collectors.run.useQuery(
     { runId },
@@ -141,7 +142,7 @@ export function CollectorRun({ runId }: { runId: string }) {
 
   const runsLink = (
     <Button asChild variant="outline">
-      <Link href="/dashboard/collectors/runs">{t("breadcrumb.runs")}</Link>
+      <Link href="/dashboard/collectors/runs">{t("workspace.myRuns")}</Link>
     </Button>
   );
 
@@ -152,9 +153,8 @@ export function CollectorRun({ runId }: { runId: string }) {
   const summary = overview.data?.collectors.find(
     (c) => c.id === data?.collectorId,
   );
-  const title = summary?.title ?? data?.collectorId ?? "";
+  const name = data ? namer.nameOf(data) : null;
   const emptyHint = data ? emptyRunHint(data, summary?.kind) : null;
-  const target = data ? runTarget(data.input) : null;
   const detail = data ? failureDetail(data) : null;
   const rows = items.data?.items ?? [];
   const columns = columnsOf(rows);
@@ -162,127 +162,93 @@ export function CollectorRun({ runId }: { runId: string }) {
   const from = afterSeq + 2;
 
   return (
-    <div className="flex flex-col gap-6">
-      <nav
-        aria-label="Breadcrumb"
-        className="flex items-center gap-2 text-[13px]"
-      >
-        <Link
-          href="/dashboard/collectors"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {t("breadcrumb.collectors")}
-        </Link>
-        <span aria-hidden="true" className="text-muted-foreground">
-          /
-        </span>
-        <Link
-          href="/dashboard/collectors/runs"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {t("breadcrumb.runs")}
-        </Link>
-        {title ? (
-          <>
-            <span aria-hidden="true" className="text-muted-foreground">
-              /
-            </span>
-            <span aria-current="page" className="text-foreground/80 truncate">
-              {title}
-            </span>
-          </>
-        ) : null}
-      </nav>
-
-      <DashboardSection title={t("title")} status={statusFromQueries(run)}>
-        {data ? (
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2.5">
-              <div className="flex flex-wrap items-center gap-3">
-                <h3 className="text-2xl font-semibold tracking-tight">
-                  {title}
-                </h3>
-                <span role="status">
-                  <RunStatusBadge
-                    status={data.status}
-                    stopReason={data.stopReason}
-                  />
-                </span>
-              </div>
-              <p className="text-muted-foreground font-mono text-xs">
-                {t("run.started")} <RelativeTime date={data.createdAt} />
-                {data.durationMs !== null ? (
+    <SectionBody status={untilNamed(statusFromQueries(run), namer)}>
+      {data && name ? (
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2.5">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="min-w-0 text-2xl font-semibold tracking-tight break-words">
+                {name.title}
+                {/* The space sits outside the span, so the heading's
+                    accessible name keeps it ("title · detail"). */}
+                {name.detail ? (
                   <>
-                    {" · "}
-                    {t("run.took", {
-                      seconds: Math.max(1, Math.round(data.durationMs / 1000)),
-                    })}
+                    {" "}
+                    <span className="text-muted-foreground font-mono text-base font-normal break-all">
+                      {"· "}
+                      {name.detail}
+                    </span>
                   </>
                 ) : null}
-                {" · "}
-                {t("run.deleted")} <RelativeTime date={data.expiresAt} />
-              </p>
-              {target ? (
-                <p className="text-sm">
-                  {t("run.input")}:{" "}
-                  <span className="font-mono text-[13px] break-all">
-                    {target}
-                  </span>
-                </p>
-              ) : null}
+              </h2>
+              <span role="status">
+                <RunStatusBadge
+                  status={data.status}
+                  stopReason={data.stopReason}
+                />
+              </span>
             </div>
+            <p className="text-muted-foreground font-mono text-xs">
+              {t("run.started")} <RelativeTime date={data.createdAt} />
+              {data.durationMs !== null ? (
+                <>
+                  {" · "}
+                  {t("run.took", {
+                    seconds: Math.max(1, Math.round(data.durationMs / 1000)),
+                  })}
+                </>
+              ) : null}
+              {" · "}
+              {t("run.deleted")} <RelativeTime date={data.expiresAt} />
+            </p>
+          </div>
 
-            <div className="border-border flex flex-col gap-1.5 rounded-xl border px-5 py-4">
-              <p className="text-[15px] font-medium">{statusSentence(data)}</p>
-              {detail ? (
-                <p data-testid="failure-detail" className="text-sm">
-                  {detail}
-                </p>
-              ) : null}
-              {active ? (
-                <p className="text-muted-foreground text-sm">
-                  {t("run.collectingHelp")}
-                </p>
-              ) : null}
-              <p className="text-muted-foreground mt-1 font-mono text-xs">
-                {t("run.counts", {
-                  rows: data.itemCount,
-                  pages: data.pagesFetched,
-                  skipped: data.invalidItemCount,
-                })}
+          <div className="border-border flex flex-col gap-1.5 rounded-xl border px-5 py-4">
+            <p className="text-[15px] font-medium">{statusSentence(data)}</p>
+            {detail ? (
+              <p data-testid="failure-detail" className="text-sm">
+                {detail}
               </p>
-            </div>
+            ) : null}
+            {active ? (
+              <p className="text-muted-foreground text-sm">
+                {t("run.collectingHelp")}
+              </p>
+            ) : null}
+            <p className="text-muted-foreground mt-1 font-mono text-xs">
+              {t("run.counts", {
+                rows: data.itemCount,
+                pages: data.pagesFetched,
+                skipped: data.invalidItemCount,
+              })}
+            </p>
+          </div>
 
-            {data.itemCount > 0 ? (
-              <DashboardSection
-                title={t("run.rows")}
-                status={statusFromQueries(items)}
-                action={
-                  // A file of a half-finished run would mislead: offer the
-                  // downloads once the run has ended. Two equal peers, so
-                  // both are ink (DESIGN.md One Voice Rule).
-                  active ? null : (
-                    <div className="flex flex-wrap gap-2">
-                      <Button asChild variant="ink" size="sm">
-                        <a
-                          href={`/api/collectors/runs/${runId}/export?format=csv`}
-                        >
-                          {t("run.downloadCsv")}
-                        </a>
-                      </Button>
-                      <Button asChild variant="ink" size="sm">
-                        <a
-                          href={`/api/collectors/runs/${runId}/export?format=json`}
-                        >
-                          {t("run.downloadJson")}
-                        </a>
-                      </Button>
-                    </div>
-                  )
-                }
-              >
+          {data.itemCount > 0 ? (
+            <div className="flex flex-col gap-3">
+              {/* A file of a half-finished run would mislead: offer the
+                  downloads once the run has ended. Two equal peers, so both
+                  are ink (DESIGN.md One Voice Rule). */}
+              {active ? null : (
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button asChild variant="ink" size="sm">
+                    <a href={`/api/collectors/runs/${runId}/export?format=csv`}>
+                      {t("run.downloadCsv")}
+                    </a>
+                  </Button>
+                  <Button asChild variant="ink" size="sm">
+                    <a
+                      href={`/api/collectors/runs/${runId}/export?format=json`}
+                    >
+                      {t("run.downloadJson")}
+                    </a>
+                  </Button>
+                </div>
+              )}
+              <SectionBody status={statusFromQueries(items)}>
                 <div className="border-border overflow-x-auto rounded-lg border">
                   <table className="w-full min-w-[640px] border-collapse text-[13px]">
+                    <caption className="sr-only">{t("run.rows")}</caption>
                     <thead>
                       <tr>
                         {columns.map((c) => (
@@ -341,34 +307,34 @@ export function CollectorRun({ runId }: { runId: string }) {
                     ) : null}
                   </div>
                 </div>
-              </DashboardSection>
-            ) : active ? (
-              <div
-                aria-hidden="true"
-                className="border-border flex flex-col gap-2.5 rounded-lg border p-4"
-              >
-                <Skeleton className="h-3.5 w-3/5" />
-                <Skeleton className="h-3.5 w-5/6" />
-                <Skeleton className="h-3.5 w-2/3" />
-              </div>
-            ) : (
-              <div className="flex max-w-prose flex-col gap-1.5 text-sm">
-                <p className="text-muted-foreground">{t("run.noRows")}</p>
-                {emptyHint ? <p>{t(emptyHint)}</p> : null}
-              </div>
-            )}
+              </SectionBody>
+            </div>
+          ) : active ? (
+            <div
+              aria-hidden="true"
+              className="border-border flex flex-col gap-2.5 rounded-lg border p-4"
+            >
+              <Skeleton className="h-3.5 w-3/5" />
+              <Skeleton className="h-3.5 w-5/6" />
+              <Skeleton className="h-3.5 w-2/3" />
+            </div>
+          ) : (
+            <div className="flex max-w-prose flex-col gap-1.5 text-sm">
+              <p className="text-muted-foreground">{t("run.noRows")}</p>
+              {emptyHint ? <p>{t(emptyHint)}</p> : null}
+            </div>
+          )}
 
-            <details className="border-border border-t pt-3">
-              <summary className="cursor-pointer text-[13px]">
-                {t("run.log")}
-              </summary>
-              <pre className="bg-sidebar border-border mt-2.5 rounded-lg border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
-                {data.log.length ? data.log.join("\n") : t("run.emptyLog")}
-              </pre>
-            </details>
-          </div>
-        ) : null}
-      </DashboardSection>
-    </div>
+          <details className="border-border border-t pt-3">
+            <summary className="cursor-pointer text-[13px]">
+              {t("run.log")}
+            </summary>
+            <pre className="bg-sidebar border-border mt-2.5 rounded-lg border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+              {data.log.length ? data.log.join("\n") : t("run.emptyLog")}
+            </pre>
+          </details>
+        </div>
+      ) : null}
+    </SectionBody>
   );
 }

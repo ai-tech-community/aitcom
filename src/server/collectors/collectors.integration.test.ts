@@ -20,6 +20,7 @@ import { getCollector } from "./catalog";
 import type { AnyCollector, CollectorContext } from "./collector";
 import type * as Errors from "./errors";
 import type * as Executor from "./executor";
+import { getPreset } from "./presets/catalog";
 import type * as Quota from "./quota";
 import type * as Runs from "./runs";
 
@@ -890,6 +891,11 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         catalog: {
           all: () => [collector],
           get: (id) => (id === collector.id ? collector : undefined),
+          everything: () => [collector],
+        },
+        presets: {
+          all: () => [getPreset("feed")!],
+          get: (id) => (id === "feed" ? getPreset("feed") : undefined),
         },
         kick: () => kicks.push(1),
         now: () => new Date("2026-10-03T12:00:00Z"),
@@ -971,11 +977,80 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       expect((await runs.listRuns(userId)).runs).toHaveLength(0);
     });
 
+    it("records the preset a run was started from", async () => {
+      const userId = await makeUser();
+      const { runs } = facade();
+      const started = await runs.startRun({
+        userId,
+        origin: "web",
+        presetId: "feed",
+        input: feedInput,
+      });
+      expect(started).toMatchObject({ ok: true });
+      const view = await runs.getRun(
+        userId,
+        (started as { runId: string }).runId,
+      );
+      expect(view).toMatchObject({
+        presetId: "feed",
+        collectorId: "feed-items",
+      });
+    });
+
+    it("records no preset for a run started by collector id", async () => {
+      const userId = await makeUser();
+      const { runs } = facade();
+      const started = await runs.startRun({
+        userId,
+        origin: "mcp",
+        collectorId: "feed-items",
+        input: feedInput,
+      });
+      const view = await runs.getRun(
+        userId,
+        (started as { runId: string }).runId,
+      );
+      expect(view?.presetId).toBeNull();
+    });
+
+    it("refuses an unknown preset, or one whose collector is off, storing nothing", async () => {
+      const userId = await makeUser();
+      const { runs } = facade();
+      expect(
+        await runs.startRun({
+          userId,
+          origin: "web",
+          presetId: "nope",
+          input: feedInput,
+        }),
+      ).toMatchObject({ ok: false, reason: "unknown_collector" });
+      const { runs: off } = facade({
+        catalog: {
+          all: () => [],
+          get: () => undefined,
+          everything: () => [],
+        },
+      });
+      expect(
+        await off.startRun({
+          userId,
+          origin: "web",
+          presetId: "feed",
+          input: feedInput,
+        }),
+      ).toMatchObject({ ok: false, reason: "unknown_collector" });
+      expect((await runs.listRuns(userId)).runs).toEqual([]);
+    });
+
     it("names each refused page-list input by its path and a code, not a sentence", async () => {
       const userId = await makeUser();
       const pageList = getCollector("page-list")!;
       const { runs } = facade({
-        catalog: { all: () => [pageList], get: () => pageList },
+        catalog: {
+          all: () => [pageList],
+          get: () => pageList,
+          everything: () => [pageList],
+        },
       });
       const result = await runs.startRun({
         userId,
@@ -1174,6 +1249,41 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
       expect(csv!.contentType).toBe("text/csv; charset=utf-8");
     });
 
+    it("exports a run whose collector was switched off since, with its columns", async () => {
+      const userId = await makeUser();
+      const id = await insertRun(userId, {
+        collectorId: "feed-items",
+        status: "succeeded",
+      });
+      // An empty run: the header can only come from the collector's columns.
+      const feed = getCollector("feed-items")!;
+      const { runs } = facade({
+        catalog: {
+          all: () => [],
+          get: () => undefined,
+          everything: () => [feed],
+        },
+      });
+      const csv = await runs.exportRun(userId, id, "csv");
+      let out = "";
+      for await (const chunk of csv!.body) out += chunk;
+      expect(out.split("\r\n")[0]).toBe("title,url,publishedAt,author,summary");
+
+      // The columns come from the injected catalog only: a catalog that does
+      // not know the collector gives no header for an empty run.
+      const { runs: unknown } = facade({
+        catalog: {
+          all: () => [],
+          get: () => undefined,
+          everything: () => [],
+        },
+      });
+      const bare = await unknown.exportRun(userId, id, "csv");
+      let none = "";
+      for await (const chunk of bare!.body) none += chunk;
+      expect(none).toBe("");
+    });
+
     it("describes collectors in the member's language with a JSON input schema", () => {
       const { runs } = facade();
       const [summary] = runs.listCollectors("nl");
@@ -1192,6 +1302,7 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         catalog: {
           all: () => [pageListCollector],
           get: () => pageListCollector,
+          everything: () => [pageListCollector],
         },
       });
       const [pageList] = runs.listCollectors("nl");

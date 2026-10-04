@@ -17,6 +17,9 @@ function facade() {
   return liveCollectorRuns();
 }
 
+/** How many recent runs the landing shows. */
+const RECENT_RUNS = 5;
+
 function runNotFound(): never {
   throw new TRPCError({ code: "NOT_FOUND", message: "RUN_NOT_FOUND" });
 }
@@ -36,21 +39,29 @@ export const collectorsRouter = createTRPCRouter({
       const runs = facade();
       const userId = ctx.session.user.id;
       const [recent, usage] = await Promise.all([
-        runs.listRuns(userId, { limit: 3 }),
+        runs.listRuns(userId, { limit: RECENT_RUNS }),
         runs.usage(userId),
       ]);
       return {
         collectors: runs.listCollectors(input.locale),
+        presets: runs.listPresets(input.locale),
+        // Names for runs whose preset or collector is switched off.
+        titles: runs.listTitles(input.locale),
         recentRuns: recent.runs,
         usage,
         needsAcknowledgement: recent.runs.length === 0,
       };
     }),
 
+  /** Which preset a pasted address opens. Never fetches the address. */
+  recognize: protectedProcedure
+    .input(z.object({ address: z.string().max(4_096) }))
+    .query(({ input }) => facade().recognize(input.address)),
+
   start: protectedProcedure
     .input(
       z.object({
-        collectorId: z.string().min(1).max(64),
+        presetId: z.string().min(1).max(64),
         input: z.unknown(),
         acknowledged: z.boolean(),
       }),
@@ -67,7 +78,7 @@ export const collectorsRouter = createTRPCRouter({
       return runs.startRun({
         userId,
         origin: "web",
-        collectorId: input.collectorId,
+        presetId: input.presetId,
         input: input.input,
       });
     }),
