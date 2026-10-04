@@ -2111,7 +2111,7 @@ git commit -m "Collectors: run names from presets, and preset values for the sta
 - Consumes: `api.collectors.overview` (`presets`, `usage`), `api.useUtils().collectors.recognize.fetch` (Task 4); `parseAddress` (Task 2); `startHref` (Task 2); `PRESET_GROUPS`, `PresetGroup` (Task 1); `SectionBody`, `statusFromQueries`; `COLLECTOR_ABOUT_PATH`.
 - Produces:
   - `type WorkspaceEntry = { kind: "home" } | { kind: "runs" } | { kind: "preset"; presetId: string }`; `activeEntry(pathname: string): WorkspaceEntry`; `railGroups<P extends { group: PresetGroup }>(presets: readonly P[]): { group: PresetGroup; presets: P[] }[]`; `CollectorWorkspace({ children })`
-  - `PasteBox({ focusOnShow: boolean })`
+  - `PasteBox()` (never moves focus by itself — owner ruling 2026-10-04, WCAG 2.2 AA: screen-reader users must not skip the greeting and tabs)
 
 Copy to add under `collectors` — EN:
 
@@ -2361,10 +2361,10 @@ import { PasteBox } from "./paste-box";
 
 const copy = en.collectors.workspace.paste;
 
-function renderBox(focusOnShow = false) {
+function renderBox() {
   return render(
     <NextIntlClientProvider locale="en" messages={en}>
-      <PasteBox focusOnShow={focusOnShow} />
+      <PasteBox />
     </NextIntlClientProvider>,
   );
 }
@@ -2382,13 +2382,8 @@ beforeEach(() => {
 });
 
 describe("PasteBox", () => {
-  it("takes focus on the landing, and only there", () => {
-    renderBox(true);
-    expect(box()).toHaveFocus();
-  });
-
-  it("leaves focus alone elsewhere", () => {
-    renderBox(false);
+  it("never takes focus by itself", () => {
+    renderBox();
     expect(box()).not.toHaveFocus();
   });
 
@@ -2500,20 +2495,15 @@ const PLACEHOLDER = "https://example.com/jobs";
  * (pre-filled). Text that is not an address never leaves the browser; the
  * server checks again and never fetches the address.
  */
-export function PasteBox({ focusOnShow }: { focusOnShow: boolean }) {
+export function PasteBox() {
   const t = useTranslations("collectors.workspace.paste");
   const router = useRouter();
   const utils = api.useUtils();
-  const inputRef = React.useRef<HTMLInputElement>(null);
   const pending = React.useRef(false);
   const [text, setText] = React.useState("");
   const [checking, setChecking] = React.useState(false);
   const [problem, setProblem] = React.useState<Problem | null>(null);
   const id = React.useId();
-
-  React.useEffect(() => {
-    if (focusOnShow) inputRef.current?.focus();
-  }, [focusOnShow]);
 
   async function open(address: string) {
     if (pending.current) return;
@@ -2557,7 +2547,6 @@ export function PasteBox({ focusOnShow }: { focusOnShow: boolean }) {
       <Label htmlFor={id}>{t("label")}</Label>
       <div className="flex gap-2">
         <Input
-          ref={inputRef}
           id={id}
           type="text"
           inputMode="url"
@@ -2780,7 +2769,7 @@ export function CollectorWorkspace({ children }: { children: React.ReactNode }) 
   return (
     <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-24 lg:self-start">
-        <PasteBox focusOnShow={active.kind === "home"} />
+        <PasteBox />
 
         <nav
           aria-label={t("workspace.railLabel")}
@@ -4307,6 +4296,6 @@ git commit -m "docs: collector presets spec matches the Slice A decisions"
 
 ## Self-review
 
-- **Spec coverage (Slice A):** preset model + catalog with `feed` and `custom-page` (Task 1); `recognizePreset` seam with Custom page fallback (Task 2); `collectors.recognize` query (Task 4); layout seam, `MemberDashboardFrame`, `(member-wide)` group, DESIGN.md exception (Task 5); workspace rail with paste box, groups, Custom page last, My runs, narrow picker (Task 7); landing with the line and last 5 runs, paste box focused (Tasks 7, 8); start page `new/[presetId]` with `ask` up front, "Show settings", limits line, one orange Start (Task 9); paste flow and "Recognised as … Not right? Pick another." (Tasks 7, 9); My runs and run page without breadcrumbs/kickers, run heading = preset title + main input (Task 10); `preset_id` migration and recording `presetId` on start (Task 3); EN + NL copy (Tasks 7, 9, 10); old addresses (Task 9). Slices B and C are out of scope.
+- **Spec coverage (Slice A):** preset model + catalog with `feed` and `custom-page` (Task 1); `recognizePreset` seam with Custom page fallback (Task 2); `collectors.recognize` query (Task 4); layout seam, `MemberDashboardFrame`, `(member-wide)` group, DESIGN.md exception (Task 5); workspace rail with paste box, groups, Custom page last, My runs, narrow picker (Task 7); landing with the line and last 5 runs, paste box never auto-focused by owner ruling (Tasks 7, 8); start page `new/[presetId]` with `ask` up front, "Show settings", limits line, one orange Start (Task 9); paste flow and "Recognised as … Not right? Pick another." (Tasks 7, 9); My runs and run page without breadcrumbs/kickers, run heading = preset title + main input (Task 10); `preset_id` migration and recording `presetId` on start (Task 3); EN + NL copy (Tasks 7, 9, 10); old addresses (Task 9). Slices B and C are out of scope.
 - **Review Focus owners:** 1 → Task 9 ("opens the settings when the server refuses a value hidden there"); 2 → Tasks 1 and 9 (former-id and page tests); 3 → Tasks 2, 4, 7 (address, facade, paste box tests); 4 → Task 9 ("starts afresh when the member moves to another preset"); 5 → Tasks 6 and 10 (run-name and run page tests).
 - **Type consistency:** `PresetSummary` (Task 4) is what `overview.presets` returns and what the workspace, landing, start form and `useRunNamer` read; `StartRunArgs` (Task 3) is what the router sends in Task 9; `RecognizeResult.prefill` is `Record<string, string>`, matching `startHref`'s `prefill`; `WorkspaceEntry`/`activeEntry` live only in `collector-workspace.tsx`.

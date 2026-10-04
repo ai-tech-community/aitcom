@@ -171,7 +171,9 @@ by every collector page (start, My runs, one run).
 - The limits line and the one orange Start button, as today.
 - `/dashboard/collectors` shows the workspace with no preset selected: the
   right side has the line "Pick a site on the left, or paste a link." and the
-  member's last 5 runs (none → only the line). The paste box is focused.
+  member's last 5 runs (none → only the line). The paste box does not take
+  focus by itself, so screen-reader users still meet the greeting and tabs
+  first (WCAG 2.2 AA).
 
 ### Paste flow
 
