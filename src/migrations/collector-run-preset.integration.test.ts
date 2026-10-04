@@ -1,14 +1,15 @@
 // @vitest-environment node
 // DB integration for migration 20261004a, called like the deploy runner
-// (`{ db }` only) and twice, since a failed deploy re-runs it. This is also
-// how the local test database gets the column: it refuses any database but
-// aitcom_test. Auto-skips unless RUN_DB_TESTS=1 and a local database is set.
+// (`{ db }` only) and twice, since a failed deploy re-runs it; then down and
+// up again. This is also how the local test database gets the column: it
+// refuses any database but aitcom_test, and leaves the column in place.
+// Auto-skips unless RUN_DB_TESTS=1 and a local database is set.
 import type { sql as Sql } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import type { db as Db } from "@/server/db";
 
-import type { up as Up } from "./20261004a_collector_run_preset";
+import type { down as Down, up as Up } from "./20261004a_collector_run_preset";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -28,6 +29,23 @@ describe.skipIf(!isLocalDbConfigured())(
     let db: typeof Db;
     let sql: typeof Sql;
     let up: typeof Up;
+    let down: typeof Down;
+
+    /** The preset_id column as information_schema describes it. */
+    async function presetColumn(on: Pick<typeof Db, "execute"> = db) {
+      const result = await on.execute(sql`
+        SELECT data_type, character_maximum_length, is_nullable
+        FROM information_schema.columns
+        WHERE table_schema = 'app'
+          AND table_name = 'collector_run'
+          AND column_name = 'preset_id'
+      `);
+      return ((result as { rows?: unknown }).rows ?? result) as {
+        data_type: string;
+        character_maximum_length: number;
+        is_nullable: string;
+      }[];
+    }
 
     beforeAll(async () => {
       const [dbMod, drizzle, runs, detail, migration] = await Promise.all([
@@ -40,6 +58,7 @@ describe.skipIf(!isLocalDbConfigured())(
       db = dbMod.db;
       sql = drizzle.sql;
       up = migration.up;
+      down = migration.down;
       const { rows } = await db.execute<{ name: string }>(
         sql`select current_database() as name`,
       );
@@ -56,19 +75,26 @@ describe.skipIf(!isLocalDbConfigured())(
       await up({ db } as never);
       await up({ db } as never);
 
-      const result = await db.execute(sql`
-        SELECT data_type, character_maximum_length, is_nullable
-        FROM information_schema.columns
-        WHERE table_schema = 'app'
-          AND table_name = 'collector_run'
-          AND column_name = 'preset_id'
-      `);
-      const rows = ((result as { rows?: unknown }).rows ?? result) as {
-        data_type: string;
-        character_maximum_length: number;
-        is_nullable: string;
-      }[];
-      expect(rows).toEqual([
+      expect(await presetColumn()).toEqual([
+        {
+          data_type: "character varying",
+          character_maximum_length: 64,
+          is_nullable: "YES",
+        },
+      ]);
+    });
+
+    it("drops the column on down and adds it back on up", async () => {
+      // One transaction: other DB suites running in parallel never see the
+      // table without the column (they wait on the lock until it is back).
+      await db.transaction(async (tx) => {
+        await down({ db: tx } as never);
+        expect(await presetColumn(tx)).toEqual([]);
+        await up({ db: tx } as never);
+        expect(await presetColumn(tx)).toHaveLength(1);
+      });
+      // The test database keeps the column for every other suite.
+      expect(await presetColumn()).toEqual([
         {
           data_type: "character varying",
           character_maximum_length: 64,
