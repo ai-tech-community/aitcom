@@ -39,7 +39,6 @@ const run = {
 function withData(recentRuns: unknown[], extra: object = {}) {
   overview.mockReturnValue({
     data: {
-      collectors: [{ id: "feed-items", title: "Feed items" }],
       presets: [{ id: "feed", title: "News or blog feed", ask: ["url"] }],
       titles: {
         presets: { feed: "News or blog feed", retired: "Old job board" },
@@ -154,6 +153,21 @@ describe("CollectorsLanding", () => {
     ).toHaveAttribute("href", "/dashboard/collectors/runs/run-5");
   });
 
+  it("shows only the line while the runs load, with no skeleton flash", () => {
+    overview.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    renderLanding();
+    expect(
+      screen.getByRole("heading", { name: en.collectors.workspace.landing }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(document.querySelector('[data-slot="skeleton"]')).toBeNull();
+  });
+
   it("shows no run name before the names have loaded", () => {
     overview.mockReturnValue({
       data: undefined,
@@ -185,6 +199,8 @@ describe("CollectorsLanding", () => {
         state: { data: { recentRuns: [{ status: "failed" }] } },
       }),
     ).toBe(false);
+    // Nothing loaded yet: nothing to poll for.
+    expect(options.refetchInterval({ state: { data: undefined } })).toBe(false);
   });
 
   it("keeps the line and stays quiet when the runs can't load", () => {

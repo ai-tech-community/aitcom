@@ -17,7 +17,8 @@ import { api } from "@/trpc/react";
  * `/dashboard/collectors` with no preset open: one line that says how to
  * start (pick a site in the rail, or paste a link there) and the member's
  * last runs. No runs → only the line; the runs are supplementary, so a
- * failed load hides them.
+ * failed load hides them, and they appear only once loaded (no skeleton
+ * flash for a member who has none).
  */
 export function CollectorsLanding() {
   const t = useTranslations("collectors");
@@ -43,6 +44,7 @@ export function CollectorsLanding() {
           namer,
         )}
         optional
+        appearWhenReady
       >
         <ul
           aria-label={t("workspace.latestRuns")}
