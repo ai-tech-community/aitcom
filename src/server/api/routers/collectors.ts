@@ -61,7 +61,7 @@ export const collectorsRouter = createTRPCRouter({
   start: protectedProcedure
     .input(
       z.object({
-        collectorId: z.string().min(1).max(64),
+        presetId: z.string().min(1).max(64),
         input: z.unknown(),
         acknowledged: z.boolean(),
       }),
@@ -78,7 +78,7 @@ export const collectorsRouter = createTRPCRouter({
       return runs.startRun({
         userId,
         origin: "web",
-        collectorId: input.collectorId,
+        presetId: input.presetId,
         input: input.input,
       });
     }),

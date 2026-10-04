@@ -4231,6 +4231,10 @@
       "fixFields": "Sommige velden hebben aandacht nodig.",
       "invalidField": "Controleer dit veld.",
       "invalidUrl": "Gebruik een webadres dat begint met https://.",
+      "recognised": "Herkend als {name}.",
+      "pickAnother": "Klopt dit niet? Kies een andere.",
+      "showSettings": "Toon instellingen",
+      "hideSettings": "Verberg instellingen",
       "problem": {
         "selector": {
           "empty": "Vul een selector in.",

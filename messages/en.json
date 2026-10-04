@@ -4231,6 +4231,10 @@
       "fixFields": "Some fields need attention.",
       "invalidField": "Check this field.",
       "invalidUrl": "Use a web address that starts with https://.",
+      "recognised": "Recognised as {name}.",
+      "pickAnother": "Not right? Pick another.",
+      "showSettings": "Show settings",
+      "hideSettings": "Hide settings",
       "problem": {
         "selector": {
           "empty": "Enter a selector.",

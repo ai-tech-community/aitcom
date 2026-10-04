@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CircleAlertIcon, InfoIcon } from "lucide-react";
+import { ChevronDownIcon, CircleAlertIcon, InfoIcon } from "lucide-react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 
 import {
@@ -9,11 +9,10 @@ import {
   FIELD_RENDERERS,
 } from "@/components/collectors/field-renderers";
 import {
-  DashboardSection,
+  SectionBody,
   statusFromQueries,
 } from "@/components/dashboard/dashboard-section";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -31,6 +30,13 @@ import {
   placeProblems,
   problemCopy,
 } from "@/lib/collectors/input-problems";
+import {
+  hasProblemIn,
+  presetInitialValues,
+  splitFields,
+} from "@/lib/collectors/preset-form";
+import { mainInput } from "@/lib/collectors/run-name";
+import { cn } from "@/lib/utils";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 type StartResult = RouterOutputs["collectors"]["start"];
@@ -65,8 +71,28 @@ function problemOf(result: Extract<StartResult, { ok: false }>): Problem {
   }
 }
 
-/** The start-a-run screen: one collector's form, drawn from its schema. */
-export function StartRunForm({ collectorId }: { collectorId: string }) {
+const NO_FIELDS: FormField[] = [];
+const NO_ASK: string[] = [];
+const NO_BASE: Record<string, unknown> = {};
+
+export type StartRunFormProps = {
+  presetId: string;
+  /** Values from a pasted link, by input field name. */
+  prefill: Record<string, string>;
+  /** The paste was recognised as this preset (not the Custom page fallback). */
+  recognised: boolean;
+};
+
+/**
+ * A preset's start page. Keyed by preset: the workspace layout stays mounted
+ * and Next reuses this page between presets, so without the key typed values
+ * would carry over to the next preset.
+ */
+export function StartRunForm(props: StartRunFormProps) {
+  return <PresetStart key={props.presetId} {...props} />;
+}
+
+function PresetStart({ presetId, prefill, recognised }: StartRunFormProps) {
   const t = useTranslations("collectors");
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
@@ -74,31 +100,46 @@ export function StartRunForm({ collectorId }: { collectorId: string }) {
   const locale = useLocale() === "nl" ? "nl" : "en";
   const overview = api.collectors.overview.useQuery({ locale });
   const data = overview.data;
-  const collector = data?.collectors.find((c) => c.id === collectorId);
+  const preset = data?.presets.find((p) => p.id === presetId);
+  const collector = preset
+    ? data?.collectors.find((c) => c.id === preset.collectorId)
+    : undefined;
   const fields = React.useMemo(
-    () => (collector ? formFieldsFor(collector) : null),
-    [collector],
+    () =>
+      preset && collector
+        ? formFieldsFor({
+            fields: preset.fields,
+            inputJsonSchema: collector.inputJsonSchema,
+          })
+        : null,
+    [preset, collector],
+  );
+  const formFields = fields?.ok ? fields.fields : NO_FIELDS;
+  const ask = preset?.ask ?? NO_ASK;
+  const base = preset?.base ?? NO_BASE;
+  const { asked, settings } = React.useMemo(
+    () => splitFields(formFields, ask),
+    [formFields, ask],
   );
   // Made once per form: a rows field's starting rows carry ids, and new ids
   // on every render would remount their inputs.
   const initialValues = React.useMemo(
-    () =>
-      Object.fromEntries(
-        (fields?.ok ? fields.fields : []).map((f) => [f.name, initialValue(f)]),
-      ),
-    [fields],
+    () => presetInitialValues(formFields, base, prefill),
+    [formFields, base, prefill],
   );
 
   const [values, setValues] = React.useState<Record<string, FieldValue>>({});
   const [acknowledged, setAcknowledged] = React.useState(false);
   const [placed, setPlaced] = React.useState<PlacedProblems | null>(null);
   const [problem, setProblem] = React.useState<Problem | null>(null);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const settingsId = React.useId();
   // What the last start sent: the server names rows by their place in it.
   const sent = React.useRef<Record<string, FieldValue> | null>(null);
 
   const valueOf = (field: FormField): FieldValue =>
     values[field.name] ?? initialValues[field.name] ?? initialValue(field);
-  const currentValues = (formFields: FormField[]) =>
+  const currentValues = () =>
     Object.fromEntries(formFields.map((f) => [f.name, valueOf(f)]));
 
   const start = api.collectors.start.useMutation({
@@ -107,14 +148,14 @@ export function StartRunForm({ collectorId }: { collectorId: string }) {
         router.push(`/dashboard/collectors/runs/${result.runId}`);
         return;
       }
-      const formFields = fields?.ok ? fields.fields : [];
-      setPlaced(
-        placeProblems(
-          formFields,
-          sent.current ?? currentValues(formFields),
-          result.fieldErrors ?? {},
-        ),
+      const where = placeProblems(
+        formFields,
+        sent.current ?? currentValues(),
+        result.fieldErrors ?? {},
       );
+      setPlaced(where);
+      // A refused value behind "Show settings" must not stay hidden.
+      if (hasProblemIn(settings, where)) setSettingsOpen(true);
       setProblem(problemOf(result));
     },
     onError: (error) => {
@@ -171,156 +212,184 @@ export function StartRunForm({ collectorId }: { collectorId: string }) {
     }
   }
 
+  function renderField(field: FormField) {
+    const Render = FIELD_RENDERERS[field.kind];
+    return (
+      <Render
+        key={field.name}
+        field={field}
+        id={`field-${field.name}`}
+        value={valueOf(field)}
+        error={problemWords(placed?.fields[field.name]?.[0], field)}
+        cellErrors={cellErrorsOf(field)}
+        onChange={(v) => setValues((prev) => ({ ...prev, [field.name]: v }))}
+      />
+    );
+  }
+
   const backToList = (
     <Button asChild variant="outline">
       <Link href="/dashboard/collectors">{t("start.backToList")}</Link>
     </Button>
   );
 
+  const detail = preset ? mainInput(prefill, preset.ask[0]) : null;
+  const recognisedName = preset
+    ? detail
+      ? `${preset.title} (${detail})`
+      : preset.title
+    : "";
+
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <nav
-        aria-label="Breadcrumb"
-        className="flex items-center gap-2 text-[13px]"
-      >
-        <Link
-          href="/dashboard/collectors"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {t("breadcrumb.collectors")}
-        </Link>
-        <span aria-hidden="true" className="text-muted-foreground">
-          /
-        </span>
-        <span aria-current="page" className="text-foreground/80 truncate">
-          {collector?.title ?? collectorId}
-        </span>
-      </nav>
-
-      <DashboardSection
-        title={t("title")}
-        status={statusFromQueries(overview, { isEmpty: !collector })}
-        empty={<EmptyState title={t("start.notFound")} action={backToList} />}
-      >
-        {!collector ? null : !fields?.ok ? (
-          <EmptyState title={t("start.unsupported")} action={backToList} />
-        ) : (
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h3 className="text-2xl font-semibold tracking-tight">
-                  {collector.title}
-                </h3>
-                <Badge variant="secondary">{t(`kind.${collector.kind}`)}</Badge>
-              </div>
-              <p className="text-muted-foreground max-w-prose text-[15px] leading-relaxed">
-                {collector.description}
+    <SectionBody
+      status={statusFromQueries(overview, { isEmpty: !preset || !collector })}
+      empty={<EmptyState title={t("start.notFound")} action={backToList} />}
+    >
+      {!preset || !collector ? null : !fields?.ok ? (
+        <EmptyState title={t("start.unsupported")} action={backToList} />
+      ) : (
+        <div className="flex max-w-3xl flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-2xl font-semibold tracking-tight">
+              {preset.title}
+            </h2>
+            <p className="text-muted-foreground max-w-prose text-[15px] leading-relaxed">
+              {preset.summary}
+            </p>
+            {recognised ? (
+              <p className="text-sm">
+                {t("start.recognised", { name: recognisedName })}{" "}
+                <Link
+                  href="/dashboard/collectors"
+                  className="font-medium underline underline-offset-4"
+                >
+                  {t("start.pickAnother")}
+                </Link>
               </p>
-            </div>
+            ) : null}
+          </div>
 
-            {needsAck ? (
-              <section
-                aria-labelledby="collectors-first-use"
-                className="bg-sidebar border-border flex flex-col gap-3 rounded-xl border px-6 py-5"
-              >
-                <div className="flex items-center gap-2.5">
-                  <InfoIcon
-                    aria-hidden="true"
-                    className="text-info size-[18px]"
-                  />
-                  <h4
-                    id="collectors-first-use"
-                    className="text-[15px] font-semibold"
+          {needsAck ? (
+            <section
+              aria-labelledby="collectors-first-use"
+              className="bg-sidebar border-border flex flex-col gap-3 rounded-xl border px-6 py-5"
+            >
+              <div className="flex items-center gap-2.5">
+                <InfoIcon
+                  aria-hidden="true"
+                  className="text-info size-[18px]"
+                />
+                <h3
+                  id="collectors-first-use"
+                  className="text-[15px] font-semibold"
+                >
+                  {t("start.firstUseTitle")}
+                </h3>
+              </div>
+              <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed">
+                <li>{t("start.firstUse1")}</li>
+                <li>{t("start.firstUse2")}</li>
+                <li>{t("start.firstUse3")}</li>
+                <li>{t("start.firstUse4")}</li>
+              </ul>
+              <div className="flex items-start gap-2.5 pt-1">
+                <Checkbox
+                  id="collectors-acknowledge"
+                  tone="ink"
+                  checked={acknowledged}
+                  onCheckedChange={(c) => setAcknowledged(c === true)}
+                />
+                <Label
+                  htmlFor="collectors-acknowledge"
+                  className="text-sm font-normal"
+                >
+                  {t("start.acknowledge")}
+                </Label>
+              </div>
+            </section>
+          ) : null}
+
+          <form
+            noValidate
+            className="border-border flex flex-col gap-5 rounded-xl border p-6 shadow-sm"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setPlaced(null);
+              setProblem(null);
+              sent.current = currentValues();
+              start.mutate({
+                presetId,
+                input: coerceInput(formFields, sent.current),
+                acknowledged,
+              });
+            }}
+          >
+            {asked.map(renderField)}
+
+            {settings.length > 0 ? (
+              <div className="flex flex-col gap-5">
+                <div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-expanded={settingsOpen}
+                    aria-controls={settingsId}
+                    onClick={() => setSettingsOpen((open) => !open)}
                   >
-                    {t("start.firstUseTitle")}
-                  </h4>
+                    <ChevronDownIcon
+                      aria-hidden="true"
+                      className={cn(
+                        "transition-transform motion-reduce:transition-none",
+                        settingsOpen && "rotate-180",
+                      )}
+                    />
+                    {settingsOpen
+                      ? t("start.hideSettings")
+                      : t("start.showSettings")}
+                  </Button>
                 </div>
-                <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed">
-                  <li>{t("start.firstUse1")}</li>
-                  <li>{t("start.firstUse2")}</li>
-                  <li>{t("start.firstUse3")}</li>
-                  <li>{t("start.firstUse4")}</li>
-                </ul>
-                <div className="flex items-start gap-2.5 pt-1">
-                  <Checkbox
-                    id="collectors-acknowledge"
-                    tone="ink"
-                    checked={acknowledged}
-                    onCheckedChange={(c) => setAcknowledged(c === true)}
-                  />
-                  <Label
-                    htmlFor="collectors-acknowledge"
-                    className="text-sm font-normal"
-                  >
-                    {t("start.acknowledge")}
-                  </Label>
+                <div
+                  id={settingsId}
+                  hidden={!settingsOpen}
+                  className="flex flex-col gap-5"
+                >
+                  {settings.map(renderField)}
                 </div>
-              </section>
+              </div>
             ) : null}
 
-            <form
-              noValidate
-              className="border-border flex flex-col gap-5 rounded-xl border p-6 shadow-sm"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setPlaced(null);
-                setProblem(null);
-                sent.current = currentValues(fields.fields);
-                start.mutate({
-                  collectorId,
-                  input: coerceInput(fields.fields, sent.current),
-                  acknowledged,
-                });
-              }}
-            >
-              {fields.fields.map((field) => {
-                const Render = FIELD_RENDERERS[field.kind];
-                return (
-                  <Render
-                    key={field.name}
-                    field={field}
-                    id={`field-${field.name}`}
-                    value={valueOf(field)}
-                    error={problemWords(placed?.fields[field.name]?.[0], field)}
-                    cellErrors={cellErrorsOf(field)}
-                    onChange={(v) =>
-                      setValues((prev) => ({ ...prev, [field.name]: v }))
-                    }
-                  />
-                );
+            <p className="text-muted-foreground border-border border-t pt-4 font-mono text-xs">
+              {t("start.limits", {
+                items: format.number(collector.limits.maxItems),
+                pages: collector.limits.maxPages,
+                seconds: Math.round(collector.limits.maxDurationMs / 1000),
+                perDay: runsPerDay,
               })}
+            </p>
 
-              <p className="text-muted-foreground border-border border-t pt-4 font-mono text-xs">
-                {t("start.limits", {
-                  items: format.number(collector.limits.maxItems),
-                  pages: collector.limits.maxPages,
-                  seconds: Math.round(collector.limits.maxDurationMs / 1000),
-                  perDay: runsPerDay,
-                })}
-              </p>
+            {problem ? (
+              <Alert variant="destructive">
+                <CircleAlertIcon aria-hidden="true" />
+                <AlertDescription>{problemMessage(problem)}</AlertDescription>
+              </Alert>
+            ) : null}
 
-              {problem ? (
-                <Alert variant="destructive">
-                  <CircleAlertIcon aria-hidden="true" />
-                  <AlertDescription>{problemMessage(problem)}</AlertDescription>
-                </Alert>
-              ) : null}
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="submit"
-                  disabled={start.isPending || (needsAck && !acknowledged)}
-                >
-                  {start.isPending ? t("start.submitting") : t("start.submit")}
-                </Button>
-                <Button asChild variant="ghost">
-                  <Link href="/dashboard/collectors">{t("start.cancel")}</Link>
-                </Button>
-              </div>
-            </form>
-          </div>
-        )}
-      </DashboardSection>
-    </div>
+            <div className="flex flex-wrap gap-2">
+              {/* The screen's one orange action (DESIGN.md One Voice Rule). */}
+              <Button
+                type="submit"
+                disabled={start.isPending || (needsAck && !acknowledged)}
+              >
+                {start.isPending ? t("start.submitting") : t("start.submit")}
+              </Button>
+              <Button asChild variant="ghost">
+                <Link href="/dashboard/collectors">{t("start.cancel")}</Link>
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+    </SectionBody>
   );
 }

@@ -79,7 +79,7 @@ describe("collectors router", () => {
       "start",
       (c: ReturnType<typeof caller>) =>
         c.collectors.start({
-          collectorId: "feed-items",
+          presetId: "feed",
           input: {},
           acknowledged: true,
         }),
@@ -156,7 +156,7 @@ describe("collectors router", () => {
     ).toBe(true);
     await expect(
       caller().collectors.start({
-        collectorId: "feed-items",
+        presetId: "feed",
         input: { url: "https://e.com/f" },
         acknowledged: false,
       }),
@@ -170,14 +170,14 @@ describe("collectors router", () => {
   it("starts a web run for the signed-in member and returns the facade's answer", async () => {
     const input = { url: "https://e.com/f" };
     const result = await caller().collectors.start({
-      collectorId: "feed-items",
+      presetId: "feed",
       input,
       acknowledged: false,
     });
     expect(h.facade.startRun).toHaveBeenCalledWith({
       userId: "user-1",
       origin: "web",
-      collectorId: "feed-items",
+      presetId: "feed",
       input,
     });
     expect(result).toEqual({ ok: true, runId: "run-2" });
@@ -186,7 +186,7 @@ describe("collectors router", () => {
   it("starts an acknowledged first run without looking up earlier runs", async () => {
     h.facade.listRuns.mockResolvedValue({ runs: [], nextCursor: null });
     const result = await caller().collectors.start({
-      collectorId: "feed-items",
+      presetId: "feed",
       input: { url: "https://e.com/f" },
       acknowledged: true,
     });
@@ -194,7 +194,7 @@ describe("collectors router", () => {
     expect(h.facade.startRun).toHaveBeenCalledWith({
       userId: "user-1",
       origin: "web",
-      collectorId: "feed-items",
+      presetId: "feed",
       input: { url: "https://e.com/f" },
     });
     expect(result).toEqual({ ok: true, runId: "run-2" });
@@ -210,7 +210,7 @@ describe("collectors router", () => {
     });
     await expect(
       caller().collectors.start({
-        collectorId: "feed-items",
+        presetId: "feed",
         input: {},
         acknowledged: true,
       }),
