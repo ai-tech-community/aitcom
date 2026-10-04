@@ -47,9 +47,11 @@ the member copies and adjusts (refactoring.guru *Prototype*).
 
 ```ts
 // src/server/collectors/presets/preset.ts
+import type { PresetGroup } from "@/lib/collectors/presets"; // "jobs" | "research" | "custom"
+
 export interface CollectorPreset<I> {
   id: string;                       // url slug, e.g. "greenhouse-board"
-  group: "jobs" | "research" | "custom";
+  group: PresetGroup;
   title: LocalizedText;
   summary: LocalizedText;           // one sentence: what it reads
   collectorId: string;              // must exist in the collector catalog
@@ -57,12 +59,22 @@ export interface CollectorPreset<I> {
   base: Partial<I>;
   /** Input fields shown up front; everything else sits behind "Show settings". */
   ask: readonly (keyof I & string)[];
-  /** Field hints that override the collector's own for this preset. */
+  /** Field hints that replace the collector's own for this preset. */
   hints?: Partial<Record<keyof I & string, FieldHint>>;
   /** Recognise a pasted address; return the input to pre-fill, or null. */
-  recognize?(url: URL): Partial<I> | null;
+  recognize?: (url: URL) => Partial<I> | null;
 }
 ```
+
+- `recognize` is an optional function property, not a method, so passing it
+  around unbound is safe (the unbound-method lint).
+- A preset's hint replaces the collector's hint for that field as a whole;
+  fields keep the collector's order, and a hint for a field the collector
+  does not hint comes last.
+- What screens share with the server (`PRESET_GROUPS` / `PresetGroup`,
+  `CUSTOM_PAGE_PRESET_ID`, the former start ids) lives in
+  `src/lib/collectors/presets.ts`, an import-free module, so client code never
+  imports from `src/server/`.
 
 - Presets live in `src/server/collectors/presets/catalog.ts` as typed data in
   code, like the collector catalog (ADR-0040) and the badge catalog
@@ -77,7 +89,11 @@ export interface CollectorPreset<I> {
 - The facade (`CollectorRuns.startRun` in `src/server/collectors/runs.ts`)
   starts a run either by preset (the web) or by collector id (the agent,
   ADR-0040; the run's `preset_id` stays null). A preset whose collector is
-  switched off (`COLLECTORS_DISABLED`) is hidden and cannot start.
+  switched off (`COLLECTORS_DISABLED`) is hidden and cannot start. Every
+  facade dependency comes through a port: the collector catalog port has
+  `all()` / `get()` (what may start now) and `everything()` (the full
+  catalog, switched-off collectors included, for naming and exporting
+  existing runs).
 - The server does not merge `base` into the input. The start form pre-fills
   `base` (and any pasted values); the server validates exactly what is sent
   with the collector's `inputSchema`.
@@ -104,7 +120,11 @@ Recognition never fetches: it is a pure function of the address, so pasting
 a link sends no request to that site. Pasted text is read as an address by
 `parseAddress` (`src/lib/collectors/address.ts`), in the browser and again on
 the server: text without a scheme is read as `https://`; only http(s), a
-host with a dot, no user name or password, at most 2,048 characters.
+host with a dot, no user name or password, at most 2,048 characters (checked
+again after the scheme is added). `parseAddress` is a shape check only, not a
+network-safety gate: IP literals and `localhost.` pass it. That is safe
+because recognition never fetches and every fetch of a run goes through the
+collector context, which is the guard.
 
 Recognition is served by a tRPC query (`collectors.recognize`) so the matcher
 code stays on the server with the catalog. It answers
@@ -213,7 +233,10 @@ by every collector page (start, My runs, one run).
   label; a "My runs" link. The active entry is marked (`aria-current`); a run
   page marks "My runs" active. "My runs" is a fixed route, so it stays
   reachable while the preset list is loading or has failed. On narrow screens
-  (below `lg`) the list folds into a compact picker above the content.
+  (below `lg`) the list folds into a compact picker above the content. From
+  `lg` the rail is sticky and scrolls on its own when taller than the
+  viewport (the member side panel's pattern), so its footer stays reachable
+  as presets grow.
 - **Rail footer**: the usage line ("{used} of {limit} runs used · last 24
   hours") and the "How our collector visits sites" link.
 - **Right side**: the page's content with one heading (one `h2`).
@@ -235,17 +258,21 @@ by every collector page (start, My runs, one run).
   the member typed.
 - After a refused start, focus moves to the first refused field (its refused
   input, else its first input); "Show settings" opens by itself when that
-  field is inside it. With no refused field, focus moves to the alert.
+  field is inside it. With no refused field, focus moves to the problem
+  message itself: it is then a labelled group, not a live alert, so it is
+  read once (on focus), and it shows the DESIGN.md focus ring. When a field
+  takes focus, the message stays a live alert and is not focusable.
 - An unknown or unavailable preset id shows "This kind of collection isn't
   available. Pick one from the list."
 - Former start addresses named a collector (`/new/feed-items`,
   `/new/page-list`). They redirect permanently, query kept, to the preset
   that replaced them (`feed`, `custom-page`). The same frozen map
-  (`src/server/collectors/presets/former-start-ids.ts`) names runs from
-  before presets. New presets never need an entry.
+  (`src/lib/collectors/presets.ts`) names runs from before presets. New
+  presets never need an entry.
 - `/dashboard/collectors` shows the workspace with no preset selected: the
   right side has the line "Pick a site from the list, or paste a link." (its
-  one heading) and the member's last 5 runs (none → only the line). The
+  one heading) and the member's last 5 runs (none → only the line; the runs
+  appear only once loaded, with no skeleton flash). The
   paste box does not take focus by itself, so screen-reader users still meet
   the greeting and tabs first (WCAG 2.2 AA).
 
@@ -271,7 +298,11 @@ started before this change and for agent starts) so every screen names a run
 by its preset. A run from before presets is named through the frozen
 former-start map. The overview also returns `titles`: every preset and
 collector title, switched-off ones included, so a run's name never falls
-back to a raw id.
+back to a raw id. The names come from the overview query, which may load
+after the runs: until it has loaded, the run page, My runs and the landing
+keep their loading state and show no name. If it fails, a run is named with
+the neutral label "Collection" ("Verzameling") plus its first address, never
+its collector id.
 
 ## Data
 
@@ -300,7 +331,12 @@ back to a raw id.
   (`greenhouse.io` marketing pages, `news.ycombinator.com/item?id=`).
 - Catalog invariants (above).
 - Components: rail (active state, narrow screens), paste flow (match,
-  no match, invalid), "Show settings", headings (no breadcrumbs).
+  no match, invalid), "Show settings", headings (no breadcrumbs); the former
+  start address redirect (query kept); the start form keyed per preset and
+  per paste (a new paste starts afresh, the same start keeps typed values);
+  focus after a refused start (first refused field, opening "Show settings",
+  else the problem message); run names while the overview loads and after
+  it fails.
 - Real-world check after Slice B: the 33-startup sample through the real
   engine on the local test database, as in the page-list check; the
   JavaScript-built boards are expected to work through `job-board`.
