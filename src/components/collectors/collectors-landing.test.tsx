@@ -154,6 +154,18 @@ describe("CollectorsLanding", () => {
     ).toHaveAttribute("href", "/dashboard/collectors/runs/run-5");
   });
 
+  it("shows no run name before the names have loaded", () => {
+    overview.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    renderLanding();
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(document.body.textContent).not.toContain("feed-items");
+  });
+
   it("polls every 5 seconds while a listed run is active", () => {
     withData([{ ...run, status: "running", stopReason: null }]);
     renderLanding();
@@ -188,5 +200,6 @@ describe("CollectorsLanding", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByRole("list")).toBeNull();
+    expect(document.body.textContent).not.toContain("feed-items");
   });
 });

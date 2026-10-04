@@ -4258,7 +4258,8 @@
       "downloadCsv": "CSV downloaden",
       "downloadJson": "JSON downloaden",
       "log": "Runlogboek",
-      "emptyLog": "Niets gelogd."
+      "emptyLog": "Niets gelogd.",
+      "fallbackTitle": "Verzameling"
     },
     "history": {
       "title": "Mijn runs",

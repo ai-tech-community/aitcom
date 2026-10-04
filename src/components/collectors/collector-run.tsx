@@ -4,7 +4,7 @@ import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { RunStatusBadge } from "@/components/collectors/run-status-badge";
-import { useRunNamer } from "@/components/collectors/use-run-namer";
+import { untilNamed, useRunNamer } from "@/components/collectors/use-run-namer";
 import {
   SectionBody,
   statusFromQueries,
@@ -95,7 +95,7 @@ export function CollectorRun({ runId }: { runId: string }) {
   const t = useTranslations("collectors");
   const statusSentence = useStatusSentence();
   const failureDetail = useFailureDetail();
-  const nameOf = useRunNamer();
+  const namer = useRunNamer();
   const locale = useLocale() === "nl" ? "nl" : "en";
   const run = api.collectors.run.useQuery(
     { runId },
@@ -153,7 +153,7 @@ export function CollectorRun({ runId }: { runId: string }) {
   const summary = overview.data?.collectors.find(
     (c) => c.id === data?.collectorId,
   );
-  const name = data ? nameOf(data) : null;
+  const name = data ? namer.nameOf(data) : null;
   const emptyHint = data ? emptyRunHint(data, summary?.kind) : null;
   const detail = data ? failureDetail(data) : null;
   const rows = items.data?.items ?? [];
@@ -162,7 +162,7 @@ export function CollectorRun({ runId }: { runId: string }) {
   const from = afterSeq + 2;
 
   return (
-    <SectionBody status={statusFromQueries(run)}>
+    <SectionBody status={untilNamed(statusFromQueries(run), namer)}>
       {data && name ? (
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2.5">

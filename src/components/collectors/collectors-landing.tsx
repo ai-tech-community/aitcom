@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 
 import { RunStatusBadge } from "@/components/collectors/run-status-badge";
-import { useRunNamer } from "@/components/collectors/use-run-namer";
+import { untilNamed, useRunNamer } from "@/components/collectors/use-run-namer";
 import {
   SectionBody,
   statusFromQueries,
@@ -29,7 +29,7 @@ export function CollectorsLanding() {
         runListPollInterval(query.state.data?.recentRuns),
     },
   );
-  const nameOf = useRunNamer();
+  const namer = useRunNamer();
   const runs = overview.data?.recentRuns ?? [];
 
   return (
@@ -38,7 +38,10 @@ export function CollectorsLanding() {
         {t("workspace.landing")}
       </h2>
       <SectionBody
-        status={statusFromQueries(overview, { isEmpty: runs.length === 0 })}
+        status={untilNamed(
+          statusFromQueries(overview, { isEmpty: runs.length === 0 }),
+          namer,
+        )}
         optional
       >
         <ul
@@ -46,7 +49,7 @@ export function CollectorsLanding() {
           className="divide-border border-border divide-y border-y"
         >
           {runs.map((run) => {
-            const name = nameOf(run);
+            const name = namer.nameOf(run);
             return (
               <li
                 key={run.id}

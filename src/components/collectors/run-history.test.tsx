@@ -154,6 +154,54 @@ describe("RunHistory", () => {
     expect(screen.queryByText("greenhouse")).toBeNull();
   });
 
+  it("names a run from before presets after the preset that replaced it", () => {
+    h.runs.mockReturnValue(
+      ok({ runs: [run("r1", { presetId: null })], nextCursor: null }),
+    );
+    renderHistory();
+    expect(
+      screen.getByRole("link", { name: "News or blog feed" }),
+    ).toHaveAttribute("href", "/dashboard/collectors/runs/r1");
+    expect(screen.queryByText("feed-items")).toBeNull();
+  });
+
+  it("waits for the names before listing runs that loaded first", () => {
+    h.overview.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    h.runs.mockReturnValue(
+      ok({ runs: [run("r1", { presetId: null })], nextCursor: null }),
+    );
+    renderHistory();
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(document.body.textContent).not.toContain("feed-items");
+  });
+
+  it("names runs with a neutral label when the names cannot load", () => {
+    h.overview.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      refetch: vi.fn(),
+    });
+    h.runs.mockReturnValue(
+      ok({ runs: [run("r1", { presetId: null })], nextCursor: null }),
+    );
+    renderHistory();
+    const link = screen.getByRole("link", {
+      name: en.collectors.run.fallbackTitle,
+    });
+    expect(link).toHaveAttribute("href", "/dashboard/collectors/runs/r1");
+    expect(link.nextElementSibling).toHaveTextContent(
+      "blog.example.org/feed.xml",
+    );
+    expect(document.body.textContent).not.toContain("feed-items");
+  });
+
   it("loads older runs with the next cursor", () => {
     h.runs.mockImplementation((input: { cursor?: string }) =>
       ok(

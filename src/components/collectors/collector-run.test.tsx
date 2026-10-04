@@ -354,6 +354,25 @@ describe("CollectorRun", () => {
     expect(heading.textContent).not.toContain("greenhouse-jobs");
   });
 
+  it("waits for the names before showing a run that loaded first", () => {
+    h.overview.mockReturnValue({ ...ok(undefined), isPending: true });
+    h.run.mockReturnValue(ok({ ...base, presetId: null }));
+    renderRun();
+    expect(screen.queryByRole("heading")).toBeNull();
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(document.body.textContent).not.toContain("feed-items");
+  });
+
+  it("names the run with a neutral label when the names cannot load", () => {
+    h.overview.mockReturnValue({ ...ok(undefined), isError: true });
+    h.run.mockReturnValue(ok({ ...base, presetId: null }));
+    renderRun();
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      `${en.collectors.run.fallbackTitle} · blog.example.org/feed.xml`,
+    );
+    expect(document.body.textContent).not.toContain("feed-items");
+  });
+
   it("offers My runs when the run is gone", () => {
     h.run.mockReturnValue({
       ...ok(undefined),

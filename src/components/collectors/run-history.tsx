@@ -5,7 +5,7 @@ import { ListIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { RunStatusBadge } from "@/components/collectors/run-status-badge";
-import { useRunNamer } from "@/components/collectors/use-run-namer";
+import { untilNamed, useRunNamer } from "@/components/collectors/use-run-namer";
 import {
   SectionBody,
   statusFromQueries,
@@ -38,7 +38,7 @@ const COLUMNS = [
  */
 export function RunHistory() {
   const t = useTranslations("collectors");
-  const nameOf = useRunNamer();
+  const namer = useRunNamer();
   const first = api.collectors.runs.useQuery(
     { limit: PAGE },
     {
@@ -75,9 +75,12 @@ export function RunHistory() {
         </span>
       </div>
       <SectionBody
-        status={statusFromQueries(first, {
-          isEmpty: first.data?.runs.length === 0,
-        })}
+        status={untilNamed(
+          statusFromQueries(first, {
+            isEmpty: first.data?.runs.length === 0,
+          }),
+          namer,
+        )}
         empty={
           <EmptyState
             icon={<ListIcon aria-hidden="true" />}
@@ -110,12 +113,15 @@ export function RunHistory() {
               </tr>
             </thead>
             <tbody>
-              <HistoryRows runs={first.data?.runs ?? []} nameOf={nameOf} />
+              <HistoryRows
+                runs={first.data?.runs ?? []}
+                nameOf={namer.nameOf}
+              />
               {cursors.map((cursor, i) => (
                 <HistoryPage
                   key={cursor}
                   cursor={cursor}
-                  nameOf={nameOf}
+                  nameOf={namer.nameOf}
                   onNext={i === cursors.length - 1 ? setTailNext : ignore}
                 />
               ))}

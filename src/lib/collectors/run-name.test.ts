@@ -19,6 +19,8 @@ const titles = {
   ]),
 };
 const noTitles = { presets: new Map(), collectors: new Map() };
+/** The neutral label the screens pass for a run nothing else names. */
+const FALLBACK = "Collection";
 
 describe("runTarget", () => {
   it("returns null for input that is not an object", () => {
@@ -78,6 +80,7 @@ describe("runName", () => {
         },
         presets,
         titles,
+        FALLBACK,
       ),
     ).toEqual({ title: "Custom page", detail: "jobs.example.com/careers" });
   });
@@ -89,7 +92,7 @@ describe("runName", () => {
       input: { url: "https://example.com/feed.xml" },
     };
     expect(presetIdOfRun(run)).toBe("feed");
-    expect(runName(run, presets, titles)).toEqual({
+    expect(runName(run, presets, titles, FALLBACK)).toEqual({
       title: "News or blog feed",
       detail: "example.com/feed.xml",
     });
@@ -105,21 +108,37 @@ describe("runName", () => {
         },
         presets,
         titles,
+        FALLBACK,
       ),
     ).toEqual({ title: "Job board", detail: "greenhouse" });
   });
 
-  it("uses the collector id only when nothing better is known", () => {
+  it("never uses the collector id: the neutral label when nothing names the run", () => {
     expect(
       runName(
         { presetId: null, collectorId: "mystery", input: {} },
         [],
         noTitles,
+        FALLBACK,
       ),
-    ).toEqual({ title: "mystery", detail: null });
+    ).toEqual({ title: "Collection", detail: null });
+    // No titles loaded at all (the overview failed): a run from before
+    // presets keeps its address as the detail, under the neutral label.
+    expect(
+      runName(
+        {
+          presetId: null,
+          collectorId: "feed-items",
+          input: { url: "https://example.com/feed.xml" },
+        },
+        [],
+        noTitles,
+        FALLBACK,
+      ),
+    ).toEqual({ title: "Collection", detail: "example.com/feed.xml" });
   });
 
-  it("shows a number as the main input", () => {
+  it("shows the preset's first asked input, not a later number, as the detail", () => {
     expect(
       runName(
         {
@@ -129,6 +148,7 @@ describe("runName", () => {
         },
         presets,
         titles,
+        FALLBACK,
       ),
     ).toEqual({ title: "Hacker News", detail: "top" });
   });
@@ -146,6 +166,7 @@ describe("runName", () => {
           presets: new Map([["greenhouse-board", "Greenhouse board"]]),
           collectors: titles.collectors,
         },
+        FALLBACK,
       ),
     ).toEqual({ title: "Greenhouse board", detail: "greenhouse" });
   });
@@ -157,13 +178,18 @@ describe("runName", () => {
       input: { url: "https://example.com/feed.xml" },
     };
     // The replacing preset is switched off but still has a title.
-    expect(runName(run, [], titles)).toEqual({
+    expect(runName(run, [], titles, FALLBACK)).toEqual({
       title: "News or blog feed",
       detail: "example.com/feed.xml",
     });
     // No preset title known: the collector's title.
     expect(
-      runName(run, [], { presets: new Map(), collectors: titles.collectors }),
+      runName(
+        run,
+        [],
+        { presets: new Map(), collectors: titles.collectors },
+        FALLBACK,
+      ),
     ).toEqual({ title: "Feed items", detail: "example.com/feed.xml" });
   });
 });

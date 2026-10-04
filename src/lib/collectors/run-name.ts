@@ -58,12 +58,16 @@ export type CatalogTitleMaps = {
  * What a run is called on every screen: its preset's title and the preset's
  * main (first asked) input, e.g. "Greenhouse board · acme". A run whose
  * preset is switched off keeps that preset's title; one whose preset is gone
- * falls back to its collector's title. The detail then is its first address.
+ * falls back to its collector's title. Without a listed preset (switched off
+ * or gone) the detail is the run's first string input (`runTarget`). When no
+ * title is known at all, `fallbackTitle` (a neutral, translated label) names
+ * it: a run is never named by a raw id.
  */
 export function runName(
   run: NamedRun,
   presets: readonly NamingPreset[],
   titles: CatalogTitleMaps,
+  fallbackTitle: string,
 ): RunName {
   const presetId = presetIdOfRun(run);
   const preset = presets.find((p) => p.id === presetId);
@@ -72,7 +76,7 @@ export function runName(
       preset?.title ??
       (presetId === null ? undefined : titles.presets.get(presetId)) ??
       titles.collectors.get(run.collectorId) ??
-      run.collectorId,
+      fallbackTitle,
     detail: mainInput(run.input, preset?.ask[0]) ?? runTarget(run.input),
   };
 }
