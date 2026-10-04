@@ -40,6 +40,7 @@ const ok = (data: unknown) => ({
 const run = (id: string, over: Record<string, unknown> = {}) => ({
   id,
   collectorId: "feed-items",
+  presetId: "feed",
   status: "succeeded",
   stopReason: "complete",
   itemCount: 48,
@@ -67,9 +68,11 @@ beforeEach(() => {
   h.overview.mockReturnValue(
     ok({
       collectors: [{ id: "feed-items", title: "Feed items" }],
+      presets: [{ id: "feed", title: "News or blog feed", ask: ["url"] }],
       recentRuns: [],
       usage: { runsToday: 0, runsPerDay: 20 },
       needsAcknowledgement: false,
+      titles: { presets: {}, collectors: {} },
     }),
   );
 });
@@ -91,9 +94,13 @@ describe("RunHistory", () => {
     );
     renderHistory();
     expect(h.runs).toHaveBeenCalledWith({ limit: 20 }, expect.anything());
-    expect(
-      screen.getAllByRole("link", { name: /Feed items/ })[0],
-    ).toHaveAttribute("href", "/dashboard/collectors/runs/r1");
+    const [firstLink] = screen.getAllByRole("link", {
+      name: "News or blog feed",
+    });
+    expect(firstLink).toHaveAttribute("href", "/dashboard/collectors/runs/r1");
+    expect(firstLink!.nextElementSibling).toHaveTextContent(
+      "blog.example.org/feed.xml",
+    );
     expect(
       screen.getByText(en.collectors.stopShort.complete),
     ).toBeInTheDocument();
@@ -101,6 +108,50 @@ describe("RunHistory", () => {
       screen.getByText(en.collectors.stopShort.robots_disallowed),
     ).toBeInTheDocument();
     expect(screen.getByText(en.collectors.status.failed)).toBeInTheDocument();
+  });
+
+  it("has My runs as its one heading, with no breadcrumb or kicker", () => {
+    h.runs.mockReturnValue(ok({ runs: [run("r1")], nextCursor: null }));
+    renderHistory();
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent),
+    ).toEqual([en.collectors.history.title]);
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
+    expect(document.querySelector('[data-slot="section-label"]')).toBeNull();
+  });
+
+  it("keeps the real name of a run whose preset and collector are switched off", () => {
+    h.overview.mockReturnValue(
+      ok({
+        collectors: [],
+        presets: [],
+        recentRuns: [],
+        usage: { runsToday: 0, runsPerDay: 20 },
+        needsAcknowledgement: false,
+        titles: {
+          presets: { greenhouse: "Greenhouse job board" },
+          collectors: { "greenhouse-jobs": "Greenhouse jobs" },
+        },
+      }),
+    );
+    h.runs.mockReturnValue(
+      ok({
+        runs: [
+          run("r1", {
+            collectorId: "greenhouse-jobs",
+            presetId: "greenhouse",
+            input: { board: "acme" },
+          }),
+        ],
+        nextCursor: null,
+      }),
+    );
+    renderHistory();
+    expect(
+      screen.getByRole("link", { name: "Greenhouse job board" }),
+    ).toHaveAttribute("href", "/dashboard/collectors/runs/r1");
+    expect(screen.queryByText("greenhouse-jobs")).toBeNull();
+    expect(screen.queryByText("greenhouse")).toBeNull();
   });
 
   it("loads older runs with the next cursor", () => {
@@ -116,7 +167,9 @@ describe("RunHistory", () => {
       screen.getByRole("button", { name: en.collectors.history.older }),
     );
     expect(h.runs).toHaveBeenCalledWith({ limit: 20, cursor: "c1" });
-    expect(screen.getAllByRole("link", { name: /Feed items/ })).toHaveLength(2);
+    expect(
+      screen.getAllByRole("link", { name: "News or blog feed" }),
+    ).toHaveLength(2);
     expect(
       screen.queryByRole("button", { name: en.collectors.history.older }),
     ).toBeNull();
@@ -133,10 +186,9 @@ describe("RunHistory", () => {
     fireEvent.click(
       screen.getByRole("button", { name: en.collectors.history.older }),
     );
-    expect(screen.getByRole("link", { name: /Feed items/ })).toHaveAttribute(
-      "href",
-      "/dashboard/collectors/runs/r1",
-    );
+    expect(
+      screen.getByRole("link", { name: "News or blog feed" }),
+    ).toHaveAttribute("href", "/dashboard/collectors/runs/r1");
     fireEvent.click(screen.getByRole("button", { name: en.common.retry }));
     expect(refetch).toHaveBeenCalled();
   });
@@ -202,7 +254,9 @@ describe("RunHistory", () => {
       limit: 20,
       cursor: "after-r1",
     });
-    expect(screen.getAllByRole("link", { name: /Feed items/ })).toHaveLength(1);
+    expect(
+      screen.getAllByRole("link", { name: "News or blog feed" }),
+    ).toHaveLength(1);
     fireEvent.click(
       screen.getByRole("button", { name: en.collectors.history.older }),
     );

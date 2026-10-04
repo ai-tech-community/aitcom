@@ -4112,8 +4112,6 @@
     }
   },
   "collectors": {
-    "title": "Data collectors",
-    "intro": "Collect public data from the web for your own research. Pick a collector, fill in a few fields, and get a table you can read here or download.",
     "aboutLink": "How our collector visits sites",
     "usage": "{used} of {limit} runs used · last 24 hours",
     "workspace": {
@@ -4137,20 +4135,6 @@
         "failed": "We couldn't check this link. Try again."
       }
     },
-    "kind": {
-      "api": "API",
-      "feed": "Feed",
-      "page": "Web page"
-    },
-    "youGive": "You give: {fields}",
-    "youGet": "You get: up to {count, plural, one {# row} other {# rows}}",
-    "exampleRow": "Example row",
-    "useCollector": "Use this collector",
-    "recentRuns": "Recent runs",
-    "seeAllRuns": "See all runs",
-    "noRecentRuns": "Your runs will show up here.",
-    "noRecentRunsHint": "Pick a collector above to start your first run.",
-    "noCollectors": "No collectors are available right now.",
     "status": {
       "queued": "Queued",
       "running": "Running",
@@ -4210,10 +4194,6 @@
       "next_page_not_secure": "Next page isn't secure",
       "next_page_too_long": "Next page link too long"
     },
-    "breadcrumb": {
-      "collectors": "Data collectors",
-      "runs": "My runs"
-    },
     "start": {
       "firstUseTitle": "Before your first run",
       "firstUse1": "Use what you collect for your own research.",
@@ -4263,7 +4243,6 @@
       "started": "Started",
       "took": "took {seconds, plural, one {# second} other {# seconds}}",
       "deleted": "Deleted",
-      "input": "Input",
       "counts": "{rows, plural, one {# row} other {# rows}} · {pages, plural, one {# page} other {# pages}} fetched · {skipped, plural, one {# row} other {# rows}} skipped",
       "collecting": "Collecting…",
       "collectingHelp": "This page updates by itself. You can leave; the run keeps going.",
@@ -4284,7 +4263,7 @@
     "history": {
       "title": "My runs",
       "retention": "Runs are deleted after 30 days",
-      "collector": "Collector",
+      "collector": "Run",
       "started": "Started",
       "status": "Status",
       "rows": "Rows",
@@ -4292,8 +4271,8 @@
       "deleted": "Deleted",
       "older": "Older runs",
       "emptyTitle": "No runs yet",
-      "emptyText": "Pick a collector, give it an address, and your table shows up here.",
-      "chooseCollector": "Choose a collector"
+      "emptyText": "Pick a site or paste a link, and your table shows up here.",
+      "chooseCollector": "Choose a site"
     }
   },
   "collectorsAbout": {

@@ -2,12 +2,11 @@
 
 import * as React from "react";
 import { ListIcon } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 
-import { runTarget } from "@/lib/collectors/run-name";
 import { RunStatusBadge } from "@/components/collectors/run-status-badge";
+import { useRunNamer } from "@/components/collectors/use-run-namer";
 import {
-  DashboardSection,
   SectionBody,
   statusFromQueries,
 } from "@/components/dashboard/dashboard-section";
@@ -19,6 +18,7 @@ import {
   presentRun,
   runListPollInterval,
 } from "@/lib/collectors/run-presentation";
+import type { RunName } from "@/lib/collectors/run-name";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 const PAGE = 20;
@@ -38,9 +38,7 @@ const COLUMNS = [
  */
 export function RunHistory() {
   const t = useTranslations("collectors");
-  const locale = useLocale() === "nl" ? "nl" : "en";
-  const overview = api.collectors.overview.useQuery({ locale });
-  const titles = new Map(overview.data?.collectors.map((c) => [c.id, c.title]));
+  const nameOf = useRunNamer();
   const first = api.collectors.runs.useQuery(
     { limit: PAGE },
     {
@@ -67,35 +65,19 @@ export function RunHistory() {
   const nextCursor = cursors.length ? tailNext : first.data?.nextCursor;
 
   return (
-    <div className="flex flex-col gap-6">
-      <nav
-        aria-label="Breadcrumb"
-        className="flex items-center gap-2 text-[13px]"
-      >
-        <Link
-          href="/dashboard/collectors"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {t("breadcrumb.collectors")}
-        </Link>
-        <span aria-hidden="true" className="text-muted-foreground">
-          /
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {t("history.title")}
+        </h2>
+        <span className="text-muted-foreground text-xs">
+          {t("history.retention")}
         </span>
-        <span aria-current="page" className="text-foreground/80 truncate">
-          {t("breadcrumb.runs")}
-        </span>
-      </nav>
-
-      <DashboardSection
-        title={t("history.title")}
+      </div>
+      <SectionBody
         status={statusFromQueries(first, {
           isEmpty: first.data?.runs.length === 0,
         })}
-        action={
-          <span className="text-muted-foreground text-xs">
-            {t("history.retention")}
-          </span>
-        }
         empty={
           <EmptyState
             icon={<ListIcon aria-hidden="true" />}
@@ -128,12 +110,12 @@ export function RunHistory() {
               </tr>
             </thead>
             <tbody>
-              <HistoryRows runs={first.data?.runs ?? []} titles={titles} />
+              <HistoryRows runs={first.data?.runs ?? []} nameOf={nameOf} />
               {cursors.map((cursor, i) => (
                 <HistoryPage
                   key={cursor}
                   cursor={cursor}
-                  titles={titles}
+                  nameOf={nameOf}
                   onNext={i === cursors.length - 1 ? setTailNext : ignore}
                 />
               ))}
@@ -154,7 +136,7 @@ export function RunHistory() {
             </Button>
           </div>
         ) : null}
-      </DashboardSection>
+      </SectionBody>
     </div>
   );
 }
@@ -162,11 +144,11 @@ export function RunHistory() {
 /** One "older runs" page: its own query, with its own loading and error row. */
 function HistoryPage({
   cursor,
-  titles,
+  nameOf,
   onNext,
 }: {
   cursor: string;
-  titles: Map<string, string>;
+  nameOf: (run: Run) => RunName;
   onNext: (next: string | null) => void;
 }) {
   const page = api.collectors.runs.useQuery({ limit: PAGE, cursor });
@@ -187,22 +169,22 @@ function HistoryPage({
       </tr>
     );
   }
-  return <HistoryRows runs={page.data?.runs ?? []} titles={titles} />;
+  return <HistoryRows runs={page.data?.runs ?? []} nameOf={nameOf} />;
 }
 
 function HistoryRows({
   runs,
-  titles,
+  nameOf,
 }: {
   runs: readonly Run[];
-  titles: Map<string, string>;
+  nameOf: (run: Run) => RunName;
 }) {
   const t = useTranslations("collectors");
   return (
     <>
       {runs.map((run) => {
         const view = presentRun(run);
-        const target = runTarget(run.input);
+        const name = nameOf(run);
         return (
           <tr key={run.id}>
             <td className="border-border border-b px-3 py-2.5 align-middle">
@@ -210,11 +192,11 @@ function HistoryRows({
                 href={`/dashboard/collectors/runs/${run.id}`}
                 className="font-medium hover:underline"
               >
-                {titles.get(run.collectorId) ?? run.collectorId}
+                {name.title}
               </Link>
-              {target ? (
+              {name.detail ? (
                 <div className="text-muted-foreground mt-0.5 font-mono text-xs break-all">
-                  {target}
+                  {name.detail}
                 </div>
               ) : null}
             </td>

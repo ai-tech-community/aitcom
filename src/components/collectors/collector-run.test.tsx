@@ -40,7 +40,9 @@ const base = {
   id: "run-1",
   collectorId: "feed-items",
   collectorVersion: 1,
-  presetId: null,
+  presetId: "feed",
+  status: "succeeded",
+  stopReason: "complete",
   origin: "web",
   agentId: null,
   input: { url: "https://blog.example.org/feed.xml" },
@@ -104,9 +106,11 @@ beforeEach(() => {
   h.overview.mockReturnValue(
     ok({
       collectors: [{ id: "feed-items", title: "Feed items" }],
+      presets: [{ id: "feed", title: "News or blog feed", ask: ["url"] }],
       recentRuns: [],
       usage: { runsToday: 0, runsPerDay: 20 },
       needsAcknowledgement: false,
+      titles: { presets: {}, collectors: {} },
     }),
   );
   h.items.mockReturnValue(
@@ -304,15 +308,62 @@ describe("CollectorRun", () => {
     );
   });
 
-  it("leaves the current breadcrumb out until the run's title is known", () => {
-    h.run.mockReturnValue({ ...ok(undefined), isPending: true });
-    h.overview.mockReturnValue({ ...ok(undefined), isPending: true });
+  it("names the run by its preset and main input as the only heading, with no breadcrumb or kicker", () => {
+    h.run.mockReturnValue(ok(base));
     renderRun();
-    const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
-    expect(nav.querySelector('[aria-current="page"]')).toBeNull();
-    expect(nav.textContent).toBe(
-      `${en.collectors.breadcrumb.collectors}/${en.collectors.breadcrumb.runs}`,
+    expect(screen.getAllByRole("heading").map((h) => h.textContent)).toEqual([
+      "News or blog feed · blog.example.org/feed.xml",
+    ]);
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
+    expect(document.querySelector('[data-slot="section-label"]')).toBeNull();
+  });
+
+  it("names a run from before presets by the preset that replaced its collector", () => {
+    h.run.mockReturnValue(ok({ ...base, presetId: null }));
+    renderRun();
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "News or blog feed",
     );
+  });
+
+  it("keeps the real name of a run whose preset is switched off", () => {
+    h.overview.mockReturnValue(
+      ok({
+        collectors: [],
+        presets: [],
+        recentRuns: [],
+        usage: { runsToday: 0, runsPerDay: 20 },
+        needsAcknowledgement: false,
+        titles: {
+          presets: { greenhouse: "Greenhouse job board" },
+          collectors: { "greenhouse-jobs": "Greenhouse jobs" },
+        },
+      }),
+    );
+    h.run.mockReturnValue(
+      ok({
+        ...base,
+        collectorId: "greenhouse-jobs",
+        presetId: "greenhouse",
+        input: { board: "acme" },
+      }),
+    );
+    renderRun();
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading).toHaveTextContent("Greenhouse job board · acme");
+    expect(heading.textContent).not.toContain("greenhouse-jobs");
+  });
+
+  it("offers My runs when the run is gone", () => {
+    h.run.mockReturnValue({
+      ...ok(undefined),
+      isError: true,
+      error: { data: { code: "NOT_FOUND" } },
+    });
+    renderRun();
+    expect(
+      screen.getByRole("link", { name: en.collectors.workspace.myRuns }),
+    ).toHaveAttribute("href", "/dashboard/collectors/runs");
   });
 
   it("keeps polling a run that is still loading", () => {
@@ -396,6 +447,13 @@ describe("CollectorRun", () => {
     h.overview.mockReturnValue(
       ok({
         collectors: [{ id: "page-list", title: "List on a web page" }],
+        presets: [
+          {
+            id: "custom-page",
+            title: "Custom page",
+            ask: ["url", "itemSelector"],
+          },
+        ],
         recentRuns: [],
         usage: { runsToday: 0, runsPerDay: 20 },
         needsAcknowledgement: false,
@@ -405,6 +463,7 @@ describe("CollectorRun", () => {
       ok({
         ...base,
         collectorId: "page-list",
+        presetId: null,
         input: {
           url: "https://jobs.example.com/careers",
           itemSelector: "li.job",
@@ -457,9 +516,14 @@ describe("CollectorRun", () => {
       "https://jobs.example.com/jobs/designer",
       "Utrecht",
     ]);
-    expect(screen.getByText("jobs.example.com/careers")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "List on a web page" }),
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Custom page · jobs.example.com/careers",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("table", { name: en.collectors.run.rows }),
     ).toBeInTheDocument();
   });
 
@@ -508,6 +572,7 @@ describe("CollectorRun", () => {
       ok({
         ...base,
         collectorId: "page-list",
+        presetId: null,
         status: "succeeded",
         stopReason: "complete",
         itemCount: 0,
