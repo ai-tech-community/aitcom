@@ -1131,6 +1131,19 @@ code; members choose one and supply its input, they never supply code. The
 user-facing name is "data collector"; code uses `collector`, never "scraper".
 See [[adr-0040-data-collectors-are-built-in-strategies-run-from-a-queued-command]].
 
+### Collector preset
+
+A named, reviewed starting point for one [[data-collector]]: a title, a
+one-line summary, a prefilled input, the fields the member is asked for (the
+rest sit behind "Show settings"), and optionally an address recognizer that
+says which pasted links it fits. Members pick a preset in the collector
+workspace, or paste a link and get the matching one; every web start goes
+through a preset, and a run records the preset it came from. Presets are
+reviewed code like collectors; code says `preset`. A **former start id** is a
+collector id that used to be a start address (`/new/feed-items`): it maps to
+the preset that replaced it, for redirects and for naming old runs. See the
+[collector presets spec](docs/superpowers/specs/2026-10-04-collector-presets-design.md).
+
 ### Collector run
 
 One execution of a [[data-collector]] with one input, owned by one member
