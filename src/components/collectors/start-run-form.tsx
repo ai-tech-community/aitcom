@@ -84,15 +84,41 @@ export type StartRunFormProps = {
 };
 
 /**
- * A preset's start page. Keyed by preset: the workspace layout stays mounted
- * and Next reuses this page between presets, so without the key typed values
- * would carry over to the next preset.
+ * One start of a preset as a stable string: the preset and its start query,
+ * prefill entries in name order. Equal values give an equal key, whatever
+ * object they arrive in.
  */
-export function StartRunForm(props: StartRunFormProps) {
-  return <PresetStart key={props.presetId} {...props} />;
+function startKey({ presetId, prefill, recognised }: StartRunFormProps) {
+  const entries = Object.entries(prefill).sort(([a], [b]) =>
+    a < b ? -1 : a > b ? 1 : 0,
+  );
+  return JSON.stringify([presetId, recognised, entries]);
 }
 
-function PresetStart({ presetId, prefill, recognised }: StartRunFormProps) {
+/** Where focus goes after a refused start (a new object for every refusal). */
+type FocusTarget = { kind: "field"; name: string } | { kind: "alert" };
+
+/**
+ * A preset's start page. The workspace layout stays mounted and Next reuses
+ * this page between presets and between pastes (a new paste changes only the
+ * query), so the form is keyed by preset and start query: a new preset or a
+ * new paste starts afresh, typed values and old problems included. The same
+ * start handed in again (a server refresh, a new but equal prefill object)
+ * keeps the key, so nothing the member typed is lost.
+ */
+export function StartRunForm(props: StartRunFormProps) {
+  return <PresetStart key={startKey(props)} {...props} />;
+}
+
+function PresetStart({
+  presetId,
+  prefill: givenPrefill,
+  recognised,
+}: StartRunFormProps) {
+  // The prefill this start opened with. A new prefill with other values
+  // changes the key (a new form); an equal one in a new object must not
+  // remake the starting values, whose rows carry ids.
+  const [prefill] = React.useState(givenPrefill);
   const t = useTranslations("collectors");
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
@@ -133,6 +159,11 @@ function PresetStart({ presetId, prefill, recognised }: StartRunFormProps) {
   const [placed, setPlaced] = React.useState<PlacedProblems | null>(null);
   const [problem, setProblem] = React.useState<Problem | null>(null);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [focusTarget, setFocusTarget] = React.useState<FocusTarget | null>(
+    null,
+  );
+  const fieldAreas = React.useRef(new Map<string, HTMLElement>());
+  const alertRef = React.useRef<HTMLDivElement>(null);
   const settingsId = React.useId();
   // What the last start sent: the server names rows by their place in it.
   const sent = React.useRef<Record<string, FieldValue> | null>(null);
@@ -157,14 +188,37 @@ function PresetStart({ presetId, prefill, recognised }: StartRunFormProps) {
       // A refused value behind "Show settings" must not stay hidden.
       if (hasProblemIn(settings, where)) setSettingsOpen(true);
       setProblem(problemOf(result));
+      const first = [...asked, ...settings].find((f) =>
+        hasProblemIn([f], where),
+      );
+      setFocusTarget(
+        first ? { kind: "field", name: first.name } : { kind: "alert" },
+      );
     },
     onError: (error) => {
       // The server saw no earlier run, but this screen did not ask for the
       // first-use note: reload so the note (and its checkbox) shows up.
       if (error.message === "ACKNOWLEDGEMENT_REQUIRED") void overview.refetch();
       setProblem({ kind: "failed" });
+      setFocusTarget({ kind: "alert" });
     },
   });
+
+  // After a refused start, take the member to what needs fixing: the first
+  // refused field (its refused input, else its first input), else the alert.
+  // Runs after the render that placed the problems and opened the settings.
+  React.useEffect(() => {
+    if (!focusTarget) return;
+    const area =
+      focusTarget.kind === "field"
+        ? fieldAreas.current.get(focusTarget.name)
+        : undefined;
+    const target =
+      area?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+      area?.querySelector<HTMLElement>("input, textarea, select") ??
+      alertRef.current;
+    target?.focus();
+  }, [focusTarget]);
 
   const needsAck = data?.needsAcknowledgement ?? false;
   const runsPerDay = data?.usage.runsPerDay ?? 0;
@@ -215,15 +269,24 @@ function PresetStart({ presetId, prefill, recognised }: StartRunFormProps) {
   function renderField(field: FormField) {
     const Render = FIELD_RENDERERS[field.kind];
     return (
-      <Render
+      // A layout-free wrapper: lets focus find this field's inputs.
+      <div
         key={field.name}
-        field={field}
-        id={`field-${field.name}`}
-        value={valueOf(field)}
-        error={problemWords(placed?.fields[field.name]?.[0], field)}
-        cellErrors={cellErrorsOf(field)}
-        onChange={(v) => setValues((prev) => ({ ...prev, [field.name]: v }))}
-      />
+        className="contents"
+        ref={(node) => {
+          if (node) fieldAreas.current.set(field.name, node);
+          else fieldAreas.current.delete(field.name);
+        }}
+      >
+        <Render
+          field={field}
+          id={`field-${field.name}`}
+          value={valueOf(field)}
+          error={problemWords(placed?.fields[field.name]?.[0], field)}
+          cellErrors={cellErrorsOf(field)}
+          onChange={(v) => setValues((prev) => ({ ...prev, [field.name]: v }))}
+        />
+      </div>
     );
   }
 
@@ -234,11 +297,6 @@ function PresetStart({ presetId, prefill, recognised }: StartRunFormProps) {
   );
 
   const detail = preset ? mainInput(prefill, preset.ask[0]) : null;
-  const recognisedName = preset
-    ? detail
-      ? `${preset.title} (${detail})`
-      : preset.title
-    : "";
 
   return (
     <SectionBody
@@ -258,7 +316,15 @@ function PresetStart({ presetId, prefill, recognised }: StartRunFormProps) {
             </p>
             {recognised ? (
               <p className="text-sm">
-                {t("start.recognised", { name: recognisedName })}{" "}
+                {detail
+                  ? t.rich("start.recognisedDetail", {
+                      name: preset.title,
+                      detail,
+                      address: (chunks) => (
+                        <span className="font-mono text-[13px]">{chunks}</span>
+                      ),
+                    })
+                  : t("start.recognised", { name: preset.title })}{" "}
                 <Link
                   href="/dashboard/collectors"
                   className="font-medium underline underline-offset-4"
@@ -369,7 +435,7 @@ function PresetStart({ presetId, prefill, recognised }: StartRunFormProps) {
             </p>
 
             {problem ? (
-              <Alert variant="destructive">
+              <Alert ref={alertRef} tabIndex={-1} variant="destructive">
                 <CircleAlertIcon aria-hidden="true" />
                 <AlertDescription>{problemMessage(problem)}</AlertDescription>
               </Alert>

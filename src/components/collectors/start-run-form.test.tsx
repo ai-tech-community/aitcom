@@ -666,12 +666,13 @@ describe("StartRunForm", () => {
     expect(screen.getByRole("textbox", { name: "Feed address" })).toHaveValue(
       "https://example.com/feed.xml",
     );
-    expect(
-      screen.getByText(
-        "Recognised as News or blog feed (example.com/feed.xml).",
-        { exact: false },
-      ),
-    ).toBeInTheDocument();
+    // The address is machine text (Mono-is-machine); the sentence around it
+    // is one translated message, so translators own its order and brackets.
+    const detail = screen.getByText("example.com/feed.xml");
+    expect(detail).toHaveClass("font-mono");
+    expect(detail.closest("p")).toHaveTextContent(
+      "Recognised as News or blog feed (example.com/feed.xml).",
+    );
     expect(
       screen.getByRole("link", { name: en.collectors.start.pickAnother }),
     ).toHaveAttribute("href", "/dashboard/collectors");
@@ -702,5 +703,145 @@ describe("StartRunForm", () => {
     expect(screen.getByRole("textbox", { name: "Page address" })).toHaveValue(
       "",
     );
+  });
+  it("names only the preset when the paste gave no address to show", () => {
+    overview(false);
+    renderForm("feed", {}, true);
+    expect(
+      screen.getByText("Recognised as News or blog feed."),
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getByText("Recognised as News or blog feed.")
+        .querySelector(".font-mono"),
+    ).toBeNull();
+  });
+
+  it("starts afresh when a new paste opens the same preset", () => {
+    overview(false);
+    const { rerender } = renderForm(
+      "feed",
+      { url: "https://a.example/feed.xml" },
+      true,
+    );
+    const field = () => screen.getByRole("textbox", { name: "Feed address" });
+    fireEvent.change(field(), { target: { value: "https://typed.example/a" } });
+    fireEvent.click(startButton());
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: { url: ["invalid_format"] },
+      }),
+    );
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    rerender(form("feed", { url: "https://b.example/feed.xml" }, true));
+    expect(field()).toHaveValue("https://b.example/feed.xml");
+    expect(field()).not.toHaveAttribute("aria-invalid");
+    expect(screen.queryByText(en.collectors.start.invalidUrl)).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("b.example/feed.xml")).toBeInTheDocument();
+  });
+
+  it("keeps what the member typed when the same paste comes back as a new object", () => {
+    overview(false);
+    const { rerender } = renderForm("custom-page", {
+      url: "https://example.com/jobs",
+    });
+    // Untouched rows hold their starting ids: a new prefill object with the
+    // same values must not make new ones (that would remount the inputs).
+    const name = columnInput(1, "Column name");
+    fireEvent.change(screen.getByRole("textbox", { name: "Page address" }), {
+      target: { value: "https://example.com/other" },
+    });
+    rerender(form("custom-page", { url: "https://example.com/jobs" }));
+    expect(screen.getByRole("textbox", { name: "Page address" })).toHaveValue(
+      "https://example.com/other",
+    );
+    expect(columnInput(1, "Column name")).toBe(name);
+  });
+
+  it("moves focus to the first refused field after a refused start", () => {
+    overview(false);
+    renderForm("custom-page");
+    fireEvent.click(startButton());
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: {
+          nextPageSelector: ["selector_not_allowed/list"],
+          itemSelector: ["selector_not_allowed/not_allowed"],
+        },
+      }),
+    );
+    expect(screen.getByLabelText("Item selector")).toHaveFocus();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      en.collectors.start.fixFields,
+    );
+  });
+
+  it("moves focus into the settings it opened for a refused hidden value", () => {
+    overview(false);
+    renderForm("saved-page");
+    fireEvent.click(startButton());
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: {
+          "fields.0.selector": ["selector_not_allowed/not_allowed"],
+        },
+      }),
+    );
+    expect(columnInput(1, "Selector")).toHaveFocus();
+  });
+
+  it("moves focus to the whole list of columns' first input for a problem with no precise column", () => {
+    overview(false);
+    renderForm("custom-page");
+    fireEvent.click(startButton());
+    act(() =>
+      h.options.onSuccess!({
+        ok: false,
+        reason: "invalid_input",
+        message: "x",
+        fieldErrors: { fields: ["too_small"] },
+      }),
+    );
+    expect(columnInput(1, "Column name")).toHaveFocus();
+  });
+
+  it.each([
+    [
+      "a quota refusal",
+      () =>
+        h.options.onSuccess!({
+          ok: false,
+          reason: "quota",
+          quotaReason: "active_limit",
+          message: "x",
+        }),
+    ],
+    [
+      "a refusal for a field the form does not draw",
+      () =>
+        h.options.onSuccess!({
+          ok: false,
+          reason: "invalid_input",
+          message: "x",
+          fieldErrors: { somethingElse: ["too_small"] },
+        }),
+    ],
+    ["a failed request", () => h.options.onError!({ message: "Network" })],
+  ])("moves focus to the alert for %s", (_, refuse) => {
+    overview(false);
+    renderForm("feed");
+    fireEvent.click(startButton());
+    act(refuse);
+    expect(screen.getByRole("alert")).toHaveFocus();
   });
 });
