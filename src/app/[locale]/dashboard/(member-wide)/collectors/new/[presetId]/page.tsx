@@ -4,9 +4,9 @@ import { getLocale } from "next-intl/server";
 
 import { StartRunForm } from "@/components/collectors/start-run-form";
 import { permanentRedirect } from "@/i18n/navigation";
+import { presetIdForFormerId } from "@/lib/collectors/presets";
 import { readStartQuery, startHref } from "@/lib/collectors/start-address";
 import { collectorsEnabled } from "@/server/collectors/flags";
-import { presetIdForFormerId } from "@/server/collectors/presets/former-start-ids";
 import { requireDashboardSession } from "@/server/dashboard/require-dashboard-session";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };

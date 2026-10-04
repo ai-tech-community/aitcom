@@ -1,7 +1,9 @@
 // src/server/collectors/presets/catalog.ts
+import { CUSTOM_PAGE_PRESET_ID } from "@/lib/collectors/presets";
+
 import { feedItems } from "../collectors/feed-items";
 import { pageList } from "../collectors/page-list";
-import { type AnyPreset, CUSTOM_PAGE_PRESET_ID, definePreset } from "./preset";
+import { type AnyPreset, definePreset } from "./preset";
 
 const feed = definePreset(feedItems, {
   id: "feed",

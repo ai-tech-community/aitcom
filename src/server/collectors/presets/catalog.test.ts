@@ -2,13 +2,16 @@
 import { describe, expect, it } from "vitest";
 import type { z } from "zod";
 
+import {
+  CUSTOM_PAGE_PRESET_ID,
+  PRESET_GROUPS,
+  formerStartIds,
+} from "@/lib/collectors/presets";
 import { checkSelector } from "@/lib/collectors/selector-policy";
 import { RECOGNISED_PARAM } from "@/lib/collectors/start-address";
 
 import { allCollectors, getCollector } from "../catalog";
 import { allPresets, getPreset } from "./catalog";
-import { formerStartIds, presetIdForFormerId } from "./former-start-ids";
-import { CUSTOM_PAGE_PRESET_ID, PRESET_GROUPS } from "./preset";
 
 /**
  * What a member would type into each preset's asked fields. Every preset
@@ -122,15 +125,6 @@ describe("preset catalog", () => {
       // A former id must never become a preset id: its address redirects.
       expect(getPreset(former)).toBeUndefined();
     }
-  });
-
-  it("reads only its own entries as former ids", () => {
-    expect(presetIdForFormerId("feed-items")).toBe("feed");
-    expect(presetIdForFormerId("page-list")).toBe("custom-page");
-    expect(presetIdForFormerId("feed")).toBeNull();
-    expect(presetIdForFormerId("constructor")).toBeNull();
-    expect(presetIdForFormerId("__proto__")).toBeNull();
-    expect(presetIdForFormerId("toString")).toBeNull();
   });
 
   it("names no collector input like the start page's reserved query key", () => {

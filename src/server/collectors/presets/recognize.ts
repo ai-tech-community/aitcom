@@ -1,4 +1,6 @@
-import { type AnyPreset, CUSTOM_PAGE_PRESET_ID } from "./preset";
+import { CUSTOM_PAGE_PRESET_ID } from "@/lib/collectors/presets";
+
+import type { AnyPreset } from "./preset";
 
 export type PresetMatch = {
   presetId: string;

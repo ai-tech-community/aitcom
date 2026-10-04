@@ -1,4 +1,4 @@
-import { presetIdForFormerId } from "@/server/collectors/presets/former-start-ids";
+import { presetIdForFormerId } from "@/lib/collectors/presets";
 
 /** An address as a short label (host and path); any other text as it is. */
 export function formatTarget(value: string): string {

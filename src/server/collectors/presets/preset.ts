@@ -1,12 +1,7 @@
 // src/server/collectors/presets/preset.ts
+import type { PresetGroup } from "@/lib/collectors/presets";
+
 import type { Collector, FieldHint, LocalizedText } from "../collector";
-
-/** Rail groups, in rail order. The Custom page is always last. */
-export const PRESET_GROUPS = ["jobs", "research", "custom"] as const;
-export type PresetGroup = (typeof PRESET_GROUPS)[number];
-
-/** The preset every unrecognised address opens: page-list, member's selectors. */
-export const CUSTOM_PAGE_PRESET_ID = "custom-page";
 
 /**
  * A named, ready-made start for one collector (Prototype): a prototype input

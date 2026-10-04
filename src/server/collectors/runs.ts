@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gt, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { parseAddress } from "@/lib/collectors/address";
+import type { PresetGroup } from "@/lib/collectors/presets";
 import {
   type InputProblems,
   inputProblemsOf,
@@ -20,7 +21,7 @@ import {
   countRunsInWindow,
 } from "./quota";
 import type { FailureDetail } from "./errors";
-import type { AnyPreset, PresetGroup } from "./presets/preset";
+import type { AnyPreset } from "./presets/preset";
 import { recognizePreset } from "./presets/recognize";
 import type { RunStatus, StopReason } from "./run-status";
 

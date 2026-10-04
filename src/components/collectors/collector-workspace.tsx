@@ -11,13 +11,10 @@ import {
   statusFromQueries,
 } from "@/components/dashboard/dashboard-section";
 import { Link, usePathname } from "@/i18n/navigation";
+import { PRESET_GROUPS, type PresetGroup } from "@/lib/collectors/presets";
 import { startHref } from "@/lib/collectors/start-address";
 import { cn } from "@/lib/utils";
 import { COLLECTOR_ABOUT_PATH } from "@/server/collectors/identity";
-import {
-  PRESET_GROUPS,
-  type PresetGroup,
-} from "@/server/collectors/presets/preset";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 type Preset = RouterOutputs["collectors"]["overview"]["presets"][number];
