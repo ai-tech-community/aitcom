@@ -7,7 +7,11 @@ vi.mock("next-intl/server", async () => {
   const { createTranslator } = await import("next-intl");
   return {
     getTranslations: async (namespace: string) =>
-      createTranslator({ locale: "en", messages: en, namespace: namespace as never }),
+      createTranslator({
+        locale: "en",
+        messages: en,
+        namespace: namespace as never,
+      }),
   };
 });
 vi.mock("@/server/dashboard/require-dashboard-session", () => ({
@@ -16,7 +20,13 @@ vi.mock("@/server/dashboard/require-dashboard-session", () => ({
   }),
 }));
 vi.mock("@/components/dashboard/member-dashboard-frame", () => ({
-  MemberDashboardFrame: ({ name, children }: { name: string; children: React.ReactNode }) => (
+  MemberDashboardFrame: ({
+    name,
+    children,
+  }: {
+    name: string;
+    children: React.ReactNode;
+  }) => (
     <div data-testid="frame" data-name={name}>
       {children}
     </div>

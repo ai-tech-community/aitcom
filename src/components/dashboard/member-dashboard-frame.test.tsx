@@ -8,13 +8,24 @@ vi.mock("next-intl/server", async () => {
   const { createTranslator } = await import("next-intl");
   return {
     getTranslations: async (namespace: string) =>
-      createTranslator({ locale: "en", messages: en, namespace: namespace as never }),
+      createTranslator({
+        locale: "en",
+        messages: en,
+        namespace: namespace as never,
+      }),
   };
 });
 vi.mock("@/server/collectors/flags", () => ({ collectorsEnabled: () => true }));
 vi.mock("@/i18n/navigation", () => ({
   usePathname: () => "/dashboard/collectors/runs",
-  Link: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => (
+  Link: ({
+    href,
+    children,
+    ...props
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>
@@ -27,13 +38,18 @@ describe("MemberDashboardFrame", () => {
   it("greets the member, shows the tabs, then the content", async () => {
     render(
       <NextIntlClientProvider locale="en" messages={en}>
-        {await MemberDashboardFrame({ name: "Ada", children: <p>Tab content</p> })}
+        {await MemberDashboardFrame({
+          name: "Ada",
+          children: <p>Tab content</p>,
+        })}
       </NextIntlClientProvider>,
     );
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       en.dashboard.greeting.replace("{name}", "Ada"),
     );
-    const tabs = screen.getByRole("navigation", { name: en.dashboard.tabsLabel });
+    const tabs = screen.getByRole("navigation", {
+      name: en.dashboard.tabsLabel,
+    });
     expect(
       within(tabs).getByRole("link", { name: en.dashboard.tabs.collectors }),
     ).toHaveAttribute("aria-current", "page");
