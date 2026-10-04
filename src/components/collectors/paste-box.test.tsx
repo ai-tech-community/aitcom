@@ -135,4 +135,56 @@ describe("PasteBox", () => {
     expect(screen.getByText(copy.checking)).toBeInTheDocument();
     await act(async () => resolve({ ok: false, reason: "no_preset" }));
   });
+
+  it("keeps focus on the button while a check runs", async () => {
+    let resolve: (v: unknown) => void = () => undefined;
+    h.fetch.mockReturnValue(new Promise((r) => (resolve = r)));
+    renderBox();
+    fireEvent.change(box(), { target: { value: "example.com" } });
+    const button = screen.getByRole("button", { name: copy.submit });
+    button.focus();
+    fireEvent.click(button);
+    expect(h.fetch).toHaveBeenCalledOnce();
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveFocus();
+    await act(async () => resolve({ ok: false, reason: "no_preset" }));
+    expect(button).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("announces the same problem again on a second try", () => {
+    renderBox();
+    fireEvent.change(box(), { target: { value: "hello world" } });
+    submit();
+    const first = screen.getByRole("alert");
+    submit();
+    const second = screen.getByRole("alert");
+    expect(second).toHaveTextContent(copy.invalid);
+    // A fresh node is a fresh announcement for screen readers.
+    expect(second).not.toBe(first);
+  });
+
+  it("keeps one polite status line mounted while checking", async () => {
+    let resolve: (v: unknown) => void = () => undefined;
+    h.fetch.mockReturnValue(new Promise((r) => (resolve = r)));
+    renderBox();
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(copy.help);
+    fireEvent.change(box(), { target: { value: "example.com" } });
+    submit();
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent(copy.checking);
+    await act(async () => resolve({ ok: false, reason: "no_preset" }));
+    expect(screen.getByRole("status")).toBe(status);
+  });
+
+  it("does not start a check when a link is pasted into text already there", () => {
+    renderBox();
+    fireEvent.change(box(), { target: { value: "see " } });
+    fireEvent.paste(box(), {
+      clipboardData: { getData: () => "https://example.com/jobs" },
+    });
+    expect(h.fetch).not.toHaveBeenCalled();
+    expect(h.push).not.toHaveBeenCalled();
+  });
 });

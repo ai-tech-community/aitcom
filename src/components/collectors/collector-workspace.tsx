@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { PasteBox } from "@/components/collectors/paste-box";
 import {
   SectionBody,
+  type SectionStatus,
   statusFromQueries,
 } from "@/components/dashboard/dashboard-section";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -130,24 +131,34 @@ function RailGroup({
   );
 }
 
+/**
+ * The rail's list. Only the presets wait on the overview query: "My runs"
+ * is a fixed route, so it stays reachable while the sites load or fail.
+ */
 function RailList({
   presets,
+  status,
   active,
 }: {
   presets: readonly Preset[];
+  status: SectionStatus;
   active: WorkspaceEntry;
 }) {
   const t = useTranslations("collectors.workspace");
   return (
     <div className="flex flex-col gap-3">
-      {railGroups(presets).map(({ group, presets: members }) => (
-        <RailGroup
-          key={group}
-          group={group}
-          presets={members}
-          active={active}
-        />
-      ))}
+      <SectionBody status={status} size="compact">
+        <div className="flex flex-col gap-3">
+          {railGroups(presets).map(({ group, presets: members }) => (
+            <RailGroup
+              key={group}
+              group={group}
+              presets={members}
+              active={active}
+            />
+          ))}
+        </div>
+      </SectionBody>
       <div className="border-border border-t pt-3">
         <RailLink href={`${BASE}/runs`} current={active.kind === "runs"}>
           {t("myRuns")}
@@ -194,9 +205,7 @@ export function CollectorWorkspace({
           data-slot="rail-wide"
           className="hidden lg:block"
         >
-          <SectionBody status={status} size="compact">
-            <RailList presets={presets} active={active} />
-          </SectionBody>
+          <RailList presets={presets} status={status} active={active} />
         </nav>
 
         {/* Keyed by page, so it folds shut after each choice. */}
@@ -218,9 +227,7 @@ export function CollectorWorkspace({
             aria-label={t("workspace.railLabel")}
             className="border-border border-t p-2"
           >
-            <SectionBody status={status} size="compact">
-              <RailList presets={presets} active={active} />
-            </SectionBody>
+            <RailList presets={presets} status={status} active={active} />
           </nav>
         </details>
 

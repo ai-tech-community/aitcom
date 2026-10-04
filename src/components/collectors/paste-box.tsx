@@ -30,21 +30,29 @@ export function PasteBox() {
   const [text, setText] = React.useState("");
   const [checking, setChecking] = React.useState(false);
   const [problem, setProblem] = React.useState<Problem | null>(null);
+  // Bumped on every report, so the alert remounts and a repeated problem is
+  // announced again (a same-text update is silent for screen readers).
+  const [reports, setReports] = React.useState(0);
   const id = React.useId();
+
+  function report(next: Problem) {
+    setProblem(next);
+    setReports((n) => n + 1);
+  }
 
   async function open(address: string) {
     if (pending.current) return;
-    setProblem(null);
     if (!parseAddress(address)) {
-      setProblem("invalid");
+      report("invalid");
       return;
     }
+    setProblem(null);
     pending.current = true;
     setChecking(true);
     try {
       const result = await utils.collectors.recognize.fetch({ address });
       if (!result.ok) {
-        setProblem(result.reason === "not_an_address" ? "invalid" : "noPreset");
+        report(result.reason === "not_an_address" ? "invalid" : "noPreset");
         return;
       }
       setText("");
@@ -55,7 +63,7 @@ export function PasteBox() {
         }),
       );
     } catch {
-      setProblem("failed");
+      report("failed");
     } finally {
       pending.current = false;
       setChecking(false);
@@ -102,28 +110,33 @@ export function PasteBox() {
           variant="outline"
           size="icon"
           aria-label={t("submit")}
-          disabled={checking}
+          // Not `disabled`: that would drop a keyboard user's focus. The
+          // pending ref already ignores a second submit.
+          aria-disabled={checking || undefined}
+          className="aria-disabled:cursor-progress aria-disabled:opacity-50"
         >
           <ArrowRightIcon aria-hidden="true" />
         </Button>
       </div>
       {problem ? (
         <p
+          key={reports}
           id={`${id}-problem`}
           role="alert"
           className="text-destructive text-[13px]"
         >
           {t(problem)}
         </p>
-      ) : (
-        <p
-          id={`${id}-help`}
-          className="text-muted-foreground text-[13px]"
-          aria-live="polite"
-        >
-          {checking ? t("checking") : t("help")}
-        </p>
-      )}
+      ) : null}
+      {/* One polite region, always mounted: only its text changes, so
+          "Checking the link…" is announced reliably. */}
+      <p
+        id={`${id}-help`}
+        role="status"
+        className="text-muted-foreground text-[13px]"
+      >
+        {checking ? t("checking") : problem ? null : t("help")}
+      </p>
     </form>
   );
 }

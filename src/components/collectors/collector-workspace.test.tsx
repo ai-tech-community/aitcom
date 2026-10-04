@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -216,6 +216,23 @@ describe("CollectorWorkspace", () => {
       refetch,
     });
     renderWorkspace();
-    expect(wide().getByRole("alert")).toBeInTheDocument();
+    const alert = wide().getByRole("alert");
+    fireEvent.click(
+      within(alert).getByRole("button", { name: en.common.retry }),
+    );
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["loading", { data: undefined, isPending: true, isError: false }],
+    ["failed", { data: undefined, isPending: false, isError: true }],
+  ])("keeps My runs in the rail while the sites are %s", (_state, query) => {
+    h.overview.mockReturnValue({ ...query, refetch: vi.fn() });
+    renderWorkspace("/dashboard/collectors/runs");
+    for (const scope of [wide(), within(picker())]) {
+      expect(
+        scope.getByRole("link", { name: en.collectors.workspace.myRuns }),
+      ).toHaveAttribute("href", "/dashboard/collectors/runs");
+    }
   });
 });
