@@ -207,6 +207,19 @@ describe("CollectorWorkspace", () => {
     ).toHaveAttribute("href", COLLECTOR_ABOUT_PATH);
   });
 
+  it("lets the sticky rail scroll on its own, so its footer stays reachable", () => {
+    renderWorkspace();
+    const rail = document.querySelector('[data-slot="rail"]')!;
+    expect(rail).toContainElement(
+      screen.getByRole("link", { name: en.collectors.aboutLink }),
+    );
+    // Same pattern as the member side panel (DESIGN.md page frame).
+    expect(rail.className).toContain("lg:sticky");
+    expect(rail.className).toContain("lg:max-h-[calc(100dvh-7rem)]");
+    expect(rail.className).toContain("lg:overflow-y-auto");
+    expect(rail.className).toContain("lg:overscroll-contain");
+  });
+
   it("offers a retry in the rail when the sites can't load", () => {
     const refetch = vi.fn();
     h.overview.mockReturnValue({

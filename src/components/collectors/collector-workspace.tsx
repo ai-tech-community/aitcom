@@ -194,7 +194,14 @@ export function CollectorWorkspace({
 
   return (
     <div className="grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <div className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-24 lg:self-start">
+      {/* Sticky, and scrolling on its own when taller than the viewport
+          (the member side panel's pattern), so the footer stays reachable as
+          presets grow. The 1-unit inset keeps focus rings inside the
+          scroll box from being cut off. */}
+      <div
+        data-slot="rail"
+        className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-24 lg:-m-1 lg:max-h-[calc(100dvh-7rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:p-1 lg:[scrollbar-width:thin]"
+      >
         <PasteBox />
 
         <nav
