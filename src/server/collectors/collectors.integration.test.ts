@@ -20,6 +20,7 @@ import { getCollector } from "./catalog";
 import type { AnyCollector, CollectorContext } from "./collector";
 import type * as Errors from "./errors";
 import type * as Executor from "./executor";
+import { getPreset } from "./presets/catalog";
 import type * as Quota from "./quota";
 import type * as Runs from "./runs";
 
@@ -891,6 +892,10 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
           all: () => [collector],
           get: (id) => (id === collector.id ? collector : undefined),
         },
+        presets: {
+          all: () => [getPreset("feed")!],
+          get: (id) => (id === "feed" ? getPreset("feed") : undefined),
+        },
         kick: () => kicks.push(1),
         now: () => new Date("2026-10-03T12:00:00Z"),
         quota: { runsPerDay: 20, activePerUser: 2, activePlatform: 1_000 },
@@ -969,6 +974,67 @@ describe.skipIf(!isLocalDbConfigured())("collectors [DB integration]", () => {
         fieldErrors: { url: ["invalid_format"] },
       });
       expect((await runs.listRuns(userId)).runs).toHaveLength(0);
+    });
+
+    it("records the preset a run was started from", async () => {
+      const userId = await makeUser();
+      const { runs } = facade();
+      const started = await runs.startRun({
+        userId,
+        origin: "web",
+        presetId: "feed",
+        input: feedInput,
+      });
+      expect(started).toMatchObject({ ok: true });
+      const view = await runs.getRun(
+        userId,
+        (started as { runId: string }).runId,
+      );
+      expect(view).toMatchObject({
+        presetId: "feed",
+        collectorId: "feed-items",
+      });
+    });
+
+    it("records no preset for a run started by collector id", async () => {
+      const userId = await makeUser();
+      const { runs } = facade();
+      const started = await runs.startRun({
+        userId,
+        origin: "mcp",
+        collectorId: "feed-items",
+        input: feedInput,
+      });
+      const view = await runs.getRun(
+        userId,
+        (started as { runId: string }).runId,
+      );
+      expect(view?.presetId).toBeNull();
+    });
+
+    it("refuses an unknown preset, or one whose collector is off, storing nothing", async () => {
+      const userId = await makeUser();
+      const { runs } = facade();
+      expect(
+        await runs.startRun({
+          userId,
+          origin: "web",
+          presetId: "nope",
+          input: feedInput,
+        }),
+      ).toMatchObject({ ok: false, reason: "unknown_collector" });
+      const { runs: off } = facade({
+        catalog: { all: () => [], get: () => undefined },
+      });
+      expect(
+        await off.startRun({
+          userId,
+          origin: "web",
+          presetId: "feed",
+          input: feedInput,
+        }),
+      ).toMatchObject({ ok: false, reason: "unknown_collector" });
+      expect((await runs.listRuns(userId)).runs).toEqual([]);
     });
 
     it("names each refused page-list input by its path and a code, not a sentence", async () => {

@@ -138,6 +138,7 @@ import * as migration_20261002b_member_showcase_badges from "./20261002b_member_
 import * as migration_20261002c_badges_seen_backfill from "./20261002c_badges_seen_backfill";
 import * as migration_20261003a_collector_runs from "./20261003a_collector_runs";
 import * as migration_20261003b_collector_run_error_detail from "./20261003b_collector_run_error_detail";
+import * as migration_20261004a_collector_run_preset from "./20261004a_collector_run_preset";
 
 export const migrations = [
   {
@@ -839,5 +840,10 @@ export const migrations = [
     up: migration_20261003b_collector_run_error_detail.up,
     down: migration_20261003b_collector_run_error_detail.down,
     name: "20261003b_collector_run_error_detail",
+  },
+  {
+    up: migration_20261004a_collector_run_preset.up,
+    down: migration_20261004a_collector_run_preset.down,
+    name: "20261004a_collector_run_preset",
   },
 ];

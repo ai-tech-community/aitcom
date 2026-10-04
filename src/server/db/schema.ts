@@ -439,6 +439,8 @@ export const collectorRuns = appSchema.table(
     error: d.varchar({ length: 500 }),
     /** Migration 20261003b: the translatable code behind `error`. */
     errorDetail: d.jsonb().$type<FailureDetail>(),
+    /** Migration 20261004a: the preset the run was started from; null before presets and for starts by collector id. */
+    presetId: d.varchar({ length: 64 }),
     log: d
       .jsonb()
       .notNull()

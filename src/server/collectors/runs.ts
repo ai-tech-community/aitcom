@@ -19,6 +19,7 @@ import {
   countRunsInWindow,
 } from "./quota";
 import type { FailureDetail } from "./errors";
+import type { AnyPreset } from "./presets/preset";
 import type { RunStatus, StopReason } from "./run-status";
 
 const RETENTION_MS = 30 * 86_400_000;
@@ -29,15 +30,36 @@ export interface CollectorCatalogPort {
   get(id: string): AnyCollector | undefined;
 }
 
+export interface PresetCatalogPort {
+  all(): readonly AnyPreset[];
+  get(id: string): AnyPreset | undefined;
+}
+
 export interface CollectorRunsDeps {
   db: typeof appDb;
   enabled(): boolean;
   catalog: CollectorCatalogPort;
+  /** Presets; a preset whose collector the catalog hides is hidden too. */
+  presets: PresetCatalogPort;
   /** Best-effort wake of the worker; the per-minute cron is the guarantee. */
   kick(): void;
   now(): Date;
   quota?: QuotaLimits;
 }
+
+/**
+ * A start names a preset (the web: every start goes through one) or a
+ * collector (the agent, ADR-0040; no preset is recorded).
+ */
+export type StartRunArgs = {
+  userId: string;
+  agentId?: string | null;
+  origin: "web" | "mcp";
+  input: unknown;
+} & (
+  | { presetId: string; collectorId?: never }
+  | { collectorId: string; presetId?: never }
+);
 
 export type StartRunResult =
   | { ok: true; runId: string }
@@ -60,6 +82,8 @@ export type RunView = {
   id: string;
   collectorId: string;
   collectorVersion: number;
+  /** The preset the run was started from; null before presets and for agent starts. */
+  presetId: string | null;
   origin: "web" | "mcp";
   agentId: string | null;
   status: RunStatus;
@@ -122,6 +146,7 @@ function toView(row: RunRow): RunView {
     id: row.id,
     collectorId: row.collectorId,
     collectorVersion: row.collectorVersion,
+    presetId: row.presetId ?? null,
     origin: row.origin,
     agentId: row.agentId,
     status: row.status,
@@ -195,6 +220,21 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
     }
   }
 
+  /** The collector a start names, and the preset it came through. */
+  function resolveStart(
+    args: StartRunArgs,
+  ): { collector: AnyCollector; presetId: string | null } | null {
+    if (args.presetId !== undefined) {
+      const preset = deps.presets.get(args.presetId);
+      const collector = preset
+        ? deps.catalog.get(preset.collectorId)
+        : undefined;
+      return preset && collector ? { collector, presetId: preset.id } : null;
+    }
+    const collector = deps.catalog.get(args.collectorId);
+    return collector ? { collector, presetId: null } : null;
+  }
+
   return {
     async usage(
       userId: string,
@@ -227,13 +267,7 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
       }));
     },
 
-    async startRun(args: {
-      userId: string;
-      agentId?: string | null;
-      origin: "web" | "mcp";
-      collectorId: string;
-      input: unknown;
-    }): Promise<StartRunResult> {
+    async startRun(args: StartRunArgs): Promise<StartRunResult> {
       if (!deps.enabled()) {
         return {
           ok: false,
@@ -241,14 +275,15 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
           message: "Data collectors are not available.",
         };
       }
-      const collector = deps.catalog.get(args.collectorId);
-      if (!collector) {
+      const resolved = resolveStart(args);
+      if (!resolved) {
         return {
           ok: false,
           reason: "unknown_collector",
           message: "This collector does not exist.",
         };
       }
+      const { collector, presetId } = resolved;
       const parsed = collector.inputSchema.safeParse(args.input);
       if (!parsed.success) {
         return {
@@ -285,6 +320,7 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
               origin: args.origin,
               collectorId: collector.id,
               collectorVersion: collector.version,
+              presetId,
               input: parsed.data,
               status: "queued",
               createdAt: now,

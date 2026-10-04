@@ -40,6 +40,7 @@ const base = {
   id: "run-1",
   collectorId: "feed-items",
   collectorVersion: 1,
+  presetId: null,
   origin: "web",
   agentId: null,
   input: { url: "https://blog.example.org/feed.xml" },

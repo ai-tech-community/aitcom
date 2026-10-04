@@ -5,6 +5,7 @@ import { buildLiveContext } from "./context/live";
 import type { ExecutorDeps } from "./executor";
 import { collectorsEnabled, disabledCollectorIds } from "./flags";
 import { kickCollectorWorker } from "./kick";
+import { allPresets, getPreset } from "./presets/catalog";
 import { createCollectorRuns } from "./runs";
 
 /** Composition root: the real facade (for tRPC in slice 2, MCP in slice 4). */
@@ -19,6 +20,7 @@ export function liveCollectorRuns() {
       },
       get: (id) => getCollector(id, disabledCollectorIds()),
     },
+    presets: { all: allPresets, get: getPreset },
     kick: kickCollectorWorker,
     now: () => new Date(),
   });
