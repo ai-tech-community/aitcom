@@ -9,6 +9,9 @@ const h = vi.hoisted(() => ({
     startRun: vi.fn(),
     getRun: vi.fn(),
     listItems: vi.fn(),
+    listPresets: vi.fn(),
+    listTitles: vi.fn(),
+    recognize: vi.fn(),
   },
 }));
 
@@ -47,6 +50,17 @@ beforeEach(() => {
   h.facade.startRun.mockResolvedValue({ ok: true, runId: "run-2" });
   h.facade.getRun.mockResolvedValue(run);
   h.facade.listItems.mockResolvedValue({ items: [], nextSeq: null });
+  h.facade.listPresets.mockReturnValue([{ id: "feed" }]);
+  h.facade.listTitles.mockReturnValue({
+    presets: { feed: "Nieuws- of blogfeed" },
+    collectors: { "feed-items": "Feeditems" },
+  });
+  h.facade.recognize.mockReturnValue({
+    ok: true,
+    presetId: "custom-page",
+    matched: false,
+    prefill: { url: "https://e.com/" },
+  });
 });
 
 describe("collectors router", () => {
@@ -79,6 +93,11 @@ describe("collectors router", () => {
       "items",
       (c: ReturnType<typeof caller>) => c.collectors.items({ runId: "run-1" }),
     ],
+    [
+      "recognize",
+      (c: ReturnType<typeof caller>) =>
+        c.collectors.recognize({ address: "e.com" }),
+    ],
   ])("%s is not found while the feature is off", async (_name, call) => {
     h.enabled = false;
     await expect(call(caller())).rejects.toMatchObject({
@@ -90,17 +109,43 @@ describe("collectors router", () => {
     }
   });
 
-  it("overview combines collectors, the last three runs, usage and the first-use flag", async () => {
+  it("overview combines collectors, presets, titles, the last five runs, usage and the first-use flag", async () => {
     const result = await caller().collectors.overview({ locale: "nl" });
     expect(h.facade.listCollectors).toHaveBeenCalledWith("nl");
-    expect(h.facade.listRuns).toHaveBeenCalledWith("user-1", { limit: 3 });
+    expect(h.facade.listPresets).toHaveBeenCalledWith("nl");
+    expect(h.facade.listTitles).toHaveBeenCalledWith("nl");
+    expect(h.facade.listRuns).toHaveBeenCalledWith("user-1", { limit: 5 });
     expect(h.facade.usage).toHaveBeenCalledWith("user-1");
     expect(result).toEqual({
       collectors: [{ id: "feed-items" }],
+      presets: [{ id: "feed" }],
+      titles: {
+        presets: { feed: "Nieuws- of blogfeed" },
+        collectors: { "feed-items": "Feeditems" },
+      },
       recentRuns: [run],
       usage: { runsToday: 1, runsPerDay: 20 },
       needsAcknowledgement: false,
     });
+  });
+
+  it("recognises a pasted address through the facade", async () => {
+    await expect(
+      caller().collectors.recognize({ address: "e.com" }),
+    ).resolves.toEqual({
+      ok: true,
+      presetId: "custom-page",
+      matched: false,
+      prefill: { url: "https://e.com/" },
+    });
+    expect(h.facade.recognize).toHaveBeenCalledWith("e.com");
+  });
+
+  it("refuses absurdly long text before it reaches the facade", async () => {
+    await expect(
+      caller().collectors.recognize({ address: "x".repeat(4_097) }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(h.facade.recognize).not.toHaveBeenCalled();
   });
 
   it("asks a first-time member to acknowledge", async () => {
