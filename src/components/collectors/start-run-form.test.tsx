@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -493,11 +500,11 @@ describe("StartRunForm", () => {
       message: "x",
       retryAt: "2026-10-03T15:00:00.000Z",
     });
-    expect(
-      await screen.findByRole("group", {
-        name: "You've used all 20 runs for the last 24 hours. You can start again in 3 hours.",
-      }),
-    ).toHaveFocus();
+    const problem = await screen.findByRole("group", {
+      name: "You've used all 20 runs for the last 24 hours. You can start again in 3 hours.",
+    });
+    // Focus moves in an effect after the render that shows the problem.
+    await waitFor(() => expect(problem).toHaveFocus());
     expect(screen.getByLabelText("Feed address")).toHaveValue(
       "https://e.com/f",
     );
@@ -515,16 +522,20 @@ describe("StartRunForm", () => {
       quotaReason,
       message: "x",
     });
-    expect(await screen.findByRole("group", { name: text })).toHaveFocus();
+    const problem = await screen.findByRole("group", { name: text });
+    // Focus moves in an effect after the render that shows the problem.
+    await waitFor(() => expect(problem).toHaveFocus());
   });
 
   it("says the start failed when the request itself fails", async () => {
     const { refetch } = overview(false);
     renderForm();
     h.options.onError?.({ message: "Network error" });
-    expect(
-      await screen.findByRole("group", { name: en.collectors.start.failed }),
-    ).toHaveFocus();
+    const problem = await screen.findByRole("group", {
+      name: en.collectors.start.failed,
+    });
+    // Focus moves in an effect after the render that shows the problem.
+    await waitFor(() => expect(problem).toHaveFocus());
     expect(refetch).not.toHaveBeenCalled();
   });
 
@@ -533,9 +544,11 @@ describe("StartRunForm", () => {
     renderForm();
     h.options.onError?.({ message: "ACKNOWLEDGEMENT_REQUIRED" });
     expect(refetch).toHaveBeenCalledTimes(1);
-    expect(
-      await screen.findByRole("group", { name: en.collectors.start.failed }),
-    ).toHaveFocus();
+    const problem = await screen.findByRole("group", {
+      name: en.collectors.start.failed,
+    });
+    // Focus moves in an effect after the render that shows the problem.
+    await waitFor(() => expect(problem).toHaveFocus());
   });
 
   it("shows a way back when the collector does not exist", () => {
