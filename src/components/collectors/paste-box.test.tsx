@@ -164,18 +164,34 @@ describe("PasteBox", () => {
     expect(second).not.toBe(first);
   });
 
-  it("keeps one polite status line mounted while checking", async () => {
+  it("keeps one polite status line mounted, holding only the check", async () => {
     let resolve: (v: unknown) => void = () => undefined;
     h.fetch.mockReturnValue(new Promise((r) => (resolve = r)));
     renderBox();
     const status = screen.getByRole("status");
-    expect(status).toHaveTextContent(copy.help);
+    expect(status).toHaveTextContent("");
     fireEvent.change(box(), { target: { value: "example.com" } });
     submit();
     expect(screen.getByRole("status")).toBe(status);
     expect(status).toHaveTextContent(copy.checking);
     await act(async () => resolve({ ok: false, reason: "no_preset" }));
     expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent("");
+  });
+
+  it("keeps the help out of the live region, so it is not read again", () => {
+    renderBox();
+    expect(box()).toHaveAccessibleDescription(copy.help);
+    const help = screen.getByText(copy.help);
+    expect(help.closest('[role="status"], [aria-live]')).toBeNull();
+    // A problem replaces the help as the description; clearing it brings
+    // the help back without announcing it.
+    fireEvent.change(box(), { target: { value: "hello world" } });
+    submit();
+    expect(box()).toHaveAccessibleDescription(copy.invalid);
+    fireEvent.change(box(), { target: { value: "hello" } });
+    expect(box()).toHaveAccessibleDescription(copy.help);
+    expect(screen.getByRole("status")).toHaveTextContent("");
   });
 
   it("does not start a check when a link is pasted into text already there", () => {

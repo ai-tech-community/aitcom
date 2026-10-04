@@ -128,15 +128,17 @@ export function PasteBox() {
           {t(problem)}
         </p>
       ) : null}
-      {/* One polite region, always mounted: only its text changes, so
-          "Checking the link…" is announced reliably. */}
-      <p
-        id={`${id}-help`}
-        role="status"
-        className="text-muted-foreground text-[13px]"
-      >
-        {checking ? t("checking") : problem ? null : t("help")}
-      </p>
+      <div className="text-muted-foreground text-[13px]">
+        {/* Plain text, not live: it is the box's description, so it is not
+            read again each time a problem clears. */}
+        <p id={`${id}-help`} hidden={checking || problem !== null}>
+          {t("help")}
+        </p>
+        {/* One polite region, always mounted, holding only the check: only
+            its text changes, so "Checking the link…" is announced
+            reliably. */}
+        <p role="status">{checking ? t("checking") : null}</p>
+      </div>
     </form>
   );
 }
