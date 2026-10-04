@@ -17,6 +17,7 @@ function facade(over: Partial<CollectorRunsDeps> = {}) {
     catalog: {
       all: () => collectors,
       get: (id) => collectors.find((c) => c.id === id),
+      everything: () => collectors,
     },
     presets: { all: allPresets, get: getPreset },
     kick: vi.fn(),
@@ -74,11 +75,50 @@ describe("listPresets", () => {
     ]);
   });
 
+  it("keeps the collector's field order when a preset replaces a middle hint, and puts a hint for an unhinted field last", () => {
+    // A collector that gives no hint for nextPageSelector (real ones hint
+    // every field; this proves the merge, not the catalog).
+    const hints = Object.fromEntries(
+      Object.entries(pageList.fieldHints).filter(
+        ([name]) => name !== "nextPageSelector",
+      ),
+    );
+    const sparse = { ...pageList, fieldHints: hints } as typeof pageList;
+    const hinted = definePreset(sparse, {
+      id: "hinted-page",
+      group: "jobs",
+      title: { en: "Hinted page", nl: "Hinted page" },
+      summary: { en: "x", nl: "x" },
+      base: {},
+      ask: ["url", "itemSelector"],
+      hints: {
+        itemSelector: { label: { en: "Job selector", nl: "Vacatureselector" } },
+        nextPageSelector: { label: { en: "More jobs", nl: "Meer vacatures" } },
+      },
+    });
+    const [summary] = facade({
+      catalog: {
+        all: () => [sparse],
+        get: () => sparse,
+        everything: () => [sparse],
+      },
+      presets: { all: () => [hinted], get: () => hinted },
+    }).listPresets("en");
+    expect(summary?.fields.map((f) => [f.name, f.label])).toEqual([
+      ["url", "Page address"],
+      ["itemSelector", "Job selector"],
+      ["fields", "Columns"],
+      ["maxPages", "Pages to read"],
+      ["nextPageSelector", "More jobs"],
+    ]);
+  });
+
   it("hides presets whose collector is switched off", () => {
     const runs = facade({
       catalog: {
         all: () => [feedItems],
         get: (id) => (id === "feed-items" ? feedItems : undefined),
+        everything: () => [feedItems, pageList],
       },
     });
     expect(runs.listPresets("en").map((p) => p.id)).toEqual(["feed"]);
@@ -95,6 +135,7 @@ describe("listTitles", () => {
       catalog: {
         all: () => [feedItems],
         get: (id) => (id === "feed-items" ? feedItems : undefined),
+        everything: () => [feedItems, pageList],
       },
     });
     const titles = runs.listTitles("nl");
@@ -108,6 +149,17 @@ describe("listTitles", () => {
     });
     // Titles only: the switched-off preset still cannot be listed or started.
     expect(runs.listPresets("nl").map((p) => p.id)).toEqual(["feed"]);
+  });
+
+  it("reads collector titles from the injected catalog, not a global list", () => {
+    const titles = facade({
+      catalog: {
+        all: () => [],
+        get: () => undefined,
+        everything: () => [feedItems],
+      },
+    }).listTitles("en");
+    expect(titles.collectors).toEqual({ "feed-items": "Feed items" });
   });
 
   it("uses the member's language", () => {

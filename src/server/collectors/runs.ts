@@ -11,7 +11,7 @@ import {
 import type { db as appDb } from "@/server/db";
 import { collectorItems, collectorRuns } from "@/server/db/schema";
 
-import { allCollectors, columnsOf } from "./catalog";
+import { columnsOf } from "./catalog";
 import type { AnyCollector, FieldHint } from "./collector";
 import { EXPORT_FORMATS, type ExportFormatId } from "./export/formats";
 import {
@@ -29,8 +29,15 @@ const RETENTION_MS = 30 * 86_400_000;
 const EXPORT_PAGE = 500;
 
 export interface CollectorCatalogPort {
+  /** The collectors members may start now (switched-off ones left out). */
   all(): readonly AnyCollector[];
+  /** One collector members may start now, or undefined. */
   get(id: string): AnyCollector | undefined;
+  /**
+   * The full catalog, switched-off collectors included: for what an existing
+   * run needs after its collector was switched off (its name, its columns).
+   */
+  everything(): readonly AnyCollector[];
 }
 
 export interface PresetCatalogPort {
@@ -367,9 +374,8 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
         presets: Object.fromEntries(
           deps.presets.all().map((p) => [p.id, p.title[locale]]),
         ),
-        // Like exportRun: the full collector catalog, switched-off ones too.
         collectors: Object.fromEntries(
-          allCollectors().map((c) => [c.id, c.title[locale]]),
+          deps.catalog.everything().map((c) => [c.id, c.title[locale]]),
         ),
       };
     },
@@ -541,7 +547,9 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
       const run = await ownedRun(userId, runId);
       if (!run) return null;
       // Export still works if the collector was switched off since.
-      const collector = allCollectors().find((c) => c.id === run.collectorId);
+      const collector = deps.catalog
+        .everything()
+        .find((c) => c.id === run.collectorId);
       const formatter = EXPORT_FORMATS[format];
       return {
         filename: `${run.collectorId}-${run.id.slice(0, 8)}.${formatter.extension}`,

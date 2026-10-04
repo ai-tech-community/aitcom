@@ -19,6 +19,7 @@ export function liveCollectorRuns() {
         return allCollectors().filter((c) => !disabled.has(c.id));
       },
       get: (id) => getCollector(id, disabledCollectorIds()),
+      everything: allCollectors,
     },
     presets: { all: allPresets, get: getPreset },
     kick: kickCollectorWorker,
