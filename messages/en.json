@@ -4116,6 +4116,27 @@
     "intro": "Collect public data from the web for your own research. Pick a collector, fill in a few fields, and get a table you can read here or download.",
     "aboutLink": "How our collector visits sites",
     "usage": "{used} of {limit} runs used · last 24 hours",
+    "workspace": {
+      "railLabel": "Sites to collect from",
+      "group": {
+        "jobs": "Jobs",
+        "research": "Research"
+      },
+      "myRuns": "My runs",
+      "picker": "Collect from:",
+      "pickerNone": "Choose a site",
+      "landing": "Pick a site from the list, or paste a link.",
+      "latestRuns": "Your latest runs",
+      "paste": {
+        "label": "Paste a link",
+        "help": "We'll open the right collector for it.",
+        "submit": "Open link",
+        "checking": "Checking the link…",
+        "invalid": "This isn't a web address. Paste a full link, such as https://example.com/jobs.",
+        "noPreset": "We can't collect from this address right now.",
+        "failed": "We couldn't check this link. Try again."
+      }
+    },
     "kind": {
       "api": "API",
       "feed": "Feed",
