@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { runTarget } from "@/components/collectors/collectors-home";
+import { runTarget } from "@/lib/collectors/run-name";
 import { RunStatusBadge } from "@/components/collectors/run-status-badge";
 import {
   DashboardSection,

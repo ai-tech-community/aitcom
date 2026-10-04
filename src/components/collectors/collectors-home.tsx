@@ -12,25 +12,13 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { Link } from "@/i18n/navigation";
+import { runTarget } from "@/lib/collectors/run-name";
 import { runListPollInterval } from "@/lib/collectors/run-presentation";
 import { COLLECTOR_ABOUT_PATH } from "@/server/collectors/identity";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 type Overview = RouterOutputs["collectors"]["overview"];
 type Summary = Overview["collectors"][number];
-
-/** A short, human label for what a run was pointed at: its first string input. */
-export function runTarget(input: unknown): string | null {
-  if (!input || typeof input !== "object") return null;
-  const first = Object.values(input).find((v) => typeof v === "string");
-  if (typeof first !== "string") return null;
-  try {
-    const url = new URL(first);
-    return `${url.hostname}${url.pathname === "/" ? "" : url.pathname}`;
-  } catch {
-    return first;
-  }
-}
 
 /**
  * One sample value as text. Sample items are flat scalars by the catalog's

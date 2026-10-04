@@ -24,7 +24,7 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
-import { CollectorsHome, runTarget } from "./collectors-home";
+import { CollectorsHome } from "./collectors-home";
 
 const feed = {
   id: "feed-items",
@@ -225,31 +225,5 @@ describe("CollectorsHome", () => {
     renderHome();
     screen.getByRole("button", { name: en.common.retry }).click();
     expect(refetch).toHaveBeenCalled();
-  });
-});
-
-describe("runTarget", () => {
-  it("returns null for input that is not an object", () => {
-    expect(runTarget(null)).toBeNull();
-    expect(runTarget("https://example.com")).toBeNull();
-    expect(runTarget(42)).toBeNull();
-  });
-
-  it("returns null when no input value is a string", () => {
-    expect(runTarget({ limit: 5, deep: true })).toBeNull();
-  });
-
-  it("shows only the host for a URL whose path is /", () => {
-    expect(runTarget({ url: "https://example.com/" })).toBe("example.com");
-  });
-
-  it("shows host and path for a URL with a path", () => {
-    expect(runTarget({ url: "https://blog.example.org/feed?x=1" })).toBe(
-      "blog.example.org/feed",
-    );
-  });
-
-  it("returns a non-URL string as it is", () => {
-    expect(runTarget({ limit: 3, query: "open data" })).toBe("open data");
   });
 });
