@@ -1,7 +1,7 @@
 # Collector presets and the collector workspace — design
 
 **Date:** 2026-10-04
-**Status:** proposed
+**Status:** accepted — Slice A planned in docs/superpowers/plans/2026-10-04-collector-presets-workspace.md
 **Builds on:** `2026-10-03-data-collectors-design.md` (engine, page-list), ADR-0040, ADR-0041
 
 ## Problem
@@ -66,25 +66,55 @@ export interface CollectorPreset<I> {
 
 - Presets live in `src/server/collectors/presets/catalog.ts` as typed data in
   code, like the collector catalog (ADR-0040) and the badge catalog
-  (ADR-0039). Adding a preset = one entry; adding a site with a data feed =
+  (ADR-0039). Each entry is built with `definePreset(collector, …)`, which
+  types `base`, `ask` and `hints` by that collector's input and sets
+  `collectorId`. Adding a preset = one entry; adding a site with a data feed =
   one adapter (below) plus one entry.
-- **Every start goes through a preset.** Today's collectors become presets:
-  `feed` (feed-items, asks `url`) and `custom-page` (page-list, asks
-  everything, group `custom`). There is no second path into the start form.
+- **Every start from the web goes through a preset.** Today's collectors
+  become presets: `feed` (feed-items, asks `url`, group `research`) and
+  `custom-page` (page-list, asks everything, group `custom`). There is no
+  second path into the start form.
+- The facade (`CollectorRuns.startRun` in `src/server/collectors/runs.ts`)
+  starts a run either by preset (the web) or by collector id (the agent,
+  ADR-0040; the run's `preset_id` stays null). A preset whose collector is
+  switched off (`COLLECTORS_DISABLED`) is hidden and cannot start.
+- The server does not merge `base` into the input. The start form pre-fills
+  `base` (and any pasted values); the server validates exactly what is sent
+  with the collector's `inputSchema`.
 - A test checks every preset: its `collectorId` exists; `base` merged with a
   sample of the `ask` fields parses with the collector's `inputSchema`;
   page-list presets' selectors pass the selector allowlist.
 
 ### Recognising a pasted link
 
-`recognizePreset(url)` asks each preset's `recognize` in catalog order and
-returns the first match `{ presetId, input }`. No match → `custom-page` with
-`url` filled in. Recognition never fetches: it is a pure function of the
-address, so pasting a link sends no request to that site.
+`recognizePreset(url, presets)` (`src/server/collectors/presets/recognize.ts`)
+asks each available preset's `recognize` in catalog order and returns the
+first match as `{ presetId, input, matched }`:
+
+- A match → `matched: true`.
+- No match → `custom-page` with `url` filled in and `matched: false` (the
+  start page then shows no "Recognised as" line).
+- `null` only when the Custom page itself is unavailable (its collector is
+  switched off by `COLLECTORS_DISABLED`). The paste box then says "We can't
+  collect from this address right now."
+- A recognizer that throws counts as no match (logged); the scan goes on.
+  Each recognizer gets its own copy of the URL.
+
+Recognition never fetches: it is a pure function of the address, so pasting
+a link sends no request to that site. Pasted text is read as an address by
+`parseAddress` (`src/lib/collectors/address.ts`), in the browser and again on
+the server: text without a scheme is read as `https://`; only http(s), a
+host with a dot, no user name or password, at most 2,048 characters.
 
 Recognition is served by a tRPC query (`collectors.recognize`) so the matcher
-code stays on the server with the catalog. The member always sees which
-preset was chosen and can pick another.
+code stays on the server with the catalog. It answers
+`{ ok: true, presetId, matched, prefill }` or
+`{ ok: false, reason: "not_an_address" | "no_preset" }`. The prefill travels
+to the start page as query parameters named after the input fields, plus
+`recognised=1` when `matched` is true (`startHref` / `readStartQuery` in
+`src/lib/collectors/start-address.ts`, the one place that encodes it). No
+collector input may be named `recognised` (a catalog test checks this). The
+member always sees which preset was chosen and can pick another.
 
 ## New collectors
 
@@ -178,11 +208,17 @@ uses the frame without the side panel. Other tabs are unchanged. DESIGN.md's
 `src/components/collectors/collector-workspace.tsx`: a two-column layout used
 by every collector page (start, My runs, one run).
 
-- **Left rail** (about 16rem): the paste box; presets grouped "Jobs",
-  "Research"; "Custom page" last; a "My runs" link. The active entry is
-  marked. On narrow screens the rail becomes a compact picker above the
-  content.
-- **Right side**: the page's content with one heading.
+- **Left rail** (16rem): the paste box; presets grouped "Jobs",
+  "Research" (empty groups left out); "Custom page" last, without a group
+  label; a "My runs" link. The active entry is marked (`aria-current`); a run
+  page marks "My runs" active. "My runs" is a fixed route, so it stays
+  reachable while the preset list is loading or has failed. On narrow screens
+  (below `lg`) the list folds into a compact picker above the content.
+- **Rail footer**: the usage line ("{used} of {limit} runs used · last 24
+  hours") and the "How our collector visits sites" link.
+- **Right side**: the page's content with one heading (one `h2`).
+- The workspace is mounted once by `collectors/layout.tsx`, so the rail keeps
+  its state while the member moves between pages.
 
 ### Start page `/dashboard/collectors/new/[presetId]`
 
@@ -193,29 +229,53 @@ by every collector page (start, My runs, one run).
   editing them is allowed (the member's input is still validated by the
   collector's schema and the selector allowlist).
 - The limits line and the one orange Start button, as today.
+- The form starts afresh for every new preset and every new paste: it is
+  keyed by preset + start query, so typed values and old problems do not
+  carry over. The same start handed in again (a server refresh) keeps what
+  the member typed.
+- After a refused start, focus moves to the first refused field (its refused
+  input, else its first input); "Show settings" opens by itself when that
+  field is inside it. With no refused field, focus moves to the alert.
+- An unknown or unavailable preset id shows "This kind of collection isn't
+  available. Pick one from the list."
+- Former start addresses named a collector (`/new/feed-items`,
+  `/new/page-list`). They redirect permanently, query kept, to the preset
+  that replaced them (`feed`, `custom-page`). The same frozen map
+  (`src/server/collectors/presets/former-start-ids.ts`) names runs from
+  before presets. New presets never need an entry.
 - `/dashboard/collectors` shows the workspace with no preset selected: the
-  right side has the line "Pick a site on the left, or paste a link." and the
-  member's last 5 runs (none → only the line). The paste box does not take
-  focus by itself, so screen-reader users still meet the greeting and tabs
-  first (WCAG 2.2 AA).
+  right side has the line "Pick a site from the list, or paste a link." (its
+  one heading) and the member's last 5 runs (none → only the line). The
+  paste box does not take focus by itself, so screen-reader users still meet
+  the greeting and tabs first (WCAG 2.2 AA).
 
 ### Paste flow
 
 Paste or type an address in the rail's box → `collectors.recognize` →
 navigate to the matched preset with its fields pre-filled, and a single line
-under the heading: "Recognised as a Greenhouse board (acme). Not right? Pick
-another." No match → `custom-page` with the address filled in.
+under the heading: "Recognised as {name} ({detail})." followed by the link
+"Not right? Pick another.", e.g. "Recognised as Greenhouse board (acme)."
+The line is one translated message; the detail (the preset's main input,
+often an address) is set in mono. With no detail it reads "Recognised as
+{name}.". No match → `custom-page` with the address filled in and no
+"Recognised as" line. Text that is not an address never leaves the browser
+and gets an inline message.
 
 ### My runs and run page
 
-Inside the workspace; breadcrumbs and kicker titles removed; the run's name
-(preset title + its main input, e.g. "Greenhouse board · acme") is the only
-heading. Runs record their `presetId` (nullable for runs started before this
-change) so history can show the preset name.
+Inside the workspace; breadcrumbs and kicker titles removed; one `h2` each.
+My runs' heading is "My runs"; a run's heading is its name, "<preset title> ·
+<main input>" (e.g. "Greenhouse board · acme"; the main input is the
+preset's first `ask` field). Runs record their `presetId` (null for runs
+started before this change and for agent starts) so every screen names a run
+by its preset. A run from before presets is named through the frozen
+former-start map. The overview also returns `titles`: every preset and
+collector title, switched-off ones included, so a run's name never falls
+back to a raw id.
 
 ## Data
 
-- `collector_run.preset_id text null` — one migration
+- `collector_run.preset_id varchar(64) null` (like `collector_id`) — one migration
   (`src/migrations/20261004a_collector_run_preset.ts`, Payload migration per
   repo practice). The engine ignores it; screens read it.
 - No preset table: presets are code.
@@ -225,8 +285,10 @@ change) so history can show the preset name.
 | Case | Outcome |
 |---|---|
 | Board name not found (404) | failed, `board_not_found`, names the board host |
-| Pasted address not recognised | not an error: opens Custom page, address filled |
-| Pasted text is not an address | inline field message, no navigation |
+| Pasted address not recognised | not an error: opens Custom page, address filled, no "Recognised as" line |
+| Pasted address, Custom page unavailable (`COLLECTORS_DISABLED`) | inline message "We can't collect from this address right now.", no navigation |
+| Pasted text is not an address | inline field message, no navigation, no request |
+| Unknown or unavailable preset id | "This kind of collection isn't available. Pick one from the list." |
 | robots.txt, rate limit, budgets | existing codes and copy |
 | Preset input fails the schema after "Show settings" edits | existing per-field messages |
 
@@ -247,7 +309,7 @@ change) so history can show the preset name.
 
 | Slice | Content | Ships |
 |---|---|---|
-| A | Preset model + catalog with `feed` and `custom-page`; layout seam; workspace rail; full-width pages without breadcrumbs/kickers; paste box (recognition returns Custom page only); `preset_id` migration | screens only, flag-gated as today |
+| A | Preset model + catalog with `feed` and `custom-page`; layout seam; workspace rail; full-width pages without breadcrumbs/kickers; paste box (recognition returns Custom page only); former start addresses redirect; runs named by preset; `preset_id` migration | screens only, flag-gated as today |
 | B | `job-board` collector, 5 adapters (Personio new), `board_not_found`, 5 presets with recognizers, real-world check | |
 | C | `hacker-news` collector + preset; first page-list presets with fixtures | |
 | D | `page-events` collector (schema.org `Event` from the page, read in the sandbox); "Events" group; Luma, Eventbrite, Meetup and generic presets for the sites that pass the check | |
