@@ -33,7 +33,10 @@ Conference, World Summit AI Amsterdam, AI Engineer New York, NVIDIA GTC
 Berlin, TEDAI Vienna) and soft-retires a still-published Turku row
 (`status = cancelled`, `review_status = archived`). `20260925b_tedai_vienna`
 re-upserts `tedai-2026` only, from that same seed, and leaves every other
-Vienna row in place. No attendance, RSVP,
+Vienna row in place. `20261005a_pytorch_aixia_web_summit` upserts only
+`pytorch-conference-north-america-2026`, `aixia-2026`, and `web-summit-2026`
+from that same seed. Held rows (The New Agentic Economy Hackathon, AI & Big
+Data Expo Europe, Apply AI Summit) are not in the seed. No attendance, RSVP,
 price, or image. Production applies unrecorded migrations during the Vercel
 build, so www `/en/events` shows them after that deploy. The static guide at
 `/events/world-summit-ai-amsterdam-2026` still wins over the CMS detail route

@@ -15,6 +15,10 @@ const MIGRATION = join(
   "../../migrations/20260925a_builder_public_events.ts",
 );
 const TEDAI_MIGRATION = join(dir, "../../migrations/20260925b_tedai_vienna.ts");
+const OCTOBER_MIGRATION = join(
+  dir,
+  "../../migrations/20261005a_pytorch_aixia_web_summit.ts",
+);
 const MIGRATION_INDEX = join(dir, "../../migrations/index.ts");
 const EVENTS_PAGE = join(dir, "../../app/[locale]/events/page.tsx");
 
@@ -22,13 +26,16 @@ const COUNT_COPY =
   /\b(\d+|no)\s+(attendees?|RSVPs?|spots?(?:\s+left)?|registrations?)\b/i;
 
 describe("builder public events", () => {
-  it("lands the five ops-cleared events in start-date order", () => {
+  it("lands the ops-cleared events in start-date order", () => {
     expect(BUILDER_PUBLIC_EVENTS.map((event) => event.slug)).toEqual([
       "the-ai-conference-2026",
       "world-summit-ai-amsterdam-2026",
       "ai-engineer-new-york-2026",
       "nvidia-gtc-berlin-2026",
+      "pytorch-conference-north-america-2026",
+      "aixia-2026",
       "tedai-2026",
+      "web-summit-2026",
     ]);
     const dates = BUILDER_PUBLIC_EVENTS.map((event) => event.date);
     expect([...dates].sort()).toEqual(dates);
@@ -70,10 +77,31 @@ describe("builder public events", () => {
         url: "https://www.nvidia.com/en-eu/gtc/",
       }),
       expect.objectContaining({
+        title: "PyTorch Conference North America 2026",
+        date: "2026-10-20",
+        city: "San Jose",
+        location: "San Jose Convention Center, San Jose",
+        url: "https://events.linuxfoundation.org/pytorch-conference-north-america/",
+      }),
+      expect.objectContaining({
+        title: "AIxIA 2026",
+        date: "2026-10-22",
+        city: "Strasbourg",
+        location: "Palais de la Musique et des Congrès, Strasbourg",
+        url: "https://aixia.eu/en/home",
+      }),
+      expect.objectContaining({
         title: "TEDAI 2026",
         date: "2026-10-28",
         city: "Vienna",
         url: "https://tedai-vienna.ted.com/",
+      }),
+      expect.objectContaining({
+        title: "Web Summit 2026",
+        date: "2026-11-09",
+        city: "Lisbon",
+        location: "MEO Arena, Lisbon",
+        url: "https://websummit.com/web-summit-2026/",
       }),
     ]);
 
@@ -150,6 +178,37 @@ describe("builder public events", () => {
     expect(migration).toContain("BUILDER_PUBLIC_EVENTS");
     expect(migration).not.toMatch(
       /clinical|turku|max_attendees|image_id|"price"/i,
+    );
+  });
+
+  it("registers a follow-up migration that upserts only the three new events", () => {
+    const slugs = [
+      "pytorch-conference-north-america-2026",
+      "aixia-2026",
+      "web-summit-2026",
+    ] as const;
+    for (const slug of slugs) {
+      expect(BUILDER_PUBLIC_EVENTS.some((event) => event.slug === slug)).toBe(
+        true,
+      );
+    }
+
+    const migration = readFileSync(OCTOBER_MIGRATION, "utf8");
+    const index = readFileSync(MIGRATION_INDEX, "utf8");
+    const prior = index.indexOf("20261004a_collector_run_preset");
+    const followUp = index.indexOf("20261005a_pytorch_aixia_web_summit");
+    expect(prior).toBeGreaterThan(-1);
+    expect(followUp).toBeGreaterThan(prior);
+    expect(migration).toContain("upsertBuilderEvent");
+    expect(migration).toContain("BUILDER_PUBLIC_EVENTS");
+    for (const slug of slugs) {
+      expect(migration).toContain(slug);
+    }
+    expect(migration).not.toMatch(
+      /agentic economy|big data expo|apply ai summit|max_attendees|image_id|"price"|rsvp/i,
+    );
+    expect(JSON.stringify(BUILDER_PUBLIC_EVENTS)).not.toMatch(
+      /agentic economy|big data expo|apply ai summit|maxAttendees|rsvp/i,
     );
   });
 });
