@@ -79,6 +79,34 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     },
   },
   {
+    slug: "pytorch-conference-north-america-2026",
+    title: "PyTorch Conference North America 2026",
+    date: "2026-10-20",
+    city: "San Jose",
+    country: "United States",
+    location: "San Jose Convention Center, San Jose",
+    timezone: "America/Los_Angeles",
+    url: "https://events.linuxfoundation.org/pytorch-conference-north-america/",
+    summary: {
+      en: "PyTorch Foundation conference at San Jose Convention Center, 20–21 Oct 2026.",
+      nl: "PyTorch Foundation-conferentie in het San Jose Convention Center, 20–21 okt 2026.",
+    },
+  },
+  {
+    slug: "aixia-2026",
+    title: "AIxIA 2026",
+    date: "2026-10-22",
+    city: "Strasbourg",
+    country: "France",
+    location: "Palais de la Musique et des Congrès, Strasbourg",
+    timezone: "Europe/Paris",
+    url: "https://aixia.eu/en/home",
+    summary: {
+      en: "Franco-German AI conference in Strasbourg, 22 Oct 2026.",
+      nl: "Frans-Duitse AI-conferentie in Straatsburg, 22 okt 2026.",
+    },
+  },
+  {
     slug: "tedai-2026",
     title: "TEDAI 2026",
     date: "2026-10-28",
@@ -90,6 +118,20 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     summary: {
       en: "Official TED AI in Vienna: talks, discovery day, and community, 28–30 Oct 2026.",
       nl: "Officiële TED AI in Wenen: talks, discovery day en community, 28–30 okt 2026.",
+    },
+  },
+  {
+    slug: "web-summit-2026",
+    title: "Web Summit 2026",
+    date: "2026-11-09",
+    city: "Lisbon",
+    country: "Portugal",
+    location: "MEO Arena, Lisbon",
+    timezone: "Europe/Lisbon",
+    url: "https://websummit.com/web-summit-2026/",
+    summary: {
+      en: "Web Summit at MEO Arena in Lisbon, 9–12 Nov 2026.",
+      nl: "Web Summit in de MEO Arena in Lissabon, 9–12 nov 2026.",
     },
   },
 ] as const;
