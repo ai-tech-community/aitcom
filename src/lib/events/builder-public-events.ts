@@ -88,8 +88,8 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     timezone: "Europe/Amsterdam",
     url: "https://lablab.ai/ai-hackathons/techex-amsterdam-hackathon",
     summary: {
-      en: "Official AI & Big Data Expo Europe hackathon with lablab.ai. Online build 16–19 Oct, on-site at RAI Amsterdam 19–20 Oct 2026.",
-      nl: "Officiële hackathon van AI & Big Data Expo Europe met lablab.ai. Online bouwen 16–19 okt, daarna RAI Amsterdam 19–20 okt 2026.",
+      en: "Official AI & Big Data Expo Europe hackathon with lablab.ai: build online from 16 Oct 2026, then finish on-site at RAI Amsterdam.",
+      nl: "Officiële AI & Big Data Expo Europe-hackathon met lablab.ai: online bouwen vanaf 16 okt 2026, daarna afronden op locatie in RAI Amsterdam.",
     },
   },
   {
