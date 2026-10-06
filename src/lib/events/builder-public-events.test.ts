@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+import { upsertBuilderEvent } from "../../migrations/20260925a_builder_public_events";
 import { PUBLIC_EVENTS_WHY_MAX } from "./public-events";
 import {
   BUILDER_PUBLIC_EVENTS,
@@ -24,6 +25,27 @@ const EVENTS_PAGE = join(dir, "../../app/[locale]/events/page.tsx");
 
 const COUNT_COPY =
   /\b(\d+|no)\s+(attendees?|RSVPs?|spots?(?:\s+left)?|registrations?)\b/i;
+
+/** Static SQL text from a Drizzle `sql` query, without bound parameters. */
+function staticSql(query: unknown): string {
+  const chunks =
+    (query as { queryChunks?: unknown[] } | undefined)?.queryChunks ?? [];
+  return chunks
+    .map((chunk) => {
+      if (!chunk || typeof chunk !== "object" || !("value" in chunk)) {
+        return "";
+      }
+      const value = (chunk as { value: unknown }).value;
+      if (
+        Array.isArray(value) &&
+        value.every((part) => typeof part === "string")
+      ) {
+        return value.join("");
+      }
+      return "";
+    })
+    .join("");
+}
 
 describe("builder public events", () => {
   it("lands the ops-cleared events in start-date order", () => {
@@ -137,6 +159,28 @@ describe("builder public events", () => {
     expect(text).toContain(event!.url);
     expect(text).toContain("Pier 48");
     expect(text).not.toMatch(COUNT_COPY);
+  });
+
+  it("upserts locales without a hard-coded enum__locales cast", async () => {
+    const event = BUILDER_PUBLIC_EVENTS[0];
+    expect(event).toBeDefined();
+    let query: unknown;
+    await upsertBuilderEvent(
+      {
+        execute: async (statement: unknown) => {
+          query = statement;
+        },
+      } as never,
+      event!,
+    );
+
+    const sqlText = staticSql(query);
+    expect(sqlText).not.toContain("enum__locales");
+    expect(sqlText).not.toMatch(/::\s*"public"\s*\.\s*"enum__locales"/);
+    expect(sqlText).toContain('INSERT INTO "events_locales"');
+    expect(sqlText).toContain('INSERT INTO "_events_v_locales"');
+    expect(sqlText.match(/'en'/g)).toEqual(["'en'", "'en'"]);
+    expect(sqlText.match(/'nl'/g)).toEqual(["'nl'", "'nl'"]);
   });
 
   it("registers a Payload seed migration that retires Turku and skips counts", () => {
