@@ -212,7 +212,9 @@ describe("builder public events", () => {
     await upsertBuilderEvent(
       {
         execute: async (statement: unknown) => {
-          query = statement;
+          // The first statement is the upsert. A later end-date probe must
+          // not replace it.
+          query ??= statement;
         },
       } as never,
       event!,
@@ -317,6 +319,9 @@ describe("builder public events", () => {
       expect(BUILDER_PUBLIC_EVENTS.some((event) => event.slug === slug)).toBe(
         true,
       );
+      expect(
+        BUILDER_PUBLIC_EVENTS.find((event) => event.slug === slug),
+      ).not.toHaveProperty("endDate");
     }
 
     const migration = readFileSync(FIVE_EVENTS_MIGRATION, "utf8");
@@ -341,5 +346,47 @@ describe("builder public events", () => {
     for (const slug of slugs) {
       expect(docs).toContain(slug);
     }
+  });
+
+  it("records an official last day only where the summary states one", () => {
+    const endBySlug = Object.fromEntries(
+      BUILDER_PUBLIC_EVENTS.map((event) => [event.slug, event.endDate ?? null]),
+    );
+    expect(endBySlug).toEqual({
+      "the-ai-conference-2026": "2026-10-01",
+      "world-summit-ai-amsterdam-2026": "2026-10-08",
+      "boston-openclaw-meetup-2026": null,
+      "ai-engineer-new-york-2026": "2026-10-14",
+      "techex-amsterdam-hackathon-2026": null,
+      "nvidia-gtc-berlin-2026": "2026-10-22",
+      "pytorch-conference-north-america-2026": "2026-10-21",
+      "aixia-2026": null,
+      "agentic-ai-in-the-wild-2026": null,
+      "hacktoberfest-hack-day-barcelona-2026": null,
+      "tedai-2026": "2026-10-30",
+      "web-summit-2026": "2026-11-12",
+      "llmday-london-2026": null,
+    });
+  });
+
+  it("registers the end-date column migration after the five-event seed", () => {
+    const migration = readFileSync(
+      join(dir, "../../migrations/20261006b_event_end_date.ts"),
+      "utf8",
+    );
+    const index = readFileSync(MIGRATION_INDEX, "utf8");
+    const five = index.indexOf("20261006a_five_public_events");
+    const followUp = index.indexOf("20261006b_event_end_date");
+    const forumRepair = index.indexOf("20261008a_forum_reply_count_repair");
+    expect(five).toBeGreaterThan(-1);
+    expect(followUp).toBeGreaterThan(five);
+    expect(forumRepair).toBeGreaterThan(followUp);
+    expect(migration).toContain('ADD COLUMN IF NOT EXISTS "end_date"');
+    expect(migration).toContain("BUILDER_PUBLIC_EVENTS");
+    expect(migration).not.toMatch(/enum__locales|enum_events/);
+    const helper = readFileSync(MIGRATION, "utf8");
+    expect(helper).toContain("writeBuilderEventEndDate");
+    expect(helper).toContain("information_schema.columns");
+    expect(helper).not.toMatch(/::\s*"public"\s*\.\s*"enum__locales"/);
   });
 });

@@ -16,6 +16,7 @@ import {
   eventSchemaDates,
   upcomingFromCandidates,
   formatEventDay,
+  formatEventDayRange,
   formatEventDayText,
   formatEventShortWhen,
   formatEventTimeText,
@@ -881,6 +882,27 @@ describe("formatEventTimeText", () => {
   });
 });
 
+describe("formatEventDayRange", () => {
+  it("stays one day without an end, and spans a month when one is set", () => {
+    expect(formatEventDayRange("2026-10-22", null, "en")).toBe("22 Oct 2026");
+    expect(formatEventDayRange("2026-10-22", "2026-10-22", "en")).toBe(
+      "22 Oct 2026",
+    );
+    expect(formatEventDayRange("2026-10-20", "2026-10-21", "en")).toBe(
+      "20–21 Oct 2026",
+    );
+    expect(formatEventDayRange("2026-11-09", "2026-11-12", "nl")).toBe(
+      "09–12 nov 2026",
+    );
+  });
+
+  it("names both months when the span crosses a month", () => {
+    expect(formatEventDayRange("2026-09-29", "2026-10-01", "en")).toBe(
+      "29 Sep – 01 Oct 2026",
+    );
+  });
+});
+
 describe("eventSchemaDates", () => {
   it("gives the plain calendar day for a date-only event", () => {
     // Not the stored "…T00:00:00.000Z", which claims 00:00 UTC.
@@ -925,6 +947,43 @@ describe("eventSchemaDates", () => {
     expect(
       eventSchemaDates({ date: "tbd", startTime: "18:00", timezone: null }),
     ).toBeNull();
+  });
+
+  it("includes a calendar endDate when one is set", () => {
+    expect(
+      eventSchemaDates({
+        date: "2026-10-20T12:00:00.000Z",
+        startTime: null,
+        timezone: "America/Los_Angeles",
+        endDate: "2026-10-21",
+      }),
+    ).toEqual({ startDate: "2026-10-20", endDate: "2026-10-21" });
+  });
+
+  it("leaves endDate out when the calendar end is unset", () => {
+    expect(
+      eventSchemaDates({
+        date: "2026-10-22",
+        startTime: null,
+        timezone: "Europe/Paris",
+        endDate: null,
+      }),
+    ).toEqual({ startDate: "2026-10-22" });
+  });
+
+  it("puts a timed end on the stored last day", () => {
+    expect(
+      eventSchemaDates({
+        date: "2026-11-09",
+        startTime: "09:00",
+        endTime: "18:00",
+        timezone: "Europe/Lisbon",
+        endDate: "2026-11-12T12:00:00.000Z",
+      }),
+    ).toEqual({
+      startDate: "2026-11-09T09:00:00+00:00",
+      endDate: "2026-11-12T18:00:00+00:00",
+    });
   });
 });
 

@@ -40,6 +40,8 @@ export type HostedEventInput = {
   /** "HH:MM" wall-clock start in `timezone`; gives JSON-LD a real start. */
   startTime?: string | null;
   endTime?: string | null;
+  /** Last calendar day. JSON-LD includes it only when this is set. */
+  endDate?: string | null;
   timezone?: string | null;
   format?: string | null;
   city?: string | null;
@@ -237,6 +239,7 @@ export function listingEventJsonLd(
         startTime: event.startTime,
         endTime: event.endTime,
         timezone: event.timezone,
+        endDate: event.endDate,
       })
     : null;
   const url = hostedEventUrl(event, locale);

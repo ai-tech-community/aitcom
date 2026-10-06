@@ -295,7 +295,19 @@ export const Events: CollectionConfig = {
                   name: "date",
                   type: "date",
                   required: true,
-                  admin: { width: "50%" },
+                  admin: {
+                    width: "25%",
+                    description: "First calendar day.",
+                  },
+                },
+                {
+                  name: "endDate",
+                  type: "date",
+                  admin: {
+                    width: "25%",
+                    description:
+                      "Last calendar day, when the event runs more than one day. Leave empty for a single day.",
+                  },
                 },
                 { name: "startTime", type: "text", admin: { width: "25%" } },
                 { name: "endTime", type: "text", admin: { width: "25%" } },

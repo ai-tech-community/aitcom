@@ -18,7 +18,7 @@ import type { EventFocus } from "@/lib/event-metadata";
 import type { Audience } from "@/payload-types";
 import {
   eventSchemaDates,
-  formatEventDay,
+  formatEventDayRange,
   formatEventTimeRange,
   upcomingEventsQueryFloor,
   upcomingFromCandidates,
@@ -219,6 +219,7 @@ export default async function EventDetailPage({
     startTime: event.startTime,
     endTime: event.endTime,
     timezone: event.timezone,
+    endDate: event.endDate,
   });
   const locationParts = [event.city, event.region, event.country].filter(
     Boolean,
@@ -864,7 +865,11 @@ export default async function EventDetailPage({
                       <div className="space-y-2 p-3">
                         <div className="text-muted-foreground font-mono text-xs tracking-wider uppercase tabular-nums">
                           <time dateTime={related.date.slice(0, 10)}>
-                            {formatEventDay(related.date, locale)}
+                            {formatEventDayRange(
+                              related.date,
+                              related.endDate,
+                              locale,
+                            )}
                           </time>
                           {" · "}
                           {eventRowKind(related.type, labels).label}
@@ -1040,17 +1045,29 @@ function EventHero({
         <div className="flex flex-wrap items-end gap-4 sm:gap-6">
           <time
             dateTime={day.dateTime ?? undefined}
-            className="bg-background/95 text-foreground flex h-16 w-16 flex-col items-center justify-center rounded-lg text-center shadow-lg sm:h-20 sm:w-20"
+            className={
+              day.endDateTime
+                ? "bg-background/95 text-foreground flex h-16 min-w-16 items-center justify-center rounded-lg px-3 text-center shadow-lg sm:h-20"
+                : "bg-background/95 text-foreground flex h-16 w-16 flex-col items-center justify-center rounded-lg text-center shadow-lg sm:h-20 sm:w-20"
+            }
           >
-            <span className="font-mono text-xs tracking-wider uppercase sm:text-xs">
-              {day.month}
-            </span>
-            <span className="text-2xl leading-none font-semibold tabular-nums sm:text-3xl">
-              {day.day}
-            </span>
-            <span className="text-muted-foreground font-mono text-xs tracking-wider tabular-nums sm:text-xs">
-              {day.year}
-            </span>
+            {day.endDateTime ? (
+              <span className="font-mono text-xs tracking-wider uppercase tabular-nums">
+                {day.label}
+              </span>
+            ) : (
+              <>
+                <span className="font-mono text-xs tracking-wider uppercase sm:text-xs">
+                  {day.month}
+                </span>
+                <span className="text-2xl leading-none font-semibold tabular-nums sm:text-3xl">
+                  {day.day}
+                </span>
+                <span className="text-muted-foreground font-mono text-xs tracking-wider tabular-nums sm:text-xs">
+                  {day.year}
+                </span>
+              </>
+            )}
           </time>
 
           <div className="min-w-0 flex-1">

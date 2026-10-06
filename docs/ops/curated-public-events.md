@@ -20,7 +20,8 @@ substitute for the CMS chrome.
   spots-left counts on the listing.
 - Event JSON-LD on the listing only when name, startDate, url, and a real
   place are sourced. Hollow rows are omitted. Never invent attendance,
-  RSVP, spots-left, end dates, or "Online" as a city.
+  RSVP, spots-left, end dates, or "Online" as a city. A stored `endDate`
+  is included when the row has one, and omitted when it does not.
 - Detail routes stay at `/events/[slug]`.
 - Default upcoming sort is `date` ascending, so a published row shows in start-date order.
 

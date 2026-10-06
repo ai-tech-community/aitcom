@@ -32,7 +32,7 @@ import {
 } from "@/lib/events/public-events";
 import { getVisitorLocation } from "@/lib/visitor-location";
 import { haversineDistanceKm, formatDistance } from "@/lib/geo";
-import { formatEventDay, formatEventTimeRange } from "@/lib/event-time";
+import { formatEventDayRange, formatEventTimeRange } from "@/lib/event-time";
 import {
   eventFormatLabel,
   eventRowKind,
@@ -63,6 +63,7 @@ function toMapEvents(
     slug: string;
     title: string;
     date: string;
+    endDate?: string | null;
     location: string;
     latitude?: number | null;
     longitude?: number | null;
@@ -80,6 +81,7 @@ function toMapEvents(
       slug: e.slug,
       title: e.title,
       date: e.date,
+      endDate: e.endDate ?? null,
       location: e.location,
       latitude: e.latitude,
       longitude: e.longitude,
@@ -332,6 +334,7 @@ export default async function EventsPage({
       title: event.title,
       slug: event.slug,
       date: event.date,
+      endDate: event.endDate,
       startTime: event.startTime,
       endTime: event.endTime,
       timezone: event.timezone,
@@ -458,7 +461,7 @@ export default async function EventsPage({
                 <div className="space-y-4 p-5">
                   <div className="text-muted-foreground flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">
                     <time dateTime={event.date.slice(0, 10)}>
-                      {formatEventDay(event.date, locale)}
+                      {formatEventDayRange(event.date, event.endDate, locale)}
                     </time>
                     {event.startTime && (
                       <>

@@ -2,7 +2,7 @@
 
 import { useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { formatEventDay } from "@/lib/event-time";
+import { formatEventDayRange } from "@/lib/event-time";
 import { eventRowKind } from "@/components/events/rows/event-rows";
 import { useEventRowLabels } from "@/components/events/rows/use-event-row-labels";
 import type { MapEvent } from "./events-map-view";
@@ -20,7 +20,9 @@ export function EventMapPopup({ event }: { event: MapEvent }) {
   return (
     <>
       <div className="font-mono text-xs tracking-wider text-neutral-500 uppercase">
-        <time dateTime={dateTime}>{formatEventDay(event.date, locale)}</time>
+        <time dateTime={dateTime}>
+          {formatEventDayRange(event.date, event.endDate, locale)}
+        </time>
         {" · "}
         {eventRowKind(event.type, labels).label}
       </div>
