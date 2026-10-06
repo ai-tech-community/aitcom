@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+import { upsertBuilderEvent } from "../../migrations/20260925a_builder_public_events";
 import { PUBLIC_EVENTS_WHY_MAX } from "./public-events";
 import {
   BUILDER_PUBLIC_EVENTS,
@@ -19,23 +20,53 @@ const OCTOBER_MIGRATION = join(
   dir,
   "../../migrations/20261005a_pytorch_aixia_web_summit.ts",
 );
+const FIVE_EVENTS_MIGRATION = join(
+  dir,
+  "../../migrations/20261006a_five_public_events.ts",
+);
 const MIGRATION_INDEX = join(dir, "../../migrations/index.ts");
 const EVENTS_PAGE = join(dir, "../../app/[locale]/events/page.tsx");
 
 const COUNT_COPY =
   /\b(\d+|no)\s+(attendees?|RSVPs?|spots?(?:\s+left)?|registrations?)\b/i;
 
+/** Static SQL text from a Drizzle `sql` query, without bound parameters. */
+function staticSql(query: unknown): string {
+  const chunks =
+    (query as { queryChunks?: unknown[] } | undefined)?.queryChunks ?? [];
+  return chunks
+    .map((chunk) => {
+      if (!chunk || typeof chunk !== "object" || !("value" in chunk)) {
+        return "";
+      }
+      const value = (chunk as { value: unknown }).value;
+      if (
+        Array.isArray(value) &&
+        value.every((part) => typeof part === "string")
+      ) {
+        return value.join("");
+      }
+      return "";
+    })
+    .join("");
+}
+
 describe("builder public events", () => {
   it("lands the ops-cleared events in start-date order", () => {
     expect(BUILDER_PUBLIC_EVENTS.map((event) => event.slug)).toEqual([
       "the-ai-conference-2026",
       "world-summit-ai-amsterdam-2026",
+      "boston-openclaw-meetup-2026",
       "ai-engineer-new-york-2026",
+      "techex-amsterdam-hackathon-2026",
       "nvidia-gtc-berlin-2026",
       "pytorch-conference-north-america-2026",
       "aixia-2026",
+      "agentic-ai-in-the-wild-2026",
+      "hacktoberfest-hack-day-barcelona-2026",
       "tedai-2026",
       "web-summit-2026",
+      "llmday-london-2026",
     ]);
     const dates = BUILDER_PUBLIC_EVENTS.map((event) => event.date);
     expect([...dates].sort()).toEqual(dates);
@@ -64,10 +95,24 @@ describe("builder public events", () => {
         url: "https://worldsummit.ai/",
       }),
       expect.objectContaining({
+        title: "Boston OpenClaw meetup",
+        date: "2026-10-08",
+        city: "Cambridge",
+        location: "Microsoft NERD, Cambridge",
+        url: "https://aiweek.boston/schedule/boston-openclaw-meetup",
+      }),
+      expect.objectContaining({
         title: "AI Engineer New York 2026",
         date: "2026-10-12",
         city: "New York",
         url: "https://ai.engineer/nyc/2026",
+      }),
+      expect.objectContaining({
+        title: "TechEx Amsterdam Hackathon",
+        date: "2026-10-16",
+        city: "Amsterdam",
+        location: "RAI Amsterdam",
+        url: "https://lablab.ai/ai-hackathons/techex-amsterdam-hackathon",
       }),
       expect.objectContaining({
         title: "NVIDIA GTC Berlin 2026",
@@ -91,6 +136,20 @@ describe("builder public events", () => {
         url: "https://aixia.eu/en/home",
       }),
       expect.objectContaining({
+        title: "Agentic AI in the Wild: Open Source Agents in Production",
+        date: "2026-10-22",
+        city: "New York",
+        location: "New York",
+        url: "https://luma.com/l7dhbis5",
+      }),
+      expect.objectContaining({
+        title: "Hacktoberfest Hack Day Barcelona",
+        date: "2026-10-24",
+        city: "Barcelona",
+        location: "Edifici Colom, Barcelona",
+        url: "https://events.mlh.com/events/14748-hacktoberfest-hack-day-barcelona",
+      }),
+      expect.objectContaining({
         title: "TEDAI 2026",
         date: "2026-10-28",
         city: "Vienna",
@@ -102,6 +161,13 @@ describe("builder public events", () => {
         city: "Lisbon",
         location: "MEO Arena, Lisbon",
         url: "https://websummit.com/web-summit-2026/",
+      }),
+      expect.objectContaining({
+        title: "LLMday London",
+        date: "2026-11-26",
+        city: "London",
+        location: "Everyman Canary Wharf, London",
+        url: "https://llmday.com/2026-london-q4/index.html",
       }),
     ]);
 
@@ -137,6 +203,28 @@ describe("builder public events", () => {
     expect(text).toContain(event!.url);
     expect(text).toContain("Pier 48");
     expect(text).not.toMatch(COUNT_COPY);
+  });
+
+  it("upserts locales without a hard-coded enum__locales cast", async () => {
+    const event = BUILDER_PUBLIC_EVENTS[0];
+    expect(event).toBeDefined();
+    let query: unknown;
+    await upsertBuilderEvent(
+      {
+        execute: async (statement: unknown) => {
+          query = statement;
+        },
+      } as never,
+      event!,
+    );
+
+    const sqlText = staticSql(query);
+    expect(sqlText).not.toContain("enum__locales");
+    expect(sqlText).not.toMatch(/::\s*"public"\s*\.\s*"enum__locales"/);
+    expect(sqlText).toContain('INSERT INTO "events_locales"');
+    expect(sqlText).toContain('INSERT INTO "_events_v_locales"');
+    expect(sqlText.match(/'en'/g)).toEqual(["'en'", "'en'"]);
+    expect(sqlText.match(/'nl'/g)).toEqual(["'nl'", "'nl'"]);
   });
 
   it("registers a Payload seed migration that retires Turku and skips counts", () => {
@@ -207,8 +295,51 @@ describe("builder public events", () => {
     expect(migration).not.toMatch(
       /agentic economy|big data expo|apply ai summit|max_attendees|image_id|"price"|rsvp/i,
     );
+    for (const event of BUILDER_PUBLIC_EVENTS) {
+      expect(`${event.slug} ${event.title}`).not.toMatch(
+        /agentic economy|big data expo|apply ai summit/i,
+      );
+    }
     expect(JSON.stringify(BUILDER_PUBLIC_EVENTS)).not.toMatch(
-      /agentic economy|big data expo|apply ai summit|maxAttendees|rsvp/i,
+      /maxAttendees|rsvp/i,
     );
+  });
+
+  it("registers a follow-up migration that upserts only the five new events", () => {
+    const slugs = [
+      "boston-openclaw-meetup-2026",
+      "techex-amsterdam-hackathon-2026",
+      "agentic-ai-in-the-wild-2026",
+      "hacktoberfest-hack-day-barcelona-2026",
+      "llmday-london-2026",
+    ] as const;
+    for (const slug of slugs) {
+      expect(BUILDER_PUBLIC_EVENTS.some((event) => event.slug === slug)).toBe(
+        true,
+      );
+    }
+
+    const migration = readFileSync(FIVE_EVENTS_MIGRATION, "utf8");
+    const index = readFileSync(MIGRATION_INDEX, "utf8");
+    const prior = index.indexOf("20261005a_pytorch_aixia_web_summit");
+    const followUp = index.indexOf("20261006a_five_public_events");
+    expect(prior).toBeGreaterThan(-1);
+    expect(followUp).toBeGreaterThan(prior);
+    expect(migration).toContain("upsertBuilderEvent");
+    expect(migration).toContain("BUILDER_PUBLIC_EVENTS");
+    for (const slug of slugs) {
+      expect(migration).toContain(slug);
+    }
+    expect(migration).not.toMatch(
+      /agentic economy|big data expo|apply ai summit|max_attendees|image_id|"price"|rsvp/i,
+    );
+    const docs = readFileSync(
+      join(dir, "../../../docs/ops/curated-public-events.md"),
+      "utf8",
+    );
+    expect(docs).toContain("20261006a_five_public_events");
+    for (const slug of slugs) {
+      expect(docs).toContain(slug);
+    }
   });
 });

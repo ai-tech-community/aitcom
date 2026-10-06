@@ -35,6 +35,9 @@ export async function upsertBuilderEvent(
     builderEventDescription(event.summary.nl, event.url, "Officiële pagina:"),
   );
 
+  // Locale codes stay untyped string literals. INSERT assigns each one to
+  // the target `_locale` column, so this works whether that enum is named
+  // `enum__locales` (generated schema) or `_locales` (production Neon).
   await db.execute(sql`
     WITH upserted AS (
       INSERT INTO "events" (
@@ -84,7 +87,7 @@ export async function upsertBuilderEvent(
         "_locale", "_parent_id", "title", "summary", "description"
       )
       SELECT
-        'en'::"public"."enum__locales",
+        'en',
         u."id",
         ${event.title},
         ${event.summary.en},
@@ -101,7 +104,7 @@ export async function upsertBuilderEvent(
         "_locale", "_parent_id", "title", "summary", "description"
       )
       SELECT
-        'nl'::"public"."enum__locales",
+        'nl',
         u."id",
         ${event.title},
         ${event.summary.nl},
@@ -192,7 +195,7 @@ export async function upsertBuilderEvent(
         "version_description"
       )
       SELECT
-        'en'::"public"."enum__locales",
+        'en',
         v."id",
         ${event.title},
         ${event.summary.en},
@@ -210,7 +213,7 @@ export async function upsertBuilderEvent(
         "version_description"
       )
       SELECT
-        'nl'::"public"."enum__locales",
+        'nl',
         v."id",
         ${event.title},
         ${event.summary.nl},

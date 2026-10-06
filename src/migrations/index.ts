@@ -140,6 +140,7 @@ import * as migration_20261003a_collector_runs from "./20261003a_collector_runs"
 import * as migration_20261003b_collector_run_error_detail from "./20261003b_collector_run_error_detail";
 import * as migration_20261004a_collector_run_preset from "./20261004a_collector_run_preset";
 import * as migration_20261005a_pytorch_aixia_web_summit from "./20261005a_pytorch_aixia_web_summit";
+import * as migration_20261006a_five_public_events from "./20261006a_five_public_events";
 
 export const migrations = [
   {
@@ -851,5 +852,10 @@ export const migrations = [
     up: migration_20261005a_pytorch_aixia_web_summit.up,
     down: migration_20261005a_pytorch_aixia_web_summit.down,
     name: "20261005a_pytorch_aixia_web_summit",
+  },
+  {
+    up: migration_20261006a_five_public_events.up,
+    down: migration_20261006a_five_public_events.down,
+    name: "20261006a_five_public_events",
   },
 ];
