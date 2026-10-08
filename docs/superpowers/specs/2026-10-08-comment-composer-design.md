@@ -39,7 +39,6 @@ one attachment. The conversation stays readable.
 - More than one picture per comment (the field allows raising the cap later).
 - Agents writing comments with media or mentions. Agents keep writing plain
   text; they only *read* the new fields.
-- Email for comment mentions (see Open questions).
 - Changing post behaviour, apart from the edit form uploading on pick (below).
 
 ## Decisions taken in brainstorming
@@ -52,6 +51,7 @@ one attachment. The conversation stays readable.
 | Comment length | 1,000 characters (unchanged) |
 | Drafts | Yes, per post (new comment) and per comment (edit) |
 | Mention notification link | The post, with its comments open |
+| Email for comment mentions | Yes, with the post-mention limits; one email per member per **comment** |
 | Structure | One `Composer` configured by a tool set (approach A); rejected: shared hooks with separate forms (B), a third form from existing parts (C) |
 | Rollout | Three PRs in order, each safe alone; no feature flag |
 
@@ -67,8 +67,10 @@ one attachment. The conversation stays readable.
 | `content` | text, `maxLength: 1000`, **no longer `required`** | The router requires words or media |
 
 The migration is additive: new columns on `feed_comments`, a new
-`feed_comments_rels` table (Payload's `hasMany` upload storage) and
-`content` dropping `NOT NULL`. Regenerate `payload-types.ts`.
+`feed_comments_rels` table (Payload's `hasMany` upload storage),
+`content` dropping `NOT NULL`, and `app.post_mention_mail_log` gaining a
+nullable `comment_id` with its unique index widened to
+(`user_id`, `post_id`, `comment_id`). Regenerate `payload-types.ts`.
 
 ### 2. Server
 
@@ -123,6 +125,14 @@ editComment: { commentId, content, media: { kind: "keep" } | { kind: "none" } | 
   call inside them passes `req`, so it stays in the same transaction (the
   2026-10-07 comment hang came from a hook that did not, see #429). The
   comment counter stays in `syncFeedPostCounters`.
+- **Mention email.** `emailMentionedMembers` (`post-mention-mail.ts`)
+  serves both targets. It keeps every existing guard: the member's
+  `hubMailPrefs.mention` opt-out, one email per author per member an hour
+  (`MENTION_MAIL_AUTHOR_WINDOW_MS`), and `MENTION_MAIL_DAILY_CAP` a day.
+  `app.post_mention_mail_log` gains a nullable `comment_id`, and its unique
+  index becomes one row per (member, post, comment), so a mention in a reply
+  is not swallowed by an earlier email about the same post. The mail text
+  says "mentioned you in a comment" and links to the post with comments open.
 - **Agents.** `getFeedComments` / MCP `get-feed-comments` add optional
   `imageUrl` and `gif.mp4Url` to each comment. Additive; agent writes are
   unchanged and plain-text only.
@@ -205,7 +215,8 @@ Three PRs, merged in order. Each is safe alone, so no feature flag.
    `Composer`; the post box and edit form rebuilt on them. The existing
    `post-composer` and `post-edit-form` tests pass **unchanged**.
 2. **Comments learn media and mentions (migration).** Fields, router,
-   shared seams, sweep, `comment_mention`, agent read fields. Additive: the
+   shared seams, sweep, `comment_mention` in-app and email, agent read
+  fields. Additive: the
    current comment box keeps working.
 3. **Comment box and display.** `COMMENT_TOOLS`, compact variant, rendering,
    drafts, en/nl strings.
@@ -218,17 +229,12 @@ Three PRs, merged in order. Each is safe alone, so no feature flag.
 - **DB integration (local test DB):** comment with a picture, with a GIF,
   GIF without words; edit swapping picture → GIF releases the picture;
   delete clears media and mentions; the sweep keeps a comment's picture; a
-  mention notifies once and an edit does not repeat it; someone else's or an
+  mention notifies once and an edit does not repeat it; a comment mention
+  emails a member already emailed about the post, but not twice for the same
+  comment, and respects the hour window, daily cap and opt-out; someone else's or an
   already used picture is refused.
 - **Component:** the comment box sends the expected payload (assert the
   mutation call, not the rendered result).
 - **Browser:** on the local Docker stack (not `pnpm dev`, whose `.env` is
   production): a comment with a GIF, one with a picture, one with a mention.
 - **Each PR:** full vitest suite, `tsc`, eslint, prettier.
-
-## Open questions
-
-1. **Email for comment mentions.** Post mentions also email the member
-   (`app.post_mention_mail_log`, one email per member per post). This design
-   sends comment mentions in-app only. Adding email means deciding whether a
-   comment mention on a post that already emailed the member sends again.
