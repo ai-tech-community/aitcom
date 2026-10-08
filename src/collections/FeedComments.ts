@@ -1,5 +1,4 @@
 import type { CollectionConfig } from "payload";
-import { incrementNumeric } from "@/server/payload-numeric";
 
 export const FeedComments: CollectionConfig = {
   slug: "feed-comments",
@@ -8,33 +7,10 @@ export const FeedComments: CollectionConfig = {
     defaultColumns: ["post", "authorName", "createdAt"],
     description: "Comments on community feed posts.",
   },
-  hooks: {
-    afterChange: [
-      async ({ doc, operation, req }) => {
-        if (operation !== "create") return;
-        try {
-          const postId = typeof doc.post === "object" ? doc.post.id : doc.post;
-          const post = await req.payload.findByID({
-            collection: "feed-posts",
-            id: postId,
-            depth: 0,
-            overrideAccess: true,
-          });
-          await req.payload.update({
-            collection: "feed-posts",
-            id: postId,
-            overrideAccess: true,
-            data: { commentCount: incrementNumeric(post.commentCount) },
-          });
-        } catch (err) {
-          console.error(
-            "[feed-comments] failed to increment post commentCount",
-            err,
-          );
-        }
-      },
-    ],
-  },
+  // No hook keeps the post's commentCount: every write path calls
+  // syncFeedPostCounters after its write. A hook that updated the post from
+  // inside this create waited forever on the post row the new comment's
+  // foreign key had locked.
   fields: [
     {
       name: "post",
