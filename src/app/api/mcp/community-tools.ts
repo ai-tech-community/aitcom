@@ -119,7 +119,7 @@ export function registerCommunityTools(
           .string()
           .describe("The community slug to request membership in."),
       },
-      annotations: DRAFT_FOR_REVIEW,
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ slug }) => {
       const result = await caller.agent.requestToJoinCommunity({ slug });

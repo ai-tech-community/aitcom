@@ -353,7 +353,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
         eventId: z.number().describe("Event ID."),
         reason: z.string().max(500).optional().describe("Why it's relevant."),
       },
-      annotations: ADDITIVE_WRITE,
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ eventId, reason }) => {
       const result = await caller.agent.suggestEventInterest({
@@ -1048,6 +1048,8 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .default(0)
           .describe("How many tool calls you made this run."),
       },
+      // Trims the agent's own logs past the newest 20 — a retention window,
+      // not an effect of the call on anyone's data, so still additive.
       annotations: ADDITIVE_WRITE,
     },
     async ({ summary, mode, actionsCount }) => {

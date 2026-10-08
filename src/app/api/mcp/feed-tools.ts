@@ -7,7 +7,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 import type { createCaller } from "@/server/api/root";
 import {
-  ADDITIVE_WRITE,
+  DESTRUCTIVE_WRITE,
   DRAFT_FOR_REVIEW,
   READ_ONLY,
 } from "@/server/mcp/tool-annotations";
@@ -152,7 +152,7 @@ export function registerFeedTools(
           .number()
           .describe("Numeric ID of the feed post to like/unlike."),
       },
-      annotations: ADDITIVE_WRITE,
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ postId }) => {
       const result = await caller.agent.toggleFeedLike({ postId });

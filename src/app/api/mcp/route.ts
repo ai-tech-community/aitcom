@@ -17,10 +17,9 @@ import {
 // NOTE: We do NOT call checkRateLimit here. Rate limiting is enforced inside
 // the agentAuth tRPC middleware (trpc.ts), which runs on every tool invocation.
 // Calling checkRateLimit twice would consume two tokens per request, halving
-// the effective limit. We also avoid a redundant validateApiKey DB round-trip
-// by deferring full validation to the tRPC layer — this function just checks
-// whether a Bearer token is present and valid enough to route to the
-// authenticated MCP server (the tRPC middleware re-validates and rate-limits).
+// the effective limit. The key is validated here only to route the request:
+// a valid key reaches the authenticated server, where the tRPC middleware
+// re-validates and rate-limits; a bad key gets 401; no key gets registration.
 
 type AuthResult =
   | { kind: "anonymous" }
