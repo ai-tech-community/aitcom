@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import {
   FEATURED_COMMUNITY_SLUGS,
@@ -6,6 +6,7 @@ import {
   pickFeaturedCommunities,
   type FeaturedCommunityCard,
 } from "@/server/communities/featured";
+import { HUB_SLUG } from "@/server/communities/hub";
 import type { db as _db } from "@/server/db";
 import { communities, communityMemberships } from "@/server/db/schema";
 
@@ -13,7 +14,9 @@ type DB = typeof _db;
 
 /**
  * Live cards for the homepage strip: name / blurb / logo / member count.
- * Includes the unlisted Hub. Does not invent activity or thread counts.
+ * Includes the unlisted Hub. Drops every other unlisted community, so a
+ * test room on the editorial slug list still stays off the strip. Does not
+ * invent activity or thread counts.
  */
 export async function loadFeaturedCommunities(
   db: DB,
@@ -40,11 +43,19 @@ export async function loadFeaturedCommunities(
       description: communities.description,
       logoUrl: communities.logoUrl,
       memberCount: memberCountExpr,
+      isListedInDirectory: communities.isListedInDirectory,
     })
     .from(communities)
     .leftJoin(memberCountSq, eq(communities.id, memberCountSq.communityId))
     .where(
-      and(inArray(communities.slug, slugs), isNull(communities.deletedAt)),
+      and(
+        inArray(communities.slug, slugs),
+        isNull(communities.deletedAt),
+        or(
+          eq(communities.isListedInDirectory, true),
+          eq(communities.slug, HUB_SLUG),
+        ),
+      ),
     );
 
   return pickFeaturedCommunities(rows).map((row) => ({

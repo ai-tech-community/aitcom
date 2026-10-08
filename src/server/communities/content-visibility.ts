@@ -27,6 +27,28 @@ export function isRosterPublic(community: CommunityVisibility): boolean {
   return community.isListedInDirectory;
 }
 
+/**
+ * Public directory cards (`/communities`). Listed communities only — the
+ * unlisted Hub and any other unlisted room stay off the guest grid.
+ */
+export function isPublicDirectoryCommunity(community: {
+  isListedInDirectory: boolean;
+}): boolean {
+  return community.isListedInDirectory;
+}
+
+/**
+ * Homepage Featured strip. Same listing rule as the directory, except the
+ * unlisted Hub door stays (ADR-0019). Any other unlisted community is a
+ * private room, not a homepage card.
+ */
+export function isFeaturedStripCommunity(community: {
+  slug: string;
+  isListedInDirectory: boolean;
+}): boolean {
+  return community.slug === HUB_SLUG || community.isListedInDirectory;
+}
+
 export function canReadContent(
   community: CommunityVisibility,
   isActiveMember: boolean,

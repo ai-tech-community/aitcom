@@ -142,6 +142,7 @@ import * as migration_20261004a_collector_run_preset from "./20261004a_collector
 import * as migration_20261005a_pytorch_aixia_web_summit from "./20261005a_pytorch_aixia_web_summit";
 import * as migration_20261006a_five_public_events from "./20261006a_five_public_events";
 import * as migration_20261008a_forum_reply_count_repair from "./20261008a_forum_reply_count_repair";
+import * as migration_20261008b_unlist_test_communities from "./20261008b_unlist_test_communities";
 
 export const migrations = [
   {
@@ -863,5 +864,10 @@ export const migrations = [
     up: migration_20261008a_forum_reply_count_repair.up,
     down: migration_20261008a_forum_reply_count_repair.down,
     name: "20261008a_forum_reply_count_repair",
+  },
+  {
+    up: migration_20261008b_unlist_test_communities.up,
+    down: migration_20261008b_unlist_test_communities.down,
+    name: "20261008b_unlist_test_communities",
   },
 ];

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { unstable_noStore as noStore } from "next/cache";
+import type { Where } from "payload";
 import { awesomeDirectorySitemapPaths } from "@/lib/investigations/awesome-ai-oss";
 import {
   startupDirectorySitemapPaths,
@@ -12,6 +13,11 @@ import {
 } from "@/server/communities/forum-scope";
 import { COLLECTOR_ABOUT_PATH } from "@/server/collectors/identity";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
+import {
+  docBelongsToHiddenCommunity,
+  hiddenCommunitySlugs,
+  withoutHiddenCommunityUrls,
+} from "@/server/communities/sitemap-exclusions";
 import { getPayloadClient } from "@/server/payload";
 
 // Time-based ISR instead of force-dynamic: a sitemap does not need to be
@@ -86,6 +92,27 @@ function uniqueLocaleEntries(paths: readonly string[]): MetadataRoute.Sitemap {
     entries.push(localeEntries(path));
   }
   return entries;
+}
+
+/**
+ * Published events a guest may see. Discovered (Luma) events are "scheduled
+ * around, not attended through" (CONTEXT.md [[discovered-event]]) — omit
+ * them from the public sitemap; they stay in the conflict corpus.
+ * When visibility is unknown, keep only events with no community. Otherwise
+ * drop events of unlisted communities and keep unscoped events.
+ */
+function publishedEventsWhere(
+  hiddenCommunityIds: readonly string[] | null,
+): Where {
+  const published: Where = {
+    status: { equals: "published" },
+    discoverySource: { not_equals: "luma" },
+  };
+  if (hiddenCommunityIds === null) {
+    return { and: [published, { communityId: { exists: false } }] };
+  }
+  const readable = communityContentReadableWhere(hiddenCommunityIds);
+  return readable ? { and: [published, readable] } : published;
 }
 
 function docsFromSettled(
@@ -204,7 +231,8 @@ export async function buildSitemapEntries(
   }
 
   // Fail closed: if we cannot tell which communities are members-only, list
-  // no threads rather than risk publishing an unlisted community's slugs.
+  // no community threads or community events rather than risk publishing an
+  // unlisted community's URLs.
   let hiddenCommunityIds: readonly string[] | null = null;
   try {
     hiddenCommunityIds = await getHiddenCommunityIds();
@@ -216,14 +244,7 @@ export async function buildSitemapEntries(
     await Promise.allSettled([
       payload.find({
         collection: "events",
-        where: {
-          status: { equals: "published" },
-          // Discovered (Luma) events are "scheduled around, not attended
-          // through" (CONTEXT.md [[discovered-event]]) — omit them from the
-          // public sitemap; they stay in the conflict corpus (corpus.ts
-          // untouched).
-          discoverySource: { not_equals: "luma" },
-        },
+        where: publishedEventsWhere(hiddenCommunityIds),
         limit: 1000,
         depth: 0,
       }),
@@ -244,13 +265,6 @@ export async function buildSitemapEntries(
           }),
     ]);
 
-  const eventEntries = docsFromSettled(eventsResult, "events").map((event) =>
-    localeEntries(`/events/${event.slug}`, safeDate(event.updatedAt)),
-  );
-  const articleEntries = docsFromSettled(articlesResult, "articles").map(
-    (article) =>
-      localeEntries(`/blog/${article.slug}`, safeDate(article.updatedAt)),
-  );
   let communitySlugById: ReadonlyMap<string, string> = new Map();
   try {
     communitySlugById = await getCommunitySlugById();
@@ -258,19 +272,39 @@ export async function buildSitemapEntries(
     console.error("[sitemap] community slug lookup failed", error);
   }
 
-  const threadEntries = docsFromSettled(threadsResult, "forum-threads").flatMap(
-    (thread) => {
+  const visible = (doc: SitemapDoc) =>
+    !docBelongsToHiddenCommunity(doc.communityId, hiddenCommunityIds);
+
+  const eventEntries = docsFromSettled(eventsResult, "events")
+    .filter(visible)
+    .map((event) =>
+      localeEntries(`/events/${event.slug}`, safeDate(event.updatedAt)),
+    );
+  const articleEntries = docsFromSettled(articlesResult, "articles")
+    .filter(visible)
+    .map((article) =>
+      localeEntries(`/blog/${article.slug}`, safeDate(article.updatedAt)),
+    );
+
+  const threadEntries = docsFromSettled(threadsResult, "forum-threads")
+    .filter(visible)
+    .flatMap((thread) => {
       const path = forumThreadSitemapPath(thread, communitySlugById);
       return path ? [localeEntries(path, safeDate(thread.updatedAt))] : [];
-    },
-  );
+    });
 
-  return [
-    ...staticEntries,
-    ...eventEntries,
-    ...articleEntries,
-    ...threadEntries,
-  ];
+  // Community pages, forum threads, and any other URL under an unlisted
+  // slug, in every locale. Event URLs do not carry the slug; those are
+  // dropped above by community id.
+  const hiddenSlugs =
+    hiddenCommunityIds === null
+      ? new Set<string>()
+      : hiddenCommunitySlugs(communitySlugById, hiddenCommunityIds);
+
+  return withoutHiddenCommunityUrls(
+    [...staticEntries, ...eventEntries, ...articleEntries, ...threadEntries],
+    hiddenSlugs,
+  );
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
