@@ -190,9 +190,8 @@ describe.skipIf(!RUN_DB)("forum reply counts [DB integration]", () => {
       sql`UPDATE "forum_threads" SET "reply_count" = 7 WHERE "id" = ${fx.threadId}`,
     );
 
-    const { up } = await import(
-      "@/migrations/20261008a_forum_reply_count_repair"
-    );
+    const { up } =
+      await import("@/migrations/20261008a_forum_reply_count_repair");
     await up({ db: payload.db.drizzle, payload, req: {} } as never);
 
     expect((await thread()).replyCount).toBe(1);
