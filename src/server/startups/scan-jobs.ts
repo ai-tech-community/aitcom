@@ -41,6 +41,17 @@ import {
   armVisualBackup,
   ocrPostingPage,
 } from "@/server/startups/posting-visual-backup";
+import {
+  STARTUP_JOBS_ATS_HOST_LIMIT,
+  STARTUP_JOBS_DEADLINE_MARGIN_MS,
+  STARTUP_JOBS_SCAN_CONCURRENCY,
+  StartupJobsDeadlineError,
+  createStartupJobsFetchGate,
+  mapUntilDeadline,
+  nextStartupJobsStreak,
+  orderStartupJobsScanTargets,
+  startupJobsScanRunSummary,
+} from "@/server/startups/scan-jobs-schedule";
 
 let inVisualBatch = false;
 
@@ -63,7 +74,11 @@ export type JobsUrlListings = {
   listings: ExtractedJobListing[];
 };
 
-export type StartupJobsScanOutcome = "applied" | "held" | "unfetched";
+export type StartupJobsScanOutcome =
+  | "applied"
+  | "held"
+  | "unfetched"
+  | "deferred";
 
 export type ScanStartupJobsResult = {
   startupId: string;
@@ -71,6 +86,8 @@ export type ScanStartupJobsResult = {
   published: number;
   pending: number;
   closed: number;
+  /** Roles inserted as open, or moved back to open, during this scan. */
+  opened: number;
   outcome: StartupJobsScanOutcome;
   error?: string;
 };
@@ -80,8 +97,12 @@ export type ScanAllStartupJobsResult = {
   published: number;
   pending: number;
   closed: number;
+  opened: number;
   errors: number;
   held: number;
+  /** Companies cut off by the deadline. Their rows were not touched. */
+  deferred: number;
+  elapsedMs: number;
 };
 
 /**
@@ -132,6 +153,41 @@ export function startupJobsScanTablePatch(input: {
   return {
     jobsScannedAt: input.scannedAt,
     openRoleCount: input.published,
+  };
+}
+
+function startupJobsScanStamp(
+  startup: {
+    jobsEmptyStreak?: number | null;
+    jobsFailStreak?: number | null;
+  },
+  input: {
+    fetched: boolean;
+    published: number;
+    scannedAt: Date;
+    outcome: StartupJobsScanOutcome;
+    foundRoles: boolean;
+  },
+): {
+  jobsScannedAt: Date;
+  openRoleCount?: number;
+  jobsEmptyStreak: number;
+  jobsFailStreak: number;
+} {
+  const streaks = nextStartupJobsStreak({
+    outcome: input.outcome,
+    foundRoles: input.foundRoles,
+    emptyStreak: startup.jobsEmptyStreak ?? 0,
+    failStreak: startup.jobsFailStreak ?? 0,
+  });
+  return {
+    ...startupJobsScanTablePatch({
+      fetched: input.fetched,
+      published: input.published,
+      scannedAt: input.scannedAt,
+    }),
+    jobsEmptyStreak: streaks.emptyStreak,
+    jobsFailStreak: streaks.failStreak,
   };
 }
 
@@ -341,6 +397,7 @@ export async function scanStartupJobs(
     published: 0,
     pending: 0,
     closed: 0,
+    opened: 0,
     outcome: "applied",
   };
   if (!inVisualBatch) armVisualBackup(4);
@@ -348,10 +405,12 @@ export async function scanStartupJobs(
     await db
       .update(startups)
       .set(
-        startupJobsScanTablePatch({
+        startupJobsScanStamp(startup, {
           fetched: true,
           published: 0,
           scannedAt: new Date(),
+          outcome: "applied",
+          foundRoles: false,
         }),
       )
       .where(eq(startups.id, startup.id));
@@ -367,13 +426,18 @@ export async function scanStartupJobs(
     fromAtsApi = result.fromAtsApi;
     listings = result.listings;
   } catch (error) {
+    if (error instanceof StartupJobsDeadlineError) {
+      return { ...empty, outcome: "deferred" };
+    }
     await db
       .update(startups)
       .set(
-        startupJobsScanTablePatch({
+        startupJobsScanStamp(startup, {
           fetched: false,
           published: 0,
           scannedAt: new Date(),
+          outcome: "unfetched",
+          foundRoles: false,
         }),
       )
       .where(eq(startups.id, startup.id));
@@ -384,10 +448,12 @@ export async function scanStartupJobs(
     await db
       .update(startups)
       .set(
-        startupJobsScanTablePatch({
+        startupJobsScanStamp(startup, {
           fetched: false,
           published: 0,
           scannedAt: new Date(),
+          outcome: "unfetched",
+          foundRoles: false,
         }),
       )
       .where(eq(startups.id, startup.id));
@@ -447,6 +513,7 @@ export async function scanStartupJobs(
       published: 0,
       pending: 0,
       closed: 0,
+      opened: 0,
       outcome: "held",
     };
   }
@@ -454,6 +521,7 @@ export async function scanStartupJobs(
   const fetchedAt = new Date();
   let published = 0;
   let pending = 0;
+  let opened = 0;
 
   const consumedWorkable = new Set<string>();
   for (const listing of listings) {
@@ -468,8 +536,10 @@ export async function scanStartupJobs(
     const location = storedRoleText(listing.location);
     const descriptionText = storedRoleText(listing.descriptionText);
     const status = title ? "open" : "pending_review";
-    if (status === "open") published += 1;
-    else pending += 1;
+    if (status === "open") {
+      published += 1;
+      if (current?.status !== "open") opened += 1;
+    } else pending += 1;
     if (current) {
       await db
         .update(startupRoles)
@@ -529,10 +599,12 @@ export async function scanStartupJobs(
   await db
     .update(startups)
     .set(
-      startupJobsScanTablePatch({
+      startupJobsScanStamp(startup, {
         fetched,
         published,
         scannedAt: fetchedAt,
+        outcome: "applied",
+        foundRoles: published + pending > 0,
       }),
     )
     .where(eq(startups.id, startup.id));
@@ -543,6 +615,7 @@ export async function scanStartupJobs(
     published,
     pending,
     closed,
+    opened,
     outcome: "applied",
   };
 }
@@ -556,13 +629,35 @@ export async function scanAllStartupJobs(
     .where(and(eq(startups.status, "approved"), eq(startups.source, "staff")))
     // Postgres ASC is NULLS LAST, so the daily cron would keep re-scanning
     // already-scanned rows and never drain jobs_scanned_at IS NULL.
+    // orderStartupJobsScanTargets then places open roles and known ATS
+    // boards ahead of never-hiring companies, and skips a company that is
+    // still inside its empty or failure backoff. On the 8 Oct 2026 set
+    // that priority group finishes in about half the budget, so the
+    // never-hiring tail still advances every run.
     .orderBy(
       sql`${startups.jobsScannedAt} ASC NULLS FIRST`,
       asc(startups.listedOn),
     );
 
-  const targets = rows.filter((row) => presentText(row.jobsUrl));
   const started = Date.now();
+  const deadlineAt = started + STARTUP_JOBS_SCAN_BUDGET_MS;
+  const targets = orderStartupJobsScanTargets(
+    rows
+      .filter((row) => presentText(row.jobsUrl))
+      .map((row) => ({
+        ...row,
+        emptyStreak: row.jobsEmptyStreak ?? 0,
+        failStreak: row.jobsFailStreak ?? 0,
+      })),
+    started,
+  );
+  const gatedFetch = createStartupJobsFetchGate({
+    concurrency: STARTUP_JOBS_SCAN_CONCURRENCY,
+    hostLimit: STARTUP_JOBS_ATS_HOST_LIMIT,
+    deadlineAt,
+    marginMs: STARTUP_JOBS_DEADLINE_MARGIN_MS,
+    fetchPage,
+  });
   inVisualBatch = true;
   armVisualBackup(STARTUP_ROLE_VISUAL_BACKUP_CAP);
 
@@ -571,42 +666,65 @@ export async function scanAllStartupJobs(
     published: 0,
     pending: 0,
     closed: 0,
+    opened: 0,
     errors: 0,
     held: 0,
+    deferred: 0,
+    elapsedMs: 0,
   };
 
   try {
-    for (const startup of targets) {
-      if (Date.now() - started >= STARTUP_JOBS_SCAN_BUDGET_MS) break;
-      try {
-        const result = await scanStartupJobs(startup, fetchPage);
-        summary.scanned += 1;
-        summary.published += result.published;
-        summary.pending += result.pending;
-        summary.closed += result.closed;
-        if (result.outcome === "held") summary.held += 1;
-        if (result.error) summary.errors += 1;
-      } catch {
-        summary.scanned += 1;
-        summary.errors += 1;
+    await mapUntilDeadline(targets, {
+      concurrency: STARTUP_JOBS_SCAN_CONCURRENCY,
+      shouldStart: () =>
+        Date.now() < deadlineAt - STARTUP_JOBS_DEADLINE_MARGIN_MS,
+      worker: async (startup) => {
         try {
-          await db
-            .update(startups)
-            .set(
-              startupJobsScanTablePatch({
-                fetched: false,
-                published: 0,
-                scannedAt: new Date(),
-              }),
-            )
-            .where(eq(startups.id, startup.id));
+          const result = await scanStartupJobs(startup, gatedFetch);
+          if (result.outcome === "deferred") {
+            summary.deferred += 1;
+            return;
+          }
+          summary.scanned += 1;
+          summary.published += result.published;
+          summary.pending += result.pending;
+          summary.closed += result.closed;
+          summary.opened += result.opened;
+          if (result.outcome === "held") summary.held += 1;
+          if (result.error) summary.errors += 1;
         } catch {
-          // Soft-fail: the next cron can retry this company.
+          summary.scanned += 1;
+          summary.errors += 1;
+          try {
+            await db
+              .update(startups)
+              .set(
+                startupJobsScanStamp(startup, {
+                  fetched: false,
+                  published: 0,
+                  scannedAt: new Date(),
+                  outcome: "unfetched",
+                  foundRoles: false,
+                }),
+              )
+              .where(eq(startups.id, startup.id));
+          } catch {
+            // Soft-fail: the next cron can retry this company.
+          }
         }
-      }
-    }
+      },
+    });
   } finally {
     inVisualBatch = false;
+    summary.elapsedMs = Date.now() - started;
+    console.info("[startup-jobs-scan] summary", {
+      ...startupJobsScanRunSummary(summary),
+      published: summary.published,
+      pending: summary.pending,
+      errors: summary.errors,
+      held: summary.held,
+      deferred: summary.deferred,
+    });
   }
 
   return summary;

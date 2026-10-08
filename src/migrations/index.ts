@@ -144,6 +144,7 @@ import * as migration_20261006a_five_public_events from "./20261006a_five_public
 import * as migration_20261006b_event_end_date from "./20261006b_event_end_date";
 import * as migration_20261008a_forum_reply_count_repair from "./20261008a_forum_reply_count_repair";
 import * as migration_20261008b_unlist_test_communities from "./20261008b_unlist_test_communities";
+import * as migration_20261008c_startup_jobs_scan_streak from "./20261008c_startup_jobs_scan_streak";
 
 export const migrations = [
   {
@@ -875,5 +876,10 @@ export const migrations = [
     up: migration_20261008b_unlist_test_communities.up,
     down: migration_20261008b_unlist_test_communities.down,
     name: "20261008b_unlist_test_communities",
+  },
+  {
+    up: migration_20261008c_startup_jobs_scan_streak.up,
+    down: migration_20261008c_startup_jobs_scan_streak.down,
+    name: "20261008c_startup_jobs_scan_streak",
   },
 ];

@@ -4468,6 +4468,16 @@ export const startups = appSchema.table(
     jobsScannedAt: d.timestamp({ withTimezone: true }),
     /** Sourced `open` role count from the last successful scan. 0 = no jobs. */
     openRoleCount: d.integer().notNull().default(0),
+    /**
+     * Successful scans in a row that published no roles. The jobs cron
+     * backs off from the third. Reset when a scan publishes a role.
+     */
+    jobsEmptyStreak: d.integer().notNull().default(0),
+    /**
+     * Scans in a row that could not fetch the careers page. The jobs cron
+     * backs off from the third. Reset when a fetch succeeds.
+     */
+    jobsFailStreak: d.integer().notNull().default(0),
     status: d
       .varchar({ length: 16 })
       .notNull()

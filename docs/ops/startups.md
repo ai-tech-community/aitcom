@@ -269,8 +269,8 @@ the active filters.
   the card then links each post ("Asked in …").
   `/startups/jobs`, `/investigations/startups/jobs`, and the old
   community `/communities/{slug}/jobs` board permanent-redirect here. The daily `startup-jobs-scan` cron reads
-  every listed startup with a verified `jobs_url` (oldest `jobs_scanned_at`
-  first) until `STARTUP_JOBS_SCAN_BUDGET_MS` (~240s). ATS JSON first (Ashby /
+  every listed startup with a verified `jobs_url` (unscanned first, then companies with open roles or a known ATS board, then never-hiring companies, oldest `jobs_scanned_at`
+  within each group) eight at a time until `STARTUP_JOBS_SCAN_BUDGET_MS` (~240s). At most two requests go to one ATS host at once. A company that has returned no roles, or failed to load, for three scans in a row waits 2 days, then 4, then at most 7 days. The run logs companies scanned, roles opened and closed, and time spent. ATS JSON first (Ashby /
   Greenhouse / Lever / Workable); otherwise listing HTML then the original
   posting page for any missing JD. Title + source URL are required to
   publish. Location/category index CTAs (`Jobs in Chicago`,

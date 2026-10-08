@@ -69,6 +69,7 @@ import {
   scanStartupJobs,
   startupJobsScanTablePatch,
 } from "@/server/startups/scan-jobs";
+import { createStartupJobsFetchGate } from "@/server/startups/scan-jobs-schedule";
 import type { startups } from "@/server/db/schema";
 import {
   STARTUP_ROLE_ENRICH_CAP,
@@ -589,6 +590,10 @@ describe("startup jobs scan locks", () => {
     expect(src).not.toMatch(/\.slice\(0, limit\)/);
     expect(src).toContain("presentText(row.jobsUrl)");
     expect(src).toContain("${startups.jobsScannedAt} ASC NULLS FIRST");
+    expect(src).toContain("orderStartupJobsScanTargets");
+    expect(src).toContain("createStartupJobsFetchGate");
+    expect(src).toContain("mapUntilDeadline");
+    expect(src).toContain("[startup-jobs-scan] summary");
     expect(src).toContain('status === "open"');
     expect(src).not.toMatch(/openrouter/i);
     expect(src).toContain("startupJobsScanTablePatch");
@@ -816,7 +821,13 @@ describe("startup jobs scan hold", () => {
     const result = await scanHtml(kept);
     expect(result.outcome).toBe("applied");
     expect(result.closed).toBe(1);
+    expect(result.opened).toBe(0);
     expect(closedIds()).toEqual(["role-office-manager"]);
+    const startupUpdate = scanDb.state.updates.find(
+      (update) => "jobsScannedAt" in update.set,
+    );
+    expect(startupUpdate?.set.jobsEmptyStreak).toBe(0);
+    expect(startupUpdate?.set.jobsFailStreak).toBe(0);
   });
 
   it("still closes a smaller genuine ATS board", async () => {
@@ -917,5 +928,56 @@ describe("startup jobs scan hold", () => {
     expect(
       scanDb.state.updates.some((update) => "openRoleCount" in update.set),
     ).toBe(false);
+    const startupUpdate = scanDb.state.updates.find(
+      (update) => "jobsScannedAt" in update.set,
+    );
+    expect(startupUpdate?.set.jobsFailStreak).toBe(1);
+    expect(startupUpdate?.set.jobsEmptyStreak).toBe(0);
+  });
+
+  it("does not close roles or record a scan when a follow-up fetch hits the deadline", async () => {
+    scanDb.state.roles = [openRole("staff-engineer"), openRole("designer")];
+    let now = 0;
+    const gate = createStartupJobsFetchGate({
+      concurrency: 4,
+      hostLimit: 2,
+      deadlineAt: 1_000,
+      marginMs: 200,
+      now: () => now,
+      fetchPage: async (url) => {
+        if (url === CAREERS_URL) {
+          now = 800;
+          return page(
+            `<a href="https://boards.greenhouse.io/acme">Staff engineer</a>`,
+          );
+        }
+        throw new Error(`follow-up fetch should not run: ${url}`);
+      },
+    });
+    const result = await scanStartupJobs(startup, gate);
+    expect(result.outcome).toBe("deferred");
+    expect(result.closed).toBe(0);
+    expect(result.opened).toBe(0);
+    expect(scanDb.state.updates).toEqual([]);
+    expect(scanDb.state.inserts).toEqual([]);
+  });
+
+  it("does not record a scan when the first fetch is already past the deadline", async () => {
+    scanDb.state.roles = [openRole("staff-engineer")];
+    const gate = createStartupJobsFetchGate({
+      concurrency: 2,
+      hostLimit: 2,
+      deadlineAt: 1_000,
+      marginMs: 200,
+      now: () => 800,
+      fetchPage: async () => {
+        throw new Error("no request should start");
+      },
+    });
+    const result = await scanStartupJobs(startup, gate);
+    expect(result.outcome).toBe("deferred");
+    expect(result.closed).toBe(0);
+    expect(scanDb.state.updates).toEqual([]);
+    expect(scanDb.state.inserts).toEqual([]);
   });
 });
