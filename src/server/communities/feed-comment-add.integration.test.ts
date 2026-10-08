@@ -52,7 +52,13 @@ describe.skipIf(!RUN_DB)("feed.addComment [DB integration]", () => {
         import("@/server/payload"),
         import("drizzle-orm"),
       ]);
-    m = { db, schema, createCaller, getPayloadClient, inArray: drizzle.inArray };
+    m = {
+      db,
+      schema,
+      createCaller,
+      getPayloadClient,
+      inArray: drizzle.inArray,
+    };
     if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
       throw new Error("Refusing to run against a cloud Neon DATABASE_URL.");
     }
