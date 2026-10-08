@@ -5,7 +5,12 @@ import { validateApiKey } from "@/server/agent/api-key";
 import { checkRegistrationRateLimit } from "@/server/agent/rate-limit";
 import { createCaller } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
-import { createMcpServer, createRegistrationMcpServer } from "./server";
+import { MCP_SERVER_NAME } from "@/server/mcp/identity";
+import {
+  createMcpServer,
+  createRegistrationMcpServer,
+  type AgentKeyData,
+} from "./server";
 
 // ── Auth helper ─────────────────────────────────────────────────────────────
 //
@@ -17,23 +22,47 @@ import { createMcpServer, createRegistrationMcpServer } from "./server";
 // whether a Bearer token is present and valid enough to route to the
 // authenticated MCP server (the tRPC middleware re-validates and rate-limits).
 
-async function authenticateRequest(req: Request) {
+type AuthResult =
+  | { kind: "anonymous" }
+  | { kind: "invalid" }
+  | { kind: "agent"; keyData: AgentKeyData };
+
+async function authenticateRequest(req: Request): Promise<AuthResult> {
   const authHeader = req.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) return null;
+  if (!authHeader?.startsWith("Bearer ")) return { kind: "anonymous" };
 
-  const apiKey = authHeader.slice(7);
-  const keyData = await validateApiKey(db, apiKey);
-  if (!keyData) return null;
+  const keyData = await validateApiKey(db, authHeader.slice(7));
+  return keyData ? { kind: "agent", keyData } : { kind: "invalid" };
+}
 
-  return keyData;
+// A presented key that does not validate (unknown, revoked, or a suspended
+// agent) is an auth failure, not an anonymous visit: answer 401 per RFC 6750
+// so clients see the real problem instead of a silently shrunken tool list.
+// Only a request with no credentials falls through to the registration tools.
+function invalidTokenResponse(): Response {
+  return new Response(
+    JSON.stringify({
+      error: "invalid_token",
+      error_description:
+        "The API key is invalid, revoked, or belongs to a suspended agent. Omit the Authorization header to reach the registration tools.",
+    }),
+    {
+      status: 401,
+      headers: {
+        "Content-Type": "application/json",
+        "WWW-Authenticate": `Bearer realm="${MCP_SERVER_NAME}", error="invalid_token"`,
+      },
+    },
+  );
 }
 
 // ── Route handlers ──────────────────────────────────────────────────────────
 
 async function handleMcpRequest(req: Request): Promise<Response> {
-  const keyData = await authenticateRequest(req);
+  const auth = await authenticateRequest(req);
 
-  if (keyData) {
+  if (auth.kind === "agent") {
+    const { keyData } = auth;
     const ctx = await createTRPCContext({ headers: req.headers });
     const caller = createCaller(ctx);
     const server = createMcpServer(caller, keyData);
@@ -44,7 +73,8 @@ async function handleMcpRequest(req: Request): Promise<Response> {
     return transport.handleRequest(req);
   }
 
-  // Unauthenticated — registration tools only
+  // No valid key: anonymous visitors and failed keys share one per-IP budget,
+  // so a bad key never buys more attempts than registration does.
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     req.headers.get("x-real-ip") ??
@@ -60,6 +90,9 @@ async function handleMcpRequest(req: Request): Promise<Response> {
     );
   }
 
+  if (auth.kind === "invalid") return invalidTokenResponse();
+
+  // Anonymous — registration tools only
   const server = createRegistrationMcpServer();
   const transport = new WebStandardStreamableHTTPServerTransport({
     enableJsonResponse: true,
