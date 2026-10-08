@@ -1,4 +1,4 @@
-import type { JobFetch, JobFetchResult } from "@/server/startups/scan-jobs";
+import type { JobFetch } from "@/server/startups/scan-jobs";
 
 /**
  * Parallel careers fetch for one cron run.
@@ -42,12 +42,17 @@ export type StartupJobsScanTarget = StartupJobsScanOrderRow & {
   failStreak: number;
 };
 
-const EMPTY_FETCH: JobFetchResult = {
-  ok: false,
-  status: 0,
-  text: "",
-  contentType: "",
-};
+/**
+ * Raised when a fetch is not started because the cron budget is inside
+ * its margin. Callers must not treat this as an empty board or a failed
+ * host: no roles are written and the company stays where it was in line.
+ */
+export class StartupJobsDeadlineError extends Error {
+  constructor() {
+    super("startup jobs scan deadline");
+    this.name = "StartupJobsDeadlineError";
+  }
+}
 
 function hostIs(hostname: string, domain: string): boolean {
   return hostname === domain || hostname.endsWith(`.${domain}`);
@@ -137,12 +142,12 @@ export function orderStartupJobsScanTargets<T extends StartupJobsScanTarget>(
 }
 
 export function nextStartupJobsStreak(input: {
-  outcome: "applied" | "held" | "unfetched";
+  outcome: "applied" | "held" | "unfetched" | "deferred";
   foundRoles: boolean;
   emptyStreak: number;
   failStreak: number;
 }): { emptyStreak: number; failStreak: number } {
-  if (input.outcome === "held") {
+  if (input.outcome === "held" || input.outcome === "deferred") {
     return { emptyStreak: input.emptyStreak, failStreak: input.failStreak };
   }
   if (input.outcome === "unfetched") {
@@ -207,7 +212,7 @@ export function createStartupJobsFetchGate(options: {
   }
 
   return async (url: string) => {
-    if (pastDeadline()) return EMPTY_FETCH;
+    if (pastDeadline()) throw new StartupJobsDeadlineError();
     const host = startupJobsAtsHostKey(url);
     await new Promise<void>((resolve) => {
       queue.push({ host, resolve });
@@ -215,7 +220,7 @@ export function createStartupJobsFetchGate(options: {
     });
     if (pastDeadline()) {
       release(host);
-      return EMPTY_FETCH;
+      throw new StartupJobsDeadlineError();
     }
     try {
       return await options.fetchPage(url);

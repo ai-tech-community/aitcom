@@ -45,6 +45,7 @@ import {
   STARTUP_JOBS_ATS_HOST_LIMIT,
   STARTUP_JOBS_DEADLINE_MARGIN_MS,
   STARTUP_JOBS_SCAN_CONCURRENCY,
+  StartupJobsDeadlineError,
   createStartupJobsFetchGate,
   mapUntilDeadline,
   nextStartupJobsStreak,
@@ -73,7 +74,11 @@ export type JobsUrlListings = {
   listings: ExtractedJobListing[];
 };
 
-export type StartupJobsScanOutcome = "applied" | "held" | "unfetched";
+export type StartupJobsScanOutcome =
+  | "applied"
+  | "held"
+  | "unfetched"
+  | "deferred";
 
 export type ScanStartupJobsResult = {
   startupId: string;
@@ -95,6 +100,8 @@ export type ScanAllStartupJobsResult = {
   opened: number;
   errors: number;
   held: number;
+  /** Companies cut off by the deadline. Their rows were not touched. */
+  deferred: number;
   elapsedMs: number;
 };
 
@@ -419,6 +426,9 @@ export async function scanStartupJobs(
     fromAtsApi = result.fromAtsApi;
     listings = result.listings;
   } catch (error) {
+    if (error instanceof StartupJobsDeadlineError) {
+      return { ...empty, outcome: "deferred" };
+    }
     await db
       .update(startups)
       .set(
@@ -621,7 +631,9 @@ export async function scanAllStartupJobs(
     // already-scanned rows and never drain jobs_scanned_at IS NULL.
     // orderStartupJobsScanTargets then places open roles and known ATS
     // boards ahead of never-hiring companies, and skips a company that is
-    // still inside its empty or failure backoff.
+    // still inside its empty or failure backoff. On the 8 Oct 2026 set
+    // that priority group finishes in about half the budget, so the
+    // never-hiring tail still advances every run.
     .orderBy(
       sql`${startups.jobsScannedAt} ASC NULLS FIRST`,
       asc(startups.listedOn),
@@ -657,6 +669,7 @@ export async function scanAllStartupJobs(
     opened: 0,
     errors: 0,
     held: 0,
+    deferred: 0,
     elapsedMs: 0,
   };
 
@@ -668,6 +681,10 @@ export async function scanAllStartupJobs(
       worker: async (startup) => {
         try {
           const result = await scanStartupJobs(startup, gatedFetch);
+          if (result.outcome === "deferred") {
+            summary.deferred += 1;
+            return;
+          }
           summary.scanned += 1;
           summary.published += result.published;
           summary.pending += result.pending;
@@ -706,6 +723,7 @@ export async function scanAllStartupJobs(
       pending: summary.pending,
       errors: summary.errors,
       held: summary.held,
+      deferred: summary.deferred,
     });
   }
 

@@ -69,6 +69,7 @@ import {
   scanStartupJobs,
   startupJobsScanTablePatch,
 } from "@/server/startups/scan-jobs";
+import { createStartupJobsFetchGate } from "@/server/startups/scan-jobs-schedule";
 import type { startups } from "@/server/db/schema";
 import {
   STARTUP_ROLE_ENRICH_CAP,
@@ -932,5 +933,51 @@ describe("startup jobs scan hold", () => {
     );
     expect(startupUpdate?.set.jobsFailStreak).toBe(1);
     expect(startupUpdate?.set.jobsEmptyStreak).toBe(0);
+  });
+
+  it("does not close roles or record a scan when a follow-up fetch hits the deadline", async () => {
+    scanDb.state.roles = [openRole("staff-engineer"), openRole("designer")];
+    let now = 0;
+    const gate = createStartupJobsFetchGate({
+      concurrency: 4,
+      hostLimit: 2,
+      deadlineAt: 1_000,
+      marginMs: 200,
+      now: () => now,
+      fetchPage: async (url) => {
+        if (url === CAREERS_URL) {
+          now = 800;
+          return page(
+            `<a href="https://boards.greenhouse.io/acme">Staff engineer</a>`,
+          );
+        }
+        throw new Error(`follow-up fetch should not run: ${url}`);
+      },
+    });
+    const result = await scanStartupJobs(startup, gate);
+    expect(result.outcome).toBe("deferred");
+    expect(result.closed).toBe(0);
+    expect(result.opened).toBe(0);
+    expect(scanDb.state.updates).toEqual([]);
+    expect(scanDb.state.inserts).toEqual([]);
+  });
+
+  it("does not record a scan when the first fetch is already past the deadline", async () => {
+    scanDb.state.roles = [openRole("staff-engineer")];
+    const gate = createStartupJobsFetchGate({
+      concurrency: 2,
+      hostLimit: 2,
+      deadlineAt: 1_000,
+      marginMs: 200,
+      now: () => 800,
+      fetchPage: async () => {
+        throw new Error("no request should start");
+      },
+    });
+    const result = await scanStartupJobs(startup, gate);
+    expect(result.outcome).toBe("deferred");
+    expect(result.closed).toBe(0);
+    expect(scanDb.state.updates).toEqual([]);
+    expect(scanDb.state.inserts).toEqual([]);
   });
 });

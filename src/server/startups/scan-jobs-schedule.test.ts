@@ -11,6 +11,7 @@ import {
   STARTUP_JOBS_DEADLINE_MARGIN_MS,
   STARTUP_JOBS_SCAN_CONCURRENCY,
   compareStartupJobsScanOrder,
+  StartupJobsDeadlineError,
   createStartupJobsFetchGate,
   mapUntilDeadline,
   nextStartupJobsStreak,
@@ -403,12 +404,9 @@ describe("startup jobs scan deadline", () => {
     now = 799;
     await expect(gate("https://acme.example/a")).resolves.toEqual(ok);
     now = 800;
-    await expect(gate("https://acme.example/b")).resolves.toEqual({
-      ok: false,
-      status: 0,
-      text: "",
-      contentType: "",
-    });
+    await expect(gate("https://acme.example/b")).rejects.toBeInstanceOf(
+      StartupJobsDeadlineError,
+    );
     expect(calls).toEqual(["https://acme.example/a"]);
   });
 
@@ -438,7 +436,7 @@ describe("startup jobs scan deadline", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     now = 80;
     releaseFirst?.();
-    await expect(second).resolves.toMatchObject({ ok: false, status: 0 });
+    await expect(second).rejects.toBeInstanceOf(StartupJobsDeadlineError);
     expect(calls).toEqual(["https://example.com/a"]);
     await first;
   });
