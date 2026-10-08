@@ -589,6 +589,10 @@ describe("startup jobs scan locks", () => {
     expect(src).not.toMatch(/\.slice\(0, limit\)/);
     expect(src).toContain("presentText(row.jobsUrl)");
     expect(src).toContain("${startups.jobsScannedAt} ASC NULLS FIRST");
+    expect(src).toContain("orderStartupJobsScanTargets");
+    expect(src).toContain("createStartupJobsFetchGate");
+    expect(src).toContain("mapUntilDeadline");
+    expect(src).toContain("[startup-jobs-scan] summary");
     expect(src).toContain('status === "open"');
     expect(src).not.toMatch(/openrouter/i);
     expect(src).toContain("startupJobsScanTablePatch");
@@ -816,7 +820,13 @@ describe("startup jobs scan hold", () => {
     const result = await scanHtml(kept);
     expect(result.outcome).toBe("applied");
     expect(result.closed).toBe(1);
+    expect(result.opened).toBe(0);
     expect(closedIds()).toEqual(["role-office-manager"]);
+    const startupUpdate = scanDb.state.updates.find(
+      (update) => "jobsScannedAt" in update.set,
+    );
+    expect(startupUpdate?.set.jobsEmptyStreak).toBe(0);
+    expect(startupUpdate?.set.jobsFailStreak).toBe(0);
   });
 
   it("still closes a smaller genuine ATS board", async () => {
@@ -917,5 +927,10 @@ describe("startup jobs scan hold", () => {
     expect(
       scanDb.state.updates.some((update) => "openRoleCount" in update.set),
     ).toBe(false);
+    const startupUpdate = scanDb.state.updates.find(
+      (update) => "jobsScannedAt" in update.set,
+    );
+    expect(startupUpdate?.set.jobsFailStreak).toBe(1);
+    expect(startupUpdate?.set.jobsEmptyStreak).toBe(0);
   });
 });

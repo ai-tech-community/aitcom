@@ -8,7 +8,13 @@ export const maxDuration = 300;
 
 /**
  * Daily careers scan for listed startups that have a verified jobsUrl.
- * Reads every jobsUrl company oldest-first until STARTUP_JOBS_SCAN_BUDGET_MS.
+ * Unscanned companies first, then open roles and known ATS boards, then
+ * never-hiring companies, oldest jobs_scanned_at within each group. Eight
+ * companies run at once, with at most two requests to one ATS host, until
+ * STARTUP_JOBS_SCAN_BUDGET_MS. New fetches stop before that deadline.
+ * Companies that come back empty or fail several scans in a row wait
+ * longer, at most seven days. The response and the run log report
+ * companies scanned, roles opened and closed, and time spent.
  * A live empty ATS board writes open_role_count = 0. A failed fetch does not
  * close roles. A non-ATS page that would drop all or most open roles is held
  * and writes nothing. Per-company isolation: one failure must not abort the batch.

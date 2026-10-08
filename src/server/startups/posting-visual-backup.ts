@@ -129,6 +129,9 @@ export async function ocrPostingPage(
   if (!enabled || remaining.left <= 0) return null;
   const url = httpUrl(pageUrl);
   if (!url) return null;
+  // Reserve before the binary lookup. The jobs cron fetches several
+  // companies at once, and this counter is shared.
+  remaining.left -= 1;
   const findBinary = options?.findBinary ?? defaultFindBinary;
   const run = options?.run ?? defaultRun;
   const chrome = await findBinary([
@@ -138,9 +141,10 @@ export async function ocrPostingPage(
     "chromium-browser",
   ]);
   const tesseract = await findBinary(["tesseract"]);
-  if (!chrome || !tesseract) return null;
-
-  remaining.left -= 1;
+  if (!chrome || !tesseract) {
+    remaining.left += 1;
+    return null;
+  }
   const dir = await mkdtemp(join(tmpdir(), "startup-role-ocr-"));
   const image = join(dir, "posting.png");
   const chromeArgs = [
