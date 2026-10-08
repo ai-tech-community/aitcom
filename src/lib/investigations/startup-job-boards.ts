@@ -3,6 +3,7 @@ import {
   parseStartupRoleTitle,
   sanitizeStartupRoleDescription,
   sourcedIsoDate,
+  stripPostgresRejectedChars,
   type ExtractedJobListing,
   type StartupRoleBoard,
 } from "./startup-roles";
@@ -220,6 +221,15 @@ function asString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
 
+/** Numeric character references Postgres UTF-8 text cannot store. */
+function postgresCodePoint(codePoint: number): string {
+  if (!Number.isInteger(codePoint) || codePoint <= 0 || codePoint > 0x10ffff) {
+    return "";
+  }
+  if (codePoint >= 0xd800 && codePoint <= 0xdfff) return "";
+  return String.fromCodePoint(codePoint);
+}
+
 function asId(value: unknown): string | null {
   if (typeof value === "string" || typeof value === "number") {
     return String(value);
@@ -347,11 +357,9 @@ export function htmlToPlainText(
       .replace(/&hellip;|&#8230;/g, "…")
       .replace(/&#39;/g, "'")
       .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) =>
-        String.fromCodePoint(Number.parseInt(hex, 16)),
+        postgresCodePoint(Number.parseInt(hex, 16)),
       )
-      .replace(/&#(\d+);/g, (_, dec: string) =>
-        String.fromCodePoint(Number(dec)),
-      )
+      .replace(/&#(\d+);/g, (_, dec: string) => postgresCodePoint(Number(dec)))
       .replace(/&#x27;/gi, "'");
   const text = decode(strip(decode(html)))
     .replace(/\s+\n/g, "\n")
@@ -359,7 +367,7 @@ export function htmlToPlainText(
     .replace(/[ \t]{2,}/g, " ")
     .replace(/ +([.,;:!?])/g, "$1")
     .trim();
-  return presentText(text);
+  return presentText(stripPostgresRejectedChars(text));
 }
 
 function extractJsonLdNodes(html: string): unknown[] {

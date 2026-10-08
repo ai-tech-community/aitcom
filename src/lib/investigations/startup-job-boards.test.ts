@@ -18,12 +18,24 @@ import {
   parseWorkableJobs,
 } from "./startup-job-boards";
 import {
+  STARTUP_ROLE_SLUG_MAX,
   allocateStartupRoleSlug,
   applyStartupJobsQuery,
   parseStartupJobsQuery,
   startupRoleSitemapPaths,
   startupRoleSlugFromTitle,
 } from "./startup-roles";
+import { parseStartupSlug } from "./startups";
+
+/** Title whose 80-char role slug is cut on a hyphen when `-2` is appended. */
+function titleThatCutsSlugOnHyphen(company: string): string {
+  const roleLength = STARTUP_ROLE_SLUG_MAX - company.length - 1;
+  const hyphenAt = STARTUP_ROLE_SLUG_MAX - 3 - (company.length + 1);
+  if (hyphenAt < 1 || hyphenAt > roleLength - 3) {
+    throw new Error(`${company} does not truncate on a hyphen`);
+  }
+  return `${"a".repeat(hyphenAt)}-bc`;
+}
 
 function escapeAttr(value: string): string {
   return value
@@ -274,6 +286,44 @@ describe("startup role slugs and jobs query", () => {
         "not a slug",
       ]),
     ).toEqual(["/jobs/cursor-anysphere-staff-engineer"]);
+  });
+
+  it.each(["legion-health", "agent-interactive-network-ltd"])(
+    "does not allocate a --N slug when %s truncates on a hyphen",
+    (company) => {
+      const title = titleThatCutsSlugOnHyphen(company);
+      const base = startupRoleSlugFromTitle(company, title);
+      expect(base).toHaveLength(STARTUP_ROLE_SLUG_MAX);
+      expect(base[STARTUP_ROLE_SLUG_MAX - 3]).toBe("-");
+      const stored = `${base.slice(0, STARTUP_ROLE_SLUG_MAX - 2)}-2`;
+      expect(stored.endsWith("--2")).toBe(true);
+      expect(parseStartupSlug(stored)).toBeNull();
+
+      const slug = allocateStartupRoleSlug(company, title, [base, stored]);
+      expect(slug).not.toBe(stored);
+      expect(slug.endsWith("-2")).toBe(true);
+      expect(slug.includes("--")).toBe(false);
+      expect(parseStartupSlug(slug)).toBe(slug);
+
+      const next = allocateStartupRoleSlug(company, title, [
+        base,
+        stored,
+        slug,
+      ]);
+      expect(next).not.toBe(stored);
+      expect(next).not.toBe(slug);
+      expect(parseStartupSlug(next)).toBe(next);
+    },
+  );
+
+  it("strips NUL and other scalars Postgres text rejects from HTML", () => {
+    expect(htmlToPlainText("Grow\u0000 crops in the field.")).toBe(
+      "Grow crops in the field.",
+    );
+    expect(htmlToPlainText("<p>Grow&#0; crops</p>")).toBe("Grow crops");
+    expect(htmlToPlainText("<p>Grow&#x0; crops</p>")).toBe("Grow crops");
+    expect(htmlToPlainText("<p>Grow&#xD800; crops</p>")).toBe("Grow crops");
+    expect(htmlToPlainText("<p>Grow&#x110000; crops</p>")).toBe("Grow crops");
   });
 
   it("plain-texts entity-escaped HTML instead of leaving tags in the JD", () => {

@@ -2,9 +2,53 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as Drizzle from "drizzle-orm";
 import type * as PinnedTransport from "@/server/net/pinned-transport";
 
-vi.mock("@/server/db", () => ({ db: { __fake: true } }));
+const scanDb = vi.hoisted(() => {
+  type Write = { set: Record<string, unknown>; where: unknown };
+  const state: {
+    roles: unknown[];
+    updates: Write[];
+    inserts: Array<Record<string, unknown>>;
+  } = { roles: [], updates: [], inserts: [] };
+  const db = {
+    select: () => ({
+      from: () => ({
+        where: () => Promise.resolve(state.roles),
+        orderBy: () => Promise.resolve([]),
+      }),
+    }),
+    update: () => ({
+      set: (values: Record<string, unknown>) => ({
+        where: (clause: unknown) => {
+          state.updates.push({ set: values, where: clause });
+          return Promise.resolve();
+        },
+      }),
+    }),
+    insert: () => ({
+      values: (values: Record<string, unknown>) => {
+        state.inserts.push(values);
+        return Promise.resolve();
+      },
+    }),
+  };
+  return { state, db };
+});
+
+vi.mock("@/server/db", () => ({ db: scanDb.db }));
+vi.mock("drizzle-orm", async (importOriginal) => {
+  const actual = await importOriginal<typeof Drizzle>();
+  return {
+    ...actual,
+    inArray: (...args: Parameters<typeof actual.inArray>) => {
+      const sql = actual.inArray(...args);
+      Object.assign(sql, { __values: args[1] });
+      return sql;
+    },
+  };
+});
 // The default fetch goes through safeFetch; only the network call is stubbed,
 // so the address checks (and BlockedAddressError) stay real.
 vi.mock("@/server/agent/validate-webhook-url", () => ({
@@ -20,8 +64,12 @@ import {
   defaultJobFetch,
   listingsFromJobsUrl,
   readJobsUrlListings,
+  STARTUP_JOBS_HOLD_CLOSE_RATIO,
+  STARTUP_JOBS_HOLD_MIN_CLOSES,
+  scanStartupJobs,
   startupJobsScanTablePatch,
 } from "@/server/startups/scan-jobs";
+import type { startups } from "@/server/db/schema";
 import {
   STARTUP_ROLE_ENRICH_CAP,
   STARTUP_ROLE_USER_AGENT,
@@ -650,5 +698,152 @@ describe("defaultJobFetch", () => {
     await expect(
       defaultJobFetch("https://careers.example/huge"),
     ).resolves.toMatchObject({ ok: false, status: 0 });
+  });
+});
+
+const CAREERS_URL = "https://acme.example/careers";
+
+function roleUrl(slug: string): string {
+  return `${CAREERS_URL}/${slug}`;
+}
+
+function openRole(slug: string) {
+  return {
+    id: `role-${slug}`,
+    startupId: "co-1",
+    slug: `acme-${slug}`,
+    title: slug,
+    location: null,
+    workType: null,
+    sourceUrl: roleUrl(slug),
+    applyUrl: roleUrl(slug),
+    descriptionText: "Existing description for this role.",
+    fetchedAt: new Date("2026-01-01T00:00:00.000Z"),
+    postedAt: null,
+    board: "html" as const,
+    externalId: null,
+    status: "open" as const,
+    createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    updatedAt: null,
+  };
+}
+
+function careersHtml(slugs: readonly string[]): string {
+  return slugs
+    .map((slug) => `<a href="/careers/${slug}">${slug} engineer</a>`)
+    .join("\n");
+}
+
+function page(text: string, ok = true) {
+  return {
+    ok,
+    status: ok ? 200 : 503,
+    contentType: "text/html",
+    text,
+  };
+}
+
+const startup = {
+  id: "co-1",
+  slug: "acme",
+  jobsUrl: CAREERS_URL,
+} as typeof startups.$inferSelect;
+
+function closedIds(): string[] {
+  const closed = scanDb.state.updates.filter(
+    (update) => update.set.status === "closed",
+  );
+  return closed.flatMap((update) => {
+    const values = (update.where as { __values?: string[] } | undefined)
+      ?.__values;
+    return values ?? [];
+  });
+}
+
+describe("startup jobs scan hold", () => {
+  beforeEach(() => {
+    scanDb.state.roles = [];
+    scanDb.state.updates = [];
+    scanDb.state.inserts = [];
+  });
+
+  async function scanHtml(slugs: readonly string[]) {
+    return scanStartupJobs(startup, async (url) => {
+      if (url === CAREERS_URL) return page(careersHtml(slugs));
+      return page(
+        "<h1>Role</h1><article><p>Ship the product with the team.</p></article>",
+      );
+    });
+  }
+
+  it("holds a non-ATS page that parses to nothing while roles are open", async () => {
+    scanDb.state.roles = [openRole("staff-engineer")];
+    const result = await scanHtml([]);
+    expect(result.outcome).toBe("held");
+    expect(result.closed).toBe(0);
+    expect(scanDb.state.updates).toEqual([]);
+    expect(scanDb.state.inserts).toEqual([]);
+  });
+
+  it("holds a non-ATS page that would close at least 80% of open roles", async () => {
+    const kept = ["staff-engineer", "product-designer"];
+    const removed = Array.from({ length: 8 }, (_, index) => `role-${index}`);
+    scanDb.state.roles = [...kept, ...removed].map((slug) => openRole(slug));
+    const result = await scanHtml(kept);
+    expect(result.outcome).toBe("held");
+    expect(result.closed).toBe(0);
+    expect(scanDb.state.updates).toEqual([]);
+    expect(scanDb.state.inserts).toEqual([]);
+  });
+
+  it("names the hold threshold and still closes a diff under it", async () => {
+    expect(STARTUP_JOBS_HOLD_CLOSE_RATIO).toBe(0.8);
+    expect(STARTUP_JOBS_HOLD_MIN_CLOSES).toBe(5);
+    const kept = ["staff-engineer", "product-designer", "data-scientist"];
+    const removed = Array.from({ length: 7 }, (_, index) => `extra-${index}`);
+    scanDb.state.roles = [...kept, ...removed].map((slug) => openRole(slug));
+    const result = await scanHtml(kept);
+    expect(result.outcome).toBe("applied");
+    expect(result.closed).toBe(7);
+    expect(closedIds()).toHaveLength(7);
+  });
+
+  it("still closes one removed role on a normal diff", async () => {
+    const kept = ["staff-engineer", "product-designer", "data-scientist"];
+    scanDb.state.roles = [...kept, "office-manager"].map((slug) =>
+      openRole(slug),
+    );
+    const result = await scanHtml(kept);
+    expect(result.outcome).toBe("applied");
+    expect(result.closed).toBe(1);
+    expect(closedIds()).toEqual(["role-office-manager"]);
+  });
+
+  it("still closes a smaller genuine ATS board", async () => {
+    scanDb.state.roles = ["one", "two", "three"].map((slug) => openRole(slug));
+    const result = await scanStartupJobs(
+      { ...startup, jobsUrl: "https://boards.greenhouse.io/acme" },
+      async () => ({
+        ok: true,
+        status: 200,
+        contentType: "application/json",
+        text: JSON.stringify({ jobs: [] }),
+      }),
+    );
+    expect(result.outcome).toBe("applied");
+    expect(result.closed).toBe(3);
+    expect(closedIds().sort()).toEqual(["role-one", "role-three", "role-two"]);
+  });
+
+  it("does not close roles when the careers page fails to load", async () => {
+    scanDb.state.roles = [openRole("staff-engineer")];
+    const result = await scanStartupJobs(startup, async () => page("", false));
+    expect(result.outcome).toBe("unfetched");
+    expect(result.closed).toBe(0);
+    expect(result.error).toBeTruthy();
+    expect(closedIds()).toEqual([]);
+    expect(
+      scanDb.state.updates.some((update) => "openRoleCount" in update.set),
+    ).toBe(false);
   });
 });

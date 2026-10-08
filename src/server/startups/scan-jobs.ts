@@ -27,6 +27,7 @@ import {
   STARTUP_ROLE_FETCH_TIMEOUT_MS,
   STARTUP_ROLE_USER_AGENT,
   allocateStartupRoleSlug,
+  stripPostgresRejectedChars,
   type ExtractedJobListing,
 } from "@/lib/investigations/startup-roles";
 import { presentText } from "@/lib/investigations/startups";
@@ -55,8 +56,12 @@ export type JobFetch = (url: string) => Promise<JobFetchResult>;
 
 export type JobsUrlListings = {
   fetched: boolean;
+  /** True when a Greenhouse, Ashby, Lever, or Workable JSON API parsed. */
+  fromAtsApi: boolean;
   listings: ExtractedJobListing[];
 };
+
+export type StartupJobsScanOutcome = "applied" | "held" | "unfetched";
 
 export type ScanStartupJobsResult = {
   startupId: string;
@@ -64,6 +69,7 @@ export type ScanStartupJobsResult = {
   published: number;
   pending: number;
   closed: number;
+  outcome: StartupJobsScanOutcome;
   error?: string;
 };
 
@@ -73,7 +79,42 @@ export type ScanAllStartupJobsResult = {
   pending: number;
   closed: number;
   errors: number;
+  held: number;
 };
+
+/**
+ * Non-ATS parse that would close at least this share of open roles is held.
+ * A successful page parse that would drop all or most open roles is not written.
+ */
+export const STARTUP_JOBS_HOLD_CLOSE_RATIO = 0.8;
+
+/** A non-empty parse below this many closes still closes normally. */
+export const STARTUP_JOBS_HOLD_MIN_CLOSES = 5;
+
+export function startupJobsWriteDisposition(input: {
+  fetched: boolean;
+  fromAtsApi: boolean;
+  openCount: number;
+  listingCount: number;
+  wouldClose: number;
+}): StartupJobsScanOutcome {
+  if (!input.fetched) return "unfetched";
+  if (input.fromAtsApi) return "applied";
+  if (input.openCount >= 1 && input.listingCount === 0) return "held";
+  if (
+    input.openCount >= 1 &&
+    input.wouldClose >= STARTUP_JOBS_HOLD_MIN_CLOSES &&
+    input.wouldClose / input.openCount >= STARTUP_JOBS_HOLD_CLOSE_RATIO
+  ) {
+    return "held";
+  }
+  return "applied";
+}
+
+function storedRoleText(value: string | null | undefined): string | null {
+  const cleaned = stripPostgresRejectedChars(value).trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
 
 /** Leave headroom under the cron `maxDuration` of 300s. */
 export const STARTUP_JOBS_SCAN_BUDGET_MS = 240_000;
@@ -187,34 +228,34 @@ export async function readJobsUrlListings(
   jobsUrl: string,
   fetchPage: JobFetch = defaultJobFetch,
 ): Promise<JobsUrlListings> {
+  const ready = (
+    listings: ExtractedJobListing[],
+    fromAtsApi: boolean,
+  ): JobsUrlListings => ({
+    fetched: true,
+    fromAtsApi,
+    listings,
+  });
+
   const fromUrl = detectJobBoardFromUrl(jobsUrl);
   const viaApi = await listingsFromBoard(fromUrl, fetchPage);
   if (viaApi) {
-    return {
-      fetched: true,
-      listings: await enrichListings(viaApi, fetchPage),
-    };
+    return ready(await enrichListings(viaApi, fetchPage), true);
   }
 
   const page = await fetchPage(jobsUrl);
-  if (!page.ok) return { fetched: false, listings: [] };
+  if (!page.ok) return { fetched: false, fromAtsApi: false, listings: [] };
 
   const inertia = extractInertiaJobBoard(page.text, jobsUrl);
   if (inertia) {
-    return {
-      fetched: true,
-      listings: await enrichListings(inertia, fetchPage),
-    };
+    return ready(await enrichListings(inertia, fetchPage), false);
   }
 
   const fromHtml = detectJobBoardFromHtml(page.text);
   if (fromHtml.board !== "unknown") {
     const nested = await listingsFromBoard(fromHtml, fetchPage);
     if (nested) {
-      return {
-        fetched: true,
-        listings: await enrichListings(nested, fetchPage),
-      };
+      return ready(await enrichListings(nested, fetchPage), true);
     }
   }
 
@@ -225,10 +266,7 @@ export async function readJobsUrlListings(
       fetchPage,
     );
     if (greenhouse && greenhouse.length > 0) {
-      return {
-        fetched: true,
-        listings: await enrichListings(greenhouse, fetchPage),
-      };
+      return ready(await enrichListings(greenhouse, fetchPage), true);
     }
   }
 
@@ -240,10 +278,7 @@ export async function readJobsUrlListings(
       if (nestedBoard.board !== "unknown") {
         const nested = await listingsFromBoard(nestedBoard, fetchPage);
         if (nested) {
-          return {
-            fetched: true,
-            listings: await enrichListings(nested, fetchPage),
-          };
+          return ready(await enrichListings(nested, fetchPage), true);
         }
       }
       const extractedNested = extractListingsFromCareersHtml(
@@ -251,10 +286,7 @@ export async function readJobsUrlListings(
         indexUrl,
       );
       if (extractedNested.length > 0) {
-        return {
-          fetched: true,
-          listings: await enrichListings(extractedNested, fetchPage),
-        };
+        return ready(await enrichListings(extractedNested, fetchPage), false);
       }
     }
   }
@@ -266,19 +298,13 @@ export async function readJobsUrlListings(
     if (boardPage.ok) {
       const rippling = extractRipplingBoardJobs(boardPage.text, ripplingUrl);
       if (rippling) {
-        return {
-          fetched: true,
-          listings: await enrichListings(rippling, fetchPage),
-        };
+        return ready(await enrichListings(rippling, fetchPage), false);
       }
     }
   }
 
   const extracted = extractListingsFromCareersHtml(page.text, jobsUrl);
-  return {
-    fetched: true,
-    listings: await enrichListings(extracted, fetchPage),
-  };
+  return ready(await enrichListings(extracted, fetchPage), false);
 }
 
 export async function listingsFromJobsUrl(
@@ -299,6 +325,7 @@ export async function scanStartupJobs(
     published: 0,
     pending: 0,
     closed: 0,
+    outcome: "applied",
   };
   if (!inVisualBatch) armVisualBackup(4);
   if (!jobsUrl) {
@@ -316,10 +343,12 @@ export async function scanStartupJobs(
   }
 
   let fetched = false;
+  let fromAtsApi = false;
   let listings: ExtractedJobListing[] = [];
   try {
     const result = await readJobsUrlListings(jobsUrl, fetchPage);
     fetched = result.fetched;
+    fromAtsApi = result.fromAtsApi;
     listings = result.listings;
   } catch (error) {
     await db
@@ -332,7 +361,7 @@ export async function scanStartupJobs(
         }),
       )
       .where(eq(startups.id, startup.id));
-    return { ...empty, error: String(error) };
+    return { ...empty, outcome: "unfetched", error: String(error) };
   }
 
   if (!fetched) {
@@ -346,7 +375,11 @@ export async function scanStartupJobs(
         }),
       )
       .where(eq(startups.id, startup.id));
-    return { ...empty, error: "careers page unreachable" };
+    return {
+      ...empty,
+      outcome: "unfetched",
+      error: "careers page unreachable",
+    };
   }
 
   const existing = await db
@@ -355,26 +388,59 @@ export async function scanStartupJobs(
     .where(eq(startupRoles.startupId, startup.id));
   const bySource = new Map(existing.map((row) => [row.sourceUrl, row]));
   const takenSlugs = existing.map((row) => row.slug);
-  const seenSources = new Set<string>();
+  const seenSources = new Set(listings.map((listing) => listing.sourceUrl));
+  const openCount = existing.filter((row) => row.status === "open").length;
+  const wouldClose = existing.filter(
+    (row) => row.status === "open" && !seenSources.has(row.sourceUrl),
+  ).length;
+  if (
+    startupJobsWriteDisposition({
+      fetched,
+      fromAtsApi,
+      openCount,
+      listingCount: listings.length,
+      wouldClose,
+    }) === "held"
+  ) {
+    console.info("[startup-jobs-scan] held", {
+      startupId: startup.id,
+      slug: startup.slug,
+      openCount,
+      listings: listings.length,
+      wouldClose,
+    });
+    return {
+      startupId: startup.id,
+      fetched: listings.length,
+      published: 0,
+      pending: 0,
+      closed: 0,
+      outcome: "held",
+    };
+  }
+
   const fetchedAt = new Date();
   let published = 0;
   let pending = 0;
 
   for (const listing of listings) {
-    seenSources.add(listing.sourceUrl);
     const current = bySource.get(listing.sourceUrl);
-    const status = listing.title ? "open" : "pending_review";
+    const title = storedRoleText(listing.title);
+    if (!title) continue;
+    const location = storedRoleText(listing.location);
+    const descriptionText = storedRoleText(listing.descriptionText);
+    const status = title ? "open" : "pending_review";
     if (status === "open") published += 1;
     else pending += 1;
     if (current) {
       await db
         .update(startupRoles)
         .set({
-          title: listing.title,
-          location: listing.location,
+          title,
+          location,
           workType: listing.workType,
           applyUrl: listing.applyUrl,
-          descriptionText: listing.descriptionText ?? current.descriptionText,
+          descriptionText: descriptionText ?? current.descriptionText,
           fetchedAt,
           postedAt: listing.postedAt
             ? new Date(`${listing.postedAt}T00:00:00.000Z`)
@@ -386,21 +452,17 @@ export async function scanStartupJobs(
         .where(eq(startupRoles.id, current.id));
       continue;
     }
-    const slug = allocateStartupRoleSlug(
-      startup.slug,
-      listing.title,
-      takenSlugs,
-    );
+    const slug = allocateStartupRoleSlug(startup.slug, title, takenSlugs);
     takenSlugs.push(slug);
     await db.insert(startupRoles).values({
       startupId: startup.id,
       slug,
-      title: listing.title,
-      location: listing.location,
+      title,
+      location,
       workType: listing.workType,
       sourceUrl: listing.sourceUrl,
       applyUrl: listing.applyUrl,
-      descriptionText: listing.descriptionText,
+      descriptionText,
       fetchedAt,
       postedAt: listing.postedAt
         ? new Date(`${listing.postedAt}T00:00:00.000Z`)
@@ -442,6 +504,7 @@ export async function scanStartupJobs(
     published,
     pending,
     closed,
+    outcome: "applied",
   };
 }
 
@@ -470,6 +533,7 @@ export async function scanAllStartupJobs(
     pending: 0,
     closed: 0,
     errors: 0,
+    held: 0,
   };
 
   try {
@@ -481,6 +545,7 @@ export async function scanAllStartupJobs(
         summary.published += result.published;
         summary.pending += result.pending;
         summary.closed += result.closed;
+        if (result.outcome === "held") summary.held += 1;
         if (result.error) summary.errors += 1;
       } catch {
         summary.scanned += 1;
