@@ -70,7 +70,9 @@ The migration is additive: new columns on `feed_comments`, a new
 `feed_comments_rels` table (Payload's `hasMany` upload storage),
 `content` dropping `NOT NULL`, and `app.post_mention_mail_log` gaining a
 nullable `comment_id` with its unique index widened to
-(`user_id`, `post_id`, `comment_id`). Regenerate `payload-types.ts`.
+(`user_id`, `post_id`, `comment_id`) **`NULLS NOT DISTINCT`**: without it a
+post mention (`comment_id` null) would no longer be limited to one email per
+post. Regenerate `payload-types.ts`.
 
 ### 2. Server
 
