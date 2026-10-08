@@ -72,6 +72,34 @@ describe("parseStartupRoleTitle", () => {
       ),
     ).toBe("Reliability Success Manager");
   });
+
+  it("keeps the role when an ohm-2 YC card's location line is as long or longer", () => {
+    // Live cards on https://www.ohm.ai/careers → ycombinator.com/companies/ohm-2/jobs
+    // captured 2026-10-08. Four of eight stored the place as the title.
+    expect(
+      parseStartupRoleTitle(
+        "Founding Account Executive\nSan Francisco, CA · Hybrid\nApply",
+      ),
+    ).toBe("Founding Account Executive");
+    expect(
+      parseStartupRoleTitle(
+        "Chief of Staff\nSan Francisco, CA / Remote (London, UK)\nApply",
+      ),
+    ).toBe("Chief of Staff");
+    expect(
+      parseStartupRoleTitle(
+        "Full Stack Engineer\nSan Francisco, CA · Onsite\nApply",
+      ),
+    ).toBe("Full Stack Engineer");
+    expect(
+      parseStartupRoleTitle(
+        "Founding GTM Intern\nSan Francisco, CA · Onsite\nApply",
+      ),
+    ).toBe("Founding GTM Intern");
+    expect(
+      parseStartupRoleTitle("Enterprise BDR – Chicago Full-time Read more"),
+    ).toBe("Enterprise BDR – Chicago");
+  });
 });
 
 describe("sanitizeStartupRoleDescription", () => {

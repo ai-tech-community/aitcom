@@ -1,4 +1,5 @@
 import {
+  isStartupRoleLocationLine,
   parseStartupRoleLocation,
   parseStartupRoleTitle,
   sanitizeStartupRoleDescription,
@@ -25,7 +26,20 @@ const SKIP_BOARD_LABEL =
   /^(?:offene\s+stellen|offene\s+positionen|offene\s+jobs|stellenangebote?|aktuelle\s+stellen(?:angebote)?|alle\s+(?:stellen|jobs)|jobs\s+(?:&|und)\s+karriere|karriere|ab\s+sofort\s+suchen\s+wir|wir\s+suchen(?:\s+dich)?|wir\s+stellen\s+ein|jetzt\s+bewerben|open\s+positions|current\s+(?:openings|opportunities)|we(?:'|’)re\s+hiring|we\s+are\s+hiring|we(?:'|’)?re\s+(?:now\s+)?looking\s+for|we\s+are\s+(?:now\s+)?looking\s+for|join\s+our\s+team|vacatures|openstaande\s+vacatures|open\s+vacatures)[.!?]?$/i;
 
 const SKIP_INDEX_TITLE =
-  /^(?:explore|view|see|browse)\s+(?:all\s+|our\s+|job\s+)?(?:open\s+)?(?:roles|jobs|openings)\b/i;
+  /^(?:explore|view|see|browse)\s+(?:all\s+|our\s+|job\s+)?(?:open\s+)?(?:roles|jobs|openings|positions)\b/i;
+
+/** "View the Staff Engineer role" — the link label, not the role. */
+const SKIP_VIEW_THE_ROLE = /^view the\b.+\brole$/i;
+
+const SKIP_BARE_NUMBER = /^\d+$/;
+
+/**
+ * One-word department labels from Comeet `/co/<dept>/all` links and the
+ * category heading on the same style of card (firmus, naturalint; 8 Oct 2026).
+ * Real one-word roles such as Accountant stay publishable.
+ */
+const SKIP_DEPARTMENT_TITLE =
+  /^(?:engineering|people|business|product|marketing|other)$/i;
 
 /** YC-style location/category index CTAs, not a single posting. */
 const SKIP_LOCATION_INDEX_TITLE = /^(?:.+ )?jobs in .+$/i;
@@ -47,6 +61,10 @@ export function isSkippedExtractedJobTitle(title: string): boolean {
     SKIP_LOCATION_INDEX_TITLE.test(label) ||
     SKIP_URL_TITLE.test(label) ||
     SKIP_OPEN_ROLES_CTA.test(label) ||
+    SKIP_VIEW_THE_ROLE.test(label) ||
+    SKIP_BARE_NUMBER.test(label) ||
+    SKIP_DEPARTMENT_TITLE.test(label) ||
+    isStartupRoleLocationLine(label) ||
     SKIP_GARBAGE_TITLE.test(label) ||
     SKIP_NOT_A_ROLE.test(label)
   );
@@ -166,6 +184,22 @@ export function leverBoardUrl(token: string): string {
 
 export function workableBoardUrl(token: string): string {
   return `https://apply.workable.com/api/v1/widget/accounts/${encodeURIComponent(token)}`;
+}
+
+/**
+ * Workable job id from either public shape:
+ * `apply.workable.com/j/<id>` or `apply.workable.com/<account>/j/<id>/`.
+ */
+export function workableJobShortcode(value: string): string | null {
+  const url = asUrl(value);
+  if (!url) return null;
+  const host = url.hostname.replace(/^www\./, "").toLowerCase();
+  if (host !== "apply.workable.com") return null;
+  const parts = url.pathname.split("/").filter(Boolean);
+  const at = parts.findIndex((part) => part.toLowerCase() === "j");
+  const code = at >= 0 ? parts[at + 1] : undefined;
+  if (!code || code.toLowerCase() === "apply") return null;
+  return code;
 }
 
 function listing(partial: {
@@ -462,8 +496,17 @@ function isJobsIndexPath(pathname: string): boolean {
   );
 }
 
+/** Comeet department index (`/co/engineering/all`), not one position. */
+function isComeetDepartmentIndex(pathname: string): boolean {
+  return /\/co\/[^/]+\/all\/?$/i.test(pathname);
+}
+
 function isNonPostingPath(pathname: string): boolean {
-  return isDirectoryJobPath(pathname) || isJobsIndexPath(pathname);
+  return (
+    isDirectoryJobPath(pathname) ||
+    isJobsIndexPath(pathname) ||
+    isComeetDepartmentIndex(pathname)
+  );
 }
 
 /** True when the URL is a careers index, not one job card. */
@@ -473,25 +516,82 @@ export function isJobsIndexUrl(value: string | null | undefined): boolean {
   return isJobsIndexPath(url.pathname);
 }
 
+function classAttr(attrs: string): string {
+  return /class=["']([^"']+)["']/i.exec(attrs)?.[1] ?? "";
+}
+
+function headingsIn(
+  innerHtml: string,
+): Array<{ className: string; text: string }> {
+  const found: Array<{ className: string; text: string }> = [];
+  const pattern = /<h([1-4])\b([^>]*)>([\s\S]*?)<\/h\1>/gi;
+  for (const match of innerHtml.matchAll(pattern)) {
+    const text = htmlToPlainText(match[3]);
+    if (!text) continue;
+    found.push({ className: classAttr(match[2] ?? ""), text });
+  }
+  return found;
+}
+
+function paragraphTexts(innerHtml: string): string[] {
+  return [...innerHtml.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map((match) => htmlToPlainText(match[1]))
+    .filter((text): text is string => Boolean(text));
+}
+
+function asCardLocation(
+  value: string | null,
+  title: string | null,
+): string | null {
+  if (
+    !value ||
+    value.length > 80 ||
+    value === title ||
+    isApplyCtaTitle(value)
+  ) {
+    return null;
+  }
+  if (isStartupRoleLocationLine(value)) return value;
+  if (isSkippedExtractedJobTitle(value)) return null;
+  return value;
+}
+
 /** Card heading when the anchor wraps title + location + department. */
 function anchorRoleFields(innerHtml: string): {
   title: string | null;
   location: string | null;
 } {
-  const heading = /<h[1-4]\b[^>]*>([\s\S]*?)<\/h[1-4]>/i.exec(innerHtml)?.[1];
-  const title = heading ? htmlToPlainText(heading) : htmlToPlainText(innerHtml);
-  if (!heading) return { title, location: null };
-  const para = /<p\b[^>]*>([\s\S]*?)<\/p>/i.exec(innerHtml)?.[1];
-  const locationText = htmlToPlainText(para);
-  const location =
-    locationText &&
-    locationText.length <= 80 &&
-    locationText !== title &&
-    !isSkippedExtractedJobTitle(locationText) &&
-    !isApplyCtaTitle(locationText)
-      ? locationText
-      : null;
-  return { title, location };
+  const headings = headingsIn(innerHtml);
+  if (headings.length > 0) {
+    const titled = headings.find((heading) =>
+      /(?:^|\s)(?:item-title|job-title)(?:\s|$)/i.test(heading.className),
+    );
+    const publishable = headings.find((heading) =>
+      isPublishableJobTitle(heading.text),
+    );
+    const title = (titled ?? publishable ?? headings[0])?.text ?? null;
+    const location = asCardLocation(
+      paragraphTexts(innerHtml)[0] ?? null,
+      title,
+    );
+    return { title, location };
+  }
+
+  const paragraphs = paragraphTexts(innerHtml);
+  if (paragraphs.length > 0) {
+    const place =
+      paragraphs.find((text) => isStartupRoleLocationLine(text)) ?? null;
+    const title =
+      paragraphs.find(
+        (text) => text !== place && isPublishableJobTitle(text),
+      ) ??
+      paragraphs.find((text) => text !== place) ??
+      paragraphs[0] ??
+      null;
+    return { title, location: place };
+  }
+
+  return { title: htmlToPlainText(innerHtml), location: null };
 }
 
 /** Company slug from a YC or Work at a Startup company board URL. */
@@ -501,6 +601,27 @@ function companySlugFromBoardUrl(baseUrl: string): string | null {
   const host = url.hostname.replace(/^www\./, "").toLowerCase();
   if (host !== "ycombinator.com" && host !== "workatastartup.com") return null;
   return /\/companies\/([^/]+)/i.exec(url.pathname)?.[1]?.toLowerCase() ?? null;
+}
+
+/** Company jobs board linked from a careers page, not the YC directory. */
+export function ycombinatorCompanyJobsUrl(
+  html: string,
+  baseUrl: string,
+): string | null {
+  const anchors = html.matchAll(/<a\b[^>]*href=["']([^"']+)["']/gi);
+  for (const match of anchors) {
+    const href = match[1];
+    if (!href) continue;
+    const url = asUrl(href, baseUrl);
+    if (!url) continue;
+    const host = url.hostname.replace(/^www\./, "").toLowerCase();
+    if (host !== "ycombinator.com" && host !== "workatastartup.com") continue;
+    const path = url.pathname.replace(/\/+$/, "") || "/";
+    if (/^\/companies\/[^/]+\/jobs$/i.test(path)) {
+      return `${url.origin}${path}`;
+    }
+  }
+  return null;
 }
 
 function jobBelongsToCompany(jobUrl: URL, companySlug: string | null): boolean {

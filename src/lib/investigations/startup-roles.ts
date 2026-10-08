@@ -245,7 +245,7 @@ const TITLE_CTA_LINE =
   /^(?:read more|more info|learn more|apply(?: now)?|see (?:position )?details|view (?:position(?:\s*(?:&|and)\s*apply)?|role)|למידע נוסף|north_east)$/i;
 
 const TITLE_TRAILING_META =
-  /\s+(?:full[- ]?time|part[- ]?time|contract(?:or|ing)?|temporary|internship|intern|volunteer|per[ -]?diem|freelance|permanent|read more|more info|learn more|apply now)$/i;
+  /\s+(?:full[- ]?time|part[- ]?time|contract(?:or|ing)?|temporary|volunteer|per[ -]?diem|freelance|permanent|read more|more info|learn more|apply now)$/i;
 
 /**
  * A whole line that is only a place / work-mode label, not a role name.
@@ -253,6 +253,30 @@ const TITLE_TRAILING_META =
  */
 const TITLE_LOCATION_LINE =
   /^(?:remote|hybrid|onsite|on-site|in[- ]office)(?:\s*[·|,/()-].*)?$|^(?:[\p{L}\s.'’()-]+)\s*\((?:remote|hybrid|onsite|on-site)\)\s*$|^(?:tel-?aviv|toronto|chicago|canada|usa|u\.?s\.?a\.?|united states|arizona|turkey|texas|haifa|bengaluru|taiwan|england|israel|india|europe)(?:\s*[,/·-]\s*[\p{L}\s.'’()-]+)?$/iu;
+
+const WORK_MODE_WORD = /\b(?:remote|hybrid|onsite|on-site|in[- ]office)\b/i;
+
+/**
+ * Place plus work mode from an ohm-2 YC card, such as
+ * "San Francisco, CA · Hybrid" or "United Kingdom · Remote".
+ * A role that merely names a city (“Enterprise BDR – Chicago”) does not match.
+ */
+function hasPlaceSeparator(line: string): boolean {
+  return line.includes("·") || line.includes("|") || line.includes("/");
+}
+
+export function isStartupRoleLocationLine(value: string): boolean {
+  const line = value.replace(/\s+/g, " ").trim();
+  if (!line || !WORK_MODE_WORD.test(line))
+    return TITLE_LOCATION_LINE.test(line);
+  if (TITLE_LOCATION_LINE.test(line)) return true;
+  if (hasPlaceSeparator(line) && line.includes(",")) return true;
+  return (
+    /^(?:united kingdom|united states|san francisco|london|new york)\b/i.test(
+      line,
+    ) && hasPlaceSeparator(line)
+  );
+}
 
 const OCR_SECTION_GLUE =
   /^[a-z]{1,8}(?=(?:About|Overview|Introduction|Responsibilities|Requirements|Qualifications|The role)\b)/;
@@ -265,7 +289,7 @@ function isTitleMetaLine(line: string): boolean {
   return (
     TITLE_WORK_TYPE_LINE.test(text) ||
     TITLE_CTA_LINE.test(text) ||
-    TITLE_LOCATION_LINE.test(text)
+    isStartupRoleLocationLine(text)
   );
 }
 
