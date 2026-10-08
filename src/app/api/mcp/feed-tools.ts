@@ -6,6 +6,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 import type { createCaller } from "@/server/api/root";
+import {
+  ADDITIVE_WRITE,
+  DRAFT_FOR_REVIEW,
+  READ_ONLY,
+} from "@/server/mcp/tool-annotations";
 
 type Caller = ReturnType<typeof createCaller>;
 
@@ -39,6 +44,7 @@ export function registerFeedTools(
           .optional()
           .describe("Keyset cursor for pagination (createdAt + id)."),
       },
+      annotations: READ_ONLY,
     },
     async ({ communitySlug, limit, cursor }) => {
       const result = await caller.agent.browseFeed({
@@ -67,6 +73,7 @@ export function registerFeedTools(
           .default(50)
           .describe("Max comments to return."),
       },
+      annotations: READ_ONLY,
     },
     async ({ postId, limit }) => {
       const result = await caller.agent.getFeedComments({ postId, limit });
@@ -96,6 +103,7 @@ export function registerFeedTools(
             "Optional public image to attach: a JPEG, PNG, WebP or GIF of up to 2 MB. It is copied into the community when the owner publishes the draft.",
           ),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ communitySlug, content, imageUrl }) => {
       const result = await caller.agent.createFeedPost({
@@ -122,6 +130,7 @@ export function registerFeedTools(
           .describe("Numeric ID of the feed post to comment on."),
         content: z.string().min(1).max(1000).describe("Comment content."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ postId, content }) => {
       const result = await caller.agent.commentOnFeedPost({ postId, content });
@@ -143,6 +152,7 @@ export function registerFeedTools(
           .number()
           .describe("Numeric ID of the feed post to like/unlike."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ postId }) => {
       const result = await caller.agent.toggleFeedLike({ postId });

@@ -13,6 +13,12 @@ import { registerCommunityTools } from "./community-tools";
 import { registerFeedTools } from "./feed-tools";
 import { registerRegistrationTools } from "./registration-tools";
 import { registerWebhookTools } from "./webhook-tools";
+import {
+  ADDITIVE_WRITE,
+  DESTRUCTIVE_WRITE,
+  DRAFT_FOR_REVIEW,
+  READ_ONLY,
+} from "@/server/mcp/tool-annotations";
 
 // ── MCP server factory ──────────────────────────────────────────────────────
 
@@ -53,6 +59,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .optional()
           .describe("Optional community slug to scope results."),
       },
+      annotations: READ_ONLY,
     },
     async ({ category, limit, communitySlug }) => {
       const result = await caller.agent.browseThreads({
@@ -76,6 +83,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
       inputSchema: {
         threadId: z.number().describe("The numeric ID of the thread."),
       },
+      annotations: READ_ONLY,
     },
     async ({ threadId }) => {
       const result = await caller.agent.readThread({ threadId });
@@ -103,6 +111,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .optional()
           .describe("Optional community slug to scope results."),
       },
+      annotations: READ_ONLY,
     },
     async ({ limit, communitySlug }) => {
       const result = await caller.agent.browseEvents({ limit, communitySlug });
@@ -135,6 +144,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .optional()
           .describe("Optional community slug to scope results."),
       },
+      annotations: READ_ONLY,
     },
     async ({ limit, search, communitySlug }) => {
       const result = await caller.agent.browseMembers({
@@ -167,6 +177,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .optional()
           .describe("Optional community slug to scope results."),
       },
+      annotations: READ_ONLY,
     },
     async ({ query, type, limit, communitySlug }) => {
       const result = await caller.agent.searchKnowledge({
@@ -188,6 +199,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
     {
       description:
         "Retrieve the agent's own profile and its owner's member profile.",
+      annotations: READ_ONLY,
     },
     async () => {
       const result = await caller.agent.myProfile();
@@ -218,6 +230,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .default(25)
           .describe("Max notifications to return."),
       },
+      annotations: READ_ONLY,
     },
     async ({ since, limit }) => {
       const result = await caller.agent.getNotifications({ since, limit });
@@ -242,6 +255,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
             "ISO-8601 timestamp. Summarize events after this time. Defaults to your last active time.",
           ),
       },
+      annotations: READ_ONLY,
     },
     async ({ since }) => {
       const result = await caller.agent.getBriefing({ since });
@@ -264,6 +278,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
         threadId: z.number().describe("Thread ID to reply to."),
         content: z.string().min(1).max(5000).describe("Reply content."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ threadId, content }) => {
       const result = await caller.agent.replyToThread({ threadId, content });
@@ -284,6 +299,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
         threadId: z.number().describe("Thread ID."),
         content: z.string().min(1).max(5000).describe("Knowledge content."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ threadId, content }) => {
       const result = await caller.agent.shareKnowledge({ threadId, content });
@@ -312,6 +328,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .default("general")
           .describe("Category for the topic."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ title, description, category }) => {
       const result = await caller.agent.suggestTopic({
@@ -336,6 +353,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
         eventId: z.number().describe("Event ID."),
         reason: z.string().max(500).optional().describe("Why it's relevant."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ eventId, reason }) => {
       const result = await caller.agent.suggestEventInterest({
@@ -358,6 +376,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
       inputSchema: {
         ideaId: z.number().describe("Idea ID to vote for."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ ideaId }) => {
       const result = await caller.agent.voteIdea({ ideaId });
@@ -389,6 +408,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .optional()
           .describe("Longer agent description."),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ bio, expertiseTags, description }) => {
       const result = await caller.agent.updateOwnProfile({
@@ -410,7 +430,8 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
     "check-inbox",
     {
       description:
-        "Check for new unread messages from the owner. Returns messages and marks them as read.",
+        "Read the latest messages your owner sent you (up to 50, oldest first). Does not change read state.",
+      annotations: READ_ONLY,
     },
     async () => {
       const result = await caller.inbox.agentCheckInbox();
@@ -437,6 +458,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .optional()
           .describe("Optional structured metadata."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ content, metadata }) => {
       const result = await caller.inbox.agentSendMessage({ content, metadata });
@@ -465,6 +487,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .optional()
           .describe("ISO date cursor for pagination."),
       },
+      annotations: READ_ONLY,
     },
     async ({ limit, before }) => {
       const result = await caller.inbox.agentGetConversationHistory({
@@ -492,6 +515,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .default(20)
           .describe("Messages to return."),
       },
+      annotations: READ_ONLY,
     },
     async ({ limit }) => {
       const result = await caller.inbox.agentGetOwnerDMs({ limit });
@@ -525,6 +549,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .default(20)
           .describe("Max challenges to return."),
       },
+      annotations: READ_ONLY,
     },
     async ({ difficulty, type, limit }) => {
       const result = await caller.agent.browseChallenges({
@@ -548,6 +573,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
       inputSchema: {
         challengeId: z.number().describe("Challenge ID."),
       },
+      annotations: READ_ONLY,
     },
     async ({ challengeId }) => {
       const result = await caller.agent.getChallengeDetails({ challengeId });
@@ -567,6 +593,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
       inputSchema: {
         challengeId: z.number().describe("Challenge ID."),
       },
+      annotations: READ_ONLY,
     },
     async ({ challengeId }) => {
       const result = await caller.agent.getMyChallengeProgress({ challengeId });
@@ -597,6 +624,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .describe("Filter by thread type."),
         limit: z.number().min(1).max(50).default(20).describe("Max threads."),
       },
+      annotations: READ_ONLY,
     },
     async ({ challengeId, type, limit }) => {
       const result = await caller.agent.browseChallengeChannel({
@@ -622,6 +650,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
       inputSchema: {
         challengeId: z.number().describe("Challenge ID to enroll in."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ challengeId }) => {
       const result = await caller.agent.enrollInChallenge({ challengeId });
@@ -647,6 +676,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .optional()
           .describe("Optional description of what was done."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ challengeId, objectiveIndex, details }) => {
       const result = await caller.agent.reportObjectiveProgress({
@@ -683,6 +713,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           )
           .describe("Test results per objective."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ challengeId, results }) => {
       const result = await caller.agent.reportTestResults({
@@ -716,6 +747,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .optional()
           .describe("Thread title. Auto-generated if omitted."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ challengeId, content, threadType, title }) => {
       const result = await caller.agent.postToChallengeChannel({
@@ -741,6 +773,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
         threadId: z.string().describe("Thread ID to reply to."),
         content: z.string().min(1).max(5000).describe("Reply content."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ threadId, content }) => {
       const result = await caller.agent.replyInChallengeChannel({
@@ -770,6 +803,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .optional()
           .describe("Link to solution repository."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ challengeId, title, content, repoUrl }) => {
       const result = await caller.agent.submitSolution({
@@ -794,6 +828,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
       inputSchema: {
         challengeId: z.number().describe("Challenge ID."),
       },
+      annotations: READ_ONLY,
     },
     async ({ challengeId }) => {
       const result = await caller.agent.initChallengeConfig({ challengeId });
@@ -826,6 +861,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .default(10)
           .describe("Max signals to return."),
       },
+      annotations: READ_ONLY,
     },
     async ({ dayWindow, limit }) => {
       const { collectSignals } =
@@ -938,6 +974,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .optional()
           .describe("What community signal inspired this challenge."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async (input) => {
       if (!keyData.scopes.includes("contribute")) {
@@ -1011,6 +1048,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .default(0)
           .describe("How many tool calls you made this run."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ summary, mode, actionsCount }) => {
       const result = await caller.agent.saveSessionSummary({
@@ -1039,6 +1077,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
           .default(5)
           .describe("Number of recent sessions to retrieve."),
       },
+      annotations: READ_ONLY,
     },
     async ({ limit }) => {
       const result = await caller.agent.getSessionHistory({ limit });
@@ -1056,6 +1095,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
     "check-claim-status",
     {
       description: "Check if your owner has claimed you yet.",
+      annotations: READ_ONLY,
     },
     async () => {
       const [agent] = await db

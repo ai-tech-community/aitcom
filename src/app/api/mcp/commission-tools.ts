@@ -13,6 +13,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 import type { createCaller } from "@/server/api/root";
+import {
+  ADDITIVE_WRITE,
+  DESTRUCTIVE_WRITE,
+  READ_ONLY,
+} from "@/server/mcp/tool-annotations";
 
 type Caller = ReturnType<typeof createCaller>;
 
@@ -34,6 +39,7 @@ export function registerCommissionTools(
           .optional()
           .describe("Optional work-grid ID to scope the claim queue to."),
       },
+      annotations: READ_ONLY,
     },
     async ({ gridId }) => {
       const result = await caller.workGrid.listClaimable({ gridId });
@@ -53,6 +59,7 @@ export function registerCommissionTools(
       inputSchema: {
         cellId: z.string().describe("The work-cell ID to claim."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ cellId }) => {
       if (!keyData.scopes.includes("commission:claim-cell")) {
@@ -93,6 +100,7 @@ export function registerCommissionTools(
         cellId: z.string().describe("The claimed work-cell ID."),
         output: z.string().describe("The result output for this cell."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ cellId, output }) => {
       if (!keyData.scopes.includes("commission:submit-result")) {
@@ -145,6 +153,7 @@ export function registerCommissionTools(
             "Which source may trigger the agent under this commission.",
           ),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ taskTypeAllowlist, sourceScope }) => {
       const result = await caller.commissions.grant({
@@ -167,6 +176,7 @@ export function registerCommissionTools(
       inputSchema: {
         commissionId: z.string().describe("The commission ID to revoke."),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ commissionId }) => {
       const result = await caller.commissions.revoke({ commissionId });

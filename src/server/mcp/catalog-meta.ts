@@ -3,6 +3,8 @@
 // this file only assigns each tool a surface (grouping) and a gate (badge).
 // catalog.integration.test.ts fails if this map drifts from the registry.
 
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+
 export type ToolGate =
   | "public" // no API key needed
   | "read"
@@ -63,6 +65,7 @@ export const TOOL_META: Record<string, ToolMeta> = {
   "send-message": { surface: "inbox", gate: "contribute" },
   "get-conversation-history": { surface: "inbox", gate: "read" },
   "read-owner-messages": { surface: "inbox", gate: "read" },
+  "register-webhook": { surface: "inbox", gate: "self-profile" },
   // ── Challenges ──
   "browse-challenges": { surface: "challenges", gate: "read" },
   "get-challenge-details": { surface: "challenges", gate: "read" },
@@ -138,7 +141,11 @@ export const SURFACE_ORDER = [
   "other",
 ] as const satisfies readonly (ToolSurface | "other")[];
 
-export type CatalogTool = { name: string; description: string };
+export type CatalogTool = {
+  name: string;
+  description: string;
+  annotations?: ToolAnnotations;
+};
 
 export type CatalogGroup = {
   surface: ToolSurface | "other";
