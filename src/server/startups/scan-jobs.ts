@@ -20,6 +20,8 @@ import {
   parseLeverJobs,
   parseWorkableJobs,
   workableBoardUrl,
+  workableJobShortcode,
+  ycombinatorCompanyJobsUrl,
   type DetectedJobBoard,
 } from "@/lib/investigations/startup-job-boards";
 import {
@@ -291,6 +293,20 @@ export async function readJobsUrlListings(
     }
   }
 
+  const ycBoardUrl = ycombinatorCompanyJobsUrl(page.text, jobsUrl);
+  if (ycBoardUrl) {
+    const ycPage =
+      ycBoardUrl.replace(/\/$/, "") === jobsUrl.replace(/\/$/, "")
+        ? page
+        : await fetchPage(ycBoardUrl);
+    if (ycPage.ok) {
+      const ycJobs = extractInertiaJobBoard(ycPage.text, ycBoardUrl);
+      if (ycJobs) {
+        return ready(await enrichListings(ycJobs, fetchPage), false);
+      }
+    }
+  }
+
   const ripplingUrl = ripplingJobsIndexUrl(page.text);
   if (ripplingUrl) {
     const boardPage =
@@ -387,8 +403,24 @@ export async function scanStartupJobs(
     .from(startupRoles)
     .where(eq(startupRoles.startupId, startup.id));
   const bySource = new Map(existing.map((row) => [row.sourceUrl, row]));
+  const workableKey = (url: string): string | null => {
+    const code = workableJobShortcode(url);
+    return code ? code.toUpperCase() : null;
+  };
+  const byWorkable = new Map<string, (typeof existing)[number]>();
+  for (const row of existing) {
+    const key = workableKey(row.sourceUrl);
+    if (key && !byWorkable.has(key)) byWorkable.set(key, row);
+  }
   const takenSlugs = existing.map((row) => row.slug);
   const seenSources = new Set(listings.map((listing) => listing.sourceUrl));
+  for (const listing of listings) {
+    const key = workableKey(listing.sourceUrl);
+    if (!key) continue;
+    for (const row of existing) {
+      if (workableKey(row.sourceUrl) === key) seenSources.add(row.sourceUrl);
+    }
+  }
   const openCount = existing.filter((row) => row.status === "open").length;
   const wouldClose = existing.filter(
     (row) => row.status === "open" && !seenSources.has(row.sourceUrl),
@@ -423,8 +455,14 @@ export async function scanStartupJobs(
   let published = 0;
   let pending = 0;
 
+  const consumedWorkable = new Set<string>();
   for (const listing of listings) {
-    const current = bySource.get(listing.sourceUrl);
+    const key = workableKey(listing.sourceUrl);
+    const current =
+      bySource.get(listing.sourceUrl) ??
+      (key ? byWorkable.get(key) : undefined);
+    if (key && !current && consumedWorkable.has(key)) continue;
+    if (key) consumedWorkable.add(key);
     const title = storedRoleText(listing.title);
     if (!title) continue;
     const location = storedRoleText(listing.location);
@@ -441,6 +479,7 @@ export async function scanStartupJobs(
           workType: listing.workType,
           applyUrl: listing.applyUrl,
           descriptionText: descriptionText ?? current.descriptionText,
+          sourceUrl: listing.sourceUrl,
           fetchedAt,
           postedAt: listing.postedAt
             ? new Date(`${listing.postedAt}T00:00:00.000Z`)

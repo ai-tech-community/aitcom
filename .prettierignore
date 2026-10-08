@@ -7,3 +7,7 @@ src/app/(payload)/admin/importMap.js
 
 # Raw SQL appliers — prettier has no SQL parser and errors on these.
 *.sql
+
+# Captured YC attribute. Prettier rewrites data-page quotes and the parser
+# would no longer see the live markup.
+src/lib/investigations/fixtures/landeed-yc-jobs.html

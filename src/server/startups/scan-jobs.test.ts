@@ -835,6 +835,78 @@ describe("startup jobs scan hold", () => {
     expect(closedIds().sort()).toEqual(["role-one", "role-three", "role-two"]);
   });
 
+  it("follows Landeed's careers page into the YC company board", async () => {
+    const fixture = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../lib/investigations/fixtures/landeed-yc-jobs.html",
+      ),
+      "utf8",
+    );
+    const ycBoard = "https://www.ycombinator.com/companies/landeed/jobs";
+    const listings = await listingsFromJobsUrl(
+      "https://www.landeed.com/careers",
+      async (url) => {
+        if (url === "https://www.landeed.com/careers") {
+          return page(
+            `<a href="${ycBoard}" target="_blank">See open roles</a>`,
+          );
+        }
+        if (url === ycBoard) return page(fixture);
+        return page("", false);
+      },
+    );
+    expect(listings.map((row) => row.title)).toEqual([
+      "People & Operations Associate (HR & Admin)",
+      "Accountant",
+      "Senior/Staff Engineer: Backend (India)",
+    ]);
+  });
+
+  it("treats both Workable URL shapes as the same role", async () => {
+    const legacy = "https://apply.workable.com/j/2E88E60742";
+    const account = "https://apply.workable.com/writesonic/j/F057CDC530/";
+    scanDb.state.roles = [
+      {
+        ...openRole("support"),
+        id: "role-support",
+        title: "Product Support Specialist",
+        sourceUrl: legacy,
+        applyUrl: legacy,
+      },
+      {
+        ...openRole("frontend"),
+        id: "role-frontend",
+        title: "Frontend Engineer",
+        sourceUrl: account,
+        applyUrl: account,
+      },
+    ];
+    const result = await scanStartupJobs(
+      { ...startup, jobsUrl: "https://writesonic.com/careers" },
+      async (url) => {
+        if (url === "https://writesonic.com/careers") {
+          return page(
+            `<a href="https://apply.workable.com/writesonic/j/2E88E60742/">Product Support Specialist</a>
+             <a href="https://apply.workable.com/j/F057CDC530">Frontend Engineer</a>`,
+          );
+        }
+        return page("", false);
+      },
+    );
+    expect(result.outcome).toBe("applied");
+    expect(result.closed).toBe(0);
+    expect(scanDb.state.inserts).toEqual([]);
+    expect(closedIds()).toEqual([]);
+    const roleUpdates = scanDb.state.updates.filter(
+      (update) => update.set.title,
+    );
+    expect(roleUpdates.map((update) => update.set.sourceUrl).sort()).toEqual([
+      "https://apply.workable.com/j/F057CDC530",
+      "https://apply.workable.com/writesonic/j/2E88E60742/",
+    ]);
+  });
+
   it("does not close roles when the careers page fails to load", async () => {
     scanDb.state.roles = [openRole("staff-engineer")];
     const result = await scanStartupJobs(startup, async () => page("", false));

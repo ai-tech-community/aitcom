@@ -839,6 +839,151 @@ describe("board titles are not jobs", () => {
   });
 });
 
+const LANDEED_YC_FIXTURE = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "fixtures/landeed-yc-jobs.html",
+  ),
+  "utf8",
+);
+
+describe("8 Oct 2026 jobs refresh title junk", () => {
+  it("rejects link text that is not a role and keeps real one-word roles", () => {
+    for (const title of [
+      "See all positions",
+      "View Open Positions",
+      "View the Staff Engineer role",
+      "16",
+      "2",
+      "Engineering",
+      "People",
+      "Business",
+      "Product",
+      "Marketing",
+      "Other",
+    ]) {
+      expect(isPublishableJobTitle(title)).toBe(false);
+    }
+    // Accountant is a live Landeed YC posting. Designer is an existing one-word role.
+    expect(isPublishableJobTitle("Accountant")).toBe(true);
+    expect(isPublishableJobTitle("Designer")).toBe(true);
+    expect(isPublishableJobTitle("AI Team Lead")).toBe(true);
+    expect(isPublishableJobTitle("HRBP (Director)")).toBe(true);
+    expect(
+      isPublishableJobTitle("People & Operations Associate (HR & Admin)"),
+    ).toBe(true);
+    expect(isPublishableJobTitle("Product Operations Manager")).toBe(true);
+  });
+
+  it("drops Comeet department indexes and pagination numbers", () => {
+    const firmus = extractListingsFromCareersHtml(
+      `<a href="https://firmus.ai/careers/co/engineering/all">Engineering</a>
+       <a href="//firmus.ai/careers/co/tel-aviv/27.074/ai-team-lead/all">AI Team Lead</a>
+       <a href="//firmus.ai/careers/co/tel-aviv/17.07F/ml-research/all">ML Research</a>`,
+      "https://firmus.ai/careers/",
+    );
+    expect(firmus.map((row) => row.title)).toEqual([
+      "AI Team Lead",
+      "ML Research",
+    ]);
+
+    const aman = extractListingsFromCareersHtml(
+      `<a href="https://www.aman.co.il/careers/page/16/">16</a>
+       <a href="https://www.aman.co.il/careers/bi-big-data-dba/data-engineer-4/">Data Engineer</a>`,
+      "https://www.aman.co.il/careers/",
+    );
+    expect(aman.map((row) => row.title)).toEqual(["Data Engineer"]);
+
+    const superwise = extractListingsFromCareersHtml(
+      `<a href="/careers/staff-engineer/">View the Staff Engineer role</a>
+       <a href="#openings">View Open Positions</a>`,
+      "https://superwise.ai/careers/",
+    );
+    expect(superwise).toEqual([]);
+  });
+
+  it("reads the role heading on Natural Intelligence cards, not the department", () => {
+    const listings = extractListingsFromCareersHtml(
+      `<a href="//www.naturalint.com/jobs/co/tel-aviv/85.F6F/hrbp-director/all" class="item people">
+         <h3 class="item-cat">People</h3>
+         <h2 class="item-title">HRBP (Director)</h2>
+       </a>
+       <a href="//www.naturalint.com/jobs/co/tel-aviv/43.F61/business-development-manager/all" class="item business">
+         <h3 class="item-cat">Business</h3>
+         <h2 class="item-title">Business Development Manager</h2>
+       </a>
+       <a href="//www.naturalint.com/jobs/co/tel-aviv/DE.275/product-operations-manager/all" class="item product">
+         <h3 class="item-cat">Product</h3>
+         <h2 class="item-title">Product Operations Manager</h2>
+       </a>`,
+      "https://www.naturalint.com/jobs/",
+    );
+    expect(listings.map((row) => row.title)).toEqual([
+      "HRBP (Director)",
+      "Business Development Manager",
+      "Product Operations Manager",
+    ]);
+  });
+
+  it("stores the ohm-2 role as the title and the place as the location", () => {
+    const listings = extractListingsFromCareersHtml(
+      `<a href="https://www.ycombinator.com/companies/ohm-2/jobs/jn6BlBR-founding-account-executive">
+         <p>Founding Account Executive</p>
+         <p>San Francisco, CA · Hybrid</p>
+         <span>Apply</span>
+       </a>
+       <a href="https://www.ycombinator.com/companies/ohm-2/jobs/OOZ8aTx-chief-of-staff">
+         <p>Chief of Staff</p>
+         <p>San Francisco, CA / Remote (London, UK)</p>
+         <span>Apply</span>
+       </a>
+       <a href="https://www.ycombinator.com/companies/ohm-2/jobs/rF5JtAx-full-stack-engineer">
+         <p>Full Stack Engineer</p>
+         <p>San Francisco, CA · Onsite</p>
+         <span>Apply</span>
+       </a>
+       <a href="https://www.ycombinator.com/companies/ohm-2/jobs/gJ5Oglm-founding-gtm-intern">
+         <p>Founding GTM Intern</p>
+         <p>San Francisco, CA · Onsite</p>
+         <span>Apply</span>
+       </a>`,
+      "https://www.ohm.ai/careers",
+    );
+    expect(listings.map((row) => row.title)).toEqual([
+      "Founding Account Executive",
+      "Chief of Staff",
+      "Full Stack Engineer",
+      "Founding GTM Intern",
+    ]);
+    expect(listings.map((row) => row.location)).toEqual([
+      "San Francisco, CA · Hybrid",
+      "San Francisco, CA / Remote (London, UK)",
+      "San Francisco, CA · Onsite",
+      "San Francisco, CA · Onsite",
+    ]);
+  });
+});
+
+describe("Landeed YC board", () => {
+  it("reads roles from the WaasShowJobsPage data-page fixture", () => {
+    const listings = extractListingsFromCareersHtml(
+      LANDEED_YC_FIXTURE,
+      "https://www.ycombinator.com/companies/landeed/jobs",
+    );
+    expect(listings.map((row) => row.title)).toEqual([
+      "People & Operations Associate (HR & Admin)",
+      "Accountant",
+      "Senior/Staff Engineer: Backend (India)",
+    ]);
+    expect(listings[1]?.location).toBe(
+      "Hyderabad, TS, IN / Hyderabad, Telangana, IN",
+    );
+    expect(listings[1]?.sourceUrl).toBe(
+      "https://www.ycombinator.com/companies/landeed/jobs/tipcFfI-accountant",
+    );
+  });
+});
+
 describe("Ginmon open-role repair", () => {
   it("closes the index row and upserts the six live offer URLs", async () => {
     const migration = readFileSync(
