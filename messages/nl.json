@@ -1829,7 +1829,7 @@
     "roleColumn": "Rol",
     "companyColumn": "Bedrijf",
     "locationColumn": "Locatie",
-    "closedRole": "Deze vacature staat niet meer op de careers-pagina van het bedrijf.",
+    "closedRole": "Deze rol is gesloten",
     "fetchedAt": "Bron",
     "roleBriefTitle": "Role Brief",
     "roleBriefLead": "Gekopieerd uit de vacature. Lege velden blijven weg.",

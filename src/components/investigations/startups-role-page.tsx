@@ -72,7 +72,12 @@ export function StartupsRolePage({
           {role.title}
         </h1>
         {role.status === "closed" ? (
-          <p className="text-muted-foreground text-sm">{t("closedRole")}</p>
+          <p
+            data-startup-role-closed=""
+            className="text-muted-foreground text-sm"
+          >
+            {t("closedRole")}
+          </p>
         ) : null}
         {role.location ? (
           <p

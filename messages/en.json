@@ -1829,7 +1829,7 @@
     "roleColumn": "Role",
     "companyColumn": "Company",
     "locationColumn": "Location",
-    "closedRole": "This posting is no longer listed on the company careers page.",
+    "closedRole": "This role is closed",
     "fetchedAt": "Sourced",
     "roleBriefTitle": "Role Brief",
     "roleBriefLead": "Copied from the posting. Blank fields stay omitted.",
