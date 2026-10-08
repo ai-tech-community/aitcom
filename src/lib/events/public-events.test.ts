@@ -333,6 +333,36 @@ describe("listingEventJsonLd", () => {
     expect(data).not.toHaveProperty("endDate");
   });
 
+  it("emits endDate when the event has one and leaves it out when it does not", () => {
+    const ranged = listingEventJsonLd(
+      hostedListingEvent({
+        date: "2026-10-20",
+        endDate: "2026-10-21",
+        city: "San Jose",
+        location: "San Jose Convention Center",
+        sourceUrl:
+          "https://events.linuxfoundation.org/pytorch-conference-north-america/",
+        title: "PyTorch Conference North America 2026",
+      }),
+      "en",
+    );
+    expect(ranged).toMatchObject({
+      startDate: "2026-10-20",
+      endDate: "2026-10-21",
+    });
+
+    const single = listingEventJsonLd(
+      hostedListingEvent({
+        date: "2026-10-22",
+        endDate: null,
+        title: "AIxIA 2026",
+      }),
+      "en",
+    );
+    expect(single?.startDate).toBe("2026-10-22");
+    expect(single).not.toHaveProperty("endDate");
+  });
+
   it("falls back to the canonical www event page when sourceUrl is missing", () => {
     const data = listingEventJsonLd(
       hostedListingEvent({ sourceUrl: null }),

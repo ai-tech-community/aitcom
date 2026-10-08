@@ -262,6 +262,10 @@ export interface Event {
   longitude?: number | null;
   geocodedAt?: string | null;
   date: string;
+  /**
+   * Last calendar day, when the event runs more than one day. Leave empty for a single day.
+   */
+  endDate?: string | null;
   startTime?: string | null;
   endTime?: string | null;
   /**
@@ -1835,6 +1839,7 @@ export interface EventsSelect<T extends boolean = true> {
   longitude?: T;
   geocodedAt?: T;
   date?: T;
+  endDate?: T;
   startTime?: T;
   endTime?: T;
   timezone?: T;

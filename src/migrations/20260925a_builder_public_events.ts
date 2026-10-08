@@ -232,6 +232,46 @@ export async function upsertBuilderEvent(
       (SELECT count(*) FROM version_locale_en) AS version_en_count,
       (SELECT count(*) FROM version_locale_nl) AS version_nl_count
   `);
+  await writeBuilderEventEndDate(db, event);
+}
+
+/**
+ * Writes `end_date` only when the seed names one and the column is already
+ * there. `20260925a`, `20260925b`, and `20261005a` are already recorded and
+ * call this helper; on a fresh database they run before the column exists,
+ * so the write is skipped and the later backfill sets the documented days.
+ * The INSERT above is unchanged. This write does not cast a locale enum.
+ */
+export async function writeBuilderEventEndDate(
+  db: MigrateUpArgs["db"],
+  event: BuilderPublicEvent,
+): Promise<void> {
+  if (!event.endDate) return;
+  const column = await db.execute(sql`
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'events'
+      AND column_name = 'end_date'
+    LIMIT 1
+  `);
+  const rows =
+    column && typeof column === "object" && "rows" in column ? column.rows : [];
+  if (!Array.isArray(rows) || rows.length === 0) return;
+
+  const end = `${event.endDate.slice(0, 10)}T12:00:00.000Z`;
+  await db.execute(sql`
+    UPDATE "events"
+    SET "end_date" = ${end}
+    WHERE "slug" = ${event.slug}
+  `);
+  await db.execute(sql`
+    UPDATE "_events_v"
+    SET "version_end_date" = ${end}
+    WHERE "parent_id" IN (
+      SELECT "id" FROM "events" WHERE "slug" = ${event.slug}
+    )
+  `);
 }
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {

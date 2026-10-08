@@ -202,6 +202,11 @@ export interface EventTimeFields {
   startTime: string | null | undefined;
   endTime?: string | null | undefined;
   timezone: string | null | undefined;
+  /**
+   * Last calendar day (YYYY-MM-DD or ISO). Set only when the event runs past
+   * its start day. JSON-LD includes it when present and leaves it out when not.
+   */
+  endDate?: string | null | undefined;
 }
 
 /**
@@ -403,6 +408,43 @@ export function formatEventDay(
 }
 
 /**
+ * Localised calendar span for cards and the event page. A missing or same-day
+ * end stays one day ("05 Oct 2026"). A longer span in one month is
+ * "20–21 Oct 2026"; across months, "29 Sep – 01 Oct 2026".
+ */
+export function formatEventDayRange(
+  start: string,
+  end: string | null | undefined,
+  locale: string,
+  { year = true }: { year?: boolean } = {},
+): string {
+  const startLabel = formatEventDay(start, locale, { year });
+  if (!end || !hasValidDateParts(start) || !hasValidDateParts(end)) {
+    return startLabel;
+  }
+  const startParts = eventDayParts(start, locale);
+  const endParts = eventDayParts(end, locale);
+  if (!startParts || !endParts || startParts.iso === endParts.iso) {
+    return startLabel;
+  }
+  if (
+    startParts.year === endParts.year &&
+    startParts.month === endParts.month
+  ) {
+    const startDay = String(startParts.day).padStart(2, "0");
+    const endDay = String(endParts.day).padStart(2, "0");
+    return year
+      ? `${startDay}–${endDay} ${endParts.month} ${endParts.year}`
+      : `${startDay}–${endDay} ${endParts.month}`;
+  }
+  const endLabel = formatEventDay(end, locale, { year });
+  if (year && startParts.year === endParts.year) {
+    return `${formatEventDay(start, locale, { year: false })} – ${endLabel}`;
+  }
+  return `${startLabel} – ${endLabel}`;
+}
+
+/**
  * ISO-8601 local datetime with UTC offset for structured data (JSON-LD),
  * e.g. "2026-07-15T18:00:00+02:00". Falls back to a floating local datetime
  * when no usable timezone exists.
@@ -437,18 +479,34 @@ function nextCalendarDay(date: string): string {
  * datetime with the zone's offset ("2026-07-15T18:00:00+02:00"), and an end
  * at or before the start runs into the next day. Without one: the plain
  * calendar day ("2026-07-15") — never the stored UTC-midnight timestamp,
- * which would claim the event starts at 00:00 UTC. Null for a corrupt date.
+ * which would claim the event starts at 00:00 UTC. A stored `endDate` is
+ * included as that calendar day (or that day plus `endTime`); it is left out
+ * when unset. Null for a corrupt start date.
  */
 export function eventSchemaDates({
   date,
   startTime,
   endTime,
   timezone,
+  endDate,
 }: EventTimeFields): { startDate: string; endDate?: string } | null {
   if (!hasValidDateParts(date)) return null;
   const day = date.slice(0, 10);
-  if (!startTime) return { startDate: day };
+  const calendarEnd =
+    endDate && hasValidDateParts(endDate) ? endDate.slice(0, 10) : null;
+  if (!startTime) {
+    return calendarEnd
+      ? { startDate: day, endDate: calendarEnd }
+      : { startDate: day };
+  }
   const startDate = formatEventIsoWithOffset(day, startTime, timezone);
+  if (calendarEnd && endTime) {
+    return {
+      startDate,
+      endDate: formatEventIsoWithOffset(calendarEnd, endTime, timezone),
+    };
+  }
+  if (calendarEnd) return { startDate, endDate: calendarEnd };
   if (!endTime) return { startDate };
   const { hh: sh, mm: sm } = getTimeParts(startTime);
   const { hh: eh, mm: em } = getTimeParts(endTime);

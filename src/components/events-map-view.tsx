@@ -39,6 +39,7 @@ export interface MapEvent {
   slug: string;
   title: string;
   date: string;
+  endDate?: string | null;
   location: string;
   latitude: number;
   longitude: number;
