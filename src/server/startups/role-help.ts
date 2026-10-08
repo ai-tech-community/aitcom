@@ -11,6 +11,7 @@ import {
 } from "@/lib/investigations/startup-role-help";
 import { logActivity } from "@/server/agent/activity";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import { syncForumThreadCounters } from "@/server/communities/forum-thread-counters";
 import { db } from "@/server/db";
 import {
   communities,
@@ -282,12 +283,7 @@ export async function askMyTrackedRoleHelp(input: {
         communityId: community.id,
       },
     });
-    await payload.update({
-      collection: "forum-threads",
-      id: threadId,
-      overrideAccess: true,
-      data: { lastActivityAt: new Date().toISOString() },
-    });
+    await syncForumThreadCounters(payload, threadId, { touch: true });
     await awardXp(db, input.userId, XP_AMOUNTS.FORUM_REPLY_CREATE);
     await logActivity(db, {
       actorId: input.userId,

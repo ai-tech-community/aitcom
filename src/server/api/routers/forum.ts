@@ -24,6 +24,8 @@ import {
 } from "@/server/payload-numeric";
 import { IDEA_CATEGORIES } from "@/lib/idea-categories";
 import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
+import { DELETED_REPLY_CONTENT } from "@/server/communities/forum-replies";
+import { syncForumThreadCounters } from "@/server/communities/forum-thread-counters";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
 import {
   findReadableCommunityBySlug,
@@ -647,6 +649,7 @@ export const forumRouter = createTRPCRouter({
           cause: err,
         });
       }
+      await syncForumThreadCounters(payload, input.threadId, { touch: true });
 
       await logActivity(ctx.db, {
         actorId: ctx.session.user.id,
@@ -1049,24 +1052,11 @@ export const forumRouter = createTRPCRouter({
         id: input.replyId,
         data: {
           isDeleted: true,
-          content: plainTextToLexical(""),
+          content: DELETED_REPLY_CONTENT,
           authorName: null,
         },
       });
-
-      // Decrement thread reply count
-      const thread = await payload.findByID({
-        collection: "forum-threads",
-        id: threadId,
-        depth: 0,
-        overrideAccess: true,
-      });
-      await payload.update({
-        collection: "forum-threads",
-        id: threadId,
-        overrideAccess: true,
-        data: { replyCount: incrementNumeric(thread.replyCount, -1) },
-      });
+      await syncForumThreadCounters(payload, threadId);
 
       return { success: true };
     }),
