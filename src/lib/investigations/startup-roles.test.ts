@@ -103,6 +103,19 @@ describe("startupRoleJsonLd", () => {
     ).toBe("2026-03-01");
   });
 
+  it("omits JobPosting when the role is closed", () => {
+    expect(
+      startupRoleJsonLd(
+        sampleRole({
+          status: "closed",
+          postedAt: "2026-03-01T12:00:00.000Z",
+          location: "Toronto, Canada",
+          descriptionText: "Build the product.",
+        }),
+      ),
+    ).toBeNull();
+  });
+
   it("soft-omits the JobPosting block when no real post date exists", () => {
     expect(startupRoleJsonLd(sampleRole())).toBeNull();
     expect(

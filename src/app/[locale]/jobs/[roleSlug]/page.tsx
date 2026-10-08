@@ -35,7 +35,10 @@ export async function generateMetadata({
   return {
     title: `${role.title} — ${role.startupName}`,
     description,
-    robots: startupsPublicRobots(),
+    robots:
+      role.status === "closed"
+        ? { index: false, follow: true }
+        : startupsPublicRobots(),
     ...buildOgMeta(
       `${role.title} — ${role.startupName}`,
       description,

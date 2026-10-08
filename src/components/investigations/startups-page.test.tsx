@@ -1999,6 +1999,51 @@ describe("Startups open positions", () => {
     ]);
   });
 
+  it("shows a closed role in English and Dutch without a JobPosting block", () => {
+    const closed = {
+      ...FIXTURE_ROLE,
+      status: "closed" as const,
+      postedAt: "2026-03-01T12:00:00.000Z",
+    };
+    const { container } = render(
+      <StartupsRolePage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        role={closed}
+      />,
+    );
+    expect(
+      container.querySelector("[data-startup-role-closed]")?.textContent,
+    ).toBe("This role is closed");
+    expect(
+      container.querySelector("script[type='application/ld+json']"),
+    ).toBeNull();
+    expect(
+      screen.getByRole("link", { name: /Open positions/ }),
+    ).toHaveAttribute("href", STARTUPS_JOBS_PATH);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Staff Engineer" }),
+    ).toBeInTheDocument();
+
+    const dutch = render(
+      <StartupsRolePage
+        locale="nl"
+        t={tFrom(nl.investigationsStartups)}
+        role={closed}
+      />,
+    );
+    expect(
+      dutch.container.querySelector("[data-startup-role-closed]")?.textContent,
+    ).toBe("Deze rol is gesloten");
+    expect(
+      dutch.container.querySelector("script[type='application/ld+json']"),
+    ).toBeNull();
+    expect(screen.getByRole("link", { name: /Open posities/ })).toHaveAttribute(
+      "href",
+      STARTUPS_JOBS_PATH,
+    );
+  });
+
   it("soft-omits JobPosting when the row is a board title", () => {
     const { container } = render(
       <StartupsRolePage

@@ -944,6 +944,8 @@ function jobLocationFromPlace(
 export function startupRoleJsonLd(
   role: StartupRolePublic,
 ): Record<string, unknown> | null {
+  // Closed roles stay on their URL. They are not a live JobPosting.
+  if (role.status === "closed") return null;
   const datePosted = sourcedIsoDate(role.postedAt);
   if (!datePosted) return null;
   const title = cleanStartupRoleTitle(role.title) ?? role.title;
