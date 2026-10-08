@@ -14,6 +14,7 @@ import {
   windowStart,
   type ActivityRow,
 } from "@/server/communities/insights";
+import { isPublicDirectoryCommunity } from "@/server/communities/content-visibility";
 import type { CommunityCandidate } from "@/server/communities/discovery";
 import type { db as _db } from "@/server/db";
 
@@ -38,6 +39,7 @@ export async function loadDiscoveryCandidates(
       name: communities.name,
       description: communities.description,
       logoUrl: communities.logoUrl,
+      isListedInDirectory: communities.isListedInDirectory,
       crossPromote: communityAcquireConfig.crossPromote,
     })
     .from(communities)
@@ -52,8 +54,10 @@ export async function loadDiscoveryCandidates(
       ),
     );
 
-  const eligible = rows.filter((r) =>
-    opts.crossPromoteOnly ? (r.crossPromote ?? true) : true,
+  const eligible = rows.filter(
+    (r) =>
+      isPublicDirectoryCommunity(r) &&
+      (opts.crossPromoteOnly ? (r.crossPromote ?? true) : true),
   );
   if (eligible.length === 0) return [];
   const ids = eligible.map((r) => r.id);

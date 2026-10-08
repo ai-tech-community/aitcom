@@ -105,6 +105,18 @@ describe("FeaturedCommunities", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(hrefs.length);
   });
 
+  it("omits an unlisted community and keeps the unlisted Hub", () => {
+    renderIn([
+      { ...NL_CARD, isListedInDirectory: true },
+      { ...XXX_CARD, isListedInDirectory: false },
+      { ...HUB_CARD, isListedInDirectory: false },
+    ]);
+    expect(cardLinks().map((a) => a.getAttribute("href"))).toEqual([
+      "/communities/ait-community-netherlands",
+      "/communities/ait",
+    ]);
+  });
+
   it("names each card link by the community name alone", () => {
     renderIn(THREE);
     expect(

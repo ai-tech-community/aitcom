@@ -418,6 +418,136 @@ describe("buildSitemapEntries", () => {
     );
   });
 
+  it("omits unlisted communities, their pages, threads, and events", async () => {
+    const find = vi.fn(async ({ collection }: { collection: string }) => {
+      if (collection === "events") {
+        return {
+          docs: [
+            {
+              slug: "public-night",
+              communityId: null,
+              updatedAt: "2026-04-01",
+            },
+            {
+              slug: "xxx-meetup",
+              communityId: "xxx-id",
+              updatedAt: "2026-04-01",
+            },
+            {
+              slug: "demo-day",
+              communityId: "demo-id",
+              updatedAt: "2026-04-01",
+            },
+            {
+              slug: "nl-meetup",
+              communityId: "nl-id",
+              updatedAt: "2026-04-01",
+            },
+          ],
+        };
+      }
+      if (collection === "articles") return { docs: [] };
+      if (collection === "forum-threads") {
+        return {
+          docs: [
+            {
+              slug: "news-1774515507201",
+              communityId: "demo-id",
+              updatedAt: "2026-04-03",
+            },
+            {
+              slug: "what-we-are-planning-for-the-new-community-1778970286390",
+              communityId: "xxx-id",
+              updatedAt: "2026-04-03",
+            },
+            {
+              slug: "hello-neighbours",
+              communityId: "nl-id",
+              updatedAt: "2026-04-03",
+            },
+            { slug: "hub-intro", communityId: null, updatedAt: "2026-04-03" },
+          ],
+        };
+      }
+      throw new Error(`unexpected collection ${collection}`);
+    });
+    mockGetPayloadClient.mockResolvedValue({
+      find,
+    } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () =>
+        new Map([
+          ["xxx-id", "xxx-ai"],
+          ["demo-id", "demo-community"],
+          ["nl-id", "ait-community-netherlands"],
+        ]),
+      async () => [],
+      async () => [],
+      async () => ["xxx-id", "demo-id"],
+    );
+
+    const urls = entries.flatMap((entry) => [
+      entry.url,
+      ...Object.values(entry.alternates?.languages ?? {}),
+    ]);
+    for (const url of urls) {
+      expect(String(url)).not.toContain("/communities/xxx-ai");
+      expect(String(url)).not.toContain("/communities/demo-community");
+    }
+    expect(urls).not.toContain(
+      "https://www.aitcommunity.org/en/events/xxx-meetup",
+    );
+    expect(urls).not.toContain(
+      "https://www.aitcommunity.org/nl/events/demo-day",
+    );
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/events/public-night",
+    );
+    expect(urls).toContain("https://www.aitcommunity.org/en/events/nl-meetup");
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/communities/ait-community-netherlands/forum/hello-neighbours",
+    );
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/nl/communities/ait/forum/hub-intro",
+    );
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/communities/ait/forum",
+    );
+
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "events",
+        where: {
+          and: [
+            {
+              status: { equals: "published" },
+              discoverySource: { not_equals: "luma" },
+            },
+            {
+              or: [
+                { communityId: { exists: false } },
+                { communityId: { not_in: ["xxx-id", "demo-id"] } },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "forum-threads",
+        where: {
+          or: [
+            { communityId: { exists: false } },
+            { communityId: { not_in: ["xxx-id", "demo-id"] } },
+          ],
+        },
+      }),
+    );
+  });
+
   it("lists no threads when the hidden-community lookup fails", async () => {
     const find = vi.fn(async ({ collection }: { collection: string }) => ({
       docs:

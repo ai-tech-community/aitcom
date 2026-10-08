@@ -60,6 +60,17 @@ describe("pickFeaturedCommunities", () => {
     expect(asMemberCount(-3)).toBe(0);
   });
 
+  it("drops unlisted rooms and keeps the unlisted Hub", () => {
+    expect(
+      pickFeaturedCommunities([
+        { slug: "ait-community-netherlands", isListedInDirectory: true },
+        { slug: "xxx-ai", isListedInDirectory: false },
+        { slug: "demo-community", isListedInDirectory: false },
+        { slug: "ait", isListedInDirectory: false },
+      ]).map((row) => row.slug),
+    ).toEqual(["ait-community-netherlands", "ait"]);
+  });
+
   it("omits a featured slug when it is missing from live data", () => {
     expect(
       pickFeaturedCommunities([
@@ -85,5 +96,14 @@ describe("homepage wiring", () => {
     const src = readFileSync(HOME_PAGE, "utf8");
     expect(src).toContain("loadFeaturedCommunities");
     expect(src).toContain("FeaturedCommunities");
+  });
+
+  it("loads the listing flag and keeps the unlisted Hub only", () => {
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "featured-queries.ts"),
+      "utf8",
+    );
+    expect(src).toContain("isListedInDirectory");
+    expect(src).toContain("HUB_SLUG");
   });
 });

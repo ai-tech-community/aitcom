@@ -6,6 +6,8 @@ import {
   canReadRoster,
   communityContentReadableWhere,
   isContentPublic,
+  isFeaturedStripCommunity,
+  isPublicDirectoryCommunity,
   isRosterPublic,
 } from "./content-visibility";
 
@@ -46,6 +48,27 @@ describe("roster visibility", () => {
   it("lets members read an unlisted roster", () => {
     expect(canReadRoster(UNLISTED, false)).toBe(false);
     expect(canReadRoster(UNLISTED, true)).toBe(true);
+  });
+});
+
+describe("public directory and featured strip", () => {
+  const rows = [
+    { slug: "xxx-ai", isListedInDirectory: false },
+    { slug: "demo-community", isListedInDirectory: false },
+    { slug: "ait-community-netherlands", isListedInDirectory: true },
+    { slug: HUB_SLUG, isListedInDirectory: false },
+  ];
+
+  it("hides unlisted communities from the public directory", () => {
+    expect(
+      rows.filter(isPublicDirectoryCommunity).map((row) => row.slug),
+    ).toEqual(["ait-community-netherlands"]);
+  });
+
+  it("keeps the unlisted Hub on the featured strip and drops other unlisted rooms", () => {
+    expect(
+      rows.filter(isFeaturedStripCommunity).map((row) => row.slug),
+    ).toEqual(["ait-community-netherlands", HUB_SLUG]);
   });
 });
 
