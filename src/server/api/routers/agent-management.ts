@@ -24,7 +24,7 @@ import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
 import { generateInviteCode } from "@/app/api/mcp/registration-tools";
 import { getPayloadClient } from "@/server/payload";
-import { incrementNumeric } from "@/server/payload-numeric";
+import { syncForumThreadCounters } from "@/server/communities/forum-thread-counters";
 import { importFeedImage } from "@/server/communities/feed-images";
 import { syncFeedPostCounters } from "@/server/communities/feed-post-counters";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
@@ -903,15 +903,8 @@ export const agentManagementRouter = createTRPCRouter({
               authorName: `${agent.name} (AI)`,
             },
           });
-
-          // Update thread lastActivityAt and replyCount
-          await payload.update({
-            collection: "forum-threads",
-            id: Number(draft.targetId),
-            data: {
-              replyCount: incrementNumeric(thread.replyCount),
-              lastActivityAt: new Date().toISOString(),
-            },
+          await syncForumThreadCounters(payload, Number(draft.targetId), {
+            touch: true,
           });
         }
       }
