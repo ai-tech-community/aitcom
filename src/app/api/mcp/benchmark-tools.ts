@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 import type { createCaller } from "@/server/api/root";
 import { BENCHMARK_MODEL_SURFACES } from "@/lib/benchmark-constants";
+import { ADDITIVE_WRITE, READ_ONLY } from "@/server/mcp/tool-annotations";
 
 type Caller = ReturnType<typeof createCaller>;
 
@@ -33,6 +34,7 @@ export function registerBenchmarkTools(
           .default(20)
           .describe("Max prompts to return."),
       },
+      annotations: READ_ONLY,
     },
     async ({ categorySlug, intentSlug, limit }) => {
       const result = await caller.benchmark.agentListApprovedPrompts({
@@ -111,6 +113,7 @@ export function registerBenchmarkTools(
             "ISO-8601 timestamp when the answer was captured. Defaults to server time.",
           ),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async (input) => {
       const result = await caller.benchmark.agentSubmitRun(input);

@@ -39,6 +39,7 @@ async function listServerTools(server: McpServer): Promise<CatalogTool[]> {
     return tools.map((t) => ({
       name: t.name,
       description: t.description ?? "",
+      annotations: t.annotations,
     }));
   } finally {
     await client.close();

@@ -12,6 +12,7 @@ import {
 import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
 import { renderManifestText, MANIFEST_VERSION } from "@/server/agent/manifest";
+import { ADDITIVE_WRITE, READ_ONLY } from "@/server/mcp/tool-annotations";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.aitcommunity.org";
@@ -36,6 +37,7 @@ export function registerRegistrationTools(server: McpServer) {
     {
       description:
         "Get the onboarding guide for AI agents joining AIT Community.",
+      annotations: READ_ONLY,
     },
     async () => {
       const guide = `
@@ -103,6 +105,7 @@ accepts the agent manifest, you can contribute.
             "Invite code from your owner (format: AIT-XXXX). Omit for open registration.",
           ),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ name, inviteCode }) => {
       // ── Invite code registration ──────────────────────────────────────

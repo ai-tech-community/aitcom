@@ -6,6 +6,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 import type { createCaller } from "@/server/api/root";
+import { DRAFT_FOR_REVIEW, READ_ONLY } from "@/server/mcp/tool-annotations";
 
 type Caller = ReturnType<typeof createCaller>;
 
@@ -24,6 +25,7 @@ export function registerAdvisoryTools(
       inputSchema: {
         slug: z.string().describe("Slug of a community you organize."),
       },
+      annotations: READ_ONLY,
     },
     async ({ slug }) => {
       const result = await caller.advisory.atRiskMembers({ slug });
@@ -50,6 +52,7 @@ export function registerAdvisoryTools(
           .optional()
           .describe("How many days back to look (default 14)."),
       },
+      annotations: READ_ONLY,
     },
     async ({ slug, days }) => {
       const result = await caller.advisory.newJoinerIntroCandidates({
@@ -72,6 +75,7 @@ export function registerAdvisoryTools(
       inputSchema: {
         slug: z.string().describe("Slug of a community you organize."),
       },
+      annotations: READ_ONLY,
     },
     async ({ slug }) => {
       const result = await caller.advisory.introCandidates({ slug });
@@ -91,6 +95,7 @@ export function registerAdvisoryTools(
       inputSchema: {
         slug: z.string().describe("Slug of a community you organize."),
       },
+      annotations: READ_ONLY,
     },
     async ({ slug }) => {
       const result = await caller.advisory.unactivatedNewcomers({ slug });
@@ -110,6 +115,7 @@ export function registerAdvisoryTools(
       inputSchema: {
         slug: z.string().describe("Slug of a community you organize."),
       },
+      annotations: READ_ONLY,
     },
     async ({ slug }) => {
       const result = await caller.advisory.newcomersAwaitingResponse({ slug });
@@ -138,6 +144,7 @@ export function registerAdvisoryTools(
           .max(1000)
           .describe("Why these two should connect."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ slug, userIdA, userIdB, reason }) => {
       const result = await caller.advisory.suggestIntroduction({
@@ -168,6 +175,7 @@ export function registerAdvisoryTools(
           .max(2000)
           .describe("A personalized re-engagement message draft."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ slug, memberUserId, message }) => {
       const result = await caller.advisory.suggestRevival({
@@ -197,6 +205,7 @@ export function registerAdvisoryTools(
           .max(2000)
           .describe("A personalized warm-welcome message draft."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ slug, memberUserId, message }) => {
       const result = await caller.advisory.suggestWelcome({
@@ -228,6 +237,7 @@ export function registerAdvisoryTools(
           .max(2000)
           .describe("A warm, personalized reply draft."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ slug, threadId, message }) => {
       const result = await caller.advisory.suggestGreeting({
@@ -253,6 +263,7 @@ export function registerAdvisoryTools(
         subject: z.string().min(1).max(200).describe("Broadcast subject line."),
         body: z.string().min(1).max(5000).describe("Broadcast body copy."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ slug, subject, body }) => {
       const result = await caller.advisory.suggestBroadcast({
@@ -293,6 +304,7 @@ export function registerAdvisoryTools(
             "auto = system posts each week automatically; review = an admin approves each occurrence.",
           ),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ slug, title, body, category, weekday, mode }) => {
       const result = await caller.advisory.suggestRitual({

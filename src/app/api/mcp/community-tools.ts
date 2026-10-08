@@ -5,6 +5,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 import type { createCaller } from "@/server/api/root";
+import {
+  ADDITIVE_WRITE,
+  DESTRUCTIVE_WRITE,
+  DRAFT_FOR_REVIEW,
+  READ_ONLY,
+} from "@/server/mcp/tool-annotations";
 
 type Caller = ReturnType<typeof createCaller>;
 
@@ -32,6 +38,7 @@ export function registerCommunityTools(
           .default(20)
           .describe("Max communities to return."),
       },
+      annotations: READ_ONLY,
     },
     async ({ search, limit }) => {
       const result = await caller.agent.browseCommunities({ search, limit });
@@ -51,6 +58,7 @@ export function registerCommunityTools(
       inputSchema: {
         slug: z.string().describe("The community slug."),
       },
+      annotations: READ_ONLY,
     },
     async ({ slug }) => {
       const result = await caller.agent.getCommunityInfo({ slug });
@@ -67,6 +75,7 @@ export function registerCommunityTools(
     {
       description:
         "List all communities the owner belongs to, including their role and membership status in each.",
+      annotations: READ_ONLY,
     },
     async () => {
       const result = await caller.agent.getOwnerCommunities();
@@ -88,6 +97,7 @@ export function registerCommunityTools(
       inputSchema: {
         slug: z.string().describe("The community slug to join."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ slug }) => {
       const result = await caller.agent.joinCommunity({ slug });
@@ -109,6 +119,7 @@ export function registerCommunityTools(
           .string()
           .describe("The community slug to request membership in."),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ slug }) => {
       const result = await caller.agent.requestToJoinCommunity({ slug });
@@ -128,6 +139,7 @@ export function registerCommunityTools(
       inputSchema: {
         slug: z.string().describe("The community slug to leave."),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ slug }) => {
       const result = await caller.agent.leaveCommunity({ slug });
@@ -147,6 +159,7 @@ export function registerCommunityTools(
       inputSchema: {
         code: z.string().describe("The invite code (from the invite link)."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ code }) => {
       const result = await caller.agent.acceptCommunityInvite({ code });
@@ -185,6 +198,7 @@ export function registerCommunityTools(
           .default(false)
           .describe("Whether the community appears in the public directory."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ name, description, joinPolicy, isListedInDirectory }) => {
       const result = await caller.agent.createCommunity({
@@ -236,6 +250,7 @@ export function registerCommunityTools(
           .optional()
           .describe("Whether to list in the public directory."),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({
       slug,
@@ -269,6 +284,7 @@ export function registerCommunityTools(
       inputSchema: {
         slug: z.string().describe("The community slug."),
       },
+      annotations: READ_ONLY,
     },
     async ({ slug }) => {
       const result = await caller.agent.getCommunityInviteLinks({ slug });
@@ -300,6 +316,7 @@ export function registerCommunityTools(
           .optional()
           .describe("Number of days until the invite expires."),
       },
+      annotations: ADDITIVE_WRITE,
     },
     async ({ slug, maxUses, expiresInDays }) => {
       const result = await caller.agent.createCommunityInviteLink({
@@ -324,6 +341,7 @@ export function registerCommunityTools(
         slug: z.string().describe("The community slug."),
         inviteId: z.string().describe("The invite link ID to revoke."),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ slug, inviteId }) => {
       const result = await caller.agent.revokeCommunityInviteLink({
@@ -350,6 +368,7 @@ export function registerCommunityTools(
         userId: z.string().describe("The user ID of the member to ban."),
         reason: z.string().max(1000).describe("Reason for the ban suggestion."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ slug, userId, reason }) => {
       const result = await caller.agent.suggestBanMember({
@@ -378,6 +397,7 @@ export function registerCommunityTools(
           .max(1000)
           .describe("Reason for the removal suggestion."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ slug, userId, reason }) => {
       const result = await caller.agent.suggestRemoveMember({
@@ -408,6 +428,7 @@ export function registerCommunityTools(
           .max(1000)
           .describe("Reason for the ownership transfer suggestion."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ slug, userId, reason }) => {
       const result = await caller.agent.suggestTransferOwnership({
@@ -441,6 +462,7 @@ export function registerCommunityTools(
           .max(1000)
           .describe("Reason for the role change suggestion."),
       },
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ slug, userId, role, reason }) => {
       const result = await caller.agent.suggestSetMemberRole({

@@ -6,13 +6,14 @@
 import { describe, expect, it } from "vitest";
 
 // Instantiates the real MCP server (stub caller, never invoked) and checks
-// TOOL_META covers exactly the live registry. Needs env (DATABASE_URL) only
-// because the server module's import chain creates a db client at load time —
-// no queries are ever made.
-const HAS_DB = !!process.env.DATABASE_URL;
-const d = HAS_DB ? describe : describe.skip;
+// TOOL_META covers exactly the live registry. The server module's import chain
+// creates a db client at load time, so it needs a DATABASE_URL to parse — but
+// no connection or query is ever made. A placeholder lets this run in CI,
+// where unit tests have no database.
+process.env.DATABASE_URL ??=
+  "postgresql://placeholder:placeholder@127.0.0.1:1/placeholder";
 
-d("tool catalog drift", () => {
+describe("tool catalog drift", () => {
   it("TOOL_META matches the live tool registry exactly", async () => {
     const { getToolCatalog } = await import("./catalog");
     const { TOOL_META } = await import("./catalog-meta");
@@ -25,6 +26,30 @@ d("tool catalog drift", () => {
 
     expect(missingFromMeta, "tools missing from TOOL_META").toEqual([]);
     expect(staleInMeta, "TOOL_META entries with no live tool").toEqual([]);
+  });
+
+  it("every live tool declares all four behaviour hints", async () => {
+    const { getToolCatalog } = await import("./catalog");
+    const missing = (await getToolCatalog())
+      .filter(
+        ({ annotations: a }) =>
+          typeof a?.readOnlyHint !== "boolean" ||
+          typeof a.destructiveHint !== "boolean" ||
+          typeof a.idempotentHint !== "boolean" ||
+          typeof a.openWorldHint !== "boolean",
+      )
+      .map((t) => t.name);
+    expect(missing, "tools without a tool-annotations profile").toEqual([]);
+  });
+
+  it("no tool claims to be both read-only and destructive", async () => {
+    const { getToolCatalog } = await import("./catalog");
+    const contradictory = (await getToolCatalog())
+      .filter(
+        (t) => t.annotations?.readOnlyHint && t.annotations.destructiveHint,
+      )
+      .map((t) => t.name);
+    expect(contradictory).toEqual([]);
   });
 
   it("every live tool has a non-empty description", async () => {

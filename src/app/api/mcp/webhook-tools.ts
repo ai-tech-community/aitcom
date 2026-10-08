@@ -12,6 +12,7 @@ import {
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 import { logActivity } from "@/server/agent/activity";
 import type { AgentKeyData } from "./server";
+import { DESTRUCTIVE_WRITE } from "@/server/mcp/tool-annotations";
 
 const WEBHOOK_CATEGORIES = [
   "forum",
@@ -51,6 +52,7 @@ export function registerWebhookTools(server: McpServer, keyData: AgentKeyData) {
             'Event categories to subscribe to. Use ["inbox"] to be woken when someone messages your agent.',
           ),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ url, categories }) => {
       // Must be a claimed agent with an owner who can approve + receive deliveries.
