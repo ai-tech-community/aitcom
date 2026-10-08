@@ -19,6 +19,18 @@ export const STARTUP_ROLE_DESCRIPTION_MAX = 20_000;
 
 export const STARTUP_ROLE_SLUG_MAX = 80;
 
+/**
+ * Postgres UTF-8 `text` rejects NUL (0x00) and surrogate code points.
+ * A raw 0x00 in a careers page (phytech) aborts the scan on insert.
+ */
+const POSTGRES_REJECTED_TEXT = /[\u0000\uD800-\uDFFF]/g;
+
+export function stripPostgresRejectedChars(
+  value: string | null | undefined,
+): string {
+  return (value ?? "").replace(POSTGRES_REJECTED_TEXT, "");
+}
+
 export const STARTUP_ROLES_PER_COMPANY_CAP = 40;
 
 /** JD HTML fetches per company, including ATS rows that omitted description text. */
@@ -264,7 +276,7 @@ function isTitleMetaLine(line: string): boolean {
 export function cleanStartupRoleTitle(
   value: string | null | undefined,
 ): string | null {
-  const raw = presentText(value);
+  const raw = presentText(stripPostgresRejectedChars(value));
   if (!raw) return null;
   let lines = raw
     .split(/\n+/)
@@ -297,7 +309,7 @@ export function parseStartupRoleTitle(
 export function parseStartupRoleLocation(
   value: string | null | undefined,
 ): string | null {
-  const location = presentText(value);
+  const location = presentText(stripPostgresRejectedChars(value));
   if (!location || location.length > STARTUP_ROLE_LOCATION_MAX) return null;
   return location;
 }
@@ -305,7 +317,7 @@ export function parseStartupRoleLocation(
 export function sanitizeStartupRoleDescription(
   value: string | null | undefined,
 ): string | null {
-  let text = presentText(value);
+  let text = presentText(stripPostgresRejectedChars(value));
   if (!text) return null;
   text = text.replace(OCR_SECTION_GLUE, "");
   text = text.replace(DESCRIPTION_LEADING_CTA, "").trimStart();
@@ -327,6 +339,23 @@ export function startupRoleSlugFromTitle(
   return combined.replace(/-+$/g, "") || "role";
 }
 
+/** Collapse repeats and drop end hyphens so a cut stem can take `-N`. */
+function roleSlugStem(value: string): string {
+  return value.replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function startupRoleSlugWithSuffix(base: string, n: number): string {
+  const suffix = `-${n}`;
+  const room = Math.max(1, STARTUP_ROLE_SLUG_MAX - suffix.length);
+  let stem = roleSlugStem(base.slice(0, room));
+  if (!stem) stem = "role";
+  if (stem.length + suffix.length > STARTUP_ROLE_SLUG_MAX) {
+    stem = roleSlugStem(stem.slice(0, STARTUP_ROLE_SLUG_MAX - suffix.length));
+    if (!stem) stem = "role";
+  }
+  return `${stem}${suffix}`;
+}
+
 export function allocateStartupRoleSlug(
   startupSlug: string,
   title: string,
@@ -334,17 +363,22 @@ export function allocateStartupRoleSlug(
 ): string {
   const reserved = new Set<string>();
   for (const value of taken) {
+    // Stored slugs stay reserved even when they fail the validity check
+    // (`legion-health-…--2`). Do not rename those rows.
+    const raw = value.trim().toLowerCase();
+    if (raw) reserved.add(raw);
     const slug = parseStartupSlug(value);
     if (slug) reserved.add(slug);
   }
   const base = startupRoleSlugFromTitle(startupSlug, title);
   if (!reserved.has(base) && parseStartupSlug(base)) return base;
-  let n = 2;
-  while (reserved.has(`${base.slice(0, STARTUP_ROLE_SLUG_MAX - 3)}-${n}`)) {
-    n += 1;
+  for (let n = 2; n < 10_000; n += 1) {
+    const candidate = startupRoleSlugWithSuffix(base, n);
+    if (!reserved.has(candidate) && parseStartupSlug(candidate)) {
+      return candidate;
+    }
   }
-  const suffix = `-${n}`;
-  return `${base.slice(0, STARTUP_ROLE_SLUG_MAX - suffix.length)}${suffix}`;
+  return startupRoleSlugWithSuffix(base, 2);
 }
 
 /**

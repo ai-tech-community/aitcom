@@ -8,6 +8,7 @@ import {
   startupJobsFacets,
   startupWorkTypeOf,
   parseStartupJobsQuery,
+  parseStartupRoleLocation,
   parseStartupRoleTitle,
   rolesListedSince,
   sanitizeStartupRoleDescription,
@@ -87,6 +88,21 @@ describe("sanitizeStartupRoleDescription", () => {
         "Read more\nAbout the role\nShip the product.",
       ),
     ).toBe("About the role\nShip the product.");
+  });
+
+  it("strips NUL and surrogate code points Postgres text rejects", () => {
+    expect(
+      sanitizeStartupRoleDescription("Grow\u0000 crops\u0000 in the field."),
+    ).toBe("Grow crops in the field.");
+    expect(sanitizeStartupRoleDescription("\u0000")).toBeNull();
+    expect(sanitizeStartupRoleDescription("Lead\uD800 the team")).toBe(
+      "Lead the team",
+    );
+    expect(parseStartupRoleTitle("Field\u0000 Agronomist")).toBe(
+      "Field Agronomist",
+    );
+    expect(parseStartupRoleLocation("Tel Aviv\u0000")).toBe("Tel Aviv");
+    expect(parseStartupRoleLocation("\u0000")).toBeNull();
   });
 });
 
