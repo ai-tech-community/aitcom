@@ -116,6 +116,17 @@ describe("parseStartupRoleTitle", () => {
     expect(isStartupRoleLocationLine("San Francisco, CA")).toBe(true);
     expect(isStartupRoleLocationLine("San Francisco, CA, US")).toBe(true);
     expect(isStartupRoleLocationLine("AI, ML")).toBe(false);
+    expect(isStartupRoleLocationLine("Toronto - Account Executive")).toBe(
+      false,
+    );
+    expect(isStartupRoleLocationLine("Chicago, Designer")).toBe(false);
+    expect(isStartupRoleLocationLine("Haifa · Engineer")).toBe(false);
+    expect(isStartupRoleLocationLine("United States - Engineer")).toBe(false);
+    expect(isStartupRoleLocationLine("Account Executive (Remote)")).toBe(false);
+    expect(isStartupRoleLocationLine("Senior Engineer (Hybrid)")).toBe(false);
+    expect(isStartupRoleLocationLine("United States (Remote)")).toBe(true);
+    expect(isStartupRoleLocationLine("Toronto, Canada")).toBe(true);
+    expect(isStartupRoleLocationLine("Chicago, IL")).toBe(true);
   });
 });
 

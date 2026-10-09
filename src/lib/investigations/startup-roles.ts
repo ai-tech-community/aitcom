@@ -248,11 +248,16 @@ const TITLE_TRAILING_META =
   /\s+(?:full[- ]?time|part[- ]?time|contract(?:or|ing)?|temporary|volunteer|per[ -]?diem|freelance|permanent|read more|more info|learn more|apply now)$/i;
 
 /**
- * A whole line that is only a place / work-mode label, not a role name.
- * Role titles that embed a place (“Team Lead, Canada”) stay intact.
+ * A whole line that is only a place or a work mode, not a role name.
+ * A role that embeds a place (“Team Lead, Canada”, “Toronto - Account
+ * Executive”, “Account Executive (Remote)”) stays intact. “City, ST” is a
+ * place list, not a suffix on the city token.
  */
 const TITLE_LOCATION_LINE =
-  /^(?:remote|hybrid|onsite|on-site|in[- ]office)(?:\s*[·|,/()-].*)?$|^(?:[\p{L}\s.'’()-]+)\s*\((?:remote|hybrid|onsite|on-site)\)\s*$|^(?:tel-?aviv|toronto|chicago|canada|usa|u\.?s\.?a\.?|united states|arizona|turkey|texas|haifa|bengaluru|taiwan|england|israel|india|europe)(?:\s*[,/·-]\s*[\p{L}\s.'’()-]+)?$|^(?:london|new york|san francisco|ghent|dubai|united kingdom)$/iu;
+  /^(?:remote|hybrid|onsite|on-site|in[- ]office|tel-?aviv|toronto|chicago|canada|usa|u\.?s\.?a\.?|united states|arizona|turkey|texas|haifa|bengaluru|taiwan|england|israel|india|europe|london|new york|san francisco|ghent|dubai|united kingdom)$/iu;
+
+const PLACE_THEN_WORK_MODE =
+  /^(.*)\s*\((?:remote|hybrid|onsite|on-site|in[- ]office)\)\s*$/iu;
 
 const WORK_MODE_WORD = /\b(?:remote|hybrid|onsite|on-site|in[- ]office)\b/i;
 
@@ -283,10 +288,17 @@ function isGeographicList(line: string): boolean {
   return parts.every((part) => knownPlace(part) || /^[A-Za-z]{2}$/.test(part));
 }
 
+/** "United States (Remote)" is a place. "Account Executive (Remote)" is a role. */
+function isPlaceWithWorkMode(line: string): boolean {
+  const place = PLACE_THEN_WORK_MODE.exec(line)?.[1]?.trim() ?? "";
+  return place.length > 0 && TITLE_LOCATION_LINE.test(place);
+}
+
 export function isStartupRoleLocationLine(value: string): boolean {
   const line = value.replace(/\s+/g, " ").trim();
   if (!line) return false;
   if (isGeographicList(line)) return true;
+  if (isPlaceWithWorkMode(line)) return true;
   if (!WORK_MODE_WORD.test(line)) return TITLE_LOCATION_LINE.test(line);
   if (TITLE_LOCATION_LINE.test(line)) return true;
   if (hasPlaceSeparator(line) && line.includes(",")) return true;

@@ -926,6 +926,10 @@ describe("8 Oct 2026 jobs refresh title junk", () => {
     expect(isPublishableJobTitle("New York, Designer")).toBe(true);
     expect(isPublishableJobTitle("San Francisco - Engineer")).toBe(true);
     expect(isPublishableJobTitle("London · Engineer")).toBe(true);
+    expect(isPublishableJobTitle("Toronto - Account Executive")).toBe(true);
+    expect(isPublishableJobTitle("Chicago, Designer")).toBe(true);
+    expect(isPublishableJobTitle("Account Executive (Remote)")).toBe(true);
+    expect(isPublishableJobTitle("United States (Remote)")).toBe(false);
 
     const cityHeading = extractListingsFromCareersHtml(
       `<a href="https://example.com/jobs/account-executive">
@@ -936,6 +940,15 @@ describe("8 Oct 2026 jobs refresh title junk", () => {
     );
     expect(cityHeading.map((row) => row.title)).toEqual(["Account Executive"]);
     expect(cityHeading.map((row) => row.location)).toEqual(["Ghent"]);
+
+    const cityHeadingText = extractListingsFromCareersHtml(
+      `<a href="https://example.com/jobs/account-executive"><h6>Ghent</h6>Account Executive</a>`,
+      "https://example.com/careers",
+    );
+    expect(cityHeadingText.map((row) => row.title)).toEqual([
+      "Account Executive",
+    ]);
+    expect(cityHeadingText.map((row) => row.location)).toEqual(["Ghent"]);
 
     const listings = extractListingsFromCareersHtml(
       `<a href="https://legalfly.recruitee.com/o/senior-account-executive-uae-dubai">

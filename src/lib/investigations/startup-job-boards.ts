@@ -623,20 +623,33 @@ function anchorRoleFields(innerHtml: string): {
   const headingPlace =
     headings.find((heading) => isStartupRoleLocationLine(heading.text))?.text ??
     null;
-  if (paragraphs.length > 0 || headingPlace) {
+  if (paragraphs.length > 0) {
     const place =
       paragraphs.find((text) => isStartupRoleLocationLine(text)) ??
       headingPlace;
-    const title =
-      paragraphs.find(
-        (text) => text !== place && isPublishableJobTitle(text),
-      ) ??
-      paragraphs.find((text) => text !== place) ??
-      paragraphs[0] ??
-      null;
-    return { title, location: place };
+    const titled = paragraphs.find(
+      (text) => text !== place && isPublishableJobTitle(text),
+    );
+    if (titled) return { title: titled, location: place };
+    if (!headingPlace) {
+      const title =
+        paragraphs.find((text) => text !== place) ?? paragraphs[0] ?? null;
+      return { title, location: place };
+    }
   }
 
+  const plainLines = (htmlToPlainText(innerHtml) ?? "")
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  const place =
+    headingPlace ??
+    plainLines.find((line) => isStartupRoleLocationLine(line)) ??
+    null;
+  const title = plainLines.find(
+    (line) => line !== place && isPublishableJobTitle(line),
+  );
+  if (title) return { title, location: place };
   return { title: htmlToPlainText(innerHtml), location: null };
 }
 
