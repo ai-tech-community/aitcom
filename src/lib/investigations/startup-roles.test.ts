@@ -108,6 +108,14 @@ describe("parseStartupRoleTitle", () => {
     expect(isStartupRoleLocationLine("London / Ghent")).toBe(true);
     expect(isStartupRoleLocationLine("Team Lead, Canada")).toBe(false);
     expect(isStartupRoleLocationLine("Enterprise BDR – Chicago")).toBe(false);
+    expect(isStartupRoleLocationLine("London - Account Executive")).toBe(false);
+    expect(isStartupRoleLocationLine("New York, Designer")).toBe(false);
+    expect(isStartupRoleLocationLine("London · Engineer")).toBe(false);
+    expect(isStartupRoleLocationLine("London, United Kingdom")).toBe(true);
+    expect(isStartupRoleLocationLine("United Kingdom")).toBe(true);
+    expect(isStartupRoleLocationLine("San Francisco, CA")).toBe(true);
+    expect(isStartupRoleLocationLine("San Francisco, CA, US")).toBe(true);
+    expect(isStartupRoleLocationLine("AI, ML")).toBe(false);
   });
 });
 

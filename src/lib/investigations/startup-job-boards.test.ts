@@ -912,6 +912,8 @@ describe("8 Oct 2026 jobs refresh title junk", () => {
       "London",
       "London / Ghent",
       "United States · India ·",
+      "San Francisco, CA",
+      "San Francisco, CA, US",
     ]) {
       expect(isPublishableJobTitle(title)).toBe(false);
     }
@@ -920,6 +922,20 @@ describe("8 Oct 2026 jobs refresh title junk", () => {
     expect(isPublishableJobTitle("Commercial Growth Manager")).toBe(true);
     expect(isPublishableJobTitle("Team Lead, Canada")).toBe(true);
     expect(isPublishableJobTitle("Enterprise BDR – Chicago")).toBe(true);
+    expect(isPublishableJobTitle("London - Account Executive")).toBe(true);
+    expect(isPublishableJobTitle("New York, Designer")).toBe(true);
+    expect(isPublishableJobTitle("San Francisco - Engineer")).toBe(true);
+    expect(isPublishableJobTitle("London · Engineer")).toBe(true);
+
+    const cityHeading = extractListingsFromCareersHtml(
+      `<a href="https://example.com/jobs/account-executive">
+         <h6>Ghent</h6>
+         <p>Account Executive</p>
+       </a>`,
+      "https://example.com/careers",
+    );
+    expect(cityHeading.map((row) => row.title)).toEqual(["Account Executive"]);
+    expect(cityHeading.map((row) => row.location)).toEqual(["Ghent"]);
 
     const listings = extractListingsFromCareersHtml(
       `<a href="https://legalfly.recruitee.com/o/senior-account-executive-uae-dubai">

@@ -47,6 +47,11 @@ vi.mock("drizzle-orm", async (importOriginal) => {
       Object.assign(sql, { __values: args[1] });
       return sql;
     },
+    eq: (...args: Parameters<typeof actual.eq>) => {
+      const sql = actual.eq(...args);
+      Object.assign(sql, { __eq: args[1] });
+      return sql;
+    },
   };
 });
 // The default fetch goes through safeFetch; only the network call is stubbed,
@@ -792,6 +797,13 @@ function closedIds(): string[] {
   });
 }
 
+function roleWriteId(
+  update: { where: unknown } | undefined,
+): string | undefined {
+  const id = (update?.where as { __eq?: unknown } | undefined)?.__eq;
+  return typeof id === "string" && id.startsWith("role-") ? id : undefined;
+}
+
 describe("startup jobs scan hold", () => {
   beforeEach(() => {
     scanDb.state.roles = [];
@@ -1215,5 +1227,136 @@ describe("startup jobs scan hold", () => {
     const roleUpdate = scanDb.state.updates.find((update) => update.set.title);
     expect(roleUpdate?.set.title).toBe("Quality Engineer");
     expect(startupOpenCount()).toBe(1);
+  });
+
+  it("updates the row that already owns the listing URL", async () => {
+    const listingUrl = "https://acme.example/careers/quality-engineer";
+    const variant = "https://www.acme.example/careers/quality-engineer/";
+    scanDb.state.roles = [
+      {
+        ...openRole("quality-owner"),
+        id: "role-owner",
+        status: "closed",
+        title: "Old title",
+        sourceUrl: listingUrl,
+        applyUrl: listingUrl,
+      },
+      {
+        ...openRole("quality-variant"),
+        id: "role-variant",
+        title: "View Job",
+        sourceUrl: variant,
+        applyUrl: variant,
+      },
+    ];
+    const result = await scanStartupJobs(startup, async (url) => {
+      if (url === CAREERS_URL) {
+        return page(`<a href="${listingUrl}">Quality Engineer</a>`);
+      }
+      return page("", false);
+    });
+    expect(result.outcome).toBe("applied");
+    expect(result.closed).toBe(1);
+    expect(closedIds()).toEqual(["role-variant"]);
+    expect(scanDb.state.inserts).toEqual([]);
+    const titleUpdate = scanDb.state.updates.find((update) => update.set.title);
+    expect(roleWriteId(titleUpdate)).toBe("role-owner");
+    expect(titleUpdate?.set.sourceUrl).toBe(listingUrl);
+    expect(
+      scanDb.state.updates.some((update) => update.set.sourceUrl === variant),
+    ).toBe(false);
+    expect(startupOpenCount()).toBe(1);
+  });
+
+  it("closes a junk duplicate during a hold and keeps the other live roles", async () => {
+    const current = "https://apply.workable.com/j/F7E014216A";
+    const legacy = "https://apply.workable.com/writesonic/j/F7E014216A/";
+    const live = [
+      "product-designer",
+      "data-scientist",
+      "account-executive",
+      "recruiter",
+      "analyst",
+    ];
+    scanDb.state.roles = [
+      {
+        ...openRole("pm"),
+        id: "role-pm",
+        title: "AI Product Manager",
+        sourceUrl: current,
+        applyUrl: current,
+        board: "workable" as const,
+        externalId: "F7E014216A",
+      },
+      {
+        ...openRole("pm-old"),
+        id: "role-pm-old",
+        title: "View Job",
+        sourceUrl: legacy,
+        applyUrl: legacy,
+        board: "html" as const,
+        externalId: null,
+      },
+      ...live.map((slug) => openRole(slug)),
+    ];
+    const result = await scanStartupJobs(startup, async (url) => {
+      if (url === CAREERS_URL) {
+        return page(`<a href="${current}">AI Product Manager</a>`);
+      }
+      return page("", false);
+    });
+    expect(result.outcome).toBe("held");
+    expect(result.closed).toBe(1);
+    expect(closedIds()).toEqual(["role-pm-old"]);
+    expect(startupOpenCount()).toBe(6);
+    expect(
+      scanDb.state.updates.some((update) => "jobsScannedAt" in update.set),
+    ).toBe(false);
+    expect(scanDb.state.inserts).toEqual([]);
+  });
+
+  it("does not close a live duplicate when the canonical row stays closed", async () => {
+    const current = "https://apply.workable.com/j/F7E014216A";
+    const legacy = "https://apply.workable.com/writesonic/j/F7E014216A/";
+    const live = [
+      "product-designer",
+      "data-scientist",
+      "account-executive",
+      "recruiter",
+      "analyst",
+    ];
+    scanDb.state.roles = [
+      {
+        ...openRole("pm-canonical"),
+        id: "role-canonical",
+        status: "closed",
+        title: "AI Product Manager",
+        sourceUrl: current,
+        applyUrl: current,
+        board: "workable" as const,
+        externalId: "F7E014216A",
+      },
+      {
+        ...openRole("pm-live"),
+        id: "role-live",
+        title: "AI Product Manager",
+        sourceUrl: legacy,
+        applyUrl: legacy,
+        board: "html" as const,
+        externalId: null,
+      },
+      ...live.map((slug) => openRole(slug)),
+    ];
+    const result = await scanStartupJobs(startup, async (url) => {
+      if (url === CAREERS_URL) {
+        return page(`<a href="${current}">AI Product Manager</a>`);
+      }
+      return page("", false);
+    });
+    expect(result.outcome).toBe("held");
+    expect(result.closed).toBe(0);
+    expect(closedIds()).toEqual([]);
+    expect(scanDb.state.updates).toEqual([]);
+    expect(scanDb.state.inserts).toEqual([]);
   });
 });

@@ -252,7 +252,7 @@ const TITLE_TRAILING_META =
  * Role titles that embed a place (“Team Lead, Canada”) stay intact.
  */
 const TITLE_LOCATION_LINE =
-  /^(?:remote|hybrid|onsite|on-site|in[- ]office)(?:\s*[·|,/()-].*)?$|^(?:[\p{L}\s.'’()-]+)\s*\((?:remote|hybrid|onsite|on-site)\)\s*$|^(?:tel-?aviv|toronto|chicago|canada|usa|u\.?s\.?a\.?|united states|united kingdom|arizona|turkey|texas|haifa|bengaluru|taiwan|england|israel|india|europe|london|new york|san francisco|ghent|dubai)(?:\s*[,/·-]\s*[\p{L}\s.'’()-]+)?$/iu;
+  /^(?:remote|hybrid|onsite|on-site|in[- ]office)(?:\s*[·|,/()-].*)?$|^(?:[\p{L}\s.'’()-]+)\s*\((?:remote|hybrid|onsite|on-site)\)\s*$|^(?:tel-?aviv|toronto|chicago|canada|usa|u\.?s\.?a\.?|united states|arizona|turkey|texas|haifa|bengaluru|taiwan|england|israel|india|europe)(?:\s*[,/·-]\s*[\p{L}\s.'’()-]+)?$|^(?:london|new york|san francisco|ghent|dubai|united kingdom)$/iu;
 
 const WORK_MODE_WORD = /\b(?:remote|hybrid|onsite|on-site|in[- ]office)\b/i;
 
@@ -266,18 +266,21 @@ function hasPlaceSeparator(line: string): boolean {
 }
 
 /**
- * "United States · India ·" — a list of places, including a trailing
- * separator. A role that names one place ("Team Lead · Canada") does not match.
+ * "United States · India ·" or "San Francisco, CA, US" — a list of places,
+ * including a trailing separator. A two-letter region code counts only when
+ * another part is a known place, so "AI, ML" stays a title. A role that names
+ * one place ("Team Lead, Canada", "New York, Designer") does not match.
  */
 function isGeographicList(line: string): boolean {
-  if (!hasPlaceSeparator(line)) return false;
+  if (!hasPlaceSeparator(line) && !line.includes(",")) return false;
   const parts = line
-    .split(/[·|/]/)
+    .split(/[·|/,]/)
     .map((part) => part.trim())
     .filter(Boolean);
-  return (
-    parts.length >= 2 && parts.every((part) => TITLE_LOCATION_LINE.test(part))
-  );
+  if (parts.length < 2) return false;
+  const knownPlace = (part: string) => TITLE_LOCATION_LINE.test(part);
+  if (!parts.some(knownPlace)) return false;
+  return parts.every((part) => knownPlace(part) || /^[A-Za-z]{2}$/.test(part));
 }
 
 export function isStartupRoleLocationLine(value: string): boolean {

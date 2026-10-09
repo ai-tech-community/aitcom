@@ -605,6 +605,7 @@ function anchorRoleFields(innerHtml: string): {
   location: string | null;
 } {
   const headings = headingsIn(innerHtml);
+  const paragraphs = paragraphTexts(innerHtml);
   if (headings.length > 0) {
     const titled = headings.find((heading) =>
       /(?:^|\s)(?:item-title|job-title)(?:\s|$)/i.test(heading.className),
@@ -612,18 +613,20 @@ function anchorRoleFields(innerHtml: string): {
     const publishable = headings.find((heading) =>
       isPublishableJobTitle(heading.text),
     );
-    const title = (titled ?? publishable ?? headings[0])?.text ?? null;
-    const location = asCardLocation(
-      paragraphTexts(innerHtml)[0] ?? null,
-      title,
-    );
-    return { title, location };
+    const headingTitle = (titled ?? publishable)?.text ?? null;
+    if (headingTitle && isPublishableJobTitle(headingTitle)) {
+      const location = asCardLocation(paragraphs[0] ?? null, headingTitle);
+      return { title: headingTitle, location };
+    }
   }
 
-  const paragraphs = paragraphTexts(innerHtml);
-  if (paragraphs.length > 0) {
+  const headingPlace =
+    headings.find((heading) => isStartupRoleLocationLine(heading.text))?.text ??
+    null;
+  if (paragraphs.length > 0 || headingPlace) {
     const place =
-      paragraphs.find((text) => isStartupRoleLocationLine(text)) ?? null;
+      paragraphs.find((text) => isStartupRoleLocationLine(text)) ??
+      headingPlace;
     const title =
       paragraphs.find(
         (text) => text !== place && isPublishableJobTitle(text),

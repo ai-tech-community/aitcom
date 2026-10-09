@@ -507,6 +507,10 @@ export async function scanStartupJobs(
     listing: ExtractedJobListing,
     rows: readonly StoredRole[],
   ): StoredRole | undefined => {
+    // The unique key is the raw URL, including closed rows. Update the row
+    // that already owns the listing URL instead of moving another row onto it.
+    const raw = rows.find((row) => row.sourceUrl === listing.sourceUrl);
+    if (raw) return raw;
     const listingNorm = normalizeStartupJobUrl(listing.sourceUrl);
     const exact = rows.find(
       (row) => normalizeStartupJobUrl(row.sourceUrl) === listingNorm,
@@ -640,6 +644,20 @@ export async function scanStartupJobs(
         repaired.add(item.survivor.id);
       }
     }
+    const duplicateIds = planned.flatMap((item) => {
+      const survivor = item.survivor;
+      // A closed canonical row is not reopened during a hold. Closing its
+      // open twin would drop a live role with nothing left open for that job.
+      const survivorOpen =
+        survivor != null &&
+        (repaired.has(survivor.id) ||
+          (survivor.status === "open" &&
+            isPublishableJobTitle(survivor.title)));
+      if (!survivorOpen) return [];
+      return item.duplicates
+        .filter((row) => row.status === "open" && !repaired.has(row.id))
+        .map((row) => row.id);
+    });
     const garbageIds = existing
       .filter(
         (row) =>
@@ -648,8 +666,9 @@ export async function scanStartupJobs(
           !repaired.has(row.id),
       )
       .map((row) => row.id);
-    await closeIds(garbageIds);
-    if (garbageIds.length > 0 || repaired.size > 0) {
+    const heldCloseIds = [...new Set([...duplicateIds, ...garbageIds])];
+    await closeIds(heldCloseIds);
+    if (heldCloseIds.length > 0 || repaired.size > 0) {
       await db
         .update(startups)
         .set({ openRoleCount: openIds.size + insertedOpen })
@@ -661,14 +680,14 @@ export async function scanStartupJobs(
       openCount: liveOpen.length,
       listings: planned.length,
       wouldClose,
-      closedGarbage: garbageIds.length,
+      closedGarbage: heldCloseIds.length,
     });
     return {
       startupId: startup.id,
       fetched: listings.length,
       published,
       pending,
-      closed: garbageIds.length,
+      closed: heldCloseIds.length,
       opened,
       outcome: "held",
     };
