@@ -17,7 +17,10 @@ export const maxDuration = 300;
  * companies scanned, roles opened and closed, and time spent.
  * A live empty ATS board writes open_role_count = 0. A failed fetch does not
  * close roles. A non-ATS page that would drop all or most open roles is held
- * and writes nothing. Per-company isolation: one failure must not abort the batch.
+ * and does not close roles whose titles still pass the title filter. Rows
+ * the filter rejects are closed anyway, and open_role_count is the number
+ * of open rows after the scan. Per-company isolation: one failure must not
+ * abort the batch.
  * Low-confidence extracts stay pending_review and never hit the public table.
  */
 export async function GET(request: Request) {

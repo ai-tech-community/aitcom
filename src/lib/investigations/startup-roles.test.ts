@@ -8,6 +8,7 @@ import {
   startupJobsFacets,
   startupWorkTypeOf,
   parseStartupJobsQuery,
+  isStartupRoleLocationLine,
   parseStartupRoleLocation,
   parseStartupRoleTitle,
   rolesListedSince,
@@ -99,6 +100,14 @@ describe("parseStartupRoleTitle", () => {
     expect(
       parseStartupRoleTitle("Enterprise BDR – Chicago Full-time Read more"),
     ).toBe("Enterprise BDR – Chicago");
+  });
+
+  it("treats a place list as a location and leaves a role that names a city", () => {
+    expect(isStartupRoleLocationLine("United States · India ·")).toBe(true);
+    expect(isStartupRoleLocationLine("Ghent")).toBe(true);
+    expect(isStartupRoleLocationLine("London / Ghent")).toBe(true);
+    expect(isStartupRoleLocationLine("Team Lead, Canada")).toBe(false);
+    expect(isStartupRoleLocationLine("Enterprise BDR – Chicago")).toBe(false);
   });
 });
 

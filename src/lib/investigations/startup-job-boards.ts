@@ -70,6 +70,15 @@ export function isSkippedExtractedJobTitle(title: string): boolean {
   );
 }
 
+/**
+ * Button and link labels, not a role.
+ * Whole-title only, so "Open Source Engineer" and "SharePoint Admin" stay.
+ * "View Job" and "MORE" are kept on the listing long enough for the posting
+ * page to supply the real title; `isSkippedExtractedJobTitle` would drop the URL.
+ */
+const APPLY_CTA_TITLE =
+  /^(?:view position(?:\s*(?:&|and)\s*apply)?|view (?:job|details|posting)|see position(?: details)?|more details|job details|more info|more|details|apply here|apply(?:\s+now|\s+to(?:\s+this)?\s+(?:role|position)|\s+for\s+this\s+(?:role|position))?|read more|open|faq|share)$/i;
+
 /** Button labels such as "[View Position & Apply →]", not a role title. */
 export function isApplyCtaTitle(title: string): boolean {
   const normalized = title
@@ -78,9 +87,7 @@ export function isApplyCtaTitle(title: string): boolean {
     .replace(/&amp;/gi, "&")
     .replace(/\s+/g, " ")
     .trim();
-  return /^(?:view position(?:\s*(?:&|and)\s*apply)?|apply(?:\s+now|\s+to(?:\s+this)?\s+(?:role|position)|\s+for\s+this\s+(?:role|position))?|see position details|read more|more info)$/i.test(
-    normalized,
-  );
+  return APPLY_CTA_TITLE.test(normalized);
 }
 
 export function isPublishableJobTitle(title: string): boolean {
@@ -200,6 +207,34 @@ export function workableJobShortcode(value: string): string | null {
   const code = at >= 0 ? parts[at + 1] : undefined;
   if (!code || code.toLowerCase() === "apply") return null;
   return code;
+}
+
+/**
+ * Identity for one posting URL. Host case, `www`, a trailing slash, a hash,
+ * and tracking params do not make a second role. `gh_jid` stays, because
+ * that query string is the job.
+ */
+export function normalizeStartupJobUrl(value: string): string | null {
+  const cleaned = value.replace(/&amp;/gi, "&").trim();
+  const url = asUrl(cleaned);
+  if (!url || (url.protocol !== "https:" && url.protocol !== "http:")) {
+    return null;
+  }
+  const host = url.hostname.replace(/^www\./, "").toLowerCase();
+  const path = url.pathname.replace(/\/+$/, "");
+  const params = new URLSearchParams(url.search);
+  for (const key of [...params.keys()]) {
+    const lower = key.toLowerCase();
+    if (
+      lower.startsWith("utm_") ||
+      lower === "coref" ||
+      /^\d{10,}$/.test(lower)
+    ) {
+      params.delete(key);
+    }
+  }
+  const query = params.toString();
+  return `https://${host}${path}${query ? `?${query}` : ""}`;
 }
 
 function listing(partial: {
@@ -344,9 +379,11 @@ export function parseLeverJobs(payload: unknown): ExtractedJobListing[] {
 export function parseWorkableJobs(payload: unknown): ExtractedJobListing[] {
   const root = asRecord(payload);
   const jobs = Array.isArray(root?.jobs) ? root.jobs : [];
-  return jobs.flatMap((job) => {
+  const seen = new Set<string>();
+  const listings: ExtractedJobListing[] = [];
+  for (const job of jobs) {
     const row = asRecord(job);
-    if (!row) return [];
+    if (!row) continue;
     const location = asRecord(row.location);
     const parsed = listing({
       title: asString(row.title),
@@ -358,8 +395,14 @@ export function parseWorkableJobs(payload: unknown): ExtractedJobListing[] {
       postedAt: atsPostedAt(row),
       board: "workable",
     });
-    return parsed ? [parsed] : [];
-  });
+    if (!parsed) continue;
+    // The widget repeats one shortcode once per location. That is one role.
+    const key = (parsed.externalId ?? parsed.sourceUrl).toUpperCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    listings.push(parsed);
+  }
+  return listings;
 }
 
 export function htmlToPlainText(
@@ -524,7 +567,7 @@ function headingsIn(
   innerHtml: string,
 ): Array<{ className: string; text: string }> {
   const found: Array<{ className: string; text: string }> = [];
-  const pattern = /<h([1-4])\b([^>]*)>([\s\S]*?)<\/h\1>/gi;
+  const pattern = /<h([1-6])\b([^>]*)>([\s\S]*?)<\/h\1>/gi;
   for (const match of innerHtml.matchAll(pattern)) {
     const text = htmlToPlainText(match[3]);
     if (!text) continue;
