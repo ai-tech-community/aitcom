@@ -12,6 +12,7 @@ import {
   htmlToPlainText,
   isPublishableJobTitle,
   mergePostingIntoListing,
+  normalizeStartupJobUrl,
   parseAshbyJobs,
   parseGreenhouseJobs,
   parseLeverJobs,
@@ -190,6 +191,22 @@ describe("ATS JSON parsers", () => {
             title: "Ops lead",
             url: "https://apply.workable.com/example/j/1",
             shortcode: "1",
+          },
+        ],
+      }),
+    ).toHaveLength(1);
+    expect(
+      parseWorkableJobs({
+        jobs: [
+          {
+            title: "Installation Technician",
+            url: "https://apply.workable.com/j/0FD18F627F",
+            shortcode: "0FD18F627F",
+          },
+          {
+            title: "Installation Technician",
+            url: "https://apply.workable.com/j/0FD18F627F",
+            shortcode: "0FD18F627F",
           },
         ],
       }),
@@ -873,6 +890,95 @@ describe("8 Oct 2026 jobs refresh title junk", () => {
       isPublishableJobTitle("People & Operations Associate (HR & Admin)"),
     ).toBe(true);
     expect(isPublishableJobTitle("Product Operations Manager")).toBe(true);
+  });
+
+  it("rejects link text and city labels, and reads the role out of an h6 card", () => {
+    for (const title of [
+      "View Job",
+      "view job",
+      "Details",
+      "MORE",
+      "More Details",
+      "View Details",
+      "View Posting",
+      "See Position",
+      "Job Details",
+      "Apply Here",
+      "Open",
+      "FAQ",
+      "Share",
+      "Ghent",
+      "Dubai",
+      "London",
+      "London / Ghent",
+      "United States · India ·",
+      "San Francisco, CA",
+      "San Francisco, CA, US",
+    ]) {
+      expect(isPublishableJobTitle(title)).toBe(false);
+    }
+    expect(isPublishableJobTitle("Open Source Engineer")).toBe(true);
+    expect(isPublishableJobTitle("SharePoint Administrator")).toBe(true);
+    expect(isPublishableJobTitle("Commercial Growth Manager")).toBe(true);
+    expect(isPublishableJobTitle("Team Lead, Canada")).toBe(true);
+    expect(isPublishableJobTitle("Enterprise BDR – Chicago")).toBe(true);
+    expect(isPublishableJobTitle("London - Account Executive")).toBe(true);
+    expect(isPublishableJobTitle("New York, Designer")).toBe(true);
+    expect(isPublishableJobTitle("San Francisco - Engineer")).toBe(true);
+    expect(isPublishableJobTitle("London · Engineer")).toBe(true);
+    expect(isPublishableJobTitle("Toronto - Account Executive")).toBe(true);
+    expect(isPublishableJobTitle("Chicago, Designer")).toBe(true);
+    expect(isPublishableJobTitle("Account Executive (Remote)")).toBe(true);
+    expect(isPublishableJobTitle("United States (Remote)")).toBe(false);
+
+    const cityHeading = extractListingsFromCareersHtml(
+      `<a href="https://example.com/jobs/account-executive">
+         <h6>Ghent</h6>
+         <p>Account Executive</p>
+       </a>`,
+      "https://example.com/careers",
+    );
+    expect(cityHeading.map((row) => row.title)).toEqual(["Account Executive"]);
+    expect(cityHeading.map((row) => row.location)).toEqual(["Ghent"]);
+
+    const cityHeadingText = extractListingsFromCareersHtml(
+      `<a href="https://example.com/jobs/account-executive"><h6>Ghent</h6>Account Executive</a>`,
+      "https://example.com/careers",
+    );
+    expect(cityHeadingText.map((row) => row.title)).toEqual([
+      "Account Executive",
+    ]);
+    expect(cityHeadingText.map((row) => row.location)).toEqual(["Ghent"]);
+
+    const listings = extractListingsFromCareersHtml(
+      `<a href="https://legalfly.recruitee.com/o/senior-account-executive-uae-dubai">
+         <h6>Senior Account Executive UAE</h6>
+         <p>Dubai</p>
+       </a>
+       <a href="https://legalfly.recruitee.com/o/customer-success-manager-be-1">
+         <h6>Customer Success Manager BE</h6>
+         <p>Ghent</p>
+       </a>`,
+      "https://www.legalfly.com/careers",
+    );
+    expect(listings.map((row) => row.title)).toEqual([
+      "Senior Account Executive UAE",
+      "Customer Success Manager BE",
+    ]);
+    expect(listings.map((row) => row.location)).toEqual(["Dubai", "Ghent"]);
+  });
+
+  it("treats tracking, www, and a trailing slash as the same posting URL", () => {
+    expect(
+      normalizeStartupJobUrl(
+        "https://www.comeet.com/jobs/lumus/62.00F/quality-engineer/7B.D67?coref=1.8&amp;1788436470111",
+      ),
+    ).toBe("https://comeet.com/jobs/lumus/62.00F/quality-engineer/7B.D67");
+    expect(
+      normalizeStartupJobUrl(
+        "https://boards.greenhouse.io/acme/jobs/1?gh_jid=99",
+      ),
+    ).toBe("https://boards.greenhouse.io/acme/jobs/1?gh_jid=99");
   });
 
   it("drops Comeet department indexes and pagination numbers", () => {

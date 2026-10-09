@@ -8,6 +8,7 @@ import {
   startupJobsFacets,
   startupWorkTypeOf,
   parseStartupJobsQuery,
+  isStartupRoleLocationLine,
   parseStartupRoleLocation,
   parseStartupRoleTitle,
   rolesListedSince,
@@ -99,6 +100,33 @@ describe("parseStartupRoleTitle", () => {
     expect(
       parseStartupRoleTitle("Enterprise BDR – Chicago Full-time Read more"),
     ).toBe("Enterprise BDR – Chicago");
+  });
+
+  it("treats a place list as a location and leaves a role that names a city", () => {
+    expect(isStartupRoleLocationLine("United States · India ·")).toBe(true);
+    expect(isStartupRoleLocationLine("Ghent")).toBe(true);
+    expect(isStartupRoleLocationLine("London / Ghent")).toBe(true);
+    expect(isStartupRoleLocationLine("Team Lead, Canada")).toBe(false);
+    expect(isStartupRoleLocationLine("Enterprise BDR – Chicago")).toBe(false);
+    expect(isStartupRoleLocationLine("London - Account Executive")).toBe(false);
+    expect(isStartupRoleLocationLine("New York, Designer")).toBe(false);
+    expect(isStartupRoleLocationLine("London · Engineer")).toBe(false);
+    expect(isStartupRoleLocationLine("London, United Kingdom")).toBe(true);
+    expect(isStartupRoleLocationLine("United Kingdom")).toBe(true);
+    expect(isStartupRoleLocationLine("San Francisco, CA")).toBe(true);
+    expect(isStartupRoleLocationLine("San Francisco, CA, US")).toBe(true);
+    expect(isStartupRoleLocationLine("AI, ML")).toBe(false);
+    expect(isStartupRoleLocationLine("Toronto - Account Executive")).toBe(
+      false,
+    );
+    expect(isStartupRoleLocationLine("Chicago, Designer")).toBe(false);
+    expect(isStartupRoleLocationLine("Haifa · Engineer")).toBe(false);
+    expect(isStartupRoleLocationLine("United States - Engineer")).toBe(false);
+    expect(isStartupRoleLocationLine("Account Executive (Remote)")).toBe(false);
+    expect(isStartupRoleLocationLine("Senior Engineer (Hybrid)")).toBe(false);
+    expect(isStartupRoleLocationLine("United States (Remote)")).toBe(true);
+    expect(isStartupRoleLocationLine("Toronto, Canada")).toBe(true);
+    expect(isStartupRoleLocationLine("Chicago, IL")).toBe(true);
   });
 });
 

@@ -47,6 +47,11 @@ vi.mock("drizzle-orm", async (importOriginal) => {
       Object.assign(sql, { __values: args[1] });
       return sql;
     },
+    eq: (...args: Parameters<typeof actual.eq>) => {
+      const sql = actual.eq(...args);
+      Object.assign(sql, { __eq: args[1] });
+      return sql;
+    },
   };
 });
 // The default fetch goes through safeFetch; only the network call is stubbed,
@@ -382,6 +387,31 @@ describe("listingsFromJobsUrl", () => {
     expect(listings[0]?.title).not.toMatch(/view position/i);
   });
 
+  it("replaces a MORE button with the posting title when the h1 is the board name", async () => {
+    const listings = await listingsFromJobsUrl(
+      "https://corephotonics.com/careers",
+      async (url) => {
+        if (url === "https://corephotonics.com/careers") {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: `<a href="/careers/camera-solution-software-and-algorithms-engineer/">MORE</a>`,
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          contentType: "text/html",
+          text: `<h1>CAREERS</h1><meta property="og:title" content="Camera Solution Engineer" /><article><p>Take part in the development of computer vision algorithms on mobile platforms for the camera team.</p></article>`,
+        };
+      },
+    );
+    expect(listings.map((row) => row.title)).toEqual([
+      "Camera Solution Engineer",
+    ]);
+  });
+
   it("reads YC embedded roles and fills the JD from the posting page", async () => {
     const listings = await listingsFromJobsUrl(
       "https://www.ycombinator.com/companies/biostack-platforms/jobs",
@@ -598,6 +628,8 @@ describe("startup jobs scan locks", () => {
     expect(src).not.toMatch(/openrouter/i);
     expect(src).toContain("startupJobsScanTablePatch");
     expect(src).toContain("openRoleCount");
+    expect(src).toContain("reconcileStartupOpenRoleCounts");
+    expect(src).toContain("IS DISTINCT FROM");
     expect(src).toContain("readJobsUrlListings");
     expect(src).toContain(
       'accept: "text/html, application/json;q=0.9, */*;q=0.8"',
@@ -763,6 +795,13 @@ function closedIds(): string[] {
       ?.__values;
     return values ?? [];
   });
+}
+
+function roleWriteId(
+  update: { where: unknown } | undefined,
+): string | undefined {
+  const id = (update?.where as { __eq?: unknown } | undefined)?.__eq;
+  return typeof id === "string" && id.startsWith("role-") ? id : undefined;
 }
 
 describe("startup jobs scan hold", () => {
@@ -977,6 +1016,346 @@ describe("startup jobs scan hold", () => {
     const result = await scanStartupJobs(startup, gate);
     expect(result.outcome).toBe("deferred");
     expect(result.closed).toBe(0);
+    expect(scanDb.state.updates).toEqual([]);
+    expect(scanDb.state.inserts).toEqual([]);
+  });
+
+  function startupOpenCount(): number | undefined {
+    const update = [...scanDb.state.updates]
+      .reverse()
+      .find((entry) => "openRoleCount" in entry.set);
+    return update?.set.openRoleCount as number | undefined;
+  }
+
+  it("closes filter-rejected titles when the page parses to nothing", async () => {
+    scanDb.state.roles = ["a", "b", "c", "d", "e", "f"].map((slug) => ({
+      ...openRole(slug),
+      title: "View Job",
+    }));
+    const result = await scanStartupJobs(startup, async () =>
+      page("<p>Careers</p>"),
+    );
+    expect(result.outcome).toBe("applied");
+    expect(result.closed).toBe(6);
+    expect(closedIds()).toHaveLength(6);
+    expect(startupOpenCount()).toBe(0);
+  });
+
+  it("closes filter-rejected titles during a hold and keeps live roles", async () => {
+    const live = [
+      "staff-engineer",
+      "product-designer",
+      "data-scientist",
+      "account-executive",
+      "recruiter",
+      "analyst",
+    ];
+    scanDb.state.roles = [
+      ...live.map((slug) => openRole(slug)),
+      { ...openRole("junk-a"), title: "View Job" },
+      { ...openRole("junk-b"), title: "Details" },
+    ];
+    const result = await scanHtml(["staff-engineer"]);
+    expect(result.outcome).toBe("held");
+    expect(result.closed).toBe(2);
+    expect(closedIds().sort()).toEqual(["role-junk-a", "role-junk-b"]);
+    expect(startupOpenCount()).toBe(6);
+    expect(
+      scanDb.state.updates.some((update) => "jobsScannedAt" in update.set),
+    ).toBe(false);
+  });
+
+  it("replaces a View Job row with the posting title instead of holding it", async () => {
+    const source = "https://www.avayl.tech/jobs/commercial-growth-manager";
+    scanDb.state.roles = [
+      {
+        ...openRole("commercial"),
+        title: "View Job",
+        sourceUrl: source,
+        applyUrl: source,
+      },
+    ];
+    const result = await scanStartupJobs(
+      { ...startup, jobsUrl: "https://www.avayl.tech/career" },
+      async (url) => {
+        if (url === "https://www.avayl.tech/career") {
+          return page(`<a href="/jobs/commercial-growth-manager">View Job</a>`);
+        }
+        return page(
+          `<h1>Commercial Growth Manager</h1><article><p>Ship the commercial growth plan with the field team across Berlin and the EU partners every quarter.</p></article>`,
+        );
+      },
+    );
+    expect(result.outcome).toBe("applied");
+    expect(result.closed).toBe(0);
+    expect(scanDb.state.inserts).toEqual([]);
+    const roleUpdate = scanDb.state.updates.find((update) => update.set.title);
+    expect(roleUpdate?.set.title).toBe("Commercial Growth Manager");
+    expect(roleUpdate?.set.sourceUrl).toBe(source);
+    expect(startupOpenCount()).toBe(1);
+  });
+
+  it("merges a legacy Workable URL and closes the duplicate row", async () => {
+    const current = "https://apply.workable.com/j/F7E014216A";
+    const legacy = "https://apply.workable.com/writesonic/j/F7E014216A/";
+    const junk = "https://apply.workable.com/writesonic/j/92488277FE/";
+    const lead = "https://apply.workable.com/j/92488277FE";
+    scanDb.state.roles = [
+      {
+        ...openRole("pm"),
+        id: "role-pm",
+        title: "AI Product Manager",
+        sourceUrl: current,
+        applyUrl: current,
+        board: "workable",
+        externalId: "F7E014216A",
+      },
+      {
+        ...openRole("pm-old"),
+        id: "role-pm-old",
+        title: "AI Product Manager",
+        sourceUrl: legacy,
+        applyUrl: legacy,
+        board: "html",
+        externalId: null,
+      },
+      {
+        ...openRole("junk"),
+        id: "role-junk",
+        title: "United States · India ·",
+        sourceUrl: junk,
+        applyUrl: junk,
+        board: "html",
+        externalId: null,
+      },
+    ];
+    const result = await scanStartupJobs(
+      { ...startup, jobsUrl: "https://writesonic.com/careers" },
+      async (url) => {
+        if (url === "https://writesonic.com/careers") {
+          return page(
+            `<a href="${current}">AI Product Manager</a>
+             <a href="${lead}">Agency Partnerships Lead</a>`,
+          );
+        }
+        return page("", false);
+      },
+    );
+    expect(result.outcome).toBe("applied");
+    expect(result.closed).toBe(1);
+    expect(closedIds()).toEqual(["role-pm-old"]);
+    expect(scanDb.state.inserts).toEqual([]);
+    const titles = scanDb.state.updates
+      .filter((update) => update.set.title)
+      .map((update) => update.set.title);
+    expect(titles).toContain("Agency Partnerships Lead");
+    expect(startupOpenCount()).toBe(2);
+  });
+
+  it("counts one open role when the Workable widget repeats a shortcode", async () => {
+    const source = "https://apply.workable.com/j/0FD18F627F";
+    scanDb.state.roles = [
+      {
+        ...openRole("install"),
+        id: "role-install",
+        title: "Installation Technician",
+        sourceUrl: source,
+        applyUrl: source,
+        board: "workable",
+        externalId: "0FD18F627F",
+      },
+      openRole("office-manager"),
+    ];
+    const result = await scanStartupJobs(
+      {
+        ...startup,
+        jobsUrl: "https://apply.workable.com/sorting-robotics",
+      },
+      async () => ({
+        ok: true,
+        status: 200,
+        contentType: "application/json",
+        text: JSON.stringify({
+          jobs: [
+            {
+              title: "Installation Technician",
+              shortcode: "0FD18F627F",
+              url: source,
+            },
+            {
+              title: "Installation Technician",
+              shortcode: "0FD18F627F",
+              url: source,
+            },
+          ],
+        }),
+      }),
+    );
+    expect(result.outcome).toBe("applied");
+    expect(result.closed).toBe(1);
+    expect(closedIds()).toEqual(["role-office-manager"]);
+    expect(scanDb.state.inserts).toEqual([]);
+    expect(startupOpenCount()).toBe(1);
+  });
+
+  it("updates a row whose URL differs by www, a slash, or tracking params", async () => {
+    const stored =
+      "https://www.comeet.com/jobs/lumus/62.00F/quality-engineer/7B.D67/?coref=1&amp;1788436470111";
+    scanDb.state.roles = [
+      {
+        ...openRole("quality"),
+        id: "role-quality",
+        title: "View Job",
+        sourceUrl: stored,
+        applyUrl: stored,
+      },
+    ];
+    const result = await scanStartupJobs(
+      { ...startup, jobsUrl: "https://lumus.com/careers" },
+      async (url) => {
+        if (url === "https://lumus.com/careers") {
+          return page(
+            `<a href="https://comeet.com/jobs/lumus/62.00F/quality-engineer/7B.D67">Quality Engineer</a>`,
+          );
+        }
+        return page("", false);
+      },
+    );
+    expect(result.outcome).toBe("applied");
+    expect(result.closed).toBe(0);
+    expect(scanDb.state.inserts).toEqual([]);
+    const roleUpdate = scanDb.state.updates.find((update) => update.set.title);
+    expect(roleUpdate?.set.title).toBe("Quality Engineer");
+    expect(startupOpenCount()).toBe(1);
+  });
+
+  it("updates the row that already owns the listing URL", async () => {
+    const listingUrl = "https://acme.example/careers/quality-engineer";
+    const variant = "https://www.acme.example/careers/quality-engineer/";
+    scanDb.state.roles = [
+      {
+        ...openRole("quality-owner"),
+        id: "role-owner",
+        status: "closed",
+        title: "Old title",
+        sourceUrl: listingUrl,
+        applyUrl: listingUrl,
+      },
+      {
+        ...openRole("quality-variant"),
+        id: "role-variant",
+        title: "View Job",
+        sourceUrl: variant,
+        applyUrl: variant,
+      },
+    ];
+    const result = await scanStartupJobs(startup, async (url) => {
+      if (url === CAREERS_URL) {
+        return page(`<a href="${listingUrl}">Quality Engineer</a>`);
+      }
+      return page("", false);
+    });
+    expect(result.outcome).toBe("applied");
+    expect(result.closed).toBe(1);
+    expect(closedIds()).toEqual(["role-variant"]);
+    expect(scanDb.state.inserts).toEqual([]);
+    const titleUpdate = scanDb.state.updates.find((update) => update.set.title);
+    expect(roleWriteId(titleUpdate)).toBe("role-owner");
+    expect(titleUpdate?.set.sourceUrl).toBe(listingUrl);
+    expect(
+      scanDb.state.updates.some((update) => update.set.sourceUrl === variant),
+    ).toBe(false);
+    expect(startupOpenCount()).toBe(1);
+  });
+
+  it("closes a junk duplicate during a hold and keeps the other live roles", async () => {
+    const current = "https://apply.workable.com/j/F7E014216A";
+    const legacy = "https://apply.workable.com/writesonic/j/F7E014216A/";
+    const live = [
+      "product-designer",
+      "data-scientist",
+      "account-executive",
+      "recruiter",
+      "analyst",
+    ];
+    scanDb.state.roles = [
+      {
+        ...openRole("pm"),
+        id: "role-pm",
+        title: "AI Product Manager",
+        sourceUrl: current,
+        applyUrl: current,
+        board: "workable" as const,
+        externalId: "F7E014216A",
+      },
+      {
+        ...openRole("pm-old"),
+        id: "role-pm-old",
+        title: "View Job",
+        sourceUrl: legacy,
+        applyUrl: legacy,
+        board: "html" as const,
+        externalId: null,
+      },
+      ...live.map((slug) => openRole(slug)),
+    ];
+    const result = await scanStartupJobs(startup, async (url) => {
+      if (url === CAREERS_URL) {
+        return page(`<a href="${current}">AI Product Manager</a>`);
+      }
+      return page("", false);
+    });
+    expect(result.outcome).toBe("held");
+    expect(result.closed).toBe(1);
+    expect(closedIds()).toEqual(["role-pm-old"]);
+    expect(startupOpenCount()).toBe(6);
+    expect(
+      scanDb.state.updates.some((update) => "jobsScannedAt" in update.set),
+    ).toBe(false);
+    expect(scanDb.state.inserts).toEqual([]);
+  });
+
+  it("does not close a live duplicate when the canonical row stays closed", async () => {
+    const current = "https://apply.workable.com/j/F7E014216A";
+    const legacy = "https://apply.workable.com/writesonic/j/F7E014216A/";
+    const live = [
+      "product-designer",
+      "data-scientist",
+      "account-executive",
+      "recruiter",
+      "analyst",
+    ];
+    scanDb.state.roles = [
+      {
+        ...openRole("pm-canonical"),
+        id: "role-canonical",
+        status: "closed",
+        title: "AI Product Manager",
+        sourceUrl: current,
+        applyUrl: current,
+        board: "workable" as const,
+        externalId: "F7E014216A",
+      },
+      {
+        ...openRole("pm-live"),
+        id: "role-live",
+        title: "AI Product Manager",
+        sourceUrl: legacy,
+        applyUrl: legacy,
+        board: "html" as const,
+        externalId: null,
+      },
+      ...live.map((slug) => openRole(slug)),
+    ];
+    const result = await scanStartupJobs(startup, async (url) => {
+      if (url === CAREERS_URL) {
+        return page(`<a href="${current}">AI Product Manager</a>`);
+      }
+      return page("", false);
+    });
+    expect(result.outcome).toBe("held");
+    expect(result.closed).toBe(0);
+    expect(closedIds()).toEqual([]);
     expect(scanDb.state.updates).toEqual([]);
     expect(scanDb.state.inserts).toEqual([]);
   });

@@ -19,6 +19,7 @@ import {
   parseGreenhouseJobs,
   parseLeverJobs,
   parseWorkableJobs,
+  normalizeStartupJobUrl,
   workableBoardUrl,
   workableJobShortcode,
   ycombinatorCompanyJobsUrl,
@@ -108,6 +109,8 @@ export type ScanAllStartupJobsResult = {
 /**
  * Non-ATS parse that would close at least this share of open roles is held.
  * A successful page parse that would drop all or most open roles is not written.
+ * Callers pass only rows whose titles still pass the title filter. A button
+ * label or a city is not a live role, so it cannot trip this guard.
  */
 export const STARTUP_JOBS_HOLD_CLOSE_RATIO = 0.8;
 
@@ -468,79 +471,117 @@ export async function scanStartupJobs(
     .select()
     .from(startupRoles)
     .where(eq(startupRoles.startupId, startup.id));
-  const bySource = new Map(existing.map((row) => [row.sourceUrl, row]));
-  const workableKey = (url: string): string | null => {
-    const code = workableJobShortcode(url);
-    return code ? code.toUpperCase() : null;
-  };
-  const byWorkable = new Map<string, (typeof existing)[number]>();
-  for (const row of existing) {
-    const key = workableKey(row.sourceUrl);
-    if (key && !byWorkable.has(key)) byWorkable.set(key, row);
-  }
+  type StoredRole = (typeof existing)[number];
   const takenSlugs = existing.map((row) => row.slug);
-  const seenSources = new Set(listings.map((listing) => listing.sourceUrl));
-  for (const listing of listings) {
-    const key = workableKey(listing.sourceUrl);
-    if (!key) continue;
-    for (const row of existing) {
-      if (workableKey(row.sourceUrl) === key) seenSources.add(row.sourceUrl);
+  const openIds = new Set(
+    existing.filter((row) => row.status === "open").map((row) => row.id),
+  );
+
+  const matchKeys = (url: string, externalId?: string | null): string[] => {
+    const keys: string[] = [];
+    const norm = normalizeStartupJobUrl(url);
+    if (norm) keys.push(`url:${norm}`);
+    const code = workableJobShortcode(url);
+    if (code) keys.push(`workable:${code.toUpperCase()}`);
+    const ext = presentText(externalId);
+    if (ext) keys.push(`ext:${ext.toUpperCase()}`);
+    if (code) keys.push(`ext:${code.toUpperCase()}`);
+    return keys;
+  };
+  const rowsByKey = new Map<string, StoredRole[]>();
+  for (const row of existing) {
+    for (const key of matchKeys(row.sourceUrl, row.externalId)) {
+      const list = rowsByKey.get(key) ?? [];
+      list.push(row);
+      rowsByKey.set(key, list);
     }
   }
-  const openCount = existing.filter((row) => row.status === "open").length;
-  const wouldClose = existing.filter(
-    (row) => row.status === "open" && !seenSources.has(row.sourceUrl),
-  ).length;
-  if (
+  const candidatesFor = (listing: ExtractedJobListing): StoredRole[] => {
+    const found = new Map<string, StoredRole>();
+    for (const key of matchKeys(listing.sourceUrl, listing.externalId)) {
+      for (const row of rowsByKey.get(key) ?? []) found.set(row.id, row);
+    }
+    return [...found.values()];
+  };
+  const pickSurvivor = (
+    listing: ExtractedJobListing,
+    rows: readonly StoredRole[],
+  ): StoredRole | undefined => {
+    // The unique key is the raw URL, including closed rows. Update the row
+    // that already owns the listing URL instead of moving another row onto it.
+    const raw = rows.find((row) => row.sourceUrl === listing.sourceUrl);
+    if (raw) return raw;
+    const listingNorm = normalizeStartupJobUrl(listing.sourceUrl);
+    const exact = rows.find(
+      (row) => normalizeStartupJobUrl(row.sourceUrl) === listingNorm,
+    );
+    if (exact) return exact;
+    const ext = presentText(listing.externalId)?.toUpperCase();
+    if (ext) {
+      const byExt = rows.find(
+        (row) => presentText(row.externalId)?.toUpperCase() === ext,
+      );
+      if (byExt) return byExt;
+    }
+    return rows.find((row) => isPublishableJobTitle(row.title)) ?? rows[0];
+  };
+
+  const consumed = new Set<string>();
+  const planned: Array<{
+    listing: ExtractedJobListing;
+    survivor: StoredRole | null;
+    duplicates: StoredRole[];
+  }> = [];
+  for (const listing of listings) {
+    const keys = matchKeys(listing.sourceUrl, listing.externalId);
+    if (keys.some((key) => consumed.has(key))) continue;
+    for (const key of keys) consumed.add(key);
+    const rows = candidatesFor(listing);
+    const survivor = pickSurvivor(listing, rows) ?? null;
+    planned.push({
+      listing,
+      survivor,
+      duplicates: survivor ? rows.filter((row) => row.id !== survivor.id) : [],
+    });
+  }
+  const accounted = new Set<string>();
+  for (const item of planned) {
+    if (item.survivor) accounted.add(item.survivor.id);
+    for (const duplicate of item.duplicates) accounted.add(duplicate.id);
+  }
+  const liveOpen = existing.filter(
+    (row) => row.status === "open" && isPublishableJobTitle(row.title),
+  );
+  const wouldClose = liveOpen.filter((row) => !accounted.has(row.id)).length;
+  const held =
     startupJobsWriteDisposition({
       fetched,
       fromAtsApi,
-      openCount,
-      listingCount: listings.length,
+      openCount: liveOpen.length,
+      listingCount: planned.length,
       wouldClose,
-    }) === "held"
-  ) {
-    console.info("[startup-jobs-scan] held", {
-      startupId: startup.id,
-      slug: startup.slug,
-      openCount,
-      listings: listings.length,
-      wouldClose,
-    });
-    return {
-      startupId: startup.id,
-      fetched: listings.length,
-      published: 0,
-      pending: 0,
-      closed: 0,
-      opened: 0,
-      outcome: "held",
-    };
-  }
+    }) === "held";
 
   const fetchedAt = new Date();
   let published = 0;
-  let pending = 0;
+  // A listing with no publishable title is dropped before this loop.
+  const pending = 0;
   let opened = 0;
+  let insertedOpen = 0;
 
-  const consumedWorkable = new Set<string>();
-  for (const listing of listings) {
-    const key = workableKey(listing.sourceUrl);
-    const current =
-      bySource.get(listing.sourceUrl) ??
-      (key ? byWorkable.get(key) : undefined);
-    if (key && !current && consumedWorkable.has(key)) continue;
-    if (key) consumedWorkable.add(key);
+  const writeListing = async (
+    listing: ExtractedJobListing,
+    current: StoredRole | null,
+  ): Promise<boolean> => {
     const title = storedRoleText(listing.title);
-    if (!title) continue;
+    if (!title || !isPublishableJobTitle(title)) return false;
     const location = storedRoleText(listing.location);
     const descriptionText = storedRoleText(listing.descriptionText);
-    const status = title ? "open" : "pending_review";
-    if (status === "open") {
-      published += 1;
-      if (current?.status !== "open") opened += 1;
-    } else pending += 1;
+    const status = "open" as const;
+    published += 1;
+    if (current?.status !== "open") opened += 1;
     if (current) {
+      openIds.add(current.id);
       await db
         .update(startupRoles)
         .set({
@@ -559,10 +600,11 @@ export async function scanStartupJobs(
           status,
         })
         .where(eq(startupRoles.id, current.id));
-      continue;
+      return true;
     }
     const slug = allocateStartupRoleSlug(startup.slug, title, takenSlugs);
     takenSlugs.push(slug);
+    insertedOpen += 1;
     await db.insert(startupRoles).values({
       startupId: startup.id,
       slug,
@@ -580,28 +622,122 @@ export async function scanStartupJobs(
       externalId: listing.externalId,
       status,
     });
+    return true;
+  };
+
+  const closeIds = async (ids: readonly string[]): Promise<void> => {
+    if (ids.length === 0) return;
+    for (const id of ids) openIds.delete(id);
+    await db
+      .update(startupRoles)
+      .set({ status: "closed", fetchedAt })
+      .where(inArray(startupRoles.id, [...ids]));
+  };
+
+  if (held) {
+    const repaired = new Set<string>();
+    for (const item of planned) {
+      if (!item.survivor || isPublishableJobTitle(item.survivor.title)) {
+        continue;
+      }
+      if (await writeListing(item.listing, item.survivor)) {
+        repaired.add(item.survivor.id);
+      }
+    }
+    const duplicateIds = planned.flatMap((item) => {
+      const survivor = item.survivor;
+      // A closed canonical row is not reopened during a hold. Closing its
+      // open twin would drop a live role with nothing left open for that job.
+      const survivorOpen =
+        survivor != null &&
+        (repaired.has(survivor.id) ||
+          (survivor.status === "open" &&
+            isPublishableJobTitle(survivor.title)));
+      if (!survivorOpen) return [];
+      return item.duplicates
+        .filter((row) => row.status === "open" && !repaired.has(row.id))
+        .map((row) => row.id);
+    });
+    const garbageIds = existing
+      .filter(
+        (row) =>
+          row.status === "open" &&
+          !isPublishableJobTitle(row.title) &&
+          !repaired.has(row.id),
+      )
+      .map((row) => row.id);
+    const heldCloseIds = [...new Set([...duplicateIds, ...garbageIds])];
+    await closeIds(heldCloseIds);
+    if (heldCloseIds.length > 0 || repaired.size > 0) {
+      await db
+        .update(startups)
+        .set({ openRoleCount: openIds.size + insertedOpen })
+        .where(eq(startups.id, startup.id));
+    }
+    console.info("[startup-jobs-scan] held", {
+      startupId: startup.id,
+      slug: startup.slug,
+      openCount: liveOpen.length,
+      listings: planned.length,
+      wouldClose,
+      closedGarbage: heldCloseIds.length,
+    });
+    return {
+      startupId: startup.id,
+      fetched: listings.length,
+      published,
+      pending,
+      closed: heldCloseIds.length,
+      opened,
+      outcome: "held",
+    };
+  }
+
+  const duplicateIds = [
+    ...new Set(
+      planned.flatMap((item) =>
+        item.duplicates
+          .filter((row) => row.status === "open")
+          .map((row) => row.id),
+      ),
+    ),
+  ];
+  // Close the extra row before the survivor takes its URL. (startup, source)
+  // is unique.
+  if (fetched) await closeIds(duplicateIds);
+
+  const failedSurvivorIds: string[] = [];
+  for (const item of planned) {
+    const wrote = await writeListing(item.listing, item.survivor);
+    const survivor = item.survivor;
+    if (
+      !wrote &&
+      survivor?.status === "open" &&
+      !isPublishableJobTitle(survivor.title)
+    ) {
+      failedSurvivorIds.push(survivor.id);
+    }
   }
 
   let closed = 0;
   if (fetched) {
-    const staleIds = existing
-      .filter((row) => row.status === "open" && !seenSources.has(row.sourceUrl))
-      .map((row) => row.id);
-    if (staleIds.length > 0) {
-      await db
-        .update(startupRoles)
-        .set({ status: "closed", fetchedAt })
-        .where(inArray(startupRoles.id, staleIds));
-    }
-    closed = staleIds.length;
+    const staleIds = [
+      ...existing
+        .filter((row) => row.status === "open" && !accounted.has(row.id))
+        .map((row) => row.id),
+      ...failedSurvivorIds,
+    ];
+    await closeIds(staleIds);
+    closed = duplicateIds.length + staleIds.length;
   }
 
+  const openRoleCount = openIds.size + insertedOpen;
   await db
     .update(startups)
     .set(
       startupJobsScanStamp(startup, {
         fetched,
-        published,
+        published: openRoleCount,
         scannedAt: fetchedAt,
         outcome: "applied",
         foundRoles: published + pending > 0,
@@ -620,9 +756,31 @@ export async function scanStartupJobs(
   };
 }
 
+/**
+ * Make `open_role_count` match open rows before this run picks who to scan.
+ * A company can show 0 while "View Job" rows are still open; that parks it
+ * in the never-hiring tail and the scanner never reaches it. Idempotent.
+ */
+export async function reconcileStartupOpenRoleCounts(): Promise<void> {
+  await db.execute(sql`
+    UPDATE "app"."startup" AS s
+    SET "open_role_count" = counted.open_rows
+    FROM (
+      SELECT s2.id,
+             COUNT(r.id) FILTER (WHERE r.status = 'open')::int AS open_rows
+      FROM "app"."startup" AS s2
+      LEFT JOIN "app"."startup_role" AS r ON r.startup_id = s2.id
+      GROUP BY s2.id
+    ) AS counted
+    WHERE s.id = counted.id
+      AND s."open_role_count" IS DISTINCT FROM counted.open_rows
+  `);
+}
+
 export async function scanAllStartupJobs(
   fetchPage: JobFetch = defaultJobFetch,
 ): Promise<ScanAllStartupJobsResult> {
+  await reconcileStartupOpenRoleCounts();
   const rows = await db
     .select()
     .from(startups)
