@@ -54,5 +54,8 @@ describe("MemberDashboardFrame", () => {
       within(tabs).getByRole("link", { name: en.dashboard.tabs.collectors }),
     ).toHaveAttribute("aria-current", "page");
     expect(screen.getByText("Tab content")).toBeInTheDocument();
+    // Narrow screens wrap the labels instead of clipping them.
+    expect(tabs.className).toContain("flex-wrap");
+    expect(tabs.className).toContain("overflow-x-visible");
   });
 });

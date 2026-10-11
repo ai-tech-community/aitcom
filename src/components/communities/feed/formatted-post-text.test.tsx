@@ -32,6 +32,15 @@ describe("FormattedPostText", () => {
     expect(container.querySelector("b")).toBeNull();
     expect(screen.getByText("<b>pizza</b>")).toBeVisible();
   });
+
+  it("lets an unbroken token break so it cannot widen the page", () => {
+    const { container } = render(
+      <FormattedPostText text={"See " + "a".repeat(80)} />,
+    );
+    expect(container.firstElementChild?.className).toContain(
+      "[overflow-wrap:anywhere]",
+    );
+  });
 });
 
 describe("FormattedPostText mentions", () => {

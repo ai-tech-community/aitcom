@@ -49,7 +49,15 @@ export function FormattedPostText({
   className?: string;
 }) {
   return (
-    <div className={cn("space-y-2 text-sm leading-relaxed", className)}>
+    <div
+      className={cn(
+        // anywhere, not break-word: a token with no spaces (a pasted URL,
+        // a hash) must be able to break, or its min-content width widens
+        // the page on a phone.
+        "space-y-2 text-sm leading-relaxed [overflow-wrap:anywhere]",
+        className,
+      )}
+    >
       {parsePostText(text).map((block, index) => {
         if (block.kind === "bullets") {
           return (

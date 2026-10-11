@@ -160,7 +160,7 @@ export function CommunityActivity({
       {!hasJoinedCommunities && <JoinPrompt />}
       <ul className="flex flex-col gap-5">
         {items.map((item) => (
-          <li key={item.key} className="flex flex-col gap-2">
+          <li key={item.key} className="flex min-w-0 flex-col gap-2">
             <CommunityLabel community={item.community} />
             {item.kind === "post" ? (
               <FeedPostCard
