@@ -186,7 +186,7 @@ export function FeedPostCard({
   return (
     <div
       ref={cardRef}
-      className="border-border space-y-3 rounded-lg border p-4"
+      className="border-border min-w-0 space-y-3 rounded-lg border p-4 [overflow-wrap:anywhere]"
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">

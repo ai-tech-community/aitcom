@@ -42,5 +42,15 @@ export function DashboardTabs({
     ...tab,
     label: t(`tabs.${labelKey}`),
   }));
-  return <RouteTabs aria-label={t("tabsLabel")} tabs={tabs} />;
+  return (
+    <RouteTabs
+      aria-label={t("tabsLabel")}
+      tabs={tabs}
+      // Phones are narrower than the six labels. Wrap onto a second line
+      // instead of clipping "Job tracker" at the viewport edge. overflow-x
+      // visible overrides the bar's sideways scroll so a wrapped row is not
+      // clipped. On a wide screen every label still fits on one line.
+      className="flex-wrap overflow-x-visible"
+    />
+  );
 }

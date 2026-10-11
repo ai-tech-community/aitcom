@@ -39,6 +39,15 @@ describe("DashboardTabs", () => {
     pathname.current = "/dashboard";
   });
 
+  it("wraps labels instead of clipping them on a narrow screen", () => {
+    renderTabs();
+    const nav = screen.getByRole("navigation", {
+      name: en.dashboard.tabsLabel,
+    });
+    expect(nav.className).toContain("flex-wrap");
+    expect(nav.className).toContain("overflow-x-visible");
+  });
+
   it("links every tab to its route, in order", () => {
     renderTabs();
     const nav = screen.getByRole("navigation", {
