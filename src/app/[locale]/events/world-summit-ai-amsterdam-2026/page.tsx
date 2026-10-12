@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
+import { EventHubLinks } from "@/components/events/event-hub-links";
 import { WorldSummitGuide } from "@/components/guides/world-summit-guide";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import {
@@ -23,5 +24,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function WorldSummitPage() {
   const locale = await getLocale();
   const t = await getTranslations("worldSummitEvent");
-  return <WorldSummitGuide locale={locale} t={t} />;
+  return (
+    <>
+      <WorldSummitGuide locale={locale} t={t} />
+      <EventHubLinks />
+    </>
+  );
 }
