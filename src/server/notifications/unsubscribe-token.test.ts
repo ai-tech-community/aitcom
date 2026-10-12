@@ -47,14 +47,14 @@ describe("unsubscribe tokens", () => {
       unsubscribeSecret({
         DIGEST_UNSUBSCRIBE_SECRET: " dedicated ",
         BETTER_AUTH_SECRET: "auth",
-      } as NodeJS.ProcessEnv),
+      }),
     ).toBe("dedicated");
     expect(
       unsubscribeSecret({
         BETTER_AUTH_SECRET: " auth ",
-      } as NodeJS.ProcessEnv),
+      }),
     ).toBe("auth");
-    expect(unsubscribeSecret({} as NodeJS.ProcessEnv)).toBeNull();
+    expect(unsubscribeSecret({})).toBeNull();
   });
 
   it("shows the confirm form only for a token that verifies", () => {

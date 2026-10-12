@@ -19,7 +19,10 @@ export const DIGEST_UNSUBSCRIBE_MAILTO = "mailto:info@klevox.com";
  * signs links.
  */
 export function unsubscribeSecret(
-  env: NodeJS.ProcessEnv = process.env,
+  env: {
+    DIGEST_UNSUBSCRIBE_SECRET?: string;
+    BETTER_AUTH_SECRET?: string;
+  } = process.env,
 ): string | null {
   const dedicated = env.DIGEST_UNSUBSCRIBE_SECRET?.trim();
   if (dedicated) return dedicated;
