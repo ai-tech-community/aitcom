@@ -14,9 +14,25 @@ const digest = {
       newEvents: 0,
       newMembers: 1,
       ritualItems: ["Show & tell"],
+      highlights: [
+        {
+          title: "Ship notes",
+          path: "/en/communities/makers/forum/ship-notes",
+          kind: "thread",
+        },
+      ],
       isEmpty: false,
     },
   ],
+  events: [
+    {
+      title: "Office hours",
+      path: "/en/events/office-hours",
+      when: "2026-10-14",
+    },
+  ],
+  jobs: [],
+  startups: [],
   discovery: { slug: "makers", name: "Makers" },
 } as Parameters<typeof renderHubDigestHtml>[0];
 
@@ -29,8 +45,17 @@ describe("renderHubDigestHtml", () => {
     expect(html).toContain(`href="${manage}"`);
     expect(html).toContain("Manage notifications");
     expect(html).toContain("Choose sections");
+    expect(html).toContain("Community");
     expect(html).toContain("Makers &amp; Co");
+    expect(html).toContain("Ship notes");
     expect(html).toContain("Show &amp; tell");
+    expect(html).toContain("Events");
+    expect(html).toContain("Office hours");
+    expect(html).not.toContain("Jobs");
+    expect(html).not.toContain("new discussion");
+    expect(html).toContain(
+      "https://www.aitcommunity.org/en/communities/makers/forum/ship-notes?utm_source=digest&amp;utm_medium=email&amp;utm_campaign=weekly-2026-10-12",
+    );
     expect(html).not.toContain("/dashboard/notifications");
     expect(html).toContain(
       "https://www.aitcommunity.org/en/communities/makers?utm_source=digest&amp;utm_medium=email&amp;utm_campaign=weekly-2026-10-12",
@@ -43,10 +68,17 @@ describe("renderHubDigestText", () => {
     const text = renderHubDigestText(digest, SEND);
 
     expect(text).toContain("Your weekly AIT digest");
+    expect(text).toContain("Community");
     expect(text).toContain("Makers & Co");
-    expect(text).toContain("- 2 new discussion(s)");
-    expect(text).toContain("- 1 new member(s)");
+    expect(text).toContain("- Ship notes");
+    expect(text).toContain(
+      "https://www.aitcommunity.org/en/communities/makers/forum/ship-notes?utm_source=digest&utm_medium=email&utm_campaign=weekly-2026-10-12",
+    );
     expect(text).toContain("- Show & tell");
+    expect(text).toContain("Events");
+    expect(text).toContain("- Office hours · 2026-10-14");
+    expect(text).not.toContain("Jobs");
+    expect(text).not.toContain("new discussion");
     expect(text).toContain(
       "Manage notifications: https://www.aitcommunity.org/en/dashboard/settings?utm_source=digest&utm_medium=email&utm_campaign=weekly-2026-10-12#notifications",
     );
