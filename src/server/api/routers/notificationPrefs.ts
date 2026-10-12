@@ -74,13 +74,15 @@ export const notificationPrefsRouter = createTRPCRouter({
           category: z.enum(OPTOUT_CATEGORIES),
           optedOut: z.boolean(),
         })
-        .refine(
-          (val) => optoutInputError(val) === null,
-          (val) => ({
-            message: optoutInputError(val) ?? "Invalid opt-out",
+        .superRefine((val, ctx) => {
+          const message = optoutInputError(val);
+          if (!message) return;
+          ctx.addIssue({
+            code: "custom",
+            message,
             path: ["category"],
-          }),
-        ),
+          });
+        }),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
