@@ -14,6 +14,7 @@ import {
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
 import { isStartupCountryCode } from "@/lib/investigations/startups-countries";
+import { isNoindexOpenJob } from "@/lib/investigations/job-indexability";
 import {
   parseStartupRoleTitle,
   sanitizeStartupRoleDescription,
@@ -415,10 +416,19 @@ export async function findPublicStartupRoleBySlug(
   }
 }
 
+/**
+ * Open role paths for the sitemap. Thin descriptions and titles rejected by
+ * the #438 filter are omitted. The job page uses the same `isNoindexOpenJob`
+ * check. Closed roles are already excluded by status.
+ */
 export async function listOpenStartupRoleSlugs(): Promise<string[]> {
   try {
     const rows = await db
-      .select({ slug: startupRoles.slug })
+      .select({
+        slug: startupRoles.slug,
+        title: startupRoles.title,
+        descriptionText: startupRoles.descriptionText,
+      })
       .from(startupRoles)
       .innerJoin(startups, eq(startupRoles.startupId, startups.id))
       .where(
@@ -426,7 +436,8 @@ export async function listOpenStartupRoleSlugs(): Promise<string[]> {
       );
     return rows.flatMap((row) => {
       const slug = parseStartupSlug(row.slug);
-      return slug ? [slug] : [];
+      if (!slug || isNoindexOpenJob(row)) return [];
+      return [slug];
     });
   } catch {
     return [];
