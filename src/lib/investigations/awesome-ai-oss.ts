@@ -517,16 +517,16 @@ export function awesomeDirectoryCanonicalPath(
   return AWESOME_AI_OSS_PATH;
 }
 
+/**
+ * Sitemap locs for the directory. Only page 1 is listed, and that URL is the
+ * unpaged awesome path already in the static sitemap. Later `?page=` URLs
+ * stay crawlable (index, follow, self canonical) via in-page links.
+ */
 export function awesomeDirectorySitemapPaths(
-  totalCards: number,
-  pageSize: number = AWESOME_AI_OSS_PAGE_SIZE,
+  _totalCards?: number,
+  _pageSize: number = AWESOME_AI_OSS_PAGE_SIZE,
 ): string[] {
-  const totalPages = Math.max(1, Math.ceil(totalCards / pageSize) || 1);
-  const paths: string[] = [];
-  for (let page = 2; page <= totalPages; page++) {
-    paths.push(`${AWESOME_AI_OSS_PATH}?page=${page}`);
-  }
-  return paths;
+  return [];
 }
 
 export function awesomeDirectoryPageNumbers(
