@@ -191,11 +191,9 @@ describe("SEO guide routes", () => {
         locale="en"
         t={tFrom(en.guidesAgentReadyCommunity)}
       />,
-      <WorldSummitGuide
-        key="summit"
-        locale="en"
-        t={tFrom(en.worldSummitEvent)}
-      />,
+      <WorldSummitGuide key="summit" locale="en" t={tFrom(en.worldSummitEvent)}>
+        <a href="/en/join">Join the community</a>
+      </WorldSummitGuide>,
     ];
 
     for (const page of pages) {
@@ -204,6 +202,8 @@ describe("SEO guide routes", () => {
       expect(shell?.className.split(/\s+/)).toContain("max-w-6xl");
       expect(shell?.className.split(/\s+/)).not.toContain("max-w-5xl");
       expect(shell?.className.split(/\s+/)).not.toContain("max-w-4xl");
+      const join = container.querySelector('a[href="/en/join"]');
+      if (join) expect(shell?.contains(join)).toBe(true);
       unmount();
     }
   });

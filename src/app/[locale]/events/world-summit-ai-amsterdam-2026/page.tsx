@@ -25,9 +25,8 @@ export default async function WorldSummitPage() {
   const locale = await getLocale();
   const t = await getTranslations("worldSummitEvent");
   return (
-    <>
-      <WorldSummitGuide locale={locale} t={t} />
+    <WorldSummitGuide locale={locale} t={t}>
       <EventHubLinks />
-    </>
+    </WorldSummitGuide>
   );
 }
