@@ -252,7 +252,7 @@ export async function loadDigestNews(now: Date): Promise<DigestNewsItem[]> {
       title: row.title,
       summary: storedNewsBlurb(row),
       articleUrl: row.url,
-      path: `${digestPagePath("/news")}#news-${encodeURIComponent(row.id)}`,
+      path: `${digestPagePath("/news")}?story=${encodeURIComponent(row.id)}#news-${encodeURIComponent(row.id)}`,
     }));
   });
 }

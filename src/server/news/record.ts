@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { newsItems } from "@/server/db/schema";
@@ -21,7 +21,24 @@ const store: NewsIngestDb = {
       });
   },
   async saveSummary(id, aiSummary) {
-    await db.update(newsItems).set({ aiSummary }).where(eq(newsItems.id, id));
+    await db
+      .update(newsItems)
+      .set({ aiSummary })
+      .where(and(eq(newsItems.id, id), isNull(newsItems.aiSummary)));
+  },
+  async unsummarized(urls) {
+    if (urls.length === 0) return [];
+    return db
+      .select({
+        id: newsItems.id,
+        url: newsItems.url,
+        title: newsItems.title,
+        summary: newsItems.summary,
+      })
+      .from(newsItems)
+      .where(
+        and(inArray(newsItems.url, [...urls]), isNull(newsItems.aiSummary)),
+      );
   },
 };
 

@@ -5,7 +5,9 @@ export type NewsSummaryInput = {
   summary: string;
 };
 
-export type NewsSummarizer = (input: NewsSummaryInput) => Promise<string>;
+export type NewsSummarizer = (
+  input: NewsSummaryInput,
+) => Promise<string | null>;
 
 export function clampNewsSummary(value: string, max = SUMMARY_MAX): string {
   const text = value.replace(/\s+/g, " ").trim();
@@ -29,8 +31,8 @@ async function requestAnthropicSummary(
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-3-5-haiku-latest",
-      max_tokens: 160,
+      model: "claude-haiku-5-5",
+      max_tokens: 1024,
       messages: [
         {
           role: "user",
@@ -50,22 +52,20 @@ async function requestAnthropicSummary(
 }
 
 /**
- * One summary for a story that is being stored. With no key, or if the model
- * fails, the feed excerpt is stored instead. Callers must not use this at
- * send time.
+ * A summary to store for a new story, or null when nothing was written.
+ * Null leaves the column empty so a later ingest can try again. Send time
+ * must not call this.
  */
 export async function generateNewsSummary(
   input: NewsSummaryInput,
-): Promise<string> {
+): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY?.trim();
-  if (key) {
-    try {
-      const written = await requestAnthropicSummary(key, input);
-      if (written) return clampNewsSummary(written);
-    } catch (err) {
-      console.error("news: could not write a summary", err);
-    }
+  if (!key) return null;
+  try {
+    const written = await requestAnthropicSummary(key, input);
+    return written ? clampNewsSummary(written) : null;
+  } catch (err) {
+    console.error("news: could not write a summary", err);
+    return null;
   }
-  const fallback = input.summary.trim() || input.title.trim();
-  return clampNewsSummary(fallback);
 }

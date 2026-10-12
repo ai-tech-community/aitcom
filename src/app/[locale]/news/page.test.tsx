@@ -7,6 +7,14 @@ import nl from "../../../../messages/nl.json";
 
 const state = vi.hoisted(() => ({
   locale: "en" as "en" | "nl",
+  extra: null as null | {
+    id: string;
+    url: string;
+    title: string;
+    author: string | null;
+    publishedAt: Date | null;
+    summary: string;
+  },
   items: [] as Array<{
     id: string;
     url: string;
@@ -29,6 +37,8 @@ vi.mock("next-intl/server", () => ({
 
 vi.mock("@/server/news/list", () => ({
   listNewsItems: async () => state.items,
+  findNewsItem: async (id: string) =>
+    state.items.find((item) => item.id === id) ?? state.extra,
 }));
 
 import NewsPage, { generateMetadata } from "./page";
@@ -37,6 +47,7 @@ describe("news page", () => {
   beforeEach(() => {
     state.locale = "en";
     state.items = [];
+    state.extra = null;
   });
 
   it("is noindex", async () => {
@@ -55,7 +66,7 @@ describe("news page", () => {
         summary: "What shipped.",
       },
     ];
-    render(await NewsPage());
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
     const link = screen.getByRole("link", { name: "New models" });
     expect(link).toHaveAttribute("href", "https://example.com/models");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
@@ -65,7 +76,26 @@ describe("news page", () => {
 
   it("shows the Dutch empty state", async () => {
     state.locale = "nl";
-    render(await NewsPage());
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByText("Nog geen verhalen.")).toBeInTheDocument();
+  });
+
+  it("shows a story the digest linked even when it is outside the list", async () => {
+    state.extra = {
+      id: "older",
+      url: "https://example.com/older",
+      title: "Older story",
+      author: null,
+      publishedAt: new Date("2026-09-01T00:00:00.000Z"),
+      summary: "Still here.",
+    };
+    render(
+      await NewsPage({ searchParams: Promise.resolve({ story: "older" }) }),
+    );
+    expect(document.getElementById("news-older")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Older story" })).toHaveAttribute(
+      "href",
+      "https://example.com/older",
+    );
   });
 });

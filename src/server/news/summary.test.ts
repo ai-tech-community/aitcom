@@ -17,7 +17,7 @@ describe("clampNewsSummary", () => {
 });
 
 describe("generateNewsSummary", () => {
-  it("stores the feed excerpt when no model key is set", async () => {
+  it("leaves the summary empty when no model key is set", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
@@ -25,7 +25,7 @@ describe("generateNewsSummary", () => {
       title: "New models",
       summary: "What shipped this week.",
     });
-    expect(text).toBe("What shipped this week.");
+    expect(text).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 

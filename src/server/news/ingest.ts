@@ -1,5 +1,5 @@
 import { newsDraftsFromFeed, type NewsDraft } from "./draft";
-import { clampNewsSummary, type NewsSummarizer } from "./summary";
+import type { NewsSummarizer } from "./summary";
 
 export type InsertedNews = {
   id: string;
@@ -16,9 +16,14 @@ export type NewsIngestDb = {
     >,
   ): Promise<InsertedNews[]>;
   saveSummary(id: string, aiSummary: string): Promise<void>;
+  /** Rows for these URLs that still have no stored summary. */
+  unsummarized(urls: readonly string[]): Promise<InsertedNews[]>;
 };
 
-/** Summaries are written for rows inserted now, never for rows already stored. */
+/**
+ * Summaries are written when a row is stored, including a row whose first
+ * attempt did not finish. A row that already has a summary is left alone.
+ */
 export async function ingestNewsItems(
   database: NewsIngestDb,
   items: readonly Record<string, unknown>[],
@@ -27,16 +32,15 @@ export async function ingestNewsItems(
   const drafts = newsDraftsFromFeed(items);
   if (drafts.length === 0) return 0;
   const inserted = await database.insertNew(drafts);
-  for (const row of inserted) {
-    let aiSummary: string;
+  const pending = await database.unsummarized(drafts.map((draft) => draft.url));
+  for (const row of pending) {
+    let aiSummary: string | null = null;
     try {
       aiSummary = await summarize({ title: row.title, summary: row.summary });
     } catch (err) {
       console.error("news: summary failed for a new story", err);
-      const fallback = row.summary.trim();
-      aiSummary = clampNewsSummary(fallback.length > 0 ? fallback : row.title);
     }
-    await database.saveSummary(row.id, aiSummary);
+    if (aiSummary) await database.saveSummary(row.id, aiSummary);
   }
   return inserted.length;
 }

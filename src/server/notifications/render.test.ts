@@ -104,7 +104,7 @@ describe("renderHubDigestText", () => {
             title: "New models",
             summary: "Two sentences.",
             articleUrl: "https://example.com/models?id=1",
-            path: "/en/news#news-story-1",
+            path: "/en/news?story=story-1#news-story-1",
           },
         ],
       },
@@ -121,7 +121,7 @@ describe("renderHubDigestText", () => {
             title: "New models",
             summary: "Two sentences.",
             articleUrl: "https://example.com/models?id=1",
-            path: "/en/news#news-story-1",
+            path: "/en/news?story=story-1#news-story-1",
           },
         ],
       },
@@ -130,12 +130,12 @@ describe("renderHubDigestText", () => {
     expect(html).toContain('href="https://example.com/models?id=1"');
     expect(html).not.toContain("https://example.com/models?id=1&amp;");
     expect(html).toContain(
-      "https://www.aitcommunity.org/en/news?utm_source=digest&amp;utm_medium=email&amp;utm_campaign=weekly-2026-10-12#news-story-1",
+      "https://www.aitcommunity.org/en/news?story=story-1&amp;utm_source=digest&amp;utm_medium=email&amp;utm_campaign=weekly-2026-10-12#news-story-1",
     );
     expect(text).toContain("https://example.com/models?id=1\n");
     expect(text).not.toContain("https://example.com/models?id=1&");
     expect(text).toContain(
-      "On AIT: https://www.aitcommunity.org/en/news?utm_source=digest&utm_medium=email&utm_campaign=weekly-2026-10-12#news-story-1",
+      "On AIT: https://www.aitcommunity.org/en/news?story=story-1&utm_source=digest&utm_medium=email&utm_campaign=weekly-2026-10-12#news-story-1",
     );
   });
 
