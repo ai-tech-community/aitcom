@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { and, asc, count, desc, eq, sql, type SQL } from "drizzle-orm";
 
+import { isThinStartupProfile } from "@/lib/investigations/startup-profile-index";
 import {
   displayStartupFounders,
   displayStartupInvestors,
@@ -145,15 +146,34 @@ export async function findApprovedPublicStartupBySlug(
   }
 }
 
+/**
+ * Approved public profile paths for the sitemap. Thin profiles (description
+ * under 80 characters and no open roles) are omitted. The same
+ * `isThinStartupProfile` check noindexes those URLs. Enrichment that fills
+ * the description, or a scan that records an open role, puts the profile back.
+ */
 export async function listApprovedPublicStartupSlugs(): Promise<string[]> {
   try {
     const rows = await db
-      .select({ slug: startups.slug })
+      .select({
+        slug: startups.slug,
+        description: startups.description,
+        openRoleCount: startups.openRoleCount,
+      })
       .from(startups)
       .where(eq(startups.status, "approved"));
     return rows.flatMap((row) => {
       const slug = parseStartupSlug(row.slug);
-      return slug ? [slug] : [];
+      if (!slug) return [];
+      if (
+        isThinStartupProfile({
+          description: row.description,
+          openRoleCount: asFiniteCount(row.openRoleCount),
+        })
+      ) {
+        return [];
+      }
+      return [slug];
     });
   } catch {
     return [];
