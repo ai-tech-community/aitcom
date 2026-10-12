@@ -18,15 +18,19 @@ export const DIGEST_UNSUBSCRIBE_MAILTO = "mailto:info@klevox.com";
  * links already in inboxes. Falls back so a deploy without the new var still
  * signs links.
  */
-export function unsubscribeSecret(
-  env: {
-    DIGEST_UNSUBSCRIBE_SECRET?: string;
-    BETTER_AUTH_SECRET?: string;
-  } = process.env,
-): string | null {
-  const dedicated = env.DIGEST_UNSUBSCRIBE_SECRET?.trim();
+type UnsubscribeSecretEnv = {
+  DIGEST_UNSUBSCRIBE_SECRET?: string;
+  BETTER_AUTH_SECRET?: string;
+};
+
+export function unsubscribeSecret(env?: UnsubscribeSecretEnv): string | null {
+  const source = env ?? {
+    DIGEST_UNSUBSCRIBE_SECRET: process.env.DIGEST_UNSUBSCRIBE_SECRET,
+    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+  };
+  const dedicated = source.DIGEST_UNSUBSCRIBE_SECRET?.trim();
   if (dedicated) return dedicated;
-  const fallback = env.BETTER_AUTH_SECRET?.trim();
+  const fallback = source.BETTER_AUTH_SECRET?.trim();
   if (fallback) return fallback;
   return null;
 }
