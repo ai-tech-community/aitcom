@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
 
+import { sanitizeStartupRoleDescription } from "./startup-roles";
 import { isPublishableJobTitle } from "./startup-job-boards";
-import { isNoindexOpenJob, openJobRobots } from "./job-indexability";
+import {
+  isNoindexOpenJob,
+  OPEN_JOB_DESCRIPTION_INDEX_MIN,
+  OPEN_JOB_JS_WHITESPACE,
+  OPEN_JOB_SANITIZE_NON_WS_REMOVAL_MAX,
+  openJobNonWhitespaceCount,
+  openJobRobots,
+  openJobSitemapDescription,
+  openJobSitemapNeedsBody,
+} from "./job-indexability";
 
 const SHORT = "a".repeat(199);
 const LONG = "a".repeat(200);
@@ -66,6 +76,106 @@ describe("isNoindexOpenJob", () => {
         descriptionText: `  ${LONG}  `,
       }),
     ).toBe(false);
+  });
+});
+
+describe("openJobSitemapDescription", () => {
+  it("lists every character JavaScript treats as whitespace", () => {
+    const listed = new Set(OPEN_JOB_JS_WHITESPACE);
+    for (const char of OPEN_JOB_JS_WHITESPACE) {
+      expect(
+        /\s/.test(char) || char.trim() === "",
+        char.codePointAt(0)?.toString(16),
+      ).toBe(true);
+    }
+    for (let code = 0; code <= 0xffff; code += 1) {
+      const char = String.fromCharCode(code);
+      if (/\s/.test(char) || char.trim() === "") {
+        expect(listed.has(char), code.toString(16)).toBe(true);
+      }
+    }
+    expect(listed.size).toBe(OPEN_JOB_JS_WHITESPACE.length);
+  });
+
+  it("drops at most the non-whitespace budget sanitize is allowed", () => {
+    const content = "b".repeat(400);
+    const samples = [
+      content,
+      `learn more ${content}`,
+      `LEARN MORE\n${content}`,
+      `read more ${content}`,
+      `more info\t${content}`,
+      `abcdefghAbout ${content}`,
+      `${content}\nread more`,
+      `${content}\n   more info`,
+      `learn more ${content}\nread more`,
+      `abAbout ${content}\nmore info`,
+      `  \n${content}\n  `,
+      `${"\u00a0".repeat(50)}${content}${"\u3000".repeat(10)}`,
+    ];
+    for (const sample of samples) {
+      const before = openJobNonWhitespaceCount(sample);
+      const after = openJobNonWhitespaceCount(
+        sanitizeStartupRoleDescription(sample),
+      );
+      expect(before - after).toBeLessThanOrEqual(
+        OPEN_JOB_SANITIZE_NON_WS_REMOVAL_MAX,
+      );
+    }
+  });
+
+  it("uses a stand-in when the body cannot change the length decision", () => {
+    const title = "Staff Engineer";
+    const long = "c".repeat(400);
+    expect(
+      openJobSitemapNeedsBody({
+        rawChars: long.length,
+        nonWsChars: long.length,
+      }),
+    ).toBe(false);
+    const standIn = openJobSitemapDescription({
+      rawChars: long.length,
+      nonWsChars: long.length,
+    });
+    expect(standIn).toBe("a".repeat(OPEN_JOB_DESCRIPTION_INDEX_MIN));
+    expect(isNoindexOpenJob({ title, descriptionText: standIn })).toBe(
+      isNoindexOpenJob({ title, descriptionText: long }),
+    );
+
+    const standInShort = openJobSitemapDescription({
+      rawChars: 119,
+      nonWsChars: 119,
+    });
+    expect(isNoindexOpenJob({ title, descriptionText: standInShort })).toBe(
+      true,
+    );
+    expect(isNoindexOpenJob({ title, descriptionText: null })).toBe(
+      isNoindexOpenJob({
+        title,
+        descriptionText: openJobSitemapDescription({
+          rawChars: 0,
+          nonWsChars: 0,
+        }),
+      }),
+    );
+  });
+
+  it("reads the body only for lengths that can still cross 200 characters", () => {
+    const title = "Staff Engineer";
+    const band = `learn more ${"c".repeat(190)}`;
+    const rawChars = band.length;
+    const nonWsChars = openJobNonWhitespaceCount(band);
+    expect(rawChars).toBeGreaterThanOrEqual(OPEN_JOB_DESCRIPTION_INDEX_MIN);
+    expect(openJobSitemapNeedsBody({ rawChars, nonWsChars })).toBe(true);
+    expect(openJobSitemapDescription({ rawChars, nonWsChars })).toBeNull();
+    const withBody = openJobSitemapDescription({
+      rawChars,
+      nonWsChars,
+      body: band,
+    });
+    expect(isNoindexOpenJob({ title, descriptionText: withBody })).toBe(
+      isNoindexOpenJob({ title, descriptionText: band }),
+    );
   });
 });
 
