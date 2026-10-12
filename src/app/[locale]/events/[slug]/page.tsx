@@ -323,278 +323,275 @@ export default async function EventDetailPage({
   // (formerly HackathonPanel) lives in the My Team / Participants tabs now.
   if (hackathonChallenge) {
     return (
-      <>
-        <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
-          <div className="min-w-0 space-y-8">
-            {event.summary && (
-              <p className="text-foreground/90 text-lg leading-relaxed">
-                {event.summary}
-              </p>
-            )}
+      <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
+        <div className="min-w-0 space-y-8">
+          {event.summary && (
+            <p className="text-foreground/90 text-lg leading-relaxed">
+              {event.summary}
+            </p>
+          )}
 
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <Badge key={tag} variant="outline" className="px-3 py-1">
-                    #{tag}
-                  </Badge>
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <Badge key={tag} variant="outline" className="px-3 py-1">
+                  #{tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {prizeParts.length > 0 && (
+            <div className="border-border bg-card space-y-3 rounded-lg border p-4">
+              <SectionLabel bordered={false}>
+                {tEvents("sectionPrizes")}
+              </SectionLabel>
+              <dl className="grid gap-3 sm:grid-cols-2">
+                {prizeParts.map((part) => (
+                  <div key={part.label} className="flex flex-col gap-1">
+                    <dt className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
+                      {part.label}
+                    </dt>
+                    <dd className="text-sm font-medium">{part.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
+          {Boolean(
+            event.focus ??
+            event.level ??
+            event.videoUrl ??
+            (audience.length > 0 || locationParts.length > 0 || null),
+          ) && (
+            <div className="border-border grid gap-4 rounded-lg border p-4 text-sm sm:grid-cols-2">
+              {event.focus && (
+                <DetailRow
+                  label="Focus"
+                  value={EVENT_FOCUS_LABELS[event.focus] ?? event.focus}
+                />
+              )}
+              {event.level && (
+                <DetailRow
+                  label="Level"
+                  value={EVENT_LEVEL_LABELS[event.level] ?? event.level}
+                />
+              )}
+              {audience.length > 0 && (
+                <DetailRow label="Audience" value={audience.join(", ")} />
+              )}
+              {locationParts.length > 0 && (
+                <DetailRow label="Region" value={locationShort} />
+              )}
+              {event.videoUrl && (
+                <DetailRow
+                  label="Video"
+                  value={
+                    <a
+                      href={event.videoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline underline-offset-4"
+                    >
+                      Watch video
+                    </a>
+                  }
+                />
+              )}
+            </div>
+          )}
+
+          {event.description && (
+            <div className="border-border border-t pt-8">
+              <SectionLabel>{tEvents("sectionAbout")}</SectionLabel>
+              <div className="mt-4">
+                <LexicalRenderer content={event.description} />
+              </div>
+            </div>
+          )}
+
+          {speakers.length > 0 && (
+            <div className="border-border border-t pt-8">
+              <SectionLabel>{tEvents("sectionSpeakers")}</SectionLabel>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {speakers.map((speaker) => {
+                  const photoUrl =
+                    speaker.photo && typeof speaker.photo === "object"
+                      ? speaker.photo.url
+                      : undefined;
+                  return (
+                    <div
+                      key={speaker.id}
+                      className="border-border flex items-start gap-3 rounded-lg border p-4"
+                    >
+                      <Avatar size="lg" className="shrink-0">
+                        {photoUrl ? (
+                          <AvatarImage
+                            src={photoUrl}
+                            alt={speaker.name}
+                            className="object-cover"
+                          />
+                        ) : null}
+                        <AvatarFallback className="bg-secondary font-mono text-xs">
+                          {getInitials(speaker.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">
+                          {speaker.name}
+                        </div>
+                        {speaker.company && (
+                          <div className="text-muted-foreground truncate font-mono text-xs">
+                            {speaker.company}
+                          </div>
+                        )}
+                        {speaker.bio && (
+                          <p className="text-muted-foreground mt-2 line-clamp-3 text-sm leading-relaxed">
+                            {speaker.bio}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {gallery.length > 0 && (
+            <div className="border-border border-t pt-8">
+              <SectionLabel>{tEvents("sectionGallery")}</SectionLabel>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {gallery.map((image, index) => (
+                  <div
+                    key={`${image?.url}-${index}`}
+                    className="border-border overflow-hidden rounded-lg border"
+                  >
+                    {image?.url && (
+                      <Image
+                        src={image.url}
+                        alt={
+                          image.alt ??
+                          `${event.title} gallery image ${index + 1}`
+                        }
+                        width={600}
+                        height={400}
+                        className="h-56 w-full object-cover"
+                      />
+                    )}
+                  </div>
                 ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {prizeParts.length > 0 && (
-              <div className="border-border bg-card space-y-3 rounded-lg border p-4">
-                <SectionLabel bordered={false}>
-                  {tEvents("sectionPrizes")}
-                </SectionLabel>
-                <dl className="grid gap-3 sm:grid-cols-2">
-                  {prizeParts.map((part) => (
-                    <div key={part.label} className="flex flex-col gap-1">
-                      <dt className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
-                        {part.label}
-                      </dt>
-                      <dd className="text-sm font-medium">{part.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-            )}
-
-            {Boolean(
-              event.focus ??
-              event.level ??
-              event.videoUrl ??
-              (audience.length > 0 || locationParts.length > 0 || null),
-            ) && (
-              <div className="border-border grid gap-4 rounded-lg border p-4 text-sm sm:grid-cols-2">
-                {event.focus && (
-                  <DetailRow
-                    label="Focus"
-                    value={EVENT_FOCUS_LABELS[event.focus] ?? event.focus}
-                  />
-                )}
-                {event.level && (
-                  <DetailRow
-                    label="Level"
-                    value={EVENT_LEVEL_LABELS[event.level] ?? event.level}
-                  />
-                )}
-                {audience.length > 0 && (
-                  <DetailRow label="Audience" value={audience.join(", ")} />
-                )}
-                {locationParts.length > 0 && (
-                  <DetailRow label="Region" value={locationShort} />
-                )}
-                {event.videoUrl && (
-                  <DetailRow
-                    label="Video"
-                    value={
-                      <a
-                        href={event.videoUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="underline underline-offset-4"
-                      >
-                        Watch video
-                      </a>
-                    }
-                  />
-                )}
-              </div>
-            )}
-
-            {event.description && (
-              <div className="border-border border-t pt-8">
-                <SectionLabel>{tEvents("sectionAbout")}</SectionLabel>
-                <div className="mt-4">
-                  <LexicalRenderer content={event.description} />
-                </div>
-              </div>
-            )}
-
-            {speakers.length > 0 && (
-              <div className="border-border border-t pt-8">
-                <SectionLabel>{tEvents("sectionSpeakers")}</SectionLabel>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {speakers.map((speaker) => {
-                    const photoUrl =
-                      speaker.photo && typeof speaker.photo === "object"
-                        ? speaker.photo.url
-                        : undefined;
-                    return (
-                      <div
-                        key={speaker.id}
-                        className="border-border flex items-start gap-3 rounded-lg border p-4"
-                      >
-                        <Avatar size="lg" className="shrink-0">
-                          {photoUrl ? (
-                            <AvatarImage
-                              src={photoUrl}
-                              alt={speaker.name}
-                              className="object-cover"
-                            />
-                          ) : null}
-                          <AvatarFallback className="bg-secondary font-mono text-xs">
-                            {getInitials(speaker.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <div className="truncate font-medium">
-                            {speaker.name}
-                          </div>
-                          {speaker.company && (
-                            <div className="text-muted-foreground truncate font-mono text-xs">
-                              {speaker.company}
-                            </div>
-                          )}
-                          {speaker.bio && (
-                            <p className="text-muted-foreground mt-2 line-clamp-3 text-sm leading-relaxed">
-                              {speaker.bio}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {gallery.length > 0 && (
-              <div className="border-border border-t pt-8">
-                <SectionLabel>{tEvents("sectionGallery")}</SectionLabel>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {gallery.map((image, index) => (
-                    <div
-                      key={`${image?.url}-${index}`}
-                      className="border-border overflow-hidden rounded-lg border"
-                    >
-                      {image?.url && (
-                        <Image
-                          src={image.url}
-                          alt={
-                            image.alt ??
-                            `${event.title} gallery image ${index + 1}`
-                          }
-                          width={600}
-                          height={400}
-                          className="h-56 w-full object-cover"
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="border-border border-t pt-8">
-              <SectionLabel>{tEvents("attendees")}</SectionLabel>
-              <div className="mt-4">
-                <EventAttendees
-                  eventId={eventId}
-                  maxAttendees={maxAttendees}
-                  isExternal={isExternal}
-                />
-              </div>
+          <div className="border-border border-t pt-8">
+            <SectionLabel>{tEvents("attendees")}</SectionLabel>
+            <div className="mt-4">
+              <EventAttendees
+                eventId={eventId}
+                maxAttendees={maxAttendees}
+                isExternal={isExternal}
+              />
             </div>
           </div>
+        </div>
 
-          <aside className="lg:sticky lg:top-24 lg:self-start">
-            <div className="border-border bg-card space-y-4 rounded-lg border p-5">
-              <div className="space-y-1">
-                <time
-                  dateTime={eventDay.dateTime ?? undefined}
-                  className="text-muted-foreground block font-mono text-xs tracking-wider uppercase tabular-nums"
-                >
-                  {eventDay.label}
-                </time>
-                <EventTimeDisplay
-                  date={event.date}
-                  startTime={event.startTime ?? null}
-                  endTime={event.endTime ?? null}
-                  timezone={event.timezone ?? null}
-                />
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="border-border bg-card space-y-4 rounded-lg border p-5">
+            <div className="space-y-1">
+              <time
+                dateTime={eventDay.dateTime ?? undefined}
+                className="text-muted-foreground block font-mono text-xs tracking-wider uppercase tabular-nums"
+              >
+                {eventDay.label}
+              </time>
+              <EventTimeDisplay
+                date={event.date}
+                startTime={event.startTime ?? null}
+                endTime={event.endTime ?? null}
+                timezone={event.timezone ?? null}
+              />
+            </div>
+
+            <div className="border-border border-t pt-4 text-sm">
+              <div className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
+                Location
               </div>
-
-              <div className="border-border border-t pt-4 text-sm">
-                <div className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
-                  Location
-                </div>
-                <div className="mt-1">{event.location}</div>
-                {locationParts.length > 0 &&
-                  locationShort !== event.location && (
-                    <div className="text-muted-foreground mt-0.5 text-xs">
-                      {locationShort}
-                    </div>
-                  )}
-                {event.format !== "online" && (
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                      [event.location, locationShort]
-                        .filter(Boolean)
-                        .join(", "),
-                    )}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-xs tracking-wider underline underline-offset-4"
-                  >
-                    View on map ↗
-                  </a>
-                )}
-              </div>
-
-              {(event.format ?? priceLabel) && (
-                <div className="border-border flex flex-wrap gap-2 border-t pt-4">
-                  {event.format && (
-                    <Badge
-                      variant="outline"
-                      className="rounded-md font-mono text-xs tracking-wider"
-                    >
-                      {formatLabel}
-                    </Badge>
-                  )}
-                  {priceLabel && (
-                    <Badge
-                      variant="outline"
-                      className="rounded-md font-mono text-xs tracking-wider"
-                    >
-                      {priceLabel}
-                    </Badge>
-                  )}
+              <div className="mt-1">{event.location}</div>
+              {locationParts.length > 0 && locationShort !== event.location && (
+                <div className="text-muted-foreground mt-0.5 text-xs">
+                  {locationShort}
                 </div>
               )}
-
-              <div className="border-border border-t pt-4">
-                <EventRegisterButton
-                  eventId={eventId}
-                  price={price}
-                  isExternal={isExternal}
-                  sourceUrl={sourceUrl}
-                  questions={registrationQuestions}
-                  timing={registrationTiming}
-                />
-              </div>
-
-              {isExternal ? null : <OrganizerAttendeesLink eventId={eventId} />}
-
-              {isExternal && sourceUrl && (
-                <div className="text-muted-foreground border-border border-t pt-4 font-mono text-xs tracking-wider">
-                  SOURCE ·{" "}
-                  <a
-                    href={sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline underline-offset-4"
-                  >
-                    Original event ↗
-                  </a>
-                </div>
+              {event.format !== "online" && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    [event.location, locationShort].filter(Boolean).join(", "),
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-xs tracking-wider underline underline-offset-4"
+                >
+                  View on map ↗
+                </a>
               )}
             </div>
-          </aside>
+
+            {(event.format ?? priceLabel) && (
+              <div className="border-border flex flex-wrap gap-2 border-t pt-4">
+                {event.format && (
+                  <Badge
+                    variant="outline"
+                    className="rounded-md font-mono text-xs tracking-wider"
+                  >
+                    {formatLabel}
+                  </Badge>
+                )}
+                {priceLabel && (
+                  <Badge
+                    variant="outline"
+                    className="rounded-md font-mono text-xs tracking-wider"
+                  >
+                    {priceLabel}
+                  </Badge>
+                )}
+              </div>
+            )}
+
+            <div className="border-border border-t pt-4">
+              <EventRegisterButton
+                eventId={eventId}
+                price={price}
+                isExternal={isExternal}
+                sourceUrl={sourceUrl}
+                questions={registrationQuestions}
+                timing={registrationTiming}
+              />
+            </div>
+
+            {isExternal ? null : <OrganizerAttendeesLink eventId={eventId} />}
+
+            {isExternal && sourceUrl && (
+              <div className="text-muted-foreground border-border border-t pt-4 font-mono text-xs tracking-wider">
+                SOURCE ·{" "}
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-4"
+                >
+                  Original event ↗
+                </a>
+              </div>
+            )}
+          </div>
+        </aside>
+        <div className="lg:col-span-2">
+          <EventHubLinks />
         </div>
-        <EventHubLinks />
-      </>
+      </div>
     );
   }
 
