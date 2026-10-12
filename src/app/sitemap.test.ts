@@ -270,6 +270,8 @@ describe("buildSitemapEntries", () => {
     expect(staticUrls).not.toContain(
       "https://www.aitcommunity.org/en/startups/jobs",
     );
+    expect(staticUrls).not.toContain("https://www.aitcommunity.org/en/news");
+    expect(staticUrls).not.toContain("https://www.aitcommunity.org/nl/news");
 
     const indexed = await buildSitemapEntries(
       undefined,

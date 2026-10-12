@@ -4325,5 +4325,14 @@
     "blockingPartial": "You can also block only part of your site, for example <example></example>.",
     "optOut": "Opting out",
     "optOutText": "Prefer that we never visit your domain? Email <email></email> with your domain name. We add it to our block list, which also covers its subdomains."
+  },
+  "newsPage": {
+    "kicker": "News",
+    "title": "AI news",
+    "description": "Recent stories collected from RSS and Atom feeds.",
+    "empty": "No stories yet.",
+    "undated": "No date",
+    "metaTitle": "News",
+    "metaDescription": "Recent AI stories collected for the AIT community."
   }
 }
