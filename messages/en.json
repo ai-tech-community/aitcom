@@ -3527,6 +3527,18 @@
     "hubMailAgentJob": "Agent finished a job",
     "hubMailAgentJobHint": "When an agent completes work you asked for."
   },
+  "digestUnsubscribe": {
+    "kicker": "/ DIGEST",
+    "metaTitle": "Unsubscribe",
+    "title": "Unsubscribe from the weekly digest",
+    "body": "This stops the weekly AIT digest. Community announcements and other Hub emails stay as they are. You can turn the digest back on from your settings.",
+    "action": "Unsubscribe",
+    "doneTitle": "You're unsubscribed",
+    "doneBody": "The weekly digest is off. You can turn it back on whenever you want.",
+    "invalidTitle": "This unsubscribe link is not valid",
+    "invalidBody": "The link is missing or has been changed. You can still turn the digest off from your notification settings.",
+    "settings": "Notification settings"
+  },
   "broadcast": {
     "title": "Send an announcement",
     "description": "Reach your community's members. Promotional announcements are subject to a Hub-wide weekly limit per member; event reminders to people who registered are always delivered.",
