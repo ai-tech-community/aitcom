@@ -112,9 +112,7 @@ export function selectUpcomingEvents<T extends UpcomingEventCandidate>(
     .filter((event) => {
       const begins = parseInstant(event.date);
       if (Number.isNaN(begins)) return false;
-      const ends = event.endDate ? parseInstant(event.endDate) : begins;
-      if (Number.isNaN(ends)) return false;
-      return ends >= start && begins < horizon;
+      return begins >= start && begins < horizon;
     })
     .sort((a, b) => parseInstant(a.date) - parseInstant(b.date))
     .slice(0, limit);

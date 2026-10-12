@@ -20,6 +20,7 @@ import {
   type CommunityRef,
 } from "./digest-items";
 import {
+  DIGEST_JOB_DESCRIPTION_MIN,
   selectDigestJobs,
   selectLaunchpadPicks,
   selectUpcomingEvents,
@@ -103,13 +104,9 @@ export async function loadDigestEvents(now: Date): Promise<DigestEventItem[]> {
       where: {
         and: [
           { status: { equals: "published" } },
+          { discoverySource: { not_equals: "luma" } },
+          { date: { greater_than_equal: start.toISOString() } },
           { date: { less_than: horizon.toISOString() } },
-          {
-            or: [
-              { date: { greater_than_equal: start.toISOString() } },
-              { endDate: { greater_than_equal: start.toISOString() } },
-            ],
-          },
         ],
       },
       sort: "date",
@@ -153,7 +150,11 @@ export async function loadDigestJobs(): Promise<DigestJobItem[]> {
       .from(startupRoles)
       .innerJoin(startups, eq(startupRoles.startupId, startups.id))
       .where(
-        and(eq(startupRoles.status, "open"), eq(startups.status, "approved")),
+        and(
+          eq(startupRoles.status, "open"),
+          eq(startups.status, "approved"),
+          sql`char_length(${startupRoles.descriptionText}) >= ${DIGEST_JOB_DESCRIPTION_MIN}`,
+        ),
       )
       .orderBy(
         sql`coalesce(${startupRoles.postedAt}, ${startupRoles.createdAt}) desc`,

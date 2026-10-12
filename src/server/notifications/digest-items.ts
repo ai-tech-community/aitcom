@@ -1,3 +1,6 @@
+import { isPublishableJobTitle } from "@/lib/investigations/startup-job-boards";
+import { parseStartupRoleTitle } from "@/lib/investigations/startup-roles";
+import { parseStartupSlug, presentText } from "@/lib/investigations/startups";
 import { forumThreadSitemapPath } from "@/server/communities/forum-scope";
 
 import type {
@@ -85,7 +88,7 @@ export function feedHighlight(
     isDeleted?: unknown;
     hiddenAt?: unknown;
     video?: { key?: string | null } | null;
-    linkPreview?: { title?: string | null } | null;
+    linkPreview?: { title?: string | null; hidden?: boolean | null } | null;
   },
   communities: readonly CommunityRef[],
 ): HighlightCandidate | null {
@@ -94,7 +97,9 @@ export function feedHighlight(
     typeof post.communityId === "string" ? post.communityId : null;
   const owner = communities.find((community) => community.id === communityId);
   if (!owner) return null;
-  const preview = textOf(post.linkPreview?.title);
+  const preview = post.linkPreview?.hidden
+    ? ""
+    : textOf(post.linkPreview?.title);
   const title = oneLine(preview.length > 0 ? preview : textOf(post.content));
   if (!title) return null;
   const likes = typeof post.likeCount === "number" ? post.likeCount : 0;
@@ -126,10 +131,15 @@ export function eventItem(
 }
 
 export function jobItem(job: DigestJobCandidate): DigestJobItem | null {
-  if (!job.slug || !job.title || !job.company) return null;
+  const slug = parseStartupSlug(job.slug);
+  const title =
+    parseStartupRoleTitle(job.title) ?? presentText(job.title) ?? "";
+  if (!slug || !title || !job.company || !isPublishableJobTitle(title)) {
+    return null;
+  }
   return {
-    title: job.title,
-    path: digestPagePath(`/jobs/${encodeURIComponent(job.slug)}`),
+    title,
+    path: digestPagePath(`/jobs/${encodeURIComponent(slug)}`),
     company: job.company,
   };
 }

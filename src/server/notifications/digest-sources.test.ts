@@ -66,6 +66,20 @@ describe("feedHighlight", () => {
     });
   });
 
+  it("ignores a link preview the author hid", () => {
+    const item = feedHighlight(
+      {
+        id: 3,
+        content: "The post itself",
+        communityId: "lab",
+        likeCount: 2,
+        linkPreview: { title: "Hidden headline", hidden: true },
+      },
+      COMMUNITIES,
+    );
+    expect(item?.title).toBe("The post itself");
+  });
+
   it("points a video post at the reel", () => {
     const item = feedHighlight(
       {

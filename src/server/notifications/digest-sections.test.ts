@@ -136,14 +136,21 @@ describe("selectUpcomingEvents", () => {
     expect(picked.map((event) => event.slug)).toEqual(["tomorrow"]);
   });
 
-  it("keeps a multi-day event that is still running", () => {
+  it("keeps an event that starts inside the window and drops one that already started", () => {
     const picked = selectUpcomingEvents(
       [
         {
           title: "Summit",
           slug: "summit",
-          date: "2026-10-10",
+          date: "2026-10-12",
           endDate: "2026-10-14",
+          status: "published",
+        },
+        {
+          title: "Already going",
+          slug: "going",
+          date: "2026-10-01",
+          endDate: "2026-10-20",
           status: "published",
         },
       ],

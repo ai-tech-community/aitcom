@@ -246,7 +246,10 @@ export async function loadHubDigests(
   for (const [userId, { email, name, rows }] of byUser) {
     const prefs = resolvePrefs(optoutByUser.get(userId) ?? []);
     const memberIds = new Set(rows.map((r) => r.communityId));
-    const highlights = selectCommunityHighlights(highlightPool, memberIds);
+    const highlightIds = new Set(
+      [...memberIds].filter((id) => !prefs.digestOptOutCommunityIds.has(id)),
+    );
+    const highlights = selectCommunityHighlights(highlightPool, highlightIds);
     const topPick = rankCommunitiesForMember({
       candidates: discoveryCandidates,
       memberCommunityIds: memberIds,
