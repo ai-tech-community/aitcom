@@ -77,6 +77,23 @@ describe("buildHubDigest", () => {
     expect(withJobs?.sections).toEqual([]);
     expect(withJobs?.jobs).toHaveLength(1);
 
+    const withNews = buildHubDigest({
+      userId: "u1",
+      sections: [],
+      news: [
+        {
+          id: "n1",
+          title: "Models",
+          summary: "A short note.",
+          articleUrl: "https://example.com/models",
+          path: "/en/news#news-n1",
+        },
+      ],
+      optedOutCommunityIds: new Set(),
+      optedOutSections: new Set(["news"]),
+    });
+    expect(withNews).toBeNull();
+
     expect(
       buildHubDigest({
         userId: "u1",

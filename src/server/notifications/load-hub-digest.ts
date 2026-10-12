@@ -31,6 +31,7 @@ import { selectCommunityHighlights } from "@/server/notifications/digest-section
 import {
   loadDigestEvents,
   loadDigestJobs,
+  loadDigestNews,
   loadDigestStartups,
   loadHighlightPool,
 } from "@/server/notifications/digest-sources";
@@ -216,11 +217,12 @@ export async function loadHubDigests(
       ]),
     ).values(),
   ];
-  const [highlightPool, events, jobs, startups] = await Promise.all([
+  const [highlightPool, events, jobs, startups, news] = await Promise.all([
     loadHighlightPool(communityRefs, weekAgo),
     loadDigestEvents(now),
     loadDigestJobs(),
     loadDigestStartups(now),
+    loadDigestNews(now),
   ]);
 
   const allUserIds = [...byUser.keys()];
@@ -290,6 +292,7 @@ export async function loadHubDigests(
       digest: buildHubDigest({
         userId,
         sections,
+        news,
         events,
         jobs,
         startups,

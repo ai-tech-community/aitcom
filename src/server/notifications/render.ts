@@ -72,9 +72,26 @@ export function renderHubDigestHtml(
   sendDate: Date,
   options?: DigestRenderOptions,
 ): string {
+  const news = digest.news ?? [];
   const events = digest.events ?? [];
   const jobs = digest.jobs ?? [];
   const startups = digest.startups ?? [];
+  const newsHtml =
+    news.length === 0
+      ? ""
+      : `<h3 style="font-size: 15px; margin: 24px 0 8px;">TL;DR</h3>
+      <ul style="margin: 0; padding-left: 18px; font-size: 14px; color: #333;">
+        ${news
+          .map(
+            (item) => `<li style="margin: 0 0 12px;">
+            <a href="${esc(item.articleUrl)}">${esc(item.title)}</a>
+            <div style="color:#555; margin-top: 4px;">${esc(item.summary)}</div>
+            <div style="margin-top: 4px;"><a href="${esc(digestLink(item.path, sendDate))}">On AIT</a></div>
+          </li>`,
+          )
+          .join("")}
+      </ul>`;
+
   const communityHtml =
     digest.sections.length === 0
       ? ""
@@ -133,6 +150,7 @@ export function renderHubDigestHtml(
     <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
       <h2 style="font-size: 18px;">Your weekly AIT digest</h2>
       <p style="font-size: 14px; color: #555;">Here's what happened across your communities this week.</p>
+      ${newsHtml}
       ${communityHtml}
       ${eventsHtml}
       ${jobsHtml}
@@ -160,6 +178,18 @@ export function renderHubDigestText(
     "Here's what happened across your communities this week.",
     "",
   ];
+
+  const news = digest.news ?? [];
+  if (news.length > 0) {
+    lines.push("TL;DR");
+    for (const item of news) {
+      lines.push(`- ${item.title}`);
+      lines.push(`  ${item.summary}`);
+      lines.push(`  ${item.articleUrl}`);
+      lines.push(`  On AIT: ${digestLink(item.path, sendDate)}`);
+    }
+    lines.push("");
+  }
 
   if (digest.sections.length > 0) {
     lines.push("Community");

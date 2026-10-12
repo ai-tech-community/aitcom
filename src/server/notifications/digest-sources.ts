@@ -1,16 +1,18 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, gte, isNull, or, sql } from "drizzle-orm";
 
 import { forumThreadCommunitiesWhere } from "@/server/communities/forum-scope";
 import { db } from "@/server/db";
-import { startupRoles, startups } from "@/server/db/schema";
+import { newsItems, startupRoles, startups } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 
 import type {
   DigestEventItem,
   DigestJobItem,
+  DigestNewsItem,
   DigestStartupItem,
 } from "./digest";
 import {
+  digestPagePath,
   eventItem,
   feedHighlight,
   forumHighlight,
@@ -22,6 +24,7 @@ import {
 import {
   DIGEST_JOB_DESCRIPTION_MIN,
   selectDigestJobs,
+  selectDigestNews,
   selectLaunchpadPicks,
   selectUpcomingEvents,
   type HighlightCandidate,
@@ -204,5 +207,52 @@ export async function loadDigestStartups(
       const item = startupItem(project);
       return item ? [item] : [];
     });
+  });
+}
+
+function storedNewsBlurb(item: {
+  aiSummary: string | null;
+  summary: string;
+  title: string;
+}): string {
+  const written = item.aiSummary?.trim();
+  if (written) return written;
+  const fallback = item.summary.trim();
+  if (fallback) return fallback;
+  return item.title.trim();
+}
+
+/** Stories already summarized at ingest. This does not call a model. */
+export async function loadDigestNews(now: Date): Promise<DigestNewsItem[]> {
+  return readOrEmpty("news", async () => {
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({
+        id: newsItems.id,
+        url: newsItems.url,
+        title: newsItems.title,
+        summary: newsItems.summary,
+        aiSummary: newsItems.aiSummary,
+        publishedAt: newsItems.publishedAt,
+        createdAt: newsItems.createdAt,
+      })
+      .from(newsItems)
+      .where(
+        or(
+          gte(newsItems.publishedAt, weekAgo),
+          and(isNull(newsItems.publishedAt), gte(newsItems.createdAt, weekAgo)),
+        ),
+      )
+      .orderBy(
+        sql`coalesce(${newsItems.publishedAt}, ${newsItems.createdAt}) desc`,
+      )
+      .limit(20);
+    return selectDigestNews(rows, now).map((row) => ({
+      id: row.id,
+      title: row.title,
+      summary: storedNewsBlurb(row),
+      articleUrl: row.url,
+      path: `${digestPagePath("/news")}#news-${encodeURIComponent(row.id)}`,
+    }));
   });
 }
