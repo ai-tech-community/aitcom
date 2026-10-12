@@ -177,6 +177,49 @@ describe("openJobSitemapDescription", () => {
       isNoindexOpenJob({ title, descriptionText: band }),
     );
   });
+
+  it("does not treat emoji as characters that survive sanitize", () => {
+    const title = "Staff Engineer";
+    const thin = `${"b".repeat(199)}${"😀".repeat(26)}`;
+    expect(openJobNonWhitespaceCount(thin)).toBe(199);
+    expect(
+      openJobSitemapNeedsBody({ rawChars: 199 + 26, nonWsChars: 199 }),
+    ).toBe(true);
+    expect(isNoindexOpenJob({ title, descriptionText: thin })).toBe(true);
+
+    const indexed = `${"b".repeat(400)}${"😀".repeat(26)}`;
+    expect(openJobNonWhitespaceCount(indexed)).toBe(400);
+    expect(openJobSitemapNeedsBody({ rawChars: 426, nonWsChars: 400 })).toBe(
+      false,
+    );
+    const standIn = openJobSitemapDescription({
+      rawChars: 426,
+      nonWsChars: 400,
+    });
+    expect(isNoindexOpenJob({ title, descriptionText: standIn })).toBe(
+      isNoindexOpenJob({ title, descriptionText: indexed }),
+    );
+  });
+
+  it("agrees with the page on one sanitize of a doubled leading CTA", () => {
+    const title = "Staff Engineer";
+    const raw = `learn more learn more ${"b".repeat(190)}`;
+    const shown = sanitizeStartupRoleDescription(raw);
+    expect(shown?.length ?? 0).toBeGreaterThanOrEqual(
+      OPEN_JOB_DESCRIPTION_INDEX_MIN,
+    );
+    expect(isNoindexOpenJob({ title, descriptionText: raw })).toBe(false);
+    expect(
+      isNoindexOpenJob({
+        title,
+        descriptionText: shown,
+        descriptionAlreadySanitized: true,
+      }),
+    ).toBe(false);
+    expect(sanitizeStartupRoleDescription(shown)?.length ?? 0).toBeLessThan(
+      OPEN_JOB_DESCRIPTION_INDEX_MIN,
+    );
+  });
 });
 
 describe("openJobRobots", () => {

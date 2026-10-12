@@ -181,6 +181,14 @@ describe("closed startup role page", () => {
     },
   );
 
+  it("keeps an open role indexable when the shown description is already sanitized", async () => {
+    state.role = role("open", {
+      descriptionText: `learn more ${"b".repeat(190)}`,
+    });
+    const meta = await generateMetadata({ params: params() });
+    expect(meta.robots).toEqual({ index: true, follow: true });
+  });
+
   it("noindexes an open role whose title the existing filter rejects", async () => {
     state.role = role("open", {
       title: "View Job",

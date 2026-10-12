@@ -17,6 +17,7 @@ import { isStartupCountryCode } from "@/lib/investigations/startups-countries";
 import {
   isNoindexOpenJob,
   OPEN_JOB_JS_WHITESPACE,
+  OPEN_JOB_NON_BMP_PATTERN,
   openJobSitemapDescription,
   openJobSitemapNeedsBody,
 } from "@/lib/investigations/job-indexability";
@@ -438,7 +439,7 @@ export async function listOpenStartupRoleSlugs(): Promise<string[]> {
         slug: startupRoles.slug,
         title: startupRoles.title,
         rawChars: sql<number>`char_length(coalesce(${startupRoles.descriptionText}, ''))::int`,
-        nonWsChars: sql<number>`char_length(regexp_replace(coalesce(${startupRoles.descriptionText}, ''), ${`[${OPEN_JOB_JS_WHITESPACE}]`}, '', 'g'))::int`,
+        nonWsChars: sql<number>`char_length(regexp_replace(regexp_replace(coalesce(${startupRoles.descriptionText}, ''), ${`[${OPEN_JOB_JS_WHITESPACE}]`}, '', 'g'), ${OPEN_JOB_NON_BMP_PATTERN}, '', 'g'))::int`,
       })
       .from(startupRoles)
       .innerJoin(startups, eq(startupRoles.startupId, startups.id))

@@ -33,7 +33,10 @@ export async function generateMetadata({
   return {
     title: `${role.title} — ${role.startupName}`,
     description,
-    robots: openJobRobots(role),
+    robots: openJobRobots({
+      ...role,
+      descriptionAlreadySanitized: true,
+    }),
     ...buildOgMeta(
       `${role.title} — ${role.startupName}`,
       description,
