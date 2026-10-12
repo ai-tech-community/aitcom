@@ -718,7 +718,8 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 // --- Slice B: Notifications infra (digest prefs, broadcasts, ceiling ledger) ---
 
 /** Sparse opt-OUT rows. Absence = opted in. communityId null = global digest
- *  opt-out. category: "digest" | "broadcast". (ADR-0014 preference center.) */
+ *  opt-out or a digest section (`digest:news` and the other section ids).
+ *  category: "digest" | "broadcast" | "digest:<section>". (ADR-0014.) */
 export const notificationOptouts = appSchema.table(
   "notification_optout",
   (d) => ({
@@ -735,7 +736,15 @@ export const notificationOptouts = appSchema.table(
     category: d
       .varchar({ length: 20 })
       .notNull()
-      .$type<"digest" | "broadcast">(),
+      .$type<
+        | "digest"
+        | "broadcast"
+        | "digest:news"
+        | "digest:community"
+        | "digest:events"
+        | "digest:jobs"
+        | "digest:startups"
+      >(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -14,6 +15,10 @@ import {
 } from "@/components/dashboard/dashboard-section";
 import { NOTIFICATION_SETTINGS_ANCHOR } from "@/lib/dashboard-routes";
 import type { HubMailCase } from "@/server/notifications/hub-mail-prefs";
+import {
+  digestSectionCategory,
+  type DigestSection,
+} from "@/server/notifications/prefs";
 
 const HUB_MAIL_ROWS: {
   case: HubMailCase;
@@ -39,6 +44,36 @@ const HUB_MAIL_ROWS: {
   },
   { case: "digest", label: "hubMailDigest", hint: "hubMailDigestHint" },
   { case: "agentJob", label: "hubMailAgentJob", hint: "hubMailAgentJobHint" },
+];
+
+const DIGEST_SECTION_ROWS: {
+  section: DigestSection;
+  label:
+    | "sectionNews"
+    | "sectionCommunity"
+    | "sectionEvents"
+    | "sectionJobs"
+    | "sectionStartups";
+  hint:
+    | "sectionNewsHint"
+    | "sectionCommunityHint"
+    | "sectionEventsHint"
+    | "sectionJobsHint"
+    | "sectionStartupsHint";
+}[] = [
+  { section: "news", label: "sectionNews", hint: "sectionNewsHint" },
+  {
+    section: "community",
+    label: "sectionCommunity",
+    hint: "sectionCommunityHint",
+  },
+  { section: "events", label: "sectionEvents", hint: "sectionEventsHint" },
+  { section: "jobs", label: "sectionJobs", hint: "sectionJobsHint" },
+  {
+    section: "startups",
+    label: "sectionStartups",
+    hint: "sectionStartupsHint",
+  },
 ];
 
 /** One setting: its name and hint on the left, the switch on the right. */
@@ -110,6 +145,7 @@ export function NotificationPrefs() {
   const data = prefs.data;
   const digestOut = new Set(data?.digestOptOutCommunityIds ?? []);
   const bcastOut = new Set(data?.broadcastOptOutCommunityIds ?? []);
+  const sectionOut = new Set(data?.digestOptOutSections ?? []);
   const myCommunities = (communities.data ?? []).filter(
     (c) => c.status === "active",
   );
@@ -158,6 +194,9 @@ export function NotificationPrefs() {
 
           <div>
             <h3 className="text-sm font-semibold">{t("digestTitle")}</h3>
+            <p className="text-muted-foreground mt-1 max-w-prose text-xs text-pretty">
+              {t("weeklyDigestHint")}
+            </p>
             <ul className="divide-border mt-2 divide-y">
               <PrefRow
                 label={t("globalDigest")}
@@ -179,6 +218,45 @@ export function NotificationPrefs() {
                 )}
               />
             </ul>
+
+            <fieldset
+              disabled={data.globalDigestOptOut}
+              className="mt-4 min-w-0"
+            >
+              <legend className="text-sm font-medium">
+                {t("sectionsTitle")}
+              </legend>
+              <p className="text-muted-foreground mt-1 max-w-prose text-xs text-pretty">
+                {data.globalDigestOptOut ? t("sectionsOff") : t("sectionsHint")}
+              </p>
+              <ul className="divide-border mt-2 divide-y">
+                {DIGEST_SECTION_ROWS.map((row) => (
+                  <PrefRow
+                    key={row.section}
+                    label={t(row.label)}
+                    hint={t(row.hint)}
+                    control={({ hintId }) => (
+                      <Checkbox
+                        tone="ink"
+                        aria-label={t(row.label)}
+                        aria-describedby={hintId}
+                        checked={!sectionOut.has(row.section)}
+                        disabled={
+                          data.globalDigestOptOut || setOptout.isPending
+                        }
+                        onCheckedChange={(on) =>
+                          setOptout.mutate({
+                            communityId: null,
+                            category: digestSectionCategory(row.section),
+                            optedOut: on !== true,
+                          })
+                        }
+                      />
+                    )}
+                  />
+                ))}
+              </ul>
+            </fieldset>
 
             <SectionBody
               status={statusFromQueries(communities, {
