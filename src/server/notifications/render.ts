@@ -17,13 +17,44 @@ export type DigestRenderOptions = {
   unsubscribeToken?: string;
 };
 
-function sectionLines(section: HubDigest["sections"][number]): string[] {
-  const lines: string[] = [];
-  if (section.newThreads) lines.push(`${section.newThreads} new discussion(s)`);
-  if (section.newEvents) lines.push(`${section.newEvents} new event(s)`);
-  if (section.newMembers) lines.push(`${section.newMembers} new member(s)`);
-  for (const item of section.ritualItems) lines.push(item);
+type Line = { text: string; path?: string };
+
+function communityLines(section: HubDigest["sections"][number]): Line[] {
+  const lines: Line[] = [];
+  for (const item of section.highlights ?? []) {
+    lines.push({ text: item.title, path: item.path });
+  }
+  for (const item of section.ritualItems) lines.push({ text: item });
   return lines;
+}
+
+function linkedHtml(line: Line, sendDate: Date): string {
+  if (!line.path) return esc(line.text);
+  return `<a href="${esc(digestLink(line.path, sendDate))}">${esc(line.text)}</a>`;
+}
+
+function itemBlock(title: string, lines: Line[], sendDate: Date): string {
+  if (lines.length === 0) return "";
+  return `
+        <h3 style="font-size: 15px; margin: 24px 0 8px;">${esc(title)}</h3>
+        <ul style="margin: 0; padding-left: 18px; font-size: 14px; color: #333;">
+          ${lines.map((line) => `<li>${linkedHtml(line, sendDate)}</li>`).join("")}
+        </ul>`;
+}
+
+function appendTextBlock(
+  lines: string[],
+  title: string,
+  items: Line[],
+  sendDate: Date,
+): void {
+  if (items.length === 0) return;
+  lines.push(title);
+  for (const item of items) {
+    lines.push(`- ${item.text}`);
+    if (item.path) lines.push(`  ${digestLink(item.path, sendDate)}`);
+  }
+  lines.push("");
 }
 
 function footerUrls(sendDate: Date, token?: string) {
@@ -41,18 +72,50 @@ export function renderHubDigestHtml(
   sendDate: Date,
   options?: DigestRenderOptions,
 ): string {
-  const sections = digest.sections
-    .map((s) => {
-      const lines = sectionLines(s);
-      return `
-        <div style="margin: 20px 0; padding-bottom: 16px; border-bottom: 1px solid #eee;">
-          <h3 style="font-size: 15px; margin: 0 0 8px;">${esc(s.communityName)}</h3>
+  const events = digest.events ?? [];
+  const jobs = digest.jobs ?? [];
+  const startups = digest.startups ?? [];
+  const communityHtml =
+    digest.sections.length === 0
+      ? ""
+      : `<h3 style="font-size: 15px; margin: 24px 0 8px;">Community</h3>
+      ${digest.sections
+        .map((section) => {
+          const lines = communityLines(section);
+          return `
+        <div style="margin: 12px 0; padding-bottom: 12px; border-bottom: 1px solid #eee;">
+          <h4 style="font-size: 14px; margin: 0 0 8px;">${esc(section.communityName)}</h4>
           <ul style="margin: 0; padding-left: 18px; font-size: 14px; color: #333;">
-            ${lines.map((l) => `<li>${esc(l)}</li>`).join("")}
+            ${lines.map((line) => `<li>${linkedHtml(line, sendDate)}</li>`).join("")}
           </ul>
         </div>`;
-    })
-    .join("");
+        })
+        .join("")}`;
+
+  const eventsHtml = itemBlock(
+    "Events",
+    events.map((event) => ({
+      text: `${event.title} · ${event.when}`,
+      path: event.path,
+    })),
+    sendDate,
+  );
+  const jobsHtml = itemBlock(
+    "Jobs",
+    jobs.map((job) => ({
+      text: `${job.title} — ${job.company}`,
+      path: job.path,
+    })),
+    sendDate,
+  );
+  const startupsHtml = itemBlock(
+    "Startups",
+    startups.map((startup) => ({
+      text: `${startup.title} · ${startup.votes} votes`,
+      path: startup.path,
+    })),
+    sendDate,
+  );
 
   const discoveryHtml = digest.discovery
     ? `<p style="margin-top:16px;font-size:14px;color:#555;">Discover another community you might like: <a href="${esc(digestLink(`/en/communities/${encodeURIComponent(digest.discovery.slug)}`, sendDate))}">${esc(digest.discovery.name)}</a></p>`
@@ -70,7 +133,10 @@ export function renderHubDigestHtml(
     <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
       <h2 style="font-size: 18px;">Your weekly AIT digest</h2>
       <p style="font-size: 14px; color: #555;">Here's what happened across your communities this week.</p>
-      ${sections}
+      ${communityHtml}
+      ${eventsHtml}
+      ${jobsHtml}
+      ${startupsHtml}
       ${discoveryHtml}
       <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
       <p style="font-size: 12px; color: #999;">
@@ -95,11 +161,46 @@ export function renderHubDigestText(
     "",
   ];
 
-  for (const section of digest.sections) {
-    lines.push(section.communityName);
-    for (const line of sectionLines(section)) lines.push(`- ${line}`);
+  if (digest.sections.length > 0) {
+    lines.push("Community");
     lines.push("");
+    for (const section of digest.sections) {
+      lines.push(section.communityName);
+      for (const line of communityLines(section)) {
+        lines.push(`- ${line.text}`);
+        if (line.path) lines.push(`  ${digestLink(line.path, sendDate)}`);
+      }
+      lines.push("");
+    }
   }
+
+  appendTextBlock(
+    lines,
+    "Events",
+    (digest.events ?? []).map((event) => ({
+      text: `${event.title} · ${event.when}`,
+      path: event.path,
+    })),
+    sendDate,
+  );
+  appendTextBlock(
+    lines,
+    "Jobs",
+    (digest.jobs ?? []).map((job) => ({
+      text: `${job.title} — ${job.company}`,
+      path: job.path,
+    })),
+    sendDate,
+  );
+  appendTextBlock(
+    lines,
+    "Startups",
+    (digest.startups ?? []).map((startup) => ({
+      text: `${startup.title} · ${startup.votes} votes`,
+      path: startup.path,
+    })),
+    sendDate,
+  );
 
   if (digest.discovery) {
     lines.push(

@@ -27,6 +27,13 @@ import {
   summarizeCommunitySection,
   type HubDigest,
 } from "@/server/notifications/digest";
+import { selectCommunityHighlights } from "@/server/notifications/digest-sections";
+import {
+  loadDigestEvents,
+  loadDigestJobs,
+  loadDigestStartups,
+  loadHighlightPool,
+} from "@/server/notifications/digest-sources";
 import { resolvePrefs, type OptoutRow } from "@/server/notifications/prefs";
 import {
   buildRitualItems,
@@ -80,6 +87,7 @@ export async function loadHubDigests(
       userId: communityMemberships.userId,
       communityId: communityMemberships.communityId,
       communityName: communities.name,
+      communitySlug: communities.slug,
       email: user.email,
       name: user.name,
     })
@@ -200,6 +208,21 @@ export async function loadHubDigests(
     crossPromoteOnly: true,
   });
 
+  const communityRefs = [
+    ...new Map(
+      memberships.map((row) => [
+        row.communityId,
+        { id: row.communityId, slug: row.communitySlug },
+      ]),
+    ).values(),
+  ];
+  const [highlightPool, events, jobs, startups] = await Promise.all([
+    loadHighlightPool(communityRefs, weekAgo),
+    loadDigestEvents(now),
+    loadDigestJobs(),
+    loadDigestStartups(now),
+  ]);
+
   const allUserIds = [...byUser.keys()];
   const allOptouts =
     allUserIds.length === 0
@@ -223,6 +246,10 @@ export async function loadHubDigests(
   for (const [userId, { email, name, rows }] of byUser) {
     const prefs = resolvePrefs(optoutByUser.get(userId) ?? []);
     const memberIds = new Set(rows.map((r) => r.communityId));
+    const highlightIds = new Set(
+      [...memberIds].filter((id) => !prefs.digestOptOutCommunityIds.has(id)),
+    );
+    const highlights = selectCommunityHighlights(highlightPool, highlightIds);
     const topPick = rankCommunitiesForMember({
       candidates: discoveryCandidates,
       memberCommunityIds: memberIds,
@@ -239,6 +266,13 @@ export async function loadHubDigests(
         newThreads: countOf(r.communityId, "thread.create"),
         newEvents: countOf(r.communityId, "event.create"),
         newMembers: countOf(r.communityId, "community.joined"),
+        highlights: highlights
+          .filter((item) => item.communityId === r.communityId)
+          .map((item) => ({
+            title: item.title,
+            path: item.path,
+            kind: item.kind,
+          })),
         ritualItems: buildRitualItems({
           config: cfgOf(r.communityId),
           recap: recapByCommunity.get(r.communityId) ?? [],
@@ -256,7 +290,11 @@ export async function loadHubDigests(
       digest: buildHubDigest({
         userId,
         sections,
+        events,
+        jobs,
+        startups,
         optedOutCommunityIds: prefs.digestOptOutCommunityIds,
+        optedOutSections: prefs.digestOptOutSections,
         discovery,
       }),
     });
