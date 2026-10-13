@@ -25,12 +25,13 @@ Primary, rendered inline:
 - `/jobs`, `/startups` — the public openings surface and the
   listed-company directory. These stay inline so they are visible
   without opening More. Do not collide Jobs with Hub `/roles`.
-- `/challenges` — recurring action surface.
+- `/news` — the public AI news page. It takes the inline slot
+  `/challenges` used to hold.
 
 Overflow, behind a "More ▾" DropdownMenu:
 
-- `/launchpad`, `/benchmark`, `/agents`, `/ideas`, `/members`,
-  `/blog`, `/investigations`, `/impact`, `/sponsors`.
+- `/challenges`, `/launchpad`, `/benchmark`, `/agents`, `/ideas`,
+  `/members`, `/blog`, `/investigations`, `/impact`, `/sponsors`.
 
 **Why:** eleven equally-weighted top-level destinations is a
 symptom of unmade IA decisions, not a constraint. Picking five
@@ -40,7 +41,7 @@ re-creating the crowding problem the next time a page is added.
 
 **How to apply:** new destinations default to overflow unless they
 clear the bar that `/communities`, `/events`, `/roles`, `/jobs`,
-`/startups`, `/challenges` cleared — recurring action surfaces, or
+`/startups`, `/news` cleared — recurring action surfaces, or
 flagship products. Editorial and about-the-org pages go into
 overflow.
 

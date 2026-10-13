@@ -50,6 +50,7 @@ import { classroomMaterialsRouter } from "@/server/api/routers/classroom-materia
 import { spacesRouter } from "@/server/api/routers/spaces";
 import { awesomeAiOssRouter } from "@/server/api/routers/awesome-ai-oss";
 import { startupsRouter } from "@/server/api/routers/startups";
+import { newsRouter } from "@/server/api/routers/news";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -110,6 +111,7 @@ export const appRouter = createTRPCRouter({
   spaces: spacesRouter,
   awesomeAiOss: awesomeAiOssRouter,
   startups: startupsRouter,
+  news: newsRouter,
 });
 
 // export type definition of API
