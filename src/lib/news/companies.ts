@@ -260,6 +260,11 @@ const CURATED_COMPANIES: readonly CuratedCompany[] = [
   },
 ];
 
+/** One curated company, for a SQL filter that cannot scan every alias in memory. */
+export function findCuratedNewsCompany(id: string): CuratedCompany | undefined {
+  return CURATED_COMPANIES.find((company) => company.id === id);
+}
+
 export function newsHostname(href: string | null | undefined): string | null {
   if (!href) return null;
   try {
