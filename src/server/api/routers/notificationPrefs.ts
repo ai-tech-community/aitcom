@@ -3,7 +3,13 @@ import { and, eq, isNull } from "drizzle-orm";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { hubMailPrefs, notificationOptouts } from "@/server/db/schema";
-import { resolvePrefs, type OptoutRow } from "@/server/notifications/prefs";
+import {
+  DIGEST_SECTIONS,
+  OPTOUT_CATEGORIES,
+  optoutInputError,
+  resolvePrefs,
+  type OptoutRow,
+} from "@/server/notifications/prefs";
 import {
   DEFAULT_HUB_MAIL_PREFS,
   HUB_MAIL_CASES,
@@ -40,6 +46,9 @@ export const notificationPrefsRouter = createTRPCRouter({
       globalDigestOptOut: resolved.globalDigestOptOut,
       digestOptOutCommunityIds: [...resolved.digestOptOutCommunityIds],
       broadcastOptOutCommunityIds: [...resolved.broadcastOptOutCommunityIds],
+      digestOptOutSections: DIGEST_SECTIONS.filter((section) =>
+        resolved.digestOptOutSections.has(section),
+      ),
       hubMail: resolveHubMailPrefs(hubRow ?? null),
     };
   }),
@@ -47,30 +56,33 @@ export const notificationPrefsRouter = createTRPCRouter({
   /** Toggle one opt-out. optedOut=true inserts (if absent); false deletes.
    *
    * Valid combinations:
-   *   communityId=null  + category="digest"    → global digest opt-out
-   *   communityId=<id>  + category="digest"    → per-community digest opt-out
-   *   communityId=<id>  + category="broadcast" → per-community broadcast opt-out
+   *   communityId=null  + category="digest"         → global digest opt-out
+   *   communityId=null  + category="digest:<section>" → section opt-out
+   *   communityId=<id>  + category="digest"         → per-community digest opt-out
+   *   communityId=<id>  + category="broadcast"      → per-community broadcast opt-out
    *
    * Invalid (rejected):
-   *   communityId=null  + category="broadcast" → no global broadcast opt-out concept
-   *   communityId=""                            → empty string is not a valid community id
+   *   communityId=null  + category="broadcast"      → no global broadcast opt-out
+   *   communityId=<id>  + category="digest:<section>" → sections are global
+   *   communityId=""                                 → empty string is not a community id
    */
   setOptout: protectedProcedure
     .input(
       z
         .object({
           communityId: z.string().min(1).nullable(),
-          category: z.enum(["digest", "broadcast"]),
+          category: z.enum(OPTOUT_CATEGORIES),
           optedOut: z.boolean(),
         })
-        .refine(
-          (val) => !(val.communityId === null && val.category === "broadcast"),
-          {
-            message:
-              'Global broadcast opt-out does not exist. Use communityId with category "broadcast", or communityId null with category "digest".',
+        .superRefine((val, ctx) => {
+          const message = optoutInputError(val);
+          if (!message) return;
+          ctx.addIssue({
+            code: "custom",
+            message,
             path: ["category"],
-          },
-        ),
+          });
+        }),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
