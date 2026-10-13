@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { StartupsFounderRoster } from "@/components/investigations/startups-founders";
 import { StartupsSourceChips } from "@/components/investigations/startups-source-chips";
+import { Badge } from "@/components/ui/badge";
 import {
   buildStartupJobsPath,
   buildStartupRolePath,
@@ -13,6 +14,7 @@ import {
   type StartupProfileSection,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
+import type { StartupNewsMention } from "@/lib/news/startup-match";
 import type { StartupRolePublic } from "@/lib/investigations/startup-roles";
 
 /** Roles listed inline before the "see all" link takes over. */
@@ -23,6 +25,8 @@ export type StartupsProfileSectionsCopy = {
   sectionHiring: string;
   sectionNews: string;
   allRoles: string;
+  newsVerified: string;
+  newsRumor: string;
 };
 
 /** Main reading column: one section per sourced topic, ruled apart. */
@@ -30,12 +34,14 @@ export function StartupsProfileSections({
   sections,
   card,
   roles,
+  mentions = [],
   locale,
   copy,
 }: {
   sections: readonly StartupProfileSection[];
   card: StartupPublicCard;
   roles: readonly StartupRolePublic[];
+  mentions?: readonly StartupNewsMention[];
   locale: StartupLocale;
   copy: StartupsProfileSectionsCopy;
 }) {
@@ -72,14 +78,24 @@ export function StartupsProfileSections({
             );
           case "news": {
             const news = startupNewsSources(card.sources);
+            if (news.length === 0 && mentions.length === 0) return null;
             return (
               <ProfileSection
                 key={section}
                 id={section}
                 title={copy.sectionNews}
-                count={news.length}
+                count={news.length + mentions.length}
               >
-                <StartupsSourceChips sources={news} locale={locale} />
+                {news.length > 0 ? (
+                  <StartupsSourceChips sources={news} locale={locale} />
+                ) : null}
+                {mentions.length > 0 ? (
+                  <StartupMentionList
+                    mentions={mentions}
+                    locale={locale}
+                    copy={copy}
+                  />
+                ) : null}
               </ProfileSection>
             );
           }
@@ -118,6 +134,67 @@ function ProfileSection({
       </h2>
       {children}
     </section>
+  );
+}
+
+function StartupMentionList({
+  mentions,
+  locale,
+  copy,
+}: {
+  mentions: readonly StartupNewsMention[];
+  locale: StartupLocale;
+  copy: StartupsProfileSectionsCopy;
+}) {
+  const format = new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  });
+  return (
+    <ul
+      data-startup-news-mentions=""
+      className="border-border divide-border divide-y border"
+    >
+      {mentions.map((item) => {
+        const external =
+          item.href.startsWith("https://") || item.href.startsWith("http://");
+        const title = external ? (
+          <a
+            href={item.href}
+            rel="noopener noreferrer"
+            className="text-foreground font-medium underline-offset-4 hover:underline"
+          >
+            {item.title}
+          </a>
+        ) : (
+          <Link
+            href={item.href}
+            className="text-foreground font-medium underline-offset-4 hover:underline"
+          >
+            {item.title}
+          </Link>
+        );
+        return (
+          <li
+            key={`${item.kind}-${item.id}`}
+            className="flex flex-col gap-2 px-4 py-3"
+          >
+            {title}
+            <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <span>{item.source}</span>
+              {item.at ? (
+                <span className="font-mono text-xs">
+                  {format.format(new Date(item.at))}
+                </span>
+              ) : null}
+              <Badge variant={item.kind === "story" ? "success" : "warning"}>
+                {item.kind === "story" ? copy.newsVerified : copy.newsRumor}
+              </Badge>
+            </p>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

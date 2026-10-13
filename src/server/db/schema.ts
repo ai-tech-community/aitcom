@@ -4775,3 +4775,41 @@ export const newsRumors = appSchema.table(
     index("news_rumor_user_created_idx").on(t.userId, t.createdAt),
   ],
 );
+
+/** News rows that name a directory startup. Filled at ingest and by backfill. */
+export const newsItemStartups = appSchema.table(
+  "news_item_startup",
+  (d) => ({
+    newsItemId: d
+      .varchar("news_item_id", { length: 255 })
+      .notNull()
+      .references(() => newsItems.id, { onDelete: "cascade" }),
+    startupId: d
+      .varchar("startup_id", { length: 255 })
+      .notNull()
+      .references(() => startups.id, { onDelete: "cascade" }),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.newsItemId, t.startupId] }),
+    index("news_item_startup_startup_idx").on(t.startupId),
+  ],
+);
+
+/** Rumors that name a directory startup. Same rules as news_item_startup. */
+export const newsRumorStartups = appSchema.table(
+  "news_rumor_startup",
+  (d) => ({
+    newsRumorId: d
+      .varchar("news_rumor_id", { length: 255 })
+      .notNull()
+      .references(() => newsRumors.id, { onDelete: "cascade" }),
+    startupId: d
+      .varchar("startup_id", { length: 255 })
+      .notNull()
+      .references(() => startups.id, { onDelete: "cascade" }),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.newsRumorId, t.startupId] }),
+    index("news_rumor_startup_startup_idx").on(t.startupId),
+  ],
+);

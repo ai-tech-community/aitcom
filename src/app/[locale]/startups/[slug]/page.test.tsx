@@ -23,6 +23,10 @@ vi.mock("@/server/startups/queries", () => ({
   listOpenStartupRolesForCompany: async () => [],
 }));
 
+vi.mock("@/server/news/startup-links", () => ({
+  listStartupNewsMentions: async () => [],
+}));
+
 vi.mock("@/components/investigations/startups-profile", () => ({
   StartupsProfilePage: () => null,
 }));

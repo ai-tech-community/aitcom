@@ -1476,6 +1476,58 @@ describe("Startups i18n", () => {
 });
 
 describe("Startups profile page", () => {
+  it("lists stored news only when a startup has matches", () => {
+    const { container } = render(
+      <StartupsProfilePage
+        locale="en"
+        t={profileT("en")}
+        card={FIXTURE_CARD}
+      />,
+    );
+    expect(container.querySelector("[data-startup-news-mentions]")).toBeNull();
+    container.remove();
+    render(
+      <StartupsProfilePage
+        locale="en"
+        t={profileT("en")}
+        card={FIXTURE_CARD}
+        mentions={[
+          {
+            kind: "story",
+            id: "story-1",
+            title: "Northstar ships",
+            href: "https://example.com/northstar",
+            source: "The Verge — AI",
+            at: "2026-10-11T00:00:00.000Z",
+          },
+          {
+            kind: "rumor",
+            id: "rumor-1",
+            title: "Weights dropped",
+            href: "/news#rumor-rumor-1",
+            source: "Ada Lovelace",
+            at: "2026-10-12T00:00:00.000Z",
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: /In the news/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Northstar ships" }),
+    ).toHaveAttribute("href", "https://example.com/northstar");
+    expect(
+      screen.getByRole("link", { name: "Northstar ships" }),
+    ).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.getByText("Unverified rumor")).toBeInTheDocument();
+    expect(screen.getByText("The Verge — AI")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Weights dropped" }),
+    ).toHaveAttribute("href", "/news#rumor-rumor-1");
+  });
+
   it("renders a thin record as a facts sheet with no empty sections", () => {
     const { container } = render(
       <StartupsProfilePage
