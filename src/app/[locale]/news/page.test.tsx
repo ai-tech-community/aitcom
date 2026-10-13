@@ -162,6 +162,14 @@ vi.mock("@/server/better-auth/server", () => ({
       : null,
 }));
 
+vi.mock("next/dynamic", () => ({
+  default: () =>
+    function DynamicNewsDialog(props: { label?: string }) {
+      if (!props.label) return null;
+      return <button type="button">{props.label}</button>;
+    },
+}));
+
 vi.mock("@/i18n/navigation", () => ({
   Link: ({
     href,
@@ -177,6 +185,7 @@ vi.mock("@/i18n/navigation", () => ({
       {children}
     </a>
   ),
+  useRouter: () => ({ push: () => undefined, replace: () => undefined }),
 }));
 
 vi.mock("@/server/news/directory", () => ({

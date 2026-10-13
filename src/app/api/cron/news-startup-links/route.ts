@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { revalidateNewsTable } from "@/server/news/cache";
 import { backfillNewsStartupLinks } from "@/server/news/startup-links";
 
 export const runtime = "nodejs";
@@ -25,6 +26,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await backfillNewsStartupLinks();
+    revalidateNewsTable();
     return NextResponse.json({
       success: true,
       ...result,

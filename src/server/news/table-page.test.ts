@@ -86,13 +86,32 @@ describe("news table SQL", () => {
     expect(params).toContain("northstar-labs");
   });
 
+  it("skips the blank-byline scan for a writer who is not a source label", () => {
+    const person = renderCount({ writer: "Ada Lovelace" });
+    expect(person.sql).toContain(
+      "left(regexp_replace(btrim(coalesce(\"author\", ''))",
+    );
+    expect(person.sql).not.toContain("btrim(coalesce(\"author\", '')) = ''");
+    expect(person.params).toContain("Ada Lovelace");
+
+    const feed = renderCount({ writer: "OpenAI News" });
+    expect(feed.sql).toContain("btrim(coalesce(\"author\", '')) = ''");
+  });
+
+  it("searches with a regex the trigram indexes can use", () => {
+    const { sql } = renderCount({ q: "OpenAI models" });
+    expect(sql).toContain("~");
+    expect(sql.toLowerCase()).toContain("lower(");
+    expect(sql).not.toContain("regexp_replace(lower(title)");
+  });
+
   it("does not match an unknown company id", () => {
     const { sql } = renderCount({ company: "not-a-company" });
     expect(sql).toContain("false");
   });
 
   it("keeps the more specific Microsoft host ahead of microsoft.com", () => {
-    const { params } = renderCount();
+    const { params } = renderCount({ source: "feed:news.microsoft.com" });
     const source = params.indexOf("feed:news.microsoft.com");
     const parent = params.indexOf("feed:microsoft.com");
     expect(source).toBeGreaterThanOrEqual(0);

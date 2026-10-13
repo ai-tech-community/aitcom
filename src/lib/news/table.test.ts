@@ -11,6 +11,7 @@ import {
   newsTableBlurb,
   newsTableFacets,
   newsTableHref,
+  newsTableSearchRegex,
   parseNewsTableQuery,
   type NewsRumorInput,
   type NewsStoryInput,
@@ -412,5 +413,11 @@ describe("newsTableFacets and newsTableHref", () => {
     ).toBe(
       "/news?q=OpenAI&type=rumor&source=member&company=openai&writer=Ada+Lovelace&sort=source&story=older",
     );
+  });
+
+  it("turns a search into a whitespace-tolerant literal regex", () => {
+    expect(newsTableSearchRegex("OpenAI   models")).toBe("openai\\s+models");
+    expect(newsTableSearchRegex("c++")).toBe("c\\+\\+");
+    expect(newsTableSearchRegex("100%")).toBe("100%");
   });
 });
