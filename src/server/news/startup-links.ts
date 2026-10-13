@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 
 import {
   indexNewsStartups,
@@ -19,6 +19,16 @@ import {
 
 const MENTION_LIMIT = 8;
 
+/** Rows matched per insert. The cron walks the tables in these chunks. */
+export const NEWS_STARTUP_LINK_BATCH = 200;
+
+export type NewsStartupBackfill = {
+  stories: number;
+  rumors: number;
+  storyLinks: number;
+  rumorLinks: number;
+};
+
 export type { StartupNewsMention };
 
 export async function listMatchableStartups(): Promise<NewsStartupRef[]> {
@@ -35,16 +45,26 @@ export async function listMatchableStartups(): Promise<NewsStartupRef[]> {
 
 async function insertItemLinks(
   pairs: { newsItemId: string; startupId: string }[],
-): Promise<void> {
-  if (pairs.length === 0) return;
-  await db.insert(newsItemStartups).values(pairs).onConflictDoNothing();
+): Promise<number> {
+  if (pairs.length === 0) return 0;
+  const inserted = await db
+    .insert(newsItemStartups)
+    .values(pairs)
+    .onConflictDoNothing()
+    .returning({ newsItemId: newsItemStartups.newsItemId });
+  return inserted.length;
 }
 
 async function insertRumorLinks(
   pairs: { newsRumorId: string; startupId: string }[],
-): Promise<void> {
-  if (pairs.length === 0) return;
-  await db.insert(newsRumorStartups).values(pairs).onConflictDoNothing();
+): Promise<number> {
+  if (pairs.length === 0) return 0;
+  const inserted = await db
+    .insert(newsRumorStartups)
+    .values(pairs)
+    .onConflictDoNothing()
+    .returning({ newsRumorId: newsRumorStartups.newsRumorId });
+  return inserted.length;
 }
 
 /** Store precise startup matches for rows just ingested. */
@@ -72,6 +92,109 @@ export async function linkIngestedNewsItems(
     ).map((startup) => ({ newsItemId: row.id, startupId: startup.id })),
   );
   await insertItemLinks(pairs);
+}
+
+/**
+ * Link existing news rows and rumors to directory startups.
+ * Idempotent: a pair already stored is left in place. One pass indexes the
+ * directory once, then reads and writes in batches so this stays off the
+ * deploy path.
+ */
+export async function backfillNewsStartupLinks(): Promise<NewsStartupBackfill> {
+  const indexed = indexNewsStartups(await listMatchableStartups());
+  if (indexed.length === 0) {
+    return { stories: 0, rumors: 0, storyLinks: 0, rumorLinks: 0 };
+  }
+
+  let stories = 0;
+  let storyLinks = 0;
+  let afterStory: string | null = null;
+  for (;;) {
+    const storyColumns = {
+      id: newsItems.id,
+      url: newsItems.url,
+      title: newsItems.title,
+      summary: newsItems.summary,
+      aiSummary: newsItems.aiSummary,
+    };
+    const rows: {
+      id: string;
+      url: string;
+      title: string;
+      summary: string;
+      aiSummary: string | null;
+    }[] = afterStory
+      ? await db
+          .select(storyColumns)
+          .from(newsItems)
+          .where(gt(newsItems.id, afterStory))
+          .orderBy(asc(newsItems.id))
+          .limit(NEWS_STARTUP_LINK_BATCH)
+      : await db
+          .select(storyColumns)
+          .from(newsItems)
+          .orderBy(asc(newsItems.id))
+          .limit(NEWS_STARTUP_LINK_BATCH);
+    if (rows.length === 0) break;
+    stories += rows.length;
+    afterStory = rows[rows.length - 1]?.id ?? afterStory;
+    storyLinks += await insertItemLinks(
+      rows.flatMap((row) =>
+        matchIndexedNewsStartups(
+          {
+            title: row.title,
+            text: `${row.summary}\n${row.aiSummary ?? ""}`,
+            url: row.url,
+          },
+          indexed,
+        ).map((startup) => ({ newsItemId: row.id, startupId: startup.id })),
+      ),
+    );
+    if (rows.length < NEWS_STARTUP_LINK_BATCH) break;
+  }
+
+  let rumors = 0;
+  let rumorLinks = 0;
+  let afterRumor: string | null = null;
+  for (;;) {
+    const rumorColumns = {
+      id: newsRumors.id,
+      title: newsRumors.title,
+      body: newsRumors.body,
+      url: newsRumors.url,
+    };
+    const rows: {
+      id: string;
+      title: string;
+      body: string;
+      url: string | null;
+    }[] = afterRumor
+      ? await db
+          .select(rumorColumns)
+          .from(newsRumors)
+          .where(gt(newsRumors.id, afterRumor))
+          .orderBy(asc(newsRumors.id))
+          .limit(NEWS_STARTUP_LINK_BATCH)
+      : await db
+          .select(rumorColumns)
+          .from(newsRumors)
+          .orderBy(asc(newsRumors.id))
+          .limit(NEWS_STARTUP_LINK_BATCH);
+    if (rows.length === 0) break;
+    rumors += rows.length;
+    afterRumor = rows[rows.length - 1]?.id ?? afterRumor;
+    rumorLinks += await insertRumorLinks(
+      rows.flatMap((row) =>
+        matchIndexedNewsStartups(
+          { title: row.title, text: row.body, url: row.url },
+          indexed,
+        ).map((startup) => ({ newsRumorId: row.id, startupId: startup.id })),
+      ),
+    );
+    if (rows.length < NEWS_STARTUP_LINK_BATCH) break;
+  }
+
+  return { stories, rumors, storyLinks, rumorLinks };
 }
 
 /** Store precise startup matches for a rumor that was just submitted. */
