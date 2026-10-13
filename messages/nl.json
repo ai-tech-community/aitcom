@@ -4325,5 +4325,14 @@
     "blockingPartial": "Je kunt ook alleen een deel van je site blokkeren, bijvoorbeeld <example></example>.",
     "optOut": "Afmelden",
     "optOutText": "Wil je liever dat we je domein nooit bezoeken? Mail <email></email> met je domeinnaam. We zetten het op onze blokkeerlijst, die ook alle subdomeinen dekt."
+  },
+  "newsPage": {
+    "kicker": "Nieuws",
+    "title": "AI-nieuws",
+    "description": "Recente verhalen uit RSS- en Atom-feeds.",
+    "empty": "Nog geen verhalen.",
+    "undated": "Geen datum",
+    "metaTitle": "Nieuws",
+    "metaDescription": "Recente AI-verhalen verzameld voor de AIT-community."
   }
 }

@@ -4717,3 +4717,29 @@ export const curatedPublicEvents = appSchema.table(
     index("curated_public_event_date_idx").on(t.date),
   ],
 );
+
+/** RSS/Atom stories for /news. One row per article URL. */
+export const newsItems = appSchema.table(
+  "news_item",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    url: d.text().notNull(),
+    title: d.text().notNull(),
+    author: d.text(),
+    publishedAt: d.timestamp({ withTimezone: true }),
+    summary: d.text().notNull().default(""),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("news_item_url_idx").on(t.url),
+    index("news_item_published_idx").on(t.publishedAt),
+  ],
+);
