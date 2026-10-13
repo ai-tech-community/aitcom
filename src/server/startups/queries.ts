@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, asc, count, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 
 import { isThinStartupProfile } from "@/lib/investigations/startup-profile-index";
 import {
@@ -15,6 +15,13 @@ import {
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
 import { isStartupCountryCode } from "@/lib/investigations/startups-countries";
+import {
+  isNoindexOpenJob,
+  OPEN_JOB_JS_WHITESPACE,
+  OPEN_JOB_NON_BMP_PATTERN,
+  openJobSitemapDescription,
+  openJobSitemapNeedsBody,
+} from "@/lib/investigations/job-indexability";
 import {
   parseStartupRoleTitle,
   sanitizeStartupRoleDescription,
@@ -435,20 +442,82 @@ export async function findPublicStartupRoleBySlug(
   }
 }
 
+/**
+ * Open role paths for the sitemap. Thin descriptions and titles rejected by
+ * the #438 filter are omitted. The job page uses the same `isNoindexOpenJob`
+ * check. Closed roles are already excluded by status.
+ *
+ * Descriptions together are tens of megabytes, so this loads lengths only.
+ * The stored text is fetched for the small band whose length can still cross
+ * 200 characters after sanitize. A failure of that second read drops the band,
+ * and leaves every other open role in the sitemap.
+ */
 export async function listOpenStartupRoleSlugs(): Promise<string[]> {
   try {
     const rows = await db
-      .select({ slug: startupRoles.slug })
+      .select({
+        slug: startupRoles.slug,
+        title: startupRoles.title,
+        rawChars: sql<number>`char_length(coalesce(${startupRoles.descriptionText}, ''))::int`,
+        nonWsChars: sql<number>`char_length(regexp_replace(regexp_replace(coalesce(${startupRoles.descriptionText}, ''), ${`[${OPEN_JOB_JS_WHITESPACE}]`}, '', 'g'), ${OPEN_JOB_NON_BMP_PATTERN}, '', 'g'))::int`,
+      })
       .from(startupRoles)
       .innerJoin(startups, eq(startupRoles.startupId, startups.id))
       .where(
         and(eq(startups.status, "approved"), eq(startupRoles.status, "open")),
       );
+    const bandSlugs = rows.flatMap((row) => {
+      const slug = parseStartupSlug(row.slug);
+      if (!slug) return [];
+      return openJobSitemapNeedsBody({
+        rawChars: asFiniteCount(row.rawChars),
+        nonWsChars: asFiniteCount(row.nonWsChars),
+      })
+        ? [slug]
+        : [];
+    });
+    const bodies = await listSitemapRoleDescriptionBodies(bandSlugs);
     return rows.flatMap((row) => {
       const slug = parseStartupSlug(row.slug);
-      return slug ? [slug] : [];
+      if (!slug) return [];
+      const rawChars = asFiniteCount(row.rawChars);
+      const nonWsChars = asFiniteCount(row.nonWsChars);
+      const descriptionText = openJobSitemapDescription({
+        rawChars,
+        nonWsChars,
+        body: bodies.get(slug),
+      });
+      if (isNoindexOpenJob({ title: row.title, descriptionText })) return [];
+      return [slug];
     });
   } catch {
     return [];
+  }
+}
+
+/**
+ * Band slugs only. An empty list skips the query. A failure returns an empty
+ * map so those roles stay out of the sitemap instead of dropping every role.
+ */
+async function listSitemapRoleDescriptionBodies(
+  slugs: readonly string[],
+): Promise<Map<string, string | null>> {
+  if (slugs.length === 0) return new Map();
+  try {
+    const rows = await db
+      .select({
+        slug: startupRoles.slug,
+        descriptionText: startupRoles.descriptionText,
+      })
+      .from(startupRoles)
+      .where(inArray(startupRoles.slug, [...slugs]));
+    return new Map(
+      rows.flatMap((row) => {
+        const slug = parseStartupSlug(row.slug);
+        return slug ? [[slug, row.descriptionText] as const] : [];
+      }),
+    );
+  } catch {
+    return new Map();
   }
 }
