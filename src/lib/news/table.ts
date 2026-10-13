@@ -5,7 +5,9 @@ import {
   type NewsDirectoryCompany,
   type NewsMatchCompany,
 } from "@/lib/news/companies";
+import { plainText } from "@/server/collectors/helpers/feed";
 import { NEWS_FEEDS } from "@/server/news/feeds";
+import { clampNewsSummary } from "@/server/news/summary";
 
 export const NEWS_PAGE_SIZE = 20;
 
@@ -20,7 +22,10 @@ export type NewsStoryInput = {
   title: string;
   author: string | null;
   publishedAt: Date | null;
+  /** Feed description or excerpt. */
   summary: string;
+  /** Stored TL;DR from ingest. Absent or blank falls back to `summary`. */
+  aiSummary?: string | null;
 };
 
 export type NewsRumorInput = {
@@ -38,6 +43,9 @@ export type NewsTableRow = {
   id: string;
   title: string;
   href: string | null;
+  /** Short line under the title. Empty when there is nothing real to show. */
+  blurb: string;
+  /** Feed excerpt or member note, kept in full so search is not limited to the line. */
   text: string;
   writer: string;
   sourceKey: string;
@@ -133,6 +141,22 @@ export function newsSourceFromUrl(url: string): { key: string; label: string } {
   return { key: `host:${host}`, label: host };
 }
 
+/**
+ * The line under a title. A stored TL;DR wins. Otherwise the feed excerpt
+ * or the member's note, with tags removed and the length held to the same
+ * cap as a stored TL;DR. The title is never copied in to fill a blank.
+ */
+export function newsTableBlurb(input: {
+  aiSummary?: string | null;
+  excerpt?: string | null;
+}): string {
+  const written = input.aiSummary?.replace(/\s+/g, " ").trim() ?? "";
+  if (written) return clampNewsSummary(written);
+  const excerpt = plainText(input.excerpt ?? "");
+  if (!excerpt) return "";
+  return clampNewsSummary(excerpt);
+}
+
 export function buildNewsTableRows(
   stories: readonly NewsStoryInput[],
   rumors: readonly NewsRumorInput[],
@@ -141,7 +165,11 @@ export function buildNewsTableRows(
 ): NewsTableRow[] {
   const storyRows: NewsTableRow[] = stories.map((story) => {
     const companies = detectNewsCompanies(
-      { title: story.title, text: story.summary, url: story.url },
+      {
+        title: story.title,
+        text: `${story.summary}\n${story.aiSummary ?? ""}`,
+        url: story.url,
+      },
       directory,
     );
     const source = newsSourceFromUrl(story.url);
@@ -151,6 +179,10 @@ export function buildNewsTableRows(
       id: story.id,
       title: story.title,
       href: story.url,
+      blurb: newsTableBlurb({
+        aiSummary: story.aiSummary,
+        excerpt: story.summary,
+      }),
       text: story.summary,
       writer: author || source.label,
       sourceKey: source.key,
@@ -171,6 +203,7 @@ export function buildNewsTableRows(
       id: rumor.id,
       title: rumor.title,
       href: rumor.url,
+      blurb: newsTableBlurb({ excerpt: rumor.body }),
       text: rumor.body,
       writer: rumor.submitterName,
       sourceKey: NEWS_MEMBER_SOURCE,
@@ -193,6 +226,7 @@ function matchesSearch(row: NewsTableRow, q: string): boolean {
   const needle = normalizeSearch(q);
   return (
     normalizeSearch(row.title).includes(needle) ||
+    normalizeSearch(row.blurb).includes(needle) ||
     normalizeSearch(row.text).includes(needle)
   );
 }

@@ -9,7 +9,10 @@ export type NewsListItem = {
   title: string;
   author: string | null;
   publishedAt: Date | null;
+  /** Feed description or excerpt. Not a generated line. */
   summary: string;
+  /** TL;DR written at ingest from the feed text. Null until that write lands. */
+  aiSummary: string | null;
 };
 
 export async function listNewsItems(limit = 50): Promise<NewsListItem[]> {
@@ -21,6 +24,7 @@ export async function listNewsItems(limit = 50): Promise<NewsListItem[]> {
       author: newsItems.author,
       publishedAt: newsItems.publishedAt,
       summary: newsItems.summary,
+      aiSummary: newsItems.aiSummary,
     })
     .from(newsItems)
     .orderBy(
@@ -39,6 +43,7 @@ export async function findNewsItem(id: string): Promise<NewsListItem | null> {
       author: newsItems.author,
       publishedAt: newsItems.publishedAt,
       summary: newsItems.summary,
+      aiSummary: newsItems.aiSummary,
     })
     .from(newsItems)
     .where(eq(newsItems.id, id))

@@ -414,9 +414,9 @@ export default async function NewsPage({
                               {row.title}
                             </p>
                           )}
-                          {row.text ? (
+                          {row.blurb ? (
                             <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
-                              {row.text}
+                              {row.blurb}
                             </p>
                           ) : null}
                           {staff && row.kind === "rumor" ? (

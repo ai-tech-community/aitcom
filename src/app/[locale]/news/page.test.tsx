@@ -17,6 +17,7 @@ const state = vi.hoisted(() => ({
     author: string | null;
     publishedAt: Date | null;
     summary: string;
+    aiSummary?: string | null;
   },
   signedIn: false,
   staff: false,
@@ -27,6 +28,7 @@ const state = vi.hoisted(() => ({
     author: string | null;
     publishedAt: Date | null;
     summary: string;
+    aiSummary?: string | null;
   }>,
   rumors: [] as Array<{
     id: string;
@@ -189,7 +191,9 @@ describe("news page", () => {
     ];
     render(await NewsPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByText("Weights dropped")).toBeInTheDocument();
-    expect(screen.getByText("Heard it at the meetup.")).toBeInTheDocument();
+    expect(screen.getByText("Heard it at the meetup.")).toHaveClass(
+      "line-clamp-2",
+    );
     expect(screen.getByText("Unverified rumor")).toBeInTheDocument();
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.queryByText("staff actions")).not.toBeInTheDocument();
@@ -220,6 +224,35 @@ describe("news page", () => {
     expect(
       screen.getByRole("link", { name: "Weights dropped" }),
     ).toHaveAttribute("href", "https://example.com/weights");
+  });
+
+  it("shows a stored summary under the title and finds it from the query", async () => {
+    state.items = [
+      {
+        id: "story-1",
+        url: "https://example.com/lab",
+        title: "Lab note",
+        author: "Ada",
+        publishedAt: new Date("2026-10-11T00:00:00.000Z"),
+        summary: "<p>Raw feed excerpt about widgets.</p>",
+        aiSummary: "A stored TL;DR about lattices.",
+      },
+    ];
+    const { unmount } = render(
+      await NewsPage({ searchParams: Promise.resolve({}) }),
+    );
+    expect(screen.getByText("A stored TL;DR about lattices.")).toHaveClass(
+      "line-clamp-2",
+    );
+    expect(screen.queryByText(/widgets/)).not.toBeInTheDocument();
+    unmount();
+    const lattices = render(
+      await NewsPage({ searchParams: Promise.resolve({ q: "lattices" }) }),
+    );
+    expect(screen.getByText("Lab note")).toBeInTheDocument();
+    lattices.unmount();
+    render(await NewsPage({ searchParams: Promise.resolve({ q: "widgets" }) }));
+    expect(screen.getByText("Lab note")).toBeInTheDocument();
   });
 
   it("shows the Dutch empty state", async () => {

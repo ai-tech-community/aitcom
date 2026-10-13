@@ -8,6 +8,7 @@ import {
   applyNewsTableQuery,
   buildNewsTableRows,
   newsSourceFromUrl,
+  newsTableBlurb,
   newsTableFacets,
   newsTableHref,
   parseNewsTableQuery,
@@ -283,6 +284,65 @@ describe("applyNewsTableQuery", () => {
     );
     expect(filtered.items.map((row) => row.id)).toEqual(["openai", "quiet"]);
     expect(filtered.total).toBe(1);
+  });
+});
+
+describe("newsTableBlurb", () => {
+  it("uses the stored TL;DR and otherwise the cleaned feed excerpt", () => {
+    expect(
+      newsTableBlurb({
+        aiSummary: "  A stored line.  ",
+        excerpt: "<p>Raw   feed   copy.</p>",
+      }),
+    ).toBe("A stored line.");
+    expect(
+      newsTableBlurb({
+        aiSummary: "   ",
+        excerpt: "<p>Raw   feed &amp; copy.</p>",
+      }),
+    ).toBe("Raw feed & copy.");
+    expect(newsTableBlurb({ aiSummary: null, excerpt: "" })).toBe("");
+    const long = `<p>${"word ".repeat(80)}</p>`;
+    const clipped = newsTableBlurb({ excerpt: long });
+    expect(clipped.endsWith("…")).toBe(true);
+    expect(clipped.length).toBeLessThanOrEqual(240);
+    expect(clipped).not.toContain("<");
+  });
+
+  it("searches the stored summary, the feed excerpt, and the member note", () => {
+    const rows = buildNewsTableRows(
+      [
+        story({
+          id: "stored",
+          title: "Lab note",
+          summary: "The feed mentions widgets.",
+          aiSummary: "A stored TL;DR about lattices.",
+          url: "https://example.com/lab",
+        }),
+      ],
+      [rumor({ body: "Heard it at the meetup." })],
+      [],
+      { memberSource: "Member rumor" },
+    );
+    expect(rows[0]?.blurb).toBe("A stored TL;DR about lattices.");
+    expect(
+      applyNewsTableQuery(rows, query({ q: "lattices" })).items.map(
+        (row) => row.id,
+      ),
+    ).toEqual(["stored"]);
+    expect(
+      applyNewsTableQuery(rows, query({ q: "widgets" })).items.map(
+        (row) => row.id,
+      ),
+    ).toEqual(["stored"]);
+    expect(
+      applyNewsTableQuery(rows, query({ q: "meetup" })).items.map(
+        (row) => row.id,
+      ),
+    ).toEqual(["rumor-1"]);
+    expect(rows.find((row) => row.kind === "rumor")?.blurb).toBe(
+      "Heard it at the meetup.",
+    );
   });
 });
 
