@@ -3,6 +3,7 @@ export const EVENT_TYPES = [
   "hackathon",
   "deep_dive",
   "meetup",
+  "conference",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
@@ -40,6 +41,7 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   hackathon: "HACKATHON",
   deep_dive: "DEEP-DIVE",
   meetup: "MEETUP",
+  conference: "CONFERENCE",
 };
 
 export const EVENT_FOCUS_LABELS: Record<EventFocus, string> = {

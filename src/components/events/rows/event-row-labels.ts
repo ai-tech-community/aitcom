@@ -6,6 +6,7 @@ type EventRowLabelKey =
   | "eventTypeHackathon"
   | "eventTypeDeepDive"
   | "eventTypeMeetup"
+  | "eventTypeConference"
   | "online"
   | "formatHybrid"
   | "formatInPerson"
@@ -31,6 +32,7 @@ export function eventRowLabelsFrom(t: EventRowTranslator): EventRowLabels {
       hackathon: t("eventTypeHackathon"),
       deep_dive: t("eventTypeDeepDive"),
       meetup: t("eventTypeMeetup"),
+      conference: t("eventTypeConference"),
     },
     online: t("online"),
     hybrid: t("formatHybrid"),

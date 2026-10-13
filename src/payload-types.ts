@@ -246,7 +246,7 @@ export interface Event {
    * Short event summary for cards, SEO, and agent curation.
    */
   summary?: string | null;
-  type: 'workshop' | 'hackathon' | 'deep_dive' | 'meetup';
+  type: 'workshop' | 'hackathon' | 'deep_dive' | 'meetup' | 'conference';
   /**
    * How attendees join this event.
    */

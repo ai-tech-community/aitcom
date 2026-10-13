@@ -19,6 +19,7 @@ const EN: EventRowLabels = {
     hackathon: "Hackathon",
     deep_dive: "Deep Dive",
     meetup: "Meetup",
+    conference: "Conference",
   },
   online: "Online",
   hybrid: "Hybrid",

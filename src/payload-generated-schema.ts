@@ -33,6 +33,7 @@ export const enum_events_type = pgEnum("enum_events_type", [
   "hackathon",
   "deep_dive",
   "meetup",
+  "conference",
 ]);
 export const enum_events_format = pgEnum("enum_events_format", [
   "online",
@@ -68,7 +69,7 @@ export const enum_events_status = pgEnum("enum_events_status", [
 ]);
 export const enum__events_v_version_type = pgEnum(
   "enum__events_v_version_type",
-  ["workshop", "hackathon", "deep_dive", "meetup"],
+  ["workshop", "hackathon", "deep_dive", "meetup", "conference"],
 );
 export const enum__events_v_version_format = pgEnum(
   "enum__events_v_version_format",
