@@ -102,9 +102,9 @@ describe("event coordinate backfill", () => {
   it("writes each point from the deploy migration and does not replace one already stored", () => {
     const migration = readFileSync(COORDINATE_MIGRATION, "utf8");
     const index = readFileSync(MIGRATION_INDEX, "utf8");
-    expect(
-      index.indexOf("20261013a_event_type_conference"),
-    ).toBeGreaterThan(index.indexOf("20261013a_news_rumors"));
+    expect(index.indexOf("20261013a_event_type_conference")).toBeGreaterThan(
+      index.indexOf("20261013a_news_rumors"),
+    );
     expect(
       index.indexOf("20261013b_event_coordinate_backfill"),
     ).toBeGreaterThan(index.indexOf("20261013a_event_type_conference"));
