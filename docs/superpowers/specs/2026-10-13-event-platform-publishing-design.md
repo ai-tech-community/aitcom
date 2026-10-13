@@ -1,7 +1,7 @@
 # Event platform publishing and registration source — v1 design
 
 **Date:** 2026-10-13
-**Status:** agreed product scope; written spec awaiting review
+**Status:** written spec approved; publishing feasibility findings require a product decision
 **Related:** [Luma import design](2026-03-28-luma-integration-design.md),
 [organizer attendee design](2026-09-29-event-attendees-for-organizers-design.md),
 [ADR-0038](../../adr/0038-attendee-details-are-shared-with-the-event-organizer-only.md)
@@ -19,6 +19,15 @@ flow. There is no registration-mode selector in v1. Paid events and
 external attendee imports are excluded.
 
 ## Platform feasibility and account setup
+
+The [capability findings checked on 2026-10-13](../../research/2026-10-13-event-platform-redirect-capabilities.md)
+establish restrictions affecting the intended three-platform flow:
+Eventbrite's general listing standards prohibit off-platform registration,
+Luma excludes mandatory off-platform registration from discovery, and
+Meetup's replacement of native RSVP is not yet verified. No provider is
+currently verified for the full redirect-only flow. Keep unsupported
+providers unavailable under the rule below; changing to external
+registration synchronization requires a revised product decision.
 
 The three platforms are targets, not a claim that each supports the same
 registration behavior. Before implementing each publishing adapter, verify
