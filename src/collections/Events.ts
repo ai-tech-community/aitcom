@@ -237,6 +237,7 @@ export const Events: CollectionConfig = {
                 { label: "Hackathon", value: "hackathon" },
                 { label: "Deep Dive", value: "deep_dive" },
                 { label: "Meetup", value: "meetup" },
+                { label: "Conference", value: "conference" },
               ],
             },
             {

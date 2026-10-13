@@ -1,17 +1,21 @@
+import type { EventType } from "@/lib/event-metadata";
+
 /**
  * Ops-cleared public events for the fat `/events` listing (Payload `events`).
  *
  * Facts only: official title, start date, city, venue when named, and URL.
  * `endDate` is set only when the summary states the official last day. No
- * attendance, RSVP, price, or image. The collection has no conference type;
- * these rows use `meetup`, the same label the World Summit guide already uses
- * for that summit.
+ * attendance, RSVP, price, or image. `type` follows the title and summary
+ * (`inferEventType`): a conference, summit, or expo is `conference`, a hack
+ * day is `hackathon`, and a meetup stays `meetup`.
  */
+
 export const BUILDER_PUBLIC_EVENTS_SEEDED_AT = "2026-09-25T12:00:00.000Z";
 
 export type BuilderPublicEvent = {
   slug: string;
   title: string;
+  type: EventType;
   /** Start date (YYYY-MM-DD). The listing sorts on this. */
   date: string;
   /** Last calendar day (YYYY-MM-DD), when the official span is longer than one day. */
@@ -28,6 +32,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "the-ai-conference-2026",
     title: "The AI Conference 2026",
+    type: "conference",
     date: "2026-09-29",
     endDate: "2026-10-01",
     city: "San Francisco",
@@ -43,6 +48,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "world-summit-ai-amsterdam-2026",
     title: "World Summit AI Amsterdam 2026",
+    type: "conference",
     date: "2026-10-07",
     endDate: "2026-10-08",
     city: "Amsterdam",
@@ -58,6 +64,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "boston-openclaw-meetup-2026",
     title: "Boston OpenClaw meetup",
+    type: "meetup",
     date: "2026-10-08",
     city: "Cambridge",
     country: "United States",
@@ -72,6 +79,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "ai-engineer-new-york-2026",
     title: "AI Engineer New York 2026",
+    type: "conference",
     date: "2026-10-12",
     endDate: "2026-10-14",
     city: "New York",
@@ -87,6 +95,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "techex-amsterdam-hackathon-2026",
     title: "TechEx Amsterdam Hackathon",
+    type: "conference",
     date: "2026-10-16",
     city: "Amsterdam",
     country: "Netherlands",
@@ -101,6 +110,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "nvidia-gtc-berlin-2026",
     title: "NVIDIA GTC Berlin 2026",
+    type: "conference",
     date: "2026-10-20",
     endDate: "2026-10-22",
     city: "Berlin",
@@ -116,6 +126,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "pytorch-conference-north-america-2026",
     title: "PyTorch Conference North America 2026",
+    type: "conference",
     date: "2026-10-20",
     endDate: "2026-10-21",
     city: "San Jose",
@@ -131,6 +142,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "aixia-2026",
     title: "AIxIA 2026",
+    type: "conference",
     date: "2026-10-22",
     city: "Strasbourg",
     country: "France",
@@ -145,6 +157,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "agentic-ai-in-the-wild-2026",
     title: "Agentic AI in the Wild: Open Source Agents in Production",
+    type: "meetup",
     date: "2026-10-22",
     city: "New York",
     country: "United States",
@@ -159,6 +172,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "hacktoberfest-hack-day-barcelona-2026",
     title: "Hacktoberfest Hack Day Barcelona",
+    type: "hackathon",
     date: "2026-10-24",
     city: "Barcelona",
     country: "Spain",
@@ -173,6 +187,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "tedai-2026",
     title: "TEDAI 2026",
+    type: "conference",
     date: "2026-10-28",
     endDate: "2026-10-30",
     city: "Vienna",
@@ -188,6 +203,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "web-summit-2026",
     title: "Web Summit 2026",
+    type: "conference",
     date: "2026-11-09",
     endDate: "2026-11-12",
     city: "Lisbon",
@@ -203,6 +219,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "llmday-london-2026",
     title: "LLMday London",
+    type: "conference",
     date: "2026-11-26",
     city: "London",
     country: "United Kingdom",
