@@ -24,6 +24,7 @@ const digest = {
       isEmpty: false,
     },
   ],
+  news: [],
   events: [
     {
       title: "Office hours",
@@ -89,6 +90,53 @@ describe("renderHubDigestText", () => {
       "https://www.aitcommunity.org/en/communities/makers?utm_source=digest&utm_medium=email&utm_campaign=weekly-2026-10-12",
     );
     expect(text).not.toContain("<a ");
+  });
+
+  it("links a story to the article without a tag and to /news with the campaign", () => {
+    const html = renderHubDigestHtml(
+      {
+        ...digest,
+        sections: [],
+        events: [],
+        news: [
+          {
+            id: "story-1",
+            title: "New models",
+            summary: "Two sentences.",
+            articleUrl: "https://example.com/models?id=1",
+            path: "/en/news?story=story-1#news-story-1",
+          },
+        ],
+      },
+      SEND,
+    );
+    const text = renderHubDigestText(
+      {
+        ...digest,
+        sections: [],
+        events: [],
+        news: [
+          {
+            id: "story-1",
+            title: "New models",
+            summary: "Two sentences.",
+            articleUrl: "https://example.com/models?id=1",
+            path: "/en/news?story=story-1#news-story-1",
+          },
+        ],
+      },
+      SEND,
+    );
+    expect(html).toContain('href="https://example.com/models?id=1"');
+    expect(html).not.toContain("https://example.com/models?id=1&amp;");
+    expect(html).toContain(
+      "https://www.aitcommunity.org/en/news?story=story-1&amp;utm_source=digest&amp;utm_medium=email&amp;utm_campaign=weekly-2026-10-12#news-story-1",
+    );
+    expect(text).toContain("https://example.com/models?id=1\n");
+    expect(text).not.toContain("https://example.com/models?id=1&");
+    expect(text).toContain(
+      "On AIT: https://www.aitcommunity.org/en/news?story=story-1&utm_source=digest&utm_medium=email&utm_campaign=weekly-2026-10-12#news-story-1",
+    );
   });
 
   it("tags the unsubscribe page and keeps the token out of the campaign", () => {

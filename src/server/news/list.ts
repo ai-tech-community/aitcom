@@ -1,4 +1,4 @@
-import { desc, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { newsItems } from "@/server/db/schema";
@@ -28,4 +28,20 @@ export async function listNewsItems(limit = 50): Promise<NewsListItem[]> {
       desc(newsItems.createdAt),
     )
     .limit(limit);
+}
+
+export async function findNewsItem(id: string): Promise<NewsListItem | null> {
+  const [row] = await db
+    .select({
+      id: newsItems.id,
+      url: newsItems.url,
+      title: newsItems.title,
+      author: newsItems.author,
+      publishedAt: newsItems.publishedAt,
+      summary: newsItems.summary,
+    })
+    .from(newsItems)
+    .where(eq(newsItems.id, id))
+    .limit(1);
+  return row ?? null;
 }

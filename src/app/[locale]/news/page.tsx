@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { SectionLabel } from "@/components/ui/section-label";
-import { listNewsItems } from "@/server/news/list";
+import { findNewsItem, listNewsItems } from "@/server/news/list";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("newsPage");
@@ -20,13 +20,28 @@ function formatWhen(value: Date, locale: string): string {
   }).format(value);
 }
 
-export default async function NewsPage() {
+export default async function NewsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ story?: string }>;
+}) {
   const t = await getTranslations("newsPage");
   const locale = await getLocale();
-  const items = await listNewsItems().catch((err: unknown) => {
+  const params = await searchParams;
+  const listed = await listNewsItems().catch((err: unknown) => {
     console.error("news: could not list stories", err);
     return [];
   });
+  const storyId = params.story ?? "";
+  const missing =
+    storyId.length > 0 && !listed.some((item) => item.id === storyId);
+  const extra = missing
+    ? await findNewsItem(storyId).catch((err: unknown) => {
+        console.error("news: could not load the linked story", err);
+        return null;
+      })
+    : null;
+  const items = extra ? [extra, ...listed] : listed;
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-10">

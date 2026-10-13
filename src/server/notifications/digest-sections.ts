@@ -14,6 +14,8 @@ export const DIGEST_HIGHLIGHT_LIMIT = 5;
 export const DIGEST_EVENT_LIMIT = 6;
 export const DIGEST_JOB_LIMIT = 5;
 export const DIGEST_STARTUP_LIMIT = 5;
+export const DIGEST_NEWS_LIMIT = 6;
+export const DIGEST_NEWS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 export const DIGEST_EVENT_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
 export type HighlightCandidate = {
@@ -159,6 +161,31 @@ export function selectLaunchpadPicks<T extends LaunchpadCandidate>(
         b.voteCount - a.voteCount ||
         parseInstant(b.createdAt) - parseInstant(a.createdAt),
     )
+    .slice(0, limit);
+}
+
+export type DigestNewsCandidate = {
+  publishedAt: Date | null;
+  createdAt: Date;
+};
+
+/** Six newest stories from the last 7 days. Older rows are left out. */
+export function selectDigestNews<T extends DigestNewsCandidate>(
+  items: readonly T[],
+  now: Date,
+  limit = DIGEST_NEWS_LIMIT,
+): T[] {
+  const cutoff = now.getTime() - DIGEST_NEWS_WINDOW_MS;
+  return items
+    .filter((item) => {
+      const when = item.publishedAt ?? item.createdAt;
+      return when.getTime() >= cutoff;
+    })
+    .sort((a, b) => {
+      const aTime = (a.publishedAt ?? a.createdAt).getTime();
+      const bTime = (b.publishedAt ?? b.createdAt).getTime();
+      return bTime - aTime;
+    })
     .slice(0, limit);
 }
 

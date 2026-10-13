@@ -146,6 +146,7 @@ import * as migration_20261008a_forum_reply_count_repair from "./20261008a_forum
 import * as migration_20261008b_unlist_test_communities from "./20261008b_unlist_test_communities";
 import * as migration_20261008c_startup_jobs_scan_streak from "./20261008c_startup_jobs_scan_streak";
 import * as migration_20261012a_news_items from "./20261012a_news_items";
+import * as migration_20261012b_news_item_summary from "./20261012b_news_item_summary";
 
 export const migrations = [
   {
@@ -887,5 +888,10 @@ export const migrations = [
     up: migration_20261012a_news_items.up,
     down: migration_20261012a_news_items.down,
     name: "20261012a_news_items",
+  },
+  {
+    up: migration_20261012b_news_item_summary.up,
+    down: migration_20261012b_news_item_summary.down,
+    name: "20261012b_news_item_summary",
   },
 ];

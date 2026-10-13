@@ -4,6 +4,7 @@ import {
   isDigestIndexableOpenJob,
   selectCommunityHighlights,
   selectDigestJobs,
+  selectDigestNews,
   selectLaunchpadPicks,
   selectUpcomingEvents,
   type DigestJobCandidate,
@@ -178,6 +179,36 @@ describe("selectDigestJobs", () => {
       }),
     ]);
     expect(picked.map((row) => row.slug)).toEqual(["new", "old"]);
+  });
+});
+
+describe("selectDigestNews", () => {
+  const created = new Date("2026-10-01T00:00:00.000Z");
+
+  it("keeps six stories from the last 7 days, newest first", () => {
+    const items = Array.from({ length: 8 }, (_, index) => ({
+      id: `n${index}`,
+      publishedAt: new Date(
+        `2026-10-${String(5 + index).padStart(2, "0")}T00:00:00.000Z`,
+      ),
+      createdAt: created,
+    }));
+    items.push({
+      id: "old",
+      publishedAt: new Date("2026-09-01T00:00:00.000Z"),
+      createdAt: created,
+    });
+    const picked = selectDigestNews(items, NOW);
+    expect(picked).toHaveLength(6);
+    expect(picked.map((item) => item.id)).toEqual([
+      "n7",
+      "n6",
+      "n5",
+      "n4",
+      "n3",
+      "n2",
+    ]);
+    expect(picked.some((item) => item.id === "old")).toBe(false);
   });
 });
 

@@ -4732,6 +4732,8 @@ export const newsItems = appSchema.table(
     author: d.text(),
     publishedAt: d.timestamp({ withTimezone: true }),
     summary: d.text().notNull().default(""),
+    /** Written once, when the row is first stored. Send time only reads it. */
+    aiSummary: d.text(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

@@ -51,9 +51,20 @@ export type DigestStartupItem = {
   votes: number;
 };
 
+export type DigestNewsItem = {
+  id: string;
+  title: string;
+  summary: string;
+  /** Outside article. The renderer leaves this untagged. */
+  articleUrl: string;
+  /** AIT /news entry. The renderer tags this. */
+  path: string;
+};
+
 export type HubDigest = {
   userId: string;
   sections: CommunitySection[];
+  news: DigestNewsItem[];
   events: DigestEventItem[];
   jobs: DigestJobItem[];
   startups: DigestStartupItem[];
@@ -66,6 +77,7 @@ export type HubDigest = {
 export function buildHubDigest(opts: {
   userId: string;
   sections: CommunitySection[];
+  news?: DigestNewsItem[];
   events?: DigestEventItem[];
   jobs?: DigestJobItem[];
   startups?: DigestStartupItem[];
@@ -81,12 +93,14 @@ export function buildHubDigest(opts: {
           !section.isEmpty &&
           !opts.optedOutCommunityIds.has(section.communityId),
       );
+  const news = off?.has("news") ? [] : (opts.news ?? []);
   const events = off?.has("events") ? [] : (opts.events ?? []);
   const jobs = off?.has("jobs") ? [] : (opts.jobs ?? []);
   const startups = off?.has("startups") ? [] : (opts.startups ?? []);
   const discovery = opts.discovery ?? null;
   if (
     visible.length === 0 &&
+    news.length === 0 &&
     events.length === 0 &&
     jobs.length === 0 &&
     startups.length === 0 &&
@@ -97,6 +111,7 @@ export function buildHubDigest(opts: {
   return {
     userId: opts.userId,
     sections: visible,
+    news,
     events,
     jobs,
     startups,
