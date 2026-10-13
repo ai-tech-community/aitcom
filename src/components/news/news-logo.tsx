@@ -39,6 +39,7 @@ export function NewsLogo({
         aria-hidden={named ? undefined : true}
         data-news-logo-fallback=""
         data-startup-source-favicon={mark}
+        style={{ width: 20, height: 20 }}
         className={cn(
           "bg-muted text-muted-foreground inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-[10px] leading-none font-medium",
           className,
@@ -62,7 +63,9 @@ export function NewsLogo({
       height={20}
       loading="lazy"
       decoding="async"
+      fetchPriority="low"
       referrerPolicy="no-referrer"
+      style={{ width: 20, height: 20 }}
       data-news-logo=""
       data-startup-source-favicon={mark}
       className={cn("size-5 shrink-0 rounded-sm object-contain", className)}

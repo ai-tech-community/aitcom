@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
+import dynamic from "next/dynamic";
+
 import { NewsLogo } from "@/components/news/news-logo";
 import { NewsRumorActions } from "@/components/news/news-rumor-actions";
-import { NewsRumorDialog } from "@/components/news/news-rumor-dialog";
+import {
+  NewsTableBrowser,
+  type NewsFilterChip,
+} from "@/components/news/news-table-browser";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
 import {
@@ -29,6 +33,12 @@ import {
   type NewsTablePage,
 } from "@/server/news/table-page";
 
+const NewsRumorDialog = dynamic(() =>
+  import("@/components/news/news-rumor-dialog").then(
+    (mod) => mod.NewsRumorDialog,
+  ),
+);
+
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("newsPage");
   return {
@@ -44,9 +54,6 @@ function formatWhen(value: Date, locale: string): string {
     timeZone: "UTC",
   }).format(value);
 }
-
-const fieldClass =
-  "border-input bg-background h-9 w-full rounded-md border px-3 text-sm";
 
 function SortHeader({
   label,
@@ -116,7 +123,7 @@ function WriterName({
     <Link
       href={newsTableHref(query, { writer, page: 1 })}
       rel="nofollow"
-      className="underline-offset-4 hover:underline"
+      className="focus-visible:ring-ring rounded-sm underline-offset-4 hover:underline focus-visible:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
       {row.writer}
     </Link>
@@ -230,6 +237,60 @@ export default async function NewsPage({
     query.writer && !loaded.writers.includes(query.writer)
       ? [query.writer, ...loaded.writers]
       : loaded.writers;
+  const sourceLabel =
+    sources.find((source) => source.key === query.source)?.label ??
+    query.source;
+  const companyLabel =
+    companies.find((company) => company.id === query.company)?.name ??
+    query.company;
+  const typeLabel =
+    query.type === "verified"
+      ? t("typeVerified")
+      : query.type === "rumor"
+        ? t("typeRumor")
+        : "";
+  const chips: NewsFilterChip[] = [
+    query.q
+      ? {
+          id: "q",
+          label: query.q,
+          clearLabel: t("clearSearch", { query: query.q }),
+          href: newsTableHref(query, { q: "", page: 1 }),
+        }
+      : null,
+    query.type !== "all"
+      ? {
+          id: "type",
+          label: typeLabel,
+          clearLabel: t("clearType", { name: typeLabel }),
+          href: newsTableHref(query, { type: "all", page: 1 }),
+        }
+      : null,
+    query.source
+      ? {
+          id: "source",
+          label: sourceLabel,
+          clearLabel: t("clearSource", { name: sourceLabel }),
+          href: newsTableHref(query, { source: "", page: 1 }),
+        }
+      : null,
+    query.company
+      ? {
+          id: "company",
+          label: companyLabel,
+          clearLabel: t("clearCompany", { name: companyLabel }),
+          href: newsTableHref(query, { company: "", page: 1 }),
+        }
+      : null,
+    query.writer
+      ? {
+          id: "writer",
+          label: query.writer,
+          clearLabel: t("clearWriter", { name: query.writer }),
+          href: newsTableHref(query, { writer: "", page: 1 }),
+        }
+      : null,
+  ].flatMap((chip) => (chip ? [chip] : []));
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -263,175 +324,70 @@ export default async function NewsPage({
       {items.length === 0 && loaded.total === 0 && !filtered ? (
         <p className="text-muted-foreground mt-8 text-sm">{t("empty")}</p>
       ) : (
-        <>
-          <form
-            method="get"
-            className="mt-8 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end"
-          >
-            {query.story ? (
-              <input type="hidden" name="story" value={query.story} />
-            ) : null}
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5 lg:min-w-56">
-              <label
-                htmlFor="news-q"
-                className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
-              >
-                {t("searchLabel")}
-              </label>
-              <Input
-                id="news-q"
-                name="q"
-                defaultValue={query.q}
-                placeholder={t("searchPlaceholder")}
-              />
-            </div>
-            <div className="flex w-full flex-col gap-1.5 sm:w-44">
-              <label
-                htmlFor="news-type"
-                className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
-              >
-                {t("typeLabel")}
-              </label>
-              <select
-                id="news-type"
-                name="type"
-                defaultValue={query.type}
-                className={fieldClass}
-              >
-                <option value="all">{t("typeAll")}</option>
-                <option value="verified">{t("typeVerified")}</option>
-                <option value="rumor">{t("typeRumor")}</option>
-              </select>
-            </div>
-            <div className="flex w-full flex-col gap-1.5 sm:w-44">
-              <label
-                htmlFor="news-source"
-                className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
-              >
-                {t("sourceLabel")}
-              </label>
-              <select
-                id="news-source"
-                name="source"
-                defaultValue={query.source}
-                className={fieldClass}
-              >
-                <option value="">{t("sourceAll")}</option>
-                {sources.map((source) => (
-                  <option key={source.key} value={source.key}>
-                    {source.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex w-full flex-col gap-1.5 sm:w-44">
-              <label
-                htmlFor="news-company"
-                className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
-              >
-                {t("companyLabel")}
-              </label>
-              <select
-                id="news-company"
-                name="company"
-                defaultValue={query.company}
-                className={fieldClass}
-              >
-                <option value="">{t("companyAll")}</option>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex w-full flex-col gap-1.5 sm:w-44">
-              <label
-                htmlFor="news-writer"
-                className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
-              >
-                {t("writerLabel")}
-              </label>
-              <select
-                id="news-writer"
-                name="writer"
-                defaultValue={query.writer}
-                className={fieldClass}
-              >
-                <option value="">{t("writerAll")}</option>
-                {writers.map((writer) => (
-                  <option key={writer} value={writer}>
-                    {writer}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex w-full flex-col gap-1.5 sm:w-44">
-              <label
-                htmlFor="news-sort"
-                className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
-              >
-                {t("sortLabel")}
-              </label>
-              <select
-                id="news-sort"
-                name="sort"
-                defaultValue={query.sort}
-                className={fieldClass}
-              >
-                <option value="date">{t("sortDate")}</option>
-                <option value="title">{t("sortTitle")}</option>
-                <option value="source">{t("sortSource")}</option>
-              </select>
-            </div>
-            <Button type="submit" variant="outline">
-              {t("apply")}
-            </Button>
-            {filtered ? (
-              <Link
-                href={newsTableHref(query, {
-                  q: "",
-                  type: "all",
-                  source: "",
-                  company: "",
-                  writer: "",
-                  page: 1,
-                })}
-                rel="nofollow"
-                className="text-muted-foreground hover:text-foreground pb-2 text-sm underline"
-              >
-                {t("clear")}
-              </Link>
-            ) : null}
-          </form>
-
-          {query.writer ? (
-            <div className="mt-3">
-              <Badge
-                variant="outline"
-                className="gap-1 px-2 py-1 font-sans text-sm font-normal"
-              >
-                {query.writer}
-                <Link
-                  href={newsTableHref(query, { writer: "", page: 1 })}
-                  rel="nofollow"
-                  aria-label={t("clearWriter", { name: query.writer })}
-                  className="text-muted-foreground hover:text-foreground -my-1 inline-flex size-5 items-center justify-center"
-                >
-                  <span aria-hidden="true">×</span>
-                </Link>
-              </Badge>
-            </div>
-          ) : null}
-
-          <p className="text-muted-foreground mt-4 font-mono text-xs">
-            {t("resultCount", { count: loaded.total })}
-          </p>
-
+        <NewsTableBrowser
+          query={query}
+          sources={sources.map((source) => ({
+            value: source.key,
+            label: source.label,
+          }))}
+          companies={companies.map((company) => ({
+            value: company.id,
+            label: company.name,
+          }))}
+          writers={writers.map((writer) => ({ value: writer, label: writer }))}
+          resultCount={t("resultCount", { count: loaded.total })}
+          loadingLabel={t("loadingResults")}
+          filtersLabel={t("filtersLabel")}
+          chips={chips}
+          clearHref={newsTableHref(query, {
+            q: "",
+            type: "all",
+            source: "",
+            company: "",
+            writer: "",
+            page: 1,
+          })}
+          filtered={filtered}
+          clearLabel={t("clear")}
+          applyLabel={t("apply")}
+          labels={{
+            search: t("searchLabel"),
+            searchPlaceholder: t("searchPlaceholder"),
+            type: t("typeLabel"),
+            typeAll: t("typeAll"),
+            typeVerified: t("typeVerified"),
+            typeRumor: t("typeRumor"),
+            source: t("sourceLabel"),
+            sourceAll: t("sourceAll"),
+            company: t("companyLabel"),
+            companyAll: t("companyAll"),
+            writer: t("writerLabel"),
+            writerAll: t("writerAll"),
+            sort: t("sortLabel"),
+            sortDate: t("sortDate"),
+            sortTitle: t("sortTitle"),
+            sortSource: t("sortSource"),
+          }}
+        >
           {items.length === 0 ? (
-            <p className="text-muted-foreground mt-4 text-sm">
-              {t("noMatches")}
-            </p>
+            <div className="mt-4">
+              <p className="text-muted-foreground text-sm">{t("noMatches")}</p>
+              <Button asChild variant="outline" className="mt-3">
+                <Link
+                  href={newsTableHref(query, {
+                    q: "",
+                    type: "all",
+                    source: "",
+                    company: "",
+                    writer: "",
+                    page: 1,
+                  })}
+                  rel="nofollow"
+                >
+                  {t("clear")}
+                </Link>
+              </Button>
+            </div>
           ) : (
             <table className="mt-4 w-full text-sm">
               <caption className="sr-only">{t("tableCaption")}</caption>
@@ -478,7 +434,7 @@ export default async function NewsPage({
                           ? `news-${row.id}`
                           : `rumor-${row.id}`
                       }
-                      className={`border-border block border-b py-4 md:table-row md:py-0 ${linked ? "bg-muted/40" : ""}`}
+                      className={`border-border hover:bg-muted/40 focus-within:bg-muted/40 block border-b py-4 md:table-row md:py-0 ${linked ? "bg-muted/40" : ""}`}
                     >
                       <td className="grid grid-cols-[7rem_1fr] items-center gap-3 px-0 py-1 md:table-cell md:w-28 md:px-3 md:py-3">
                         <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase md:hidden">
@@ -590,7 +546,7 @@ export default async function NewsPage({
               )}
             </nav>
           ) : null}
-        </>
+        </NewsTableBrowser>
       )}
     </main>
   );

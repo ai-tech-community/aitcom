@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { revalidateNewsTable } from "@/server/news/cache";
 import { ingestConfiguredNewsFeeds } from "@/server/news/ingest-feeds";
 
 export const runtime = "nodejs";
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await ingestConfiguredNewsFeeds();
+    revalidateNewsTable();
     return NextResponse.json({
       success: true,
       ...result,

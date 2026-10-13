@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 import {
   NEWS_MEMBER_SOURCE,
   newsSourceFromUrl,
@@ -5,6 +7,8 @@ import {
   type NewsTableQuery,
 } from "@/lib/news/table";
 import { db } from "@/server/db";
+
+import { NEWS_TABLE_CACHE_TAG } from "./cache";
 
 import type { NewsListItem } from "./list";
 import type { NewsRumorItem } from "./rumors";
@@ -110,18 +114,38 @@ function mapFacets(
   const sources = new Map<string, string>();
   const writers = new Set<string>();
   let sawRumor = false;
+  const addSource = (host: string) => {
+    const source = newsSourceFromUrl(host ? `https://${host}/` : "");
+    if (source.key && source.label) sources.set(source.key, source.label);
+    return source.label;
+  };
   for (const row of rows) {
-    if (row.kind === "rumor") {
+    const bucket = asText(row.bucket);
+    const value = asText(row.value).trim();
+    if (bucket === "rumor") {
       sawRumor = true;
-      const writer = newsTableWriter(asText(row.author));
+      continue;
+    }
+    if (bucket === "rumor-author") {
+      sawRumor = true;
+      const writer = newsTableWriter(value);
       if (writer) writers.add(writer);
       continue;
     }
-    const source = newsSourceFromUrl(asText(row.url));
-    if (source.key && source.label) sources.set(source.key, source.label);
-    const author = asText(row.author).trim();
-    const writer = newsTableWriter(author || source.label);
-    if (writer) writers.add(writer);
+    if (bucket === "author") {
+      const writer = newsTableWriter(value);
+      if (writer) writers.add(writer);
+      continue;
+    }
+    if (bucket === "host") {
+      addSource(value);
+      continue;
+    }
+    if (bucket === "blank-host") {
+      const label = addSource(value);
+      const writer = newsTableWriter(label);
+      if (writer) writers.add(writer);
+    }
   }
   if (sawRumor && memberSource) sources.set(NEWS_MEMBER_SOURCE, memberSource);
   return {
@@ -147,16 +171,20 @@ function mapCompanies(
     .sort((a, b) => collator.compare(a.name, b.name));
 }
 
-/**
- * One counted page of stories and rumors. The count is every matching row,
- * and the page is `LIMIT`/`OFFSET` after that count clamps the page number.
- */
-export async function queryNewsTablePage(input: {
+type NewsTablePageInput = {
   query: NewsTableQuery;
   includeHiddenRumors: boolean;
   memberSource: string;
   pageSize?: number;
-}): Promise<NewsTablePage> {
+};
+
+/**
+ * One counted page of stories and rumors. The count is every matching row,
+ * and the page is `LIMIT`/`OFFSET` after that count clamps the page number.
+ */
+async function queryNewsTablePageUncached(
+  input: NewsTablePageInput,
+): Promise<NewsTablePage> {
   const counted = await db.execute<{ total: number }>(
     newsTableCountSql({
       query: input.query,
@@ -190,4 +218,64 @@ export async function queryNewsTablePage(input: {
     writers: menu.writers,
     companies: mapCompanies(asRows(companies)),
   };
+}
+
+function freezeNewsTablePage(page: NewsTablePage) {
+  return {
+    ...page,
+    stories: page.stories.map((story) => ({
+      ...story,
+      publishedAt: story.publishedAt ? story.publishedAt.toISOString() : null,
+    })),
+    rumors: page.rumors.map((rumor) => ({
+      ...rumor,
+      createdAt: rumor.createdAt.toISOString(),
+      hiddenAt: rumor.hiddenAt ? rumor.hiddenAt.toISOString() : null,
+    })),
+  };
+}
+
+function thawNewsTablePage(
+  page: ReturnType<typeof freezeNewsTablePage>,
+): NewsTablePage {
+  return {
+    ...page,
+    stories: page.stories.map((story) => ({
+      ...story,
+      publishedAt: asDate(story.publishedAt),
+    })),
+    rumors: page.rumors.map((rumor) => ({
+      ...rumor,
+      createdAt: asDate(rumor.createdAt) ?? new Date(0),
+      hiddenAt: asDate(rumor.hiddenAt),
+    })),
+  };
+}
+
+const loadCachedNewsTablePage = unstable_cache(
+  async (payload: string) =>
+    freezeNewsTablePage(
+      await queryNewsTablePageUncached(
+        JSON.parse(payload) as NewsTablePageInput,
+      ),
+    ),
+  ["news-table-page"],
+  { revalidate: 60, tags: [NEWS_TABLE_CACHE_TAG] },
+);
+
+export async function queryNewsTablePage(
+  input: NewsTablePageInput,
+): Promise<NewsTablePage> {
+  const payload = JSON.stringify({
+    query: input.query,
+    includeHiddenRumors: input.includeHiddenRumors,
+    memberSource: input.memberSource,
+    pageSize: input.pageSize ?? null,
+  });
+  try {
+    return thawNewsTablePage(await loadCachedNewsTablePage(payload));
+  } catch (err) {
+    console.error("news: table cache unavailable, querying directly", err);
+    return queryNewsTablePageUncached(input);
+  }
 }

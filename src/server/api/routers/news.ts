@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { revalidateNewsTable } from "@/server/news/cache";
 import { isNewsStaff } from "@/server/news/staff";
 import {
   moderateNewsRumor,
@@ -26,6 +27,7 @@ export const newsRouter = createTRPCRouter({
           message: "rate",
         });
       }
+      revalidateNewsTable();
       return { id: result.id };
     }),
 
@@ -50,6 +52,7 @@ export const newsRouter = createTRPCRouter({
       if (result === "missing") {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
+      revalidateNewsTable();
       return { ok: true as const };
     }),
 });

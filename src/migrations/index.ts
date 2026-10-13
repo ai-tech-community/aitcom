@@ -153,6 +153,7 @@ import * as migration_20261013b_event_coordinate_backfill from "./20261013b_even
 import * as migration_20261013b_news_startup_links from "./20261013b_news_startup_links";
 import * as migration_20261013c_news_feeds from "./20261013c_news_feeds";
 import * as migration_20261013d_drop_e27_feed from "./20261013d_drop_e27_feed";
+import * as migration_20261013e_news_table_indexes from "./20261013e_news_table_indexes";
 
 export const migrations = [
   {
@@ -929,5 +930,10 @@ export const migrations = [
     up: migration_20261013d_drop_e27_feed.up,
     down: migration_20261013d_drop_e27_feed.down,
     name: "20261013d_drop_e27_feed",
+  },
+  {
+    up: migration_20261013e_news_table_indexes.up,
+    down: migration_20261013e_news_table_indexes.down,
+    name: "20261013e_news_table_indexes",
   },
 ];

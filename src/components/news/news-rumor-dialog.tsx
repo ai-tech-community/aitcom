@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import dynamic from "next/dynamic";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,8 +12,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
 
-import { NewsRumorForm } from "./news-rumor-form";
+const NewsRumorForm = dynamic(
+  () => import("./news-rumor-form").then((mod) => mod.NewsRumorForm),
+  {
+    loading: () => <Spinner className="motion-reduce:animate-none" />,
+  },
+);
 
 export function NewsRumorDialog({
   label,
@@ -19,8 +28,9 @@ export function NewsRumorDialog({
   label: string;
   description: string;
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button">{label}</Button>
       </DialogTrigger>
@@ -29,7 +39,7 @@ export function NewsRumorDialog({
           <DialogTitle>{label}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <NewsRumorForm showHeading={false} />
+        <NewsRumorForm showHeading={false} onSubmitted={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

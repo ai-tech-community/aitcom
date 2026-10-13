@@ -4,16 +4,32 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { toast } from "sonner";
+
+import { newsRumorErrorText } from "@/lib/news/rumor-error";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/trpc/react";
 
+function firstFieldMessage(
+  fields: object | undefined,
+  key: string,
+): string | undefined {
+  if (!fields || !Object.hasOwn(fields, key)) return undefined;
+  const value = (fields as Record<string, unknown>)[key];
+  if (!Array.isArray(value)) return undefined;
+  return typeof value[0] === "string" ? value[0] : undefined;
+}
+
 export function NewsRumorForm({
   showHeading = true,
+  onSubmitted,
 }: {
   showHeading?: boolean;
+  onSubmitted?: () => void;
 }) {
   const t = useTranslations("newsPage");
   const router = useRouter();
@@ -28,10 +44,29 @@ export function NewsRumorForm({
       setUrl("");
       setBody("");
       setNotice(t("submitted"));
+      toast.success(t("submitted"));
+      onSubmitted?.();
       router.refresh();
     },
     onError: (err) => {
-      setNotice(err.message === "rate" ? t("rateLimited") : t("invalid"));
+      const fields = err.data?.zodError?.fieldErrors;
+      const text = newsRumorErrorText(
+        err.message,
+        {
+          url: firstFieldMessage(fields, "url"),
+          title: firstFieldMessage(fields, "title"),
+          body: firstFieldMessage(fields, "body"),
+        },
+        {
+          rate: t("rateLimited"),
+          url: t("invalidUrl"),
+          title: t("titleShort"),
+          body: t("noteShort"),
+          invalid: t("invalid"),
+        },
+      );
+      setNotice(text);
+      toast.error(text);
     },
   });
 
@@ -92,7 +127,19 @@ export function NewsRumorForm({
         />
       </div>
       <div>
-        <Button type="submit" disabled={submit.isPending}>
+        <Button
+          type="submit"
+          disabled={submit.isPending}
+          aria-busy={submit.isPending || undefined}
+        >
+          {submit.isPending ? (
+            <Spinner
+              className="motion-reduce:animate-none"
+              role="presentation"
+              aria-hidden="true"
+              aria-label={undefined}
+            />
+          ) : null}
           {submit.isPending ? t("submitting") : t("submit")}
         </Button>
       </div>
