@@ -1288,14 +1288,20 @@ describe("Awesome AI OSS crawlable pagination", () => {
     ).toBe(AWESOME_AI_OSS_PATH);
   });
 
-  it("lists later unfiltered pages for the sitemap", () => {
-    const paths = awesomeDirectorySitemapPaths(cards.length);
-    expect(paths[0]).toBe(`${AWESOME_AI_OSS_PATH}?page=2`);
-    expect(paths).toHaveLength(
-      Math.ceil(cards.length / AWESOME_AI_OSS_PAGE_SIZE) - 1,
-    );
-    expect(paths).not.toContain(AWESOME_AI_OSS_PATH);
+  it("lists only page 1 in the sitemap and keeps later pages crawlable", () => {
+    expect(awesomeDirectorySitemapPaths(cards.length)).toEqual([]);
     expect(awesomeDirectorySitemapPaths(AWESOME_AI_OSS_PAGE_SIZE)).toEqual([]);
+    expect(awesomeDirectorySitemapPaths(AWESOME_AI_OSS_PAGE_SIZE + 1)).toEqual(
+      [],
+    );
+    expect(
+      awesomeDirectoryCanonicalPath({
+        q: "",
+        category: "all",
+        sort: "newest",
+        page: 2,
+      }),
+    ).toBe(`${AWESOME_AI_OSS_PATH}?page=2`);
   });
 
   it("windows numbered page links around the current page", () => {
