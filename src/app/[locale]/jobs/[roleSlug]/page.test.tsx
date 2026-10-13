@@ -79,7 +79,10 @@ vi.mock("@/trpc/react", () => ({
 
 import JobsRoleRoute, { generateMetadata } from "./page";
 
-function role(status: "open" | "closed"): StartupRolePublic {
+function role(
+  status: "open" | "closed",
+  overrides: Partial<StartupRolePublic> = {},
+): StartupRolePublic {
   return {
     id: "role-1",
     startupId: "fixture-one",
@@ -92,11 +95,12 @@ function role(status: "open" | "closed"): StartupRolePublic {
     workType: "Full-time",
     sourceUrl: "https://fixture.example/careers/staff",
     applyUrl: null,
-    descriptionText: "Build the product.",
+    descriptionText: "a".repeat(200),
     fetchedAt: "2026-09-20T00:00:00.000Z",
     postedAt: "2026-03-01T12:00:00.000Z",
     board: "html",
     status,
+    ...overrides,
   };
 }
 
@@ -157,5 +161,40 @@ describe("closed startup role page", () => {
 
     const meta = await generateMetadata({ params: params() });
     expect(meta.robots).toEqual({ index: true, follow: true });
+  });
+
+  it.each(["en", "nl"] as const)(
+    "noindexes an open role with a description under 200 characters in %s",
+    async (locale) => {
+      state.locale = locale;
+      state.role = role("open", {
+        slug: "maze-employee-login-for-us-jobs",
+        title: "Employee Login for US Jobs",
+        descriptionText: null,
+      });
+      const meta = await generateMetadata({
+        params: Promise.resolve({
+          roleSlug: "maze-employee-login-for-us-jobs",
+        }),
+      });
+      expect(meta.robots).toEqual({ index: false, follow: true });
+    },
+  );
+
+  it("keeps an open role indexable when the shown description is already sanitized", async () => {
+    state.role = role("open", {
+      descriptionText: `learn more ${"b".repeat(190)}`,
+    });
+    const meta = await generateMetadata({ params: params() });
+    expect(meta.robots).toEqual({ index: true, follow: true });
+  });
+
+  it("noindexes an open role whose title the existing filter rejects", async () => {
+    state.role = role("open", {
+      title: "View Job",
+      descriptionText: "a".repeat(200),
+    });
+    const meta = await generateMetadata({ params: params() });
+    expect(meta.robots).toEqual({ index: false, follow: true });
   });
 });

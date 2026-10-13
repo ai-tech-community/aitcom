@@ -1195,16 +1195,16 @@ export function startupDirectoryCanonicalPath(
   return STARTUPS_PATH;
 }
 
+/**
+ * Sitemap locs for the directory. Only page 1 is listed, and that URL is the
+ * unpaged `/startups` path already in the static sitemap. Later `?page=`
+ * URLs stay crawlable (index, follow, self canonical) via in-page links.
+ */
 export function startupDirectorySitemapPaths(
-  totalCards: number,
-  pageSize: number = STARTUPS_PAGE_SIZE,
+  _totalCards?: number,
+  _pageSize: number = STARTUPS_PAGE_SIZE,
 ): string[] {
-  const totalPages = Math.max(1, Math.ceil(totalCards / pageSize) || 1);
-  const paths: string[] = [];
-  for (let page = 2; page <= totalPages; page++) {
-    paths.push(`${STARTUPS_PATH}?page=${page}`);
-  }
-  return paths;
+  return [];
 }
 
 /** Promo-ready at ≥3000. Crawl/index is always on — this is not robots. */
@@ -1223,8 +1223,8 @@ export function startupsPublicRobots(_verifiedCount?: number): {
 }
 
 /**
- * Directory + Insights + crawlable ?page=. Always listed — ≥3000 is
- * promo-only, not a sitemap gate.
+ * Directory + Insights. Page 1 only — later `?page=` URLs stay crawlable
+ * and are not listed. ≥3000 is promo-only, not a sitemap gate.
  */
 export function startupInvestigationSitemapPaths(
   verifiedCount: number,
