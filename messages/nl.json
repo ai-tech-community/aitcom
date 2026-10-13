@@ -4502,6 +4502,23 @@
       "connectionExplanation": "Leg elke verbinding uit voordat je publiceert."
     },
     "discardChanges": "Niet-opgeslagen wijzigingen weggooien en een ander verhaal openen?",
-    "reload": "Opgeslagen verhaal opnieuw laden"
+    "reload": "Opgeslagen verhaal opnieuw laden",
+    "suggestions": {
+      "title": "Vind het volgende verhaal",
+      "help": "AI kan maximaal drie tijdlijnen voorstellen uit recente artikelen die nog niet in een verhaal staan. Controleer het bronbewijs voordat je opslaat of publiceert.",
+      "generate": "Verhalen voorstellen",
+      "label": "AI-concept · niet opgeslagen",
+      "review": "Concept beoordelen",
+      "empty": "Geen geschikte verhalen gevonden",
+      "emptyHelp": "Er zijn mogelijk te weinig verwante artikelen. Je kunt nog steeds handmatig een tijdlijn maken.",
+      "discarded": "{count, plural, one {# voorstel is verworpen omdat het niet door de validatie kwam.} other {# voorstellen zijn verworpen omdat ze niet door de validatie kwamen.}}",
+      "recovery": "Probeer het later opnieuw of maak handmatig een verhaal. Bestaande verhalen zijn niet gewijzigd.",
+      "errors": {
+        "configuration": "Verhaalvoorstellen vereisen een ingestelde AI-provider.",
+        "provider": "De AI-provider kon het verzoek niet voltooien.",
+        "invalid": "Geen voorstel kwam door de controles van het bronbewijs.",
+        "cooldown": "Wacht een minuut voordat je meer voorstellen aanvraagt."
+      }
+    }
   }
 }

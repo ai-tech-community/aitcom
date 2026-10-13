@@ -79,3 +79,14 @@ Saved slugs are stable. Revision checks reject stale saves; reload the saved sto
 Migration `20261013f_news_storylines` creates `app.news_storyline`, `app.news_storyline_article`, and `app.news_storyline_connection`, with indexes, membership uniqueness, and composite evidence foreign keys. It contains DDL only. It must be applied through the normal deployment migration process before the storyline editor can store content. No migration or database write was performed during implementation, and no production storylines were seeded.
 
 The first release is editorial. Automated grouping, following with notifications, a graph view, semantic search, and cited archive answers are follow-on work. Reader requests do not call a model. Until real storylines are published, the news archive remains available with an honest empty state. If the new tables are unavailable, the added section shows an explicit load failure instead of claiming the archive has no stories.
+
+
+## AI-assisted editorial drafts
+
+In `/news/stories/manage`, **Suggest stories** proposes up to three unsaved timelines from at most 40 collected articles published in the last 90 days that are not already attached to a storyline. Each proposal needs at least two distinct articles and matching evidence copied from supplied source excerpts or headlines. Unknown IDs, invented evidence, repeated articles, duplicate proposals, and occupied slugs are rejected. The request uses public collected reporting only, with headlines capped at 500 characters and excerpts at 2,000 characters; it does not send member rumors or unpublished editorial text.
+
+The button uses the existing `ANTHROPIC_API_KEY`. `NEWS_STORYLINE_MODEL` optionally overrides the model; otherwise it uses the news summarizer's current default, `claude-haiku-5-5`. The request has a 45-second timeout and a 6,144-token output ceiling. A process-local per-editor cooldown allows one request per minute in each server process; this is a local repeat-request guard, not a shared multi-instance quota. Calls are not automatically retried.
+
+**Review draft** opens a proposal in the existing editor, with its source evidence and contribution notes ready to inspect and change. Suggestions remain unsaved until an editor chooses Save draft or Publish story. Generation itself performs no database writes and never changes existing or published stories. All publication rules still apply. The first drafting slice groups new storylines; updates to existing narratives and automatic connection suggestions remain future work.
+
+Provider configuration failures, timeouts, invalid responses, and no suitable groupings have distinct recovery states. No live provider calls were made during implementation; provider behavior was verified with mocked responses. The storylines migration from the first phase remains the storage prerequisite for eventual saving and publication.

@@ -11,6 +11,10 @@ import {
 } from "@/server/news/rumors";
 import { rumorInputSchema, submitterLabel } from "@/server/news/rumor-rules";
 
+import {
+  suggestConfiguredStorylines,
+  StorylineSuggestionError,
+} from "@/server/news/storyline-suggestions";
 import { storylineInputSchema } from "@/lib/news/storylines";
 import {
   findStoryline,
@@ -29,6 +33,23 @@ const storylineStaffProcedure = protectedProcedure.use(
 );
 
 export const newsRouter = createTRPCRouter({
+  suggestStorylines: storylineStaffProcedure.mutation(async ({ ctx }) => {
+    try {
+      return await suggestConfiguredStorylines(ctx.session.user.id);
+    } catch (err) {
+      if (err instanceof StorylineSuggestionError)
+        throw new TRPCError({
+          code:
+            err.code === "cooldown"
+              ? "TOO_MANY_REQUESTS"
+              : err.code === "configuration"
+                ? "PRECONDITION_FAILED"
+                : "BAD_GATEWAY",
+          message: err.code,
+        });
+      throw err;
+    }
+  }),
   listStorylines: storylineStaffProcedure
     .input(
       z.object({

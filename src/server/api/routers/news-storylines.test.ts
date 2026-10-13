@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   list: vi.fn(),
   read: vi.fn(),
   search: vi.fn(),
+  suggest: vi.fn(),
 }));
 vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/env", () => ({
@@ -33,6 +34,10 @@ vi.mock("@/server/news/storylines", () => ({
   findStoryline: state.read,
   searchStorylineArticles: state.search,
   StorylineError: class extends Error {},
+}));
+vi.mock("@/server/news/storyline-suggestions", () => ({
+  suggestConfiguredStorylines: state.suggest,
+  StorylineSuggestionError: class extends Error {},
 }));
 import { newsRouter } from "./news";
 
@@ -67,7 +72,16 @@ it("denies every editorial endpoint to ordinary members before storage access", 
   await expect(caller().saveStoryline(draft)).rejects.toMatchObject({
     code: "FORBIDDEN",
   });
-  for (const fn of [state.list, state.read, state.search, state.save])
+  await expect(caller().suggestStorylines()).rejects.toMatchObject({
+    code: "FORBIDDEN",
+  });
+  for (const fn of [
+    state.list,
+    state.read,
+    state.search,
+    state.save,
+    state.suggest,
+  ])
     expect(fn).not.toHaveBeenCalled();
 });
 it("requires a session even if the staff lookup would succeed", async () => {
@@ -82,4 +96,15 @@ it("attributes a staff save to the authenticated user", async () => {
   state.save.mockResolvedValue({ id: "saved" });
   expect(await caller().saveStoryline(draft)).toEqual({ id: "saved" });
   expect(state.save).toHaveBeenCalledWith(draft, "editor");
+});
+
+it("allows staff to request unsaved suggestions under their own identity", async () => {
+  state.staff = true;
+  state.suggest.mockResolvedValue({
+    drafts: [],
+    inspectedArticles: 0,
+    discarded: 0,
+  });
+  await caller().suggestStorylines();
+  expect(state.suggest).toHaveBeenCalledWith("editor");
 });

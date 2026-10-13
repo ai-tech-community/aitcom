@@ -1,5 +1,7 @@
 "use client";
 
+import { StorylineSuggestions } from "./storyline-suggestions";
+import type { StorylineSuggestion } from "@/lib/news/storyline-suggestions";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
@@ -139,6 +141,7 @@ function StorylineForm({
   onReload,
   onPending,
   locked,
+  suggestion,
 }: {
   initial: StorylineDetail | null;
   onCreated: (id: string) => void;
@@ -146,64 +149,67 @@ function StorylineForm({
   onReload: () => void;
   onPending: (pending: boolean) => void;
   locked: boolean;
+  suggestion: StorylineSuggestion | null;
 }) {
   const t = useTranslations("newsStories");
   const utils = api.useUtils();
   const [draft, setDraft] = useState<StorylineInput>(() =>
-    initial
-      ? {
-          id: initial.id,
-          slug: initial.slug,
-          titleEn: initial.titleEn,
-          titleNl: initial.titleNl,
-          overviewEn: initial.overviewEn,
-          overviewNl: initial.overviewNl,
-          questionsEn: initial.questionsEn,
-          questionsNl: initial.questionsNl,
-          status: initial.status,
-          revision: initial.revision,
-          articles: initial.articles.map(
-            ({ articleId, noteEn, noteNl, evidence }) => ({
-              articleId,
-              noteEn,
-              noteNl,
-              evidence,
-            }),
-          ),
-          connections: initial.connections.map(
-            ({
-              targetId,
-              relation,
-              explanationEn,
-              explanationNl,
-              fromArticleId,
-              toArticleId,
-            }) => ({
-              targetId,
-              relation,
-              explanationEn,
-              explanationNl,
-              fromArticleId,
-              toArticleId,
-            }),
-          ),
-        }
-      : {
-          slug: "",
-          titleEn: "",
-          titleNl: "",
-          overviewEn: "",
-          overviewNl: "",
-          questionsEn: [],
-          questionsNl: [],
-          status: "draft",
-          revision: 0,
-          articles: [],
-          connections: [],
-        },
+    suggestion
+      ? suggestion.input
+      : initial
+        ? {
+            id: initial.id,
+            slug: initial.slug,
+            titleEn: initial.titleEn,
+            titleNl: initial.titleNl,
+            overviewEn: initial.overviewEn,
+            overviewNl: initial.overviewNl,
+            questionsEn: initial.questionsEn,
+            questionsNl: initial.questionsNl,
+            status: initial.status,
+            revision: initial.revision,
+            articles: initial.articles.map(
+              ({ articleId, noteEn, noteNl, evidence }) => ({
+                articleId,
+                noteEn,
+                noteNl,
+                evidence,
+              }),
+            ),
+            connections: initial.connections.map(
+              ({
+                targetId,
+                relation,
+                explanationEn,
+                explanationNl,
+                fromArticleId,
+                toArticleId,
+              }) => ({
+                targetId,
+                relation,
+                explanationEn,
+                explanationNl,
+                fromArticleId,
+                toArticleId,
+              }),
+            ),
+          }
+        : {
+            slug: "",
+            titleEn: "",
+            titleNl: "",
+            overviewEn: "",
+            overviewNl: "",
+            questionsEn: [],
+            questionsNl: [],
+            status: "draft",
+            revision: 0,
+            articles: [],
+            connections: [],
+          },
   );
   const [articles, setArticles] = useState<StorylineArticle[]>(
-    () => initial?.articles.map((m) => m.article) ?? [],
+    () => suggestion?.articles ?? initial?.articles.map((m) => m.article) ?? [],
   );
   const [notice, setNotice] = useState("");
   const [articleQuery, setArticleQuery] = useState("");
@@ -703,6 +709,9 @@ export function StorylineEditor() {
   const [saving, setSaving] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [selectedId, setSelectedId] = useState("");
+  const [suggestion, setSuggestion] = useState<StorylineSuggestion | null>(
+    null,
+  );
   const [dirty, setDirty] = useState(false);
   const [version, setVersion] = useState(0);
   const choose = async (id: string) => {
@@ -712,6 +721,7 @@ export function StorylineEditor() {
       if (dirty && !(await confirm({ description: t("discardChanges") })))
         return;
       setDirty(false);
+      setSuggestion(null);
       setSelectedId(id);
       setVersion((v) => v + 1);
     } finally {
@@ -800,6 +810,28 @@ export function StorylineEditor() {
         )}
       </aside>
       <div>
+        <StorylineSuggestions
+          locked={saving || switching}
+          onReview={(proposal) => {
+            void (async () => {
+              if (saving || switching) return;
+              setSwitching(true);
+              try {
+                if (
+                  dirty &&
+                  !(await confirm({ description: t("discardChanges") }))
+                )
+                  return;
+                setSelectedId("");
+                setSuggestion(proposal);
+                setDirty(true);
+                setVersion((v) => v + 1);
+              } finally {
+                setSwitching(false);
+              }
+            })();
+          }}
+        />
         {selectedId && detail.isLoading ? (
           <StorylineLoading />
         ) : selectedId && detail.error ? (
@@ -819,7 +851,11 @@ export function StorylineEditor() {
           <StorylineForm
             key={`${selectedId}:${version}`}
             initial={selectedId ? detail.data! : null}
-            onCreated={(id) => setSelectedId(id)}
+            onCreated={(id) => {
+              setSuggestion(null);
+              setSelectedId(id);
+            }}
+            suggestion={suggestion}
             onDirty={setDirty}
             onPending={setSaving}
             locked={saving || switching}

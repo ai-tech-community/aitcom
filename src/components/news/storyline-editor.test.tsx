@@ -9,6 +9,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, expect, it, vi } from "vitest";
 import en from "../../../messages/en.json";
 import { storyFixture } from "@/test/news-storyline-fixture";
+import { storylineInputSchema } from "@/lib/news/storylines";
 import { StorylineEditor } from "./storyline-editor";
 
 const state = vi.hoisted(() => ({
@@ -16,8 +17,25 @@ const state = vi.hoisted(() => ({
   articleRows: [] as unknown[],
   storyRows: [] as unknown[],
   detail: null as unknown,
+  suggestion: null as unknown,
   refetch: vi.fn(),
   options: null as null | { onError: (err: { message: string }) => void },
+}));
+vi.mock("./storyline-suggestions", () => ({
+  StorylineSuggestions: ({
+    onReview,
+  }: {
+    onReview: (draft: unknown) => void;
+  }) => (
+    <div>
+      Suggestions
+      {!!state.suggestion && (
+        <button type="button" onClick={() => onReview(state.suggestion)}>
+          Review generated draft
+        </button>
+      )}
+    </div>
+  ),
 }));
 vi.mock("@/components/confirm-dialog", () => ({
   useConfirm: () => vi.fn().mockResolvedValue(true),
@@ -64,6 +82,7 @@ beforeEach(() => {
   state.refetch.mockReset();
   state.storyRows = [];
   state.detail = null;
+  state.suggestion = null;
   state.articleRows = storyFixture.articles.slice(0, 2).map((m) => m.article);
 });
 function editor() {
@@ -193,4 +212,28 @@ it("locks navigation and preserves edits until a stale-story reload settles", as
   expect(screen.getByLabelText("Title · English")).toHaveValue(
     storyFixture.titleEn,
   );
+});
+
+it("opens a generated proposal with editable source evidence without automatically saving", async () => {
+  state.suggestion = {
+    input: storylineInputSchema.parse({
+      ...storyFixture,
+      id: undefined,
+      status: "draft",
+      revision: 0,
+    }),
+    articles: storyFixture.articles.map((m) => m.article),
+  };
+  editor();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Review generated draft" }),
+  );
+  expect(screen.getByLabelText("Title · English")).toHaveValue(
+    storyFixture.titleEn,
+  );
+  expect(screen.getByLabelText("URL slug", { exact: false })).toBeEnabled();
+  expect(
+    screen.getAllByLabelText("Source evidence", { exact: false })[0],
+  ).toHaveValue(storyFixture.articles[0]!.evidence);
+  expect(state.mutate).not.toHaveBeenCalled();
 });

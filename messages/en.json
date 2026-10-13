@@ -4502,6 +4502,23 @@
       "connectionExplanation": "Explain every connection before publishing."
     },
     "discardChanges": "Discard unsaved changes and open another story?",
-    "reload": "Reload saved story"
+    "reload": "Reload saved story",
+    "suggestions": {
+      "title": "Find the next story",
+      "help": "AI can propose up to three timelines from recent articles that are not yet in a story. Review the source evidence before saving or publishing.",
+      "generate": "Suggest stories",
+      "label": "AI draft · not saved",
+      "review": "Review draft",
+      "empty": "No suitable storylines found",
+      "emptyHelp": "There may be too few related articles. You can still build a timeline manually.",
+      "discarded": "{count, plural, one {# proposal was discarded because it did not pass validation.} other {# proposals were discarded because they did not pass validation.}}",
+      "recovery": "Try again later, or create a story manually. Existing stories are unchanged.",
+      "errors": {
+        "configuration": "Story suggestions need a configured AI provider.",
+        "provider": "The AI provider could not finish the request.",
+        "invalid": "No proposal passed the source evidence checks.",
+        "cooldown": "Wait a minute before requesting more suggestions."
+      }
+    }
   }
 }
