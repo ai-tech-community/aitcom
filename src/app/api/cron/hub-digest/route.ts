@@ -34,7 +34,10 @@ import {
 import { loadAtRiskInputs } from "@/server/communities/insights-queries";
 import { resolvePrefs, type OptoutRow } from "@/server/notifications/prefs";
 import { currentPeriodKey } from "@/server/notifications/constants";
-import { renderHubDigestHtml } from "@/server/notifications/render";
+import {
+  renderHubDigestHtml,
+  renderHubDigestText,
+} from "@/server/notifications/render";
 import { sendHubDigestEmail } from "@/server/email";
 import { rankCommunitiesForMember } from "@/server/communities/discovery";
 import { loadDiscoveryCandidates } from "@/server/communities/discovery-queries";
@@ -280,7 +283,11 @@ export async function GET(req: Request) {
 
     let ok = false;
     try {
-      ok = await sendHubDigestEmail(email, renderHubDigestHtml(digest));
+      ok = await sendHubDigestEmail(
+        email,
+        renderHubDigestHtml(digest, now),
+        renderHubDigestText(digest, now),
+      );
     } catch (err) {
       console.error(`hub-digest: send failed for ${userId}`, err);
     }
