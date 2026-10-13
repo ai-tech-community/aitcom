@@ -4745,3 +4745,33 @@ export const newsItems = appSchema.table(
     index("news_item_published_idx").on(t.publishedAt),
   ],
 );
+
+/** Member-submitted rumors on /news. Separate from RSS rows so the digest
+ *  TL;DR never treats an unverified rumor as a collected story. */
+export const newsRumors = appSchema.table(
+  "news_rumor",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    submitterName: d.text("submitter_name").notNull(),
+    title: d.text().notNull(),
+    url: d.text(),
+    body: d.text().notNull(),
+    hiddenAt: d.timestamp("hidden_at", { withTimezone: true }),
+    createdAt: d
+      .timestamp("created_at", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("news_rumor_created_idx").on(t.createdAt),
+    index("news_rumor_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);

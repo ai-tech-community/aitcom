@@ -147,6 +147,7 @@ import * as migration_20261008b_unlist_test_communities from "./20261008b_unlist
 import * as migration_20261008c_startup_jobs_scan_streak from "./20261008c_startup_jobs_scan_streak";
 import * as migration_20261012a_news_items from "./20261012a_news_items";
 import * as migration_20261012b_news_item_summary from "./20261012b_news_item_summary";
+import * as migration_20261013a_news_rumors from "./20261013a_news_rumors";
 
 export const migrations = [
   {
@@ -893,5 +894,10 @@ export const migrations = [
     up: migration_20261012b_news_item_summary.up,
     down: migration_20261012b_news_item_summary.down,
     name: "20261012b_news_item_summary",
+  },
+  {
+    up: migration_20261013a_news_rumors.up,
+    down: migration_20261013a_news_rumors.down,
+    name: "20261013a_news_rumors",
   },
 ];
