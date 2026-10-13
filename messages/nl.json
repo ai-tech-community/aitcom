@@ -4499,26 +4499,26 @@
       "immutableSlug": "De opgeslagen URL kan niet worden gewijzigd.",
       "slugTaken": "Deze URL is al in gebruik. Kies een andere slug.",
       "missing": "Dit verhaal bestaat niet meer.",
-      "connectionExplanation": "Leg elke verbinding uit voordat je publiceert."
+      "connectionExplanation": "Leg elke verbinding uit voordat je publiceert.",
+      "sourceDraftReviewed": "Dit voorstel is al beoordeeld of afgewezen. Vernieuw de concepten.",
+      "sourceDraft": "Een agentvoorstel kan alleen in een nieuw verhaal worden geïmporteerd."
     },
     "discardChanges": "Niet-opgeslagen wijzigingen weggooien en een ander verhaal openen?",
     "reload": "Opgeslagen verhaal opnieuw laden",
     "suggestions": {
-      "title": "Vind het volgende verhaal",
-      "help": "AI kan maximaal drie tijdlijnen voorstellen uit recente artikelen die nog niet in een verhaal staan. Controleer het bronbewijs voordat je opslaat of publiceert.",
-      "generate": "Verhalen voorstellen",
-      "label": "AI-concept · niet opgeslagen",
+      "title": "Concepten van ledenagents",
+      "help": "Leden brengen hun eigen agents mee om het archief te onderzoeken en verhalen met bronbewijs voor te stellen. Redacteuren beoordelen en publiceren de resultaten.",
+      "agentInstructions": "Vraag je verbonden agent om browse-news, browse-news-storylines en propose-news-storyline te gebruiken via de MCP-verbinding met het platform.",
+      "refresh": "Concepten vernieuwen",
+      "label": "Voorgesteld door {agent} · wacht op redactionele beoordeling",
       "review": "Concept beoordelen",
-      "empty": "Geen geschikte verhalen gevonden",
-      "emptyHelp": "Er zijn mogelijk te weinig verwante artikelen. Je kunt nog steeds handmatig een tijdlijn maken.",
-      "discarded": "{count, plural, one {# voorstel is verworpen omdat het niet door de validatie kwam.} other {# voorstellen zijn verworpen omdat ze niet door de validatie kwamen.}}",
-      "recovery": "Probeer het later opnieuw of maak handmatig een verhaal. Bestaande verhalen zijn niet gewijzigd.",
-      "errors": {
-        "configuration": "Verhaalvoorstellen vereisen een ingestelde AI-provider.",
-        "provider": "De AI-provider kon het verzoek niet voltooien.",
-        "invalid": "Geen voorstel kwam door de controles van het bronbewijs.",
-        "cooldown": "Wacht een minuut voordat je meer voorstellen aanvraagt."
-      }
-    }
+      "empty": "Geen openstaande agentvoorstellen",
+      "emptyHelp": "Vraag je eigen verbonden agent een verhaal te onderzoeken of maak handmatig een tijdlijn.",
+      "invalid": "Sommige voorstellen komen niet meer overeen met hun bronbewijs. Wijs ze af of vraag de indienende agent om een herziening.",
+      "dismiss": "Voorstel afwijzen",
+      "awaitingEditors": "Wacht op nieuwsredacteuren"
+    },
+    "proposedBy": "Onderzoek voorgesteld door {agent}",
+    "proposedByHidden": "Onderzoek voorgesteld door een verbonden agent van een lid"
   }
 }

@@ -4499,26 +4499,26 @@
       "immutableSlug": "The saved URL cannot be changed.",
       "slugTaken": "That URL is already used. Choose another slug.",
       "missing": "This story no longer exists.",
-      "connectionExplanation": "Explain every connection before publishing."
+      "connectionExplanation": "Explain every connection before publishing.",
+      "sourceDraftReviewed": "This proposal has already been reviewed or dismissed. Reload the draft inbox.",
+      "sourceDraft": "An agent proposal can only be imported into a new storyline."
     },
     "discardChanges": "Discard unsaved changes and open another story?",
     "reload": "Reload saved story",
     "suggestions": {
-      "title": "Find the next story",
-      "help": "AI can propose up to three timelines from recent articles that are not yet in a story. Review the source evidence before saving or publishing.",
-      "generate": "Suggest stories",
-      "label": "AI draft · not saved",
+      "title": "Drafts from member agents",
+      "help": "Members bring their own agents to research the archive and propose source-backed storylines. Editors review and publish the results.",
+      "agentInstructions": "Ask your connected agent to use browse-news, browse-news-storylines, and propose-news-storyline through the platform MCP connection.",
+      "refresh": "Refresh drafts",
+      "label": "Proposed by {agent} · pending editorial review",
       "review": "Review draft",
-      "empty": "No suitable storylines found",
-      "emptyHelp": "There may be too few related articles. You can still build a timeline manually.",
-      "discarded": "{count, plural, one {# proposal was discarded because it did not pass validation.} other {# proposals were discarded because they did not pass validation.}}",
-      "recovery": "Try again later, or create a story manually. Existing stories are unchanged.",
-      "errors": {
-        "configuration": "Story suggestions need a configured AI provider.",
-        "provider": "The AI provider could not finish the request.",
-        "invalid": "No proposal passed the source evidence checks.",
-        "cooldown": "Wait a minute before requesting more suggestions."
-      }
-    }
+      "empty": "No pending agent proposals",
+      "emptyHelp": "Ask your own connected agent to research a story, or build a timeline manually.",
+      "invalid": "Some proposals no longer match their source evidence. Dismiss them or ask the submitting agent to revise.",
+      "dismiss": "Dismiss proposal",
+      "awaitingEditors": "Awaiting news editors"
+    },
+    "proposedBy": "Research proposed by {agent}",
+    "proposedByHidden": "Research proposed by a member’s connected agent"
   }
 }

@@ -171,6 +171,13 @@ export function StorylineReader({
         {copy.fallback && (
           <p className="text-muted-foreground mt-3 text-sm">{t("fallback")}</p>
         )}
+        {story.proposedBy && (
+          <p className="text-muted-foreground mt-4 text-sm">
+            {story.proposedBy.name
+              ? t("proposedBy", { agent: story.proposedBy.name })
+              : t("proposedByHidden")}
+          </p>
+        )}
         <p className="text-muted-foreground mt-5 text-sm">{t("editorial")}</p>
         <div className="mt-6 flex flex-wrap items-center gap-5 text-sm">
           <span>{t("articleCount", { count: story.articles.length })}</span>

@@ -77,7 +77,11 @@ import {
   saveStoryline,
   searchStorylineArticles,
 } from "./storylines";
-import { newsStorylines, newsStorylineArticles } from "@/server/db/schema";
+import {
+  newsStorylines,
+  newsStorylineArticles,
+  agentDrafts,
+} from "@/server/db/schema";
 import { revalidateNewsTable } from "./cache";
 
 const article = (id: string) => ({
@@ -251,4 +255,48 @@ it("uses archive search semantics including AI summaries while keeping evidence 
   expect(query.params).toEqual(
     Array(3).fill(String.raw`local\s+ai\s+\(small\)`),
   );
+});
+
+it("consumes an agent proposal in the same transaction as the editorial save", async () => {
+  mock.rows = [
+    [{ id: "d1", metadata: { original: "agent proposal" } }],
+    [article("a"), article("b")],
+  ];
+  const result = await saveStoryline(
+    { ...input(), sourceDraftId: "d1" },
+    "editor",
+  );
+  const consumed = mock.writes.find((w) => w.table === agentDrafts);
+  expect(consumed?.value).toMatchObject({
+    status: "approved",
+    metadata: {
+      original: "agent proposal",
+      savedStorylineId: result.id,
+      reviewedBy: "editor",
+    },
+  });
+  expect(
+    mock.writes.find((w) => w.table === newsStorylines)?.value,
+  ).not.toHaveProperty("sourceDraftId");
+  mock.writes = [];
+  mock.committed = [];
+  mock.rows = [[]];
+  await expect(
+    saveStoryline({ ...input(), sourceDraftId: "d1" }, "editor"),
+  ).rejects.toMatchObject({ code: "conflict", message: "sourceDraftReviewed" });
+  expect(mock.committed).toEqual([]);
+});
+it("does not expose the name of a hidden contributing agent on public storylines", async () => {
+  const story = { ...input(), id: "s1" };
+  const rows = input().articles.map((membership) => ({
+    membership,
+    article: article(membership.articleId),
+  }));
+  mock.rows = [
+    [story],
+    rows,
+    [{ name: "Hidden agent", visibilityMode: "ghost" }],
+  ];
+  const result = await findStoryline({ slug: "local-ai" });
+  expect(result?.proposedBy).toEqual({ name: null });
 });

@@ -10,6 +10,7 @@ export const storylineRelations = [
 
 export const storylineInputSchema = z.object({
   id: id.optional(),
+  sourceDraftId: id.optional(),
   slug: z
     .string()
     .trim()

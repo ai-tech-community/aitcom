@@ -21,6 +21,7 @@ export const storyFixture: StorylineDetail = {
   createdAt: new Date("2026-03-01"),
   updatedAt: new Date("2026-10-13"),
   connections: [],
+  proposedBy: null,
   articles: [
     {
       articleId: "research",

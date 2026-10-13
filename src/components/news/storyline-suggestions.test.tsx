@@ -8,7 +8,8 @@ import { StorylineSuggestions } from "./storyline-suggestions";
 
 const state = vi.hoisted(() => ({
   result: {} as Record<string, unknown>,
-  mutate: vi.fn(),
+  refetch: vi.fn(),
+  dismiss: vi.fn(),
 }));
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
@@ -17,9 +18,15 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 vi.mock("@/trpc/react", () => ({
   api: {
+    useUtils: () => ({
+      news: { listAgentStorylineDrafts: { invalidate: vi.fn() } },
+    }),
     news: {
-      suggestStorylines: {
-        useMutation: () => ({ ...state.result, mutate: state.mutate }),
+      listAgentStorylineDrafts: {
+        useQuery: () => ({ ...state.result, refetch: state.refetch }),
+      },
+      dismissAgentStorylineDraft: {
+        useMutation: () => ({ mutate: state.dismiss, isPending: false }),
       },
     },
   },
@@ -35,52 +42,65 @@ const show = (onReview = vi.fn(), locked = false) =>
       <StorylineSuggestions locked={locked} onReview={onReview} />
     </NextIntlClientProvider>,
   );
-it("requests suggestions only after the editor explicitly starts generation", () => {
-  show();
-  expect(state.mutate).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Suggest stories" }));
-  expect(state.mutate).toHaveBeenCalledOnce();
+const draft = () => ({
+  draftId: "d1",
+  agentName: "Ada’s agent",
+  input: storylineInputSchema.parse({
+    ...storyFixture,
+    id: undefined,
+    sourceDraftId: "d1",
+    status: "draft",
+    revision: 0,
+  }),
+  articles: storyFixture.articles.map((m) => m.article),
 });
-it("labels proposals as unsaved AI drafts and hands a chosen draft to the editor", () => {
-  const draft = {
-    input: storylineInputSchema.parse({
-      ...storyFixture,
-      id: undefined,
-      status: "draft",
-      revision: 0,
-    }),
-    articles: storyFixture.articles.map((m) => m.article),
+it("offers a refresh of member-agent drafts instead of an internal generation action", () => {
+  show();
+  expect(
+    screen.queryByRole("button", { name: "Suggest stories" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByText(en.newsStories.suggestions.agentInstructions),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Refresh drafts" }));
+  expect(state.refetch).toHaveBeenCalledOnce();
+});
+it("attributes a proposal and hands its original draft reference to the editor", () => {
+  const proposal = draft();
+  state.result = {
+    data: { items: [proposal], invalidItems: [], page: 1, totalPages: 1 },
   };
-  state.result = { isSuccess: true, data: { drafts: [draft], discarded: 0 } };
   const onReview = vi.fn();
   show(onReview);
-  expect(screen.getByText("AI draft · not saved")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Review draft" }));
-  expect(onReview).toHaveBeenCalledWith(draft);
-});
-it("blocks generation and review while the editor is locked", () => {
-  const draft = {
-    input: storylineInputSchema.parse({
-      ...storyFixture,
-      id: undefined,
-      status: "draft",
-      revision: 0,
-    }),
-    articles: storyFixture.articles.map((m) => m.article),
-  };
-  state.result = { isSuccess: true, data: { drafts: [draft], discarded: 0 } };
-  show(vi.fn(), true);
   expect(
-    screen.getByRole("button", { name: "Suggest stories" }),
-  ).toBeDisabled();
+    screen.getByText("Proposed by Ada’s agent · pending editorial review"),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Review draft" }));
+  expect(onReview).toHaveBeenCalledWith(proposal);
+});
+it("blocks review and refresh while an editorial save is pending", () => {
+  state.result = {
+    data: { items: [draft()], invalidItems: [], page: 1, totalPages: 1 },
+  };
+  show(vi.fn(), true);
+  expect(screen.getByRole("button", { name: "Refresh drafts" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "Review draft" })).toBeDisabled();
 });
-it("shows provider failures with a recovery path", () => {
-  state.result = { error: { message: "provider" } };
+it("surfaces stale evidence and lets staff dismiss the proposal", () => {
+  state.result = {
+    data: {
+      items: [],
+      invalidItems: [
+        { draftId: "stale", agentName: "Agent", title: "Stale story" },
+      ],
+      page: 1,
+      totalPages: 1,
+    },
+  };
   show();
-  expect(screen.getByRole("alert")).toHaveTextContent(
-    en.newsStories.suggestions.errors.provider,
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-  expect(state.mutate).toHaveBeenCalledOnce();
+  expect(
+    screen.getByText(en.newsStories.suggestions.invalid),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Dismiss proposal" }));
+  expect(state.dismiss).toHaveBeenCalledWith({ draftId: "stale" });
 });

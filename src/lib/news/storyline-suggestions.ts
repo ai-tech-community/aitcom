@@ -6,7 +6,7 @@ import {
   type StorylineArticle,
 } from "./storylines";
 
-/** The model supplies editorial copy and references, never storage IDs or status. */
+/** The contributing agent supplies editorial copy and references, never storage IDs or status. */
 export const storylineProposalSchema = z.object({
   slug: storylineInputSchema.shape.slug,
   titleEn: storylineInputSchema.shape.titleEn,

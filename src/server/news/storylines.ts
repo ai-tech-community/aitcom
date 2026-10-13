@@ -12,6 +12,8 @@ import { newsTableSearchRegex } from "@/lib/news/table-query";
 import { db } from "@/server/db";
 import {
   newsItems,
+  agentDrafts,
+  agentProfiles,
   newsStorylines as stories,
   newsStorylineArticles as memberships,
   newsStorylineConnections as connections,
@@ -154,7 +156,28 @@ export async function findStoryline(
         .from(connections)
         .where(eq(connections.sourceId, storyline.id))
     : [];
-  return { ...storyline, articles, connections: outgoing };
+  const [sourceAgent] = await db
+    .select({
+      name: agentProfiles.name,
+      visibilityMode: agentProfiles.visibilityMode,
+    })
+    .from(agentDrafts)
+    .innerJoin(agentProfiles, eq(agentProfiles.id, agentDrafts.agentId))
+    .where(
+      and(
+        eq(agentDrafts.type, "news_storyline"),
+        eq(agentDrafts.status, "approved"),
+        sql`${agentDrafts.metadata}->>'savedStorylineId' = ${storyline.id}`,
+      ),
+    )
+    .limit(1);
+  const proposedBy = sourceAgent
+    ? {
+        name:
+          sourceAgent.visibilityMode === "visible" ? sourceAgent.name : null,
+      }
+    : null;
+  return { ...storyline, articles, connections: outgoing, proposedBy };
 }
 export type StorylineDetail = NonNullable<
   Awaited<ReturnType<typeof findStoryline>>
@@ -287,6 +310,24 @@ export async function searchStorylineArticles(
 export async function saveStoryline(input: StorylineInput, userId: string) {
   const id = input.id ?? crypto.randomUUID();
   await db.transaction(async (tx) => {
+    let sourceDraft: typeof agentDrafts.$inferSelect | undefined;
+    if (input.sourceDraftId) {
+      if (input.id) throw new StorylineError("invalid", "sourceDraft");
+      [sourceDraft] = await tx
+        .select()
+        .from(agentDrafts)
+        .where(
+          and(
+            eq(agentDrafts.id, input.sourceDraftId),
+            eq(agentDrafts.type, "news_storyline"),
+            eq(agentDrafts.status, "pending"),
+          ),
+        )
+        .for("update");
+      if (!sourceDraft)
+        throw new StorylineError("conflict", "sourceDraftReviewed");
+    }
+
     if (input.id) {
       const [existing] = await tx
         .select()
@@ -344,6 +385,7 @@ export async function saveStoryline(input: StorylineInput, userId: string) {
       articles: _articles,
       connections: _connections,
       id: _id,
+      sourceDraftId: _sourceDraftId,
       revision: _revision,
       ...copy
     } = input;
@@ -385,6 +427,24 @@ export async function saveStoryline(input: StorylineInput, userId: string) {
       await tx
         .insert(connections)
         .values(input.connections.map((c) => ({ ...c, sourceId: id })));
+    if (sourceDraft)
+      await tx
+        .update(agentDrafts)
+        .set({
+          status: "approved",
+          metadata: {
+            ...sourceDraft.metadata,
+            savedStorylineId: id,
+            reviewedBy: userId,
+            reviewedAt: new Date().toISOString(),
+          },
+        })
+        .where(
+          and(
+            eq(agentDrafts.id, sourceDraft.id),
+            eq(agentDrafts.status, "pending"),
+          ),
+        );
   });
   revalidateNewsTable();
   return { id };

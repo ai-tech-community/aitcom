@@ -50,6 +50,7 @@ vi.mock("@/trpc/react", () => ({
     useUtils: () => ({
       news: {
         listStorylines: { invalidate: vi.fn() },
+        listAgentStorylineDrafts: { invalidate: vi.fn() },
         readStoryline: { invalidate: vi.fn() },
       },
     }),

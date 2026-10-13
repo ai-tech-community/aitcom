@@ -1,5 +1,7 @@
 # AI-assisted Storyline Drafts Implementation Plan
 
+**Superseded:** the user requires their connected platform agents to provide proposals. The built-in provider implementation described below was removed; see `2026-10-13-news-platform-agents.md` for the current flow.
+
 **Goal:** Implement the next approved follow-on from the story-first design: evidence-backed AI draft grouping, with editorial review before persistence or publication.
 
 **Architecture:** A staff-only mutation reads a bounded set of collected articles and existing storylines, asks the existing Anthropic provider for structured proposals, and validates every reference and evidence excerpt. It returns unsaved drafts for the existing editor. Saving and publishing continue through the reviewed storyline service. Generation itself performs no database writes.

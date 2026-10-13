@@ -116,7 +116,7 @@ Follow `PRODUCT.md` and `DESIGN.md`: white/true-dark surfaces, Geist Sans narrat
 
 These are separate follow-on work, not fake controls in the first release:
 
-- AI-assisted draft grouping and proposed explanations, with evidence validation and editorial review.
+- Draft grouping and proposed explanations from user-connected platform agents, with evidence validation and editorial review. The platform exposes tools and stores attributed proposals; it does not run a storyline model or invoke agents without owner authorization.
 - Following a storyline with meaningful update notifications using the existing notification infrastructure.
 - An optional graph around the current storyline, derived from persisted connections.
 - Semantic archive search and cited question answering.

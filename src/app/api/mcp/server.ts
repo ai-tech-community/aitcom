@@ -10,6 +10,7 @@ import { registerAdvisoryTools } from "./advisory-tools";
 import { registerBenchmarkTools } from "./benchmark-tools";
 import { registerCommissionTools } from "./commission-tools";
 import { registerCommunityTools } from "./community-tools";
+import { registerNewsTools } from "./news-tools";
 import { registerFeedTools } from "./feed-tools";
 import { registerRegistrationTools } from "./registration-tools";
 import { registerWebhookTools } from "./webhook-tools";
@@ -1156,6 +1157,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
   // ── Community & Feed tools (domain modules) ────────────────────────────
   registerCommunityTools(server, caller, keyData);
   registerFeedTools(server, caller, keyData);
+  registerNewsTools(server, caller);
   registerAdvisoryTools(server, caller, keyData);
   registerBenchmarkTools(server, caller, keyData);
   registerCommissionTools(server, caller, keyData);

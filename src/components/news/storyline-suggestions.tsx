@@ -9,6 +9,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { StorylineLoading } from "./storyline-states";
 import type { StorylineSuggestion } from "@/lib/news/storyline-suggestions";
 
+/** Contributions from user-connected agents, not platform-generated copy. */
 export function StorylineSuggestions({
   locked,
   onReview,
@@ -17,15 +18,17 @@ export function StorylineSuggestions({
   onReview: (draft: StorylineSuggestion) => void;
 }) {
   const t = useTranslations("newsStories");
-  const [started, setStarted] = useState(false);
-  const suggest = api.news.suggestStorylines.useMutation();
-  const errorKeys = [
-    "configuration",
-    "provider",
-    "invalid",
-    "cooldown",
-  ] as const;
-  const errorCode = errorKeys.find((key) => key === suggest.error?.message);
+  const utils = api.useUtils();
+  const dismiss = api.news.dismissAgentStorylineDraft.useMutation({
+    onSuccess: () => {
+      void utils.news.listAgentStorylineDrafts.invalidate();
+    },
+  });
+  const [page, setPage] = useState(1);
+  const drafts = api.news.listAgentStorylineDrafts.useQuery(
+    { page },
+    { refetchOnWindowFocus: false },
+  );
   return (
     <section
       className="border-border mb-8 border-b pb-8"
@@ -39,51 +42,77 @@ export function StorylineSuggestions({
           <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
             {t("suggestions.help")}
           </p>
+          <p className="text-muted-foreground mt-2 text-sm">
+            {t("suggestions.agentInstructions")}
+          </p>
         </div>
         <Button
           type="button"
           variant="outline"
-          disabled={locked || suggest.isPending}
-          onClick={() => {
-            setStarted(true);
-            suggest.mutate();
-          }}
+          disabled={locked || drafts.isFetching}
+          onClick={() => void drafts.refetch()}
         >
-          {t("suggestions.generate")}
+          {t("suggestions.refresh")}
         </Button>
       </div>
-      {suggest.isPending && <StorylineLoading />}
-      {suggest.error && (
+      {drafts.isLoading && <StorylineLoading />}
+      {drafts.error && (
         <ErrorState
-          title={errorCode ? t(`suggestions.errors.${errorCode}`) : t("failed")}
-          description={t("suggestions.recovery")}
-          onRetry={() => {
-            if (!locked) suggest.mutate();
-          }}
+          title={t("loadFailed")}
+          onRetry={locked ? undefined : () => void drafts.refetch()}
           retryLabel={t("retry")}
         />
       )}
-      {started && suggest.isSuccess && !suggest.data?.drafts.length && (
-        <EmptyState
-          title={t("suggestions.empty")}
-          description={t("suggestions.emptyHelp")}
+      {drafts.data &&
+        !drafts.data.items.length &&
+        !drafts.data.invalidItems.length && (
+          <EmptyState
+            title={t("suggestions.empty")}
+            description={t("suggestions.emptyHelp")}
+          />
+        )}
+      {dismiss.error && (
+        <ErrorState
+          title={t("failed")}
+          onRetry={() => void drafts.refetch()}
+          retryLabel={t("retry")}
         />
       )}
-      {suggest.isSuccess && !!suggest.data?.discarded && (
-        <p role="status" className="text-muted-foreground mt-4 text-sm">
-          {t("suggestions.discarded", { count: suggest.data.discarded })}
-        </p>
+      {!!drafts.data?.invalidItems.length && (
+        <div className="mt-4">
+          <p className="text-sm">{t("suggestions.invalid")}</p>
+          <ul className="mt-3 space-y-3">
+            {drafts.data.invalidItems.map((item) => (
+              <li
+                key={item.draftId}
+                className="flex flex-wrap items-center justify-between gap-3"
+              >
+                <span className="min-w-0 flex-1 text-sm">
+                  {item.title} · {item.agentName}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={locked || dismiss.isPending}
+                  onClick={() => dismiss.mutate({ draftId: item.draftId })}
+                >
+                  {t("suggestions.dismiss")}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
-      {!!suggest.data?.drafts.length && (
+      {!!drafts.data?.items.length && (
         <div className="border-border mt-5 divide-y border-t">
-          {suggest.data.drafts.map((draft) => (
+          {drafts.data.items.map((draft) => (
             <article
-              key={draft.input.slug}
+              key={draft.draftId}
               className="flex flex-wrap items-start justify-between gap-4 py-5"
             >
               <div className="min-w-0 flex-1">
                 <p className="text-muted-foreground text-xs">
-                  {t("suggestions.label")}
+                  {t("suggestions.label", { agent: draft.agentName })}
                 </p>
                 <h3 className="mt-1 text-lg font-semibold" lang="en">
                   {draft.input.titleEn}
@@ -101,14 +130,51 @@ export function StorylineSuggestions({
               <Button
                 type="button"
                 variant="outline"
-                disabled={locked || suggest.isPending}
+                disabled={locked}
                 onClick={() => onReview(draft)}
               >
                 {t("suggestions.review")}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={locked || dismiss.isPending}
+                onClick={() => dismiss.mutate({ draftId: draft.draftId })}
+              >
+                {t("suggestions.dismiss")}
+              </Button>
             </article>
           ))}
         </div>
+      )}
+      {drafts.data && drafts.data.totalPages > 1 && (
+        <nav
+          aria-label={t("suggestions.title")}
+          className="mt-4 flex flex-wrap items-center gap-4"
+        >
+          <Button
+            type="button"
+            variant="outline"
+            disabled={locked || drafts.data.page <= 1}
+            onClick={() => setPage(drafts.data!.page - 1)}
+          >
+            {t("previous")}
+          </Button>
+          <span className="text-muted-foreground text-sm">
+            {t("page", {
+              page: drafts.data.page,
+              total: drafts.data.totalPages,
+            })}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={locked || drafts.data.page >= drafts.data.totalPages}
+            onClick={() => setPage(drafts.data!.page + 1)}
+          >
+            {t("next")}
+          </Button>
+        </nav>
       )}
     </section>
   );

@@ -1,3 +1,7 @@
+import {
+  listAgentStorylineDrafts,
+  dismissAgentStorylineDraft,
+} from "@/server/news/agent-storylines";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -11,10 +15,6 @@ import {
 } from "@/server/news/rumors";
 import { rumorInputSchema, submitterLabel } from "@/server/news/rumor-rules";
 
-import {
-  suggestConfiguredStorylines,
-  StorylineSuggestionError,
-} from "@/server/news/storyline-suggestions";
 import { storylineInputSchema } from "@/lib/news/storylines";
 import {
   findStoryline,
@@ -33,23 +33,12 @@ const storylineStaffProcedure = protectedProcedure.use(
 );
 
 export const newsRouter = createTRPCRouter({
-  suggestStorylines: storylineStaffProcedure.mutation(async ({ ctx }) => {
-    try {
-      return await suggestConfiguredStorylines(ctx.session.user.id);
-    } catch (err) {
-      if (err instanceof StorylineSuggestionError)
-        throw new TRPCError({
-          code:
-            err.code === "cooldown"
-              ? "TOO_MANY_REQUESTS"
-              : err.code === "configuration"
-                ? "PRECONDITION_FAILED"
-                : "BAD_GATEWAY",
-          message: err.code,
-        });
-      throw err;
-    }
-  }),
+  dismissAgentStorylineDraft: storylineStaffProcedure
+    .input(z.object({ draftId: z.string().min(1).max(255) }))
+    .mutation(({ input }) => dismissAgentStorylineDraft(input.draftId)),
+  listAgentStorylineDrafts: storylineStaffProcedure
+    .input(z.object({ page: z.number().int().min(1).default(1) }))
+    .query(({ input }) => listAgentStorylineDrafts(input.page)),
   listStorylines: storylineStaffProcedure
     .input(
       z.object({

@@ -230,6 +230,7 @@ function StorylineForm({
       setDraft((current) => ({
         ...current,
         id: result.id,
+        sourceDraftId: undefined,
         revision: (input.revision ?? 0) + 1,
         status: input.status,
       }));
@@ -237,6 +238,7 @@ function StorylineForm({
       onDirty(false);
       void utils.news.listStorylines.invalidate();
       void utils.news.readStoryline.invalidate({ id: result.id });
+      void utils.news.listAgentStorylineDrafts.invalidate();
       if (!input.id) onCreated(result.id);
     },
     onError: (err) => {
@@ -247,6 +249,8 @@ function StorylineForm({
         "slugTaken",
         "missing",
         "connectionEvidence",
+        "sourceDraftReviewed",
+        "sourceDraft",
       ] as const;
       const code = known.find((key) => key === err.message);
       setNotice(

@@ -7,7 +7,8 @@ const state = vi.hoisted(() => ({
   list: vi.fn(),
   read: vi.fn(),
   search: vi.fn(),
-  suggest: vi.fn(),
+  inbox: vi.fn(),
+  dismiss: vi.fn(),
 }));
 vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/env", () => ({
@@ -35,9 +36,9 @@ vi.mock("@/server/news/storylines", () => ({
   searchStorylineArticles: state.search,
   StorylineError: class extends Error {},
 }));
-vi.mock("@/server/news/storyline-suggestions", () => ({
-  suggestConfiguredStorylines: state.suggest,
-  StorylineSuggestionError: class extends Error {},
+vi.mock("@/server/news/agent-storylines", () => ({
+  listAgentStorylineDrafts: state.inbox,
+  dismissAgentStorylineDraft: state.dismiss,
 }));
 import { newsRouter } from "./news";
 
@@ -72,15 +73,19 @@ it("denies every editorial endpoint to ordinary members before storage access", 
   await expect(caller().saveStoryline(draft)).rejects.toMatchObject({
     code: "FORBIDDEN",
   });
-  await expect(caller().suggestStorylines()).rejects.toMatchObject({
+  await expect(caller().listAgentStorylineDrafts({})).rejects.toMatchObject({
     code: "FORBIDDEN",
   });
+  await expect(
+    caller().dismissAgentStorylineDraft({ draftId: "d1" }),
+  ).rejects.toMatchObject({ code: "FORBIDDEN" });
   for (const fn of [
     state.list,
     state.read,
     state.search,
     state.save,
-    state.suggest,
+    state.inbox,
+    state.dismiss,
   ])
     expect(fn).not.toHaveBeenCalled();
 });
@@ -98,13 +103,17 @@ it("attributes a staff save to the authenticated user", async () => {
   expect(state.save).toHaveBeenCalledWith(draft, "editor");
 });
 
-it("allows staff to request unsaved suggestions under their own identity", async () => {
+it("allows staff to read and dismiss proposals in the editorial inbox", async () => {
   state.staff = true;
-  state.suggest.mockResolvedValue({
-    drafts: [],
-    inspectedArticles: 0,
-    discarded: 0,
+  state.inbox.mockResolvedValue({
+    items: [],
+    invalidItems: [],
+    page: 1,
+    totalPages: 1,
   });
-  await caller().suggestStorylines();
-  expect(state.suggest).toHaveBeenCalledWith("editor");
+  await caller().listAgentStorylineDrafts({});
+  expect(state.inbox).toHaveBeenCalledWith(1);
+  state.dismiss.mockResolvedValue({ id: "d1" });
+  await caller().dismissAgentStorylineDraft({ draftId: "d1" });
+  expect(state.dismiss).toHaveBeenCalledWith("d1");
 });
