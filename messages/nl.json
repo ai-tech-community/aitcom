@@ -144,6 +144,7 @@
     "eventTypeWorkshop": "Workshop",
     "eventTypeHackathon": "Hackathon",
     "eventTypeDeepDive": "Deep Dive",
+    "eventTypeConference": "Conferentie",
     "audienceLabel": "Doelgroep",
     "formatLabel": "Format",
     "selectFormat": "Kies een format",

@@ -250,6 +250,7 @@ describe("UpcomingEvents — translations", () => {
     "eventTypeWorkshop",
     "eventTypeHackathon",
     "eventTypeDeepDive",
+    "eventTypeConference",
   ] as const;
 
   it.each([

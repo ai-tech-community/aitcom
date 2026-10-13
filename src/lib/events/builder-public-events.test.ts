@@ -212,9 +212,10 @@ describe("builder public events", () => {
     await upsertBuilderEvent(
       {
         execute: async (statement: unknown) => {
-          // The first statement is the upsert. A later end-date probe must
-          // not replace it.
-          query ??= statement;
+          // A conference type probes pg_enum before the upsert, and a later
+          // end-date probe must not replace the insert.
+          const text = staticSql(statement);
+          if (text.includes('INSERT INTO "events"')) query = statement;
         },
       } as never,
       event!,

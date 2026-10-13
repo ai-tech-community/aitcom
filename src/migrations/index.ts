@@ -148,6 +148,8 @@ import * as migration_20261008c_startup_jobs_scan_streak from "./20261008c_start
 import * as migration_20261012a_news_items from "./20261012a_news_items";
 import * as migration_20261012b_news_item_summary from "./20261012b_news_item_summary";
 import * as migration_20261013a_news_rumors from "./20261013a_news_rumors";
+import * as migration_20261013a_event_type_conference from "./20261013a_event_type_conference";
+import * as migration_20261013b_event_coordinate_backfill from "./20261013b_event_coordinate_backfill";
 import * as migration_20261013b_news_startup_links from "./20261013b_news_startup_links";
 
 export const migrations = [
@@ -900,6 +902,16 @@ export const migrations = [
     up: migration_20261013a_news_rumors.up,
     down: migration_20261013a_news_rumors.down,
     name: "20261013a_news_rumors",
+  },
+  {
+    up: migration_20261013a_event_type_conference.up,
+    down: migration_20261013a_event_type_conference.down,
+    name: "20261013a_event_type_conference",
+  },
+  {
+    up: migration_20261013b_event_coordinate_backfill.up,
+    down: migration_20261013b_event_coordinate_backfill.down,
+    name: "20261013b_event_coordinate_backfill",
   },
   {
     up: migration_20261013b_news_startup_links.up,

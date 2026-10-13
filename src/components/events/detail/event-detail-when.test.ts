@@ -7,6 +7,7 @@ const TYPES = {
     hackathon: "Hackathon",
     deep_dive: "Deep Dive",
     meetup: "Meetup",
+    conference: "Conference",
   },
 };
 
