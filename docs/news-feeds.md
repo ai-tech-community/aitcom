@@ -62,3 +62,20 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" \
 | `summary`      | yes      | The source's own text. Not a line written for this request.             |
 
 `201` means the row is new. `200` with `inserted: false` means that URL was already stored. `401` means the bearer token is missing or wrong. `422` means the URL did not resolve. The same `CRON_SECRET` guards this route, the feed route, and the cron.
+
+
+## Ongoing storylines
+
+The news page now previews published editorial storylines above the searchable archive. `/en/news/stories` and `/nl/news/stories` provide a paginated title/overview search. Each `/news/stories/[slug]` page shows chronological reporting, what each article adds, source evidence, unresolved questions, and explained connections to other published stories.
+
+Platform admins and editors can open `/news/stories/manage` from the news page. Create a draft, find collected articles, write contribution notes, and copy evidence from the displayed source excerpt or headline. Publishing requires at least two distinct articles, an English overview, contribution notes, and matching source evidence of 12–240 characters per article. AI summaries are not source evidence. Optional Dutch editorial fields fall back visibly to English. An article can belong to several stories.
+
+Connections are directed: “This story builds on” means the story being edited builds on the selected target; readers arriving from the target see “Builds on this story.” Choose a supporting article from each timeline and explain the relationship. Connections appear publicly only when both endpoints are published and eligible and their supporting evidence remains valid. Deleting an attached article removes memberships and dependent connections. Stories with fewer than two valid articles are excluded publicly.
+
+Saved slugs are stable. Revision checks reject stale saves; reload the saved story before editing again. Returning a published story to draft immediately removes it from public storyline reads. Existing `?story=<article-id>` digest links retain their original meaning.
+
+### Deployment requirement
+
+Migration `20261013f_news_storylines` creates `app.news_storyline`, `app.news_storyline_article`, and `app.news_storyline_connection`, with indexes, membership uniqueness, and composite evidence foreign keys. It contains DDL only. It must be applied through the normal deployment migration process before the storyline editor can store content. No migration or database write was performed during implementation, and no production storylines were seeded.
+
+The first release is editorial. Automated grouping, following with notifications, a graph view, semantic search, and cited archive answers are follow-on work. Reader requests do not call a model. Until real storylines are published, the news archive remains available with an honest empty state. If the new tables are unavailable, the added section shows an explicit load failure instead of claiming the archive has no stories.

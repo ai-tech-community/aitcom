@@ -1,3 +1,7 @@
+import { Suspense } from "react";
+import { StorylinePreview } from "@/components/news/storyline-preview";
+import { articleStorylineLinks } from "@/server/news/storylines";
+import { storylineArticleHref } from "@/lib/news/storylines";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
@@ -146,6 +150,7 @@ export default async function NewsPage({
 }) {
   const t = await getTranslations("newsPage");
   const locale = await getLocale();
+  const ts = await getTranslations("newsStories");
   const params = await searchParams;
   const query = parseNewsTableQuery(params);
   const session = await getSession().catch(() => null);
@@ -195,6 +200,16 @@ export default async function NewsPage({
     console.error("news: could not list startup links", err);
     return { stories: {}, rumors: {} };
   });
+  let storylineLinks: Awaited<ReturnType<typeof articleStorylineLinks>> = [];
+  let storylinesUnavailable = false;
+  try {
+    storylineLinks = await articleStorylineLinks(
+      stories.map((item) => item.id),
+    );
+  } catch (err) {
+    console.error("news: could not load article storylines", err);
+    storylinesUnavailable = true;
+  }
   const built = buildNewsTableRows(
     stories,
     rumors,
@@ -321,6 +336,20 @@ export default async function NewsPage({
         </div>
       </div>
 
+      <Suspense
+        fallback={
+          <p className="mt-8" role="status">
+            {ts("loading")}
+          </p>
+        }
+      >
+        <StorylinePreview staff={staff} />
+      </Suspense>
+      {storylinesUnavailable && (
+        <p role="status" className="text-muted-foreground mb-4 text-sm">
+          {ts("unavailable")}
+        </p>
+      )}
       {items.length === 0 && loaded.total === 0 && !filtered ? (
         <p className="text-muted-foreground mt-8 text-sm">{t("empty")}</p>
       ) : (
@@ -465,6 +494,27 @@ export default async function NewsPage({
                               {row.blurb}
                             </p>
                           ) : null}
+                          {row.kind === "story" &&
+                            storylineLinks
+                              .filter((link) => link.articleId === row.id)
+                              .map((link) => (
+                                <p key={link.slug} className="mt-2 text-sm">
+                                  <span className="text-muted-foreground">
+                                    {ts("partOf")}:{" "}
+                                  </span>
+                                  <Link
+                                    href={storylineArticleHref(
+                                      link.slug,
+                                      row.id,
+                                    )}
+                                    className="font-medium underline underline-offset-4"
+                                  >
+                                    {locale === "nl" && link.titleNl
+                                      ? link.titleNl
+                                      : link.titleEn}
+                                  </Link>
+                                </p>
+                              ))}
                           {staff && row.kind === "rumor" ? (
                             <NewsRumorActions id={row.id} hidden={row.hidden} />
                           ) : null}

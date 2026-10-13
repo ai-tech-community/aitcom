@@ -1,3 +1,4 @@
+import * as migration_20261013f_news_storylines from "./20261013f_news_storylines";
 import * as migration_20260223_tags_array from "./20260223_tags_array";
 import * as migration_20260225_135039_add_colab_url from "./20260225_135039_add_colab_url";
 import * as migration_20260227_community_rules_sections from "./20260227_community_rules_sections";
@@ -935,5 +936,10 @@ export const migrations = [
     up: migration_20261013e_news_table_indexes.up,
     down: migration_20261013e_news_table_indexes.down,
     name: "20261013e_news_table_indexes",
+  },
+  {
+    up: migration_20261013f_news_storylines.up,
+    down: migration_20261013f_news_storylines.down,
+    name: "20261013f_news_storylines",
   },
 ];

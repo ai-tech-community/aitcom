@@ -64,6 +64,20 @@ const state = vi.hoisted(() => ({
   },
 }));
 
+vi.mock("@/server/news/storylines", () => ({
+  articleStorylineLinks: async () => [
+    {
+      articleId: "older",
+      slug: "local-ai",
+      titleEn: "AI on devices",
+      titleNl: "",
+    },
+  ],
+}));
+vi.mock("@/components/news/storyline-preview", () => ({
+  StorylinePreview: () => <section>Ongoing stories</section>,
+}));
+
 vi.mock("next-intl/server", () => ({
   getLocale: async () => state.locale,
   getTranslations: async (namespace: string) =>
@@ -627,6 +641,10 @@ describe("news page", () => {
       await NewsPage({ searchParams: Promise.resolve({ story: "older" }) }),
     );
     expect(document.getElementById("news-older")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "AI on devices" })).toHaveAttribute(
+      "href",
+      "/news/stories/local-ai#article-older",
+    );
     expect(screen.getByRole("link", { name: "Older story" })).toHaveAttribute(
       "href",
       "https://example.com/older",

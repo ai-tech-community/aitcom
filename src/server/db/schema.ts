@@ -11,6 +11,7 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -4831,5 +4832,103 @@ export const newsRumorStartups = appSchema.table(
   (t) => [
     primaryKey({ columns: [t.newsRumorId, t.startupId] }),
     index("news_rumor_startup_startup_idx").on(t.startupId),
+  ],
+);
+
+/** Editorial narratives over collected articles; rumors stay separate. */
+export const newsStorylines = appSchema.table(
+  "news_storyline",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    slug: d.varchar({ length: 100 }).notNull(),
+    titleEn: d.text().notNull(),
+    titleNl: d.text().notNull().default(""),
+    overviewEn: d.text().notNull().default(""),
+    overviewNl: d.text().notNull().default(""),
+    questionsEn: d.jsonb().$type<string[]>().notNull().default([]),
+    questionsNl: d.jsonb().$type<string[]>().notNull().default([]),
+    status: d.text().$type<"draft" | "published">().notNull().default("draft"),
+    revision: d.integer().notNull().default(1),
+    createdBy: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    updatedBy: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    uniqueIndex("news_storyline_slug_idx").on(t.slug),
+    check(
+      "news_storyline_status_check",
+      sql`${t.status} in ('draft', 'published')`,
+    ),
+  ],
+);
+
+export const newsStorylineArticles = appSchema.table(
+  "news_storyline_article",
+  (d) => ({
+    storylineId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => newsStorylines.id, { onDelete: "cascade" }),
+    articleId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => newsItems.id, { onDelete: "cascade" }),
+    noteEn: d.text().notNull().default(""),
+    noteNl: d.text().notNull().default(""),
+    evidence: d.varchar({ length: 240 }).notNull().default(""),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.storylineId, t.articleId] }),
+    index("news_storyline_article_item_idx").on(t.articleId),
+  ],
+);
+
+export const newsStorylineConnections = appSchema.table(
+  "news_storyline_connection",
+  (d) => ({
+    sourceId: d.varchar({ length: 255 }).notNull(),
+    targetId: d.varchar({ length: 255 }).notNull(),
+    relation: d
+      .text()
+      .$type<"shared_development" | "builds_on" | "contrasting_claims">()
+      .notNull(),
+    explanationEn: d.text().notNull(),
+    explanationNl: d.text().notNull().default(""),
+    fromArticleId: d.varchar({ length: 255 }).notNull(),
+    toArticleId: d.varchar({ length: 255 }).notNull(),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.sourceId, t.targetId, t.relation] }),
+    index("news_storyline_connection_target_idx").on(t.targetId),
+    check(
+      "news_storyline_connection_self_check",
+      sql`${t.sourceId} <> ${t.targetId}`,
+    ),
+    check(
+      "news_storyline_connection_relation_check",
+      sql`${t.relation} in ('shared_development', 'builds_on', 'contrasting_claims')`,
+    ),
+    foreignKey({
+      columns: [t.sourceId, t.fromArticleId],
+      foreignColumns: [
+        newsStorylineArticles.storylineId,
+        newsStorylineArticles.articleId,
+      ],
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [t.targetId, t.toArticleId],
+      foreignColumns: [
+        newsStorylineArticles.storylineId,
+        newsStorylineArticles.articleId,
+      ],
+    }).onDelete("cascade"),
   ],
 );

@@ -11,7 +11,68 @@ import {
 } from "@/server/news/rumors";
 import { rumorInputSchema, submitterLabel } from "@/server/news/rumor-rules";
 
+import { storylineInputSchema } from "@/lib/news/storylines";
+import {
+  findStoryline,
+  listStorylines,
+  saveStoryline,
+  searchStorylineArticles,
+  StorylineError,
+} from "@/server/news/storylines";
+
+const storylineStaffProcedure = protectedProcedure.use(
+  async ({ ctx, next }) => {
+    if (!(await isNewsStaff(ctx.session.user.email)))
+      throw new TRPCError({ code: "FORBIDDEN" });
+    return next();
+  },
+);
+
 export const newsRouter = createTRPCRouter({
+  listStorylines: storylineStaffProcedure
+    .input(
+      z.object({
+        q: z.string().max(200).default(""),
+        page: z.number().int().min(1).default(1),
+      }),
+    )
+    .query(({ input }) => listStorylines({ ...input, staff: true })),
+  readStoryline: storylineStaffProcedure
+    .input(z.object({ id: z.string().min(1).max(255) }))
+    .query(({ input }) => findStoryline(input, true)),
+  searchStorylineArticles: storylineStaffProcedure
+    .input(
+      z.object({
+        q: z.string().max(200).default(""),
+        page: z.number().int().min(1).default(1),
+      }),
+    )
+    .query(({ input }) => searchStorylineArticles(input.q, input.page)),
+  saveStoryline: storylineStaffProcedure
+    .input(storylineInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await saveStoryline(input, ctx.session.user.id);
+      } catch (err) {
+        if (err instanceof StorylineError)
+          throw new TRPCError({
+            code:
+              err.code === "missing"
+                ? "NOT_FOUND"
+                : err.code === "conflict"
+                  ? "CONFLICT"
+                  : "BAD_REQUEST",
+            message: err.message,
+          });
+        const cause =
+          err instanceof Error
+            ? (err as Error & { cause?: { code?: string }; code?: string })
+            : null;
+        if (cause?.code === "23505" || cause?.cause?.code === "23505")
+          throw new TRPCError({ code: "CONFLICT", message: "slugTaken" });
+        throw err;
+      }
+    }),
   submitRumor: protectedProcedure
     .input(rumorInputSchema)
     .mutation(async ({ ctx, input }) => {
