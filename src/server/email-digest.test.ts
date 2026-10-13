@@ -23,12 +23,25 @@ describe("sendHubDigestEmail", () => {
       sendHubDigestEmail("member@example.com", "<p>Hi</p>", "Hi"),
     ).resolves.toBe(true);
 
+    await expect(
+      sendHubDigestEmail("member@example.com", "<p>Hi</p>", "Hi", {
+        "List-Unsubscribe":
+          "<https://www.aitcommunity.org/api/email/unsubscribe?t=abc>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      }),
+    ).resolves.toBe(true);
+
     expect(send).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "member@example.com",
         subject: "Your weekly AIT digest",
         html: "<p>Hi</p>",
         text: "Hi",
+        headers: {
+          "List-Unsubscribe":
+            "<https://www.aitcommunity.org/api/email/unsubscribe?t=abc>",
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
       }),
     );
   });

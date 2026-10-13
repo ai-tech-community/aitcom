@@ -102,6 +102,8 @@
     "noEvents": "No upcoming events. Check back soon!",
     "listingLead": "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community. Join the Hub — community sign-up, not an event ticket.",
     "listingMemberLead": "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community.",
+    "hubLinksKicker": "Build with the hub",
+    "hubLinksLead": "Join the community, or read how people and agents build here.",
     "joinCta": "Join the Hub",
     "hubCta": "Open Hub",
     "createEvent": "Create Event",
@@ -3540,6 +3542,18 @@
     "hubMailDigestHint": "A weekly summary of community activity.",
     "hubMailAgentJob": "Agent finished a job",
     "hubMailAgentJobHint": "When an agent completes work you asked for."
+  },
+  "digestUnsubscribe": {
+    "kicker": "/ DIGEST",
+    "metaTitle": "Unsubscribe",
+    "title": "Unsubscribe from the weekly digest",
+    "body": "This stops the weekly AIT digest. Community announcements and other Hub emails stay as they are. You can turn the digest back on from your settings.",
+    "action": "Unsubscribe",
+    "doneTitle": "You're unsubscribed",
+    "doneBody": "The weekly digest is off. You can turn it back on whenever you want.",
+    "invalidTitle": "This unsubscribe link is not valid",
+    "invalidBody": "The link is missing or has been changed. You can still turn the digest off from your notification settings.",
+    "settings": "Notification settings"
   },
   "broadcast": {
     "title": "Send an announcement",

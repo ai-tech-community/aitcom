@@ -910,33 +910,18 @@ describe("directory query", () => {
     expect(buildStartupDirectoryPath(legacyExit)).not.toContain("exit=");
   });
 
-  it("emits crawlable ?page= sitemap paths once the directory is past ~50 rows", () => {
-    expect(startupDirectorySitemapPaths(20)).toEqual([]);
-    expect(startupDirectorySitemapPaths(24)).toEqual([]);
-    expect(startupDirectorySitemapPaths(25)).toEqual([
-      `${STARTUPS_PATH}?page=2`,
-    ]);
-    expect(startupDirectorySitemapPaths(50)).toEqual([
-      `${STARTUPS_PATH}?page=2`,
-      `${STARTUPS_PATH}?page=3`,
-    ]);
-    expect(startupDirectorySitemapPaths(279)).toEqual(
-      Array.from(
-        { length: 11 },
-        (_, index) => `${STARTUPS_PATH}?page=${index + 2}`,
-      ),
-    );
-    expect(startupDirectorySitemapPaths(279).at(-1)).toBe(
-      `${STARTUPS_PATH}?page=12`,
-    );
-    expect(startupDirectorySitemapPaths(279)).not.toContain(STARTUPS_PATH);
-    expect(startupDirectorySitemapPaths(279)).not.toContain(
-      STARTUPS_INSIGHTS_PATH,
-    );
-    expect(startupDirectorySitemapPaths(3479)).toHaveLength(144);
-    expect(startupDirectorySitemapPaths(3479).at(-1)).toBe(
-      `${STARTUPS_PATH}?page=145`,
-    );
+  it("lists only page 1 in the sitemap and keeps later pages indexable", () => {
+    for (const total of [0, 20, 24, 25, 50, 279, 3479, 13041]) {
+      expect(startupDirectorySitemapPaths(total)).toEqual([]);
+      expect(
+        startupDirectorySitemapPaths(total).some((path) =>
+          path.includes("page="),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      startupDirectoryCanonicalPath(parseStartupDirectoryQuery({ page: "2" })),
+    ).toBe(`${STARTUPS_PATH}?page=2`);
     expect(STARTUPS_PUBLIC_INDEX_MIN).toBe(3000);
     expect(startupsPublicIndexable(20)).toBe(false);
     expect(startupsPublicIndexable(2999)).toBe(false);
@@ -953,8 +938,6 @@ describe("directory query", () => {
       STARTUPS_PATH,
       STARTUPS_INSIGHTS_PATH,
       STARTUPS_JOBS_PATH,
-      `${STARTUPS_PATH}?page=2`,
-      `${STARTUPS_PATH}?page=3`,
     ]);
     expect(startupInvestigationSitemapPaths(3000)).toEqual([
       STARTUPS_PATH,

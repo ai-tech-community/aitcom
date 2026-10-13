@@ -542,6 +542,7 @@ export async function sendHubDigestEmail(
   to: string,
   html: string,
   text: string,
+  headers?: Record<string, string>,
 ) {
   const resend = getResend();
   if (!resend) return false;
@@ -551,6 +552,7 @@ export async function sendHubDigestEmail(
     subject: "Your weekly AIT digest",
     html,
     text,
+    ...(headers ? { headers } : {}),
   });
   if (error) {
     const message =
