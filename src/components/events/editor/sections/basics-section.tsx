@@ -24,6 +24,7 @@ const TYPES: { value: EventType; key: string }[] = [
   { value: "workshop", key: "eventTypeWorkshop" },
   { value: "hackathon", key: "eventTypeHackathon" },
   { value: "deep_dive", key: "eventTypeDeepDive" },
+  { value: "conference", key: "eventTypeConference" },
 ];
 
 /** What the event is: name, kind, words, picture. */

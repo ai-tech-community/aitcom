@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { recordFeedNews } from "@/server/news/record";
 
 import { allCollectors, getCollector } from "./catalog";
 import { buildLiveContext } from "./context/live";
@@ -34,5 +35,8 @@ export function liveExecutorDeps(): ExecutorDeps {
     getCollector: (id) => getCollector(id, disabledCollectorIds()),
     buildContext: (args) => buildLiveContext({ db, ...args }),
     now: Date.now,
+    onFeedItems: async (items) => {
+      await recordFeedNews(items);
+    },
   };
 }

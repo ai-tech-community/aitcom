@@ -29,60 +29,70 @@ const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is not set");
 
 const pool = new Pool({ connectionString: url });
-const db = drizzle(pool);
-
-const listed = migrations.map((migration) => ({
-  name: migration.name,
-  up: async () => {
-    await migration.up({ db } as unknown as Parameters<typeof migration.up>[0]);
-  },
-}));
-
-const store: ApplyPendingStore = {
-  async listApplied() {
-    const appliedRes = await db.execute(
-      sql.raw(`select name, batch from payload_migrations`),
-    );
-    return appliedRes.rows.map((row) => ({
-      name: String((row as { name: string }).name),
-      batch: (row as { batch: string | number | null }).batch,
-    }));
-  },
-  async runUp(migration) {
-    console.log(`  applying ${migration.name} ...`);
-    await migration.up(undefined);
-  },
-  async record(name, batch) {
-    await db.execute(sql`
-      insert into payload_migrations (name, batch, created_at, updated_at)
-      select ${name}, ${batch}, now(), now()
-      where not exists (
-        select 1 from payload_migrations where name = ${name}
-      )
-    `);
-  },
-};
 
 try {
-  // Serialize concurrent deploys (preview+prod, overlapping production
-  // builds) so two apply loops cannot both treat the same name as pending.
-  await db.execute(
-    sql.raw(`select pg_advisory_lock(hashtext('aitcom.db-apply-pending'))`),
-  );
-  try {
-    const result = await applyPendingMigrations(listed, store, { dryRun });
-
-    if (result.status === "applied" || result.status === "dry-run") {
-      console.log(
-        `${result.pending.length} pending migration(s):`,
-        result.pending,
+  // One connection for the whole apply. A session advisory lock checked out
+  // from the pool was left behind when the startup-link backfill timed out:
+  // the unlock ran on a different connection. A transaction lock dies with
+  // the transaction, including when the build process is killed.
+  // The key is not `aitcom.db-apply-pending`: that session lock is still
+  // held by the idle connection from the failed production build.
+  const client = await pool.connect();
+  const db = drizzle(client);
+  const listed = migrations.map((migration) => ({
+    name: migration.name,
+    up: async () => {
+      await migration.up({
+        db,
+      } as unknown as Parameters<typeof migration.up>[0]);
+    },
+  }));
+  const store: ApplyPendingStore = {
+    async listApplied() {
+      const appliedRes = await db.execute(
+        sql.raw(`select name, batch from payload_migrations`),
       );
-    }
-    console.log(formatApplyPendingLog(result));
-  } finally {
-    await db.execute(
-      sql.raw(`select pg_advisory_unlock(hashtext('aitcom.db-apply-pending'))`),
+      return appliedRes.rows.map((row) => ({
+        name: String((row as { name: string }).name),
+        batch: (row as { batch: string | number | null }).batch,
+      }));
+    },
+    async runUp(migration) {
+      console.log(`  applying ${migration.name} ...`);
+      await migration.up(undefined);
+    },
+    async record(name, batch) {
+      await db.execute(sql`
+        insert into payload_migrations (name, batch, created_at, updated_at)
+        select ${name}, ${batch}, now(), now()
+        where not exists (
+          select 1 from payload_migrations where name = ${name}
+        )
+      `);
+    },
+  };
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtext('aitcom.db-apply-pending.xact'))",
     );
+    try {
+      const result = await applyPendingMigrations(listed, store, { dryRun });
+
+      if (result.status === "applied" || result.status === "dry-run") {
+        console.log(
+          `${result.pending.length} pending migration(s):`,
+          result.pending,
+        );
+      }
+      console.log(formatApplyPendingLog(result));
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
+  } finally {
+    client.release();
   }
 } finally {
   await pool.end();

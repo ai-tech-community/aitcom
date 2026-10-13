@@ -13,6 +13,7 @@ const TYPE_LABELS: Record<string, string> = {
   revival_nudge: "REVIVAL",
   welcome_nudge: "WELCOME",
   feed_post: "FEED POST",
+  news_storyline: "NEWS STORYLINE",
   feed_comment: "FEED COMMENT",
   challenge_channel_post: "CHALLENGE POST",
   challenge_channel_reply: "CHALLENGE REPLY",
@@ -37,6 +38,7 @@ function stringMetadataValue(
 
 export function AgentDrafts() {
   const t = useTranslations("advisory");
+  const tn = useTranslations("newsStories");
   const drafts = api.agentManagement.getDrafts.useQuery({ status: "pending" });
   const utils = api.useUtils();
 
@@ -122,8 +124,12 @@ export function AgentDrafts() {
                 )}
               </div>
               <div className="flex gap-2 sm:shrink-0">
-                {draft.type === "revival_nudge" ||
-                draft.type === "welcome_nudge" ? (
+                {draft.type === "news_storyline" ? (
+                  <span className="self-center text-sm">
+                    {tn("suggestions.awaitingEditors")}
+                  </span>
+                ) : draft.type === "revival_nudge" ||
+                  draft.type === "welcome_nudge" ? (
                   <Button
                     size="xs"
                     className="font-mono text-xs tracking-wider"

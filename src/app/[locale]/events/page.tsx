@@ -17,11 +17,13 @@ import {
   type EventType,
 } from "@/lib/event-metadata";
 import { EventsFilterBar } from "@/components/events-filter-bar";
+import { EventHubLinks } from "@/components/events/event-hub-links";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
-import { EventsMap, type MapEvent } from "@/components/events-map";
+import { EventsMap } from "@/components/events-map";
+import { toMapEvents } from "@/lib/events/map-events";
 import { UseMyLocationButton } from "@/components/use-my-location-button";
 import {
   PUBLIC_EVENTS_H1,
@@ -55,39 +57,6 @@ export async function generateMetadata(): Promise<Metadata> {
     ...buildOgMeta(PUBLIC_EVENTS_H1, PUBLIC_EVENTS_META, "Events"),
     alternates: await localeAlternates(PUBLIC_EVENTS_PATH),
   };
-}
-
-function toMapEvents(
-  events: Array<{
-    id: number;
-    slug: string;
-    title: string;
-    date: string;
-    endDate?: string | null;
-    location: string;
-    latitude?: number | null;
-    longitude?: number | null;
-    type: string;
-    aitFitScore?: number | null;
-  }>,
-): MapEvent[] {
-  return events
-    .filter(
-      (e): e is typeof e & { latitude: number; longitude: number } =>
-        typeof e.latitude === "number" && typeof e.longitude === "number",
-    )
-    .map((e) => ({
-      id: e.id,
-      slug: e.slug,
-      title: e.title,
-      date: e.date,
-      endDate: e.endDate ?? null,
-      location: e.location,
-      latitude: e.latitude,
-      longitude: e.longitude,
-      type: e.type,
-      aitFitScore: e.aitFitScore ?? null,
-    }));
 }
 
 function getImageUrl(event: { coverImage?: unknown; image?: unknown }) {
@@ -368,6 +337,8 @@ export default async function EventsPage({
           hubLabel={t("hubCta")}
         />
       </div>
+
+      <EventHubLinks />
 
       <div className="mt-6 flex gap-1 font-mono text-xs tracking-wider">
         <Link

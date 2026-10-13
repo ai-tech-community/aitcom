@@ -91,19 +91,26 @@ describe("upsertBuilderEvent", () => {
   it("keeps the original insert when endDate is absent", async () => {
     const { db, queries } = mockDb(true);
     await upsertBuilderEvent(db, eventBySlug("aixia-2026"));
-    expect(queries).toHaveLength(1);
-    expect(queries[0]).toContain("INSERT INTO");
-    expect(queries[0]).not.toContain("end_date");
+    const insert = queries.find((query) =>
+      query.includes('INSERT INTO "events"'),
+    );
+    expect(insert).toBeDefined();
+    expect(insert).not.toContain("end_date");
+    expect(queries.some((query) => query.includes("pg_enum"))).toBe(true);
   });
 
   it("does not reference end_date until the column exists", async () => {
     const { db, queries } = mockDb(false);
     await upsertBuilderEvent(db, eventBySlug("world-summit-ai-amsterdam-2026"));
-    expect(queries[0]).toContain("INSERT INTO");
-    expect(queries[0]).not.toContain("end_date");
-    expect(queries.slice(1).some((query) => query.includes("UPDATE"))).toBe(
-      false,
+    const insert = queries.find((query) =>
+      query.includes('INSERT INTO "events"'),
     );
+    expect(insert).toBeDefined();
+    expect(insert).not.toContain("end_date");
+    const afterInsert = queries.filter(
+      (query) => !query.includes('INSERT INTO "events"'),
+    );
+    expect(afterInsert.some((query) => query.includes("UPDATE"))).toBe(false);
   });
 
   it("writes the documented end date after the upsert once the column exists", async () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { NewsLogo } from "@/components/news/news-logo";
 import { Badge } from "@/components/ui/badge";
 import {
   displayStartupSourceChips,
@@ -25,47 +26,31 @@ export function StartupsSourceChips({
         <p className="text-foreground text-sm font-medium">{label}</p>
       ) : null}
       <ul className="flex flex-wrap gap-1.5">
-        {chips.map((chip) => (
-          <li key={chip.href}>
-            <Badge asChild variant="outline">
-              <a
-                href={chip.href}
-                rel="noopener noreferrer"
-                data-startup-source-chip={chip.label}
-                className="inline-flex items-center gap-1.5"
-              >
-                <SourceChipFavicon href={chip.href} />
-                {chip.label}
-              </a>
-            </Badge>
-          </li>
-        ))}
+        {chips.map((chip) => {
+          const favicon = startupSourceFaviconUrl(chip.href);
+          return (
+            <li key={chip.href}>
+              <Badge asChild variant="outline">
+                <a
+                  href={chip.href}
+                  rel="noopener noreferrer"
+                  data-startup-source-chip={chip.label}
+                  className="inline-flex items-center gap-1.5"
+                >
+                  <NewsLogo
+                    src={favicon}
+                    name={chip.label}
+                    decorative
+                    mark={favicon ?? undefined}
+                    className="size-3 text-[8px]"
+                  />
+                  {chip.label}
+                </a>
+              </Badge>
+            </li>
+          );
+        })}
       </ul>
     </div>
-  );
-}
-
-function hideFavicon(node: HTMLImageElement) {
-  node.style.display = "none";
-}
-
-function SourceChipFavicon({ href }: { href: string }) {
-  const src = startupSourceFaviconUrl(href);
-  if (!src) return null;
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt=""
-      width={12}
-      height={12}
-      data-startup-source-favicon={src}
-      className="size-3 rounded-sm"
-      // An SSR image can fail before hydration attaches onError; catch that too.
-      ref={(node) => {
-        if (node?.complete && node.naturalWidth === 0) hideFavicon(node);
-      }}
-      onError={(event) => hideFavicon(event.currentTarget)}
-    />
   );
 }

@@ -23,11 +23,47 @@ const keptSlugs = sql.join(
 
 const SEEDED_AT = BUILDER_PUBLIC_EVENTS_SEEDED_AT;
 
+const ORIGINAL_EVENT_TYPES = new Set([
+  "workshop",
+  "hackathon",
+  "deep_dive",
+  "meetup",
+]);
+
+/**
+ * `conference` is added by a later migration. Seed migrations that run
+ * before that enum value exists still have to insert a legal type, and a
+ * re-upsert after it exists must not put the conference back to meetup.
+ */
+async function storedEventType(
+  db: MigrateUpArgs["db"],
+  type: string,
+): Promise<string> {
+  if (ORIGINAL_EVENT_TYPES.has(type)) return type;
+  const result = await db.execute(sql`
+    SELECT e.enumlabel AS label
+    FROM pg_enum e
+    JOIN pg_type t ON t.oid = e.enumtypid
+    WHERE t.typname = 'enum_events_type'
+      AND e.enumlabel = ${type}
+    LIMIT 1
+  `);
+  const rows = Array.isArray(result)
+    ? result
+    : result && typeof result === "object" && "rows" in result
+      ? ((result as { rows?: unknown[] }).rows ?? [])
+      : [];
+  return rows.length > 0 ? type : "meetup";
+}
+
 export async function upsertBuilderEvent(
   db: MigrateUpArgs["db"],
   event: BuilderPublicEvent,
 ): Promise<void> {
   const date = `${event.date}T12:00:00.000Z`;
+  const type = await storedEventType(db, event.type);
+  const eventType = sql`${type}::"public"."enum_events_type"`;
+  const versionType = sql`${type}::"public"."enum__events_v_version_type"`;
   const descriptionEn = JSON.stringify(
     builderEventDescription(event.summary.en, event.url, "Official page:"),
   );
@@ -47,7 +83,7 @@ export async function upsertBuilderEvent(
         "last_verified_at", "created_at", "updated_at"
       ) VALUES (
         ${event.slug},
-        'meetup'::"public"."enum_events_type",
+        ${eventType},
         'in-person'::"public"."enum_events_format",
         ${event.location},
         ${event.country},
@@ -120,7 +156,7 @@ export async function upsertBuilderEvent(
       UPDATE "_events_v" v
       SET
         "version_slug" = ${event.slug},
-        "version_type" = 'meetup'::"public"."enum__events_v_version_type",
+        "version_type" = ${versionType},
         "version_format" = 'in-person'::"public"."enum__events_v_version_format",
         "version_location" = ${event.location},
         "version_country" = ${event.country},
@@ -160,7 +196,7 @@ export async function upsertBuilderEvent(
       SELECT
         u."id",
         ${event.slug},
-        'meetup'::"public"."enum__events_v_version_type",
+        ${versionType},
         'in-person'::"public"."enum__events_v_version_format",
         ${event.location},
         ${event.country},

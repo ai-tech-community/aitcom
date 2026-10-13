@@ -42,6 +42,11 @@ export interface ExecutorDeps {
     dispose?: () => Promise<void>;
   }>;
   now(): number;
+  /**
+   * Feed-items runs hand their parsed rows here so /news can store them.
+   * A failure must not fail the collector run.
+   */
+  onFeedItems?(items: readonly Record<string, unknown>[]): Promise<void>;
 }
 
 type Outcome = {
@@ -228,6 +233,7 @@ export async function executeRun(
   let seq = 0;
   let invalid = 0;
   let buffer: (typeof collectorItems.$inferInsert)[] = [];
+  const feedItems: Record<string, unknown>[] = [];
   let leaseLost = false;
   let dispose: (() => Promise<void>) | undefined;
 
@@ -273,11 +279,13 @@ export async function executeRun(
     for await (const raw of collector.run(input.data, built.ctx)) {
       const row = collector.itemSchema.safeParse(raw);
       if (row.success) {
+        const data = row.data as Record<string, unknown>;
         buffer.push({
           runId: run.id,
           seq,
-          data: row.data as Record<string, unknown>,
+          data,
         });
+        if (collector.id === "feed-items") feedItems.push(data);
         seq += 1;
         if (buffer.length >= FLUSH_EVERY) {
           await flush();
@@ -337,6 +345,20 @@ export async function executeRun(
     }
   }
   await flush();
+  if (
+    collector.id === "feed-items" &&
+    feedItems.length > 0 &&
+    deps.onFeedItems
+  ) {
+    try {
+      await deps.onFeedItems(feedItems);
+    } catch (err) {
+      console.error(
+        `[collectors] run ${run.id} could not store news items`,
+        err,
+      );
+    }
+  }
   return finish(outcome, { version: collector.version });
 }
 

@@ -52,6 +52,7 @@ import { NotificationPrefs } from "./notification-prefs";
 const PREFS = {
   digestOptOutCommunityIds: ["c2"],
   broadcastOptOutCommunityIds: [],
+  digestOptOutSections: ["news"],
   globalDigestOptOut: false,
   hubMail: {
     dm: true,
@@ -83,6 +84,7 @@ describe("NotificationPrefs", () => {
       { communityId: "c3", name: "Waiting", status: "pending_approval" },
     ]);
     state.setHubMail.mockReset();
+    state.setOptout.mockReset();
     state.toastError.mockReset();
   });
 
@@ -157,6 +159,51 @@ describe("NotificationPrefs", () => {
     expect(screen.getByRole("alert")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists digest sections on by default and saves a section opt-out", () => {
+    renderPrefs();
+
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Weekly digest" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "AI news" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Community highlights" }),
+    ).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: "Events" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("checkbox", { name: "Jobs" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("checkbox", { name: "Startups" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Jobs" }));
+    expect(state.setOptout).toHaveBeenCalledWith({
+      communityId: null,
+      category: "digest:jobs",
+      optedOut: true,
+    });
+  });
+
+  it("disables section choices while the master digest switch is off", () => {
+    state.prefs = loaded({ ...PREFS, globalDigestOptOut: true });
+    renderPrefs();
+
+    expect(screen.getByRole("checkbox", { name: "AI news" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Startups" })).toBeDisabled();
+    expect(
+      screen.getByText("Turn the weekly digest on to choose sections."),
+    ).toBeTruthy();
   });
 
   it("is reachable from the emails' 'Manage notifications' link", () => {

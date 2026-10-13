@@ -11,6 +11,7 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -718,7 +719,8 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 // --- Slice B: Notifications infra (digest prefs, broadcasts, ceiling ledger) ---
 
 /** Sparse opt-OUT rows. Absence = opted in. communityId null = global digest
- *  opt-out. category: "digest" | "broadcast". (ADR-0014 preference center.) */
+ *  opt-out or a digest section (`digest:news` and the other section ids).
+ *  category: "digest" | "broadcast" | "digest:<section>". (ADR-0014.) */
 export const notificationOptouts = appSchema.table(
   "notification_optout",
   (d) => ({
@@ -735,7 +737,15 @@ export const notificationOptouts = appSchema.table(
     category: d
       .varchar({ length: 20 })
       .notNull()
-      .$type<"digest" | "broadcast">(),
+      .$type<
+        | "digest"
+        | "broadcast"
+        | "digest:news"
+        | "digest:community"
+        | "digest:events"
+        | "digest:jobs"
+        | "digest:startups"
+      >(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -4706,5 +4716,250 @@ export const curatedPublicEvents = appSchema.table(
   (t) => [
     uniqueIndex("curated_public_event_url_idx").on(t.url),
     index("curated_public_event_date_idx").on(t.date),
+  ],
+);
+
+/** RSS/Atom stories for /news. One row per article URL. */
+export const newsItems = appSchema.table(
+  "news_item",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    url: d.text().notNull(),
+    title: d.text().notNull(),
+    author: d.text(),
+    publishedAt: d.timestamp({ withTimezone: true }),
+    summary: d.text().notNull().default(""),
+    /** Written once, when the row is first stored. Send time only reads it. */
+    aiSummary: d.text(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("news_item_url_idx").on(t.url),
+    index("news_item_published_idx").on(t.publishedAt),
+  ],
+);
+
+/** RSS/Atom addresses the news cron fetches. Staff can add a row without a deploy. */
+export const newsFeeds = appSchema.table(
+  "news_feed",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: d.text().notNull(),
+    url: d.text().notNull(),
+    enabled: d.boolean().notNull().default(true),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [uniqueIndex("news_feed_url_idx").on(t.url)],
+);
+
+/** Member-submitted rumors on /news. Separate from RSS rows so the digest
+ *  TL;DR never treats an unverified rumor as a collected story. */
+export const newsRumors = appSchema.table(
+  "news_rumor",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar("user_id", { length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    submitterName: d.text("submitter_name").notNull(),
+    title: d.text().notNull(),
+    url: d.text(),
+    body: d.text().notNull(),
+    hiddenAt: d.timestamp("hidden_at", { withTimezone: true }),
+    createdAt: d
+      .timestamp("created_at", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("news_rumor_created_idx").on(t.createdAt),
+    index("news_rumor_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);
+
+/** News rows that name a directory startup. Filled at ingest and by backfill. */
+export const newsItemStartups = appSchema.table(
+  "news_item_startup",
+  (d) => ({
+    newsItemId: d
+      .varchar("news_item_id", { length: 255 })
+      .notNull()
+      .references(() => newsItems.id, { onDelete: "cascade" }),
+    startupId: d
+      .varchar("startup_id", { length: 255 })
+      .notNull()
+      .references(() => startups.id, { onDelete: "cascade" }),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.newsItemId, t.startupId] }),
+    index("news_item_startup_startup_idx").on(t.startupId),
+  ],
+);
+
+/** Rumors that name a directory startup. Same rules as news_item_startup. */
+export const newsRumorStartups = appSchema.table(
+  "news_rumor_startup",
+  (d) => ({
+    newsRumorId: d
+      .varchar("news_rumor_id", { length: 255 })
+      .notNull()
+      .references(() => newsRumors.id, { onDelete: "cascade" }),
+    startupId: d
+      .varchar("startup_id", { length: 255 })
+      .notNull()
+      .references(() => startups.id, { onDelete: "cascade" }),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.newsRumorId, t.startupId] }),
+    index("news_rumor_startup_startup_idx").on(t.startupId),
+  ],
+);
+
+/** Editorial narratives over collected articles; rumors stay separate. */
+export const newsStorylines = appSchema.table(
+  "news_storyline",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    slug: d.varchar({ length: 100 }).notNull(),
+    titleEn: d.text().notNull(),
+    titleNl: d.text().notNull().default(""),
+    overviewEn: d.text().notNull().default(""),
+    overviewNl: d.text().notNull().default(""),
+    questionsEn: d.jsonb().$type<string[]>().notNull().default([]),
+    questionsNl: d.jsonb().$type<string[]>().notNull().default([]),
+    status: d.text().$type<"draft" | "published">().notNull().default("draft"),
+    revision: d.integer().notNull().default(1),
+    createdBy: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    updatedBy: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    uniqueIndex("news_storyline_slug_idx").on(t.slug),
+    check(
+      "news_storyline_status_check",
+      sql`${t.status} in ('draft', 'published')`,
+    ),
+  ],
+);
+
+/** Shared research coordination, separate from private editorial copy. */
+export const newsStorylineReservations = appSchema.table(
+  "news_storyline_reservation",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    topicKey: d.varchar({ length: 100 }).notNull(),
+    title: d.varchar({ length: 200 }).notNull(),
+    agentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => agentProfiles.id, { onDelete: "cascade" }),
+    ownerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    expiresAt: d.timestamp({ withTimezone: true }).notNull(),
+    releasedAt: d.timestamp({ withTimezone: true }),
+    draftId: d
+      .varchar({ length: 255 })
+      .references(() => agentDrafts.id, { onDelete: "set null" }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    uniqueIndex("news_storyline_reservation_topic_idx").on(t.topicKey),
+    index("news_storyline_reservation_agent_idx").on(t.agentId),
+  ],
+);
+
+export const newsStorylineArticles = appSchema.table(
+  "news_storyline_article",
+  (d) => ({
+    storylineId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => newsStorylines.id, { onDelete: "cascade" }),
+    articleId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => newsItems.id, { onDelete: "cascade" }),
+    noteEn: d.text().notNull().default(""),
+    noteNl: d.text().notNull().default(""),
+    evidence: d.varchar({ length: 240 }).notNull().default(""),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.storylineId, t.articleId] }),
+    index("news_storyline_article_item_idx").on(t.articleId),
+  ],
+);
+
+export const newsStorylineConnections = appSchema.table(
+  "news_storyline_connection",
+  (d) => ({
+    sourceId: d.varchar({ length: 255 }).notNull(),
+    targetId: d.varchar({ length: 255 }).notNull(),
+    relation: d
+      .text()
+      .$type<"shared_development" | "builds_on" | "contrasting_claims">()
+      .notNull(),
+    explanationEn: d.text().notNull(),
+    explanationNl: d.text().notNull().default(""),
+    fromArticleId: d.varchar({ length: 255 }).notNull(),
+    toArticleId: d.varchar({ length: 255 }).notNull(),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.sourceId, t.targetId, t.relation] }),
+    index("news_storyline_connection_target_idx").on(t.targetId),
+    check(
+      "news_storyline_connection_self_check",
+      sql`${t.sourceId} <> ${t.targetId}`,
+    ),
+    check(
+      "news_storyline_connection_relation_check",
+      sql`${t.relation} in ('shared_development', 'builds_on', 'contrasting_claims')`,
+    ),
+    foreignKey({
+      columns: [t.sourceId, t.fromArticleId],
+      foreignColumns: [
+        newsStorylineArticles.storylineId,
+        newsStorylineArticles.articleId,
+      ],
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [t.targetId, t.toArticleId],
+      foreignColumns: [
+        newsStorylineArticles.storylineId,
+        newsStorylineArticles.articleId,
+      ],
+    }).onDelete("cascade"),
   ],
 );

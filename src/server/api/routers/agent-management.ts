@@ -794,6 +794,14 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
+      if (existing.type === "news_storyline" && input.action === "approved") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "News storylines are reviewed by platform editors at /news/stories/manage.",
+        });
+      }
+
       // Community-scoped draft types: any qualifying admin of the draft's
       // community may act (ADR-0016). Everything else is owner-scoped.
       const COMMUNITY_SCOPED_ROLES: Record<string, string[]> = {

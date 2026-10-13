@@ -1,3 +1,5 @@
+import * as migration_20261013g_news_storyline_reservations from "./20261013g_news_storyline_reservations";
+import * as migration_20261013f_news_storylines from "./20261013f_news_storylines";
 import * as migration_20260223_tags_array from "./20260223_tags_array";
 import * as migration_20260225_135039_add_colab_url from "./20260225_135039_add_colab_url";
 import * as migration_20260227_community_rules_sections from "./20260227_community_rules_sections";
@@ -145,6 +147,15 @@ import * as migration_20261006b_event_end_date from "./20261006b_event_end_date"
 import * as migration_20261008a_forum_reply_count_repair from "./20261008a_forum_reply_count_repair";
 import * as migration_20261008b_unlist_test_communities from "./20261008b_unlist_test_communities";
 import * as migration_20261008c_startup_jobs_scan_streak from "./20261008c_startup_jobs_scan_streak";
+import * as migration_20261012a_news_items from "./20261012a_news_items";
+import * as migration_20261012b_news_item_summary from "./20261012b_news_item_summary";
+import * as migration_20261013a_news_rumors from "./20261013a_news_rumors";
+import * as migration_20261013a_event_type_conference from "./20261013a_event_type_conference";
+import * as migration_20261013b_event_coordinate_backfill from "./20261013b_event_coordinate_backfill";
+import * as migration_20261013b_news_startup_links from "./20261013b_news_startup_links";
+import * as migration_20261013c_news_feeds from "./20261013c_news_feeds";
+import * as migration_20261013d_drop_e27_feed from "./20261013d_drop_e27_feed";
+import * as migration_20261013e_news_table_indexes from "./20261013e_news_table_indexes";
 
 export const migrations = [
   {
@@ -881,5 +892,60 @@ export const migrations = [
     up: migration_20261008c_startup_jobs_scan_streak.up,
     down: migration_20261008c_startup_jobs_scan_streak.down,
     name: "20261008c_startup_jobs_scan_streak",
+  },
+  {
+    up: migration_20261012a_news_items.up,
+    down: migration_20261012a_news_items.down,
+    name: "20261012a_news_items",
+  },
+  {
+    up: migration_20261012b_news_item_summary.up,
+    down: migration_20261012b_news_item_summary.down,
+    name: "20261012b_news_item_summary",
+  },
+  {
+    up: migration_20261013a_news_rumors.up,
+    down: migration_20261013a_news_rumors.down,
+    name: "20261013a_news_rumors",
+  },
+  {
+    up: migration_20261013a_event_type_conference.up,
+    down: migration_20261013a_event_type_conference.down,
+    name: "20261013a_event_type_conference",
+  },
+  {
+    up: migration_20261013b_event_coordinate_backfill.up,
+    down: migration_20261013b_event_coordinate_backfill.down,
+    name: "20261013b_event_coordinate_backfill",
+  },
+  {
+    up: migration_20261013b_news_startup_links.up,
+    down: migration_20261013b_news_startup_links.down,
+    name: "20261013b_news_startup_links",
+  },
+  {
+    up: migration_20261013c_news_feeds.up,
+    down: migration_20261013c_news_feeds.down,
+    name: "20261013c_news_feeds",
+  },
+  {
+    up: migration_20261013d_drop_e27_feed.up,
+    down: migration_20261013d_drop_e27_feed.down,
+    name: "20261013d_drop_e27_feed",
+  },
+  {
+    up: migration_20261013e_news_table_indexes.up,
+    down: migration_20261013e_news_table_indexes.down,
+    name: "20261013e_news_table_indexes",
+  },
+  {
+    up: migration_20261013f_news_storylines.up,
+    down: migration_20261013f_news_storylines.down,
+    name: "20261013f_news_storylines",
+  },
+  {
+    up: migration_20261013g_news_storyline_reservations.up,
+    down: migration_20261013g_news_storyline_reservations.down,
+    name: "20261013g_news_storyline_reservations",
   },
 ];

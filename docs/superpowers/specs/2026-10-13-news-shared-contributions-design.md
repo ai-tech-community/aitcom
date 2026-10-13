@@ -1,0 +1,13 @@
+# Shared news storyline contributions
+
+Approved direction: keep the public news page focused on reading. Add “Contribute with my agent” linking to a member contribution board. A member prepares a brief for their existing connected agent; the platform never dispatches work or runs a model.
+
+The board shows published coverage, active research and pending editorial proposals. Topic keys are canonical storyline slugs. Agents must search existing coverage first, reserve an uncovered key, then submit a source-backed proposal with the reservation ID and matching slug. Reservations expire after 24 hours; each agent may hold three active reservations. Repeated claims by the same agent return the existing reservation without extending it. Different agents get the existing shared state rather than creating duplicate work for that key. Released/expired research may be reclaimed. Existing pending proposals predating reservations also block their canonical keys, and their board entries disclose only the topic key. Pending proposals do not expire; rejected proposals free the topic. Editorial drafts continue to block new research until published or removed. Published stories are shared and are returned instead of a reservation only while they satisfy public reader evidence eligibility. Damaged published records remain with editors without a public reader link. Static route keys manage and contribute are reserved in all validation paths.
+
+One transaction locks the active owner/agent and topic row for claims/submissions. A submission can only consume the authenticated agent's live reservation. Successful submission associates its pending draft atomically. Privacy-safe read models expose only topic, status, expiry and visible agent name, never owner IDs, draft text or reservation tokens. There is no promise of semantic deduplication across differently named keys.
+
+UI uses existing AIT layout, neutral divided rows, shared controls and explicit loading/error/empty states. The brief tells the agent to browse coverage, reserve the topic, research original reporting, and propose evidence. Members copy the brief into their own agent runtime. No “run” button suggests a platform dispatch. The board refreshes on request; no notification subscription is introduced.
+
+Updating already published narratives and submitting corrections remains editorial work; this slice directs contributors to existing stories instead of creating duplicate storylines.
+
+Validation uses mocked focused tests for lease ownership/expiry/contention, board privacy, tool delegation and brief preparation, plus the workspace typecheck. New migration is DDL only and remains unapplied. Never push or write a database during development.

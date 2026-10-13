@@ -3,11 +3,11 @@ import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { StartupsProfilePage } from "@/components/investigations/startups-profile";
+import { startupProfileRobots } from "@/lib/investigations/startup-profile-index";
 import {
   buildStartupProfilePath,
   parseStartupSlug,
   startupProfileMetaDescription,
-  startupsPublicRobots,
   type StartupLocale,
 } from "@/lib/investigations/startups";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
@@ -20,6 +20,7 @@ import {
   findApprovedPublicStartupBySlug,
   listOpenStartupRolesForCompany,
 } from "@/server/startups/queries";
+import { listStartupNewsMentions } from "@/server/news/startup-links";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export async function generateMetadata({
   return {
     title: card.name,
     ...(description ? { description } : {}),
-    robots: startupsPublicRobots(),
+    robots: startupProfileRobots(card),
     ...(description
       ? buildOgMeta(card.name, description, "Investigation")
       : {}),
@@ -59,7 +60,13 @@ export default async function StartupProfileRoute({ params }: PageProps) {
   const locale = await getLocale();
   const t = await getTranslations("investigationsStartups");
   const session = await getSession();
-  const roles = await listOpenStartupRolesForCompany(card.id);
+  const [roles, mentions] = await Promise.all([
+    listOpenStartupRolesForCompany(card.id),
+    listStartupNewsMentions(card.id).catch((err: unknown) => {
+      console.error("startup profile: could not list news", err);
+      return [];
+    }),
+  ]);
 
   return (
     <StartupsProfilePage
@@ -67,6 +74,7 @@ export default async function StartupProfileRoute({ params }: PageProps) {
       t={t}
       card={card}
       roles={roles}
+      mentions={mentions}
       promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
     />
   );

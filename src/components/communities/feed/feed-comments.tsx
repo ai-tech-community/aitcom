@@ -237,7 +237,7 @@ export function FeedComments({
                   </div>
                 </div>
               ) : (
-                <p className="mt-0.5 text-sm whitespace-pre-wrap">
+                <p className="mt-0.5 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap">
                   {comment.content}
                 </p>
               )}

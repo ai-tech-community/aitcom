@@ -3,10 +3,8 @@ import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { StartupsRolePage } from "@/components/investigations/startups-role-page";
-import {
-  buildStartupRolePath,
-  startupsPublicRobots,
-} from "@/lib/investigations/startups";
+import { openJobRobots } from "@/lib/investigations/job-indexability";
+import { buildStartupRolePath } from "@/lib/investigations/startups";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import {
   shouldPromoteJoin,
@@ -35,10 +33,10 @@ export async function generateMetadata({
   return {
     title: `${role.title} — ${role.startupName}`,
     description,
-    robots:
-      role.status === "closed"
-        ? { index: false, follow: true }
-        : startupsPublicRobots(),
+    robots: openJobRobots({
+      ...role,
+      descriptionAlreadySanitized: true,
+    }),
     ...buildOgMeta(
       `${role.title} — ${role.startupName}`,
       description,
