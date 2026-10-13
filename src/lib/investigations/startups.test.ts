@@ -430,6 +430,13 @@ describe("homepage and sources", () => {
     ).toBe("https://techcrunch.com/favicon.ico");
     expect(startupSourceFaviconUrl("not-a-url")).toBeNull();
     expect(
+      startupSourceFaviconUrl(
+        "https://www.technologyreview.com/2026/10/01/ai-note/",
+      ),
+    ).toBe(
+      "https://www.technologyreview.com/static/media/favicon.1cfcdb44759a0f93ddf5feb5405dd4cc.ico",
+    );
+    expect(
       startupSourceFaviconUrl("https://cursor.com/blog/joining-spacex"),
     ).not.toMatch(/google\.com\/s2|duckduckgo|gstatic/i);
   });

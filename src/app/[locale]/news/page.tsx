@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
+import { NewsLogo } from "@/components/news/news-logo";
 import { NewsRumorActions } from "@/components/news/news-rumor-actions";
 import { NewsRumorDialog } from "@/components/news/news-rumor-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -84,22 +85,8 @@ function CompanyMarks({ row }: { row: NewsTableRow }) {
     return (
       <div className="flex flex-wrap items-center justify-end gap-1 md:justify-start">
         {row.companies.slice(0, 4).map((company) => {
-          const img = (
-            // Real favicon on the company's own host. next/image cannot allow every domain.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={company.logoUrl}
-              alt={company.name}
-              title={company.name}
-              width={20}
-              height={20}
-              loading="lazy"
-              decoding="async"
-              referrerPolicy="no-referrer"
-              className="size-5"
-            />
-          );
-          if (!company.profilePath) return <span key={company.id}>{img}</span>;
+          const logo = <NewsLogo src={company.logoUrl} name={company.name} />;
+          if (!company.profilePath) return <span key={company.id}>{logo}</span>;
           return (
             <Link
               key={company.id}
@@ -107,30 +94,14 @@ function CompanyMarks({ row }: { row: NewsTableRow }) {
               title={company.name}
               className="shrink-0"
             >
-              {img}
+              {logo}
             </Link>
           );
         })}
       </div>
     );
   }
-  if (!row.fallbackLogo) {
-    return <span className="text-muted-foreground font-mono text-xs">—</span>;
-  }
-  return (
-    // Source host favicon when no company matched. Not a generated mark.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={row.fallbackLogo}
-      alt=""
-      width={20}
-      height={20}
-      loading="lazy"
-      decoding="async"
-      referrerPolicy="no-referrer"
-      className="size-5 md:mx-0"
-    />
-  );
+  return <NewsLogo src={row.fallbackLogo} name={row.sourceLabel} />;
 }
 
 export default async function NewsPage({

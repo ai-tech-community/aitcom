@@ -174,6 +174,28 @@ describe("news page", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("uses the published MIT Technology Review icon, not /favicon.ico", async () => {
+    state.items = [
+      {
+        id: "story-mit",
+        url: "https://www.technologyreview.com/2026/10/01/briefing/",
+        title: "A measured look at chips",
+        author: null,
+        publishedAt: new Date("2026-10-11T00:00:00.000Z"),
+        summary: "What the lab published.",
+      },
+    ];
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    expect(
+      screen.getByRole("img", {
+        name: "MIT Technology Review — Artificial intelligence",
+      }),
+    ).toHaveAttribute(
+      "src",
+      "https://www.technologyreview.com/static/media/favicon.1cfcdb44759a0f93ddf5feb5405dd4cc.ico",
+    );
+  });
+
   it("links a stored startup match to its directory profile", async () => {
     state.items = [
       {

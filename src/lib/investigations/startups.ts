@@ -1238,13 +1238,25 @@ export function startupInvestigationSitemapPaths(
   ];
 }
 
+/**
+ * Hosts whose `/favicon.ico` is not the icon browsers use.
+ * technologyreview.com answers 404 for that path. The mark the site
+ * publishes is this built asset (also linked from the homepage).
+ */
+const SOURCE_FAVICON_PATH: Record<string, string> = {
+  "technologyreview.com":
+    "/static/media/favicon.1cfcdb44759a0f93ddf5feb5405dd4cc.ico",
+};
+
 /** Same-origin favicon for a sourced URL. Soft-omit if the host is unusable. */
 export function startupSourceFaviconUrl(href: string): string | null {
   try {
     const url = new URL(href);
     if (url.protocol !== "https:" && url.protocol !== "http:") return null;
     if (!url.hostname.includes(".")) return null;
-    return `${url.protocol}//${url.host}/favicon.ico`;
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    const path = SOURCE_FAVICON_PATH[host] ?? "/favicon.ico";
+    return `${url.protocol}//${url.host}${path}`;
   } catch {
     return null;
   }
