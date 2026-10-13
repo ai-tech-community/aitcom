@@ -151,6 +151,7 @@ import * as migration_20261013a_news_rumors from "./20261013a_news_rumors";
 import * as migration_20261013a_event_type_conference from "./20261013a_event_type_conference";
 import * as migration_20261013b_event_coordinate_backfill from "./20261013b_event_coordinate_backfill";
 import * as migration_20261013b_news_startup_links from "./20261013b_news_startup_links";
+import * as migration_20261013c_news_feeds from "./20261013c_news_feeds";
 
 export const migrations = [
   {
@@ -917,5 +918,10 @@ export const migrations = [
     up: migration_20261013b_news_startup_links.up,
     down: migration_20261013b_news_startup_links.down,
     name: "20261013b_news_startup_links",
+  },
+  {
+    up: migration_20261013c_news_feeds.up,
+    down: migration_20261013c_news_feeds.down,
+    name: "20261013c_news_feeds",
   },
 ];

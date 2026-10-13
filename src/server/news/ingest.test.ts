@@ -97,4 +97,18 @@ describe("ingestNewsItems", () => {
     ).toBe(0);
     expect(linkStartups).toHaveBeenCalledTimes(1);
   });
+
+  it("stores the rows and skips summaries once the budget has passed", async () => {
+    const database = memoryDb();
+    const summarize = vi.fn(async () => "A stored TL;DR.");
+    const second = { ...story, url: "https://example.com/two", title: "Two" };
+    expect(
+      await ingestNewsItems(database, [story, second], summarize, {
+        summaryDeadline: 0,
+        summaryConcurrency: 4,
+      }),
+    ).toBe(2);
+    expect(summarize).not.toHaveBeenCalled();
+    expect(database.summaries).toEqual([]);
+  });
 });

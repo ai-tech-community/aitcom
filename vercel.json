@@ -23,7 +23,7 @@
     },
     {
       "path": "/api/cron/news-feeds",
-      "schedule": "20 */6 * * *"
+      "schedule": "20 6 * * *"
     },
     {
       "path": "/api/cron/news-startup-links",
