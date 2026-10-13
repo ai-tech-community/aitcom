@@ -69,10 +69,16 @@ export type NewsTableQuery = {
   type: NewsTableType;
   source: string;
   company: string;
+  writer: string;
   sort: NewsTableSort;
   page: number;
   story: string;
 };
+
+/** Exact writer filter value: the name shown in the Writer cell, trimmed and capped. */
+export function newsTableWriter(value: string): string {
+  return value.trim().replace(/\s+/g, " ").slice(0, 160);
+}
 
 const collator = new Intl.Collator(undefined, {
   sensitivity: "base",
@@ -88,6 +94,7 @@ export function parseNewsTableQuery(raw: {
   type?: string | string[];
   source?: string | string[];
   company?: string | string[];
+  writer?: string | string[];
   sort?: string | string[];
   page?: string | string[] | number;
   story?: string | string[];
@@ -111,6 +118,7 @@ export function parseNewsTableQuery(raw: {
     type,
     source: (first(raw.source) ?? "").trim().slice(0, 160),
     company: (first(raw.company) ?? "").trim().slice(0, 80),
+    writer: newsTableWriter(first(raw.writer) ?? ""),
     sort,
     page,
     story: (first(raw.story) ?? "").trim().slice(0, 255),
@@ -127,6 +135,7 @@ export function newsTableHref(
   if (next.type !== "all") params.set("type", next.type);
   if (next.source) params.set("source", next.source);
   if (next.company) params.set("company", next.company);
+  if (next.writer) params.set("writer", next.writer);
   if (next.sort !== "date") params.set("sort", next.sort);
   if (next.page > 1) params.set("page", String(next.page));
   if (next.story) params.set("story", next.story);
@@ -296,6 +305,9 @@ export function applyNewsTableQuery(
     ) {
       return false;
     }
+    if (query.writer && newsTableWriter(row.writer) !== query.writer) {
+      return false;
+    }
     return matchesSearch(row, query.q);
   });
   const sorted = [...filtered].sort((a, b) => compareRows(query.sort, a, b));
@@ -321,14 +333,18 @@ export function applyNewsTableQuery(
 export function newsTableFacets(rows: readonly NewsTableRow[]): {
   sources: Array<{ key: string; label: string }>;
   companies: Array<{ id: string; name: string }>;
+  writers: string[];
 } {
   const sources = new Map<string, string>();
   const companies = new Map<string, string>();
+  const writers = new Set<string>();
   for (const row of rows) {
     if (row.sourceKey && row.sourceLabel)
       sources.set(row.sourceKey, row.sourceLabel);
     for (const company of row.companies)
       companies.set(company.id, company.name);
+    const writer = newsTableWriter(row.writer);
+    if (writer) writers.add(writer);
   }
   return {
     sources: [...sources.entries()]
@@ -337,5 +353,6 @@ export function newsTableFacets(rows: readonly NewsTableRow[]): {
     companies: [...companies.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => collator.compare(a.name, b.name)),
+    writers: [...writers].sort((a, b) => collator.compare(a, b)),
   };
 }
