@@ -6,6 +6,7 @@ import { getLocale } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
+import { EventHubLinks } from "@/components/events/event-hub-links";
 import { EventRegisterButton } from "@/components/event-register-button";
 import { OrganizerAttendeesLink } from "@/components/events/organizer-attendees-link";
 import { EventAttendees } from "@/components/event-attendees";
@@ -587,6 +588,9 @@ export default async function EventDetailPage({
             )}
           </div>
         </aside>
+        <div className="lg:col-span-2">
+          <EventHubLinks />
+        </div>
       </div>
     );
   }
@@ -998,6 +1002,7 @@ export default async function EventDetailPage({
           )}
         </aside>
       </div>
+      <EventHubLinks />
     </div>
   );
 }

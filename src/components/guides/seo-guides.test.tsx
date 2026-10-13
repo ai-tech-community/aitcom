@@ -191,21 +191,26 @@ describe("SEO guide routes", () => {
         locale="en"
         t={tFrom(en.guidesAgentReadyCommunity)}
       />,
-      <WorldSummitGuide
-        key="summit"
-        locale="en"
-        t={tFrom(en.worldSummitEvent)}
-      />,
+      <WorldSummitGuide key="summit" locale="en" t={tFrom(en.worldSummitEvent)}>
+        <span data-testid="summit-extra">Join the community</span>
+      </WorldSummitGuide>,
     ];
 
+    let sawSummitExtra = false;
     for (const page of pages) {
       const { container, unmount } = render(page);
       const shell = container.firstElementChild;
       expect(shell?.className.split(/\s+/)).toContain("max-w-6xl");
       expect(shell?.className.split(/\s+/)).not.toContain("max-w-5xl");
       expect(shell?.className.split(/\s+/)).not.toContain("max-w-4xl");
+      const extra = container.querySelector('[data-testid="summit-extra"]');
+      if (extra) {
+        sawSummitExtra = true;
+        expect(shell?.contains(extra)).toBe(true);
+      }
       unmount();
     }
+    expect(sawSummitExtra).toBe(true);
   });
 });
 

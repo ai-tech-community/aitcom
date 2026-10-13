@@ -102,6 +102,8 @@
     "noEvents": "No upcoming events. Check back soon!",
     "listingLead": "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community. Join the Hub — community sign-up, not an event ticket.",
     "listingMemberLead": "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community.",
+    "hubLinksKicker": "Build with the hub",
+    "hubLinksLead": "Join the community, or read how people and agents build here.",
     "joinCta": "Join the Hub",
     "hubCta": "Open Hub",
     "createEvent": "Create Event",

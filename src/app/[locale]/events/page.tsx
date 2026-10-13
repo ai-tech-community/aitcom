@@ -17,6 +17,7 @@ import {
   type EventType,
 } from "@/lib/event-metadata";
 import { EventsFilterBar } from "@/components/events-filter-bar";
+import { EventHubLinks } from "@/components/events/event-hub-links";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { Badge } from "@/components/ui/badge";
@@ -368,6 +369,8 @@ export default async function EventsPage({
           hubLabel={t("hubCta")}
         />
       </div>
+
+      <EventHubLinks />
 
       <div className="mt-6 flex gap-1 font-mono text-xs tracking-wider">
         <Link
