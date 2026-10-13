@@ -536,16 +536,32 @@ export async function sendPostMentionEmail(
   return !error;
 }
 
-/** Send the consolidated weekly Hub digest. */
-export async function sendHubDigestEmail(to: string, html: string) {
+/** Send the consolidated weekly Hub digest. A Resend rejection throws so the
+ *  caller can log it; a missing API key still reports "not sent". */
+export async function sendHubDigestEmail(
+  to: string,
+  html: string,
+  text: string,
+) {
   const resend = getResend();
   if (!resend) return false;
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from: FROM_EMAIL,
     to,
     subject: "Your weekly AIT digest",
     html,
+    text,
   });
+  if (error) {
+    const message =
+      typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      typeof error.message === "string"
+        ? error.message
+        : "unknown Resend error";
+    throw new Error(`Resend rejected the digest email: ${message}`);
+  }
   return true;
 }
 

@@ -61,10 +61,10 @@ type SitemapDoc = {
 
 type SitemapClient = Pick<Awaited<ReturnType<typeof getPayloadClient>>, "find">;
 
-function safeDate(value: string | Date | null | undefined): Date {
-  if (value == null || value === "") return new Date();
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? new Date() : date;
+function safeDate(value: string | Date | null | undefined): Date | undefined {
+  if (value == null || value === "") return undefined;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 function localeEntries(
@@ -73,7 +73,7 @@ function localeEntries(
 ): MetadataRoute.Sitemap[number] {
   return {
     url: absoluteLocaleUrl("en", path),
-    lastModified: lastModified ?? new Date(),
+    ...(lastModified ? { lastModified } : {}),
     alternates: {
       languages: {
         en: absoluteLocaleUrl("en", path),
@@ -83,13 +83,16 @@ function localeEntries(
   };
 }
 
-function uniqueLocaleEntries(paths: readonly string[]): MetadataRoute.Sitemap {
+function uniqueLocaleEntries(
+  paths: readonly string[],
+  updatedAtByPath: ReadonlyMap<string, Date> = new Map(),
+): MetadataRoute.Sitemap {
   const seen = new Set<string>();
   const entries: MetadataRoute.Sitemap = [];
   for (const path of paths) {
     if (seen.has(path)) continue;
     seen.add(path);
-    entries.push(localeEntries(path));
+    entries.push(localeEntries(path, safeDate(updatedAtByPath.get(path))));
   }
   return entries;
 }
@@ -152,6 +155,18 @@ async function defaultHiddenCommunityIds(): Promise<string[]> {
   return hiddenContentCommunityIds(db, null);
 }
 
+/** `updated_at` for startup profiles and open roles, keyed by public path. */
+async function defaultPathUpdatedAt(): Promise<ReadonlyMap<string, Date>> {
+  try {
+    const { listSitemapContentUpdatedAt } =
+      await import("@/server/startups/sitemap-updated-at");
+    return await listSitemapContentUpdatedAt();
+  } catch (error) {
+    console.error("[sitemap] content lastmod lookup failed", error);
+    return new Map();
+  }
+}
+
 async function defaultAwesomePagePaths(): Promise<string[]> {
   try {
     const { listApprovedPublicCards } =
@@ -198,6 +213,9 @@ export async function buildSitemapEntries(
   getHiddenCommunityIds: () => Promise<
     readonly string[]
   > = defaultHiddenCommunityIds,
+  getPathUpdatedAt: () => Promise<
+    ReadonlyMap<string, Date>
+  > = defaultPathUpdatedAt,
 ): Promise<MetadataRoute.Sitemap> {
   let awesomePagePaths: string[] = [];
   try {
@@ -213,11 +231,17 @@ export async function buildSitemapEntries(
     startupPagePaths = [];
   }
 
-  const staticEntries = uniqueLocaleEntries([
-    ...STATIC_PAGES,
-    ...awesomePagePaths,
-    ...startupPagePaths,
-  ]);
+  let updatedAtByPath: ReadonlyMap<string, Date> = new Map();
+  try {
+    updatedAtByPath = await getPathUpdatedAt();
+  } catch (error) {
+    console.error("[sitemap] content lastmod lookup failed", error);
+  }
+
+  const staticEntries = uniqueLocaleEntries(
+    [...STATIC_PAGES, ...awesomePagePaths, ...startupPagePaths],
+    updatedAtByPath,
+  );
 
   let payload: SitemapClient;
   try {
