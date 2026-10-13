@@ -2,7 +2,11 @@ import {
   displayStartupLogoUrl,
   startupSourceFaviconUrl,
 } from "@/lib/investigations/startups";
-import { matchNewsStartups } from "@/lib/news/startup-match";
+import {
+  indexNewsStartups,
+  matchIndexedNewsStartups,
+  type IndexedNewsStartup,
+} from "@/lib/news/startup-match";
 
 /**
  * Companies a news row can be about. Logos are the company's own favicon
@@ -302,9 +306,36 @@ function curatedLogo(company: CuratedCompany): string | null {
  * (domain, or an exact non-generic name). Curated companies win on a shared
  * domain so a startup row does not add a second logo for the same host.
  */
+/** Directory startups the precise matcher may name. Curated companies stay out. */
+export function indexNewsDirectory(
+  directory: readonly NewsDirectoryCompany[],
+): IndexedNewsStartup[] {
+  const curatedNames = new Set(
+    CURATED_COMPANIES.flatMap((company) => [
+      company.name.toLowerCase(),
+      ...company.aliases.map((alias) => alias.toLowerCase()),
+    ]),
+  );
+  return indexNewsStartups(
+    directory.flatMap((startup) => {
+      const name = startup.name.trim();
+      if (!name || curatedNames.has(name.toLowerCase())) return [];
+      return [
+        {
+          id: startup.slug,
+          slug: startup.slug,
+          name,
+          homepage: startup.homepage,
+        },
+      ];
+    }),
+  );
+}
+
 export function detectNewsCompanies(
   input: { title: string; text: string; url: string | null },
   directory: readonly NewsDirectoryCompany[] = [],
+  indexed: readonly IndexedNewsStartup[] = indexNewsDirectory(directory),
 ): NewsMatchCompany[] {
   const haystack = `\n${input.title}\n${input.text}\n`;
   const host = newsHostname(input.url);
@@ -332,29 +363,8 @@ export function detectNewsCompanies(
     push({ id: company.id, name: company.name, logoUrl });
   }
 
-  const curatedNames = new Set(
-    CURATED_COMPANIES.flatMap((company) => [
-      company.name.toLowerCase(),
-      ...company.aliases.map((alias) => alias.toLowerCase()),
-    ]),
-  );
   const bySlug = new Map(directory.map((startup) => [startup.slug, startup]));
-  const matched = matchNewsStartups(
-    input,
-    directory.flatMap((startup) => {
-      const name = startup.name.trim();
-      if (!name) return [];
-      if (curatedNames.has(name.toLowerCase())) return [];
-      return [
-        {
-          id: startup.slug,
-          slug: startup.slug,
-          name,
-          homepage: startup.homepage,
-        },
-      ];
-    }),
-  );
+  const matched = matchIndexedNewsStartups(input, indexed);
 
   for (const hit of matched) {
     const startup = bySlug.get(hit.slug);

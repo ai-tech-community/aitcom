@@ -1,5 +1,6 @@
 import {
   detectNewsCompanies,
+  indexNewsDirectory,
   newsHostname,
   newsSourceLogoUrl,
   type NewsDirectoryCompany,
@@ -171,6 +172,7 @@ export function buildNewsTableRows(
     rumors?: Readonly<Record<string, readonly NewsStartupLink[]>>;
   } = {},
 ): NewsTableRow[] {
+  const indexed = indexNewsDirectory(directory);
   const storyRows: NewsTableRow[] = stories.map((story) => {
     const companies = detectNewsCompanies(
       {
@@ -179,6 +181,7 @@ export function buildNewsTableRows(
         url: story.url,
       },
       directory,
+      indexed,
     );
     const source = newsSourceFromUrl(story.url);
     const author = story.author?.trim() ?? "";
@@ -212,6 +215,7 @@ export function buildNewsTableRows(
     const companies = detectNewsCompanies(
       { title: rumor.title, text: rumor.body, url: rumor.url },
       directory,
+      indexed,
     );
     return {
       kind: "rumor",

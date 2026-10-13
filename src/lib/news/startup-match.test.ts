@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   applyNewsStartupLinks,
+  indexNewsStartups,
   isGenericStartupName,
+  matchIndexedNewsStartups,
   matchNewsStartups,
   type NewsStartupRef,
 } from "./startup-match";
@@ -153,6 +155,34 @@ describe("matchNewsStartups", () => {
           url: "https://example.com/evil",
         },
         [northstar],
+      ),
+    ).toEqual([]);
+  });
+
+  it("matches one real name inside a directory-sized list", () => {
+    const text = "A weekly note about models, chips, and labs. ".repeat(12);
+    const startups: NewsStartupRef[] = Array.from(
+      { length: 13_000 },
+      (_, i) => ({
+        id: `s-${i}`,
+        slug: `s-${i}`,
+        name: `N${i} Labs`,
+        homepage: `https://n${i}.example`,
+      }),
+    );
+    startups[400] = openai;
+    const started = Date.now();
+    const indexed = indexNewsStartups(startups);
+    const hits = matchIndexedNewsStartups(
+      { title: "OpenAI ships", text, url: "https://news.example/openai" },
+      indexed,
+    );
+    expect(Date.now() - started).toBeLessThan(1_000);
+    expect(hits.map((startup) => startup.id)).toEqual(["oa"]);
+    expect(
+      matchNewsStartups(
+        { title: "openai ships", text: "", url: "https://news.example/note" },
+        [openai],
       ),
     ).toEqual([]);
   });

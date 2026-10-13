@@ -1,7 +1,8 @@
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 
 import {
-  matchNewsStartups,
+  indexNewsStartups,
+  matchIndexedNewsStartups,
   type NewsStartupLink,
   type NewsStartupRef,
   type StartupNewsMention,
@@ -59,14 +60,15 @@ export async function linkIngestedNewsItems(
   if (rows.length === 0) return;
   const directory = await listMatchableStartups();
   if (directory.length === 0) return;
+  const indexed = indexNewsStartups(directory);
   const pairs = rows.flatMap((row) =>
-    matchNewsStartups(
+    matchIndexedNewsStartups(
       {
         title: row.title,
         text: `${row.summary}\n${row.aiSummary ?? ""}`,
         url: row.url,
       },
-      directory,
+      indexed,
     ).map((startup) => ({ newsItemId: row.id, startupId: startup.id })),
   );
   await insertItemLinks(pairs);
@@ -81,9 +83,9 @@ export async function linkSubmittedRumor(row: {
 }): Promise<void> {
   const directory = await listMatchableStartups();
   if (directory.length === 0) return;
-  const pairs = matchNewsStartups(
+  const pairs = matchIndexedNewsStartups(
     { title: row.title, text: row.body, url: row.url },
-    directory,
+    indexNewsStartups(directory),
   ).map((startup) => ({ newsRumorId: row.id, startupId: startup.id }));
   await insertRumorLinks(pairs);
 }

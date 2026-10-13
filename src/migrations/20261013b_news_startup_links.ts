@@ -4,7 +4,8 @@ import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
 import { sql } from "@payloadcms/db-postgres";
 
 import {
-  matchNewsStartups,
+  indexNewsStartups,
+  matchIndexedNewsStartups,
   type NewsStartupRef,
 } from "@/lib/news/startup-match";
 
@@ -62,6 +63,9 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     return [{ id, slug, name, homepage }];
   });
   if (startups.length === 0) return;
+  // Index once. Matching each row on its own reparsed every homepage and
+  // blew the 120s deploy limit against the full directory.
+  const indexed = indexNewsStartups(startups);
 
   const stories = queryRows(
     await db.execute(sql`
@@ -73,13 +77,13 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   for (const row of stories) {
     const id = text(row.id);
     if (!id) continue;
-    const matches = matchNewsStartups(
+    const matches = matchIndexedNewsStartups(
       {
         title: text(row.title),
         text: `${text(row.summary)}\n${text(row.ai_summary)}`,
         url: text(row.url) || null,
       },
-      startups,
+      indexed,
     );
     for (const startup of matches) {
       storyPairs.push({ left: id, right: startup.id });
@@ -98,13 +102,13 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     const id = text(row.id);
     if (!id) continue;
     const url = text(row.url);
-    const matches = matchNewsStartups(
+    const matches = matchIndexedNewsStartups(
       {
         title: text(row.title),
         text: text(row.body),
         url: url || null,
       },
-      startups,
+      indexed,
     );
     for (const startup of matches) {
       rumorPairs.push({ left: id, right: startup.id });

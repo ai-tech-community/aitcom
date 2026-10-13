@@ -151,16 +151,33 @@ export function isGenericStartupName(name: string): boolean {
   return words.every((word) => NEWS_STARTUP_STOPWORDS.has(word.toLowerCase()));
 }
 
-function mentionsExactName(haystack: string, name: string): boolean {
-  const trimmed = name.trim();
-  if (trimmed.length < NEWS_STARTUP_NAME_MIN) return false;
-  if (isGenericStartupName(trimmed)) return false;
-  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const flags = trimmed.length <= NEWS_STARTUP_CASE_SENSITIVE_MAX ? "u" : "iu";
-  return new RegExp(
-    `(?:^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`,
-    flags,
-  ).test(haystack);
+const LETTER_OR_NUMBER = /^[\p{L}\p{N}]$/u;
+
+function isWordChar(char: string | undefined): boolean {
+  return char != null && char !== "" && LETTER_OR_NUMBER.test(char);
+}
+
+/**
+ * Whole-token search. `blockedAfter` is extra characters that must not
+ * follow the needle (a dot, so a longer hostname does not match).
+ */
+function hasBoundedToken(
+  haystack: string,
+  needle: string,
+  blockedAfter: string,
+): boolean {
+  if (needle.length === 0 || needle.length > haystack.length) return false;
+  let from = 0;
+  while (from <= haystack.length - needle.length) {
+    const at = haystack.indexOf(needle, from);
+    if (at < 0) return false;
+    const before = at > 0 ? haystack[at - 1] : undefined;
+    const after = haystack[at + needle.length];
+    const afterBlocked = after != null && blockedAfter.includes(after);
+    if (!isWordChar(before) && !isWordChar(after) && !afterBlocked) return true;
+    from = at + 1;
+  }
+  return false;
 }
 
 /** Article host equals the startup host, or sits under it. Not the reverse. */
@@ -171,12 +188,39 @@ export function startupHostCovers(
   return articleHost === startupHost || articleHost.endsWith(`.${startupHost}`);
 }
 
-function mentionsDomain(haystack: string, startupHost: string): boolean {
-  const escaped = startupHost.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(
-    `(?:^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}.])`,
-    "iu",
-  ).test(haystack);
+/** A startup prepared once so a batch of news rows can share the work. */
+export type IndexedNewsStartup = {
+  startup: NewsStartupRef;
+  host: string;
+  /** Null when the name is too short or generic to match on its own. */
+  name: string | null;
+  lowerName: string | null;
+  caseSensitive: boolean;
+};
+
+/**
+ * Parse each homepage and decide name matching once. The deploy backfill
+ * walks every approved startup, so this must not recompile a pattern per row.
+ */
+export function indexNewsStartups(
+  startups: readonly NewsStartupRef[],
+): IndexedNewsStartup[] {
+  const indexed: IndexedNewsStartup[] = [];
+  for (const startup of startups) {
+    const host = newsStartupHostname(startup.homepage);
+    if (!host) continue;
+    const trimmed = startup.name.trim();
+    const nameOk =
+      trimmed.length >= NEWS_STARTUP_NAME_MIN && !isGenericStartupName(trimmed);
+    indexed.push({
+      startup,
+      host,
+      name: nameOk ? trimmed : null,
+      lowerName: nameOk ? trimmed.toLowerCase() : null,
+      caseSensitive: trimmed.length <= NEWS_STARTUP_CASE_SENSITIVE_MAX,
+    });
+  }
+  return indexed;
 }
 
 /**
@@ -184,27 +228,41 @@ function mentionsDomain(haystack: string, startupHost: string): boolean {
  * host, or the domain written in the text) or its exact name. Short names
  * keep their casing. Generic names do not match by name.
  */
+export function matchIndexedNewsStartups(
+  input: { title: string; text: string; url: string | null },
+  startups: readonly IndexedNewsStartup[],
+): NewsStartupRef[] {
+  const haystack = `\n${input.title}\n${input.text}\n`;
+  const lower = haystack.toLowerCase();
+  const articleHost = newsStartupHostname(input.url);
+  const found: NewsStartupRef[] = [];
+  const seen = new Set<string>();
+  for (const entry of startups) {
+    const byDomain =
+      (articleHost != null && startupHostCovers(articleHost, entry.host)) ||
+      hasBoundedToken(lower, entry.host, ".");
+    const byName =
+      entry.name != null &&
+      entry.lowerName != null &&
+      hasBoundedToken(
+        entry.caseSensitive ? haystack : lower,
+        entry.caseSensitive ? entry.name : entry.lowerName,
+        "",
+      );
+    if (!byDomain && !byName) continue;
+    if (seen.has(entry.startup.id)) continue;
+    seen.add(entry.startup.id);
+    found.push(entry.startup);
+  }
+  return found;
+}
+
+/** Match one item. Batches should call `indexNewsStartups` once. */
 export function matchNewsStartups(
   input: { title: string; text: string; url: string | null },
   startups: readonly NewsStartupRef[],
 ): NewsStartupRef[] {
-  const haystack = `\n${input.title}\n${input.text}\n`;
-  const articleHost = newsStartupHostname(input.url);
-  const found: NewsStartupRef[] = [];
-  const seen = new Set<string>();
-  for (const startup of startups) {
-    const home = newsStartupHostname(startup.homepage);
-    if (!home) continue;
-    const byDomain =
-      (articleHost != null && startupHostCovers(articleHost, home)) ||
-      mentionsDomain(haystack, home);
-    const byName = mentionsExactName(haystack, startup.name);
-    if (!byDomain && !byName) continue;
-    if (seen.has(startup.id)) continue;
-    seen.add(startup.id);
-    found.push(startup);
-  }
-  return found;
+  return matchIndexedNewsStartups(input, indexNewsStartups(startups));
 }
 
 function logoHost(logoUrl: string): string | null {
