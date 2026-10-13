@@ -249,8 +249,7 @@ describe("buildSitemapEntries", () => {
       (item) => item.url === "https://www.aitcommunity.org/en/events/broken",
     );
     expect(event).toBeDefined();
-    expect(event?.lastModified).toBeInstanceOf(Date);
-    expect(Number.isNaN((event?.lastModified as Date).getTime())).toBe(false);
+    expect(event?.lastModified).toBeUndefined();
   });
 
   it("includes Startups Directory and Insights even below the promo count", async () => {

@@ -3,11 +3,11 @@ import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { StartupsProfilePage } from "@/components/investigations/startups-profile";
+import { startupProfileRobots } from "@/lib/investigations/startup-profile-index";
 import {
   buildStartupProfilePath,
   parseStartupSlug,
   startupProfileMetaDescription,
-  startupsPublicRobots,
   type StartupLocale,
 } from "@/lib/investigations/startups";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
@@ -42,7 +42,7 @@ export async function generateMetadata({
   return {
     title: card.name,
     ...(description ? { description } : {}),
-    robots: startupsPublicRobots(),
+    robots: startupProfileRobots(card),
     ...(description
       ? buildOgMeta(card.name, description, "Investigation")
       : {}),
