@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { createTranslator } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -95,8 +95,19 @@ vi.mock("@/server/better-auth/server", () => ({
 }));
 
 vi.mock("@/i18n/navigation", () => ({
-  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href}>{children}</a>
+  Link: ({
+    href,
+    children,
+    ...props
+  }: {
+    href: string;
+    children: React.ReactNode;
+    rel?: string;
+    className?: string;
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }));
 
@@ -162,7 +173,10 @@ describe("news page", () => {
       "src",
       "https://openai.com/favicon.ico",
     );
-    expect(screen.getByText("Ada")).toBeInTheDocument();
+    const writer = screen.getByRole("link", { name: "Ada" });
+    expect(writer).toHaveAttribute("href", "/news?writer=Ada");
+    expect(writer).toHaveAttribute("rel", "nofollow");
+    expect(document.getElementById("news-story-1")).toContainElement(writer);
     expect(document.getElementById("news-story-1")?.className).toContain(
       "md:table-row",
     );
@@ -172,6 +186,28 @@ describe("news page", () => {
     expect(
       screen.queryByRole("button", { name: "Share a rumor" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("uses the published MIT Technology Review icon, not /favicon.ico", async () => {
+    state.items = [
+      {
+        id: "story-mit",
+        url: "https://www.technologyreview.com/2026/10/01/briefing/",
+        title: "A measured look at chips",
+        author: null,
+        publishedAt: new Date("2026-10-11T00:00:00.000Z"),
+        summary: "What the lab published.",
+      },
+    ];
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    expect(
+      screen.getByRole("img", {
+        name: "MIT Technology Review — Artificial intelligence",
+      }),
+    ).toHaveAttribute(
+      "src",
+      "https://www.technologyreview.com/static/media/favicon.1cfcdb44759a0f93ddf5feb5405dd4cc.ico",
+    );
   });
 
   it("links a stored startup match to its directory profile", async () => {
@@ -257,7 +293,10 @@ describe("news page", () => {
       "line-clamp-2",
     );
     expect(screen.getByText("Unverified rumor")).toBeInTheDocument();
-    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+    const writer = screen.getByRole("link", { name: "Ada Lovelace" });
+    expect(writer).toHaveAttribute("href", "/news?writer=Ada+Lovelace");
+    expect(writer).toHaveAttribute("rel", "nofollow");
+    expect(document.getElementById("rumor-rumor-1")).toContainElement(writer);
     expect(screen.queryByText("staff actions")).not.toBeInTheDocument();
   });
 
@@ -341,6 +380,137 @@ describe("news page", () => {
     expect(nl.nav.news).toBe("Nieuws");
     expect(Object.keys(en.newsPage).sort()).toEqual(
       Object.keys(nl.newsPage).sort(),
+    );
+  });
+
+  it("filters by writer from the cell, the select, and a clearable chip", async () => {
+    state.items = [
+      {
+        id: "story-1",
+        url: "https://example.com/models",
+        title: "OpenAI ships new models",
+        author: "Ada",
+        publishedAt: new Date("2026-10-11T00:00:00.000Z"),
+        summary: "What shipped.",
+      },
+      {
+        id: "story-2",
+        url: "https://example.com/quiet",
+        title: "A quiet week",
+        author: "Grace",
+        publishedAt: new Date("2026-10-10T00:00:00.000Z"),
+        summary: "Nothing named.",
+      },
+    ];
+    const listed = render(
+      await NewsPage({
+        searchParams: Promise.resolve({
+          q: "week",
+          type: "verified",
+          sort: "title",
+          page: "4",
+        }),
+      }),
+    );
+    const row = document.getElementById("news-story-2");
+    expect(row?.className).toContain("block");
+    const writer = within(row!).getByRole("link", {
+      name: "Grace",
+    });
+    expect(writer).toHaveAttribute(
+      "href",
+      "/news?q=week&type=verified&writer=Grace&sort=title",
+    );
+    expect(writer).toHaveAttribute("rel", "nofollow");
+    expect(
+      screen.getByRole("columnheader", { name: "Title" }).querySelector("a"),
+    ).toHaveAttribute("rel", "nofollow");
+    listed.unmount();
+
+    render(
+      await NewsPage({
+        searchParams: Promise.resolve({
+          writer: "Ada",
+          q: "ships",
+          company: "openai",
+        }),
+      }),
+    );
+    expect(screen.getByRole("combobox", { name: "Writer" })).toHaveValue("Ada");
+    expect(screen.getByText("OpenAI ships new models")).toBeInTheDocument();
+    expect(screen.queryByText("A quiet week")).not.toBeInTheDocument();
+    const chip = screen.getByRole("link", { name: "Clear writer Ada" });
+    expect(chip).toHaveAttribute("href", "/news?q=ships&company=openai");
+    expect(chip).toHaveAttribute("rel", "nofollow");
+    expect(chip.parentElement).toHaveTextContent("Ada");
+    expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute(
+      "href",
+      "/news",
+    );
+    expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute(
+      "rel",
+      "nofollow",
+    );
+  });
+
+  it("keeps an unknown writer in the filter and still noindexes the page", async () => {
+    state.items = [
+      {
+        id: "story-1",
+        url: "https://example.com/models",
+        title: "OpenAI ships new models",
+        author: "Ada",
+        publishedAt: new Date("2026-10-11T00:00:00.000Z"),
+        summary: "What shipped.",
+      },
+    ];
+    const meta = await generateMetadata();
+    expect(meta.robots).toEqual({ index: false, follow: true });
+    render(
+      await NewsPage({ searchParams: Promise.resolve({ writer: "Nobody" }) }),
+    );
+    expect(screen.getByRole("combobox", { name: "Writer" })).toHaveValue(
+      "Nobody",
+    );
+    expect(screen.getByText("No matching stories.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Clear writer Nobody" }),
+    ).toHaveAttribute("href", "/news");
+  });
+
+  it("marks pagination links nofollow", async () => {
+    state.items = Array.from({ length: 21 }, (_, index) => ({
+      id: `story-${index}`,
+      url: `https://example.com/${index}`,
+      title: `Story ${index}`,
+      author: "Ada",
+      publishedAt: new Date(Date.UTC(2026, 0, index + 1)),
+      summary: "A line.",
+    }));
+    const first = render(
+      await NewsPage({ searchParams: Promise.resolve({ writer: "Ada" }) }),
+    );
+    expect(screen.getByRole("link", { name: "Next" })).toHaveAttribute(
+      "rel",
+      "nofollow",
+    );
+    expect(screen.getByRole("link", { name: "Next" })).toHaveAttribute(
+      "href",
+      "/news?writer=Ada&page=2",
+    );
+    first.unmount();
+    render(
+      await NewsPage({
+        searchParams: Promise.resolve({ writer: "Ada", page: "2" }),
+      }),
+    );
+    expect(screen.getByRole("link", { name: "Previous" })).toHaveAttribute(
+      "rel",
+      "nofollow",
+    );
+    expect(screen.getByRole("link", { name: "Previous" })).toHaveAttribute(
+      "href",
+      "/news?writer=Ada",
     );
   });
 

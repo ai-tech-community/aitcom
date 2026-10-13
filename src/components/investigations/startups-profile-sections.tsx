@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 
+import { NewsLogo } from "@/components/news/news-logo";
 import { Link } from "@/i18n/navigation";
 import { StartupsFounderRoster } from "@/components/investigations/startups-founders";
 import { StartupsSourceChips } from "@/components/investigations/startups-source-chips";
@@ -10,6 +11,7 @@ import {
   buildStartupRolePath,
   displayStartupFounders,
   startupNewsSources,
+  startupSourceFaviconUrl,
   type StartupLocale,
   type StartupProfileSection,
   type StartupPublicCard,
@@ -181,6 +183,15 @@ function StartupMentionList({
           >
             {title}
             <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <NewsLogo
+                src={
+                  item.href.startsWith("http://") ||
+                  item.href.startsWith("https://")
+                    ? startupSourceFaviconUrl(item.href)
+                    : null
+                }
+                name={item.source}
+              />
               <span>{item.source}</span>
               {item.at ? (
                 <span className="font-mono text-xs">

@@ -1523,6 +1523,13 @@ describe("Startups profile page", () => {
     expect(screen.getByText("Verified")).toBeInTheDocument();
     expect(screen.getByText("Unverified rumor")).toBeInTheDocument();
     expect(screen.getByText("The Verge — AI")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "The Verge — AI" })).toHaveAttribute(
+      "src",
+      "https://example.com/favicon.ico",
+    );
+    expect(screen.getByRole("img", { name: "Ada Lovelace" })).toHaveTextContent(
+      "A",
+    );
     expect(
       screen.getByRole("link", { name: "Weights dropped" }),
     ).toHaveAttribute("href", "/news#rumor-rumor-1");

@@ -48,6 +48,7 @@ function query(overrides: Partial<NewsTableQuery> = {}): NewsTableQuery {
     type: "all",
     source: "",
     company: "",
+    writer: "",
     sort: "date",
     page: 1,
     story: "",
@@ -66,6 +67,7 @@ describe("parseNewsTableQuery", () => {
         page: "3",
         source: "feed:theverge.com",
         company: "openai",
+        writer: "  Ada   Lovelace  ",
         story: "older",
       }),
     ).toEqual(
@@ -75,9 +77,13 @@ describe("parseNewsTableQuery", () => {
         page: 3,
         source: "feed:theverge.com",
         company: "openai",
+        writer: "Ada Lovelace",
         story: "older",
       }),
     );
+    expect(
+      parseNewsTableQuery({ writer: "x".repeat(200) }).writer,
+    ).toHaveLength(160);
     expect(parseNewsTableQuery({ type: "rumor", page: "0" }).type).toBe(
       "rumor",
     );
@@ -215,6 +221,25 @@ describe("applyNewsTableQuery", () => {
         rows,
         query({ source: NEWS_MEMBER_SOURCE }),
       ).items.map((row) => row.id),
+    ).toEqual(["rumor-meta"]);
+    expect(
+      applyNewsTableQuery(rows, query({ writer: "Ada" })).items.map(
+        (row) => row.id,
+      ),
+    ).toEqual(["openai", "undated"]);
+    expect(applyNewsTableQuery(rows, query({ writer: "ada" })).items).toEqual(
+      [],
+    );
+    expect(
+      applyNewsTableQuery(
+        rows,
+        query({ writer: "Ada", company: "openai", q: "model" }),
+      ).items.map((row) => row.id),
+    ).toEqual(["openai"]);
+    expect(
+      applyNewsTableQuery(rows, query({ writer: "Ada Lovelace" })).items.map(
+        (row) => row.id,
+      ),
     ).toEqual(["rumor-meta"]);
   });
 
@@ -360,6 +385,7 @@ describe("newsTableFacets and newsTableHref", () => {
       "Member rumor",
       "The Verge — AI",
     ]);
+    expect(facets.writers).toEqual(["Ada", "Ada Lovelace"]);
     expect(newsTableHref(query())).toBe("/news");
     expect(
       newsTableHref(query(), {
@@ -370,5 +396,21 @@ describe("newsTableFacets and newsTableHref", () => {
         story: "older",
       }),
     ).toBe("/news?q=OpenAI&type=verified&sort=title&page=2&story=older");
+    expect(
+      newsTableHref(
+        query({
+          q: "OpenAI",
+          type: "rumor",
+          source: "member",
+          company: "openai",
+          sort: "source",
+          page: 3,
+          story: "older",
+        }),
+        { writer: "Ada Lovelace", page: 1 },
+      ),
+    ).toBe(
+      "/news?q=OpenAI&type=rumor&source=member&company=openai&writer=Ada+Lovelace&sort=source&story=older",
+    );
   });
 });
