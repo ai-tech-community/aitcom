@@ -48,7 +48,7 @@ const articleCount = sql<number>`(select count(*)::int from ${memberships}
 const latestAt = sql<Date | null>`(select max(${newsItems.publishedAt}) from ${memberships}
   join ${newsItems} on ${newsItems.id} = ${memberships.articleId}
   where ${memberships.storylineId} = ${stories.id} and ${validMembership})`;
-const publicStoryline = and(
+export const publicStoryline = and(
   eq(stories.status, "published"),
   sql`length(btrim(${stories.overviewEn})) > 0`,
   sql`${articleCount} >= 2`,

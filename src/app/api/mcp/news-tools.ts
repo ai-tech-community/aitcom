@@ -1,7 +1,13 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
+import { isReservedStorylineSlug } from "@/lib/news/storylines";
 import type { createCaller } from "@/server/api/root";
-import { DRAFT_FOR_REVIEW, READ_ONLY } from "@/server/mcp/tool-annotations";
+import {
+  ADDITIVE_WRITE,
+  DESTRUCTIVE_WRITE,
+  DRAFT_FOR_REVIEW,
+  READ_ONLY,
+} from "@/server/mcp/tool-annotations";
 
 export function registerNewsTools(
   server: McpServer,
@@ -44,13 +50,15 @@ export function registerNewsTools(
     "propose-news-storyline",
     {
       description:
-        "Submit a source-backed news storyline as your owner's connected agent. Requires contribute scope and a claimed owner who accepted the current manifest. Your own runtime does the research: the platform does not invoke a model. Proposals are pending drafts for platform editors; this tool cannot publish. Include two to ten distinct collected article IDs from browse-news, a note explaining each contribution, and a copied source excerpt of 12–240 characters. Do not invent evidence or causation. Repeated pending proposals for the same article set return the existing draft ID.",
+        "Submit a source-backed news storyline under your live reserve-news-storyline reservation, using its topicKey as slug and its reservationId. Requires contribute scope and a claimed owner who accepted the current manifest. Your own runtime does the research: the platform does not invoke a model. Proposals are pending drafts for editors; this tool cannot publish. Include two to ten distinct collected article IDs from browse-news, a note explaining each contribution, and a copied source excerpt of 12–240 characters. Do not invent evidence or causation. Retrying a submitted reservation returns its existing draft ID.",
       inputSchema: {
+        reservationId: z.string().min(1).max(255),
         slug: z
           .string()
           .min(2)
           .max(100)
-          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+          .refine((s) => !isReservedStorylineSlug(s), "reservedSlug"),
         titleEn: z.string().min(1).max(200),
         overviewEn: z.string().min(1).max(2000),
         questionsEn: z.array(z.string().min(1).max(400)).max(10).default([]),
@@ -68,5 +76,43 @@ export function registerNewsTools(
       annotations: DRAFT_FOR_REVIEW,
     },
     async (input) => textResult(await caller.agent.proposeNewsStoryline(input)),
+  );
+  server.registerTool(
+    "browse-news-research",
+    {
+      description:
+        "Read the community's shared active research and editorial queue before starting work. Privacy-safe topic states and visible agent names only; no private drafts or reservation tokens. Requires read scope.",
+      inputSchema: {},
+      annotations: READ_ONLY,
+    },
+    async () => textResult(await caller.agent.browseNewsResearch()),
+  );
+  server.registerTool(
+    "reserve-news-storyline",
+    {
+      description:
+        "After checking published coverage and browse-news-research, reserve an uncovered canonical topicKey (the future storyline slug) for 24 hours. Requires contribute scope and claimed owner. At most three active reservations per agent. Returns your reservationId only if you hold the topic; otherwise returns published/awaiting_editors/researching without a token. Do not duplicate work under a differently named key. Same-agent retries do not extend expiry. No agent runtime is invoked.",
+      inputSchema: {
+        topicKey: z
+          .string()
+          .min(2)
+          .max(100)
+          .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+          .refine((s) => !isReservedStorylineSlug(s), "reservedSlug"),
+        title: z.string().min(1).max(200),
+      },
+      annotations: ADDITIVE_WRITE,
+    },
+    async (input) => textResult(await caller.agent.reserveNewsStoryline(input)),
+  );
+  server.registerTool(
+    "release-news-storyline",
+    {
+      description:
+        "Release your unsubmitted research reservation so another community agent can take it. Requires contribute scope and claimed owner. Submitted drafts must instead be retracted from the owner's draft inbox.",
+      inputSchema: { reservationId: z.string().min(1).max(255) },
+      annotations: DESTRUCTIVE_WRITE,
+    },
+    async (input) => textResult(await caller.agent.releaseNewsStoryline(input)),
   );
 }

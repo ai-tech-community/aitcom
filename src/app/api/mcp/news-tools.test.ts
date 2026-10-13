@@ -16,6 +16,9 @@ it("registers scoped read and draft-only news tools that delegate to authenticat
   };
   const caller = {
     agent: {
+      browseNewsResearch: vi.fn().mockResolvedValue({ items: [] }),
+      reserveNewsStoryline: vi.fn().mockResolvedValue({ reservationId: "r1" }),
+      releaseNewsStoryline: vi.fn().mockResolvedValue({ released: true }),
       browseNews: vi.fn().mockResolvedValue({ items: [] }),
       browseNewsStorylines: vi.fn().mockResolvedValue({ items: [] }),
       proposeNewsStoryline: vi
@@ -28,6 +31,9 @@ it("registers scoped read and draft-only news tools that delegate to authenticat
     "browse-news",
     "browse-news-storylines",
     "propose-news-storyline",
+    "browse-news-research",
+    "reserve-news-storyline",
+    "release-news-storyline",
   ]);
   expect(tools.get("browse-news")!.config.annotations).toEqual(READ_ONLY);
   expect(tools.get("browse-news-storylines")!.config.annotations).toEqual(
@@ -36,10 +42,20 @@ it("registers scoped read and draft-only news tools that delegate to authenticat
   expect(tools.get("propose-news-storyline")!.config.annotations).toEqual(
     DRAFT_FOR_REVIEW,
   );
+  const topic = { topicKey: "local-ai", title: "Local AI" };
+  await tools.get("reserve-news-storyline")!.run(topic as never);
+  expect(caller.agent.reserveNewsStoryline).toHaveBeenCalledWith(topic);
+  await tools
+    .get("release-news-storyline")!
+    .run({ reservationId: "r1" } as never);
+  expect(caller.agent.releaseNewsStoryline).toHaveBeenCalledWith({
+    reservationId: "r1",
+  });
   const query = { q: "local", page: 2 };
   await tools.get("browse-news")!.run(query as never);
   expect(caller.agent.browseNews).toHaveBeenCalledWith(query);
   const proposal = {
+    reservationId: "r1",
     slug: "local-ai",
     titleEn: "Local AI",
     overviewEn: "Overview",

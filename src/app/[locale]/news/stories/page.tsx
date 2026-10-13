@@ -48,6 +48,12 @@ export default async function StoriesPage({
         {t("title")}
       </h1>
       <p className="text-muted-foreground mt-3 text-lg">{t("intro")}</p>
+      <Link
+        href="/news/stories/contribute"
+        className="mt-4 inline-block text-sm underline underline-offset-4"
+      >
+        {t("contribute.entry")}
+      </Link>
       <form method="get" className="mt-8 mb-8 flex flex-wrap items-end gap-3">
         <label className="flex-1 text-sm">
           <span>{t("search")}</span>

@@ -8,16 +8,20 @@ export const storylineRelations = [
   "contrasting_claims",
 ] as const;
 
+export const isReservedStorylineSlug = (s: string) =>
+  ["manage", "contribute"].includes(s);
+export const storylineSlugSchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(100)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  .refine((s) => !isReservedStorylineSlug(s), "reservedSlug");
+
 export const storylineInputSchema = z.object({
   id: id.optional(),
   sourceDraftId: id.optional(),
-  slug: z
-    .string()
-    .trim()
-    .min(2)
-    .max(100)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-    .refine((s) => s !== "manage", "reservedSlug"),
+  slug: storylineSlugSchema,
   titleEn: z.string().trim().min(1).max(200),
   titleNl: z.string().trim().max(200).default(""),
   overviewEn: optionalCopy,

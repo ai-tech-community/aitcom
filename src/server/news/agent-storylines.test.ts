@@ -4,6 +4,7 @@ import { storyFixture } from "@/test/news-storyline-fixture";
 
 const state = vi.hoisted(() => ({
   rows: [] as unknown[][],
+  reservation: { row: { id: "lease" }, draftId: null as string | null },
   writes: [] as Array<{ table: unknown; value: Record<string, unknown> }>,
 }));
 vi.mock("@/server/db", () => {
@@ -47,6 +48,13 @@ vi.mock("@/server/db", () => {
     },
   };
 });
+vi.mock("./storyline-reservations", async (original) => {
+  const actual = await original<typeof import("./storyline-reservations")>();
+  return {
+    ...actual,
+    lockSubmissionReservation: vi.fn(async () => state.reservation),
+  };
+});
 import {
   submitAgentStoryline,
   listAgentStorylineDrafts,
@@ -61,6 +69,7 @@ const articles = storyFixture.articles.map((m) => m.article);
 beforeEach(() => {
   state.rows = [];
   state.writes = [];
+  state.reservation = { row: { id: "lease" }, draftId: null };
 });
 it("stores a pending attributed draft without a model dependency or publishing", async () => {
   state.rows = [[{ id: "agent-a" }], articles, []];
@@ -68,6 +77,7 @@ it("stores a pending attributed draft without a model dependency or publishing",
     await submitAgentStoryline(
       { agentId: "agent-a", ownerId: "owner-a" },
       proposal(),
+      "lease",
     ),
   ).toMatchObject({ mode: "draft", reused: false });
   expect(state.writes[0]?.value).toMatchObject({
@@ -77,6 +87,7 @@ it("stores a pending attributed draft without a model dependency or publishing",
     status: "pending",
     metadata: { input: { status: "draft", revision: 0 } },
   });
+  expect(state.writes[1]?.value).toEqual({ draftId: "stored-draft" });
 });
 it("rejects unknown or invented evidence before a draft is stored", async () => {
   state.rows = [[{ id: "agent-a" }], articles];
@@ -90,27 +101,24 @@ it("rejects unknown or invented evidence before a draft is stored", async () => 
           evidence: "Invented evidence from a model",
         })),
       },
+      "lease",
     ),
   ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   expect(state.writes).toEqual([]);
 });
-it("returns the pending duplicate and caps outstanding proposals", async () => {
-  const signature = JSON.stringify(
-    proposal()
-      .articles.map((m) => m.articleId)
-      .sort(),
-  );
-  state.rows = [
-    [{ id: "agent-a" }],
-    articles,
-    [{ id: "existing", metadata: { articleSignature: signature } }],
-  ];
+it("reuses an already submitted reservation without another insert", async () => {
+  state.reservation.draftId = "existing";
+  state.rows = [[{ id: "agent-a" }]];
   expect(
     await submitAgentStoryline(
       { agentId: "agent-a", ownerId: "owner-a" },
       proposal(),
+      "lease",
     ),
   ).toMatchObject({ draftId: "existing", reused: true });
+  expect(state.writes).toEqual([]);
+});
+it("caps outstanding proposals before consuming the reservation", async () => {
   state.rows = [
     [{ id: "agent-a" }],
     articles,
@@ -120,6 +128,7 @@ it("returns the pending duplicate and caps outstanding proposals", async () => {
     submitAgentStoryline(
       { agentId: "agent-a", ownerId: "owner-a" },
       proposal(),
+      "lease",
     ),
   ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
   expect(state.writes).toEqual([]);

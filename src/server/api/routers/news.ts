@@ -4,8 +4,17 @@ import {
 } from "@/server/news/agent-storylines";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import {
+  listStorylineResearch,
+  readStorylineCoverage,
+  reserveStorylineSchema,
+} from "@/server/news/storyline-reservations";
 
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "@/server/api/trpc";
 import { revalidateNewsTable } from "@/server/news/cache";
 import { isNewsStaff } from "@/server/news/staff";
 import {
@@ -33,6 +42,10 @@ const storylineStaffProcedure = protectedProcedure.use(
 );
 
 export const newsRouter = createTRPCRouter({
+  listStorylineResearch: publicProcedure.query(() => listStorylineResearch()),
+  storylineCoverage: publicProcedure
+    .input(reserveStorylineSchema.pick({ topicKey: true }))
+    .query(({ input }) => readStorylineCoverage(input.topicKey)),
   dismissAgentStorylineDraft: storylineStaffProcedure
     .input(z.object({ draftId: z.string().min(1).max(255) }))
     .mutation(({ input }) => dismissAgentStorylineDraft(input.draftId)),

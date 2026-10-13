@@ -1,3 +1,4 @@
+import * as migration_20261013g_news_storyline_reservations from "./20261013g_news_storyline_reservations";
 import * as migration_20261013f_news_storylines from "./20261013f_news_storylines";
 import * as migration_20260223_tags_array from "./20260223_tags_array";
 import * as migration_20260225_135039_add_colab_url from "./20260225_135039_add_colab_url";
@@ -941,5 +942,10 @@ export const migrations = [
     up: migration_20261013f_news_storylines.up,
     down: migration_20261013f_news_storylines.down,
     name: "20261013f_news_storylines",
+  },
+  {
+    up: migration_20261013g_news_storyline_reservations.up,
+    down: migration_20261013g_news_storyline_reservations.down,
+    name: "20261013g_news_storyline_reservations",
   },
 ];

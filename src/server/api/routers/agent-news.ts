@@ -7,8 +7,42 @@ import {
 import { storylineProposalSchema } from "@/lib/news/storyline-suggestions";
 import { submitAgentStoryline } from "@/server/news/agent-storylines";
 import { newsSourceFromUrl } from "@/lib/news/table";
+import {
+  listStorylineResearch,
+  reserveStoryline,
+  releaseStorylineReservation,
+  reserveStorylineSchema,
+} from "@/server/news/storyline-reservations";
 
 export const agentNewsRouter = {
+  browseNewsResearch: agentProcedure.query(async ({ ctx }) => {
+    requireScope(ctx.agent.scopes, "read");
+    return { items: await listStorylineResearch() };
+  }),
+  reserveNewsStoryline: agentProcedure
+    .input(reserveStorylineSchema)
+    .mutation(({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      return reserveStoryline(
+        {
+          agentId: ctx.agent.agentId,
+          ownerId: requireOwner(ctx.agent.ownerId),
+        },
+        input,
+      );
+    }),
+  releaseNewsStoryline: agentProcedure
+    .input(z.object({ reservationId: z.string().min(1).max(255) }))
+    .mutation(({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      return releaseStorylineReservation(
+        {
+          agentId: ctx.agent.agentId,
+          ownerId: requireOwner(ctx.agent.ownerId),
+        },
+        input.reservationId,
+      );
+    }),
   browseNews: agentProcedure
     .input(
       z.object({
@@ -63,13 +97,19 @@ export const agentNewsRouter = {
       };
     }),
   proposeNewsStoryline: agentProcedure
-    .input(storylineProposalSchema)
+    .input(
+      storylineProposalSchema.extend({
+        reservationId: z.string().min(1).max(255),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+      const { reservationId, ...proposal } = input;
       return submitAgentStoryline(
         { agentId: ctx.agent.agentId, ownerId },
-        input,
+        proposal,
+        reservationId,
       );
     }),
 };

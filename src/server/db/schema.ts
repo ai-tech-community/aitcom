@@ -4870,6 +4870,37 @@ export const newsStorylines = appSchema.table(
   ],
 );
 
+/** Shared research coordination, separate from private editorial copy. */
+export const newsStorylineReservations = appSchema.table(
+  "news_storyline_reservation",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    topicKey: d.varchar({ length: 100 }).notNull(),
+    title: d.varchar({ length: 200 }).notNull(),
+    agentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => agentProfiles.id, { onDelete: "cascade" }),
+    ownerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    expiresAt: d.timestamp({ withTimezone: true }).notNull(),
+    releasedAt: d.timestamp({ withTimezone: true }),
+    draftId: d
+      .varchar({ length: 255 })
+      .references(() => agentDrafts.id, { onDelete: "set null" }),
+    createdAt: d.timestamp({ withTimezone: true }).notNull().defaultNow(),
+  }),
+  (t) => [
+    uniqueIndex("news_storyline_reservation_topic_idx").on(t.topicKey),
+    index("news_storyline_reservation_agent_idx").on(t.agentId),
+  ],
+);
+
 export const newsStorylineArticles = appSchema.table(
   "news_storyline_article",
   (d) => ({

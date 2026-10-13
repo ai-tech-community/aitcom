@@ -4,7 +4,13 @@ import { Link } from "@/i18n/navigation";
 import { StorylineEmpty, StorylineLoadError } from "./storyline-states";
 import { StorylineList } from "./storyline-reader";
 
-export async function StorylinePreview({ staff }: { staff: boolean }) {
+export async function StorylinePreview({
+  staff,
+  showContribute = true,
+}: {
+  staff: boolean;
+  showContribute?: boolean;
+}) {
   const t = await getTranslations("newsStories");
   let result;
   try {
@@ -21,10 +27,18 @@ export async function StorylinePreview({ staff }: { staff: boolean }) {
           </h2>
           <p className="text-muted-foreground mt-2 text-sm">{t("intro")}</p>
         </div>
-        <div className="flex gap-4 text-sm">
+        <div className="flex flex-wrap gap-4 text-sm">
           <Link href="/news/stories" className="underline underline-offset-4">
             {t("allStories")}
           </Link>
+          {showContribute && (
+            <Link
+              href="/news/stories/contribute"
+              className="underline underline-offset-4"
+            >
+              {t("contribute.entry")}
+            </Link>
+          )}
           {staff && (
             <Link
               href="/news/stories/manage"

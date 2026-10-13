@@ -1,7 +1,16 @@
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { db } from "@/server/db";
-import { agentDrafts, agentProfiles, newsItems } from "@/server/db/schema";
+import {
+  agentDrafts,
+  agentProfiles,
+  newsItems,
+  newsStorylineReservations,
+} from "@/server/db/schema";
+import {
+  lockNewsAgent,
+  lockSubmissionReservation,
+} from "./storyline-reservations";
 import { storylineInputSchema } from "@/lib/news/storylines";
 import {
   validateStorylineProposals,
@@ -24,21 +33,22 @@ export type AgentStorylineSuggestion = StorylineSuggestion & {
 export async function submitAgentStoryline(
   identity: { agentId: string; ownerId: string },
   proposal: z.infer<typeof storylineProposalSchema>,
+  reservationId: string,
 ) {
   return db.transaction(async (tx) => {
-    // Serialize this agent's duplicate/queue-limit checks, without calling its runtime.
-    const [agent] = await tx
-      .select({ id: agentProfiles.id })
-      .from(agentProfiles)
-      .where(
-        and(
-          eq(agentProfiles.id, identity.agentId),
-          eq(agentProfiles.ownerId, identity.ownerId),
-          eq(agentProfiles.status, "active"),
-        ),
-      )
-      .for("update");
-    if (!agent) throw new TRPCError({ code: "FORBIDDEN" });
+    await lockNewsAgent(tx, identity);
+    const reservation = await lockSubmissionReservation(
+      tx,
+      identity,
+      reservationId,
+      proposal.slug,
+    );
+    if (reservation.draftId)
+      return {
+        mode: "draft" as const,
+        draftId: reservation.draftId,
+        reused: true,
+      };
     const articles = await tx
       .select({
         id: newsItems.id,
@@ -83,7 +93,11 @@ export async function submitAgentStoryline(
       (d) => d.metadata?.articleSignature === articleSignature,
     );
     if (duplicate)
-      return { mode: "draft" as const, draftId: duplicate.id, reused: true };
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "These articles already have a proposal. Release the duplicate topic reservation.",
+      });
     if (pending.length >= MAX_PENDING)
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
@@ -102,12 +116,17 @@ export async function submitAgentStoryline(
         metadata: {
           input,
           articleSignature,
+          topicKey: proposal.slug,
           title: input.titleEn,
           destinationLabel: "News storylines · editorial review",
           destinationPath: "/news/stories/manage",
         },
       })
       .returning({ id: agentDrafts.id });
+    await tx
+      .update(newsStorylineReservations)
+      .set({ draftId: draft!.id })
+      .where(eq(newsStorylineReservations.id, reservation.row.id));
     return { mode: "draft" as const, draftId: draft!.id, reused: false };
   });
 }
