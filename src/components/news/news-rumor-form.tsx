@@ -10,7 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/trpc/react";
 
-export function NewsRumorForm() {
+export function NewsRumorForm({
+  showHeading = true,
+}: {
+  showHeading?: boolean;
+}) {
   const t = useTranslations("newsPage");
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -33,17 +37,23 @@ export function NewsRumorForm() {
 
   return (
     <form
-      className="border-border mt-8 flex max-w-2xl flex-col gap-4 border p-4"
+      className={
+        showHeading
+          ? "border-border mt-8 flex max-w-2xl flex-col gap-4 border p-4"
+          : "flex flex-col gap-4"
+      }
       onSubmit={(event) => {
         event.preventDefault();
         setNotice(null);
         submit.mutate({ title, url, body });
       }}
     >
-      <div>
-        <h2 className="text-base font-semibold">{t("formTitle")}</h2>
-        <p className="text-muted-foreground mt-1 text-sm">{t("formHelp")}</p>
-      </div>
+      {showHeading ? (
+        <div>
+          <h2 className="text-base font-semibold">{t("formTitle")}</h2>
+          <p className="text-muted-foreground mt-1 text-sm">{t("formHelp")}</p>
+        </div>
+      ) : null}
       <div className="flex flex-col gap-2">
         <Label htmlFor="rumor-title">{t("titleLabel")}</Label>
         <Input

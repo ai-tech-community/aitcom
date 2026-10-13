@@ -76,6 +76,10 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
+vi.mock("@/server/news/directory", () => ({
+  listNewsDirectoryCompanies: async () => [],
+}));
+
 vi.mock("@/components/news/news-rumor-form", () => ({
   NewsRumorForm: () => <form>rumor form</form>,
 }));
@@ -101,12 +105,12 @@ describe("news page", () => {
     expect(meta.robots).toEqual({ index: false, follow: true });
   });
 
-  it("uses the directory width and a two-column grid", async () => {
+  it("renders a directory-width table with a verified story", async () => {
     state.items = [
       {
         id: "story-1",
         url: "https://example.com/models",
-        title: "New models",
+        title: "OpenAI ships new models",
         author: "Ada",
         publishedAt: new Date("2026-10-11T00:00:00.000Z"),
         summary: "What shipped.",
@@ -114,10 +118,61 @@ describe("news page", () => {
     ];
     render(await NewsPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByRole("main").className).toContain("max-w-6xl");
-    expect(screen.getByRole("list").className).toContain("lg:grid-cols-2");
-    const link = screen.getByRole("link", { name: "New models" });
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Title" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Verified", { selector: "[data-slot=badge]" }),
+    ).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "OpenAI ships new models" });
     expect(link).toHaveAttribute("href", "https://example.com/models");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByRole("img", { name: "OpenAI" })).toHaveAttribute(
+      "src",
+      "https://openai.com/favicon.ico",
+    );
+    expect(screen.getByText("Ada")).toBeInTheDocument();
+    expect(document.getElementById("news-story-1")?.className).toContain(
+      "md:table-row",
+    );
+    expect(document.getElementById("news-story-1")?.className).toContain(
+      "block",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Share a rumor" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("filters the table from the URL query", async () => {
+    state.items = [
+      {
+        id: "story-1",
+        url: "https://example.com/models",
+        title: "OpenAI ships new models",
+        author: "Ada",
+        publishedAt: new Date("2026-10-11T00:00:00.000Z"),
+        summary: "What shipped.",
+      },
+      {
+        id: "story-2",
+        url: "https://example.com/quiet",
+        title: "A quiet week",
+        author: null,
+        publishedAt: new Date("2026-10-10T00:00:00.000Z"),
+        summary: "Nothing named.",
+      },
+    ];
+    render(await NewsPage({ searchParams: Promise.resolve({ q: "quiet" }) }));
+    expect(screen.getByText("A quiet week")).toBeInTheDocument();
+    expect(
+      screen.queryByText("OpenAI ships new models"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute(
+      "href",
+      "/news",
+    );
   });
 
   it("labels a member rumor as unverified and names the submitter", async () => {
@@ -135,12 +190,12 @@ describe("news page", () => {
     render(await NewsPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByText("Weights dropped")).toBeInTheDocument();
     expect(screen.getByText("Heard it at the meetup.")).toBeInTheDocument();
-    expect(screen.getByText(/Member rumor · Unverified/)).toBeInTheDocument();
-    expect(screen.getByText(/Ada Lovelace/)).toBeInTheDocument();
+    expect(screen.getByText("Unverified rumor")).toBeInTheDocument();
+    expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.queryByText("staff actions")).not.toBeInTheDocument();
   });
 
-  it("shows staff controls and the form only to the people who can use them", async () => {
+  it("shows staff controls and the rumor dialog only to the people who can use them", async () => {
     state.signedIn = true;
     state.staff = true;
     state.rumors = [
@@ -155,7 +210,12 @@ describe("news page", () => {
       },
     ];
     render(await NewsPage({ searchParams: Promise.resolve({}) }));
-    expect(screen.getByText("rumor form")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Share a rumor" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Sign in to submit a rumor" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("staff actions")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Weights dropped" }),
@@ -184,6 +244,9 @@ describe("news page", () => {
     );
     expect(en.nav.news).toBe("News");
     expect(nl.nav.news).toBe("Nieuws");
+    expect(Object.keys(en.newsPage).sort()).toEqual(
+      Object.keys(nl.newsPage).sort(),
+    );
   });
 
   it("shows a story the digest linked even when it is outside the list", async () => {
