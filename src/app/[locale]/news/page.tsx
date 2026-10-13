@@ -12,6 +12,7 @@ import { Link } from "@/i18n/navigation";
 import {
   newsTableFacets,
   newsTableHref,
+  newsTableWriter,
   NEWS_TABLE_SCAN,
   applyNewsTableQuery,
   buildNewsTableRows,
@@ -72,6 +73,7 @@ function SortHeader({
     >
       <Link
         href={newsTableHref(query, { sort, page: 1 })}
+        rel="nofollow"
         className={active ? "text-foreground" : "hover:text-foreground"}
       >
         {label}
@@ -104,6 +106,26 @@ function CompanyMarks({ row }: { row: NewsTableRow }) {
   return <NewsLogo src={row.fallbackLogo} name={row.sourceLabel} />;
 }
 
+function WriterName({
+  row,
+  query,
+}: {
+  row: NewsTableRow;
+  query: NewsTableQuery;
+}) {
+  const writer = newsTableWriter(row.writer);
+  if (!writer) return <span>{row.writer}</span>;
+  return (
+    <Link
+      href={newsTableHref(query, { writer, page: 1 })}
+      rel="nofollow"
+      className="underline-offset-4 hover:underline"
+    >
+      {row.writer}
+    </Link>
+  );
+}
+
 export default async function NewsPage({
   searchParams,
 }: {
@@ -113,6 +135,7 @@ export default async function NewsPage({
     type?: string | string[];
     source?: string | string[];
     company?: string | string[];
+    writer?: string | string[];
     sort?: string | string[];
     page?: string | string[];
   }>;
@@ -166,7 +189,8 @@ export default async function NewsPage({
     query.q !== "" ||
     query.type !== "all" ||
     query.source !== "" ||
-    query.company !== "";
+    query.company !== "" ||
+    query.writer !== "";
   const sources =
     query.source &&
     !facets.sources.some((source) => source.key === query.source)
@@ -177,6 +201,10 @@ export default async function NewsPage({
     !facets.companies.some((company) => company.id === query.company)
       ? [{ id: query.company, name: query.company }, ...facets.companies]
       : facets.companies;
+  const writers =
+    query.writer && !facets.writers.includes(query.writer)
+      ? [query.writer, ...facets.writers]
+      : facets.writers;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -294,6 +322,27 @@ export default async function NewsPage({
             </div>
             <div className="flex w-full flex-col gap-1.5 sm:w-44">
               <label
+                htmlFor="news-writer"
+                className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
+              >
+                {t("writerLabel")}
+              </label>
+              <select
+                id="news-writer"
+                name="writer"
+                defaultValue={query.writer}
+                className={fieldClass}
+              >
+                <option value="">{t("writerAll")}</option>
+                {writers.map((writer) => (
+                  <option key={writer} value={writer}>
+                    {writer}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex w-full flex-col gap-1.5 sm:w-44">
+              <label
                 htmlFor="news-sort"
                 className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
               >
@@ -320,14 +369,35 @@ export default async function NewsPage({
                   type: "all",
                   source: "",
                   company: "",
+                  writer: "",
                   page: 1,
                 })}
+                rel="nofollow"
                 className="text-muted-foreground hover:text-foreground pb-2 text-sm underline"
               >
                 {t("clear")}
               </Link>
             ) : null}
           </form>
+
+          {query.writer ? (
+            <div className="mt-3">
+              <Badge
+                variant="outline"
+                className="gap-1 px-2 py-1 font-sans text-sm font-normal"
+              >
+                {query.writer}
+                <Link
+                  href={newsTableHref(query, { writer: "", page: 1 })}
+                  rel="nofollow"
+                  aria-label={t("clearWriter", { name: query.writer })}
+                  className="text-muted-foreground hover:text-foreground -my-1 inline-flex size-5 items-center justify-center"
+                >
+                  <span aria-hidden="true">×</span>
+                </Link>
+              </Badge>
+            </div>
+          ) : null}
 
           <p className="text-muted-foreground mt-4 font-mono text-xs">
             {t("resultCount", { count: result.total })}
@@ -423,7 +493,7 @@ export default async function NewsPage({
                         <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase md:hidden">
                           {t("columnWriter")}
                         </span>
-                        <span>{row.writer}</span>
+                        <WriterName row={row} query={query} />
                       </td>
                       <td className="grid grid-cols-[7rem_1fr] items-center gap-3 px-0 py-1 md:table-cell md:px-3 md:py-3">
                         <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase md:hidden">
@@ -467,6 +537,7 @@ export default async function NewsPage({
               {result.page > 1 ? (
                 <Link
                   href={newsTableHref(query, { page: result.page - 1 })}
+                  rel="nofollow"
                   className="text-foreground text-sm underline-offset-4 hover:underline"
                 >
                   {t("previous")}
@@ -482,6 +553,7 @@ export default async function NewsPage({
               {result.page < result.totalPages ? (
                 <Link
                   href={newsTableHref(query, { page: result.page + 1 })}
+                  rel="nofollow"
                   className="text-foreground text-sm underline-offset-4 hover:underline"
                 >
                   {t("next")}
