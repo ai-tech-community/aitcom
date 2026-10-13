@@ -3,7 +3,11 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
 import { newsItems } from "@/server/db/schema";
 
-import { ingestNewsItems, type NewsIngestDb } from "./ingest";
+import {
+  ingestNewsItems,
+  type IngestNewsOptions,
+  type NewsIngestDb,
+} from "./ingest";
 import { generateNewsSummary } from "./summary";
 import { linkIngestedNewsItems } from "./startup-links";
 
@@ -49,6 +53,7 @@ const store: NewsIngestDb = {
 /** Store feed rows the first time they are seen, and summarize those rows then. */
 export async function recordFeedNews(
   items: readonly Record<string, unknown>[],
+  options?: IngestNewsOptions,
 ): Promise<number> {
-  return ingestNewsItems(store, items, generateNewsSummary);
+  return ingestNewsItems(store, items, generateNewsSummary, options);
 }

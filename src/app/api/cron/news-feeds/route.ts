@@ -9,13 +9,11 @@ export const maxDuration = 300;
 /**
  * Fetches the configured AI news feeds and stores new article URLs.
  *
- * The news table is empty until this runs. Nothing else queues a feed:
- * the collector worker only drains runs a person starts by hand, and no
- * feed address was configured before this route.
- *
- * Vercel calls GET every six hours (see vercel.json) and sends
- * `Authorization: Bearer $CRON_SECRET`. To run the first ingest
- * without waiting for that slot:
+ * The news table is empty until this runs. Vercel calls GET once a day
+ * (see vercel.json) and sends `Authorization: Bearer $CRON_SECRET`.
+ * Feeds are fetched a few at a time, each with its own timeout, and
+ * summaries stop once the run's time budget is spent. To run the first
+ * ingest without waiting for that slot:
  *
  *   curl -H "Authorization: Bearer $CRON_SECRET" \
  *     https://www.aitcommunity.org/api/cron/news-feeds

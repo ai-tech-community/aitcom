@@ -4746,6 +4746,26 @@ export const newsItems = appSchema.table(
   ],
 );
 
+/** RSS/Atom addresses the news cron fetches. Staff can add a row without a deploy. */
+export const newsFeeds = appSchema.table(
+  "news_feed",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: d.text().notNull(),
+    url: d.text().notNull(),
+    enabled: d.boolean().notNull().default(true),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [uniqueIndex("news_feed_url_idx").on(t.url)],
+);
+
 /** Member-submitted rumors on /news. Separate from RSS rows so the digest
  *  TL;DR never treats an unverified rumor as a collected story. */
 export const newsRumors = appSchema.table(
