@@ -1,3 +1,4 @@
+import { StorylineLoadError } from "@/components/news/storyline-states";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -37,8 +38,8 @@ export default async function StoryPage({
   } catch (err) {
     console.error("news: could not load storyline", err);
     return (
-      <main className="mx-auto max-w-5xl px-6 py-16">
-        <p role="status">{t("unavailable")}</p>
+      <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+        <StorylineLoadError />
         <Link href="/news/stories" className="mt-4 inline-block underline">
           {t("back")}
         </Link>

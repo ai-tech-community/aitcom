@@ -276,6 +276,14 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 ### Section Label (signature)
 The house kicker, now a shared primitive: `<SectionLabel>` (`src/components/ui/section-label.tsx`). Renders a monospace, muted, ruled marker with a leading `/ ` — e.g. `<SectionLabel>Communities</SectionLabel>` → `/ COMMUNITIES`. Props: `as` (element), `bordered`, `marker`. **Always use this instead of re-typing `font-mono text-xs tracking-wider text-muted-foreground`.** The single most recognizable element of the system — only as a real section divider.
 
+### Storyline timeline and evidence
+A reading pattern in `src/components/news/storyline-reader.tsx`, using the existing page frame and neutral tokens rather than a separate visual theme.
+- **Chronology:** an ordered list with a neutral hairline rail, outlined circular markers, and ruled entries. Dates and latest-entry metadata use Geist Mono; article titles, editorial context, and explanations use Geist Sans. Undated coverage is separated from the dated sequence.
+- **Reading measure:** narrative sections use a narrower column within the default page frame; the timeline stays single-column on mobile and desktop. Story index rows put metadata alongside the narrative from the small breakpoint and below it on smaller screens.
+- **Evidence:** native disclosure controls reveal source excerpts and connection explanations on demand. Source links are underlined; disclosure controls use the existing focus ring and underline on hover where implemented. The rail and quote borders carry structure, not an accent stripe.
+- **Continuity:** the header provides the latest update and an anchor to its timeline entry. Related stories remain flat, divided rows. No graph, elevated card stack, extra accent palette, or animation is introduced by this pattern.
+- **Shared controls:** story search and staff editing reuse the existing Button, Input, Textarea, confirmation, and loading/empty/error primitives. Missing Dutch editorial text is identified explicitly alongside its English fallback.
+
 ### Shared primitives (use, don't reinvent)
 The consistency debt was largely hand-rolled re-implementations. Reach for these:
 - **`<SegmentedControl>`** (`ui/segmented-control.tsx`) — accessible radio-backed toggle (keyboard + SR for free). Replaces bespoke pill-button pairs.

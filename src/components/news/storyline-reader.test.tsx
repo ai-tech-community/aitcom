@@ -30,6 +30,13 @@ function reader(locale = "en") {
 }
 it("lets readers reach the latest development, inspect source evidence, and open original reporting", () => {
   reader();
+  expect(
+    screen.getByText("example.org · Example Research"),
+  ).toBeInTheDocument();
+  expect(document.querySelector("header time")).toHaveAttribute(
+    "dateTime",
+    "2026-10-13T00:00:00.000Z",
+  );
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
     "AI is moving onto your devices",
   );

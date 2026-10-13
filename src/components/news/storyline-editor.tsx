@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
+import { useConfirm } from "@/components/confirm-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+import { StorylineLoading } from "./storyline-states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,19 +45,19 @@ function ConnectionFields({
         {target.data?.titleEn ?? t("loading")}
       </legend>
       {target.error && (
-        <p role="alert">
-          {t("loadFailed")}{" "}
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => void target.refetch()}
-          >
-            {t("retry")}
-          </Button>
-        </p>
+        <ErrorState
+          title={t("loadFailed")}
+          onRetry={() => void target.refetch()}
+          retryLabel={t("retry")}
+        />
       )}
       {target.isSuccess && !target.data && (
-        <p role="alert">{t("errors.missing")}</p>
+        <ErrorState
+          title={t("errors.missing")}
+          description={t("new")}
+          onRetry={() => void target.refetch()}
+          retryLabel={t("retry")}
+        />
       )}
       <label className="block text-sm">
         {t("relation")}
@@ -133,11 +137,15 @@ function StorylineForm({
   onCreated,
   onDirty,
   onReload,
+  onPending,
+  locked,
 }: {
   initial: StorylineDetail | null;
   onCreated: (id: string) => void;
   onDirty: (dirty: boolean) => void;
   onReload: () => void;
+  onPending: (pending: boolean) => void;
+  locked: boolean;
 }) {
   const t = useTranslations("newsStories");
   const utils = api.useUtils();
@@ -212,6 +220,7 @@ function StorylineForm({
   );
   const save = api.news.saveStoryline.useMutation({
     onSuccess: (result, input) => {
+      onPending(false);
       setDraft((current) => ({
         ...current,
         id: result.id,
@@ -225,6 +234,7 @@ function StorylineForm({
       if (!input.id) onCreated(result.id);
     },
     onError: (err) => {
+      onPending(false);
       const known = [
         "stale",
         "immutableSlug",
@@ -268,6 +278,7 @@ function StorylineForm({
       return;
     }
     setNotice("");
+    onPending(true);
     save.mutate(checked.data);
   };
   const pages = (
@@ -307,7 +318,7 @@ function StorylineForm({
       }}
     >
       <fieldset
-        disabled={save.isPending}
+        disabled={save.isPending || locked}
         className="space-y-10 disabled:opacity-70"
       >
         <section className="grid gap-5 sm:grid-cols-2">
@@ -370,9 +381,10 @@ function StorylineForm({
         <section className="border-border border-t pt-8">
           <h2 className="text-2xl font-semibold">{t("articles")}</h2>
           {!draft.articles.length && (
-            <p className="text-muted-foreground mt-4 text-sm">
-              {t("nothingSelected")}
-            </p>
+            <EmptyState
+              title={t("nothingSelected")}
+              description={t("articleSearch")}
+            />
           )}
           <div className="mt-5 space-y-8">
             {draft.articles.map((m, index) => {
@@ -474,22 +486,13 @@ function StorylineForm({
               }}
             />
           </label>
-          {search.isLoading && (
-            <p className="mt-4" role="status">
-              {t("loading")}
-            </p>
-          )}
+          {search.isLoading && <StorylineLoading />}
           {search.error && (
-            <p role="alert">
-              {t("loadFailed")}{" "}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void search.refetch()}
-              >
-                {t("retry")}
-              </Button>
-            </p>
+            <ErrorState
+              title={t("loadFailed")}
+              onRetry={() => void search.refetch()}
+              retryLabel={t("retry")}
+            />
           )}
           {search.data && (
             <>
@@ -532,7 +535,10 @@ function StorylineForm({
                 })}
               </ul>
               {!search.data.items.length && (
-                <p className="my-4 text-sm">{t("noResults")}</p>
+                <EmptyState
+                  title={t("noResults")}
+                  description={t("searchHint")}
+                />
               )}
               {pages(search.data.page, search.data.totalPages, setArticlePage)}
             </>
@@ -578,18 +584,13 @@ function StorylineForm({
               }}
             />
           </label>
-          {targets.isLoading && <p role="status">{t("loading")}</p>}
+          {targets.isLoading && <StorylineLoading />}
           {targets.error && (
-            <p role="alert">
-              {t("loadFailed")}{" "}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void targets.refetch()}
-              >
-                {t("retry")}
-              </Button>
-            </p>
+            <ErrorState
+              title={t("loadFailed")}
+              onRetry={() => void targets.refetch()}
+              retryLabel={t("retry")}
+            />
           )}
           {targets.data && (
             <>
@@ -630,7 +631,10 @@ function StorylineForm({
                   ))}
               </ul>
               {!targets.data.items.length && (
-                <p className="my-4 text-sm">{t("noResults")}</p>
+                <EmptyState
+                  title={t("noResults")}
+                  description={t("searchHint")}
+                />
               )}
               {pages(targets.data.page, targets.data.totalPages, setTargetPage)}
             </>
@@ -695,14 +699,24 @@ function StorylineForm({
 
 export function StorylineEditor() {
   const t = useTranslations("newsStories");
+  const confirm = useConfirm();
+  const [saving, setSaving] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [dirty, setDirty] = useState(false);
   const [version, setVersion] = useState(0);
-  const choose = (id: string) => {
-    if (dirty && !window.confirm(t("discardChanges"))) return;
-    setDirty(false);
-    setSelectedId(id);
-    setVersion((v) => v + 1);
+  const choose = async (id: string) => {
+    if (saving || switching) return;
+    setSwitching(true);
+    try {
+      if (dirty && !(await confirm({ description: t("discardChanges") })))
+        return;
+      setDirty(false);
+      setSelectedId(id);
+      setVersion((v) => v + 1);
+    } finally {
+      setSwitching(false);
+    }
   };
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -717,7 +731,12 @@ export function StorylineEditor() {
   return (
     <div className="mt-8 grid gap-10 lg:grid-cols-[15rem_1fr]">
       <aside>
-        <Button type="button" variant="outline" onClick={() => choose("")}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={saving || switching}
+          onClick={() => void choose("")}
+        >
           {t("new")}
         </Button>
         <label className="mt-5 block text-sm">
@@ -732,22 +751,16 @@ export function StorylineEditor() {
             }}
           />
         </label>
-        {list.isLoading && (
-          <p role="status" className="mt-4">
-            {t("loading")}
-          </p>
-        )}
+        {list.isLoading && <StorylineLoading />}
         {list.error && (
-          <p role="alert">
-            {t("loadFailed")}{" "}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void list.refetch()}
-            >
-              {t("retry")}
-            </Button>
-          </p>
+          <ErrorState
+            title={t("loadFailed")}
+            onRetry={() => void list.refetch()}
+            retryLabel={t("retry")}
+          />
+        )}
+        {list.data && !list.data.items.length && (
+          <EmptyState title={t("noResults")} description={t("new")} />
         )}
         <ul className="mt-4 divide-y">
           {list.data?.items.map((s) => (
@@ -756,7 +769,8 @@ export function StorylineEditor() {
                 type="button"
                 aria-current={selectedId === s.id ? "true" : undefined}
                 className="focus-visible:ring-ring w-full rounded-sm py-3 text-left text-sm underline-offset-4 hover:underline focus-visible:ring-2"
-                onClick={() => choose(s.id)}
+                disabled={saving || switching}
+                onClick={() => void choose(s.id)}
               >
                 {s.titleEn}
                 <span className="text-muted-foreground mt-1 block text-xs">
@@ -787,28 +801,44 @@ export function StorylineEditor() {
       </aside>
       <div>
         {selectedId && detail.isLoading ? (
-          <p role="status">{t("loading")}</p>
+          <StorylineLoading />
         ) : selectedId && detail.error ? (
-          <p role="alert">
-            {t("loadFailed")}{" "}
-            <Button variant="outline" onClick={() => void detail.refetch()}>
-              {t("retry")}
-            </Button>
-          </p>
+          <ErrorState
+            title={t("loadFailed")}
+            onRetry={() => void detail.refetch()}
+            retryLabel={t("retry")}
+          />
         ) : selectedId && !detail.data ? (
-          <p role="alert">{t("errors.missing")}</p>
+          <ErrorState
+            title={t("errors.missing")}
+            description={t("new")}
+            onRetry={() => void detail.refetch()}
+            retryLabel={t("retry")}
+          />
         ) : (
           <StorylineForm
             key={`${selectedId}:${version}`}
             initial={selectedId ? detail.data! : null}
             onCreated={(id) => setSelectedId(id)}
             onDirty={setDirty}
-            onReload={() => {
-              if (dirty && !window.confirm(t("discardChanges"))) return;
-              void detail.refetch().then(() => {
+            onPending={setSaving}
+            locked={saving || switching}
+            onReload={async () => {
+              if (saving || switching) return;
+              setSwitching(true);
+              try {
+                if (
+                  dirty &&
+                  !(await confirm({ description: t("discardChanges") }))
+                )
+                  return;
+                const result = await detail.refetch();
+                if (result.error) return;
                 setDirty(false);
                 setVersion((v) => v + 1);
-              });
+              } finally {
+                setSwitching(false);
+              }
             }}
           />
         )}

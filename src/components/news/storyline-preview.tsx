@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { listStorylines } from "@/server/news/storylines";
 import { Link } from "@/i18n/navigation";
+import { StorylineEmpty, StorylineLoadError } from "./storyline-states";
 import { StorylineList } from "./storyline-reader";
 
 export async function StorylinePreview({ staff }: { staff: boolean }) {
@@ -35,13 +36,11 @@ export async function StorylinePreview({ staff }: { staff: boolean }) {
         </div>
       </div>
       {!result ? (
-        <p role="status" className="text-muted-foreground text-sm">
-          {t("unavailable")}
-        </p>
+        <StorylineLoadError />
       ) : result.items.length ? (
         <StorylineList items={result.items} />
       ) : (
-        <p className="text-muted-foreground text-sm">{t("empty")}</p>
+        <StorylineEmpty />
       )}
     </section>
   );

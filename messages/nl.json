@@ -4498,7 +4498,8 @@
       "stale": "Een andere redacteur heeft dit verhaal gewijzigd. Laad het opnieuw voordat je opslaat.",
       "immutableSlug": "De opgeslagen URL kan niet worden gewijzigd.",
       "slugTaken": "Deze URL is al in gebruik. Kies een andere slug.",
-      "missing": "Dit verhaal bestaat niet meer."
+      "missing": "Dit verhaal bestaat niet meer.",
+      "connectionExplanation": "Leg elke verbinding uit voordat je publiceert."
     },
     "discardChanges": "Niet-opgeslagen wijzigingen weggooien en een ander verhaal openen?",
     "reload": "Opgeslagen verhaal opnieuw laden"

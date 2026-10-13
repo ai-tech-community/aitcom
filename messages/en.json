@@ -4498,7 +4498,8 @@
       "stale": "Another editor changed this story. Reload it before saving.",
       "immutableSlug": "The saved URL cannot be changed.",
       "slugTaken": "That URL is already used. Choose another slug.",
-      "missing": "This story no longer exists."
+      "missing": "This story no longer exists.",
+      "connectionExplanation": "Explain every connection before publishing."
     },
     "discardChanges": "Discard unsaved changes and open another story?",
     "reload": "Reload saved story"

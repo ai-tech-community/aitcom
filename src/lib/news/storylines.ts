@@ -101,7 +101,8 @@ export type PublicationIssue =
   | "evidence"
   | "duplicateConnection"
   | "selfConnection"
-  | "connectionEvidence";
+  | "connectionEvidence"
+  | "connectionExplanation";
 export function publicationIssues(
   input: StorylineInput,
   articles: readonly StorylineArticle[],
@@ -128,7 +129,11 @@ export function publicationIssues(
     const key = `${c.targetId}:${c.relation}`;
     if (pairs.has(key)) issues.add("duplicateConnection");
     pairs.add(key);
-    if (!input.articles.some((m) => m.articleId === c.fromArticleId))
+    if (!c.explanationEn.trim()) issues.add("connectionExplanation");
+    if (
+      !c.toArticleId ||
+      !input.articles.some((m) => m.articleId === c.fromArticleId)
+    )
       issues.add("connectionEvidence");
   }
   return [...issues];

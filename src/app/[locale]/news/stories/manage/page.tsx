@@ -12,7 +12,7 @@ export default async function ManageStoriesPage() {
   if (!(await isNewsStaff(session?.user?.email))) notFound();
   const t = await getTranslations("newsStories");
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12 sm:px-10">
+    <main className="mx-auto max-w-6xl px-6 py-12 sm:px-12">
       <Link
         href="/news/stories"
         className="text-muted-foreground text-sm underline underline-offset-4"

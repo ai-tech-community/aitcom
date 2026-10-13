@@ -1,3 +1,7 @@
+import {
+  StorylineLoading,
+  StorylineLoadError,
+} from "@/components/news/storyline-states";
 import { Suspense } from "react";
 import { StorylinePreview } from "@/components/news/storyline-preview";
 import { articleStorylineLinks } from "@/server/news/storylines";
@@ -336,20 +340,10 @@ export default async function NewsPage({
         </div>
       </div>
 
-      <Suspense
-        fallback={
-          <p className="mt-8" role="status">
-            {ts("loading")}
-          </p>
-        }
-      >
+      <Suspense fallback={<StorylineLoading />}>
         <StorylinePreview staff={staff} />
       </Suspense>
-      {storylinesUnavailable && (
-        <p role="status" className="text-muted-foreground mb-4 text-sm">
-          {ts("unavailable")}
-        </p>
-      )}
+      {storylinesUnavailable && <StorylineLoadError />}
       {items.length === 0 && loaded.total === 0 && !filtered ? (
         <p className="text-muted-foreground mt-8 text-sm">{t("empty")}</p>
       ) : (

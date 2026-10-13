@@ -8,6 +8,7 @@ import {
   ilike,
   count,
 } from "drizzle-orm";
+import { newsTableSearchRegex } from "@/lib/news/table-query";
 import { db } from "@/server/db";
 import {
   newsItems,
@@ -57,7 +58,6 @@ export async function listStorylines(
     page?: number;
     limit?: number;
     staff?: boolean;
-    ids?: string[];
   } = {},
 ) {
   const q = (input.q ?? "").trim().slice(0, 200);
@@ -72,7 +72,6 @@ export async function listStorylines(
           ilike(stories.overviewNl, `%${escaped}%`),
         )
       : undefined,
-    input.ids ? inArray(stories.id, input.ids) : undefined,
   );
   const [totalRow] = await db
     .select({ total: count() })
@@ -253,14 +252,12 @@ export async function searchStorylineArticles(
   q: string,
   requestedPage: number,
 ) {
-  const needle = q
-    .trim()
-    .slice(0, 200)
-    .replace(/[\\%_]/g, "\\$&");
-  const where = needle
+  const regex = newsTableSearchRegex(q.trim().slice(0, 200));
+  const where = regex
     ? or(
-        ilike(newsItems.title, `%${needle}%`),
-        ilike(newsItems.summary, `%${needle}%`),
+        sql`lower(${newsItems.title}) ~ ${regex}`,
+        sql`lower(${newsItems.summary}) ~ ${regex}`,
+        sql`lower(coalesce(${newsItems.aiSummary}, '')) ~ ${regex}`,
       )
     : undefined;
   const [row] = await db

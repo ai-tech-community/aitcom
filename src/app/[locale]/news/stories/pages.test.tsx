@@ -20,6 +20,7 @@ vi.mock("next-intl/server", () => ({
     }),
 }));
 vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
   },
@@ -73,7 +74,7 @@ it("distinguishes an empty index from a failed load", async () => {
   state.list.mockRejectedValue(new Error("unavailable"));
   const log = vi.spyOn(console, "error").mockImplementation(() => {});
   show(await StoriesPage({ searchParams: Promise.resolve({}) }));
-  expect(screen.getByRole("status")).toHaveTextContent(
+  expect(screen.getByRole("alert")).toHaveTextContent(
     en.newsStories.unavailable,
   );
   log.mockRestore();
@@ -104,7 +105,7 @@ it("returns 404 for missing or nonpublic stories, but renders explicit storage f
   state.find.mockRejectedValue(new Error("database unavailable"));
   const log = vi.spyOn(console, "error").mockImplementation(() => {});
   show(await StoryPage({ params: Promise.resolve({ slug: "published" }) }));
-  expect(screen.getByRole("status")).toHaveTextContent(
+  expect(screen.getByRole("alert")).toHaveTextContent(
     en.newsStories.unavailable,
   );
   log.mockRestore();

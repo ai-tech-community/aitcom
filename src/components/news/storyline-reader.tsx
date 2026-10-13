@@ -1,5 +1,6 @@
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { newsSourceFromUrl } from "@/lib/news/table";
 import { Link } from "@/i18n/navigation";
 import {
   storylineCopy,
@@ -73,6 +74,7 @@ function TimelineEntry({
   const t = useTranslations("newsStories");
   const locale = useLocale();
   const fallback = locale === "nl" && !m.noteNl;
+  const publisher = newsSourceFromUrl(m.article.url).label;
   return (
     <li
       id={`article-${encodeURIComponent(m.articleId)}`}
@@ -97,9 +99,12 @@ function TimelineEntry({
       <h3 className="mt-3 text-xl leading-snug font-semibold">
         {m.article.title}
       </h3>
-      {m.article.author && (
-        <p className="text-muted-foreground mt-1 text-sm">{m.article.author}</p>
-      )}
+      <p className="text-muted-foreground mt-1 text-sm">
+        {publisher}
+        {m.article.author && m.article.author !== publisher
+          ? ` · ${m.article.author}`
+          : ""}
+      </p>
       <p className="mt-5 text-sm font-semibold">{t("adds")}</p>
       <p
         className="mt-1 max-w-prose leading-relaxed"
@@ -141,8 +146,9 @@ export function StorylineReader({
   const locale = useLocale();
   const copy = storylineCopy(story, locale);
   const timeline = storylineTimeline(story.articles);
+  const latestDate = timeline.dated.at(-1)?.article.publishedAt;
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12 sm:px-10 sm:py-16">
+    <main className="mx-auto max-w-6xl px-6 py-12 sm:px-12 sm:py-16">
       <Link
         href="/news/stories"
         className="text-muted-foreground text-sm underline underline-offset-4"
@@ -168,6 +174,14 @@ export function StorylineReader({
         <p className="text-muted-foreground mt-5 text-sm">{t("editorial")}</p>
         <div className="mt-6 flex flex-wrap items-center gap-5 text-sm">
           <span>{t("articleCount", { count: story.articles.length })}</span>
+          {latestDate && (
+            <span className="text-muted-foreground">
+              {t("latestUpdate")}:{" "}
+              <time dateTime={latestDate.toISOString()}>
+                {formatStorylineDate(latestDate, locale)}
+              </time>
+            </span>
+          )}
           {timeline.latestId && (
             <a
               href={`#article-${encodeURIComponent(timeline.latestId)}`}

@@ -1,4 +1,10 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { beforeEach, expect, it, vi } from "vitest";
 import en from "../../../messages/en.json";
@@ -8,7 +14,13 @@ import { StorylineEditor } from "./storyline-editor";
 const state = vi.hoisted(() => ({
   mutate: vi.fn(),
   articleRows: [] as unknown[],
+  storyRows: [] as unknown[],
+  detail: null as unknown,
+  refetch: vi.fn(),
   options: null as null | { onError: (err: { message: string }) => void },
+}));
+vi.mock("@/components/confirm-dialog", () => ({
+  useConfirm: () => vi.fn().mockResolvedValue(true),
 }));
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ children, href }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
@@ -25,9 +37,13 @@ vi.mock("@/trpc/react", () => ({
     }),
     news: {
       listStorylines: {
-        useQuery: () => ({ data: { items: [], page: 1, totalPages: 1 } }),
+        useQuery: () => ({
+          data: { items: state.storyRows, page: 1, totalPages: 1 },
+        }),
       },
-      readStoryline: { useQuery: () => ({ data: null }) },
+      readStoryline: {
+        useQuery: () => ({ data: state.detail, refetch: state.refetch }),
+      },
       searchStorylineArticles: {
         useQuery: () => ({
           data: { items: state.articleRows, page: 1, totalPages: 1 },
@@ -44,6 +60,10 @@ vi.mock("@/trpc/react", () => ({
 }));
 beforeEach(() => {
   vi.clearAllMocks();
+  state.mutate.mockReset();
+  state.refetch.mockReset();
+  state.storyRows = [];
+  state.detail = null;
   state.articleRows = storyFixture.articles.slice(0, 2).map((m) => m.article);
 });
 function editor() {
@@ -126,5 +146,51 @@ it("shows a stale-save recovery message without discarding the draft", () => {
   );
   expect(screen.getByLabelText("Title · English")).toHaveValue(
     "My unsaved edit",
+  );
+});
+
+it("blocks story switching while a save is pending", () => {
+  editor();
+  fireEvent.change(screen.getByLabelText("URL slug", { exact: false }), {
+    target: { value: "local-ai" },
+  });
+  fireEvent.change(screen.getByLabelText("Title · English"), {
+    target: { value: "Local AI" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  expect(screen.getByRole("button", { name: "New story" })).toBeDisabled();
+});
+
+it("locks navigation and preserves edits until a stale-story reload settles", async () => {
+  state.storyRows = [storyFixture];
+  state.detail = storyFixture;
+  let finishReload: (result: { error: null }) => void = () => {};
+  state.refetch.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finishReload = resolve;
+      }),
+  );
+  state.mutate.mockImplementation(() =>
+    state.options?.onError({ message: "stale" }),
+  );
+  editor();
+  fireEvent.click(
+    screen.getByRole("button", { name: /AI is moving onto your devices/ }),
+  );
+  fireEvent.change(screen.getByLabelText("Title · English"), {
+    target: { value: "My unsaved revision" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+  fireEvent.click(screen.getByRole("button", { name: "Reload saved story" }));
+  await waitFor(() => expect(state.refetch).toHaveBeenCalledOnce());
+  expect(screen.getByRole("button", { name: "New story" })).toBeDisabled();
+  expect(screen.getByLabelText("Title · English")).toHaveValue(
+    "My unsaved revision",
+  );
+  await act(async () => finishReload({ error: null }));
+  expect(screen.getByRole("button", { name: "New story" })).toBeEnabled();
+  expect(screen.getByLabelText("Title · English")).toHaveValue(
+    storyFixture.titleEn,
   );
 });

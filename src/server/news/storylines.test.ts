@@ -75,6 +75,7 @@ import {
   listStorylines,
   relatedStorylines,
   saveStoryline,
+  searchStorylineArticles,
 } from "./storylines";
 import { newsStorylines, newsStorylineArticles } from "@/server/db/schema";
 import { revalidateNewsTable } from "./cache";
@@ -188,7 +189,7 @@ describe("atomic storyline saves", () => {
 it("excludes drafts and insufficient source evidence before pagination", async () => {
   mock.rows = [[{ total: 0 }], []];
   await listStorylines();
-  const query = new PgDialect().sqlToQuery(
+  const query = new PgDialect({ casing: "snake_case" }).sqlToQuery(
     mock.conditions[0] as Parameters<PgDialect["sqlToQuery"]>[0],
   );
   expect(query.params).toContain("published");
@@ -238,4 +239,16 @@ it("preserves incoming relationship direction and hides invalid connection evide
     [member("other", "a", "Invented claim"), member("current", "b")],
   ];
   expect(await relatedStorylines("current")).toEqual([]);
+});
+
+it("uses archive search semantics including AI summaries while keeping evidence source-only", async () => {
+  mock.rows = [[{ total: 0 }], []];
+  await searchStorylineArticles("Local   AI (small)", 1);
+  const query = new PgDialect({ casing: "snake_case" }).sqlToQuery(
+    mock.conditions[0] as Parameters<PgDialect["sqlToQuery"]>[0],
+  );
+  expect(query.sql).toContain('"ai_summary"');
+  expect(query.params).toEqual(
+    Array(3).fill(String.raw`local\s+ai\s+\(small\)`),
+  );
 });

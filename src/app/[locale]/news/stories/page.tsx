@@ -1,3 +1,7 @@
+import {
+  StorylineEmpty,
+  StorylineLoadError,
+} from "@/components/news/storyline-states";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
@@ -33,7 +37,7 @@ export default async function StoriesPage({
   const href = (p: number) =>
     `/news/stories?${new URLSearchParams({ q, page: String(p) })}`;
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12 sm:px-10 sm:py-16">
+    <main className="mx-auto max-w-6xl px-6 py-12 sm:px-12 sm:py-16">
       <Link
         href="/news"
         className="text-muted-foreground text-sm underline underline-offset-4"
@@ -60,11 +64,11 @@ export default async function StoriesPage({
         </Button>
       </form>
       {!result ? (
-        <p role="status">{t("unavailable")}</p>
+        <StorylineLoadError />
       ) : result.items.length ? (
         <StorylineList items={result.items} />
       ) : (
-        <p>{t(q ? "noMatches" : "empty")}</p>
+        <StorylineEmpty searching={!!q} />
       )}
       {result && result.totalPages > 1 && (
         <nav
