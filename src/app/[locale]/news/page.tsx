@@ -13,8 +13,6 @@ import {
   newsTableFacets,
   newsTableHref,
   newsTableWriter,
-  NEWS_TABLE_SCAN,
-  applyNewsTableQuery,
   buildNewsTableRows,
   parseNewsTableQuery,
   type NewsTableQuery,
@@ -23,14 +21,13 @@ import {
 } from "@/lib/news/table";
 import { getSession } from "@/server/better-auth/server";
 import { listNewsDirectoryCompanies } from "@/server/news/directory";
+import { findNewsItem } from "@/server/news/list";
 import { listNewsStartupLinks } from "@/server/news/startup-links";
-import {
-  findNewsItem,
-  listNewsItems,
-  type NewsListItem,
-} from "@/server/news/list";
-import { listNewsRumors, type NewsRumorItem } from "@/server/news/rumors";
 import { isNewsStaff } from "@/server/news/staff";
+import {
+  queryNewsTablePage,
+  type NewsTablePage,
+} from "@/server/news/table-page";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("newsPage");
@@ -146,29 +143,44 @@ export default async function NewsPage({
   const query = parseNewsTableQuery(params);
   const session = await getSession().catch(() => null);
   const staff = await isNewsStaff(session?.user?.email);
-  const [listed, rumors, directory] = await Promise.all([
-    listNewsItems(NEWS_TABLE_SCAN).catch((err: unknown) => {
-      console.error("news: could not list stories", err);
-      return [] as NewsListItem[];
-    }),
-    listNewsRumors({ includeHidden: staff }).catch((err: unknown) => {
-      console.error("news: could not list rumors", err);
-      return [] as NewsRumorItem[];
+  const emptyPage: NewsTablePage = {
+    stories: [],
+    rumors: [],
+    order: [],
+    total: 0,
+    page: 1,
+    totalPages: 1,
+    sources: [],
+    writers: [],
+    companies: [],
+  };
+  const [loaded, directory] = await Promise.all([
+    queryNewsTablePage({
+      query,
+      includeHiddenRumors: staff,
+      memberSource: t("rumorLabel"),
+    }).catch((err: unknown) => {
+      console.error("news: could not query the table", err);
+      return emptyPage;
     }),
     listNewsDirectoryCompanies().catch((err: unknown) => {
       console.error("news: could not list directory companies", err);
       return [];
     }),
   ]);
-  const missing =
-    query.story.length > 0 && !listed.some((item) => item.id === query.story);
-  const extra = missing
-    ? await findNewsItem(query.story).catch((err: unknown) => {
-        console.error("news: could not load the linked story", err);
-        return null;
-      })
-    : null;
-  const stories = extra ? [extra, ...listed] : listed;
+  let stories = loaded.stories;
+  const rumors = loaded.rumors;
+  let order = loaded.order;
+  if (query.story && !stories.some((item) => item.id === query.story)) {
+    const extra = await findNewsItem(query.story).catch((err: unknown) => {
+      console.error("news: could not load the linked story", err);
+      return null;
+    });
+    if (extra) {
+      stories = [...stories, extra];
+      order = [...order, { kind: "story", id: extra.id }];
+    }
+  }
   const links = await listNewsStartupLinks({
     itemIds: stories.map((item) => item.id),
     rumorIds: rumors.map((item) => item.id),
@@ -176,15 +188,28 @@ export default async function NewsPage({
     console.error("news: could not list startup links", err);
     return { stories: {}, rumors: {} };
   });
-  const rows = buildNewsTableRows(
+  const built = buildNewsTableRows(
     stories,
     rumors,
     directory,
     { memberSource: t("rumorLabel") },
     links,
   );
-  const facets = newsTableFacets(rows);
-  const result = applyNewsTableQuery(rows, query);
+  const byKey = new Map(built.map((row) => [`${row.kind}:${row.id}`, row]));
+  const items = order.flatMap((entry) => {
+    const row = byKey.get(`${entry.kind}:${entry.id}`);
+    return row ? [row] : [];
+  });
+  const detected = newsTableFacets(items);
+  const companyNames = new Map(
+    loaded.companies.map((company) => [company.id, company.name]),
+  );
+  for (const company of detected.companies) {
+    companyNames.set(company.id, company.name);
+  }
+  const facetCompanies = [...companyNames.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const filtered =
     query.q !== "" ||
     query.type !== "all" ||
@@ -193,18 +218,18 @@ export default async function NewsPage({
     query.writer !== "";
   const sources =
     query.source &&
-    !facets.sources.some((source) => source.key === query.source)
-      ? [{ key: query.source, label: query.source }, ...facets.sources]
-      : facets.sources;
+    !loaded.sources.some((source) => source.key === query.source)
+      ? [{ key: query.source, label: query.source }, ...loaded.sources]
+      : loaded.sources;
   const companies =
     query.company &&
-    !facets.companies.some((company) => company.id === query.company)
-      ? [{ id: query.company, name: query.company }, ...facets.companies]
-      : facets.companies;
+    !facetCompanies.some((company) => company.id === query.company)
+      ? [{ id: query.company, name: query.company }, ...facetCompanies]
+      : facetCompanies;
   const writers =
-    query.writer && !facets.writers.includes(query.writer)
-      ? [query.writer, ...facets.writers]
-      : facets.writers;
+    query.writer && !loaded.writers.includes(query.writer)
+      ? [query.writer, ...loaded.writers]
+      : loaded.writers;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -235,7 +260,7 @@ export default async function NewsPage({
         </div>
       </div>
 
-      {rows.length === 0 && !filtered ? (
+      {items.length === 0 && loaded.total === 0 && !filtered ? (
         <p className="text-muted-foreground mt-8 text-sm">{t("empty")}</p>
       ) : (
         <>
@@ -400,10 +425,10 @@ export default async function NewsPage({
           ) : null}
 
           <p className="text-muted-foreground mt-4 font-mono text-xs">
-            {t("resultCount", { count: result.total })}
+            {t("resultCount", { count: loaded.total })}
           </p>
 
-          {result.items.length === 0 ? (
+          {items.length === 0 ? (
             <p className="text-muted-foreground mt-4 text-sm">
               {t("noMatches")}
             </p>
@@ -443,7 +468,7 @@ export default async function NewsPage({
                 </tr>
               </thead>
               <tbody>
-                {result.items.map((row) => {
+                {items.map((row) => {
                   const linked = row.kind === "story" && row.id === query.story;
                   return (
                     <tr
@@ -529,14 +554,14 @@ export default async function NewsPage({
             </table>
           )}
 
-          {result.total > 0 ? (
+          {loaded.total > 0 ? (
             <nav
               className="mt-4 flex items-center justify-between gap-3"
               aria-label={t("pagination")}
             >
-              {result.page > 1 ? (
+              {loaded.page > 1 ? (
                 <Link
-                  href={newsTableHref(query, { page: result.page - 1 })}
+                  href={newsTableHref(query, { page: loaded.page - 1 })}
                   rel="nofollow"
                   className="text-foreground text-sm underline-offset-4 hover:underline"
                 >
@@ -548,11 +573,11 @@ export default async function NewsPage({
                 </span>
               )}
               <p className="text-muted-foreground font-mono text-xs">
-                {t("pageOf", { page: result.page, total: result.totalPages })}
+                {t("pageOf", { page: loaded.page, total: loaded.totalPages })}
               </p>
-              {result.page < result.totalPages ? (
+              {loaded.page < loaded.totalPages ? (
                 <Link
-                  href={newsTableHref(query, { page: result.page + 1 })}
+                  href={newsTableHref(query, { page: loaded.page + 1 })}
                   rel="nofollow"
                   className="text-foreground text-sm underline-offset-4 hover:underline"
                 >

@@ -16,9 +16,6 @@ import { clampNewsSummary } from "@/server/news/summary";
 
 export const NEWS_PAGE_SIZE = 20;
 
-/** Newest stories loaded into the in-memory table. Older rows still open via `?story=`. */
-export const NEWS_TABLE_SCAN = 400;
-
 export const NEWS_MEMBER_SOURCE = "member";
 
 export type NewsStoryInput = {

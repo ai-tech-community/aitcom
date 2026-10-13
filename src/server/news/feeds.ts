@@ -5,8 +5,9 @@
  *
  * Feeds that did not return a usable document were left out: Anthropic
  * (404), the Meta AI blog (404), VentureBeat (429), and the old Microsoft
- * AI blog (410). A few others parsed but had not published in more than
- * a year, so they are not in this list either.
+ * AI blog (410). e27 (https://e27.co/feed/) answered here and then failed
+ * in production, so it is not listed. A few others parsed but had not
+ * published in more than a year, so they are not in this list either.
  *
  * More specific hosts come before their parent (news.microsoft.com before
  * microsoft.com) so a story keeps the label of the feed that published it.
@@ -164,15 +165,12 @@ export const NEWS_FEEDS = [
     name: "The Indian Express — Artificial intelligence",
     url: "https://indianexpress.com/section/technology/artificial-intelligence/feed/",
   },
-  {
-    name: "e27",
-    url: "https://e27.co/feed/",
-  },
 ] as const;
 
 /**
  * Newest entries kept from each feed on one run.
- * On 13 October 2026 the feeds above exposed 532 items within this cap
- * (some publish fewer than 15), before URL deduplication.
+ * On 13 October 2026 a check that still included e27 exposed 532 items
+ * within this cap (some publish fewer than 15), before URL deduplication.
+ * e27 did not load in production, so this list no longer fetches it.
  */
 export const NEWS_FEED_ITEM_LIMIT = 15;

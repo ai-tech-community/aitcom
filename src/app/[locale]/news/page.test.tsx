@@ -39,6 +39,7 @@ const state = vi.hoisted(() => ({
     createdAt: Date;
     hiddenAt: Date | null;
   }>,
+  serverTotal: null as number | null,
   links: {
     stories: {} as Record<
       string,
@@ -77,6 +78,73 @@ vi.mock("@/server/news/list", () => ({
   listNewsItems: async () => state.items,
   findNewsItem: async (id: string) =>
     state.items.find((item) => item.id === id) ?? state.extra,
+}));
+
+vi.mock("@/server/news/table-page", () => ({
+  queryNewsTablePage: async (input: {
+    query: {
+      q: string;
+      type: "all" | "verified" | "rumor";
+      source: string;
+      company: string;
+      writer: string;
+      sort: "date" | "title" | "source";
+      page: number;
+      story: string;
+    };
+    includeHiddenRumors: boolean;
+    memberSource: string;
+  }) => {
+    const table = await import("@/lib/news/table");
+    const rumors = input.includeHiddenRumors
+      ? state.rumors
+      : state.rumors.filter((rumor) => rumor.hiddenAt == null);
+    const rows = table.buildNewsTableRows(
+      state.items,
+      rumors,
+      [],
+      { memberSource: input.memberSource },
+      state.links,
+    );
+    const facets = table.newsTableFacets(rows);
+    if (state.serverTotal != null) {
+      const total = state.serverTotal;
+      return {
+        stories: state.items,
+        rumors,
+        order: rows.map((row) => ({ kind: row.kind, id: row.id })),
+        total,
+        page: 1,
+        totalPages: Math.max(1, Math.ceil(total / table.NEWS_PAGE_SIZE)),
+        sources: facets.sources,
+        writers: facets.writers,
+        companies: facets.companies,
+      };
+    }
+    const result = table.applyNewsTableQuery(rows, input.query);
+    const stories: typeof state.items = [];
+    const pageRumors: typeof rumors = [];
+    for (const item of result.items) {
+      if (item.kind === "story") {
+        const story = state.items.find((row) => row.id === item.id);
+        if (story) stories.push(story);
+      } else {
+        const rumor = rumors.find((row) => row.id === item.id);
+        if (rumor) pageRumors.push(rumor);
+      }
+    }
+    return {
+      stories,
+      rumors: pageRumors,
+      order: result.items.map((item) => ({ kind: item.kind, id: item.id })),
+      total: result.total,
+      page: result.page,
+      totalPages: result.totalPages,
+      sources: facets.sources,
+      writers: facets.writers,
+      companies: facets.companies,
+    };
+  },
 }));
 
 vi.mock("@/server/news/rumors", () => ({
@@ -136,6 +204,7 @@ describe("news page", () => {
     state.staff = false;
     state.items = [];
     state.extra = null;
+    state.serverTotal = null;
     state.rumors = [];
     state.links = { stories: {}, rumors: {} };
   });
@@ -512,6 +581,28 @@ describe("news page", () => {
       "href",
       "/news?writer=Ada",
     );
+  });
+
+  it("shows the counted total when more than 400 stories are stored", async () => {
+    state.serverTotal = 517;
+    state.items = [
+      {
+        id: "story-1",
+        url: "https://example.com/models",
+        title: "OpenAI ships new models",
+        author: "Ada",
+        publishedAt: new Date("2026-10-11T00:00:00.000Z"),
+        summary: "What shipped.",
+      },
+    ];
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    expect(screen.getByText("517 results")).toBeInTheDocument();
+    expect(screen.getByText("Page 1 of 26")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Next" })).toHaveAttribute(
+      "href",
+      "/news?page=2",
+    );
+    expect(screen.getByText("OpenAI ships new models")).toBeInTheDocument();
   });
 
   it("shows a story the digest linked even when it is outside the list", async () => {
