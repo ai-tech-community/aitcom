@@ -12,6 +12,11 @@ function esc(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
+export type DigestRenderOptions = {
+  /** Signed token. When set, the footer links to the confirm page. */
+  unsubscribeToken?: string;
+};
+
 function sectionLines(section: HubDigest["sections"][number]): string[] {
   const lines: string[] = [];
   if (section.newThreads) lines.push(`${section.newThreads} new discussion(s)`);
@@ -21,9 +26,21 @@ function sectionLines(section: HubDigest["sections"][number]): string[] {
   return lines;
 }
 
+function footerUrls(sendDate: Date, token?: string) {
+  const settings = digestLink(`/en${NOTIFICATION_SETTINGS_HREF}`, sendDate);
+  const unsubscribe = token
+    ? digestLink(`/en/unsubscribe?t=${encodeURIComponent(token)}`, sendDate)
+    : null;
+  return { settings, unsubscribe };
+}
+
 /** Render the consolidated digest as inline-HTML (English; per-member locale is
  *  deferred — no locale field exists yet). AIT links carry this week's campaign. */
-export function renderHubDigestHtml(digest: HubDigest, sendDate: Date): string {
+export function renderHubDigestHtml(
+  digest: HubDigest,
+  sendDate: Date,
+  options?: DigestRenderOptions,
+): string {
   const sections = digest.sections
     .map((s) => {
       const lines = sectionLines(s);
@@ -41,7 +58,13 @@ export function renderHubDigestHtml(digest: HubDigest, sendDate: Date): string {
     ? `<p style="margin-top:16px;font-size:14px;color:#555;">Discover another community you might like: <a href="${esc(digestLink(`/en/communities/${encodeURIComponent(digest.discovery.slug)}`, sendDate))}">${esc(digest.discovery.name)}</a></p>`
     : "";
 
-  const manage = digestLink(`/en${NOTIFICATION_SETTINGS_HREF}`, sendDate);
+  const { settings, unsubscribe } = footerUrls(
+    sendDate,
+    options?.unsubscribeToken,
+  );
+  const unsubscribeHtml = unsubscribe
+    ? ` · <a href="${esc(unsubscribe)}" style="color:#999;">Unsubscribe from digest</a>`
+    : "";
 
   return `
     <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
@@ -52,13 +75,19 @@ export function renderHubDigestHtml(digest: HubDigest, sendDate: Date): string {
       <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
       <p style="font-size: 12px; color: #999;">
         AIT Community ·
-        <a href="${esc(manage)}" style="color:#999;">Manage notifications</a>
+        <a href="${esc(settings)}" style="color:#999;">Manage notifications</a>
+        ·
+        <a href="${esc(settings)}" style="color:#999;">Choose sections</a>${unsubscribeHtml}
       </p>
     </div>`;
 }
 
 /** Plain-text part. Same links as the HTML, without tags. */
-export function renderHubDigestText(digest: HubDigest, sendDate: Date): string {
+export function renderHubDigestText(
+  digest: HubDigest,
+  sendDate: Date,
+  options?: DigestRenderOptions,
+): string {
   const lines: string[] = [
     "Your weekly AIT digest",
     "",
@@ -85,9 +114,13 @@ export function renderHubDigestText(digest: HubDigest, sendDate: Date): string {
     lines.push("");
   }
 
-  lines.push("—");
-  lines.push(
-    `AIT Community · Manage notifications: ${digestLink(`/en${NOTIFICATION_SETTINGS_HREF}`, sendDate)}`,
+  const { settings, unsubscribe } = footerUrls(
+    sendDate,
+    options?.unsubscribeToken,
   );
+  lines.push("—");
+  lines.push(`AIT Community · Manage notifications: ${settings}`);
+  lines.push(`Choose sections: ${settings}`);
+  if (unsubscribe) lines.push(`Unsubscribe from digest: ${unsubscribe}`);
   return lines.join("\n");
 }

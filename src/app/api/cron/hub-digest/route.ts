@@ -39,6 +39,11 @@ import {
   renderHubDigestText,
 } from "@/server/notifications/render";
 import { sendHubDigestEmail } from "@/server/email";
+import {
+  digestListUnsubscribeHeaders,
+  signUnsubscribeToken,
+  unsubscribeSecret,
+} from "@/server/notifications/unsubscribe-token";
 import { rankCommunitiesForMember } from "@/server/communities/discovery";
 import { loadDiscoveryCandidates } from "@/server/communities/discovery-queries";
 
@@ -65,6 +70,12 @@ export async function GET(req: Request) {
   const periodKey = currentPeriodKey(now);
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   let sent = 0;
+  const unsubSecret = unsubscribeSecret();
+  if (!unsubSecret) {
+    console.error(
+      "hub-digest: no unsubscribe secret; sending without List-Unsubscribe",
+    );
+  }
 
   // Per-community window counts, grouped by (community_id, action).
   const counts = await db
@@ -281,12 +292,19 @@ export async function GET(req: Request) {
       .returning({ id: digestSendLog.id });
     if (claimed.length === 0) continue; // already sent this period
 
+    const unsubscribeToken = unsubSecret
+      ? signUnsubscribeToken({ userId, scope: "digest" }, unsubSecret)
+      : undefined;
+
     let ok = false;
     try {
       ok = await sendHubDigestEmail(
         email,
-        renderHubDigestHtml(digest, now),
-        renderHubDigestText(digest, now),
+        renderHubDigestHtml(digest, now, { unsubscribeToken }),
+        renderHubDigestText(digest, now, { unsubscribeToken }),
+        unsubscribeToken
+          ? digestListUnsubscribeHeaders(unsubscribeToken)
+          : undefined,
       );
     } catch (err) {
       console.error(`hub-digest: send failed for ${userId}`, err);

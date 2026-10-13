@@ -3529,6 +3529,18 @@
     "hubMailAgentJob": "Agent heeft een klus afgemaakt",
     "hubMailAgentJobHint": "Wanneer een agent werk afrondt dat je vroeg."
   },
+  "digestUnsubscribe": {
+    "kicker": "/ DIGEST",
+    "metaTitle": "Afmelden",
+    "title": "Afmelden voor de wekelijkse samenvatting",
+    "body": "Dit stopt de wekelijkse AIT-samenvatting. Aankondigingen van communities en andere Hub-e-mails blijven zoals ze zijn. Je kunt de samenvatting weer aanzetten in je instellingen.",
+    "action": "Afmelden",
+    "doneTitle": "Je bent afgemeld",
+    "doneBody": "De wekelijkse samenvatting staat uit. Je kunt hem weer aanzetten wanneer je wilt.",
+    "invalidTitle": "Deze afmeldlink is niet geldig",
+    "invalidBody": "De link ontbreekt of is gewijzigd. Je kunt de samenvatting nog steeds uitzetten bij je meldingsinstellingen.",
+    "settings": "Meldingsinstellingen"
+  },
   "broadcast": {
     "title": "Stuur een aankondiging",
     "description": "Bereik de leden van je community. Promotionele aankondigingen zijn onderhevig aan een Hub-brede wekelijkse limiet per lid; evenementherinneringen aan geregistreerde deelnemers worden altijd afgeleverd.",

@@ -28,6 +28,7 @@ describe("renderHubDigestHtml", () => {
 
     expect(html).toContain(`href="${manage}"`);
     expect(html).toContain("Manage notifications");
+    expect(html).toContain("Choose sections");
     expect(html).toContain("Makers &amp; Co");
     expect(html).toContain("Show &amp; tell");
     expect(html).not.toContain("/dashboard/notifications");
@@ -50,8 +51,29 @@ describe("renderHubDigestText", () => {
       "Manage notifications: https://www.aitcommunity.org/en/dashboard/settings?utm_source=digest&utm_medium=email&utm_campaign=weekly-2026-10-12#notifications",
     );
     expect(text).toContain(
+      "Choose sections: https://www.aitcommunity.org/en/dashboard/settings?utm_source=digest&utm_medium=email&utm_campaign=weekly-2026-10-12#notifications",
+    );
+    expect(text).toContain(
       "https://www.aitcommunity.org/en/communities/makers?utm_source=digest&utm_medium=email&utm_campaign=weekly-2026-10-12",
     );
     expect(text).not.toContain("<a ");
+  });
+
+  it("tags the unsubscribe page and keeps the token out of the campaign", () => {
+    const token = "abc_def-123.sig";
+    const html = renderHubDigestHtml(digest, SEND, {
+      unsubscribeToken: token,
+    });
+    const text = renderHubDigestText(digest, SEND, {
+      unsubscribeToken: token,
+    });
+    const href =
+      "https://www.aitcommunity.org/en/unsubscribe?t=abc_def-123.sig&amp;utm_source=digest&amp;utm_medium=email&amp;utm_campaign=weekly-2026-10-12";
+
+    expect(html).toContain(`href="${href}"`);
+    expect(html).toContain("Unsubscribe from digest");
+    expect(text).toContain(
+      "Unsubscribe from digest: https://www.aitcommunity.org/en/unsubscribe?t=abc_def-123.sig&utm_source=digest&utm_medium=email&utm_campaign=weekly-2026-10-12",
+    );
   });
 });
