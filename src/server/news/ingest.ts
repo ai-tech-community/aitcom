@@ -18,6 +18,10 @@ export type NewsIngestDb = {
   saveSummary(id: string, aiSummary: string): Promise<void>;
   /** Rows for these URLs that still have no stored summary. */
   unsummarized(urls: readonly string[]): Promise<InsertedNews[]>;
+  /** Precise directory links for rows inserted on this pass. */
+  linkStartups?(
+    rows: readonly (InsertedNews & { aiSummary: string | null })[],
+  ): Promise<void>;
 };
 
 /**
@@ -33,6 +37,7 @@ export async function ingestNewsItems(
   if (drafts.length === 0) return 0;
   const inserted = await database.insertNew(drafts);
   const pending = await database.unsummarized(drafts.map((draft) => draft.url));
+  const written = new Map<string, string>();
   for (const row of pending) {
     let aiSummary: string | null = null;
     try {
@@ -40,7 +45,18 @@ export async function ingestNewsItems(
     } catch (err) {
       console.error("news: summary failed for a new story", err);
     }
-    if (aiSummary) await database.saveSummary(row.id, aiSummary);
+    if (aiSummary) {
+      await database.saveSummary(row.id, aiSummary);
+      written.set(row.id, aiSummary);
+    }
+  }
+  if (database.linkStartups && inserted.length > 0) {
+    await database.linkStartups(
+      inserted.map((row) => ({
+        ...row,
+        aiSummary: written.get(row.id) ?? null,
+      })),
+    );
   }
   return inserted.length;
 }

@@ -5,6 +5,10 @@ import {
   type NewsDirectoryCompany,
   type NewsMatchCompany,
 } from "@/lib/news/companies";
+import {
+  applyNewsStartupLinks,
+  type NewsStartupLink,
+} from "@/lib/news/startup-match";
 import { plainText } from "@/server/collectors/helpers/feed";
 import { NEWS_FEEDS } from "@/server/news/feeds";
 import { clampNewsSummary } from "@/server/news/summary";
@@ -162,6 +166,10 @@ export function buildNewsTableRows(
   rumors: readonly NewsRumorInput[],
   directory: readonly NewsDirectoryCompany[],
   labels: { memberSource: string },
+  links: {
+    stories?: Readonly<Record<string, readonly NewsStartupLink[]>>;
+    rumors?: Readonly<Record<string, readonly NewsStartupLink[]>>;
+  } = {},
 ): NewsTableRow[] {
   const storyRows: NewsTableRow[] = stories.map((story) => {
     const companies = detectNewsCompanies(
@@ -193,6 +201,13 @@ export function buildNewsTableRows(
       hidden: false,
     };
   });
+  for (const row of storyRows) {
+    row.companies = applyNewsStartupLinks(
+      row.companies,
+      links.stories?.[row.id] ?? [],
+    );
+    if (row.companies.length > 0) row.fallbackLogo = null;
+  }
   const rumorRows: NewsTableRow[] = rumors.map((rumor) => {
     const companies = detectNewsCompanies(
       { title: rumor.title, text: rumor.body, url: rumor.url },
@@ -214,6 +229,13 @@ export function buildNewsTableRows(
       hidden: rumor.hiddenAt != null,
     };
   });
+  for (const row of rumorRows) {
+    row.companies = applyNewsStartupLinks(
+      row.companies,
+      links.rumors?.[row.id] ?? [],
+    );
+    if (row.companies.length > 0) row.fallbackLogo = null;
+  }
   return [...storyRows, ...rumorRows];
 }
 

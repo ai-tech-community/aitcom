@@ -2,6 +2,7 @@ import {
   displayStartupLogoUrl,
   startupSourceFaviconUrl,
 } from "@/lib/investigations/startups";
+import { matchNewsStartups } from "@/lib/news/startup-match";
 
 /**
  * Companies a news row can be about. Logos are the company's own favicon
@@ -12,6 +13,8 @@ export type NewsMatchCompany = {
   id: string;
   name: string;
   logoUrl: string;
+  /** Set when this mark is a directory startup profile. */
+  profilePath?: string;
 };
 
 export type NewsDirectoryCompany = {
@@ -253,8 +256,6 @@ const CURATED_COMPANIES: readonly CuratedCompany[] = [
   },
 ];
 
-const DIRECTORY_NAME_MIN = 4;
-
 export function newsHostname(href: string | null | undefined): string | null {
   if (!href) return null;
   try {
@@ -297,8 +298,8 @@ function curatedLogo(company: CuratedCompany): string | null {
 
 /**
  * Companies named in the title or text, or whose own domain is the article
- * host. Directory startups are included when the name is long enough to be a
- * word and the homepage is a real domain. Curated companies win on a shared
+ * host. Directory startups are included only by the precise startup matcher
+ * (domain, or an exact non-generic name). Curated companies win on a shared
  * domain so a startup row does not add a second logo for the same host.
  */
 export function detectNewsCompanies(
@@ -337,11 +338,27 @@ export function detectNewsCompanies(
       ...company.aliases.map((alias) => alias.toLowerCase()),
     ]),
   );
+  const bySlug = new Map(directory.map((startup) => [startup.slug, startup]));
+  const matched = matchNewsStartups(
+    input,
+    directory.flatMap((startup) => {
+      const name = startup.name.trim();
+      if (!name) return [];
+      if (curatedNames.has(name.toLowerCase())) return [];
+      return [
+        {
+          id: startup.slug,
+          slug: startup.slug,
+          name,
+          homepage: startup.homepage,
+        },
+      ];
+    }),
+  );
 
-  for (const startup of directory) {
-    const name = startup.name.trim();
-    if (name.length < DIRECTORY_NAME_MIN) continue;
-    if (curatedNames.has(name.toLowerCase())) continue;
+  for (const hit of matched) {
+    const startup = bySlug.get(hit.slug);
+    if (!startup) continue;
     const home = newsHostname(startup.homepage);
     if (
       home &&
@@ -351,14 +368,11 @@ export function detectNewsCompanies(
     ) {
       continue;
     }
-    const named = mentions(haystack, name);
-    const hosted = host != null && home != null && hostOverlaps(host, home);
-    if (!named && !hosted) continue;
     const logoUrl =
       displayStartupLogoUrl(startup.logoUrl) ??
       (startup.homepage ? startupSourceFaviconUrl(startup.homepage) : null);
     if (!logoUrl) continue;
-    push({ id: `dir:${startup.slug}`, name, logoUrl });
+    push({ id: `dir:${startup.slug}`, name: startup.name.trim(), logoUrl });
   }
 
   return found;

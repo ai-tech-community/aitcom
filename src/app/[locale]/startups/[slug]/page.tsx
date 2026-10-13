@@ -20,6 +20,7 @@ import {
   findApprovedPublicStartupBySlug,
   listOpenStartupRolesForCompany,
 } from "@/server/startups/queries";
+import { listStartupNewsMentions } from "@/server/news/startup-links";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,13 @@ export default async function StartupProfileRoute({ params }: PageProps) {
   const locale = await getLocale();
   const t = await getTranslations("investigationsStartups");
   const session = await getSession();
-  const roles = await listOpenStartupRolesForCompany(card.id);
+  const [roles, mentions] = await Promise.all([
+    listOpenStartupRolesForCompany(card.id),
+    listStartupNewsMentions(card.id).catch((err: unknown) => {
+      console.error("startup profile: could not list news", err);
+      return [];
+    }),
+  ]);
 
   return (
     <StartupsProfilePage
@@ -67,6 +74,7 @@ export default async function StartupProfileRoute({ params }: PageProps) {
       t={t}
       card={card}
       roles={roles}
+      mentions={mentions}
       promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
     />
   );

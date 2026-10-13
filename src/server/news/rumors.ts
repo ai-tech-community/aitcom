@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 import { newsRumors } from "@/server/db/schema";
 
 import { type RumorWrite } from "./rumor-rules";
+import { linkSubmittedRumor } from "./startup-links";
 
 export type { RumorWrite } from "./rumor-rules";
 export { moderateNewsRumor, submitNewsRumor } from "./rumor-rules";
@@ -54,7 +55,14 @@ export const rumorDb: RumorWrite = {
       .insert(newsRumors)
       .values(row)
       .returning({ id: newsRumors.id });
-    return created!.id;
+    const id = created!.id;
+    await linkSubmittedRumor({
+      id,
+      title: row.title,
+      body: row.body,
+      url: row.url,
+    });
+    return id;
   },
   async setHidden(id, hiddenAt) {
     const updated = await db

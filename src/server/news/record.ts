@@ -5,6 +5,7 @@ import { newsItems } from "@/server/db/schema";
 
 import { ingestNewsItems, type NewsIngestDb } from "./ingest";
 import { generateNewsSummary } from "./summary";
+import { linkIngestedNewsItems } from "./startup-links";
 
 const store: NewsIngestDb = {
   async insertNew(rows) {
@@ -39,6 +40,9 @@ const store: NewsIngestDb = {
       .where(
         and(inArray(newsItems.url, [...urls]), isNull(newsItems.aiSummary)),
       );
+  },
+  async linkStartups(rows) {
+    await linkIngestedNewsItems(rows);
   },
 };
 

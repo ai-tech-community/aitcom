@@ -1954,6 +1954,8 @@
     "sectionFounders": "Oprichters",
     "sectionHiring": "Open posities",
     "sectionNews": "In het nieuws",
+    "newsVerified": "Geverifieerd",
+    "newsRumor": "Niet-geverifieerd gerucht",
     "allRoles": "Bekijk {count, plural, one {de # open positie} other {alle # open posities}}",
     "rolesCta": "{count, plural, one {# open positie} other {# open posities}}",
     "factsTitle": "In het kort",

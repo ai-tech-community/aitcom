@@ -21,6 +21,7 @@ import {
 } from "@/lib/news/table";
 import { getSession } from "@/server/better-auth/server";
 import { listNewsDirectoryCompanies } from "@/server/news/directory";
+import { listNewsStartupLinks } from "@/server/news/startup-links";
 import {
   findNewsItem,
   listNewsItems,
@@ -82,22 +83,34 @@ function CompanyMarks({ row }: { row: NewsTableRow }) {
   if (row.companies.length > 0) {
     return (
       <div className="flex flex-wrap items-center justify-end gap-1 md:justify-start">
-        {row.companies.slice(0, 4).map((company) => (
-          // Real favicon on the company's own host. next/image cannot allow every domain.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={company.id}
-            src={company.logoUrl}
-            alt={company.name}
-            title={company.name}
-            width={20}
-            height={20}
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            className="size-5"
-          />
-        ))}
+        {row.companies.slice(0, 4).map((company) => {
+          const img = (
+            // Real favicon on the company's own host. next/image cannot allow every domain.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={company.logoUrl}
+              alt={company.name}
+              title={company.name}
+              width={20}
+              height={20}
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              className="size-5"
+            />
+          );
+          if (!company.profilePath) return <span key={company.id}>{img}</span>;
+          return (
+            <Link
+              key={company.id}
+              href={company.profilePath}
+              title={company.name}
+              className="shrink-0"
+            >
+              {img}
+            </Link>
+          );
+        })}
       </div>
     );
   }
@@ -162,9 +175,20 @@ export default async function NewsPage({
       })
     : null;
   const stories = extra ? [extra, ...listed] : listed;
-  const rows = buildNewsTableRows(stories, rumors, directory, {
-    memberSource: t("rumorLabel"),
+  const links = await listNewsStartupLinks({
+    itemIds: stories.map((item) => item.id),
+    rumorIds: rumors.map((item) => item.id),
+  }).catch((err: unknown) => {
+    console.error("news: could not list startup links", err);
+    return { stories: {}, rumors: {} };
   });
+  const rows = buildNewsTableRows(
+    stories,
+    rumors,
+    directory,
+    { memberSource: t("rumorLabel") },
+    links,
+  );
   const facets = newsTableFacets(rows);
   const result = applyNewsTableQuery(rows, query);
   const filtered =

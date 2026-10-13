@@ -1954,6 +1954,8 @@
     "sectionFounders": "Founders",
     "sectionHiring": "Open roles",
     "sectionNews": "In the news",
+    "newsVerified": "Verified",
+    "newsRumor": "Unverified rumor",
     "allRoles": "See all {count, plural, one {# open role} other {# open roles}}",
     "rolesCta": "{count, plural, one {# open role} other {# open roles}}",
     "factsTitle": "At a glance",

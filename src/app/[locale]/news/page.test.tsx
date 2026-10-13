@@ -39,6 +39,28 @@ const state = vi.hoisted(() => ({
     createdAt: Date;
     hiddenAt: Date | null;
   }>,
+  links: {
+    stories: {} as Record<
+      string,
+      Array<{
+        id: string;
+        slug: string;
+        name: string;
+        homepage: string;
+        logoUrl: string | null;
+      }>
+    >,
+    rumors: {} as Record<
+      string,
+      Array<{
+        id: string;
+        slug: string;
+        name: string;
+        homepage: string;
+        logoUrl: string | null;
+      }>
+    >,
+  },
 }));
 
 vi.mock("next-intl/server", () => ({
@@ -82,6 +104,10 @@ vi.mock("@/server/news/directory", () => ({
   listNewsDirectoryCompanies: async () => [],
 }));
 
+vi.mock("@/server/news/startup-links", () => ({
+  listNewsStartupLinks: async () => state.links,
+}));
+
 vi.mock("@/components/news/news-rumor-form", () => ({
   NewsRumorForm: () => <form>rumor form</form>,
 }));
@@ -100,6 +126,7 @@ describe("news page", () => {
     state.items = [];
     state.extra = null;
     state.rumors = [];
+    state.links = { stories: {}, rumors: {} };
   });
 
   it("is noindex", async () => {
@@ -145,6 +172,41 @@ describe("news page", () => {
     expect(
       screen.queryByRole("button", { name: "Share a rumor" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("links a stored startup match to its directory profile", async () => {
+    state.items = [
+      {
+        id: "story-1",
+        url: "https://example.com/models",
+        title: "A quiet week",
+        author: "Ada",
+        publishedAt: new Date("2026-10-11T00:00:00.000Z"),
+        summary: "Nothing named.",
+        aiSummary: null,
+      },
+    ];
+    state.links = {
+      stories: {
+        "story-1": [
+          {
+            id: "startup-1",
+            slug: "northstar-labs",
+            name: "Northstar Labs",
+            homepage: "https://northstar.example",
+            logoUrl: "https://cdn.northstar.example/logo.png",
+          },
+        ],
+      },
+      rumors: {},
+    };
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    const link = screen.getByRole("link", { name: "Northstar Labs" });
+    expect(link).toHaveAttribute("href", "/startups/northstar-labs");
+    expect(link.querySelector("img")).toHaveAttribute(
+      "src",
+      "https://cdn.northstar.example/logo.png",
+    );
   });
 
   it("filters the table from the URL query", async () => {

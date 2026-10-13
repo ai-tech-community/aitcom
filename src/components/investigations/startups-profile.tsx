@@ -20,6 +20,7 @@ import {
   type StartupLocale,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
+import type { StartupNewsMention } from "@/lib/news/startup-match";
 import type { StartupRolePublic } from "@/lib/investigations/startup-roles";
 
 export type StartupsProfileKey =
@@ -32,6 +33,8 @@ export type StartupsProfileKey =
   | "sectionFounders"
   | "sectionHiring"
   | "sectionNews"
+  | "newsVerified"
+  | "newsRumor"
   | "allRoles"
   | "factsTitle"
   | "factRegion"
@@ -50,16 +53,22 @@ export function StartupsProfilePage({
   t,
   card,
   roles = [],
+  mentions = [],
   promoteJoin = true,
 }: {
   locale: string;
   t: (key: StartupsProfileKey, values?: { count: number }) => string;
   card: StartupPublicCard;
   roles?: StartupRolePublic[];
+  mentions?: readonly StartupNewsMention[];
   promoteJoin?: boolean;
 }) {
   const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
-  const sections = startupProfileSections(card);
+  const baseSections = startupProfileSections(card);
+  const sections =
+    mentions.length > 0 && !baseSections.includes("news")
+      ? [...baseSections, "news" as const]
+      : baseSections;
   const pin = verifiedStartupPin(card);
 
   const facts = (
@@ -134,12 +143,15 @@ export function StartupsProfilePage({
               sections={sections}
               card={card}
               roles={roles}
+              mentions={mentions}
               locale={copyLocale}
               copy={{
                 sectionFounders: t("sectionFounders"),
                 sectionHiring: t("sectionHiring"),
                 sectionNews: t("sectionNews"),
                 allRoles: t("allRoles", { count: card.openRoleCount }),
+                newsVerified: t("newsVerified"),
+                newsRumor: t("newsRumor"),
               }}
             />
             <aside className="flex flex-col gap-10">

@@ -74,4 +74,27 @@ describe("ingestNewsItems", () => {
     expect(database.summaries).toEqual(["Written on the next pass."]);
     expect(summarize).toHaveBeenCalledTimes(2);
   });
+
+  it("links directory startups for a row inserted on this pass", async () => {
+    const database = memoryDb();
+    const linkStartups = vi.fn<NonNullable<NewsIngestDb["linkStartups"]>>(
+      async () => undefined,
+    );
+    const summarize = vi.fn(async () => "A stored TL;DR.");
+    expect(
+      await ingestNewsItems({ ...database, linkStartups }, [story], summarize),
+    ).toBe(1);
+    expect(linkStartups).toHaveBeenCalledTimes(1);
+    expect(linkStartups.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({
+        title: "New models",
+        summary: "What shipped this week.",
+        aiSummary: "A stored TL;DR.",
+      }),
+    ]);
+    expect(
+      await ingestNewsItems({ ...database, linkStartups }, [story], summarize),
+    ).toBe(0);
+    expect(linkStartups).toHaveBeenCalledTimes(1);
+  });
 });
