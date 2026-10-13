@@ -35,6 +35,13 @@ export const EVENT_TYPE_CORRECTIONS: readonly EventTypeCorrection[] = [
     type: "conference",
   },
   {
+    slug: "icml-2026",
+    title: "ICML 2026",
+    summary:
+      "A top machine learning conference with broad influence across modern AI methods, systems, and applications.",
+    type: "conference",
+  },
+  {
     slug: "the-ai-summit-london-2026",
     title: "The AI Summit London 2026",
     summary:
