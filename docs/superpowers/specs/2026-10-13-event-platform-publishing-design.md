@@ -1,22 +1,28 @@
 # Event platform publishing and registration source — v1 design
 
 **Date:** 2026-10-13
-**Status:** written spec approved; publishing feasibility findings require a product decision
+**Status:** approved; redirect-only direction confirmed on 2026-10-14
 **Related:** [Luma import design](2026-03-28-luma-integration-design.md),
 [organizer attendee design](2026-09-29-event-attendees-for-organizers-design.md),
 [ADR-0038](../../adr/0038-attendee-details-are-shared-with-the-event-organizer-only.md)
 
 ## Goal and agreed scope
 
-Organizers create a free community event on AIT Community once, publish
-listings to Luma, Eventbrite, and Meetup, and direct visitors back to AIT
-Community to register. The organizer sees which platform brought each
-registration, with registration and check-in totals by source.
+Organizers create a free community event on AIT Community once and publish
+listings only to platforms with verified support for redirecting registration
+back here. Luma, Eventbrite, and Meetup are candidate destinations, not
+guaranteed v1 integrations. The organizer sees which tracked platform link
+brought each registration, with registration and check-in totals by source.
 
 All v1 registration happens on AIT Community using its existing account,
 capacity, waitlist, registration questions, sharing notice, and check-in
 flow. There is no registration-mode selector in v1. Paid events and
 external attendee imports are excluded.
+
+On 2026-10-14, after reviewing the platform restrictions, the user chose to
+keep registration on AIT Community and enable publishing only where redirects
+are supported. Do not expand v1 to external registration synchronization.
+Implement local source tracking independently of automatic publishing.
 
 ## Platform feasibility and account setup
 
@@ -25,9 +31,12 @@ establish restrictions affecting the intended three-platform flow:
 Eventbrite's general listing standards prohibit off-platform registration,
 Luma excludes mandatory off-platform registration from discovery, and
 Meetup's replacement of native RSVP is not yet verified. No provider is
-currently verified for the full redirect-only flow. Keep unsupported
-providers unavailable under the rule below; changing to external
-registration synchronization requires a revised product decision.
+currently verified for the full redirect-only flow. Under the confirmed
+direction, keep unsupported providers unavailable. Platform account setup and
+publishing controls become available only after the capability gate passes.
+When no destinations qualify, explain that publishing is not yet available
+for the candidate platforms and disable the publish action. Local event
+creation and registration remain fully usable.
 
 The three platforms are targets, not a claim that each supports the same
 registration behavior. Before implementing each publishing adapter, verify

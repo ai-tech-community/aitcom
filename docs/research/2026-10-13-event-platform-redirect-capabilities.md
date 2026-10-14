@@ -112,17 +112,15 @@ Important behavior discovered during planning:
   Free-event source totals must explicitly use registered/waitlisted/attended
   rather than reinterpreting that existing view globally.
 
-## Product decision prompted by the findings
+## Confirmed product decision — 2026-10-14
 
-Two coherent directions remain:
+The user chose to keep AIT Community as the only registration location and
+enable publishing only for providers with verified redirect support. External
+registrations and attendee synchronization remain outside v1.
 
-1. Keep AIT Community as the only registration location, and enable only
-   providers with verified redirect support. None of the three is currently
-   verified for the full agreed flow; tracking can still ship for manually
-   shared links where their use is permitted.
-2. Revise the scope to native platform registrations plus synchronization,
-   accepting the additional identity, privacy, capacity, and status-mapping
-   work to pursue all three target destinations.
-
-The user was asked which direction to take. Do not infer the second
-direction from approval of the original redirect-only spec.
+None of the three candidates is currently verified for the full agreed flow.
+Local source tracking can ship independently for manually shared links where
+their use is permitted. Unsupported automatic publishing stays unavailable;
+do not advertise all three integrations as working. If no provider qualifies,
+disable the publishing action with an explanation while keeping local event
+creation and registration usable.

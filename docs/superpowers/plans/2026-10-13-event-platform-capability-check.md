@@ -6,6 +6,11 @@
 > delegation. Use available local skill equivalents; do not assume those
 > two named skills are installed. Never push or write to any database.
 
+**Decision, 2026-10-14:** Keep all registration on AIT Community. Enable
+automatic publishing only for providers with verified redirect support.
+The capability check is complete; the next implementation plan is local
+registration source tracking. External attendee synchronization is excluded.
+
 **Goal:** Establish which target platforms can support free events that register exclusively on AIT Community before coding publishing adapters.
 
 **Architecture:** Separate the platform feasibility gate from two subsequent implementation plans: local registration source tracking and outbound publishing. Only providers with verified API and policy support may be enabled in the redirect-only publishing plan. Unsupported providers remain unavailable; expanding to external registrations requires a revised design.
@@ -112,10 +117,9 @@ imaginary redirect field or quietly switch to native platform registration.
 - [x] Update the spec status to acknowledge the user's written-spec approval.
 - [x] Link the findings from the spec and preserve the existing rule that
   unsupported redirect providers are unavailable.
-- [ ] Capture the user's choice between retaining local-only registration
-  with fewer supported destinations and revising the design to synchronize
-  native external registrations. The clarification was sent asynchronously;
-  an unanswered question is not approval to change the registration model.
+- [x] Capture the user's choice: on 2026-10-14 the user explicitly retained
+  registration on AIT Community, enabling publishing only where redirects
+  are supported. Do not add external attendee synchronization.
 
 ## Task 4: Verify documentation and commit
 
@@ -133,7 +137,7 @@ and `pnpm typecheck`. Do not run the whole test suite, integration/browser
 tiers, migrations, development-server bootstrap, or builds that apply
 database changes.
 
-## Follow-on plans after the product choice
+## Confirmed follow-on plans
 
 Keep each follow-on plan independently reviewable and executable:
 
@@ -145,12 +149,10 @@ Keep each follow-on plan independently reviewable and executable:
    publication history, eligibility/access checks, independent results,
    uncertain-outcome reconciliation, import deduplication, and edit/cancel
    review states. Do not enable any of the currently unverified destinations.
-3. **External registration synchronization, only if chosen:** a revised
-   spec for non-member attendees, identity matching, privacy, platform
-   status mapping, capacity allocation, and cancellation/check-in ownership
-   before writing its coding plan.
+   If none qualify, show an explanatory unavailable state and disable the
+   publish action. Do not collect credentials for an unsupported destination.
 
 The original spec's tracking, attendee views, and privacy requirements map
 to plan 1; its connection, adapter, publication, failure, and import
-requirements map to plan 2. Plan 3 changes the approved scope and therefore
-requires a product decision rather than being inferred from "continue".
+requirements map to plan 2. Start with plan 1. There is no external
+registration synchronization plan in the confirmed v1 scope.
