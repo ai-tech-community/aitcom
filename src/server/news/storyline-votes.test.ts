@@ -41,7 +41,8 @@ vi.mock("@/server/db", () => {
   };
   return {
     db: {
-      transaction: async (fn: (client: never) => Promise<unknown>) => fn(tx as never),
+      transaction: async (fn: (client: never) => Promise<unknown>) =>
+        fn(tx as never),
     },
   };
 });
