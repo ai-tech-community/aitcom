@@ -938,7 +938,7 @@ export const agentManagementRouter = createTRPCRouter({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message:
-            "News storylines are reviewed by platform editors at /news/stories/manage.",
+            "Approve this news storyline from its review page. Approval publishes the story.",
         });
       }
 

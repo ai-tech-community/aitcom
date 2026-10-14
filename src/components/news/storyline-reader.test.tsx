@@ -6,6 +6,11 @@ import nl from "../../../messages/nl.json";
 import { storyFixture } from "@/test/news-storyline-fixture";
 import { StorylineList, StorylineReader } from "./storyline-reader";
 
+vi.mock("./storyline-vote", () => ({
+  StorylineVoteControls: ({ score }: { score: number }) => (
+    <div>Score {score}</div>
+  ),
+}));
 vi.mock("@/i18n/navigation", () => ({
   Link: ({
     href,
@@ -78,6 +83,8 @@ it("uses stable storyline URLs from the ongoing-story list", () => {
             ...storyFixture,
             articleCount: 3,
             latestAt: "2026-10-13T00:00:00.000Z",
+            score: 4,
+            myVote: "up",
           },
         ]}
       />
@@ -87,6 +94,7 @@ it("uses stable storyline URLs from the ongoing-story list", () => {
     screen.getByRole("link", { name: "AI is moving onto your devices" }),
   ).toHaveAttribute("href", "/news/stories/ai-on-your-devices");
   expect(screen.getByText("3 articles")).toBeInTheDocument();
+  expect(screen.getByText("Score 4")).toBeInTheDocument();
 });
 it("explains an incoming relationship with sources from both stories", () => {
   const target = {

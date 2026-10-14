@@ -7,6 +7,10 @@ import {
   listPendingStorylineDrafts,
   readStorylineDraft,
 } from "@/server/news/storyline-drafts";
+import {
+  castStorylineVote,
+  StorylineVoteError,
+} from "@/server/news/storyline-votes";
 import { storylineDraftViewerRole } from "@/lib/news/storyline-draft-review";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
@@ -94,19 +98,56 @@ export const newsRouter = createTRPCRouter({
       });
       if (role !== "owner" && role !== "editor")
         throw new TRPCError({ code: "NOT_FOUND" });
-      return { ...draft, canApprove: role === "editor" };
+      return {
+        ...draft,
+        canApprove: role === "editor" || role === "owner",
+      };
     }),
-  approveAgentStorylineDraft: storylineStaffProcedure
+  approveAgentStorylineDraft: protectedProcedure
     .input(z.object({ draftId: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
+      const draft = await readStorylineDraft(input.draftId);
+      if (!draft) throw new TRPCError({ code: "NOT_FOUND" });
+      const staff = await isNewsStaff(ctx.session.user.email);
+      if (!staff && draft.ownerId !== ctx.session.user.id)
+        throw new TRPCError({ code: "FORBIDDEN" });
       try {
-        return await approveStorylineDraft(input.draftId, ctx.session.user.id);
+        const saved = await approveStorylineDraft(
+          input.draftId,
+          ctx.session.user.id,
+        );
+        await recordPublishedStoryCredit(saved.id).catch(
+          (creditErr: unknown) => {
+            console.error("news: contribution credit failed", creditErr);
+          },
+        );
+        return saved;
       } catch (err) {
         if (err instanceof StorylineError)
           throw new TRPCError({
             code: err.code === "conflict" ? "CONFLICT" : "BAD_REQUEST",
             message: err.message,
           });
+        throw err;
+      }
+    }),
+  castStorylineVote: protectedProcedure
+    .input(
+      z.object({
+        storyId: z.string().trim().min(1).max(255),
+        vote: z.enum(["up", "down", "clear"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await castStorylineVote({
+          storyId: input.storyId,
+          userId: ctx.session.user.id,
+          vote: input.vote,
+        });
+      } catch (err) {
+        if (err instanceof StorylineVoteError)
+          throw new TRPCError({ code: "NOT_FOUND" });
         throw err;
       }
     }),

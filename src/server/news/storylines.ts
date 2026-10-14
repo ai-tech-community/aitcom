@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm";
 import { newsTableSearchRegex } from "@/lib/news/table-query";
 import { db } from "@/server/db";
+import { storylineVoteChoice } from "@/lib/news/storyline-vote";
 import {
   newsItems,
   agentDrafts,
@@ -18,6 +19,7 @@ import {
   newsStorylines as stories,
   newsStorylineArticles as memberships,
   newsStorylineConnections as connections,
+  newsStorylineVotes,
 } from "@/server/db/schema";
 import {
   publicationIssues,
@@ -55,12 +57,15 @@ export const publicStoryline = and(
   sql`${articleCount} >= 2`,
 );
 
+const storylineScore = sql<number>`(select coalesce(sum(${newsStorylineVotes.value}), 0)::int from ${newsStorylineVotes} where ${newsStorylineVotes.storyId} = ${stories.id})`;
+
 export async function listStorylines(
   input: {
     q?: string;
     page?: number;
     limit?: number;
     staff?: boolean;
+    viewerId?: string;
   } = {},
 ) {
   const q = (input.q ?? "").trim().slice(0, 200);
@@ -87,11 +92,30 @@ export async function listStorylines(
     totalPages,
     Math.max(1, Math.floor(input.page ?? 1) || 1),
   );
+  const myVote = input.viewerId
+    ? sql<
+        number | null
+      >`(select ${newsStorylineVotes.value} from ${newsStorylineVotes} where ${newsStorylineVotes.storyId} = ${stories.id} and ${newsStorylineVotes.userId} = ${input.viewerId} limit 1)`
+    : sql<number | null>`null::int`;
   const rows = await db
-    .select({ storyline: stories, articleCount, latestAt })
+    .select({
+      storyline: stories,
+      articleCount,
+      latestAt,
+      score: storylineScore,
+      myVote,
+    })
     .from(stories)
     .where(where)
-    .orderBy(sql`${latestAt} desc nulls last`, stories.slug)
+    .orderBy(
+      ...(input.staff
+        ? ([sql`${latestAt} desc nulls last`, stories.slug] as const)
+        : ([
+            sql`${storylineScore} desc`,
+            sql`${latestAt} desc nulls last`,
+            stories.slug,
+          ] as const)),
+    )
     .limit(limit)
     .offset((page - 1) * limit);
   return {
@@ -99,6 +123,8 @@ export async function listStorylines(
       ...row.storyline,
       articleCount: row.articleCount,
       latestAt: row.latestAt ? new Date(row.latestAt).toISOString() : null,
+      score: Number(row.score ?? 0),
+      myVote: storylineVoteChoice(row.myVote),
     })),
     total,
     page,
@@ -133,6 +159,7 @@ export async function loadStorylineMemberships(
 export async function findStoryline(
   key: { slug: string } | { id: string },
   staff = false,
+  viewerId?: string,
 ) {
   const [storyline] = await db
     .select()
@@ -193,12 +220,25 @@ export async function findStoryline(
           profilePath: `/members/${sourceAgent.ownerId}`,
         }
       : null;
+  const [votes] = await db
+    .select({
+      score: sql<number>`coalesce(sum(${newsStorylineVotes.value}), 0)::int`,
+      mine: viewerId
+        ? sql<
+            number | null
+          >`max(${newsStorylineVotes.value}) filter (where ${newsStorylineVotes.userId} = ${viewerId})`
+        : sql<number | null>`null::int`,
+    })
+    .from(newsStorylineVotes)
+    .where(eq(newsStorylineVotes.storyId, storyline.id));
   return {
     ...storyline,
     articles,
     connections: outgoing,
     proposedBy,
     contributor,
+    score: Number(votes?.score ?? 0),
+    myVote: storylineVoteChoice(votes?.mine),
   };
 }
 export type StorylineDetail = NonNullable<

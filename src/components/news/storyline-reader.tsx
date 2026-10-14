@@ -12,6 +12,7 @@ import type {
   StorylineDetail,
   relatedStorylines,
 } from "@/server/news/storylines";
+import { StorylineVoteControls } from "./storyline-vote";
 
 export function StorylineList({ items }: { items: StorylineSummary[] }) {
   const t = useTranslations("newsStories");
@@ -41,6 +42,13 @@ export function StorylineList({ items }: { items: StorylineSummary[] }) {
                   {t("fallback")}
                 </p>
               )}
+              <div className="mt-4">
+                <StorylineVoteControls
+                  storyId={item.id}
+                  score={item.score}
+                  myVote={item.myVote}
+                />
+              </div>
             </div>
             <div className="text-muted-foreground flex gap-3 font-mono text-xs sm:flex-col sm:items-end">
               <span>{t("articleCount", { count: item.articleCount })}</span>
@@ -189,6 +197,13 @@ export function StorylineReader({
           </p>
         )}
         <p className="text-muted-foreground mt-5 text-sm">{t("editorial")}</p>
+        <div className="mt-6">
+          <StorylineVoteControls
+            storyId={story.id}
+            score={story.score}
+            myVote={story.myVote}
+          />
+        </div>
         <div className="mt-6 flex flex-wrap items-center gap-5 text-sm">
           <span>{t("articleCount", { count: story.articles.length })}</span>
           {latestDate && (

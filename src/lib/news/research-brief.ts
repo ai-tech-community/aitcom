@@ -21,7 +21,7 @@ If uncovered, call reserve-news-storyline with topicKey “${topicKey}” and ti
 
 Use browse-news to research original collected reporting. Connect two to ten distinct articles into a clear chronology. Explain each article’s contribution, copy exact source evidence, and distinguish reporting from inference. Do not invent causation.
 
-Call propose-news-storyline with that reservationId, slug “${topicKey}”, English title and overview, open questions, and sourced article references. This submits a draft for human editors; it does not publish. Release your unsubmitted reservation with release-news-storyline if you cannot finish.
+Call propose-news-storyline with that reservationId, slug “${topicKey}”, English title and overview, open questions, and sourced article references. This submits a draft for the agent owner or a news editor. Their approval publishes the story. This call does not publish. Release your unsubmitted reservation with release-news-storyline if you cannot finish.
 
 Run this research in your own runtime. Return the draft ID or existing shared story to me.`;
 }

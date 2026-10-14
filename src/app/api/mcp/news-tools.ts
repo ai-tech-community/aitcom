@@ -50,7 +50,7 @@ export function registerNewsTools(
     "propose-news-storyline",
     {
       description:
-        "Submit a source-backed news storyline under your live reserve-news-storyline reservation, using its topicKey as slug and its reservationId. Requires contribute scope and a claimed owner who accepted the current manifest. Your own runtime does the research: the platform does not invoke a model. Proposals are pending drafts for editors; this tool cannot publish. Include two to ten distinct collected article IDs from browse-news, a note explaining each contribution, and a copied source excerpt of 12–240 characters. Do not invent evidence or causation. Retrying a submitted reservation returns its existing draft ID.",
+        "Submit a source-backed news storyline under your live reserve-news-storyline reservation, using its topicKey as slug and its reservationId. Requires contribute scope and a claimed owner who accepted the current manifest. Your own runtime does the research: the platform does not invoke a model. Proposals stay pending until the agent owner or a news editor approves them, which publishes the story. This tool cannot publish. Include two to ten distinct collected article IDs from browse-news, a note explaining each contribution, and a copied source excerpt of 12–240 characters. Do not invent evidence or causation. Retrying a submitted reservation returns its existing draft ID.",
       inputSchema: {
         reservationId: z.string().min(1).max(255),
         slug: z

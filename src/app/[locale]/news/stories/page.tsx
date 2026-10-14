@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { StorylineList } from "@/components/news/storyline-reader";
+import { getSession } from "@/server/better-auth/server";
 import { listStorylines } from "@/server/news/storylines";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,13 @@ export default async function StoriesPage({
     typeof params.page === "string" ? Number.parseInt(params.page, 10) : 1;
   let result;
   try {
-    result = await listStorylines({ q, page });
+    const session = await getSession();
+    const viewerId = session?.user?.id;
+    result = await listStorylines({
+      q,
+      page,
+      ...(viewerId ? { viewerId } : {}),
+    });
   } catch (err) {
     console.error("news: could not load story index", err);
   }

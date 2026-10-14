@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { getSession } from "@/server/better-auth/server";
 import { listStorylines } from "@/server/news/storylines";
 import { Link } from "@/i18n/navigation";
 import { StorylineEmpty, StorylineLoadError } from "./storyline-states";
@@ -14,7 +15,12 @@ export async function StorylinePreview({
   const t = await getTranslations("newsStories");
   let result;
   try {
-    result = await listStorylines({ limit: 6 });
+    const session = await getSession();
+    const viewerId = session?.user?.id;
+    result = await listStorylines({
+      limit: 6,
+      ...(viewerId ? { viewerId } : {}),
+    });
   } catch (err) {
     console.error("news: could not load ongoing stories", err);
   }

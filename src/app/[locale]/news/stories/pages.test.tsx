@@ -47,6 +47,9 @@ vi.mock("@/server/news/staff", () => ({
 vi.mock("@/server/better-auth/server", () => ({
   getSession: async () => ({ user: { email: "member@example.org" } }),
 }));
+vi.mock("@/components/news/storyline-vote", () => ({
+  StorylineVoteControls: () => <div>Story votes</div>,
+}));
 vi.mock("@/components/news/storyline-editor", () => ({
   StorylineEditor: () => <div>Staff editor</div>,
 }));

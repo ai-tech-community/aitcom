@@ -7,6 +7,7 @@ const mock = vi.hoisted(() => ({
   writes: [] as Array<{ action: string; table: unknown; value: unknown }>,
   committed: [] as unknown[],
   conditions: [] as unknown[],
+  orders: [] as unknown[][],
 }));
 vi.mock("@/server/db", () => {
   const chain = (
@@ -18,13 +19,16 @@ vi.mock("@/server/db", () => {
       "from",
       "innerJoin",
       "leftJoin",
-      "orderBy",
       "limit",
       "offset",
       "for",
       "onConflictDoUpdate",
     ])
       query[method] = () => query;
+    query.orderBy = (...args: unknown[]) => {
+      mock.orders.push(args);
+      return query;
+    };
     query.where = (condition: unknown) => {
       where?.(condition);
       return query;
@@ -110,6 +114,7 @@ beforeEach(() => {
   mock.writes = [];
   mock.committed = [];
   mock.conditions = [];
+  mock.orders = [];
   vi.clearAllMocks();
 });
 
@@ -202,7 +207,36 @@ it("excludes drafts and insufficient source evidence before pagination", async (
   expect(query.sql).toContain("position(");
   expect(query.sql).toContain(">= 2");
   expect(query.sql).not.toContain("ai_summary");
+  const orderSql = (mock.orders.at(-1) ?? [])
+    .map((part) => {
+      try {
+        return new PgDialect({ casing: "snake_case" }).sqlToQuery(part as never)
+          .sql;
+      } catch {
+        return "";
+      }
+    })
+    .join("\n");
+  expect(orderSql).toContain("news_storyline_vote");
+  expect(orderSql.indexOf("news_storyline_vote")).toBeLessThan(
+    orderSql.indexOf("desc nulls last"),
+  );
   expect(await articleStorylineLinks([])).toEqual([]);
+  mock.orders = [];
+  mock.rows = [[{ total: 0 }], []];
+  await listStorylines({ staff: true });
+  const staffOrder = (mock.orders.at(-1) ?? [])
+    .map((part) => {
+      try {
+        return new PgDialect({ casing: "snake_case" }).sqlToQuery(part as never)
+          .sql;
+      } catch {
+        return "";
+      }
+    })
+    .join("\n");
+  expect(staffOrder).not.toContain("news_storyline_vote");
+  expect(staffOrder).toContain("desc nulls last");
 });
 it("returns null for an inaccessible slug", async () => {
   mock.rows = [[]];

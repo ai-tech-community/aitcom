@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Link } from "@/i18n/navigation";
+import { announcePublishedStory } from "@/components/news/storyline-published-toast";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
@@ -26,8 +27,8 @@ export function StorylineDraftQueue({
     void utils.news.listAgentStorylineDrafts.invalidate();
   };
   const approve = api.news.approveAgentStorylineDraft.useMutation({
-    onSuccess: () => {
-      toast.success(t("approved"));
+    onSuccess: (saved) => {
+      announcePublishedStory(t("approved"), saved.slug, t("viewPublished"));
       refresh();
     },
     onError: () => toast.error(t("approveFailed")),
