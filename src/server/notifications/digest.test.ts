@@ -140,6 +140,25 @@ describe("buildHubDigest discovery", () => {
     expect(d!.discovery).toEqual({ name: "Robotics", slug: "robotics" });
   });
 
+  it("keeps a digest when the only news is the weekly top three", () => {
+    const digest = buildHubDigest({
+      userId: "u1",
+      sections: [],
+      contributors: [
+        { name: "Ada", path: "/members/ada", points: 60 },
+        { name: "Grace", path: "/members/grace", points: 50 },
+        { name: "Lin", path: "/members/lin", points: 10 },
+        { name: "Extra", path: "/members/extra", points: 10 },
+      ],
+      optedOutCommunityIds: new Set(),
+    });
+    expect(digest?.contributors).toEqual([
+      { name: "Ada", path: "/members/ada", points: 60 },
+      { name: "Grace", path: "/members/grace", points: 50 },
+      { name: "Lin", path: "/members/lin", points: 10 },
+    ]);
+  });
+
   it("returns null when sections empty and no discovery", () => {
     expect(
       buildHubDigest({

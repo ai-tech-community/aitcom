@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 
 import { routing } from "@/i18n/routing";
 import { emblemPalette } from "@/lib/badges/emblem-palette";
+import { isNewsContributionBadge } from "@/lib/news/indexability";
 import { staticSvgMarkup, svgDataUrl } from "@/lib/svg/static-markup";
 import { getMemberBadge } from "@/server/members/profile-page";
 import {
@@ -138,5 +139,13 @@ export async function GET(
       ? "public, max-age=3600, s-maxage=3600"
       : "private, no-store",
   );
+  if (isNewsContributionBadge(slug)) {
+    image.headers.set(
+      "X-Robots-Tag",
+      share.data.reach.kind === "public"
+        ? "noindex, follow"
+        : "noindex, nofollow",
+    );
+  }
   return image;
 }

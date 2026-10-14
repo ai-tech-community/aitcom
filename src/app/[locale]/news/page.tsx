@@ -5,6 +5,7 @@ import {
 import { Suspense } from "react";
 import { StorylinePreview } from "@/components/news/storyline-preview";
 import { articleStorylineLinks } from "@/server/news/storylines";
+import { newsGameRobots } from "@/lib/news/indexability";
 import { storylineArticleHref } from "@/lib/news/storylines";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -40,6 +41,7 @@ import {
   queryNewsTablePage,
   type NewsTablePage,
 } from "@/server/news/table-page";
+import { listWeeklyContributorBoard } from "@/server/news/contributions";
 
 const NewsRumorDialog = dynamic(() =>
   import("@/components/news/news-rumor-dialog").then(
@@ -52,7 +54,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
-    robots: { index: false, follow: true },
+    robots: newsGameRobots(),
   };
 }
 
@@ -158,6 +160,10 @@ export default async function NewsPage({
   const params = await searchParams;
   const query = parseNewsTableQuery(params);
   const session = await getSession().catch(() => null);
+  const board = await listWeeklyContributorBoard().catch((err: unknown) => {
+    console.error("news: contributor board unavailable", err);
+    return [];
+  });
   const staff = await isNewsStaff(session?.user?.email);
   const emptyPage: NewsTablePage = {
     stories: [],
@@ -339,6 +345,35 @@ export default async function NewsPage({
           )}
         </div>
       </div>
+
+      {board.length > 0 ? (
+        <section className="mt-8" aria-labelledby="news-leaderboard">
+          <h2 id="news-leaderboard" className="text-xl font-semibold">
+            {t("leaderboardTitle")}
+          </h2>
+          <ol className="mt-3 divide-y border-t">
+            {board.map((row, index) => (
+              <li
+                key={row.userId}
+                className="flex flex-wrap items-baseline justify-between gap-3 py-3"
+              >
+                <span className="text-muted-foreground font-mono text-xs">
+                  {index + 1}
+                </span>
+                <Link
+                  href={row.profilePath}
+                  className="min-w-0 flex-1 underline underline-offset-4"
+                >
+                  {row.name}
+                </Link>
+                <span className="font-mono text-xs">
+                  {t("leaderboardPoints", { points: row.points })}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       <Suspense fallback={<StorylineLoading />}>
         <StorylinePreview staff={staff} />

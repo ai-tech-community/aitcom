@@ -1,3 +1,4 @@
+import * as migration_20261014b_news_contributions from "./20261014b_news_contributions";
 import * as migration_20261014a_news_story_suggestions from "./20261014a_news_story_suggestions";
 import * as migration_20261013g_news_storyline_reservations from "./20261013g_news_storyline_reservations";
 import * as migration_20261013f_news_storylines from "./20261013f_news_storylines";
@@ -953,5 +954,10 @@ export const migrations = [
     up: migration_20261014a_news_story_suggestions.up,
     down: migration_20261014a_news_story_suggestions.down,
     name: "20261014a_news_story_suggestions",
+  },
+  {
+    up: migration_20261014b_news_contributions.up,
+    down: migration_20261014b_news_contributions.down,
+    name: "20261014b_news_contributions",
   },
 ];

@@ -7,6 +7,7 @@ import {
   startupProfileSitemapPaths,
 } from "@/lib/investigations/startups";
 import { absoluteLocaleUrl } from "@/lib/metadata";
+import { isUnlistedNewsGamePath } from "@/lib/news/indexability";
 import {
   HUB_FORUM_PATH,
   forumThreadSitemapPath,
@@ -28,8 +29,9 @@ import { getPayloadClient } from "@/server/payload";
 // then 500'd the whole route because nothing was caught.
 export const revalidate = 3600;
 
-// /news, /news/stories, story pages, and /news/stories/contribute stay out.
-// Those routes are noindex. Story pages stay noindex as well.
+// /news (weekly board included), story pages, /news/stories/contribute,
+// contribution-badge shares, claim URLs, and per-week query URLs stay out.
+// Those routes are noindex. A claim is a POST, not a URL.
 const STATIC_PAGES = [
   "",
   "/events",
@@ -330,7 +332,7 @@ export async function buildSitemapEntries(
   return withoutHiddenCommunityUrls(
     [...staticEntries, ...eventEntries, ...articleEntries, ...threadEntries],
     hiddenSlugs,
-  );
+  ).filter((entry) => !isUnlistedNewsGamePath(entry.url));
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

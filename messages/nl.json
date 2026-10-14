@@ -879,6 +879,9 @@
       "activeDays": "Actieve dagen in de afgelopen 365 dagen",
       "days": "{count, plural, one {# dag} other {# dagen}}",
       "explainer": "Een dag telt als het lid die dag minstens één ding hier heeft gedaan (UTC).",
+      "contributionTitle": "Nieuwsbijdragen",
+      "contributionCurrent": "Huidige bijdragenreeks",
+      "contributionLongest": "Langste bijdragenreeks",
       "emptyOwnerTitle": "Nog geen activiteit",
       "emptyOwnerDescription": "Elke dag dat je hier meedoet, licht een dag op deze kalender op.",
       "emptyOwnerCta": "Vind iets om te doen",
@@ -1300,7 +1303,12 @@
       "profile_complete": "Profiel compleet",
       "onboarding_complete": "Onboarding afgerond",
       "tutorial_creator": "Tutorialmaker",
-      "early_adopter": "Vroege gebruiker"
+      "early_adopter": "Vroege gebruiker",
+      "news_first_scoop": "Eerste scoop",
+      "news_five_stories": "5 verhalen",
+      "news_region_eu": "Regio-expert EU",
+      "news_region_il": "Regio-expert IL",
+      "news_region_asia": "Regio-expert Azië"
     },
     "tracks": {
       "regular": "Vaste bezoeker",
@@ -1332,7 +1340,12 @@
       "profile_complete": "Alle profielvelden ingevuld",
       "onboarding_complete": "Alle onboardingstappen afgerond",
       "tutorial_creator": "Een eerste tutorial gepubliceerd",
-      "early_adopter": "Een van de eerste {count} leden"
+      "early_adopter": "Een van de eerste {count} leden",
+      "news_first_scoop": "Als eerste een breaking onderwerp uit verzamelde berichtgeving geclaimd",
+      "news_five_stories": "5 nieuwsverhalen gepubliceerd vanuit je onderzoek",
+      "news_region_eu": "3 gepubliceerde verhalen gebaseerd op EU-berichtgeving",
+      "news_region_il": "3 gepubliceerde verhalen gebaseerd op berichtgeving uit Israël",
+      "news_region_asia": "3 gepubliceerde verhalen gebaseerd op berichtgeving uit Azië"
     },
     "notification": {
       "title": "Je hebt {badge} verdiend",
@@ -4339,6 +4352,8 @@
     "undated": "Geen datum",
     "metaTitle": "Nieuws",
     "metaDescription": "Recente AI-verhalen verzameld voor de AIT-community.",
+    "leaderboardTitle": "Deze week",
+    "leaderboardPoints": "{points} ptn",
     "rumorLabel": "Ledengerucht",
     "unverified": "Niet geverifieerd",
     "hidden": "Verborgen",
@@ -4586,7 +4601,18 @@
       "suggestionInbox": "Verhaalsuggesties",
       "suggestionEmpty": "Er wachten geen suggesties op beoordeling.",
       "suggestionReview": "Markeer als beoordeeld",
-      "suggestionReviewed": "Gemarkeerd als beoordeeld."
+      "suggestionReviewed": "Gemarkeerd als beoordeeld.",
+      "claim": "Claim dit verhaal",
+      "claimSignIn": "Log in om dit verhaal te claimen",
+      "claimSaved": "Geclaimd. De opdracht is gekopieerd. {points} punten.",
+      "claimBreaking": "Jij was de eerste bij dit breaking onderwerp. De opdracht is gekopieerd. {points} punten.",
+      "claimAlready": "Je hebt dit al geclaimd. De opdracht is opnieuw gekopieerd.",
+      "claimFailed": "De claim kon niet worden opgeslagen. Probeer het opnieuw.",
+      "claimCopyFailed": "Claim opgeslagen. Kopiëren lukte niet, gebruik de opdracht hieronder.",
+      "claimCountdown": "nog {hours}u {minutes}m",
+      "claimExpired": "Deze claim van 24 uur is afgelopen.",
+      "coverage": "{covered} van {total} onderwerpen vandaag gedekt",
+      "yourAgentFallback": "je agent"
     }
   }
 }

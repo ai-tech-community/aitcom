@@ -40,6 +40,12 @@ const state = vi.hoisted(() => ({
     hiddenAt: Date | null;
   }>,
   serverTotal: null as number | null,
+  board: [] as Array<{
+    userId: string;
+    name: string;
+    profilePath: string;
+    points: number;
+  }>,
   links: {
     stories: {} as Record<
       string,
@@ -210,6 +216,10 @@ vi.mock("@/server/news/startup-links", () => ({
   listNewsStartupLinks: async () => state.links,
 }));
 
+vi.mock("@/server/news/contributions", () => ({
+  listWeeklyContributorBoard: async () => state.board,
+}));
+
 vi.mock("@/components/news/news-rumor-form", () => ({
   NewsRumorForm: () => <form>rumor form</form>,
 }));
@@ -230,11 +240,29 @@ describe("news page", () => {
     state.serverTotal = null;
     state.rumors = [];
     state.links = { stories: {}, rumors: {} };
+    state.board = [];
   });
 
   it("is noindex", async () => {
     const meta = await generateMetadata();
     expect(meta.robots).toEqual({ index: false, follow: true });
+  });
+
+  it("lists this week's public contributors with their stored names", async () => {
+    state.board = [
+      {
+        userId: "ada",
+        name: "Ada Lovelace",
+        profilePath: "/members/ada",
+        points: 60,
+      },
+    ];
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    expect(screen.getByRole("link", { name: "Ada Lovelace" })).toHaveAttribute(
+      "href",
+      "/members/ada",
+    );
+    expect(screen.getByText("60 pts")).toBeInTheDocument();
   });
 
   it("renders a directory-width table with a verified story", async () => {

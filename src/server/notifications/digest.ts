@@ -61,6 +61,12 @@ export type DigestNewsItem = {
   path: string;
 };
 
+export type DigestContributor = {
+  name: string;
+  path: string;
+  points: number;
+};
+
 export type HubDigest = {
   userId: string;
   sections: CommunitySection[];
@@ -68,6 +74,7 @@ export type HubDigest = {
   events: DigestEventItem[];
   jobs: DigestJobItem[];
   startups: DigestStartupItem[];
+  contributors: DigestContributor[];
   discovery: DiscoveryPick;
 };
 
@@ -81,6 +88,7 @@ export function buildHubDigest(opts: {
   events?: DigestEventItem[];
   jobs?: DigestJobItem[];
   startups?: DigestStartupItem[];
+  contributors?: DigestContributor[];
   optedOutCommunityIds: Set<string>;
   optedOutSections?: ReadonlySet<DigestSection>;
   discovery?: DiscoveryPick;
@@ -97,6 +105,7 @@ export function buildHubDigest(opts: {
   const events = off?.has("events") ? [] : (opts.events ?? []);
   const jobs = off?.has("jobs") ? [] : (opts.jobs ?? []);
   const startups = off?.has("startups") ? [] : (opts.startups ?? []);
+  const contributors = (opts.contributors ?? []).slice(0, 3);
   const discovery = opts.discovery ?? null;
   if (
     visible.length === 0 &&
@@ -104,6 +113,7 @@ export function buildHubDigest(opts: {
     events.length === 0 &&
     jobs.length === 0 &&
     startups.length === 0 &&
+    contributors.length === 0 &&
     !discovery
   ) {
     return null;
@@ -115,6 +125,7 @@ export function buildHubDigest(opts: {
     events,
     jobs,
     startups,
+    contributors,
     discovery,
   };
 }

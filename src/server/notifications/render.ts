@@ -125,6 +125,15 @@ export function renderHubDigestHtml(
     })),
     sendDate,
   );
+  const contributors = (digest.contributors ?? []).slice(0, 3);
+  const contributorsHtml = itemBlock(
+    "Contributors",
+    contributors.map((contributor) => ({
+      text: `${contributor.name} · ${contributor.points}`,
+      path: contributor.path,
+    })),
+    sendDate,
+  );
   const startupsHtml = itemBlock(
     "Startups",
     startups.map((startup) => ({
@@ -155,6 +164,7 @@ export function renderHubDigestHtml(
       ${eventsHtml}
       ${jobsHtml}
       ${startupsHtml}
+      ${contributorsHtml}
       ${discoveryHtml}
       <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
       <p style="font-size: 12px; color: #999;">
@@ -228,6 +238,15 @@ export function renderHubDigestText(
     (digest.startups ?? []).map((startup) => ({
       text: `${startup.title} · ${startup.votes} votes`,
       path: startup.path,
+    })),
+    sendDate,
+  );
+  appendTextBlock(
+    lines,
+    "Contributors",
+    (digest.contributors ?? []).slice(0, 3).map((contributor) => ({
+      text: `${contributor.name} · ${contributor.points}`,
+      path: contributor.path,
     })),
     sendDate,
   );

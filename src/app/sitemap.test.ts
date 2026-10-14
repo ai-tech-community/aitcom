@@ -10,6 +10,7 @@ vi.mock("@/server/communities/content-visibility-queries", () => ({
   hiddenContentCommunityIds: vi.fn(async () => []),
 }));
 
+import { isUnlistedNewsGamePath } from "@/lib/news/indexability";
 import { getPayloadClient } from "@/server/payload";
 import * as sitemapModule from "./sitemap";
 import { buildSitemapEntries } from "./sitemap";
@@ -281,6 +282,16 @@ describe("buildSitemapEntries", () => {
     expect(staticUrls).not.toContain(
       "https://www.aitcommunity.org/nl/news/stories/contribute",
     );
+    expect(staticUrls).not.toContain(
+      "https://www.aitcommunity.org/en/news?week=2026-10-12",
+    );
+    expect(staticUrls).not.toContain(
+      "https://www.aitcommunity.org/en/members/ada/badges/news_first_scoop",
+    );
+    expect(staticUrls).not.toContain(
+      "https://www.aitcommunity.org/en/news/stories/claim/eu-ai-act",
+    );
+    expect(staticUrls.every((url) => !isUnlistedNewsGamePath(url))).toBe(true);
 
     const indexed = await buildSitemapEntries(
       undefined,
