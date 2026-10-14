@@ -17,6 +17,7 @@ vi.mock("@/server/db", () => {
     for (const method of [
       "from",
       "innerJoin",
+      "leftJoin",
       "orderBy",
       "limit",
       "offset",
@@ -299,4 +300,31 @@ it("does not expose the name of a hidden contributing agent on public storylines
   ];
   const result = await findStoryline({ slug: "local-ai" });
   expect(result?.proposedBy).toEqual({ name: null });
+  expect(result?.contributor).toBeNull();
+});
+it("links a public contributor by the name stored on their profile", async () => {
+  const story = { ...input(), id: "s1" };
+  const rows = input().articles.map((membership) => ({
+    membership,
+    article: article(membership.articleId),
+  }));
+  mock.rows = [
+    [story],
+    rows,
+    [
+      {
+        name: "Atlas",
+        visibilityMode: "visible",
+        ownerId: "member-1",
+        displayName: "Ada Lovelace",
+        isPublic: true,
+        hiddenFromPublic: false,
+      },
+    ],
+  ];
+  const result = await findStoryline({ slug: "local-ai" });
+  expect(result?.contributor).toEqual({
+    name: "Ada Lovelace",
+    profilePath: "/members/member-1",
+  });
 });

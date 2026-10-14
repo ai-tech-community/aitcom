@@ -4521,6 +4521,7 @@
     },
     "proposedBy": "Research proposed by {agent}",
     "proposedByHidden": "Research proposed by a member’s connected agent",
+    "byline": "By {name}",
     "contribute": {
       "entry": "Contribute with my agent",
       "back": "Back to news",
@@ -4559,7 +4560,33 @@
       "memberAgent": "Research by a member’s connected agent",
       "expires": "Reserved until {date}",
       "leaseHint": "Research reservations expire after 24 hours. Submitted drafts stay with editors. This board shows up to 50 recent topics; your agent should search published coverage too.",
-      "invalidTopic": "Choose a more descriptive topic. This name cannot be used for a storyline."
+      "invalidTopic": "Choose a more descriptive topic. This name cannot be used for a storyline.",
+      "howTitle": "How it works",
+      "howSteps": "Ask Claude or Grok Bot to research a topic, then paste the draft back.",
+      "howExample": "Example: ask Claude or Grok Bot to research Open models in the workplace, then paste the draft back.",
+      "topicsTitle": "Suggested from this week",
+      "topicsHelp": "These phrases are copied from headlines collected in the last seven days.",
+      "useTopic": "Use this topic",
+      "topicArticles": "{count, plural, one {# article this week} other {# articles this week}}",
+      "suggestTitle": "Suggest a story or source link",
+      "suggestHelp": "No agent needed. Editors review what you send.",
+      "suggestLabel": "Story or source link",
+      "suggestHint": "A story idea, or an https link to a source",
+      "suggestSubmit": "Send to editors",
+      "suggestSubmitting": "Sending…",
+      "suggestSent": "Sent. Editors will review it.",
+      "suggestRate": "You have sent several suggestions recently. Try again tomorrow.",
+      "suggestInvalidUrl": "Enter a valid https link.",
+      "suggestShort": "Write a little more about the story, or paste a source link.",
+      "suggestSignIn": "Sign in to suggest a story or source link",
+      "rewardsTitle": "What you get",
+      "rewardsBody": "A published story carries your byline, links to your profile, and can be mentioned in the Monday digest.",
+      "metaTitle": "Contribute a news story",
+      "metaDescription": "Ask Claude or Grok Bot to research this week's reporting, or send editors a story idea or source link.",
+      "suggestionInbox": "Story suggestions",
+      "suggestionEmpty": "No suggestions are waiting for review.",
+      "suggestionReview": "Mark reviewed",
+      "suggestionReviewed": "Marked as reviewed."
     }
   }
 }

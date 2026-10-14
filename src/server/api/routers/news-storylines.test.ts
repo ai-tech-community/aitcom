@@ -9,6 +9,9 @@ const state = vi.hoisted(() => ({
   search: vi.fn(),
   inbox: vi.fn(),
   dismiss: vi.fn(),
+  submitSuggestion: vi.fn(),
+  listSuggestions: vi.fn(),
+  reviewSuggestion: vi.fn(),
 }));
 vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/env", () => ({
@@ -39,6 +42,12 @@ vi.mock("@/server/news/storylines", () => ({
 vi.mock("@/server/news/agent-storylines", () => ({
   listAgentStorylineDrafts: state.inbox,
   dismissAgentStorylineDraft: state.dismiss,
+}));
+vi.mock("@/server/news/story-suggestions", () => ({
+  storySuggestionDb: {},
+  submitStorySuggestion: state.submitSuggestion,
+  listOpenStorySuggestions: state.listSuggestions,
+  reviewStorySuggestion: state.reviewSuggestion,
 }));
 import { newsRouter } from "./news";
 
@@ -79,6 +88,12 @@ it("denies every editorial endpoint to ordinary members before storage access", 
   await expect(
     caller().dismissAgentStorylineDraft({ draftId: "d1" }),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  await expect(caller().listOpenStorySuggestions()).rejects.toMatchObject({
+    code: "FORBIDDEN",
+  });
+  await expect(
+    caller().reviewStorySuggestion({ id: "s1" }),
+  ).rejects.toMatchObject({ code: "FORBIDDEN" });
   for (const fn of [
     state.list,
     state.read,
@@ -86,6 +101,8 @@ it("denies every editorial endpoint to ordinary members before storage access", 
     state.save,
     state.inbox,
     state.dismiss,
+    state.listSuggestions,
+    state.reviewSuggestion,
   ])
     expect(fn).not.toHaveBeenCalled();
 });
@@ -116,4 +133,47 @@ it("allows staff to read and dismiss proposals in the editorial inbox", async ()
   state.dismiss.mockResolvedValue({ id: "d1" });
   await caller().dismissAgentStorylineDraft({ draftId: "d1" });
   expect(state.dismiss).toHaveBeenCalledWith("d1");
+});
+
+it("stores a valid suggestion for a signed-in member and rejects a bad link", async () => {
+  state.submitSuggestion.mockResolvedValue({ ok: true, id: "sug-1" });
+  await expect(
+    caller().submitStorySuggestion({ text: "https://example.com/source" }),
+  ).resolves.toEqual({ id: "sug-1" });
+  expect(state.submitSuggestion).toHaveBeenCalledWith(
+    {},
+    expect.objectContaining({
+      userId: "editor",
+      value: {
+        body: "https://example.com/source",
+        url: "https://example.com/source",
+      },
+    }),
+  );
+  await expect(
+    caller().submitStorySuggestion({ text: "http://example.com/source" }),
+  ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "url" });
+  await expect(
+    caller(false).submitStorySuggestion({ text: "A story about local models" }),
+  ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+});
+
+it("rate-limits suggestions and lets staff review the queue", async () => {
+  state.submitSuggestion.mockResolvedValue({ ok: false, reason: "limited" });
+  await expect(
+    caller().submitStorySuggestion({ text: "A story about local models" }),
+  ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS", message: "rate" });
+  state.staff = true;
+  state.listSuggestions.mockResolvedValue([]);
+  await expect(caller().listOpenStorySuggestions()).resolves.toEqual([]);
+  state.reviewSuggestion.mockResolvedValue("ok");
+  await expect(
+    caller().reviewStorySuggestion({ id: "sug-1" }),
+  ).resolves.toEqual({
+    ok: true,
+  });
+  state.reviewSuggestion.mockResolvedValue("missing");
+  await expect(
+    caller().reviewStorySuggestion({ id: "missing" }),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
 });

@@ -28,6 +28,8 @@ import { getPayloadClient } from "@/server/payload";
 // then 500'd the whole route because nothing was caught.
 export const revalidate = 3600;
 
+// /news, /news/stories, story pages, and /news/stories/contribute stay out.
+// Those routes are noindex. Story pages stay noindex as well.
 const STATIC_PAGES = [
   "",
   "/events",

@@ -14,6 +14,7 @@ import {
   newsItems,
   agentDrafts,
   agentProfiles,
+  memberProfiles,
   newsStorylines as stories,
   newsStorylineArticles as memberships,
   newsStorylineConnections as connections,
@@ -160,9 +161,14 @@ export async function findStoryline(
     .select({
       name: agentProfiles.name,
       visibilityMode: agentProfiles.visibilityMode,
+      ownerId: agentDrafts.ownerId,
+      displayName: memberProfiles.displayName,
+      isPublic: memberProfiles.isPublic,
+      hiddenFromPublic: memberProfiles.hiddenFromPublic,
     })
     .from(agentDrafts)
     .innerJoin(agentProfiles, eq(agentProfiles.id, agentDrafts.agentId))
+    .leftJoin(memberProfiles, eq(memberProfiles.userId, agentDrafts.ownerId))
     .where(
       and(
         eq(agentDrafts.type, "news_storyline"),
@@ -177,7 +183,23 @@ export async function findStoryline(
           sourceAgent.visibilityMode === "visible" ? sourceAgent.name : null,
       }
     : null;
-  return { ...storyline, articles, connections: outgoing, proposedBy };
+  const contributor =
+    sourceAgent?.ownerId &&
+    sourceAgent.displayName?.trim() &&
+    sourceAgent.isPublic !== false &&
+    !sourceAgent.hiddenFromPublic
+      ? {
+          name: sourceAgent.displayName.trim(),
+          profilePath: `/members/${sourceAgent.ownerId}`,
+        }
+      : null;
+  return {
+    ...storyline,
+    articles,
+    connections: outgoing,
+    proposedBy,
+    contributor,
+  };
 }
 export type StorylineDetail = NonNullable<
   Awaited<ReturnType<typeof findStoryline>>

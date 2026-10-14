@@ -4963,3 +4963,40 @@ export const newsStorylineConnections = appSchema.table(
     }).onDelete("cascade"),
   ],
 );
+
+/** A story idea or source link from a member, waiting for staff review. */
+export const newsStorySuggestions = appSchema.table(
+  "news_story_suggestion",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    body: d.text().notNull(),
+    url: d.text(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    reviewedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [
+    index("news_story_suggestion_user_created_idx").on(t.userId, t.createdAt),
+    index("news_story_suggestion_open_idx")
+      .on(t.createdAt)
+      .where(sql`${t.reviewedAt} is null`),
+    check(
+      "news_story_suggestion_body_check",
+      sql`char_length(btrim(${t.body})) between 1 and 500`,
+    ),
+    check(
+      "news_story_suggestion_url_check",
+      sql`${t.url} is null or ${t.url} ~ '^https://'`,
+    ),
+  ],
+);

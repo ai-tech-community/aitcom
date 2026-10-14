@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { getSession } from "@/server/better-auth/server";
 import { isNewsStaff } from "@/server/news/staff";
 import { StorylineEditor } from "@/components/news/storyline-editor";
+import { StorySuggestionInbox } from "@/components/news/story-suggestion-inbox";
 import { Link } from "@/i18n/navigation";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -23,6 +24,7 @@ export default async function ManageStoriesPage() {
       <p className="text-muted-foreground mt-3 max-w-prose">
         {t("editorHelp")}
       </p>
+      <StorySuggestionInbox />
       <StorylineEditor />
     </main>
   );

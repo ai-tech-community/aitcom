@@ -272,6 +272,15 @@ describe("buildSitemapEntries", () => {
     );
     expect(staticUrls).not.toContain("https://www.aitcommunity.org/en/news");
     expect(staticUrls).not.toContain("https://www.aitcommunity.org/nl/news");
+    expect(staticUrls).not.toContain(
+      "https://www.aitcommunity.org/en/news/stories",
+    );
+    expect(staticUrls).not.toContain(
+      "https://www.aitcommunity.org/en/news/stories/contribute",
+    );
+    expect(staticUrls).not.toContain(
+      "https://www.aitcommunity.org/nl/news/stories/contribute",
+    );
 
     const indexed = await buildSitemapEntries(
       undefined,
