@@ -2,6 +2,12 @@ import {
   listAgentStorylineDrafts,
   dismissAgentStorylineDraft,
 } from "@/server/news/agent-storylines";
+import {
+  approveStorylineDraft,
+  listPendingStorylineDrafts,
+  readStorylineDraft,
+} from "@/server/news/storyline-drafts";
+import { storylineDraftViewerRole } from "@/lib/news/storyline-draft-review";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -69,6 +75,41 @@ export const newsRouter = createTRPCRouter({
   listAgentStorylineDrafts: storylineStaffProcedure
     .input(z.object({ page: z.number().int().min(1).default(1) }))
     .query(({ input }) => listAgentStorylineDrafts(input.page)),
+  listMyStorylineDrafts: protectedProcedure.query(({ ctx }) =>
+    listPendingStorylineDrafts({ ownerId: ctx.session.user.id }),
+  ),
+  listStorylineDraftQueue: storylineStaffProcedure.query(() =>
+    listPendingStorylineDrafts(),
+  ),
+  readStorylineDraft: protectedProcedure
+    .input(z.object({ draftId: z.string().min(1).max(255) }))
+    .query(async ({ ctx, input }) => {
+      const draft = await readStorylineDraft(input.draftId);
+      if (!draft) throw new TRPCError({ code: "NOT_FOUND" });
+      const staff = await isNewsStaff(ctx.session.user.email);
+      const role = storylineDraftViewerRole({
+        viewerId: ctx.session.user.id,
+        ownerId: draft.ownerId,
+        staff,
+      });
+      if (role !== "owner" && role !== "editor")
+        throw new TRPCError({ code: "NOT_FOUND" });
+      return { ...draft, canApprove: role === "editor" };
+    }),
+  approveAgentStorylineDraft: storylineStaffProcedure
+    .input(z.object({ draftId: z.string().min(1).max(255) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await approveStorylineDraft(input.draftId, ctx.session.user.id);
+      } catch (err) {
+        if (err instanceof StorylineError)
+          throw new TRPCError({
+            code: err.code === "conflict" ? "CONFLICT" : "BAD_REQUEST",
+            message: err.message,
+          });
+        throw err;
+      }
+    }),
   listStorylines: storylineStaffProcedure
     .input(
       z.object({

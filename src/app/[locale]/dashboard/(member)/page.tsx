@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireDashboardSession } from "@/server/dashboard/require-dashboard-session";
 import { CommunityActivity } from "@/components/dashboard/community-activity/community-activity";
 import { NextUp } from "@/components/dashboard/next-up/next-up";
+import { StorylineDraftsAwaiting } from "@/components/news/storyline-drafts-awaiting";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -18,6 +19,7 @@ export default async function DashboardHomePage() {
 
   return (
     <div className="space-y-10">
+      <StorylineDraftsAwaiting hideWhenEmpty />
       <NextUp />
       <CommunityActivity currentUserId={session.user.id} />
     </div>

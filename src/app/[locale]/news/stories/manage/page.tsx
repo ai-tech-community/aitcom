@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { getSession } from "@/server/better-auth/server";
 import { isNewsStaff } from "@/server/news/staff";
+import { StorylineDraftQueue } from "@/components/news/storyline-draft-queue";
 import { StorylineEditor } from "@/components/news/storyline-editor";
 import { StorySuggestionInbox } from "@/components/news/story-suggestion-inbox";
 import { Link } from "@/i18n/navigation";
+import { STORYLINE_DRAFT_QUEUE_PATH } from "@/lib/news/storyline-draft-review";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 export default async function ManageStoriesPage() {
@@ -24,6 +26,17 @@ export default async function ManageStoriesPage() {
       <p className="text-muted-foreground mt-3 max-w-prose">
         {t("editorHelp")}
       </p>
+      <p className="mt-4">
+        <Link
+          href={STORYLINE_DRAFT_QUEUE_PATH}
+          className="text-sm font-medium underline underline-offset-4"
+        >
+          {t("draftReview.queueLink")}
+        </Link>
+      </p>
+      <div className="mt-10">
+        <StorylineDraftQueue />
+      </div>
       <StorySuggestionInbox />
       <StorylineEditor />
     </main>

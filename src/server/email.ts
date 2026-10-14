@@ -20,6 +20,12 @@ import {
   renderPostMentionText,
   type PostMentionMail,
 } from "@/server/notifications/post-mention-mail-copy";
+import {
+  renderStorylineDraftReviewEmail,
+  STORYLINE_TEST_RECIPIENT,
+  storylineMailRecipient,
+  type StorylineMailEnv,
+} from "@/lib/news/storyline-draft-review";
 
 let resendInstance: Resend | null = null;
 
@@ -667,4 +673,38 @@ export async function sendForumReplyNotification(
       </div>
     `,
   });
+}
+
+/**
+ * Tell a human a storyline draft is waiting. Tests and previews never reach
+ * Resend for a member address; the only test recipient is greg@klevox.com.
+ */
+export async function sendStorylineDraftReviewEmail(
+  to: string,
+  opts: { title: string; reviewUrl: string },
+  env: StorylineMailEnv = {
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    NODE_ENV: process.env.NODE_ENV,
+  },
+): Promise<boolean> {
+  const recipient = storylineMailRecipient(to, env);
+  if (!recipient) return false;
+  if (
+    process.env.NODE_ENV === "test" &&
+    recipient !== STORYLINE_TEST_RECIPIENT
+  ) {
+    throw new Error("Storyline review email refused");
+  }
+  const resend = getResend();
+  if (!resend) return false;
+  const message = renderStorylineDraftReviewEmail(opts);
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to: recipient,
+    subject: message.subject,
+    html: message.html,
+    text: message.text,
+  });
+  if (error) throw new Error("Resend rejected the storyline draft email");
+  return true;
 }

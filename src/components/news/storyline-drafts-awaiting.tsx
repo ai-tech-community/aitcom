@@ -1,0 +1,70 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
+import { ArrowLink } from "@/components/dashboard/arrow-link";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SectionLabel } from "@/components/ui/section-label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { api } from "@/trpc/react";
+
+/** The owner's pending news storyline drafts, including rows stored before this screen existed. */
+export function StorylineDraftsAwaiting({
+  hideWhenEmpty = false,
+}: {
+  hideWhenEmpty?: boolean;
+}) {
+  const t = useTranslations("newsStories.draftReview");
+  const drafts = api.news.listMyStorylineDrafts.useQuery();
+
+  if (drafts.isPending) {
+    if (hideWhenEmpty) return null;
+    return (
+      <section aria-labelledby="drafts-awaiting-heading" className="space-y-4">
+        <SectionLabel id="drafts-awaiting-heading">{t("section")}</SectionLabel>
+        <Skeleton className="h-16 w-full" />
+      </section>
+    );
+  }
+
+  if (drafts.isError) {
+    return (
+      <section aria-labelledby="drafts-awaiting-heading" className="space-y-4">
+        <SectionLabel id="drafts-awaiting-heading">{t("section")}</SectionLabel>
+        <ErrorState
+          title={t("actionFailed")}
+          onRetry={() => void drafts.refetch()}
+        />
+      </section>
+    );
+  }
+
+  if (!drafts.data.length && hideWhenEmpty) return null;
+
+  return (
+    <section aria-labelledby="drafts-awaiting-heading" className="space-y-4">
+      <SectionLabel id="drafts-awaiting-heading">{t("section")}</SectionLabel>
+      {drafts.data.length === 0 ? (
+        <EmptyState title={t("empty")} description={t("emptyHelp")} />
+      ) : (
+        <ul className="divide-y border-t">
+          {drafts.data.map((draft) => (
+            <li key={draft.id} className="py-4">
+              <p className="text-sm font-medium">{draft.title}</p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {t("proposedBy", { agent: draft.agentName })}
+              </p>
+              <p className="text-muted-foreground mt-1 font-mono text-xs">
+                {t("draftId", { id: draft.id })}
+              </p>
+              <ArrowLink href={draft.reviewPath} className="mt-2">
+                {t("review")}
+              </ArrowLink>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}

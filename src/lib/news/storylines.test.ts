@@ -125,7 +125,7 @@ it("orders dates with stable ties and separates undated reporting", () => {
 });
 
 it("reserves static news route names for both editor and agent proposals", () => {
-  for (const slug of ["manage", "contribute"])
+  for (const slug of ["manage", "contribute", "drafts"])
     expect(storylineInputSchema.safeParse({ ...input(), slug }).success).toBe(
       false,
     );
