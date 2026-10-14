@@ -7,6 +7,9 @@ import { NextIntlClientProvider } from "next-intl";
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
 
+vi.mock("./registration-source-links", () => ({
+  RegistrationSourceLinks: () => null,
+}));
 const m = vi.hoisted(() => ({
   state: { isLoading: false, isError: false } as {
     isLoading: boolean;
@@ -170,6 +173,8 @@ function names() {
 }
 
 beforeEach(() => {
+  // jsdom does not implement the scrolling used by the shared Radix Select.
+  Element.prototype.scrollIntoView = vi.fn();
   m.state = { isLoading: false, isError: false };
   m.data = data();
   m.refetch.mockReset();
@@ -233,12 +238,12 @@ describe("OrganizerAttendeeList", () => {
     const link = screen.getByRole("link", { name: "Download CSV" });
     expect(link).toHaveAttribute(
       "href",
-      "/api/events/builders-night/attendees.csv?view=active&locale=nl",
+      "/api/events/builders-night/attendees.csv?view=active&locale=nl&source=all&search=",
     );
     fireEvent.click(screen.getByRole("radio", { name: "Wachtlijst 1" }));
     expect(link).toHaveAttribute(
       "href",
-      "/api/events/builders-night/attendees.csv?view=waitlisted&locale=nl",
+      "/api/events/builders-night/attendees.csv?view=waitlisted&locale=nl&source=all&search=",
     );
   });
 
@@ -335,4 +340,32 @@ describe("OrganizerAttendeeList", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Profiel is privé")).toBeInTheDocument();
   });
+});
+
+it("combines source filtering with search and exports the same selection", () => {
+  m.data = data(
+    ROWS.map((row, i) => ({
+      ...row,
+      registrationSource: i === 0 ? "luma" : "direct_or_unknown",
+    })),
+  );
+  renderList();
+  fireEvent.keyDown(
+    screen.getByRole("combobox", { name: "Registration source" }),
+    { key: "ArrowDown" },
+  );
+  fireEvent.click(screen.getByRole("option", { name: "Luma" }));
+  expect(names()).toEqual(["Ada Lovelace"]);
+  const totals = screen.getByRole("region", {
+    name: "Registrations by source",
+  });
+  expect(within(totals).getByText("1 registered · 0 checked in")).toBeVisible();
+  expect(
+    within(totals).getAllByText("0 registered · 0 checked in"),
+  ).toHaveLength(3);
+  fireEvent.change(screen.getByRole("searchbox"), { target: { value: "Ada" } });
+  expect(screen.getByRole("link", { name: "Download CSV" })).toHaveAttribute(
+    "href",
+    "/api/events/builders-night/attendees.csv?view=active&locale=en&source=luma&search=Ada",
+  );
 });

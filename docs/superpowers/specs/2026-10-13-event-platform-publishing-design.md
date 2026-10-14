@@ -122,8 +122,13 @@ provider event IDs before importing or merging it into event lists.
 
 ## Source tracking
 
-Generate an opaque, event-bound tracked link per destination. Resolve its
-token on the server to a known event and provider; never trust an arbitrary
+Generate an opaque, event-bound tracked link per destination. Tokens use
+AES-GCM authenticated encryption with an event ID, provider, and purpose;
+the key is derived specifically for attribution from the authentication
+secret. Link tokens and timestamped cookie tokens have separate purposes.
+They require no link-storage table. The server validates current event
+eligibility on each redirect. Secret rotation invalidates old tracking
+safely. Resolve the token on the server to a known event and provider; never trust an arbitrary
 `source` parameter or HTTP referrer as authoritative attribution.
 
 Preserve the source across sign-in and sign-up in an event-scoped session

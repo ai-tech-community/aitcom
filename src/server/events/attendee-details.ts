@@ -1,3 +1,7 @@
+import {
+  registrationSource,
+  type RegistrationSource,
+} from "@/lib/events/registration-source";
 import { and, count, eq, inArray, ne } from "drizzle-orm";
 
 import {
@@ -41,6 +45,7 @@ export interface PublicProfileDetails {
 
 export interface AttendeeDetails {
   registrationId: string;
+  registrationSource?: RegistrationSource;
   firstName: string | null;
   lastName: string | null;
   /** Always present: first + last name, else the name the member goes by. */
@@ -73,6 +78,7 @@ export interface AttendeeDetails {
 /** Everything the loader gathers for one registration. */
 export interface AttendeeSourceRow {
   registrationId: string;
+  registrationSource?: RegistrationSource;
   status: AttendeeStatus;
   registeredAt: Date;
   paymentStatus: string | null;
@@ -119,6 +125,7 @@ export function toAttendeeDetails(row: AttendeeSourceRow): AttendeeDetails {
 
   return {
     registrationId: row.registrationId,
+    registrationSource: registrationSource(row.registrationSource),
     firstName: account.firstName,
     lastName: account.lastName,
     // First non-empty of: account names, profile name, account name.
@@ -176,6 +183,7 @@ export async function loadEventAttendees(
   const registrations = await db
     .select({
       registrationId: eventRegistrations.id,
+      registrationSource: eventRegistrations.registrationSource,
       userId: eventRegistrations.userId,
       status: eventRegistrations.status,
       registeredAt: eventRegistrations.registeredAt,
@@ -254,6 +262,7 @@ export async function loadEventAttendees(
   const rows = registrations.map((r) =>
     toAttendeeDetails({
       registrationId: r.registrationId,
+      registrationSource: r.registrationSource,
       status: r.status as AttendeeStatus,
       registeredAt: r.registeredAt,
       paymentStatus: r.paymentStatus,
