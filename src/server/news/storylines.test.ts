@@ -8,6 +8,7 @@ const mock = vi.hoisted(() => ({
   committed: [] as unknown[],
   conditions: [] as unknown[],
   orders: [] as unknown[][],
+  selects: [] as unknown[],
 }));
 vi.mock("@/server/db", () => {
   const chain = (
@@ -37,11 +38,13 @@ vi.mock("@/server/db", () => {
     return query;
   };
   const tx = {
-    select: () =>
-      chain(
+    select: (fields?: unknown) => {
+      mock.selects.push(fields);
+      return chain(
         () => mock.rows.shift() ?? [],
         (condition) => mock.conditions.push(condition),
-      ),
+      );
+    },
     insert: (table: unknown) => ({
       values: (value: unknown) =>
         chain(() => {
@@ -115,6 +118,7 @@ beforeEach(() => {
   mock.committed = [];
   mock.conditions = [];
   mock.orders = [];
+  mock.selects = [];
   vi.clearAllMocks();
 });
 
@@ -207,6 +211,21 @@ it("excludes drafts and insufficient source evidence before pagination", async (
   expect(query.sql).toContain("position(");
   expect(query.sql).toContain(">= 2");
   expect(query.sql).not.toContain("ai_summary");
+  const selected = mock.selects.find(
+    (fields): fields is { articleCount: unknown; score: unknown } =>
+      !!fields &&
+      typeof fields === "object" &&
+      "articleCount" in fields &&
+      "score" in fields,
+  );
+  expect(selected).toBeTruthy();
+  const dialect = new PgDialect({ casing: "snake_case" });
+  const articleSql = dialect.sqlToQuery(selected!.articleCount as never).sql;
+  expect(articleSql).toContain('"news_item"."id"');
+  expect(articleSql).toContain('"news_storyline"."id"');
+  const scoreSql = dialect.sqlToQuery(selected!.score as never).sql;
+  expect(scoreSql).toContain('"news_storyline_vote"');
+  expect(scoreSql).toContain('"news_storyline"."id"');
   const orderSql = (mock.orders.at(-1) ?? [])
     .map((part) => {
       try {

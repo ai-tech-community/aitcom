@@ -97,13 +97,16 @@ export async function listStorylines(
         number | null
       >`(select ${newsStorylineVotes.value} from ${newsStorylineVotes} where ${newsStorylineVotes.storyId} = ${stories.id} and ${newsStorylineVotes.userId} = ${input.viewerId} limit 1)`
     : sql<number | null>`null::int`;
+  // Wrap the subqueries. A bare SQL field in this select list makes Drizzle
+  // reprint the columns without table names, so the article count matches
+  // the wrong id and the page shows zero articles.
   const rows = await db
     .select({
       storyline: stories,
-      articleCount,
-      latestAt,
-      score: storylineScore,
-      myVote,
+      articleCount: sql<number>`${articleCount}`,
+      latestAt: sql<Date | null>`${latestAt}`,
+      score: sql<number>`${storylineScore}`,
+      myVote: sql<number | null>`${myVote}`,
     })
     .from(stories)
     .where(where)
