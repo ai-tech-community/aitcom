@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomBytes, createHmac } from "crypto";
-import { eq, and, ne, desc, gt, lt, sql } from "drizzle-orm";
+import { eq, and, or, ne, desc, gt, lt, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
@@ -48,6 +48,53 @@ import {
 } from "@/server/agent/manifest";
 import { hasAcceptedCurrentManifest } from "@/server/agent/manifest-acceptance";
 
+/** An owned profile that is not a soft-deleted agent. Inactive rows keep
+ * their id, but they must not occupy the one-agent slot. */
+function ownedLiveAgentWhere(userId: string) {
+  return and(
+    eq(agentProfiles.ownerId, userId),
+    ne(agentProfiles.status, "inactive"),
+  )!;
+}
+
+/** Keys for this profile, plus keys recorded under the caller's user id.
+ * A regenerate that only matches `agentId` leaves a credential active when
+ * that credential was stored against a different id. */
+function callerKeyWhere(agentId: string, userId: string) {
+  return or(
+    eq(agentApiKeys.agentId, agentId),
+    eq(agentApiKeys.ownerId, userId),
+  )!;
+}
+
+function callerActiveKeyWhere(agentId: string, userId: string) {
+  return and(eq(agentApiKeys.isActive, true), callerKeyWhere(agentId, userId))!;
+}
+
+type OwnerSlotDb = {
+  update: (table: typeof agentProfiles) => {
+    set: (values: { ownerId: null }) => {
+      where: (
+        condition: NonNullable<ReturnType<typeof and>>,
+      ) => Promise<unknown>;
+    };
+  };
+};
+
+/** `owner_id` is UNIQUE. A soft-deleted profile has to drop it or the next
+ * claim/create collides even after the inactive row is ignored in SELECTs. */
+async function releaseInactiveOwnerSlot(database: OwnerSlotDb, userId: string) {
+  await database
+    .update(agentProfiles)
+    .set({ ownerId: null })
+    .where(
+      and(
+        eq(agentProfiles.ownerId, userId),
+        eq(agentProfiles.status, "inactive"),
+      )!,
+    );
+}
+
 export const agentManagementRouter = createTRPCRouter({
   // ── Agent Profile ─────────────────────────────────────────────────────────
 
@@ -58,7 +105,7 @@ export const agentManagementRouter = createTRPCRouter({
     const [agent] = await ctx.db
       .select()
       .from(agentProfiles)
-      .where(eq(agentProfiles.ownerId, userId))
+      .where(ownedLiveAgentWhere(userId))
       .limit(1);
 
     return agent ?? null;
@@ -77,11 +124,14 @@ export const agentManagementRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Check if user already has an agent
+      await releaseInactiveOwnerSlot(ctx.db, userId);
+
+      // Check if user already has a live agent. A soft-deleted profile does
+      // not count: its owner slot was released above.
       const [existing] = await ctx.db
         .select()
         .from(agentProfiles)
-        .where(eq(agentProfiles.ownerId, userId))
+        .where(ownedLiveAgentWhere(userId))
         .limit(1);
 
       if (existing) {
@@ -149,11 +199,13 @@ export const agentManagementRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       const userName = ctx.session.user.name ?? "member";
 
-      // Check if user already has an agent
+      await releaseInactiveOwnerSlot(ctx.db, userId);
+
+      // Check if user already has a live agent.
       const [existing] = await ctx.db
         .select()
         .from(agentProfiles)
-        .where(eq(agentProfiles.ownerId, userId))
+        .where(ownedLiveAgentWhere(userId))
         .limit(1);
 
       let agent = existing;
@@ -282,7 +334,9 @@ export const agentManagementRouter = createTRPCRouter({
       return updated!;
     }),
 
-  /** Soft-delete (deactivate) the current user's agent and revoke all API keys. */
+  /** Soft-delete (deactivate) the current user's agent and revoke all API keys.
+   * `owner_id` is released in the same write: it is UNIQUE, so leaving it set
+   * blocks the next claim even after status is inactive. */
   deleteAgent: protectedProcedure.mutation(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
@@ -299,52 +353,137 @@ export const agentManagementRouter = createTRPCRouter({
       });
     }
 
-    // Soft delete: deactivate agent
-    await ctx.db
-      .update(agentProfiles)
-      .set({ status: "inactive" })
-      .where(eq(agentProfiles.id, agent.id));
+    await ctx.db.transaction(async (tx) => {
+      const updated = await tx
+        .update(agentProfiles)
+        .set({ status: "inactive", ownerId: null })
+        .where(
+          and(
+            eq(agentProfiles.id, agent.id),
+            eq(agentProfiles.ownerId, userId),
+          ),
+        )
+        .returning();
 
-    // Revoke all API keys
-    await ctx.db
-      .update(agentApiKeys)
-      .set({ isActive: false })
-      .where(eq(agentApiKeys.agentId, agent.id));
+      if (updated.length === 0) {
+        const [row] = await tx
+          .select()
+          .from(agentProfiles)
+          .where(eq(agentProfiles.id, agent.id))
+          .limit(1);
+        if (row?.ownerId && row.ownerId !== userId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You cannot delete this agent",
+          });
+        }
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No agent profile found",
+        });
+      }
+
+      const profile = updated[0]!;
+      const keys = await tx
+        .select({ id: agentApiKeys.id })
+        .from(agentApiKeys)
+        .where(callerKeyWhere(profile.id, userId));
+
+      if (keys.length === 0) return;
+
+      const revoked = await tx
+        .update(agentApiKeys)
+        .set({ isActive: false })
+        .where(callerKeyWhere(profile.id, userId))
+        .returning();
+
+      if (revoked.length > 0) return;
+
+      const [foreign] = await tx
+        .select({ id: agentApiKeys.id })
+        .from(agentApiKeys)
+        .where(
+          and(
+            eq(agentApiKeys.agentId, profile.id),
+            eq(agentApiKeys.isActive, true),
+            ne(agentApiKeys.ownerId, userId),
+          ),
+        )
+        .limit(1);
+
+      if (foreign) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You cannot delete this agent",
+        });
+      }
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Agent API keys could not be revoked",
+      });
+    });
 
     return { success: true };
   }),
 
   // ── API Keys ──────────────────────────────────────────────────────────────
 
-  /** Generate a new API key for the current user's agent (revokes existing keys). */
+  /** Generate a new API key for the current user's live agent (revokes existing keys).
+   * An inactive profile must not receive a credential: auth rejects it, and
+   * returning a new key would look like a successful rotate. */
   generateKey: protectedProcedure.mutation(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
     const [agent] = await ctx.db
       .select()
       .from(agentProfiles)
-      .where(eq(agentProfiles.ownerId, userId))
+      .where(ownedLiveAgentWhere(userId))
       .limit(1);
 
     if (!agent) {
       throw new TRPCError({
         code: "NOT_FOUND",
-        message: "No agent profile found",
+        message: "No active agent profile found",
       });
     }
 
-    // Revoke all existing active keys for this agent
-    await ctx.db
-      .update(agentApiKeys)
-      .set({ isActive: false })
-      .where(
-        and(
-          eq(agentApiKeys.agentId, agent.id),
-          eq(agentApiKeys.isActive, true),
-        ),
-      );
+    const activeKeys = await ctx.db
+      .select({ id: agentApiKeys.id })
+      .from(agentApiKeys)
+      .where(callerActiveKeyWhere(agent.id, userId));
 
-    // Generate a new key
+    if (activeKeys.length > 0) {
+      const revoked = await ctx.db
+        .update(agentApiKeys)
+        .set({ isActive: false })
+        .where(callerActiveKeyWhere(agent.id, userId))
+        .returning();
+
+      if (revoked.length === 0) {
+        const [foreign] = await ctx.db
+          .select({ id: agentApiKeys.id })
+          .from(agentApiKeys)
+          .where(
+            and(
+              eq(agentApiKeys.agentId, agent.id),
+              eq(agentApiKeys.isActive, true),
+              ne(agentApiKeys.ownerId, userId),
+            ),
+          )
+          .limit(1);
+        if (foreign) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You cannot rotate this agent's API key",
+          });
+        }
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "API key could not be rotated",
+        });
+      }
+    }
+
     const { raw, hash, prefix } = generateApiKey();
 
     await ctx.db.insert(agentApiKeys).values({
@@ -352,6 +491,7 @@ export const agentManagementRouter = createTRPCRouter({
       ownerId: userId,
       keyHash: hash,
       keyPrefix: prefix,
+      isActive: true,
     });
 
     return { key: raw, prefix };
@@ -394,7 +534,7 @@ export const agentManagementRouter = createTRPCRouter({
     const [agent] = await ctx.db
       .select()
       .from(agentProfiles)
-      .where(eq(agentProfiles.ownerId, userId))
+      .where(ownedLiveAgentWhere(userId))
       .limit(1);
 
     if (!agent) return null;
@@ -1274,7 +1414,7 @@ export const agentManagementRouter = createTRPCRouter({
     const [existing] = await ctx.db
       .select({ id: agentProfiles.id })
       .from(agentProfiles)
-      .where(eq(agentProfiles.ownerId, userId))
+      .where(ownedLiveAgentWhere(userId))
       .limit(1);
 
     const agents = await ctx.db
@@ -1334,11 +1474,11 @@ export const agentManagementRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Check user doesn't already own an agent
+      // A soft-deleted profile must not occupy the one-agent slot.
       const [existing] = await ctx.db
         .select({ id: agentProfiles.id })
         .from(agentProfiles)
-        .where(eq(agentProfiles.ownerId, userId))
+        .where(ownedLiveAgentWhere(userId))
         .limit(1);
 
       if (existing) {
@@ -1391,7 +1531,10 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
-      // Claim: set owner, clear claim token, upgrade status
+      // Drop owner_id on inactive rows first. The column is UNIQUE, so the
+      // claim update below cannot assign it while a soft-deleted profile holds it.
+      await releaseInactiveOwnerSlot(ctx.db, userId);
+
       await ctx.db
         .update(agentProfiles)
         .set({
