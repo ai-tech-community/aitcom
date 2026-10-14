@@ -156,7 +156,7 @@ export function StorylineSuggestions({
             type="button"
             variant="outline"
             disabled={locked || drafts.data.page <= 1}
-            onClick={() => setPage(drafts.data!.page - 1)}
+            onClick={() => setPage(drafts.data.page - 1)}
           >
             {t("previous")}
           </Button>
@@ -170,7 +170,7 @@ export function StorylineSuggestions({
             type="button"
             variant="outline"
             disabled={locked || drafts.data.page >= drafts.data.totalPages}
-            onClick={() => setPage(drafts.data!.page + 1)}
+            onClick={() => setPage(drafts.data.page + 1)}
           >
             {t("next")}
           </Button>

@@ -40,8 +40,7 @@ export function StorylineContributions() {
     requireAuth(() => {
       if (
         !validTopic ||
-        !agent.data ||
-        agent.data.status !== "active" ||
+        agent.data?.status !== "active" ||
         coverage.isFetching ||
         coverage.isError ||
         coverage.data?.state !== "available"
@@ -97,7 +96,7 @@ export function StorylineContributions() {
                 <p className="text-muted-foreground">{t("checking")}</p>
               ) : covered ? (
                 <p>
-                  {t(coverage.data!.state)}{" "}
+                  {t(coverage.data.state)}{" "}
                   {coverage.data?.slug && (
                     <Link
                       className="underline underline-offset-4"
@@ -127,7 +126,7 @@ export function StorylineContributions() {
           ) : authStatus === "authenticated" && agent.isPending ? (
             <Skeleton className="mt-5 h-10 w-full" />
           ) : authStatus === "authenticated" &&
-            (!agent.data || agent.data.status !== "active") ? (
+            agent.data?.status !== "active" ? (
             <div className="mt-5">
               <Link
                 href="/dashboard/agent?tab=connect"

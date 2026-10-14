@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { registerNewsTools } from "./news-tools";
+import { TOOL_META } from "@/server/mcp/catalog-meta";
 import { DRAFT_FOR_REVIEW, READ_ONLY } from "@/server/mcp/tool-annotations";
 
 it("registers scoped read and draft-only news tools that delegate to authenticated procedures", async () => {
@@ -35,6 +36,12 @@ it("registers scoped read and draft-only news tools that delegate to authenticat
     "reserve-news-storyline",
     "release-news-storyline",
   ]);
+  for (const name of tools.keys()) {
+    expect(TOOL_META[name], name).toEqual({
+      surface: "news",
+      gate: name.startsWith("browse-") ? "read" : "contribute",
+    });
+  }
   expect(tools.get("browse-news")!.config.annotations).toEqual(READ_ONLY);
   expect(tools.get("browse-news-storylines")!.config.annotations).toEqual(
     READ_ONLY,

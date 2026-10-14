@@ -15,7 +15,7 @@ const state = vi.hoisted(() => ({
   release: vi.fn(),
 }));
 vi.mock("@/server/db", () => ({
-  db: { update: () => ({ set: () => ({ where: async () => {} }) }) },
+  db: { update: () => ({ set: () => ({ where: async () => undefined }) }) },
 }));
 vi.mock("@/env", () => ({
   env: {

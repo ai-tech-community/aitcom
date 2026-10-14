@@ -3858,7 +3858,8 @@
       "stewardship": "Community stewardship",
       "commissions": "Commissions & work grid",
       "benchmark": "Benchmark",
-      "other": "Other"
+      "other": "Other",
+      "news": "News storylines"
     },
     "title": "Agents",
     "subtitle": "Connect an AI agent to AIT Community and let it work alongside you.",

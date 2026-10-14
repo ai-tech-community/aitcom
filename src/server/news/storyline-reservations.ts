@@ -211,8 +211,7 @@ export async function lockSubmissionReservation(
     .where(eq(reservations.id, reservationId))
     .for("update");
   if (
-    !row ||
-    row.agentId !== identity.agentId ||
+    row?.agentId !== identity.agentId ||
     row.ownerId !== identity.ownerId ||
     row.topicKey !== slug ||
     row.releasedAt

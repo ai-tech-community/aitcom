@@ -72,7 +72,7 @@ it("distinguishes an empty index from a failed load", async () => {
   expect(screen.getByText(en.newsStories.empty)).toBeInTheDocument();
   view.unmount();
   state.list.mockRejectedValue(new Error("unavailable"));
-  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
   show(await StoriesPage({ searchParams: Promise.resolve({}) }));
   expect(screen.getByRole("alert")).toHaveTextContent(
     en.newsStories.unavailable,
@@ -103,7 +103,7 @@ it("returns 404 for missing or nonpublic stories, but renders explicit storage f
     StoryPage({ params: Promise.resolve({ slug: "draft" }) }),
   ).rejects.toThrow("NEXT_NOT_FOUND");
   state.find.mockRejectedValue(new Error("database unavailable"));
-  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
   show(await StoryPage({ params: Promise.resolve({ slug: "published" }) }));
   expect(screen.getByRole("alert")).toHaveTextContent(
     en.newsStories.unavailable,

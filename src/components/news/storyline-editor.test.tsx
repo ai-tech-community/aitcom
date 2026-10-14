@@ -184,7 +184,7 @@ it("blocks story switching while a save is pending", () => {
 it("locks navigation and preserves edits until a stale-story reload settles", async () => {
   state.storyRows = [storyFixture];
   state.detail = storyFixture;
-  let finishReload: (result: { error: null }) => void = () => {};
+  let finishReload!: (result: { error: null }) => void;
   state.refetch.mockImplementation(
     () =>
       new Promise((resolve) => {

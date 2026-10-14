@@ -799,14 +799,14 @@ export function StorylineEditor() {
             <Button
               variant="outline"
               disabled={list.data.page <= 1}
-              onClick={() => setPage(list.data!.page - 1)}
+              onClick={() => setPage(list.data.page - 1)}
             >
               {t("previous")}
             </Button>
             <Button
               variant="outline"
               disabled={list.data.page >= list.data.totalPages}
-              onClick={() => setPage(list.data!.page + 1)}
+              onClick={() => setPage(list.data.page + 1)}
             >
               {t("next")}
             </Button>

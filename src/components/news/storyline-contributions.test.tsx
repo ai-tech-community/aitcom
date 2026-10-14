@@ -112,10 +112,8 @@ it("prepares and copies a brief for the owner's runtime without dispatching work
     screen.getByRole("button", { name: en.newsStories.contribute.prepare }),
   );
   expect(
-    (
-      screen.getByLabelText(
-        en.newsStories.contribute.briefReady,
-      ) as HTMLTextAreaElement
+    screen.getByLabelText<HTMLTextAreaElement>(
+      en.newsStories.contribute.briefReady,
     ).value,
   ).toContain("For Atlas");
   fireEvent.click(
