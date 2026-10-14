@@ -34,6 +34,7 @@ const digest = {
   ],
   jobs: [],
   startups: [],
+  contributors: [],
   discovery: { slug: "makers", name: "Makers" },
 } as Parameters<typeof renderHubDigestHtml>[0];
 
@@ -137,6 +138,36 @@ describe("renderHubDigestText", () => {
     expect(text).toContain(
       "On AIT: https://www.aitcommunity.org/en/news?story=story-1&utm_source=digest&utm_medium=email&utm_campaign=weekly-2026-10-12#news-story-1",
     );
+  });
+
+  it("names the top three contributors and links their profiles", () => {
+    const html = renderHubDigestHtml(
+      {
+        ...digest,
+        contributors: [
+          { name: "Ada", path: "/en/members/ada", points: 60 },
+          { name: "Grace", path: "/en/members/grace", points: 50 },
+          { name: "Lin", path: "/en/members/lin", points: 10 },
+        ],
+      },
+      SEND,
+    );
+    const text = renderHubDigestText(
+      {
+        ...digest,
+        contributors: [
+          { name: "Ada", path: "/en/members/ada", points: 60 },
+          { name: "Grace", path: "/en/members/grace", points: 50 },
+          { name: "Lin", path: "/en/members/lin", points: 10 },
+        ],
+      },
+      SEND,
+    );
+    expect(html).toContain("Contributors");
+    expect(html).toContain("Ada · 60");
+    expect(html).toContain("/en/members/ada");
+    expect(text).toContain("Ada · 60");
+    expect(html.match(/Ada · 60/g)).toHaveLength(1);
   });
 
   it("tags the unsubscribe page and keeps the token out of the campaign", () => {

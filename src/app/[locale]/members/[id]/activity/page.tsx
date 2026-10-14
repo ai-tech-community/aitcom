@@ -13,6 +13,7 @@ import { DashboardSection } from "@/components/dashboard/dashboard-section";
 import { ActivityCalendar } from "@/components/members/profile/activity-calendar";
 import { ProfileEmpty } from "@/components/members/profile/profile-empty";
 import { Button } from "@/components/ui/button";
+import { readContributionStreak } from "@/server/news/contributions";
 
 type Params = Promise<{ id: string; locale: string }>;
 
@@ -41,10 +42,14 @@ export default async function MemberActivityPage({
   params: Params;
 }) {
   const { id } = await params;
-  const [data, activity, t] = await Promise.all([
+  const [data, activity, t, streak] = await Promise.all([
     requireMemberProfile(id),
     getMemberActivity(id),
     getTranslations("memberProfile.activity"),
+    readContributionStreak(id).catch((error: unknown) => {
+      console.error("Profile contribution streak failed to load", error);
+      return null;
+    }),
   ]);
   if (!activity) notFound();
 
@@ -52,41 +57,60 @@ export default async function MemberActivityPage({
   const periods = toStreakPeriods(days);
 
   return (
-    <DashboardSection
-      title={t("title")}
-      status={{ kind: days.length > 0 ? "ready" : "empty" }}
-      empty={
-        <ProfileEmpty
-          isOwner={data.audience === "owner"}
-          title={t("emptyOwnerTitle")}
-          description={t("emptyOwnerDescription")}
-          action={
-            <Button asChild size="sm" variant="outline">
-              <Link href="/events">{t("emptyOwnerCta")}</Link>
-            </Button>
-          }
-          visitorText={t("emptyVisitor")}
-        />
-      }
-    >
-      <div className="space-y-6">
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Stat
-            label={t("currentStreak")}
-            value={t("days", { count: activity.currentStreak })}
+    <>
+      <DashboardSection
+        title={t("title")}
+        status={{ kind: days.length > 0 ? "ready" : "empty" }}
+        empty={
+          <ProfileEmpty
+            isOwner={data.audience === "owner"}
+            title={t("emptyOwnerTitle")}
+            description={t("emptyOwnerDescription")}
+            action={
+              <Button asChild size="sm" variant="outline">
+                <Link href="/events">{t("emptyOwnerCta")}</Link>
+              </Button>
+            }
+            visitorText={t("emptyVisitor")}
           />
-          <Stat
-            label={t("longestStreak")}
-            value={t("days", { count: activity.longestStreak })}
-          />
-          <Stat
-            label={t("activeDays")}
-            value={t("days", { count: days.length })}
-          />
-        </dl>
-        <ActivityCalendar periods={periods} />
-        <p className="text-muted-foreground text-xs">{t("explainer")}</p>
-      </div>
-    </DashboardSection>
+        }
+      >
+        <div className="space-y-6">
+          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <Stat
+              label={t("currentStreak")}
+              value={t("days", { count: activity.currentStreak })}
+            />
+            <Stat
+              label={t("longestStreak")}
+              value={t("days", { count: activity.longestStreak })}
+            />
+            <Stat
+              label={t("activeDays")}
+              value={t("days", { count: days.length })}
+            />
+          </dl>
+          <ActivityCalendar periods={periods} />
+          <p className="text-muted-foreground text-xs">{t("explainer")}</p>
+        </div>
+      </DashboardSection>
+      {streak && streak.longest > 0 ? (
+        <DashboardSection
+          title={t("contributionTitle")}
+          status={{ kind: "ready" }}
+        >
+          <dl className="grid grid-cols-2 gap-4">
+            <Stat
+              label={t("contributionCurrent")}
+              value={t("days", { count: streak.current })}
+            />
+            <Stat
+              label={t("contributionLongest")}
+              value={t("days", { count: streak.longest })}
+            />
+          </dl>
+        </DashboardSection>
+      ) : null}
+    </>
   );
 }

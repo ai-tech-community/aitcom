@@ -165,6 +165,13 @@ export const MILESTONES = {
   profile_complete: { glyph: "id-card" },
   onboarding_complete: { glyph: "compass" },
   tutorial_creator: { glyph: "book" },
+  /** First member to claim a breaking topic from collected reporting. */
+  news_first_scoop: { glyph: "sparkle" },
+  /** Five news stories published from the member's research. */
+  news_five_stories: { glyph: "quill" },
+  news_region_eu: { glyph: "flag" },
+  news_region_il: { glyph: "compass" },
+  news_region_asia: { glyph: "book" },
 } as const satisfies Record<string, { glyph: BadgeGlyph }>;
 
 export type MilestoneSlug = keyof typeof MILESTONES;

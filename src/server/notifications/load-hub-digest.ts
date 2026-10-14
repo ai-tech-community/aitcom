@@ -27,6 +27,7 @@ import {
   summarizeCommunitySection,
   type HubDigest,
 } from "@/server/notifications/digest";
+import { digestPagePath } from "@/server/notifications/digest-items";
 import { selectCommunityHighlights } from "@/server/notifications/digest-sections";
 import {
   loadDigestEvents,
@@ -35,6 +36,7 @@ import {
   loadDigestStartups,
   loadHighlightPool,
 } from "@/server/notifications/digest-sources";
+import { listWeeklyContributorBoard } from "@/server/news/contributions";
 import { resolvePrefs, type OptoutRow } from "@/server/notifications/prefs";
 import {
   buildRitualItems,
@@ -217,13 +219,18 @@ export async function loadHubDigests(
       ]),
     ).values(),
   ];
-  const [highlightPool, events, jobs, startups, news] = await Promise.all([
-    loadHighlightPool(communityRefs, weekAgo),
-    loadDigestEvents(now),
-    loadDigestJobs(),
-    loadDigestStartups(now),
-    loadDigestNews(now),
-  ]);
+  const [highlightPool, events, jobs, startups, news, contributors] =
+    await Promise.all([
+      loadHighlightPool(communityRefs, weekAgo),
+      loadDigestEvents(now),
+      loadDigestJobs(),
+      loadDigestStartups(now),
+      loadDigestNews(now),
+      listWeeklyContributorBoard(now, 3).catch((err: unknown) => {
+        console.error("hub-digest: contributors unavailable", err);
+        return [];
+      }),
+    ]);
 
   const allUserIds = [...byUser.keys()];
   const allOptouts =
@@ -296,6 +303,11 @@ export async function loadHubDigests(
         events,
         jobs,
         startups,
+        contributors: contributors.map((row) => ({
+          name: row.name,
+          path: digestPagePath(row.profilePath),
+          points: row.points,
+        })),
         optedOutCommunityIds: prefs.digestOptOutCommunityIds,
         optedOutSections: prefs.digestOptOutSections,
         discovery,

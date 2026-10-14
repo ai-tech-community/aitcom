@@ -49,6 +49,17 @@ vi.mock("@/server/news/story-suggestions", () => ({
   listOpenStorySuggestions: state.listSuggestions,
   reviewStorySuggestion: state.reviewSuggestion,
 }));
+vi.mock("@/server/news/contributions", () => ({
+  claimWeeklyTopic: vi.fn(),
+  listMemberClaims: vi.fn(),
+  listWeeklyContributorBoard: vi.fn(async () => []),
+  storyCoverageToday: vi.fn(async () => ({
+    covered: 0,
+    total: 5,
+    visible: false,
+  })),
+  recordPublishedStoryCredit: vi.fn(async () => "skipped"),
+}));
 import { newsRouter } from "./news";
 
 const caller = (signedIn = true) =>

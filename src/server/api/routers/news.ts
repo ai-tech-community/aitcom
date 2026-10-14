@@ -33,6 +33,13 @@ import {
   storySuggestionDb,
   submitStorySuggestion,
 } from "@/server/news/story-suggestions";
+import {
+  claimWeeklyTopic,
+  listMemberClaims,
+  listWeeklyContributorBoard,
+  storyCoverageToday,
+  recordPublishedStoryCredit,
+} from "@/server/news/contributions";
 
 import { storylineInputSchema } from "@/lib/news/storylines";
 import {
@@ -85,7 +92,15 @@ export const newsRouter = createTRPCRouter({
     .input(storylineInputSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        return await saveStoryline(input, ctx.session.user.id);
+        const saved = await saveStoryline(input, ctx.session.user.id);
+        if (input.status === "published") {
+          await recordPublishedStoryCredit(saved.id).catch(
+            (creditErr: unknown) => {
+              console.error("news: contribution credit failed", creditErr);
+            },
+          );
+        }
+        return saved;
       } catch (err) {
         if (err instanceof StorylineError)
           throw new TRPCError({
@@ -148,6 +163,32 @@ export const newsRouter = createTRPCRouter({
       }
       return { id: result.id };
     }),
+
+  storyCoverageToday: publicProcedure.query(() => storyCoverageToday()),
+  myStoryClaims: protectedProcedure.query(({ ctx }) =>
+    listMemberClaims(ctx.session.user.id),
+  ),
+  claimStoryTopic: protectedProcedure
+    .input(
+      z.object({
+        topicKey: z.string().trim().min(2).max(100),
+        title: z.string().trim().min(1).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await claimWeeklyTopic({
+        userId: ctx.session.user.id,
+        topicKey: input.topicKey,
+        title: input.title,
+      });
+      if (!result.ok) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "topic" });
+      }
+      return result;
+    }),
+  weeklyContributorBoard: publicProcedure.query(() =>
+    listWeeklyContributorBoard(),
+  ),
 
   listOpenStorySuggestions: storylineStaffProcedure.query(() =>
     listOpenStorySuggestions(),

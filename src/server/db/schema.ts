@@ -5000,3 +5000,53 @@ export const newsStorySuggestions = appSchema.table(
     ),
   ],
 );
+
+/** Points for a claimed topic, a published story, or a breaking-topic bonus. */
+export const newsContributions = appSchema.table(
+  "news_contribution",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    topicKey: d.varchar({ length: 100 }).notNull(),
+    title: d.varchar({ length: 200 }).notNull(),
+    kind: d.text().$type<"claim" | "published" | "breaking">().notNull(),
+    points: d.integer().notNull(),
+    storylineId: d
+      .varchar({ length: 255 })
+      .references(() => newsStorylines.id, { onDelete: "set null" }),
+    region: d.text().$type<"eu" | "il" | "asia">(),
+    expiresAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("news_contribution_user_topic_kind_idx").on(
+      t.userId,
+      t.topicKey,
+      t.kind,
+    ),
+    uniqueIndex("news_contribution_breaking_topic_idx")
+      .on(t.topicKey)
+      .where(sql`${t.kind} = 'breaking'`),
+    index("news_contribution_created_idx").on(t.createdAt),
+    index("news_contribution_user_created_idx").on(t.userId, t.createdAt),
+    check(
+      "news_contribution_kind_check",
+      sql`${t.kind} in ('claim', 'published', 'breaking')`,
+    ),
+    check("news_contribution_points_check", sql`${t.points} >= 0`),
+    check(
+      "news_contribution_region_check",
+      sql`${t.region} is null or ${t.region} in ('eu', 'il', 'asia')`,
+    ),
+  ],
+);

@@ -879,6 +879,9 @@
       "activeDays": "Active days in the last 365 days",
       "days": "{count, plural, one {# day} other {# days}}",
       "explainer": "A day counts when the member did at least one thing here that day (UTC).",
+      "contributionTitle": "News contributions",
+      "contributionCurrent": "Current contribution streak",
+      "contributionLongest": "Longest contribution streak",
       "emptyOwnerTitle": "No activity yet",
       "emptyOwnerDescription": "Each day you take part here lights up a day on this calendar.",
       "emptyOwnerCta": "Find something to do",
@@ -1300,7 +1303,12 @@
       "profile_complete": "Profile complete",
       "onboarding_complete": "Onboarding complete",
       "tutorial_creator": "Tutorial creator",
-      "early_adopter": "Early adopter"
+      "early_adopter": "Early adopter",
+      "news_first_scoop": "First scoop",
+      "news_five_stories": "5 stories",
+      "news_region_eu": "Region expert EU",
+      "news_region_il": "Region expert IL",
+      "news_region_asia": "Region expert Asia"
     },
     "tracks": {
       "regular": "Regular",
@@ -1332,7 +1340,12 @@
       "profile_complete": "Filled in every profile field",
       "onboarding_complete": "Finished every onboarding step",
       "tutorial_creator": "Published a first tutorial",
-      "early_adopter": "One of the first {count} members"
+      "early_adopter": "One of the first {count} members",
+      "news_first_scoop": "First to claim a breaking topic from collected reporting",
+      "news_five_stories": "5 news stories published from your research",
+      "news_region_eu": "3 published stories grounded in EU reporting",
+      "news_region_il": "3 published stories grounded in Israel reporting",
+      "news_region_asia": "3 published stories grounded in Asia reporting"
     },
     "notification": {
       "title": "You earned {badge}",
@@ -4339,6 +4352,8 @@
     "undated": "No date",
     "metaTitle": "News",
     "metaDescription": "Recent AI stories collected for the AIT community.",
+    "leaderboardTitle": "This week",
+    "leaderboardPoints": "{points} pts",
     "rumorLabel": "Member rumor",
     "unverified": "Unverified",
     "hidden": "Hidden",
@@ -4586,7 +4601,18 @@
       "suggestionInbox": "Story suggestions",
       "suggestionEmpty": "No suggestions are waiting for review.",
       "suggestionReview": "Mark reviewed",
-      "suggestionReviewed": "Marked as reviewed."
+      "suggestionReviewed": "Marked as reviewed.",
+      "claim": "Claim this story",
+      "claimSignIn": "Sign in to claim this story",
+      "claimSaved": "Claimed. The brief is copied. {points} points.",
+      "claimBreaking": "You were first on this breaking topic. The brief is copied. {points} points.",
+      "claimAlready": "You already claimed this. The brief is copied again.",
+      "claimFailed": "Could not save the claim. Try again.",
+      "claimCopyFailed": "Claim saved. Copy was unavailable, so use the brief below.",
+      "claimCountdown": "{hours}h {minutes}m left",
+      "claimExpired": "This 24-hour claim has ended.",
+      "coverage": "{covered} of {total} topics covered today",
+      "yourAgentFallback": "your agent"
     }
   }
 }
