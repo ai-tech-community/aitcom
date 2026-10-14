@@ -2,10 +2,7 @@ import { and, desc, eq, gt, isNull } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { memberProfiles, newsStorySuggestions, user } from "@/server/db/schema";
-import {
-  submitStorySuggestion,
-  type StorySuggestionWrite,
-} from "@/lib/news/story-suggestion";
+import { type StorySuggestionWrite } from "@/lib/news/story-suggestion";
 
 export { submitStorySuggestion } from "@/lib/news/story-suggestion";
 
@@ -30,6 +27,19 @@ export const storySuggestionDb: StorySuggestionWrite = {
     return created!.id;
   },
 };
+
+/** First stored label that is not blank: profile name, account name, then email. */
+function storedSubmitter(
+  displayName: string | null,
+  name: string | null,
+  email: string,
+): string {
+  const display = displayName?.trim() ?? "";
+  if (display.length > 0) return display;
+  const given = name?.trim() ?? "";
+  if (given.length > 0) return given;
+  return email.trim();
+}
 
 export type OpenStorySuggestion = {
   id: string;
@@ -67,7 +77,7 @@ export async function listOpenStorySuggestions(): Promise<
     body: row.body,
     url: row.url,
     createdAt: row.createdAt,
-    submitter: row.displayName?.trim() || row.name?.trim() || row.email,
+    submitter: storedSubmitter(row.displayName, row.name, row.email),
   }));
 }
 

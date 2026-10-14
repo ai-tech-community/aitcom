@@ -90,8 +90,8 @@ function escapeRegExp(value: string): string {
 /** The phrase as it is written in the headline, including its punctuation. */
 function phraseInTitle(title: string, words: string[]): string | null {
   const pattern = words.map(escapeRegExp).join("[^a-z0-9]+");
-  const match = title.toLowerCase().match(new RegExp(pattern));
-  if (!match || match.index == null) return null;
+  const match = new RegExp(pattern).exec(title.toLowerCase());
+  if (match?.index == null) return null;
   const slice = title
     .slice(match.index, match.index + match[0].length)
     .replace(/\s+/g, " ")
