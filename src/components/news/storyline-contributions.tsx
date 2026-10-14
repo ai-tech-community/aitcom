@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
@@ -17,10 +17,20 @@ import {
 } from "@/lib/news/research-brief";
 import { storylineSlugSchema } from "@/lib/news/storylines";
 
+function prefersReducedMotion() {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 export function StorylineContributions({
   seedTopic = null,
+  seedToken = 0,
 }: {
   seedTopic?: string | null;
+  seedToken?: number;
 }) {
   const t = useTranslations("newsStories.contribute");
   const fmt = useFormatter();
@@ -29,6 +39,7 @@ export function StorylineContributions({
   const agent = api.agentManagement.getMyAgent.useQuery(undefined, {
     enabled: authStatus === "authenticated",
   });
+  const topicField = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [brief, setBrief] = useState("");
   const [copied, setCopied] = useState(false);
@@ -66,7 +77,14 @@ export function StorylineContributions({
     setBrief("");
     setCopied(false);
     setCopyFailed(false);
-  }, [seedTopic]);
+    const field = topicField.current;
+    if (!field) return;
+    field.focus({ preventScroll: true });
+    field.scrollIntoView({
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+      block: "center",
+    });
+  }, [seedTopic, seedToken]);
   return (
     <>
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
@@ -84,6 +102,7 @@ export function StorylineContributions({
             {t("topic")}
           </label>
           <Input
+            ref={topicField}
             id="research-topic"
             value={title}
             onChange={(e) => editTitle(e.target.value)}

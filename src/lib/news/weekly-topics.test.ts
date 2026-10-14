@@ -30,7 +30,7 @@ describe("suggestWeeklyTopics", () => {
     ).toEqual([]);
   });
 
-  it("copies a shared phrase from the newest headline", () => {
+  it("uses the newest stored headline from a shared cluster", () => {
     const topics = suggestWeeklyTopics(
       [
         item(
@@ -54,16 +54,11 @@ describe("suggestWeeklyTopics", () => {
     );
     const shared = topics.find((topic) => topic.articleIds.length > 1);
     expect(shared).toMatchObject({
-      title: "open models reach",
-      topicKey: "open-models-reach",
+      title: "Why open models reach more laptops",
+      topicKey: "why-open-models-reach-more-laptops",
       articleIds: ["b", "a"],
     });
-    expect(shared?.title).toBe(
-      "Why open models reach more laptops".slice(
-        "Why ".length,
-        "Why open models reach".length,
-      ),
-    );
+    expect(shared?.title).not.toBe("open models reach");
   });
 
   it("keeps the headline's own casing and punctuation", () => {
@@ -75,18 +70,59 @@ describe("suggestWeeklyTopics", () => {
       new Set(),
       NOW,
     );
-    expect(topic?.title).toBe("EU AI Act");
+    expect(topic?.title).toBe("The EU AI Act, one year on");
     expect(topic?.articleIds).toEqual(["b", "a"]);
   });
 
-  it("skips topics that already have a storyline key", () => {
+  it("names clusters after real headlines instead of keyword fragments", () => {
+    const topics = suggestWeeklyTopics(
+      [
+        item(
+          "a",
+          "Character AI launches a safety board",
+          "2026-10-12T08:00:00.000Z",
+        ),
+        item(
+          "b",
+          "Character AI bans teen accounts overnight",
+          "2026-10-14T09:00:00.000Z",
+        ),
+        item(
+          "c",
+          "Muse Wonder opens a studio in Amsterdam",
+          "2026-10-13T08:00:00.000Z",
+        ),
+        item("d", "Muse Wonder raises a new round", "2026-10-14T07:00:00.000Z"),
+      ],
+      new Set(),
+      NOW,
+    );
+    const titles = topics.map((topic) => topic.title);
+    expect(titles).toContain("Character AI bans teen accounts overnight");
+    expect(titles).toContain("Muse Wonder raises a new round");
+    expect(titles).not.toContain("Character AI");
+    expect(titles).not.toContain("Muse Wonder");
+    expect(titles).not.toContain("Software-update");
+    const character = topics.find((topic) =>
+      topic.title.startsWith("Character AI"),
+    );
+    expect(character?.articleIds).toEqual(["b", "a"]);
+  });
+
+  it("skips a taken headline and uses another article from the same cluster", () => {
     const topics = suggestWeeklyTopics(
       [
         item("a", "Open models reach the workplace"),
         item("b", "Open models reach new labs"),
       ],
-      new Set(["open-models-reach"]),
+      new Set(["open-models-reach-the-workplace"]),
       NOW,
+    );
+    expect(topics.map((topic) => topic.title)).toContain(
+      "Open models reach new labs",
+    );
+    expect(topics.map((topic) => topic.title)).not.toContain(
+      "Open models reach the workplace",
     );
     expect(topics.map((topic) => topic.topicKey)).not.toContain(
       "open-models-reach",

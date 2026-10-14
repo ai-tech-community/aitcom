@@ -9,7 +9,7 @@ export type WeeklyNewsItem = {
 };
 
 export type WeeklyTopic = {
-  /** A phrase copied from a collected headline. Never rewritten. */
+  /** A collected article's own headline. Never rewritten or invented. */
   title: string;
   topicKey: string;
   articleIds: string[];
@@ -83,22 +83,6 @@ function phraseOk(words: string[]): boolean {
   return content.some((word) => word.length >= 4) || content.length >= 2;
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/** The phrase as it is written in the headline, including its punctuation. */
-function phraseInTitle(title: string, words: string[]): string | null {
-  const pattern = words.map(escapeRegExp).join("[^a-z0-9]+");
-  const match = new RegExp(pattern).exec(title.toLowerCase());
-  if (match?.index == null) return null;
-  const slice = title
-    .slice(match.index, match.index + match[0].length)
-    .replace(/\s+/g, " ")
-    .trim();
-  return slice.length > 0 ? slice : null;
-}
-
 function usableKey(
   title: string,
   occupied: ReadonlySet<string>,
@@ -111,11 +95,18 @@ function usableKey(
 
 type Candidate = WeeklyTopic & { score: number };
 
+function storedHeadline(title: string): string | null {
+  const headline = title.trim().replace(/\s+/g, " ");
+  if (headline.length < 12 || headline.length > 200) return null;
+  return headline;
+}
+
 /**
  * Up to five topics taken from this week's headlines.
- * A topic title is a span of a real headline. Shared phrases across two or
- * more stories come first; remaining slots use those headlines themselves.
- * Returns nothing when the week has no usable headline.
+ * Articles that share a phrase are one cluster. The topic title is the
+ * newest article's own headline in that cluster, never the phrase itself.
+ * Remaining slots use other stored headlines. Returns nothing when the week
+ * has no usable headline.
  */
 export function suggestWeeklyTopics(
   items: readonly WeeklyNewsItem[],
@@ -164,15 +155,25 @@ export function suggestWeeklyTopics(
     const articles = [...group.articles.values()].sort(
       (a, b) => b.at.getTime() - a.at.getTime() || a.id.localeCompare(b.id),
     );
-    const title = phraseInTitle(articles[0]!.title, group.words);
-    if (!title) continue;
-    const topicKey = usableKey(title, occupied);
-    if (!topicKey) continue;
+    let chosen: WeeklyNewsItem | null = null;
+    let title = "";
+    let topicKey: string | null = null;
+    for (const article of articles) {
+      const headline = storedHeadline(article.title);
+      if (!headline) continue;
+      const key = usableKey(headline, occupied);
+      if (!key) continue;
+      chosen = article;
+      title = headline;
+      topicKey = key;
+      break;
+    }
+    if (!chosen || !topicKey) continue;
     shared.push({
       title,
       topicKey,
       articleIds: articles.map((article) => article.id),
-      newestAt: articles[0]!.at.toISOString(),
+      newestAt: chosen.at.toISOString(),
       score: articles.length * 10 + group.words.length,
     });
   }
@@ -210,8 +211,8 @@ export function suggestWeeklyTopics(
   for (const item of singles) {
     if (picked.length >= TOPIC_LIMIT) break;
     if (usedArticles.has(item.id)) continue;
-    const title = item.title.trim().replace(/\s+/g, " ");
-    if (title.length < 12 || title.length > 200) continue;
+    const title = storedHeadline(item.title);
+    if (!title) continue;
     const topicKey = usableKey(title, occupied);
     if (!topicKey || usedKeys.has(topicKey)) continue;
     picked.push({

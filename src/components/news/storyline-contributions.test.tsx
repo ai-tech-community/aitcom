@@ -195,6 +195,29 @@ it("teaches members without an agent how to connect one and renders Dutch copy",
   ).not.toBeInTheDocument();
 });
 
+it("fills, focuses, and scrolls to a seeded research topic, including a repeat of the same title", async () => {
+  const scrollIntoView = vi.fn();
+  Element.prototype.scrollIntoView = scrollIntoView;
+  const view = (token: number) => (
+    <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+      <StorylineContributions seedTopic="Open models reach" seedToken={token} />
+    </NextIntlClientProvider>
+  );
+  const { rerender } = render(view(1));
+  const field = screen.getByLabelText<HTMLInputElement>(
+    en.newsStories.contribute.topic,
+  );
+  await waitFor(() => expect(field).toHaveValue("Open models reach"));
+  expect(field).toHaveFocus();
+  expect(scrollIntoView).toHaveBeenCalled();
+
+  fireEvent.change(field, { target: { value: "A different angle" } });
+  expect(field).toHaveValue("A different angle");
+  rerender(view(2));
+  await waitFor(() => expect(field).toHaveValue("Open models reach"));
+  expect(field).toHaveFocus();
+});
+
 it("does not prepare a brief whose topic would collide with a static route", () => {
   show();
   fireEvent.change(screen.getByLabelText(en.newsStories.contribute.topic), {
