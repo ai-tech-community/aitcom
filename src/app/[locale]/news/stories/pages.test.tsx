@@ -50,6 +50,9 @@ vi.mock("@/server/better-auth/server", () => ({
 vi.mock("@/components/news/storyline-editor", () => ({
   StorylineEditor: () => <div>Staff editor</div>,
 }));
+vi.mock("@/components/news/storyline-draft-queue", () => ({
+  StorylineDraftQueue: () => <div>Draft queue</div>,
+}));
 vi.mock("@/components/news/story-suggestion-inbox", () => ({
   StorySuggestionInbox: () => <div>Suggestion inbox</div>,
 }));
@@ -124,4 +127,9 @@ it("keeps the editor inaccessible to ordinary members", async () => {
   state.staff = true;
   show(await ManageStoriesPage());
   expect(screen.getByText("Staff editor")).toBeInTheDocument();
+  expect(screen.getByText("Draft queue")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Review queue" })).toHaveAttribute(
+    "href",
+    "/news/stories/drafts",
+  );
 });

@@ -55,6 +55,10 @@ vi.mock("./storyline-reservations", async (original) => {
     lockSubmissionReservation: vi.fn(async () => state.reservation),
   };
 });
+const notify = vi.hoisted(() => vi.fn(async () => undefined));
+vi.mock("./storyline-draft-notify", () => ({
+  notifyStorylineDraftReview: notify,
+}));
 import {
   submitAgentStoryline,
   listAgentStorylineDrafts,
@@ -70,6 +74,8 @@ beforeEach(() => {
   state.rows = [];
   state.writes = [];
   state.reservation = { row: { id: "lease" }, draftId: null };
+  notify.mockReset();
+  notify.mockResolvedValue(undefined);
 });
 it("stores a pending attributed draft without a model dependency or publishing", async () => {
   state.rows = [[{ id: "agent-a" }], articles, []];
@@ -88,6 +94,28 @@ it("stores a pending attributed draft without a model dependency or publishing",
     metadata: { input: { status: "draft", revision: 0 } },
   });
   expect(state.writes[1]?.value).toEqual({ draftId: "stored-draft" });
+  expect(state.writes[0]?.value.metadata).toMatchObject({
+    destinationPath: expect.stringMatching(/^\/news\/stories\/drafts\//),
+  });
+  expect(notify).toHaveBeenCalledWith({
+    draftId: "stored-draft",
+    ownerId: "owner-a",
+    title: proposal().titleEn,
+  });
+});
+it("still stores the draft when notifying humans fails", async () => {
+  state.rows = [[{ id: "agent-a" }], articles, []];
+  notify.mockRejectedValue(new Error("mail down"));
+  const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  await expect(
+    submitAgentStoryline(
+      { agentId: "agent-a", ownerId: "owner-a" },
+      proposal(),
+      "lease",
+    ),
+  ).resolves.toMatchObject({ draftId: "stored-draft", reused: false });
+  expect(log).toHaveBeenCalled();
+  log.mockRestore();
 });
 it("rejects unknown or invented evidence before a draft is stored", async () => {
   state.rows = [[{ id: "agent-a" }], articles];
@@ -117,6 +145,7 @@ it("reuses an already submitted reservation without another insert", async () =>
     ),
   ).toMatchObject({ draftId: "existing", reused: true });
   expect(state.writes).toEqual([]);
+  expect(notify).not.toHaveBeenCalled();
 });
 it("caps outstanding proposals before consuming the reservation", async () => {
   state.rows = [

@@ -280,6 +280,12 @@ describe("buildSitemapEntries", () => {
       "https://www.aitcommunity.org/en/news/stories/contribute",
     );
     expect(staticUrls).not.toContain(
+      "https://www.aitcommunity.org/en/news/stories/drafts",
+    );
+    expect(staticUrls).not.toContain(
+      "https://www.aitcommunity.org/en/news/stories/drafts/f79b8204-0a7a-485a-82c9-a2a072034eab",
+    );
+    expect(staticUrls).not.toContain(
       "https://www.aitcommunity.org/nl/news/stories/contribute",
     );
     expect(staticUrls).not.toContain(

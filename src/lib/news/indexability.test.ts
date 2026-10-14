@@ -24,6 +24,16 @@ describe("news game indexability", () => {
     ).toBe(true);
     expect(
       isUnlistedNewsGamePath(
+        "https://www.aitcommunity.org/en/news/stories/drafts",
+      ),
+    ).toBe(true);
+    expect(
+      isUnlistedNewsGamePath(
+        "https://www.aitcommunity.org/nl/news/stories/drafts/f79b8204-0a7a-485a-82c9-a2a072034eab",
+      ),
+    ).toBe(true);
+    expect(
+      isUnlistedNewsGamePath(
         "https://www.aitcommunity.org/en/news?week=2026-10-12",
       ),
     ).toBe(true);

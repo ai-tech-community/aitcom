@@ -11,6 +11,7 @@ import {
   lockNewsAgent,
   lockSubmissionReservation,
 } from "./storyline-reservations";
+import { storylineDraftReviewPath } from "@/lib/news/storyline-draft-review";
 import { storylineInputSchema } from "@/lib/news/storylines";
 import {
   validateStorylineProposals,
@@ -18,6 +19,7 @@ import {
   type storylineProposalSchema,
 } from "@/lib/news/storyline-suggestions";
 import type { z } from "zod";
+import { notifyStorylineDraftReview } from "./storyline-draft-notify";
 
 export const NEWS_STORYLINE_DRAFT_TYPE = "news_storyline";
 const MAX_PENDING = 10;
@@ -35,7 +37,7 @@ export async function submitAgentStoryline(
   proposal: z.infer<typeof storylineProposalSchema>,
   reservationId: string,
 ) {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     await lockNewsAgent(tx, identity);
     const reservation = await lockSubmissionReservation(
       tx,
@@ -104,9 +106,11 @@ export async function submitAgentStoryline(
         message:
           "Review or dismiss pending news proposals before submitting more.",
       });
+    const draftId = crypto.randomUUID();
     const [draft] = await tx
       .insert(agentDrafts)
       .values({
+        id: draftId,
         agentId: identity.agentId,
         ownerId: identity.ownerId,
         type: NEWS_STORYLINE_DRAFT_TYPE,
@@ -119,7 +123,7 @@ export async function submitAgentStoryline(
           topicKey: proposal.slug,
           title: input.titleEn,
           destinationLabel: "News storylines · editorial review",
-          destinationPath: "/news/stories/manage",
+          destinationPath: storylineDraftReviewPath(draftId),
         },
       })
       .returning({ id: agentDrafts.id });
@@ -129,6 +133,18 @@ export async function submitAgentStoryline(
       .where(eq(newsStorylineReservations.id, reservation.row.id));
     return { mode: "draft" as const, draftId: draft!.id, reused: false };
   });
+  if (!result.reused) {
+    try {
+      await notifyStorylineDraftReview({
+        draftId: result.draftId,
+        ownerId: identity.ownerId,
+        title: proposal.titleEn,
+      });
+    } catch (err) {
+      console.error("news: storyline draft notification failed", err);
+    }
+  }
+  return result;
 }
 
 /** Staff-only caller. Every imported input is revalidated against current sources. */

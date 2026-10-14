@@ -9,6 +9,7 @@ import { ProfileTab } from "@/components/agent/profile-tab";
 import { ConnectTab } from "@/components/agent/connect-tab";
 import { ActivityTab } from "@/components/agent/activity-tab";
 import { ManifestGateBanner } from "@/components/agent/manifest-gate-banner";
+import { StorylineDraftsAwaiting } from "@/components/news/storyline-drafts-awaiting";
 import { ErrorState } from "@/components/ui/error-state";
 import {
   RevealedKeyProvider,
@@ -65,6 +66,7 @@ function AgentDashboardContentInner({
 
   return (
     <>
+      <StorylineDraftsAwaiting />
       <ManifestGateBanner />
       <div className="border-border bg-card mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
         <div>

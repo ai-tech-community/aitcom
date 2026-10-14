@@ -9,6 +9,9 @@ const state = vi.hoisted(() => ({
   search: vi.fn(),
   inbox: vi.fn(),
   dismiss: vi.fn(),
+  pendingDrafts: vi.fn(),
+  approveDraft: vi.fn(),
+  readDraft: vi.fn(),
   submitSuggestion: vi.fn(),
   listSuggestions: vi.fn(),
   reviewSuggestion: vi.fn(),
@@ -42,6 +45,11 @@ vi.mock("@/server/news/storylines", () => ({
 vi.mock("@/server/news/agent-storylines", () => ({
   listAgentStorylineDrafts: state.inbox,
   dismissAgentStorylineDraft: state.dismiss,
+}));
+vi.mock("@/server/news/storyline-drafts", () => ({
+  listPendingStorylineDrafts: state.pendingDrafts,
+  approveStorylineDraft: state.approveDraft,
+  readStorylineDraft: state.readDraft,
 }));
 vi.mock("@/server/news/story-suggestions", () => ({
   storySuggestionDb: {},
@@ -99,6 +107,12 @@ it("denies every editorial endpoint to ordinary members before storage access", 
   await expect(
     caller().dismissAgentStorylineDraft({ draftId: "d1" }),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  await expect(caller().listStorylineDraftQueue()).rejects.toMatchObject({
+    code: "FORBIDDEN",
+  });
+  await expect(
+    caller().approveAgentStorylineDraft({ draftId: "d1" }),
+  ).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(caller().listOpenStorySuggestions()).rejects.toMatchObject({
     code: "FORBIDDEN",
   });
@@ -112,6 +126,8 @@ it("denies every editorial endpoint to ordinary members before storage access", 
     state.save,
     state.inbox,
     state.dismiss,
+    state.pendingDrafts,
+    state.approveDraft,
     state.listSuggestions,
     state.reviewSuggestion,
   ])
@@ -144,6 +160,32 @@ it("allows staff to read and dismiss proposals in the editorial inbox", async ()
   state.dismiss.mockResolvedValue({ id: "d1" });
   await caller().dismissAgentStorylineDraft({ draftId: "d1" });
   expect(state.dismiss).toHaveBeenCalledWith("d1");
+  state.pendingDrafts.mockResolvedValue([{ id: "d1" }]);
+  await expect(caller().listStorylineDraftQueue()).resolves.toEqual([
+    { id: "d1" },
+  ]);
+  state.approveDraft.mockResolvedValue({ id: "story" });
+  await expect(
+    caller().approveAgentStorylineDraft({ draftId: "d1" }),
+  ).resolves.toEqual({ id: "story" });
+  expect(state.approveDraft).toHaveBeenCalledWith("d1", "editor");
+});
+
+it("shows a pending draft to its owner and hides it from other members", async () => {
+  state.pendingDrafts.mockResolvedValue([{ id: "d1", ownerId: "editor" }]);
+  await expect(caller().listMyStorylineDrafts()).resolves.toEqual([
+    { id: "d1", ownerId: "editor" },
+  ]);
+  expect(state.pendingDrafts).toHaveBeenCalledWith({ ownerId: "editor" });
+  state.readDraft.mockResolvedValue({ id: "d1", ownerId: "someone-else" });
+  await expect(
+    caller().readStorylineDraft({ draftId: "d1" }),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  state.staff = true;
+  state.readDraft.mockResolvedValue({ id: "d1", ownerId: "someone-else" });
+  await expect(
+    caller().readStorylineDraft({ draftId: "d1" }),
+  ).resolves.toMatchObject({ id: "d1", canApprove: true });
 });
 
 it("stores a valid suggestion for a signed-in member and rejects a bad link", async () => {

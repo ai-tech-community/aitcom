@@ -9,7 +9,7 @@ export const storylineRelations = [
 ] as const;
 
 export const isReservedStorylineSlug = (s: string) =>
-  ["manage", "contribute"].includes(s);
+  ["manage", "contribute", "drafts"].includes(s);
 export const storylineSlugSchema = z
   .string()
   .trim()
