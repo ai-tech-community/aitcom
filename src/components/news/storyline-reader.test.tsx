@@ -85,6 +85,14 @@ it("uses stable storyline URLs from the ongoing-story list", () => {
             latestAt: "2026-10-13T00:00:00.000Z",
             score: 4,
             myVote: "up",
+            credit: {
+              human: {
+                name: "Ada Lovelace",
+                profilePath: "/members/ada",
+                image: null,
+              },
+              agentName: "Scout",
+            },
           },
         ]}
       />
@@ -95,6 +103,18 @@ it("uses stable storyline URLs from the ongoing-story list", () => {
   ).toHaveAttribute("href", "/news/stories/ai-on-your-devices");
   expect(screen.getByText("3 articles")).toBeInTheDocument();
   expect(screen.getByText("Score 4")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Ada Lovelace" })).toHaveAttribute(
+    "href",
+    "/members/ada",
+  );
+  expect(screen.getByText("AL")).toBeInTheDocument();
+  expect(screen.getByText("Agent: Scout")).toBeInTheDocument();
+  expect(document.querySelector("article time")).toHaveAttribute(
+    "dateTime",
+    "2026-10-13T00:00:00.000Z",
+  );
+  expect(document.querySelector("article")?.className).toContain("rounded-xl");
+  expect(screen.queryByText(/Connected agent/)).not.toBeInTheDocument();
 });
 it("explains an incoming relationship with sources from both stories", () => {
   const target = {

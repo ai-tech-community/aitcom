@@ -1,6 +1,8 @@
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { newsSourceFromUrl } from "@/lib/news/table";
+import { getInitials } from "@/lib/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "@/i18n/navigation";
 import {
   storylineCopy,
@@ -18,50 +20,78 @@ export function StorylineList({ items }: { items: StorylineSummary[] }) {
   const t = useTranslations("newsStories");
   const locale = useLocale();
   return (
-    <div className="border-border border-t">
+    <ul className="flex flex-col gap-4">
       {items.map((item) => {
         const copy = storylineCopy(item, locale);
+        const human = item.credit.human;
+        const agentName = item.credit.agentName;
         return (
-          <article
-            key={item.id}
-            className="border-border grid gap-3 border-b py-6 sm:grid-cols-[1fr_12rem] sm:gap-8"
-          >
-            <div>
-              <Link
-                href={`/news/stories/${item.slug}`}
-                className="focus-visible:ring-ring group inline-flex items-center gap-3 rounded-sm text-xl font-semibold underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
-              >
-                <span>{copy.title}</span>
-                <ArrowRight className="size-4 shrink-0" aria-hidden />
-              </Link>
-              <p className="text-muted-foreground mt-2 max-w-prose text-sm leading-relaxed">
-                {copy.overview}
-              </p>
-              {copy.fallback && (
-                <p className="text-muted-foreground mt-2 text-xs" lang="nl">
-                  {t("fallback")}
+          <li key={item.id}>
+            <article className="border-border flex gap-2 rounded-xl border p-4 shadow-sm sm:gap-4 sm:p-6">
+              <StorylineVoteControls
+                storyId={item.id}
+                score={item.score}
+                myVote={item.myVote}
+              />
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base leading-snug font-semibold">
+                  <Link
+                    href={`/news/stories/${item.slug}`}
+                    className="focus-visible:ring-ring rounded-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    {copy.title}
+                  </Link>
+                </h2>
+                <p className="text-muted-foreground mt-2 line-clamp-3 max-w-prose text-sm leading-relaxed">
+                  {copy.overview}
                 </p>
-              )}
-              <div className="mt-4">
-                <StorylineVoteControls
-                  storyId={item.id}
-                  score={item.score}
-                  myVote={item.myVote}
-                />
+                {copy.fallback && (
+                  <p className="text-muted-foreground mt-2 text-xs" lang="nl">
+                    {t("fallback")}
+                  </p>
+                )}
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {human ? (
+                    <Link
+                      href={human.profilePath}
+                      className="focus-visible:ring-ring inline-flex min-w-0 items-center gap-2 rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                      <Avatar size="sm" aria-hidden="true">
+                        {human.image ? (
+                          <AvatarImage src={human.image} alt="" />
+                        ) : null}
+                        <AvatarFallback className="font-mono text-xs">
+                          {getInitials(human.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate text-sm font-medium underline-offset-4 hover:underline">
+                        {human.name}
+                      </span>
+                    </Link>
+                  ) : null}
+                  {agentName ? (
+                    <span className="text-muted-foreground text-sm">
+                      {t("cardAgent", { name: agentName })}
+                    </span>
+                  ) : null}
+                  {item.latestAt ? (
+                    <time
+                      dateTime={item.latestAt}
+                      className="text-muted-foreground font-mono text-xs"
+                    >
+                      {formatStorylineDate(item.latestAt, locale)}
+                    </time>
+                  ) : null}
+                  <span className="text-muted-foreground font-mono text-xs">
+                    {t("articleCount", { count: item.articleCount })}
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="text-muted-foreground flex gap-3 font-mono text-xs sm:flex-col sm:items-end">
-              <span>{t("articleCount", { count: item.articleCount })}</span>
-              {item.latestAt && (
-                <time dateTime={item.latestAt}>
-                  {formatStorylineDate(item.latestAt, locale)}
-                </time>
-              )}
-            </div>
-          </article>
+            </article>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 

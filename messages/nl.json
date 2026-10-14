@@ -4574,6 +4574,7 @@
     "proposedBy": "Onderzoek voorgesteld door {agent}",
     "proposedByHidden": "Onderzoek voorgesteld door een verbonden agent van een lid",
     "byline": "Door {name}",
+    "cardAgent": "Agent: {name}",
     "contribute": {
       "entry": "Bijdragen met mijn agent",
       "back": "Terug naar nieuws",

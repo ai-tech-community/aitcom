@@ -12,10 +12,15 @@ import { newsTableSearchRegex } from "@/lib/news/table-query";
 import { db } from "@/server/db";
 import { storylineVoteChoice } from "@/lib/news/storyline-vote";
 import {
+  storylineCredit,
+  type StorylineCredit,
+} from "@/lib/news/storyline-credit";
+import {
   newsItems,
   agentDrafts,
   agentProfiles,
   memberProfiles,
+  user,
   newsStorylines as stories,
   newsStorylineArticles as memberships,
   newsStorylineConnections as connections,
@@ -121,6 +126,12 @@ export async function listStorylines(
     )
     .limit(limit)
     .offset((page - 1) * limit);
+  const credits = await loadStorylineCredits(
+    rows.map((row) => row.storyline.id),
+  ).catch((err: unknown) => {
+    console.error("news: story credits unavailable", err);
+    return new Map<string, StorylineCredit>();
+  });
   return {
     items: rows.map((row) => ({
       ...row.storyline,
@@ -128,6 +139,10 @@ export async function listStorylines(
       latestAt: row.latestAt ? new Date(row.latestAt).toISOString() : null,
       score: Number(row.score ?? 0),
       myVote: storylineVoteChoice(row.myVote),
+      credit: credits.get(row.storyline.id) ?? {
+        human: null,
+        agentName: null,
+      },
     })),
     total,
     page,
@@ -207,22 +222,20 @@ export async function findStoryline(
       ),
     )
     .limit(1);
-  const proposedBy = sourceAgent
-    ? {
-        name:
-          sourceAgent.visibilityMode === "visible" ? sourceAgent.name : null,
-      }
+  const credit = sourceAgent
+    ? storylineCredit({
+        ownerId: sourceAgent.ownerId,
+        displayName: sourceAgent.displayName,
+        isPublic: sourceAgent.isPublic,
+        hiddenFromPublic: sourceAgent.hiddenFromPublic,
+        agentName: sourceAgent.name,
+        agentVisibility: sourceAgent.visibilityMode,
+      })
     : null;
-  const contributor =
-    sourceAgent?.ownerId &&
-    sourceAgent.displayName?.trim() &&
-    sourceAgent.isPublic !== false &&
-    !sourceAgent.hiddenFromPublic
-      ? {
-          name: sourceAgent.displayName.trim(),
-          profilePath: `/members/${sourceAgent.ownerId}`,
-        }
-      : null;
+  const proposedBy = sourceAgent ? { name: credit?.agentName ?? null } : null;
+  const contributor = credit?.human
+    ? { name: credit.human.name, profilePath: credit.human.profilePath }
+    : null;
   const [votes] = await db
     .select({
       score: sql<number>`coalesce(sum(${newsStorylineVotes.value}), 0)::int`,
@@ -247,6 +260,43 @@ export async function findStoryline(
 export type StorylineDetail = NonNullable<
   Awaited<ReturnType<typeof findStoryline>>
 >;
+
+/** Approved proposal credits for the stories on one page. Newest draft wins. */
+export async function loadStorylineCredits(storyIds: string[]) {
+  const credits = new Map<string, StorylineCredit>();
+  if (storyIds.length === 0) return credits;
+  const rows = await db
+    .select({
+      storyId: sql<string>`${agentDrafts.metadata}->>'savedStorylineId'`,
+      createdAt: agentDrafts.createdAt,
+      ownerId: agentDrafts.ownerId,
+      displayName: memberProfiles.displayName,
+      isPublic: memberProfiles.isPublic,
+      hiddenFromPublic: memberProfiles.hiddenFromPublic,
+      image: user.image,
+      agentName: agentProfiles.name,
+      agentVisibility: agentProfiles.visibilityMode,
+    })
+    .from(agentDrafts)
+    .innerJoin(agentProfiles, eq(agentProfiles.id, agentDrafts.agentId))
+    .leftJoin(memberProfiles, eq(memberProfiles.userId, agentDrafts.ownerId))
+    .leftJoin(user, eq(user.id, agentDrafts.ownerId))
+    .where(
+      and(
+        eq(agentDrafts.type, "news_storyline"),
+        eq(agentDrafts.status, "approved"),
+        inArray(sql`${agentDrafts.metadata}->>'savedStorylineId'`, storyIds),
+      ),
+    );
+  const ordered = [...rows].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+  for (const row of ordered) {
+    if (!row.storyId || credits.has(row.storyId)) continue;
+    credits.set(row.storyId, storylineCredit(row));
+  }
+  return credits;
+}
 
 /** One batch for the current archive page. Rumor IDs are never passed here. */
 export async function articleStorylineLinks(articleIds: string[]) {

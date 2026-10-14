@@ -106,10 +106,35 @@ it("updates the score immediately, then restores it and toasts when the save fai
   await act(async () => {
     down.onSuccess({ score: 2, myVote: "down" });
   });
-  fireEvent.click(screen.getByRole("button", { name: "Remove vote" }));
+  const downButton = screen.getByRole("button", { name: "Vote down" });
+  expect(downButton).toHaveAttribute("aria-pressed", "true");
+  expect(downButton.className).toContain("text-info");
+  fireEvent.click(downButton);
   expect(mutate).toHaveBeenLastCalledWith(
     { storyId: "story-1", vote: "clear" },
     expect.any(Object),
   );
   expect(screen.getByText("3")).toBeInTheDocument();
+});
+
+it("highlights an up vote and switches it when the other arrow is clicked", () => {
+  session.value = {
+    data: { user: { id: "member" } },
+    isPending: false,
+    error: null,
+  };
+  show({ score: 4, myVote: "up" });
+  const up = screen.getByRole("button", { name: "Vote up" });
+  expect(up).toHaveAttribute("aria-pressed", "true");
+  expect(up.className).toContain("text-primary");
+  expect(up.querySelector("svg")?.getAttribute("class")).toContain(
+    "fill-current",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Vote down" }));
+  expect(screen.getByText("2")).toBeInTheDocument();
+  expect(mutate).toHaveBeenCalledWith(
+    { storyId: "story-1", vote: "down" },
+    expect.any(Object),
+  );
+  expect(screen.queryByRole("link", { name: /vote/i })).not.toBeInTheDocument();
 });

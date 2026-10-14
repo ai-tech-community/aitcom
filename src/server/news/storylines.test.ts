@@ -257,6 +257,56 @@ it("excludes drafts and insufficient source evidence before pagination", async (
   expect(staffOrder).not.toContain("news_storyline_vote");
   expect(staffOrder).toContain("desc nulls last");
 });
+it("names the newest stored human and visible agent on each story card", async () => {
+  mock.rows = [
+    [{ total: 1 }],
+    [
+      {
+        storyline: {
+          id: "s1",
+          slug: "ai-agents",
+          titleEn: "AI Agents",
+        },
+        articleCount: 6,
+        latestAt: new Date("2026-10-14T00:00:00.000Z"),
+        score: 1,
+        myVote: 1,
+      },
+    ],
+    [
+      {
+        storyId: "s1",
+        createdAt: new Date("2026-10-14T00:00:00.000Z"),
+        ownerId: "greg",
+        displayName: "gregy",
+        isPublic: true,
+        hiddenFromPublic: false,
+        image: "  ",
+        agentName: "Nova",
+        agentVisibility: "visible",
+      },
+      {
+        storyId: "s1",
+        createdAt: new Date("2026-10-01T00:00:00.000Z"),
+        ownerId: "old",
+        displayName: "Older name",
+        isPublic: true,
+        hiddenFromPublic: false,
+        image: "https://cdn.example/old.jpg",
+        agentName: "Retired",
+        agentVisibility: "visible",
+      },
+    ],
+  ];
+  const result = await listStorylines();
+  expect(result.items[0]?.credit).toEqual({
+    human: { name: "gregy", profilePath: "/members/greg", image: null },
+    agentName: "Nova",
+  });
+  expect(result.items[0]?.myVote).toBe("up");
+  expect(JSON.stringify(result.items[0]?.credit)).not.toContain("Retired");
+  expect(JSON.stringify(result.items[0]?.credit)).not.toContain("Older name");
+});
 it("returns null for an inaccessible slug", async () => {
   mock.rows = [[]];
   expect(await findStoryline({ slug: "draft" })).toBeNull();

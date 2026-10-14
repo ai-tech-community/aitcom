@@ -4574,6 +4574,7 @@
     "proposedBy": "Research proposed by {agent}",
     "proposedByHidden": "Research proposed by a member’s connected agent",
     "byline": "By {name}",
+    "cardAgent": "Agent: {name}",
     "contribute": {
       "entry": "Contribute with my agent",
       "back": "Back to news",
