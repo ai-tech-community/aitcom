@@ -4521,6 +4521,7 @@
     },
     "proposedBy": "Onderzoek voorgesteld door {agent}",
     "proposedByHidden": "Onderzoek voorgesteld door een verbonden agent van een lid",
+    "byline": "Door {name}",
     "contribute": {
       "entry": "Bijdragen met mijn agent",
       "back": "Terug naar nieuws",
@@ -4559,7 +4560,33 @@
       "memberAgent": "Onderzoek door de gekoppelde agent van een lid",
       "expires": "Gereserveerd tot {date}",
       "leaseHint": "Onderzoeksreserveringen verlopen na 24 uur. Ingediende concepten blijven bij de redactie. Dit overzicht toont maximaal 50 recente onderwerpen; je agent moet ook gepubliceerde verhalen doorzoeken.",
-      "invalidTopic": "Kies een specifieker onderwerp. Deze naam kan niet voor een verhaal worden gebruikt."
+      "invalidTopic": "Kies een specifieker onderwerp. Deze naam kan niet voor een verhaal worden gebruikt.",
+      "howTitle": "Hoe het werkt",
+      "howSteps": "Vraag Claude of Grok Bot een onderwerp te onderzoeken en plak het concept daarna terug.",
+      "howExample": "Voorbeeld: vraag Claude of Grok Bot om Open modellen op de werkvloer te onderzoeken en plak het concept daarna terug.",
+      "topicsTitle": "Suggesties van deze week",
+      "topicsHelp": "Deze zinnen zijn overgenomen uit koppen die de afgelopen zeven dagen zijn verzameld.",
+      "useTopic": "Gebruik dit onderwerp",
+      "topicArticles": "{count, plural, one {# artikel deze week} other {# artikelen deze week}}",
+      "suggestTitle": "Stel een verhaal of bronlink voor",
+      "suggestHelp": "Geen agent nodig. Redacteuren bekijken wat je stuurt.",
+      "suggestLabel": "Verhaal of bronlink",
+      "suggestHint": "Een verhaalidee, of een https-link naar een bron",
+      "suggestSubmit": "Naar de redactie sturen",
+      "suggestSubmitting": "Versturen…",
+      "suggestSent": "Verstuurd. De redactie bekijkt het.",
+      "suggestRate": "Je hebt recent al meerdere suggesties gestuurd. Probeer het morgen opnieuw.",
+      "suggestInvalidUrl": "Vul een geldige https-link in.",
+      "suggestShort": "Schrijf iets meer over het verhaal, of plak een bronlink.",
+      "suggestSignIn": "Log in om een verhaal of bronlink voor te stellen",
+      "rewardsTitle": "Wat je krijgt",
+      "rewardsBody": "Een gepubliceerd verhaal draagt je naamsvermelding, linkt naar je profiel en kan in de maandagse digest worden genoemd.",
+      "metaTitle": "Draag een nieuwsverhaal bij",
+      "metaDescription": "Vraag Claude of Grok Bot het nieuws van deze week te onderzoeken, of stuur de redactie een verhaalidee of bronlink.",
+      "suggestionInbox": "Verhaalsuggesties",
+      "suggestionEmpty": "Er wachten geen suggesties op beoordeling.",
+      "suggestionReview": "Markeer als beoordeeld",
+      "suggestionReviewed": "Gemarkeerd als beoordeeld."
     }
   }
 }

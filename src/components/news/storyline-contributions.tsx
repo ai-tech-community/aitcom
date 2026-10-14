@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
@@ -17,7 +17,11 @@ import {
 } from "@/lib/news/research-brief";
 import { storylineSlugSchema } from "@/lib/news/storylines";
 
-export function StorylineContributions() {
+export function StorylineContributions({
+  seedTopic = null,
+}: {
+  seedTopic?: string | null;
+}) {
   const t = useTranslations("newsStories.contribute");
   const fmt = useFormatter();
   const { authStatus, requireAuth } = useRequireAuth();
@@ -56,6 +60,13 @@ export function StorylineContributions() {
     setCopied(false);
     setCopyFailed(false);
   };
+  useEffect(() => {
+    if (!seedTopic) return;
+    setTitle(seedTopic);
+    setBrief("");
+    setCopied(false);
+    setCopyFailed(false);
+  }, [seedTopic]);
   return (
     <>
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">

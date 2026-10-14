@@ -23,6 +23,16 @@ import {
   submitNewsRumor,
 } from "@/server/news/rumors";
 import { rumorInputSchema, submitterLabel } from "@/server/news/rumor-rules";
+import {
+  normalizeStorySuggestion,
+  storySuggestionInputSchema,
+} from "@/lib/news/story-suggestion";
+import {
+  listOpenStorySuggestions,
+  reviewStorySuggestion,
+  storySuggestionDb,
+  submitStorySuggestion,
+} from "@/server/news/story-suggestions";
 
 import { storylineInputSchema } from "@/lib/news/storylines";
 import {
@@ -113,6 +123,42 @@ export const newsRouter = createTRPCRouter({
       }
       revalidateNewsTable();
       return { id: result.id };
+    }),
+
+  submitStorySuggestion: protectedProcedure
+    .input(storySuggestionInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const normalized = normalizeStorySuggestion(input.text);
+      if (!normalized.ok) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: normalized.reason,
+        });
+      }
+      const result = await submitStorySuggestion(storySuggestionDb, {
+        userId: ctx.session.user.id,
+        value: normalized.value,
+        now: new Date(),
+      });
+      if (!result.ok) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "rate",
+        });
+      }
+      return { id: result.id };
+    }),
+
+  listOpenStorySuggestions: storylineStaffProcedure.query(() =>
+    listOpenStorySuggestions(),
+  ),
+
+  reviewStorySuggestion: storylineStaffProcedure
+    .input(z.object({ id: z.string().trim().min(1).max(255) }))
+    .mutation(async ({ input }) => {
+      const result = await reviewStorySuggestion(input.id, new Date());
+      if (result === "missing") throw new TRPCError({ code: "NOT_FOUND" });
+      return { ok: true as const };
     }),
 
   moderateRumor: protectedProcedure

@@ -50,8 +50,11 @@ vi.mock("@/server/better-auth/server", () => ({
 vi.mock("@/components/news/storyline-editor", () => ({
   StorylineEditor: () => <div>Staff editor</div>,
 }));
+vi.mock("@/components/news/story-suggestion-inbox", () => ({
+  StorySuggestionInbox: () => <div>Suggestion inbox</div>,
+}));
 import StoriesPage from "./page";
-import StoryPage from "./[slug]/page";
+import StoryPage, { generateMetadata as storyMetadata } from "./[slug]/page";
 import ManageStoriesPage from "./manage/page";
 
 beforeEach(() => {
@@ -109,6 +112,12 @@ it("returns 404 for missing or nonpublic stories, but renders explicit storage f
     en.newsStories.unavailable,
   );
   log.mockRestore();
+});
+it("keeps story pages noindex", async () => {
+  const meta = await storyMetadata({
+    params: Promise.resolve({ slug: "published" }),
+  });
+  expect(meta.robots).toEqual({ index: false, follow: true });
 });
 it("keeps the editor inaccessible to ordinary members", async () => {
   await expect(ManageStoriesPage()).rejects.toThrow("NEXT_NOT_FOUND");

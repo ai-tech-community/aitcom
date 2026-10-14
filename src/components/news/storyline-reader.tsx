@@ -171,6 +171,16 @@ export function StorylineReader({
         {copy.fallback && (
           <p className="text-muted-foreground mt-3 text-sm">{t("fallback")}</p>
         )}
+        {story.contributor && (
+          <p className="mt-4 text-sm">
+            <Link
+              href={story.contributor.profilePath}
+              className="underline underline-offset-4"
+            >
+              {t("byline", { name: story.contributor.name })}
+            </Link>
+          </p>
+        )}
         {story.proposedBy && (
           <p className="text-muted-foreground mt-4 text-sm">
             {story.proposedBy.name
