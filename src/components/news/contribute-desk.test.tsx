@@ -22,6 +22,8 @@ const state = vi.hoisted(() => ({
     expiresAt: new Date("2026-10-15T12:00:00.000Z"),
     firstScoop: false,
   })),
+  seedTopic: null as string | null,
+  seedToken: 0,
 }));
 
 vi.mock("sonner", () => ({
@@ -35,7 +37,17 @@ vi.mock("@/components/auth/auth-required-dialog", () => ({
 }));
 vi.mock("./story-suggestion-box", () => ({ StorySuggestionBox: () => null }));
 vi.mock("./storyline-contributions", () => ({
-  StorylineContributions: () => null,
+  StorylineContributions: ({
+    seedTopic = null,
+    seedToken = 0,
+  }: {
+    seedTopic?: string | null;
+    seedToken?: number;
+  }) => {
+    state.seedTopic = seedTopic;
+    state.seedToken = seedToken;
+    return null;
+  },
 }));
 vi.mock("@/trpc/react", () => ({
   api: {
@@ -64,8 +76,12 @@ vi.mock("@/trpc/react", () => ({
   },
 }));
 
+import { toast } from "sonner";
+
 beforeEach(() => {
   vi.clearAllMocks();
+  state.seedTopic = null;
+  state.seedToken = 0;
   Object.assign(navigator, {
     clipboard: { writeText: vi.fn(async () => undefined) },
   });
@@ -95,4 +111,13 @@ it("claims a topic from a button and never a link", async () => {
       title: "EU AI Act",
     });
   });
+  expect(state.seedTopic).toBe("EU AI Act");
+  expect(state.seedToken).toBe(1);
+  expect(toast.success).toHaveBeenCalledWith(
+    en.newsStories.contribute.topicApplied.replace("{title}", topic.title),
+  );
+
+  fireEvent.click(button);
+  await waitFor(() => expect(state.seedToken).toBe(2));
+  expect(state.seedTopic).toBe("EU AI Act");
 });

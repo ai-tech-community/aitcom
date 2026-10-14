@@ -4582,6 +4582,7 @@
       "topicsTitle": "Suggested from this week",
       "topicsHelp": "These phrases are copied from headlines collected in the last seven days.",
       "useTopic": "Use this topic",
+      "topicApplied": "Using {title} in the research topic below.",
       "topicArticles": "{count, plural, one {# article this week} other {# articles this week}}",
       "suggestTitle": "Suggest a story or source link",
       "suggestHelp": "No agent needed. Editors review what you send.",

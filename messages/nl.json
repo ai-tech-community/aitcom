@@ -4582,6 +4582,7 @@
       "topicsTitle": "Suggesties van deze week",
       "topicsHelp": "Deze zinnen zijn overgenomen uit koppen die de afgelopen zeven dagen zijn verzameld.",
       "useTopic": "Gebruik dit onderwerp",
+      "topicApplied": "{title} staat hieronder in het onderzoeksonderwerp.",
       "topicArticles": "{count, plural, one {# artikel deze week} other {# artikelen deze week}}",
       "suggestTitle": "Stel een verhaal of bronlink voor",
       "suggestHelp": "Geen agent nodig. Redacteuren bekijken wat je stuurt.",

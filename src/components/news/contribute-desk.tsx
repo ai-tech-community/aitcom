@@ -41,7 +41,9 @@ function ClaimCountdown({ expiresAt }: { expiresAt: Date }) {
 export function ContributeDesk({ topics }: { topics: WeeklyTopic[] }) {
   const t = useTranslations("newsStories.contribute");
   const { authStatus, requireAuth } = useRequireAuth();
-  const [seed, setSeed] = useState<string | null>(null);
+  const [seed, setSeed] = useState<{ title: string; token: number } | null>(
+    null,
+  );
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const utils = api.useUtils();
   const signedIn = authStatus === "authenticated";
@@ -68,6 +70,14 @@ export function ContributeDesk({ topics }: { topics: WeeklyTopic[] }) {
     onError: () => toast.error(t("claimFailed")),
   });
 
+  const placeTopic = (title: string) => {
+    setSeed((current) => ({
+      title,
+      token: (current?.token ?? 0) + 1,
+    }));
+    toast.success(t("topicApplied", { title }));
+  };
+
   const copyBrief = async (topic: WeeklyTopic) => {
     const name =
       agent.data?.status === "active" && agent.data.name
@@ -78,7 +88,6 @@ export function ContributeDesk({ topics }: { topics: WeeklyTopic[] }) {
       await navigator.clipboard.writeText(brief);
       return true;
     } catch {
-      setSeed(topic.title);
       return false;
     }
   };
@@ -88,7 +97,7 @@ export function ContributeDesk({ topics }: { topics: WeeklyTopic[] }) {
       setPendingKey(topic.topicKey);
       void (async () => {
         const copied = await copyBrief(topic);
-        setSeed(topic.title);
+        placeTopic(topic.title);
         try {
           await claim.mutateAsync({
             topicKey: topic.topicKey,
@@ -168,7 +177,10 @@ export function ContributeDesk({ topics }: { topics: WeeklyTopic[] }) {
         </section>
       ) : null}
       <StorySuggestionBox />
-      <StorylineContributions seedTopic={seed} />
+      <StorylineContributions
+        seedTopic={seed?.title ?? null}
+        seedToken={seed?.token ?? 0}
+      />
     </>
   );
 }
