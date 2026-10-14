@@ -20,6 +20,7 @@ import {
 } from "@/components/news/news-table-browser";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NewsSection } from "@/components/news/news-section";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
 import {
@@ -318,7 +319,11 @@ export default async function NewsPage({
   ].flatMap((chip) => (chip ? [chip] : []));
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <NewsSection
+      label={t("tabsLabel")}
+      news={t("tabNews")}
+      stories={t("tabStories")}
+    >
       <SectionLabel>{t("kicker")}</SectionLabel>
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -636,6 +641,6 @@ export default async function NewsPage({
           ) : null}
         </NewsTableBrowser>
       )}
-    </main>
+    </NewsSection>
   );
 }

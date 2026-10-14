@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { beforeEach, expect, it, vi } from "vitest";
 import en from "../../../../../messages/en.json";
@@ -26,6 +26,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 vi.mock("@/i18n/navigation", () => ({
+  usePathname: () => "/news/stories",
   Link: ({
     href,
     children,
@@ -59,7 +60,7 @@ vi.mock("@/components/news/storyline-draft-queue", () => ({
 vi.mock("@/components/news/story-suggestion-inbox", () => ({
   StorySuggestionInbox: () => <div>Suggestion inbox</div>,
 }));
-import StoriesPage from "./page";
+import StoriesPage, { generateMetadata as storiesMetadata } from "./page";
 import StoryPage, { generateMetadata as storyMetadata } from "./[slug]/page";
 import ManageStoriesPage from "./manage/page";
 
@@ -118,6 +119,24 @@ it("returns 404 for missing or nonpublic stories, but renders explicit storage f
     en.newsStories.unavailable,
   );
   log.mockRestore();
+});
+it("keeps the stories index noindex without a new canonical", async () => {
+  const meta = await storiesMetadata();
+  expect(meta.robots).toEqual({ index: false, follow: true });
+  expect(meta.alternates).toBeUndefined();
+});
+it("links News and Stories as tabs, with Stories current", async () => {
+  show(await StoriesPage({ searchParams: Promise.resolve({}) }));
+  const nav = screen.getByRole("navigation", { name: en.newsPage.tabsLabel });
+  const news = within(nav).getByRole("link", { name: en.newsPage.tabNews });
+  const stories = within(nav).getByRole("link", {
+    name: en.newsPage.tabStories,
+  });
+  expect(news).toHaveAttribute("href", "/news");
+  expect(news).not.toHaveAttribute("aria-current");
+  expect(stories).toHaveAttribute("href", "/news/stories");
+  expect(stories).toHaveAttribute("aria-current", "page");
+  expect(stories).not.toHaveAttribute("tabindex", "-1");
 });
 it("keeps story pages noindex", async () => {
   const meta = await storyMetadata({

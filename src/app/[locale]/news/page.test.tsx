@@ -206,6 +206,7 @@ vi.mock("@/i18n/navigation", () => ({
     </a>
   ),
   useRouter: () => ({ push: () => undefined, replace: () => undefined }),
+  usePathname: () => "/news",
 }));
 
 vi.mock("@/server/news/directory", () => ({
@@ -243,9 +244,28 @@ describe("news page", () => {
     state.board = [];
   });
 
-  it("is noindex", async () => {
+  it("is noindex and keeps its canonical unset", async () => {
     const meta = await generateMetadata();
     expect(meta.robots).toEqual({ index: false, follow: true });
+    expect(meta.alternates).toBeUndefined();
+  });
+
+  it("links News and Stories as tabs, with News current", async () => {
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    const nav = screen.getByRole("navigation", {
+      name: en.newsPage.tabsLabel,
+    });
+    const news = within(nav).getByRole("link", { name: en.newsPage.tabNews });
+    const stories = within(nav).getByRole("link", {
+      name: en.newsPage.tabStories,
+    });
+    expect(news).toHaveAttribute("href", "/news");
+    expect(news).toHaveAttribute("aria-current", "page");
+    expect(news).not.toHaveAttribute("tabindex", "-1");
+    expect(stories).toHaveAttribute("href", "/news/stories");
+    expect(stories).not.toHaveAttribute("aria-current");
+    expect(stories.className).not.toContain("border-primary");
+    expect(news.className).toContain("border-foreground");
   });
 
   it("shows an empty weekly board that links to contributing", async () => {

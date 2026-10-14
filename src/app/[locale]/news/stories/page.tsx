@@ -4,6 +4,7 @@ import {
 } from "@/components/news/storyline-states";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { NewsSection } from "@/components/news/news-section";
 import { Link } from "@/i18n/navigation";
 import { StorylineList } from "@/components/news/storyline-reader";
 import { getSession } from "@/server/better-auth/server";
@@ -25,6 +26,7 @@ export default async function StoriesPage({
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const t = await getTranslations("newsStories");
+  const tabs = await getTranslations("newsPage");
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q.trim().slice(0, 200) : "";
   const page =
@@ -44,16 +46,12 @@ export default async function StoriesPage({
   const href = (p: number) =>
     `/news/stories?${new URLSearchParams({ q, page: String(p) })}`;
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12 sm:px-12 sm:py-16">
-      <Link
-        href="/news"
-        className="text-muted-foreground text-sm underline underline-offset-4"
-      >
-        {t("archive")}
-      </Link>
-      <h1 className="mt-8 text-4xl font-semibold tracking-tight">
-        {t("title")}
-      </h1>
+    <NewsSection
+      label={tabs("tabsLabel")}
+      news={tabs("tabNews")}
+      stories={tabs("tabStories")}
+    >
+      <h1 className="text-4xl font-semibold tracking-tight">{t("title")}</h1>
       <p className="text-muted-foreground mt-3 text-lg">{t("intro")}</p>
       <Link
         href="/news/stories/contribute"
@@ -113,6 +111,6 @@ export default async function StoriesPage({
           )}
         </nav>
       )}
-    </main>
+    </NewsSection>
   );
 }
