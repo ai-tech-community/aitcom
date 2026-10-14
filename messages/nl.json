@@ -4354,6 +4354,7 @@
     "metaDescription": "Recente AI-verhalen verzameld voor de AIT-community.",
     "leaderboardTitle": "Deze week",
     "leaderboardPoints": "{points} ptn",
+    "leaderboardEmpty": "Wees de eerste op het bord van deze week",
     "rumorLabel": "Ledengerucht",
     "unverified": "Niet geverifieerd",
     "hidden": "Verborgen",
@@ -4610,7 +4611,7 @@
       "claimAlready": "Je hebt dit al geclaimd. De opdracht is opnieuw gekopieerd.",
       "claimFailed": "De claim kon niet worden opgeslagen. Probeer het opnieuw.",
       "claimCopyFailed": "Claim opgeslagen. Kopiëren lukte niet, gebruik de opdracht hieronder.",
-      "claimCountdown": "nog {hours}u {minutes}m",
+      "claimCountdown": "nog {hours}u {minutes}m {seconds}s",
       "claimExpired": "Deze claim van 24 uur is afgelopen.",
       "coverage": "{covered} van {total} onderwerpen vandaag gedekt",
       "yourAgentFallback": "je agent"

@@ -248,6 +248,16 @@ describe("news page", () => {
     expect(meta.robots).toEqual({ index: false, follow: true });
   });
 
+  it("shows an empty weekly board that links to contributing", async () => {
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    expect(
+      screen.getByRole("heading", { name: en.newsPage.leaderboardTitle }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: en.newsPage.leaderboardEmpty }),
+    ).toHaveAttribute("href", "/news/stories/contribute");
+  });
+
   it("lists this week's public contributors with their stored names", async () => {
     state.board = [
       {
@@ -480,6 +490,9 @@ describe("news page", () => {
     state.locale = "nl";
     render(await NewsPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByText("Nog geen verhalen.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: nl.newsPage.leaderboardEmpty }),
+    ).toHaveAttribute("href", "/news/stories/contribute");
     expect(
       screen.getByRole("link", { name: "Log in om een gerucht in te sturen" }),
     ).toHaveAttribute("href", "/auth/signin");

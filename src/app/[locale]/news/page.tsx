@@ -346,11 +346,11 @@ export default async function NewsPage({
         </div>
       </div>
 
-      {board.length > 0 ? (
-        <section className="mt-8" aria-labelledby="news-leaderboard">
-          <h2 id="news-leaderboard" className="text-xl font-semibold">
-            {t("leaderboardTitle")}
-          </h2>
+      <section className="mt-8" aria-labelledby="news-leaderboard">
+        <h2 id="news-leaderboard" className="text-xl font-semibold">
+          {t("leaderboardTitle")}
+        </h2>
+        {board.length > 0 ? (
           <ol className="mt-3 divide-y border-t">
             {board.map((row, index) => (
               <li
@@ -372,8 +372,17 @@ export default async function NewsPage({
               </li>
             ))}
           </ol>
-        </section>
-      ) : null}
+        ) : (
+          <p className="mt-3 text-sm">
+            <Link
+              href="/news/stories/contribute"
+              className="underline underline-offset-4"
+            >
+              {t("leaderboardEmpty")}
+            </Link>
+          </p>
+        )}
+      </section>
 
       <Suspense fallback={<StorylineLoading />}>
         <StorylinePreview staff={staff} />

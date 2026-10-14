@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
@@ -16,24 +16,45 @@ import { StorySuggestionBox } from "./story-suggestion-box";
 
 function ClaimCountdown({ expiresAt }: { expiresAt: Date }) {
   const t = useTranslations("newsStories.contribute");
-  const [now, setNow] = useState(() => Date.now());
+  const fmt = useFormatter();
+  const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    const tick = () => setNow(Date.now());
+    tick();
+    const timer = window.setInterval(tick, 1000);
     return () => window.clearInterval(timer);
   }, []);
+  const iso = expiresAt.toISOString();
+  const fallback = t("expires", {
+    date: fmt.dateTime(expiresAt, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }),
+  });
+  if (now == null) {
+    return (
+      <p className="text-muted-foreground font-mono text-xs">
+        <time dateTime={iso}>{fallback}</time>
+      </p>
+    );
+  }
   const remaining = expiresAt.getTime() - now;
   if (remaining <= 0) {
     return (
       <p className="text-muted-foreground font-mono text-xs">
-        {t("claimExpired")}
+        <time dateTime={iso}>{t("claimExpired")}</time>
       </p>
     );
   }
-  const hours = Math.floor(remaining / 3_600_000);
-  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
+  const totalSeconds = Math.floor(remaining / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
   return (
     <p className="text-muted-foreground font-mono text-xs">
-      {t("claimCountdown", { hours, minutes })}
+      <time dateTime={iso}>
+        {t("claimCountdown", { hours, minutes, seconds })}
+      </time>
     </p>
   );
 }
@@ -152,11 +173,9 @@ export function ContributeDesk({ topics }: { topics: WeeklyTopic[] }) {
                 >
                   <div className="min-w-0">
                     <p className="font-medium">{topic.title}</p>
-                    {topic.articleIds.length > 1 ? (
-                      <p className="text-muted-foreground mt-1 font-mono text-xs">
-                        {t("topicArticles", { count: topic.articleIds.length })}
-                      </p>
-                    ) : null}
+                    <p className="text-muted-foreground mt-1 font-mono text-xs">
+                      {t("topicArticles", { count: topic.articleIds.length })}
+                    </p>
                     {mine?.expiresAt ? (
                       <ClaimCountdown expiresAt={new Date(mine.expiresAt)} />
                     ) : null}

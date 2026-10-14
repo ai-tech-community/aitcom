@@ -4354,6 +4354,7 @@
     "metaDescription": "Recent AI stories collected for the AIT community.",
     "leaderboardTitle": "This week",
     "leaderboardPoints": "{points} pts",
+    "leaderboardEmpty": "Be the first on this week's board",
     "rumorLabel": "Member rumor",
     "unverified": "Unverified",
     "hidden": "Hidden",
@@ -4610,7 +4611,7 @@
       "claimAlready": "You already claimed this. The brief is copied again.",
       "claimFailed": "Could not save the claim. Try again.",
       "claimCopyFailed": "Claim saved. Copy was unavailable, so use the brief below.",
-      "claimCountdown": "{hours}h {minutes}m left",
+      "claimCountdown": "{hours}h {minutes}m {seconds}s left",
       "claimExpired": "This 24-hour claim has ended.",
       "coverage": "{covered} of {total} topics covered today",
       "yourAgentFallback": "your agent"
