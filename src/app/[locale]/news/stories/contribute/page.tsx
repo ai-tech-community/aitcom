@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { localeAlternates } from "@/lib/metadata";
+import { newsGameRobots } from "@/lib/news/indexability";
 import { ContributeDesk } from "@/components/news/contribute-desk";
 import { StorylinePreview } from "@/components/news/storyline-preview";
 import { listWeeklyStoryTopics } from "@/server/news/weekly-topics";
@@ -12,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
-    robots: { index: false, follow: true },
+    robots: newsGameRobots(),
     alternates: await localeAlternates("/news/stories/contribute"),
   };
 }

@@ -169,6 +169,13 @@ it("stores a valid suggestion for a signed-in member and rejects a bad link", as
   ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
 });
 
+it("claims a story only through a mutation", () => {
+  const claim = newsRouter._def.procedures.claimStoryTopic as {
+    _def: { type?: string };
+  };
+  expect(claim._def.type).toBe("mutation");
+});
+
 it("rate-limits suggestions and lets staff review the queue", async () => {
   state.submitSuggestion.mockResolvedValue({ ok: false, reason: "limited" });
   await expect(

@@ -21,6 +21,7 @@ import {
   profileTabHref,
   type ProfileTab,
 } from "@/lib/member-profile-routes";
+import { badgeShareRobots } from "@/lib/news/indexability";
 import type { DisplayableBadge } from "@/server/members/displayable-badges";
 import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
@@ -249,6 +250,7 @@ export async function badgePageMetadata({
     badge: tBadges(badge.nameKey),
   });
   const description = tBadges(badge.descriptionKey, badge.descriptionValues);
+  const robots = badgeShareRobots(badge.slug, data.reach.kind === "public");
   return {
     title,
     description,
@@ -258,8 +260,6 @@ export async function badgePageMetadata({
       `/${resolved}${badgeShareImageHref(userId, badge.slug)}`,
     ),
     alternates: buildAlternates(badgeShareHref(userId, badge.slug), resolved),
-    ...(data.reach.kind !== "public"
-      ? { robots: { index: false, follow: false } }
-      : {}),
+    ...(robots ? { robots } : {}),
   };
 }

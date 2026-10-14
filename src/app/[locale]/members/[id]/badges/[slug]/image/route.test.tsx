@@ -69,8 +69,19 @@ describe("badge share image", () => {
     expect(res.headers.get("cache-control")).toBe(
       "public, max-age=3600, s-maxage=3600",
     );
+    expect(res.headers.get("x-robots-tag")).toBeNull();
     const png = Buffer.from(await res.arrayBuffer());
     expect(png.subarray(1, 4).toString()).toBe("PNG");
+  });
+
+  it("tells crawlers not to index a news contribution badge", async () => {
+    state.share = {
+      ...share("public"),
+      badge: catalogBadge("news_first_scoop"),
+    };
+    const res = await call("news_first_scoop");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-robots-tag")).toBe("noindex, follow");
   });
 
   it("is never cached for the owner's private profile", async () => {

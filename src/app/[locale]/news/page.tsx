@@ -5,6 +5,7 @@ import {
 import { Suspense } from "react";
 import { StorylinePreview } from "@/components/news/storyline-preview";
 import { articleStorylineLinks } from "@/server/news/storylines";
+import { newsGameRobots } from "@/lib/news/indexability";
 import { storylineArticleHref } from "@/lib/news/storylines";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -53,7 +54,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
-    robots: { index: false, follow: true },
+    robots: newsGameRobots(),
   };
 }
 
