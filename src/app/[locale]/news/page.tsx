@@ -1,12 +1,4 @@
-import {
-  StorylineLoading,
-  StorylineLoadError,
-} from "@/components/news/storyline-states";
-import { Suspense } from "react";
-import { StorylinePreview } from "@/components/news/storyline-preview";
-import { articleStorylineLinks } from "@/server/news/storylines";
 import { newsGameRobots } from "@/lib/news/indexability";
-import { storylineArticleHref } from "@/lib/news/storylines";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
@@ -42,8 +34,6 @@ import {
   queryNewsTablePage,
   type NewsTablePage,
 } from "@/server/news/table-page";
-import { listWeeklyContributorBoard } from "@/server/news/contributions";
-
 const NewsRumorDialog = dynamic(() =>
   import("@/components/news/news-rumor-dialog").then(
     (mod) => mod.NewsRumorDialog,
@@ -157,14 +147,9 @@ export default async function NewsPage({
 }) {
   const t = await getTranslations("newsPage");
   const locale = await getLocale();
-  const ts = await getTranslations("newsStories");
   const params = await searchParams;
   const query = parseNewsTableQuery(params);
   const session = await getSession().catch(() => null);
-  const board = await listWeeklyContributorBoard().catch((err: unknown) => {
-    console.error("news: contributor board unavailable", err);
-    return [];
-  });
   const staff = await isNewsStaff(session?.user?.email);
   const emptyPage: NewsTablePage = {
     stories: [],
@@ -211,16 +196,6 @@ export default async function NewsPage({
     console.error("news: could not list startup links", err);
     return { stories: {}, rumors: {} };
   });
-  let storylineLinks: Awaited<ReturnType<typeof articleStorylineLinks>> = [];
-  let storylinesUnavailable = false;
-  try {
-    storylineLinks = await articleStorylineLinks(
-      stories.map((item) => item.id),
-    );
-  } catch (err) {
-    console.error("news: could not load article storylines", err);
-    storylinesUnavailable = true;
-  }
   const built = buildNewsTableRows(
     stories,
     rumors,
@@ -351,48 +326,6 @@ export default async function NewsPage({
         </div>
       </div>
 
-      <section className="mt-8" aria-labelledby="news-leaderboard">
-        <h2 id="news-leaderboard" className="text-xl font-semibold">
-          {t("leaderboardTitle")}
-        </h2>
-        {board.length > 0 ? (
-          <ol className="mt-3 divide-y border-t">
-            {board.map((row, index) => (
-              <li
-                key={row.userId}
-                className="flex flex-wrap items-baseline justify-between gap-3 py-3"
-              >
-                <span className="text-muted-foreground font-mono text-xs">
-                  {index + 1}
-                </span>
-                <Link
-                  href={row.profilePath}
-                  className="min-w-0 flex-1 underline underline-offset-4"
-                >
-                  {row.name}
-                </Link>
-                <span className="font-mono text-xs">
-                  {t("leaderboardPoints", { points: row.points })}
-                </span>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="mt-3 text-sm">
-            <Link
-              href="/news/stories/contribute"
-              className="underline underline-offset-4"
-            >
-              {t("leaderboardEmpty")}
-            </Link>
-          </p>
-        )}
-      </section>
-
-      <Suspense fallback={<StorylineLoading />}>
-        <StorylinePreview staff={staff} />
-      </Suspense>
-      {storylinesUnavailable && <StorylineLoadError />}
       {items.length === 0 && loaded.total === 0 && !filtered ? (
         <p className="text-muted-foreground mt-8 text-sm">{t("empty")}</p>
       ) : (
@@ -537,27 +470,6 @@ export default async function NewsPage({
                               {row.blurb}
                             </p>
                           ) : null}
-                          {row.kind === "story" &&
-                            storylineLinks
-                              .filter((link) => link.articleId === row.id)
-                              .map((link) => (
-                                <p key={link.slug} className="mt-2 text-sm">
-                                  <span className="text-muted-foreground">
-                                    {ts("partOf")}:{" "}
-                                  </span>
-                                  <Link
-                                    href={storylineArticleHref(
-                                      link.slug,
-                                      row.id,
-                                    )}
-                                    className="font-medium underline underline-offset-4"
-                                  >
-                                    {locale === "nl" && link.titleNl
-                                      ? link.titleNl
-                                      : link.titleEn}
-                                  </Link>
-                                </p>
-                              ))}
                           {staff && row.kind === "rumor" ? (
                             <NewsRumorActions id={row.id} hidden={row.hidden} />
                           ) : null}

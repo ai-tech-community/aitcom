@@ -4358,6 +4358,7 @@
     "leaderboardTitle": "This week",
     "leaderboardPoints": "{points} pts",
     "leaderboardEmpty": "Be the first on this week's board",
+    "leaderboardAgent": "Agent: {name}",
     "rumorLabel": "Member rumor",
     "unverified": "Unverified",
     "hidden": "Hidden",

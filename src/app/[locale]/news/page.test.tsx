@@ -40,12 +40,6 @@ const state = vi.hoisted(() => ({
     hiddenAt: Date | null;
   }>,
   serverTotal: null as number | null,
-  board: [] as Array<{
-    userId: string;
-    name: string;
-    profilePath: string;
-    points: number;
-  }>,
   links: {
     stories: {} as Record<
       string,
@@ -68,20 +62,6 @@ const state = vi.hoisted(() => ({
       }>
     >,
   },
-}));
-
-vi.mock("@/server/news/storylines", () => ({
-  articleStorylineLinks: async () => [
-    {
-      articleId: "older",
-      slug: "local-ai",
-      titleEn: "AI on devices",
-      titleNl: "",
-    },
-  ],
-}));
-vi.mock("@/components/news/storyline-preview", () => ({
-  StorylinePreview: () => <section>Ongoing stories</section>,
 }));
 
 vi.mock("next-intl/server", () => ({
@@ -217,10 +197,6 @@ vi.mock("@/server/news/startup-links", () => ({
   listNewsStartupLinks: async () => state.links,
 }));
 
-vi.mock("@/server/news/contributions", () => ({
-  listWeeklyContributorBoard: async () => state.board,
-}));
-
 vi.mock("@/components/news/news-rumor-form", () => ({
   NewsRumorForm: () => <form>rumor form</form>,
 }));
@@ -241,7 +217,6 @@ describe("news page", () => {
     state.serverTotal = null;
     state.rumors = [];
     state.links = { stories: {}, rumors: {} };
-    state.board = [];
   });
 
   it("is noindex and keeps its canonical unset", async () => {
@@ -268,31 +243,18 @@ describe("news page", () => {
     expect(news.className).toContain("border-foreground");
   });
 
-  it("shows an empty weekly board that links to contributing", async () => {
+  it("keeps storytelling off the news table", async () => {
     render(await NewsPage({ searchParams: Promise.resolve({}) }));
     expect(
-      screen.getByRole("heading", { name: en.newsPage.leaderboardTitle }),
-    ).toBeInTheDocument();
+      screen.queryByRole("heading", { name: en.newsPage.leaderboardTitle }),
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: en.newsPage.leaderboardEmpty }),
-    ).toHaveAttribute("href", "/news/stories/contribute");
-  });
-
-  it("lists this week's public contributors with their stored names", async () => {
-    state.board = [
-      {
-        userId: "ada",
-        name: "Ada Lovelace",
-        profilePath: "/members/ada",
-        points: 60,
-      },
-    ];
-    render(await NewsPage({ searchParams: Promise.resolve({}) }));
-    expect(screen.getByRole("link", { name: "Ada Lovelace" })).toHaveAttribute(
-      "href",
-      "/members/ada",
-    );
-    expect(screen.getByText("60 pts")).toBeInTheDocument();
+      screen.queryByRole("link", { name: en.newsPage.leaderboardEmpty }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(en.newsStories.partOf)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: en.newsStories.contribute.entry }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders a directory-width table with a verified story", async () => {
@@ -511,8 +473,8 @@ describe("news page", () => {
     render(await NewsPage({ searchParams: Promise.resolve({}) }));
     expect(screen.getByText("Nog geen verhalen.")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: nl.newsPage.leaderboardEmpty }),
-    ).toHaveAttribute("href", "/news/stories/contribute");
+      screen.queryByRole("link", { name: nl.newsPage.leaderboardEmpty }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Log in om een gerucht in te sturen" }),
     ).toHaveAttribute("href", "/auth/signin");
@@ -702,10 +664,9 @@ describe("news page", () => {
       await NewsPage({ searchParams: Promise.resolve({ story: "older" }) }),
     );
     expect(document.getElementById("news-older")).not.toBeNull();
-    expect(screen.getByRole("link", { name: "AI on devices" })).toHaveAttribute(
-      "href",
-      "/news/stories/local-ai#article-older",
-    );
+    expect(
+      screen.queryByRole("link", { name: "AI on devices" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Older story" })).toHaveAttribute(
       "href",
       "https://example.com/older",

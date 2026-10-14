@@ -4358,6 +4358,7 @@
     "leaderboardTitle": "Deze week",
     "leaderboardPoints": "{points} ptn",
     "leaderboardEmpty": "Wees de eerste op het bord van deze week",
+    "leaderboardAgent": "Agent: {name}",
     "rumorLabel": "Ledengerucht",
     "unverified": "Niet geverifieerd",
     "hidden": "Verborgen",
