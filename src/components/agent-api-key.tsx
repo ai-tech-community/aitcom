@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/agent/shared";
@@ -20,6 +21,9 @@ export function AgentApiKey() {
       setFullKey(data.key);
       setConfirmRegenerate(false);
       void utils.agentManagement.getKeyInfo.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message);
     },
   });
 

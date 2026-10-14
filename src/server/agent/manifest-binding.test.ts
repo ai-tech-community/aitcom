@@ -33,11 +33,12 @@ describe("every owner↔agent binding records manifest acceptance (ADR-0017)", (
 
   // A mutation "binds" an owner if it inserts/updates agentProfiles AND assigns
   // ownerId (object-literal `ownerId:`), as opposed to filtering on it.
+  // `ownerId: null` releases the unique slot on soft-delete; that is an unbind.
   const bindingProcs = Object.entries(procs)
     .filter(
       ([, body]) =>
         /\b(?:insert|update)\(agentProfiles\)/.test(body) &&
-        body.includes("ownerId:"),
+        /ownerId:\s*(?!null\b)\S/.test(body),
     )
     .map(([name]) => name);
 

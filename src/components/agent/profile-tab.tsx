@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { AgentApiKey } from "@/components/agent-api-key";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,10 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
 
   const deleteAgent = api.agentManagement.deleteAgent.useMutation({
     onSuccess: () => window.location.reload(),
-    onError: (err) => setEditError(err.message),
+    onError: (err) => {
+      setEditError(err.message);
+      toast.error(err.message);
+    },
   });
 
   const handleStartEdit = () => {
