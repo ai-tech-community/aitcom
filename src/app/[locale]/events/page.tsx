@@ -32,6 +32,12 @@ import {
   PUBLIC_EVENTS_PATH,
   listingEventsJsonLd,
 } from "@/lib/events/public-events";
+import {
+  eventAiRobots,
+  eventListingEmitsJsonLd,
+  parseEventAiQuery,
+} from "@/lib/events/event-ai";
+import { loadEventAiFlags, loadEventIdsByAi } from "@/server/events/event-ai";
 import { getVisitorLocation } from "@/lib/visitor-location";
 import { haversineDistanceKm, formatDistance } from "@/lib/geo";
 import { formatEventDayRange, formatEventTimeRange } from "@/lib/event-time";
@@ -49,11 +55,17 @@ import { getSession } from "@/server/better-auth/server";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SP>;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const aiFilter = parseEventAiQuery(firstParam(sp, "ai"));
   return {
     title: PUBLIC_EVENTS_H1,
     description: PUBLIC_EVENTS_META,
-    robots: { index: true, follow: true },
+    robots: eventAiRobots(aiFilter),
     ...buildOgMeta(PUBLIC_EVENTS_H1, PUBLIC_EVENTS_META, "Events"),
     alternates: await localeAlternates(PUBLIC_EVENTS_PATH),
   };
@@ -101,6 +113,7 @@ export default async function EventsPage({
   const sp = await searchParams;
 
   const isPast = firstParam(sp, "past") === "1";
+  const aiFilter = parseEventAiQuery(firstParam(sp, "ai"));
   const q = firstParam(sp, "q")?.trim();
   const type = oneOf<EventType>(firstParam(sp, "type"), EVENT_TYPES);
   const focus = oneOf<EventFocus>(firstParam(sp, "focus"), EVENT_FOCUS_OPTIONS);
@@ -148,6 +161,12 @@ export default async function EventsPage({
   if (focus) conditions.push({ focus: { equals: focus } });
   if (format) conditions.push({ format: { equals: format } });
   if (fit) conditions.push({ aitFitScore: { greater_than_equal: fit } });
+  if (aiFilter) {
+    const aiIds = await loadEventIdsByAi(aiFilter);
+    conditions.push(
+      aiIds.length > 0 ? { id: { in: aiIds } } : { id: { equals: -1 } },
+    );
+  }
   if (activeCountry) conditions.push({ country: { like: activeCountry } });
   if (q && q.length > 0) {
     conditions.push({
@@ -252,7 +271,8 @@ export default async function EventsPage({
     !!format ||
     fit !== undefined ||
     !!countryParam ||
-    nearMe;
+    nearMe ||
+    aiFilter !== null;
 
   const baseParams = () => {
     const next = new URLSearchParams();
@@ -261,6 +281,8 @@ export default async function EventsPage({
     if (focus) next.set("focus", focus);
     if (format) next.set("format", format);
     if (fit) next.set("fit", String(fit));
+    if (aiFilter === "yes") next.set("ai", "1");
+    if (aiFilter === "no") next.set("ai", "0");
     if (sort !== "date") next.set("sort", sort);
     if (countryParam) next.set("country", countryParam);
     if (nearMe) next.set("near", "1");
@@ -297,24 +319,27 @@ export default async function EventsPage({
   };
 
   const listingLocale = locale === "nl" ? "nl" : "en";
-  const eventJsonLd = listingEventsJsonLd(
-    events.map((event) => ({
-      id: event.id,
-      title: event.title,
-      slug: event.slug,
-      date: event.date,
-      endDate: event.endDate,
-      startTime: event.startTime,
-      endTime: event.endTime,
-      timezone: event.timezone,
-      format: event.format,
-      city: event.city,
-      location: event.location,
-      sourceUrl: event.sourceUrl,
-      summary: typeof event.summary === "string" ? event.summary : null,
-    })),
-    listingLocale,
-  );
+  const eventJsonLd = eventListingEmitsJsonLd(aiFilter)
+    ? listingEventsJsonLd(
+        events.map((event) => ({
+          id: event.id,
+          title: event.title,
+          slug: event.slug,
+          date: event.date,
+          endDate: event.endDate,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          timezone: event.timezone,
+          format: event.format,
+          city: event.city,
+          location: event.location,
+          sourceUrl: event.sourceUrl,
+          summary: typeof event.summary === "string" ? event.summary : null,
+        })),
+        listingLocale,
+      )
+    : [];
+  const aiFlags = await loadEventAiFlags(events.map((event) => event.id));
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -503,6 +528,11 @@ export default async function EventsPage({
                     </p>
                   )}
                   <div className="flex flex-wrap items-center gap-2">
+                    {aiFlags.get(event.id) === true && (
+                      <Badge variant="outline" className="px-2.5 py-1">
+                        {t("aiBadge")}
+                      </Badge>
+                    )}
                     {event.focus && (
                       <Badge variant="outline" className="px-2.5 py-1">
                         {String(event.focus)}

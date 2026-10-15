@@ -14,6 +14,18 @@ substitute for the CMS chrome.
 
 - Hosted Payload published events (cards)
 - Upcoming / past tabs, search, type / focus / format / AIT-fit filters
+- AI filter on the same URL: `?ai=1` (the stored text is about AI) and
+  `?ai=0` (the stored text is not). Null rows match neither. Those two
+  views are `noindex,follow` with a canonical of `/events`. The unfiltered
+  URL, title, and Event JSON-LD stay on the page without `ai`.
+- `events.is_ai` is a nullable boolean. Migration `20261015b_event_is_ai`
+  only adds the column, and it is registered after
+  `20261015b_startup_role_is_ai`. `/api/cron/event-ai` classifies title, summary,
+  and description in batches and skips a row that is already true or false.
+  GPU, NVIDIA, automation, ML, LLMs, agents, and data science count as AI.
+  A title that does not settle the subject stays null and matches neither
+  filter. A non-AI reading does not drop the event. Discovery still requires
+  a real http(s) source link and does not invent one.
 - Grid and map views
 - Join chrome: guests get hard www `/en/join` with events UTMs; signed-in
   Hub members get Open Hub (zero Join). No invented attendance / RSVP /

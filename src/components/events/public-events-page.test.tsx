@@ -44,7 +44,7 @@ describe("public events route", () => {
     const src = readFileSync(PAGE_FILE, "utf8");
     expect(src).toContain("PUBLIC_EVENTS_PATH");
     expect(src).toContain("localeAlternates");
-    expect(src).toContain("robots: { index: true, follow: true }");
+    expect(src).toContain("robots: eventAiRobots(aiFilter)");
     expect(src).not.toContain("investigations/ai-events");
   });
 
@@ -80,6 +80,14 @@ describe("Join chrome", () => {
     expect(src).toContain("PUBLIC_EVENTS_JOIN_HREF");
     expect(src).toContain('t("listingLead")');
     expect(src).toContain('t("listingMemberLead")');
+    expect(src).toContain("eventAiRobots(aiFilter)");
+    expect(src).toContain("eventListingEmitsJsonLd(aiFilter)");
+    expect(src).toContain("title: PUBLIC_EVENTS_H1");
+    expect(src).toContain("localeAlternates(PUBLIC_EVENTS_PATH)");
+    const filter = readFileSync(join(dir, "../events-filter-bar.tsx"), "utf8");
+    expect(filter).toContain('t("filterAi")');
+    expect(filter).toContain('value="1"');
+    expect(filter).toContain('value="0"');
     expect(src).not.toMatch(/export const revalidate/);
   });
 
@@ -95,7 +103,14 @@ describe("Join chrome", () => {
     expect(en.events.listingLead).toMatch(
       /community sign-up, not an event ticket/,
     );
+    expect(en.events.listingLead).toMatch(/any sector/);
+    expect(en.events.listingLead).not.toMatch(/AI Tech Community|AI events/);
+    expect(en.events.listingMemberLead).not.toMatch(/AI Tech Community/);
     expect(nl.events.listingLead).toMatch(/community-aanmelding/);
+    expect(nl.events.listingLead).toMatch(/elke sector/);
+    expect(en.events.filterAiYes).toBe("AI");
+    expect(en.events.filterAiNo).toBe("Not AI");
+    expect(nl.events.filterAiNo).toBe("Geen AI");
   });
 });
 

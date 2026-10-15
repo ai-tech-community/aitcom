@@ -7,6 +7,7 @@ import {
   EVENT_REVIEW_STATUS_OPTIONS,
   EVENT_TYPES,
 } from "@/lib/event-metadata";
+import { classifyEventAi } from "@/lib/events/event-ai";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
 const optionalTrimmedString = z.string().trim().min(1).optional();
@@ -32,7 +33,15 @@ export const discoveredEventImportSchema = z.object({
   // resolveAudienceIds) is responsible for resolving slugs to `audiences`
   // relationship ids.
   audience: z.array(z.string()).max(8).optional(),
-  sourceUrl: z.url().optional(),
+  // A discovered event needs the page it came from. The importer does not
+  // invent a URL, and a non-AI reading is not a reason to reject the row.
+  sourceUrl: z
+    .string()
+    .trim()
+    .url()
+    .refine((value) => /^https?:\/\//i.test(value), {
+      message: "Event source must be an http(s) link",
+    }),
   aitFitScore: z.number().min(1).max(10).optional(),
   tags: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
   curatedByAgent: z.boolean().optional().default(true),
@@ -84,6 +93,7 @@ export function buildEventDraftImportPayload(
   const event = discoveredEventImportSchema.parse(input);
 
   return {
+    isAi: classifyEventAi(event.title, event.description, event.summary),
     draftData: {
       title: event.title,
       description: plainTextToLexical(event.description ?? event.summary ?? ""),

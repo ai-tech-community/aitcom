@@ -62,6 +62,7 @@ import { assertEventCancellable } from "@/server/events/cancel-guard";
 import { toEventEmailData } from "@/server/events/event-email-data";
 import { toRegistrationCalendarInvite } from "@/server/events/registration-invite";
 import { externalEventUrl } from "@/lib/events/event-source";
+import { rememberEventAiFromEdit } from "@/server/events/event-ai";
 import { escapeLike } from "@/server/db/escape-like";
 import { personNameSchema } from "@/lib/person-name";
 import {
@@ -831,6 +832,8 @@ export const eventsRouter = createTRPCRouter({
         },
       });
 
+      await rememberEventAiFromEdit(event.id, input);
+
       await logActivity(ctx.db, {
         actorId: userId,
         actorType: "member",
@@ -956,6 +959,8 @@ export const eventsRouter = createTRPCRouter({
         id: input.eventId,
         data,
       });
+
+      await rememberEventAiFromEdit(event.id, input, existingEvent);
 
       await logActivity(ctx.db, {
         actorId: userId,
@@ -1443,6 +1448,8 @@ export const eventsRouter = createTRPCRouter({
           // The member who proposes it runs it (ADR-0038).
           organizerId: userId,
           // Strip curation-only fields that members cannot set
+          // is_ai is stored after the insert from the submitted text. A
+          // non-AI reading does not reject the submission.
           aitFitScore: undefined,
           curatedByAgent: false,
           confidenceScore: undefined,
@@ -1450,6 +1457,8 @@ export const eventsRouter = createTRPCRouter({
           lastVerifiedAt: undefined,
         },
       });
+
+      await rememberEventAiFromEdit(event.id, input);
 
       // Notify all admins/owners/moderators of this community
       const admins = await ctx.db
@@ -2092,6 +2101,8 @@ export const eventsRouter = createTRPCRouter({
         id: input.eventId,
         data,
       });
+
+      await rememberEventAiFromEdit(event.id, input, existing);
 
       // Notify admins/mods that a resubmission is pending
       const admins = await ctx.db

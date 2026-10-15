@@ -1,4 +1,5 @@
 import * as migration_20261015b_startup_role_is_ai from "./20261015b_startup_role_is_ai";
+import * as migration_20261015b_event_is_ai from "./20261015b_event_is_ai";
 import * as migration_20261015a_startup_uses_ai from "./20261015a_startup_uses_ai";
 import * as migration_20261014c_news_storyline_votes from "./20261014c_news_storyline_votes";
 import * as migration_20261014b_news_contributions from "./20261014b_news_contributions";
@@ -977,5 +978,10 @@ export const migrations = [
     up: migration_20261015b_startup_role_is_ai.up,
     down: migration_20261015b_startup_role_is_ai.down,
     name: "20261015b_startup_role_is_ai",
+  },
+  {
+    up: migration_20261015b_event_is_ai.up,
+    down: migration_20261015b_event_is_ai.down,
+    name: "20261015b_event_is_ai",
   },
 ];
