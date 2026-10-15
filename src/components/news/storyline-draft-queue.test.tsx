@@ -2,11 +2,17 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { expect, it, vi } from "vitest";
 import en from "../../../messages/en.json";
+import { toast } from "sonner";
 import { StorylineDraftQueue } from "./storyline-draft-queue";
 
 const DRAFT = "f79b8204-0a7a-485a-82c9-a2a072034eab";
 const approve = vi.hoisted(() => vi.fn());
 const reject = vi.hoisted(() => vi.fn());
+const approveOptions = vi.hoisted(() => ({
+  current: null as null | {
+    onSuccess: (saved: { id: string; slug: string }) => void;
+  },
+}));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
@@ -33,7 +39,12 @@ vi.mock("@/trpc/react", () => ({
         }),
       },
       approveAgentStorylineDraft: {
-        useMutation: () => ({ mutate: approve, isPending: false }),
+        useMutation: (opts: {
+          onSuccess: (saved: { id: string; slug: string }) => void;
+        }) => {
+          approveOptions.current = opts;
+          return { mutate: approve, isPending: false };
+        },
       },
       dismissAgentStorylineDraft: {
         useMutation: () => ({ mutate: reject, isPending: false }),
@@ -69,8 +80,22 @@ it("lists an existing pending draft and approves or rejects it", () => {
     "href",
     `/news/stories/drafts/${DRAFT}`,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+  fireEvent.click(screen.getByRole("button", { name: "Approve and publish" }));
   expect(approve).toHaveBeenCalledWith({ draftId: DRAFT });
+  approveOptions.current?.onSuccess({ id: "story-1", slug: "local-ai" });
+  expect(toast.success).toHaveBeenCalledWith(
+    "Approve and publish",
+    expect.objectContaining({ description: expect.anything() }),
+  );
+  const description = (
+    toast.success as unknown as {
+      mock: { calls: Array<[string, { description: React.ReactNode }]> };
+    }
+  ).mock.calls[0]?.[1].description;
+  render(<>{description}</>);
+  expect(
+    screen.getByRole("link", { name: "View the published story" }),
+  ).toHaveAttribute("href", "/news/stories/local-ai");
   fireEvent.click(screen.getByRole("button", { name: "Reject" }));
   expect(reject).toHaveBeenCalledWith({ draftId: DRAFT });
 });

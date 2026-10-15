@@ -64,8 +64,16 @@ function revealActiveTab(nav: HTMLElement) {
 function RouteTabs({
   tabs,
   className,
+  activeTone = "primary",
   ...props
-}: Omit<React.ComponentProps<"nav">, "children"> & { tabs: RouteTab[] }) {
+}: Omit<React.ComponentProps<"nav">, "children"> & {
+  tabs: RouteTab[];
+  /**
+   * `primary` uses Signal Orange for the active tab. `ink` keeps that orange
+   * for a button elsewhere on the page.
+   */
+  activeTone?: "primary" | "ink";
+}) {
   const pathname = usePathname();
   const navRef = React.useRef<HTMLElement>(null);
   const [overflow, setOverflow] = React.useState<Overflow>({
@@ -114,7 +122,12 @@ function RouteTabs({
               className={cn(
                 "focus-visible:ring-ring/50 -mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px]",
                 active
-                  ? "border-primary text-foreground"
+                  ? cn(
+                      "text-foreground",
+                      activeTone === "ink"
+                        ? "border-foreground"
+                        : "border-primary",
+                    )
                   : "text-muted-foreground hover:text-foreground hover:border-border border-transparent",
               )}
             >

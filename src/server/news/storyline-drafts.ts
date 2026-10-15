@@ -81,7 +81,10 @@ export async function readStorylineDraft(
   return row ? present(row) : null;
 }
 
-/** Editor approval saves an editorial draft. It does not publish. */
+/**
+ * Owner or editor approval publishes the proposal. There is no second
+ * publisher step. A proposal that cannot be published stays pending.
+ */
 export async function approveStorylineDraft(draftId: string, editorId: string) {
   const draft = await readStorylineDraft(draftId);
   if (!draft || draft.status !== "pending") {
@@ -91,13 +94,14 @@ export async function approveStorylineDraft(draftId: string, editorId: string) {
     ...(asRecord(draft.input) ?? {}),
     id: undefined,
     sourceDraftId: draftId,
-    status: "draft",
+    status: "published",
   });
   if (!parsed.success) throw new StorylineError("invalid", "sourceDraft");
   const input = { ...parsed.data };
   delete input.id;
-  return saveStoryline(
-    { ...input, sourceDraftId: draftId, status: "draft" },
+  const saved = await saveStoryline(
+    { ...input, sourceDraftId: draftId, status: "published" },
     editorId,
   );
+  return { id: saved.id, slug: input.slug };
 }

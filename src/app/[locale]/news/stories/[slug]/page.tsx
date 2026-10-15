@@ -2,6 +2,7 @@ import { StorylineLoadError } from "@/components/news/storyline-states";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
+import { getSession } from "@/server/better-auth/server";
 import { findStoryline, relatedStorylines } from "@/server/news/storylines";
 import { storylineCopy } from "@/lib/news/storylines";
 import { StorylineReader } from "@/components/news/storyline-reader";
@@ -31,7 +32,8 @@ export default async function StoryPage({
   const t = await getTranslations("newsStories");
   let loaded;
   try {
-    const story = await findStoryline({ slug });
+    const session = await getSession();
+    const story = await findStoryline({ slug }, false, session?.user?.id);
     loaded = story
       ? { story, related: await relatedStorylines(story.id) }
       : null;

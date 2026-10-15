@@ -12,25 +12,23 @@ import {
   utcDayKey,
   type NewsContributionBadge,
 } from "@/lib/news/contributions";
+import { contributorBoardEntry } from "@/lib/news/contributor-board";
 import { awardMilestone } from "@/server/badges/engine";
 import { db } from "@/server/db";
 import {
   agentDrafts,
+  agentProfiles,
   memberProfiles,
   newsContributions,
   newsItems,
   newsStorylineArticles,
   newsStorylines,
+  user,
 } from "@/server/db/schema";
 
 import { listWeeklyStoryTopics } from "./weekly-topics";
 
-export type ContributorBoardRow = {
-  userId: string;
-  name: string;
-  profilePath: string;
-  points: number;
-};
+export type { ContributorBoardEntry as ContributorBoardRow } from "@/lib/news/contributor-board";
 
 async function awardNewsBadges(
   userId: string,
@@ -142,10 +140,7 @@ export async function storyCoverageToday(now = new Date()) {
   );
 }
 
-export async function listWeeklyContributorBoard(
-  now = new Date(),
-  limit = 10,
-): Promise<ContributorBoardRow[]> {
+export async function listWeeklyContributorBoard(now = new Date(), limit = 10) {
   const start = contributionWeekStart(now);
   const rows = await db
     .select({
@@ -154,11 +149,19 @@ export async function listWeeklyContributorBoard(
       displayName: memberProfiles.displayName,
       isPublic: memberProfiles.isPublic,
       hiddenFromPublic: memberProfiles.hiddenFromPublic,
+      image: user.image,
+      agentName: agentProfiles.name,
+      agentVisibility: agentProfiles.visibilityMode,
     })
     .from(newsContributions)
     .innerJoin(
       memberProfiles,
       eq(memberProfiles.userId, newsContributions.userId),
+    )
+    .innerJoin(user, eq(user.id, newsContributions.userId))
+    .leftJoin(
+      agentProfiles,
+      eq(agentProfiles.ownerId, newsContributions.userId),
     )
     .where(
       and(
@@ -173,6 +176,9 @@ export async function listWeeklyContributorBoard(
       memberProfiles.displayName,
       memberProfiles.isPublic,
       memberProfiles.hiddenFromPublic,
+      user.image,
+      agentProfiles.name,
+      agentProfiles.visibilityMode,
     )
     .orderBy(
       desc(sql`sum(${newsContributions.points})`),
@@ -180,16 +186,8 @@ export async function listWeeklyContributorBoard(
     )
     .limit(limit);
   return rows.flatMap((row) => {
-    const name = row.displayName.trim();
-    if (!name || !row.isPublic || row.hiddenFromPublic) return [];
-    return [
-      {
-        userId: row.userId,
-        name,
-        profilePath: `/members/${row.userId}`,
-        points: Number(row.points),
-      },
-    ];
+    const entry = contributorBoardEntry(row);
+    return entry ? [entry] : [];
   });
 }
 

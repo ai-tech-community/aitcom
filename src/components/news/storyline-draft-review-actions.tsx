@@ -5,15 +5,18 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { announcePublishedStory } from "@/components/news/storyline-published-toast";
 import { api } from "@/trpc/react";
 
 export function StorylineDraftReviewActions({
   draftId,
   canApprove,
+  asEditor,
   pending,
 }: {
   draftId: string;
   canApprove: boolean;
+  asEditor: boolean;
   pending: boolean;
 }) {
   const t = useTranslations("newsStories.draftReview");
@@ -25,8 +28,8 @@ export function StorylineDraftReviewActions({
     router.refresh();
   };
   const approve = api.news.approveAgentStorylineDraft.useMutation({
-    onSuccess: () => {
-      toast.success(t("approved"));
+    onSuccess: (saved) => {
+      announcePublishedStory(t("approved"), saved.slug, t("viewPublished"));
       done();
     },
     onError: () => toast.error(t("approveFailed")),
@@ -66,7 +69,7 @@ export function StorylineDraftReviewActions({
         variant="outline"
         disabled={busy}
         onClick={() =>
-          canApprove
+          asEditor
             ? rejectAsEditor.mutate({ draftId })
             : rejectAsOwner.mutate({ draftId, action: "rejected" })
         }

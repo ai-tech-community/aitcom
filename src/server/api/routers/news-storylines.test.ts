@@ -12,6 +12,8 @@ const state = vi.hoisted(() => ({
   pendingDrafts: vi.fn(),
   approveDraft: vi.fn(),
   readDraft: vi.fn(),
+  castVote: vi.fn(),
+  credit: vi.fn(async () => "skipped"),
   submitSuggestion: vi.fn(),
   listSuggestions: vi.fn(),
   reviewSuggestion: vi.fn(),
@@ -51,6 +53,10 @@ vi.mock("@/server/news/storyline-drafts", () => ({
   approveStorylineDraft: state.approveDraft,
   readStorylineDraft: state.readDraft,
 }));
+vi.mock("@/server/news/storyline-votes", () => ({
+  castStorylineVote: state.castVote,
+  StorylineVoteError: class StorylineVoteError extends Error {},
+}));
 vi.mock("@/server/news/story-suggestions", () => ({
   storySuggestionDb: {},
   submitStorySuggestion: state.submitSuggestion,
@@ -66,16 +72,16 @@ vi.mock("@/server/news/contributions", () => ({
     total: 5,
     visible: false,
   })),
-  recordPublishedStoryCredit: vi.fn(async () => "skipped"),
+  recordPublishedStoryCredit: state.credit,
 }));
 import { newsRouter } from "./news";
 
-const caller = (signedIn = true) =>
+const caller = (signedIn = true, id = "editor") =>
   newsRouter.createCaller({
     db: {} as never,
     headers: new Headers(),
     session: signedIn
-      ? ({ user: { id: "editor", email: "editor@example.org" } } as never)
+      ? ({ user: { id, email: `${id}@example.org` } } as never)
       : null,
   });
 const draft = storylineInputSchema.parse({
@@ -109,6 +115,11 @@ it("denies every editorial endpoint to ordinary members before storage access", 
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(caller().listStorylineDraftQueue()).rejects.toMatchObject({
     code: "FORBIDDEN",
+  });
+  state.readDraft.mockResolvedValue({
+    id: "d1",
+    ownerId: "someone-else",
+    status: "pending",
   });
   await expect(
     caller().approveAgentStorylineDraft({ draftId: "d1" }),
@@ -164,11 +175,30 @@ it("allows staff to read and dismiss proposals in the editorial inbox", async ()
   await expect(caller().listStorylineDraftQueue()).resolves.toEqual([
     { id: "d1" },
   ]);
-  state.approveDraft.mockResolvedValue({ id: "story" });
+  state.readDraft.mockResolvedValue({
+    id: "d1",
+    ownerId: "owner",
+    status: "pending",
+  });
+  state.approveDraft.mockResolvedValue({ id: "story", slug: "local-ai" });
   await expect(
     caller().approveAgentStorylineDraft({ draftId: "d1" }),
-  ).resolves.toEqual({ id: "story" });
+  ).resolves.toEqual({ id: "story", slug: "local-ai" });
   expect(state.approveDraft).toHaveBeenCalledWith("d1", "editor");
+  expect(state.credit).toHaveBeenCalledWith("story");
+});
+
+it("lets the agent owner publish their own pending draft", async () => {
+  state.readDraft.mockResolvedValue({
+    id: "d1",
+    ownerId: "owner",
+    status: "pending",
+  });
+  state.approveDraft.mockResolvedValue({ id: "story", slug: "local-ai" });
+  await expect(
+    caller(true, "owner").approveAgentStorylineDraft({ draftId: "d1" }),
+  ).resolves.toEqual({ id: "story", slug: "local-ai" });
+  expect(state.approveDraft).toHaveBeenCalledWith("d1", "owner");
 });
 
 it("shows a pending draft to its owner and hides it from other members", async () => {
@@ -186,6 +216,11 @@ it("shows a pending draft to its owner and hides it from other members", async (
   await expect(
     caller().readStorylineDraft({ draftId: "d1" }),
   ).resolves.toMatchObject({ id: "d1", canApprove: true });
+  state.staff = false;
+  state.readDraft.mockResolvedValue({ id: "d1", ownerId: "editor" });
+  await expect(
+    caller().readStorylineDraft({ draftId: "d1" }),
+  ).resolves.toMatchObject({ canApprove: true });
 });
 
 it("stores a valid suggestion for a signed-in member and rejects a bad link", async () => {
@@ -216,6 +251,26 @@ it("claims a story only through a mutation", () => {
     _def: { type?: string };
   };
   expect(claim._def.type).toBe("mutation");
+});
+
+it("casts a story vote only through a mutation", async () => {
+  const vote = newsRouter._def.procedures.castStorylineVote as {
+    _def: { type?: string };
+  };
+  expect(vote._def.type).toBe("mutation");
+  await expect(
+    caller(false).castStorylineVote({ storyId: "s1", vote: "up" }),
+  ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  expect(state.castVote).not.toHaveBeenCalled();
+  state.castVote.mockResolvedValue({ score: 1, myVote: "up" });
+  await expect(
+    caller().castStorylineVote({ storyId: "s1", vote: "up" }),
+  ).resolves.toEqual({ score: 1, myVote: "up" });
+  expect(state.castVote).toHaveBeenCalledWith({
+    storyId: "s1",
+    userId: "editor",
+    vote: "up",
+  });
 });
 
 it("rate-limits suggestions and lets staff review the queue", async () => {

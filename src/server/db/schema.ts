@@ -20,6 +20,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -4867,6 +4868,35 @@ export const newsStorylines = appSchema.table(
       "news_storyline_status_check",
       sql`${t.status} in ('draft', 'published')`,
     ),
+  ],
+);
+
+/** One up or down vote per signed-in member per story. */
+export const newsStorylineVotes = appSchema.table(
+  "news_storyline_vote",
+  (d) => ({
+    storyId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => newsStorylines.id, { onDelete: "cascade" }),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    value: d.integer().notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.storyId, t.userId] }),
+    unique("news_storyline_vote_story_user_key").on(t.storyId, t.userId),
+    check("news_storyline_vote_value_check", sql`${t.value} in (-1, 1)`),
   ],
 );
 

@@ -23,6 +23,8 @@ export const storyFixture: StorylineDetail = {
   connections: [],
   proposedBy: null,
   contributor: null,
+  score: 0,
+  myVote: null,
   articles: [
     {
       articleId: "research",

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { beforeEach, expect, it, vi } from "vitest";
 import en from "../../../../../messages/en.json";
@@ -9,6 +9,20 @@ const state = vi.hoisted(() => ({
   find: vi.fn(),
   list: vi.fn(),
   related: vi.fn(),
+  board: [] as Array<{
+    userId: string;
+    name: string;
+    profilePath: string;
+    image: string | null;
+    agentName: string | null;
+    points: number;
+  }>,
+  topics: [] as Array<{
+    title: string;
+    topicKey: string;
+    articleIds: string[];
+    newestAt: string;
+  }>,
 }));
 vi.mock("next-intl/server", () => ({
   getLocale: async () => "en",
@@ -26,6 +40,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 vi.mock("@/i18n/navigation", () => ({
+  usePathname: () => "/news/stories",
   Link: ({
     href,
     children,
@@ -47,6 +62,24 @@ vi.mock("@/server/news/staff", () => ({
 vi.mock("@/server/better-auth/server", () => ({
   getSession: async () => ({ user: { email: "member@example.org" } }),
 }));
+vi.mock("@/components/ui/avatar", () => ({
+  Avatar: ({
+    children,
+    size: _size,
+    ...props
+  }: React.HTMLAttributes<HTMLSpanElement> & { size?: string }) => (
+    <span {...props}>{children}</span>
+  ),
+  AvatarImage: ({ src, alt }: { src?: string; alt?: string }) => (
+    <span data-avatar-src={src} data-avatar-alt={alt ?? ""} />
+  ),
+  AvatarFallback: ({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  ),
+}));
+vi.mock("@/components/news/storyline-vote", () => ({
+  StorylineVoteControls: () => <div>Story votes</div>,
+}));
 vi.mock("@/components/news/storyline-editor", () => ({
   StorylineEditor: () => <div>Staff editor</div>,
 }));
@@ -56,7 +89,27 @@ vi.mock("@/components/news/storyline-draft-queue", () => ({
 vi.mock("@/components/news/story-suggestion-inbox", () => ({
   StorySuggestionInbox: () => <div>Suggestion inbox</div>,
 }));
-import StoriesPage from "./page";
+vi.mock("@/server/news/contributions", () => ({
+  listWeeklyContributorBoard: async () => state.board,
+}));
+vi.mock("@/server/news/weekly-topics", () => ({
+  listWeeklyStoryTopics: async () => state.topics,
+}));
+vi.mock("@/components/news/weekly-topic-claims", () => ({
+  WeeklyTopicClaims: ({
+    topics,
+  }: {
+    topics: Array<{ title: string; topicKey: string }>;
+  }) =>
+    topics.length === 0 ? null : (
+      <section aria-label="Weekly topics">
+        {topics.map((topic) => (
+          <p key={topic.topicKey}>{topic.title}</p>
+        ))}
+      </section>
+    ),
+}));
+import StoriesPage, { generateMetadata as storiesMetadata } from "./page";
 import StoryPage, { generateMetadata as storyMetadata } from "./[slug]/page";
 import ManageStoriesPage from "./manage/page";
 
@@ -66,6 +119,8 @@ beforeEach(() => {
   state.find.mockResolvedValue(storyFixture);
   state.related.mockResolvedValue([]);
   state.list.mockResolvedValue({ items: [], total: 0, page: 1, totalPages: 1 });
+  state.board = [];
+  state.topics = [];
 });
 const show = (element: React.ReactNode) =>
   render(
@@ -115,6 +170,83 @@ it("returns 404 for missing or nonpublic stories, but renders explicit storage f
     en.newsStories.unavailable,
   );
   log.mockRestore();
+});
+it("keeps the stories index noindex without a new canonical", async () => {
+  const meta = await storiesMetadata();
+  expect(meta.robots).toEqual({ index: false, follow: true });
+  expect(meta.alternates).toBeUndefined();
+});
+it("shows this week's contributors as the human and their visible agent", async () => {
+  state.board = [
+    {
+      userId: "ada",
+      name: "Ada Lovelace",
+      profilePath: "/members/ada",
+      image: null,
+      agentName: "Scout",
+      points: 60,
+    },
+    {
+      userId: "grace",
+      name: "Grace Hopper",
+      profilePath: "/members/grace",
+      image: "https://cdn.example/grace.jpg",
+      agentName: null,
+      points: 20,
+    },
+  ];
+  state.topics = [
+    {
+      title: "EU AI Act",
+      topicKey: "eu-ai-act",
+      articleIds: ["a1"],
+      newestAt: "2026-10-14T00:00:00.000Z",
+    },
+  ];
+  show(await StoriesPage({ searchParams: Promise.resolve({}) }));
+  expect(
+    screen.getByRole("heading", { name: en.newsPage.leaderboardTitle }),
+  ).toBeInTheDocument();
+  const ada = screen.getByRole("link", { name: "Ada Lovelace" });
+  expect(ada).toHaveAttribute("href", "/members/ada");
+  expect(ada.querySelector("[data-avatar-src]")).toBeNull();
+  expect(ada).toHaveTextContent("AL");
+  expect(screen.getByText("Agent: Scout")).toBeInTheDocument();
+  expect(screen.getByText("60 pts")).toBeInTheDocument();
+  const grace = screen.getByRole("link", { name: "Grace Hopper" });
+  expect(grace.querySelector("[data-avatar-src]")).toHaveAttribute(
+    "data-avatar-src",
+    "https://cdn.example/grace.jpg",
+  );
+  expect(grace.querySelector("[data-avatar-src]")).toHaveAttribute(
+    "data-avatar-alt",
+    "",
+  );
+  expect(screen.queryByText(/Connected agent/)).not.toBeInTheDocument();
+  expect(screen.getByText("EU AI Act")).toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: en.newsStories.contribute.entry }),
+  ).toHaveAttribute("href", "/news/stories/contribute");
+});
+it("links an empty weekly board to contributing", async () => {
+  show(await StoriesPage({ searchParams: Promise.resolve({}) }));
+  expect(
+    screen.getByRole("link", { name: en.newsPage.leaderboardEmpty }),
+  ).toHaveAttribute("href", "/news/stories/contribute");
+  expect(screen.queryByRole("region", { name: "Weekly topics" })).toBeNull();
+});
+it("links News and Stories as tabs, with Stories current", async () => {
+  show(await StoriesPage({ searchParams: Promise.resolve({}) }));
+  const nav = screen.getByRole("navigation", { name: en.newsPage.tabsLabel });
+  const news = within(nav).getByRole("link", { name: en.newsPage.tabNews });
+  const stories = within(nav).getByRole("link", {
+    name: en.newsPage.tabStories,
+  });
+  expect(news).toHaveAttribute("href", "/news");
+  expect(news).not.toHaveAttribute("aria-current");
+  expect(stories).toHaveAttribute("href", "/news/stories");
+  expect(stories).toHaveAttribute("aria-current", "page");
+  expect(stories).not.toHaveAttribute("tabindex", "-1");
 });
 it("keeps story pages noindex", async () => {
   const meta = await storyMetadata({

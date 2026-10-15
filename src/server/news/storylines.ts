@@ -10,14 +10,21 @@ import {
 } from "drizzle-orm";
 import { newsTableSearchRegex } from "@/lib/news/table-query";
 import { db } from "@/server/db";
+import { storylineVoteChoice } from "@/lib/news/storyline-vote";
+import {
+  storylineCredit,
+  type StorylineCredit,
+} from "@/lib/news/storyline-credit";
 import {
   newsItems,
   agentDrafts,
   agentProfiles,
   memberProfiles,
+  user,
   newsStorylines as stories,
   newsStorylineArticles as memberships,
   newsStorylineConnections as connections,
+  newsStorylineVotes,
 } from "@/server/db/schema";
 import {
   publicationIssues,
@@ -55,12 +62,15 @@ export const publicStoryline = and(
   sql`${articleCount} >= 2`,
 );
 
+const storylineScore = sql<number>`(select coalesce(sum(${newsStorylineVotes.value}), 0)::int from ${newsStorylineVotes} where ${newsStorylineVotes.storyId} = ${stories.id})`;
+
 export async function listStorylines(
   input: {
     q?: string;
     page?: number;
     limit?: number;
     staff?: boolean;
+    viewerId?: string;
   } = {},
 ) {
   const q = (input.q ?? "").trim().slice(0, 200);
@@ -87,18 +97,52 @@ export async function listStorylines(
     totalPages,
     Math.max(1, Math.floor(input.page ?? 1) || 1),
   );
+  const myVote = input.viewerId
+    ? sql<
+        number | null
+      >`(select ${newsStorylineVotes.value} from ${newsStorylineVotes} where ${newsStorylineVotes.storyId} = ${stories.id} and ${newsStorylineVotes.userId} = ${input.viewerId} limit 1)`
+    : sql<number | null>`null::int`;
+  // Wrap the subqueries. A bare SQL field in this select list makes Drizzle
+  // reprint the columns without table names, so the article count matches
+  // the wrong id and the page shows zero articles.
   const rows = await db
-    .select({ storyline: stories, articleCount, latestAt })
+    .select({
+      storyline: stories,
+      articleCount: sql<number>`${articleCount}`,
+      latestAt: sql<Date | null>`${latestAt}`,
+      score: sql<number>`${storylineScore}`,
+      myVote: sql<number | null>`${myVote}`,
+    })
     .from(stories)
     .where(where)
-    .orderBy(sql`${latestAt} desc nulls last`, stories.slug)
+    .orderBy(
+      ...(input.staff
+        ? ([sql`${latestAt} desc nulls last`, stories.slug] as const)
+        : ([
+            sql`${storylineScore} desc`,
+            sql`${latestAt} desc nulls last`,
+            stories.slug,
+          ] as const)),
+    )
     .limit(limit)
     .offset((page - 1) * limit);
+  const credits = await loadStorylineCredits(
+    rows.map((row) => row.storyline.id),
+  ).catch((err: unknown) => {
+    console.error("news: story credits unavailable", err);
+    return new Map<string, StorylineCredit>();
+  });
   return {
     items: rows.map((row) => ({
       ...row.storyline,
       articleCount: row.articleCount,
       latestAt: row.latestAt ? new Date(row.latestAt).toISOString() : null,
+      score: Number(row.score ?? 0),
+      myVote: storylineVoteChoice(row.myVote),
+      credit: credits.get(row.storyline.id) ?? {
+        human: null,
+        agentName: null,
+      },
     })),
     total,
     page,
@@ -133,6 +177,7 @@ export async function loadStorylineMemberships(
 export async function findStoryline(
   key: { slug: string } | { id: string },
   staff = false,
+  viewerId?: string,
 ) {
   const [storyline] = await db
     .select()
@@ -177,33 +222,81 @@ export async function findStoryline(
       ),
     )
     .limit(1);
-  const proposedBy = sourceAgent
-    ? {
-        name:
-          sourceAgent.visibilityMode === "visible" ? sourceAgent.name : null,
-      }
+  const credit = sourceAgent
+    ? storylineCredit({
+        ownerId: sourceAgent.ownerId,
+        displayName: sourceAgent.displayName,
+        isPublic: sourceAgent.isPublic,
+        hiddenFromPublic: sourceAgent.hiddenFromPublic,
+        agentName: sourceAgent.name,
+        agentVisibility: sourceAgent.visibilityMode,
+      })
     : null;
-  const contributor =
-    sourceAgent?.ownerId &&
-    sourceAgent.displayName?.trim() &&
-    sourceAgent.isPublic !== false &&
-    !sourceAgent.hiddenFromPublic
-      ? {
-          name: sourceAgent.displayName.trim(),
-          profilePath: `/members/${sourceAgent.ownerId}`,
-        }
-      : null;
+  const proposedBy = sourceAgent ? { name: credit?.agentName ?? null } : null;
+  const contributor = credit?.human
+    ? { name: credit.human.name, profilePath: credit.human.profilePath }
+    : null;
+  const [votes] = await db
+    .select({
+      score: sql<number>`coalesce(sum(${newsStorylineVotes.value}), 0)::int`,
+      mine: viewerId
+        ? sql<
+            number | null
+          >`max(${newsStorylineVotes.value}) filter (where ${newsStorylineVotes.userId} = ${viewerId})`
+        : sql<number | null>`null::int`,
+    })
+    .from(newsStorylineVotes)
+    .where(eq(newsStorylineVotes.storyId, storyline.id));
   return {
     ...storyline,
     articles,
     connections: outgoing,
     proposedBy,
     contributor,
+    score: Number(votes?.score ?? 0),
+    myVote: storylineVoteChoice(votes?.mine),
   };
 }
 export type StorylineDetail = NonNullable<
   Awaited<ReturnType<typeof findStoryline>>
 >;
+
+/** Approved proposal credits for the stories on one page. Newest draft wins. */
+export async function loadStorylineCredits(storyIds: string[]) {
+  const credits = new Map<string, StorylineCredit>();
+  if (storyIds.length === 0) return credits;
+  const rows = await db
+    .select({
+      storyId: sql<string>`${agentDrafts.metadata}->>'savedStorylineId'`,
+      createdAt: agentDrafts.createdAt,
+      ownerId: agentDrafts.ownerId,
+      displayName: memberProfiles.displayName,
+      isPublic: memberProfiles.isPublic,
+      hiddenFromPublic: memberProfiles.hiddenFromPublic,
+      image: user.image,
+      agentName: agentProfiles.name,
+      agentVisibility: agentProfiles.visibilityMode,
+    })
+    .from(agentDrafts)
+    .innerJoin(agentProfiles, eq(agentProfiles.id, agentDrafts.agentId))
+    .leftJoin(memberProfiles, eq(memberProfiles.userId, agentDrafts.ownerId))
+    .leftJoin(user, eq(user.id, agentDrafts.ownerId))
+    .where(
+      and(
+        eq(agentDrafts.type, "news_storyline"),
+        eq(agentDrafts.status, "approved"),
+        inArray(sql`${agentDrafts.metadata}->>'savedStorylineId'`, storyIds),
+      ),
+    );
+  const ordered = [...rows].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+  for (const row of ordered) {
+    if (!row.storyId || credits.has(row.storyId)) continue;
+    credits.set(row.storyId, storylineCredit(row));
+  }
+  return credits;
+}
 
 /** One batch for the current archive page. Rumor IDs are never passed here. */
 export async function articleStorylineLinks(articleIds: string[]) {

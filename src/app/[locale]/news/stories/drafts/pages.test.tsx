@@ -61,7 +61,7 @@ vi.mock("@/components/news/storyline-draft-queue", () => ({
 vi.mock("@/components/news/storyline-draft-review-actions", () => ({
   StorylineDraftReviewActions: ({ canApprove }: { canApprove: boolean }) => (
     <div>
-      {canApprove ? <button type="button">Approve</button> : null}
+      {canApprove ? <button type="button">Approve and publish</button> : null}
       <button type="button">Reject</button>
     </div>
   ),
@@ -128,11 +128,16 @@ it("shows an existing draft to its owner and to an editor, and hides it from oth
   ).toBeInTheDocument();
   expect(screen.getByText(`Draft ${DRAFT}`)).toBeInTheDocument();
   expect(
-    screen.queryByRole("button", { name: "Approve" }),
-  ).not.toBeInTheDocument();
+    screen.getByRole("button", { name: "Approve and publish" }),
+  ).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
+  expect(
+    screen.getByText("Approve and publish puts this story on Ongoing stories."),
+  ).toBeInTheDocument();
   state.staff = true;
   state.session = { user: { id: "editor", email: "editor@example.org" } };
   show(await ReviewPage({ params: Promise.resolve({ draftId: DRAFT }) }));
-  expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+  expect(
+    screen.getAllByRole("button", { name: "Approve and publish" }).length,
+  ).toBeGreaterThan(0);
 });

@@ -76,7 +76,8 @@ export default async function StorylineDraftReviewPage({
       </p>
       <StorylineDraftReviewActions
         draftId={draft.id}
-        canApprove={role === "editor"}
+        canApprove={role === "editor" || role === "owner"}
+        asEditor={role === "editor"}
         pending={draft.status === "pending"}
       />
       {role === "editor" ? (

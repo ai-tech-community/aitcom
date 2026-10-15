@@ -7,6 +7,8 @@ const mock = vi.hoisted(() => ({
   writes: [] as Array<{ action: string; table: unknown; value: unknown }>,
   committed: [] as unknown[],
   conditions: [] as unknown[],
+  orders: [] as unknown[][],
+  selects: [] as unknown[],
 }));
 vi.mock("@/server/db", () => {
   const chain = (
@@ -18,13 +20,16 @@ vi.mock("@/server/db", () => {
       "from",
       "innerJoin",
       "leftJoin",
-      "orderBy",
       "limit",
       "offset",
       "for",
       "onConflictDoUpdate",
     ])
       query[method] = () => query;
+    query.orderBy = (...args: unknown[]) => {
+      mock.orders.push(args);
+      return query;
+    };
     query.where = (condition: unknown) => {
       where?.(condition);
       return query;
@@ -33,11 +38,13 @@ vi.mock("@/server/db", () => {
     return query;
   };
   const tx = {
-    select: () =>
-      chain(
+    select: (fields?: unknown) => {
+      mock.selects.push(fields);
+      return chain(
         () => mock.rows.shift() ?? [],
         (condition) => mock.conditions.push(condition),
-      ),
+      );
+    },
     insert: (table: unknown) => ({
       values: (value: unknown) =>
         chain(() => {
@@ -110,6 +117,8 @@ beforeEach(() => {
   mock.writes = [];
   mock.committed = [];
   mock.conditions = [];
+  mock.orders = [];
+  mock.selects = [];
   vi.clearAllMocks();
 });
 
@@ -202,7 +211,101 @@ it("excludes drafts and insufficient source evidence before pagination", async (
   expect(query.sql).toContain("position(");
   expect(query.sql).toContain(">= 2");
   expect(query.sql).not.toContain("ai_summary");
+  const selected = mock.selects.find(
+    (fields): fields is { articleCount: unknown; score: unknown } =>
+      !!fields &&
+      typeof fields === "object" &&
+      "articleCount" in fields &&
+      "score" in fields,
+  );
+  expect(selected).toBeTruthy();
+  const dialect = new PgDialect({ casing: "snake_case" });
+  const articleSql = dialect.sqlToQuery(selected!.articleCount as never).sql;
+  expect(articleSql).toContain('"news_item"."id"');
+  expect(articleSql).toContain('"news_storyline"."id"');
+  const scoreSql = dialect.sqlToQuery(selected!.score as never).sql;
+  expect(scoreSql).toContain('"news_storyline_vote"');
+  expect(scoreSql).toContain('"news_storyline"."id"');
+  const orderSql = (mock.orders.at(-1) ?? [])
+    .map((part) => {
+      try {
+        return new PgDialect({ casing: "snake_case" }).sqlToQuery(part as never)
+          .sql;
+      } catch {
+        return "";
+      }
+    })
+    .join("\n");
+  expect(orderSql).toContain("news_storyline_vote");
+  expect(orderSql.indexOf("news_storyline_vote")).toBeLessThan(
+    orderSql.indexOf("desc nulls last"),
+  );
   expect(await articleStorylineLinks([])).toEqual([]);
+  mock.orders = [];
+  mock.rows = [[{ total: 0 }], []];
+  await listStorylines({ staff: true });
+  const staffOrder = (mock.orders.at(-1) ?? [])
+    .map((part) => {
+      try {
+        return new PgDialect({ casing: "snake_case" }).sqlToQuery(part as never)
+          .sql;
+      } catch {
+        return "";
+      }
+    })
+    .join("\n");
+  expect(staffOrder).not.toContain("news_storyline_vote");
+  expect(staffOrder).toContain("desc nulls last");
+});
+it("names the newest stored human and visible agent on each story card", async () => {
+  mock.rows = [
+    [{ total: 1 }],
+    [
+      {
+        storyline: {
+          id: "s1",
+          slug: "ai-agents",
+          titleEn: "AI Agents",
+        },
+        articleCount: 6,
+        latestAt: new Date("2026-10-14T00:00:00.000Z"),
+        score: 1,
+        myVote: 1,
+      },
+    ],
+    [
+      {
+        storyId: "s1",
+        createdAt: new Date("2026-10-14T00:00:00.000Z"),
+        ownerId: "greg",
+        displayName: "gregy",
+        isPublic: true,
+        hiddenFromPublic: false,
+        image: "  ",
+        agentName: "Nova",
+        agentVisibility: "visible",
+      },
+      {
+        storyId: "s1",
+        createdAt: new Date("2026-10-01T00:00:00.000Z"),
+        ownerId: "old",
+        displayName: "Older name",
+        isPublic: true,
+        hiddenFromPublic: false,
+        image: "https://cdn.example/old.jpg",
+        agentName: "Retired",
+        agentVisibility: "visible",
+      },
+    ],
+  ];
+  const result = await listStorylines();
+  expect(result.items[0]?.credit).toEqual({
+    human: { name: "gregy", profilePath: "/members/greg", image: null },
+    agentName: "Nova",
+  });
+  expect(result.items[0]?.myVote).toBe("up");
+  expect(JSON.stringify(result.items[0]?.credit)).not.toContain("Retired");
+  expect(JSON.stringify(result.items[0]?.credit)).not.toContain("Older name");
 });
 it("returns null for an inaccessible slug", async () => {
   mock.rows = [[]];

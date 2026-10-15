@@ -89,7 +89,7 @@ it("reads one draft without dropping it when the stored input is incomplete", as
   expect(draft?.agentName).toBe("Connected agent");
 });
 
-it("approves by saving an editorial draft and refuses a proposal that is no longer pending", async () => {
+it("approves by publishing the story and refuses a proposal that is no longer pending", async () => {
   state.rows = [
     [
       {
@@ -113,11 +113,12 @@ it("approves by saving an editorial draft and refuses a proposal that is no long
   ];
   await expect(approveStorylineDraft(EXISTING, "editor")).resolves.toEqual({
     id: "story-1",
+    slug: "local-ai",
   });
   expect(state.saved).toHaveBeenCalledWith(
     expect.objectContaining({
       sourceDraftId: EXISTING,
-      status: "draft",
+      status: "published",
       titleEn: "Local AI",
     }),
     "editor",

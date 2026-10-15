@@ -4,9 +4,16 @@ import {
 } from "@/components/news/storyline-states";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { NewsSection } from "@/components/news/news-section";
+import { WeeklyContributorBoard } from "@/components/news/weekly-contributor-board";
+import { WeeklyTopicClaims } from "@/components/news/weekly-topic-claims";
 import { Link } from "@/i18n/navigation";
 import { StorylineList } from "@/components/news/storyline-reader";
+import type { WeeklyTopic } from "@/lib/news/weekly-topics";
+import { getSession } from "@/server/better-auth/server";
+import { listWeeklyContributorBoard } from "@/server/news/contributions";
 import { listStorylines } from "@/server/news/storylines";
+import { listWeeklyStoryTopics } from "@/server/news/weekly-topics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -24,29 +31,42 @@ export default async function StoriesPage({
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const t = await getTranslations("newsStories");
+  const tabs = await getTranslations("newsPage");
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q.trim().slice(0, 200) : "";
   const page =
     typeof params.page === "string" ? Number.parseInt(params.page, 10) : 1;
   let result;
+  const board = await listWeeklyContributorBoard().catch((err: unknown) => {
+    console.error("news: contributor board unavailable", err);
+    return [];
+  });
+  let topics: WeeklyTopic[] = [];
   try {
-    result = await listStorylines({ q, page });
+    topics = await listWeeklyStoryTopics();
+  } catch (err) {
+    console.error("news: weekly topics unavailable", err);
+  }
+  try {
+    const session = await getSession();
+    const viewerId = session?.user?.id;
+    result = await listStorylines({
+      q,
+      page,
+      ...(viewerId ? { viewerId } : {}),
+    });
   } catch (err) {
     console.error("news: could not load story index", err);
   }
   const href = (p: number) =>
     `/news/stories?${new URLSearchParams({ q, page: String(p) })}`;
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12 sm:px-12 sm:py-16">
-      <Link
-        href="/news"
-        className="text-muted-foreground text-sm underline underline-offset-4"
-      >
-        {t("archive")}
-      </Link>
-      <h1 className="mt-8 text-4xl font-semibold tracking-tight">
-        {t("title")}
-      </h1>
+    <NewsSection
+      label={tabs("tabsLabel")}
+      news={tabs("tabNews")}
+      stories={tabs("tabStories")}
+    >
+      <h1 className="text-4xl font-semibold tracking-tight">{t("title")}</h1>
       <p className="text-muted-foreground mt-3 text-lg">{t("intro")}</p>
       <Link
         href="/news/stories/contribute"
@@ -54,6 +74,15 @@ export default async function StoriesPage({
       >
         {t("contribute.entry")}
       </Link>
+      <WeeklyContributorBoard
+        rows={board}
+        title={tabs("leaderboardTitle")}
+        emptyLabel={tabs("leaderboardEmpty")}
+        emptyHref="/news/stories/contribute"
+        pointsLabel={(points) => tabs("leaderboardPoints", { points })}
+        agentLabel={(name) => tabs("leaderboardAgent", { name })}
+      />
+      <WeeklyTopicClaims topics={topics} />
       <form method="get" className="mt-8 mb-8 flex flex-wrap items-end gap-3">
         <label className="flex-1 text-sm">
           <span>{t("search")}</span>
@@ -106,6 +135,6 @@ export default async function StoriesPage({
           )}
         </nav>
       )}
-    </main>
+    </NewsSection>
   );
 }
