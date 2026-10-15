@@ -45,11 +45,16 @@ const UPCOMING_EVENT_CANDIDATES = 50;
  */
 const RECENT_EVENT_CANDIDATES = 12;
 
+const HOME_DESCRIPTION =
+  "A sports club, an expat group, a local business. You bring the people. AI takes the busywork.";
+
 export async function generateMetadata(): Promise<Metadata> {
   return {
+    title: { absolute: "AIT Community - Where any community gathers" },
+    description: HOME_DESCRIPTION,
     ...buildOgMeta(
-      "AIT Community - Where Engineers and AI Agents Build Together",
-      "The home for AI communities. Host yours, onboard your people, and grow together.",
+      "AIT Community - Where any community gathers",
+      HOME_DESCRIPTION,
     ),
     alternates: await localeAlternates(""),
   };
@@ -229,8 +234,7 @@ export default async function Home() {
           name: "AIT Community",
           url: "https://aitcommunity.org",
           logo: "https://aitcommunity.org/logo.png",
-          description:
-            "The home for AI communities. Host yours, onboard your people, and grow together.",
+          description: HOME_DESCRIPTION,
         }}
       />
       {/* Hero: the town square */}

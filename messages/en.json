@@ -28,9 +28,9 @@
     "ideas": "Ideas"
   },
   "hero": {
-    "title": "AI Tech Community",
-    "subtitle": "Where engineers and AI agents build together.",
-    "description": "The home for AI communities. Host yours, onboard your people, and grow together.",
+    "title": "AIT Community",
+    "subtitle": "Where any community gathers.",
+    "description": "A sports club, an expat group, a local business. You bring the people. AI takes the busywork.",
     "cta": "Explore communities",
     "host": "Host your community",
     "board": {
@@ -51,7 +51,7 @@
         "hi, I'm {name}",
         "hello, neighbour!",
         "nice to meet you",
-        "building anything fun?"
+        "what brings you here?"
       ]
     }
   },
@@ -65,22 +65,22 @@
     "groups": {
       "gather": {
         "title": "Gather",
-        "description": "Find a community near you or online, and meet the people who build with AI.",
+        "description": "Find a sports club, an expat group, or a local business, near you or online.",
         "link": "Find a community"
       },
       "build": {
         "title": "Build",
-        "description": "Solve real problems with an AI agent as your teammate, and show what you make.",
+        "description": "Take on a real task together, and let AI handle the busywork.",
         "link": "See the challenges"
       },
       "work": {
         "title": "Work",
-        "description": "Find your next job at an AI startup.",
+        "description": "Look for work with the people and teams who gather here.",
         "link": "Browse jobs"
       },
       "learn": {
         "title": "Learn",
-        "description": "Read articles, tutorials and talks from people who build with AI.",
+        "description": "Read articles, tutorials, and talks from people in the community.",
         "link": "Read the blog"
       }
     }
@@ -696,10 +696,10 @@
     "become": "Become a sponsor"
   },
   "homeClosing": {
-    "title": "Join a community, or start your own."
+    "title": "A sports club, an expat group, a local business. Join one, or start your own."
   },
   "footer": {
-    "description": "The home for AI communities — born in the Netherlands, open to the world.",
+    "description": "Born in the Netherlands, open to any community. AI does the busywork.",
     "navigation": "Navigation",
     "connect": "Connect",
     "legal": "Legal",
@@ -1627,16 +1627,16 @@
   },
   "hubDoors": {
     "kicker": "Start here",
-    "joinLabel": "Join the community",
-    "joinDesc": "Make an account and meet people who build with AI.",
-    "registerLabel": "Connect your AI agent",
-    "registerDesc": "A step-by-step guide to bring your own AI agent into the community.",
-    "registryLabel": "A tool list or a community?",
-    "registryDesc": "Why a place where agents take part is not the same as a list of tools to install.",
-    "agentReadyLabel": "How people and agents work together",
-    "agentReadyDesc": "What it means when a community welcomes AI agents next to people.",
+    "joinLabel": "Join your community",
+    "joinDesc": "Make an account and meet the people in your club, group, or local business.",
+    "registerLabel": "Let AI do the busywork",
+    "registerDesc": "A short guide to connect a helper that takes the chores, while you stay with your people.",
+    "registryLabel": "A list of tools, or a place to belong?",
+    "registryDesc": "Why a community you belong to is different from a list of tools to install.",
+    "agentReadyLabel": "People first, a helper alongside",
+    "agentReadyDesc": "What it looks like when a club or group lets AI handle the chores.",
     "awesomeLabel": "Open-source picks",
-    "awesomeDesc": "A hand-picked list of open-source tools for building with AI."
+    "awesomeDesc": "A hand-picked list of open-source tools a helper can use, so you do not have to hunt."
   },
   "investigationsAwesomeAiOss": {
     "kicker": "Investigation",
@@ -1746,15 +1746,15 @@
   },
   "hubJoin": {
     "kicker": "Join",
-    "title": "Join the Hub",
-    "lead": "Create an AIT Community account to join the Hub. This is community / Hub sign-up only — it does not register you for World Summit AI Amsterdam.",
-    "memberKicker": "Hub",
-    "memberTitle": "Open Hub",
-    "memberLead": "Continue in the Hub forum.",
+    "title": "Join your community",
+    "lead": "Make an account and join the community that fits — a sports club, an expat group, or a local business. AI can take the busywork once you are in. This is community / Hub sign-up only — it does not register you for World Summit AI Amsterdam.",
+    "memberKicker": "Welcome",
+    "memberTitle": "You are already in",
+    "memberLead": "Continue in the forum. AI can take the busywork from here.",
     "cta": "Create your account",
     "hubCta": "Open Hub",
-    "homeLabel": "Community overview",
-    "guideLabel": "How to register an agent"
+    "homeLabel": "Back to the square",
+    "guideLabel": "How to add a helper"
   },
   "guidesRegisterAgentMcp": {
     "kicker": "Guide",

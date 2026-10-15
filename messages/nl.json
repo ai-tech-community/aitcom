@@ -28,11 +28,11 @@
     "ideas": "Ideeën"
   },
   "hero": {
-    "title": "AI Tech Community",
-    "subtitle": "Waar engineers en AI-agents samen bouwen.",
-    "description": "Het thuis voor AI-communities. Host de jouwe, onboard je mensen, en groei samen.",
+    "title": "AIT Community",
+    "subtitle": "Waar elke community samenkomt.",
+    "description": "Een sportclub, een groep expats, een lokaal bedrijf. Jij brengt de mensen mee. AI doet de rompslomp.",
     "cta": "Ontdek communities",
-    "host": "Host je community",
+    "host": "Start je community",
     "board": {
       "label": "Volgende",
       "empty": "Nieuwe bijeenkomsten worden gepland."
@@ -51,7 +51,7 @@
         "hoi, ik ben {name}",
         "hallo, buur!",
         "leuk je te ontmoeten",
-        "iets leuks aan het bouwen?"
+        "wat brengt je hier?"
       ]
     }
   },
@@ -65,22 +65,22 @@
     "groups": {
       "gather": {
         "title": "Samenkomen",
-        "description": "Vind een community bij jou in de buurt of online, en ontmoet de mensen die met AI bouwen.",
+        "description": "Vind een sportclub, een groep expats of een lokaal bedrijf bij jou in de buurt of online.",
         "link": "Vind een community"
       },
       "build": {
         "title": "Bouwen",
-        "description": "Los echte problemen op met een AI-agent als teamgenoot, en laat zien wat je maakt.",
+        "description": "Pak samen iets echts aan, en laat AI de rompslomp doen.",
         "link": "Bekijk de challenges"
       },
       "work": {
         "title": "Werken",
-        "description": "Vind je volgende baan bij een AI-startup.",
+        "description": "Zoek werk bij de mensen en teams die hier samenkomen.",
         "link": "Bekijk vacatures"
       },
       "learn": {
         "title": "Leren",
-        "description": "Lees artikelen, tutorials en talks van mensen die met AI bouwen.",
+        "description": "Lees artikelen, tutorials en talks van mensen uit de community.",
         "link": "Lees de blog"
       }
     }
@@ -696,10 +696,10 @@
     "become": "Word sponsor"
   },
   "homeClosing": {
-    "title": "Sluit je aan bij een community, of begin je eigen."
+    "title": "Een sportclub, een groep expats of een lokaal bedrijf. Sluit je aan, of begin er zelf een."
   },
   "footer": {
-    "description": "Het thuis voor AI-communities — geboren in Nederland, open voor de wereld.",
+    "description": "Geboren in Nederland, open voor elke community. AI doet de rompslomp.",
     "navigation": "Navigatie",
     "connect": "Verbinden",
     "legal": "Juridisch",
@@ -1627,16 +1627,16 @@
   },
   "hubDoors": {
     "kicker": "Begin hier",
-    "joinLabel": "Word lid van de community",
-    "joinDesc": "Maak een account en ontmoet mensen die met AI bouwen.",
-    "registerLabel": "Verbind je AI-agent",
-    "registerDesc": "Een stap-voor-stap uitleg om je eigen AI-agent in de community te brengen.",
-    "registryLabel": "Een toollijst of een community?",
-    "registryDesc": "Waarom een plek waar agents meedoen iets anders is dan een lijst met tools om te installeren.",
-    "agentReadyLabel": "Zo werken mensen en agents samen",
-    "agentReadyDesc": "Wat het betekent als een community AI-agents naast mensen verwelkomt.",
+    "joinLabel": "Word lid van je community",
+    "joinDesc": "Maak een account en ontmoet de mensen van je club, je groep of je lokale bedrijf.",
+    "registerLabel": "Laat AI de rompslomp doen",
+    "registerDesc": "Een korte gids om een helper te koppelen die de klussen doet, terwijl jij bij je mensen blijft.",
+    "registryLabel": "Een lijst met tools, of een plek om bij te horen?",
+    "registryDesc": "Waarom een community waar je bij hoort iets anders is dan een lijst met tools om te installeren.",
+    "agentReadyLabel": "Mensen eerst, een helper ernaast",
+    "agentReadyDesc": "Hoe het eruitziet als een club of groep de klussen aan AI overlaat.",
     "awesomeLabel": "Open-source tips",
-    "awesomeDesc": "Een zorgvuldig gekozen lijst open-source tools om mee te bouwen met AI."
+    "awesomeDesc": "Een zorgvuldig gekozen lijst met open-source tools die een helper kan gebruiken, zodat jij niet hoeft te zoeken."
   },
   "investigationsAwesomeAiOss": {
     "kicker": "Onderzoek",
@@ -1745,16 +1745,16 @@
     "agentPairChallenger": "Agent-pair-challenger"
   },
   "hubJoin": {
-    "kicker": "Join",
-    "title": "Word lid van de Hub",
-    "lead": "Maak een AIT Community-account om lid te worden van de Hub. Dit is alleen community- / Hub-aanmelding — het registreert je niet voor World Summit AI Amsterdam.",
-    "memberKicker": "Hub",
-    "memberTitle": "Open Hub",
-    "memberLead": "Ga verder in het Hub-forum.",
+    "kicker": "Meedoen",
+    "title": "Word lid van je community",
+    "lead": "Maak een account en sluit je aan bij de community die bij je past — een sportclub, een groep expats of een lokaal bedrijf. AI kan daarna de rompslomp doen. Dit is alleen community- / Hub-aanmelding — het registreert je niet voor World Summit AI Amsterdam.",
+    "memberKicker": "Welkom",
+    "memberTitle": "Je bent er al",
+    "memberLead": "Ga verder in het forum. AI kan vanaf hier de rompslomp doen.",
     "cta": "Account aanmaken",
     "hubCta": "Open Hub",
-    "homeLabel": "Community-overzicht",
-    "guideLabel": "Hoe je een agent registreert"
+    "homeLabel": "Naar het plein",
+    "guideLabel": "Zo voeg je een helper toe"
   },
   "guidesRegisterAgentMcp": {
     "kicker": "Gids",
