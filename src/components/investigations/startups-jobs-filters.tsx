@@ -57,6 +57,10 @@ export type StartupsJobsFiltersLabels = {
   locationRemote: string;
   workType: string;
   workTypeAll: string;
+  ai: string;
+  aiAll: string;
+  aiYes: string;
+  aiNo: string;
   sortMatch: string;
   sortRole: string;
   sortCompany: string;
@@ -88,9 +92,13 @@ export function StartupsJobsFilters({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const activeFilters = [query.company, query.location, query.workType].filter(
-    Boolean,
-  ).length;
+  const ai = query.ai ?? "all";
+  const activeFilters = [
+    query.company,
+    query.location,
+    query.workType,
+    ai !== "all" ? ai : "",
+  ].filter(Boolean).length;
   const [filtersOpen, setFiltersOpen] = useState(activeFilters > 0);
   const remoteOn = query.location === STARTUP_JOBS_REMOTE;
   const [, startTransition] = useTransition();
@@ -128,6 +136,7 @@ export function StartupsJobsFilters({
       next.company !== undefined ||
       next.location !== undefined ||
       next.workType !== undefined ||
+      next.ai !== undefined ||
       next.sort !== undefined;
     // The draft goes into this URL, so a pending search is now redundant;
     // left running, it would replace this URL with the older one.
@@ -263,7 +272,7 @@ export function StartupsJobsFilters({
       <div
         id="jobs-filters"
         className={cn(
-          "grid grid-cols-1 gap-2 sm:grid-cols-3",
+          "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4",
           !filtersOpen && "max-md:hidden",
         )}
       >
@@ -309,6 +318,21 @@ export function StartupsJobsFilters({
             replaceQuery({ workType: value === "all" ? "" : value })
           }
         />
+        <FilterSelect
+          id="jobs-ai"
+          label={labels.ai}
+          allLabel={labels.aiAll}
+          value={ai}
+          options={[
+            { value: "yes", label: labels.aiYes },
+            { value: "no", label: labels.aiNo },
+          ]}
+          onChange={(value) =>
+            replaceQuery({
+              ai: value === "yes" || value === "no" ? value : "all",
+            })
+          }
+        />
       </div>
 
       <div
@@ -329,7 +353,13 @@ export function StartupsJobsFilters({
               variant="ghost"
               size="sm"
               onClick={() =>
-                replaceQuery({ q: "", company: "", location: "", workType: "" })
+                replaceQuery({
+                  q: "",
+                  company: "",
+                  location: "",
+                  workType: "",
+                  ai: "all",
+                })
               }
             >
               <X aria-hidden="true" />

@@ -260,7 +260,12 @@ const startupRoleListingColumns = {
   board: startupRoles.board,
   status: startupRoles.status,
   createdAt: startupRoles.createdAt,
+  isAi: startupRoles.isAi,
 };
+
+const { isAi: _startupRoleIsAi, ...startupRoleColumnsWithoutIsAi } =
+  getTableColumns(startupRoles);
+void _startupRoleIsAi;
 
 type StartupRoleListingRow = {
   [K in keyof typeof startupRoleListingColumns]: (typeof startupRoles.$inferSelect)[K];
@@ -299,7 +304,13 @@ function toPublicRoleListing(
     postedAt: role.postedAt?.toISOString() ?? null,
     board: role.board,
     status: role.status,
+    isAi: role.isAi ?? null,
   };
+}
+
+/** Preview builds skip migrations, so `is_ai` may not exist yet. */
+function isMissingIsAiColumn(error: unknown): boolean {
+  return errorText(error).includes("is_ai");
 }
 
 export function toPublicRole(
@@ -323,8 +334,34 @@ const publicOpenRole = and(
  * Every public open role, without descriptions. Cached per request: the jobs
  * page reads it for both its metadata and its body.
  */
+const { isAi: _listingIsAi, ...startupRoleListingColumnsWithoutIsAi } =
+  startupRoleListingColumns;
+void _listingIsAi;
+
+function publicRoleListings(
+  rows: Array<{
+    role: StartupRoleListingRow;
+    startupSlug: string;
+    startupName: string;
+    startupLogoUrl: string | null;
+  }>,
+): StartupRoleListing[] {
+  return rows.flatMap((row) => {
+    const role = toPublicRoleListing(row.role, {
+      slug: row.startupSlug,
+      name: row.startupName,
+      logoUrl: row.startupLogoUrl,
+    });
+    return role ? [role] : [];
+  });
+}
+
 export const listPublicStartupRoles = cache(
   async (): Promise<StartupRoleListing[]> => {
+    const order = [
+      desc(startupRoles.fetchedAt),
+      desc(startupRoles.createdAt),
+    ] as const;
     try {
       const rows = await db
         .select({
@@ -336,17 +373,28 @@ export const listPublicStartupRoles = cache(
         .from(startupRoles)
         .innerJoin(startups, eq(startupRoles.startupId, startups.id))
         .where(publicOpenRole)
-        .orderBy(desc(startupRoles.fetchedAt), desc(startupRoles.createdAt));
-      return rows.flatMap((row) => {
-        const role = toPublicRoleListing(row.role, {
-          slug: row.startupSlug,
-          name: row.startupName,
-          logoUrl: row.startupLogoUrl,
-        });
-        return role ? [role] : [];
-      });
-    } catch {
-      return [];
+        .orderBy(...order);
+      return publicRoleListings(rows);
+    } catch (error) {
+      if (!isMissingIsAiColumn(error)) return [];
+      try {
+        const rows = await db
+          .select({
+            role: startupRoleListingColumnsWithoutIsAi,
+            startupSlug: startups.slug,
+            startupName: startups.name,
+            startupLogoUrl: startups.logoUrl,
+          })
+          .from(startupRoles)
+          .innerJoin(startups, eq(startupRoles.startupId, startups.id))
+          .where(publicOpenRole)
+          .orderBy(...order);
+        return publicRoleListings(
+          rows.map((row) => ({ ...row, role: { ...row.role, isAi: null } })),
+        );
+      } catch {
+        return [];
+      }
     }
   },
 );
@@ -436,9 +484,32 @@ export const matchPublicStartupRoleIds = cache(
   },
 );
 
+function companyOpenRoles(
+  rows: Array<{
+    role: typeof startupRoles.$inferSelect;
+    startupSlug: string;
+    startupName: string;
+    startupLogoUrl: string | null;
+  }>,
+): StartupRolePublic[] {
+  return rows.flatMap((row) => {
+    const role = toPublicRole(row.role, {
+      slug: row.startupSlug,
+      name: row.startupName,
+      logoUrl: row.startupLogoUrl,
+    });
+    return role ? [role] : [];
+  });
+}
+
 export async function listOpenStartupRolesForCompany(
   startupId: string,
 ): Promise<StartupRolePublic[]> {
+  const where = and(
+    eq(startupRoles.startupId, startupId),
+    eq(startupRoles.status, "open"),
+    eq(startups.status, "approved"),
+  );
   try {
     const rows = await db
       .select({
@@ -449,24 +520,32 @@ export async function listOpenStartupRolesForCompany(
       })
       .from(startupRoles)
       .innerJoin(startups, eq(startupRoles.startupId, startups.id))
-      .where(
-        and(
-          eq(startupRoles.startupId, startupId),
-          eq(startupRoles.status, "open"),
-          eq(startups.status, "approved"),
-        ),
-      )
+      .where(where)
       .orderBy(desc(startupRoles.fetchedAt));
-    return rows.flatMap((row) => {
-      const role = toPublicRole(row.role, {
-        slug: row.startupSlug,
-        name: row.startupName,
-        logoUrl: row.startupLogoUrl,
-      });
-      return role ? [role] : [];
-    });
-  } catch {
-    return [];
+    return companyOpenRoles(rows);
+  } catch (error) {
+    if (!isMissingIsAiColumn(error)) return [];
+    try {
+      const rows = await db
+        .select({
+          role: startupRoleColumnsWithoutIsAi,
+          startupSlug: startups.slug,
+          startupName: startups.name,
+          startupLogoUrl: startups.logoUrl,
+        })
+        .from(startupRoles)
+        .innerJoin(startups, eq(startupRoles.startupId, startups.id))
+        .where(where)
+        .orderBy(desc(startupRoles.fetchedAt));
+      return companyOpenRoles(
+        rows.map((row) => ({
+          ...row,
+          role: { ...row.role, isAi: null },
+        })),
+      );
+    } catch {
+      return [];
+    }
   }
 }
 
@@ -495,8 +574,36 @@ export async function findPublicStartupRoleBySlug(
       name: row.startupName,
       logoUrl: row.startupLogoUrl,
     });
-  } catch {
-    return null;
+  } catch (error) {
+    if (!isMissingIsAiColumn(error)) return null;
+    try {
+      const parsed = parseStartupSlug(slug);
+      if (!parsed) return null;
+      const [row] = await db
+        .select({
+          role: startupRoleColumnsWithoutIsAi,
+          startupSlug: startups.slug,
+          startupName: startups.name,
+          startupLogoUrl: startups.logoUrl,
+          startupStatus: startups.status,
+        })
+        .from(startupRoles)
+        .innerJoin(startups, eq(startupRoles.startupId, startups.id))
+        .where(eq(startupRoles.slug, parsed))
+        .limit(1);
+      if (row?.startupStatus !== "approved") return null;
+      if (row.role.status === "pending_review") return null;
+      return toPublicRole(
+        { ...row.role, isAi: null },
+        {
+          slug: row.startupSlug,
+          name: row.startupName,
+          logoUrl: row.startupLogoUrl,
+        },
+      );
+    } catch {
+      return null;
+    }
   }
 }
 

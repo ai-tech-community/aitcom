@@ -820,6 +820,38 @@ describe("startup jobs scan hold", () => {
     });
   }
 
+  it("keeps a non-AI role and stores the AI flag from the posting", async () => {
+    const result = await scanStartupJobs(startup, async (url) => {
+      if (url === CAREERS_URL) {
+        return page(
+          `<a href="/careers/accountant">Accountant</a>
+           <a href="/careers/ml-engineer">Machine Learning Engineer</a>`,
+        );
+      }
+      if (url.endsWith("/accountant")) {
+        return page(
+          "<h1>Accountant</h1><article><p>Close the monthly books and file the returns.</p></article>",
+        );
+      }
+      return page(
+        "<h1>Machine Learning Engineer</h1><article><p>Train models for the product.</p></article>",
+      );
+    });
+    expect(result.outcome).toBe("applied");
+    expect(result.published).toBe(2);
+    const flags = Object.fromEntries(
+      scanDb.state.inserts.map((row) => [row.title, row.isAi]),
+    );
+    expect(flags).toEqual({
+      Accountant: false,
+      "Machine Learning Engineer": true,
+    });
+    expect(scanDb.state.inserts.map((row) => row.sourceUrl).sort()).toEqual([
+      "https://acme.example/careers/accountant",
+      "https://acme.example/careers/ml-engineer",
+    ]);
+  });
+
   it("holds a non-ATS page that parses to nothing while roles are open", async () => {
     scanDb.state.roles = [openRole("staff-engineer")];
     const result = await scanHtml([]);

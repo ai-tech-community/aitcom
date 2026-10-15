@@ -19,6 +19,7 @@ import {
 export type StartupsJobsListCopy = {
   caption: string;
   remote: string;
+  aiBadge: string;
   newBadge: string;
   original: string;
   track: string;
@@ -185,6 +186,11 @@ function RoleRow({
           >
             {role.title}
           </Link>
+          {role.isAi === true ? (
+            <Badge variant="outline" className="shrink-0" data-job-ai="">
+              {copy.aiBadge}
+            </Badge>
+          ) : null}
           {newSlugs.has(role.slug) ? (
             <Badge variant="outline" className="shrink-0">
               {copy.newBadge}
