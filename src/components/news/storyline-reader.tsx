@@ -1,5 +1,5 @@
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
 import { newsSourceFromUrl } from "@/lib/news/table";
 import { getInitials } from "@/lib/avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -189,8 +189,9 @@ export function StorylineReader({
     <main className="mx-auto max-w-6xl px-6 py-12 sm:px-12 sm:py-16">
       <Link
         href="/news/stories"
-        className="text-muted-foreground text-sm underline underline-offset-4"
+        className="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex items-center gap-2 rounded-sm text-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
       >
+        <ArrowLeft className="size-4" aria-hidden />
         {t("back")}
       </Link>
       <header className="mt-8 max-w-3xl">
@@ -209,32 +210,35 @@ export function StorylineReader({
         {copy.fallback && (
           <p className="text-muted-foreground mt-3 text-sm">{t("fallback")}</p>
         )}
-        {story.contributor && (
-          <p className="mt-4 text-sm">
-            <Link
-              href={story.contributor.profilePath}
-              className="underline underline-offset-4"
-            >
-              {t("byline", { name: story.contributor.name })}
-            </Link>
-          </p>
+        {(story.contributor ?? story.proposedBy) && (
+          <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+            {story.contributor && (
+              <Link
+                href={story.contributor.profilePath}
+                className="focus-visible:ring-ring rounded-sm font-medium underline underline-offset-4 focus-visible:ring-2 focus-visible:outline-none"
+              >
+                {t("byline", { name: story.contributor.name })}
+              </Link>
+            )}
+            {story.proposedBy && (
+              <p className="text-muted-foreground">
+                {story.proposedBy.name
+                  ? t("proposedBy", { agent: story.proposedBy.name })
+                  : t("proposedByHidden")}
+              </p>
+            )}
+          </div>
         )}
-        {story.proposedBy && (
-          <p className="text-muted-foreground mt-4 text-sm">
-            {story.proposedBy.name
-              ? t("proposedBy", { agent: story.proposedBy.name })
-              : t("proposedByHidden")}
-          </p>
-        )}
-        <p className="text-muted-foreground mt-5 text-sm">{t("editorial")}</p>
-        <div className="mt-6">
+        <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+          {t("editorial")}
+        </p>
+        <div className="border-border mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 border-y py-4 text-sm">
           <StorylineVoteControls
             storyId={story.id}
             score={story.score}
             myVote={story.myVote}
+            layout="horizontal"
           />
-        </div>
-        <div className="mt-6 flex flex-wrap items-center gap-5 text-sm">
           <span>{t("articleCount", { count: story.articles.length })}</span>
           {latestDate && (
             <span className="text-muted-foreground">
@@ -247,14 +251,15 @@ export function StorylineReader({
           {timeline.latestId && (
             <a
               href={`#article-${encodeURIComponent(timeline.latestId)}`}
-              className="underline underline-offset-4"
+              className="focus-visible:ring-ring inline-flex items-center gap-1.5 rounded-sm underline underline-offset-4 focus-visible:ring-2 focus-visible:outline-none"
             >
               {t("latest")}
+              <ArrowRight className="size-3.5" aria-hidden />
             </a>
           )}
         </div>
       </header>
-      <section className="mt-14 max-w-3xl" aria-labelledby="timeline-heading">
+      <section className="mt-10 max-w-3xl" aria-labelledby="timeline-heading">
         <h2 id="timeline-heading" className="text-2xl font-semibold">
           {t("timeline")}
         </h2>
