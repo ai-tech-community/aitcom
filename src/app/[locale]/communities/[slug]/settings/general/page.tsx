@@ -53,6 +53,7 @@ export default function GeneralSettingsPage({
           joinPolicy: community.joinPolicy,
           isListedInDirectory: community.isListedInDirectory,
           feedPostPolicy: community.feedPostPolicy ?? "all_members",
+          newsSector: community.newsSector ?? "ai",
         }}
       />
     </div>

@@ -91,6 +91,14 @@ vi.mock("@/server/news/table-page", () => ({
       sort: "date" | "title" | "source";
       page: number;
       story: string;
+      sector:
+        | ""
+        | "ai"
+        | "sports"
+        | "expat"
+        | "local_business"
+        | "tech"
+        | "other";
     };
     includeHiddenRumors: boolean;
     memberSource: string;
@@ -189,6 +197,11 @@ vi.mock("@/i18n/navigation", () => ({
   usePathname: () => "/news",
 }));
 
+vi.mock("@/server/news/sectors", () => ({
+  sectorsWithRealFeeds: async () => new Set(["ai"]),
+  sectorHasRealStories: async (sector: string) => sector === "ai",
+}));
+
 vi.mock("@/server/news/directory", () => ({
   listNewsDirectoryCompanies: async () => [],
 }));
@@ -221,8 +234,37 @@ describe("news page", () => {
 
   it("is noindex and keeps its canonical unset", async () => {
     const meta = await generateMetadata();
+    expect(meta.title).toBe(en.newsPage.metaTitle);
     expect(meta.robots).toEqual({ index: false, follow: true });
     expect(meta.alternates).toBeUndefined();
+  });
+
+  it("keeps the news title and noindexes a sector with no feeds", async () => {
+    const meta = await generateMetadata({
+      searchParams: Promise.resolve({ sector: "sports" }),
+    });
+    expect(meta.title).toBe(en.newsPage.metaTitle);
+    expect(meta.robots).toEqual({ index: false, follow: true });
+    expect(meta.alternates).toEqual({
+      canonical: "https://www.aitcommunity.org/en/news",
+    });
+    render(
+      await NewsPage({ searchParams: Promise.resolve({ sector: "sports" }) }),
+    );
+    expect(screen.getByLabelText(en.newsPage.sectorLabel)).toBeInTheDocument();
+    expect(
+      screen.getByText(en.newsPage.sectorEmpty.replace("{sector}", "Sports")),
+    ).toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: en.newsPage.tabsLabel });
+    expect(
+      within(nav).getByRole("link", { name: en.newsPage.tabNews }),
+    ).toHaveAttribute("href", "/news");
+    expect(
+      within(nav).getByRole("link", { name: en.newsPage.tabStories }),
+    ).toHaveAttribute("href", "/news/stories");
+    expect(
+      document.querySelector("script[type='application/ld+json']"),
+    ).toBeNull();
   });
 
   it("links News and Stories as tabs, with News current", async () => {

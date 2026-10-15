@@ -12,6 +12,7 @@ import { CompactEventRow } from "@/components/events/rows/compact-event-row";
 import { presentEventRows } from "@/components/events/rows/event-rows";
 import { useEventRowLabels } from "@/components/events/rows/use-event-row-labels";
 import { toCommunityEventRowInput } from "@/components/communities/events/community-event-rows";
+import { CommunitySectorNews } from "./community-sector-news";
 
 /** How many upcoming events the sidebar lists. */
 export const SIDEBAR_EVENTS_SHOWN = 3;
@@ -78,6 +79,8 @@ export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
           </p>
         </section>
       ) : null}
+
+      <CommunitySectorNews slug={slug} />
 
       {links && links.length > 0 ? (
         <section data-sidebar-section="links">

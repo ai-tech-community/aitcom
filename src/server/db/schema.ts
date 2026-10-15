@@ -3327,6 +3327,23 @@ export const communities = appSchema.table(
   ],
 );
 
+/**
+ * The news sector a community shows. A missing row means AI. This stays off
+ * `community` so preview databases that skip the migration can still load
+ * community pages.
+ */
+export const communityNewsSectors = appSchema.table(
+  "community_news_sector",
+  (d) => ({
+    communityId: d
+      .varchar("community_id", { length: 255 })
+      .primaryKey()
+      .references(() => communities.id, { onDelete: "cascade" }),
+    sector: d.varchar({ length: 32 }),
+  }),
+  (t) => [index("community_news_sector_sector_idx").on(t.sector)],
+);
+
 // ── Classroom enrollment / completion tracking (mirrors eventRegistrations) ──
 export const courseEnrollments = appSchema.table(
   "course_enrollment",
@@ -4755,6 +4772,11 @@ export const newsItems = appSchema.table(
     summary: d.text().notNull().default(""),
     /** Written once, when the row is first stored. Send time only reads it. */
     aiSummary: d.text(),
+    /**
+     * Feed sector (`ai`, `sports`, …). Null until the backfill cron or the
+     * ingest that stored the row sets it. Null is treated as AI.
+     */
+    sector: d.varchar({ length: 32 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -4764,6 +4786,7 @@ export const newsItems = appSchema.table(
   (t) => [
     uniqueIndex("news_item_url_idx").on(t.url),
     index("news_item_published_idx").on(t.publishedAt),
+    index("news_item_sector_idx").on(t.sector),
   ],
 );
 
@@ -4779,12 +4802,17 @@ export const newsFeeds = appSchema.table(
     name: d.text().notNull(),
     url: d.text().notNull(),
     enabled: d.boolean().notNull().default(true),
+    /** Null until the backfill cron or a staff insert sets it. Null is AI. */
+    sector: d.varchar({ length: 32 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   }),
-  (t) => [uniqueIndex("news_feed_url_idx").on(t.url)],
+  (t) => [
+    uniqueIndex("news_feed_url_idx").on(t.url),
+    index("news_feed_sector_idx").on(t.sector),
+  ],
 );
 
 /** Member-submitted rumors on /news. Separate from RSS rows so the digest

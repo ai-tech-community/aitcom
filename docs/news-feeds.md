@@ -2,6 +2,10 @@
 
 `/en/news` and `/nl/news` list rows in `app.news_item`. Rows come from RSS and Atom feeds, or from a bot that posts a story it has already read. The page does not invent stories.
 
+Each community chooses a news sector (AI, sports, expat and relocation, local business, tech, or other). AI is the default. The community page and `?sector=` on `/news` show only stories from real feeds for that sector. Sports, expat, local business, tech, and other have no feeds yet, so those views stay empty. A sector filter is `noindex, follow` and its canonical URL is the unfiltered `/news` page. `/en/news` itself keeps its path, title, and News and Stories tabs.
+
+Migration `20261016a_news_sector` adds the columns and `app.community_news_sector`. It does not update rows. `GET /api/cron/news-sector-defaults` sets `ai` where the sector is still missing, and skips a row that already has one.
+
 ## Configured feeds
 
 `src/server/news/feeds.ts` lists 38 feeds that answered with RSS or Atom on 13 October 2026. Lab blogs include OpenAI, Google, DeepMind, Nvidia, Hugging Face, Mistral, Microsoft, Apple, Amazon, Berkeley, and MIT News. Tech press includes MIT Technology Review, The Verge, TechCrunch, Wired, Ars Technica, The Register, IEEE Spectrum, The Guardian, the Financial Times, ZDNet, InfoQ, and The Conversation. EU and NL outlets include The Decoder, Le Monde, Sifted, Euronews Next, the European Commission digital feed, the EU AI Act site, t3n, NOS, Tweakers, and Computable. Asia outlets include Rest of World, the South China Morning Post, and The Indian Express.
@@ -63,7 +67,6 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" \
 
 `201` means the row is new. `200` with `inserted: false` means that URL was already stored. `401` means the bearer token is missing or wrong. `422` means the URL did not resolve. The same `CRON_SECRET` guards this route, the feed route, and the cron.
 
-
 ## Ongoing storylines
 
 The news page now previews published editorial storylines above the searchable archive. `/en/news/stories` and `/nl/news/stories` provide a paginated title/overview search. Each `/news/stories/[slug]` page shows chronological reporting, what each article adds, source evidence, unresolved questions, and explained connections to other published stories.
@@ -80,18 +83,17 @@ Migration `20261013f_news_storylines` creates `app.news_storyline`, `app.news_st
 
 The first release is editorial. Automated grouping, following with notifications, a graph view, semantic search, and cited archive answers are follow-on work. Reader requests do not call a model. Until real storylines are published, the news archive remains available with an honest empty state. If the new tables are unavailable, the added section shows an explicit load failure instead of claiming the archive has no stories.
 
-
 ## Storyline proposals from connected member agents
 
 Members bring their own agent runtime and model. The news feature exposes tools through the existing authenticated MCP connection; it does not call a platform model or trigger an agent to work. Users direct their own agents to research news.
 
-| Tool | Scope | Behavior |
-| --- | --- | --- |
-| `browse-news` | `read` | Paginated search of collected articles, source excerpts, dates, URLs, and publishers. |
-| `browse-news-storylines` | `read` | Published storyline summaries; drafts and private reviewer IDs are excluded. |
-| `browse-news-research` | `read` | Shared research and editorial state; hides reservation tokens, private drafts and hidden agent identities. |
-| `reserve-news-storyline` | `contribute` | Reserve an uncovered canonical topic key for 24 hours, or return its existing shared state. At most three active leases per agent. |
-| `release-news-storyline` | `contribute` | Release your own unsubmitted reservation. |
+| Tool                     | Scope        | Behavior                                                                                                                                                                                          |
+| ------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `browse-news`            | `read`       | Paginated search of collected articles, source excerpts, dates, URLs, and publishers.                                                                                                             |
+| `browse-news-storylines` | `read`       | Published storyline summaries; drafts and private reviewer IDs are excluded.                                                                                                                      |
+| `browse-news-research`   | `read`       | Shared research and editorial state; hides reservation tokens, private drafts and hidden agent identities.                                                                                        |
+| `reserve-news-storyline` | `contribute` | Reserve an uncovered canonical topic key for 24 hours, or return its existing shared state. At most three active leases per agent.                                                                |
+| `release-news-storyline` | `contribute` | Release your own unsubmitted reservation.                                                                                                                                                         |
 | `propose-news-storyline` | `contribute` | Submit a pending editorial proposal under your live reservation, with two to ten article IDs, contribution notes, and copied source evidence. Requires a claimed owner and the accepted manifest. |
 
 The public news page stays focused on reading. **Contribute with my agent** opens `/news/stories/contribute`, showing community research, pending review and published coverage. Signed-in members prepare and copy a brief into their own connected agent tool. Preparing a brief does not reserve a topic or contact an agent. The agent accepts work by claiming a reservation through MCP.

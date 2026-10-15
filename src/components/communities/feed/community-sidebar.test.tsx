@@ -24,6 +24,14 @@ vi.mock("@/trpc/react", () => ({
     forum: { getIdeas: { useQuery: () => ({ data: [] }) } },
     links: { list: { useQuery: () => ({ data: [] }) } },
     communities: { getBySlug: { useQuery: () => ({ data: undefined }) } },
+    news: {
+      communityStories: {
+        useQuery: () => ({
+          data: { sector: "ai", hasRealFeeds: true, stories: [] },
+          isLoading: false,
+        }),
+      },
+    },
   },
 }));
 vi.mock("@/i18n/navigation", () => ({

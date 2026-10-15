@@ -10,6 +10,8 @@ import {
 } from "./ingest";
 import { generateNewsSummary } from "./summary";
 import { linkIngestedNewsItems } from "./startup-links";
+import { parseNewsSector, type NewsSector } from "@/lib/news/sectors";
+import { assignNewsItemSectors } from "./sectors";
 
 const store: NewsIngestDb = {
   async insertNew(rows) {
@@ -50,10 +52,32 @@ const store: NewsIngestDb = {
   },
 };
 
+function sectorGroups(
+  items: readonly Record<string, unknown>[],
+): Array<{ sector: NewsSector; urls: string[] }> {
+  const groups = new Map<NewsSector, string[]>();
+  for (const item of items) {
+    const url = typeof item.url === "string" ? item.url : "";
+    if (!url.startsWith("https://")) continue;
+    const sector = parseNewsSector(item.sector) ?? "ai";
+    const urls = groups.get(sector) ?? [];
+    urls.push(url);
+    groups.set(sector, urls);
+  }
+  return [...groups.entries()].map(([sector, urls]) => ({ sector, urls }));
+}
+
 /** Store feed rows the first time they are seen, and summarize those rows then. */
 export async function recordFeedNews(
   items: readonly Record<string, unknown>[],
   options?: IngestNewsOptions,
 ): Promise<number> {
-  return ingestNewsItems(store, items, generateNewsSummary, options);
+  const inserted = await ingestNewsItems(
+    store,
+    items,
+    generateNewsSummary,
+    options,
+  );
+  await assignNewsItemSectors(sectorGroups(items));
+  return inserted;
 }

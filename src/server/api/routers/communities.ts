@@ -35,6 +35,12 @@ import {
   loadDirectorySnapshot,
 } from "@/server/communities/directory-queries";
 import { invalidateSquareRooms } from "@/server/communities/live-rooms-queries";
+import { parseNewsSector } from "@/lib/news/sectors";
+import {
+  isMissingNewsSectorSchema,
+  readCommunityNewsSector,
+  writeCommunityNewsSector,
+} from "@/server/news/sectors";
 import {
   DIRECTORY_SORTS,
   DIRECTORY_WANTS,
@@ -228,6 +234,7 @@ export const communitiesRouter = createTRPCRouter({
 
       return {
         ...community,
+        newsSector: await readCommunityNewsSector(ctx.db, community.id),
         memberCount: memberCountResult?.count ?? 0,
         adminCount: adminCountResult?.count ?? 0,
         liveness,
@@ -402,6 +409,12 @@ export const communitiesRouter = createTRPCRouter({
 
         // Seed the default builtin spaces so the new community's nav is populated.
         await tx.insert(spaces).values(buildDefaultSpaceRows(c!.id));
+
+        try {
+          await writeCommunityNewsSector(tx, c!.id, "ai");
+        } catch (error) {
+          if (!isMissingNewsSectorSchema(error)) throw error;
+        }
 
         return c!;
       });
@@ -880,6 +893,9 @@ export const communitiesRouter = createTRPCRouter({
         classroomUploadPolicy: z
           .enum(["all_members", "admins_only"])
           .optional(),
+        newsSector: z
+          .enum(["ai", "sports", "expat", "local_business", "tech", "other"])
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -902,15 +918,32 @@ export const communitiesRouter = createTRPCRouter({
         updates.classroomCreatePolicy = input.classroomCreatePolicy;
       if (input.classroomUploadPolicy !== undefined)
         updates.classroomUploadPolicy = input.classroomUploadPolicy;
+      const newsSector = parseNewsSector(input.newsSector);
 
       // Note: slug is NOT auto-updated on name change to avoid breaking
       // existing URLs and bookmarks. Slug is set once at community creation.
 
-      const [updated] = await ctx.db
-        .update(communities)
-        .set(updates)
-        .where(eq(communities.id, ctx.community.id))
-        .returning();
+      const [updated] =
+        Object.keys(updates).length > 0
+          ? await ctx.db
+              .update(communities)
+              .set(updates)
+              .where(eq(communities.id, ctx.community.id))
+              .returning()
+          : [ctx.community];
+
+      if (newsSector) {
+        try {
+          await writeCommunityNewsSector(ctx.db, ctx.community.id, newsSector);
+        } catch (error) {
+          if (!isMissingNewsSectorSchema(error)) throw error;
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "News sector is not available until the database migration runs.",
+          });
+        }
+      }
 
       await logActivity(ctx.db, {
         actorId: ctx.session.user.id,
@@ -918,7 +951,7 @@ export const communitiesRouter = createTRPCRouter({
         action: "community.settings_updated",
         targetType: "community",
         targetId: ctx.community.id,
-        metadata: updates,
+        metadata: newsSector ? { ...updates, newsSector } : updates,
       });
       invalidateDirectorySnapshots();
       // Listing on/off decides whether the community's rooms are public.

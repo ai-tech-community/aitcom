@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { NEWS_SECTORS, type NewsSector } from "@/lib/news/sectors";
 
 interface SettingsFormProps {
   slug: string;
@@ -29,11 +30,13 @@ interface SettingsFormProps {
     joinPolicy: "open" | "invite_only" | "approval_required";
     isListedInDirectory: boolean;
     feedPostPolicy: "all_members" | "admins_only";
+    newsSector: NewsSector;
   };
 }
 
 export function SettingsForm({ slug, initialData }: SettingsFormProps) {
   const t = useTranslations("communities.manage");
+  const sectors = useTranslations("newsSectors");
   const utils = api.useUtils();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,6 +53,9 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
   const [feedPostPolicy, setFeedPostPolicy] = useState<
     "all_members" | "admins_only"
   >(initialData.feedPostPolicy);
+  const [newsSector, setNewsSector] = useState<NewsSector>(
+    initialData.newsSector,
+  );
 
   const updateMutation = api.communities.updateSettings.useMutation({
     onSuccess: () => {
@@ -100,6 +106,7 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
       joinPolicy,
       isListedInDirectory,
       feedPostPolicy,
+      newsSector,
     });
   };
 
@@ -224,6 +231,28 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
             <SelectItem value="admins_only">
               {t("feedPolicyAdminsOnly")}
             </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="news-sector">{t("newsSector")}</Label>
+        <p className="text-muted-foreground text-sm">
+          {t("newsSectorDescription")}
+        </p>
+        <Select
+          value={newsSector}
+          onValueChange={(value) => setNewsSector(value as NewsSector)}
+        >
+          <SelectTrigger id="news-sector">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {NEWS_SECTORS.map((sector) => (
+              <SelectItem key={sector} value={sector}>
+                {sectors(sector)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

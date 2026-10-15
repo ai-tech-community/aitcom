@@ -110,6 +110,22 @@ describe("news table SQL", () => {
     expect(sql).toContain("false");
   });
 
+  it("limits a non-AI sector to stories tagged with that sector", () => {
+    const { sql, params } = renderCount({ sector: "sports" });
+    expect(sql).toContain('"app"."news_item"');
+    expect(sql).toContain('"sector"');
+    expect(params).toContain("sports");
+    expect(sql).not.toContain('"app"."news_rumor"');
+  });
+
+  it("treats an untagged story as AI and leaves the unfiltered count alone", () => {
+    const ai = renderCount({ sector: "ai" });
+    expect(ai.sql).toContain('"sector" IS NULL');
+    expect(ai.sql).toContain('"app"."news_rumor"');
+    const all = renderCount();
+    expect(all.sql).not.toContain('"sector"');
+  });
+
   it("keeps the more specific Microsoft host ahead of microsoft.com", () => {
     const { params } = renderCount({ source: "feed:news.microsoft.com" });
     const source = params.indexOf("feed:news.microsoft.com");

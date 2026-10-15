@@ -2896,7 +2896,11 @@
       "rituals": "Rituals",
       "referrals": "Referrals",
       "membersSentence": "{count, plural, one {# member} other {# members}}",
-      "activeSentence": "{count} active this week"
+      "activeSentence": "{count} active this week",
+      "news": "News",
+      "newsAll": "All {sector} news",
+      "newsEmpty": "No news feeds are connected for {sector} yet. Nothing here is invented.",
+      "newsNoStories": "No stories from the {sector} feeds yet."
     },
     "manage": {
       "settings": "Settings",
@@ -2925,6 +2929,8 @@
       "feedPolicyAdminsOnly": "Admins Only",
       "listedInDirectory": "Listed in Directory",
       "listedInDirectoryDescription": "Allow this community to appear in the public directory",
+      "newsSector": "News sector",
+      "newsSectorDescription": "Stories on this community come from this sector. Only real feeds, each with a link to its source.",
       "role": "Role",
       "actions": "Actions",
       "ban": "Ban",
@@ -4450,7 +4456,19 @@
     "noMatches": "No matching stories.",
     "resultCount": "{count, plural, one {# result} other {# results}}",
     "pagination": "Pagination",
-    "tableCaption": "AI news and member rumors"
+    "tableCaption": "AI news and member rumors",
+    "sectorLabel": "Sector",
+    "sectorAll": "All sectors",
+    "clearSector": "Clear sector {name}",
+    "sectorEmpty": "No news feeds are connected for {sector} yet. Nothing here is invented."
+  },
+  "newsSectors": {
+    "ai": "AI",
+    "sports": "Sports",
+    "expat": "Expat and relocation",
+    "local_business": "Local business",
+    "tech": "Tech",
+    "other": "Other"
   },
   "newsStories": {
     "title": "Ongoing stories",

@@ -1,4 +1,11 @@
 import { newsGameRobots } from "@/lib/news/indexability";
+import { absoluteLocaleUrl } from "@/lib/metadata";
+import {
+  NEWS_SECTORS,
+  newsSectorCanonicalPath,
+  newsSectorViewRobots,
+  parseNewsSector,
+} from "@/lib/news/sectors";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
@@ -34,18 +41,38 @@ import {
   queryNewsTablePage,
   type NewsTablePage,
 } from "@/server/news/table-page";
+import {
+  sectorHasRealStories,
+  sectorsWithRealFeeds,
+} from "@/server/news/sectors";
 const NewsRumorDialog = dynamic(() =>
   import("@/components/news/news-rumor-dialog").then(
     (mod) => mod.NewsRumorDialog,
   ),
 );
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<{ sector?: string | string[] }>;
+} = {}): Promise<Metadata> {
   const t = await getTranslations("newsPage");
-  return {
+  const params = searchParams ? await searchParams : {};
+  const sector = parseNewsSector(params.sector);
+  const base = {
     title: t("metaTitle"),
     description: t("metaDescription"),
     robots: newsGameRobots(),
+  };
+  if (!sector) return base;
+  const locale = await getLocale();
+  const hasStories = await sectorHasRealStories(sector).catch(() => false);
+  return {
+    ...base,
+    robots: newsSectorViewRobots(hasStories),
+    alternates: {
+      canonical: absoluteLocaleUrl(locale, newsSectorCanonicalPath()),
+    },
   };
 }
 
@@ -143,12 +170,19 @@ export default async function NewsPage({
     writer?: string | string[];
     sort?: string | string[];
     page?: string | string[];
+    sector?: string | string[];
   }>;
 }) {
   const t = await getTranslations("newsPage");
+  const sectorNames = await getTranslations("newsSectors");
   const locale = await getLocale();
   const params = await searchParams;
   const query = parseNewsTableQuery(params);
+  const feedSectors = query.sector
+    ? await sectorsWithRealFeeds().catch(() => new Set(["ai"] as const))
+    : null;
+  const sectorHasFeeds =
+    !query.sector || (feedSectors?.has(query.sector) ?? false);
   const session = await getSession().catch(() => null);
   const staff = await isNewsStaff(session?.user?.email);
   const emptyPage: NewsTablePage = {
@@ -163,14 +197,16 @@ export default async function NewsPage({
     companies: [],
   };
   const [loaded, directory] = await Promise.all([
-    queryNewsTablePage({
-      query,
-      includeHiddenRumors: staff,
-      memberSource: t("rumorLabel"),
-    }).catch((err: unknown) => {
-      console.error("news: could not query the table", err);
-      return emptyPage;
-    }),
+    sectorHasFeeds
+      ? queryNewsTablePage({
+          query,
+          includeHiddenRumors: staff,
+          memberSource: t("rumorLabel"),
+        }).catch((err: unknown) => {
+          console.error("news: could not query the table", err);
+          return emptyPage;
+        })
+      : emptyPage,
     listNewsDirectoryCompanies().catch((err: unknown) => {
       console.error("news: could not list directory companies", err);
       return [];
@@ -223,7 +259,8 @@ export default async function NewsPage({
     query.type !== "all" ||
     query.source !== "" ||
     query.company !== "" ||
-    query.writer !== "";
+    query.writer !== "" ||
+    query.sector !== "";
   const sources =
     query.source &&
     !loaded.sources.some((source) => source.key === query.source)
@@ -291,6 +328,16 @@ export default async function NewsPage({
           href: newsTableHref(query, { writer: "", page: 1 }),
         }
       : null,
+    query.sector
+      ? {
+          id: "sector",
+          label: sectorNames(query.sector),
+          clearLabel: t("clearSector", {
+            name: sectorNames(query.sector),
+          }),
+          href: newsTableHref(query, { sector: "", page: 1 }),
+        }
+      : null,
   ].flatMap((chip) => (chip ? [chip] : []));
 
   return (
@@ -340,6 +387,10 @@ export default async function NewsPage({
             label: company.name,
           }))}
           writers={writers.map((writer) => ({ value: writer, label: writer }))}
+          sectors={NEWS_SECTORS.map((sector) => ({
+            value: sector,
+            label: sectorNames(sector),
+          }))}
           resultCount={t("resultCount", { count: loaded.total })}
           loadingLabel={t("loadingResults")}
           filtersLabel={t("filtersLabel")}
@@ -350,6 +401,7 @@ export default async function NewsPage({
             source: "",
             company: "",
             writer: "",
+            sector: "",
             page: 1,
           })}
           filtered={filtered}
@@ -368,6 +420,8 @@ export default async function NewsPage({
             companyAll: t("companyAll"),
             writer: t("writerLabel"),
             writerAll: t("writerAll"),
+            sector: t("sectorLabel"),
+            sectorAll: t("sectorAll"),
             sort: t("sortLabel"),
             sortDate: t("sortDate"),
             sortTitle: t("sortTitle"),
@@ -376,7 +430,11 @@ export default async function NewsPage({
         >
           {items.length === 0 ? (
             <div className="mt-4">
-              <p className="text-muted-foreground text-sm">{t("noMatches")}</p>
+              <p className="text-muted-foreground text-sm">
+                {query.sector && !sectorHasFeeds
+                  ? t("sectorEmpty", { sector: sectorNames(query.sector) })
+                  : t("noMatches")}
+              </p>
               <Button asChild variant="outline" className="mt-3">
                 <Link
                   href={newsTableHref(query, {
@@ -385,6 +443,7 @@ export default async function NewsPage({
                     source: "",
                     company: "",
                     writer: "",
+                    sector: "",
                     page: 1,
                   })}
                   rel="nofollow"
