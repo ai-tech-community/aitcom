@@ -4,6 +4,7 @@ import {
 } from "@/components/news/storyline-states";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { StoryContributeDialog } from "@/components/news/story-contribute-dialog";
 import { NewsSection } from "@/components/news/news-section";
 import { Link } from "@/i18n/navigation";
 import { StorylineList } from "@/components/news/storyline-reader";
@@ -58,12 +59,9 @@ export default async function StoriesPage({
           </h1>
           <p className="text-muted-foreground mt-3 text-lg">{t("intro")}</p>
         </div>
-        <Link
-          href="/news/stories/contribute"
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring shrink-0 self-start rounded-sm text-sm underline underline-offset-4 focus-visible:ring-2 focus-visible:outline-none sm:self-auto"
-        >
-          {t("contribute.entry")}
-        </Link>
+        <div className="self-start sm:self-auto">
+          <StoryContributeDialog />
+        </div>
       </header>
       <form method="get" className="mt-8 mb-6 flex items-end gap-3">
         <label className="min-w-0 flex-1 text-sm">

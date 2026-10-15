@@ -292,3 +292,46 @@ it("rate-limits suggestions and lets staff review the queue", async () => {
     caller().reviewStorySuggestion({ id: "missing" }),
   ).rejects.toMatchObject({ code: "NOT_FOUND" });
 });
+
+it("preserves the source URL and includes the originating story for editors", async () => {
+  state.submitSuggestion.mockResolvedValue({ ok: true, id: "contextual" });
+  await caller().submitStorySuggestion({
+    text: "https://example.com/source",
+    storySlug: "local-ai",
+  });
+  expect(state.submitSuggestion).toHaveBeenCalledWith(
+    {},
+    expect.objectContaining({
+      value: {
+        body: "https://example.com/source\n\nStory: /news/stories/local-ai",
+        url: "https://example.com/source",
+      },
+    }),
+  );
+  state.submitSuggestion.mockClear();
+  await expect(
+    caller().submitStorySuggestion({
+      text: "https://example.com/source",
+      storySlug: "../../admin",
+    }),
+  ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  expect(state.submitSuggestion).not.toHaveBeenCalled();
+});
+
+it("fits story context within the existing body limit before reaching storage", async () => {
+  const suffix = "\n\nStory: /news/stories/local-ai";
+  const text = "x".repeat(500 - suffix.length);
+  state.submitSuggestion.mockResolvedValue({ ok: true, id: "max" });
+  await caller().submitStorySuggestion({ text, storySlug: "local-ai" });
+  expect(state.submitSuggestion).toHaveBeenCalledWith(
+    {},
+    expect.objectContaining({
+      value: { body: text + suffix, url: null },
+    }),
+  );
+  state.submitSuggestion.mockClear();
+  await expect(
+    caller().submitStorySuggestion({ text: text + "x", storySlug: "local-ai" }),
+  ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "long" });
+  expect(state.submitSuggestion).not.toHaveBeenCalled();
+});

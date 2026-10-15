@@ -5,7 +5,11 @@ import en from "../../../messages/en.json";
 import { StorySuggestionBox } from "./story-suggestion-box";
 
 const state = vi.hoisted(() => ({
-  authStatus: "authenticated" as "authenticated" | "guest" | "pending",
+  authStatus: "authenticated" as
+    | "authenticated"
+    | "guest"
+    | "pending"
+    | "unknown",
   mutate: vi.fn(),
   requireAuth: vi.fn(),
 }));
@@ -65,5 +69,38 @@ it("sends a story suggestion and toasts the stored confirmation", () => {
   });
   expect(toast.success).toHaveBeenCalledWith(
     en.newsStories.contribute.suggestSent,
+  );
+});
+
+it("explains an unknown session and prevents sending", () => {
+  state.authStatus = "unknown";
+  render(
+    <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+      <StorySuggestionBox />
+    </NextIntlClientProvider>,
+  );
+  fireEvent.change(
+    screen.getByLabelText(en.newsStories.contribute.suggestLabel),
+    { target: { value: "A useful story idea" } },
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    en.newsStories.contribute.sessionFailed,
+  );
+  expect(
+    screen.getByRole("button", {
+      name: en.newsStories.contribute.suggestSubmit,
+    }),
+  ).toBeDisabled();
+});
+
+it("reserves room for the originating story in the text length", () => {
+  render(
+    <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+      <StorySuggestionBox story={{ title: "Local AI", slug: "local-ai" }} />
+    </NextIntlClientProvider>,
+  );
+  expect(screen.getByRole("textbox")).toHaveAttribute(
+    "maxlength",
+    String(500 - "\n\nStory: /news/stories/local-ai".length),
   );
 });

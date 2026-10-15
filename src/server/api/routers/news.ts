@@ -1,4 +1,8 @@
 import {
+  STORY_SUGGESTION_BODY_LIMIT,
+  storySuggestionContext,
+} from "@/lib/news/story-suggestion-context";
+import {
   listAgentStorylineDrafts,
   dismissAgentStorylineDraft,
 } from "@/server/news/agent-storylines";
@@ -232,9 +236,14 @@ export const newsRouter = createTRPCRouter({
           message: normalized.reason,
         });
       }
+      const body =
+        normalized.value.body + storySuggestionContext(input.storySlug);
+      if (body.length > STORY_SUGGESTION_BODY_LIMIT) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "long" });
+      }
       const result = await submitStorySuggestion(storySuggestionDb, {
         userId: ctx.session.user.id,
-        value: normalized.value,
+        value: { ...normalized.value, body },
         now: new Date(),
       });
       if (!result.ok) {

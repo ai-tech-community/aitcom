@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { storylineSlugSchema } from "./storylines";
 
 import { newsArticleUrl } from "@/server/news/draft";
 
@@ -8,6 +9,7 @@ const MIN_STORY_LENGTH = 8;
 
 export const storySuggestionInputSchema = z.object({
   text: z.string().trim().min(1).max(500),
+  storySlug: storylineSlugSchema.optional(),
 });
 
 export type StorySuggestionInput = z.infer<typeof storySuggestionInputSchema>;
