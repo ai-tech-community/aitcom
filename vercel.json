@@ -90,6 +90,10 @@
       "schedule": "40 7 * * *"
     },
     {
+      "path": "/api/cron/startup-uses-ai",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/video-uploads-cleanup",
       "schedule": "30 3 * * *"
     }

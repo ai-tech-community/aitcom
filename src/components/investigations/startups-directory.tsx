@@ -40,6 +40,7 @@ import {
   paginateStartupCards,
   parseStartupDirectoryQuery,
   startupDirectoryFilterOptions,
+  type StartupAiFilter,
   type StartupCategoryId,
   type StartupDirectoryQuery,
   type StartupDirectoryView,
@@ -115,6 +116,7 @@ export function StartupsDirectory({
       next.stage !== undefined ||
       next.status !== undefined ||
       next.hiring !== undefined ||
+      next.ai !== undefined ||
       next.sort !== undefined;
     const merged = parseStartupDirectoryQuery({
       ...query,
@@ -135,6 +137,7 @@ export function StartupsDirectory({
     Boolean(query.stage && query.stage !== "all"),
     Boolean(query.status && query.status !== "all"),
     query.hiring === "hiring",
+    query.ai === "yes" || query.ai === "no",
   ].filter(Boolean).length;
   const [filtersOpen, setFiltersOpen] = useState(activeFilters > 0);
   const isMap = query.view === "map";
@@ -248,10 +251,21 @@ export function StartupsDirectory({
         <div
           id="startup-filters"
           className={cn(
-            "grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-5",
+            "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6",
             !filtersOpen && "max-md:hidden",
           )}
         >
+          <FilterSelect
+            id="startup-ai"
+            label={t("filterAi")}
+            allLabel={t("filterAiAll")}
+            value={query.ai ?? "all"}
+            options={[
+              { value: "yes", label: t("filterAiYes") },
+              { value: "no", label: t("filterAiNo") },
+            ]}
+            onChange={(value) => replaceQuery({ ai: value as StartupAiFilter })}
+          />
           <FilterSelect
             id="startup-filter"
             label={t("filterLabel")}
@@ -336,6 +350,7 @@ export function StartupsDirectory({
                 stage: "all",
                 status: "all",
                 hiring: "all",
+                ai: "all",
               })
             }
           >
@@ -370,6 +385,7 @@ export function StartupsDirectory({
             openHomepage: t("openHomepage"),
             edit: t("edit"),
             caption: t("tabDirectory"),
+            usesAi: t("usesAi"),
           }}
           onEdit={(next) => {
             setEditing(next);
@@ -421,6 +437,10 @@ export function StartupsDirectory({
             fieldAcquirer: t("fieldAcquirer"),
             fieldExitOn: t("fieldExitOn"),
             fieldJobs: t("fieldJobs"),
+            fieldUsesAi: t("fieldUsesAi"),
+            fieldUsesAiUnknown: t("fieldUsesAiUnknown"),
+            fieldUsesAiYes: t("fieldUsesAiYes"),
+            fieldUsesAiNo: t("fieldUsesAiNo"),
             submit: t("submit"),
             save: t("save"),
             cancel: t("cancel"),

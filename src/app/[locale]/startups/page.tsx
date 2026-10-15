@@ -12,6 +12,7 @@ import {
   paginateStartupCards,
   parseStartupDirectoryQuery,
   startupDirectoryCanonicalPath,
+  startupDirectoryFilteredRobots,
   startupDirectoryHasFilters,
   startupsPublicRobots,
   type StartupLocale,
@@ -42,6 +43,8 @@ interface PageProps {
     status?: string;
     exit?: string;
     hiring?: string;
+    ai?: string;
+    industry?: string;
     sort?: string;
     page?: string;
     view?: string;
@@ -55,11 +58,11 @@ export async function generateMetadata({
   const locale = await getLocale();
   const raw = await searchParams;
   const companies = await listApprovedPublicStartups();
-  const robots = startupsPublicRobots(companies.length);
+  const publicRobots = startupsPublicRobots(companies.length);
   if (isStartupInsightsTab(raw.tab)) {
     return {
       title: STARTUPS_H1,
-      robots,
+      robots: publicRobots,
       alternates: await localeAlternates(STARTUPS_INSIGHTS_PATH),
     };
   }
@@ -74,6 +77,9 @@ export async function generateMetadata({
     ...query,
     page: pagination.page,
   });
+  const robots = startupDirectoryHasFilters(query)
+    ? startupDirectoryFilteredRobots()
+    : publicRobots;
 
   const paginationLinks =
     !startupDirectoryHasFilters(query) && pagination.totalPages > 1

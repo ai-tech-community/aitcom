@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { StartupsFounders } from "@/components/investigations/startups-founders";
+import { StartupUsesAiBadge } from "@/components/investigations/startup-uses-ai-badge";
 import { StartupsSourceChips } from "@/components/investigations/startups-source-chips";
 import {
   STARTUP_CATEGORY_LABELS,
@@ -39,6 +40,7 @@ export function StartupsCard({
     sources: string;
     founders: string;
     edit: string;
+    usesAi: string;
   };
   onEdit?: (card: StartupPublicCard) => void;
 }) {
@@ -56,6 +58,7 @@ export function StartupsCard({
             <Badge variant="secondary">
               {STARTUP_CATEGORY_LABELS[card.category][locale]}
             </Badge>
+            <StartupUsesAiBadge usesAi={card.usesAi} label={copy.usesAi} />
             {exitBadge ? (
               <Badge data-startup-exit={card.exitStatus ?? ""}>
                 {exitBadge}

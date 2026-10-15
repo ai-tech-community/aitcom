@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StartupUsesAiBadge } from "@/components/investigations/startup-uses-ai-badge";
 import { StartupLogo } from "@/components/investigations/startups-logo";
 import {
   STARTUP_CATEGORY_LABELS,
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 export type StartupsProfileHeaderCopy = {
   openHomepage: string;
   rolesCta: string;
+  usesAi: string;
 };
 
 /** Identity block: mark, name, sourced blurb, status, and the two exits. */
@@ -41,6 +43,7 @@ export function StartupsProfileHeader({
           <Badge variant="secondary" data-startup-category={card.category}>
             {STARTUP_CATEGORY_LABELS[card.category][locale]}
           </Badge>
+          <StartupUsesAiBadge usesAi={card.usesAi} label={copy.usesAi} />
           {exitBadge ? (
             <Badge variant="outline" data-startup-exit={card.exitStatus ?? ""}>
               {exitBadge}

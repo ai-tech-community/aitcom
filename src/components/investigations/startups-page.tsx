@@ -12,6 +12,7 @@ import {
   applyStartupDirectoryQuery,
   paginateStartupCards,
   parseStartupDirectoryQuery,
+  startupDirectoryHasFilters,
   startupsDirectoryJsonLd,
   type StartupDirectoryQuery,
   type StartupLocale,
@@ -73,7 +74,9 @@ export function StartupsPage({
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
-      {directoryPage && directoryPage.items.length > 0 ? (
+      {directoryPage &&
+      directoryPage.items.length > 0 &&
+      !startupDirectoryHasFilters(directoryQuery) ? (
         <JsonLd data={startupsDirectoryJsonLd(directoryPage.items)} />
       ) : null}
 

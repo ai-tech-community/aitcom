@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StartupsClusterMap } from "@/components/investigations/startups-cluster-map";
 import { StartupLogo } from "@/components/investigations/startups-logo";
+import { StartupUsesAiBadge } from "@/components/investigations/startup-uses-ai-badge";
 import {
   STARTUP_CATEGORY_LABELS,
   buildStartupProfilePath,
@@ -159,6 +160,7 @@ export function StartupsDirectoryMap({
                 locale={locale}
                 active={card.id === activeId}
                 openRoles={t("rolesCta", { count: card.openRoleCount })}
+                usesAiLabel={t("usesAi")}
                 onActive={setActiveId}
               />
             ))}
@@ -192,12 +194,14 @@ function MapListRow({
   locale,
   active,
   openRoles,
+  usesAiLabel,
   onActive,
 }: {
   card: StartupPublicCard;
   locale: StartupLocale;
   active: boolean;
   openRoles: string;
+  usesAiLabel: string;
   onActive: (id: string | null) => void;
 }) {
   const region = presentText(card.region);
@@ -226,6 +230,7 @@ function MapListRow({
         </Link>
         <span className="text-muted-foreground truncate text-sm">{meta}</span>
       </div>
+      <StartupUsesAiBadge usesAi={card.usesAi} label={usesAiLabel} />
       {card.openRoleCount > 0 ? (
         <Badge variant="outline" className="shrink-0">
           {openRoles}
