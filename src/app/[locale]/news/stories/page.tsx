@@ -5,15 +5,10 @@ import {
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { NewsSection } from "@/components/news/news-section";
-import { WeeklyContributorBoard } from "@/components/news/weekly-contributor-board";
-import { WeeklyTopicClaims } from "@/components/news/weekly-topic-claims";
 import { Link } from "@/i18n/navigation";
 import { StorylineList } from "@/components/news/storyline-reader";
-import type { WeeklyTopic } from "@/lib/news/weekly-topics";
 import { getSession } from "@/server/better-auth/server";
-import { listWeeklyContributorBoard } from "@/server/news/contributions";
 import { listStorylines } from "@/server/news/storylines";
-import { listWeeklyStoryTopics } from "@/server/news/weekly-topics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -37,16 +32,6 @@ export default async function StoriesPage({
   const page =
     typeof params.page === "string" ? Number.parseInt(params.page, 10) : 1;
   let result;
-  const board = await listWeeklyContributorBoard().catch((err: unknown) => {
-    console.error("news: contributor board unavailable", err);
-    return [];
-  });
-  let topics: WeeklyTopic[] = [];
-  try {
-    topics = await listWeeklyStoryTopics();
-  } catch (err) {
-    console.error("news: weekly topics unavailable", err);
-  }
   try {
     const session = await getSession();
     const viewerId = session?.user?.id;
@@ -66,25 +51,22 @@ export default async function StoriesPage({
       news={tabs("tabNews")}
       stories={tabs("tabStories")}
     >
-      <h1 className="text-4xl font-semibold tracking-tight">{t("title")}</h1>
-      <p className="text-muted-foreground mt-3 text-lg">{t("intro")}</p>
-      <Link
-        href="/news/stories/contribute"
-        className="mt-4 inline-block text-sm underline underline-offset-4"
-      >
-        {t("contribute.entry")}
-      </Link>
-      <WeeklyContributorBoard
-        rows={board}
-        title={tabs("leaderboardTitle")}
-        emptyLabel={tabs("leaderboardEmpty")}
-        emptyHref="/news/stories/contribute"
-        pointsLabel={(points) => tabs("leaderboardPoints", { points })}
-        agentLabel={(name) => tabs("leaderboardAgent", { name })}
-      />
-      <WeeklyTopicClaims topics={topics} />
-      <form method="get" className="mt-8 mb-8 flex flex-wrap items-end gap-3">
-        <label className="flex-1 text-sm">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+        <div>
+          <h1 className="text-4xl font-semibold tracking-tight">
+            {t("title")}
+          </h1>
+          <p className="text-muted-foreground mt-3 text-lg">{t("intro")}</p>
+        </div>
+        <Link
+          href="/news/stories/contribute"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring shrink-0 self-start rounded-sm text-sm underline underline-offset-4 focus-visible:ring-2 focus-visible:outline-none sm:self-auto"
+        >
+          {t("contribute.entry")}
+        </Link>
+      </header>
+      <form method="get" className="mt-8 mb-6 flex items-end gap-3">
+        <label className="min-w-0 flex-1 text-sm">
           <span>{t("search")}</span>
           <Input
             name="q"

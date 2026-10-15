@@ -6,7 +6,8 @@ import { newsGameRobots } from "@/lib/news/indexability";
 import { ContributeDesk } from "@/components/news/contribute-desk";
 import { StorylinePreview } from "@/components/news/storyline-preview";
 import { listWeeklyStoryTopics } from "@/server/news/weekly-topics";
-import type { WeeklyTopic } from "@/lib/news/weekly-topics";
+import { WeeklyContributorBoard } from "@/components/news/weekly-contributor-board";
+import { listWeeklyContributorBoard } from "@/server/news/contributions";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("newsStories.contribute");
@@ -20,12 +21,17 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function ContributeStoriesPage() {
   const t = await getTranslations("newsStories.contribute");
-  let topics: WeeklyTopic[] = [];
-  try {
-    topics = await listWeeklyStoryTopics();
-  } catch (err) {
-    console.error("news: weekly topics unavailable", err);
-  }
+  const news = await getTranslations("newsPage");
+  const [topics, board] = await Promise.all([
+    listWeeklyStoryTopics().catch((err: unknown) => {
+      console.error("news: weekly topics unavailable", err);
+      return [];
+    }),
+    listWeeklyContributorBoard().catch((err: unknown) => {
+      console.error("news: contributor board unavailable", err);
+      return [];
+    }),
+  ]);
   return (
     <main className="mx-auto max-w-6xl px-6 py-12 sm:px-12 sm:py-16">
       <Link
@@ -61,6 +67,14 @@ export default async function ContributeStoriesPage() {
         </p>
       </section>
       <ContributeDesk topics={topics} />
+      <WeeklyContributorBoard
+        rows={board}
+        title={news("leaderboardTitle")}
+        emptyLabel={news("leaderboardEmpty")}
+        emptyHref="/news/stories/contribute"
+        pointsLabel={(points) => news("leaderboardPoints", { points })}
+        agentLabel={(name) => news("leaderboardAgent", { name })}
+      />
       <StorylinePreview staff={false} showContribute={false} />
     </main>
   );
