@@ -17,6 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description: t("metaDescription"),
     ...buildOgMeta(t("metaTitle"), t("metaDescription")),
     alternates: await localeAlternates(COLLECTOR_ABOUT_PATH),
+    robots: { index: false, follow: true },
   };
 }
 

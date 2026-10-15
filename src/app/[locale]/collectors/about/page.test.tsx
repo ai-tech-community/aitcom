@@ -24,7 +24,8 @@ import {
   COLLECTOR_ROBOTS_TOKEN,
   COLLECTOR_USER_AGENT,
 } from "@/server/collectors/identity";
-import CollectorAboutPage from "./page";
+import { metadata as collectorsMetadata } from "../layout";
+import CollectorAboutPage, { generateMetadata } from "./page";
 
 describe("collector about page", () => {
   it("shows the exact user agent, the robots.txt block and the opt-out address", async () => {
@@ -40,6 +41,12 @@ describe("collector about page", () => {
     expect(
       screen.getByRole("link", { name: COLLECTOR_OPT_OUT_EMAIL }),
     ).toHaveAttribute("href", `mailto:${COLLECTOR_OPT_OUT_EMAIL}`);
+  });
+
+  it("is noindex, follow, like every /collectors page", async () => {
+    expect(collectorsMetadata.robots).toEqual({ index: false, follow: true });
+    const meta = await generateMetadata();
+    expect(meta.robots).toEqual({ index: false, follow: true });
   });
 
   it("names the page the user agent links to", () => {
