@@ -4,18 +4,32 @@ Public directory + Insights. **Live rows live in Neon.** The app reads the
 database on each request (`force-dynamic`). Staff inserts after deploy show
 up without a redeploy. UI components do not bake a company list.
 
-H1 is **AI startups worth watching**. Source links use Docs · Deep dive ·
-Talk · News, or a sourced publication title (Wikipedia, TechCrunch). Never
-bare `1` / `2` / `3`.
+H1 is **Startups worth watching**. The directory lists companies in any
+sector. A **Uses AI** tag appears when `uses_ai` is true. Source links use
+Docs · Deep dive · Talk · News, or a sourced publication title (Wikipedia,
+TechCrunch). Never bare `1` / `2` / `3`.
 
 ## Who counts
 
-Companies that materially enable AI: models · agents · AI infra · robotics ·
-energy · vertical / other.
-
-Fixed taxonomy (store as `ai-infra` when Pulse says `AI infra`):
+Any sector. AI use is a recorded flag (`uses_ai`), not a requirement to be
+listed. Categories stay the fixed taxonomy of what a company builds:
 
 `models` · `agents` · `ai-infra` · `robotics` · `energy` · `vertical` · `other`
+
+## Uses AI
+
+`app.startup.uses_ai` is a nullable boolean. The tag is shown only when the
+value is true. False and null stay untagged. Migration
+`20261015a_startup_uses_ai` is DDL only (`ADD COLUMN IF NOT EXISTS`, no
+default, no `UPDATE`). It is metadata-only and stays inside the 120s deploy
+limit.
+
+`/api/cron/startup-uses-ai` runs every 15 minutes and sets `uses_ai = true`
+for rows still null whose `listed_on` is on or before 2026-10-15 (the
+AI-only directory), 1000 ids per run. A second run skips rows already set.
+Companies listed after that date stay null until a staff write records the
+flag. There is no industry column; `?industry=` filters a known category id
+and is canonicalized through the existing `category` param.
 
 ## v1 seed (20/20)
 
@@ -315,12 +329,17 @@ the active filters.
   `/jobs/{slug}` keeps Jobs active.
 - Directory pages after page 1 use crawlable `?page=` links (`STARTUPS_PAGE_SIZE`
   is 24, so a list past ~50 rows is page 3). Pagination stays crawlable.
-- **Crawl is open:** Directory + Insights send `index,follow` and stay **in
-  the sitemap** (including `?page=`). Do **not** noindex or drop these paths
-  based on verified count. **≥3000 is promo-only** (no LinkedIn / newsletter /
-  Hub push until then) — not a crawl gate and **not** a public Investigation
-  Pass. Writing Bot + Ops Pass are still required before claiming Pass. Do
-  not invent a Pass flag.
+  The unfiltered URL, title, and ItemList JSON-LD stay on `/startups`.
+- **Filtered views** (`?q=`, `?category=` / `?industry=` for a known category,
+  `?region=`, `?stage=`, `?status=`, `?hiring=1`, `?ai=1`, `?ai=0`, `?sort=`)
+  send `noindex,follow` and a canonical to the unfiltered `/startups` page.
+  `?page=` without those filters stays indexable with its own canonical.
+- **Crawl is open:** The unfiltered Directory + Insights send `index,follow`
+  and stay **in the sitemap** (including `?page=`). Do **not** noindex or drop
+  these paths based on verified count. **≥3000 is promo-only** (no LinkedIn /
+  newsletter / Hub push until then) — not a crawl gate and **not** a public
+  Investigation Pass. Writing Bot + Ops Pass are still required before
+  claiming Pass. Do not invent a Pass flag.
 - Cursor chip `Cursor: Joining SpaceX` is the sourced
   `https://cursor.com/blog/joining-spacex` URL (migration
   `20260915f_startups_v1_polish`). UI reads `sources[]` from Neon — do not

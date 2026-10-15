@@ -111,6 +111,10 @@ export function StartupsSubmitDialog({
     fieldAcquirer: string;
     fieldExitOn: string;
     fieldJobs: string;
+    fieldUsesAi: string;
+    fieldUsesAiUnknown: string;
+    fieldUsesAiYes: string;
+    fieldUsesAiNo: string;
     submit: string;
     save: string;
     cancel: string;
@@ -134,6 +138,7 @@ export function StartupsSubmitDialog({
   const [acquirer, setAcquirer] = useState("");
   const [exitOn, setExitOn] = useState("");
   const [jobsUrl, setJobsUrl] = useState("");
+  const [usesAi, setUsesAi] = useState<"unknown" | "yes" | "no">("unknown");
   const [formError, setFormError] = useState<string | null>(null);
 
   const router = useRouter();
@@ -158,6 +163,13 @@ export function StartupsSubmitDialog({
       setAcquirer(editing.acquirer ?? "");
       setExitOn(editing.exitOn ?? "");
       setJobsUrl(editing.jobsUrl ?? "");
+      setUsesAi(
+        editing.usesAi === true
+          ? "yes"
+          : editing.usesAi === false
+            ? "no"
+            : "unknown",
+      );
     } else {
       reset();
     }
@@ -217,6 +229,7 @@ export function StartupsSubmitDialog({
     setAcquirer("");
     setExitOn("");
     setJobsUrl("");
+    setUsesAi("unknown");
     setFormError(null);
   }
 
@@ -251,6 +264,7 @@ export function StartupsSubmitDialog({
       acquirer: acquirer.trim() || null,
       exitOn: exitOn.trim() || null,
       jobsUrl: jobsUrl.trim() || null,
+      usesAi: usesAi === "yes" ? true : usesAi === "no" ? false : null,
     };
     if (editing) {
       update.mutate({ id: editing.id, ...payload });
@@ -459,6 +473,28 @@ export function StartupsSubmitDialog({
               value={jobsUrl}
               onChange={(event) => setJobsUrl(event.target.value)}
             />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="startup-uses-ai">{copy.fieldUsesAi}</Label>
+            <Select
+              value={usesAi}
+              onValueChange={(value) =>
+                setUsesAi(value as "unknown" | "yes" | "no")
+              }
+            >
+              <SelectTrigger id="startup-uses-ai" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="unknown">
+                    {copy.fieldUsesAiUnknown}
+                  </SelectItem>
+                  <SelectItem value="yes">{copy.fieldUsesAiYes}</SelectItem>
+                  <SelectItem value="no">{copy.fieldUsesAiNo}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
           {formError ? (
             <p className="text-destructive text-sm">{formError}</p>

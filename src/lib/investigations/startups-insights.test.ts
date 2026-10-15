@@ -63,7 +63,7 @@ function card(overrides: Partial<StartupPublicCard> = {}): StartupPublicCard {
 describe("startup insights paths", () => {
   it("keeps a crawlable /insights path", () => {
     expect(STARTUPS_INSIGHTS_PATH).toBe("/startups/insights");
-    expect(STARTUPS_INSIGHTS_H1).toBe("AI startups insights");
+    expect(STARTUPS_INSIGHTS_H1).toBe("Startup insights");
     expect(STARTUPS_INSIGHTS_META).toMatch(/who is hiring/i);
     expect(STARTUPS_INSIGHTS_META).toMatch(/from the live directory only/i);
     expect(STARTUPS_INSIGHTS_META).not.toMatch(
@@ -323,10 +323,10 @@ describe("startup insights Open Graph", () => {
     const t = insightsT("en");
     expect(spec).not.toBeNull();
     expect(t(spec!.titleKey, spec!.titleValues)).toBe(
-      "AI startups insights — 8,172 companies, 460 hiring",
+      "Startup insights — 8,172 companies, 460 hiring",
     );
     expect(t(spec!.descriptionKey, spec!.descriptionValues)).toBe(
-      "Live from the AIT directory: 8,172 AI companies, 460 hiring, at least 3,635 open roles. Nothing estimated.",
+      "Live from the AIT directory: 8,172 companies, 460 hiring, at least 3,635 open roles. Nothing estimated.",
     );
   });
 
@@ -344,7 +344,7 @@ describe("startup insights Open Graph", () => {
     );
     const spec = startupInsightsOgSpec(facts)!;
     expect(insightsT("en")(spec.descriptionKey, spec.descriptionValues)).toBe(
-      "Live from the AIT directory: 8,172 AI companies, 2 hiring, 5 open roles. Nothing estimated.",
+      "Live from the AIT directory: 8,172 companies, 2 hiring, 5 open roles. Nothing estimated.",
     );
   });
 
@@ -364,7 +364,7 @@ describe("startup insights Open Graph", () => {
     const spec = startupInsightsOgSpec(facts)!;
     expect(spec.titleKey).toBe("shareOgTitleNoHiring");
     expect(insightsT("nl")(spec.titleKey, spec.titleValues)).toBe(
-      "AI-startups inzichten — 6 bedrijven",
+      "Startup-inzichten — 6 bedrijven",
     );
   });
 

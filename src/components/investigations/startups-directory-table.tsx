@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StartupsFounders } from "@/components/investigations/startups-founders";
+import { StartupUsesAiBadge } from "@/components/investigations/startup-uses-ai-badge";
 import { StartupLogo } from "@/components/investigations/startups-logo";
 import { StartupsSourceChips } from "@/components/investigations/startups-source-chips";
 import {
@@ -46,6 +47,7 @@ export type StartupsDirectoryTableCopy = {
   openHomepage: string;
   edit: string;
   caption: string;
+  usesAi: string;
 };
 
 /**
@@ -161,9 +163,12 @@ function CompanyRow({
         </div>
       </TableCell>
       <TableCell className={cell}>
-        <Badge variant="secondary">
-          {STARTUP_CATEGORY_LABELS[card.category][locale]}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="secondary">
+            {STARTUP_CATEGORY_LABELS[card.category][locale]}
+          </Badge>
+          <StartupUsesAiBadge usesAi={card.usesAi} label={copy.usesAi} />
+        </div>
       </TableCell>
       <TableCell className={cn(cell, "min-w-40 whitespace-normal")}>
         {region ? <span data-startup-region={region}>{region}</span> : null}

@@ -1,5 +1,15 @@
 import { cache } from "react";
-import { and, asc, count, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 import { isThinStartupProfile } from "@/lib/investigations/startup-profile-index";
 import {
@@ -41,6 +51,61 @@ function asFiniteCount(value: unknown): number {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
+function errorText(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (!error || typeof error !== "object") return "";
+  const record = error as { message?: unknown; cause?: unknown };
+  const message = typeof record.message === "string" ? record.message : "";
+  return `${message}\n${errorText(record.cause)}`;
+}
+
+/** Preview builds skip migrations, so `uses_ai` may not exist yet. */
+function isMissingUsesAiColumn(error: unknown): boolean {
+  return errorText(error).includes("uses_ai");
+}
+
+const startupColumnsWithoutUsesAi = (() => {
+  const { usesAi, ...columns } = getTableColumns(startups);
+  void usesAi;
+  return columns;
+})();
+
+async function listApprovedStartupRows() {
+  const where = eq(startups.status, "approved");
+  const order = [desc(startups.listedOn), desc(startups.createdAt)] as const;
+  try {
+    return await db
+      .select()
+      .from(startups)
+      .where(where)
+      .orderBy(...order);
+  } catch (error) {
+    if (!isMissingUsesAiColumn(error)) throw error;
+    const rows = await db
+      .select(startupColumnsWithoutUsesAi)
+      .from(startups)
+      .where(where)
+      .orderBy(...order);
+    return rows.map((row) => ({ ...row, usesAi: null }));
+  }
+}
+
+async function findStartupRowBySlug(slug: string) {
+  const where = eq(startups.slug, slug);
+  try {
+    const [row] = await db.select().from(startups).where(where).limit(1);
+    return row ?? null;
+  } catch (error) {
+    if (!isMissingUsesAiColumn(error)) throw error;
+    const [row] = await db
+      .select(startupColumnsWithoutUsesAi)
+      .from(startups)
+      .where(where)
+      .limit(1);
+    return row ? { ...row, usesAi: null } : null;
+  }
+}
+
 function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
   return {
     id: row.id,
@@ -64,6 +129,7 @@ function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
     listedOn: row.listedOn,
     slug: parseStartupSlug(row.slug) ?? startupSlugFromName(row.name),
     openRoleCount: asFiniteCount(row.openRoleCount),
+    usesAi: row.usesAi ?? null,
   };
 }
 
@@ -72,11 +138,7 @@ export async function listApprovedPublicStartups(): Promise<
   StartupPublicCard[]
 > {
   try {
-    const rows = await db
-      .select()
-      .from(startups)
-      .where(eq(startups.status, "approved"))
-      .orderBy(desc(startups.listedOn), desc(startups.createdAt));
+    const rows = await listApprovedStartupRows();
     return rows.map((row) => toPublicCard(row));
   } catch {
     return [];
@@ -139,11 +201,7 @@ export async function findApprovedPublicStartupBySlug(
   try {
     const parsed = parseStartupSlug(slug);
     if (!parsed) return null;
-    const [row] = await db
-      .select()
-      .from(startups)
-      .where(eq(startups.slug, parsed))
-      .limit(1);
+    const row = await findStartupRowBySlug(parsed);
     if (row?.status === "approved") {
       return toPublicCard(row);
     }

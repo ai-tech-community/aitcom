@@ -29,6 +29,7 @@ export type StartupsProfileKey =
   | "hubCta"
   | "openHomepage"
   | "rolesCta"
+  | "usesAi"
   | "profileBack"
   | "sectionFounders"
   | "sectionHiring"
@@ -129,6 +130,7 @@ export function StartupsProfilePage({
           copy={{
             openHomepage: t("openHomepage"),
             rolesCta: t("rolesCta", { count: card.openRoleCount }),
+            usesAi: t("usesAi"),
           }}
         />
       </div>

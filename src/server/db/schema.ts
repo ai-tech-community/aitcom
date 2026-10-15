@@ -4480,6 +4480,11 @@ export const startups = appSchema.table(
     /** Sourced `open` role count from the last successful scan. 0 = no jobs. */
     openRoleCount: d.integer().notNull().default(0),
     /**
+     * Whether this company uses AI. Null until recorded.
+     * Historical rows are filled by the uses-AI cron, not by a default.
+     */
+    usesAi: d.boolean(),
+    /**
      * Successful scans in a row that published no roles. The jobs cron
      * backs off from the third. Reset when a scan publishes a role.
      */
@@ -4513,6 +4518,7 @@ export const startups = appSchema.table(
     index("startup_status_idx").on(t.status),
     index("startup_category_idx").on(t.category),
     index("startup_listed_on_idx").on(t.listedOn),
+    index("startup_uses_ai_idx").on(t.usesAi),
   ],
 );
 

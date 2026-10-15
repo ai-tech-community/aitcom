@@ -35,15 +35,15 @@ export const STARTUPS_SLUG_FALLBACK = "startup";
 export const STARTUPS_SLUG_ERROR =
   "Use a unique lowercase slug (letters, numbers, hyphens).";
 
-export const STARTUPS_H1 = "AI startups worth watching";
+export const STARTUPS_H1 = "Startups worth watching";
 
 export const STARTUPS_META =
-  "Companies that materially enable AI — models, agents, AI infra, robotics, energy, and verticals. Homepage and sources verified. Not a size or price scorecard.";
+  "Startups in any sector. A Uses AI tag appears when the listing records that the company uses AI. Homepage and sources verified. Not a size or price scorecard.";
 
-export const STARTUPS_INSIGHTS_H1 = "AI startups insights";
+export const STARTUPS_INSIGHTS_H1 = "Startup insights";
 
 export const STARTUPS_INSIGHTS_META =
-  "Where listed AI startups are, what they build, who is hiring, and how well each listing is sourced. Counted from the live directory only; nothing estimated.";
+  "Where listed startups are, what they build, who is hiring, and how well each listing is sourced. Counted from the live directory only; nothing estimated.";
 
 export const STARTUPS_JOIN_HREF =
   "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=startups&utm_campaign=startups";
@@ -130,6 +130,11 @@ export type StartupPublicCard = {
   slug: string;
   /** Count of sourced `open` roles. 0 until a scan has published any. */
   openRoleCount: number;
+  /**
+   * Recorded AI use. True shows the Uses AI tag. False and null stay
+   * untagged — a missing flag is not a guess.
+   */
+  usesAi?: boolean | null;
 };
 
 export function startupHasOpenJobs(
@@ -179,6 +184,9 @@ export type StartupExitFilter = "active" | StartupExitStatus;
 
 export type StartupHiringFilter = "all" | "hiring";
 
+/** `yes` is `?ai=1`. `no` is an explicit false, never a null row. */
+export type StartupAiFilter = "all" | "yes" | "no";
+
 export type StartupDirectoryFilters = {
   q: string;
   category: StartupCategoryId | "all";
@@ -186,6 +194,8 @@ export type StartupDirectoryFilters = {
   stage?: string;
   status?: StartupExitFilter | "all";
   hiring?: StartupHiringFilter;
+  /** Uses AI. Omitted means every company, tagged or not. */
+  ai?: StartupAiFilter;
   sort?: StartupSort;
 };
 
@@ -247,6 +257,17 @@ export const STARTUP_CATEGORY_LABELS: Record<
   vertical: { en: "Vertical", nl: "Verticaal" },
   other: { en: "Other", nl: "Overig" },
 };
+
+export const STARTUP_USES_AI_LABELS: Record<StartupLocale, string> = {
+  en: "Uses AI",
+  nl: "Gebruikt AI",
+};
+
+export function startupUsesAi(
+  card: Pick<StartupPublicCard, "usesAi">,
+): boolean {
+  return card.usesAi === true;
+}
 
 const CATEGORY_ALIASES: Record<string, StartupCategoryId> = {
   models: "models",
@@ -1015,6 +1036,17 @@ export function parseStartupHiringFilter(
   return "all";
 }
 
+export function parseStartupAiFilter(
+  value: string | null | undefined,
+): StartupAiFilter {
+  const raw = value?.trim().toLowerCase() ?? "";
+  if (raw === "1" || raw === "yes" || raw === "true" || raw === "ai") {
+    return "yes";
+  }
+  if (raw === "0" || raw === "no" || raw === "false") return "no";
+  return "all";
+}
+
 export function startupExitBucket(
   card: Pick<StartupPublicCard, "exitStatus">,
 ): StartupExitFilter {
@@ -1024,23 +1056,29 @@ export function startupExitBucket(
 export function parseStartupDirectoryQuery(raw: {
   q?: string | string[];
   category?: string | string[];
+  industry?: string | string[];
   region?: string | string[];
   stage?: string | string[];
   status?: string | string[];
   exit?: string | string[];
   hiring?: string | string[];
+  ai?: string | string[];
   sort?: string | string[];
   page?: string | string[] | number;
   view?: string | string[];
 }): StartupDirectoryQuery {
   const q = firstParam(raw.q)?.trim() ?? "";
-  const category = parseStartupCategory(firstParam(raw.category)) ?? "all";
+  const category =
+    parseStartupCategory(firstParam(raw.category)) ??
+    parseStartupCategory(firstParam(raw.industry)) ??
+    "all";
   const region = presentText(firstParam(raw.region)) ?? "all";
   const stage = presentText(firstParam(raw.stage)) ?? "all";
   const status = parseStartupExitFilter(
     firstParam(raw.status) ?? firstParam(raw.exit),
   );
   const hiring = parseStartupHiringFilter(firstParam(raw.hiring));
+  const ai = parseStartupAiFilter(firstParam(raw.ai));
   const sort = parseStartupSort(firstParam(raw.sort));
   const page =
     typeof raw.page === "number"
@@ -1050,7 +1088,7 @@ export function parseStartupDirectoryQuery(raw: {
       : parseStartupPage(raw.page);
   const view: StartupDirectoryView =
     firstParam(raw.view) === "map" ? "map" : "table";
-  return { q, category, region, stage, status, hiring, sort, page, view };
+  return { q, category, region, stage, status, hiring, ai, sort, page, view };
 }
 
 export function applyStartupDirectoryQuery(
@@ -1063,6 +1101,7 @@ export function applyStartupDirectoryQuery(
   const stage = presentText(query.stage === "all" ? null : query.stage);
   const status = query.status && query.status !== "all" ? query.status : "all";
   const hiring = query.hiring === "hiring" ? "hiring" : "all";
+  const ai = query.ai === "yes" || query.ai === "no" ? query.ai : "all";
   const sort = query.sort ?? "newest";
   const filtered = cards.filter((card) => {
     if (query.category !== "all" && card.category !== query.category) {
@@ -1072,6 +1111,8 @@ export function applyStartupDirectoryQuery(
     if (stage && presentText(card.stage) !== stage) return false;
     if (status !== "all" && startupExitBucket(card) !== status) return false;
     if (hiring === "hiring" && !startupHasOpenJobs(card)) return false;
+    if (ai === "yes" && card.usesAi !== true) return false;
+    if (ai === "no" && card.usesAi !== false) return false;
     if (!needle) return true;
     const haystack = [
       card.name,
@@ -1080,6 +1121,8 @@ export function applyStartupDirectoryQuery(
       card.stage ?? "",
       STARTUP_CATEGORY_LABELS[card.category][locale],
       STARTUP_CATEGORY_LABELS[card.category].en,
+      startupUsesAi(card) ? STARTUP_USES_AI_LABELS[locale] : "",
+      startupUsesAi(card) ? STARTUP_USES_AI_LABELS.en : "",
     ]
       .join("\n")
       .toLowerCase();
@@ -1164,6 +1207,8 @@ export function buildStartupDirectoryPath(
     params.set("status", parsed.status);
   }
   if (parsed.hiring === "hiring") params.set("hiring", "1");
+  if (parsed.ai === "yes") params.set("ai", "1");
+  if (parsed.ai === "no") params.set("ai", "0");
   if (parsed.sort && parsed.sort !== "newest") params.set("sort", parsed.sort);
   // The map shows every match at once, so it has no pages.
   if (parsed.view === "map") params.set("view", "map");
@@ -1182,6 +1227,8 @@ export function startupDirectoryHasFilters(
     (query.stage != null && query.stage !== "all") ||
     (query.status != null && query.status !== "all") ||
     query.hiring === "hiring" ||
+    query.ai === "yes" ||
+    query.ai === "no" ||
     (query.sort != null && query.sort !== "newest")
   );
 }
@@ -1220,6 +1267,18 @@ export function startupsPublicRobots(_verifiedCount?: number): {
   follow: true;
 } {
   return { index: true, follow: true };
+}
+
+/**
+ * Filtered directory URLs stay followable and point their canonical at the
+ * unfiltered page. The unfiltered directory, including `?page=`, stays
+ * indexable.
+ */
+export function startupDirectoryFilteredRobots(): {
+  index: false;
+  follow: true;
+} {
+  return { index: false, follow: true };
 }
 
 /**

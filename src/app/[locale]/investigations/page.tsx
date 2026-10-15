@@ -109,8 +109,8 @@ export default async function InvestigationsPage() {
             <div>
               <h2 className="text-xl font-semibold">{STARTUPS_H1}</h2>
               <p className="text-muted-foreground mt-1 text-sm">
-                Companies that materially enable AI. Listed after a verified
-                homepage and sources — not a size or price scorecard.
+                Companies in any sector. Listed after a verified homepage and
+                sources — not a size or price scorecard.
               </p>
             </div>
             <span className="text-muted-foreground group-hover:text-primary text-sm">

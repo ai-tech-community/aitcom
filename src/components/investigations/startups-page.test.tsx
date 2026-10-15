@@ -240,6 +240,7 @@ const CARD_COPY = {
   sources: "Sources",
   founders: "Founders",
   edit: "Edit",
+  usesAi: "Uses AI",
 };
 
 // The real next-intl formatter (the module is mocked above), so tests
@@ -296,6 +297,8 @@ describe("Startups investigation route", () => {
     expect(src).toContain('dynamic = "force-dynamic"');
     expect(src).toContain("isStartupInsightsTab");
     expect(src).toContain("startupsPublicRobots");
+    expect(src).toContain("startupDirectoryFilteredRobots");
+    expect(src).toContain("startupDirectoryHasFilters");
     expect(src).not.toContain("robots: { index: false");
     expect(existsSync(join(appLocale, "startups/layout.tsx"))).toBe(false);
     const insights = readFileSync(INSIGHTS_FILE, "utf8");
@@ -345,6 +348,50 @@ describe("StartupsPage", () => {
     expect(container.textContent).not.toMatch(BANNED);
     expect(container.textContent).not.toMatch(BAKED_COMPANIES);
     expect(screen.queryByText("Add a company")).not.toBeInTheDocument();
+  });
+
+  it("tags recorded AI use and filters it without a second ItemList", () => {
+    const tagged = { ...FIXTURE_CARD, usesAi: true as const };
+    const plain = {
+      ...FIXTURE_CARD,
+      id: "plain-co",
+      name: "Plain Co",
+      slug: "plain-co",
+      homepage: "https://plain.example",
+      usesAi: false as const,
+    };
+    const listed = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[tagged, plain]}
+      />,
+    );
+    expect(
+      listed.container.querySelectorAll("[data-startup-uses-ai]"),
+    ).toHaveLength(1);
+    expect(screen.getByLabelText("Filter by AI use")).toBeInTheDocument();
+    expect(
+      listed.container.querySelector("script[type='application/ld+json']"),
+    ).not.toBeNull();
+    listed.unmount();
+
+    const filtered = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[tagged, plain]}
+        query={{ q: "", category: "all", ai: "yes", page: 1 }}
+      />,
+    );
+    expect(filtered.container.textContent).toContain("Fixture Co");
+    expect(filtered.container.textContent).not.toContain("Plain Co");
+    expect(
+      filtered.container.querySelector("script[type='application/ld+json']"),
+    ).toBeNull();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      STARTUPS_H1,
+    );
   });
 
   it("renders an SSR table with homepage and source links, and keeps the map behind the Map view", () => {
@@ -1476,6 +1523,28 @@ describe("Startups i18n", () => {
 });
 
 describe("Startups profile page", () => {
+  it("shows Uses AI on the profile only when the row records it", () => {
+    const shown = render(
+      <StartupsProfilePage
+        locale="en"
+        t={profileT("en")}
+        card={{ ...FIXTURE_CARD, usesAi: true }}
+      />,
+    );
+    expect(
+      shown.container.querySelector("[data-startup-uses-ai]")?.textContent,
+    ).toBe("Uses AI");
+    shown.unmount();
+    const hidden = render(
+      <StartupsProfilePage
+        locale="nl"
+        t={profileT("nl")}
+        card={{ ...FIXTURE_CARD, usesAi: null }}
+      />,
+    );
+    expect(hidden.container.querySelector("[data-startup-uses-ai]")).toBeNull();
+  });
+
   it("lists stored news only when a startup has matches", () => {
     const { container } = render(
       <StartupsProfilePage
@@ -2311,6 +2380,15 @@ describe("Startups site integration", () => {
     expect(readFileSync(join(dir, "../../../vercel.json"), "utf8")).toContain(
       "/api/cron/startup-jobs-scan",
     );
+    expect(readFileSync(join(dir, "../../../vercel.json"), "utf8")).toContain(
+      "/api/cron/startup-uses-ai",
+    );
+    expect(
+      readFileSync(
+        join(dir, "../../migrations/20261015a_startup_uses_ai.ts"),
+        "utf8",
+      ),
+    ).not.toMatch(/UPDATE |INSERT INTO/i);
     expect(existsSync(CV_MIGRATION_FILE)).toBe(true);
     expect(readFileSync(CV_MIGRATION_FILE, "utf8")).toContain(
       "startup_member_cv",

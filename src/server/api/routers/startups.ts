@@ -118,6 +118,12 @@ function flattenPulseStartupRow(raw: unknown): unknown {
     jobsUrl: row.jobsUrl ?? row.jobs_url ?? null,
     description: row.description ?? row.blurb ?? null,
     slug: row.slug ?? null,
+    usesAi:
+      typeof row.usesAi === "boolean" || row.usesAi === null
+        ? row.usesAi
+        : typeof row.uses_ai === "boolean" || row.uses_ai === null
+          ? row.uses_ai
+          : undefined,
     exitStatus:
       row.exitStatus ??
       pulseExitAlias(typeof row.status === "string" ? row.status : null),
@@ -155,6 +161,8 @@ const createStartupFields = z.object({
   exitOn: optionalBlank,
   jobsUrl: optionalBlank,
   slug: optionalBlank,
+  usesAi: z.boolean().nullable().optional(),
+  uses_ai: z.boolean().nullable().optional(),
 });
 
 const createStartupInput = z.preprocess(
@@ -318,6 +326,7 @@ export const startupsRouter = createTRPCRouter({
         .insert(startups)
         .values({
           ...fields,
+          usesAi: input.usesAi ?? null,
           country,
           slug,
           status: "approved",
@@ -402,6 +411,7 @@ export const startupsRouter = createTRPCRouter({
             .insert(startups)
             .values({
               ...fields,
+              usesAi: row.usesAi ?? null,
               country,
               slug,
               status: "approved",
@@ -466,6 +476,7 @@ export const startupsRouter = createTRPCRouter({
         .update(startups)
         .set({
           ...fields,
+          ...(input.usesAi !== undefined ? { usesAi: input.usesAi } : {}),
           country,
           slug,
           updatedAt: new Date(),

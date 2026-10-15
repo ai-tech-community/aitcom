@@ -48,6 +48,9 @@ import {
   startupsDirectoryJsonLd,
   startupsPublicIndexable,
   startupsPublicRobots,
+  startupDirectoryFilteredRobots,
+  startupDirectoryHasFilters,
+  startupUsesAi,
   STARTUPS_PUBLIC_INDEX_MIN,
   allocateStartupSlug,
   buildStartupJobsPath,
@@ -131,8 +134,10 @@ describe("startups investigation contract", () => {
     expect(startupsInsightsShareUrl("en")).not.toContain("/communities/");
     expect(startupsInsightsShareUrl("nl")).not.toMatch(/hub/i);
     expect(STARTUPS_JOBS_PATH).toBe("/jobs");
-    expect(STARTUPS_H1).toBe("AI startups worth watching");
+    expect(STARTUPS_H1).toBe("Startups worth watching");
     expect(STARTUPS_META).toMatch(/homepage and sources verified/i);
+    expect(STARTUPS_META).toMatch(/any sector/i);
+    expect(STARTUPS_META).not.toMatch(/AI-only|only AI/i);
     expect(STARTUPS_META).not.toMatch(BANNED_METRIC);
   });
 
@@ -893,6 +898,7 @@ describe("directory query", () => {
       sort: "name",
       page: 3,
       view: "table",
+      ai: "all",
     });
     expect(startupDirectoryCanonicalPath(query)).toBe(STARTUPS_PATH);
     expect(buildStartupDirectoryPath({ page: 2 })).toBe(
@@ -915,6 +921,55 @@ describe("directory query", () => {
       `${STARTUPS_PATH}?status=ipo`,
     );
     expect(buildStartupDirectoryPath(legacyExit)).not.toContain("exit=");
+  });
+
+  it("filters uses AI from the recorded flag and keeps null untagged", () => {
+    const tagged = sampleCard({ id: "ai", usesAi: true });
+    const explicitNo = sampleCard({
+      id: "no",
+      name: "Plain Co",
+      usesAi: false,
+    });
+    const unknown = sampleCard({ id: "unknown", name: "Later Co" });
+    expect(startupUsesAi(tagged)).toBe(true);
+    expect(startupUsesAi(explicitNo)).toBe(false);
+    expect(startupUsesAi(unknown)).toBe(false);
+    const cards = [tagged, explicitNo, unknown];
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", ai: "yes" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["ai"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", ai: "no" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["no"]);
+    const yes = parseStartupDirectoryQuery({ ai: "1" });
+    expect(yes.ai).toBe("yes");
+    expect(buildStartupDirectoryPath(yes)).toBe(`${STARTUPS_PATH}?ai=1`);
+    expect(startupDirectoryHasFilters(yes)).toBe(true);
+    expect(startupDirectoryCanonicalPath(yes)).toBe(STARTUPS_PATH);
+    expect(startupDirectoryFilteredRobots()).toEqual({
+      index: false,
+      follow: true,
+    });
+    const industry = parseStartupDirectoryQuery({ industry: "robotics" });
+    expect(industry.category).toBe("robotics");
+    expect(buildStartupDirectoryPath(industry)).toBe(
+      `${STARTUPS_PATH}?category=robotics`,
+    );
+    expect(
+      parseStartupDirectoryQuery({ industry: "healthcare" }).category,
+    ).toBe("all");
+    expect(
+      startupDirectoryHasFilters(parseStartupDirectoryQuery({ page: "2" })),
+    ).toBe(false);
+    expect(startupsPublicRobots()).toEqual({ index: true, follow: true });
   });
 
   it("lists only page 1 in the sitemap and keeps later pages indexable", () => {
