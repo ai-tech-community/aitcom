@@ -233,7 +233,7 @@ describe("news page", () => {
   });
 
   it("is noindex and keeps its canonical unset", async () => {
-    const meta = await generateMetadata();
+    const meta = await generateMetadata({ searchParams: Promise.resolve({}) });
     expect(meta.title).toBe(en.newsPage.metaTitle);
     expect(meta.robots).toEqual({ index: false, follow: true });
     expect(meta.alternates).toBeUndefined();
@@ -621,7 +621,7 @@ describe("news page", () => {
         summary: "What shipped.",
       },
     ];
-    const meta = await generateMetadata();
+    const meta = await generateMetadata({ searchParams: Promise.resolve({}) });
     expect(meta.robots).toEqual({ index: false, follow: true });
     render(
       await NewsPage({ searchParams: Promise.resolve({ writer: "Nobody" }) }),

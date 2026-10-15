@@ -54,10 +54,10 @@ const NewsRumorDialog = dynamic(() =>
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams?: Promise<{ sector?: string | string[] }>;
-} = {}): Promise<Metadata> {
+  searchParams: Promise<{ sector?: string | string[] }>;
+}): Promise<Metadata> {
   const t = await getTranslations("newsPage");
-  const params = searchParams ? await searchParams : {};
+  const params = await searchParams;
   const sector = parseNewsSector(params.sector);
   const base = {
     title: t("metaTitle"),
