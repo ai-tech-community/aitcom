@@ -2,12 +2,14 @@
  * AI flag for one event, read from the title, summary, and description
  * the event already stores.
  *
- * True means that text says the event is about AI. False means the text
- * was read and it does not. Null is only for a row the write path and the
- * backfill have not classified yet.
+ * True means that text has an AI signal: AI itself, ML, LLMs, agents,
+ * GPUs and NVIDIA, automation, data science, and the same family of words.
+ * False means the text describes some other subject. Null means the text
+ * does not settle it (empty, a placeholder, or only a name, place, and
+ * date). An ambiguous title stays null rather than being stored as not-AI.
  *
- * A false flag never drops the event. Discovery still needs a real source
- * link, and this function does not invent one.
+ * A false or null flag never drops the event. Discovery still needs a real
+ * source link, and this function does not invent one.
  */
 
 const URL_OR_EMAIL =
@@ -50,8 +52,66 @@ const AI_EVENT_PATTERNS: readonly RegExp[] = [
   /\bdiffusion models?\b/i,
   /\bembeddings?\b/i,
   /\bdata scientists?\b/i,
+  /\bdata[\s-]?science\b/i,
+  /\bdatawetenschap\b/i,
   /\bchatbots?\b/i,
   /\btransformer models?\b/i,
+  /\btransformers?\b/i,
+  /\bneural\b/i,
+  /\bnvidia\b/i,
+  /\bgpus?\b/i,
+  /\bcuda\b/i,
+  /\bautomat(?:e|ed|es|ing|ion|ions)\b/i,
+  /\bautomatisering\b/i,
+  /\bagentic\b/i,
+  /\bagents?\b/i,
+  /\bbots?\b/i,
+  /\brobots?\b/i,
+  /\brobotics\b/i,
+  /\bgrok\b/i,
+  /\bmodel context protocol\b/i,
+  /\bgenerative\b/i,
+  /\bcopilot\b/i,
+  /\bclaude\b/i,
+  /\bgemini\b/i,
+  /\banthropic\b/i,
+  /\bmistral\b/i,
+  /\bllama\b/i,
+  /\bdeepmind\b/i,
+  /\bstable diffusion\b/i,
+];
+
+/**
+ * A subject that is not an AI signal. With no AI signal, this is a confident
+ * not-AI reading. Without one of these, a title that never says what the
+ * event is about stays null.
+ */
+const OTHER_SUBJECT_PATTERNS: readonly RegExp[] = [
+  /\bpotter(?:y|ies)\b/i,
+  /\bclays?\b/i,
+  /\bglazes?\b/i,
+  /\bpaint(?:ing|ers?|s)?\b/i,
+  /\bbudgets?\b/i,
+  /\bfairs?\b/i,
+  /\bmarkets?\b/i,
+  /\bneighbourhoods?\b/i,
+  /\bneighborhoods?\b/i,
+  /\bmusic\b/i,
+  /\bdanc(?:e|ing)\b/i,
+  /\bcoffees?\b/i,
+  /\bcaf[eé]s?\b/i,
+  /\braves?\b/i,
+  /\bblockchain\b/i,
+  /\bcrypto(?:currency)?\b/i,
+  /\bstablecoins?\b/i,
+  /\btokeniz(?:e|ed|ation)\b/i,
+  /\bdefi\b/i,
+  /\bbitcoins?\b/i,
+  /\bethereum\b/i,
+  /\bon-?chain\b/i,
+  /\bdigital assets?\b/i,
+  /\bwallets?\b/i,
+  /\bphones?\b/i,
 ];
 
 export type EventAiFilter = "yes" | "no";
@@ -69,15 +129,22 @@ export function eventTextForAi(
     .trim();
 }
 
-/** True when the stored text says the event is about AI. False when it does not. */
+/**
+ * True when the stored text has an AI signal. False when it describes
+ * another subject. Null when the title and summary do not settle it.
+ */
 export function classifyEventAi(
   title: string,
   description: string | null | undefined,
   summary?: string | null,
-): boolean {
+): boolean | null {
   const text = eventTextForAi(title, description, summary);
-  if (!text) return false;
-  return AI_EVENT_PATTERNS.some((pattern) => pattern.test(text));
+  if (!text) return null;
+  if (AI_EVENT_PATTERNS.some((pattern) => pattern.test(text))) return true;
+  if (OTHER_SUBJECT_PATTERNS.some((pattern) => pattern.test(text))) {
+    return false;
+  }
+  return null;
 }
 
 export type ClassifiableEvent = {
@@ -87,19 +154,25 @@ export type ClassifiableEvent = {
   summary?: string | null;
 };
 
-/** Split a batch into AI and non-AI ids. Every input row is classified. */
+/**
+ * Split a batch. Ambiguous rows are listed separately and stay null so a
+ * later reading can still classify them.
+ */
 export function groupEventAiUpdates(rows: readonly ClassifiableEvent[]): {
   ai: number[];
   notAi: number[];
+  ambiguous: number[];
 } {
   const ai: number[] = [];
   const notAi: number[] = [];
+  const ambiguous: number[] = [];
   for (const row of rows) {
-    if (classifyEventAi(row.title, row.description, row.summary))
-      ai.push(row.id);
-    else notAi.push(row.id);
+    const reading = classifyEventAi(row.title, row.description, row.summary);
+    if (reading === true) ai.push(row.id);
+    else if (reading === false) notAi.push(row.id);
+    else ambiguous.push(row.id);
   }
-  return { ai, notAi };
+  return { ai, notAi, ambiguous };
 }
 
 /** `?ai=1` is AI. `?ai=0` is an explicit false, never a null row. */

@@ -22,8 +22,10 @@ substitute for the CMS chrome.
   only adds the column, and it is registered after
   `20261015b_startup_role_is_ai`. `/api/cron/event-ai` classifies title, summary,
   and description in batches and skips a row that is already true or false.
-  A non-AI reading does not drop the event. Discovery still requires a
-  real http(s) source link and does not invent one.
+  GPU, NVIDIA, automation, ML, LLMs, agents, and data science count as AI.
+  A title that does not settle the subject stays null and matches neither
+  filter. A non-AI reading does not drop the event. Discovery still requires
+  a real http(s) source link and does not invent one.
 - Grid and map views
 - Join chrome: guests get hard www `/en/join` with events UTMs; signed-in
   Hub members get Open Hub (zero Join). No invented attendance / RSVP /

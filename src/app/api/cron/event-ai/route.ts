@@ -11,8 +11,9 @@ export const maxDuration = 60;
  *
  * The deploy migration only adds a nullable `is_ai` column. This cron sets
  * it from the stored title, summary, and description, in batches, and can
- * be run again: a row already true or false is skipped. A non-AI reading is
- * stored and the event stays listed. Vercel calls GET every 15 minutes
+ * be run again: a row already true or false is skipped. Ambiguous text
+ * stays null. A non-AI reading is stored and the event stays listed.
+ * Vercel calls GET every 15 minutes
  * (see vercel.json) with `Authorization: Bearer $CRON_SECRET`.
  *
  *   curl -H "Authorization: Bearer $CRON_SECRET" \

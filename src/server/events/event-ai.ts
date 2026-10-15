@@ -74,9 +74,9 @@ function sqlIdList(ids: readonly number[]) {
 }
 
 /**
- * Stores `is_ai` from text the caller already has. A false reading is
- * stored; the event stays. A missing column (preview before the migration)
- * is ignored so the save still succeeds.
+ * Stores `is_ai` from text the caller already has. False and null both
+ * keep the event. A missing column (preview before the migration) is
+ * ignored so the save still succeeds.
  */
 export async function rememberEventAi(
   id: number,
@@ -85,10 +85,11 @@ export async function rememberEventAi(
   summary?: string | null,
 ): Promise<void> {
   const isAi = classifyEventAi(title, description, summary);
+  const flag = isAi === null ? sql`NULL` : sql`${isAi}`;
   try {
     await db.execute(sql`
       UPDATE "events"
-      SET "is_ai" = ${isAi}
+      SET "is_ai" = ${flag}
       WHERE "id" = ${id}
     `);
   } catch (error) {
@@ -134,8 +135,10 @@ export async function rememberEventAiFromEdit(
 /**
  * Classifies events whose `is_ai` is still null, from stored title,
  * summary, and description. A row that is already true or false is
- * skipped, so a second run updates nothing once the nulls are gone.
- * A non-AI reading is stored; the event stays in the table.
+ * skipped. An ambiguous reading stays null, so it is not listed as
+ * not-AI and a later run can still read it. A second run writes nothing
+ * when every remaining null row is ambiguous. A non-AI reading is stored;
+ * the event stays in the table.
  */
 export async function backfillEventAi(
   batch: number = EVENT_AI_BACKFILL_BATCH,

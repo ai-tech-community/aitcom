@@ -22,6 +22,34 @@ describe("classifyEventAi", () => {
     );
   });
 
+  it("treats GPU, NVIDIA, automation, agents, and data science as AI", () => {
+    expect(
+      classifyEventAi("NVIDIA GTC Berlin 2026", "Keynote at Tempodrom."),
+    ).toBe(true);
+    expect(classifyEventAi("GPU workshop", "Bring a laptop.")).toBe(true);
+    expect(
+      classifyEventAi(
+        "How I Automated My Company",
+        "A live hour inside the bots that run my day.",
+      ),
+    ).toBe(true);
+    expect(
+      classifyEventAi("Boston OpenClaw meetup", "Personal-agent meetup."),
+    ).toBe(true);
+    expect(classifyEventAi("Data science breakfast", "Bring a notebook.")).toBe(
+      true,
+    );
+    expect(classifyEventAi("Grok Bot Training", "Weekly live session.")).toBe(
+      true,
+    );
+    expect(
+      classifyEventAi(
+        "MCP Dev Summit",
+        "A summit on the Model Context Protocol and the agent ecosystem.",
+      ),
+    ).toBe(true);
+  });
+
   it("does not treat a host name or the letters inside another word as AI", () => {
     expect(
       classifyEventAi(
@@ -35,25 +63,40 @@ describe("classifyEventAi", () => {
     expect(classifyEventAi("A.I. office hours", "")).toBe(true);
   });
 
+  it("leaves an ambiguous title null", () => {
+    expect(classifyEventAi("   ", null)).toBeNull();
+    expect(
+      classifyEventAi(
+        "Web Summit 2026",
+        "Web Summit at MEO Arena in Lisbon, 9–12 Nov 2026.",
+      ),
+    ).toBeNull();
+    expect(classifyEventAi("test", "tes")).toBeNull();
+    expect(classifyEventAi("Community gathering", "See you there.")).toBeNull();
+  });
+
   it("classifies Dutch wording", () => {
     expect(
       classifyEventAi("Avond", "Een lezing over kunstmatige intelligentie."),
     ).toBe(true);
+    expect(
+      classifyEventAi("Werkavond", "Een sessie over automatisering."),
+    ).toBe(true);
   });
 
-  it("reads empty text as not AI and does not invent a source", () => {
-    expect(classifyEventAi("   ", null)).toBe(false);
+  it("does not invent a source", () => {
     expect(eventTextForAi("Pottery", null)).not.toMatch(/https?:/);
   });
 });
 
 describe("groupEventAiUpdates", () => {
-  it("puts every row on one side", () => {
+  it("keeps an ambiguous row out of both sides", () => {
     const groups = groupEventAiUpdates([
       { id: 1, title: "Pottery", description: "Clay." },
       { id: 2, title: "LLM day", description: "Models." },
+      { id: 3, title: "Web Summit 2026", description: "Lisbon." },
     ]);
-    expect(groups).toEqual({ ai: [2], notAi: [1] });
+    expect(groups).toEqual({ ai: [2], notAi: [1], ambiguous: [3] });
   });
 });
 
