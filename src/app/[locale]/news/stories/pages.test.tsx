@@ -65,6 +65,9 @@ vi.mock("@/components/ui/avatar", () => ({
     <span>{children}</span>
   ),
 }));
+vi.mock("@/components/news/story-suggestion-box", () => ({
+  StorySuggestionBox: () => <form aria-label="Suggest a story" />,
+}));
 vi.mock("@/components/news/storyline-vote", () => ({
   StorylineVoteControls: () => <div>Story votes</div>,
 }));
@@ -175,8 +178,8 @@ it("leads with published stories and keeps contribution tools off the reader ind
     screen.getByRole("link", { name: storyFixture.titleEn }),
   ).toHaveAttribute("href", `/news/stories/${storyFixture.slug}`);
   expect(
-    screen.getByRole("link", { name: en.newsStories.contribute.entry }),
-  ).toHaveAttribute("href", "/news/stories/contribute");
+    screen.getByRole("button", { name: en.newsStories.contribute.entry }),
+  ).toBeInTheDocument();
   expect(
     screen.queryByRole("heading", { name: en.newsPage.leaderboardTitle }),
   ).not.toBeInTheDocument();

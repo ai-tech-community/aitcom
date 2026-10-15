@@ -6,6 +6,11 @@ import nl from "../../../messages/nl.json";
 import { storyFixture } from "@/test/news-storyline-fixture";
 import { StorylineList, StorylineReader } from "./storyline-reader";
 
+vi.mock("./story-suggestion-box", () => ({
+  StorySuggestionBox: ({ story }: { story?: { slug: string } }) => (
+    <p>Suggestion context: {story?.slug}</p>
+  ),
+}));
 vi.mock("./storyline-vote", () => ({
   StorylineVoteControls: ({ score }: { score: number }) => (
     <div>Score {score}</div>
@@ -180,4 +185,14 @@ it("keeps contributor credit and agent attribution visible with the story metada
   expect(
     screen.getByRole("link", { name: "Latest development" }),
   ).toHaveAttribute("href", "#article-launch");
+});
+
+it("opens contribution from the current story with its context", () => {
+  reader();
+  fireEvent.click(
+    screen.getByRole("button", { name: en.newsStories.contribute.entry }),
+  );
+  expect(screen.getByRole("dialog")).toHaveTextContent(
+    `Suggestion context: ${storyFixture.slug}`,
+  );
 });

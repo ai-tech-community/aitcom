@@ -4,7 +4,6 @@ import { Link } from "@/i18n/navigation";
 import { localeAlternates } from "@/lib/metadata";
 import { newsGameRobots } from "@/lib/news/indexability";
 import { ContributeDesk } from "@/components/news/contribute-desk";
-import { StorylinePreview } from "@/components/news/storyline-preview";
 import { listWeeklyStoryTopics } from "@/server/news/weekly-topics";
 import { WeeklyContributorBoard } from "@/components/news/weekly-contributor-board";
 import { listWeeklyContributorBoard } from "@/server/news/contributions";
@@ -35,10 +34,10 @@ export default async function ContributeStoriesPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-12 sm:px-12 sm:py-16">
       <Link
-        href="/news"
+        href="/news/stories"
         className="text-muted-foreground text-sm underline underline-offset-4"
       >
-        {t("back")}
+        {t("backStories")}
       </Link>
       <h1 className="mt-8 text-4xl font-semibold tracking-tight">
         {t("title")}
@@ -46,36 +45,33 @@ export default async function ContributeStoriesPage() {
       <p className="text-muted-foreground mt-3 max-w-prose text-lg">
         {t("intro")}
       </p>
-      <section className="mt-8 max-w-prose" aria-labelledby="how-it-works">
-        <h2 id="how-it-works" className="text-xl font-semibold">
-          {t("howTitle")}
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed">{t("howSteps")}</p>
-        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-          {t("howExample")}
-        </p>
-      </section>
-      <section
-        className="mt-8 max-w-prose"
-        aria-labelledby="contributor-rewards"
-      >
-        <h2 id="contributor-rewards" className="text-xl font-semibold">
-          {t("rewardsTitle")}
-        </h2>
-        <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-          {t("rewardsBody")}
-        </p>
-      </section>
       <ContributeDesk topics={topics} />
-      <WeeklyContributorBoard
-        rows={board}
-        title={news("leaderboardTitle")}
-        emptyLabel={news("leaderboardEmpty")}
-        emptyHref="/news/stories/contribute"
-        pointsLabel={(points) => news("leaderboardPoints", { points })}
-        agentLabel={(name) => news("leaderboardAgent", { name })}
-      />
-      <StorylinePreview staff={false} showContribute={false} />
+      <details className="border-border mt-8 border-t pt-6">
+        <summary className="focus-visible:ring-ring w-fit cursor-pointer rounded-sm font-medium focus-visible:ring-2 focus-visible:outline-none">
+          {t("howTitle")}
+        </summary>
+        <div className="mt-4 max-w-prose space-y-4 text-sm leading-relaxed">
+          <p>{t("howSteps")}</p>
+          <p className="text-muted-foreground">{t("howExample")}</p>
+          <div>
+            <h2 className="font-semibold">{t("rewardsTitle")}</h2>
+            <p className="text-muted-foreground mt-1">{t("rewardsBody")}</p>
+          </div>
+        </div>
+      </details>
+      <details className="border-border mt-6 border-t pt-6">
+        <summary className="focus-visible:ring-ring w-fit cursor-pointer rounded-sm font-medium focus-visible:ring-2 focus-visible:outline-none">
+          {t("contributorsTitle")}
+        </summary>
+        <WeeklyContributorBoard
+          rows={board}
+          title={news("leaderboardTitle")}
+          emptyLabel={news("leaderboardEmpty")}
+          emptyHref="/news/stories/contribute"
+          pointsLabel={(points) => news("leaderboardPoints", { points })}
+          agentLabel={(name) => news("leaderboardAgent", { name })}
+        />
+      </details>
     </main>
   );
 }

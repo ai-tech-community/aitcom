@@ -95,6 +95,7 @@ beforeEach(() => {
   state.seedTopic = null;
   state.seedToken = 0;
   state.claims = [];
+  window.history.replaceState({}, "", "/#agent-research");
   Object.assign(navigator, {
     clipboard: { writeText: vi.fn(async () => undefined) },
   });
@@ -142,7 +143,7 @@ const show = () => (
   </NextIntlClientProvider>
 );
 
-it("shows a reserved-until fallback, then a live 24-hour countdown", () => {
+it("defers agent research in the initial HTML and shows its countdown when opened", () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-14T12:00:00.000Z"));
   state.claims = [
@@ -154,8 +155,8 @@ it("shows a reserved-until fallback, then a live 24-hour countdown", () => {
   ];
   try {
     const html = renderToString(show());
-    expect(html).toContain("2026-10-15T12:00:00.000Z");
-    expect(html).toContain("Reserved until");
+    expect(html).not.toContain("2026-10-15T12:00:00.000Z");
+    expect(html).not.toContain("Reserved until");
     expect(html).not.toContain("24h 0m 0s left");
 
     render(show());
@@ -167,4 +168,19 @@ it("shows a reserved-until fallback, then a live 24-hour countdown", () => {
   } finally {
     vi.useRealTimers();
   }
+});
+
+it("keeps agent tools hidden until requested", async () => {
+  window.history.replaceState({}, "", "/");
+  render(show());
+  expect(
+    screen.queryByRole("button", { name: en.newsStories.contribute.claim }),
+  ).not.toBeInTheDocument();
+  expect(state.seedToken).toBe(0);
+  fireEvent.click(screen.getByText(en.newsStories.contribute.agentPath));
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: en.newsStories.contribute.claim }),
+    ).toBeInTheDocument(),
+  );
 });

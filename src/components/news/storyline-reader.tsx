@@ -14,6 +14,7 @@ import type {
   StorylineDetail,
   relatedStorylines,
 } from "@/server/news/storylines";
+import { StoryContributeDialog } from "./story-contribute-dialog";
 import { StorylineVoteControls } from "./storyline-vote";
 
 export function StorylineList({ items }: { items: StorylineSummary[] }) {
@@ -257,6 +258,11 @@ export function StorylineReader({
               <ArrowRight className="size-3.5" aria-hidden />
             </a>
           )}
+          <div className="sm:ml-auto">
+            <StoryContributeDialog
+              story={{ title: copy.title, slug: story.slug }}
+            />
+          </div>
         </div>
       </header>
       <section className="mt-10 max-w-3xl" aria-labelledby="timeline-heading">

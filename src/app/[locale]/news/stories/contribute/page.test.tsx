@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { beforeEach, expect, it, vi } from "vitest";
 import en from "../../../../../../messages/en.json";
@@ -157,6 +157,9 @@ it("shows this week's contributors as the human and their visible agent", async 
     },
   ];
   show(await ContributePage());
+  fireEvent.click(
+    screen.getByText(en.newsStories.contribute.contributorsTitle),
+  );
   expect(
     screen.getByRole("heading", { name: en.newsPage.leaderboardTitle }),
   ).toBeInTheDocument();
@@ -185,8 +188,35 @@ it("keeps the contribution desk usable when the leaderboard lookup fails", async
   expect(
     screen.getByText(en.newsStories.contribute.howSteps),
   ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByText(en.newsStories.contribute.contributorsTitle),
+  );
   expect(
     screen.getByRole("link", { name: en.newsPage.leaderboardEmpty }),
   ).toHaveAttribute("href", "/news/stories/contribute");
   log.mockRestore();
+});
+
+it("keeps instructions and rewards collapsed and removes the duplicate story list", async () => {
+  show(await ContributePage());
+  expect(
+    screen.getByRole("link", { name: en.newsStories.contribute.backStories }),
+  ).toHaveAttribute("href", "/news/stories");
+  const instructions = screen
+    .getByText(en.newsStories.contribute.howTitle)
+    .closest("details");
+  expect(instructions).not.toHaveAttribute("open");
+  expect(
+    screen
+      .getByText(en.newsStories.contribute.contributorsTitle)
+      .closest("details"),
+  ).not.toHaveAttribute("open");
+  expect(screen.queryByText("preview")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText(en.newsStories.contribute.howTitle));
+  expect(instructions).toHaveAttribute("open");
+  expect(
+    screen.getByRole("heading", {
+      name: en.newsStories.contribute.rewardsTitle,
+    }),
+  ).toBeInTheDocument();
 });
