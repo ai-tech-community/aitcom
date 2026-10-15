@@ -69,9 +69,9 @@ export type AnnounceResult = {
 
 /**
  * Mail published stories outside the publish request.
- * Each member is claimed once per story. Fan-out to real members happens
- * only when `STORYLINE_ANNOUNCE_FANOUT=on` in production; every other run
- * may reach the allowlisted address and leaves the story unfinished.
+ * Each member is claimed once per story. Production emails every member who
+ * has not opted out. Every other run may reach the allowlisted address and
+ * leaves the story unfinished so a later production deploy can finish it.
  */
 export async function announcePublishedStorylines(
   store: AnnounceStore,

@@ -2,23 +2,17 @@ import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 
 import type { StorylineMailEnv } from "./storyline-draft-review";
 
-/** Real member fan-out. Unset or anything other than "on" stays off. */
-export type StorylineAnnounceEnv = StorylineMailEnv & {
-  STORYLINE_ANNOUNCE_FANOUT?: string;
-};
+/** Environment the announcement cron reads. Fan-out needs no extra flag. */
+export type StorylineAnnounceEnv = StorylineMailEnv;
 
 /**
- * Production may email every member only when this is exactly "on".
- * Preview, local, and test runs stay off even if the variable is set.
+ * Production emails every member who has not opted out.
+ * Preview, local, and test runs do not.
  */
 export function storylineAnnounceFanoutEnabled(
   env: StorylineAnnounceEnv,
 ): boolean {
-  return (
-    env.STORYLINE_ANNOUNCE_FANOUT === "on" &&
-    env.VERCEL_ENV === "production" &&
-    env.NODE_ENV === "production"
-  );
+  return env.VERCEL_ENV === "production" && env.NODE_ENV === "production";
 }
 
 export function storylinePublicUrl(slug: string): string {

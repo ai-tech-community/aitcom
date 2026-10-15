@@ -37,9 +37,6 @@ export const env = createEnv({
     CLASSROOM_FILE_UPLOADS: z.enum(["on", "off"]).optional(),
     // "on" turns on data collectors (ADR-0040). Off by default.
     FEATURE_COLLECTORS: z.enum(["on", "off"]).optional(),
-    // "on" emails every member when a news story is published.
-    // Leave unset (off). Local and preview runs still cannot email members.
-    STORYLINE_ANNOUNCE_FANOUT: z.enum(["on", "off"]).optional(),
     // Comma/space-separated collector ids to switch off without a code change.
     COLLECTORS_DISABLED: z.string().optional(),
     NODE_ENV: z
@@ -95,7 +92,6 @@ export const env = createEnv({
     S3_REGION: process.env.S3_REGION,
     CLASSROOM_FILE_UPLOADS: process.env.CLASSROOM_FILE_UPLOADS,
     FEATURE_COLLECTORS: process.env.FEATURE_COLLECTORS,
-    STORYLINE_ANNOUNCE_FANOUT: process.env.STORYLINE_ANNOUNCE_FANOUT,
     COLLECTORS_DISABLED: process.env.COLLECTORS_DISABLED,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

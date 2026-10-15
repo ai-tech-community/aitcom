@@ -11,8 +11,8 @@ export const maxDuration = 60;
  * One batch per call. Safe to run again: a story is claimed per member, and
  * `announced_at` is set only after the production fan-out finishes.
  *
- * Real members are emailed only when `STORYLINE_ANNOUNCE_FANOUT=on` and the
- * deploy is production. Every other environment can reach greg@klevox.com only.
+ * Production emails members who have not opted out. Every other environment
+ * can reach greg@klevox.com only.
  *
  *   curl -H "Authorization: Bearer $CRON_SECRET" \
  *     https://www.aitcommunity.org/api/cron/news-storyline-announce

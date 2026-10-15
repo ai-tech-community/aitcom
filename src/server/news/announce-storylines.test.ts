@@ -93,13 +93,12 @@ const preview: StorylineAnnounceEnv = {
   NODE_ENV: "production",
 };
 
-const fanout: StorylineAnnounceEnv = {
+const production: StorylineAnnounceEnv = {
   VERCEL_ENV: "production",
   NODE_ENV: "production",
-  STORYLINE_ANNOUNCE_FANOUT: "on",
 };
 
-it("emails the stored summary to the allowlisted address once when fan-out is off", async () => {
+it("emails the stored summary to the allowlisted address once outside production", async () => {
   const store = memoryStore({
     stories: [
       story("local-ai", {
@@ -172,7 +171,7 @@ it("does not claim a member who opted out", async () => {
   expect(store.claims.size).toBe(0);
 });
 
-it("batches members when fan-out is on and finishes the story on the last batch", async () => {
+it("batches members in production and finishes the story on the last batch", async () => {
   const members = Array.from({ length: STORYLINE_ANNOUNCE_BATCH + 1 }, (_, i) =>
     member(`user-${i}`, `user-${i}@example.com`),
   );
@@ -181,7 +180,7 @@ it("batches members when fan-out is on and finishes the story on the last batch"
     members,
   });
   const addresses: string[] = [];
-  const env = { ...fanout, DIGEST_UNSUBSCRIBE_SECRET: SECRET };
+  const env = { ...production, DIGEST_UNSUBSCRIBE_SECRET: SECRET };
   const send = async (to: string) => {
     addresses.push(to);
     return true;
@@ -242,7 +241,7 @@ it("leaves stories published before this column for later", async () => {
   });
   const result = await announcePublishedStorylines(
     store,
-    { ...fanout, DIGEST_UNSUBSCRIBE_SECRET: SECRET },
+    { ...production, DIGEST_UNSUBSCRIBE_SECRET: SECRET },
     async () => {
       throw new Error("archive story must not be emailed");
     },

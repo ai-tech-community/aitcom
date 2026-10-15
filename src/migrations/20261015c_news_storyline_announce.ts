@@ -1,6 +1,6 @@
 // Published news stories are mailed by /api/cron/news-storyline-announce,
 // not by the publish request. published_at stays null on stories that were
-// already published, so turning the fan-out flag on does not mail the archive.
+// already published, so deploying this does not mail the archive.
 // announced_at is set when that mailing finishes. The announcement table's
 // primary key is one send per member per story.
 // news_story_email_opted_out_at is null until the member uses the unsubscribe

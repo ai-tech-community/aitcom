@@ -20,10 +20,7 @@ import {
   renderPostMentionText,
   type PostMentionMail,
 } from "@/server/notifications/post-mention-mail-copy";
-import {
-  storylineAnnounceFanoutEnabled,
-  type StorylineAnnounceEnv,
-} from "@/lib/news/storyline-announce";
+import { type StorylineAnnounceEnv } from "@/lib/news/storyline-announce";
 import {
   renderStorylineDraftReviewEmail,
   STORYLINE_TEST_RECIPIENT,
@@ -715,9 +712,8 @@ export async function sendStorylineDraftReviewEmail(
 
 /**
  * Tell a member a news story was published. Same gate as draft review:
- * tests and previews never reach Resend for a member address. Real fan-out
- * also requires STORYLINE_ANNOUNCE_FANOUT=on. The only other recipient is
- * greg@klevox.com.
+ * tests and previews never reach Resend for a member address. Production
+ * emails the real recipient. The only other recipient is greg@klevox.com.
  */
 export async function sendStorylineAnnounceEmail(
   to: string,
@@ -730,17 +726,10 @@ export async function sendStorylineAnnounceEmail(
   env: StorylineAnnounceEnv = {
     VERCEL_ENV: process.env.VERCEL_ENV,
     NODE_ENV: process.env.NODE_ENV,
-    STORYLINE_ANNOUNCE_FANOUT: process.env.STORYLINE_ANNOUNCE_FANOUT,
   },
 ): Promise<boolean> {
   const recipient = storylineMailRecipient(to, env);
   if (!recipient) return false;
-  if (
-    !storylineAnnounceFanoutEnabled(env) &&
-    recipient !== STORYLINE_TEST_RECIPIENT
-  ) {
-    return false;
-  }
   if (
     process.env.NODE_ENV === "test" &&
     recipient !== STORYLINE_TEST_RECIPIENT

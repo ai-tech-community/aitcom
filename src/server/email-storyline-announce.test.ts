@@ -23,22 +23,11 @@ beforeEach(() => {
   send.mockResolvedValue({ error: null });
 });
 
-it("does not email members when fan-out is off, even if the caller claims production", async () => {
-  expect(
-    await sendStorylineAnnounceEmail("member@example.com", message, {
-      VERCEL_ENV: "production",
-      NODE_ENV: "production",
-    }),
-  ).toBe(false);
-  expect(send).not.toHaveBeenCalled();
-});
-
-it("refuses a member address from a test process even when fan-out is on", async () => {
+it("refuses a member address from a test process even when the env says production", async () => {
   await expect(
     sendStorylineAnnounceEmail("member@example.com", message, {
       VERCEL_ENV: "production",
       NODE_ENV: "production",
-      STORYLINE_ANNOUNCE_FANOUT: "on",
     }),
   ).rejects.toThrow("Storyline announcement email refused");
   expect(send).not.toHaveBeenCalled();

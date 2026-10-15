@@ -11,32 +11,24 @@ import {
 
 const production = { VERCEL_ENV: "production", NODE_ENV: "production" };
 
-it("fans out only when the flag is on in production", () => {
-  expect(storylineAnnounceFanoutEnabled(production)).toBe(false);
-  expect(
-    storylineAnnounceFanoutEnabled({
-      ...production,
-      STORYLINE_ANNOUNCE_FANOUT: "off",
-    }),
-  ).toBe(false);
-  expect(
-    storylineAnnounceFanoutEnabled({
-      ...production,
-      STORYLINE_ANNOUNCE_FANOUT: "on",
-    }),
-  ).toBe(true);
+it("fans out in production and only there", () => {
+  expect(storylineAnnounceFanoutEnabled(production)).toBe(true);
   expect(
     storylineAnnounceFanoutEnabled({
       VERCEL_ENV: "preview",
       NODE_ENV: "production",
-      STORYLINE_ANNOUNCE_FANOUT: "on",
     }),
   ).toBe(false);
   expect(
     storylineAnnounceFanoutEnabled({
       VERCEL_ENV: "production",
       NODE_ENV: "development",
-      STORYLINE_ANNOUNCE_FANOUT: "on",
+    }),
+  ).toBe(false);
+  expect(
+    storylineAnnounceFanoutEnabled({
+      VERCEL_ENV: "production",
+      NODE_ENV: "test",
     }),
   ).toBe(false);
 });
