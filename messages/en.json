@@ -4365,12 +4365,12 @@
   },
   "newsPage": {
     "kicker": "News",
-    "title": "AI news",
-    "description": "Stories collected from a few AI news feeds, plus rumors members submit.",
-    "empty": "No stories yet.",
+    "title": "Tech and business news",
+    "description": "Tech and business stories, plus rumors members submit.",
+    "empty": "No tech and business stories yet.",
     "undated": "No date",
-    "metaTitle": "News",
-    "metaDescription": "Recent AI stories collected for the AIT community.",
+    "metaTitle": "Tech and business news",
+    "metaDescription": "Tech and business stories for the AIT community, plus rumors members submit.",
     "tabsLabel": "News sections",
     "tabNews": "News",
     "tabStories": "Stories",
@@ -4383,7 +4383,7 @@
     "hidden": "Hidden",
     "submittedBy": "Submitted by {name}",
     "formTitle": "Share a rumor",
-    "formHelp": "A title, an optional link, and a short note. It is labelled as yours and as unverified.",
+    "formHelp": "A title, an optional link, and a short note on tech or business news. It is labelled as yours and as unverified.",
     "titleLabel": "Title",
     "urlLabel": "Link",
     "urlOptional": "Optional",
@@ -4438,7 +4438,7 @@
     "noMatches": "No matching stories.",
     "resultCount": "{count, plural, one {# result} other {# results}}",
     "pagination": "Pagination",
-    "tableCaption": "AI news and member rumors"
+    "tableCaption": "Tech and business news and member rumors"
   },
   "newsStories": {
     "title": "Ongoing stories",
