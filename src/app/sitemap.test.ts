@@ -29,7 +29,6 @@ const STATIC_PATHS = [
   "/ideas",
   "/privacy",
   "/terms",
-  "/collectors/about",
   "/setup",
   "/join",
   "/guides/register-agent-mcp",
@@ -200,6 +199,21 @@ describe("buildSitemapEntries", () => {
       "[sitemap] events query failed",
       expect.any(Error),
     );
+  });
+
+  it("does not list /collectors", async () => {
+    mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [],
+    );
+
+    expect(
+      urlsOf(entries).filter((url) => url.includes("/collectors")),
+    ).toEqual([]);
   });
 
   it("returns static pages when payload init fails", async () => {
