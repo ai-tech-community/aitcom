@@ -11,6 +11,15 @@ const state = vi.hoisted(() => ({
     newestAt: string;
   }>,
   fail: false,
+  boardFail: false,
+  board: [] as Array<{
+    userId: string;
+    name: string;
+    profilePath: string;
+    image: string | null;
+    agentName: string | null;
+    points: number;
+  }>,
 }));
 
 vi.mock("next-intl/server", () => ({
@@ -39,6 +48,23 @@ vi.mock("@/server/news/weekly-topics", () => ({
     return state.topics;
   },
 }));
+vi.mock("@/server/news/contributions", () => ({
+  listWeeklyContributorBoard: async () => {
+    if (state.boardFail) throw new Error("unavailable");
+    return state.board;
+  },
+}));
+vi.mock("@/components/ui/avatar", () => ({
+  Avatar: ({ children, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (
+    <span {...props}>{children}</span>
+  ),
+  AvatarImage: ({ src, alt }: { src?: string; alt?: string }) => (
+    <span data-avatar-src={src} data-avatar-alt={alt ?? ""} />
+  ),
+  AvatarFallback: ({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  ),
+}));
 vi.mock("@/components/news/contribute-desk", () => ({
   ContributeDesk: ({ topics }: { topics: { title: string }[] }) => (
     <section>
@@ -57,6 +83,8 @@ import ContributePage, { generateMetadata } from "./page";
 beforeEach(() => {
   state.topics = [];
   state.fail = false;
+  state.board = [];
+  state.boardFail = false;
 });
 
 const show = (element: React.ReactNode) =>
@@ -106,5 +134,59 @@ it("shows only topics returned from stored headlines and hides them when the loo
   const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
   show(await ContributePage());
   expect(screen.queryByText("Open models reach")).not.toBeInTheDocument();
+  log.mockRestore();
+});
+
+it("shows this week's contributors as the human and their visible agent", async () => {
+  state.board = [
+    {
+      userId: "ada",
+      name: "Ada Lovelace",
+      profilePath: "/members/ada",
+      image: null,
+      agentName: "Scout",
+      points: 60,
+    },
+    {
+      userId: "grace",
+      name: "Grace Hopper",
+      profilePath: "/members/grace",
+      image: "https://cdn.example/grace.jpg",
+      agentName: null,
+      points: 20,
+    },
+  ];
+  show(await ContributePage());
+  expect(
+    screen.getByRole("heading", { name: en.newsPage.leaderboardTitle }),
+  ).toBeInTheDocument();
+  const ada = screen.getByRole("link", { name: "Ada Lovelace" });
+  expect(ada).toHaveAttribute("href", "/members/ada");
+  expect(ada.querySelector("[data-avatar-src]")).toBeNull();
+  expect(ada).toHaveTextContent("AL");
+  expect(screen.getByText("Agent: Scout")).toBeInTheDocument();
+  expect(screen.getByText("60 pts")).toBeInTheDocument();
+  const grace = screen.getByRole("link", { name: "Grace Hopper" });
+  expect(grace.querySelector("[data-avatar-src]")).toHaveAttribute(
+    "data-avatar-src",
+    "https://cdn.example/grace.jpg",
+  );
+  expect(grace.querySelector("[data-avatar-src]")).toHaveAttribute(
+    "data-avatar-alt",
+    "",
+  );
+  expect(screen.queryByText(/Connected agent/)).not.toBeInTheDocument();
+});
+
+it("keeps the contribution desk usable when the leaderboard lookup fails", async () => {
+  state.boardFail = true;
+  const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  show(await ContributePage());
+  expect(
+    screen.getByText(en.newsStories.contribute.howSteps),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: en.newsPage.leaderboardEmpty }),
+  ).toHaveAttribute("href", "/news/stories/contribute");
   log.mockRestore();
 });

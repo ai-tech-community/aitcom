@@ -9,20 +9,8 @@ const state = vi.hoisted(() => ({
   find: vi.fn(),
   list: vi.fn(),
   related: vi.fn(),
-  board: [] as Array<{
-    userId: string;
-    name: string;
-    profilePath: string;
-    image: string | null;
-    agentName: string | null;
-    points: number;
-  }>,
-  topics: [] as Array<{
-    title: string;
-    topicKey: string;
-    articleIds: string[];
-    newestAt: string;
-  }>,
+  board: vi.fn(),
+  topics: vi.fn(),
 }));
 vi.mock("next-intl/server", () => ({
   getLocale: async () => "en",
@@ -90,24 +78,10 @@ vi.mock("@/components/news/story-suggestion-inbox", () => ({
   StorySuggestionInbox: () => <div>Suggestion inbox</div>,
 }));
 vi.mock("@/server/news/contributions", () => ({
-  listWeeklyContributorBoard: async () => state.board,
+  listWeeklyContributorBoard: state.board,
 }));
 vi.mock("@/server/news/weekly-topics", () => ({
-  listWeeklyStoryTopics: async () => state.topics,
-}));
-vi.mock("@/components/news/weekly-topic-claims", () => ({
-  WeeklyTopicClaims: ({
-    topics,
-  }: {
-    topics: Array<{ title: string; topicKey: string }>;
-  }) =>
-    topics.length === 0 ? null : (
-      <section aria-label="Weekly topics">
-        {topics.map((topic) => (
-          <p key={topic.topicKey}>{topic.title}</p>
-        ))}
-      </section>
-    ),
+  listWeeklyStoryTopics: state.topics,
 }));
 import StoriesPage, { generateMetadata as storiesMetadata } from "./page";
 import StoryPage, { generateMetadata as storyMetadata } from "./[slug]/page";
@@ -119,8 +93,8 @@ beforeEach(() => {
   state.find.mockResolvedValue(storyFixture);
   state.related.mockResolvedValue([]);
   state.list.mockResolvedValue({ items: [], total: 0, page: 1, totalPages: 1 });
-  state.board = [];
-  state.topics = [];
+  state.board.mockResolvedValue([]);
+  state.topics.mockResolvedValue([]);
 });
 const show = (element: React.ReactNode) =>
   render(
@@ -176,64 +150,41 @@ it("keeps the stories index noindex without a new canonical", async () => {
   expect(meta.robots).toEqual({ index: false, follow: true });
   expect(meta.alternates).toBeUndefined();
 });
-it("shows this week's contributors as the human and their visible agent", async () => {
-  state.board = [
-    {
-      userId: "ada",
-      name: "Ada Lovelace",
-      profilePath: "/members/ada",
-      image: null,
-      agentName: "Scout",
-      points: 60,
-    },
-    {
-      userId: "grace",
-      name: "Grace Hopper",
-      profilePath: "/members/grace",
-      image: "https://cdn.example/grace.jpg",
-      agentName: null,
-      points: 20,
-    },
-  ];
-  state.topics = [
-    {
-      title: "EU AI Act",
-      topicKey: "eu-ai-act",
-      articleIds: ["a1"],
-      newestAt: "2026-10-14T00:00:00.000Z",
-    },
-  ];
+it("leads with published stories and keeps contribution tools off the reader index", async () => {
+  state.list.mockResolvedValue({
+    items: [
+      {
+        ...storyFixture,
+        articleCount: 3,
+        latestAt: "2026-10-13T00:00:00.000Z",
+        credit: { human: null, agentName: null },
+      },
+    ],
+    total: 1,
+    page: 1,
+    totalPages: 1,
+  });
   show(await StoriesPage({ searchParams: Promise.resolve({}) }));
+  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+    en.newsStories.title,
+  );
   expect(
-    screen.getByRole("heading", { name: en.newsPage.leaderboardTitle }),
+    screen.getByRole("textbox", { name: en.newsStories.search }),
   ).toBeInTheDocument();
-  const ada = screen.getByRole("link", { name: "Ada Lovelace" });
-  expect(ada).toHaveAttribute("href", "/members/ada");
-  expect(ada.querySelector("[data-avatar-src]")).toBeNull();
-  expect(ada).toHaveTextContent("AL");
-  expect(screen.getByText("Agent: Scout")).toBeInTheDocument();
-  expect(screen.getByText("60 pts")).toBeInTheDocument();
-  const grace = screen.getByRole("link", { name: "Grace Hopper" });
-  expect(grace.querySelector("[data-avatar-src]")).toHaveAttribute(
-    "data-avatar-src",
-    "https://cdn.example/grace.jpg",
-  );
-  expect(grace.querySelector("[data-avatar-src]")).toHaveAttribute(
-    "data-avatar-alt",
-    "",
-  );
-  expect(screen.queryByText(/Connected agent/)).not.toBeInTheDocument();
-  expect(screen.getByText("EU AI Act")).toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: storyFixture.titleEn }),
+  ).toHaveAttribute("href", `/news/stories/${storyFixture.slug}`);
   expect(
     screen.getByRole("link", { name: en.newsStories.contribute.entry }),
   ).toHaveAttribute("href", "/news/stories/contribute");
-});
-it("links an empty weekly board to contributing", async () => {
-  show(await StoriesPage({ searchParams: Promise.resolve({}) }));
   expect(
-    screen.getByRole("link", { name: en.newsPage.leaderboardEmpty }),
-  ).toHaveAttribute("href", "/news/stories/contribute");
-  expect(screen.queryByRole("region", { name: "Weekly topics" })).toBeNull();
+    screen.queryByRole("heading", { name: en.newsPage.leaderboardTitle }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("region", { name: "Weekly topics" }),
+  ).not.toBeInTheDocument();
+  expect(state.board).not.toHaveBeenCalled();
+  expect(state.topics).not.toHaveBeenCalled();
 });
 it("links News and Stories as tabs, with Stories current", async () => {
   show(await StoriesPage({ searchParams: Promise.resolve({}) }));
