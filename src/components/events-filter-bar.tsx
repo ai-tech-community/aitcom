@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,6 +47,7 @@ export function EventsFilterBar({
   visitorCountryCode = null,
   visitorCountryName = null,
 }: EventsFilterBarProps = {}) {
+  const t = useTranslations("events");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -126,6 +128,8 @@ export function EventsFilterBar({
   const focus = searchParams.get("focus") ?? ANY;
   const format = searchParams.get("format") ?? ANY;
   const fit = searchParams.get("fit") ?? ANY;
+  const aiParam = searchParams.get("ai");
+  const ai = aiParam === "1" || aiParam === "0" ? aiParam : ANY;
   const sort = searchParams.get("sort") ?? "date";
   const nearMe = searchParams.get("near") === "1";
 
@@ -135,6 +139,7 @@ export function EventsFilterBar({
     focus !== ANY ||
     format !== ANY ||
     fit !== ANY ||
+    ai !== ANY ||
     sort !== "date" ||
     nearMe;
 
@@ -168,7 +173,7 @@ export function EventsFilterBar({
         placeholder="/ SEARCH TITLE OR SUMMARY"
         className="font-mono text-sm tracking-wider"
       />
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         <Select value={type} onValueChange={(v) => setFilter("type", v)}>
           <SelectTrigger className="font-mono text-xs tracking-wider">
             <SelectValue placeholder="Any type" />
@@ -208,6 +213,20 @@ export function EventsFilterBar({
                 {EVENT_FORMAT_LABELS[value]}
               </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={ai} onValueChange={(v) => setFilter("ai", v)}>
+          <SelectTrigger
+            aria-label={t("filterAi")}
+            className="font-mono text-xs tracking-wider"
+          >
+            <SelectValue placeholder={t("filterAiAll")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ANY}>{t("filterAiAll")}</SelectItem>
+            <SelectItem value="1">{t("filterAiYes")}</SelectItem>
+            <SelectItem value="0">{t("filterAiNo")}</SelectItem>
           </SelectContent>
         </Select>
 

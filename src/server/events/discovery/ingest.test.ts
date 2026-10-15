@@ -77,6 +77,22 @@ describe("buildDiscoveredEventData", () => {
     );
   });
 
+  it("keeps a non-AI event that has a real source link", () => {
+    const data = buildDiscoveredEventData(
+      makeNormalized({
+        title: "Sunday pottery wheel",
+        description: "Hand-building at the community studio.",
+        lumaUrl: "https://lu.ma/pottery",
+      }),
+      makeClassification({ audienceIds: [], confidence: 0 }),
+      NOW_ISO,
+    );
+
+    expect(data.title).toBe("Sunday pottery wheel");
+    expect(data.sourceUrl).toBe("https://lu.ma/pottery");
+    expect(data.status).toBe("published");
+  });
+
   it("prefers the normalized event's real format signal over the location heuristic (online event whose location would heuristically read in-person)", () => {
     // Regression: an online Luma event ("Online"/venue-name location) that
     // the string heuristic alone would misclassify as "in-person" — and thus

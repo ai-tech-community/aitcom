@@ -52,6 +52,7 @@ describe("buildEventDraftImportPayload", () => {
     const result = buildEventDraftImportPayload({
       title: "Open AI Builders Night",
       date: "2026-05-12",
+      sourceUrl: "https://example.com/builders-night",
     });
 
     expect(result.draftData.type).toBe("meetup");
@@ -59,6 +60,28 @@ describe("buildEventDraftImportPayload", () => {
     expect(result.draftData.curatedByAgent).toBe(true);
     expect(result.draftData.reviewStatus).toBe("discovered");
     expect(result.draftData.description).toBeDefined();
+    expect(result.isAi).toBe(true);
+  });
+
+  it("keeps a non-AI event that has a real source link", () => {
+    const result = buildEventDraftImportPayload({
+      title: "Sunday pottery wheel",
+      description: "Hand-building at the community studio.",
+      date: "2026-06-02",
+      sourceUrl: "https://example.com/pottery",
+    });
+
+    expect(result.draftData.title).toBe("Sunday pottery wheel");
+    expect(result.draftData.sourceUrl).toBe("https://example.com/pottery");
+    expect(result.isAi).toBe(false);
+  });
+
+  it("rejects a discovered event with no source link", () => {
+    expect(() =>
+      parseDiscoveredEventBatch([
+        { title: "Sunday pottery wheel", date: "2026-06-02" },
+      ]),
+    ).toThrow();
   });
 });
 
@@ -71,6 +94,7 @@ describe("audience slugs", () => {
     const result = buildEventDraftImportPayload({
       title: "Executive AI Roundtable",
       date: "2026-06-01",
+      sourceUrl: "https://example.com/executives",
       audience: ["executives", "some-future-audience-slug"],
     });
 
@@ -84,6 +108,7 @@ describe("audience slugs", () => {
     const result = buildEventDraftImportPayload({
       title: "Untargeted Event",
       date: "2026-06-02",
+      sourceUrl: "https://example.com/untargeted",
     });
 
     expect(result.draftData.audience).toBeUndefined();
@@ -96,6 +121,7 @@ describe("discovered event batch helpers", () => {
       {
         title: "Event One",
         date: "2026-05-01",
+        sourceUrl: "https://example.com/event-one",
       },
       {
         title: "Event Two",

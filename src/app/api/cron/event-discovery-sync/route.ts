@@ -15,6 +15,7 @@ import {
   archiveStaleDiscoveredEvents,
   upsertDiscoveredEvent,
 } from "@/server/events/discovery/ingest";
+import { rememberEventAi } from "@/server/events/event-ai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -145,6 +146,15 @@ export async function GET(req: Request) {
           }
 
           seenSourceUrls.add(normalized.lumaUrl);
+          // A non-AI reading is stored. It does not skip the event, and a
+          // flag failure must not look like "not seen" to the staleness sweep.
+          if (result.action !== "skipped") {
+            await rememberEventAi(
+              result.eventId,
+              normalized.title,
+              normalized.description,
+            );
+          }
         } catch (err) {
           console.error(
             `event-discovery-sync: upsert failed for event ${normalized.lumaUrl} (community ${integration.communityId})`,

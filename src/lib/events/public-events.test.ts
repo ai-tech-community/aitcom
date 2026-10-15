@@ -66,6 +66,10 @@ describe("public events contract", () => {
     expect(PUBLIC_EVENTS_H1.length).toBeGreaterThan(0);
     expect(PUBLIC_EVENTS_META.length).toBeGreaterThan(0);
     expect(PUBLIC_EVENTS_META).not.toMatch(/\d+\s+(attendees|RSVPs?|spots)/i);
+    expect(PUBLIC_EVENTS_META).not.toMatch(
+      /AI Tech Community|AI-only|AI events/i,
+    );
+    expect(PUBLIC_EVENTS_H1).toBe("Events");
     expect(PUBLIC_EVENTS_WHY_MAX).toBeLessThanOrEqual(160);
   });
 });

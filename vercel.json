@@ -94,6 +94,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/event-ai",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/video-uploads-cleanup",
       "schedule": "30 3 * * *"
     }
