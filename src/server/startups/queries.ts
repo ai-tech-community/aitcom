@@ -308,14 +308,6 @@ function toPublicRoleListing(
   };
 }
 
-function errorText(error: unknown): string {
-  if (typeof error === "string") return error;
-  if (!error || typeof error !== "object") return "";
-  const record = error as { message?: unknown; cause?: unknown };
-  const message = typeof record.message === "string" ? record.message : "";
-  return `${message}\n${errorText(record.cause)}`;
-}
-
 /** Preview builds skip migrations, so `is_ai` may not exist yet. */
 function isMissingIsAiColumn(error: unknown): boolean {
   return errorText(error).includes("is_ai");
