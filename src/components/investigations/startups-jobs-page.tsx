@@ -48,6 +48,11 @@ export type StartupsJobsKey =
   | "jobsFilterLocationAll"
   | "jobsFilterWorkType"
   | "jobsFilterWorkTypeAll"
+  | "jobsFilterAi"
+  | "jobsFilterAiAll"
+  | "jobsFilterAiYes"
+  | "jobsFilterAiNo"
+  | "jobsAiBadge"
   | "jobsSortMatch"
   | "jobsSortRole"
   | "jobsSortCompany"
@@ -116,6 +121,7 @@ export function StartupsJobsPage({
     location: query.location || null,
     workType: query.workType || null,
     sort: query.sort,
+    ai: query.ai ?? "all",
   };
 
   return (
@@ -167,6 +173,10 @@ export function StartupsJobsPage({
             locationRemote: t("jobsLocationRemote"),
             workType: t("jobsFilterWorkType"),
             workTypeAll: t("jobsFilterWorkTypeAll"),
+            ai: t("jobsFilterAi"),
+            aiAll: t("jobsFilterAiAll"),
+            aiYes: t("jobsFilterAiYes"),
+            aiNo: t("jobsFilterAiNo"),
             sortMatch: t("jobsSortMatch"),
             sortRole: t("jobsSortRole"),
             sortCompany: t("jobsSortCompany"),
@@ -244,6 +254,7 @@ export function StartupsJobsPage({
             copy={{
               caption: t("jobsTitle"),
               remote: t("jobsRemote"),
+              aiBadge: t("jobsAiBadge"),
               newBadge: t("jobsNewBadge"),
               original: t("openOriginal"),
               track: t("jobsTrack"),

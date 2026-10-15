@@ -247,8 +247,17 @@ the active filters.
   Organization JSON-LD uses sourced fields only and includes `description`
   only when a sourced blurb exists. Sitemap lists each profile slug.
 - Open positions live at `/jobs` with one page per sourced role
-  (`/jobs/{roleSlug}`). The list filters by company, location, work type,
-  and search, and sorts by best match, company, role, or location. The default
+  (`/jobs/{roleSlug}`). The list is not AI-only: a non-AI posting with a
+  real source URL stays. The list filters by company, location, work type,
+  AI (`?ai=1` recorded AI roles, `?ai=0` recorded non-AI roles; nulls stay
+  on the unfiltered list only), and search, and sorts by best match,
+  company, role, or location. `?ai=` is `noindex,follow` with a canonical
+  to `/jobs`. The unfiltered URL, title, and role JSON-LD stay. `is_ai`
+  is a nullable boolean (migration `20261015b_startup_role_is_ai`, DDL
+  only). `/api/cron/startup-role-ai` classifies title and description in
+  batches. The flag is read from the posting, not copied from company
+  `uses_ai`. The column is what a later
+  `/insights` AI vs non-AI count will read; that page is not public here. The default
   order is best match while the search has words and company otherwise (roles
   grouped under each company with its logo and role count); the default for
   the current search stays out of the URL, so `/jobs?q=engineer&sort=company`

@@ -74,6 +74,12 @@ export type StartupRolePublic = {
   postedAt?: string | null;
   board: StartupRoleBoard;
   status: "open" | "closed";
+  /**
+   * From the posting text. True is an AI role, false is an explicit non-AI
+   * reading, null or omitted is not classified yet. Never a reason to hide
+   * the row on the unfiltered list.
+   */
+  isAi?: boolean | null;
 };
 
 /**
@@ -217,6 +223,9 @@ export function startupJobsFacets(roles: readonly StartupRoleListing[]): {
   };
 }
 
+/** `yes` is `?ai=1`. `no` is an explicit false, never a null row. */
+export type StartupJobsAiFilter = "all" | "yes" | "no";
+
 export type StartupJobsQuery = {
   company: string;
   q: string;
@@ -224,6 +233,8 @@ export type StartupJobsQuery = {
   workType: string;
   sort: StartupJobsSort;
   page: number;
+  /** Omitted means every role, classified or not. */
+  ai?: StartupJobsAiFilter;
 };
 
 /** Saved jobs-table search. Empty fields mean that filter is unset. */
@@ -461,12 +472,24 @@ function parseJobsFacet(value: string | null | undefined, max: number): string {
   return text;
 }
 
+export function parseStartupJobsAiFilter(
+  value: string | null | undefined,
+): StartupJobsAiFilter {
+  const raw = value?.trim().toLowerCase() ?? "";
+  if (raw === "1" || raw === "yes" || raw === "true" || raw === "ai") {
+    return "yes";
+  }
+  if (raw === "0" || raw === "no" || raw === "false") return "no";
+  return "all";
+}
+
 export function parseStartupJobsQuery(raw: {
   company?: string | string[];
   q?: string | string[];
   location?: string | string[];
   workType?: string | string[];
   sort?: string | string[];
+  ai?: string | string[];
   page?: string | string[] | number;
 }): StartupJobsQuery {
   const first = (value: string | string[] | undefined) =>
@@ -485,8 +508,37 @@ export function parseStartupJobsQuery(raw: {
     // Old links carry raw board text ("FullTime"); fold it to the canonical id.
     workType: startupWorkTypeOf(parseJobsFacet(first(raw.workType), 80)) ?? "",
     sort: parseStartupJobsSort(first(raw.sort), first(raw.q) ?? ""),
+    ai: parseStartupJobsAiFilter(first(raw.ai)),
     page,
   };
+}
+
+/** Company, search, place, work type, a non-default order, or the AI filter. */
+export function startupJobsHasFilters(query: StartupJobsQuery): boolean {
+  return Boolean(
+    query.company ||
+    query.q ||
+    query.location ||
+    query.workType ||
+    query.ai === "yes" ||
+    query.ai === "no" ||
+    query.sort !== defaultStartupJobsSort(query.q),
+  );
+}
+
+/**
+ * `?ai=1` and `?ai=0` stay followable and point their canonical at the
+ * unfiltered list. Other filters keep the existing indexable robots; the
+ * page still canonicalizes them to the unfiltered URL.
+ */
+export function startupJobsIndexRobots(query: Pick<StartupJobsQuery, "ai">): {
+  index: boolean;
+  follow: true;
+} {
+  if (query.ai === "yes" || query.ai === "no") {
+    return { index: false, follow: true };
+  }
+  return { index: true, follow: true };
 }
 
 /**
@@ -561,6 +613,8 @@ export function applyStartupJobsQuery<R extends StartupRoleListing>(
       if (workType && startupWorkTypeOf(role.workType) !== workType) {
         return false;
       }
+      if (query.ai === "yes" && role.isAi !== true) return false;
+      if (query.ai === "no" && role.isAi !== false) return false;
       return !matches || matches.has(role.id);
     })
     .sort((a, b) => {
