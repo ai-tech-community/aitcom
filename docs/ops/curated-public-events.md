@@ -19,7 +19,8 @@ substitute for the CMS chrome.
   views are `noindex,follow` with a canonical of `/events`. The unfiltered
   URL, title, and Event JSON-LD stay on the page without `ai`.
 - `events.is_ai` is a nullable boolean. Migration `20261015b_event_is_ai`
-  only adds the column. `/api/cron/event-ai` classifies title, summary,
+  only adds the column, and it is registered after
+  `20261015b_startup_role_is_ai`. `/api/cron/event-ai` classifies title, summary,
   and description in batches and skips a row that is already true or false.
   A non-AI reading does not drop the event. Discovery still requires a
   real http(s) source link and does not invent one.
