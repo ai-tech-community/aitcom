@@ -221,8 +221,26 @@ describe("news page", () => {
 
   it("is noindex and keeps its canonical unset", async () => {
     const meta = await generateMetadata();
+    expect(meta.title).toBe(en.newsPage.metaTitle);
+    expect(meta.description).toBe(en.newsPage.metaDescription);
     expect(meta.robots).toEqual({ index: false, follow: true });
     expect(meta.alternates).toBeUndefined();
+  });
+
+  it("hides the kicker and title and keeps one heading with the description", async () => {
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    const headings = screen.getAllByRole("heading", { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toHaveTextContent(en.newsPage.title);
+    expect(headings[0]).toHaveClass("sr-only");
+    expect(document.querySelector("[data-slot=section-label]")).toBeNull();
+    const description = screen.getByText(en.newsPage.description);
+    expect(description.parentElement?.className).toContain(
+      "sm:justify-between",
+    );
+    expect(
+      screen.getByRole("link", { name: en.newsPage.signIn }),
+    ).toBeInTheDocument();
   });
 
   it("links News and Stories as tabs, with News current", async () => {
@@ -470,7 +488,16 @@ describe("news page", () => {
 
   it("shows the Dutch empty state", async () => {
     state.locale = "nl";
+    const meta = await generateMetadata();
+    expect(meta.title).toBe(nl.newsPage.metaTitle);
+    expect(meta.description).toBe(nl.newsPage.metaDescription);
     render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    const headings = screen.getAllByRole("heading", { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toHaveTextContent(nl.newsPage.title);
+    expect(headings[0]).toHaveClass("sr-only");
+    expect(document.querySelector("[data-slot=section-label]")).toBeNull();
+    expect(screen.getByText(nl.newsPage.description)).toBeInTheDocument();
     expect(screen.getByText("Nog geen verhalen.")).toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: nl.newsPage.leaderboardEmpty }),
