@@ -45,7 +45,7 @@ function certificateEntry(cert: ProfileWorkCertificate): WorkEntry {
     key: `certificate-${cert.id}`,
     kind: "certificate",
     title: cert.title,
-    href: cert.challengeSlug ? `/challenges/${cert.challengeSlug}` : null,
+    href: cert.challengeSlug ? "/communities" : null,
     date: cert.issuedAt,
     detail: { type: "certificate", outcome: cert.outcome },
   };

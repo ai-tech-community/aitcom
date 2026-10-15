@@ -218,7 +218,7 @@ export function ImpactPage() {
           {t("cta.join")}
         </Link>
         <Link
-          href="/challenges"
+          href="/communities"
           className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-xs tracking-widest text-zinc-700 uppercase transition hover:border-zinc-900 hover:text-zinc-900"
         >
           {t("cta.challenge")}

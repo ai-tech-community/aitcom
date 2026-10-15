@@ -26,27 +26,24 @@ import { WHAT_WE_DO_GROUPS } from "./groups";
 
 const EXPECTED: Record<string, string> = {
   gather: "/communities",
-  build: "/challenges",
+  build: "/communities",
   work: "/jobs",
   learn: "/blog",
 };
 
-/** Every place the section used to list; each must stay in the navigation. */
+/** Pages this section used to list that still belong in the navigation. */
 const FORMER_LINKS = [
   "/communities",
   "/events",
   "/members",
-  "/challenges",
   "/launchpad",
   "/ideas",
   "/agents",
   "/roles",
   "/jobs",
   "/startups",
-  "/benchmark",
   "/investigations",
   "/blog",
-  "/impact",
 ];
 
 function renderIn(locale: "en" | "nl") {

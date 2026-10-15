@@ -150,8 +150,6 @@ console.log(
   challenge.id,
   challenge.slug,
 );
-console.log(
-  "  URL: https://aitcommunity.org/challenges/build-your-first-mcp-tool",
-);
+console.log("  URL: https://www.aitcommunity.org/en/communities");
 console.log("\nDone!");
 process.exit(0);

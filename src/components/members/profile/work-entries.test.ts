@@ -50,6 +50,14 @@ const work: ProfileWork = {
         issuedAt: "2026-04-01T00:00:00Z",
       },
       {
+        kind: "hackathon",
+        id: "h2",
+        title: "Named",
+        challengeSlug: "rag-hack",
+        outcome: "participant",
+        issuedAt: "2026-03-15T00:00:00Z",
+      },
+      {
         kind: "course",
         id: "k1",
         title: "C",
@@ -75,10 +83,12 @@ describe("toWorkEntries", () => {
     expect(entries.events[0]?.href).toBe("/events/e");
     expect(entries.certificates.map((c) => c.href)).toEqual([
       null,
+      "/communities",
       "/communities/club/classroom/c",
     ]);
     expect(entries.certificates.map((c) => c.detail)).toEqual([
       { type: "certificate", outcome: "winner" },
+      { type: "certificate", outcome: "participant" },
       { type: "certificate", outcome: "course" },
     ]);
   });

@@ -480,7 +480,7 @@ describe("news page", () => {
     ).toHaveAttribute("href", "/auth/signin");
   });
 
-  it("puts News in the Challenges slot and moves Challenges into More", () => {
+  it("keeps News in the primary nav and omits the retired sections", () => {
     const navbar = readFileSync(
       join(process.cwd(), "src/components/navbar.tsx"),
       "utf8",
@@ -488,9 +488,9 @@ describe("news page", () => {
     expect(navbar).toMatch(
       /href: "\/news", key: "news", shortcut: "N", primary: true/,
     );
-    expect(navbar).toMatch(
-      /href: "\/challenges", key: "challenges", shortcut: "G", primary: false/,
-    );
+    expect(navbar).not.toMatch(/href: "\/challenges"/);
+    expect(navbar).not.toMatch(/href: "\/benchmark"/);
+    expect(navbar).not.toMatch(/href: "\/impact"/);
     expect(en.nav.news).toBe("News");
     expect(nl.nav.news).toBe("Nieuws");
     expect(Object.keys(en.newsPage).sort()).toEqual(

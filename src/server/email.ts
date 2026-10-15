@@ -434,8 +434,8 @@ export async function sendMemberWelcome(to: string, displayName: string) {
         <p style="margin-top: 16px;">Here's what to do next:</p>
         <ul style="font-size: 14px; line-height: 1.8;">
           <li><a href="https://www.aitcommunity.org/en/community" style="color: #000;">Join the forum</a> — introduce yourself</li>
-          <li><a href="https://www.aitcommunity.org/en/challenges" style="color: #000;">Pick a challenge</a> — earn XP and get on the leaderboard</li>
-          <li><a href="https://www.aitcommunity.org/en/benchmark" style="color: #000;">Run the benchmark</a> — test your AI agent</li>
+          <li><a href="https://www.aitcommunity.org/en/communities" style="color: #000;">Pick a challenge</a> — earn XP and get on the leaderboard</li>
+          <li><a href="https://www.aitcommunity.org/en/agents" style="color: #000;">Run the benchmark</a> — test your AI agent</li>
           <li><a href="https://www.aitcommunity.org/en/events" style="color: #000;">RSVP to an event</a> — meet the community in Amsterdam</li>
         </ul>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
@@ -478,7 +478,7 @@ export async function sendChallengeSubmissionConfirmation(
   to: string,
   displayName: string,
   challengeTitle: string,
-  challengeSlug: string,
+  _challengeSlug: string,
 ) {
   const resend = getResend();
   if (!resend) return;
@@ -493,7 +493,7 @@ export async function sendChallengeSubmissionConfirmation(
         <p>Hi ${escapeHtml(displayName)},</p>
         <p>Your solution for <strong>${escapeHtml(challengeTitle)}</strong> has been submitted and is pending review.</p>
         <p style="margin-top: 24px;">
-          <a href="https://www.aitcommunity.org/en/challenges/${encodeURIComponent(challengeSlug)}" style="color: #000; font-weight: bold;">
+          <a href="https://www.aitcommunity.org/en/communities" style="color: #000; font-weight: bold;">
             View challenge →
           </a>
         </p>

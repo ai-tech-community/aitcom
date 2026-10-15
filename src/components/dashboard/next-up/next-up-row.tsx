@@ -19,7 +19,7 @@ type ItemOf<K extends NextUpItem["kind"]> = Extract<NextUpItem, { kind: K }>;
 /** Where the member acts on each kind. Locale-less; `Link` adds the locale. */
 export const nextUpHref = {
   event: (slug: string) => `/events/${slug}`,
-  challenge: (slug: string) => `/challenges/${slug}`,
+  challenge: (_slug: string) => "/communities",
   community: communityHref,
   communityMemberSettings: communityMemberSettingsHref,
   notifications: "/dashboard/notifications",
