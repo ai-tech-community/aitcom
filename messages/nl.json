@@ -4365,12 +4365,12 @@
   },
   "newsPage": {
     "kicker": "Nieuws",
-    "title": "AI-nieuws",
-    "description": "Verhalen uit een paar AI-nieuwsfeeds, plus geruchten die leden insturen.",
-    "empty": "Nog geen verhalen.",
+    "title": "Tech- en zakelijk nieuws",
+    "description": "Verhalen over tech en het bedrijfsleven, plus geruchten die leden insturen.",
+    "empty": "Nog geen verhalen over tech en het bedrijfsleven.",
     "undated": "Geen datum",
-    "metaTitle": "Nieuws",
-    "metaDescription": "Recente AI-verhalen verzameld voor de AIT-community.",
+    "metaTitle": "Tech- en zakelijk nieuws",
+    "metaDescription": "Verhalen over tech en het bedrijfsleven voor de AIT-community, plus geruchten die leden insturen.",
     "tabsLabel": "Nieuwssecties",
     "tabNews": "Nieuws",
     "tabStories": "Verhalen",
@@ -4383,7 +4383,7 @@
     "hidden": "Verborgen",
     "submittedBy": "Ingestuurd door {name}",
     "formTitle": "Deel een gerucht",
-    "formHelp": "Een titel, een optionele link en een korte notitie. Het staat op de pagina als van jou en als niet geverifieerd.",
+    "formHelp": "Een titel, een optionele link en een korte notitie over tech of het bedrijfsleven. Het staat op de pagina als van jou en als niet geverifieerd.",
     "titleLabel": "Titel",
     "urlLabel": "Link",
     "urlOptional": "Optioneel",
@@ -4438,7 +4438,7 @@
     "noMatches": "Geen overeenkomende verhalen.",
     "resultCount": "{count, plural, one {# resultaat} other {# resultaten}}",
     "pagination": "Paginering",
-    "tableCaption": "AI-nieuws en ledengeruchten"
+    "tableCaption": "Tech- en zakelijk nieuws en ledengeruchten"
   },
   "newsStories": {
     "title": "Lopende verhalen",

@@ -221,8 +221,34 @@ describe("news page", () => {
 
   it("is noindex and keeps its canonical unset", async () => {
     const meta = await generateMetadata();
+    expect(meta.title).toBe("Tech and business news");
+    expect(meta.description).toBe(en.newsPage.metaDescription);
+    expect(meta.description).not.toMatch(/\bAI\b/);
+    expect(en.newsPage.formHelp).toMatch(/tech or business news/);
+    expect(en.newsPage.formHelp).not.toMatch(/\bAI\b/);
+    expect(en.newsPage.empty).toBe("No tech and business stories yet.");
+    expect(en.newsPage.tableCaption).toBe(
+      "Tech and business news and member rumors",
+    );
     expect(meta.robots).toEqual({ index: false, follow: true });
     expect(meta.alternates).toBeUndefined();
+  });
+
+  it("hides the kicker and title and keeps one heading with the description", async () => {
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    const headings = screen.getAllByRole("heading", { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toHaveTextContent("Tech and business news");
+    expect(screen.queryByText(/AI news/)).not.toBeInTheDocument();
+    expect(headings[0]).toHaveClass("sr-only");
+    expect(document.querySelector("[data-slot=section-label]")).toBeNull();
+    const description = screen.getByText(en.newsPage.description);
+    expect(description.parentElement?.className).toContain(
+      "sm:justify-between",
+    );
+    expect(
+      screen.getByRole("link", { name: en.newsPage.signIn }),
+    ).toBeInTheDocument();
   });
 
   it("links News and Stories as tabs, with News current", async () => {
@@ -470,8 +496,26 @@ describe("news page", () => {
 
   it("shows the Dutch empty state", async () => {
     state.locale = "nl";
+    const meta = await generateMetadata();
+    expect(meta.title).toBe("Tech- en zakelijk nieuws");
+    expect(meta.description).toBe(nl.newsPage.metaDescription);
+    expect(meta.description).not.toMatch(/AI-nieuws|AI-verhalen|AI-nieuwsfeed/);
+    expect(nl.newsPage.formHelp).toMatch(/tech of het bedrijfsleven/);
+    expect(nl.newsPage.empty).toBe(
+      "Nog geen verhalen over tech en het bedrijfsleven.",
+    );
+    expect(nl.newsPage.tableCaption).toBe(
+      "Tech- en zakelijk nieuws en ledengeruchten",
+    );
     render(await NewsPage({ searchParams: Promise.resolve({}) }));
-    expect(screen.getByText("Nog geen verhalen.")).toBeInTheDocument();
+    const headings = screen.getAllByRole("heading", { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0]).toHaveTextContent("Tech- en zakelijk nieuws");
+    expect(screen.queryByText(/AI-nieuws/)).not.toBeInTheDocument();
+    expect(headings[0]).toHaveClass("sr-only");
+    expect(document.querySelector("[data-slot=section-label]")).toBeNull();
+    expect(screen.getByText(nl.newsPage.description)).toBeInTheDocument();
+    expect(screen.getByText(nl.newsPage.empty)).toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: nl.newsPage.leaderboardEmpty }),
     ).not.toBeInTheDocument();
