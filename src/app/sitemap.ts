@@ -6,6 +6,7 @@ import {
   startupDirectorySitemapPaths,
   startupProfileSitemapPaths,
 } from "@/lib/investigations/startups";
+import { routing } from "@/i18n/routing";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import { isUnlistedNewsGamePath } from "@/lib/news/indexability";
 import {
@@ -69,6 +70,38 @@ function safeDate(value: string | Date | null | undefined): Date | undefined {
   if (value == null || value === "") return undefined;
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+const RETIRED_SITEMAP_SECTIONS = ["benchmark", "challenges", "impact"] as const;
+
+/** True for `/en/benchmark` (and subpaths) and the same paths in other locales. */
+export function isRetiredSectionSitemapUrl(url: string): boolean {
+  let pathname = url;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return false;
+  }
+  const locales = routing.locales.join("|");
+  const section = new RegExp(`^/(?:${locales})/([^/]+)`).exec(pathname)?.[1];
+  return (
+    section != null &&
+    (RETIRED_SITEMAP_SECTIONS as readonly string[]).includes(section)
+  );
+}
+
+export function withoutRetiredSectionUrls(
+  entries: MetadataRoute.Sitemap,
+): MetadataRoute.Sitemap {
+  return entries.filter((entry) => {
+    if (isRetiredSectionSitemapUrl(entry.url)) return false;
+    const languages = entry.alternates?.languages;
+    if (!languages) return true;
+    return Object.values(languages).every(
+      (value) =>
+        typeof value !== "string" || !isRetiredSectionSitemapUrl(value),
+    );
+  });
 }
 
 function localeEntries(
@@ -329,10 +362,12 @@ export async function buildSitemapEntries(
       ? new Set<string>()
       : hiddenCommunitySlugs(communitySlugById, hiddenCommunityIds);
 
-  return withoutHiddenCommunityUrls(
-    [...staticEntries, ...eventEntries, ...articleEntries, ...threadEntries],
-    hiddenSlugs,
-  ).filter((entry) => !isUnlistedNewsGamePath(entry.url));
+  return withoutRetiredSectionUrls(
+    withoutHiddenCommunityUrls(
+      [...staticEntries, ...eventEntries, ...articleEntries, ...threadEntries],
+      hiddenSlugs,
+    ).filter((entry) => !isUnlistedNewsGamePath(entry.url)),
+  );
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

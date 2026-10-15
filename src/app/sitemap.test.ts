@@ -13,7 +13,11 @@ vi.mock("@/server/communities/content-visibility-queries", () => ({
 import { isUnlistedNewsGamePath } from "@/lib/news/indexability";
 import { getPayloadClient } from "@/server/payload";
 import * as sitemapModule from "./sitemap";
-import { buildSitemapEntries } from "./sitemap";
+import {
+  buildSitemapEntries,
+  isRetiredSectionSitemapUrl,
+  withoutRetiredSectionUrls,
+} from "./sitemap";
 
 const mockGetPayloadClient = vi.mocked(getPayloadClient);
 
@@ -548,5 +552,66 @@ describe("buildSitemapEntries", () => {
     expect(urlsOf(entries).some((url) => url.includes("/forum/secret"))).toBe(
       false,
     );
+  });
+
+  it("omits benchmark, challenges, and impact in every locale", async () => {
+    const find = vi.fn(async () => ({ docs: [] }));
+    mockGetPayloadClient.mockResolvedValue({
+      find,
+    } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [],
+    );
+
+    for (const entry of entries) {
+      expect(isRetiredSectionSitemapUrl(entry.url)).toBe(false);
+      for (const alternate of Object.values(
+        entry.alternates?.languages ?? {},
+      )) {
+        if (typeof alternate === "string") {
+          expect(isRetiredSectionSitemapUrl(alternate)).toBe(false);
+        }
+      }
+    }
+  });
+});
+
+describe("retired section sitemap exclusion", () => {
+  it("drops the section root and every subpath, in every locale", () => {
+    const kept = [
+      "https://www.aitcommunity.org/en",
+      "https://www.aitcommunity.org/nl",
+      "https://www.aitcommunity.org/en/agents",
+      "https://www.aitcommunity.org/en/communities",
+      "https://www.aitcommunity.org/en/events/impact-night",
+      "https://www.aitcommunity.org/nl/blog/benchmarks",
+      "https://www.aitcommunity.org/en/communities/ait/forum/challenges",
+    ];
+    const dropped = [
+      "https://www.aitcommunity.org/en/benchmark",
+      "https://www.aitcommunity.org/nl/benchmark",
+      "https://www.aitcommunity.org/en/benchmark/brands/acme",
+      "https://www.aitcommunity.org/nl/challenges",
+      "https://www.aitcommunity.org/en/challenges/rag-hack",
+      "https://www.aitcommunity.org/nl/impact",
+      "https://www.aitcommunity.org/en/impact/report",
+    ];
+
+    for (const url of dropped) {
+      expect(isRetiredSectionSitemapUrl(url)).toBe(true);
+    }
+    for (const url of kept) {
+      expect(isRetiredSectionSitemapUrl(url)).toBe(false);
+    }
+
+    expect(
+      withoutRetiredSectionUrls(
+        [...dropped, ...kept].map((url) => ({ url })),
+      ).map((entry) => entry.url),
+    ).toEqual(kept);
   });
 });

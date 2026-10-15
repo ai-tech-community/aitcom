@@ -175,7 +175,7 @@ describe("BadgesTab — visitor", () => {
     expect(screen.getByText("Winner — RAG Hack 2026")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "RAG Hack 2026" })).toHaveAttribute(
       "href",
-      "/challenges/rag-hack-2026",
+      "/communities",
     );
     const draft = screen.getByText("Finalist — Draft Jam").closest("li")!;
     expect(within(draft).queryByRole("link")).toBeNull();

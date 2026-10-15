@@ -96,7 +96,7 @@ export async function sendBrandAlertEmail(args: {
         compared to a 30-day baseline of <strong>${args.baselinePct.toFixed(1)}%</strong>.</p>
         <p>That's a ${direction}ward shift of <strong>${Math.abs(args.deltaPct).toFixed(1)} points</strong>.</p>
         <p style="margin-top: 24px;">
-          <a href="https://www.aitcommunity.org/en/benchmark/brands/${encodeURIComponent(args.brandSlug)}"
+          <a href="https://www.aitcommunity.org/en/agents"
              style="color: #000; font-weight: bold;">
             View brand page →
           </a>

@@ -5,6 +5,7 @@
 import "./src/env.js";
 import createNextIntlPlugin from "next-intl/plugin";
 import { withPayload } from "@payloadcms/next/withPayload";
+import { siteRedirects } from "./src/lib/site-redirects.js";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
@@ -41,41 +42,7 @@ const config = {
         destination: "https://www.aitcommunity.org/:path*",
         permanent: false,
       },
-      {
-        source: "/:locale(en|nl)/investigations/startups/jobs",
-        destination: "/:locale/jobs",
-        permanent: true,
-      },
-      {
-        source: "/:locale(en|nl)/investigations/startups/jobs/:path*",
-        destination: "/:locale/jobs/:path*",
-        permanent: true,
-      },
-      {
-        source: "/:locale(en|nl)/startups/jobs",
-        destination: "/:locale/jobs",
-        permanent: true,
-      },
-      {
-        source: "/:locale(en|nl)/startups/jobs/:path*",
-        destination: "/:locale/jobs/:path*",
-        permanent: true,
-      },
-      {
-        source: "/:locale(en|nl)/communities/:slug/jobs",
-        destination: "/:locale/jobs",
-        permanent: true,
-      },
-      {
-        source: "/:locale(en|nl)/investigations/startups",
-        destination: "/:locale/startups",
-        permanent: true,
-      },
-      {
-        source: "/:locale(en|nl)/investigations/startups/:path*",
-        destination: "/:locale/startups/:path*",
-        permanent: true,
-      },
+      ...siteRedirects,
     ];
   },
   async headers() {

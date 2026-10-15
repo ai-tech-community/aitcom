@@ -2306,7 +2306,7 @@ describe("Startups site integration", () => {
       existsSync(join(dir, "../../migrations/20260920a_startup_roles.ts")),
     ).toBe(true);
     expect(
-      readFileSync(join(dir, "../../../next.config.js"), "utf8"),
+      readFileSync(join(dir, "../../lib/site-redirects.js"), "utf8"),
     ).toContain("/investigations/startups");
     expect(readFileSync(join(dir, "../../../vercel.json"), "utf8")).toContain(
       "/api/cron/startup-jobs-scan",
@@ -2337,7 +2337,7 @@ describe("Startups site integration", () => {
     const nav = readFileSync(NAV_FILE, "utf8");
     const footer = readFileSync(FOOTER_FILE, "utf8");
     const nextConfig = readFileSync(
-      join(dir, "../../../next.config.js"),
+      join(dir, "../../lib/site-redirects.js"),
       "utf8",
     );
     expect(nav).toMatch(/href: "\/startups",[\s\S]*?primary: true/);

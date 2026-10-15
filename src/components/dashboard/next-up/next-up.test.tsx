@@ -173,11 +173,7 @@ describe("NextUp", () => {
         "View event",
         "/events/ai-meetup",
       ],
-      [
-        "Keep going on Build an agent",
-        "Open challenge",
-        "/challenges/build-an-agent",
-      ],
+      ["Keep going on Build an agent", "Open challenge", "/communities"],
       [
         "You're invited to join Makers",
         "View community",
@@ -188,11 +184,7 @@ describe("NextUp", () => {
         "Review requests",
         "/communities/builders/settings/members",
       ],
-      [
-        "Keep going on Build an agent",
-        "Open challenge",
-        "/challenges/build-an-agent",
-      ],
+      ["Keep going on Build an agent", "Open challenge", "/communities"],
       [
         "You have 3 unread notifications and 1 unread message",
         "See notifications",

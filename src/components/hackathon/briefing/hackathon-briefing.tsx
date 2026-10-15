@@ -23,7 +23,6 @@ import { AgentReadinessChecklist } from "./agent-readiness-checklist";
 export async function HackathonBriefing({
   eventSlug,
   challengeId,
-  challengeSlug,
   cellTemplate,
   rankingMode,
   xpReward,
@@ -150,9 +149,7 @@ export async function HackathonBriefing({
         </CardHeader>
         <CardContent className="flex gap-2">
           <Button asChild size="sm" variant="outline">
-            <Link href={`/challenges/${challengeSlug}`}>
-              {t("helpChallenge")}
-            </Link>
+            <Link href="/communities">{t("helpChallenge")}</Link>
           </Button>
           <Button asChild size="sm" variant="ghost">
             <Link href={`/events/${eventSlug}`}>{t("helpEvent")}</Link>

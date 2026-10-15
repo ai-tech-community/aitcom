@@ -75,10 +75,7 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-foreground font-medium">
-              <Link
-                href={`/challenges/${challenge.slug}`}
-                className="hover:underline"
-              >
+              <Link href="/communities" className="hover:underline">
                 {challenge.title}
               </Link>
             </h3>

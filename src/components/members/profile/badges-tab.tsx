@@ -334,7 +334,7 @@ export function BadgesTab({
                         challenge: award.challenge.title,
                         link: (chunks) => (
                           <Link
-                            href={`/challenges/${award.challenge!.slug}`}
+                            href="/communities"
                             className="text-foreground hover:decoration-foreground decoration-muted-foreground/50 underline underline-offset-4"
                           >
                             {chunks}

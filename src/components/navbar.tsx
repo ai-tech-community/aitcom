@@ -51,9 +51,7 @@ const navLinks = [
   { href: "/jobs", key: "jobs", shortcut: "W", primary: true },
   { href: "/startups", key: "startups", shortcut: "U", primary: true },
   { href: "/news", key: "news", shortcut: "N", primary: true },
-  { href: "/challenges", key: "challenges", shortcut: "G", primary: false },
   { href: "/launchpad", key: "launchpad", shortcut: "L", primary: false },
-  { href: "/benchmark", key: "benchmark", shortcut: "K", primary: false },
   { href: "/agents", key: "agents", shortcut: "T", primary: false },
   { href: "/ideas", key: "ideas", shortcut: "F", primary: false },
   { href: "/members", key: "members", shortcut: "M", primary: false },
@@ -64,7 +62,6 @@ const navLinks = [
     shortcut: "I",
     primary: false,
   },
-  { href: "/impact", key: "impact", shortcut: "P", primary: false },
   { href: "/sponsors", key: "sponsors", shortcut: "S", primary: false },
 ] as const;
 
