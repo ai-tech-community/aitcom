@@ -42,9 +42,9 @@ export async function ingestNewsItems(
   items: readonly Record<string, unknown>[],
   summarize: NewsSummarizer,
   options: IngestNewsOptions = {},
-): Promise<number> {
+): Promise<{ inserted: number; urls: string[] }> {
   const drafts = newsDraftsFromFeed(items);
-  if (drafts.length === 0) return 0;
+  if (drafts.length === 0) return { inserted: 0, urls: [] };
   const inserted = await database.insertNew(drafts);
   const pending = await database.unsummarized(drafts.map((draft) => draft.url));
   const written = new Map<string, string>();
@@ -82,5 +82,5 @@ export async function ingestNewsItems(
       })),
     );
   }
-  return inserted.length;
+  return { inserted: inserted.length, urls: inserted.map((row) => row.url) };
 }

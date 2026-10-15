@@ -17,10 +17,16 @@ export type FeedIngestResult = {
   url: string;
   name: string;
   ok: boolean;
+  /** Entries with a title and URL, before this run's dedupe. */
+  fetched: number;
   /** URLs from this feed included in the deduped batch. */
   items: number;
+  /** New rows stored from this feed. Already-seen URLs stay at zero. */
+  inserted: number;
   error?: string;
 };
+
+type RecordResult = number | { inserted: number; urls: readonly string[] };
 
 export type IngestFeedsDeps = {
   feeds: readonly { name: string; url: string; sector?: string }[];
@@ -28,7 +34,7 @@ export type IngestFeedsDeps = {
   record: (
     items: readonly Record<string, unknown>[],
     options?: IngestNewsOptions,
-  ) => Promise<number>;
+  ) => Promise<RecordResult>;
   limit?: number;
   concurrency?: number;
   budgetMs?: number;
@@ -56,7 +62,21 @@ async function mapPool<T, R>(
   return results;
 }
 
-/** Fetch each configured feed and store new article URLs. One feed failing does not stop the others. */
+function recordedUrls(
+  value: RecordResult,
+  batch: readonly Record<string, unknown>[],
+): { inserted: number; urls: Set<string> } {
+  if (typeof value === "number") {
+    const urls = batch.flatMap((item) =>
+      typeof item.url === "string" ? [item.url] : [],
+    );
+    if (value === urls.length) return { inserted: value, urls: new Set(urls) };
+    return { inserted: value, urls: new Set() };
+  }
+  return { inserted: value.inserted, urls: new Set(value.urls) };
+}
+
+/** Fetch each configured feed and store new article URLs. One feed failing does not stop the others. Stories are not dropped for being outside AI. */
 export async function ingestFeeds(
   deps: IngestFeedsDeps,
 ): Promise<{ inserted: number; feeds: FeedIngestResult[] }> {
@@ -87,40 +107,56 @@ export async function ingestFeeds(
   const seen = new Set<string>();
   const items: Record<string, unknown>[] = [];
   const feeds: FeedIngestResult[] = [];
+  const owned: string[][] = [];
   for (const row of fetched) {
     if (!row.ok) {
       feeds.push({
         url: row.feed.url,
         name: row.feed.name,
         ok: false,
+        fetched: 0,
         items: 0,
+        inserted: 0,
         error: row.error,
       });
+      owned.push([]);
       continue;
     }
     let count = 0;
+    const mine: string[] = [];
     for (const entry of row.entries) {
       if (!entry.url || seen.has(entry.url)) continue;
       seen.add(entry.url);
       items.push({ ...entry, sector: row.feed.sector ?? "ai" });
+      mine.push(entry.url);
       count += 1;
     }
+    owned.push(mine);
     feeds.push({
       url: row.feed.url,
       name: row.feed.name,
       ok: true,
+      fetched: row.entries.length,
       items: count,
+      inserted: 0,
     });
   }
 
-  const inserted =
+  const recorded =
     items.length > 0
       ? await deps.record(items, {
           summaryConcurrency: SUMMARY_CONCURRENCY,
           summaryDeadline: started + (deps.budgetMs ?? INGEST_BUDGET_MS),
         })
       : 0;
-  return { inserted, feeds };
+  const outcome = recordedUrls(recorded, items);
+  for (let index = 0; index < feeds.length; index += 1) {
+    const feed = feeds[index];
+    const urls = owned[index];
+    if (!feed || !urls) continue;
+    feed.inserted = urls.filter((url) => outcome.urls.has(url)).length;
+  }
+  return { inserted: outcome.inserted, feeds };
 }
 
 export async function fetchFeedXml(url: string): Promise<string> {
@@ -140,10 +176,10 @@ export async function fetchFeedXml(url: string): Promise<string> {
 /** The production ingest: built-in feeds plus any staff added, through the existing store. */
 export async function ingestConfiguredNewsFeeds() {
   const { loadNewsFeeds } = await import("./catalog");
-  const { recordFeedNews } = await import("./record");
+  const { recordFeedNewsResult } = await import("./record");
   return ingestFeeds({
     feeds: await loadNewsFeeds(),
     fetchXml: fetchFeedXml,
-    record: (items, options) => recordFeedNews(items, options),
+    record: (items, options) => recordFeedNewsResult(items, options),
   });
 }

@@ -9,6 +9,7 @@ import {
 import { db } from "@/server/db";
 
 import { NEWS_TABLE_CACHE_TAG } from "./cache";
+import { loadNewsItemAiFlags } from "./item-ai";
 
 import type { NewsListItem } from "./list";
 import type { NewsRumorItem } from "./rumors";
@@ -208,6 +209,12 @@ async function queryNewsTablePageUncached(
     db.execute(newsTableLinkedCompanySql()),
   ]);
   const page = mapSlice(asRows(slice));
+  const flags = await loadNewsItemAiFlags(
+    page.stories.map((story) => story.id),
+  );
+  for (const story of page.stories) {
+    story.isAi = flags.has(story.id) ? flags.get(story.id)! : null;
+  }
   const menu = mapFacets(asRows(facets), input.memberSource);
   return {
     ...page,

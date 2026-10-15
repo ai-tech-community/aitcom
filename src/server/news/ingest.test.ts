@@ -56,8 +56,14 @@ describe("ingestNewsItems", () => {
   it("summarizes a story when it is added and not when it is seen again", async () => {
     const database = memoryDb();
     const summarize = vi.fn(async () => "A stored TL;DR.");
-    expect(await ingestNewsItems(database, [story], summarize)).toBe(1);
-    expect(await ingestNewsItems(database, [story], summarize)).toBe(0);
+    expect(await ingestNewsItems(database, [story], summarize)).toMatchObject({
+      inserted: 1,
+      urls: ["https://example.com/models"],
+    });
+    expect(await ingestNewsItems(database, [story], summarize)).toMatchObject({
+      inserted: 0,
+      urls: [],
+    });
     expect(summarize).toHaveBeenCalledTimes(1);
     expect(database.summaries).toEqual(["A stored TL;DR."]);
   });
@@ -68,9 +74,13 @@ describe("ingestNewsItems", () => {
       .fn()
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce("Written on the next pass.");
-    expect(await ingestNewsItems(database, [story], summarize)).toBe(1);
+    expect(await ingestNewsItems(database, [story], summarize)).toMatchObject({
+      inserted: 1,
+    });
     expect(database.summaries).toEqual([]);
-    expect(await ingestNewsItems(database, [story], summarize)).toBe(0);
+    expect(await ingestNewsItems(database, [story], summarize)).toMatchObject({
+      inserted: 0,
+    });
     expect(database.summaries).toEqual(["Written on the next pass."]);
     expect(summarize).toHaveBeenCalledTimes(2);
   });
@@ -83,7 +93,7 @@ describe("ingestNewsItems", () => {
     const summarize = vi.fn(async () => "A stored TL;DR.");
     expect(
       await ingestNewsItems({ ...database, linkStartups }, [story], summarize),
-    ).toBe(1);
+    ).toMatchObject({ inserted: 1 });
     expect(linkStartups).toHaveBeenCalledTimes(1);
     expect(linkStartups.mock.calls[0]?.[0]).toEqual([
       expect.objectContaining({
@@ -94,7 +104,7 @@ describe("ingestNewsItems", () => {
     ]);
     expect(
       await ingestNewsItems({ ...database, linkStartups }, [story], summarize),
-    ).toBe(0);
+    ).toMatchObject({ inserted: 0 });
     expect(linkStartups).toHaveBeenCalledTimes(1);
   });
 
@@ -107,7 +117,7 @@ describe("ingestNewsItems", () => {
         summaryDeadline: 0,
         summaryConcurrency: 4,
       }),
-    ).toBe(2);
+    ).toMatchObject({ inserted: 2 });
     expect(summarize).not.toHaveBeenCalled();
     expect(database.summaries).toEqual([]);
   });

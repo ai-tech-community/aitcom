@@ -15,7 +15,9 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Topics for the contribute page, taken from headlines stored this week.
- * An empty list means the page hides the block.
+ * An empty list means the page hides the block. Headlines are not scored
+ * or dropped for being outside AI: technology and business stories are
+ * eligible on the same terms as an AI story.
  */
 export async function listWeeklyStoryTopics(
   now = new Date(),

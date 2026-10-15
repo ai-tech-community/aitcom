@@ -552,6 +552,11 @@ export default async function NewsPage({
                               {t("unverifiedRumor")}
                             </Badge>
                           )}
+                          {row.kind === "story" && row.isAi === true ? (
+                            <Badge variant="outline" data-news-ai="">
+                              {t("aiBadge")}
+                            </Badge>
+                          ) : null}
                           {row.hidden ? (
                             <Badge variant="outline">{t("hidden")}</Badge>
                           ) : null}

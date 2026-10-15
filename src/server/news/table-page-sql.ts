@@ -1,14 +1,14 @@
 import { sql, type SQL } from "drizzle-orm";
 
-import { findCuratedNewsCompany, newsHostname } from "@/lib/news/companies";
+import { findCuratedNewsCompany } from "@/lib/news/companies";
 import {
   NEWS_PAGE_SIZE,
+  newsOutletLabels,
   newsTableSearchRegex,
   newsTableWriter,
   type NewsTableQuery,
   type NewsTableSort,
 } from "@/lib/news/table";
-import { NEWS_FEEDS } from "@/server/news/feeds";
 
 export type NewsTablePageWindow = {
   page: number;
@@ -40,16 +40,10 @@ function hostSql(): SQL {
 }
 
 function feedHosts(): Array<{ host: string; name: string }> {
-  const seen: Array<{ host: string; name: string }> = [];
-  for (const feed of NEWS_FEEDS) {
-    const host = newsHostname(feed.url);
-    if (!host) continue;
-    seen.push({ host, name: feed.name });
-  }
-  return seen;
+  return newsOutletLabels();
 }
 
-/** First matching feed host wins, same order as `newsSourceFromUrl`. */
+/** One outlet per host, same labels as `newsSourceFromUrl`. */
 function sourceKeySql(): SQL {
   const arms = feedHosts().map(
     (feed) =>

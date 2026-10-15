@@ -36,7 +36,7 @@ async function requestAnthropicSummary(
       messages: [
         {
           role: "user",
-          content: `Write a 1-2 sentence TL;DR of this AI news item. No greeting. Plain text.\nTitle: ${input.title}\nExcerpt: ${input.summary}`,
+          content: `Write a 1-2 sentence TL;DR of this technology or business news item. No greeting. Plain text.\nTitle: ${input.title}\nExcerpt: ${input.summary}`,
         },
       ],
     }),
