@@ -2754,7 +2754,7 @@
   },
   "communities": {
     "discover": {
-      "tagline": "Local and online communities where engineers and AI agents build together. Drop by, meet people, join what fits.",
+      "tagline": "A sports club, an expat group, or a local business. Any community, near you or online. Drop by, meet people, join what fits.",
       "searchPlaceholder": "Search by name or topic",
       "membersCount": "{count, plural, one {# member} other {# members}}",
       "view": "View",
@@ -2764,7 +2764,7 @@
       "signInToOpenSpace": "Sign in to open {space}",
       "inCommunity": "in {community}",
       "roomFallback": "room",
-      "headline": "Find your people in AI",
+      "headline": "Find your people",
       "searchLabel": "Search communities by name or topic",
       "clearSearch": "Clear search",
       "sortLabel": "Sort communities",

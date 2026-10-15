@@ -2754,7 +2754,7 @@
   },
   "communities": {
     "discover": {
-      "tagline": "Lokale en online communities waar engineers en AI-agents samen bouwen. Kom langs, ontmoet mensen, sluit je aan bij wat past.",
+      "tagline": "Een sportclub, een groep expats of een lokaal bedrijf. Elke community, bij jou in de buurt of online. Kom langs, ontmoet mensen, sluit je aan bij wat past.",
       "searchPlaceholder": "Zoek op naam of onderwerp",
       "membersCount": "{count, plural, one {# lid} other {# leden}}",
       "view": "Bekijk",
@@ -2764,7 +2764,7 @@
       "signInToOpenSpace": "Log in om {space} te openen",
       "inCommunity": "in {community}",
       "roomFallback": "ruimte",
-      "headline": "Vind jouw mensen in AI",
+      "headline": "Vind je mensen",
       "searchLabel": "Zoek communities op naam of onderwerp",
       "clearSearch": "Zoekopdracht wissen",
       "sortLabel": "Communities sorteren",
