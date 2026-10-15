@@ -8,6 +8,8 @@ import {
   startupJobsFacets,
   startupWorkTypeOf,
   parseStartupJobsQuery,
+  startupJobsHasFilters,
+  startupJobsIndexRobots,
   isStartupRoleLocationLine,
   parseStartupRoleLocation,
   parseStartupRoleTitle,
@@ -410,6 +412,51 @@ describe("startup jobs facets", () => {
     expect(ids("Full-time")).toEqual(["a"]);
     expect(ids("contract")).toEqual(["b"]);
     expect(parseStartupJobsQuery({ workType: "Volunteer" }).workType).toBe("");
+  });
+
+  it("filters AI roles from the stored flag and keeps nulls on the full list", () => {
+    const roles = [
+      sampleRole({ id: "ai", slug: "ai", title: "ML Engineer", isAi: true }),
+      sampleRole({
+        id: "other",
+        slug: "other",
+        title: "Accountant",
+        isAi: false,
+      }),
+      sampleRole({ id: "new", slug: "new", title: "Designer", isAi: null }),
+    ];
+    const ids = (ai: string) =>
+      applyStartupJobsQuery(roles, parseStartupJobsQuery({ ai }), null).map(
+        (role) => role.id,
+      );
+    expect(parseStartupJobsQuery({ ai: "1" }).ai).toBe("yes");
+    expect(parseStartupJobsQuery({ ai: "0" }).ai).toBe("no");
+    expect(parseStartupJobsQuery({}).ai).toBe("all");
+    expect(ids("1")).toEqual(["ai"]);
+    expect(ids("0")).toEqual(["other"]);
+    expect(ids("").sort()).toEqual(["ai", "new", "other"]);
+    expect(buildStartupJobsPath({ ai: "yes" })).toBe("/jobs?ai=1");
+    expect(buildStartupJobsPath({ ai: "no", page: 2 })).toBe(
+      "/jobs?ai=0&page=2",
+    );
+    expect(buildStartupJobsPath({ ai: "all" })).toBe("/jobs");
+    expect(startupJobsHasFilters(parseStartupJobsQuery({ ai: "1" }))).toBe(
+      true,
+    );
+    expect(startupJobsHasFilters(parseStartupJobsQuery({ page: "2" }))).toBe(
+      false,
+    );
+    expect(startupJobsIndexRobots(parseStartupJobsQuery({ ai: "1" }))).toEqual({
+      index: false,
+      follow: true,
+    });
+    expect(startupJobsIndexRobots(parseStartupJobsQuery({ ai: "0" }))).toEqual({
+      index: false,
+      follow: true,
+    });
+    expect(
+      startupJobsIndexRobots(parseStartupJobsQuery({ q: "engineer" })),
+    ).toEqual({ index: true, follow: true });
   });
 
   it("treats the remote location as remote-friendly roles", () => {

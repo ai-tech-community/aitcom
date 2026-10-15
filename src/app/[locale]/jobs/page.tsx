@@ -5,7 +5,6 @@ import { StartupsJobsPage } from "@/components/investigations/startups-jobs-page
 import {
   STARTUPS_JOBS_PATH,
   buildStartupJobsPath,
-  startupsPublicRobots,
 } from "@/lib/investigations/startups";
 import {
   applyStartupJobsQuery,
@@ -13,8 +12,9 @@ import {
   parseStartupJobsQuery,
   rolesListedSince,
   startupJobsFollowFromQuery,
+  startupJobsHasFilters,
+  startupJobsIndexRobots,
 } from "@/lib/investigations/startup-roles";
-import { defaultStartupJobsSort } from "@/lib/investigations/startup-jobs-search";
 import {
   absoluteLocaleUrl,
   localeAlternates,
@@ -39,7 +39,7 @@ export const dynamic = "force-dynamic";
 
 const JOBS_H1 = "Open positions";
 const JOBS_META =
-  "Sourced openings from verified careers pages of listed startups. Original posting always linked. Not a size or salary scorecard.";
+  "Sourced openings from verified careers pages of listed companies. Original posting always linked. Not a size or salary scorecard.";
 
 interface PageProps {
   searchParams: Promise<{
@@ -48,6 +48,7 @@ interface PageProps {
     location?: string;
     workType?: string;
     sort?: string;
+    ai?: string;
     page?: string;
   }>;
 }
@@ -64,20 +65,14 @@ export async function generateMetadata({
   ]);
   const filtered = applyStartupJobsQuery(roles, query, textMatches);
   const pagination = paginateStartupRoles(filtered, query.page);
-  const filteredView = Boolean(
-    query.company ||
-    query.q ||
-    query.location ||
-    query.workType ||
-    query.sort !== defaultStartupJobsSort(query.q),
-  );
+  const filteredView = startupJobsHasFilters(query);
   const canonical = filteredView
     ? STARTUPS_JOBS_PATH
     : buildStartupJobsPath({ page: pagination.page });
   return {
     title: JOBS_H1,
     description: JOBS_META,
-    robots: startupsPublicRobots(),
+    robots: startupJobsIndexRobots(query),
     ...buildOgMeta(JOBS_H1, JOBS_META, "Startups"),
     alternates: await localeAlternates(canonical),
     ...(pagination.totalPages > 1 && !filteredView

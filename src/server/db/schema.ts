@@ -4565,6 +4565,13 @@ export const startupRoles = appSchema.table(
       .notNull()
       .default("open")
       .$type<"open" | "closed" | "pending_review">(),
+    /**
+     * AI role, from the posting title and description. Null until a scan or
+     * the backfill cron classifies it. False stays on the public list.
+     * Stored so a later /insights comparison can count it. Separate from
+     * the company `uses_ai` flag.
+     */
+    isAi: d.boolean(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -4576,6 +4583,7 @@ export const startupRoles = appSchema.table(
     uniqueIndex("startup_role_source_idx").on(t.startupId, t.sourceUrl),
     index("startup_role_startup_idx").on(t.startupId),
     index("startup_role_status_idx").on(t.status),
+    index("startup_role_is_ai_idx").on(t.isAi),
   ],
 );
 

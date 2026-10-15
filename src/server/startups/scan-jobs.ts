@@ -25,6 +25,7 @@ import {
   ycombinatorCompanyJobsUrl,
   type DetectedJobBoard,
 } from "@/lib/investigations/startup-job-boards";
+import { classifyJobAi } from "@/lib/investigations/job-ai";
 import {
   STARTUP_ROLES_PER_COMPANY_CAP,
   STARTUP_ROLE_FETCH_TIMEOUT_MS,
@@ -577,6 +578,9 @@ export async function scanStartupJobs(
     if (!title || !isPublishableJobTitle(title)) return false;
     const location = storedRoleText(listing.location);
     const descriptionText = storedRoleText(listing.descriptionText);
+    const nextDescription = descriptionText ?? current?.descriptionText ?? null;
+    // Non-AI postings stay. The flag is a reading of this text, not a gate.
+    const isAi = classifyJobAi(title, nextDescription);
     const status = "open" as const;
     published += 1;
     if (current?.status !== "open") opened += 1;
@@ -590,6 +594,7 @@ export async function scanStartupJobs(
           workType: listing.workType,
           applyUrl: listing.applyUrl,
           descriptionText: descriptionText ?? current.descriptionText,
+          isAi,
           sourceUrl: listing.sourceUrl,
           fetchedAt,
           postedAt: listing.postedAt
@@ -614,6 +619,7 @@ export async function scanStartupJobs(
       sourceUrl: listing.sourceUrl,
       applyUrl: listing.applyUrl,
       descriptionText,
+      isAi,
       fetchedAt,
       postedAt: listing.postedAt
         ? new Date(`${listing.postedAt}T00:00:00.000Z`)

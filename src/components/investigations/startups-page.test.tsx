@@ -1492,6 +1492,18 @@ describe("Startups i18n", () => {
     expect(en.investigationsStartups.homepageColumn).toBe("Homepage");
     expect(en.investigationsStartups.tabJobs).toBe("Open positions");
     expect(en.investigationsStartups.jobsTitle).toBe("Open positions");
+    expect(en.investigationsStartups.jobsLead).not.toMatch(
+      /AI-only|AI startup/i,
+    );
+    expect(nl.investigationsStartups.jobsLead).not.toMatch(
+      /alleen AI|AI-startup/i,
+    );
+    expect(en.investigationsStartups.jobsFilterAiYes).toBe("AI roles");
+    expect(en.investigationsStartups.jobsFilterAiNo).toBe("Not AI");
+    expect(nl.investigationsStartups.jobsFilterAiNo).toBe("Geen AI");
+    expect(
+      readFileSync(join(dir, "../../app/[locale]/jobs/page.tsx"), "utf8"),
+    ).not.toMatch(/listed AI startups/);
     expect(en.investigationsStartups.roleJoinCta).toBe(
       "Join the AIT community to get more",
     );

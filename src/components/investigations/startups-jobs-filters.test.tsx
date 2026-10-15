@@ -20,6 +20,10 @@ const LABELS = {
   locationRemote: "Remote",
   workType: "Filter by work type",
   workTypeAll: "All work types",
+  ai: "Filter by AI",
+  aiAll: "All roles",
+  aiYes: "AI roles",
+  aiNo: "Not AI",
   sortMatch: "Best match",
   sortRole: "Role A–Z",
   sortCompany: "Company A–Z",
@@ -52,6 +56,14 @@ describe("StartupsJobsFilters search box", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("offers an AI filter that writes ?ai=1", () => {
+    renderFilters();
+    expect(screen.getByLabelText(LABELS.ai)).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: LABELS.ai })).toHaveTextContent(
+      LABELS.aiAll,
+    );
   });
 
   it("shows each keystroke at once and searches once typing pauses", () => {

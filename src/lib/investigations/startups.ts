@@ -300,6 +300,7 @@ export function buildStartupJobsPath(query?: {
   location?: string | null;
   workType?: string | null;
   sort?: string | null;
+  ai?: "all" | "yes" | "no" | null;
   page?: number;
 }): string {
   const params = new URLSearchParams();
@@ -320,6 +321,8 @@ export function buildStartupJobsPath(query?: {
   if (sort && sort !== defaultStartupJobsSort(needle ?? "")) {
     params.set("sort", sort);
   }
+  if (query?.ai === "yes") params.set("ai", "1");
+  if (query?.ai === "no") params.set("ai", "0");
   if (query?.page && query.page > 1) params.set("page", String(query.page));
   const suffix = params.toString();
   return suffix ? `${STARTUPS_JOBS_PATH}?${suffix}` : STARTUPS_JOBS_PATH;
