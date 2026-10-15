@@ -34,6 +34,10 @@
       "schedule": "40 * * * *"
     },
     {
+      "path": "/api/cron/news-storyline-announce",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/benchmark-aggregate",
       "schedule": "0 * * * *"
     },

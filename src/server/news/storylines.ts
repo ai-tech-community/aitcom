@@ -443,6 +443,7 @@ export async function saveStoryline(input: StorylineInput, userId: string) {
         throw new StorylineError("conflict", "sourceDraftReviewed");
     }
 
+    let existingPublishedAt: Date | null = null;
     if (input.id) {
       const [existing] = await tx
         .select()
@@ -454,6 +455,7 @@ export async function saveStoryline(input: StorylineInput, userId: string) {
         throw new StorylineError("conflict", "stale");
       if (existing.slug !== input.slug)
         throw new StorylineError("invalid", "immutableSlug");
+      existingPublishedAt = existing.publishedAt ?? null;
     }
     const articleIds = input.articles.map((m) => m.articleId);
     const articles = articleIds.length
@@ -504,20 +506,29 @@ export async function saveStoryline(input: StorylineInput, userId: string) {
       revision: _revision,
       ...copy
     } = input;
+    const publishedAt =
+      input.status === "published"
+        ? (existingPublishedAt ?? new Date())
+        : existingPublishedAt;
     if (input.id)
       await tx
         .update(stories)
         .set({
           ...copy,
+          publishedAt,
           revision: input.revision + 1,
           updatedBy: userId,
           updatedAt: new Date(),
         })
         .where(eq(stories.id, id));
     else
-      await tx
-        .insert(stories)
-        .values({ ...copy, id, createdBy: userId, updatedBy: userId });
+      await tx.insert(stories).values({
+        ...copy,
+        id,
+        publishedAt,
+        createdBy: userId,
+        updatedBy: userId,
+      });
     // Deleting only outgoing connections leaves incoming links to kept memberships intact.
     await tx.delete(connections).where(eq(connections.sourceId, id));
     await tx

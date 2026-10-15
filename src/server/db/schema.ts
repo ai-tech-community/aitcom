@@ -64,6 +64,11 @@ export const user = appSchema.table("user", (d) => ({
   lastName: d.varchar({ length: 100 }),
   email: d.varchar({ length: 255 }).notNull().unique(),
   emailVerified: d.boolean().default(false),
+  /**
+   * When the member opted out of emails about a published news story.
+   * Null means still subscribed. Set by the unsubscribe link, never backfilled.
+   */
+  newsStoryEmailOptedOutAt: d.timestamp({ withTimezone: true }),
   image: d.varchar({ length: 255 }),
   createdAt: d
     .timestamp({ withTimezone: true })
@@ -4866,6 +4871,10 @@ export const newsStorylines = appSchema.table(
     questionsEn: d.jsonb().$type<string[]>().notNull().default([]),
     questionsNl: d.jsonb().$type<string[]>().notNull().default([]),
     status: d.text().$type<"draft" | "published">().notNull().default("draft"),
+    /** Set when this code first publishes the story. Null on older rows. */
+    publishedAt: d.timestamp({ withTimezone: true }),
+    /** Set when the member fan-out for this story has finished. */
+    announcedAt: d.timestamp({ withTimezone: true }),
     revision: d.integer().notNull().default(1),
     createdBy: d
       .varchar({ length: 255 })
@@ -4883,6 +4892,26 @@ export const newsStorylines = appSchema.table(
       sql`${t.status} in ('draft', 'published')`,
     ),
   ],
+);
+
+/** One announcement email per member per story. The primary key is the guard. */
+export const newsStorylineAnnouncements = appSchema.table(
+  "news_storyline_announcement",
+  (d) => ({
+    storylineId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => newsStorylines.id, { onDelete: "cascade" }),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    sentAt: d
+      .timestamp({ withTimezone: true })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  }),
+  (t) => [primaryKey({ columns: [t.storylineId, t.userId] })],
 );
 
 /** One up or down vote per signed-in member per story. */

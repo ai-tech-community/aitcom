@@ -3591,6 +3591,18 @@
     "invalidBody": "De link ontbreekt of is gewijzigd. Je kunt de samenvatting nog steeds uitzetten bij je meldingsinstellingen.",
     "settings": "Meldingsinstellingen"
   },
+  "storyUnsubscribe": {
+    "kicker": "/ NIEUWS",
+    "metaTitle": "Afmelden",
+    "title": "Afmelden voor nieuwsverhalen",
+    "body": "Dit stopt e-mails wanneer een nieuwsverhaal wordt gepubliceerd. Andere e-mails blijven zoals ze zijn.",
+    "action": "Afmelden",
+    "doneTitle": "Je bent afgemeld",
+    "doneBody": "Je krijgt geen e-mail meer wanneer een nieuwsverhaal wordt gepubliceerd.",
+    "invalidTitle": "Deze afmeldlink is niet geldig",
+    "invalidBody": "De link ontbreekt of is gewijzigd.",
+    "settings": "Meldingsinstellingen"
+  },
   "broadcast": {
     "title": "Stuur een aankondiging",
     "description": "Bereik de leden van je community. Promotionele aankondigingen zijn onderhevig aan een Hub-brede wekelijkse limiet per lid; evenementherinneringen aan geregistreerde deelnemers worden altijd afgeleverd.",

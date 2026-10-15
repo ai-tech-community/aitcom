@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { recordGlobalDigestOptOut } from "@/server/notifications/digest-optout";
+import { recordStoryEmailOptOut } from "@/server/notifications/story-email-optout";
 import {
   unsubscribeSecret,
   verifyUnsubscribeToken,
@@ -38,9 +39,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    await recordGlobalDigestOptOut(payload.userId);
+    if (payload.scope === "story") await recordStoryEmailOptOut(payload.userId);
+    else await recordGlobalDigestOptOut(payload.userId);
   } catch (err) {
-    console.error("digest unsubscribe failed", err);
+    console.error("email unsubscribe failed", err);
     return NextResponse.json(
       { error: "Could not unsubscribe" },
       { status: 400 },
@@ -49,8 +51,9 @@ export async function POST(req: Request) {
 
   if (confirmed && !oneClick) {
     const locale = localeFrom(body.get("locale"));
+    const kind = payload.scope === "story" ? "&kind=story" : "";
     return NextResponse.redirect(
-      new URL(`/${locale}/unsubscribe?done=1`, req.url),
+      new URL(`/${locale}/unsubscribe?done=1${kind}`, req.url),
       303,
     );
   }

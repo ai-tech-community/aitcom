@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const recordGlobalDigestOptOut = vi.hoisted(() => vi.fn());
+const recordStoryEmailOptOut = vi.hoisted(() => vi.fn());
 
 vi.mock("@/server/notifications/digest-optout", () => ({
   recordGlobalDigestOptOut,
+}));
+vi.mock("@/server/notifications/story-email-optout", () => ({
+  recordStoryEmailOptOut,
 }));
 
 import { POST } from "./route";
@@ -24,6 +28,7 @@ function post(body: string, token?: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   recordGlobalDigestOptOut.mockResolvedValue(undefined);
+  recordStoryEmailOptOut.mockResolvedValue(undefined);
   vi.stubEnv("DIGEST_UNSUBSCRIBE_SECRET", SECRET);
   vi.stubEnv("BETTER_AUTH_SECRET", "");
 });
@@ -43,6 +48,24 @@ describe("POST /api/email/unsubscribe", () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ ok: true });
     expect(recordGlobalDigestOptOut).toHaveBeenCalledWith("user-1");
+    expect(recordStoryEmailOptOut).not.toHaveBeenCalled();
+  });
+
+  it("writes the story email opt-out for a story unsubscribe link", async () => {
+    const token = signUnsubscribeToken(
+      { userId: "user-3", scope: "story" },
+      SECRET,
+    );
+    const res = await POST(
+      post(`t=${encodeURIComponent(token)}&confirm=unsubscribe&locale=en`),
+    );
+
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(
+      "https://www.aitcommunity.org/en/unsubscribe?done=1&kind=story",
+    );
+    expect(recordStoryEmailOptOut).toHaveBeenCalledWith("user-3");
+    expect(recordGlobalDigestOptOut).not.toHaveBeenCalled();
   });
 
   it("redirects the confirm form after opting out", async () => {

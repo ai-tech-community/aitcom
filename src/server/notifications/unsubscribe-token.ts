@@ -5,10 +5,19 @@ import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 /** Global weekly-digest opt-out. Section scopes can be added later. */
 export const DIGEST_UNSUBSCRIBE_SCOPE = "digest" as const;
 
-export type DigestUnsubscribePayload = {
+/** Opt out of emails sent when a news story is published. */
+export const STORY_UNSUBSCRIBE_SCOPE = "story" as const;
+
+export type UnsubscribeScope =
+  | typeof DIGEST_UNSUBSCRIBE_SCOPE
+  | typeof STORY_UNSUBSCRIBE_SCOPE;
+
+export type UnsubscribePayload = {
   userId: string;
-  scope: typeof DIGEST_UNSUBSCRIBE_SCOPE;
+  scope: UnsubscribeScope;
 };
+
+export type DigestUnsubscribePayload = UnsubscribePayload;
 
 /** Human inbox listed beside the one-click HTTPS URL (RFC 8058). */
 export const DIGEST_UNSUBSCRIBE_MAILTO = "mailto:info@klevox.com";
@@ -36,7 +45,7 @@ export function unsubscribeSecret(env?: UnsubscribeSecretEnv): string | null {
 }
 
 export function signUnsubscribeToken(
-  payload: DigestUnsubscribePayload,
+  payload: UnsubscribePayload,
   secret: string,
 ): string {
   const body = Buffer.from(
@@ -50,7 +59,7 @@ export function signUnsubscribeToken(
 export function verifyUnsubscribeToken(
   token: string,
   secret: string,
-): DigestUnsubscribePayload | null {
+): UnsubscribePayload | null {
   const dot = token.indexOf(".");
   if (dot <= 0 || dot !== token.lastIndexOf(".")) return null;
   const body = token.slice(0, dot);
@@ -69,9 +78,14 @@ export function verifyUnsubscribeToken(
     const parsed = JSON.parse(
       Buffer.from(body, "base64url").toString("utf8"),
     ) as { u?: unknown; s?: unknown };
-    if (parsed.s !== DIGEST_UNSUBSCRIBE_SCOPE) return null;
+    if (
+      parsed.s !== DIGEST_UNSUBSCRIBE_SCOPE &&
+      parsed.s !== STORY_UNSUBSCRIBE_SCOPE
+    ) {
+      return null;
+    }
     if (typeof parsed.u !== "string" || parsed.u.length === 0) return null;
-    return { userId: parsed.u, scope: DIGEST_UNSUBSCRIBE_SCOPE };
+    return { userId: parsed.u, scope: parsed.s };
   } catch {
     return null;
   }
