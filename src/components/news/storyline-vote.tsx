@@ -19,10 +19,12 @@ export function StorylineVoteControls({
   storyId,
   score: initialScore,
   myVote: initialVote,
+  layout = "vertical",
 }: {
   storyId: string;
   score: number;
   myVote: StorylineVoteChoice | null;
+  layout?: "vertical" | "horizontal";
 }) {
   const t = useTranslations("newsStories.votes");
   const { promptAuth, authStatus } = useRequireAuth();
@@ -77,7 +79,12 @@ export function StorylineVoteControls({
 
   return (
     <div
-      className="flex w-10 shrink-0 flex-col items-center"
+      className={cn(
+        "flex shrink-0 items-center",
+        layout === "horizontal"
+          ? "border-border bg-background gap-1 rounded-lg border p-1"
+          : "w-10 flex-col",
+      )}
       role="group"
       aria-label={t("scoreLabel")}
     >
@@ -90,6 +97,7 @@ export function StorylineVoteControls({
         disabled={!ready || cast.isPending}
         className={cn(
           "text-muted-foreground",
+          layout === "horizontal" && "size-9",
           myVote === "up" &&
             "bg-primary/15 text-primary hover:bg-primary/15 hover:text-primary",
         )}
@@ -101,7 +109,10 @@ export function StorylineVoteControls({
         />
       </Button>
       <span
-        className="text-foreground py-0.5 font-mono text-sm tabular-nums"
+        className={cn(
+          "text-foreground py-0.5 font-mono text-sm tabular-nums",
+          layout === "horizontal" && "min-w-8 px-1 text-center font-medium",
+        )}
         aria-live="polite"
       >
         <span className="sr-only">{t("scoreLabel")} </span>
@@ -116,6 +127,7 @@ export function StorylineVoteControls({
         disabled={!ready || cast.isPending}
         className={cn(
           "text-muted-foreground",
+          layout === "horizontal" && "size-9",
           myVote === "down" &&
             "bg-info/15 text-info hover:bg-info/15 hover:text-info",
         )}

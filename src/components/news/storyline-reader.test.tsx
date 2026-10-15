@@ -157,3 +157,27 @@ it("explains an incoming relationship with sources from both stories", () => {
     screen.getByRole("link", { name: "AI’s growing electricity demand" }),
   ).toHaveAttribute("href", "/news/stories/energy");
 });
+
+it("keeps contributor credit and agent attribution visible with the story metadata", () => {
+  render(
+    <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+      <StorylineReader
+        story={{
+          ...storyFixture,
+          contributor: { name: "Ada Lovelace", profilePath: "/members/ada" },
+          proposedBy: { name: "Nova" },
+        }}
+        related={[]}
+      />
+    </NextIntlClientProvider>,
+  );
+  expect(screen.getByRole("link", { name: "By Ada Lovelace" })).toHaveAttribute(
+    "href",
+    "/members/ada",
+  );
+  expect(screen.getByText("Research proposed by Nova")).toBeInTheDocument();
+  expect(screen.getByText("3 articles")).toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: "Latest development" }),
+  ).toHaveAttribute("href", "#article-launch");
+});

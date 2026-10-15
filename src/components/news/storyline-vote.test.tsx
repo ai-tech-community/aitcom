@@ -33,11 +33,18 @@ import { toast } from "sonner";
 import { AuthRequiredProvider } from "@/components/auth/auth-required-dialog";
 import { StorylineVoteControls } from "./storyline-vote";
 
-function show(props: { score?: number; myVote?: "up" | "down" | null } = {}) {
+function show(
+  props: {
+    score?: number;
+    myVote?: "up" | "down" | null;
+    layout?: "vertical" | "horizontal";
+  } = {},
+) {
   return render(
     <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
       <AuthRequiredProvider>
         <StorylineVoteControls
+          layout={props.layout ?? "horizontal"}
           storyId="story-1"
           score={props.score ?? 0}
           myVote={props.myVote ?? null}
@@ -123,7 +130,7 @@ it("highlights an up vote and switches it when the other arrow is clicked", () =
     isPending: false,
     error: null,
   };
-  show({ score: 4, myVote: "up" });
+  show({ score: 4, myVote: "up", layout: "vertical" });
   const up = screen.getByRole("button", { name: "Vote up" });
   expect(up).toHaveAttribute("aria-pressed", "true");
   expect(up.className).toContain("text-primary");
