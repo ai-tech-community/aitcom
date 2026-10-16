@@ -198,6 +198,40 @@ describe("atomic storyline saves", () => {
     ).rejects.toMatchObject({ message: "connectionEvidence" });
     expect(mock.writes).toEqual([]);
   });
+
+  it("stamps publishedAt the first time a story is published", async () => {
+    mock.rows = [[article("a"), article("b")]];
+    await saveStoryline(input(), "editor");
+    const write = mock.writes.find((w) => w.table === newsStorylines);
+    expect((write?.value as { publishedAt?: Date }).publishedAt).toBeInstanceOf(
+      Date,
+    );
+  });
+
+  it("does not stamp publishedAt on a draft", async () => {
+    mock.rows = [[]];
+    await saveStoryline(
+      { ...input(), status: "draft", articles: [], overviewEn: "" },
+      "editor",
+    );
+    const write = mock.writes.find((w) => w.table === newsStorylines);
+    expect((write?.value as { publishedAt?: Date | null }).publishedAt).toBe(
+      null,
+    );
+  });
+
+  it("keeps the original publishedAt when a published story is edited", async () => {
+    const publishedAt = new Date("2026-10-01T00:00:00Z");
+    mock.rows = [
+      [{ revision: 1, slug: "local-ai", publishedAt }],
+      [article("a"), article("b")],
+    ];
+    await saveStoryline({ ...input(), id: "s", revision: 1 }, "editor");
+    const write = mock.writes.find((w) => w.table === newsStorylines);
+    expect((write?.value as { publishedAt?: Date }).publishedAt).toBe(
+      publishedAt,
+    );
+  });
 });
 
 it("excludes drafts and insufficient source evidence before pagination", async () => {

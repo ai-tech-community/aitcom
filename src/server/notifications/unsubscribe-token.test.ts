@@ -69,6 +69,27 @@ describe("unsubscribe tokens", () => {
     expect(unsubscribeConfirmStatus(token, null, false)).toBe("invalid");
   });
 
+  it("round-trips a news-story opt-out and rejects an unknown scope", () => {
+    const token = signUnsubscribeToken(
+      { userId: "user-1", scope: "story" },
+      SECRET,
+    );
+    expect(verifyUnsubscribeToken(token, SECRET)).toEqual({
+      userId: "user-1",
+      scope: "story",
+    });
+    const digest = signUnsubscribeToken(
+      { userId: "user-1", scope: "digest" },
+      SECRET,
+    );
+    const body = Buffer.from(
+      JSON.stringify({ u: "user-1", s: "broadcast" }),
+      "utf8",
+    ).toString("base64url");
+    const forged = `${body}.${digest.split(".")[1]}`;
+    expect(verifyUnsubscribeToken(forged, SECRET)).toBeNull();
+  });
+
   it("builds List-Unsubscribe headers without campaign tags", () => {
     const headers = digestListUnsubscribeHeaders("tok_en.sig");
     expect(headers["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");

@@ -15,6 +15,8 @@ export const storyFixture: StorylineDetail = {
   ],
   questionsNl: [],
   status: "published",
+  publishedAt: new Date("2026-10-13"),
+  announcedAt: null,
   revision: 1,
   createdBy: null,
   updatedBy: null,

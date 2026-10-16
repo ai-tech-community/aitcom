@@ -20,6 +20,7 @@ import {
   renderPostMentionText,
   type PostMentionMail,
 } from "@/server/notifications/post-mention-mail-copy";
+import { type StorylineAnnounceEnv } from "@/lib/news/storyline-announce";
 import {
   renderStorylineDraftReviewEmail,
   STORYLINE_TEST_RECIPIENT,
@@ -707,4 +708,59 @@ export async function sendStorylineDraftReviewEmail(
   });
   if (error) throw new Error("Resend rejected the storyline draft email");
   return true;
+}
+
+/**
+ * Tell a member a news story was published. Same gate as draft review:
+ * tests and previews never reach Resend for a member address. Production
+ * emails the real recipient. The only other recipient is greg@klevox.com.
+ */
+export async function sendStorylineAnnounceEmail(
+  to: string,
+  message: {
+    subject: string;
+    html: string;
+    text: string;
+    headers?: Record<string, string>;
+  },
+  env: StorylineAnnounceEnv = {
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    NODE_ENV: process.env.NODE_ENV,
+  },
+): Promise<boolean> {
+  const recipient = storylineMailRecipient(to, env);
+  if (!recipient) return false;
+  if (
+    process.env.NODE_ENV === "test" &&
+    recipient !== STORYLINE_TEST_RECIPIENT
+  ) {
+    throw new Error("Storyline announcement email refused");
+  }
+  const resend = getResend();
+  if (!resend) return false;
+  const payload = {
+    from: FROM_EMAIL,
+    to: recipient,
+    subject: message.subject,
+    html: message.html,
+    text: message.text,
+    headers: message.headers,
+  };
+  const first = await resend.emails.send(payload);
+  if (!first.error) return true;
+  if (first.error.name === "rate_limit_exceeded") {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const retry = await resend.emails.send(payload);
+    if (!retry.error) return true;
+    console.error(
+      "news-storyline-announce: resend rejected the email",
+      retry.error.name,
+    );
+    throw new Error("Resend rejected the storyline announcement");
+  }
+  console.error(
+    "news-storyline-announce: resend rejected the email",
+    first.error.name,
+  );
+  throw new Error("Resend rejected the storyline announcement");
 }

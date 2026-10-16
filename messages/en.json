@@ -3591,6 +3591,18 @@
     "invalidBody": "The link is missing or has been changed. You can still turn the digest off from your notification settings.",
     "settings": "Notification settings"
   },
+  "storyUnsubscribe": {
+    "kicker": "/ NEWS",
+    "metaTitle": "Unsubscribe",
+    "title": "Unsubscribe from news stories",
+    "body": "This stops emails when a news story is published. Other emails stay as they are.",
+    "action": "Unsubscribe",
+    "doneTitle": "You're unsubscribed",
+    "doneBody": "You will not get an email when a news story is published.",
+    "invalidTitle": "This unsubscribe link is not valid",
+    "invalidBody": "The link is missing or has been changed.",
+    "settings": "Notification settings"
+  },
   "broadcast": {
     "title": "Send an announcement",
     "description": "Reach your community's members. Promotional announcements are subject to a Hub-wide weekly limit per member; event reminders to people who registered are always delivered.",
