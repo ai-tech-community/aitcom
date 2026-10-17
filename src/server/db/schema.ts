@@ -4777,6 +4777,12 @@ export const newsItems = appSchema.table(
      * ingest that stored the row sets it. Null is treated as AI.
      */
     sector: d.varchar({ length: 32 }),
+    /**
+     * Whether the title and source excerpt are about AI. Null until ingest
+     * or the backfill cron can tell. Unclear text stays null. False stays
+     * on the public list. Separate from the sector column.
+     */
+    isAi: d.boolean(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -4787,6 +4793,7 @@ export const newsItems = appSchema.table(
     uniqueIndex("news_item_url_idx").on(t.url),
     index("news_item_published_idx").on(t.publishedAt),
     index("news_item_sector_idx").on(t.sector),
+    index("news_item_is_ai_idx").on(t.isAi),
   ],
 );
 

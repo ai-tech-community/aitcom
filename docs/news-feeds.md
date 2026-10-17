@@ -8,7 +8,9 @@ Migration `20261016a_news_sector` adds the columns and `app.community_news_secto
 
 ## Configured feeds
 
-`src/server/news/feeds.ts` lists 38 feeds that answered with RSS or Atom on 13 October 2026. Lab blogs include OpenAI, Google, DeepMind, Nvidia, Hugging Face, Mistral, Microsoft, Apple, Amazon, Berkeley, and MIT News. Tech press includes MIT Technology Review, The Verge, TechCrunch, Wired, Ars Technica, The Register, IEEE Spectrum, The Guardian, the Financial Times, ZDNet, InfoQ, and The Conversation. EU and NL outlets include The Decoder, Le Monde, Sifted, Euronews Next, the European Commission digital feed, the EU AI Act site, t3n, NOS, Tweakers, and Computable. Asia outlets include Rest of World, the South China Morning Post, and The Indian Express.
+`src/server/news/feeds.ts` lists 60 feeds. The original 38 answered with RSS or Atom on 13 October 2026 and are still fetched at the same URLs. Lab blogs include OpenAI, Google, DeepMind, Nvidia, Hugging Face, Mistral, Microsoft, Apple, Amazon, Berkeley, and MIT News. Tech press includes MIT Technology Review, The Verge, TechCrunch, Wired, Ars Technica, The Register, IEEE Spectrum, The Guardian, the Financial Times, ZDNet, InfoQ, and The Conversation. EU and NL outlets include The Decoder, Le Monde, Sifted, Euronews Next, the European Commission digital feed, the EU AI Act site, t3n, NOS, Tweakers, and Computable. Asia outlets include Rest of World, the South China Morning Post, and The Indian Express.
+
+On 15 October 2026, 22 general technology and business feeds also answered with items and https links dated that day: The Verge, TechCrunch, Ars Technica, Wired, MIT Technology Review, The Guardian (technology and business), BBC News (technology and business), Hacker News, The Register, The New York Times (technology and business), CNBC (technology and business), the Financial Times (technology and companies), Bloomberg (technology and markets), The Economist (science and technology, and business), and MarketWatch. A story is stored whether or not it is about AI. `is_ai` is a nullable flag on `app.news_item`: true when the title and source excerpt say so, false when they describe other technology or business, and null when that text does not settle it. Migration `20261017a_news_item_is_ai` only adds the column. It sorts after `20261016a_news_sector`. `/api/cron/news-ai` fills null rows in batches and skips a row that is already true or false.
 
 These addresses did not return a usable feed, so they are not in the list: Anthropic, the Meta AI blog, VentureBeat, and the retired Microsoft AI blog. e27 answered in the October check and then failed in production, so migration `20261013d_drop_e27_feed` deletes that stored row and the cron does not put it back. No current Israeli tech feed responded (Calcalist and The Times of Israel refused the request; NoCamels' newest item was from 2024).
 
@@ -38,7 +40,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
   https://www.aitcommunity.org/api/cron/news-feeds
 ```
 
-The JSON body reports how many new rows were stored and, per feed, how many URLs were sent. The route does not insert placeholder stories. Migration `20261013c_news_feeds` only creates `app.news_feed`. Migration `20261013d_drop_e27_feed` deletes the e27 address from that table.
+The JSON body reports how many new rows were stored and, per feed, how many entries were fetched, how many URLs were sent, and how many rows were inserted. The route does not insert placeholder stories and does not drop a story for being outside AI. Migration `20261013c_news_feeds` only creates `app.news_feed`. Migration `20261013d_drop_e27_feed` deletes the e27 address from that table. Migration `20261017a_news_item_is_ai` adds nullable `is_ai`. `/api/cron/news-ai` runs every 15 minutes and classifies rows that are still null.
 
 ## Submit a verified story
 

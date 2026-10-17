@@ -111,7 +111,7 @@ describe("news table rows", () => {
       { memberSource: "Member rumor" },
     );
     expect(withAuthor?.writer).toBe("Ada");
-    expect(withAuthor?.sourceLabel).toBe("The Verge — AI");
+    expect(withAuthor?.sourceLabel).toBe("The Verge");
     expect(without?.writer).toBe("OpenAI News");
     expect(without?.companies.map((company) => company.id)).toEqual(["openai"]);
     expect(without?.fallbackLogo).toBeNull();
@@ -140,10 +140,41 @@ describe("news table rows", () => {
     expect(rumorRow?.kind).toBe("rumor");
   });
 
-  it("labels every configured feed from its own host", () => {
+  it("labels a feed URL as that feed, including outlets that share a host", () => {
     for (const feed of NEWS_FEEDS) {
       expect(newsSourceFromUrl(feed.url).label).toBe(feed.name);
     }
+    expect(
+      newsSourceFromUrl(
+        "https://www.theverge.com/gadgets/1012134/alienware-deal",
+      ).label,
+    ).toBe("The Verge");
+    expect(
+      newsSourceFromUrl(
+        "https://www.bloomberg.com/news/features/2026-10-15/nscale",
+      ).label,
+    ).toBe("Bloomberg");
+    expect(
+      newsSourceFromUrl("https://www.bbc.co.uk/news/articles/example").label,
+    ).toBe("BBC News");
+    expect(
+      newsSourceFromUrl("https://www.theguardian.com/business/2026/oct/15/kfc")
+        .label,
+    ).toBe("The Guardian");
+    expect(newsSourceFromUrl("https://openai.com/news/item").label).toBe(
+      "OpenAI News",
+    );
+    expect(
+      newsSourceFromUrl("https://news.microsoft.com/source/features/story")
+        .label,
+    ).toBe("Microsoft Source — AI");
+    expect(
+      newsSourceFromUrl("https://www.microsoft.com/en-us/research/blog/note")
+        .label,
+    ).toBe("Microsoft Research");
+    expect(
+      newsSourceFromUrl("https://arstechnica.com/cars/2026/10/prototype").label,
+    ).toBe("Ars Technica");
   });
 });
 
@@ -385,7 +416,7 @@ describe("newsTableFacets and newsTableHref", () => {
     expect(facets.companies.map((company) => company.id)).toContain("openai");
     expect(facets.sources.map((source) => source.label)).toEqual([
       "Member rumor",
-      "The Verge — AI",
+      "The Verge",
     ]);
     expect(facets.writers).toEqual(["Ada", "Ada Lovelace"]);
     expect(newsTableHref(query())).toBe("/news");

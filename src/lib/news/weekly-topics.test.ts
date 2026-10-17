@@ -175,6 +175,23 @@ describe("suggestWeeklyTopics", () => {
     }
   });
 
+  it("keeps a business headline that is not about AI", () => {
+    const topics = suggestWeeklyTopics(
+      [
+        item(
+          "banks",
+          "Banks raise mortgage rates again",
+          "2026-10-14T08:00:00.000Z",
+        ),
+      ],
+      new Set(),
+      NOW,
+    );
+    expect(topics.map((topic) => topic.title)).toEqual([
+      "Banks raise mortgage rates again",
+    ]);
+  });
+
   it("does not invent a topic from a headline that cannot be a slug", () => {
     expect(suggestWeeklyTopics([item("a", "!!!")], new Set(), NOW)).toEqual([]);
   });

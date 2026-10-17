@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
     publishedAt: Date | null;
     summary: string;
     aiSummary?: string | null;
+    isAi?: boolean | null;
   },
   signedIn: false,
   staff: false,
@@ -29,6 +30,7 @@ const state = vi.hoisted(() => ({
     publishedAt: Date | null;
     summary: string;
     aiSummary?: string | null;
+    isAi?: boolean | null;
   }>,
   rumors: [] as Array<{
     id: string;
@@ -342,6 +344,52 @@ describe("news page", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("badges an AI story and leaves other stories untagged", async () => {
+    state.items = [
+      {
+        id: "story-ai",
+        url: "https://example.com/models",
+        title: "OpenAI ships new models",
+        author: "Ada",
+        publishedAt: new Date("2026-10-11T00:00:00.000Z"),
+        summary: "What shipped.",
+        isAi: true,
+      },
+      {
+        id: "story-biz",
+        url: "https://example.com/banks",
+        title: "Banks raise mortgage rates",
+        author: "Bea",
+        publishedAt: new Date("2026-10-12T00:00:00.000Z"),
+        summary: "Profits rose.",
+        isAi: false,
+      },
+      {
+        id: "story-open",
+        url: "https://example.com/bell",
+        title: "What the bell sounded like",
+        author: "Cam",
+        publishedAt: new Date("2026-10-10T00:00:00.000Z"),
+        summary: "A recording.",
+        isAi: null,
+      },
+    ];
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    expect(
+      screen.getAllByText("AI", { selector: "[data-news-ai]" }),
+    ).toHaveLength(1);
+    expect(
+      document
+        .getElementById("news-story-biz")
+        ?.querySelector("[data-news-ai]"),
+    ).toBeNull();
+    expect(
+      document
+        .getElementById("news-story-open")
+        ?.querySelector("[data-news-ai]"),
+    ).toBeNull();
+  });
+
   it("uses the published MIT Technology Review icon, not /favicon.ico", async () => {
     state.items = [
       {
@@ -356,7 +404,7 @@ describe("news page", () => {
     render(await NewsPage({ searchParams: Promise.resolve({}) }));
     expect(
       screen.getByRole("img", {
-        name: "MIT Technology Review — Artificial intelligence",
+        name: "MIT Technology Review",
       }),
     ).toHaveAttribute(
       "src",

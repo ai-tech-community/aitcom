@@ -44,5 +44,8 @@ describe("generateNewsSummary", () => {
     });
     expect(text).toBe("A model wrote this.");
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const body = JSON.stringify(fetchSpy.mock.calls);
+    expect(body).toContain("technology or business news item");
+    expect(body).not.toContain("AI news item");
   });
 });

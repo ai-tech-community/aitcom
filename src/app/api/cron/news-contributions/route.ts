@@ -9,7 +9,9 @@ export const maxDuration = 60;
 /**
  * Credits published stories that already have a contributing member.
  * Safe to run again: a story that already has a published point row is skipped.
- * Vercel calls GET daily with `Authorization: Bearer $CRON_SECRET`.
+ * Topics and credits are taken from the technology and business archive.
+ * A story is not skipped because it is not tagged AI. Vercel calls GET
+ * daily with `Authorization: Bearer $CRON_SECRET`.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;

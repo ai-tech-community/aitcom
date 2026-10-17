@@ -30,6 +30,10 @@
       "schedule": "50 6 * * *"
     },
     {
+      "path": "/api/cron/news-ai",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/news-startup-links",
       "schedule": "40 * * * *"
     },

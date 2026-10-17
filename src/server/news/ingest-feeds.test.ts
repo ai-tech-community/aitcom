@@ -21,8 +21,8 @@ const rss = `<?xml version="1.0"?>
 
 describe("configured news feeds", () => {
   it("lists only https feeds and does not seed stories in the migration", () => {
-    expect(NEWS_FEEDS.length).toBeGreaterThanOrEqual(30);
-    expect(NEWS_FEEDS.length).toBeLessThanOrEqual(40);
+    expect(NEWS_FEEDS.length).toBe(60);
+    expect(NEWS_FEEDS.length).toBeLessThanOrEqual(80);
     expect(new Set(NEWS_FEEDS.map((feed) => feed.url)).size).toBe(
       NEWS_FEEDS.length,
     );

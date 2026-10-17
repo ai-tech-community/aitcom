@@ -45,6 +45,8 @@ export type NewsStoryInput = {
   summary: string;
   /** Stored TL;DR from ingest. Absent or blank falls back to `summary`. */
   aiSummary?: string | null;
+  /** True, false, or null when the story is still untagged. */
+  isAi?: boolean | null;
 };
 
 export type NewsRumorInput = {
@@ -73,6 +75,8 @@ export type NewsTableRow = {
   companies: NewsMatchCompany[];
   fallbackLogo: string | null;
   hidden: boolean;
+  /** Set on a collected story. Rumors stay untagged. */
+  isAi?: boolean | null;
 };
 
 const collator = new Intl.Collator(undefined, {
@@ -80,13 +84,76 @@ const collator = new Intl.Collator(undefined, {
   numeric: true,
 });
 
+/**
+ * Feed hosts such as `feeds.bloomberg.com` and `rss.nytimes.com` publish
+ * stories on the parent site. BBC articles use bbc.co.uk / bbc.com while
+ * the feed host is bbci.co.uk.
+ */
+export function newsComparableHost(host: string): string {
+  const stripped = host.replace(/^(?:feeds|rss)\./, "");
+  if (
+    stripped === "bbci.co.uk" ||
+    stripped === "bbc.co.uk" ||
+    stripped === "bbc.com"
+  ) {
+    return "bbc.co.uk";
+  }
+  return stripped;
+}
+
+function mergeOutletName(current: string, next: string): string {
+  const general = [current, next].filter((name) => !name.includes(" — "));
+  if (general.length > 0) {
+    return general.reduce((shortest, name) =>
+      name.length < shortest.length ? name : shortest,
+    );
+  }
+  const left = current.split(" — ")[0]?.trim() ?? current;
+  const right = next.split(" — ")[0]?.trim() ?? next;
+  return left === right ? left : current;
+}
+
+/**
+ * One label per publication. A section feed and a general feed on the same
+ * host share that label, so a gadgets story is not shown as the AI section.
+ * The feed URL itself still uses the feed's own name via `newsSourceFromUrl`.
+ */
+export function newsOutletLabels(): Array<{ host: string; name: string }> {
+  const rows: Array<{ host: string; name: string }> = [];
+  const index = new Map<string, number>();
+  for (const feed of NEWS_FEEDS) {
+    const raw = newsHostname(feed.url);
+    if (!raw) continue;
+    const host = newsComparableHost(raw);
+    const at = index.get(host);
+    if (at === undefined) {
+      index.set(host, rows.length);
+      rows.push({ host, name: feed.name });
+      continue;
+    }
+    const current = rows[at];
+    if (!current) continue;
+    current.name = mergeOutletName(current.name, feed.name);
+  }
+  return rows;
+}
+
 export function newsSourceFromUrl(url: string): { key: string; label: string } {
   const host = newsHostname(url);
   if (!host) return { key: "host:unknown", label: "" };
-  for (const feed of NEWS_FEEDS) {
-    const feedHost = newsHostname(feed.url);
-    if (feedHost && (host === feedHost || host.endsWith(`.${feedHost}`))) {
-      return { key: `feed:${feedHost}`, label: feed.name };
+  const exact = NEWS_FEEDS.find((feed) => feed.url === url);
+  if (exact) {
+    const feedHost = newsHostname(exact.url);
+    if (feedHost) return { key: `feed:${feedHost}`, label: exact.name };
+  }
+  const comparable = newsComparableHost(host);
+  for (const outlet of newsOutletLabels()) {
+    if (
+      host === outlet.host ||
+      host.endsWith(`.${outlet.host}`) ||
+      comparable === outlet.host
+    ) {
+      return { key: `feed:${outlet.host}`, label: outlet.name };
     }
   }
   return { key: `host:${host}`, label: host };
@@ -148,6 +215,7 @@ export function buildNewsTableRows(
       companies,
       fallbackLogo: companies.length > 0 ? null : newsSourceLogoUrl(story.url),
       hidden: false,
+      isAi: story.isAi === true ? true : story.isAi === false ? false : null,
     };
   });
   for (const row of storyRows) {

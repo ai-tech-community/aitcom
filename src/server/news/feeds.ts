@@ -1,16 +1,28 @@
 /**
- * Reputable AI news feeds. Each URL was fetched on 13 October 2026 and
- * parsed as RSS or Atom. The news table stays empty until a run of
- * `GET /api/cron/news-feeds` fetches these. Nothing here is invented copy.
+ * Technology and business news feeds, including the original AI sections.
+ * Each URL was fetched and parsed as RSS or Atom. The news table stays
+ * empty until a run of `GET /api/cron/news-feeds` fetches these. Nothing
+ * here is invented copy. Article links stay the ones the feed published.
  *
- * Feeds that did not return a usable document were left out: Anthropic
- * (404), the Meta AI blog (404), VentureBeat (429), and the old Microsoft
- * AI blog (410). e27 (https://e27.co/feed/) answered here and then failed
- * in production, so it is not listed. A few others parsed but had not
+ * The first 38 addresses were checked on 13 October 2026. Feeds that did
+ * not return a usable document were left out then: Anthropic (404), the
+ * Meta AI blog (404), VentureBeat (429), and the old Microsoft AI blog
+ * (410). e27 (https://e27.co/feed/) answered here and then failed in
+ * production, so it is not listed. A few others parsed but had not
  * published in more than a year, so they are not in this list either.
+ *
+ * General technology and business addresses were checked on 15 October
+ * 2026 with the same `AIT-news-feeds` user agent the cron sends. Each one
+ * below returned a document with items and https links dated that day.
+ * MarketWatch's old `/rss/topstories` address now redirects to a host that
+ * answers 400, so the list uses the Dow Jones RSS that answered 200.
+ * Left out of that check: Reuters (401), the Wall Street Journal feeds
+ * (newest item still January 2025), VentureBeat (429), the Associated
+ * Press and Les Echos (403), and Het Financieele Dagblad (404).
  *
  * More specific hosts come before their parent (news.microsoft.com before
  * microsoft.com) so a story keeps the label of the feed that published it.
+ * Existing URLs are unchanged. New outlets are appended.
  */
 export const NEWS_FEEDS = [
   {
@@ -164,6 +176,94 @@ export const NEWS_FEEDS = [
   {
     name: "The Indian Express — Artificial intelligence",
     url: "https://indianexpress.com/section/technology/artificial-intelligence/feed/",
+  },
+  {
+    name: "The Verge",
+    url: "https://www.theverge.com/rss/index.xml",
+  },
+  {
+    name: "TechCrunch",
+    url: "https://techcrunch.com/feed/",
+  },
+  {
+    name: "Ars Technica",
+    url: "https://feeds.arstechnica.com/arstechnica/index",
+  },
+  {
+    name: "Wired",
+    url: "https://www.wired.com/feed/rss",
+  },
+  {
+    name: "MIT Technology Review",
+    url: "https://www.technologyreview.com/feed/",
+  },
+  {
+    name: "The Guardian — Technology",
+    url: "https://www.theguardian.com/technology/rss",
+  },
+  {
+    name: "BBC News — Technology",
+    url: "https://feeds.bbci.co.uk/news/technology/rss.xml",
+  },
+  {
+    name: "Hacker News",
+    url: "https://news.ycombinator.com/rss",
+  },
+  {
+    name: "The Register",
+    url: "https://www.theregister.com/headlines.atom",
+  },
+  {
+    name: "The New York Times — Technology",
+    url: "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+  },
+  {
+    name: "CNBC — Technology",
+    url: "https://www.cnbc.com/id/19854910/device/rss/rss.html",
+  },
+  {
+    name: "Financial Times — Technology",
+    url: "https://www.ft.com/technology?format=rss",
+  },
+  {
+    name: "Bloomberg — Technology",
+    url: "https://feeds.bloomberg.com/technology/news.rss",
+  },
+  {
+    name: "The Economist — Science and technology",
+    url: "https://www.economist.com/science-and-technology/rss.xml",
+  },
+  {
+    name: "BBC News — Business",
+    url: "https://feeds.bbci.co.uk/news/business/rss.xml",
+  },
+  {
+    name: "The Guardian — Business",
+    url: "https://www.theguardian.com/business/rss",
+  },
+  {
+    name: "The New York Times — Business",
+    url: "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+  },
+  {
+    name: "Financial Times — Companies",
+    url: "https://www.ft.com/companies?format=rss",
+  },
+  {
+    name: "The Economist — Business",
+    url: "https://www.economist.com/business/rss.xml",
+  },
+  {
+    name: "CNBC — Business",
+    url: "https://www.cnbc.com/id/10001147/device/rss/rss.html",
+  },
+  {
+    name: "Bloomberg — Markets",
+    url: "https://feeds.bloomberg.com/markets/news.rss",
+  },
+  {
+    name: "MarketWatch — Top stories",
+    url: "https://feeds.content.dowjones.io/public/rss/mw_topstories",
   },
 ] as const;
 

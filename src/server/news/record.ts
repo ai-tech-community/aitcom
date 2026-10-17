@@ -1,5 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
+import { classifyNewsAi } from "@/lib/news/news-ai";
+import { parseNewsSector, type NewsSector } from "@/lib/news/sectors";
 import { db } from "@/server/db";
 import { newsItems } from "@/server/db/schema";
 
@@ -8,24 +10,46 @@ import {
   type IngestNewsOptions,
   type NewsIngestDb,
 } from "./ingest";
+import { isMissingNewsAiColumn } from "./item-ai";
+import { assignNewsItemSectors } from "./sectors";
 import { generateNewsSummary } from "./summary";
 import { linkIngestedNewsItems } from "./startup-links";
-import { parseNewsSector, type NewsSector } from "@/lib/news/sectors";
-import { assignNewsItemSectors } from "./sectors";
+
+type StoredNewsRow = {
+  url: string;
+  title: string;
+  author: string | null;
+  publishedAt: Date | null;
+  summary: string;
+  isAi?: boolean | null;
+};
+
+async function insertNewsRows(rows: StoredNewsRow[]) {
+  return db
+    .insert(newsItems)
+    .values(rows)
+    .onConflictDoNothing({ target: newsItems.url })
+    .returning({
+      id: newsItems.id,
+      url: newsItems.url,
+      title: newsItems.title,
+      summary: newsItems.summary,
+    });
+}
 
 const store: NewsIngestDb = {
   async insertNew(rows) {
     if (rows.length === 0) return [];
-    return db
-      .insert(newsItems)
-      .values(rows)
-      .onConflictDoNothing({ target: newsItems.url })
-      .returning({
-        id: newsItems.id,
-        url: newsItems.url,
-        title: newsItems.title,
-        summary: newsItems.summary,
-      });
+    const tagged = rows.map((row) => ({
+      ...row,
+      isAi: classifyNewsAi(row.title, row.summary),
+    }));
+    try {
+      return await insertNewsRows(tagged);
+    } catch (error) {
+      if (!isMissingNewsAiColumn(error)) throw error;
+      return insertNewsRows(rows);
+    }
   },
   async saveSummary(id, aiSummary) {
     await db
@@ -68,16 +92,24 @@ function sectorGroups(
 }
 
 /** Store feed rows the first time they are seen, and summarize those rows then. */
-export async function recordFeedNews(
+export async function recordFeedNewsResult(
   items: readonly Record<string, unknown>[],
   options?: IngestNewsOptions,
-): Promise<number> {
-  const inserted = await ingestNewsItems(
+): Promise<{ inserted: number; urls: string[] }> {
+  const result = await ingestNewsItems(
     store,
     items,
     generateNewsSummary,
     options,
   );
   await assignNewsItemSectors(sectorGroups(items));
-  return inserted;
+  return result;
+}
+
+/** Store feed rows the first time they are seen, and summarize those rows then. */
+export async function recordFeedNews(
+  items: readonly Record<string, unknown>[],
+  options?: IngestNewsOptions,
+): Promise<number> {
+  return (await recordFeedNewsResult(items, options)).inserted;
 }

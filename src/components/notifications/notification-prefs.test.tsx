@@ -167,7 +167,7 @@ describe("NotificationPrefs", () => {
     expect(
       screen.getByRole("heading", { level: 3, name: "Weekly digest" }),
     ).toBeTruthy();
-    expect(screen.getByRole("checkbox", { name: "AI news" })).toHaveAttribute(
+    expect(screen.getByRole("checkbox", { name: "News" })).toHaveAttribute(
       "aria-checked",
       "false",
     );
@@ -199,7 +199,7 @@ describe("NotificationPrefs", () => {
     state.prefs = loaded({ ...PREFS, globalDigestOptOut: true });
     renderPrefs();
 
-    expect(screen.getByRole("checkbox", { name: "AI news" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "News" })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Startups" })).toBeDisabled();
     expect(
       screen.getByText("Turn the weekly digest on to choose sections."),

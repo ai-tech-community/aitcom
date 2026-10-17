@@ -8,7 +8,9 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /**
- * Fetches the configured AI news feeds and stores new article URLs.
+ * Fetches the configured technology and business news feeds and stores new
+ * article URLs. AI sections stay in the list. A story is not dropped
+ * because it is not about AI.
  *
  * The news table is empty until this runs. Vercel calls GET once a day
  * (see vercel.json) and sends `Authorization: Bearer $CRON_SECRET`.
