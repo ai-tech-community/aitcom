@@ -23,7 +23,7 @@ export type FeedIngestResult = {
 };
 
 export type IngestFeedsDeps = {
-  feeds: readonly { name: string; url: string }[];
+  feeds: readonly { name: string; url: string; sector?: string }[];
   fetchXml: (url: string) => Promise<string>;
   record: (
     items: readonly Record<string, unknown>[],
@@ -102,7 +102,7 @@ export async function ingestFeeds(
     for (const entry of row.entries) {
       if (!entry.url || seen.has(entry.url)) continue;
       seen.add(entry.url);
-      items.push(entry);
+      items.push({ ...entry, sector: row.feed.sector ?? "ai" });
       count += 1;
     }
     feeds.push({

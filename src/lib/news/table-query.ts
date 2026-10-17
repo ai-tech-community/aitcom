@@ -1,3 +1,5 @@
+import { parseNewsSector, type NewsSector } from "@/lib/news/sectors";
+
 /**
  * URL state for /news. This module stays free of server imports so the
  * filter bar can build the same hrefs without pulling the table renderer
@@ -20,6 +22,8 @@ export type NewsTableQuery = {
   sort: NewsTableSort;
   page: number;
   story: string;
+  /** Empty string is the unfiltered news page. */
+  sector: NewsSector | "";
 };
 
 /** Exact writer filter value: the name shown in the Writer cell, trimmed and capped. */
@@ -40,6 +44,7 @@ export function parseNewsTableQuery(raw: {
   sort?: string | string[];
   page?: string | string[] | number;
   story?: string | string[];
+  sector?: string | string[];
 }): NewsTableQuery {
   const q = (first(raw.q) ?? "").trim().replace(/\s+/g, " ").slice(0, 200);
   const typeRaw = (first(raw.type) ?? "").trim().toLowerCase();
@@ -64,6 +69,7 @@ export function parseNewsTableQuery(raw: {
     sort,
     page,
     story: (first(raw.story) ?? "").trim().slice(0, 255),
+    sector: parseNewsSector(first(raw.sector)) ?? "",
   };
 }
 
@@ -81,6 +87,7 @@ export function newsTableHref(
   if (next.sort !== "date") params.set("sort", next.sort);
   if (next.page > 1) params.set("page", String(next.page));
   if (next.story) params.set("story", next.story);
+  if (next.sector) params.set("sector", next.sector);
   const qs = params.toString();
   return qs ? `/news?${qs}` : "/news";
 }

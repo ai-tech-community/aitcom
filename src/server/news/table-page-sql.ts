@@ -128,8 +128,16 @@ function blankAuthorWriterPossible(writer: string): boolean {
   return writer.includes(".") && !/\s/.test(writer);
 }
 
+/** AI includes rows the cron has not tagged yet. Other sectors match exactly. */
+function itemSectorWhere(sector: NewsTableQuery["sector"]): SQL | null {
+  if (!sector) return null;
+  if (sector === "ai") return sql`("sector" = 'ai' OR "sector" IS NULL)`;
+  return sql`"sector" = ${sector}`;
+}
+
 function storyWheres(query: NewsTableQuery): SQL[] {
   if (query.type === "rumor") return [];
+  const sector = itemSectorWhere(query.sector);
   const writers: Array<SQL | null> = query.writer
     ? [
         sql`${authorNormSql()} = ${query.writer}`,
@@ -141,7 +149,7 @@ function storyWheres(query: NewsTableQuery): SQL[] {
   const wheres: SQL[] = [];
   for (const writer of writers) {
     for (const search of storySearchArms(query)) {
-      wheres.push(andSql([writer, search]));
+      wheres.push(andSql([writer, search, sector]));
     }
   }
   return wheres;
@@ -152,6 +160,7 @@ function rumorWheres(
   includeHiddenRumors: boolean,
 ): SQL[] {
   if (query.type === "verified") return [];
+  if (query.sector && query.sector !== "ai") return [];
   const hidden = includeHiddenRumors ? null : sql`"hidden_at" IS NULL`;
   const writer = query.writer
     ? sql`${submitterNormSql()} = ${query.writer}`
@@ -304,14 +313,20 @@ function fastCountSql(
   includeHiddenRumors: boolean,
 ): SQL {
   const parts: SQL[] = [];
+  const sector = itemSectorWhere(query.sector);
   if (query.type !== "rumor") {
-    parts.push(sql`(SELECT count(*) FROM "app"."news_item")`);
+    parts.push(
+      sector
+        ? sql`(SELECT count(*) FROM "app"."news_item" WHERE ${sector})`
+        : sql`(SELECT count(*) FROM "app"."news_item")`,
+    );
   }
-  if (query.type !== "verified") {
+  if (query.type !== "verified" && (!query.sector || query.sector === "ai")) {
     parts.push(
       sql`(SELECT count(*) FROM "app"."news_rumor" WHERE "hidden_at" IS NULL OR ${includeHiddenRumors})`,
     );
   }
+  if (parts.length === 0) return sql`SELECT 0::int AS total`;
   return sql`SELECT (${sql.join(parts, sql` + `)})::int AS total`;
 }
 
@@ -322,6 +337,7 @@ function fastSliceSql(input: {
   offset: number;
 }): SQL {
   const branches: SQL[] = [];
+  const sector = itemSectorWhere(input.query.sector);
   if (input.query.type !== "rumor") {
     branches.push(sql`
       SELECT
@@ -336,9 +352,13 @@ function fastSliceSql(input: {
         ''::text AS body,
         NULL::timestamp with time zone AS hidden_at
       FROM "app"."news_item"
+      ${sector ? sql`WHERE ${sector}` : sql``}
     `);
   }
-  if (input.query.type !== "verified") {
+  if (
+    input.query.type !== "verified" &&
+    (!input.query.sector || input.query.sector === "ai")
+  ) {
     branches.push(sql`
       SELECT
         'rumor'::text,
@@ -354,6 +374,23 @@ function fastSliceSql(input: {
       FROM "app"."news_rumor"
       WHERE "hidden_at" IS NULL OR ${input.includeHiddenRumors}
     `);
+  }
+  if (branches.length === 0) {
+    return sql`
+      SELECT
+        'story'::text AS kind,
+        ''::varchar AS id,
+        ''::text AS url,
+        ''::text AS title,
+        ''::text AS author,
+        NULL::timestamp with time zone AS published_at,
+        ''::text AS summary,
+        NULL::text AS ai_summary,
+        ''::text AS body,
+        NULL::timestamp with time zone AS hidden_at
+      WHERE false
+      LIMIT ${input.limit} OFFSET ${input.offset}
+    `;
   }
   return sql`
     SELECT

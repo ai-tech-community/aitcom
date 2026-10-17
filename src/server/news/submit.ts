@@ -1,4 +1,5 @@
 import { parseFeed, NotAFeedError } from "@/server/collectors/helpers/feed";
+import { parseNewsSector } from "@/lib/news/sectors";
 
 import { newsArticleUrl } from "./draft";
 
@@ -85,12 +86,13 @@ export type AddFeedResult =
 
 /** Add a feed after checking that it returns RSS or Atom. Duplicate URLs stay as they are. */
 export async function addVerifiedNewsFeed(
-  input: { name?: unknown; url?: unknown },
+  input: { name?: unknown; url?: unknown; sector?: unknown },
   deps: {
     fetchXml: (url: string) => Promise<string>;
     insert: (feed: {
       name: string;
       url: string;
+      sector?: string | null;
     }) => Promise<"inserted" | "duplicate">;
   },
 ): Promise<AddFeedResult> {
@@ -115,7 +117,23 @@ export async function addVerifiedNewsFeed(
         : "The feed could not be read.";
     return { ok: false, status: 422, error };
   }
-  const outcome = await deps.insert({ name, url });
+  let sector: string | null = null;
+  if (
+    input.sector !== undefined &&
+    input.sector !== null &&
+    input.sector !== ""
+  ) {
+    const parsed = parseNewsSector(input.sector);
+    if (!parsed) {
+      return {
+        ok: false,
+        status: 400,
+        error: "sector is not a known news sector.",
+      };
+    }
+    sector = parsed;
+  }
+  const outcome = await deps.insert({ name, url, sector });
   return { ok: true, inserted: outcome === "inserted", name, url };
 }
 

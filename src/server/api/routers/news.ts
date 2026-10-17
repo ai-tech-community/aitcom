@@ -63,6 +63,7 @@ import {
   searchStorylineArticles,
   StorylineError,
 } from "@/server/news/storylines";
+import { listCommunityNewsBySlug } from "@/server/news/sectors";
 
 const storylineStaffProcedure = protectedProcedure.use(
   async ({ ctx, next }) => {
@@ -73,6 +74,9 @@ const storylineStaffProcedure = protectedProcedure.use(
 );
 
 export const newsRouter = createTRPCRouter({
+  communityStories: publicProcedure
+    .input(z.object({ slug: z.string().trim().min(1).max(200) }))
+    .query(({ input }) => listCommunityNewsBySlug(input.slug)),
   listStorylineResearch: publicProcedure.query(() => listStorylineResearch()),
   storylineCoverage: publicProcedure
     .input(reserveStorylineSchema.pick({ topicKey: true }))

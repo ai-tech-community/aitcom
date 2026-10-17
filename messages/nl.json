@@ -2896,7 +2896,11 @@
       "rituals": "Rituelen",
       "referrals": "Verwijzingen",
       "membersSentence": "{count, plural, one {# lid} other {# leden}}",
-      "activeSentence": "{count} actief deze week"
+      "activeSentence": "{count} actief deze week",
+      "news": "Nieuws",
+      "newsAll": "Al het {sector}-nieuws",
+      "newsEmpty": "Voor {sector} zijn nog geen nieuwsfeeds gekoppeld. Hier wordt niets verzonnen.",
+      "newsNoStories": "Nog geen berichten uit de {sector}-feeds."
     },
     "manage": {
       "settings": "Instellingen",
@@ -2925,6 +2929,8 @@
       "feedPolicyAdminsOnly": "Alleen beheerders",
       "listedInDirectory": "Zichtbaar in overzicht",
       "listedInDirectoryDescription": "Deze community tonen in het publieke overzicht",
+      "newsSector": "Nieuwssector",
+      "newsSectorDescription": "Berichten op deze community komen uit deze sector. Alleen echte feeds, elk met een link naar de bron.",
       "role": "Rol",
       "actions": "Acties",
       "ban": "Blokkeren",
@@ -4450,7 +4456,19 @@
     "noMatches": "Geen overeenkomende verhalen.",
     "resultCount": "{count, plural, one {# resultaat} other {# resultaten}}",
     "pagination": "Paginering",
-    "tableCaption": "AI-nieuws en ledengeruchten"
+    "tableCaption": "AI-nieuws en ledengeruchten",
+    "sectorLabel": "Sector",
+    "sectorAll": "Alle sectoren",
+    "clearSector": "Sector {name} wissen",
+    "sectorEmpty": "Voor {sector} zijn nog geen nieuwsfeeds gekoppeld. Hier wordt niets verzonnen."
+  },
+  "newsSectors": {
+    "ai": "AI",
+    "sports": "Sport",
+    "expat": "Expats en verhuizen",
+    "local_business": "Lokaal ondernemerschap",
+    "tech": "Tech",
+    "other": "Overig"
   },
   "newsStories": {
     "title": "Lopende verhalen",

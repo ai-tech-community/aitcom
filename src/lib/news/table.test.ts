@@ -53,6 +53,7 @@ function query(overrides: Partial<NewsTableQuery> = {}): NewsTableQuery {
     sort: "date",
     page: 1,
     story: "",
+    sector: "",
     ...overrides,
   };
 }

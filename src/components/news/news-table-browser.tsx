@@ -70,6 +70,7 @@ export function NewsTableBrowser({
   sources,
   companies,
   writers,
+  sectors = [],
   resultCount,
   loadingLabel,
   filtersLabel,
@@ -85,6 +86,7 @@ export function NewsTableBrowser({
   sources: Option[];
   companies: Option[];
   writers: Option[];
+  sectors?: Option[];
   resultCount: string;
   loadingLabel: string;
   filtersLabel: string;
@@ -106,6 +108,8 @@ export function NewsTableBrowser({
     companyAll: string;
     writer: string;
     writerAll: string;
+    sector: string;
+    sectorAll: string;
     sort: string;
     sortDate: string;
     sortTitle: string;
@@ -153,7 +157,7 @@ export function NewsTableBrowser({
   }
 
   function onSelect(
-    key: "type" | "source" | "company" | "writer" | "sort",
+    key: "type" | "source" | "company" | "writer" | "sort" | "sector",
     value: string,
   ) {
     go(
@@ -178,6 +182,7 @@ export function NewsTableBrowser({
             source: formText(data, "source"),
             company: formText(data, "company"),
             writer: formText(data, "writer"),
+            sector: formText(data, "sector"),
             sort: formText(data, "sort"),
             story: query.story,
             page: 1,
@@ -238,6 +243,14 @@ export function NewsTableBrowser({
           value={query.writer}
           onChange={(value) => onSelect("writer", value)}
           options={[{ value: "", label: labels.writerAll }, ...writers]}
+        />
+        <SelectField
+          id="news-sector"
+          name="sector"
+          label={labels.sector}
+          value={query.sector}
+          onChange={(value) => onSelect("sector", value)}
+          options={[{ value: "", label: labels.sectorAll }, ...sectors]}
         />
         <SelectField
           id="news-sort"
