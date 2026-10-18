@@ -20,7 +20,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NewsSection } from "@/components/news/news-section";
-import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
 import {
   newsTableFacets,
@@ -345,18 +344,8 @@ export default async function NewsPage({
       label={t("tabsLabel")}
       news={t("tabNews")}
       stories={t("tabStories")}
-    >
-      <SectionLabel>{t("kicker")}</SectionLabel>
-      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl text-base leading-relaxed">
-            {t("description")}
-          </p>
-        </div>
-        <div className="shrink-0">
+      actions={
+        <>
           {session?.user ? (
             <NewsRumorDialog
               label={t("formTitle")}
@@ -370,8 +359,10 @@ export default async function NewsPage({
               {t("signIn")}
             </Link>
           )}
-        </div>
-      </div>
+        </>
+      }
+    >
+      <h1 className="sr-only">{t("title")}</h1>
 
       {items.length === 0 && loaded.total === 0 && !filtered ? (
         <p className="text-muted-foreground mt-8 text-sm">{t("empty")}</p>
@@ -394,6 +385,8 @@ export default async function NewsPage({
           resultCount={t("resultCount", { count: loaded.total })}
           loadingLabel={t("loadingResults")}
           filtersLabel={t("filtersLabel")}
+          filtersToggleLabel={t("filtersToggle")}
+          filtersButtonLabel={t("filtersButton")}
           chips={chips}
           clearHref={newsTableHref(query, {
             q: "",

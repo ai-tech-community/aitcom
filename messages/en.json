@@ -4440,6 +4440,8 @@
     "clearSource": "Clear source {name}",
     "clearCompany": "Clear company {name}",
     "filtersLabel": "Active filters",
+    "filtersButton": "Filters",
+    "filtersToggle": "Filters & sort",
     "loadingResults": "Loading results",
     "invalidUrl": "Enter a full http or https link.",
     "titleShort": "Title needs at least 3 characters.",

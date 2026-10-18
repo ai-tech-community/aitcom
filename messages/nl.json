@@ -4440,6 +4440,8 @@
     "clearSource": "Bron {name} wissen",
     "clearCompany": "Bedrijf {name} wissen",
     "filtersLabel": "Actieve filters",
+    "filtersButton": "Filters",
+    "filtersToggle": "Filters en sortering",
     "loadingResults": "Resultaten laden",
     "invalidUrl": "Vul een volledige http- of https-link in.",
     "titleShort": "De titel moet minstens 3 tekens zijn.",

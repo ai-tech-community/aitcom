@@ -51,27 +51,17 @@ export default async function StoriesPage({
       label={tabs("tabsLabel")}
       news={tabs("tabNews")}
       stories={tabs("tabStories")}
+      actions={<StoryContributeDialog />}
     >
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
-        <div>
-          <h1 className="text-4xl font-semibold tracking-tight">
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground mt-3 text-lg">{t("intro")}</p>
-        </div>
-        <div className="self-start sm:self-auto">
-          <StoryContributeDialog />
-        </div>
-      </header>
-      <form method="get" className="mt-8 mb-6 flex items-end gap-3">
+      <h1 className="sr-only">{t("title")}</h1>
+      <form method="get" className="mb-4 flex items-end gap-3">
         <label className="min-w-0 flex-1 text-sm">
-          <span>{t("search")}</span>
+          <span className="sr-only">{t("search")}</span>
           <Input
             name="q"
             defaultValue={q}
             placeholder={t("searchHint")}
             maxLength={200}
-            className="mt-2"
           />
         </label>
         <Button type="submit" variant="outline">
