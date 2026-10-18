@@ -171,6 +171,8 @@ it("leads with published stories and keeps contribution tools off the reader ind
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
     en.newsStories.title,
   );
+  expect(screen.getByRole("heading", { level: 1 })).toHaveClass("sr-only");
+  expect(screen.queryByText(en.newsStories.intro)).not.toBeInTheDocument();
   expect(
     screen.getByRole("textbox", { name: en.newsStories.search }),
   ).toBeInTheDocument();

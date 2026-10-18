@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createTranslator } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -285,6 +285,35 @@ describe("news page", () => {
     expect(stories).not.toHaveAttribute("aria-current");
     expect(stories.className).not.toContain("border-primary");
     expect(news.className).toContain("border-foreground");
+  });
+
+  it("keeps the heading accessible without repeating it visually", async () => {
+    render(await NewsPage({ searchParams: Promise.resolve({}) }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveClass("sr-only");
+    expect(screen.queryByText(en.newsPage.description)).not.toBeInTheDocument();
+    expect(screen.getAllByText(en.newsPage.kicker)).toHaveLength(1);
+  });
+
+  it("opens mobile filters on demand and preserves URL selections", async () => {
+    render(
+      await NewsPage({
+        searchParams: Promise.resolve({ type: "rumor", sort: "title" }),
+      }),
+    );
+    const toggle = screen.getByRole("button", { name: /Filters & sort/ });
+    const fields = document.getElementById(
+      toggle.getAttribute("aria-controls")!,
+    );
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveTextContent("1");
+    expect(fields).toHaveClass("hidden");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(fields).not.toHaveClass("hidden");
+    expect(screen.getByLabelText("Type")).toHaveValue("rumor");
+    expect(screen.getByLabelText("Sort")).toHaveValue("title");
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 
   it("keeps storytelling off the news table", async () => {

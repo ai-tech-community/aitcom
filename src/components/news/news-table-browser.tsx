@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { SlidersHorizontal } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +76,8 @@ export function NewsTableBrowser({
   resultCount,
   loadingLabel,
   filtersLabel,
+  filtersToggleLabel,
+  filtersButtonLabel,
   chips,
   clearHref,
   filtered,
@@ -90,6 +94,8 @@ export function NewsTableBrowser({
   resultCount: string;
   loadingLabel: string;
   filtersLabel: string;
+  filtersToggleLabel: string;
+  filtersButtonLabel: string;
   chips: NewsFilterChip[];
   clearHref: string;
   filtered: boolean;
@@ -119,6 +125,8 @@ export function NewsTableBrowser({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilterCount = chips.filter((chip) => chip.id !== "q").length;
   const [search, setSearch] = useState(query.q);
   const queryRef = useRef(query);
   const timer = useRef<number | null>(null);
@@ -172,7 +180,7 @@ export function NewsTableBrowser({
     <>
       <form
         method="get"
-        className="mt-8 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end"
+        className="flex flex-wrap items-end gap-3"
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -187,6 +195,7 @@ export function NewsTableBrowser({
             story: query.story,
             page: 1,
           });
+          setFiltersOpen(false);
           go(newsTableHref(next));
         }}
       >
@@ -196,7 +205,7 @@ export function NewsTableBrowser({
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 lg:min-w-56">
           <label
             htmlFor="news-q"
-            className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
+            className="text-muted-foreground sr-only font-mono text-xs tracking-wider uppercase lg:not-sr-only"
           >
             {labels.search}
           </label>
@@ -208,87 +217,109 @@ export function NewsTableBrowser({
             onChange={(event) => onSearch(event.target.value)}
           />
         </div>
-        <SelectField
-          id="news-type"
-          name="type"
-          label={labels.type}
-          value={query.type}
-          onChange={(value) => onSelect("type", value)}
-          options={[
-            { value: "all", label: labels.typeAll },
-            { value: "verified", label: labels.typeVerified },
-            { value: "rumor", label: labels.typeRumor },
-          ]}
-        />
-        <SelectField
-          id="news-source"
-          name="source"
-          label={labels.source}
-          value={query.source}
-          onChange={(value) => onSelect("source", value)}
-          options={[{ value: "", label: labels.sourceAll }, ...sources]}
-        />
-        <SelectField
-          id="news-company"
-          name="company"
-          label={labels.company}
-          value={query.company}
-          onChange={(value) => onSelect("company", value)}
-          options={[{ value: "", label: labels.companyAll }, ...companies]}
-        />
-        <SelectField
-          id="news-writer"
-          name="writer"
-          label={labels.writer}
-          value={query.writer}
-          onChange={(value) => onSelect("writer", value)}
-          options={[{ value: "", label: labels.writerAll }, ...writers]}
-        />
-        <SelectField
-          id="news-sector"
-          name="sector"
-          label={labels.sector}
-          value={query.sector}
-          onChange={(value) => onSelect("sector", value)}
-          options={[{ value: "", label: labels.sectorAll }, ...sectors]}
-        />
-        <SelectField
-          id="news-sort"
-          name="sort"
-          label={labels.sort}
-          value={query.sort}
-          onChange={(value) => onSelect("sort", value as NewsTableSort)}
-          options={[
-            { value: "date", label: labels.sortDate },
-            { value: "title", label: labels.sortTitle },
-            { value: "source", label: labels.sortSource },
-          ]}
-        />
-        <Button type="submit" variant="outline">
-          {applyLabel}
+        <Button
+          type="button"
+          variant="outline"
+          className="lg:hidden"
+          aria-label={`${filtersToggleLabel}${activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}`}
+          aria-expanded={filtersOpen}
+          aria-controls="news-filter-fields"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <SlidersHorizontal className="size-4" aria-hidden="true" />
+          {filtersButtonLabel}
+          {activeFilterCount > 0 ? (
+            <span className="bg-muted rounded-full px-1.5 text-xs tabular-nums">
+              {activeFilterCount}
+            </span>
+          ) : null}
         </Button>
-        {filtered ? (
-          <Link
-            href={clearHref}
-            rel="nofollow"
-            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-sm pb-2 text-sm underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-            onClick={(event) => {
-              if (
-                event.metaKey ||
-                event.ctrlKey ||
-                event.shiftKey ||
-                event.altKey ||
-                event.button !== 0
-              ) {
-                return;
-              }
-              event.preventDefault();
-              go(clearHref);
-            }}
-          >
-            {clearLabel}
-          </Link>
-        ) : null}
+        <div
+          id="news-filter-fields"
+          className={`${filtersOpen ? "flex" : "hidden"} border-border w-full flex-wrap items-end gap-3 border-b pb-4 lg:contents`}
+        >
+          <SelectField
+            id="news-type"
+            name="type"
+            label={labels.type}
+            value={query.type}
+            onChange={(value) => onSelect("type", value)}
+            options={[
+              { value: "all", label: labels.typeAll },
+              { value: "verified", label: labels.typeVerified },
+              { value: "rumor", label: labels.typeRumor },
+            ]}
+          />
+          <SelectField
+            id="news-source"
+            name="source"
+            label={labels.source}
+            value={query.source}
+            onChange={(value) => onSelect("source", value)}
+            options={[{ value: "", label: labels.sourceAll }, ...sources]}
+          />
+          <SelectField
+            id="news-company"
+            name="company"
+            label={labels.company}
+            value={query.company}
+            onChange={(value) => onSelect("company", value)}
+            options={[{ value: "", label: labels.companyAll }, ...companies]}
+          />
+          <SelectField
+            id="news-writer"
+            name="writer"
+            label={labels.writer}
+            value={query.writer}
+            onChange={(value) => onSelect("writer", value)}
+            options={[{ value: "", label: labels.writerAll }, ...writers]}
+          />
+          <SelectField
+            id="news-sector"
+            name="sector"
+            label={labels.sector}
+            value={query.sector}
+            onChange={(value) => onSelect("sector", value)}
+            options={[{ value: "", label: labels.sectorAll }, ...sectors]}
+          />
+          <SelectField
+            id="news-sort"
+            name="sort"
+            label={labels.sort}
+            value={query.sort}
+            onChange={(value) => onSelect("sort", value as NewsTableSort)}
+            options={[
+              { value: "date", label: labels.sortDate },
+              { value: "title", label: labels.sortTitle },
+              { value: "source", label: labels.sortSource },
+            ]}
+          />
+          <Button type="submit" variant="outline">
+            {applyLabel}
+          </Button>
+          {filtered ? (
+            <Link
+              href={clearHref}
+              rel="nofollow"
+              className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-sm pb-2 text-sm underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              onClick={(event) => {
+                if (
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey ||
+                  event.button !== 0
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                go(clearHref);
+              }}
+            >
+              {clearLabel}
+            </Link>
+          ) : null}
+        </div>
       </form>
 
       {chips.length > 0 ? (
@@ -389,7 +420,7 @@ function SelectField({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="flex w-full flex-col gap-1.5 sm:w-44">
+    <div className="flex min-w-0 flex-[1_1_8rem] flex-col gap-1.5 lg:w-44 lg:flex-none">
       <label
         htmlFor={id}
         className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
