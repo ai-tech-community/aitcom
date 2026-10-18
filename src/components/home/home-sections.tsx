@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { FeaturedCommunities } from "@/components/home/featured-communities/featured-communities";
+import { LatestNews } from "@/components/home/latest-news/latest-news";
+import type { HomeNewsItem } from "@/server/news/home";
 import { UpcomingEvents } from "@/components/home/upcoming-events/upcoming-events";
 import { HomeCrawlDoors } from "@/components/home/home-crawl-doors";
 import { WhatWeDo } from "@/components/home/what-we-do/what-we-do";
@@ -15,6 +17,7 @@ import type { FeaturedCommunityCard } from "@/server/communities/featured";
 export const HOME_SECTION_ORDER = [
   "featured-communities",
   "upcoming-events",
+  "latest-news",
   "start-here",
   "what-we-do",
   "recent-gatherings",
@@ -28,6 +31,7 @@ export interface HomeSectionsProps {
   featuredCommunities: FeaturedCommunityCard[];
   upcomingEvents: readonly EventRowInput[];
   recentEvents: readonly EventRowInput[];
+  latestNews?: readonly HomeNewsItem[];
   sponsors: readonly HomeSponsor[];
   signedIn: boolean;
   now?: Date;
@@ -45,6 +49,7 @@ export interface HomeSectionsProps {
 export function HomeSections({
   featuredCommunities,
   upcomingEvents,
+  latestNews = [],
   recentEvents,
   sponsors,
   signedIn,
@@ -57,6 +62,7 @@ export function HomeSections({
         <FeaturedCommunities communities={featuredCommunities} />
       ) : null,
     "upcoming-events": <UpcomingEvents events={upcomingEvents} now={now} />,
+    "latest-news": <LatestNews items={latestNews} />,
     "start-here": <HomeCrawlDoors t={doors} signedIn={signedIn} />,
     "what-we-do": <WhatWeDo />,
     "recent-gatherings": <RecentGatherings events={recentEvents} now={now} />,

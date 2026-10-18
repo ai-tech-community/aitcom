@@ -60,6 +60,18 @@ const FULL: HomeSectionsProps = {
     },
   ],
   upcomingEvents: [UPCOMING],
+  latestNews: [
+    {
+      id: "daily",
+      kind: "news",
+      title: "Daily news",
+      summary: "The latest.",
+      href: "https://example.com/news",
+      source: "Example",
+      date: "2026-09-27T09:00:00Z",
+      englishFallback: false,
+    },
+  ],
   recentEvents: [PAST],
   sponsors: [
     { id: 1, name: "Acme", href: "https://acme.ai/", logoUrl: null },
@@ -104,12 +116,13 @@ function renderedOrder(container: HTMLElement): string[] {
 }
 
 describe("HomeSections", () => {
-  it("renders communities → events → start → what we do → proof → sponsors → closing square", () => {
+  it("renders communities → events → news → start → what we do → proof → sponsors → closing square", () => {
     const { container } = renderIn();
     expect(renderedOrder(container)).toEqual([...HOME_SECTION_ORDER]);
     expect(HOME_SECTION_ORDER).toEqual([
       "featured-communities",
       "upcoming-events",
+      "latest-news",
       "start-here",
       "what-we-do",
       "recent-gatherings",
@@ -126,9 +139,18 @@ describe("HomeSections", () => {
     );
   });
 
+  it("puts daily news and stories immediately after upcoming events", () => {
+    const { container } = renderIn();
+    const order = renderedOrder(container);
+    expect(order.indexOf("latest-news")).toBe(
+      order.indexOf("upcoming-events") + 1,
+    );
+  });
+
   it("wrappers add no box, so an empty section leaves no gap", () => {
     const { container } = renderIn({
       featuredCommunities: [],
+      latestNews: [],
       recentEvents: [],
       signedIn: true,
     });
@@ -226,17 +248,20 @@ describe("homepage messages", () => {
       ? Object.entries(o).flatMap(([k, v]) => keys(v, `${prefix}${k}.`))
       : [prefix];
 
-  it.each(["homeStats", "homeRecent", "homeSponsors", "homeClosing"] as const)(
-    "%s has the same, non-empty keys in EN and NL",
-    (ns) => {
-      expect(keys(nl[ns]).sort()).toEqual(keys(en[ns]).sort());
-      for (const m of [en[ns], nl[ns]]) {
-        for (const value of Object.values(m)) {
-          expect(String(value).trim()).not.toBe("");
-        }
+  it.each([
+    "homeStats",
+    "homeNews",
+    "homeRecent",
+    "homeSponsors",
+    "homeClosing",
+  ] as const)("%s has the same, non-empty keys in EN and NL", (ns) => {
+    expect(keys(nl[ns]).sort()).toEqual(keys(en[ns]).sort());
+    for (const m of [en[ns], nl[ns]]) {
+      for (const value of Object.values(m)) {
+        expect(String(value).trim()).not.toBe("");
       }
-    },
-  );
+    }
+  });
 
   it("drops the messages of the removed sections", () => {
     for (const m of [en, nl] as Record<string, unknown>[]) {
