@@ -690,6 +690,14 @@
     "hackathons": "Hackathons",
     "sponsors": "Sponsors"
   },
+  "homeNews": {
+    "title": "Laatste nieuws en verhalen",
+    "news": "Nieuws",
+    "story": "Verhaal",
+    "allNews": "Al het nieuws",
+    "allStories": "Alle verhalen",
+    "englishFallback": "Beschikbaar in het Engels"
+  },
   "homeRecent": {
     "title": "Onlangs op het plein",
     "lead": "Bijeenkomsten die al plaatsvonden, de nieuwste eerst."

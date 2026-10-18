@@ -27,6 +27,7 @@ import { toEventRowInput } from "@/components/events/rows/to-event-row-input";
 import { loadEventHostNames } from "@/server/events/event-hosts-queries";
 import { RECENT_GATHERINGS_SHOWN } from "@/components/home/recent-gatherings/recent-gatherings";
 import { HomeStats } from "@/components/home/home-stats";
+import { loadHomeNews } from "@/server/news/home";
 import { HomeSections } from "@/components/home/home-sections";
 import { toHomeSponsor } from "@/components/home/sponsors/home-sponsor";
 
@@ -75,6 +76,7 @@ export default async function Home() {
     { docs: eventCandidates },
     { docs: recentCandidates },
     { docs: featuredSponsors },
+    latestNews,
   ] = await Promise.all([
     payload.find({
       collection: "events",
@@ -122,6 +124,7 @@ export default async function Home() {
       limit: 20,
       depth: 1,
     }),
+    loadHomeNews(db, locale),
   ]);
   const recentEvents = pastEvents(recentCandidates, now).slice(
     0,
@@ -268,6 +271,7 @@ export default async function Home() {
         featuredCommunities={featuredCommunities}
         upcomingEvents={upcomingEventRows}
         recentEvents={recentEventRows}
+        latestNews={latestNews}
         sponsors={featuredSponsors.map(toHomeSponsor)}
         signedIn={!!session?.user}
         now={now}

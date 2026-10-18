@@ -690,6 +690,14 @@
     "hackathons": "Hackathons",
     "sponsors": "Sponsors"
   },
+  "homeNews": {
+    "title": "Latest news & stories",
+    "news": "News",
+    "story": "Story",
+    "allNews": "All news",
+    "allStories": "All stories",
+    "englishFallback": "Available in English"
+  },
   "homeRecent": {
     "title": "Recently on the square",
     "lead": "Gatherings that already took place, most recent first."
