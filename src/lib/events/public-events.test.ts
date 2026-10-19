@@ -253,9 +253,18 @@ describe("listingEventJsonLd", () => {
       startDate: "2026-10-07",
       url: "https://worldsummit.ai/",
       location: { "@type": "Place", name: "Amsterdam" },
-      description:
-        "Flagship global AI summit in the Netherlands for builders to track.",
     });
+    // "Flagship … for builders to track" is scout curation, so it is not a public description.
+    expect(data).not.toHaveProperty("description");
+    expect(JSON.stringify(data)).not.toMatch(/flagship/i);
+    expect(
+      listingEventJsonLd(
+        hostedListingEvent({
+          summary: "Talks and demos on production AI systems.",
+        }),
+        "en",
+      )?.description,
+    ).toBe("Talks and demos on production AI systems.");
     expect(data).not.toHaveProperty("endDate");
     expect(data).not.toHaveProperty("attendee");
     expect(data).not.toHaveProperty("maximumAttendeeCapacity");
