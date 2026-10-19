@@ -110,6 +110,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/event-listing-policy",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/news-sector-defaults",
       "schedule": "*/15 * * * *"
     },

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Payload } from "payload";
+import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
 import { buildEventPayloadData, eventUpsertSchema } from "./event-upsert-data";
 
 // None of these cases pass `audience`, so resolveAudienceIds short-circuits
@@ -38,6 +39,19 @@ describe("buildEventPayloadData", () => {
   it("leaves timezone undefined when not provided, so the collection default (Europe/Amsterdam) applies", async () => {
     const data = await buildEventPayloadData(noopPayload, base);
     expect(data.timezone).toBeUndefined();
+  });
+
+  it("strips listing-policy notes from the stored description and summary", async () => {
+    const data = await buildEventPayloadData(noopPayload, {
+      ...base,
+      summary: "Builders meetup. No invented member counts.",
+      description:
+        "Hands-on session in Amsterdam.\n\nFor AIT Community, this is a radar event.",
+    });
+    expect(data.summary).toBe("Builders meetup.");
+    expect(lexicalToPlainText(data.description)).toBe(
+      "Hands-on session in Amsterdam.",
+    );
   });
 });
 

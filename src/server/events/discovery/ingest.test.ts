@@ -77,6 +77,20 @@ describe("buildDiscoveredEventData", () => {
     );
   });
 
+  it("strips listing-policy notes before the scanner writes the event", () => {
+    const data = buildDiscoveredEventData(
+      makeNormalized({
+        description:
+          "A meetup for AI builders.\n\nListing policy: do not invent attendance. source: https://lu.ma/ai-builders",
+      }),
+      makeClassification(),
+      NOW_ISO,
+    );
+    expect(lexicalToPlainText(data.description)).toBe(
+      "A meetup for AI builders.",
+    );
+  });
+
   it("keeps a non-AI event that has a real source link", () => {
     const data = buildDiscoveredEventData(
       makeNormalized({

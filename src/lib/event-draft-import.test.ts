@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
 import {
   buildEventDraftImportBatch,
   buildEventDraftImportPayload,
@@ -74,6 +75,21 @@ describe("buildEventDraftImportPayload", () => {
     expect(result.draftData.title).toBe("Sunday pottery wheel");
     expect(result.draftData.sourceUrl).toBe("https://example.com/pottery");
     expect(result.isAi).toBe(false);
+  });
+
+  it("strips listing-policy notes from scout copy", () => {
+    const result = buildEventDraftImportPayload({
+      title: "AI Agents in Production",
+      description:
+        "A practical meetup on shipping agent systems.\n\nFor AIT Community, surface this for members.",
+      summary: "Production lessons. Verification note: title checked.",
+      date: "2026-05-05T18:00:00.000Z",
+      sourceUrl: "https://example.com/events/ai-agents",
+    });
+    expect(lexicalToPlainText(result.draftData.description)).toBe(
+      "A practical meetup on shipping agent systems.",
+    );
+    expect(result.draftData.summary).toBe("Production lessons.");
   });
 
   it("rejects a discovered event with no source link", () => {

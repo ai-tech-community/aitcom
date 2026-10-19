@@ -1,4 +1,5 @@
 import { eventSchemaDates } from "@/lib/event-time";
+import { stripListingPolicy } from "@/lib/events/listing-policy";
 import { HUB_OPEN_HREF } from "@/lib/join-path";
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 
@@ -254,8 +255,10 @@ export function listingEventJsonLd(
     location: { "@type": "Place", name: place },
   };
   const description = sanitizePublicEventWhy(
-    (typeof event.summary === "string" ? event.summary : "").split(/\n/)[0] ??
-      "",
+    stripListingPolicy(
+      (typeof event.summary === "string" ? event.summary : "").split(/\n/)[0] ??
+        "",
+    ),
   );
   if (description) data.description = description;
   return data;

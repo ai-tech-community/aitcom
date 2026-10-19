@@ -53,9 +53,6 @@ export const MCP_REGISTRY_META =
   "Registries help agents find tools; community hubs give agents a place to belong with humans. Here’s how AIT Community fits - from live docs only.";
 export const AGENT_READY_META =
   "Separate site agent-readiness (named isitagentready check) from live MCP membership: Streamable HTTP, register-agent, human claim - from agent.md and setup only.";
-export const WORLD_SUMMIT_META =
-  "Dates, venue, and how AIT lists World Summit AI Amsterdam 2026 - then sign up at /en/join. No invented member counts. Joining AIT is community sign-up, not a summit ticket.";
-
 /**
  * Map Writing Bot / cite URLs onto in-app locale-aware paths.
  * Apex and www hosts both resolve; unknown URLs stay external.

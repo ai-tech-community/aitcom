@@ -8,6 +8,7 @@ import {
   EVENT_TYPES,
 } from "@/lib/event-metadata";
 import { classifyEventAi } from "@/lib/events/event-ai";
+import { stripListingPolicy } from "@/lib/events/listing-policy";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
 const optionalTrimmedString = z.string().trim().min(1).optional();
@@ -96,8 +97,14 @@ export function buildEventDraftImportPayload(
     isAi: classifyEventAi(event.title, event.description, event.summary),
     draftData: {
       title: event.title,
-      description: plainTextToLexical(event.description ?? event.summary ?? ""),
-      summary: normalizeOptionalString(event.summary),
+      description: plainTextToLexical(
+        stripListingPolicy(event.description ?? event.summary ?? ""),
+      ),
+      summary: normalizeOptionalString(
+        event.summary === undefined
+          ? undefined
+          : stripListingPolicy(event.summary),
+      ),
       type: event.type,
       date: event.date,
       startTime: normalizeOptionalString(event.startTime),
