@@ -54,6 +54,13 @@ describe("inferEventType", () => {
     ).toBe("conference");
     expect(
       inferEventType({
+        title: "UKAIRS 2026",
+        summary:
+          "UK AI Research Symposium at the John McIntyre Conference Centre, Edinburgh, 24–25 Nov 2026.",
+      }),
+    ).toBe("conference");
+    expect(
+      inferEventType({
         title: "AI Engineer New York 2026",
         summary: "Production AI engineering, finance and systems focus.",
       }),
@@ -99,6 +106,20 @@ describe("inferEventType", () => {
         title: "HumanX Amsterdam",
         summary:
           "Europe edition of HumanX — the AI stage for decision-makers and industry leaders at RAI Amsterdam.",
+      }),
+    ).toBe("meetup");
+    expect(
+      inferEventType({
+        title: "IamExpat Fair The Hague",
+        summary:
+          "Expat fair at the Grote Kerk, The Hague, Sat 7 Nov 2026, 10:00–17:00.",
+      }),
+    ).toBe("meetup");
+    expect(
+      inferEventType({
+        title: "Slush 2026",
+        summary:
+          "Startup event at Messukeskus, Helsinki, 18–19 Nov 2026, with Day 0 on 17 Nov.",
       }),
     ).toBe("meetup");
   });

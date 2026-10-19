@@ -9,6 +9,10 @@ import {
   BUILDER_PUBLIC_EVENTS,
   BUILDER_PUBLIC_EVENTS_SEEDED_AT,
 } from "@/lib/events/builder-public-events";
+import {
+  EVENT_COORDINATE_BACKFILL,
+  EVENT_COORDINATES_AT,
+} from "@/lib/events/event-coordinates";
 import { upsertBuilderEvent } from "./20260925a_builder_public_events";
 
 const NEW_SLUGS = [
@@ -34,6 +38,39 @@ function newEvents() {
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   for (const event of newEvents()) {
     await upsertBuilderEvent(db, event);
+  }
+
+  // `20261013b` is already recorded on production, so it will not pin these
+  // rows. A fresh database inserts them in `20260925a` and `20261013b` fills
+  // the points. Write them here only while latitude or longitude is null.
+  const points = new Map(
+    EVENT_COORDINATE_BACKFILL.map((row) => [row.slug, row]),
+  );
+  for (const slug of NEW_SLUGS) {
+    const row = points.get(slug);
+    if (!row) {
+      throw new Error(`${slug} is missing from EVENT_COORDINATE_BACKFILL`);
+    }
+    await db.execute(sql`
+      UPDATE "events"
+      SET
+        "latitude" = ${row.latitude},
+        "longitude" = ${row.longitude},
+        "geocoded_at" = ${EVENT_COORDINATES_AT}
+      WHERE "slug" = ${row.slug}
+        AND ("latitude" IS NULL OR "longitude" IS NULL);
+    `);
+    await db.execute(sql`
+      UPDATE "_events_v"
+      SET
+        "version_latitude" = ${row.latitude},
+        "version_longitude" = ${row.longitude},
+        "version_geocoded_at" = ${EVENT_COORDINATES_AT}
+      WHERE "parent_id" IN (
+        SELECT "id" FROM "events" WHERE "slug" = ${row.slug}
+      )
+        AND ("version_latitude" IS NULL OR "version_longitude" IS NULL);
+    `);
   }
 }
 

@@ -166,6 +166,7 @@ describe("builder public events", () => {
       }),
       expect.objectContaining({
         title: "IamExpat Fair The Hague",
+        type: "meetup",
         date: "2026-11-07",
         endDate: "2026-11-07",
         city: "The Hague",
@@ -184,6 +185,7 @@ describe("builder public events", () => {
       }),
       expect.objectContaining({
         title: "Slush 2026",
+        type: "meetup",
         date: "2026-11-18",
         endDate: "2026-11-19",
         city: "Helsinki",
@@ -507,6 +509,10 @@ describe("builder public events", () => {
     expect(followUp).toBeGreaterThan(prior);
     expect(migration).toContain("upsertBuilderEvent");
     expect(migration).toContain("BUILDER_PUBLIC_EVENTS");
+    expect(migration).toContain("EVENT_COORDINATE_BACKFILL");
+    expect(migration).toContain(
+      'AND ("latitude" IS NULL OR "longitude" IS NULL)',
+    );
     for (const slug of slugs) {
       expect(migration).toContain(slug);
     }

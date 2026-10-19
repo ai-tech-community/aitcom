@@ -8,7 +8,7 @@ const HACKATHON_TITLE = /\bhackathons?\b|\bhack[\s-]?days?\b|\bhackfest\b/i;
 const WORKSHOP_TITLE = /\bworkshops?\b/i;
 const DEEP_DIVE_TITLE = /\bdeep[\s-]?dives?\b/i;
 const CONFERENCE =
-  /\b(?:conferences?|summits?|congress(?:es)?|expos?|gtc|neurips|iclr|icml|cvpr|tedai)\b/i;
+  /\b(?:conferences?|summits?|congress(?:es)?|expos?|symposiums?|gtc|neurips|iclr|icml|cvpr|tedai)\b/i;
 const AI_ENGINEER_TITLE = /^AI Engineer\b/;
 
 /**
@@ -17,8 +17,9 @@ const AI_ENGINEER_TITLE = /^AI Engineer\b/;
  * The staff seed used to write `meetup` for every row. Conferences, summits,
  * and expos were labelled Meetup. A title that says meetup, salon, hackathon,
  * workshop, or deep dive keeps that type. TechEx is a conference even when
- * the title also says hackathon. Otherwise a conference word in the title or
- * summary wins. Copy that names none of these stays a meetup.
+ * the title also says hackathon. Otherwise a conference, summit, congress,
+ * expo, or symposium word in the title or summary wins. A fair or a startup
+ * event that names none of these stays a meetup.
  */
 export function inferEventType(input: {
   title: string;
