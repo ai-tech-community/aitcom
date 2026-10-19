@@ -30,6 +30,7 @@ import {
 } from "@/components/events/rows/event-rows";
 import { getEventRowLabels } from "@/components/events/rows/get-event-row-labels";
 import {
+  eventDeadlineDay,
   eventDetailDay,
   eventSummaryLine,
   type EventDetailDay,
@@ -211,6 +212,10 @@ export default async function EventDetailPage({
         : "https://schema.org/OfflineEventAttendanceMode";
 
   const eventDay = eventDetailDay(event, locale);
+  const registrationCloses = eventDeadlineDay(
+    event.registrationDeadline,
+    locale,
+  );
   const typeLabel = eventRowKind(event.type, labels).label;
   const formatLabel = event.format
     ? eventFormatLabel(event.format, labels)
@@ -513,6 +518,13 @@ export default async function EventDetailPage({
                 endTime={event.endTime ?? null}
                 timezone={event.timezone ?? null}
               />
+              {registrationCloses ? (
+                <p className="text-muted-foreground font-mono text-xs tracking-wider">
+                  {tEvents("registrationCloses", {
+                    date: registrationCloses,
+                  })}
+                </p>
+              ) : null}
             </div>
 
             <div className="border-border border-t pt-4 text-sm">
@@ -639,14 +651,7 @@ export default async function EventDetailPage({
                   availability: "https://schema.org/InStock",
                 },
               }
-            : {
-                offers: {
-                  "@type": "Offer",
-                  price: "0",
-                  priceCurrency: "EUR",
-                  availability: "https://schema.org/InStock",
-                },
-              }),
+            : {}),
         }}
       />
 
@@ -908,6 +913,13 @@ export default async function EventDetailPage({
                 endTime={event.endTime ?? null}
                 timezone={event.timezone ?? null}
               />
+              {registrationCloses ? (
+                <p className="text-muted-foreground font-mono text-xs tracking-wider">
+                  {tEvents("registrationCloses", {
+                    date: registrationCloses,
+                  })}
+                </p>
+              ) : null}
             </div>
 
             <div className="border-border border-t pt-4 text-sm">

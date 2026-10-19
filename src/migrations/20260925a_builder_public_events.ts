@@ -269,6 +269,7 @@ export async function upsertBuilderEvent(
       (SELECT count(*) FROM version_locale_nl) AS version_nl_count
   `);
   await writeBuilderEventEndDate(db, event);
+  await writeBuilderEventExtras(db, event);
 }
 
 /**
@@ -307,6 +308,93 @@ export async function writeBuilderEventEndDate(
     WHERE "parent_id" IN (
       SELECT "id" FROM "events" WHERE "slug" = ${event.slug}
     )
+  `);
+}
+
+async function publicColumnExists(
+  db: MigrateUpArgs["db"],
+  column: string,
+): Promise<boolean> {
+  const result = await db.execute(sql`
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'events'
+      AND column_name = ${column}
+    LIMIT 1
+  `);
+  const rows =
+    result && typeof result === "object" && "rows" in result
+      ? (result as { rows?: unknown[] }).rows
+      : [];
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+/**
+ * Optional sourced facts that are not on every seed row. Each write is
+ * skipped when the seed does not name the fact. `is_ai` is also skipped
+ * when that column is not there yet (seed migrations that already ran
+ * call this helper on a fresh database before `20261015b_event_is_ai`).
+ * The INSERT above is unchanged.
+ */
+export async function writeBuilderEventExtras(
+  db: MigrateUpArgs["db"],
+  event: BuilderPublicEvent,
+): Promise<void> {
+  if (event.priceCents != null) {
+    await db.execute(sql`
+      UPDATE "events"
+      SET "price" = ${event.priceCents}
+      WHERE "slug" = ${event.slug}
+    `);
+    await db.execute(sql`
+      UPDATE "_events_v"
+      SET "version_price" = ${event.priceCents}
+      WHERE "parent_id" IN (
+        SELECT "id" FROM "events" WHERE "slug" = ${event.slug}
+      )
+    `);
+  }
+
+  if (event.registrationDeadline) {
+    const deadline = `${event.registrationDeadline.slice(0, 10)}T12:00:00.000Z`;
+    await db.execute(sql`
+      UPDATE "events"
+      SET "registration_deadline" = ${deadline}
+      WHERE "slug" = ${event.slug}
+    `);
+    await db.execute(sql`
+      UPDATE "_events_v"
+      SET "version_registration_deadline" = ${deadline}
+      WHERE "parent_id" IN (
+        SELECT "id" FROM "events" WHERE "slug" = ${event.slug}
+      )
+    `);
+  }
+
+  if (event.startTime || event.endTime) {
+    await db.execute(sql`
+      UPDATE "events"
+      SET "start_time" = ${event.startTime ?? null},
+          "end_time" = ${event.endTime ?? null}
+      WHERE "slug" = ${event.slug}
+    `);
+    await db.execute(sql`
+      UPDATE "_events_v"
+      SET "version_start_time" = ${event.startTime ?? null},
+          "version_end_time" = ${event.endTime ?? null}
+      WHERE "parent_id" IN (
+        SELECT "id" FROM "events" WHERE "slug" = ${event.slug}
+      )
+    `);
+  }
+
+  if (typeof event.isAi !== "boolean") return;
+  if (!(await publicColumnExists(db, "is_ai"))) return;
+  await db.execute(sql`
+    UPDATE "events"
+    SET "is_ai" = ${event.isAi}
+    WHERE "slug" = ${event.slug}
   `);
 }
 

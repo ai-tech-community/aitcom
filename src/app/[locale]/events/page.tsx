@@ -41,6 +41,7 @@ import { loadEventAiFlags, loadEventIdsByAi } from "@/server/events/event-ai";
 import { getVisitorLocation } from "@/lib/visitor-location";
 import { haversineDistanceKm, formatDistance } from "@/lib/geo";
 import { formatEventDayRange, formatEventTimeRange } from "@/lib/event-time";
+import { eventDeadlineDay } from "@/components/events/detail/event-detail-when";
 import {
   eventFormatLabel,
   eventRowKind,
@@ -438,6 +439,10 @@ export default async function EventsPage({
             const communityMeta = communityId
               ? communityMap[communityId]
               : undefined;
+            const registrationCloses = eventDeadlineDay(
+              event.registrationDeadline,
+              locale,
+            );
             return (
               <div
                 key={event.id}
@@ -521,6 +526,13 @@ export default async function EventsPage({
                     <p className="text-muted-foreground mt-2 text-sm">
                       {event.location}
                     </p>
+                    {registrationCloses ? (
+                      <p className="text-muted-foreground mt-2 font-mono text-xs tracking-wider">
+                        {t("registrationCloses", {
+                          date: registrationCloses,
+                        })}
+                      </p>
+                    ) : null}
                   </div>
                   {summary && (
                     <p className="text-foreground/80 line-clamp-3 text-sm leading-relaxed">

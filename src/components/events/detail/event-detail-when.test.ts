@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { eventDetailDay, eventSummaryLine } from "./event-detail-when";
+import {
+  eventDeadlineDay,
+  eventDetailDay,
+  eventSummaryLine,
+} from "./event-detail-when";
 
 const TYPES = {
   types: {
@@ -80,6 +84,16 @@ describe("eventDetailDay", () => {
         "en",
       ),
     ).toMatchObject({ endDateTime: null, label: "22 Oct 2026" });
+  });
+});
+
+describe("eventDeadlineDay", () => {
+  it("renders the stored registration close as that calendar day", () => {
+    expect(eventDeadlineDay("2026-11-10T12:00:00.000Z", "en")).toBe(
+      "10 Nov 2026",
+    );
+    expect(eventDeadlineDay(null, "en")).toBeNull();
+    expect(eventDeadlineDay("  ", "en")).toBeNull();
   });
 });
 

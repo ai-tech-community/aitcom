@@ -1,5 +1,6 @@
 import {
   eventDayParts,
+  formatEventDay,
   formatEventDayRange,
   type EventTimeFields,
 } from "@/lib/event-time";
@@ -50,6 +51,18 @@ export function eventDetailDay(
  * "Deep Dive · 05 Oct 2026 · Amsterdam". Words and date follow the page's
  * language; the dots keep it free of English glue words.
  */
+/** Calendar day of a stored registration close, or null when none is set. */
+export function eventDeadlineDay(
+  deadline: string | Date | null | undefined,
+  locale: string,
+): string | null {
+  if (deadline == null) return null;
+  const iso =
+    deadline instanceof Date ? deadline.toISOString() : deadline.trim();
+  if (!iso) return null;
+  return formatEventDay(iso, locale);
+}
+
 export function eventSummaryLine(
   event: {
     type: string;
