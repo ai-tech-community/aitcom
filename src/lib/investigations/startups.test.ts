@@ -135,8 +135,9 @@ describe("startups investigation contract", () => {
     expect(startupsInsightsShareUrl("nl")).not.toMatch(/hub/i);
     expect(STARTUPS_JOBS_PATH).toBe("/jobs");
     expect(STARTUPS_H1).toBe("Startups worth watching");
-    expect(STARTUPS_META).toMatch(/homepage and sources verified/i);
+    expect(STARTUPS_META).toMatch(/uses ai/i);
     expect(STARTUPS_META).toMatch(/any sector/i);
+    expect(STARTUPS_META).not.toMatch(/verified|scorecard|invent/i);
     expect(STARTUPS_META).not.toMatch(/AI-only|only AI/i);
     expect(STARTUPS_META).not.toMatch(BANNED_METRIC);
   });

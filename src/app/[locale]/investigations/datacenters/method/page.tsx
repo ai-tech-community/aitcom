@@ -8,10 +8,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "How we flag AI datacenters",
     description:
-      "Stable cite: how the three descriptive flags on the AI Datacenters investigation are computed from the live dataset. Descriptive, not editorial.",
+      "How the three descriptive flags on the AI Datacenters investigation are calculated.",
     ...buildOgMeta(
       "How we flag AI datacenters",
-      "How the three descriptive flags are computed from the live dataset. Descriptive, not editorial.",
+      "How the three descriptive flags on the AI Datacenters investigation are calculated.",
       "Datacenters",
     ),
     alternates: await localeAlternates("/investigations/datacenters/method"),
