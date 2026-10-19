@@ -63,7 +63,10 @@ import { toEventEmailData } from "@/server/events/event-email-data";
 import { toRegistrationCalendarInvite } from "@/server/events/registration-invite";
 import { externalEventUrl } from "@/lib/events/event-source";
 import { rememberEventAiFromEdit } from "@/server/events/event-ai";
-import { stripListingPolicy } from "@/lib/events/listing-policy";
+import {
+  repairEventEncoding,
+  stripListingPolicy,
+} from "@/lib/events/listing-policy";
 import { escapeLike } from "@/server/db/escape-like";
 import { personNameSchema } from "@/lib/person-name";
 import {
@@ -907,7 +910,8 @@ export const eventsRouter = createTRPCRouter({
       }
 
       const data: Record<string, unknown> = {};
-      if (input.title !== undefined) data.title = input.title;
+      if (input.title !== undefined)
+        data.title = repairEventEncoding(input.title);
       if (input.description !== undefined)
         data.description = plainTextToLexical(
           stripListingPolicy(input.description),
@@ -2064,7 +2068,8 @@ export const eventsRouter = createTRPCRouter({
 
       // Build partial update data (same pattern as updateEvent)
       const data: Record<string, unknown> = { status: "draft" };
-      if (input.title !== undefined) data.title = input.title;
+      if (input.title !== undefined)
+        data.title = repairEventEncoding(input.title);
       if (input.description !== undefined)
         data.description = plainTextToLexical(
           stripListingPolicy(input.description ?? ""),

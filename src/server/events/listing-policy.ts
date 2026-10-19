@@ -1,6 +1,9 @@
 import { sql } from "drizzle-orm";
 
-import { LISTING_POLICY_SQL } from "@/lib/events/listing-policy";
+import {
+  LISTING_POLICY_SQL,
+  repairEventEncoding,
+} from "@/lib/events/listing-policy";
 import { db } from "@/server/db";
 import { cleanedEventCopy } from "@/server/events/listing-policy-copy";
 
@@ -30,7 +33,8 @@ async function dirtyEventIds(limit: number): Promise<number[]> {
       SELECT e.id AS id
       FROM "events" e
       JOIN "events_locales" l ON l."_parent_id" = e.id
-      WHERE COALESCE(l."summary", '') ~* ${LISTING_POLICY_SQL}
+      WHERE COALESCE(l."title", '') ~* ${LISTING_POLICY_SQL}
+         OR COALESCE(l."summary", '') ~* ${LISTING_POLICY_SQL}
          OR COALESCE(l."description"::text, '') ~* ${LISTING_POLICY_SQL}
       UNION
       SELECT v."parent_id" AS id
@@ -38,7 +42,8 @@ async function dirtyEventIds(limit: number): Promise<number[]> {
       JOIN "_events_v_locales" vl ON vl."_parent_id" = v.id
       WHERE v."parent_id" IS NOT NULL
         AND (
-          COALESCE(vl."version_summary", '') ~* ${LISTING_POLICY_SQL}
+          COALESCE(vl."version_title", '') ~* ${LISTING_POLICY_SQL}
+          OR COALESCE(vl."version_summary", '') ~* ${LISTING_POLICY_SQL}
           OR COALESCE(vl."version_description"::text, '') ~* ${LISTING_POLICY_SQL}
         )
     ) dirty
@@ -56,7 +61,8 @@ async function countDirtyEvents(): Promise<number> {
       SELECT e.id AS id
       FROM "events" e
       JOIN "events_locales" l ON l."_parent_id" = e.id
-      WHERE COALESCE(l."summary", '') ~* ${LISTING_POLICY_SQL}
+      WHERE COALESCE(l."title", '') ~* ${LISTING_POLICY_SQL}
+         OR COALESCE(l."summary", '') ~* ${LISTING_POLICY_SQL}
          OR COALESCE(l."description"::text, '') ~* ${LISTING_POLICY_SQL}
       UNION
       SELECT v."parent_id" AS id
@@ -64,7 +70,8 @@ async function countDirtyEvents(): Promise<number> {
       JOIN "_events_v_locales" vl ON vl."_parent_id" = v.id
       WHERE v."parent_id" IS NOT NULL
         AND (
-          COALESCE(vl."version_summary", '') ~* ${LISTING_POLICY_SQL}
+          COALESCE(vl."version_title", '') ~* ${LISTING_POLICY_SQL}
+          OR COALESCE(vl."version_summary", '') ~* ${LISTING_POLICY_SQL}
           OR COALESCE(vl."version_description"::text, '') ~* ${LISTING_POLICY_SQL}
         )
     ) dirty
@@ -75,7 +82,7 @@ async function countDirtyEvents(): Promise<number> {
 
 async function cleanLocales(eventId: number): Promise<boolean> {
   const result = await db.execute(sql`
-    SELECT "id", "summary", "description"
+    SELECT "id", "title", "summary", "description"
     FROM "events_locales"
     WHERE "_parent_id" = ${eventId}
     ORDER BY "id"
@@ -83,14 +90,18 @@ async function cleanLocales(eventId: number): Promise<boolean> {
   let changed = false;
   for (const row of rowsOf(result)) {
     const id = Number(row.id);
+    const title =
+      typeof row.title === "string" ? repairEventEncoding(row.title) : null;
+    const titleChanged = title !== row.title && typeof row.title === "string";
     const next = cleanedEventCopy({
       summary: typeof row.summary === "string" ? row.summary : null,
       description: row.description,
     });
-    if (!next.changed) continue;
+    if (!next.changed && !titleChanged) continue;
     await db.execute(sql`
       UPDATE "events_locales"
-      SET "summary" = ${next.summary},
+      SET "title" = COALESCE(${title}, "title"),
+          "summary" = ${next.summary},
           "description" = ${JSON.stringify(next.description)}::jsonb
       WHERE "id" = ${id}
     `);
@@ -102,6 +113,7 @@ async function cleanLocales(eventId: number): Promise<boolean> {
 async function cleanVersions(eventId: number): Promise<boolean> {
   const result = await db.execute(sql`
     SELECT vl."id" AS id,
+           vl."version_title" AS title,
            vl."version_summary" AS summary,
            vl."version_description" AS description
     FROM "_events_v" v
@@ -112,14 +124,18 @@ async function cleanVersions(eventId: number): Promise<boolean> {
   let changed = false;
   for (const row of rowsOf(result)) {
     const id = Number(row.id);
+    const title =
+      typeof row.title === "string" ? repairEventEncoding(row.title) : null;
+    const titleChanged = title !== row.title && typeof row.title === "string";
     const next = cleanedEventCopy({
       summary: typeof row.summary === "string" ? row.summary : null,
       description: row.description,
     });
-    if (!next.changed) continue;
+    if (!next.changed && !titleChanged) continue;
     await db.execute(sql`
       UPDATE "_events_v_locales"
-      SET "version_summary" = ${next.summary},
+      SET "version_title" = COALESCE(${title}, "version_title"),
+          "version_summary" = ${next.summary},
           "version_description" = ${JSON.stringify(next.description)}::jsonb
       WHERE "id" = ${id}
     `);

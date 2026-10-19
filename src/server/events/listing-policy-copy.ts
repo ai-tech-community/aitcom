@@ -1,6 +1,9 @@
 import type { CollectionBeforeChangeHook } from "payload";
 
-import { stripListingPolicy } from "@/lib/events/listing-policy";
+import {
+  repairEventEncoding,
+  stripListingPolicy,
+} from "@/lib/events/listing-policy";
 import {
   lexicalToPlainText,
   plainTextToLexical,
@@ -41,6 +44,9 @@ export const stripEventCopyBeforeChange: CollectionBeforeChangeHook = ({
   data,
 }) => {
   if (!data) return data;
+  if (typeof data.title === "string") {
+    data.title = repairEventEncoding(data.title);
+  }
   if (typeof data.summary === "string") {
     data.summary = stripListingPolicy(data.summary);
   }

@@ -10,7 +10,10 @@ import {
 } from "@/lib/event-metadata";
 import { resolveAudienceIds } from "./audience-resolve";
 import { registrationQuestionsSchema } from "@/lib/events/registration-questions";
-import { stripListingPolicy } from "@/lib/events/listing-policy";
+import {
+  repairEventEncoding,
+  stripListingPolicy,
+} from "@/lib/events/listing-policy";
 
 export const eventUpsertSchema = z.object({
   title: z.string().min(3).max(255),
@@ -75,7 +78,7 @@ export async function buildEventPayloadData(
   input: z.infer<typeof eventUpsertSchema>,
 ) {
   return {
-    title: input.title,
+    title: repairEventEncoding(input.title),
     description: plainTextToLexical(
       stripListingPolicy(input.description ?? ""),
     ),

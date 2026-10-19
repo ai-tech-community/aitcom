@@ -1,12 +1,12 @@
 import { eventDayParts, formatEventDayRange } from "@/lib/event-time";
 
 /**
- * Internal notes about how AIT lists an event. They are writing guidance for
- * scouts and editors, not facts about the event, and they must not be stored
- * or shown as a public description.
+ * Notes that must not be stored or shown as a public description:
+ * listing-policy instructions, scout curation, and the dropped-accent
+ * token left when "métier" was stored as U+FFFD or as "mtier".
  *
- * The Postgres pattern in `LISTING_POLICY_SQL` matches the same phrases so the
- * cleanup cron selects exactly the rows this stripper changes.
+ * `LISTING_POLICY_SQL` matches the same phrases so the cleanup cron selects
+ * exactly the rows this stripper changes.
  */
 const POLICY_PATTERNS: readonly RegExp[] = [
   /\bno invented\b/i,
@@ -57,52 +57,113 @@ const POLICY_PATTERNS: readonly RegExp[] = [
   /\bpeople lock\b/i,
 ];
 
-/** POSIX regex for `~*`. Keep it aligned with `POLICY_PATTERNS`. */
-export const LISTING_POLICY_SQL = String.raw`\yno invented\y|\ylisting policy\y|\yverification notes?\y|(^|[^[:alnum:]])source[[:space:]]*:|\yhow ait lists\y|\yhoe ait\y|\ynot a summit ticket\y|\ymember counts?\y|\ygeen verzonnen\y|\yjoining ait\y|\yvoor ait\y|\ysign up at[[:space:]]+/(en|nl)/join\y|/(en|nl)/join|\yfor ait\y(?![[:space:]]+product\y)|\yait community['’]s\y|\yait community members\y|\ywith ait community\y|\yfits ait community\y|\yait should\y|\yait['’]s event\y|\yait events\y|\yevents page\y|\yevent inventory\y|\yevents map\y|\yradar event\y|\ybuild density\y|\ycommunity density\y|\ykind of\y[^.]{0,80}\y(event|topic)\y|\ythematic fit\y|\yait fit\y|\yaligned with ait\y|\yrelevant (to|for) ait\y|\yuseful for ait\y|\ymatches for ait\y|\yevent matches for\y|\ybroadening ait\y|\ybroaden the events\y|\yevent mix\y|\ygeneral-audience listing\y|\ysummit listing\y|\ybest treated as\y|\ythicken the\y|\ymakes the ait\y|\ypeople lock\y`;
+/** Editorial scout voice. A sentence that has any of these is not a public fact. */
+const CURATION_PATTERNS: readonly RegExp[] = [
+  /\bpositioned as\b/i,
+  /\bnot the most\b/i,
+  /\bhigh-signal\b|\bhigh\s+signal\b/i,
+  /\bhighly relevant\b/i,
+  /\brelevant for members\b/i,
+  /\bfor members\b/i,
+  /\binstead of generic\b/i,
+  /\bgeneric hype\b/i,
+  /\bgeneric innovation\b/i,
+  /\bremains one of\b/i,
+  /\bone of the (?:strongest|most|leading|top|best)\b/i,
+  /\bthe top event\b/i,
+  /\bstrong source\b/i,
+  /\ba real (?:local|belgian|eindhoven)\b/i,
+  /\bstrong fit\b/i,
+  /\bgood fit\b/i,
+  /\bwell aligned\b/i,
+  /\bthematic fit\b/i,
+  /\bexactly the kind\b/i,
+  /\bwe want\b/i,
+  /\bnotable because\b/i,
+  /\bthrough the lens\b/i,
+  /\bgrounded (?:local|in)\b/i,
+  /\bfashionable\b/i,
+  /\bstill relevant\b/i,
+  /\brecognizable\b/i,
+  /\bbroader event than\b/i,
+  /\bhigh-value\b/i,
+  /\bstrong (?:local|regional|ecosystem|technical)\b/i,
+  /\bflagship\b/i,
+  /\bofficial(?:\s+\d{4})?\s+page\b/i,
+  /\blists dates\b/i,
+];
 
-const META_MAX = 320;
+const ENCODING_PATTERN = /m\uFFFDtier|\bmtier\b/i;
 
-export function hasListingPolicy(text: string): boolean {
-  return POLICY_PATTERNS.some((pattern) => pattern.test(text));
+/** POSIX regex for `~*`. Keep it aligned with the patterns above. */
+export const LISTING_POLICY_SQL = String.raw`\yno invented\y|\ylisting policy\y|\yverification notes?\y|(^|[^[:alnum:]])source[[:space:]]*:|\yhow ait lists\y|\yhoe ait\y|\ynot a summit ticket\y|\ymember counts?\y|\ygeen verzonnen\y|\yjoining ait\y|\yvoor ait\y|\ysign up at[[:space:]]+/(en|nl)/join\y|/(en|nl)/join|\yfor ait\y(?![[:space:]]+product\y)|\yait community['’]s\y|\yait community members\y|\ywith ait community\y|\yfits ait community\y|\yait should\y|\yait['’]s event\y|\yait events\y|\yevents page\y|\yevent inventory\y|\yevents map\y|\yradar event\y|\ybuild density\y|\ycommunity density\y|\ykind of\y[^.]{0,80}\y(event|topic)\y|\ythematic fit\y|\yait fit\y|\yaligned with ait\y|\yrelevant (to|for) ait\y|\yuseful for ait\y|\ymatches for ait\y|\yevent matches for\y|\ybroadening ait\y|\ybroaden the events\y|\yevent mix\y|\ygeneral-audience listing\y|\ysummit listing\y|\ybest treated as\y|\ythicken the\y|\ymakes the ait\y|\ypeople lock\y|\ypositioned as\y|\ynot the most\y|\yhigh-signal\y|\yhigh[[:space:]]+signal\y|\yhighly relevant\y|\yrelevant for members\y|\yfor members\y|\yinstead of generic\y|\ygeneric hype\y|\ygeneric innovation\y|\yremains one of\y|\yone of the (strongest|most|leading|top|best)\y|\ythe top event\y|\ystrong source\y|\ya real (local|belgian|eindhoven)\y|\ystrong fit\y|\ygood fit\y|\ywell aligned\y|\yexactly the kind\y|\ywe want\y|\ynotable because\y|\ythrough the lens\y|\ygrounded (local|in)\y|\yfashionable\y|\ystill relevant\y|\yrecognizable\y|\ybroader event than\y|\yhigh-value\y|\ystrong (local|regional|ecosystem|technical)\y|\yflagship\y|\yofficial([[:space:]]+[0-9]{4})?[[:space:]]+page\y|\ylists dates\y|m�tier|\ymtier\y`;
+
+const META_MAX = 160;
+
+function matchesAny(text: string, patterns: readonly RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(text));
 }
 
-function salvageSentence(sentence: string): string {
+export function hasListingPolicy(text: string): boolean {
+  return (
+    ENCODING_PATTERN.test(text) ||
+    matchesAny(text, POLICY_PATTERNS) ||
+    matchesAny(text, CURATION_PATTERNS)
+  );
+}
+
+/**
+ * Put "métier" back when the é was stored as U+FFFD or dropped entirely.
+ * Other words are left alone.
+ */
+export function repairEventEncoding(text: string): string {
+  return text
+    .replace(/m\uFFFDtier/gi, (match) =>
+      match.startsWith("M") ? "Métier" : "métier",
+    )
+    .replace(/\bmtier\b/gi, (match) =>
+      match.startsWith("M") ? "Métier" : "métier",
+    );
+}
+
+function startsSentence(value: string): boolean {
+  return /^[\p{Lu}\d]/u.test(value);
+}
+
+function hasEditorial(text: string): boolean {
+  return (
+    matchesAny(text, POLICY_PATTERNS) || matchesAny(text, CURATION_PATTERNS)
+  );
+}
+
+function salvageClause(sentence: string): string {
+  const separators = [" — ", " – ", " - ", ": "];
+  for (const separator of separators) {
+    const index = sentence.indexOf(separator);
+    if (index === -1) continue;
+    const left = sentence.slice(0, index).trim();
+    const right = sentence.slice(index + separator.length).trim();
+    if (
+      startsSentence(left) &&
+      left.length >= 20 &&
+      !hasEditorial(left) &&
+      hasEditorial(right)
+    ) {
+      return left;
+    }
+  }
+  return "";
+}
+
+function cleanSentence(sentence: string): string {
   const trimmed = sentence.trim();
-  if (!trimmed || !hasListingPolicy(trimmed)) return trimmed;
-  // A labeled note is the note, including whatever follows the colon.
+  if (!trimmed) return "";
   if (/^(source|listing policy|verification notes?)\s*:/i.test(trimmed)) {
     return "";
   }
-
-  const separators = [": ", " because ", " — ", " – ", " - "];
-  for (const separator of separators) {
-    const index = trimmed.indexOf(separator);
-    if (index === -1) continue;
-    const left = trimmed.slice(0, index).trim();
-    const right = trimmed.slice(index + separator.length).trim();
-    if (left && !hasListingPolicy(left) && hasListingPolicy(right)) return left;
-    if (right && hasListingPolicy(left) && !hasListingPolicy(right)) {
-      return right;
-    }
-  }
-
-  let kept: string | null = null;
-  let from = 0;
-  while (from < trimmed.length) {
-    const index = trimmed.indexOf(", ", from);
-    if (index === -1) break;
-    const left = trimmed.slice(0, index).trim();
-    const right = trimmed.slice(index + 2).trim();
-    if (
-      left.length >= 20 &&
-      !hasListingPolicy(left) &&
-      hasListingPolicy(right)
-    ) {
-      kept = left;
-    }
-    from = index + 2;
-  }
-  return kept ?? "";
+  if (!hasEditorial(trimmed)) return trimmed;
+  if (!startsSentence(trimmed)) return "";
+  return salvageClause(trimmed);
 }
 
 function stripLine(line: string): string {
@@ -113,17 +174,17 @@ function stripLine(line: string): string {
   }
   return trimmed
     .split(/(?<=[.!?])\s+/)
-    .map(salvageSentence)
+    .map(cleanSentence)
     .filter((sentence) => sentence.length > 0)
     .join(" ");
 }
 
 /**
- * Remove listing-policy notes from plain text. Factual sentences stay.
+ * Remove listing-policy notes and scout curation. Fragments are dropped.
  * A second pass returns the same string.
  */
 export function stripListingPolicy(text: string): string {
-  return text
+  return repairEventEncoding(text)
     .split(/\n\n+/)
     .map((paragraph) =>
       paragraph
@@ -191,62 +252,101 @@ function eventWhenLabel(event: EventMetaSource, locale: string): string | null {
   return label.trim() || null;
 }
 
-function sentence(value: string): string {
-  return value.trim().replace(/[.]+$/g, "").trim();
-}
-
-function joinSentences(parts: readonly string[]): string {
-  const text = parts
-    .map(sentence)
-    .filter((part) => part.length > 0)
-    .join(". ")
-    .replace(/\s+/g, " ")
+function withPeriod(value: string): string {
+  const trimmed = value
+    .trim()
+    .replace(/[.!?]+$/g, "")
     .trim();
-  if (!text) return "";
-  return text.endsWith(".") ? text : `${text}.`;
+  return trimmed ? `${trimmed}.` : "";
 }
 
-function lastSentenceBoundary(text: string): number {
-  let boundary = -1;
-  for (const match of text.matchAll(/[.!?](?=\s|$)/g)) {
-    boundary = match.index ?? boundary;
+function fitFacts(parts: readonly string[]): string {
+  let result = "";
+  for (const part of parts) {
+    const piece = withPeriod(part);
+    if (!piece) continue;
+    const next = result ? `${result} ${piece}` : piece;
+    if (next.length > META_MAX) break;
+    result = next;
   }
-  return boundary;
+  if (result) return result;
+  const title = parts[0]?.trim() ?? "";
+  if (!title) return "";
+  const cut = title.slice(0, META_MAX - 1).replace(/\s+\S*$/, "");
+  return withPeriod(cut || title.slice(0, META_MAX - 1));
 }
 
-function capMeta(facts: string, about: string): string {
-  const base = joinSentences([facts]);
-  if (!about) return base;
-  const room = META_MAX - base.length - 1;
-  if (room < 40) return base;
-  let extra = about.replace(/\s+/g, " ").trim();
-  if (extra.length > room) {
-    const boundary = lastSentenceBoundary(extra.slice(0, room));
-    if (boundary < 40) return base;
-    extra = extra.slice(0, boundary + 1).trim();
+function restatesSchedule(sentence: string): boolean {
+  if (
+    /\b(?:lists dates|will be held|takes place|official(?:\s+\d{4})?\s+page)\b/i.test(
+      sentence,
+    )
+  ) {
+    return true;
   }
-  return joinSentences([base, extra]);
+  if (
+    /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(
+      sentence,
+    )
+  ) {
+    return true;
+  }
+  if (
+    /\b(?:\d{1,2}(?:st|nd|rd|th)?\s+may|may\s+\d{1,2}(?:st|nd|rd|th)?)\b/i.test(
+      sentence,
+    )
+  ) {
+    return true;
+  }
+  return (
+    /\b\d{4}-\d{2}-\d{2}\b/.test(sentence) || /\b\d{1,2}:\d{2}\b/.test(sentence)
+  );
+}
+
+function repeatsPlace(sentence: string, event: EventMetaSource): boolean {
+  const haystack = sentence.toLowerCase();
+  const needles = [event.location, event.city, eventWhereLabel(event)];
+  return needles.some((value) => {
+    const needle = value?.trim().toLowerCase() ?? "";
+    return needle.length >= 4 && haystack.includes(needle);
+  });
+}
+
+function topicSentences(description: string): string[] {
+  return description
+    .split(/\n\n+/)
+    .flatMap((paragraph) => paragraph.split(/(?<=[.!?])\s+/))
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
 }
 
 /**
- * Public meta description: the event's name, when, and where, then its own
- * description with listing-policy notes removed. Missing fields are omitted.
+ * Public meta description: "<name>. <date range>. <venue, city>."
+ * One neutral topic sentence from the description is added only when it
+ * fits in 160 characters. A description that is curation, a fragment, or
+ * a restatement of the date and venue contributes nothing.
  */
 export function eventMetaDescription(
   event: EventMetaSource,
   locale: string,
 ): string {
-  const title = event.title.trim();
+  const title = repairEventEncoding(event.title.trim());
   const when = eventWhenLabel(event, locale);
   const where = eventWhereLabel(event);
-  const description = stripListingPolicy(event.description ?? "").trim();
-  const summary = stripListingPolicy(event.summary ?? "").trim();
-  let about = description || summary;
-  if (about.toLowerCase() === title?.toLowerCase()) {
-    about = "";
-  }
-  const facts = [title, when ?? "", where ?? ""].filter(
-    (part) => part.length > 0,
+  const facts = fitFacts([title, when ?? "", where ?? ""]);
+  const description = stripListingPolicy(event.description ?? "").replace(
+    /\*+/g,
+    "",
   );
-  return capMeta(joinSentences(facts), about);
+  const titleKey = title.toLowerCase();
+  for (const sentence of topicSentences(description)) {
+    if (!startsSentence(sentence) || hasEditorial(sentence)) continue;
+    if (restatesSchedule(sentence) || repeatsPlace(sentence, event)) continue;
+    const topic = withPeriod(sentence);
+    if (topic.replace(/\.+$/g, "").trim().toLowerCase() === titleKey) continue;
+    if (topic.split(/\s+/).length < 3) continue;
+    const combined = `${facts} ${topic}`.replace(/\s+/g, " ").trim();
+    if (combined.length <= META_MAX) return combined;
+  }
+  return facts;
 }

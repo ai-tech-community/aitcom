@@ -12,6 +12,7 @@ import {
   eventMetaDescription,
   eventWhereLabel,
   hasListingPolicy,
+  repairEventEncoding,
   stripListingPolicy,
 } from "./listing-policy";
 
@@ -21,43 +22,75 @@ const WORLD_SUMMIT_DESCRIPTION = [
   "For AIT Community, this is a strong regional event to track for local visibility, networking, and broader AI ecosystem awareness.",
 ].join("\n\n");
 
+const WORLD_SUMMIT_META =
+  "World Summit AI Amsterdam 2026. 07–08 Oct 2026. Taets Art & Event Park, Amsterdam.";
+
 describe("stripListingPolicy", () => {
-  it("drops internal listing notes and keeps what the event is", () => {
-    expect(stripListingPolicy(WORLD_SUMMIT_DESCRIPTION)).toBe(
-      [
-        "World Summit AI Amsterdam is positioned as a major global AI summit and a flagship AI gathering in the Netherlands.",
-        "The official 2026 page lists dates of 7-8 October 2026 at Taets Art and Event Park in Amsterdam.",
-      ].join("\n\n"),
+  it("drops curation and listing notes instead of keeping them", () => {
+    expect(stripListingPolicy(WORLD_SUMMIT_DESCRIPTION)).toBe("");
+    expect(hasListingPolicy(stripListingPolicy(WORLD_SUMMIT_DESCRIPTION))).toBe(
+      false,
     );
   });
 
   it("removes source, listing-policy, and verification lines", () => {
     const text = [
-      "Flagship summit in Amsterdam.",
+      "A summit in Amsterdam.",
       "No invented member counts.",
       "source: https://worldsummit.ai/",
       "Listing policy: do not mention attendance.",
       "Verification note: dates checked against the official page.",
       "Joining AIT is community sign-up, not a summit ticket.",
     ].join("\n");
-    expect(stripListingPolicy(text)).toBe("Flagship summit in Amsterdam.");
+    expect(stripListingPolicy(text)).toBe("A summit in Amsterdam.");
     expect(hasListingPolicy(stripListingPolicy(text))).toBe(false);
   });
 
-  it("keeps the factual tail of a listing sentence", () => {
+  it("drops fragments and keeps a capitalized factual clause", () => {
     expect(
       stripListingPolicy(
         "This Utrecht JUG meetup is directly relevant to AIT: agentic systems, autonomous security workflows, and memory in AI agents.",
       ),
-    ).toBe(
-      "agentic systems, autonomous security workflows, and memory in AI agents.",
-    );
+    ).toBe("");
+    expect(
+      stripListingPolicy(
+        "Strong thematic fit for AIT because it sits close to real-world AI systems and process automation.",
+      ),
+    ).toBe("");
+    expect(
+      stripListingPolicy(
+        "This is exactly the kind of practitioner event AIT should surface: code, architecture, and real systems instead of generic hype.",
+      ),
+    ).toBe("");
     expect(
       stripListingPolicy(
         "The agenda covers transactional memory, knowledge graph RAG, and production trade-offs - exactly the kind of high-value technical topic we want.",
       ),
     ).toBe(
       "The agenda covers transactional memory, knowledge graph RAG, and production trade-offs",
+    );
+  });
+
+  it("drops the editorial phrases that leaked into meta descriptions", () => {
+    const editorial = [
+      "The summit is positioned as a global gathering.",
+      "Not the most technical event.",
+      "It is a high-signal London event for builders.",
+      "AI4ALL is a real local Dutch event focused on inclusion.",
+      "It is highly relevant for members building production systems.",
+      "Talks stay practical instead of generic hype.",
+      "NeurIPS remains one of the most influential conferences.",
+    ].join(" ");
+    expect(stripListingPolicy(editorial)).toBe("");
+  });
+
+  it("repairs métier when the accent was dropped or replaced", () => {
+    expect(repairEventEncoding("l'expertise mtier")).toBe("l'expertise métier");
+    expect(repairEventEncoding(`l'expertise m${"\uFFFD"}tier`)).toBe(
+      "l'expertise métier",
+    );
+    expect(stripListingPolicy("A workshop on expertise mtier in Paris.")).toBe(
+      "A workshop on expertise métier in Paris.",
     );
   });
 
@@ -72,30 +105,34 @@ describe("stripListingPolicy", () => {
   it("keeps an official source description that is not an AIT note", () => {
     const meetup =
       "The official Meetup listing highlights workshops around agent building, RAG, MCP, and practical AI implementation.";
-    const cvpr =
-      "CVPR is the top event for computer vision and a strong source of multimodal AI, perception, and advanced applied model research.";
     expect(stripListingPolicy(meetup)).toBe(meetup);
-    expect(stripListingPolicy(cvpr)).toBe(cvpr);
+    expect(
+      stripListingPolicy(
+        "CVPR is the top event for computer vision and a strong source of multimodal AI, perception, and advanced applied model research.",
+      ),
+    ).toBe("");
   });
 
   it("is idempotent", () => {
     const once = stripListingPolicy(WORLD_SUMMIT_DESCRIPTION);
     expect(stripListingPolicy(once)).toBe(once);
+    const factual = stripListingPolicy(
+      "A Paris meetup focused on agentic workflows and practical automation of expert work.",
+    );
+    expect(stripListingPolicy(factual)).toBe(factual);
   });
 
   it("strips policy paragraphs inside rich text and leaves clean rich text alone", () => {
     const original = plainTextToLexical(WORLD_SUMMIT_DESCRIPTION);
     const stripped = stripListingPolicyLexical(original);
-    expect(lexicalToPlainText(stripped)).toBe(
-      stripListingPolicy(WORLD_SUMMIT_DESCRIPTION),
-    );
+    expect(lexicalToPlainText(stripped)).toBe("");
     const clean = plainTextToLexical("Hand-building at the community studio.");
     expect(stripListingPolicyLexical(clean)).toBe(clean);
   });
 });
 
 describe("event meta description", () => {
-  it("says what World Summit is, when, and where, without listing policy", () => {
+  it("is the name, date, and place when the description is curation", () => {
     const meta = eventMetaDescription(
       {
         title: "World Summit AI Amsterdam 2026",
@@ -110,17 +147,14 @@ describe("event meta description", () => {
       },
       "en",
     );
-    expect(
-      meta.startsWith("World Summit AI Amsterdam 2026. 07–08 Oct 2026."),
-    ).toBe(true);
-    expect(meta).toContain("Taets Art & Event Park, Amsterdam");
-    expect(meta).toContain("flagship AI gathering in the Netherlands");
+    expect(meta).toBe(WORLD_SUMMIT_META);
+    expect(meta.length).toBeLessThanOrEqual(160);
     expect(meta).not.toMatch(
-      /no invented|member count|for ait|\/en\/join|listing policy/i,
+      /positioned as|official|lists dates|flagship|no invented|for ait|listing policy/i,
     );
   });
 
-  it("uses Online when that is the stored place and does not invent a city", () => {
+  it("adds one neutral topic sentence when it fits", () => {
     expect(
       eventWhereLabel({
         title: "Webinar",
@@ -141,10 +175,11 @@ describe("event meta description", () => {
     expect(meta).toBe(
       "Office hours. 02 Nov 2026. Online. A live hour on the bots that run a company.",
     );
+    expect(meta.length).toBeLessThanOrEqual(160);
     expect(meta).not.toMatch(/amsterdam|attendees|rsvp/i);
   });
 
-  it("cuts a long description on a sentence boundary", () => {
+  it("omits a topic sentence that would push the description past 160 characters", () => {
     const meta = eventMetaDescription(
       {
         title: "AI Engineer World's Fair - San Francisco 2026",
@@ -154,14 +189,56 @@ describe("event meta description", () => {
           "AI Engineer World's Fair is one of the strongest event matches for AIT Community's core audience: engineers and builders working on practical AI systems.",
           "The 2026 San Francisco edition is positioned as a large technical conference covering AI engineering, application building, infrastructure, and production workflows.",
           "This event is a strong fit for members interested in agents, tooling, orchestration, evaluation, and real-world deployment.",
+          "A practical conference on AI engineering, application building, infrastructure, production workflows, evaluation, and deployment for working engineers.",
         ].join("\n\n"),
       },
       "en",
     );
-    expect(meta.length).toBeLessThanOrEqual(320);
-    expect(meta).toContain("production workflows.");
-    expect(meta).not.toMatch(/this event is a\.?$/i);
-    expect(meta).not.toMatch(/event matches for|ait community/i);
+    expect(meta).toBe(
+      "AI Engineer World's Fair - San Francisco 2026. 29 Jun 2026. San Francisco, USA.",
+    );
+    expect(meta.length).toBeLessThanOrEqual(160);
+    expect(meta).not.toMatch(
+      /engineers and builders|positioned as|strong fit/i,
+    );
+  });
+
+  it("repairs métier in the event name", () => {
+    const meta = eventMetaDescription(
+      {
+        title: "Workflows agentiques : quand l'IA automatise l'expertise mtier",
+        date: "2026-04-28",
+        city: "Paris",
+        location: "Paris, France",
+        description:
+          "A Paris meetup focused on agentic workflows and practical automation of expert work.\n\nStrong thematic fit for AIT because it sits close to real-world AI systems and process automation.",
+      },
+      "en",
+    );
+    expect(meta).toContain("métier");
+    expect(meta).not.toMatch(/mtier|it sits close|thematic fit/i);
+    expect(meta.length).toBeLessThanOrEqual(160);
+    expect(
+      meta.startsWith(
+        "Workflows agentiques : quand l'IA automatise l'expertise métier. 28 Apr 2026. Paris, France.",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not repeat a date or venue the facts already state", () => {
+    const meta = eventMetaDescription(
+      {
+        title: "Web Summit 2026",
+        date: "2026-11-09",
+        endDate: "2026-11-12",
+        city: "Lisbon",
+        location: "MEO Arena, Lisbon",
+        description: "Web Summit at MEO Arena in Lisbon, 9–12 Nov 2026.",
+      },
+      "en",
+    );
+    expect(meta).toBe("Web Summit 2026. 09–12 Nov 2026. MEO Arena, Lisbon.");
+    expect(meta.length).toBeLessThanOrEqual(160);
   });
 
   it("omits a date or place that was not stored", () => {
@@ -178,10 +255,10 @@ describe("event meta description", () => {
 });
 
 describe("stripEventCopyBeforeChange", () => {
-  it("strips summary and description on insert and update", () => {
+  it("strips summary and description and repairs the title", () => {
     const data = {
-      title: "World Summit AI Amsterdam 2026",
-      summary: "Flagship summit. No invented member counts.",
+      title: "Expertise mtier",
+      summary: "A summit in Amsterdam. No invented member counts.",
       description: plainTextToLexical(
         "Summit in Amsterdam.\n\nFor AIT Community, track it for local visibility.",
       ),
@@ -193,7 +270,8 @@ describe("stripEventCopyBeforeChange", () => {
       collection: {} as never,
       context: {},
     });
-    expect(next?.summary).toBe("Flagship summit.");
+    expect(next?.title).toBe("Expertise métier");
+    expect(next?.summary).toBe("A summit in Amsterdam.");
     expect(lexicalToPlainText(next?.description)).toBe("Summit in Amsterdam.");
   });
 });
