@@ -166,7 +166,7 @@ describe("builder public events", () => {
       }),
       expect.objectContaining({
         title: "IamExpat Fair The Hague",
-        type: "meetup",
+        type: "conference",
         date: "2026-11-07",
         endDate: "2026-11-07",
         city: "The Hague",
@@ -185,7 +185,7 @@ describe("builder public events", () => {
       }),
       expect.objectContaining({
         title: "Slush 2026",
-        type: "meetup",
+        type: "conference",
         date: "2026-11-18",
         endDate: "2026-11-19",
         city: "Helsinki",

@@ -59,9 +59,10 @@ from that same seed. `20261006a_five_public_events` upserts only
 registration close from the official registration page
 (`registration_deadline`, shown on the card). `ai-hpi-conference-2026`
 stores the stated €290 ticket as 29000 cents. `is_ai` is set on these
-five rows only. `iamexpat-fair-the-hague-2026` and `slush-2026` are
-meetups; the other three are conferences (`ukairs-2026` because the
-official copy calls it a symposium). The same migration writes a Nominatim
+five rows only. All five are stored as conferences. The enum has no
+fair or expo value, so the IamExpat fair uses conference, and Slush is a
+conference even though the summary says startup event. `is_ai` is a
+separate column. The same migration writes a Nominatim
 point for each venue only when latitude or longitude is still null.
 `techex-amsterdam-hackathon-2026` keeps the start date 16 Oct 2026 and stores
 no end date: the official page's JSON-LD ends 19 Oct and its copy says 20 Oct.

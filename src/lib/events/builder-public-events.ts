@@ -9,8 +9,9 @@ import type { EventType } from "@/lib/event-metadata";
  * endDate. Summaries are what, when, and where only. No attendance, RSVP,
  * or image. `priceCents` is set only when the official page states one
  * ticket price. `type` follows the title and summary (`inferEventType`):
- * a conference, summit, congress, expo, or symposium is `conference`, a hack
- * day is `hackathon`, and a fair, startup event, or meetup stays `meetup`.
+ * a conference, summit, congress, expo, fair, symposium, or named flagship
+ * such as Slush is `conference`, and a hack day is `hackathon`. The enum has
+ * no fair or expo value, so a fair is a conference. `isAi` is separate.
  */
 
 export const BUILDER_PUBLIC_EVENTS_SEEDED_AT = "2026-09-25T12:00:00.000Z";
@@ -219,7 +220,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "iamexpat-fair-the-hague-2026",
     title: "IamExpat Fair The Hague",
-    type: "meetup",
+    type: "conference",
     date: "2026-11-07",
     endDate: "2026-11-07",
     startTime: "10:00",
@@ -254,7 +255,7 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
   {
     slug: "slush-2026",
     title: "Slush 2026",
-    type: "meetup",
+    type: "conference",
     date: "2026-11-18",
     endDate: "2026-11-19",
     city: "Helsinki",
