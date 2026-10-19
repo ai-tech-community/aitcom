@@ -38,6 +38,7 @@ import {
   parseEventAiQuery,
 } from "@/lib/events/event-ai";
 import { loadEventAiFlags, loadEventIdsByAi } from "@/server/events/event-ai";
+import { stripListingPolicy } from "@/lib/events/listing-policy";
 import { getVisitorLocation } from "@/lib/visitor-location";
 import { haversineDistanceKm, formatDistance } from "@/lib/geo";
 import { formatEventDayRange, formatEventTimeRange } from "@/lib/event-time";
@@ -432,8 +433,9 @@ export default async function EventsPage({
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           {events.map((event) => {
             const imageUrl = getImageUrl(event);
-            const summary =
-              typeof event.summary === "string" ? event.summary : "";
+            const summary = stripListingPolicy(
+              typeof event.summary === "string" ? event.summary : "",
+            );
             const distanceKm = distanceByEventId.get(event.id);
             const communityId = event.communityId as string | undefined;
             const communityMeta = communityId

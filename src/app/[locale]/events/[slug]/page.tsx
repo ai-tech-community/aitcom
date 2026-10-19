@@ -43,6 +43,12 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { getInitials } from "@/lib/avatar";
 import { externalEventUrl } from "@/lib/events/event-source";
 import { parseStoredQuestions } from "@/lib/events/registration-questions";
+import {
+  eventMetaDescription,
+  stripListingPolicy,
+} from "@/lib/events/listing-policy";
+import { stripListingPolicyLexical } from "@/server/events/listing-policy-copy";
+import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
 
 type MediaValue =
   | { url?: string | null; alt?: string | null }
@@ -119,7 +125,19 @@ export async function generateMetadata({
     locale,
     await getEventRowLabels(),
   );
-  const description = event.summary ?? summaryLine;
+  const description = eventMetaDescription(
+    {
+      title: event.title,
+      date: event.date,
+      endDate: event.endDate,
+      city: event.city,
+      location: event.location,
+      format: event.format,
+      summary: event.summary,
+      description: lexicalToPlainText(event.description),
+    },
+    locale,
+  );
 
   return {
     title: event.title,
@@ -156,6 +174,24 @@ export default async function EventDetailPage({
 
   const event = docs[0];
   if (!event) notFound();
+
+  const publicSummary = event.summary ? stripListingPolicy(event.summary) : "";
+  const publicDescription = event.description
+    ? stripListingPolicyLexical(event.description)
+    : null;
+  const metaDescription = eventMetaDescription(
+    {
+      title: event.title,
+      date: event.date,
+      endDate: event.endDate,
+      city: event.city,
+      location: event.location,
+      format: event.format,
+      summary: event.summary,
+      description: lexicalToPlainText(event.description),
+    },
+    locale,
+  );
 
   const speakers = (event.speakers ?? []) as Array<{
     id: number;
@@ -330,9 +366,9 @@ export default async function EventDetailPage({
     return (
       <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-8">
-          {event.summary && (
+          {publicSummary && (
             <p className="text-foreground/90 text-lg leading-relaxed">
-              {event.summary}
+              {publicSummary}
             </p>
           )}
 
@@ -407,14 +443,14 @@ export default async function EventDetailPage({
             </div>
           )}
 
-          {event.description && (
+          {publicDescription != null ? (
             <div className="border-border border-t pt-8">
               <SectionLabel>{tEvents("sectionAbout")}</SectionLabel>
               <div className="mt-4">
-                <LexicalRenderer content={event.description} />
+                <LexicalRenderer content={publicDescription} />
               </div>
             </div>
-          )}
+          ) : null}
 
           {speakers.length > 0 && (
             <div className="border-border border-t pt-8">
@@ -613,7 +649,7 @@ export default async function EventDetailPage({
         data={{
           "@type": "Event",
           name: event.title,
-          description: event.summary ?? undefined,
+          description: metaDescription,
           ...schemaDates,
           location: {
             "@type": "Place",
@@ -691,9 +727,9 @@ export default async function EventDetailPage({
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-8">
-          {event.summary && (
+          {publicSummary && (
             <p className="text-foreground/90 text-lg leading-relaxed">
-              {event.summary}
+              {publicSummary}
             </p>
           )}
 
@@ -750,14 +786,14 @@ export default async function EventDetailPage({
             </div>
           )}
 
-          {event.description && (
+          {publicDescription != null ? (
             <div className="border-border border-t pt-8">
               <SectionLabel>{tEvents("sectionAbout")}</SectionLabel>
               <div className="mt-4">
-                <LexicalRenderer content={event.description} />
+                <LexicalRenderer content={publicDescription} />
               </div>
             </div>
-          )}
+          ) : null}
 
           {speakers.length > 0 && (
             <div className="border-border border-t pt-8">

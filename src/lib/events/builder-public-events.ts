@@ -29,7 +29,10 @@ export type BuilderPublicEvent = {
   location: string;
   timezone: string;
   url: string;
-  /** What, when, and where. This text is the event meta description. */
+  /**
+   * Card line: what, when, and where. The public meta description is built
+   * separately as "<name>. <date range>. <venue, city>."
+   */
   summary: { en: string; nl: string };
   /** Official ticket price in EUR cents, when the page states one price. */
   priceCents?: number;
