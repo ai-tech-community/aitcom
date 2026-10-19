@@ -74,6 +74,8 @@ describe("stripListingPolicy", () => {
   it("drops the editorial phrases that leaked into meta descriptions", () => {
     const editorial = [
       "The summit is positioned as a global gathering.",
+      "A Dutch event explicitly positioned around the future of AI agents.",
+      "ICML is one of the central conferences in machine learning and a key signal for emerging methods.",
       "Not the most technical event.",
       "It is a high-signal London event for builders.",
       "AI4ALL is a real local Dutch event focused on inclusion.",
@@ -111,6 +113,11 @@ describe("stripListingPolicy", () => {
         "CVPR is the top event for computer vision and a strong source of multimodal AI, perception, and advanced applied model research.",
       ),
     ).toBe("");
+  });
+
+  it("leaves spacing alone when there is no note", () => {
+    const text = "About Horizon  \nThis event is part of the series.";
+    expect(stripListingPolicy(text)).toBe(text);
   });
 
   it("is idempotent", () => {

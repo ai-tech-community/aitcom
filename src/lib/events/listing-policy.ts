@@ -59,7 +59,9 @@ const POLICY_PATTERNS: readonly RegExp[] = [
 
 /** Editorial scout voice. A sentence that has any of these is not a public fact. */
 const CURATION_PATTERNS: readonly RegExp[] = [
-  /\bpositioned as\b/i,
+  /\bpositioned\b/i,
+  /\bone of the\b/i,
+  /\bkey signal\b/i,
   /\bnot the most\b/i,
   /\bhigh-signal\b|\bhigh\s+signal\b/i,
   /\bhighly relevant\b/i,
@@ -96,7 +98,7 @@ const CURATION_PATTERNS: readonly RegExp[] = [
 const ENCODING_PATTERN = /m\uFFFDtier|\bmtier\b/i;
 
 /** POSIX regex for `~*`. Keep it aligned with the patterns above. */
-export const LISTING_POLICY_SQL = String.raw`\yno invented\y|\ylisting policy\y|\yverification notes?\y|(^|[^[:alnum:]])source[[:space:]]*:|\yhow ait lists\y|\yhoe ait\y|\ynot a summit ticket\y|\ymember counts?\y|\ygeen verzonnen\y|\yjoining ait\y|\yvoor ait\y|\ysign up at[[:space:]]+/(en|nl)/join\y|/(en|nl)/join|\yfor ait\y(?![[:space:]]+product\y)|\yait community['’]s\y|\yait community members\y|\ywith ait community\y|\yfits ait community\y|\yait should\y|\yait['’]s event\y|\yait events\y|\yevents page\y|\yevent inventory\y|\yevents map\y|\yradar event\y|\ybuild density\y|\ycommunity density\y|\ykind of\y[^.]{0,80}\y(event|topic)\y|\ythematic fit\y|\yait fit\y|\yaligned with ait\y|\yrelevant (to|for) ait\y|\yuseful for ait\y|\ymatches for ait\y|\yevent matches for\y|\ybroadening ait\y|\ybroaden the events\y|\yevent mix\y|\ygeneral-audience listing\y|\ysummit listing\y|\ybest treated as\y|\ythicken the\y|\ymakes the ait\y|\ypeople lock\y|\ypositioned as\y|\ynot the most\y|\yhigh-signal\y|\yhigh[[:space:]]+signal\y|\yhighly relevant\y|\yrelevant for members\y|\yfor members\y|\yinstead of generic\y|\ygeneric hype\y|\ygeneric innovation\y|\yremains one of\y|\yone of the (strongest|most|leading|top|best)\y|\ythe top event\y|\ystrong source\y|\ya real (local|belgian|eindhoven)\y|\ystrong fit\y|\ygood fit\y|\ywell aligned\y|\yexactly the kind\y|\ywe want\y|\ynotable because\y|\ythrough the lens\y|\ygrounded (local|in)\y|\yfashionable\y|\ystill relevant\y|\yrecognizable\y|\ybroader event than\y|\yhigh-value\y|\ystrong (local|regional|ecosystem|technical)\y|\yflagship\y|\yofficial([[:space:]]+[0-9]{4})?[[:space:]]+page\y|\ylists dates\y|m�tier|\ymtier\y`;
+export const LISTING_POLICY_SQL = String.raw`\yno invented\y|\ylisting policy\y|\yverification notes?\y|(^|[^[:alnum:]])source[[:space:]]*:|\yhow ait lists\y|\yhoe ait\y|\ynot a summit ticket\y|\ymember counts?\y|\ygeen verzonnen\y|\yjoining ait\y|\yvoor ait\y|\ysign up at[[:space:]]+/(en|nl)/join\y|/(en|nl)/join|\yfor ait\y(?![[:space:]]+product\y)|\yait community['’]s\y|\yait community members\y|\ywith ait community\y|\yfits ait community\y|\yait should\y|\yait['’]s event\y|\yait events\y|\yevents page\y|\yevent inventory\y|\yevents map\y|\yradar event\y|\ybuild density\y|\ycommunity density\y|\ykind of\y[^.]{0,80}\y(event|topic)\y|\ythematic fit\y|\yait fit\y|\yaligned with ait\y|\yrelevant (to|for) ait\y|\yuseful for ait\y|\ymatches for ait\y|\yevent matches for\y|\ybroadening ait\y|\ybroaden the events\y|\yevent mix\y|\ygeneral-audience listing\y|\ysummit listing\y|\ybest treated as\y|\ythicken the\y|\ymakes the ait\y|\ypeople lock\y|\ypositioned\y|\yone of the\y|\ykey signal\y|\ynot the most\y|\yhigh-signal\y|\yhigh[[:space:]]+signal\y|\yhighly relevant\y|\yrelevant for members\y|\yfor members\y|\yinstead of generic\y|\ygeneric hype\y|\ygeneric innovation\y|\yremains one of\y|\yone of the (strongest|most|leading|top|best)\y|\ythe top event\y|\ystrong source\y|\ya real (local|belgian|eindhoven)\y|\ystrong fit\y|\ygood fit\y|\ywell aligned\y|\yexactly the kind\y|\ywe want\y|\ynotable because\y|\ythrough the lens\y|\ygrounded (local|in)\y|\yfashionable\y|\ystill relevant\y|\yrecognizable\y|\ybroader event than\y|\yhigh-value\y|\ystrong (local|regional|ecosystem|technical)\y|\yflagship\y|\yofficial([[:space:]]+[0-9]{4})?[[:space:]]+page\y|\ylists dates\y|m�tier|\ymtier\y`;
 
 const META_MAX = 160;
 
@@ -166,33 +168,38 @@ function cleanSentence(sentence: string): string {
   return salvageClause(trimmed);
 }
 
-function stripLine(line: string): string {
+function lineChanged(line: string): { text: string; changed: boolean } {
   const trimmed = line.trim();
-  if (!trimmed) return "";
+  if (!trimmed) return { text: "", changed: line.length > 0 };
   if (/^(source|listing policy|verification notes?)\s*:/i.test(trimmed)) {
-    return "";
+    return { text: "", changed: true };
   }
-  return trimmed
+  const cleaned = trimmed
     .split(/(?<=[.!?])\s+/)
     .map(cleanSentence)
     .filter((sentence) => sentence.length > 0)
     .join(" ");
+  return { text: cleaned, changed: cleaned !== trimmed };
 }
 
 /**
- * Remove listing-policy notes and scout curation. Fragments are dropped.
+ * Remove listing-policy notes and scout curation. Fragments of a note are
+ * dropped. Text with no note is returned unchanged, including its spacing.
  * A second pass returns the same string.
  */
 export function stripListingPolicy(text: string): string {
-  return repairEventEncoding(text)
-    .split(/\n\n+/)
-    .map((paragraph) =>
-      paragraph
-        .split("\n")
-        .map(stripLine)
-        .filter((line) => line.length > 0)
-        .join("\n"),
-    )
+  const repaired = repairEventEncoding(text);
+  let changed = repaired !== text;
+  const paragraphs = repaired.split(/\n\n+/).map((paragraph) => {
+    const lines = paragraph.split("\n").map((line) => {
+      const next = lineChanged(line);
+      if (next.changed) changed = true;
+      return next.text;
+    });
+    return lines.filter((line) => line.length > 0).join("\n");
+  });
+  if (!changed) return text;
+  return paragraphs
     .map((paragraph) => paragraph.trim())
     .filter((paragraph) => paragraph.length > 0)
     .join("\n\n");
@@ -307,8 +314,14 @@ function repeatsPlace(sentence: string, event: EventMetaSource): boolean {
   const haystack = sentence.toLowerCase();
   const needles = [event.location, event.city, eventWhereLabel(event)];
   return needles.some((value) => {
-    const needle = value?.trim().toLowerCase() ?? "";
-    return needle.length >= 4 && haystack.includes(needle);
+    const raw = value?.trim() ?? "";
+    if (raw.length >= 4 && haystack.includes(raw.toLowerCase())) return true;
+    const head = raw.split(",")[0]?.trim() ?? "";
+    const tokens = head
+      .split(/\s+/)
+      .filter((token) => !/^(the|a|an)$/i.test(token));
+    const short = tokens.slice(0, 2).join(" ").toLowerCase();
+    return short.length >= 4 && haystack.includes(short);
   });
 }
 
@@ -341,6 +354,14 @@ export function eventMetaDescription(
   const titleKey = title.toLowerCase();
   for (const sentence of topicSentences(description)) {
     if (!startsSentence(sentence) || hasEditorial(sentence)) continue;
+    if (
+      /[?]$/.test(sentence) ||
+      /^(?:no one|but some|thank you|for questions)\b/i.test(sentence) ||
+      /@|please contact/i.test(sentence) ||
+      /\byou(?:'|’)ll\b|\bfrom them\b/i.test(sentence)
+    ) {
+      continue;
+    }
     if (restatesSchedule(sentence) || repeatsPlace(sentence, event)) continue;
     const topic = withPeriod(sentence);
     if (topic.replace(/\.+$/g, "").trim().toLowerCase() === titleKey) continue;
