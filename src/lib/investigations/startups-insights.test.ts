@@ -328,11 +328,11 @@ describe("startup insights Open Graph", () => {
       "Startup insights — 8,172 companies, 460 hiring",
     );
     expect(t(spec!.descriptionKey, spec!.descriptionValues)).toBe(
-      "8,172 companies, 460 hiring, at least 3,635 open roles.",
+      "Where listed startups are, what they build, and who is hiring.",
     );
   });
 
-  it("drops at least when the role count is exact", () => {
+  it("keeps the Open Graph description a sentence about the page", () => {
     const facts = startupInsightsShareFacts(
       shareStats({
         hiring: {
@@ -346,7 +346,10 @@ describe("startup insights Open Graph", () => {
     );
     const spec = startupInsightsOgSpec(facts)!;
     expect(insightsT("en")(spec.descriptionKey, spec.descriptionValues)).toBe(
-      "8,172 companies, 2 hiring, 5 open roles.",
+      "Where listed startups are, what they build, and who is hiring.",
+    );
+    expect(insightsT("nl")(spec.descriptionKey, spec.descriptionValues)).toBe(
+      "Waar vermelde startups zitten, wat ze bouwen en wie er aanneemt.",
     );
   });
 
