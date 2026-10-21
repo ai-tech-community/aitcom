@@ -1,3 +1,4 @@
+import * as migration_20261021a_ten_public_events from "./20261021a_ten_public_events";
 import * as migration_20261019a_five_public_events from "./20261019a_five_public_events";
 import * as migration_20261017a_news_item_is_ai from "./20261017a_news_item_is_ai";
 import * as migration_20261016a_news_sector from "./20261016a_news_sector";
@@ -1007,5 +1008,10 @@ export const migrations = [
     up: migration_20261019a_five_public_events.up,
     down: migration_20261019a_five_public_events.down,
     name: "20261019a_five_public_events",
+  },
+  {
+    up: migration_20261021a_ten_public_events.up,
+    down: migration_20261021a_ten_public_events.down,
+    name: "20261021a_ten_public_events",
   },
 ];

@@ -8,8 +8,9 @@
  * and production share one list. `20261013b` writes a point only when the
  * row is still missing one. That migration is already recorded on
  * production, so `20261019a` writes the five November points with the same
- * null guard. A fresh database inserts those rows in `20260925a`, before
- * `20261013b`, and the later write leaves the stored points alone.
+ * null guard. `20261021a` writes the next ten the same way. A fresh database
+ * inserts those rows in `20260925a`, before `20261013b`, and the later write
+ * leaves the stored points alone.
  */
 export type EventCoordinate = {
   slug: string;
@@ -144,6 +145,56 @@ export const EVENT_COORDINATE_BACKFILL: readonly EventCoordinate[] = [
     slug: "ai-hpi-conference-2026",
     latitude: 52.3936679,
     longitude: 13.1331929,
+  },
+  {
+    slug: "ai-devcon-nyc-2026",
+    latitude: 40.6566834,
+    longitude: -74.0072654,
+  },
+  {
+    slug: "ai-engineering-summit-austin-2026",
+    latitude: 30.2820301,
+    longitude: -97.7406426,
+  },
+  {
+    slug: "siai-2026",
+    latitude: 42.3365765,
+    longitude: -71.0953704,
+  },
+  {
+    slug: "kvk-ondernemersdagen-2026",
+    latitude: 52.0845399,
+    longitude: 5.1040766,
+  },
+  {
+    slug: "ai-coding-summit-nyc-2026",
+    latitude: 40.7081774,
+    longitude: -74.054691,
+  },
+  {
+    slug: "dsc-europe-2026",
+    latitude: 44.7968533,
+    longitude: 20.437565,
+  },
+  {
+    slug: "expatise-income-tax-utrecht-2026",
+    latitude: 52.0932221,
+    longitude: 5.1141671,
+  },
+  {
+    slug: "ae-global-summit-2026",
+    latitude: 51.5263708,
+    longitude: -0.1326179,
+  },
+  {
+    slug: "data-science-summit-warsaw-2026",
+    latitude: 52.2397726,
+    longitude: 21.0454432,
+  },
+  {
+    slug: "generative-ai-summit-london-2026",
+    latitude: 51.503295,
+    longitude: -0.0000577,
   },
 ];
 

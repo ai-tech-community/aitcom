@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { upsertBuilderEvent } from "../../migrations/20260925a_builder_public_events";
+import { eventMetaDescription } from "./listing-policy";
 import { PUBLIC_EVENTS_WHY_MAX } from "./public-events";
 import {
   BUILDER_PUBLIC_EVENTS,
@@ -27,6 +28,10 @@ const FIVE_EVENTS_MIGRATION = join(
 const NOVEMBER_MIGRATION = join(
   dir,
   "../../migrations/20261019a_five_public_events.ts",
+);
+const TEN_EVENTS_MIGRATION = join(
+  dir,
+  "../../migrations/20261021a_ten_public_events.ts",
 );
 const MIGRATION_INDEX = join(dir, "../../migrations/index.ts");
 const EVENTS_PAGE = join(dir, "../../app/[locale]/events/page.tsx");
@@ -69,12 +74,22 @@ describe("builder public events", () => {
       "agentic-ai-in-the-wild-2026",
       "hacktoberfest-hack-day-barcelona-2026",
       "tedai-2026",
+      "ai-devcon-nyc-2026",
       "iamexpat-fair-the-hague-2026",
       "web-summit-2026",
+      "ai-engineering-summit-austin-2026",
+      "siai-2026",
+      "kvk-ondernemersdagen-2026",
+      "ai-coding-summit-nyc-2026",
       "slush-2026",
       "ai-europe-congress-2026",
+      "dsc-europe-2026",
+      "expatise-income-tax-utrecht-2026",
       "ukairs-2026",
+      "ae-global-summit-2026",
+      "data-science-summit-warsaw-2026",
       "llmday-london-2026",
+      "generative-ai-summit-london-2026",
       "ai-hpi-conference-2026",
     ]);
     const dates = BUILDER_PUBLIC_EVENTS.map((event) => event.date);
@@ -165,6 +180,16 @@ describe("builder public events", () => {
         url: "https://tedai-vienna.ted.com/",
       }),
       expect.objectContaining({
+        title: "AI DevCon NYC",
+        type: "conference",
+        date: "2026-11-02",
+        endDate: "2026-11-04",
+        city: "Brooklyn",
+        location: "Industry City, Building 5, Brooklyn",
+        url: "https://tessl.io/devcon",
+        isAi: true,
+      }),
+      expect.objectContaining({
         title: "IamExpat Fair The Hague",
         type: "conference",
         date: "2026-11-07",
@@ -182,6 +207,49 @@ describe("builder public events", () => {
         city: "Lisbon",
         location: "MEO Arena, Lisbon",
         url: "https://websummit.com/web-summit-2026/",
+      }),
+      expect.objectContaining({
+        title: "AI Engineering Summit Austin 2026",
+        type: "conference",
+        date: "2026-11-12",
+        endDate: "2026-11-12",
+        city: "Austin",
+        location: "AT&T Hotel and Conference Center, Austin",
+        url: "https://www.testingmind.com/event/aiengineeringsummit-austin/",
+        isAi: true,
+      }),
+      expect.objectContaining({
+        title: "SIAI 2026",
+        type: "conference",
+        format: "hybrid",
+        date: "2026-11-13",
+        endDate: "2026-11-14",
+        city: "Boston",
+        location: "Wentworth Institute of Technology, Boston",
+        url: "https://www.siai.co/",
+        isAi: true,
+      }),
+      expect.objectContaining({
+        title: "KVK Ondernemersdagen 2026",
+        type: "meetup",
+        date: "2026-11-13",
+        endDate: "2026-11-14",
+        city: "Utrecht",
+        location: "Jaarbeurs Utrecht, halls 2 and 4, Jaarbeursplein 6, Utrecht",
+        url: "https://www.kvk.nl/evenementen/kvk-ondernemersdagen-2026/",
+        priceCents: 0,
+        isAi: false,
+      }),
+      expect.objectContaining({
+        title: "AI Coding Summit NYC",
+        type: "conference",
+        format: "hybrid",
+        date: "2026-11-16",
+        endDate: "2026-11-19",
+        city: "New York",
+        location: "Liberty Science Center, New York",
+        url: "https://aicodingsummit.com/nyc/",
+        isAi: true,
       }),
       expect.objectContaining({
         title: "Slush 2026",
@@ -204,6 +272,28 @@ describe("builder public events", () => {
         isAi: true,
       }),
       expect.objectContaining({
+        title: "DSC Europe 2026",
+        type: "conference",
+        date: "2026-11-23",
+        endDate: "2026-11-27",
+        city: "Belgrade",
+        location: "Belgrade Fair, Hall 3, Belgrade",
+        url: "https://datasciconference.com/tickets/",
+        isAi: true,
+      }),
+      expect.objectContaining({
+        title: "Expatise Learning Event on Dutch Income Tax & Social Security",
+        type: "meetup",
+        date: "2026-11-24",
+        endDate: "2026-11-24",
+        startTime: "10:00",
+        endTime: "17:00",
+        city: "Utrecht",
+        location: "Vergadercentrum Vredenburg, Vredenburg 19, Utrecht",
+        url: "https://www.expatise.academy/details-en-registratie/expatise-learning-event-on-dutch-income-tax-social-security",
+        isAi: false,
+      }),
+      expect.objectContaining({
         title: "UKAIRS 2026",
         date: "2026-11-24",
         endDate: "2026-11-25",
@@ -215,11 +305,42 @@ describe("builder public events", () => {
         isAi: true,
       }),
       expect.objectContaining({
+        title: "AE Global Summit 2026",
+        type: "conference",
+        date: "2026-11-25",
+        endDate: "2026-11-27",
+        city: "London",
+        location: "Friends House, London",
+        url: "https://www.algopreneurship.org/faq",
+        isAi: true,
+      }),
+      expect.objectContaining({
+        title: "Data Science Summit",
+        type: "conference",
+        format: "hybrid",
+        date: "2026-11-26",
+        endDate: "2026-11-27",
+        city: "Warsaw",
+        location: "PGE Narodowy, al. Ks. Józefa Poniatowskiego 1, Warsaw",
+        url: "https://main.dssconf.pl/",
+        isAi: true,
+      }),
+      expect.objectContaining({
         title: "LLMday London",
         date: "2026-11-26",
         city: "London",
         location: "Everyman Canary Wharf, London",
         url: "https://llmday.com/2026-london-q4/index.html",
+      }),
+      expect.objectContaining({
+        title: "Generative AI Summit London",
+        type: "conference",
+        date: "2026-12-01",
+        endDate: "2026-12-01",
+        city: "London",
+        location: "InterContinental London - The O2, 1 Waterview Drive, London",
+        url: "https://world.aiacceleratorinstitute.com/location/london/",
+        isAi: true,
       }),
       expect.objectContaining({
         title: "AI@HPI Conference 2026",
@@ -432,12 +553,22 @@ describe("builder public events", () => {
       "agentic-ai-in-the-wild-2026": null,
       "hacktoberfest-hack-day-barcelona-2026": null,
       "tedai-2026": "2026-10-30",
+      "ai-devcon-nyc-2026": "2026-11-04",
       "iamexpat-fair-the-hague-2026": "2026-11-07",
       "web-summit-2026": "2026-11-12",
+      "ai-engineering-summit-austin-2026": "2026-11-12",
+      "siai-2026": "2026-11-14",
+      "kvk-ondernemersdagen-2026": "2026-11-14",
+      "ai-coding-summit-nyc-2026": "2026-11-19",
       "slush-2026": "2026-11-19",
       "ai-europe-congress-2026": "2026-11-19",
+      "dsc-europe-2026": "2026-11-27",
+      "expatise-income-tax-utrecht-2026": "2026-11-24",
       "ukairs-2026": "2026-11-25",
+      "ae-global-summit-2026": "2026-11-27",
+      "data-science-summit-warsaw-2026": "2026-11-27",
       "llmday-london-2026": null,
+      "generative-ai-summit-london-2026": "2026-12-01",
       "ai-hpi-conference-2026": "2026-12-03",
     });
   });
@@ -494,12 +625,17 @@ describe("builder public events", () => {
       BUILDER_PUBLIC_EVENTS.filter((event) => event.priceCents != null).map(
         (event) => event.slug,
       ),
-    ).toEqual(["ai-hpi-conference-2026"]);
+    ).toEqual(["kvk-ondernemersdagen-2026", "ai-hpi-conference-2026"]);
     expect(
       BUILDER_PUBLIC_EVENTS.filter((event) => event.isAi === false).map(
         (event) => event.slug,
       ),
-    ).toEqual(["iamexpat-fair-the-hague-2026", "slush-2026"]);
+    ).toEqual([
+      "iamexpat-fair-the-hague-2026",
+      "kvk-ondernemersdagen-2026",
+      "slush-2026",
+      "expatise-income-tax-utrecht-2026",
+    ]);
 
     const migration = readFileSync(NOVEMBER_MIGRATION, "utf8");
     const index = readFileSync(MIGRATION_INDEX, "utf8");
@@ -522,6 +658,112 @@ describe("builder public events", () => {
       "utf8",
     );
     expect(docs).toContain("20261019a_five_public_events");
+    for (const slug of slugs) {
+      expect(docs).toContain(slug);
+    }
+  });
+
+  it("registers a follow-up migration that upserts only the ten new events", () => {
+    const slugs = [
+      "ai-devcon-nyc-2026",
+      "ai-engineering-summit-austin-2026",
+      "siai-2026",
+      "kvk-ondernemersdagen-2026",
+      "ai-coding-summit-nyc-2026",
+      "dsc-europe-2026",
+      "expatise-income-tax-utrecht-2026",
+      "ae-global-summit-2026",
+      "data-science-summit-warsaw-2026",
+      "generative-ai-summit-london-2026",
+    ] as const;
+    const metas: Record<(typeof slugs)[number], string> = {
+      "ai-devcon-nyc-2026":
+        "AI DevCon NYC. 02–04 Nov 2026. Industry City, Building 5, Brooklyn.",
+      "ai-engineering-summit-austin-2026":
+        "AI Engineering Summit Austin 2026. 12 Nov 2026. AT&T Hotel and Conference Center, Austin.",
+      "siai-2026":
+        "SIAI 2026. 13–14 Nov 2026. Wentworth Institute of Technology, Boston.",
+      "kvk-ondernemersdagen-2026":
+        "KVK Ondernemersdagen 2026. 13–14 Nov 2026. Jaarbeurs Utrecht, halls 2 and 4, Jaarbeursplein 6, Utrecht.",
+      "ai-coding-summit-nyc-2026":
+        "AI Coding Summit NYC. 16–19 Nov 2026. Liberty Science Center, New York.",
+      "dsc-europe-2026":
+        "DSC Europe 2026. 23–27 Nov 2026. Belgrade Fair, Hall 3, Belgrade.",
+      "expatise-income-tax-utrecht-2026":
+        "Expatise Learning Event on Dutch Income Tax & Social Security. 24 Nov 2026. Vergadercentrum Vredenburg, Vredenburg 19, Utrecht.",
+      "ae-global-summit-2026":
+        "AE Global Summit 2026. 25–27 Nov 2026. Friends House, London.",
+      "data-science-summit-warsaw-2026":
+        "Data Science Summit. 26–27 Nov 2026. PGE Narodowy, al. Ks. Józefa Poniatowskiego 1, Warsaw.",
+      "generative-ai-summit-london-2026":
+        "Generative AI Summit London. 01 Dec 2026. InterContinental London - The O2, 1 Waterview Drive, London.",
+    };
+
+    for (const slug of slugs) {
+      const event = BUILDER_PUBLIC_EVENTS.find((row) => row.slug === slug);
+      expect(event?.slug.endsWith("-2026")).toBe(true);
+      expect(event?.endDate).toBeTruthy();
+      expect(event?.summary.en).not.toMatch(/early bird/i);
+      expect(event?.summary.nl).not.toMatch(/early bird/i);
+      const description = `${event!.summary.en} Official page: ${event!.url}`;
+      const meta = eventMetaDescription(
+        {
+          title: event!.title,
+          date: event!.date,
+          endDate: event!.endDate,
+          city: event!.city,
+          location: event!.location,
+          format: event!.format ?? "in-person",
+          description,
+        },
+        "en",
+      );
+      expect(meta).toBe(metas[slug]);
+      expect(meta.length).toBeLessThanOrEqual(160);
+      expect(meta).not.toMatch(/early bird|flagship|invite-only/i);
+    }
+
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "ae-global-summit-2026",
+      )?.summary.en,
+    ).toContain(
+      "single-day tickets are £15 for students and £30 general; student three-day passes are £45",
+    );
+    expect(
+      BUILDER_PUBLIC_EVENTS.find((event) => event.slug === "dsc-europe-2026")
+        ?.url,
+    ).toBe("https://datasciconference.com/tickets/");
+    expect(
+      BUILDER_PUBLIC_EVENTS.find((event) => event.slug === "siai-2026")?.format,
+    ).toBe("hybrid");
+
+    const migration = readFileSync(TEN_EVENTS_MIGRATION, "utf8");
+    const index = readFileSync(MIGRATION_INDEX, "utf8");
+    const prior = index.indexOf('name: "20261019a_five_public_events"');
+    const followUp = index.indexOf('name: "20261021a_ten_public_events"');
+    expect(prior).toBeGreaterThan(-1);
+    expect(followUp).toBeGreaterThan(prior);
+    expect(migration).toContain("upsertBuilderEvent");
+    expect(migration).toContain("BUILDER_PUBLIC_EVENTS");
+    expect(migration).toContain("EVENT_COORDINATE_BACKFILL");
+    expect(migration).toContain(
+      'AND ("latitude" IS NULL OR "longitude" IS NULL)',
+    );
+    for (const slug of slugs) {
+      expect(migration).toContain(slug);
+    }
+    expect(migration).not.toMatch(
+      /world congress|giant|mlcon|zevenheuvelenloop|max_attendees|image_id|rsvp/i,
+    );
+    expect(JSON.stringify(BUILDER_PUBLIC_EVENTS)).not.toMatch(
+      /world congress|giant|mlcon|zevenheuvelenloop|early bird/i,
+    );
+    const docs = readFileSync(
+      join(dir, "../../../docs/ops/curated-public-events.md"),
+      "utf8",
+    );
+    expect(docs).toContain("20261021a_ten_public_events");
     for (const slug of slugs) {
       expect(docs).toContain(slug);
     }
