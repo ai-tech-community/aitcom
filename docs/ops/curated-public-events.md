@@ -68,8 +68,10 @@ executive summit. `ae-global-summit-2026` keeps the official single-day
 and student prices in the summary (£15 student, £30 general, £45 student
 three-day) and does not store one euro price. `kvk-ondernemersdagen-2026`
 stores a free ticket (0 cents). `siai-2026`, `ai-coding-summit-nyc-2026`,
-and `data-science-summit-warsaw-2026` are hybrid. `is_ai` is false only
-for the KVK event and the Expatise tax day. The same migration writes a
+and `data-science-summit-warsaw-2026` are hybrid.
+`ai-coding-summit-nyc-2026` is stored at Liberty Science Center,
+Jersey City, NJ. `is_ai` is false only for the KVK event and the
+Expatise tax day. The same migration writes a
 Nominatim point for each venue only when latitude or longitude is still
 null. `ukairs-2026` stores the
 registration close from the official registration page

@@ -246,8 +246,8 @@ describe("builder public events", () => {
         format: "hybrid",
         date: "2026-11-16",
         endDate: "2026-11-19",
-        city: "New York",
-        location: "Liberty Science Center, New York",
+        city: "Jersey City",
+        location: "Liberty Science Center, Jersey City, NJ",
         url: "https://aicodingsummit.com/nyc/",
         isAi: true,
       }),
@@ -686,7 +686,7 @@ describe("builder public events", () => {
       "kvk-ondernemersdagen-2026":
         "KVK Ondernemersdagen 2026. 13–14 Nov 2026. Jaarbeurs Utrecht, halls 2 and 4, Jaarbeursplein 6, Utrecht.",
       "ai-coding-summit-nyc-2026":
-        "AI Coding Summit NYC. 16–19 Nov 2026. Liberty Science Center, New York.",
+        "AI Coding Summit NYC. 16–19 Nov 2026. Liberty Science Center, Jersey City, NJ.",
       "dsc-europe-2026":
         "DSC Europe 2026. 23–27 Nov 2026. Belgrade Fair, Hall 3, Belgrade.",
       "expatise-income-tax-utrecht-2026":
