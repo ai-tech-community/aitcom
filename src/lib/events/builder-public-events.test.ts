@@ -33,6 +33,10 @@ const TEN_EVENTS_MIGRATION = join(
   dir,
   "../../migrations/20261021a_ten_public_events.ts",
 );
+const SEVEN_EVENTS_MIGRATION = join(
+  dir,
+  "../../migrations/20261022a_seven_public_events.ts",
+);
 const MIGRATION_INDEX = join(dir, "../../migrations/index.ts");
 const EVENTS_PAGE = join(dir, "../../app/[locale]/events/page.tsx");
 
@@ -75,12 +79,16 @@ describe("builder public events", () => {
       "hacktoberfest-hack-day-barcelona-2026",
       "tedai-2026",
       "ai-devcon-nyc-2026",
+      "agentic-transformation-summit-amsterdam-2026",
       "iamexpat-fair-the-hague-2026",
       "web-summit-2026",
       "ai-engineering-summit-austin-2026",
       "siai-2026",
       "kvk-ondernemersdagen-2026",
+      "sinterklaasintocht-amsterdam-2026",
       "ai-coding-summit-nyc-2026",
+      "handelsblatt-ai-summit-2026",
+      "microsoft-ignite-2026",
       "slush-2026",
       "ai-europe-congress-2026",
       "dsc-europe-2026",
@@ -89,8 +97,11 @@ describe("builder public events", () => {
       "ae-global-summit-2026",
       "data-science-summit-warsaw-2026",
       "llmday-london-2026",
+      "welcome-to-the-hague-2026",
       "generative-ai-summit-london-2026",
+      "apidays-paris-2026",
       "ai-hpi-conference-2026",
+      "the-ai-summit-new-york-2026",
     ]);
     const dates = BUILDER_PUBLIC_EVENTS.map((event) => event.date);
     expect([...dates].sort()).toEqual(dates);
@@ -190,6 +201,16 @@ describe("builder public events", () => {
         isAi: true,
       }),
       expect.objectContaining({
+        title: "The Agentic Transformation Summit",
+        type: "conference",
+        date: "2026-11-04",
+        endDate: "2026-11-05",
+        city: "Amsterdam",
+        location: "Amsterdam Marriott Hotel, Stadhouderskade 12, Amsterdam",
+        url: "https://www.aidataanalytics.network/events-agentic-ai-summit",
+        isAi: true,
+      }),
+      expect.objectContaining({
         title: "IamExpat Fair The Hague",
         type: "conference",
         date: "2026-11-07",
@@ -241,6 +262,19 @@ describe("builder public events", () => {
         isAi: false,
       }),
       expect.objectContaining({
+        title: "Sinterklaasintocht in Amsterdam",
+        type: "meetup",
+        date: "2026-11-15",
+        endDate: "2026-11-15",
+        startTime: "10:15",
+        endTime: "15:30",
+        city: "Amsterdam",
+        location:
+          "De Omval via Het Scheepvaartmuseum to Leidseplein, Amsterdam",
+        url: "https://www.sintinamsterdam.nl/over-de-intocht/",
+        isAi: false,
+      }),
+      expect.objectContaining({
         title: "AI Coding Summit NYC",
         type: "conference",
         format: "hybrid",
@@ -250,6 +284,26 @@ describe("builder public events", () => {
         location: "Liberty Science Center, Jersey City, NJ",
         url: "https://aicodingsummit.com/nyc/",
         isAi: true,
+      }),
+      expect.objectContaining({
+        title: "Handelsblatt AI Summit 2026",
+        type: "conference",
+        date: "2026-11-16",
+        endDate: "2026-11-17",
+        city: "Munich",
+        location: "House of Communication, Friedenstr. 24, Munich",
+        url: "https://live.handelsblatt.com/en/event/handelsblatt-ai-summit/",
+        isAi: true,
+      }),
+      expect.objectContaining({
+        title: "Microsoft Ignite",
+        type: "conference",
+        format: "hybrid",
+        date: "2026-11-17",
+        endDate: "2026-11-20",
+        city: "San Francisco",
+        location: "Moscone Center, San Francisco",
+        url: "https://ignite.microsoft.com/en-US/home",
       }),
       expect.objectContaining({
         title: "Slush 2026",
@@ -333,6 +387,18 @@ describe("builder public events", () => {
         url: "https://llmday.com/2026-london-q4/index.html",
       }),
       expect.objectContaining({
+        title: "Welcome to The Hague event",
+        type: "meetup",
+        date: "2026-11-26",
+        endDate: "2026-11-26",
+        startTime: "18:00",
+        endTime: "20:30",
+        city: "Den Haag",
+        location: "The Fiddler, Riviervismarkt 1, 2513AM Den Haag",
+        url: "https://www.thehagueinternationalcentre.nl/events/2026-11/welcome-to-the-hague-event",
+        isAi: false,
+      }),
+      expect.objectContaining({
         title: "Generative AI Summit London",
         type: "conference",
         date: "2026-12-01",
@@ -343,6 +409,16 @@ describe("builder public events", () => {
         isAi: true,
       }),
       expect.objectContaining({
+        title: "apidays Paris",
+        type: "conference",
+        date: "2026-12-01",
+        endDate: "2026-12-03",
+        city: "Paris",
+        location: "CNIT Forest, Paris",
+        url: "https://www.apidays.global/events/paris",
+        isAi: true,
+      }),
+      expect.objectContaining({
         title: "AI@HPI Conference 2026",
         date: "2026-12-02",
         endDate: "2026-12-03",
@@ -350,6 +426,16 @@ describe("builder public events", () => {
         location: "Hasso Plattner Institute, Potsdam",
         url: "https://hpi.de/en/ai-hpi-conference/",
         priceCents: 29000,
+        isAi: true,
+      }),
+      expect.objectContaining({
+        title: "The AI Summit New York",
+        type: "conference",
+        date: "2026-12-09",
+        endDate: "2026-12-10",
+        city: "New York",
+        location: "Javits Center, 429 11th Ave, New York",
+        url: "https://newyork.theaisummit.com/",
         isAi: true,
       }),
     ]);
@@ -554,12 +640,16 @@ describe("builder public events", () => {
       "hacktoberfest-hack-day-barcelona-2026": null,
       "tedai-2026": "2026-10-30",
       "ai-devcon-nyc-2026": "2026-11-04",
+      "agentic-transformation-summit-amsterdam-2026": "2026-11-05",
       "iamexpat-fair-the-hague-2026": "2026-11-07",
       "web-summit-2026": "2026-11-12",
       "ai-engineering-summit-austin-2026": "2026-11-12",
       "siai-2026": "2026-11-14",
       "kvk-ondernemersdagen-2026": "2026-11-14",
+      "sinterklaasintocht-amsterdam-2026": "2026-11-15",
       "ai-coding-summit-nyc-2026": "2026-11-19",
+      "handelsblatt-ai-summit-2026": "2026-11-17",
+      "microsoft-ignite-2026": "2026-11-20",
       "slush-2026": "2026-11-19",
       "ai-europe-congress-2026": "2026-11-19",
       "dsc-europe-2026": "2026-11-27",
@@ -568,8 +658,11 @@ describe("builder public events", () => {
       "ae-global-summit-2026": "2026-11-27",
       "data-science-summit-warsaw-2026": "2026-11-27",
       "llmday-london-2026": null,
+      "welcome-to-the-hague-2026": "2026-11-26",
       "generative-ai-summit-london-2026": "2026-12-01",
+      "apidays-paris-2026": "2026-12-03",
       "ai-hpi-conference-2026": "2026-12-03",
+      "the-ai-summit-new-york-2026": "2026-12-10",
     });
   });
 
@@ -633,8 +726,10 @@ describe("builder public events", () => {
     ).toEqual([
       "iamexpat-fair-the-hague-2026",
       "kvk-ondernemersdagen-2026",
+      "sinterklaasintocht-amsterdam-2026",
       "slush-2026",
       "expatise-income-tax-utrecht-2026",
+      "welcome-to-the-hague-2026",
     ]);
 
     const migration = readFileSync(NOVEMBER_MIGRATION, "utf8");
@@ -764,6 +859,160 @@ describe("builder public events", () => {
       "utf8",
     );
     expect(docs).toContain("20261021a_ten_public_events");
+    for (const slug of slugs) {
+      expect(docs).toContain(slug);
+    }
+  });
+
+  it("registers a follow-up migration that upserts only the seven new events", () => {
+    const slugs = [
+      "agentic-transformation-summit-amsterdam-2026",
+      "sinterklaasintocht-amsterdam-2026",
+      "handelsblatt-ai-summit-2026",
+      "microsoft-ignite-2026",
+      "welcome-to-the-hague-2026",
+      "apidays-paris-2026",
+      "the-ai-summit-new-york-2026",
+    ] as const;
+    const metas: Record<(typeof slugs)[number], string> = {
+      "agentic-transformation-summit-amsterdam-2026":
+        "The Agentic Transformation Summit. 04–05 Nov 2026. Amsterdam Marriott Hotel, Stadhouderskade 12, Amsterdam.",
+      "sinterklaasintocht-amsterdam-2026":
+        "Sinterklaasintocht in Amsterdam. 15 Nov 2026. De Omval via Het Scheepvaartmuseum to Leidseplein, Amsterdam.",
+      "handelsblatt-ai-summit-2026":
+        "Handelsblatt AI Summit 2026. 16–17 Nov 2026. House of Communication, Friedenstr. 24, Munich.",
+      "microsoft-ignite-2026":
+        "Microsoft Ignite. 17–20 Nov 2026. Moscone Center, San Francisco.",
+      "welcome-to-the-hague-2026":
+        "Welcome to The Hague event. 26 Nov 2026. The Fiddler, Riviervismarkt 1, 2513AM Den Haag.",
+      "apidays-paris-2026":
+        "apidays Paris. 01–03 Dec 2026. CNIT Forest, Paris.",
+      "the-ai-summit-new-york-2026":
+        "The AI Summit New York. 09–10 Dec 2026. Javits Center, 429 11th Ave, New York.",
+    };
+
+    for (const slug of slugs) {
+      const event = BUILDER_PUBLIC_EVENTS.find((row) => row.slug === slug);
+      expect(event?.slug.endsWith("-2026")).toBe(true);
+      expect(event?.endDate).toBeTruthy();
+      expect(event).not.toHaveProperty("priceCents");
+      const description = `${event!.summary.en} Official page: ${event!.url}`;
+      const meta = eventMetaDescription(
+        {
+          title: event!.title,
+          date: event!.date,
+          endDate: event!.endDate,
+          city: event!.city,
+          location: event!.location,
+          format: event!.format ?? "in-person",
+          description,
+        },
+        "en",
+      );
+      expect(meta).toBe(metas[slug]);
+      expect(meta.length).toBeLessThanOrEqual(160);
+      expect(meta.startsWith(`${event!.title}. `)).toBe(true);
+      const descriptionNl = `${event!.summary.nl} Officiële pagina: ${event!.url}`;
+      const metaNl = eventMetaDescription(
+        {
+          title: event!.title,
+          date: event!.date,
+          endDate: event!.endDate,
+          city: event!.city,
+          location: event!.location,
+          format: event!.format ?? "in-person",
+          description: descriptionNl,
+        },
+        "nl",
+      );
+      const factsNl = eventMetaDescription(
+        {
+          title: event!.title,
+          date: event!.date,
+          endDate: event!.endDate,
+          city: event!.city,
+          location: event!.location,
+          format: event!.format ?? "in-person",
+          description: "",
+        },
+        "nl",
+      );
+      expect(metaNl).toBe(factsNl);
+      expect(metaNl).not.toMatch(/officiële pagina|https?:/i);
+      expect(metaNl.length).toBeLessThanOrEqual(160);
+    }
+
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "microsoft-ignite-2026",
+      )?.format,
+    ).toBe("hybrid");
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "microsoft-ignite-2026",
+      )?.isAi,
+    ).toBeUndefined();
+    expect(
+      BUILDER_PUBLIC_EVENTS.find((event) => event.slug === "apidays-paris-2026")
+        ?.isAi,
+    ).toBe(true);
+
+    const migration = readFileSync(SEVEN_EVENTS_MIGRATION, "utf8");
+    const index = readFileSync(MIGRATION_INDEX, "utf8");
+    const prior = index.indexOf('name: "20261021a_ten_public_events"');
+    const followUp = index.indexOf('name: "20261022a_seven_public_events"');
+    expect(prior).toBeGreaterThan(-1);
+    expect(followUp).toBeGreaterThan(prior);
+    expect(migration).toContain("upsertBuilderEvent");
+    expect(migration).toContain("BUILDER_PUBLIC_EVENTS");
+    expect(migration).toContain("EVENT_COORDINATE_BACKFILL");
+    expect(migration).toContain(
+      'AND ("latitude" IS NULL OR "longitude" IS NULL)',
+    );
+    expect(migration).not.toMatch(/\b(ALTER|CREATE|DROP)\b/);
+    for (const slug of slugs) {
+      expect(migration).toContain(slug);
+    }
+    expect(migration).toContain("from €950");
+    expect(migration).toContain("free digital pass, then Hub pass $1,625");
+    expect(migration).toContain("Expo pass from $129");
+    expect(migration).toContain("from €1,799 + VAT");
+    expect(migration).toContain("registration required");
+    expect(migration).toContain("times approximate");
+    expect(migration).not.toMatch(/odsc|max_attendees|image_id|rsvp/i);
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "welcome-to-the-hague-2026",
+      )?.summary.en,
+    ).not.toMatch(/\bfree\b/i);
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "welcome-to-the-hague-2026",
+      )?.summary.nl,
+    ).not.toMatch(/\bgratis\b/i);
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "sinterklaasintocht-amsterdam-2026",
+      )?.title,
+    ).toBe("Sinterklaasintocht in Amsterdam");
+    expect(JSON.stringify(BUILDER_PUBLIC_EVENTS)).not.toMatch(/\bodsc\b/i);
+
+    const detail = readFileSync(
+      join(dir, "../../app/[locale]/events/[slug]/page.tsx"),
+      "utf8",
+    );
+    expect(detail).toContain("eventMetaDescription");
+    expect(detail).toContain("eventSchemaDates");
+    expect(detail).toContain('"@type": "Event"');
+    expect(detail).toContain("localeAlternates(`/events/${slug}`)");
+    const sitemap = readFileSync(join(dir, "../../app/sitemap.ts"), "utf8");
+    expect(sitemap).toContain("`/events/${event.slug}`");
+
+    const docs = readFileSync(
+      join(dir, "../../../docs/ops/curated-public-events.md"),
+      "utf8",
+    );
+    expect(docs).toContain("20261022a_seven_public_events");
     for (const slug of slugs) {
       expect(docs).toContain(slug);
     }
