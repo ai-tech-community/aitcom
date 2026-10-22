@@ -1,4 +1,4 @@
-import type { EventType } from "@/lib/event-metadata";
+import type { EventFormat, EventType } from "@/lib/event-metadata";
 
 /**
  * Ops-cleared public events for the fat `/events` listing (Payload `events`).
@@ -20,6 +20,11 @@ export type BuilderPublicEvent = {
   slug: string;
   title: string;
   type: EventType;
+  /**
+   * How people attend. Omitted rows are in person. Hybrid is only set when
+   * the official page says the event is both in person and online.
+   */
+  format?: EventFormat;
   /** Start date (YYYY-MM-DD). The listing sorts on this. */
   date: string;
   /** Last calendar day (YYYY-MM-DD), when the official span is longer than one day. */
@@ -221,6 +226,23 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     },
   },
   {
+    slug: "ai-devcon-nyc-2026",
+    title: "AI DevCon NYC",
+    type: "conference",
+    date: "2026-11-02",
+    endDate: "2026-11-04",
+    city: "Brooklyn",
+    country: "United States",
+    location: "Industry City, Building 5, Brooklyn",
+    timezone: "America/New_York",
+    url: "https://tessl.io/devcon",
+    isAi: true,
+    summary: {
+      en: "Conference at Industry City, Building 5, Brooklyn, 2–4 Nov 2026.",
+      nl: "Conferentie in Industry City, Building 5, Brooklyn, 2–4 nov 2026.",
+    },
+  },
+  {
     slug: "iamexpat-fair-the-hague-2026",
     title: "IamExpat Fair The Hague",
     type: "conference",
@@ -253,6 +275,77 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     summary: {
       en: "Web Summit at MEO Arena in Lisbon, 9–12 Nov 2026.",
       nl: "Web Summit in de MEO Arena in Lissabon, 9–12 nov 2026.",
+    },
+  },
+  {
+    slug: "ai-engineering-summit-austin-2026",
+    title: "AI Engineering Summit Austin 2026",
+    type: "conference",
+    date: "2026-11-12",
+    endDate: "2026-11-12",
+    city: "Austin",
+    country: "United States",
+    location: "AT&T Hotel and Conference Center, Austin",
+    timezone: "America/Chicago",
+    url: "https://www.testingmind.com/event/aiengineeringsummit-austin/",
+    isAi: true,
+    summary: {
+      en: "AI engineering summit at the AT&T Hotel and Conference Center, Austin, Thu 12 Nov 2026.",
+      nl: "AI-engineeringsummit in het AT&T Hotel and Conference Center, Austin, do 12 nov 2026.",
+    },
+  },
+  {
+    slug: "siai-2026",
+    title: "SIAI 2026",
+    type: "conference",
+    format: "hybrid",
+    date: "2026-11-13",
+    endDate: "2026-11-14",
+    city: "Boston",
+    country: "United States",
+    location: "Wentworth Institute of Technology, Boston",
+    timezone: "America/New_York",
+    url: "https://www.siai.co/",
+    isAi: true,
+    summary: {
+      en: "Hybrid conference at Wentworth Institute of Technology, Boston, 13–14 Nov 2026, in person or online.",
+      nl: "Hybride conferentie aan het Wentworth Institute of Technology, Boston, 13–14 nov 2026, ter plaatse of online.",
+    },
+  },
+  {
+    slug: "kvk-ondernemersdagen-2026",
+    title: "KVK Ondernemersdagen 2026",
+    type: "meetup",
+    date: "2026-11-13",
+    endDate: "2026-11-14",
+    city: "Utrecht",
+    country: "Netherlands",
+    location: "Jaarbeurs Utrecht, halls 2 and 4, Jaarbeursplein 6, Utrecht",
+    timezone: "Europe/Amsterdam",
+    url: "https://www.kvk.nl/evenementen/kvk-ondernemersdagen-2026/",
+    priceCents: 0,
+    isAi: false,
+    summary: {
+      en: "Free entrepreneur event at Jaarbeurs Utrecht, halls 2 and 4, Jaarbeursplein 6, 13–14 Nov 2026.",
+      nl: "Gratis ondernemersevenement in Jaarbeurs Utrecht, hal 2 en 4, Jaarbeursplein 6, 13–14 nov 2026.",
+    },
+  },
+  {
+    slug: "ai-coding-summit-nyc-2026",
+    title: "AI Coding Summit NYC",
+    type: "conference",
+    format: "hybrid",
+    date: "2026-11-16",
+    endDate: "2026-11-19",
+    city: "Jersey City",
+    country: "United States",
+    location: "Liberty Science Center, Jersey City, NJ",
+    timezone: "America/New_York",
+    url: "https://aicodingsummit.com/nyc/",
+    isAi: true,
+    summary: {
+      en: "Summit at Liberty Science Center, Jersey City, NJ, in person 16–17 Nov and remote 19 Nov 2026.",
+      nl: "Summit in Liberty Science Center, Jersey City, NJ, ter plaatse 16–17 nov en remote 19 nov 2026.",
     },
   },
   {
@@ -290,6 +383,42 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     },
   },
   {
+    slug: "dsc-europe-2026",
+    title: "DSC Europe 2026",
+    type: "conference",
+    date: "2026-11-23",
+    endDate: "2026-11-27",
+    city: "Belgrade",
+    country: "Serbia",
+    location: "Belgrade Fair, Hall 3, Belgrade",
+    timezone: "Europe/Belgrade",
+    url: "https://datasciconference.com/tickets/",
+    isAi: true,
+    summary: {
+      en: "AI conference at Belgrade Fair, Hall 3, Belgrade, 23–27 Nov 2026.",
+      nl: "AI-conferentie in Belgrade Fair, Hall 3, Belgrado, 23–27 nov 2026.",
+    },
+  },
+  {
+    slug: "expatise-income-tax-utrecht-2026",
+    title: "Expatise Learning Event on Dutch Income Tax & Social Security",
+    type: "meetup",
+    date: "2026-11-24",
+    endDate: "2026-11-24",
+    startTime: "10:00",
+    endTime: "17:00",
+    city: "Utrecht",
+    country: "Netherlands",
+    location: "Vergadercentrum Vredenburg, Vredenburg 19, Utrecht",
+    timezone: "Europe/Amsterdam",
+    url: "https://www.expatise.academy/details-en-registratie/expatise-learning-event-on-dutch-income-tax-social-security",
+    isAi: false,
+    summary: {
+      en: "Income tax and social security event at Vergadercentrum Vredenburg, Utrecht, Tue 24 Nov 2026, 10:00–17:00.",
+      nl: "Evenement over inkomstenbelasting en sociale zekerheid in Vergadercentrum Vredenburg, Utrecht, di 24 nov 2026, 10:00–17:00.",
+    },
+  },
+  {
     slug: "ukairs-2026",
     title: "UKAIRS 2026",
     type: "conference",
@@ -308,6 +437,41 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     },
   },
   {
+    slug: "ae-global-summit-2026",
+    title: "AE Global Summit 2026",
+    type: "conference",
+    date: "2026-11-25",
+    endDate: "2026-11-27",
+    city: "London",
+    country: "United Kingdom",
+    location: "Friends House, London",
+    timezone: "Europe/London",
+    url: "https://www.algopreneurship.org/faq",
+    isAi: true,
+    summary: {
+      en: "Summit at Friends House, London, 25–27 Nov 2026; single-day tickets are £15 for students and £30 general; student three-day passes are £45.",
+      nl: "Summit in Friends House, Londen, 25–27 nov 2026; single-day tickets are £15 for students and £30 general; student three-day passes are £45.",
+    },
+  },
+  {
+    slug: "data-science-summit-warsaw-2026",
+    title: "Data Science Summit",
+    type: "conference",
+    format: "hybrid",
+    date: "2026-11-26",
+    endDate: "2026-11-27",
+    city: "Warsaw",
+    country: "Poland",
+    location: "PGE Narodowy, al. Ks. Józefa Poniatowskiego 1, Warsaw",
+    timezone: "Europe/Warsaw",
+    url: "https://main.dssconf.pl/",
+    isAi: true,
+    summary: {
+      en: "Data science conference online on 26 Nov and at PGE Narodowy, Warsaw, on 27 Nov 2026.",
+      nl: "Data-scienceconferentie online op 26 nov en in PGE Narodowy, Warschau, op 27 nov 2026.",
+    },
+  },
+  {
     slug: "llmday-london-2026",
     title: "LLMday London",
     type: "conference",
@@ -320,6 +484,23 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     summary: {
       en: "Conference on large language models, agents and AI systems at Everyman Canary Wharf, London, Thu 26 Nov 2026.",
       nl: "Conferentie over large language models, agents en AI-systemen in Everyman Canary Wharf, Londen, do 26 nov 2026.",
+    },
+  },
+  {
+    slug: "generative-ai-summit-london-2026",
+    title: "Generative AI Summit London",
+    type: "conference",
+    date: "2026-12-01",
+    endDate: "2026-12-01",
+    city: "London",
+    country: "United Kingdom",
+    location: "InterContinental London - The O2, 1 Waterview Drive, London",
+    timezone: "Europe/London",
+    url: "https://world.aiacceleratorinstitute.com/location/london/",
+    isAi: true,
+    summary: {
+      en: "Generative AI summit at InterContinental London - The O2, 1 Waterview Drive, London, 1 Dec 2026.",
+      nl: "Generative AI-summit in InterContinental London - The O2, 1 Waterview Drive, Londen, 1 dec 2026.",
     },
   },
   {

@@ -64,6 +64,9 @@ export async function upsertBuilderEvent(
   const type = await storedEventType(db, event.type);
   const eventType = sql`${type}::"public"."enum_events_type"`;
   const versionType = sql`${type}::"public"."enum__events_v_version_type"`;
+  const format = event.format ?? "in-person";
+  const eventFormat = sql`${format}::"public"."enum_events_format"`;
+  const versionFormat = sql`${format}::"public"."enum__events_v_version_format"`;
   const descriptionEn = JSON.stringify(
     builderEventDescription(event.summary.en, event.url, "Official page:"),
   );
@@ -84,7 +87,7 @@ export async function upsertBuilderEvent(
       ) VALUES (
         ${event.slug},
         ${eventType},
-        'in-person'::"public"."enum_events_format",
+        ${eventFormat},
         ${event.location},
         ${event.country},
         ${event.city},
@@ -157,7 +160,7 @@ export async function upsertBuilderEvent(
       SET
         "version_slug" = ${event.slug},
         "version_type" = ${versionType},
-        "version_format" = 'in-person'::"public"."enum__events_v_version_format",
+        "version_format" = ${versionFormat},
         "version_location" = ${event.location},
         "version_country" = ${event.country},
         "version_city" = ${event.city},
@@ -197,7 +200,7 @@ export async function upsertBuilderEvent(
         u."id",
         ${event.slug},
         ${versionType},
-        'in-person'::"public"."enum__events_v_version_format",
+        ${versionFormat},
         ${event.location},
         ${event.country},
         ${event.city},

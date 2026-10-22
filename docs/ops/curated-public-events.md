@@ -55,11 +55,29 @@ from that same seed. `20261006a_five_public_events` upserts only
 `20261019a_five_public_events` upserts only
 `iamexpat-fair-the-hague-2026`, `slush-2026`,
 `ai-europe-congress-2026`, `ukairs-2026`, and
-`ai-hpi-conference-2026` from that same seed. `ukairs-2026` stores the
+`ai-hpi-conference-2026` from that same seed.
+`20261021a_ten_public_events` upserts only
+`ai-devcon-nyc-2026`, `ai-engineering-summit-austin-2026`,
+`siai-2026`, `kvk-ondernemersdagen-2026`,
+`ai-coding-summit-nyc-2026`, `dsc-europe-2026`,
+`expatise-income-tax-utrecht-2026`, `ae-global-summit-2026`,
+`data-science-summit-warsaw-2026`, and
+`generative-ai-summit-london-2026` from that same seed.
+`dsc-europe-2026` links to the open-pass page, not the invite-only
+executive summit. `ae-global-summit-2026` keeps the official single-day
+and student prices in the summary (£15 student, £30 general, £45 student
+three-day) and does not store one euro price. `kvk-ondernemersdagen-2026`
+stores a free ticket (0 cents). `siai-2026`, `ai-coding-summit-nyc-2026`,
+and `data-science-summit-warsaw-2026` are hybrid.
+`ai-coding-summit-nyc-2026` is stored at Liberty Science Center,
+Jersey City, NJ. `is_ai` is false only for the KVK event and the
+Expatise tax day. The same migration writes a
+Nominatim point for each venue only when latitude or longitude is still
+null. `ukairs-2026` stores the
 registration close from the official registration page
 (`registration_deadline`, shown on the card). `ai-hpi-conference-2026`
-stores the stated €290 ticket as 29000 cents. `is_ai` is set on these
-five rows only. All five are stored as conferences. The enum has no
+stores the stated €290 ticket as 29000 cents. On `20261019a`, `is_ai` is
+set on those five rows only. All five are stored as conferences. The enum has no
 fair or expo value, so the IamExpat fair uses conference, and Slush is a
 conference even though the summary says startup event. `is_ai` is a
 separate column. The same migration writes a Nominatim
