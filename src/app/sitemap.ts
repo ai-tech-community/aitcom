@@ -296,9 +296,9 @@ export async function buildSitemapEntries(
     return staticEntries;
   }
 
-  // Fail closed: if we cannot tell which communities are members-only, list
-  // no community threads or community events rather than risk publishing an
-  // unlisted community's URLs.
+  // Fail closed for forum threads: if we cannot tell which communities are
+  // members-only, list no community threads. Events use their own lookup
+  // below and fail closed only when that lookup throws.
   let hiddenCommunityIds: readonly string[] | null = null;
   try {
     hiddenCommunityIds = await getHiddenCommunityIds();

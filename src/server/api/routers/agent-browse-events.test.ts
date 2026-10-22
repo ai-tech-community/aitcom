@@ -34,11 +34,14 @@ vi.mock("@/server/agent/api-key", () => ({
 }));
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => payload }));
 vi.mock("@/server/events/public-event-access", () => ({
-  loadHiddenEventCommunityIds: async () => [],
+  loadHiddenEventCommunityIds: vi.fn(async () => []),
 }));
 
 import { createCaller } from "@/server/api/root";
 import { db as mockedDb } from "@/server/db";
+import { loadHiddenEventCommunityIds } from "@/server/events/public-event-access";
+
+const loadHidden = vi.mocked(loadHiddenEventCommunityIds);
 
 function agentCaller() {
   return createCaller({
@@ -70,6 +73,8 @@ describe("agent.browseEvents", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(NOW);
     payload.find.mockReset();
+    loadHidden.mockReset();
+    loadHidden.mockResolvedValue([]);
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -96,6 +101,25 @@ describe("agent.browseEvents", () => {
       date: { greater_than_equal: "2026-09-25T10:00:00.000Z" },
     });
     expect(args.limit).toBeGreaterThan(10);
+  });
+
+  it("hides invite-only communities and still lists discovered events", async () => {
+    loadHidden.mockResolvedValue(["invite-id"]);
+    payload.find.mockResolvedValue({ docs: [] });
+
+    await agentCaller().agent.browseEvents({ limit: 10 });
+
+    const [args] = payload.find.mock.calls[0] as [
+      { where: { and: Record<string, unknown>[] } },
+    ];
+    expect(args.where.and).toContainEqual({ status: { equals: "published" } });
+    expect(args.where.and).toContainEqual({
+      or: [
+        { communityId: { exists: false } },
+        { communityId: { not_in: ["invite-id"] } },
+      ],
+    });
+    expect(JSON.stringify(args.where)).not.toContain("discoverySource");
   });
 
   it("returns at most the requested number", async () => {
