@@ -149,6 +149,8 @@ describe("hub join i18n", () => {
     for (const messages of [en.hubJoin, nl.hubJoin]) {
       expect(messages.title.trim().length).toBeGreaterThan(0);
       expect(messages.lead.trim().length).toBeGreaterThan(0);
+      expect(messages.metaDescription.length).toBeLessThanOrEqual(160);
+      expect(messages.metaDescription).not.toMatch(DENIALS);
       expect(messages.cta.trim().length).toBeGreaterThan(0);
       const blob = Object.values(messages).join("\n").replace(DENIALS, "");
       for (const pattern of BANNED) {

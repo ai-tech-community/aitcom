@@ -39,7 +39,7 @@ export const dynamic = "force-dynamic";
 
 const JOBS_H1 = "Open positions";
 const JOBS_META =
-  "Sourced openings from verified careers pages of listed companies. Original posting always linked. Not a size or salary scorecard.";
+  "Open positions at listed companies, each linked to the original posting.";
 
 interface PageProps {
   searchParams: Promise<{

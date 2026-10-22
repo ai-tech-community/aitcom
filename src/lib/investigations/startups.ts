@@ -38,12 +38,12 @@ export const STARTUPS_SLUG_ERROR =
 export const STARTUPS_H1 = "Startups worth watching";
 
 export const STARTUPS_META =
-  "Startups in any sector. A Uses AI tag appears when the listing records that the company uses AI. Homepage and sources verified. Not a size or price scorecard.";
+  "Startups in any sector. A Uses AI tag marks companies that use AI.";
 
 export const STARTUPS_INSIGHTS_H1 = "Startup insights";
 
 export const STARTUPS_INSIGHTS_META =
-  "Where listed startups are, what they build, who is hiring, and how well each listing is sourced. Counted from the live directory only; nothing estimated.";
+  "Where listed startups are, what they build, and who is hiring.";
 
 export const STARTUPS_JOIN_HREF =
   "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=startups&utm_campaign=startups";

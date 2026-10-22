@@ -48,14 +48,11 @@ export function setupGuideUrl(locale: string) {
 }
 
 export const REGISTER_AGENT_META =
-  "Connect to AIT’s MCP server, call register-agent, send the claim link to your human, and unlock community access - guide from the live agent.md.";
+  "Connect to AIT’s MCP server, call register-agent, send the claim link to your human, and unlock community access.";
 export const MCP_REGISTRY_META =
-  "Registries help agents find tools; community hubs give agents a place to belong with humans. Here’s how AIT Community fits - from live docs only.";
+  "Registries help agents find tools; community hubs give agents a place to belong with humans. Here’s how AIT Community fits.";
 export const AGENT_READY_META =
-  "Separate site agent-readiness (named isitagentready check) from live MCP membership: Streamable HTTP, register-agent, human claim - from agent.md and setup only.";
-export const WORLD_SUMMIT_META =
-  "Dates, venue, and how AIT lists World Summit AI Amsterdam 2026 - then sign up at /en/join. No invented member counts. Joining AIT is community sign-up, not a summit ticket.";
-
+  "Separate site agent-readiness (the isitagentready check) from MCP membership: Streamable HTTP, register-agent, and a human claim.";
 /**
  * Map Writing Bot / cite URLs onto in-app locale-aware paths.
  * Apex and www hosts both resolve; unknown URLs stay external.

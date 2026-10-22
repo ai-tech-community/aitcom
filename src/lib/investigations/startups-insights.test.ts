@@ -65,7 +65,9 @@ describe("startup insights paths", () => {
     expect(STARTUPS_INSIGHTS_PATH).toBe("/startups/insights");
     expect(STARTUPS_INSIGHTS_H1).toBe("Startup insights");
     expect(STARTUPS_INSIGHTS_META).toMatch(/who is hiring/i);
-    expect(STARTUPS_INSIGHTS_META).toMatch(/from the live directory only/i);
+    expect(STARTUPS_INSIGHTS_META).not.toMatch(
+      /live directory|nothing estimated|sourced/i,
+    );
     expect(STARTUPS_INSIGHTS_META).not.toMatch(
       /valuation|headcount|attendance|growth rate|largest/i,
     );
@@ -326,11 +328,11 @@ describe("startup insights Open Graph", () => {
       "Startup insights — 8,172 companies, 460 hiring",
     );
     expect(t(spec!.descriptionKey, spec!.descriptionValues)).toBe(
-      "Live from the AIT directory: 8,172 companies, 460 hiring, at least 3,635 open roles. Nothing estimated.",
+      "Where listed startups are, what they build, and who is hiring.",
     );
   });
 
-  it("drops at least when the role count is exact", () => {
+  it("keeps the Open Graph description a sentence about the page", () => {
     const facts = startupInsightsShareFacts(
       shareStats({
         hiring: {
@@ -344,7 +346,10 @@ describe("startup insights Open Graph", () => {
     );
     const spec = startupInsightsOgSpec(facts)!;
     expect(insightsT("en")(spec.descriptionKey, spec.descriptionValues)).toBe(
-      "Live from the AIT directory: 8,172 companies, 2 hiring, 5 open roles. Nothing estimated.",
+      "Where listed startups are, what they build, and who is hiring.",
+    );
+    expect(insightsT("nl")(spec.descriptionKey, spec.descriptionValues)).toBe(
+      "Waar vermelde startups zitten, wat ze bouwen en wie er aanneemt.",
     );
   });
 

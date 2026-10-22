@@ -20,6 +20,7 @@ import { geocodeEvent } from "@/server/geocoding/nominatim";
 import { eventDeadlineWarnings } from "@/server/hackathon/deadlines";
 import type { Event } from "@/payload-types";
 import { registrationQuestionsSchema } from "@/lib/events/registration-questions";
+import { stripEventCopyBeforeChange } from "@/server/events/listing-policy-copy";
 
 function locationChanged(
   doc: Record<string, unknown>,
@@ -192,7 +193,7 @@ export const Events: CollectionConfig = {
         return data;
       },
     ],
-    beforeChange: [captureLiveEventBeforeChange],
+    beforeChange: [stripEventCopyBeforeChange, captureLiveEventBeforeChange],
     afterChange: [
       async (args) => {
         if ((args.req.context as { skipGeocode?: boolean })?.skipGeocode) {

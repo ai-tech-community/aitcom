@@ -11,8 +11,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("hubJoin");
   return {
     title: t("title"),
-    description: t("lead"),
-    ...buildOgMeta(t("title"), t("lead"), t("kicker")),
+    description: t("metaDescription"),
+    ...buildOgMeta(t("title"), t("metaDescription"), t("kicker")),
     alternates: await localeAlternates("/join"),
   };
 }

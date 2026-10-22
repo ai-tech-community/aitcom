@@ -248,6 +248,38 @@ describe("event meta description", () => {
     expect(meta.length).toBeLessThanOrEqual(160);
   });
 
+  it("drops a Dutch date restatement that uses okt", () => {
+    const meta = eventMetaDescription(
+      {
+        title: "AIxIA 2026",
+        date: "2026-10-22",
+        city: "Strasbourg",
+        location: "Palais de la Musique et des Congrès, Strasbourg",
+        description: "Frans-Duitse AI-conferentie in Straatsburg, 22 okt 2026.",
+      },
+      "nl",
+    );
+    expect(meta).toBe(
+      "AIxIA 2026. 22 okt 2026. Palais de la Musique et des Congrès, Strasbourg.",
+    );
+    expect(meta.length).toBeLessThanOrEqual(160);
+  });
+
+  it("keeps a sentence that names Mart", () => {
+    const meta = eventMetaDescription(
+      {
+        title: "Studio night",
+        date: "2026-11-02",
+        city: "Rotterdam",
+        location: "Rotterdam",
+        description: "Talk by Mart de Vries about production systems.",
+      },
+      "en",
+    );
+    expect(meta).toContain("Mart de Vries");
+    expect(meta.length).toBeLessThanOrEqual(160);
+  });
+
   it("drops a Dutch official-page sentence the same way as the English one", () => {
     const event = {
       title: "Microsoft Ignite",

@@ -22,12 +22,12 @@ export const AWESOME_AI_OSS_INSIGHTS_PATH =
 export const AWESOME_AI_OSS_H1 = "Awesome AI OSS for AIT builders";
 
 export const AWESOME_AI_OSS_META =
-  "A short curated map of open-source building blocks for human + agent pairs. Live GitHub and GitLab only. Not a registry and not a star-sorted dump.";
+  "A short map of open-source building blocks for human and agent pairs.";
 
 export const AWESOME_AI_OSS_INSIGHTS_H1 = "Awesome AI OSS insights";
 
 export const AWESOME_AI_OSS_INSIGHTS_META =
-  "Category mix, GitHub vs GitLab, and when projects were added — from our curated list. Refreshed daily. Not a star-sorted dump.";
+  "Category mix, GitHub versus GitLab, and when projects were added.";
 
 export const AWESOME_AI_OSS_JOIN_HREF = "https://www.aitcommunity.org/en/join";
 

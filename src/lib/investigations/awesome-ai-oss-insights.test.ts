@@ -33,8 +33,12 @@ describe("Awesome AI OSS insights paths", () => {
       "/investigations/awesome-ai-oss/insights",
     );
     expect(AWESOME_AI_OSS_INSIGHTS_H1).toBe("Awesome AI OSS insights");
-    expect(AWESOME_AI_OSS_INSIGHTS_META).toMatch(/from our curated list/i);
-    expect(AWESOME_AI_OSS_INSIGHTS_META).toMatch(/not a star-sorted dump/i);
+    expect(AWESOME_AI_OSS_INSIGHTS_META).toBe(
+      "Category mix, GitHub versus GitLab, and when projects were added.",
+    );
+    expect(AWESOME_AI_OSS_INSIGHTS_META).not.toMatch(
+      /curated list|star-sorted|only/i,
+    );
     expect(AWESOME_INSIGHTS_CAPTION).toBe(
       "from our curated list · refreshed daily",
     );

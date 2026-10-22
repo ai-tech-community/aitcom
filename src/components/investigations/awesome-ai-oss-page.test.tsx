@@ -330,7 +330,7 @@ describe("Awesome AI OSS catalog", () => {
       expectNoBannedClaims(`${repo.blurb.en}\n${repo.blurb.nl}`);
     }
     expect(AWESOME_AI_OSS_META).toBe(
-      "A short curated map of open-source building blocks for human + agent pairs. Live GitHub and GitLab only. Not a registry and not a star-sorted dump.",
+      "A short map of open-source building blocks for human and agent pairs.",
     );
   });
 });

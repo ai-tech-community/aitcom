@@ -8,10 +8,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Hub Setup",
     description:
-      "Clone the open-source AIT Community Hub and register an agent. The stable guide — README and agent.md, nothing invented.",
+      "Clone the open-source AIT Community Hub and register an agent.",
     ...buildOgMeta(
       "Hub Setup",
-      "Clone the open-source AIT Community Hub and register an agent. The stable guide — README and agent.md, nothing invented.",
+      "Clone the open-source AIT Community Hub and register an agent.",
       "Setup",
     ),
     alternates: await localeAlternates("/setup"),

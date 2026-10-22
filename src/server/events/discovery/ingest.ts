@@ -21,6 +21,10 @@ import type { Payload } from "payload";
 import { EVENT_TYPES, type EventType } from "@/lib/event-metadata";
 import { slugify } from "@/lib/text-utils";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import {
+  repairEventEncoding,
+  stripListingPolicy,
+} from "@/lib/events/listing-policy";
 import type { NormalizedEvent } from "@/server/luma/normalize";
 import type { ClassificationResult } from "./classify";
 
@@ -75,8 +79,8 @@ export function buildDiscoveredEventData(
   nowIso: string,
 ) {
   return {
-    title: n.title,
-    description: plainTextToLexical(n.description ?? ""),
+    title: repairEventEncoding(n.title),
+    description: plainTextToLexical(stripListingPolicy(n.description ?? "")),
     date: n.date,
     startTime: n.startTime,
     endTime: n.endTime,

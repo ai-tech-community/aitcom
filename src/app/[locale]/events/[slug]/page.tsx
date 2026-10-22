@@ -7,6 +7,8 @@ import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { EventHubLinks } from "@/components/events/event-hub-links";
+import { EventRecapNote } from "@/components/events/event-recap-note";
+import { NvidiaGtcEnglishLinks } from "@/components/events/nvidia-gtc-english-links";
 import { EventRegisterButton } from "@/components/event-register-button";
 import { OrganizerAttendeesLink } from "@/components/events/organizer-attendees-link";
 import { EventAttendees } from "@/components/event-attendees";
@@ -47,6 +49,11 @@ import {
   eventMetaDescription,
   stripListingPolicy,
 } from "@/lib/events/listing-policy";
+import {
+  eventSeoDescription,
+  eventSeoTitle,
+  nvidiaNlEnglishLinks,
+} from "@/lib/events/seo-event-pages";
 import { stripListingPolicyLexical } from "@/server/events/listing-policy-copy";
 import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
 
@@ -125,7 +132,7 @@ export async function generateMetadata({
     locale,
     await getEventRowLabels(),
   );
-  const description = eventMetaDescription(
+  const builtDescription = eventMetaDescription(
     {
       title: event.title,
       date: event.date,
@@ -138,11 +145,13 @@ export async function generateMetadata({
     },
     locale,
   );
+  const description = eventSeoDescription(slug, locale) ?? builtDescription;
+  const title = eventSeoTitle(slug, locale, event.title);
 
   return {
-    title: event.title,
+    title,
     description,
-    ...buildOgMeta(event.title, description, summaryLine),
+    ...buildOgMeta(title, description, summaryLine),
     alternates: await localeAlternates(`/events/${slug}`),
   };
 }
@@ -179,7 +188,7 @@ export default async function EventDetailPage({
   const publicDescription = event.description
     ? stripListingPolicyLexical(event.description)
     : null;
-  const metaDescription = eventMetaDescription(
+  const builtDescription = eventMetaDescription(
     {
       title: event.title,
       date: event.date,
@@ -192,6 +201,9 @@ export default async function EventDetailPage({
     },
     locale,
   );
+  const metaDescription = eventSeoDescription(slug, locale) ?? builtDescription;
+  const pageTitle = eventSeoTitle(slug, locale, event.title);
+  const showNvidiaEnglishLinks = nvidiaNlEnglishLinks(slug, locale) != null;
 
   const speakers = (event.speakers ?? []) as Array<{
     id: number;
@@ -366,6 +378,7 @@ export default async function EventDetailPage({
     return (
       <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-8">
+          <EventRecapNote slug={slug} locale={locale} />
           {publicSummary && (
             <p className="text-foreground/90 text-lg leading-relaxed">
               {publicSummary}
@@ -638,6 +651,7 @@ export default async function EventDetailPage({
         </aside>
         <div className="lg:col-span-2">
           <EventHubLinks />
+          {showNvidiaEnglishLinks ? <NvidiaGtcEnglishLinks /> : null}
         </div>
       </div>
     );
@@ -648,7 +662,7 @@ export default async function EventDetailPage({
       <JsonLd
         data={{
           "@type": "Event",
-          name: event.title,
+          name: pageTitle,
           description: metaDescription,
           ...schemaDates,
           location: {
@@ -699,13 +713,13 @@ export default async function EventDetailPage({
           / EVENTS
         </Link>
         <span className="text-muted-foreground">/</span>
-        <span className="text-foreground/80 truncate">{event.title}</span>
+        <span className="text-foreground/80 truncate">{pageTitle}</span>
       </nav>
 
       <EventHero
-        title={event.title}
+        title={pageTitle}
         heroImageUrl={heroImage?.url ?? null}
-        heroImageAlt={heroImage?.alt ?? event.title}
+        heroImageAlt={heroImage?.alt ?? pageTitle}
         typeLabel={typeLabel}
         formatLabel={formatLabel}
         day={eventDay}
@@ -722,11 +736,12 @@ export default async function EventDetailPage({
       />
 
       <div className="mt-6">
-        <EventShareRow slug={event.slug} title={event.title} />
+        <EventShareRow slug={event.slug} title={pageTitle} />
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-8">
+          <EventRecapNote slug={slug} locale={locale} />
           {publicSummary && (
             <p className="text-foreground/90 text-lg leading-relaxed">
               {publicSummary}
@@ -1051,6 +1066,7 @@ export default async function EventDetailPage({
         </aside>
       </div>
       <EventHubLinks />
+      {showNvidiaEnglishLinks ? <NvidiaGtcEnglishLinks /> : null}
     </div>
   );
 }
