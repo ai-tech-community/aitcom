@@ -70,7 +70,7 @@ from that same seed. `20261006a_five_public_events` upserts only
 `welcome-to-the-hague-2026`, `apidays-paris-2026`, and
 `the-ai-summit-new-york-2026` from that same seed.
 `agentic-transformation-summit-amsterdam-2026` keeps the three listed
-passes in the summary (Silver €1,799, Gold €2,099, vendor €2,999, each
+passes in the summary (Silver €1,799, Gold €2,099, vendors €2,999, each
 plus 21% VAT) and does not store one euro price.
 `handelsblatt-ai-summit-2026` keeps the page's "from €950" cost label in
 the summary. `microsoft-ignite-2026` is hybrid and keeps the free digital

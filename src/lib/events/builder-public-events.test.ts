@@ -912,6 +912,34 @@ describe("builder public events", () => {
       expect(meta).toBe(metas[slug]);
       expect(meta.length).toBeLessThanOrEqual(160);
       expect(meta.startsWith(`${event!.title}. `)).toBe(true);
+      const descriptionNl = `${event!.summary.nl} Officiële pagina: ${event!.url}`;
+      const metaNl = eventMetaDescription(
+        {
+          title: event!.title,
+          date: event!.date,
+          endDate: event!.endDate,
+          city: event!.city,
+          location: event!.location,
+          format: event!.format ?? "in-person",
+          description: descriptionNl,
+        },
+        "nl",
+      );
+      const factsNl = eventMetaDescription(
+        {
+          title: event!.title,
+          date: event!.date,
+          endDate: event!.endDate,
+          city: event!.city,
+          location: event!.location,
+          format: event!.format ?? "in-person",
+          description: "",
+        },
+        "nl",
+      );
+      expect(metaNl).toBe(factsNl);
+      expect(metaNl).not.toMatch(/officiële pagina|https?:/i);
+      expect(metaNl.length).toBeLessThanOrEqual(160);
     }
 
     expect(

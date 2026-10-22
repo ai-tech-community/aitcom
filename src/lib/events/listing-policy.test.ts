@@ -248,6 +248,31 @@ describe("event meta description", () => {
     expect(meta.length).toBeLessThanOrEqual(160);
   });
 
+  it("drops a Dutch official-page sentence the same way as the English one", () => {
+    const event = {
+      title: "Microsoft Ignite",
+      date: "2026-11-17",
+      endDate: "2026-11-20",
+      city: "San Francisco",
+      location: "Moscone Center, San Francisco",
+      format: "in-person" as const,
+    };
+    const facts = eventMetaDescription({ ...event, description: "" }, "nl");
+    const meta = eventMetaDescription(
+      {
+        ...event,
+        description:
+          "Conferentie in Moscone Center, San Francisco, 17–20 nov 2026; gratis digital pass, conference $2,325. Officiële pagina: https://ignite.microsoft.com/en-US/home.",
+      },
+      "nl",
+    );
+    expect(meta).toBe(facts);
+    expect(meta).toBe(
+      "Microsoft Ignite. 17–20 nov 2026. Moscone Center, San Francisco.",
+    );
+    expect(meta).not.toMatch(/officiële pagina|https?:/i);
+  });
+
   it("omits a date or place that was not stored", () => {
     expect(
       eventMetaDescription(
