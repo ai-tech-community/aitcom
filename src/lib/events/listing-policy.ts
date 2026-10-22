@@ -311,6 +311,68 @@ function restatesSchedule(sentence: string): boolean {
   );
 }
 
+/**
+ * Standard Dutch names for seeded-event cities whose Dutch form differs
+ * from the stored English name. `city` and `location` are not localized.
+ * Edinburgh, New York, San Jose, San Francisco, Helsinki, Potsdam,
+ * Barcelona, and the other seeded cities already match Dutch usage and
+ * stay as stored. A venue proper name that only contains the city
+ * ("STATION-Berlin", "Belgrade Fair", "InterContinental London") is left
+ * intact; a comma-separated segment that is exactly the city is replaced.
+ */
+const DUTCH_CITY_NAMES: Readonly<Record<string, string>> = {
+  Munich: "München",
+  Vienna: "Wenen",
+  Lisbon: "Lissabon",
+  "The Hague": "Den Haag",
+  Warsaw: "Warschau",
+  Belgrade: "Belgrado",
+  Strasbourg: "Straatsburg",
+  Berlin: "Berlijn",
+  Paris: "Parijs",
+  London: "Londen",
+};
+
+function localizeCityField(
+  value: string | null | undefined,
+  locale: string,
+): string | null | undefined {
+  if (locale !== "nl" || value == null) return value;
+  const trimmed = value.trim();
+  const dutch = DUTCH_CITY_NAMES[trimmed];
+  if (!dutch) return value;
+  return value.replace(trimmed, dutch);
+}
+
+function localizeLocationField(
+  value: string | null | undefined,
+  locale: string,
+): string | null | undefined {
+  if (locale !== "nl" || !value) return value;
+  let changed = false;
+  const next = value.split(",").map((part) => {
+    const trimmed = part.trim();
+    const dutch = DUTCH_CITY_NAMES[trimmed];
+    if (!dutch) return part;
+    changed = true;
+    return part.replace(trimmed, dutch);
+  });
+  return changed ? next.join(",") : value;
+}
+
+function localizeEventPlace(
+  event: EventMetaSource,
+  locale: string,
+): { event: EventMetaSource; changed: boolean } {
+  if (locale !== "nl") return { event, changed: false };
+  const city = localizeCityField(event.city, locale);
+  const location = localizeLocationField(event.location, locale);
+  if (city === event.city && location === event.location) {
+    return { event, changed: false };
+  }
+  return { event: { ...event, city, location }, changed: true };
+}
+
 function repeatsPlace(sentence: string, event: EventMetaSource): boolean {
   const haystack = sentence.toLowerCase();
   const needles = [event.location, event.city, eventWhereLabel(event)];
@@ -336,17 +398,20 @@ function topicSentences(description: string): string[] {
 
 /**
  * Public meta description: "<name>. <date range>. <venue, city>."
- * One neutral topic sentence from the description is added only when it
- * fits in 160 characters. A description that is curation, a fragment, or
- * a restatement of the date and venue contributes nothing.
+ * Dutch uses the standard Dutch city name when the stored English name
+ * differs. One neutral topic sentence from the description is added only
+ * when it fits in 160 characters. A description that is curation, a
+ * fragment, or a restatement of the date and venue contributes nothing.
  */
 export function eventMetaDescription(
   event: EventMetaSource,
   locale: string,
 ): string {
   const title = repairEventEncoding(event.title.trim());
+  const localized = localizeEventPlace(event, locale);
+  const placeEvent = localized.event;
   const when = eventWhenLabel(event, locale);
-  const where = eventWhereLabel(event);
+  const where = eventWhereLabel(placeEvent);
   const facts = fitFacts([title, when ?? "", where ?? ""]);
   const description = stripListingPolicy(event.description ?? "").replace(
     /\*+/g,
@@ -363,7 +428,13 @@ export function eventMetaDescription(
     ) {
       continue;
     }
-    if (restatesSchedule(sentence) || repeatsPlace(sentence, event)) continue;
+    if (
+      restatesSchedule(sentence) ||
+      repeatsPlace(sentence, placeEvent) ||
+      (localized.changed && repeatsPlace(sentence, event))
+    ) {
+      continue;
+    }
     const topic = withPeriod(sentence);
     if (topic.replace(/\.+$/g, "").trim().toLowerCase() === titleKey) continue;
     if (topic.split(/\s+/).length < 3) continue;
