@@ -9,6 +9,9 @@ vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/server/communities/content-visibility-queries", () => ({
   hiddenContentCommunityIds: vi.fn(async () => []),
 }));
+vi.mock("@/server/events/public-event-access", () => ({
+  hiddenEventCommunityIds: vi.fn(async () => []),
+}));
 
 import { isUnlistedNewsGamePath } from "@/lib/news/indexability";
 import { getPayloadClient } from "@/server/payload";
@@ -406,6 +409,46 @@ describe("buildSitemapEntries", () => {
           ],
         },
       }),
+    );
+  });
+
+  it("omits a cancelled event even if the query returns one", async () => {
+    const find = vi.fn(async ({ collection }: { collection: string }) => {
+      if (collection === "events") {
+        return {
+          docs: [
+            {
+              slug: "still-on",
+              status: "published",
+              communityId: null,
+              updatedAt: "2026-04-01",
+            },
+            {
+              slug: "called-off",
+              status: "cancelled",
+              communityId: null,
+              updatedAt: "2026-04-01",
+            },
+          ],
+        };
+      }
+      return { docs: [] };
+    });
+    mockGetPayloadClient.mockResolvedValue({
+      find,
+    } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [],
+      async () => [],
+    );
+    const urls = urlsOf(entries);
+    expect(urls).toContain("https://www.aitcommunity.org/en/events/still-on");
+    expect(urls).not.toContain(
+      "https://www.aitcommunity.org/en/events/called-off",
     );
   });
 

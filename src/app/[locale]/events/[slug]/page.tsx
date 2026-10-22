@@ -56,6 +56,23 @@ import {
 } from "@/lib/events/seo-event-pages";
 import { stripListingPolicyLexical } from "@/server/events/listing-policy-copy";
 import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
+import { CancelledEventBadge } from "@/components/events/cancelled-event-badge";
+import { communityEventVisibilityWhere } from "@/lib/events/public-event-access";
+import { db } from "@/server/db";
+import { getSession } from "@/server/better-auth/server";
+import {
+  loadHiddenEventCommunityIds,
+  viewerMaySeeEvent,
+} from "@/server/events/public-event-access";
+
+export const dynamic = "force-dynamic";
+
+async function signedOutOrMemberMaySee(
+  communityId: string | null | undefined,
+): Promise<boolean> {
+  const session = await getSession();
+  return viewerMaySeeEvent(db, communityId, session?.user?.id ?? null);
+}
 
 type MediaValue =
   | { url?: string | null; alt?: string | null }
@@ -126,6 +143,7 @@ export async function generateMetadata({
   });
   const event = docs[0];
   if (!event) return {};
+  if (!(await signedOutOrMemberMaySee(event.communityId))) return {};
 
   const summaryLine = eventSummaryLine(
     event,
@@ -183,6 +201,7 @@ export default async function EventDetailPage({
 
   const event = docs[0];
   if (!event) notFound();
+  if (!(await signedOutOrMemberMaySee(event.communityId))) notFound();
 
   const publicSummary = event.summary ? stripListingPolicy(event.summary) : "";
   const publicDescription = event.description
@@ -316,6 +335,10 @@ export default async function EventDetailPage({
   }
 
   const now = new Date();
+  const session = await getSession();
+  const relatedVisibility = communityEventVisibilityWhere(
+    await loadHiddenEventCommunityIds(db, session?.user?.id ?? null),
+  );
   const relatedOrConditions: Where[] = [{ type: { equals: event.type } }];
   if (event.focus) {
     relatedOrConditions.push({ focus: { equals: event.focus } });
@@ -326,6 +349,7 @@ export default async function EventDetailPage({
     where: {
       and: [
         { status: { equals: "published" } },
+        ...(relatedVisibility ? [relatedVisibility] : []),
         // Wide floor; upcomingFromCandidates() applies each event's own
         // "today", so an event later today is never dropped.
         { date: { greater_than_equal: upcomingEventsQueryFloor(now) } },
@@ -733,6 +757,9 @@ export default async function EventDetailPage({
         aitFitScore={
           typeof event.aitFitScore === "number" ? event.aitFitScore : null
         }
+        cancelledLabel={
+          event.status === "cancelled" ? tEvents("cancelledLabel") : null
+        }
       />
 
       <div className="mt-6">
@@ -1081,6 +1108,7 @@ function EventHero({
   timeLabel,
   location,
   aitFitScore,
+  cancelledLabel,
 }: {
   title: string;
   heroImageUrl: string | null;
@@ -1091,6 +1119,7 @@ function EventHero({
   timeLabel: string | null;
   location: string;
   aitFitScore: number | null;
+  cancelledLabel: string | null;
 }) {
   return (
     <div className="border-border bg-secondary/30 relative overflow-hidden rounded-2xl border">
@@ -1140,6 +1169,11 @@ function EventHero({
           </time>
 
           <div className="min-w-0 flex-1">
+            {cancelledLabel ? (
+              <div className="mb-2">
+                <CancelledEventBadge label={cancelledLabel} />
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider text-white/80 uppercase sm:text-xs">
               <span>{typeLabel}</span>
               {formatLabel && (

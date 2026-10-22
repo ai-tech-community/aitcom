@@ -39,6 +39,8 @@ import {
   upcomingEventsQueryFloor,
   upcomingFromCandidates,
 } from "@/lib/event-time";
+import { publishedEventsVisibleWhere } from "@/lib/events/public-event-access";
+import { loadHiddenEventCommunityIds } from "@/server/events/public-event-access";
 import {
   logActivity,
   checkEnrollmentCompletion,
@@ -369,8 +371,12 @@ export const agentRouter = createTRPCRouter({
         communityId = community.id;
       }
 
+      const hiddenEventCommunityIds = await loadHiddenEventCommunityIds(
+        ctx.db,
+        ctx.agent.ownerId,
+      );
       const conditions: Where[] = [
-        { status: { equals: "published" } },
+        publishedEventsVisibleWhere(hiddenEventCommunityIds),
         // Wide floor; upcomingFromCandidates() applies each event's own
         // "today", so an event later today is still listed.
         { date: { greater_than_equal: upcomingEventsQueryFloor(now) } },

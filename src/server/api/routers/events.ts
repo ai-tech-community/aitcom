@@ -36,10 +36,12 @@ import {
   lexicalToPlainText,
 } from "@/server/challenge-engine/lexical";
 import {
+  eventCreateSchema,
   eventUpsertSchema,
   normalizeOptionalString,
   buildEventPayloadData,
 } from "./event-upsert-data";
+import { viewerMaySeeEvent } from "@/server/events/public-event-access";
 import { resolveAudienceIds } from "./audience-resolve";
 import { runEventImport } from "@/server/events/import-from-url";
 import { checkEventImportRateLimit } from "@/server/events/import-rate-limit";
@@ -681,6 +683,13 @@ export const eventsRouter = createTRPCRouter({
       });
       if (!community) return [];
 
+      const maySee = await viewerMaySeeEvent(
+        ctx.db,
+        community.id,
+        ctx.session?.user?.id ?? null,
+      );
+      if (!maySee) return [];
+
       const payload = await getPayloadClient();
       const { docs } = await payload.find({
         collection: "events",
@@ -782,7 +791,7 @@ export const eventsRouter = createTRPCRouter({
 
   createEvent: protectedProcedure
     .input(
-      z.object({ communitySlug: z.string() }).extend(eventUpsertSchema.shape),
+      z.object({ communitySlug: z.string() }).extend(eventCreateSchema.shape),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
@@ -1407,7 +1416,7 @@ export const eventsRouter = createTRPCRouter({
 
   submitEvent: protectedProcedure
     .input(
-      z.object({ communitySlug: z.string() }).extend(eventUpsertSchema.shape),
+      z.object({ communitySlug: z.string() }).extend(eventCreateSchema.shape),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;

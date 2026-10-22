@@ -11,7 +11,9 @@ import {
   type DirectoryCommunity,
   type DirectoryEventRow,
 } from "@/server/communities/directory";
+import { communityEventVisibilityWhere } from "@/lib/events/public-event-access";
 import { loadEventSideWhere } from "@/server/events/event-side-where";
+import { loadHiddenEventCommunityIds } from "@/server/events/public-event-access";
 import { createTtlMemo } from "@/server/ttl-memo";
 
 type DB = typeof _db;
@@ -34,12 +36,15 @@ async function loadUpcomingEvents(
   communityIds: readonly string[],
   locale: "en" | "nl",
   now: Date,
+  hiddenEventCommunityIds: readonly string[] | null,
 ): Promise<DirectoryEventRow[]> {
   if (communityIds.length === 0) return [];
+  const visibility = communityEventVisibilityWhere(hiddenEventCommunityIds);
   const conditions: Where[] = [
     { status: { equals: "published" } },
     { discoverySource: { not_equals: "luma" } },
     { communityId: { in: [...communityIds] } },
+    ...(visibility ? [visibility] : []),
   ];
   conditions.push(
     await loadEventSideWhere(payload, {
@@ -156,7 +161,10 @@ async function loadDirectory(
   payload: Payload,
   opts: { now: Date; locale: "en" | "nl" },
 ): Promise<DirectoryCommunity[]> {
-  const candidates = await loadDiscoveryCandidates(db, opts.now);
+  const [candidates, hiddenEventIds] = await Promise.all([
+    loadDiscoveryCandidates(db, opts.now),
+    loadHiddenEventCommunityIds(db, null),
+  ]);
   const ids = candidates.map((c) => c.communityId);
   if (ids.length === 0) return [];
 
@@ -169,7 +177,7 @@ async function loadDirectory(
       })
       .from(communities)
       .where(inArray(communities.id, ids)),
-    loadUpcomingEvents(payload, ids, opts.locale, opts.now),
+    loadUpcomingEvents(payload, ids, opts.locale, opts.now, hiddenEventIds),
     db
       .select({
         communityId: spaces.communityId,

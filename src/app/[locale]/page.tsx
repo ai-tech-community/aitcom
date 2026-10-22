@@ -18,10 +18,16 @@ import { db } from "@/server/db";
 import { communities, memberProfiles } from "@/server/db/schema";
 import { count, isNull } from "drizzle-orm";
 import { publicRosterVisibility } from "@/server/members/public-roster";
+import type { Where } from "payload";
 import type { Metadata } from "next";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import { getSession } from "@/server/better-auth/server";
+import {
+  communityEventVisibilityWhere,
+  publishedEventsVisibleWhere,
+} from "@/lib/events/public-event-access";
+import { loadHiddenEventCommunityIds } from "@/server/events/public-event-access";
 import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
 import { toEventRowInput } from "@/components/events/rows/to-event-row-input";
 import { loadEventHostNames } from "@/server/events/event-hosts-queries";
@@ -70,6 +76,16 @@ export default async function Home() {
 
   const payload = await getPayloadClient();
   const now = new Date();
+  const hiddenEventCommunityIds = await loadHiddenEventCommunityIds(
+    db,
+    session?.user?.id ?? null,
+  );
+  const visiblePublished = publishedEventsVisibleWhere(hiddenEventCommunityIds);
+  const visibleCommunity = communityEventVisibilityWhere(
+    hiddenEventCommunityIds,
+  );
+  const withCommunity = (where: Where): Where =>
+    visibleCommunity ? { and: [where, visibleCommunity] } : where;
   // Independent reads, fetched together: upcoming events, recent past
   // events and the featured sponsors.
   const [
@@ -81,14 +97,11 @@ export default async function Home() {
     payload.find({
       collection: "events",
       where: {
-        status: { equals: "published" },
-        // Wide floor; upcomingEvents() below applies the per-zone "today".
-        date: { greater_than_equal: upcomingEventsQueryFloor(now) },
-        // Discovered (Luma) events are "scheduled around, not attended
-        // through" (CONTEXT.md [[discovered-event]]) — keep them out of
-        // hub-wide public attend-through surfaces like this upcoming-events
-        // block; they stay in the conflict corpus (corpus.ts untouched).
-        discoverySource: { not_equals: "luma" },
+        and: [
+          visiblePublished,
+          // Wide floor; upcomingEvents() below applies the per-zone "today".
+          { date: { greater_than_equal: upcomingEventsQueryFloor(now) } },
+        ],
       },
       sort: "date",
       // Headroom for the past-two-days rows the floor lets through and for
@@ -106,9 +119,10 @@ export default async function Home() {
     payload.find({
       collection: "events",
       where: {
-        status: { equals: "published" },
-        date: { less_than: pastEventsQueryCeiling(now) },
-        discoverySource: { not_equals: "luma" },
+        and: [
+          visiblePublished,
+          { date: { less_than: pastEventsQueryCeiling(now) } },
+        ],
       },
       sort: "-date",
       limit: RECENT_EVENT_CANDIDATES,
@@ -176,7 +190,7 @@ export default async function Home() {
     payload
       .find({
         collection: "events",
-        where: { status: { not_equals: "draft" } },
+        where: withCommunity({ status: { not_equals: "draft" } }),
         limit: 0,
       })
       .then((r) => r.totalDocs),
@@ -213,10 +227,10 @@ export default async function Home() {
   const workshopCount = await payload
     .find({
       collection: "events",
-      where: {
+      where: withCommunity({
         type: { in: ["workshop", "deep_dive"] },
         status: { not_equals: "draft" },
-      },
+      }),
       limit: 0,
     })
     .then((r) => r.totalDocs);
@@ -224,7 +238,10 @@ export default async function Home() {
   const hackathonCount = await payload
     .find({
       collection: "events",
-      where: { type: { equals: "hackathon" }, status: { not_equals: "draft" } },
+      where: withCommunity({
+        type: { equals: "hackathon" },
+        status: { not_equals: "draft" },
+      }),
       limit: 0,
     })
     .then((r) => r.totalDocs);
