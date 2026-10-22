@@ -30,6 +30,7 @@ import {
 } from "@/components/events/rows/event-rows";
 import { getEventRowLabels } from "@/components/events/rows/get-event-row-labels";
 import {
+  eventDeadlineDay,
   eventDetailDay,
   eventSummaryLine,
   type EventDetailDay,
@@ -42,6 +43,12 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { getInitials } from "@/lib/avatar";
 import { externalEventUrl } from "@/lib/events/event-source";
 import { parseStoredQuestions } from "@/lib/events/registration-questions";
+import {
+  eventMetaDescription,
+  stripListingPolicy,
+} from "@/lib/events/listing-policy";
+import { stripListingPolicyLexical } from "@/server/events/listing-policy-copy";
+import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
 
 type MediaValue =
   | { url?: string | null; alt?: string | null }
@@ -118,7 +125,19 @@ export async function generateMetadata({
     locale,
     await getEventRowLabels(),
   );
-  const description = event.summary ?? summaryLine;
+  const description = eventMetaDescription(
+    {
+      title: event.title,
+      date: event.date,
+      endDate: event.endDate,
+      city: event.city,
+      location: event.location,
+      format: event.format,
+      summary: event.summary,
+      description: lexicalToPlainText(event.description),
+    },
+    locale,
+  );
 
   return {
     title: event.title,
@@ -155,6 +174,24 @@ export default async function EventDetailPage({
 
   const event = docs[0];
   if (!event) notFound();
+
+  const publicSummary = event.summary ? stripListingPolicy(event.summary) : "";
+  const publicDescription = event.description
+    ? stripListingPolicyLexical(event.description)
+    : null;
+  const metaDescription = eventMetaDescription(
+    {
+      title: event.title,
+      date: event.date,
+      endDate: event.endDate,
+      city: event.city,
+      location: event.location,
+      format: event.format,
+      summary: event.summary,
+      description: lexicalToPlainText(event.description),
+    },
+    locale,
+  );
 
   const speakers = (event.speakers ?? []) as Array<{
     id: number;
@@ -211,6 +248,10 @@ export default async function EventDetailPage({
         : "https://schema.org/OfflineEventAttendanceMode";
 
   const eventDay = eventDetailDay(event, locale);
+  const registrationCloses = eventDeadlineDay(
+    event.registrationDeadline,
+    locale,
+  );
   const typeLabel = eventRowKind(event.type, labels).label;
   const formatLabel = event.format
     ? eventFormatLabel(event.format, labels)
@@ -325,9 +366,9 @@ export default async function EventDetailPage({
     return (
       <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-8">
-          {event.summary && (
+          {publicSummary && (
             <p className="text-foreground/90 text-lg leading-relaxed">
-              {event.summary}
+              {publicSummary}
             </p>
           )}
 
@@ -402,14 +443,14 @@ export default async function EventDetailPage({
             </div>
           )}
 
-          {event.description && (
+          {publicDescription != null ? (
             <div className="border-border border-t pt-8">
               <SectionLabel>{tEvents("sectionAbout")}</SectionLabel>
               <div className="mt-4">
-                <LexicalRenderer content={event.description} />
+                <LexicalRenderer content={publicDescription} />
               </div>
             </div>
-          )}
+          ) : null}
 
           {speakers.length > 0 && (
             <div className="border-border border-t pt-8">
@@ -513,6 +554,13 @@ export default async function EventDetailPage({
                 endTime={event.endTime ?? null}
                 timezone={event.timezone ?? null}
               />
+              {registrationCloses ? (
+                <p className="text-muted-foreground font-mono text-xs tracking-wider">
+                  {tEvents("registrationCloses", {
+                    date: registrationCloses,
+                  })}
+                </p>
+              ) : null}
             </div>
 
             <div className="border-border border-t pt-4 text-sm">
@@ -601,7 +649,7 @@ export default async function EventDetailPage({
         data={{
           "@type": "Event",
           name: event.title,
-          description: event.summary ?? undefined,
+          description: metaDescription,
           ...schemaDates,
           location: {
             "@type": "Place",
@@ -639,14 +687,7 @@ export default async function EventDetailPage({
                   availability: "https://schema.org/InStock",
                 },
               }
-            : {
-                offers: {
-                  "@type": "Offer",
-                  price: "0",
-                  priceCurrency: "EUR",
-                  availability: "https://schema.org/InStock",
-                },
-              }),
+            : {}),
         }}
       />
 
@@ -686,9 +727,9 @@ export default async function EventDetailPage({
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-8">
-          {event.summary && (
+          {publicSummary && (
             <p className="text-foreground/90 text-lg leading-relaxed">
-              {event.summary}
+              {publicSummary}
             </p>
           )}
 
@@ -745,14 +786,14 @@ export default async function EventDetailPage({
             </div>
           )}
 
-          {event.description && (
+          {publicDescription != null ? (
             <div className="border-border border-t pt-8">
               <SectionLabel>{tEvents("sectionAbout")}</SectionLabel>
               <div className="mt-4">
-                <LexicalRenderer content={event.description} />
+                <LexicalRenderer content={publicDescription} />
               </div>
             </div>
-          )}
+          ) : null}
 
           {speakers.length > 0 && (
             <div className="border-border border-t pt-8">
@@ -908,6 +949,13 @@ export default async function EventDetailPage({
                 endTime={event.endTime ?? null}
                 timezone={event.timezone ?? null}
               />
+              {registrationCloses ? (
+                <p className="text-muted-foreground font-mono text-xs tracking-wider">
+                  {tEvents("registrationCloses", {
+                    date: registrationCloses,
+                  })}
+                </p>
+              ) : null}
             </div>
 
             <div className="border-border border-t pt-4 text-sm">

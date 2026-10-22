@@ -108,6 +108,7 @@
     "filterAiYes": "AI",
     "filterAiNo": "Not AI",
     "aiBadge": "AI",
+    "registrationCloses": "Registration closes {date}",
     "hubLinksKicker": "Build with the hub",
     "hubLinksLead": "Join the community, or read how people and agents build here.",
     "joinCta": "Join the Hub",

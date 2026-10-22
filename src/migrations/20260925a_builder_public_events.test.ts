@@ -8,6 +8,7 @@ import {
 import {
   upsertBuilderEvent,
   writeBuilderEventEndDate,
+  writeBuilderEventExtras,
 } from "./20260925a_builder_public_events";
 
 function queryText(query: unknown): string {
@@ -15,7 +16,11 @@ function queryText(query: unknown): string {
   const parts: string[] = [];
   const walk = (value: unknown) => {
     if (value == null || seen.has(value)) return;
-    if (typeof value === "string" || typeof value === "number") {
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
       parts.push(String(value));
       return;
     }
@@ -84,6 +89,56 @@ describe("writeBuilderEventEndDate", () => {
     expect(updates[1]).toContain("version_end_date");
     expect(updates[1]).toContain("2026-11-12T12:00:00.000Z");
     expect(updates[1]).toContain("web-summit-2026");
+  });
+});
+
+describe("writeBuilderEventExtras", () => {
+  it("does nothing when the seed names no extra facts", async () => {
+    const { db, queries } = mockDb(true);
+    await writeBuilderEventExtras(db, eventBySlug("aixia-2026"));
+    expect(queries).toEqual([]);
+  });
+
+  it("writes the ticket price, clock, and registration close without is_ai when that column is missing", async () => {
+    const { db, queries } = mockDb(false);
+    await writeBuilderEventExtras(db, eventBySlug("ukairs-2026"));
+    const updates = queries.filter((query) => query.includes("UPDATE"));
+    expect(
+      updates.some((query) => query.includes("registration_deadline")),
+    ).toBe(true);
+    expect(updates.some((query) => query.includes("is_ai"))).toBe(false);
+    expect(queries.some((query) => query.includes("information_schema"))).toBe(
+      true,
+    );
+  });
+
+  it("stores is_ai, the €290 ticket, and the registration close once the column exists", async () => {
+    const hpi = mockDb(true);
+    await writeBuilderEventExtras(
+      hpi.db,
+      eventBySlug("ai-hpi-conference-2026"),
+    );
+    const price = hpi.queries.filter((query) => query.includes("UPDATE"));
+    expect(price.some((query) => query.includes("29000"))).toBe(true);
+    expect(price.some((query) => query.includes("is_ai"))).toBe(true);
+
+    const slush = mockDb(true);
+    await writeBuilderEventExtras(slush.db, eventBySlug("slush-2026"));
+    expect(
+      slush.queries.some(
+        (query) => query.includes("is_ai") && query.includes("false"),
+      ),
+    ).toBe(true);
+
+    const fair = mockDb(true);
+    await writeBuilderEventExtras(
+      fair.db,
+      eventBySlug("iamexpat-fair-the-hague-2026"),
+    );
+    expect(fair.queries.some((query) => query.includes("start_time"))).toBe(
+      true,
+    );
+    expect(fair.queries.some((query) => query.includes("10:00"))).toBe(true);
   });
 });
 

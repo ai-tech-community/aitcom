@@ -5,8 +5,11 @@
  * `latitude` / `longitude` stayed empty. These points are Nominatim matches
  * for the stored venue (or the city, when that is the whole location).
  * Events that were geocoded in April 2026 are included so a fresh database
- * and production share one list. The migration writes a point only when the
- * row is still missing one.
+ * and production share one list. `20261013b` writes a point only when the
+ * row is still missing one. That migration is already recorded on
+ * production, so `20261019a` writes the five November points with the same
+ * null guard. A fresh database inserts those rows in `20260925a`, before
+ * `20261013b`, and the later write leaves the stored points alone.
  */
 export type EventCoordinate = {
   slug: string;
@@ -116,6 +119,31 @@ export const EVENT_COORDINATE_BACKFILL: readonly EventCoordinate[] = [
     slug: "neurips-2026",
     latitude: -33.8698439,
     longitude: 151.2082848,
+  },
+  {
+    slug: "iamexpat-fair-the-hague-2026",
+    latitude: 52.0773944,
+    longitude: 4.3071566,
+  },
+  {
+    slug: "slush-2026",
+    latitude: 60.2029511,
+    longitude: 24.9364411,
+  },
+  {
+    slug: "ai-europe-congress-2026",
+    latitude: 52.2334499,
+    longitude: 21.0016166,
+  },
+  {
+    slug: "ukairs-2026",
+    latitude: 55.9399139,
+    longitude: -3.169732,
+  },
+  {
+    slug: "ai-hpi-conference-2026",
+    latitude: 52.3936679,
+    longitude: 13.1331929,
   },
 ];
 

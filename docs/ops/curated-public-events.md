@@ -52,11 +52,23 @@ from that same seed. `20261006a_five_public_events` upserts only
 `boston-openclaw-meetup-2026`, `techex-amsterdam-hackathon-2026`,
 `agentic-ai-in-the-wild-2026`, `hacktoberfest-hack-day-barcelona-2026`, and
 `llmday-london-2026` from that same seed.
+`20261019a_five_public_events` upserts only
+`iamexpat-fair-the-hague-2026`, `slush-2026`,
+`ai-europe-congress-2026`, `ukairs-2026`, and
+`ai-hpi-conference-2026` from that same seed. `ukairs-2026` stores the
+registration close from the official registration page
+(`registration_deadline`, shown on the card). `ai-hpi-conference-2026`
+stores the stated €290 ticket as 29000 cents. `is_ai` is set on these
+five rows only. All five are stored as conferences. The enum has no
+fair or expo value, so the IamExpat fair uses conference, and Slush is a
+conference even though the summary says startup event. `is_ai` is a
+separate column. The same migration writes a Nominatim
+point for each venue only when latitude or longitude is still null.
 `techex-amsterdam-hackathon-2026` keeps the start date 16 Oct 2026 and stores
 no end date: the official page's JSON-LD ends 19 Oct and its copy says 20 Oct.
 Held rows (The New Agentic Economy
 Hackathon, AI & Big Data Expo Europe, Apply AI Summit) are not in the seed.
-No attendance, RSVP, price, or image. Production applies unrecorded migrations during the Vercel
+No attendance, RSVP, or image. A ticket price is stored only when the official page states one. Production applies unrecorded migrations during the Vercel
 build, so www `/en/events` shows them after that deploy. The static guide at
 `/events/world-summit-ai-amsterdam-2026` still wins over the CMS detail route
 for that slug.

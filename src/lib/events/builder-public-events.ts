@@ -4,10 +4,14 @@ import type { EventType } from "@/lib/event-metadata";
  * Ops-cleared public events for the fat `/events` listing (Payload `events`).
  *
  * Facts only: official title, start date, city, venue when named, and URL.
- * `endDate` is set only when the summary states the official last day. No
- * attendance, RSVP, price, or image. `type` follows the title and summary
- * (`inferEventType`): a conference, summit, or expo is `conference`, a hack
- * day is `hackathon`, and a meetup stays `meetup`.
+ * `endDate` is the official last day, including a one-day event whose last
+ * day is the start day, so Event JSON-LD can carry both startDate and
+ * endDate. Summaries are what, when, and where only. No attendance, RSVP,
+ * or image. `priceCents` is set only when the official page states one
+ * ticket price. `type` follows the title and summary (`inferEventType`):
+ * a conference, summit, congress, expo, fair, symposium, or named flagship
+ * such as Slush is `conference`, and a hack day is `hackathon`. The enum has
+ * no fair or expo value, so a fair is a conference. `isAi` is separate.
  */
 
 export const BUILDER_PUBLIC_EVENTS_SEEDED_AT = "2026-09-25T12:00:00.000Z";
@@ -25,7 +29,23 @@ export type BuilderPublicEvent = {
   location: string;
   timezone: string;
   url: string;
+  /**
+   * Card line: what, when, and where. The public meta description is built
+   * separately as "<name>. <date range>. <venue, city>."
+   */
   summary: { en: string; nl: string };
+  /** Official ticket price in EUR cents, when the page states one price. */
+  priceCents?: number;
+  /** YYYY-MM-DD the official page says registration closes. */
+  registrationDeadline?: string;
+  /** Wall clock HH:MM in `timezone`, when the official page states it. */
+  startTime?: string;
+  endTime?: string;
+  /**
+   * Stored `events.is_ai` when the listing should not wait for the
+   * classifier. Omitted rows stay null.
+   */
+  isAi?: boolean;
 };
 
 export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
@@ -201,6 +221,25 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     },
   },
   {
+    slug: "iamexpat-fair-the-hague-2026",
+    title: "IamExpat Fair The Hague",
+    type: "conference",
+    date: "2026-11-07",
+    endDate: "2026-11-07",
+    startTime: "10:00",
+    endTime: "17:00",
+    city: "The Hague",
+    country: "Netherlands",
+    location: "Grote Kerk, Rond de Grote Kerk 12, The Hague",
+    timezone: "Europe/Amsterdam",
+    url: "https://www.iamexpat.nl/lifestyle/events-festivals-netherlands/iamexpat-fair-the-hague",
+    isAi: false,
+    summary: {
+      en: "Expat fair at the Grote Kerk, The Hague, Sat 7 Nov 2026, 10:00–17:00.",
+      nl: "Expatsbeurs in de Grote Kerk, Den Haag, za 7 nov 2026, 10:00–17:00.",
+    },
+  },
+  {
     slug: "web-summit-2026",
     title: "Web Summit 2026",
     type: "conference",
@@ -217,6 +256,58 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     },
   },
   {
+    slug: "slush-2026",
+    title: "Slush 2026",
+    type: "conference",
+    date: "2026-11-18",
+    endDate: "2026-11-19",
+    city: "Helsinki",
+    country: "Finland",
+    location: "Messukeskus, Messuaukio 1, Helsinki",
+    timezone: "Europe/Helsinki",
+    url: "https://slush.org/faq",
+    isAi: false,
+    summary: {
+      en: "Startup event at Messukeskus, Helsinki, 18–19 Nov 2026, with Day 0 on 17 Nov.",
+      nl: "Startup-evenement in Messukeskus, Helsinki, 18–19 nov 2026, met Day 0 op 17 nov.",
+    },
+  },
+  {
+    slug: "ai-europe-congress-2026",
+    title: "AI Europe Congress 2026",
+    type: "conference",
+    date: "2026-11-19",
+    endDate: "2026-11-19",
+    city: "Warsaw",
+    country: "Poland",
+    location: "BEC Financial Technologies office, ul. Emilii Plater 53, Warsaw",
+    timezone: "Europe/Warsaw",
+    url: "https://aieuropecongress.pl/",
+    isAi: true,
+    summary: {
+      en: "AI conference at the BEC Financial Technologies office, ul. Emilii Plater 53, Warsaw, Thu 19 Nov 2026.",
+      nl: "AI-conferentie bij BEC Financial Technologies, ul. Emilii Plater 53, Warschau, do 19 nov 2026.",
+    },
+  },
+  {
+    slug: "ukairs-2026",
+    title: "UKAIRS 2026",
+    type: "conference",
+    date: "2026-11-24",
+    endDate: "2026-11-25",
+    city: "Edinburgh",
+    country: "United Kingdom",
+    location: "John McIntyre Conference Centre, 18 Holyrood Park Rd, Edinburgh",
+    timezone: "Europe/London",
+    url: "https://www.ukairs.ac.uk/Home/Welcome",
+    registrationDeadline: "2026-11-10",
+    isAi: true,
+    summary: {
+      en: "UK AI Research Symposium at the John McIntyre Conference Centre, Edinburgh, 24–25 Nov 2026.",
+      nl: "UK AI Research Symposium in het John McIntyre Conference Centre, Edinburgh, 24–25 nov 2026.",
+    },
+  },
+  {
     slug: "llmday-london-2026",
     title: "LLMday London",
     type: "conference",
@@ -229,6 +320,24 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     summary: {
       en: "Conference on large language models, agents and AI systems at Everyman Canary Wharf, London, Thu 26 Nov 2026.",
       nl: "Conferentie over large language models, agents en AI-systemen in Everyman Canary Wharf, Londen, do 26 nov 2026.",
+    },
+  },
+  {
+    slug: "ai-hpi-conference-2026",
+    title: "AI@HPI Conference 2026",
+    type: "conference",
+    date: "2026-12-02",
+    endDate: "2026-12-03",
+    city: "Potsdam",
+    country: "Germany",
+    location: "Hasso Plattner Institute, Potsdam",
+    timezone: "Europe/Berlin",
+    url: "https://hpi.de/en/ai-hpi-conference/",
+    priceCents: 29000,
+    isAi: true,
+    summary: {
+      en: "AI conference at the Hasso Plattner Institute, Potsdam, 2–3 Dec 2026.",
+      nl: "AI-conferentie aan het Hasso Plattner Institute, Potsdam, 2–3 dec 2026.",
     },
   },
 ] as const;
