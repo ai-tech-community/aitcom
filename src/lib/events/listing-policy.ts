@@ -92,13 +92,14 @@ const CURATION_PATTERNS: readonly RegExp[] = [
   /\bstrong (?:local|regional|ecosystem|technical)\b/i,
   /\bflagship\b/i,
   /\bofficial(?:\s+\d{4})?\s+page\b/i,
+  /\boffici[eë]le\s+pagina\b/i,
   /\blists dates\b/i,
 ];
 
 const ENCODING_PATTERN = /m\uFFFDtier|\bmtier\b/i;
 
 /** POSIX regex for `~*`. Keep it aligned with the patterns above. */
-export const LISTING_POLICY_SQL = String.raw`\yno invented\y|\ylisting policy\y|\yverification notes?\y|(^|[^[:alnum:]])source[[:space:]]*:|\yhow ait lists\y|\yhoe ait\y|\ynot a summit ticket\y|\ymember counts?\y|\ygeen verzonnen\y|\yjoining ait\y|\yvoor ait\y|\ysign up at[[:space:]]+/(en|nl)/join\y|/(en|nl)/join|\yfor ait\y(?![[:space:]]+product\y)|\yait community['’]s\y|\yait community members\y|\ywith ait community\y|\yfits ait community\y|\yait should\y|\yait['’]s event\y|\yait events\y|\yevents page\y|\yevent inventory\y|\yevents map\y|\yradar event\y|\ybuild density\y|\ycommunity density\y|\ykind of\y[^.]{0,80}\y(event|topic)\y|\ythematic fit\y|\yait fit\y|\yaligned with ait\y|\yrelevant (to|for) ait\y|\yuseful for ait\y|\ymatches for ait\y|\yevent matches for\y|\ybroadening ait\y|\ybroaden the events\y|\yevent mix\y|\ygeneral-audience listing\y|\ysummit listing\y|\ybest treated as\y|\ythicken the\y|\ymakes the ait\y|\ypeople lock\y|\ypositioned\y|\yone of the\y|\ykey signal\y|\ynot the most\y|\yhigh-signal\y|\yhigh[[:space:]]+signal\y|\yhighly relevant\y|\yrelevant for members\y|\yfor members\y|\yinstead of generic\y|\ygeneric hype\y|\ygeneric innovation\y|\yremains one of\y|\yone of the (strongest|most|leading|top|best)\y|\ythe top event\y|\ystrong source\y|\ya real (local|belgian|eindhoven)\y|\ystrong fit\y|\ygood fit\y|\ywell aligned\y|\yexactly the kind\y|\ywe want\y|\ynotable because\y|\ythrough the lens\y|\ygrounded (local|in)\y|\yfashionable\y|\ystill relevant\y|\yrecognizable\y|\ybroader event than\y|\yhigh-value\y|\ystrong (local|regional|ecosystem|technical)\y|\yflagship\y|\yofficial([[:space:]]+[0-9]{4})?[[:space:]]+page\y|\ylists dates\y|m�tier|\ymtier\y`;
+export const LISTING_POLICY_SQL = String.raw`\yno invented\y|\ylisting policy\y|\yverification notes?\y|(^|[^[:alnum:]])source[[:space:]]*:|\yhow ait lists\y|\yhoe ait\y|\ynot a summit ticket\y|\ymember counts?\y|\ygeen verzonnen\y|\yjoining ait\y|\yvoor ait\y|\ysign up at[[:space:]]+/(en|nl)/join\y|/(en|nl)/join|\yfor ait\y(?![[:space:]]+product\y)|\yait community['’]s\y|\yait community members\y|\ywith ait community\y|\yfits ait community\y|\yait should\y|\yait['’]s event\y|\yait events\y|\yevents page\y|\yevent inventory\y|\yevents map\y|\yradar event\y|\ybuild density\y|\ycommunity density\y|\ykind of\y[^.]{0,80}\y(event|topic)\y|\ythematic fit\y|\yait fit\y|\yaligned with ait\y|\yrelevant (to|for) ait\y|\yuseful for ait\y|\ymatches for ait\y|\yevent matches for\y|\ybroadening ait\y|\ybroaden the events\y|\yevent mix\y|\ygeneral-audience listing\y|\ysummit listing\y|\ybest treated as\y|\ythicken the\y|\ymakes the ait\y|\ypeople lock\y|\ypositioned\y|\yone of the\y|\ykey signal\y|\ynot the most\y|\yhigh-signal\y|\yhigh[[:space:]]+signal\y|\yhighly relevant\y|\yrelevant for members\y|\yfor members\y|\yinstead of generic\y|\ygeneric hype\y|\ygeneric innovation\y|\yremains one of\y|\yone of the (strongest|most|leading|top|best)\y|\ythe top event\y|\ystrong source\y|\ya real (local|belgian|eindhoven)\y|\ystrong fit\y|\ygood fit\y|\ywell aligned\y|\yexactly the kind\y|\ywe want\y|\ynotable because\y|\ythrough the lens\y|\ygrounded (local|in)\y|\yfashionable\y|\ystill relevant\y|\yrecognizable\y|\ybroader event than\y|\yhigh-value\y|\ystrong (local|regional|ecosystem|technical)\y|\yflagship\y|\yofficial([[:space:]]+[0-9]{4})?[[:space:]]+page\y|\yoffici[eë]le[[:space:]]+pagina\y|\ylists dates\y|m�tier|\ymtier\y`;
 
 const META_MAX = 160;
 
@@ -292,7 +293,7 @@ function restatesSchedule(sentence: string): boolean {
     return true;
   }
   if (
-    /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(
+    /\b(?:jan(?:uari|uary)?|feb(?:ruari|ruary)?|m(?:aa)?rt|mar(?:ch)?|apr(?:il)?|mei|jun(?:i|e)?|jul(?:i|y)?|aug(?:ustus|ust)?|sept?(?:ember)?|okt(?:ober)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(
       sentence,
     )
   ) {
