@@ -363,13 +363,14 @@ function localizeLocationField(
 function localizeEventPlace(
   event: EventMetaSource,
   locale: string,
-): EventMetaSource {
-  if (locale !== "nl") return event;
-  return {
-    ...event,
-    city: localizeCityField(event.city, locale),
-    location: localizeLocationField(event.location, locale),
-  };
+): { event: EventMetaSource; changed: boolean } {
+  if (locale !== "nl") return { event, changed: false };
+  const city = localizeCityField(event.city, locale);
+  const location = localizeLocationField(event.location, locale);
+  if (city === event.city && location === event.location) {
+    return { event, changed: false };
+  }
+  return { event: { ...event, city, location }, changed: true };
 }
 
 function repeatsPlace(sentence: string, event: EventMetaSource): boolean {
@@ -407,7 +408,8 @@ export function eventMetaDescription(
   locale: string,
 ): string {
   const title = repairEventEncoding(event.title.trim());
-  const placeEvent = localizeEventPlace(event, locale);
+  const localized = localizeEventPlace(event, locale);
+  const placeEvent = localized.event;
   const when = eventWhenLabel(event, locale);
   const where = eventWhereLabel(placeEvent);
   const facts = fitFacts([title, when ?? "", where ?? ""]);
@@ -429,7 +431,7 @@ export function eventMetaDescription(
     if (
       restatesSchedule(sentence) ||
       repeatsPlace(sentence, placeEvent) ||
-      (placeEvent !== event && repeatsPlace(sentence, event))
+      (localized.changed && repeatsPlace(sentence, event))
     ) {
       continue;
     }

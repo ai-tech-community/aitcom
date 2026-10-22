@@ -322,6 +322,25 @@ describe("event meta description", () => {
     expect(eventMetaDescription(event, "en")).toBe(
       "Handelsblatt AI Summit 2026. 16–17 Nov 2026. House of Communication, Friedenstr. 24, Munich. Sessions on production agents in München.",
     );
+    expect(
+      eventMetaDescription(
+        { ...event, description: "Sessions on production agents in Munich." },
+        "nl",
+      ),
+    ).toBe(
+      "Handelsblatt AI Summit 2026. 16–17 nov 2026. House of Communication, Friedenstr. 24, München.",
+    );
+    const topical = eventMetaDescription(
+      {
+        ...event,
+        description: "Sessions cover production agents and evaluation.",
+      },
+      "nl",
+    );
+    expect(topical).toBe(
+      "Handelsblatt AI Summit 2026. 16–17 nov 2026. House of Communication, Friedenstr. 24, München. Sessions cover production agents and evaluation.",
+    );
+    expect(topical.length).toBeLessThanOrEqual(160);
   });
 
   it("uses confirmed Dutch city names and leaves the other seeded cities unchanged", () => {
