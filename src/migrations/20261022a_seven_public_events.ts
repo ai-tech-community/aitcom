@@ -27,11 +27,66 @@ const NEW_SLUGS = [
 
 const SEEDED_AT = BUILDER_PUBLIC_EVENTS_SEEDED_AT;
 
+/** Lowest public price, or the access line, copied into both locales. */
+const PRICE_LINES: Partial<
+  Record<(typeof NEW_SLUGS)[number], { en: string; nl: string }>
+> = {
+  "handelsblatt-ai-summit-2026": { en: "from €950", nl: "vanaf €950" },
+  "microsoft-ignite-2026": {
+    en: "free digital pass, then Hub pass $1,625",
+    nl: "gratis digital pass, daarna Hub-pas $1,625",
+  },
+  "the-ai-summit-new-york-2026": {
+    en: "Expo pass from $129",
+    nl: "Expo-pas vanaf $129",
+  },
+  "agentic-transformation-summit-amsterdam-2026": {
+    en: "from €1,799 + VAT",
+    nl: "vanaf €1.799 + btw",
+  },
+  "welcome-to-the-hague-2026": {
+    en: "registration required",
+    nl: "registratie verplicht",
+  },
+  "sinterklaasintocht-amsterdam-2026": {
+    en: "times approximate",
+    nl: "tijden bij benadering",
+  },
+};
+
 function newEvents() {
   return NEW_SLUGS.map((slug) => {
     const event = BUILDER_PUBLIC_EVENTS.find((row) => row.slug === slug);
     if (!event) {
       throw new Error(`${slug} is missing from BUILDER_PUBLIC_EVENTS`);
+    }
+    const line = PRICE_LINES[slug];
+    if (line) {
+      if (
+        !event.summary.en.includes(line.en) ||
+        !event.summary.nl.includes(line.nl)
+      ) {
+        throw new Error(`${slug} summary is missing its price line`);
+      }
+    }
+    if (
+      slug === "welcome-to-the-hague-2026" &&
+      (/\bfree\b/i.test(event.summary.en) ||
+        /\bgratis\b/i.test(event.summary.nl))
+    ) {
+      throw new Error(`${slug} must not say the evening is free`);
+    }
+    if (
+      slug === "microsoft-ignite-2026" &&
+      (event.summary.en.includes("$325") || event.summary.nl.includes("$325"))
+    ) {
+      throw new Error(`${slug} must not mention the pre-day add-on`);
+    }
+    if (
+      slug === "sinterklaasintocht-amsterdam-2026" &&
+      event.title !== "Sinterklaasintocht in Amsterdam"
+    ) {
+      throw new Error(`${slug} title drifted from the official name`);
     }
     return event;
   });

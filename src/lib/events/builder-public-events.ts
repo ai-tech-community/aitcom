@@ -255,8 +255,8 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     url: "https://www.aidataanalytics.network/events-agentic-ai-summit",
     isAi: true,
     summary: {
-      en: "Summit at Amsterdam Marriott Hotel, Stadhouderskade 12, 4–5 Nov 2026; Silver €1,799, Gold €2,099, vendors €2,999, + 21% VAT.",
-      nl: "Summit in Amsterdam Marriott Hotel, Stadhouderskade 12, 4–5 nov 2026; Silver €1.799, Gold €2.099, vendors €2.999, + 21% btw.",
+      en: "Summit at Amsterdam Marriott Hotel, Stadhouderskade 12, 4–5 Nov 2026; from €1,799 + VAT.",
+      nl: "Summit in Amsterdam Marriott Hotel, Stadhouderskade 12, 4–5 nov 2026; vanaf €1.799 + btw.",
     },
   },
   {
@@ -362,8 +362,8 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     url: "https://www.sintinamsterdam.nl/over-de-intocht/",
     isAi: false,
     summary: {
-      en: "Intocht on Sun 15 Nov 2026: De Omval 10:15, arrival 11:30, parade 13:00–15:30; times are guidelines.",
-      nl: "Intocht op zo 15 nov 2026: De Omval 10:15, aankomst 11:30, optocht 13:00–15:30; tijden zijn richtlijnen.",
+      en: "Intocht on Sun 15 Nov 2026: De Omval 10:15, arrival 11:30, parade 13:00–15:30; times approximate.",
+      nl: "Intocht op zo 15 nov 2026: De Omval 10:15, aankomst 11:30, optocht 13:00–15:30; tijden bij benadering.",
     },
   },
   {
@@ -414,8 +414,8 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     timezone: "America/Los_Angeles",
     url: "https://ignite.microsoft.com/en-US/home",
     summary: {
-      en: "Conference at Moscone Center, San Francisco, 17–20 Nov 2026; free digital pass, conference $2,325, hub-only $1,625 (17–19), pre-day $325.",
-      nl: "Conferentie in Moscone Center, San Francisco, 17–20 nov 2026; gratis digital pass, conference $2,325, hub-only $1,625 (17–19), pre-day $325.",
+      en: "Conference at Moscone Center, San Francisco, 17–20 Nov 2026; free digital pass, then Hub pass $1,625 (17–19).",
+      nl: "Conferentie in Moscone Center, San Francisco, 17–20 nov 2026; gratis digital pass, daarna Hub-pas $1,625 (17–19).",
     },
   },
   {
@@ -571,8 +571,8 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     url: "https://www.thehagueinternationalcentre.nl/events/2026-11/welcome-to-the-hague-event",
     isAi: false,
     summary: {
-      en: "Evening at The Fiddler, Riviervismarkt 1, Den Haag, 26 Nov 2026, doors 17:30, 18:00–20:30; register; snacks and drinks included.",
-      nl: "Avond in The Fiddler, Riviervismarkt 1, Den Haag, 26 nov 2026, deuren 17:30, 18:00–20:30; registreren; snacks en drankjes inbegrepen.",
+      en: "Evening at The Fiddler, Riviervismarkt 1, Den Haag, 26 Nov 2026, doors 17:30, 18:00–20:30; registration required.",
+      nl: "Avond in The Fiddler, Riviervismarkt 1, Den Haag, 26 nov 2026, deuren 17:30, 18:00–20:30; registratie verplicht.",
     },
   },
   {
@@ -640,8 +640,8 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     url: "https://newyork.theaisummit.com/",
     isAi: true,
     summary: {
-      en: "Summit at Javits Center, 429 11th Ave, New York, 9–10 Dec 2026; Expo Pass $129, regular $199.",
-      nl: "Summit in Javits Center, 429 11th Ave, New York, 9–10 dec 2026; Expo Pass $129, regulier $199.",
+      en: "Summit at Javits Center, 429 11th Ave, New York, 9–10 Dec 2026; Expo pass from $129.",
+      nl: "Summit in Javits Center, 429 11th Ave, New York, 9–10 dec 2026; Expo-pas vanaf $129.",
     },
   },
 ] as const;

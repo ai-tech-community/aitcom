@@ -973,7 +973,28 @@ describe("builder public events", () => {
     for (const slug of slugs) {
       expect(migration).toContain(slug);
     }
+    expect(migration).toContain("from €950");
+    expect(migration).toContain("free digital pass, then Hub pass $1,625");
+    expect(migration).toContain("Expo pass from $129");
+    expect(migration).toContain("from €1,799 + VAT");
+    expect(migration).toContain("registration required");
+    expect(migration).toContain("times approximate");
     expect(migration).not.toMatch(/odsc|max_attendees|image_id|rsvp/i);
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "welcome-to-the-hague-2026",
+      )?.summary.en,
+    ).not.toMatch(/\bfree\b/i);
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "welcome-to-the-hague-2026",
+      )?.summary.nl,
+    ).not.toMatch(/\bgratis\b/i);
+    expect(
+      BUILDER_PUBLIC_EVENTS.find(
+        (event) => event.slug === "sinterklaasintocht-amsterdam-2026",
+      )?.title,
+    ).toBe("Sinterklaasintocht in Amsterdam");
     expect(JSON.stringify(BUILDER_PUBLIC_EVENTS)).not.toMatch(/\bodsc\b/i);
 
     const detail = readFileSync(

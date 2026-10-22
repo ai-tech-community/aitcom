@@ -262,7 +262,7 @@ describe("event meta description", () => {
       {
         ...event,
         description:
-          "Conferentie in Moscone Center, San Francisco, 17–20 nov 2026; gratis digital pass, conference $2,325. Officiële pagina: https://ignite.microsoft.com/en-US/home.",
+          "Conferentie in Moscone Center, San Francisco, 17–20 nov 2026; gratis digital pass, daarna Hub-pas $1,625 (17–19). Officiële pagina: https://ignite.microsoft.com/en-US/home.",
       },
       "nl",
     );

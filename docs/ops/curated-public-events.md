@@ -69,23 +69,20 @@ from that same seed. `20261006a_five_public_events` upserts only
 `handelsblatt-ai-summit-2026`, `microsoft-ignite-2026`,
 `welcome-to-the-hague-2026`, `apidays-paris-2026`, and
 `the-ai-summit-new-york-2026` from that same seed.
-`agentic-transformation-summit-amsterdam-2026` keeps the three listed
-passes in the summary (Silver €1,799, Gold €2,099, vendors €2,999, each
-plus 21% VAT) and does not store one euro price.
+`agentic-transformation-summit-amsterdam-2026` keeps the lowest public
+pass in the summary (from €1,799 + VAT) and does not store one euro price.
 `handelsblatt-ai-summit-2026` keeps the page's "from €950" cost label in
 the summary. `microsoft-ignite-2026` is hybrid and keeps the free digital
-pass, the $2,325 conference pass, the $1,625 hub-only pass, and the $325
-pre-day add-on in the summary. The hub-only pass is 17–19 Nov, not
-the full 17–20 span. `apidays-paris-2026` sets `is_ai` true: the
+pass first, then the Hub pass at $1,625 for 17–19 Nov. It does not mention
+the $325 pre-day add-on. `apidays-paris-2026` sets `is_ai` true: the
 official theme is AI ecosystems with APIs, and the summary says so.
 Leaving the column null would let the event-ai cron set the same value.
-`the-ai-summit-new-york-2026` keeps only
-the live Expo Pass pair from the passes page ($129, regular $199). The
-expo page still says "starting at just $49", but that price widget's
+`the-ai-summit-new-york-2026` keeps the live Expo pass as "from $129".
+The expo page still says "starting at just $49", but that price widget's
 timer is 28 Aug 2026 23:59 UTC, which has passed.
-`welcome-to-the-hague-2026` and `sinterklaasintocht-amsterdam-2026` store
-no ticket price. `sinterklaasintocht-amsterdam-2026` stores the published
-clock times and says they are guidelines. The same migration writes a
+`welcome-to-the-hague-2026` says registration is required and does not
+say the evening is free. `sinterklaasintocht-amsterdam-2026` stores the
+published clock times and says they are approximate. The same migration writes a
 Nominatim point for each venue only when latitude or longitude is still
 null. The intocht pin is Het Scheepvaartmuseum, the published 11:30
 arrival on a route that is not one hall. `is_ai` is false for the intocht
