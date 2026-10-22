@@ -33,6 +33,9 @@ vi.mock("@/server/agent/api-key", () => ({
   }),
 }));
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => payload }));
+vi.mock("@/server/events/public-event-access", () => ({
+  loadHiddenEventCommunityIds: async () => [],
+}));
 
 import { createCaller } from "@/server/api/root";
 import { db as mockedDb } from "@/server/db";

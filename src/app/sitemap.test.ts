@@ -452,6 +452,73 @@ describe("buildSitemapEntries", () => {
     );
   });
 
+  it("omits events of a listed invite-only community that forum rules would keep", async () => {
+    const find = vi.fn(async ({ collection }: { collection: string }) => {
+      if (collection === "events") {
+        return {
+          docs: [
+            {
+              slug: "public-night",
+              status: "published",
+              communityId: "public-id",
+              updatedAt: "2026-04-01",
+            },
+            {
+              slug: "closed-night",
+              status: "published",
+              communityId: "invite-id",
+              updatedAt: "2026-04-01",
+            },
+          ],
+        };
+      }
+      return { docs: [] };
+    });
+    mockGetPayloadClient.mockResolvedValue({
+      find,
+    } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () =>
+        new Map([
+          ["public-id", "builders"],
+          ["invite-id", "closed-circle"],
+        ]),
+      async () => [],
+      async () => [],
+      async () => [],
+      async () => new Map(),
+      async () => ["invite-id"],
+    );
+    const urls = urlsOf(entries);
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/events/public-night",
+    );
+    expect(urls).not.toContain(
+      "https://www.aitcommunity.org/en/events/closed-night",
+    );
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "events",
+        where: {
+          and: [
+            {
+              status: { equals: "published" },
+              discoverySource: { not_equals: "luma" },
+            },
+            {
+              or: [
+                { communityId: { exists: false } },
+                { communityId: { not_in: ["invite-id"] } },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+  });
+
   it("omits unlisted communities, their pages, threads, and events", async () => {
     const find = vi.fn(async ({ collection }: { collection: string }) => {
       if (collection === "events") {
