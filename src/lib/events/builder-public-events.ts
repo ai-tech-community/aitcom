@@ -670,6 +670,8 @@ export const BUILDER_PUBLIC_EVENTS: readonly BuilderPublicEvent[] = [
     },
   },
   {
+    // `is_ai` is omitted on purpose. Production `events.is_ai` for
+    // `microsoft-ignite-2026` is null, and this row stores that same value.
     slug: "aws-reinvent-2026",
     title: "AWS re:Invent 2026",
     type: "conference",

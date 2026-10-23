@@ -1181,10 +1181,14 @@ describe("builder public events", () => {
         (event) => event.slug === "big-data-conference-europe-2026",
       )?.format,
     ).toBe("hybrid");
-    expect(
-      BUILDER_PUBLIC_EVENTS.find((event) => event.slug === "aws-reinvent-2026")
-        ?.isAi,
-    ).toBeUndefined();
+    const ignite = BUILDER_PUBLIC_EVENTS.find(
+      (event) => event.slug === "microsoft-ignite-2026",
+    );
+    const reinvent = BUILDER_PUBLIC_EVENTS.find(
+      (event) => event.slug === "aws-reinvent-2026",
+    );
+    expect(reinvent?.isAi).toBe(ignite?.isAi);
+    expect(reinvent?.isAi).toBeUndefined();
     expect(
       BUILDER_PUBLIC_EVENTS.find(
         (event) => event.slug === "say-hello-eindhoven-2026",
@@ -1227,6 +1231,9 @@ describe("builder public events", () => {
     expect(migration).toContain("1-day onsite €450 excl. VAT");
     expect(migration).toContain("full price $2,499");
     expect(migration).toContain("registration required");
+    expect(migration).toContain(
+      "aws-reinvent-2026 is_ai must match microsoft-ignite-2026",
+    );
     expect(migration).not.toMatch(/odsc|max_attendees|image_id|rsvp/i);
 
     const detail = readFileSync(
@@ -1247,6 +1254,7 @@ describe("builder public events", () => {
       "utf8",
     );
     expect(docs).toContain("20261023a_six_public_events");
+    expect(docs).toContain("whose `events.is_ai` is null");
     for (const slug of slugs) {
       expect(docs).toContain(slug);
     }

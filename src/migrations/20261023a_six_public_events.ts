@@ -76,6 +76,16 @@ function newEvents() {
     ) {
       throw new Error(`${slug} must not say the event is free`);
     }
+    if (slug === "aws-reinvent-2026") {
+      const ignite = BUILDER_PUBLIC_EVENTS.find(
+        (row) => row.slug === "microsoft-ignite-2026",
+      );
+      if (event.isAi !== ignite?.isAi) {
+        throw new Error(
+          "aws-reinvent-2026 is_ai must match microsoft-ignite-2026",
+        );
+      }
+    }
     return event;
   });
 }

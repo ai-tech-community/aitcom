@@ -82,6 +82,8 @@ General Admission offer at €34.99. `ai-data-science-day-2026` and
 `say-hello-eindhoven-2026` say registration is required and do not
 say the event is free. `aws-reinvent-2026` stores the stated full
 price of $2,499 and names Las Vegas, because the page names no hall.
+`aws-reinvent-2026` omits `is_ai`, the same as production
+`microsoft-ignite-2026`, whose `events.is_ai` is null.
 `tedxamsterdam-2026` is a different event from `tedai-2026`. `is_ai`
 is false for Say Hello and TEDxAmsterdam. The same migration writes a
 Nominatim point for each venue only when latitude or longitude is still
