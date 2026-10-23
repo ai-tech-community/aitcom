@@ -4,23 +4,35 @@ import { communityContentReadableWhere } from "@/server/communities/content-visi
 import { HUB_SLUG } from "@/server/communities/hub";
 
 /**
+ * Join policies whose events a signed-out visitor may see, and only when
+ * the community is also listed. Anything else — invite-only, or a policy
+ * this list does not name — stays hidden.
+ */
+export const PUBLIC_EVENT_JOIN_POLICIES = [
+  "open",
+  "approval_required",
+] as const;
+
+/**
  * A community whose events a signed-out visitor may see.
- * The Hub stays public (ADR-0030). Any other unlisted community is a private
- * room. An invite-only community stays off public event surfaces even when
- * it is listed in the directory. Open and approval-required listed
- * communities stay public.
+ * Public only for the Hub (ADR-0030), or a directory-listed community whose
+ * join policy is in `PUBLIC_EVENT_JOIN_POLICIES`. Unlisted rooms,
+ * invite-only communities (listed or not), and any unknown join policy
+ * stay hidden. Fail closed.
  */
 export type EventCommunityGate = {
   slug: string;
   isListedInDirectory: boolean;
-  joinPolicy: "open" | "invite_only" | "approval_required";
+  /** Stored as varchar. Unknown values are not public. */
+  joinPolicy: string;
 };
 
 export function eventCommunityIsPublic(community: EventCommunityGate): boolean {
   if (community.slug === HUB_SLUG) return true;
   if (!community.isListedInDirectory) return false;
-  if (community.joinPolicy === "invite_only") return false;
-  return true;
+  return (PUBLIC_EVENT_JOIN_POLICIES as readonly string[]).includes(
+    community.joinPolicy,
+  );
 }
 
 /**

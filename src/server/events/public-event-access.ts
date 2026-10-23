@@ -1,7 +1,10 @@
 import { cache } from "react";
 import { and, eq, ne, notInArray, or } from "drizzle-orm";
 
-import { eventCommunityIsPublic } from "@/lib/events/public-event-access";
+import {
+  eventCommunityIsPublic,
+  PUBLIC_EVENT_JOIN_POLICIES,
+} from "@/lib/events/public-event-access";
 import { isActiveCommunityMember } from "@/server/communities/content-visibility-queries";
 import { HUB_SLUG } from "@/server/communities/hub";
 import { communities, communityMemberships } from "@/server/db/schema";
@@ -10,9 +13,11 @@ import type { db as _db } from "@/server/db";
 type DB = typeof _db;
 
 /**
- * Communities whose events this viewer may not see: unlisted (private) or
- * invite-only, excluding the Hub, and excluding communities where the viewer
- * has an active membership. Matches `eventCommunityIsPublic`.
+ * Communities whose events this viewer may not see. The Hub is always
+ * public. Every other community is hidden unless it is listed and its join
+ * policy is open or approval-required. Invite-only and any unknown policy
+ * are hidden. Active memberships are left out. Matches
+ * `eventCommunityIsPublic` and fails closed.
  */
 export const hiddenEventCommunityIds = cache(
   async function hiddenEventCommunityIds(
@@ -21,7 +26,7 @@ export const hiddenEventCommunityIds = cache(
   ): Promise<string[]> {
     const hiddenFromPublic = or(
       eq(communities.isListedInDirectory, false),
-      eq(communities.joinPolicy, "invite_only"),
+      notInArray(communities.joinPolicy, [...PUBLIC_EVENT_JOIN_POLICIES]),
     );
     if (!hiddenFromPublic) return [];
     const conditions = [ne(communities.slug, HUB_SLUG), hiddenFromPublic];

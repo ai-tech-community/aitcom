@@ -17,6 +17,7 @@ function sqlText(node: unknown): string {
   ) {
     return String(node);
   }
+  if (Array.isArray(node)) return node.map((part) => sqlText(part)).join("");
   if (typeof node !== "object") return "";
   const obj = node as {
     value?: unknown;
@@ -92,13 +93,16 @@ function fakeDb(options: {
 }
 
 describe("hiddenEventCommunityIds", () => {
-  it("hides unlisted and invite-only communities, and keeps the Hub", async () => {
+  it("hides unlisted communities and any join policy outside the public allow-list", async () => {
     const query = queryDb(false);
     await hiddenEventCommunityIds(query.db, null);
     const sql = query.sql();
     expect(sql).toContain("isListedInDirectory");
     expect(sql).toContain("joinPolicy");
-    expect(sql).toContain("invite_only");
+    expect(sql).toContain("open");
+    expect(sql).toContain("approval_required");
+    expect(sql).not.toContain("invite_only");
+    expect(sql).toContain("not in");
     expect(sql).toContain(HUB_SLUG);
     expect(sql).not.toContain("userId");
   });
@@ -107,7 +111,7 @@ describe("hiddenEventCommunityIds", () => {
     const query = queryDb(true);
     await hiddenEventCommunityIds(query.db, "member-1");
     const sql = query.sql();
-    expect(sql).toContain("invite_only");
+    expect(sql).toContain("approval_required");
     expect(sql).toContain("not in");
     expect(sql).toContain("userId");
     expect(sql).toContain("member-1");
@@ -126,6 +130,17 @@ describe("viewerMaySeeEvent", () => {
   it("hides a private invite-only community from a guest", async () => {
     await expect(
       viewerMaySeeEvent(fakeDb({ community: studio }), "studio", null),
+    ).resolves.toBe(false);
+  });
+
+  it("hides a listed invite-only community from a signed-in non-member", async () => {
+    const listed = {
+      ...studio,
+      slug: "sunday-runners-demo",
+      isListedInDirectory: true,
+    };
+    await expect(
+      viewerMaySeeEvent(fakeDb({ community: listed }), "studio", "guest-user"),
     ).resolves.toBe(false);
   });
 

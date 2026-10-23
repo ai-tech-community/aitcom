@@ -55,7 +55,7 @@ describe("event community publicity", () => {
     ).toBe(true);
   });
 
-  it("hides unlisted, private, and invite-only communities from guests", () => {
+  it("hides unlisted, invite-only, and unknown join policies from guests", () => {
     const hidden: EventCommunityGate[] = [
       gate({
         slug: "ait-demo-studio",
@@ -76,6 +76,11 @@ describe("event community publicity", () => {
         slug: "closed-circle",
         isListedInDirectory: true,
         joinPolicy: "invite_only",
+      }),
+      gate({
+        slug: "mystery",
+        isListedInDirectory: true,
+        joinPolicy: "secret",
       }),
     ];
     expect(
@@ -143,9 +148,10 @@ describe("public event surfaces wire the same gate", () => {
     expect(src).toContain("publishedEventsVisibleWhere");
   });
 
-  it("hides a private event page, including metadata, from a signed-out visitor", () => {
+  it("returns notFound for an invite-only community on the detail page", () => {
     const src = read("src/app/[locale]/events/[slug]/page.tsx");
     expect(src).toContain("viewerMaySeeEvent");
+    expect(src).toContain("notFound()");
     expect(src).toContain("cancelledLabel");
   });
 
