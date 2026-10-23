@@ -54,6 +54,8 @@ import {
   toHubAuthUser,
 } from "@/server/better-auth/hub-session";
 import { getSession } from "@/server/better-auth/server";
+import { publishedEventsVisibleWhere } from "@/lib/events/public-event-access";
+import { loadHiddenEventCommunityIds } from "@/server/events/public-event-access";
 
 export const dynamic = "force-dynamic";
 
@@ -154,11 +156,19 @@ export default async function EventsPage({
     countryParam ?? (nearMe ? (visitor?.countryName ?? null) : null);
 
   const now = new Date();
-  const conditions: Where[] = [{ status: { equals: "published" } }];
-  // Discovered (Luma) events are "scheduled around, not attended through"
-  // (CONTEXT.md [[discovered-event]]) — keep them out of this hub-wide
-  // public listing; they stay in the conflict corpus (corpus.ts untouched).
-  conditions.push({ discoverySource: { not_equals: "luma" } });
+  // publishedEventsVisibleWhere already requires status published and
+  // discoverySource not luma (discovered events stay off this listing,
+  // including search and the JSON-LD built from these rows). It also
+  // drops events of private, unlisted, and invite-only communities
+  // unless this viewer is a member. A failed lookup keeps only events
+  // with no community.
+  const hiddenEventCommunityIds = await loadHiddenEventCommunityIds(
+    db,
+    session?.user?.id ?? null,
+  );
+  const conditions: Where[] = [
+    publishedEventsVisibleWhere(hiddenEventCommunityIds),
+  ];
   if (type) conditions.push({ type: { equals: type } });
   if (focus) conditions.push({ focus: { equals: focus } });
   if (format) conditions.push({ format: { equals: format } });

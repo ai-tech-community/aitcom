@@ -28,7 +28,11 @@ const TYPES: { value: EventType; key: string }[] = [
 ];
 
 /** What the event is: name, kind, words, picture. */
-export function BasicsSection({ form, update }: SectionProps) {
+export function BasicsSection({
+  form,
+  update,
+  descriptionError,
+}: SectionProps) {
   const t = useTranslations("events");
   const te = useTranslations("events.editor");
   const tc = useTranslations("common");
@@ -89,7 +93,20 @@ export function BasicsSection({ form, update }: SectionProps) {
           onChange={(e) => update({ description: e.target.value })}
           rows={6}
           maxLength={5000}
+          aria-invalid={descriptionError ? true : undefined}
+          aria-describedby={
+            descriptionError ? "event-description-error" : undefined
+          }
         />
+        {descriptionError ? (
+          <p
+            id="event-description-error"
+            role="alert"
+            className="text-destructive text-sm"
+          >
+            {descriptionError}
+          </p>
+        ) : null}
       </Field>
       <Field label={t("coverImageLabel")}>
         {form.coverImageUrl ? (

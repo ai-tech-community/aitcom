@@ -15,6 +15,12 @@ import {
   stripListingPolicy,
 } from "@/lib/events/listing-policy";
 
+export const eventDescriptionSchema = z
+  .string()
+  .trim()
+  .min(1, "Add a description.")
+  .max(5000);
+
 export const eventUpsertSchema = z.object({
   title: z.string().min(3).max(255),
   description: z.string().max(5000).optional(),
@@ -66,6 +72,11 @@ export const eventUpsertSchema = z.object({
   coverImage: z.number().int().positive().nullable().optional(),
   // Questions members answer when registering (#369); [] clears them.
   registrationQuestions: registrationQuestionsSchema.optional(),
+});
+
+/** Create and submit require a description. Edits may omit it. */
+export const eventCreateSchema = eventUpsertSchema.extend({
+  description: eventDescriptionSchema,
 });
 
 export function normalizeOptionalString(value?: string) {

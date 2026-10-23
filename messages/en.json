@@ -132,6 +132,7 @@
     "cancelEvent": "Cancel Event",
     "cancelEventConfirm": "Cancel this event? All registrations will be cancelled.",
     "eventUpdated": "Event updated",
+    "cancelledLabel": "Cancelled",
     "eventCancelled": "Event cancelled",
     "eventApproved": "Event approved and published",
     "eventApproveError": "Failed to approve event",
@@ -435,8 +436,10 @@
       "checklistRemaining": "{count, plural, one {# thing left} other {# things left}} before you can save.",
       "checklistDone": "(done)",
       "checklistTodo": "(to do)",
+      "descriptionRequired": "Add a description.",
       "checklist": {
         "title": "A title",
+        "description": "A description",
         "audience": "Who it's for",
         "date": "A date",
         "location": "Where it happens",

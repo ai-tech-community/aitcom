@@ -6,6 +6,7 @@ import { emptyEventFormData } from "./event-form-model";
 const READY = {
   ...emptyEventFormData,
   title: "Builders night",
+  description: "A night for builders.",
   audience: ["builders"],
   date: "2026-11-02",
   location: "Amsterdam",
@@ -17,6 +18,7 @@ describe("editorChecklist", () => {
       editorChecklist(emptyEventFormData, "create").map((i) => [i.id, i.done]),
     ).toEqual([
       ["title", false],
+      ["description", false],
       ["audience", false],
       ["date", false],
       ["location", false],

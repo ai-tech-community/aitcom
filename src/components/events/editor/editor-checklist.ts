@@ -5,11 +5,13 @@ import { questionProblems } from "./questions-editor-model";
 /**
  * What an event needs before it can be saved, as a list the editor shows
  * ("Ready to save") and uses to tick finished sections in its menu. Mirrors
- * what the server refuses: a title of 3+ characters, a date, a place, an
- * audience (required when creating), and finished questions.
+ * what the server refuses: a title of 3+ characters, a description when
+ * creating, a date, a place, an audience (required when creating), and
+ * finished questions.
  */
 export type ChecklistItemId =
   | "title"
+  | "description"
   | "audience"
   | "date"
   | "location"
@@ -28,6 +30,15 @@ export function editorChecklist(
   const questionsApply = !form.sourceUrl.trim();
   const items: ChecklistItem[] = [
     { id: "title", section: "basics", done: form.title.trim().length >= 3 },
+    ...(mode === "create"
+      ? [
+          {
+            id: "description" as const,
+            section: "basics" as const,
+            done: form.description.trim().length > 0,
+          },
+        ]
+      : []),
     {
       id: "audience",
       section: "audience",

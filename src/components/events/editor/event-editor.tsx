@@ -134,9 +134,20 @@ export function EventEditor({
           ? t("createEvent")
           : t("submitForApproval");
 
+  const descriptionMissing =
+    mode === "create" && !!form && form.description.trim().length === 0;
+  const descriptionError =
+    triedSave && descriptionMissing ? te("descriptionRequired") : null;
+
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setTriedSave(true);
+    if (mode === "create" && !form?.description.trim()) {
+      document
+        .getElementById("basics")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     if (hasQuestionProblems) {
       document
         .getElementById("registration")
@@ -209,7 +220,11 @@ export function EventEditor({
                 communitySlug={communitySlug}
               />
             ) : null}
-            <BasicsSection form={form} update={update} />
+            <BasicsSection
+              form={form}
+              update={update}
+              descriptionError={descriptionError}
+            />
             <AudienceSection form={form} update={update} />
             <WhenSection form={form} update={update} conflicts={conflicts} />
             <WhereSection form={form} update={update} />
