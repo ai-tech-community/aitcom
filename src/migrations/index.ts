@@ -1,3 +1,4 @@
+import * as migration_20261023a_six_public_events from "./20261023a_six_public_events";
 import * as migration_20261022a_seven_public_events from "./20261022a_seven_public_events";
 import * as migration_20261021a_ten_public_events from "./20261021a_ten_public_events";
 import * as migration_20261019a_five_public_events from "./20261019a_five_public_events";
@@ -1019,5 +1020,10 @@ export const migrations = [
     up: migration_20261022a_seven_public_events.up,
     down: migration_20261022a_seven_public_events.down,
     name: "20261022a_seven_public_events",
+  },
+  {
+    up: migration_20261023a_six_public_events.up,
+    down: migration_20261023a_six_public_events.down,
+    name: "20261023a_six_public_events",
   },
 ];
