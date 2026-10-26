@@ -30,7 +30,7 @@ export type ItemRowView = {
   key: string;
   /** The item's name in the list: an article title, a block heading. */
   title: string;
-  /** The item's kind in plain words ("Article", "Editorial block"). */
+  /** The item's kind in plain words ("Article", "Text section"). */
   kindLabel: string;
   /** Editors only: the saved item's content cannot be shown to readers. */
   unavailable: boolean;
@@ -90,6 +90,11 @@ export function ItemRow({
     transition,
     isDragging,
   } = useSortable({ id: view.key });
+  // The problem is read with every control of the row, since a list item
+  // cannot take focus and its description would never be heard.
+  const describedBy = (...ids: (string | undefined)[]) =>
+    [...ids, view.problem ? problemId : undefined].filter(Boolean).join(" ") ||
+    undefined;
 
   const label = (
     <span className="flex min-w-0 flex-1 flex-col">
@@ -106,7 +111,6 @@ export function ItemRow({
       ref={setNodeRef}
       data-testid={`issue-item-${view.key}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      aria-describedby={view.problem ? problemId : undefined}
       className={cn(
         "bg-background flex flex-col gap-1 rounded-md border px-1.5 py-1.5",
         view.selected && "bg-muted",
@@ -120,6 +124,7 @@ export function ItemRow({
           type="button"
           {...attributes}
           {...listeners}
+          aria-describedby={describedBy(attributes["aria-describedby"])}
           aria-label={t("dragHandle", { title: view.title })}
           className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex h-8 w-5 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm outline-none focus-visible:ring-[3px] active:cursor-grabbing"
         >
@@ -137,6 +142,7 @@ export function ItemRow({
             type="button"
             onClick={view.onEdit}
             aria-current={view.selected ? "true" : undefined}
+            aria-describedby={describedBy()}
             className="focus-visible:ring-ring/50 hover:bg-secondary/50 flex min-w-0 flex-1 rounded-sm px-1.5 py-0.5 text-left outline-none focus-visible:ring-[3px]"
           >
             {label}
@@ -149,6 +155,7 @@ export function ItemRow({
           open={view.open}
           actions={actions}
           triggerRef={menuTriggerRef}
+          describedBy={describedBy()}
         />
       </div>
       {view.problem && (
@@ -169,11 +176,14 @@ function RowMenu({
   open,
   actions,
   triggerRef,
+  describedBy,
 }: {
   title: string;
   open: ItemRowView["open"];
   actions: ItemRowActions;
   triggerRef?: Ref<HTMLButtonElement>;
+  /** The row's problem, read with the ⋯ button. */
+  describedBy?: string;
 }) {
   const t = useTranslations("magazineEditor.builder.items");
   const removing = useRef(false);
@@ -185,6 +195,7 @@ function RowMenu({
           variant="ghost"
           size="icon"
           aria-label={t("actions", { title })}
+          aria-describedby={describedBy}
           className="size-8 shrink-0"
         >
           <MoreHorizontal aria-hidden="true" />
