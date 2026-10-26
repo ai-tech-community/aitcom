@@ -14,7 +14,7 @@ import {
 import { RelativeTime } from "@/components/ui/relative-time";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { CourseTitleEditor } from "./course-title-editor";
-import type { AutosaveStatus } from "./use-autosave";
+import type { AutosaveStatus } from "@/components/use-autosave";
 
 type CourseStatus = "draft" | "published" | "archived";
 

@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import type { AutosaveStatus, UseAutosaveResult } from "./use-autosave";
+import type {
+  AutosaveStatus,
+  UseAutosaveResult,
+} from "@/components/use-autosave";
 import type { PaneSaveState } from "./course-builder";
 
 /**

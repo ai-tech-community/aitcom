@@ -9,7 +9,8 @@ import {
 } from "react";
 import { api } from "@/trpc/react";
 import { COURSE_TITLE_MIN } from "@/lib/classroom/course-title";
-import { useAutosave } from "./use-autosave";
+import { useAutosave } from "@/components/use-autosave";
+import { CLASSROOM_CONFLICT_CODES } from "./builder-errors";
 import { usePaneReport } from "./use-pane-report";
 import type { VersionedWriter } from "./versioned-writer";
 import type { PaneSaveState } from "./course-builder";
@@ -93,6 +94,7 @@ export function useCourseDetails({
   const autosave = useAutosave({
     value: draft,
     save,
+    conflictCodes: CLASSROOM_CONFLICT_CODES,
     enabled: !readOnly && titleValid,
   });
 

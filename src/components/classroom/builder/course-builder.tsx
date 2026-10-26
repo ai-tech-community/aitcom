@@ -39,7 +39,7 @@ import {
   type RewriteLessons,
 } from "./lesson-versions";
 import { PublishDialog } from "./publish-dialog";
-import type { AutosaveStatus } from "./use-autosave";
+import type { AutosaveStatus } from "@/components/use-autosave";
 import { useLeaveGuard } from "./use-leave-guard";
 import { usePersistedFlag } from "./use-persisted-flag";
 
