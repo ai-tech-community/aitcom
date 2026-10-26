@@ -9,6 +9,7 @@ import type * as Schema from "@/server/db/schema";
 import type { PayloadClient } from "@/server/magazines/deps";
 import type * as IssueService from "@/server/magazines/issue-service";
 import type * as MagazineService from "@/server/magazines/magazine-service";
+import type * as Reading from "@/server/magazines/reading";
 import type * as SitemapPaths from "@/server/magazines/sitemap-paths";
 import type * as ProfileWork from "@/server/members/profile-work";
 
@@ -56,6 +57,7 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
     schema: typeof Schema;
     magazines: typeof MagazineService;
     issues: typeof IssueService;
+    reading: typeof Reading;
     payload: PayloadClient;
     createCaller: typeof Root.createCaller;
     generateApiKey: typeof ApiKey.generateApiKey;
@@ -85,6 +87,7 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
       schema,
       magazines,
       issues,
+      reading,
       { getPayloadClient },
       { createCaller },
       { generateApiKey },
@@ -97,6 +100,7 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
       import("@/server/db/schema"),
       import("@/server/magazines/magazine-service"),
       import("@/server/magazines/issue-service"),
+      import("@/server/magazines/reading"),
       import("@/server/payload"),
       import("@/server/api/root"),
       import("@/server/agent/api-key"),
@@ -110,6 +114,7 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
       schema,
       magazines,
       issues,
+      reading,
       payload: await getPayloadClient(),
       createCaller,
       generateApiKey,
@@ -354,6 +359,44 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
     return results.filter((r) => r.type === "article").map((r) => r.id);
   }
 
+  /** Every issue id the `/magazines` home shows. */
+  async function homeIssueIds(): Promise<number[]> {
+    const home = await m.reading.loadMagazinesHome(m, { locale: "en" });
+    return [
+      ...(home.featured ? [home.featured.id] : []),
+      ...home.justPublished.map((card) => card.id),
+      ...home.magazines.map((card) => card.latest.id),
+    ];
+  }
+
+  function issuePageAs(
+    viewerId: string | null,
+    magazineSlug: string,
+    issueSlug: string,
+  ) {
+    return m.reading.loadIssuePage(m, {
+      magazineSlug,
+      issueSlug,
+      viewerId,
+      locale: "en",
+    });
+  }
+
+  function articlePageAs(
+    viewerId: string | null,
+    magazineSlug: string,
+    issueSlug: string,
+    articleSlug: string,
+  ) {
+    return m.reading.loadMagazineArticlePage(m, {
+      magazineSlug,
+      issueSlug,
+      articleSlug,
+      viewerId,
+      locale: "en",
+    });
+  }
+
   async function commentCount(articleId: number): Promise<number> {
     const { totalDocs } = await m.payload.count({
       collection: "comments",
@@ -451,6 +494,25 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
     const { c, magazine, issue, article, articlePath } =
       await publishedMagazineArticle();
 
+    // Public first: on the home, and the issue and article pages read.
+    expect(await homeIssueIds()).toContain(issue.id);
+    for (const viewer of [null, fx.outsiderId]) {
+      expect(
+        (await issuePageAs(viewer, magazine.slug, issue.slug))?.items,
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: "article",
+            article: expect.objectContaining({ id: article.id }),
+          }),
+        ]),
+      );
+      expect(
+        (await articlePageAs(viewer, magazine.slug, issue.slug, article.slug))
+          ?.article.id,
+      ).toBe(article.id);
+    }
+
     await m.issues.updateIssueDetails(
       m,
       issue,
@@ -485,6 +547,30 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
     await expect(
       callerAs(fx.memberId).comments.list({ articleId: article.id }),
     ).resolves.toEqual([]);
+
+    // The home is the public face: a members-only issue leaves it.
+    expect(await homeIssueIds()).not.toContain(issue.id);
+    // The issue and article pages are not found for guests and outsiders.
+    for (const viewer of [null, fx.outsiderId]) {
+      expect(await issuePageAs(viewer, magazine.slug, issue.slug)).toBeNull();
+      expect(
+        await articlePageAs(viewer, magazine.slug, issue.slug, article.slug),
+      ).toBeNull();
+    }
+    // Members still read both.
+    expect(
+      (await issuePageAs(fx.memberId, magazine.slug, issue.slug))?.issue.id,
+    ).toBe(issue.id);
+    expect(
+      (
+        await articlePageAs(
+          fx.memberId,
+          magazine.slug,
+          issue.slug,
+          article.slug,
+        )
+      )?.article.id,
+    ).toBe(article.id);
   }, 60_000);
 
   // ── Commenting is the channel's call ──────────────────────────────────
