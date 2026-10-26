@@ -47,3 +47,21 @@ export function issueBuilderPath(
 ): string {
   return `${communityMagazinePath(communitySlug)}/issues/${issueId}/edit`;
 }
+
+/** The magazine's settings (create or edit) in the community settings. */
+export function magazineSettingsPath(communitySlug: string): string {
+  return `/communities/${communitySlug}/settings/magazine`;
+}
+
+/** Where an editor writes a new article for the community's magazine. */
+export function magazineWritePath(communitySlug: string): string {
+  return `${communityMagazinePath(communitySlug)}/write`;
+}
+
+/** Where an editor edits one of their magazine articles. */
+export function magazineArticleEditPath(
+  communitySlug: string,
+  articleSlug: string,
+): string {
+  return `${communityMagazinePath(communitySlug)}/articles/${articleSlug}/edit`;
+}

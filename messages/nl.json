@@ -2911,7 +2911,8 @@
       "news": "Nieuws",
       "newsAll": "Al het {sector}-nieuws",
       "newsEmpty": "Voor {sector} zijn nog geen nieuwsfeeds gekoppeld. Hier wordt niets verzonnen.",
-      "newsNoStories": "Nog geen berichten uit de {sector}-feeds."
+      "newsNoStories": "Nog geen berichten uit de {sector}-feeds.",
+      "magazine": "Magazine"
     },
     "manage": {
       "settings": "Instellingen",
@@ -2962,6 +2963,7 @@
         "topics": "Onderwerpen",
         "links": "Links",
         "classroom": "Klaslokaal",
+        "magazine": "Magazine",
         "ownership": "Eigenaarschap",
         "integrations": "Integraties",
         "broadcast": "Aankondigingen",
@@ -4807,6 +4809,102 @@
       "homeTitle": "Magazines",
       "homeDescription": "Verhalen uit de communities die AI bouwen, geschreven en samengesteld door leden van de community. Gratis te lezen.",
       "shelfDescription": "{magazine}, een magazine van {community}."
+    }
+  },
+  "magazineEditor": {
+    "errors": {
+      "confirmUnlistedPublic": "Je community is privé. Vink het vakje aan om te bevestigen dat iedereen dit mag zien.",
+      "magazineExists": "Je community heeft al een magazine. Laad de pagina opnieuw om het te bewerken.",
+      "magazineSlugTaken": "Een ander magazine gebruikt dit adres al. Kies een ander adres.",
+      "spaceSlugTaken": "Een ruimte in je community heet al “magazine”. Geef die ruimte een andere naam bij Ruimtes en probeer het opnieuw.",
+      "issueChanged": "Dit nummer is ergens anders gewijzigd. Laad opnieuw om de nieuwste versie te zien.",
+      "issueSlugTaken": "Een ander nummer van dit magazine gebruikt dit adres al. Kies een ander adres.",
+      "issueSlugLocked": "Het adres van een gepubliceerd nummer blijft hetzelfde, zodat links ernaar blijven werken.",
+      "issueEmpty": "Voeg minstens één artikel of notitie toe voordat je publiceert.",
+      "issueNotDraft": "Dit nummer is al gepubliceerd.",
+      "itemInvalid": "Een van de onderdelen is niet compleet. Controleer het en probeer het opnieuw.",
+      "articlePlaced": "Dit artikel staat al in een ander nummer.",
+      "articleNotReady": "Dit artikel is nog niet klaar voor een nummer.",
+      "articleMagazineLocked": "Een magazine-artikel blijft in zijn magazine. Het kan niet naar de blog of naar een ander magazine.",
+      "generic": "Er ging iets mis. Probeer het opnieuw."
+    },
+    "publicOptIn": {
+      "warning": "Je community is privé. Als je dit aan iedereen laat zien, ziet iedereen op internet de naam van je community en een link ernaartoe. Je leden, berichten en andere pagina's blijven privé.",
+      "confirm": "Ik begrijp het, laat dit buiten de community zien"
+    },
+    "settings": {
+      "title": "Magazine",
+      "intro": "Een magazine bundelt de beste artikelen van je leden in nummers die mensen kunnen lezen en delen.",
+      "nameLabel": "Naam",
+      "slugLabel": "Adres",
+      "slugHint": "Kleine letters, cijfers en streepjes. Als je het later wijzigt, werken oude links naar je magazine niet meer.",
+      "slugInvalid": "Gebruik 3 tot 60 kleine letters, cijfers en streepjes.",
+      "descriptionLabel": "Beschrijving",
+      "descriptionHint": "Eén of twee zinnen voor lezers. Dit staat op de magazinepagina.",
+      "logoLabel": "Logo",
+      "logoHint": "Een vierkante afbeelding werkt het best.",
+      "logoUpload": "Logo uploaden",
+      "logoReplace": "Logo vervangen",
+      "logoRemove": "Logo verwijderen",
+      "logoUploading": "Uploaden…",
+      "uploadFailed": "Het logo kon niet worden geüpload. Probeer het opnieuw.",
+      "topicsLabel": "Onderwerpen",
+      "topicsHint": "Maximaal 5. Mensen vinden magazines per onderwerp op de pagina Magazines. Druk op Enter om er een toe te voegen.",
+      "topicsFull": "Je hebt 5 onderwerpen. Verwijder er een om een ander toe te voegen.",
+      "topicAdd": "Onderwerp toevoegen",
+      "topicRemove": "Onderwerp {topic} verwijderen",
+      "visibilityLabel": "Wie kan nieuwe nummers lezen",
+      "visibilityMembers": "Alleen leden",
+      "visibilityPublic": "Iedereen",
+      "visibilityHint": "Geldt alleen voor nieuwe nummers. Je kunt elk nummer nog apart aanpassen.",
+      "alreadyConfirmed": "Je hebt al bevestigd dat iedereen nieuwe nummers mag lezen, ook al is je community privé.",
+      "create": "Magazine maken",
+      "save": "Wijzigingen opslaan",
+      "saving": "Opslaan…",
+      "created": "Je magazine staat klaar. Het heeft nu een eigen tabblad in je community.",
+      "saved": "Magazine opgeslagen",
+      "loadFailed": "De magazine-instellingen konden niet worden geladen.",
+      "tryAgain": "Opnieuw proberen",
+      "openTab": "Open het tabblad Magazine"
+    },
+    "tab": {
+      "metaTitle": "Magazine",
+      "startTitle": "Je community heeft nog geen magazine",
+      "startDescription": "Een magazine bundelt de beste artikelen van je leden in nummers die mensen kunnen lezen en delen. Geef het een naam om te beginnen.",
+      "start": "Een magazine starten",
+      "latest": "Nieuwste nummer",
+      "pastIssues": "Eerdere nummers",
+      "membersOnly": "Alleen voor leden",
+      "magazinePage": "Magazinepagina",
+      "emptyTitle": "Nog geen nummers",
+      "emptyDescription": "Het eerste nummer van {magazine} komt eraan.",
+      "emptyEditorDescription": "Maak het eerste nummer met Nieuw nummer in de redactietafel hieronder."
+    },
+    "desk": {
+      "label": "Redactietafel",
+      "newIssue": "Nieuw nummer",
+      "newIssueTitle": "Nummer {number}",
+      "write": "Een artikel schrijven",
+      "settings": "Magazine-instellingen",
+      "issues": "Nummers",
+      "issuesEmpty": "Nog geen nummers. Begin er een met Nieuw nummer.",
+      "status": {
+        "draft": "Concept",
+        "published": "Gepubliceerd"
+      },
+      "ready": "Klaar voor een nummer",
+      "readyEmpty": "Er wachten geen artikelen. Artikelen die klaar zijn voor een nummer verschijnen hier.",
+      "byAuthor": "Door {name}",
+      "drafts": "Jouw concepten",
+      "draftsEmpty": "Je hebt geen artikelen in bewerking. Schrijf er een voor je volgende nummer.",
+      "reviewStatus": {
+        "draft": "Concept",
+        "pending_review": "Wacht op beoordeling",
+        "changes_requested": "Wijzigingen gevraagd",
+        "rejected": "Niet geaccepteerd"
+      },
+      "loadFailed": "Deze lijst kon niet worden geladen.",
+      "tryAgain": "Opnieuw proberen"
     }
   }
 }

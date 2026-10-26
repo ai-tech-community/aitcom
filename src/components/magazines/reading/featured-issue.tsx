@@ -10,18 +10,26 @@ import { IssueCoverArt } from "./issue-cover-card";
 import { useIssueDateline } from "./issue-dateline";
 
 /**
- * The `/magazines` home's lead: one issue's cover beside its magazine,
- * dateline, title, community and the page's one orange action, "Read the
- * issue" (One Voice Rule). The card's sections stack in a narrow column
- * and sit side by side from the container's `xl` width.
+ * A page's lead issue: its cover beside its magazine, dateline, title,
+ * community and the page's one orange action, "Read the issue" (One Voice
+ * Rule). The `/magazines` home leads with it ("Featured issue"), and so does
+ * the community Magazine tab ("Latest issue", without the community, whose
+ * page it is). The card's sections stack in a narrow column and sit side by
+ * side from the container's `xl` width.
  */
 export function FeaturedIssue({
   issue,
   labelId,
+  label,
+  showCommunity = true,
 }: {
   issue: IssueCard;
-  /** The id of the "Featured issue" label that names the section. */
+  /** The id of the label that names the section. */
   labelId: string;
+  /** The section label; "Featured issue" when not given. */
+  label?: string;
+  /** Name the issue's community ("From …"); off on the community's own tab. */
+  showCommunity?: boolean;
 }) {
   const t = useTranslations("magazines");
   const dateline = useIssueDateline(issue);
@@ -39,7 +47,7 @@ export function FeaturedIssue({
         </Link>
         <div className="flex min-w-0 flex-col gap-4">
           <SectionLabel as="p" id={labelId}>
-            {t("home.featured")}
+            {label ?? t("home.featured")}
           </SectionLabel>
           <div className="flex flex-col gap-2">
             <p className="text-sm font-semibold">{issue.magazine.name}</p>
@@ -50,8 +58,12 @@ export function FeaturedIssue({
               {issue.title}
             </h2>
             <p className="text-muted-foreground text-sm">
-              {t("home.fromCommunity", { community: issue.community.name })}
-              {" · "}
+              {showCommunity && (
+                <>
+                  {t("home.fromCommunity", { community: issue.community.name })}
+                  {" · "}
+                </>
+              )}
               <span className="font-mono text-xs">
                 {t("issue.itemCount", { count: issue.itemCount })}
               </span>

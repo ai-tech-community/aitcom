@@ -4,9 +4,12 @@ import {
   communityMagazinePath,
   issueBuilderPath,
   issuePath,
+  magazineArticleEditPath,
   magazineArticlePath,
   magazinePath,
+  magazineSettingsPath,
   magazinesTopicPath,
+  magazineWritePath,
 } from "./paths";
 
 const magazine = { slug: "agents-weekly" };
@@ -47,6 +50,18 @@ describe("magazine paths", () => {
   it("issueBuilderPath is the issue builder in the community", () => {
     expect(issueBuilderPath("builders", 42)).toBe(
       "/communities/builders/magazine/issues/42/edit",
+    );
+  });
+
+  it("editor paths live under the community", () => {
+    expect(magazineSettingsPath("builders")).toBe(
+      "/communities/builders/settings/magazine",
+    );
+    expect(magazineWritePath("builders")).toBe(
+      "/communities/builders/magazine/write",
+    );
+    expect(magazineArticleEditPath("builders", "why-evals-matter")).toBe(
+      "/communities/builders/magazine/articles/why-evals-matter/edit",
     );
   });
 });

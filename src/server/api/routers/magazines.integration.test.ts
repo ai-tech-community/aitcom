@@ -336,6 +336,11 @@ describe.skipIf(!RUN_DB)("magazines editor API [DB integration]", () => {
     const owner = callerAs(fx.ownerId);
     const settings = await owner.magazines.getSettings({ slug: slug() });
     expect(settings.magazine).toBeNull();
+    // The form's opt-in runs on the same community facts as the save.
+    expect(settings.community).toEqual({
+      slug: slug(),
+      isListedInDirectory: !settings.communityIsPrivate,
+    });
 
     const magazine = await saveMagazine();
     expect(magazine.slug).toBe(`gazette-${fx.sfx}`);

@@ -477,6 +477,11 @@ export async function loadCommunityMagazineTab(
   };
 }
 
+/** What the community's Magazine tab renders. */
+export type CommunityMagazineTabData = NonNullable<
+  Awaited<ReturnType<typeof loadCommunityMagazineTab>>
+>;
+
 // ── Issue and article pages ──────────────────────────────────────────────
 
 type ReadableIssue = {

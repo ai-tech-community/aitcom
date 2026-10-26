@@ -2911,7 +2911,8 @@
       "news": "News",
       "newsAll": "All {sector} news",
       "newsEmpty": "No news feeds are connected for {sector} yet. Nothing here is invented.",
-      "newsNoStories": "No stories from the {sector} feeds yet."
+      "newsNoStories": "No stories from the {sector} feeds yet.",
+      "magazine": "Magazine"
     },
     "manage": {
       "settings": "Settings",
@@ -2962,6 +2963,7 @@
         "topics": "Topics",
         "links": "Links",
         "classroom": "Classroom",
+        "magazine": "Magazine",
         "ownership": "Ownership",
         "integrations": "Integrations",
         "broadcast": "Announcements",
@@ -4807,6 +4809,102 @@
       "homeTitle": "Magazines",
       "homeDescription": "Stories from the communities building AI, written and edited by community members. Free to read.",
       "shelfDescription": "{magazine}, a magazine by {community}."
+    }
+  },
+  "magazineEditor": {
+    "errors": {
+      "confirmUnlistedPublic": "Your community is private. Tick the box to confirm that everyone may see this.",
+      "magazineExists": "Your community already has a magazine. Reload the page to edit it.",
+      "magazineSlugTaken": "Another magazine already uses this address. Pick a different one.",
+      "spaceSlugTaken": "A space in your community is already called “magazine”. Rename that space in Spaces settings, then try again.",
+      "issueChanged": "This issue changed somewhere else. Reload to see the latest version.",
+      "issueSlugTaken": "Another issue of this magazine already uses this address. Pick a different one.",
+      "issueSlugLocked": "The address of a published issue stays the same, so links to it keep working.",
+      "issueEmpty": "Add at least one article or note before you publish.",
+      "issueNotDraft": "This issue is already published.",
+      "itemInvalid": "One of the items is not complete. Check it and try again.",
+      "articlePlaced": "This article is already in another issue.",
+      "articleNotReady": "This article is not ready for an issue yet.",
+      "articleMagazineLocked": "A magazine article stays in its magazine. It cannot move to the blog or to another magazine.",
+      "generic": "Something went wrong. Try again."
+    },
+    "publicOptIn": {
+      "warning": "Your community is private. If you show this to everyone, anyone on the internet will see your community's name and a link to it. Your members, posts and other pages stay private.",
+      "confirm": "I understand, show this outside the community"
+    },
+    "settings": {
+      "title": "Magazine",
+      "intro": "A magazine gathers your members' best articles into issues that people can read and share.",
+      "nameLabel": "Name",
+      "slugLabel": "Address",
+      "slugHint": "Lower-case letters, numbers and hyphens. If you change it later, old links to your magazine stop working.",
+      "slugInvalid": "Use 3 to 60 lower-case letters, numbers and hyphens.",
+      "descriptionLabel": "Description",
+      "descriptionHint": "One or two sentences for readers. It shows on the magazine page.",
+      "logoLabel": "Logo",
+      "logoHint": "A square image works best.",
+      "logoUpload": "Upload a logo",
+      "logoReplace": "Replace logo",
+      "logoRemove": "Remove logo",
+      "logoUploading": "Uploading…",
+      "uploadFailed": "The logo could not be uploaded. Try again.",
+      "topicsLabel": "Topics",
+      "topicsHint": "Up to 5. People find magazines by topic on the Magazines page. Press Enter to add one.",
+      "topicsFull": "You have 5 topics. Remove one to add another.",
+      "topicAdd": "Add topic",
+      "topicRemove": "Remove topic {topic}",
+      "visibilityLabel": "Who can read new issues",
+      "visibilityMembers": "Members only",
+      "visibilityPublic": "Everyone",
+      "visibilityHint": "Applies to new issues only. You can still change each issue on its own.",
+      "alreadyConfirmed": "You already confirmed that everyone may read new issues, even though your community is private.",
+      "create": "Create magazine",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "created": "Your magazine is ready. It now has its own tab in your community.",
+      "saved": "Magazine saved",
+      "loadFailed": "The magazine settings could not be loaded.",
+      "tryAgain": "Try again",
+      "openTab": "Open the Magazine tab"
+    },
+    "tab": {
+      "metaTitle": "Magazine",
+      "startTitle": "Your community has no magazine yet",
+      "startDescription": "A magazine gathers your members' best articles into issues that people can read and share. Give it a name to begin.",
+      "start": "Start a magazine",
+      "latest": "Latest issue",
+      "pastIssues": "Past issues",
+      "membersOnly": "Members only",
+      "magazinePage": "Magazine page",
+      "emptyTitle": "No issues yet",
+      "emptyDescription": "The first issue of {magazine} is on its way.",
+      "emptyEditorDescription": "Make the first issue with New issue in the editor's desk below."
+    },
+    "desk": {
+      "label": "Editor's desk",
+      "newIssue": "New issue",
+      "newIssueTitle": "Issue {number}",
+      "write": "Write an article",
+      "settings": "Magazine settings",
+      "issues": "Issues",
+      "issuesEmpty": "No issues yet. Start one with New issue.",
+      "status": {
+        "draft": "Draft",
+        "published": "Published"
+      },
+      "ready": "Ready for an issue",
+      "readyEmpty": "No articles are waiting. Articles marked ready for an issue show up here.",
+      "byAuthor": "By {name}",
+      "drafts": "Your drafts",
+      "draftsEmpty": "You have no articles in progress. Write one to fill your next issue.",
+      "reviewStatus": {
+        "draft": "Draft",
+        "pending_review": "Waiting for review",
+        "changes_requested": "Changes requested",
+        "rejected": "Not accepted"
+      },
+      "loadFailed": "This list could not be loaded.",
+      "tryAgain": "Try again"
     }
   }
 }
