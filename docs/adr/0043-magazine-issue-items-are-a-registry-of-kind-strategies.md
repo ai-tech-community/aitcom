@@ -92,6 +92,44 @@ structure"; "Review, credit and where magazine articles show").
    "an article appears in at most one issue" structural, and gives every
    surface (article page, profile, search, comments) a cheap article → issue
    lookup for the access check in ADR-0042.
+   - The issue service claims placement with one raw conditional `UPDATE` of
+     the article's main row (`magazine_issue_id IS NULL`) in the transaction
+     that saves the issue's blocks: of two issues racing for one article, one
+     wins and the other gets `ARTICLE_PLACED`.
+   - It then brings the latest version in line with a Payload update with
+     `draft: true` (preflight F22 as amended). A draft save writes only a new
+     version built on the latest one, so a pending draft edit of a published
+     article is carried forward and never pushed live by a move.
+   - Every other Payload save of an article writes the main row's current
+     placement, read `FOR NO KEY UPDATE` on the save's own transaction (the
+     `Articles` `beforeChange` hook, `placementForSave`). Payload's update is
+     a read-modify-write of the whole row with no lock; without this, a save
+     that read the article before a claim committed would write the old
+     placement back. A create or a duplicate is never placed.
+
+8. **Publishing and crediting a magazine article.** An issue publish (or an
+   article added to a published issue) moves its placed articles from draft
+   to published with one raw conditional `UPDATE` of the main row (`status IS
+DISTINCT FROM 'published'`), then a non-draft Payload update so readers get
+   the latest draft text. A retry skips what is already published.
+   Publishing is not what keeps the credit exactly-once; the credit claim is:
+   - The claim is a row in `app.magazine_article_credit` (`article_id`
+     primary key), a Drizzle-owned table outside Payload's columns. It is
+     inserted with `ON CONFLICT DO NOTHING` in the SAME database transaction
+     as `creditArticlePublication` (XP, badges, activity): a credit that
+     throws rolls the claim back, a claim row that exists means the credit
+     happened, and of two runs at once the second waits on the key and then
+     conflicts. Payload never reads or writes the table, so no article save
+     (which rewrites the columns it owns from the version it read) and no
+     admin duplicate can reset or copy it. A duplicate of a magazine article
+     also starts unpublished (`magazineChannel.onDuplicate`).
+   - "Pending" is a property of the article, not of the issue it sits in: a
+     published member article of the magazine with no claim row. After every
+     publish or save of a published issue the service credits the
+     magazine's pending articles. A credit that failed is therefore retried
+     on the next such save even after the article moved to another issue or
+     left every issue. A scheduled sweep, if wanted later, runs the same
+     query.
 
 ## Considered options
 
@@ -123,9 +161,16 @@ structure"; "Review, credit and where magazine articles show").
 - **The issue service owns placement.** Any code that changes an issue's
   items must go through it, or `magazineIssue` and the blocks drift apart.
 - **Two places run the credit.** Blog approval and issue publish both call
-  `creditArticlePublication`; publishing placed articles is idempotent, so a
-  retried issue publish or an article moved between issues never credits
-  twice.
+  `creditArticlePublication`. For a magazine article the guard against a
+  double credit is the claim row in `app.magazine_article_credit`, committed
+  with the credit (decision 8), not the idempotent publish: a retried issue
+  publish, an article moved between issues, a racing article save or an
+  admin duplicate never credits twice. Code that changes how magazine
+  articles are published must keep crediting through that claim.
+- **Placement and the credit claim are not Payload-writable.** Neither can be
+  set through Payload's API or admin: placement is carried forward from the
+  main row by the `Articles` hook, and the claim is not a Payload field. Only
+  the issue service writes them.
 - **Staff and subscriptions will cross stores.** Slices 3 and 4 join Payload
   magazines (text `communityId`, numeric magazine id) with Drizzle rows by id,
   as classroom already does with courses and memberships.
