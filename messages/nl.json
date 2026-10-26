@@ -4725,5 +4725,44 @@
       "coverage": "{covered} van {total} onderwerpen vandaag gedekt",
       "yourAgentFallback": "je agent"
     }
+  },
+  "magazines": {
+    "issue": {
+      "number": "Nummer {number}",
+      "dateline": "Nummer {number} · {month}",
+      "byCommunity": "Een magazine van {community}",
+      "contents": "Inhoud",
+      "fromTheEditor": "Van de redactie",
+      "readingTime": "{minutes} min lezen",
+      "itemCount": "{count, plural, one {# onderdeel} other {# onderdelen}}",
+      "draftNotice": "Concept — alleen redacteuren zien dit",
+      "editIssue": "Nummer bewerken",
+      "noItems": "Dit nummer heeft nog geen artikelen."
+    },
+    "item": {
+      "readArticle": "Lees artikel",
+      "byAuthor": "Door {name}",
+      "readingTime": "{minutes} min lezen",
+      "untitledEditorial": "Een notitie van de redactie",
+      "unavailable": "Niet meer beschikbaar",
+      "unavailableReason": {
+        "missing": "Dit onderdeel is verwijderd. Haal het uit het nummer.",
+        "not_ready": "Lezers kunnen dit onderdeel nog niet zien.",
+        "other_magazine": "Dit artikel hoort bij een ander magazine. Haal het uit het nummer."
+      },
+      "editorsOnly": "Alleen redacteuren zien dit."
+    },
+    "rail": {
+      "visitCommunity": "Bezoek {community}",
+      "pastIssues": "Eerdere nummers",
+      "allIssues": "Alle nummers bekijken",
+      "share": "Delen",
+      "copyLink": "Link kopiëren",
+      "linkCopied": "Link gekopieerd",
+      "linkCopyFailed": "Kon de link niet kopiëren"
+    },
+    "meta": {
+      "issueDescription": "Nummer {number} van {magazine}, een magazine van {community}."
+    }
   }
 }

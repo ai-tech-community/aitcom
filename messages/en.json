@@ -4725,5 +4725,44 @@
       "coverage": "{covered} of {total} topics covered today",
       "yourAgentFallback": "your agent"
     }
+  },
+  "magazines": {
+    "issue": {
+      "number": "Issue {number}",
+      "dateline": "Issue {number} · {month}",
+      "byCommunity": "A magazine by {community}",
+      "contents": "Contents",
+      "fromTheEditor": "From the editor",
+      "readingTime": "{minutes} min read",
+      "itemCount": "{count, plural, one {# item} other {# items}}",
+      "draftNotice": "Draft — only editors can see this",
+      "editIssue": "Edit issue",
+      "noItems": "This issue has no articles yet."
+    },
+    "item": {
+      "readArticle": "Read article",
+      "byAuthor": "By {name}",
+      "readingTime": "{minutes} min read",
+      "untitledEditorial": "A note from the editors",
+      "unavailable": "No longer available",
+      "unavailableReason": {
+        "missing": "This item was deleted. Remove it from the issue.",
+        "not_ready": "Readers cannot see this item yet.",
+        "other_magazine": "This article belongs to another magazine. Remove it from the issue."
+      },
+      "editorsOnly": "Only editors see this."
+    },
+    "rail": {
+      "visitCommunity": "Visit {community}",
+      "pastIssues": "Past issues",
+      "allIssues": "See all issues",
+      "share": "Share",
+      "copyLink": "Copy link",
+      "linkCopied": "Link copied",
+      "linkCopyFailed": "Could not copy the link"
+    },
+    "meta": {
+      "issueDescription": "Issue {number} of {magazine}, a magazine by {community}."
+    }
   }
 }

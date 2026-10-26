@@ -9,6 +9,7 @@ import type {
 import {
   ISSUE_LAYOUTS,
   type IssueLayout,
+  type IssueStatus,
   type IssueVisibility,
 } from "@/lib/magazines/values";
 import type { Article, Magazine, MagazineIssue } from "@/payload-types";
@@ -568,7 +569,12 @@ export async function loadIssuePage(
   access: IssueReaderAccess;
   magazine: MagazineSummary;
   community: ReadingCommunity;
-  issue: IssueCard & { editorNote: unknown; layout: IssueLayout };
+  issue: IssueCard & {
+    /** Readers only ever get `published`; editors also open drafts. */
+    status: IssueStatus;
+    editorNote: unknown;
+    layout: IssueLayout;
+  };
   items: EditorItemView[];
   pastIssues: IssueCard[];
   readingMinutes: number;
@@ -596,6 +602,7 @@ export async function loadIssuePage(
     community: toReadingCommunity(community),
     issue: {
       ...toIssueCard(issue, magazine, community),
+      status: issue.status,
       editorNote: issue.editorNote ?? null,
       layout: issueLayoutOf(issue),
     },
@@ -606,6 +613,11 @@ export async function loadIssuePage(
     readingMinutes: Math.max(1, articleMinutes),
   };
 }
+
+/** What the issue reading page renders. */
+export type IssuePageData = NonNullable<
+  Awaited<ReturnType<typeof loadIssuePage>>
+>;
 
 /**
  * `/magazines/[magazine]/[issue]/[article]`: a magazine article read

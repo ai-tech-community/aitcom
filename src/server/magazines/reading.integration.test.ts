@@ -459,6 +459,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     expect(asMember!.access).toBe("full");
     expect(asMember!.issue.id).toBe(members.id);
     expect(asMember!.issue.effectiveVisibility).toBe("members");
+    expect(asMember!.issue.status).toBe("published");
     expect(asMember!.items.map((i) => i.kind)).toEqual(["editorial"]);
     expect(ids(asMember!.pastIssues)).toEqual([older.id]);
     expect(asMember!.readingMinutes).toBeGreaterThanOrEqual(1);
@@ -470,6 +471,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     const asEditor = await page(draft.slug, fx.editorId);
     expect(asEditor!.access).toBe("editor");
     expect(asEditor!.issue.id).toBe(draft.id);
+    expect(asEditor!.issue.status).toBe("draft");
   });
 
   // ── Article page ──────────────────────────────────────────────────────
