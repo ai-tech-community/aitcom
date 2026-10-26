@@ -199,12 +199,8 @@ export function IssueDetails({
         </p>
       </div>
 
-      <div
-        role="group"
-        aria-labelledby={noteLabelId}
-        aria-describedby={noteHintId}
-        className="flex flex-col gap-2"
-      >
+      <div className="flex flex-col gap-2">
+        {/* Names the writing surface itself (its textbox), not a wrapper. */}
         <p id={noteLabelId} className="text-sm leading-none font-medium">
           {t("editorNote")}
         </p>
@@ -212,6 +208,8 @@ export function IssueDetails({
           initialValue={initialEditorNote}
           onChange={(state) => onChange({ editorNote: state })}
           contentClassName="min-h-24"
+          ariaLabelledBy={noteLabelId}
+          ariaDescribedBy={noteHintId}
         />
         <p id={noteHintId} className="text-muted-foreground text-sm">
           {t("editorNoteHint")}
