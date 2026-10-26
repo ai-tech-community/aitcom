@@ -8,12 +8,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SectionLabel } from "@/components/ui/section-label";
+import { extractPlainText } from "@/lib/lexical";
 
-import type { BuilderItem } from "./items-model";
-
-export type EditorialBuilderItem = Extract<BuilderItem, { kind: "editorial" }>;
+import type { BuilderItemEditorProps, BuilderItemKind } from "./types";
 
 const HEADING_MAX = 160;
+/** Most characters of a block's text that name its row (CSS truncates the rest). */
+const ROW_TEXT_CHARS = 120;
+
+/** The plain text of a Lexical state ("" for anything else). */
+function plainTextOf(state: unknown): string {
+  const children = (state as { root?: { children?: unknown } } | null)?.root
+    ?.children;
+  return Array.isArray(children)
+    ? extractPlainText(children as Parameters<typeof extractPlainText>[0])
+    : "";
+}
+
+/** Whether a Lexical state holds some text. */
+export function lexicalHasText(state: unknown): boolean {
+  return plainTextOf(state).trim().length > 0;
+}
 
 /**
  * Writes one editorial block: an optional heading and its text. Changes go
@@ -24,13 +39,7 @@ export function EditorialItemEditor({
   item,
   onChange,
   onDone,
-}: {
-  item: EditorialBuilderItem;
-  onChange: (
-    patch: Partial<Pick<EditorialBuilderItem, "heading" | "body">>,
-  ) => void;
-  onDone: () => void;
-}) {
+}: BuilderItemEditorProps<"editorial">) {
   const t = useTranslations("magazineEditor.builder.editorial");
   const labelId = useId();
   const headingId = useId();
@@ -53,11 +62,8 @@ export function EditorialItemEditor({
           }
         />
       </div>
-      <div
-        role="group"
-        aria-labelledby={bodyLabelId}
-        className="flex flex-col gap-1.5"
-      >
+      <div className="flex flex-col gap-1.5">
+        {/* Names the writing surface itself (its textbox), not a wrapper. */}
         <p id={bodyLabelId} className="text-sm leading-none font-medium">
           {t("body")}
         </p>
@@ -68,6 +74,7 @@ export function EditorialItemEditor({
           onChange={(body) => onChange({ body })}
           placeholder={t("bodyPlaceholder")}
           contentClassName="min-h-32"
+          ariaLabelledBy={bodyLabelId}
         />
       </div>
       <Button
@@ -82,3 +89,28 @@ export function EditorialItemEditor({
     </section>
   );
 }
+
+/**
+ * An editorial block: text the issue owns. Its row is named by its heading,
+ * else its first words; it is written in its own panel and previewed from
+ * the working copy, so the preview follows the editor's typing.
+ */
+export const editorialBuilderKind: BuilderItemKind<"editorial"> = {
+  labelKey: "editorial",
+  rowTitle(item, ctx) {
+    const heading = item.heading?.trim();
+    if (heading) return heading;
+    const text = plainTextOf(item.body).trim();
+    return text ? text.slice(0, ROW_TEXT_CHARS) : ctx.t("editorialEmpty");
+  },
+  Editor: EditorialItemEditor,
+  // The server's `ITEM_INVALID` rule: a block needs some text.
+  isSavable: (item) => lexicalHasText(item.body),
+  previewView: (item) => ({
+    kind: "editorial",
+    itemId: item.key,
+    intro: item.intro ?? null,
+    heading: item.heading ?? null,
+    body: item.body,
+  }),
+};

@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { ItemProblem } from "@/lib/magazines/item-views";
 
 import {
-  addArticle,
   addEditorial,
+  addItem,
   type BuilderItem,
   isSavableItem,
   moveItem,
@@ -61,16 +61,21 @@ describe("removeItem", () => {
   });
 });
 
-describe("addArticle", () => {
-  it("adds the article at the end with a fresh key", () => {
-    const next = addArticle(abc, 9);
+describe("addItem", () => {
+  it("adds the item at the end with a fresh key", () => {
+    const next = addItem(abc, { kind: "article", articleId: 9 });
     expect(next).toHaveLength(4);
     expect(next[3]).toMatchObject({ kind: "article", articleId: 9 });
     expect(keys(abc)).not.toContain(next[3]!.key);
   });
 
-  it("never adds the same article twice", () => {
-    expect(addArticle(abc, 2)).toBe(abc);
+  it("never adds the same referenced content (an article) twice", () => {
+    expect(addItem(abc, { kind: "article", articleId: 2 })).toBe(abc);
+  });
+
+  it("adds content the issue owns (an editorial block) every time", () => {
+    const block = { kind: "editorial" as const, body: textBody("Hi") };
+    expect(addItem(addItem(abc, block), block)).toHaveLength(5);
   });
 });
 
@@ -98,7 +103,7 @@ describe("toBuilderItems / toItemInputs", () => {
   });
 
   it("sends the block id a save gave an item that had none", () => {
-    const [item] = addArticle([], 4);
+    const [item] = addItem([], { kind: "article", articleId: 4 });
     expect(toItemInputs([item!], new Map([[item!.key, "blk-9"]]))).toEqual([
       { kind: "article", id: "blk-9", articleId: 4 },
     ]);

@@ -61,6 +61,15 @@ structure"; "Review, credit and where magazine articles show").
    serializable item views in `src/lib/magazines/item-views.ts`; the issue page
    asks the render registry and never branches on the kind.
 
+   The issue builder has its own twin, `BUILDER_ITEM_KINDS` in
+   `src/components/magazines/editor/builder/items/registry.tsx`, with one
+   file per kind next to it: the kind's label, how its row is named, its
+   editor panel (if the issue owns its content), its save rule, its preview
+   view and, for kinds that reference content kept elsewhere, the reference
+   that keeps that content in an issue at most once. The builder, its item
+   model and the live preview dispatch through it; a parity test pins its
+   keys to `ITEM_KINDS` and `ITEM_RENDERERS`.
+
 4. **`suggest` is not declared now.** Auto-draft (slice 5) adds a `suggest`
    method to the interface when it has a caller. An optional method with no
    behaviour would be implemented by guesswork and tested by nothing.
@@ -152,9 +161,9 @@ DISTINCT FROM 'published'`), then a non-draft Payload update so readers get
 
 ## Consequences
 
-- **Adding a kind is local.** A new kind is one server folder, one renderer
-  and two registry entries; the compiler and the slug-parity test catch a
-  missing piece.
+- **Adding a kind is local.** A new kind is one server folder, one renderer,
+  one builder file and three registry entries (server, render, builder); the
+  compiler and the parity tests catch a missing piece.
 - **A Payload migration per new kind.** Each block is its own table, so a new
   kind ships with a hand-written migration (`src/migrations`) and regenerated
   `payload-types.ts`.

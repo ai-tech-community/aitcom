@@ -4969,6 +4969,8 @@
         "dragHandle": "Sleep om {title} te verplaatsen",
         "actions": "Acties voor {title}",
         "edit": "Bewerken",
+        "openArticle": "Artikel openen",
+        "opensInNewTab": "(opent in een nieuw tabblad)",
         "moveUp": "Omhoog",
         "moveDown": "Omlaag",
         "remove": "Uit nummer halen",

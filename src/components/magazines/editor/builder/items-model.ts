@@ -1,6 +1,7 @@
-import { extractPlainText } from "@/lib/lexical";
 import type { ItemProblem } from "@/lib/magazines/item-views";
 import type { IssueItemInput } from "@/server/magazines/items/registry";
+
+import { builderReferenceKey, isSavableBuilderItem } from "./items/registry";
 
 /**
  * The issue builder's item list as pure data: one entry per issue item, in
@@ -61,40 +62,37 @@ export function removeItem(items: BuilderItem[], key: string): BuilderItem[] {
   return items.filter((item) => item.key !== key);
 }
 
-/** The article at the end of the issue; an article is in an issue once. */
-export function addArticle(
+/**
+ * The item at the end of the issue. Content an item references (an
+ * article) is in an issue at most once: adding it again changes nothing.
+ */
+export function addItem(
   items: BuilderItem[],
-  articleId: number,
+  input: IssueItemInput,
 ): BuilderItem[] {
-  if (items.some((i) => i.kind === "article" && i.articleId === articleId)) {
+  const added = { ...input, key: newItemKey() } as BuilderItem;
+  const reference = builderReferenceKey(added);
+  if (
+    reference !== null &&
+    items.some((item) => builderReferenceKey(item) === reference)
+  ) {
     return items;
   }
-  return [...items, { kind: "article", articleId, key: newItemKey() }];
+  return [...items, added];
 }
 
 /** An empty editorial block at the end of the issue, for the editor to fill. */
 export function addEditorial(items: BuilderItem[]): BuilderItem[] {
-  return [...items, { kind: "editorial", body: null, key: newItemKey() }];
-}
-
-/** Whether a Lexical state holds some text. */
-export function lexicalHasText(state: unknown): boolean {
-  const children = (state as { root?: { children?: unknown } } | null)?.root
-    ?.children;
-  if (!Array.isArray(children)) return false;
-  return (
-    extractPlainText(children as Parameters<typeof extractPlainText>[0])
-      .length > 0
-  );
+  return addItem(items, { kind: "editorial", body: null });
 }
 
 /**
- * Whether the server would accept the item as it is: an editorial block
- * needs some text (the server's `ITEM_INVALID` rule). Unsavable items stay
- * in the builder, out of each save, until they are finished.
+ * Whether the server would accept the item as it is (its kind's rule).
+ * Unsavable items stay in the builder, out of each save, until they are
+ * finished.
  */
 export function isSavableItem(item: BuilderItem): boolean {
-  return item.kind === "editorial" ? lexicalHasText(item.body) : true;
+  return isSavableBuilderItem(item);
 }
 
 /**

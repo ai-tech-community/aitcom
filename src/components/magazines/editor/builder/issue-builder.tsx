@@ -7,27 +7,36 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUnsavedChangesGuard } from "@/components/use-autosave";
 import { createVersionedWriter } from "@/components/versioned-writer";
-import { extractPlainText } from "@/lib/lexical";
 import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
-import { issuePath } from "@/lib/magazines/paths";
-import { MAGAZINE_SLUG_PATTERN } from "@/lib/magazines/values";
+import { issuePath, magazineArticleEditPath } from "@/lib/magazines/paths";
+import {
+  type IssueVisibility,
+  MAGAZINE_SLUG_PATTERN,
+} from "@/lib/magazines/values";
+import { effectiveVisibility } from "@/lib/magazines/visibility";
 import type { MagazineIssue } from "@/payload-types";
+import type { CommunityVisibility } from "@/server/communities/content-visibility";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 import { editorErrorKey, readEditorError } from "../editor-errors";
 import { publicOptInRequired } from "../public-opt-in";
-import { AddItemsPanel } from "./add-items-panel";
+import { type AddableArticle, AddItemsPanel } from "./add-items-panel";
 import { BuilderTopBar } from "./builder-top-bar";
-import {
-  EditorialItemEditor,
-  type EditorialBuilderItem,
-} from "./editorial-item-editor";
 import { ISSUE_TITLE_MAX, IssueDetails } from "./issue-details";
 import type { ItemRowView } from "./item-row";
+import { articleReference } from "./items/article";
+import {
+  builderKindLabelKey,
+  builderOpenLabelKey,
+  builderReferenceKey,
+  builderRowTitle,
+  hasBuilderItemEditor,
+  renderBuilderItemEditor,
+} from "./items/registry";
 import { ItemsList } from "./items-list";
 import {
-  addArticle,
   addEditorial,
+  addItem,
   type BuilderItem,
   isSavableItem,
   moveItem,
@@ -50,8 +59,6 @@ type EditingData = RouterOutputs["magazines"]["getIssueForEditing"];
 
 const SLUG_MIN = 3;
 const SLUG_MAX = 60;
-/** Most characters of an editorial block's text that name its row (CSS truncates the rest). */
-const ROW_TEXT_CHARS = 120;
 
 function detailsOf(issue: MagazineIssue): IssueDetailsDraft {
   return {
@@ -88,12 +95,40 @@ function isValidSlug(slug: string): boolean {
   );
 }
 
-function plainTextOf(state: unknown): string {
-  const children = (state as { root?: { children?: unknown } } | null)?.root
-    ?.children;
-  return Array.isArray(children)
-    ? extractPlainText(children as Parameters<typeof extractPlainText>[0])
-    : "";
+/**
+ * Who will be able to read the issue once the working copy is saved: its
+ * effective visibility (ruling F10), never the stored value alone. In an
+ * unlisted community an unconfirmed `public` issue is members-only; a
+ * ticked opt-in counts, because the save records the confirmation.
+ */
+function audienceOf(
+  details: IssueDetailsSave,
+  issue: MagazineIssue,
+  community: CommunityVisibility,
+): IssueVisibility {
+  const confirmedAt = issue.publicConfirmedAt ?? null;
+  return effectiveVisibility(
+    {
+      visibility: details.visibility,
+      publicConfirmedAt: details.publicConfirmed
+        ? (confirmedAt ?? "on-save")
+        : confirmedAt,
+    },
+    community,
+  );
+}
+
+/** Edit links of the issue's articles the viewer may open, by reference. */
+function editHrefsOf(
+  communitySlug: string,
+  articles: readonly { id: number; slug: string }[],
+): Map<string, string> {
+  return new Map(
+    articles.map((article) => [
+      articleReference(article.id),
+      magazineArticleEditPath(communitySlug, article.slug),
+    ]),
+  );
 }
 
 function BuilderSkeleton() {
@@ -168,18 +203,11 @@ function initialStateOf(data: EditingData) {
     const key = keyAt(problem.itemIndex);
     if (key && !problems.has(key)) problems.set(key, problem.code);
   }
-  const articleTitles = new Map<number, string>();
-  for (const view of data.items) {
-    if (view.kind === "article" && !("unavailable" in view)) {
-      articleTitles.set(view.article.id, view.article.title);
-    }
-  }
   return {
     details: detailsOf(data.issue),
     items,
     savedViews,
     problems,
-    articleTitles,
   };
 }
 
@@ -211,7 +239,14 @@ function IssueWorkspace({
   const [savedViews, setSavedViews] = useState(initial.savedViews);
   /** Problem codes the issue loaded with, by item key (preflight F7). */
   const [problems, setProblems] = useState(initial.problems);
-  const [articleTitles, setArticleTitles] = useState(initial.articleTitles);
+  /** Names items were added with (an article's title), until a save names them. */
+  const [titleHints, setTitleHints] = useState<ReadonlyMap<string, string>>(
+    () => new Map(),
+  );
+  /** Where the viewer edits content the issue references, by reference. */
+  const [editHrefs, setEditHrefs] = useState<ReadonlyMap<string, string>>(() =>
+    editHrefsOf(communitySlug, data.editableArticles),
+  );
   const [failure, setFailure] = useState<IssueSaveFailure | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -308,11 +343,20 @@ function IssueWorkspace({
 
   // ── Item edits ──────────────────────────────────────────────────────────
 
-  const handleAddArticle = (article: { id: number; title: string }) => {
-    setArticleTitles((titles) =>
-      new Map(titles).set(article.id, article.title),
-    );
-    setItems((current) => addArticle(current, article.id));
+  const handleAddArticle = (article: AddableArticle) => {
+    const next = addItem(items, { kind: "article", articleId: article.id });
+    const added = next.at(-1);
+    if (next === items || !added) return;
+    setItems(next);
+    setTitleHints((hints) => new Map(hints).set(added.key, article.title));
+    if (article.editableByViewer) {
+      setEditHrefs((hrefs) =>
+        new Map(hrefs).set(
+          articleReference(article.id),
+          magazineArticleEditPath(communitySlug, article.slug),
+        ),
+      );
+    }
   };
 
   const handleAddEditorial = () => {
@@ -326,15 +370,10 @@ function IssueWorkspace({
     setItems((current) => removeItem(current, key));
   };
 
-  const updateEditorial = (
-    key: string,
-    patch: Partial<Pick<EditorialBuilderItem, "heading" | "body">>,
-  ) =>
+  const updateItem = (key: string, patch: Partial<BuilderItem>) =>
     setItems((current) =>
       current.map((item) =>
-        item.key === key && item.kind === "editorial"
-          ? { ...item, ...patch }
-          : item,
+        item.key === key ? ({ ...item, ...patch } as BuilderItem) : item,
       ),
     );
 
@@ -344,17 +383,6 @@ function IssueWorkspace({
     if (!failure || autosave.status === "conflict") return null;
     return tErrors(readEditorError(failure.error).key);
   })();
-
-  const rowTitle = (item: BuilderItem): string => {
-    if (item.kind === "article") {
-      return articleTitles.get(item.articleId) ?? tItems("article");
-    }
-    // An editorial block is named by its heading, else its first words.
-    const heading = item.heading?.trim();
-    if (heading) return heading;
-    const text = plainTextOf(item.body);
-    return text ? text.slice(0, ROW_TEXT_CHARS) : tItems("editorialEmpty");
-  };
 
   const rows: ItemRowView[] = items.map((item) => {
     const view = savedViews.get(item.key);
@@ -367,33 +395,41 @@ function IssueWorkspace({
         : loadedProblem
           ? tErrors(editorErrorKey(loadedProblem))
           : null;
+    const reference = builderReferenceKey(item);
+    const openHref = reference === null ? undefined : editHrefs.get(reference);
+    const openLabelKey = builderOpenLabelKey(item);
     return {
       key: item.key,
-      title: rowTitle(item),
-      kindLabel:
-        item.kind === "article" ? tItems("article") : tItems("editorial"),
+      title: builderRowTitle(item, {
+        saved: view,
+        titleHint: titleHints.get(item.key),
+        t: tItems,
+      }),
+      kindLabel: tItems(builderKindLabelKey(item)),
       unavailable: view !== undefined && "unavailable" in view,
       problem,
       highlighted,
       selected: editingKey === item.key,
-      onEdit:
-        item.kind === "editorial"
-          ? () => setEditingKey((k) => (k === item.key ? null : item.key))
+      onEdit: hasBuilderItemEditor(item)
+        ? () => setEditingKey((k) => (k === item.key ? null : item.key))
+        : undefined,
+      open:
+        openHref && openLabelKey
+          ? { href: openHref, label: tItems(openLabelKey) }
           : undefined,
     };
   });
 
-  const editing = items.find(
-    (item): item is EditorialBuilderItem =>
-      item.key === editingKey && item.kind === "editorial",
-  );
+  const editing = items.find((item) => item.key === editingKey);
 
-  const articleIdsInIssue = useMemo(
+  /** What the issue already references, so "Add more" does not offer it. */
+  const referencesInIssue = useMemo(
     () =>
       new Set(
-        items.flatMap((item) =>
-          item.kind === "article" ? [item.articleId] : [],
-        ),
+        items.flatMap((item) => {
+          const reference = builderReferenceKey(item);
+          return reference === null ? [] : [reference];
+        }),
       ),
     [items],
   );
@@ -410,7 +446,7 @@ function IssueWorkspace({
     items,
     problems: currentProblems,
   });
-  const audience = details.visibility;
+  const audience = audienceOf(savable.details, issue, data.community);
 
   const { mutateAsync: publishIssue } =
     api.magazines.publishIssue.useMutation();
@@ -466,7 +502,8 @@ function IssueWorkspace({
         publishDisabled={optInPending || autosave.status === "conflict"}
       />
 
-      <main
+      {/* Not <main>: the root layout already provides the main landmark. */}
+      <section
         aria-label={t("workspaceLabel")}
         className="grid flex-1 gap-8 px-4 py-6 sm:px-6 lg:grid-cols-[24rem_minmax(0,1fr)] xl:grid-cols-[24rem_minmax(0,1fr)_18rem]"
       >
@@ -490,13 +527,12 @@ function IssueWorkspace({
             }
             onRemove={handleRemove}
           />
-          {editing && (
-            <EditorialItemEditor
-              item={editing}
-              onChange={(patch) => updateEditorial(editing.key, patch)}
-              onDone={() => setEditingKey(null)}
-            />
-          )}
+          {editing &&
+            renderBuilderItemEditor(editing, {
+              onChange: (patch) =>
+                updateItem(editing.key, patch as Partial<BuilderItem>),
+              onDone: () => setEditingKey(null),
+            })}
         </div>
 
         <div className="min-w-0 lg:col-start-2 lg:row-span-2 xl:row-span-1">
@@ -513,12 +549,12 @@ function IssueWorkspace({
         <aside className="min-w-0 lg:col-start-1 xl:col-start-3 xl:row-start-1">
           <AddItemsPanel
             communitySlug={communitySlug}
-            articleIdsInIssue={articleIdsInIssue}
+            referencesInIssue={referencesInIssue}
             onAddArticle={handleAddArticle}
             onAddEditorial={handleAddEditorial}
           />
         </aside>
-      </main>
+      </section>
 
       <PublishDialog
         open={publishOpen}

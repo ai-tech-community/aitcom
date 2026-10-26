@@ -13,17 +13,19 @@ import { cn } from "@/lib/utils";
 
 import { LAYOUTS } from "../../layouts/registry";
 import { EditorNote, hasEditorNote } from "../../reading/issue-reader";
+import { builderPreviewView } from "./items/registry";
 import type { BuilderItem } from "./items-model";
 import type { IssueDetailsDraft } from "./use-issue-save";
 
 type PreviewMode = "member" | "phone" | "visitor";
 
 /**
- * The views the preview renders, in the builder's order (preflight F32):
- * an editorial block is derived from what the editor typed, so it shows at
- * once; an article shows its last saved view, so an article added a moment
- * ago appears after its first save. Unavailable markers show as they do
- * for editors on the reading page.
+ * The views the preview renders, in the builder's order (preflight F32).
+ * Each kind decides (`previewView`): an editorial block is derived from
+ * what the editor typed, so it shows at once; an article shows its last
+ * saved view, so an article added a moment ago appears after its first
+ * save. Unavailable markers show as they do for editors on the reading
+ * page.
  */
 export function previewViews(
   items: BuilderItem[],
@@ -32,18 +34,8 @@ export function previewViews(
   const views: EditorItemView[] = [];
   let waiting = false;
   for (const item of items) {
-    if (item.kind === "editorial") {
-      views.push({
-        kind: "editorial",
-        itemId: item.key,
-        intro: item.intro ?? null,
-        heading: item.heading ?? null,
-        body: item.body,
-      });
-      continue;
-    }
-    const saved = savedViews.get(item.key);
-    if (saved) views.push({ ...saved, itemId: item.key });
+    const view = builderPreviewView(item, savedViews.get(item.key));
+    if (view) views.push(view);
     else waiting = true;
   }
   return { views, waiting };

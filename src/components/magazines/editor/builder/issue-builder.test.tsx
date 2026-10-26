@@ -18,6 +18,7 @@ type EditingData = {
   magazine: { name: string; slug: string };
   communityIsPrivate: boolean;
   community: { slug: string; isListedInDirectory: boolean };
+  editableArticles: { id: number; slug: string }[];
 };
 
 const trpc = vi.hoisted(() => ({
@@ -38,17 +39,24 @@ vi.mock("@/i18n/navigation", () => ({
     </a>
   ),
 }));
-// Lexical does not need to run here: rich text is a plain textarea.
+// Lexical does not need to run here: rich text is a plain textarea that
+// takes its name the way the real writing surface does.
 vi.mock("@/components/article-editor/rich-text-editor", () => ({
   RichTextEditor: ({
     onChange,
     placeholder,
+    ariaLabelledBy,
+    ariaDescribedBy,
   }: {
     onChange: (state: unknown) => void;
     placeholder?: string;
+    ariaLabelledBy?: string;
+    ariaDescribedBy?: string;
   }) => (
     <textarea
-      aria-label={placeholder ?? "Rich text"}
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
+      placeholder={placeholder}
       onChange={(e) =>
         onChange({
           root: {
@@ -156,8 +164,27 @@ function twoArticles(overrides: Partial<EditingData> = {}): EditingData {
     magazine: { name: "The Gazette", slug: "gazette" },
     communityIsPrivate: false,
     community: { slug: "night-owls", isListedInDirectory: true },
+    editableArticles: [],
     ...overrides,
   };
+}
+
+function availableArticle(id: number, title: string, editableByViewer = false) {
+  return {
+    id,
+    slug: `story-${id}`,
+    title,
+    authorName: "Bo",
+    updatedAt: T0,
+    editableByViewer,
+  };
+}
+
+/** Picks an item from an open row menu. */
+async function pickMenuItem(name: string) {
+  await act(async () => {
+    fireEvent.click(screen.getByRole("menuitem", { name }));
+  });
 }
 
 /** A tRPC refusal as the client sees it. */
@@ -421,9 +448,7 @@ describe("IssueBuilder", () => {
   });
 
   it("adds a ready article and an editorial block, saving only finished items", async () => {
-    trpc.available = [
-      { id: 21, title: "Fresh piece", authorName: "Bo", updatedAt: T0 },
-    ];
+    trpc.available = [availableArticle(21, "Fresh piece")];
     renderBuilder();
     fireEvent.click(
       screen.getByRole("button", { name: "Add Fresh piece to the issue" }),
@@ -451,12 +476,9 @@ describe("IssueBuilder", () => {
       ),
     ).toBeVisible();
 
-    fireEvent.change(
-      screen.getByLabelText(
-        "Write an introduction, a section opener or a short column…",
-      ),
-      { target: { value: "Welcome to summer" } },
-    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Text" }), {
+      target: { value: "Welcome to summer" },
+    });
     await settleSaves();
     const last = trpc.setIssueItems.mock.lastCall![0] as {
       items: unknown[];
@@ -504,5 +526,130 @@ describe("IssueBuilder", () => {
     expect(screen.getByRole("button", { name: "Published" })).toBeDisabled();
     // The address is fixed once published.
     expect(screen.getByLabelText("Address")).toHaveAttribute("readonly");
+  });
+  it("is a named region inside the page's one main landmark, not a second main", () => {
+    renderBuilder();
+    expect(screen.queryByRole("main")).toBeNull();
+    expect(
+      screen.getByRole("region", { name: "Issue builder" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names the rich-text fields by their visible labels", async () => {
+    renderBuilder();
+    const note = screen.getByRole("textbox", { name: "Editor's note" });
+    expect(note).toHaveAccessibleDescription(
+      "A short welcome at the top of the issue. Leave it empty if you do not need one.",
+    );
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Editorial block" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add an editorial block" }),
+    );
+    expect(screen.getByRole("textbox", { name: "Text" })).toBeInTheDocument();
+  });
+
+  it("keeps keyboard focus in the list when a row is removed", async () => {
+    renderBuilder();
+    await openRowMenu("First story");
+    await pickMenuItem("Remove from issue");
+    // The next row's menu button, not the page.
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Actions for Second story" }),
+    );
+
+    await openRowMenu("Second story");
+    await pickMenuItem("Remove from issue");
+    // The list is empty now: focus lands on its empty text.
+    expect(document.activeElement).toHaveTextContent(
+      "This issue is empty. Add articles or an editorial block from Add more.",
+    );
+  });
+
+  it("keeps keyboard focus in Add more when a ready article is added", async () => {
+    trpc.available = [
+      availableArticle(21, "Fresh piece"),
+      availableArticle(22, "Late piece"),
+    ];
+    renderBuilder();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add Fresh piece to the issue" }),
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Add Late piece to the issue" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add Late piece to the issue" }),
+    );
+    expect(document.activeElement).toHaveTextContent(
+      "No articles are ready. Articles marked ready for an issue show up here.",
+    );
+  });
+
+  it("offers to open an article in the article editor only when the viewer may edit it", async () => {
+    trpc.editing = twoArticles({
+      editableArticles: [{ id: 11, slug: "story-11" }],
+    });
+    trpc.available = [availableArticle(21, "Fresh piece", true)];
+    renderBuilder();
+
+    await openRowMenu("First story");
+    expect(
+      screen.getByRole("menuitem", { name: /Open the article/ }),
+    ).toHaveAttribute(
+      "href",
+      "/communities/night-owls/magazine/articles/story-11/edit",
+    );
+    await act(async () => {
+      fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    });
+
+    await openRowMenu("Second story");
+    expect(
+      screen.queryByRole("menuitem", { name: /Open the article/ }),
+    ).toBeNull();
+    await act(async () => {
+      fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    });
+
+    // A ready article the viewer wrote, added just now.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add Fresh piece to the issue" }),
+    );
+    await openRowMenu("Fresh piece");
+    expect(
+      screen.getByRole("menuitem", { name: /Open the article/ }),
+    ).toHaveAttribute(
+      "href",
+      "/communities/night-owls/magazine/articles/story-21/edit",
+    );
+  });
+
+  it("previews and publishes for who can really read it after a community became unlisted", async () => {
+    // Saved `public` while the community was listed: no confirmation.
+    trpc.editing = twoArticles({
+      issue: issue({ visibility: "public" }),
+      communityIsPrivate: true,
+      community: { slug: "night-owls", isListedInDirectory: false },
+    });
+    renderBuilder();
+    fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));
+    // Outsiders get a 404 for it now, so the preview shows them nothing.
+    expect(screen.getByText("Visitors see nothing")).toBeVisible();
+
+    // Once the editor confirms, it is public again: preview and dialog agree.
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "I understand, show this outside the community",
+      }),
+    );
+    expect(screen.queryByText("Visitors see nothing")).toBeNull();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    expect(
+      within(screen.getByRole("dialog")).getByText(
+        /Anyone will be able to read it/,
+      ),
+    ).toBeVisible();
   });
 });

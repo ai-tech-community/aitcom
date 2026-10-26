@@ -19,16 +19,23 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { SectionLabel } from "@/components/ui/section-label";
 
 import { ItemDragPreview, ItemRow, type ItemRowView } from "./item-row";
 
+/** Where focus goes after a row is removed: a row's ⋯ button, or the empty text. */
+type FocusTarget = { key: string } | "empty";
+
 /**
  * The issue's items in order. Reorder by dragging the handle (pointer or
  * keyboard: Space, arrows, Space) or from each row's ⋯ menu. The list only
  * reports moves and removals; the builder owns the order.
+ *
+ * A removed row takes its ⋯ button with it, so the list owns focus after a
+ * removal (WCAG 2.4.3): the next row's ⋯ button, else the previous one's,
+ * else the empty-list text. Focus never drops to the page.
  */
 export function ItemsList({
   rows,
@@ -42,6 +49,29 @@ export function ItemsList({
   const t = useTranslations("magazineEditor.builder.items");
   const labelId = useId();
   const [activeKey, setActiveKey] = useState<UniqueIdentifier | null>(null);
+  const menuTriggers = useRef(new Map<string, HTMLButtonElement>());
+  const emptyRef = useRef<HTMLParagraphElement>(null);
+  const pendingFocus = useRef<FocusTarget | null>(null);
+
+  // After the builder drops the removed row, move focus where it was asked.
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target === null) return;
+    pendingFocus.current = null;
+    if (target === "empty") emptyRef.current?.focus();
+    else menuTriggers.current.get(target.key)?.focus();
+  }, [rows]);
+
+  const remove = (index: number) => {
+    const next = rows[index + 1] ?? rows[index - 1];
+    pendingFocus.current = next ? { key: next.key } : "empty";
+    onRemove(rows[index]!.key);
+  };
+
+  const triggerRef = (key: string) => (el: HTMLButtonElement | null) => {
+    if (el) menuTriggers.current.set(key, el);
+    else menuTriggers.current.delete(key);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -96,7 +126,13 @@ export function ItemsList({
     <section aria-labelledby={labelId} className="flex flex-col gap-3">
       <SectionLabel id={labelId}>{t("label")}</SectionLabel>
       {rows.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t("empty")}</p>
+        <p
+          ref={emptyRef}
+          tabIndex={-1}
+          className="text-muted-foreground rounded-sm text-sm outline-none"
+        >
+          {t("empty")}
+        </p>
       ) : (
         <DndContext
           sensors={sensors}
@@ -121,8 +157,9 @@ export function ItemsList({
                     canMoveUp: index > 0,
                     canMoveDown: index < rows.length - 1,
                     onMove: (delta) => onMove(index, index + delta),
-                    onRemove: () => onRemove(row.key),
+                    onRemove: () => remove(index),
                   }}
+                  menuTriggerRef={triggerRef(row.key)}
                 />
               ))}
             </ol>

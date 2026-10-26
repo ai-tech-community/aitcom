@@ -4969,6 +4969,8 @@
         "dragHandle": "Drag to reorder {title}",
         "actions": "Actions for {title}",
         "edit": "Edit",
+        "openArticle": "Open the article",
+        "opensInNewTab": "(opens in a new tab)",
         "moveUp": "Move up",
         "moveDown": "Move down",
         "remove": "Remove from issue",

@@ -2,14 +2,20 @@
 
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { api } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
+
+import { articleReference } from "./items/article";
+
+/** A ready article "Add more" offers. */
+export type AddableArticle =
+  RouterOutputs["magazines"]["availableArticles"][number];
 
 /**
  * "Add more": what an editor can put in the issue. This slice has two
@@ -19,13 +25,14 @@ import { api } from "@/trpc/react";
  */
 export function AddItemsPanel({
   communitySlug,
-  articleIdsInIssue,
+  referencesInIssue,
   onAddArticle,
   onAddEditorial,
 }: {
   communitySlug: string;
-  articleIdsInIssue: ReadonlySet<number>;
-  onAddArticle: (article: { id: number; title: string }) => void;
+  /** What the issue already references (`builderReferenceKey`). */
+  referencesInIssue: ReadonlySet<string>;
+  onAddArticle: (article: AddableArticle) => void;
   onAddEditorial: () => void;
 }) {
   const t = useTranslations("magazineEditor.builder.add");
@@ -42,7 +49,7 @@ export function AddItemsPanel({
         <TabsContent value="articles">
           <ReadyArticles
             communitySlug={communitySlug}
-            articleIdsInIssue={articleIdsInIssue}
+            referencesInIssue={referencesInIssue}
             onAdd={onAddArticle}
           />
         </TabsContent>
@@ -64,19 +71,49 @@ export function AddItemsPanel({
   );
 }
 
+/** Where focus goes after an article is added: an Add button, or the empty text. */
+type FocusTarget = { articleId: number } | "empty";
+
+/**
+ * The ready articles not in the issue yet. An added article leaves the
+ * list and takes its Add button with it, so the list moves focus on
+ * (WCAG 2.4.3): the next article's Add button, else the previous one's,
+ * else the empty-list text.
+ */
 function ReadyArticles({
   communitySlug,
-  articleIdsInIssue,
+  referencesInIssue,
   onAdd,
 }: {
   communitySlug: string;
-  articleIdsInIssue: ReadonlySet<number>;
-  onAdd: (article: { id: number; title: string }) => void;
+  referencesInIssue: ReadonlySet<string>;
+  onAdd: (article: AddableArticle) => void;
 }) {
   const t = useTranslations("magazineEditor.builder.add");
   const query = api.magazines.availableArticles.useQuery({
     slug: communitySlug,
   });
+  const addButtons = useRef(new Map<number, HTMLButtonElement>());
+  const emptyRef = useRef<HTMLParagraphElement>(null);
+  const pendingFocus = useRef<FocusTarget | null>(null);
+
+  const offered = (query.data ?? []).filter(
+    (a) => !referencesInIssue.has(articleReference(a.id)),
+  );
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target === null) return;
+    pendingFocus.current = null;
+    if (target === "empty") emptyRef.current?.focus();
+    else addButtons.current.get(target.articleId)?.focus();
+  }, [referencesInIssue]);
+
+  const add = (index: number) => {
+    const next = offered[index + 1] ?? offered[index - 1];
+    pendingFocus.current = next ? { articleId: next.id } : "empty";
+    onAdd(offered[index]!);
+  };
 
   if (query.isLoading) {
     return (
@@ -96,15 +133,20 @@ function ReadyArticles({
     );
   }
 
-  const offered = query.data.filter((a) => !articleIdsInIssue.has(a.id));
   if (offered.length === 0) {
     return (
-      <p className="text-muted-foreground text-sm">{t("articlesEmpty")}</p>
+      <p
+        ref={emptyRef}
+        tabIndex={-1}
+        className="text-muted-foreground rounded-sm text-sm outline-none"
+      >
+        {t("articlesEmpty")}
+      </p>
     );
   }
   return (
     <ul className="divide-border flex flex-col divide-y rounded-md border">
-      {offered.map((article) => (
+      {offered.map((article, index) => (
         <li key={article.id} className="flex items-center gap-3 px-3 py-2">
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-sm font-medium">
@@ -117,11 +159,15 @@ function ReadyArticles({
             )}
           </div>
           <Button
+            ref={(el: HTMLButtonElement | null) => {
+              if (el) addButtons.current.set(article.id, el);
+              else addButtons.current.delete(article.id);
+            }}
             type="button"
             variant="outline"
             size="sm"
             aria-label={t("addArticle", { title: article.title })}
-            onClick={() => onAdd({ id: article.id, title: article.title })}
+            onClick={() => add(index)}
           >
             {t("add")}
           </Button>

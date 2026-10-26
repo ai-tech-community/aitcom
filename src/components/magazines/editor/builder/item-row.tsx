@@ -6,12 +6,13 @@ import {
   ArrowDown,
   ArrowUp,
   CircleAlert,
+  ExternalLink,
   GripVertical,
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId } from "react";
+import { type Ref, useId, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 /** What one row of the item list shows. */
@@ -38,6 +40,11 @@ export type ItemRowView = {
   highlighted: boolean;
   /** Opens the item's editor; absent for kinds without one (articles). */
   onEdit?: () => void;
+  /**
+   * Opens the content the item references in its own editor (an article
+   * in the article editor), when the viewer may edit it.
+   */
+  open?: { href: string; label: string };
   selected: boolean;
 };
 
@@ -45,6 +52,10 @@ export type ItemRowActions = {
   canMoveUp: boolean;
   canMoveDown: boolean;
   onMove: (delta: -1 | 1) => void;
+  /**
+   * Removes the row. The row unmounts, so the list moves focus on (the
+   * menu does not return it to a trigger that is gone).
+   */
   onRemove: () => void;
 };
 
@@ -59,11 +70,14 @@ export function ItemRow({
   position,
   total,
   actions,
+  menuTriggerRef,
 }: {
   view: ItemRowView;
   position: number;
   total: number;
   actions: ItemRowActions;
+  /** The row's ⋯ button, where the list puts focus after a removal. */
+  menuTriggerRef?: Ref<HTMLButtonElement>;
 }) {
   const t = useTranslations("magazineEditor.builder.items");
   const problemId = useId();
@@ -130,7 +144,12 @@ export function ItemRow({
         ) : (
           <div className="flex min-w-0 flex-1 px-1.5 py-0.5">{label}</div>
         )}
-        <RowMenu title={view.title} actions={actions} />
+        <RowMenu
+          title={view.title}
+          open={view.open}
+          actions={actions}
+          triggerRef={menuTriggerRef}
+        />
       </div>
       {view.problem && (
         <p
@@ -147,16 +166,22 @@ export function ItemRow({
 
 function RowMenu({
   title,
+  open,
   actions,
+  triggerRef,
 }: {
   title: string;
+  open: ItemRowView["open"];
   actions: ItemRowActions;
+  triggerRef?: Ref<HTMLButtonElement>;
 }) {
   const t = useTranslations("magazineEditor.builder.items");
+  const removing = useRef(false);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          ref={triggerRef}
           variant="ghost"
           size="icon"
           aria-label={t("actions", { title })}
@@ -165,7 +190,25 @@ function RowMenu({
           <MoreHorizontal aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent
+        align="end"
+        onCloseAutoFocus={(event) => {
+          // The row is gone: the list has already moved focus on.
+          if (removing.current) event.preventDefault();
+        }}
+      >
+        {open && (
+          <>
+            <DropdownMenuItem asChild>
+              <Link href={open.href} target="_blank" rel="noopener noreferrer">
+                <ExternalLink aria-hidden="true" />
+                {open.label}
+                <span className="sr-only"> {t("opensInNewTab")}</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem
           disabled={!actions.canMoveUp}
           onSelect={() => actions.onMove(-1)}
@@ -181,7 +224,13 @@ function RowMenu({
           {t("moveDown")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onSelect={actions.onRemove}>
+        <DropdownMenuItem
+          variant="destructive"
+          onSelect={() => {
+            removing.current = true;
+            actions.onRemove();
+          }}
+        >
           <Trash2 aria-hidden="true" />
           {t("remove")}
         </DropdownMenuItem>
