@@ -62,11 +62,9 @@ describe("blog channel (today's review behaviour)", () => {
     },
   );
 
-  it("a partial { reviewStatus } update on a blog article publishes it (F19)", () => {
-    // Payload hands collection beforeChange the partial update; the
-    // Articles hook gates on the merged doc, so this now reaches the
-    // channel. Before the seam the gate read `data.authorType` and a
-    // partial approval left the status alone.
+  it("an approval saved over a member blog article publishes it", () => {
+    // The shape the Articles hook receives: Payload has already filled the
+    // fields the update left out from the saved doc.
     const originalDoc: ArticleData = {
       authorType: "member",
       reviewStatus: "pending_review",
@@ -74,22 +72,10 @@ describe("blog channel (today's review behaviour)", () => {
       publishedAt: null,
       magazine: null,
     };
-    const data: ArticleData = { reviewStatus: "approved" };
-    const merged = { ...originalDoc, ...data };
-    expect(merged.authorType).toBe("member");
-    channelFor(merged).onReviewChange(data, originalDoc);
+    const data: ArticleData = { ...originalDoc, reviewStatus: "approved" };
+    channelFor(data).onReviewChange(data, originalDoc);
     expect(data.status).toBe("published");
     expect(typeof data.publishedAt).toBe("string");
-  });
-
-  it("a partial update without a review status leaves a blog article alone", () => {
-    const data: ArticleData = {};
-    blogChannel.onReviewChange(data, {
-      authorType: "member",
-      reviewStatus: "pending_review",
-      status: "draft",
-    });
-    expect(data).toEqual({});
   });
 });
 
@@ -159,9 +145,6 @@ describe("assertMagazineUnchanged", () => {
     ).not.toThrow();
     expect(() =>
       assertMagazineUnchanged({ magazine: { id: 3 } }, { magazine: 3 }),
-    ).not.toThrow();
-    expect(() =>
-      assertMagazineUnchanged({ title: "x" } as never, { magazine: 3 }),
     ).not.toThrow();
     expect(() =>
       assertMagazineUnchanged({ magazine: null }, { magazine: undefined }),

@@ -242,7 +242,7 @@ describe.skipIf(!RUN_DB)(
       const id = await createArticle("blog");
       const before = await xpOf(fx.authorId);
 
-      // A partial update: the hook gates on the saved doc merged with it.
+      // A partial update, as the review routes send it.
       await m.payload.update({
         collection: "articles",
         id,

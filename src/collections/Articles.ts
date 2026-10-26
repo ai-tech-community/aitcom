@@ -24,17 +24,17 @@ export const Articles: CollectionConfig = {
   hooks: {
     beforeChange: [
       async ({ data, operation, originalDoc }) => {
-        // Payload passes a partial `data` on update; the channel and the
-        // member gate read the saved doc merged with the change.
-        const merged = { ...originalDoc, ...data };
+        // By now Payload's field beforeValidate has filled every field the
+        // update left out from the saved doc, so `data` is the whole
+        // article, `magazine` included.
         // On create `originalDoc` is `{}` (or the source of a duplicate):
         // only an update can move an article between channels.
         assertMagazineUnchanged(
           data,
           operation === "update" ? originalDoc : undefined,
         );
-        if (merged.authorType === "member") {
-          channelFor(merged).onReviewChange(data, originalDoc);
+        if (data.authorType === "member") {
+          channelFor(data).onReviewChange(data, originalDoc);
         }
         return data;
       },
@@ -174,6 +174,9 @@ export const Articles: CollectionConfig = {
       type: "relationship",
       relationTo: "magazines",
       index: true,
+      // Fixed at create: the hook refuses a change (ARTICLE_MAGAZINE_LOCKED),
+      // so the admin panel shows it read-only on an existing article.
+      access: { update: () => false },
       admin: {
         position: "sidebar",
         description: "Set for articles written for a community magazine.",

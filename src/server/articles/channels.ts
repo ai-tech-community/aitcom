@@ -41,8 +41,9 @@ export interface ArticleChannel {
   readonly id: ArticleChannelId;
   /**
    * beforeChange: adjust status/publishedAt for a review status change.
-   * Reads the review status from `data` only, so an update that does not
-   * carry one changes nothing. Mutates `data`.
+   * `data` is the whole article (Payload fills in what the update left out);
+   * an update that does not change the review status changes nothing.
+   * Mutates `data`.
    */
   onReviewChange(data: ArticleData, originalDoc: ArticleData | undefined): void;
   /** afterChange: whether reaching `approved` publishes and credits now. */
@@ -117,14 +118,14 @@ export function channelFor(article: { magazine?: unknown }): ArticleChannel {
 
 /**
  * beforeChange guard: an article never moves into, out of, or between
- * magazines. Its channel is fixed when it is created. An update that does
- * not carry `magazine` keeps it.
+ * magazines. Its channel is fixed when it is created. `data` is the whole
+ * article as Payload hands it to the hook.
  */
 export function assertMagazineUnchanged(
   data: ArticleData,
   originalDoc: ArticleData | undefined,
 ): void {
-  if (!originalDoc || !("magazine" in data)) return;
+  if (!originalDoc) return;
   if (relationId(data.magazine) !== relationId(originalDoc.magazine)) {
     throw new Error("ARTICLE_MAGAZINE_LOCKED");
   }
