@@ -157,6 +157,9 @@ export function MagazinesHome({
     ? data.justPublished
     : data.justPublished.slice(1);
   const isEmpty = featured === null && data.magazines.length === 0;
+  // The side column exists only when it has something in it: a lone
+  // featured issue takes the full width, with no empty track beside it.
+  const hasSideColumn = justPublished.length > 0;
 
   return (
     <div className={cn(READING_FRAME, "flex flex-col gap-10")}>
@@ -184,11 +187,16 @@ export function MagazinesHome({
       ) : (
         <>
           {featured && (
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <div
+              className={cn(
+                "grid gap-8",
+                hasSideColumn && "lg:grid-cols-[minmax(0,1fr)_22rem]",
+              )}
+            >
               <section aria-labelledby={featuredId} className="min-w-0">
                 <FeaturedIssue issue={featured} labelId={featuredId} />
               </section>
-              {justPublished.length > 0 && (
+              {hasSideColumn && (
                 <section
                   aria-labelledby={justPublishedId}
                   className="flex min-w-0 flex-col gap-4"

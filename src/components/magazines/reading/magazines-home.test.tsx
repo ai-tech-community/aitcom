@@ -63,6 +63,43 @@ describe("MagazinesHome", () => {
     expect(within(items[0]!).getByText("Agents Weekly")).toBeInTheDocument();
   });
 
+  it.each([
+    ["the only public issue has a cover", { justPublished: [] }],
+    [
+      "the only public issue has no cover",
+      {
+        featured: null,
+        justPublished: [
+          issueCard({ id: 2, slug: "issue-2", title: "Featured issue title" }),
+        ],
+      },
+    ],
+  ])(
+    "gives a lone featured issue the full width when %s",
+    (_label, overrides) => {
+      renderWithIntl(
+        <MagazinesHome data={homeData(overrides)} activeTopic={null} />,
+      );
+      const featured = screen.getByRole("region", { name: /Featured issue/ });
+      expect(
+        within(featured).getByRole("heading", { name: "Featured issue title" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("region", { name: /Just published/ }),
+      ).toBeNull();
+      // No second track is reserved for a column that is not there.
+      expect(featured.parentElement!.className).not.toMatch(/grid-cols/);
+    },
+  );
+
+  it("keeps the side column beside the featured issue when there is more", () => {
+    renderWithIntl(<MagazinesHome data={homeData()} activeTopic={null} />);
+    const featured = screen.getByRole("region", { name: /Featured issue/ });
+    expect(featured.parentElement!.className).toMatch(
+      /lg:grid-cols-\[minmax\(0,1fr\)_22rem\]/,
+    );
+  });
+
   it("features the newest issue when no issue has a cover", () => {
     const data = homeData({
       featured: null,
