@@ -48,6 +48,9 @@ describe("Awesome AI OSS insights paths", () => {
     );
     const en = readFileSync(join(messagesDir, "en.json"), "utf8");
     expect(en).not.toContain("not a star-sorted dump");
+    expect(en).not.toMatch(/star-sorted|awesome dump|awesome-dump/i);
+    const nl = readFileSync(join(messagesDir, "nl.json"), "utf8");
+    expect(nl).not.toMatch(/awesome-dump|sterren-gesorteerde/i);
     const enMessages = JSON.parse(en) as {
       investigationsAwesomeAiOss: { insightsLead: string };
     };
