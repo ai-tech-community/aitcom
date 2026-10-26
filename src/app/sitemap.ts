@@ -53,6 +53,7 @@ const STATIC_PAGES = [
   "/investigations/awesome-ai-oss/insights",
   "/startups",
   "/startups/insights",
+  "/startups/ai-tools-list",
   "/roles",
 ] as const;
 
