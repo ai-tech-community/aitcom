@@ -21,7 +21,7 @@ import type { LessonVersionRegistry } from "./lesson-versions";
 import { hasUnsavableResources, savableResources } from "./resources-editor";
 import { useAutosave } from "@/components/use-autosave";
 import { usePaneReport } from "./use-pane-report";
-import { createVersionedWriter } from "./versioned-writer";
+import { createVersionedWriter } from "@/components/versioned-writer";
 
 /** The lesson fields the builder loads (a `classrooms.get` lesson). */
 export type LessonLike = {

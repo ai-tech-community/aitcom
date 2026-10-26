@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createLessonVersionRegistry } from "./lesson-versions";
-import { createVersionedWriter } from "./versioned-writer";
+import { createVersionedWriter } from "@/components/versioned-writer";
 
 const T0 = "2026-01-01T00:00:00.000Z";
 const T1 = "2026-01-01T00:00:01.000Z";

@@ -30,7 +30,7 @@ import { BuilderTopBar } from "./builder-top-bar";
 import { CourseDetailsPane } from "./course-details-pane";
 import { useCourseDetails } from "./use-course-details";
 import { builderErrorKey } from "./builder-errors";
-import { createVersionedWriter } from "./versioned-writer";
+import { createVersionedWriter } from "@/components/versioned-writer";
 import { CourseOutline } from "./course-outline";
 import { buildOutline, readingOrder } from "./outline-model";
 import { LessonEditorScope } from "./lesson-editor-scope";
