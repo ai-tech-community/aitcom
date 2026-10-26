@@ -54,6 +54,14 @@ export const ISSUE_CONFLICT_CODES: ReadonlySet<string> = new Set([
   "ISSUE_CHANGED",
 ]);
 
+/**
+ * Whether a refused write is the issue's conflict, by the same codes the
+ * autosave reads (an Error whose message is the code).
+ */
+export function isIssueConflict(error: unknown): boolean {
+  return error instanceof Error && ISSUE_CONFLICT_CODES.has(error.message);
+}
+
 const jsonEqual = (a: unknown, b: unknown) =>
   JSON.stringify(a) === JSON.stringify(b);
 

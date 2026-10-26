@@ -49,6 +49,7 @@ import { PublishDialog } from "./publish-dialog";
 import {
   hasUnsavedWork,
   type IssueDetailsDraft,
+  isIssueConflict,
   type IssueDetailsSave,
   type IssueSaveFailure,
   type IssueSaveValue,
@@ -469,6 +470,15 @@ function IssueWorkspace({
         return out.updatedAt;
       });
     } catch (error) {
+      // Someone else changed the issue first: the builder's one conflict
+      // state (reload banner, saving stopped, Publish off), the same as an
+      // autosave that hit it. It is fixed by reloading, not in the dialog,
+      // so the dialog closes to bring the banner into view.
+      if (isIssueConflict(error)) {
+        autosave.markConflict();
+        setPublishOpen(false);
+        throw error;
+      }
       const { key, itemIndex } = readEditorError(error);
       setPublishError(tErrors(key));
       if (itemIndex !== null) {

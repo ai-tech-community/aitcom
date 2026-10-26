@@ -527,6 +527,43 @@ describe("IssueBuilder", () => {
     // The address is fixed once published.
     expect(screen.getByLabelText("Address")).toHaveAttribute("readonly");
   });
+  it("a publish refused with ISSUE_CHANGED enters the same conflict state as autosave", async () => {
+    trpc.publishIssue.mockRejectedValue(refusal("ISSUE_CHANGED"));
+    renderBuilder();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: "Publish",
+        }),
+      );
+    });
+    expect(trpc.publishIssue).toHaveBeenCalledTimes(1);
+
+    // The dialog closes; the top bar's reload banner says why.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("This issue changed somewhere else");
+    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+
+    // Edits stay on screen but are not sent: the server would refuse them.
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Edited after the conflict" },
+    });
+    await settleSaves();
+    expect(trpc.updateIssue).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Title")).toHaveValue(
+      "Edited after the conflict",
+    );
+
+    await act(async () => {
+      fireEvent.click(within(alert).getByRole("button", { name: "Reload" }));
+    });
+    expect(trpc.refetch).toHaveBeenCalled();
+  });
+
   it("is a named region inside the page's one main landmark, not a second main", () => {
     renderBuilder();
     expect(screen.queryByRole("main")).toBeNull();

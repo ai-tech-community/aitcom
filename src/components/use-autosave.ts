@@ -40,6 +40,13 @@ export type UseAutosaveResult = {
   flush: () => Promise<AutosaveStatus>;
   /** Try again after an error. Does nothing in a conflict — the server would reject it again. */
   retry: () => Promise<AutosaveStatus>;
+  /**
+   * Report a conflict found by another write to the same document (a
+   * publish refused because someone else changed it first). It is the same
+   * conflict a save would hit next: saving stops, the status is
+   * `conflict`, and only a reload clears it.
+   */
+  markConflict: () => void;
 };
 
 const jsonEqual = (a: unknown, b: unknown) =>
@@ -132,7 +139,10 @@ export function useAutosave<T>({
             await saveRef.current(snapshot);
           } catch (err) {
             const code = err instanceof Error ? err.message : undefined;
-            if (code && conflictCodesRef.current.has(code)) {
+            if (
+              conflictRef.current ||
+              (code && conflictCodesRef.current.has(code))
+            ) {
               conflictRef.current = true;
               clearTimer();
               updateStatus("conflict");
@@ -152,7 +162,10 @@ export function useAutosave<T>({
           (followUpRef.current || timerRef.current === null)
         );
         // Still dirty here means a debounce timer is pending for the newer value, or saving is off.
-        updateStatus(isDirty() ? "dirty" : "saved");
+        // A conflict reported while this pass ran (markConflict) wins.
+        updateStatus(
+          conflictRef.current ? "conflict" : isDirty() ? "dirty" : "saved",
+        );
       } finally {
         settled = true;
         loopRef.current = null;
@@ -207,7 +220,13 @@ export function useAutosave<T>({
     return statusRef.current;
   }, [clearTimer, drain]);
 
-  return { status, savedAt, flush, retry: flush };
+  const markConflict = useCallback(() => {
+    conflictRef.current = true;
+    clearTimer();
+    updateStatus("conflict");
+  }, [clearTimer, updateStatus]);
+
+  return { status, savedAt, flush, retry: flush, markConflict };
 }
 
 /** Browser "leave site?" prompt while there is work that is not safely saved. */

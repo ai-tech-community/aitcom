@@ -353,6 +353,44 @@ describe("useAutosave", () => {
     expect(result.current.status).toBe("conflict");
   });
 
+  it("markConflict stops saving and holds the conflict until reload", async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    const { result, rerender } = setup(save);
+    rerender({ value: "b" });
+    expect(result.current.status).toBe("dirty");
+
+    // Another write to the same document was refused as stale.
+    act(() => result.current.markConflict());
+    expect(result.current.status).toBe("conflict");
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    rerender({ value: "c" });
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(await act(() => result.current.flush())).toBe("conflict");
+    expect(save).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("conflict");
+  });
+
+  it("a conflict marked during an in-flight save survives the save's end", async () => {
+    let finish!: () => void;
+    const save = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { result, rerender } = setup(save);
+    rerender({ value: "b" });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(result.current.status).toBe("saving");
+
+    act(() => result.current.markConflict());
+    rerender({ value: "c" });
+    await act(async () => finish());
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe("conflict");
+  });
+
   describe("under React StrictMode", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <StrictMode>{children}</StrictMode>
