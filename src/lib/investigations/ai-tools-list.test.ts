@@ -69,6 +69,14 @@ describe("AI tools list copy", () => {
     expect(description).not.toMatch(/AI TOOLS LIST/);
     expect(description).not.toContain("AIAI.Tools");
     expect(aiToolsListCopy("nl").description).not.toContain("AIAI.Tools");
+    expect(description).not.toMatch(/rank|how many/i);
+    expect(aiToolsListCopy("nl").description).not.toMatch(/rangschikt|aantal/i);
+    expect(AI_TOOLS_LIST_COPY.en.intro).not.toBe(description);
+    expect(AI_TOOLS_LIST_COPY.nl.intro).not.toBe(
+      aiToolsListCopy("nl").description,
+    );
+    expect(AI_TOOLS_LIST_COPY.en.intro).not.toMatch(/rank|how many/i);
+    expect(AI_TOOLS_LIST_COPY.nl.intro).not.toMatch(/rangschikt|aantal/i);
   });
 
   it("has a Dutch counterpart for the same route", () => {

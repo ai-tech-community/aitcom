@@ -20,14 +20,18 @@ export const AI_TOOLS_LIST_COPY = {
   en: {
     title: "AI tools",
     description:
-      "This directory lists AI tools. A listing names the tool and where to open it. Nothing here ranks the tools or states how many are listed.",
+      "AI tools are software for a task, such as writing, research, coding, or images. Open a tool by following the link on its listing.",
+    intro:
+      "Choose an AI tool from this directory and follow its link to the page where the software opens.",
     heading: "AI tools",
     kicker: "Directory",
   },
   nl: {
     title: "AI-tools",
     description:
-      "Deze directory vermeldt AI-tools. Een vermelding noemt de tool en waar je die opent. De pagina rangschikt geen tools en noemt geen aantal.",
+      "AI-tools zijn software voor een taak, zoals schrijven, onderzoek, code of beelden. Open een tool door de link bij de vermelding te volgen.",
+    intro:
+      "Kies een AI-tool in deze directory en volg de link naar de pagina waar de software opent.",
     heading: "AI-tools",
     kicker: "Lijst",
   },
@@ -37,6 +41,13 @@ export type AiToolsListLocale = keyof typeof AI_TOOLS_LIST_COPY;
 
 export function aiToolsListCopy(locale: string) {
   return locale === "nl" ? AI_TOOLS_LIST_COPY.nl : AI_TOOLS_LIST_COPY.en;
+}
+
+/** Tools that render on the page: a name and an http(s) URL, nothing else. */
+export function aiToolsOnPage(
+  tools: readonly AiToolsListTool[] = AI_TOOLS_LIST_TOOLS,
+): AiToolsListTool[] {
+  return listedTools(tools);
 }
 
 function listedTools(tools: readonly AiToolsListTool[]): AiToolsListTool[] {
@@ -62,7 +73,7 @@ export function aiToolsListJsonLd(
 ): Record<string, unknown> {
   const copy = aiToolsListCopy(locale);
   const resolved = locale === "nl" ? "nl" : "en";
-  const items = listedTools(tools).map((tool, index) => ({
+  const items = aiToolsOnPage(tools).map((tool, index) => ({
     "@type": "ListItem",
     position: index + 1,
     name: tool.name,
