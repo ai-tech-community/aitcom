@@ -28,6 +28,8 @@ const EXPECTED_COLUMNS = [
   "magazine_issues_blocks_event.intro",
   "magazine_issues_blocks_forum_thread.thread_id",
   "magazine_issues_blocks_forum_thread.intro",
+  "magazine_issues_blocks_launchpad_project.project_id",
+  "magazine_issues_blocks_launchpad_project.intro",
 ];
 
 describe.skipIf(!isLocalDbConfigured())(
@@ -44,7 +46,8 @@ describe.skipIf(!isLocalDbConfigured())(
       FROM information_schema.columns
       WHERE table_schema = 'public' AND table_name IN (
         'magazine_issues_blocks_storyline', 'magazine_issues_blocks_news_item',
-        'magazine_issues_blocks_event', 'magazine_issues_blocks_forum_thread'
+        'magazine_issues_blocks_event', 'magazine_issues_blocks_forum_thread',
+        'magazine_issues_blocks_launchpad_project'
       )
     `);
       const have = new Set(rows.map((row) => row.key));

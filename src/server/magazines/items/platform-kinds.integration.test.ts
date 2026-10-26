@@ -44,6 +44,7 @@ describe.skipIf(!isLocalDbConfigured())(
       outsiderId: string;
       eventIds: number[];
       threadIds: number[];
+      projectIds: number[];
       communityIds: string[];
       storyIds: string[];
       newsIds: string[];
@@ -98,6 +99,7 @@ describe.skipIf(!isLocalDbConfigured())(
         outsiderId: `pk-outsider-${sfx}`,
         eventIds: [],
         threadIds: [],
+        projectIds: [],
         communityIds: [],
         storyIds: [],
         newsIds: [],
@@ -129,6 +131,11 @@ describe.skipIf(!isLocalDbConfigured())(
     afterEach(async () => {
       const { eq, inArray } = await import("drizzle-orm");
       const { db, payload, schema } = m;
+      if (fx.projectIds.length)
+        await payload.delete({
+          collection: "launchpad-projects",
+          where: { id: { in: fx.projectIds } },
+        });
       if (fx.threadIds.length)
         await payload.delete({
           collection: "forum-threads",
@@ -267,6 +274,271 @@ describe.skipIf(!isLocalDbConfigured())(
       );
       return { c, magazine, actor, issue };
     }
+
+    async function project(
+      communityId: string | null,
+      label: string,
+      opts: {
+        authorId?: string;
+        status?: "draft" | "published" | "archived";
+        voteCount?: number;
+      } = {},
+    ) {
+      const doc = await m.payload.create({
+        collection: "launchpad-projects",
+        data: {
+          title: `Project ${label} ${fx.sfx}`,
+          slug: `pk-project-${label}-${fx.sfx}`,
+          pitch: {
+            root: {
+              type: "root",
+              version: 1,
+              direction: "ltr",
+              format: "",
+              indent: 0,
+              children: [
+                {
+                  type: "paragraph",
+                  version: 1,
+                  children: [
+                    { type: "text", text: "Build together", version: 1 },
+                  ],
+                },
+              ],
+            },
+          },
+          stage: "prototype",
+          authorId: opts.authorId ?? fx.editorId,
+          authorName: "Sanne",
+          status: opts.status ?? "published",
+          voteCount: opts.voteCount ?? 1,
+          communityId,
+        },
+      });
+      fx.projectIds.push(Number(doc.id));
+      return doc;
+    }
+
+    it("an archived project drops out for readers and is marked for editors", async () => {
+      const { c, magazine, actor, issue } = await issueFixture();
+      const doc = await project(c.id, "archive");
+      const projectId = Number(doc.id);
+      const saved = await m.issues.setIssueItems(
+        m,
+        issue,
+        [{ kind: "launchpadProject", projectId, intro: "Our pick" }],
+        issue.updatedAt,
+        actor,
+      );
+      const load = (access: IssueReaderAccess) =>
+        m.registry.loadIssueItemViews(
+          saved.items as Registry.StoredBlock[],
+          m.context.itemContextFor(m, {
+            magazineId: magazine.id,
+            community: c,
+            issueId: saved.id,
+            locale: "en",
+            access,
+            viewerId: access === "editor" ? fx.editorId : null,
+          }),
+        );
+      expect(await load("full")).toMatchObject([
+        {
+          kind: "launchpadProject",
+          intro: "Our pick",
+          project: { title: doc.title, pitch: "Build together", voteCount: 1 },
+        },
+      ]);
+      await m.payload.update({
+        collection: "launchpad-projects",
+        id: doc.id,
+        data: { title: "A live project title", voteCount: 120 },
+      });
+      expect(await load("full")).toMatchObject([
+        { project: { title: "A live project title", voteCount: 120 } },
+      ]);
+      await m.payload.update({
+        collection: "launchpad-projects",
+        id: doc.id,
+        data: { status: "archived" },
+      });
+      expect(await load("full")).toEqual([]);
+      expect(await load("editor")).toEqual([
+        {
+          kind: "launchpadProject",
+          itemId: saved.items![0]!.id,
+          unavailable: true,
+          reason: "unpublished",
+        },
+      ]);
+      const reloaded = await m.payload.findByID({
+        collection: "magazine-issues",
+        id: saved.id,
+        depth: 0,
+      });
+      expect(
+        m.registry.toItemInputs(reloaded.items as Registry.StoredBlock[]),
+      ).toMatchObject([{ kind: "launchpadProject", projectId }]);
+      const kept = await m.issues.setIssueItems(
+        m,
+        reloaded,
+        [{ kind: "launchpadProject", projectId, intro: "Still our pick" }],
+        reloaded.updatedAt,
+        actor,
+      );
+      expect(kept.items![0]!.intro).toBe("Still our pick");
+      await m.issues.publishIssue(m, kept, kept.updatedAt, actor);
+    });
+
+    it("the projects tab offers community projects and members' unscoped projects", async () => {
+      const { c, magazine, actor, issue } = await issueFixture();
+      const local = await project(c.id, "local");
+      const member = await project(null, "member", { voteCount: 2 });
+      const inactive = await project(null, "inactive", {
+        authorId: fx.outsiderId,
+        voteCount: 3,
+      });
+      await m.db.insert(m.schema.communityMemberships).values({
+        communityId: c.id,
+        userId: fx.outsiderId,
+        role: "member",
+        status: "banned",
+      });
+      const draft = await project(c.id, "draft", { status: "draft" });
+      const archived = await project(c.id, "archived", { status: "archived" });
+      const other = await community("other-projects");
+      let otherProjectId = 0;
+      for (let n = 0; n < 51; n++) {
+        const doc = await project(other.id, `other-${n}`, {
+          voteCount: 10000 + n,
+        });
+        otherProjectId = Number(doc.id);
+      }
+      const ctx = {
+        deps: m,
+        magazineId: magazine.id,
+        community: c,
+        viewerId: fx.editorId,
+        locale: "en" as const,
+      };
+      const candidates = await m.pickers.searchPickerCandidates(
+        "launchpadProject",
+        fx.sfx,
+        ctx,
+      );
+      expect(candidates.map((v) => Number(v.input.projectId))).toEqual([
+        Number(member.id),
+        Number(local.id),
+      ]);
+      expect(candidates[0]).toMatchObject({
+        reference: `launchpadProject:${member.id}`,
+        facts: [
+          { type: "count", what: "upvotes", value: 2 },
+          { type: "byline", name: "Sanne" },
+        ],
+        openHref: null,
+      });
+      // An empty query must list community candidates as well.
+      const unfiltered = await m.pickers.searchPickerCandidates(
+        "launchpadProject",
+        "",
+        ctx,
+      );
+      expect(unfiltered.map((v) => Number(v.input.projectId))).toEqual(
+        expect.arrayContaining([Number(member.id), Number(local.id)]),
+      );
+      expect(
+        (
+          await m.pickers.searchPickerCandidates(
+            "launchpadProject",
+            `local ${fx.sfx}`,
+            ctx,
+          )
+        ).map((v) => Number(v.input.projectId)),
+      ).toEqual([Number(local.id)]);
+      for (const projectId of [
+        Number(inactive.id),
+        Number(draft.id),
+        Number(archived.id),
+        otherProjectId,
+        2147483647,
+      ])
+        await expect(
+          m.issues.setIssueItems(
+            m,
+            issue,
+            [{ kind: "launchpadProject", projectId }],
+            issue.updatedAt,
+            actor,
+          ),
+        ).rejects.toMatchObject({
+          code: "BAD_REQUEST",
+          message: "ITEM_INVALID",
+        });
+      const saved = await m.issues.setIssueItems(
+        m,
+        issue,
+        [{ kind: "launchpadProject", projectId: Number(member.id) }],
+        issue.updatedAt,
+        actor,
+      );
+      expect(saved.items).toMatchObject([
+        { blockType: "launchpadProject", projectId: member.id },
+      ]);
+    }, 60_000);
+
+    it("an unlisted community's project stays private inside a public issue", async () => {
+      const { c, magazine, actor, issue } = await issueFixture({
+        listed: false,
+      });
+      const scoped = await project(c.id, "private");
+      const unscoped = await project(null, "platform");
+      const saved = await m.issues.setIssueItems(
+        m,
+        issue,
+        [
+          { kind: "launchpadProject", projectId: Number(scoped.id) },
+          { kind: "launchpadProject", projectId: Number(unscoped.id) },
+        ],
+        issue.updatedAt,
+        actor,
+      );
+      const load = (
+        viewerId: string | null,
+        access: IssueReaderAccess = "full",
+      ) =>
+        m.registry.loadIssueItemViews(
+          saved.items as Registry.StoredBlock[],
+          m.context.itemContextFor(m, {
+            magazineId: magazine.id,
+            community: c,
+            issueId: saved.id,
+            locale: "en",
+            access,
+            viewerId,
+          }),
+        );
+      expect(await load(fx.editorId)).toMatchObject([
+        {
+          kind: "launchpadProject",
+          membersOnly: false,
+          project: { title: scoped.title },
+        },
+        { membersOnly: false, project: { title: unscoped.title } },
+      ]);
+      for (const viewer of [fx.outsiderId, null])
+        expect(await load(viewer)).toMatchObject([
+          { project: { title: unscoped.title } },
+        ]);
+      expect(await load(fx.editorId, "editor")).toMatchObject([
+        { membersOnly: true },
+        { membersOnly: false },
+      ]);
+      expect(await load(fx.outsiderId, "editor")).toMatchObject([
+        { unavailable: true, reason: "no_access" },
+        { project: { title: unscoped.title } },
+      ]);
+    });
 
     async function event(
       communityId: string | null,

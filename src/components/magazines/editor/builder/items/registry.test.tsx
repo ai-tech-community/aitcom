@@ -7,6 +7,7 @@ import { ITEM_KINDS } from "@/server/magazines/items/registry";
 
 import {
   eventView,
+  launchpadProjectView,
   forumThreadView,
   newsItemView,
   storylineView,
@@ -66,6 +67,7 @@ describe("builder item registry", () => {
       "newsItem",
       "event",
       "forumThread",
+      "launchpadProject",
       "editorial",
     ]);
     const item: BuilderItem = {
@@ -190,6 +192,32 @@ it("adds forum threads after events and follows the saved title and edited intro
     ...saved,
     itemId: "thread",
     intro: "Our discussion",
+  });
+  expect(isSavableBuilderItem(item)).toBe(true);
+  expect(hasBuilderItemEditor(item)).toBe(false);
+});
+
+it("adds projects last before editorial and follows the saved title and edited intro", () => {
+  const item: BuilderItem = {
+    kind: "launchpadProject",
+    key: "project",
+    projectId: 7,
+    intro: "Our pick",
+  };
+  const saved = launchpadProjectView();
+  expect(ADD_TAB_ORDER.indexOf("launchpadProject")).toBe(
+    ADD_TAB_ORDER.indexOf("editorial") - 1,
+  );
+  expect(builderKindLabelKey(item)).toBe("launchpadProject");
+  expect(builderReferenceKey(item)).toBe("launchpadProject:7");
+  expect(builderRowTitle(item, { saved, titleHint: "Old title", t })).toBe(
+    "Project 1",
+  );
+  expect(builderPreviewView(item, undefined)).toBeNull();
+  expect(builderPreviewView(item, saved)).toEqual({
+    ...saved,
+    itemId: "project",
+    intro: "Our pick",
   });
   expect(isSavableBuilderItem(item)).toBe(true);
   expect(hasBuilderItemEditor(item)).toBe(false);

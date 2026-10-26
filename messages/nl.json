@@ -4808,7 +4808,9 @@
       "cancelled": "Afgelast",
       "completed": "Afgelopen",
       "forumKind": "Uit het forum",
-      "replies": "{count, plural, one {# reactie} other {# reacties}}"
+      "replies": "{count, plural, one {# reactie} other {# reacties}}",
+      "projectKind": "Launchpad-project",
+      "upvotes": "{count, plural, one {# stem} other {# stemmen}}"
     },
     "rail": {
       "visitCommunity": "Bezoek {community}",
@@ -5007,7 +5009,8 @@
         "newsItem": "Nieuws",
         "event": "Evenement",
         "membersOnly": "Alleen leden zien dit",
-        "forumThread": "Forumgesprek"
+        "forumThread": "Forumgesprek",
+        "launchpadProject": "Project"
       },
       "editorial": {
         "heading": "Kop (optioneel)",
@@ -5023,28 +5026,32 @@
           "storyline": "Verhalen",
           "newsItem": "Nieuws",
           "event": "Evenementen",
-          "forumThread": "Forum"
+          "forumThread": "Forum",
+          "launchpadProject": "Projecten"
         },
         "search": {
           "article": "Zoek artikelen die klaar zijn",
           "storyline": "Zoek verhalen uit AIT News",
           "newsItem": "Zoek nieuwsberichten",
           "event": "Zoek evenementen van je community",
-          "forumThread": "Zoek in het forum van je community"
+          "forumThread": "Zoek in het forum van je community",
+          "launchpadProject": "Zoek projecten van je leden"
         },
         "empty": {
           "article": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
           "storyline": "Geen verhalen gevonden.",
           "newsItem": "Geen nieuwsberichten gevonden.",
           "event": "Je community heeft nog geen evenementen.",
-          "forumThread": "Geen gesprekken gevonden."
+          "forumThread": "Geen gesprekken gevonden.",
+          "launchpadProject": "Geen projecten gevonden."
         },
         "hint": {
           "article": "Alleen artikelen die klaar zijn voor een nummer en niet al in een ander nummer staan, verschijnen hier.",
           "storyline": "Verhalen worden bijgewerkt: lezers zien altijd de nieuwste versie.",
           "newsItem": "Nieuwsberichten linken naar het oorspronkelijke artikel.",
           "event": "Evenementen van je community. Lezers zien altijd de laatste informatie.",
-          "forumThread": "Gesprekken gaan door: lezers zien ook nieuwe reacties."
+          "forumThread": "Gesprekken gaan door: lezers zien ook nieuwe reacties.",
+          "launchpadProject": "Projecten van je community of van haar leden."
         },
         "noMatch": "Niets gevonden voor “{query}”.",
         "add": "Toevoegen",

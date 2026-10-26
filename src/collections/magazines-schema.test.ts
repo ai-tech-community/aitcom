@@ -89,6 +89,7 @@ describe("magazine-issues collection", () => {
       "newsItem",
       "event",
       "forumThread",
+      "launchpadProject",
     ]);
     for (const block of items.blocks!) {
       expect(block.fields[0]?.name).toBe("intro");
@@ -163,6 +164,9 @@ describe("magazine platform items migration", () => {
     );
     expect(source).toContain(
       'CREATE TABLE IF NOT EXISTS "magazine_issues_blocks_forum_thread"',
+    );
+    expect(source).toContain(
+      'CREATE TABLE IF NOT EXISTS "magazine_issues_blocks_launchpad_project"',
     );
     const index = readFileSync(
       join(process.cwd(), "src/migrations/index.ts"),

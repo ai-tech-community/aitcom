@@ -14,6 +14,7 @@ import { articleItemKind } from "./article/kind";
 import { editorialItemKind } from "./editorial/kind";
 import { storylineItemKind } from "./storyline/kind";
 import { newsItemKind } from "./newsItem/kind";
+import { launchpadProjectItemKind } from "./launchpadProject/kind";
 import { itemIdOf } from "./item-id";
 import type {
   IssueItemKind,
@@ -35,6 +36,7 @@ const STRATEGIES = {
   newsItem: newsItemKind,
   event: eventItemKind,
   forumThread: forumThreadItemKind,
+  launchpadProject: launchpadProjectItemKind,
 };
 
 /** The builder input type a kind's strategy declares. */

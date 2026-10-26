@@ -90,6 +90,22 @@ export type ForumThreadItemView = {
   };
 };
 
+/** A launchpad project, read live for the current viewer. */
+export type LaunchpadProjectItemView = {
+  kind: "launchpadProject";
+  itemId: string;
+  intro: string | null;
+  membersOnly: boolean;
+  project: {
+    slug: string;
+    title: string;
+    pitch: string;
+    stage: "idea" | "prototype" | "mvp" | "launched";
+    voteCount: number;
+    authorName: string | null;
+  };
+};
+
 /** What a reader sees for one issue item, by kind. */
 export type IssueItemView =
   | ArticleItemView
@@ -97,7 +113,8 @@ export type IssueItemView =
   | StorylineItemView
   | NewsItemView
   | EventItemView
-  | ForumThreadItemView;
+  | ForumThreadItemView
+  | LaunchpadProjectItemView;
 
 /** The item kinds; each has one strategy, one block and one renderer. */
 export type ItemKindId = IssueItemView["kind"];

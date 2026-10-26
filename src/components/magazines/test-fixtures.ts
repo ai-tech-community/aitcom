@@ -4,6 +4,7 @@
  */
 import type {
   ArticleItemView,
+  LaunchpadProjectItemView,
   EventItemView,
   ForumThreadItemView,
   EditorialItemView,
@@ -121,6 +122,28 @@ export function forumThreadView(
       replyCount: 42,
       authorName: "Sanne",
       lastActivityAt: "2026-10-24T10:00:00.000Z",
+      ...overrides,
+    },
+  };
+}
+
+/** A live launchpad project with a plain-text pitch. */
+export function launchpadProjectView(
+  n = 1,
+  overrides: Partial<LaunchpadProjectItemView["project"]> = {},
+): LaunchpadProjectItemView {
+  return {
+    kind: "launchpadProject",
+    itemId: `project-${n}`,
+    intro: null,
+    membersOnly: false,
+    project: {
+      slug: `project-${n}`,
+      title: `Project ${n}`,
+      pitch: "Build together.",
+      stage: "prototype",
+      voteCount: 120,
+      authorName: "Sanne",
       ...overrides,
     },
   };

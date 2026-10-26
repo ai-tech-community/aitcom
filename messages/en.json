@@ -4808,7 +4808,9 @@
       "cancelled": "Cancelled",
       "completed": "Took place",
       "forumKind": "From the forum",
-      "replies": "{count, plural, one {# reply} other {# replies}}"
+      "replies": "{count, plural, one {# reply} other {# replies}}",
+      "projectKind": "Launchpad project",
+      "upvotes": "{count, plural, one {# upvote} other {# upvotes}}"
     },
     "rail": {
       "visitCommunity": "Visit {community}",
@@ -5007,7 +5009,8 @@
         "newsItem": "News",
         "event": "Event",
         "membersOnly": "Only members see this",
-        "forumThread": "Forum thread"
+        "forumThread": "Forum thread",
+        "launchpadProject": "Project"
       },
       "editorial": {
         "heading": "Heading (optional)",
@@ -5023,28 +5026,32 @@
           "storyline": "Stories",
           "newsItem": "News",
           "event": "Events",
-          "forumThread": "Forum"
+          "forumThread": "Forum",
+          "launchpadProject": "Projects"
         },
         "search": {
           "article": "Search ready articles",
           "storyline": "Search AIT News stories",
           "newsItem": "Search news headlines",
           "event": "Search your community's events",
-          "forumThread": "Search your community's forum"
+          "forumThread": "Search your community's forum",
+          "launchpadProject": "Search your members' projects"
         },
         "empty": {
           "article": "No articles are ready. Articles marked ready for an issue show up here.",
           "storyline": "No stories found.",
           "newsItem": "No headlines found.",
           "event": "Your community has no events yet.",
-          "forumThread": "No threads found."
+          "forumThread": "No threads found.",
+          "launchpadProject": "No projects found."
         },
         "hint": {
           "article": "Only articles marked ready and not in another issue show here.",
           "storyline": "Stories stay live: readers always see the newest version.",
           "newsItem": "Headlines link to the original article.",
           "event": "Events of your community. Readers see the latest details.",
-          "forumThread": "Threads stay live: readers see new replies too."
+          "forumThread": "Threads stay live: readers see new replies too.",
+          "launchpadProject": "Projects from your community or by its members."
         },
         "noMatch": "Nothing matches “{query}”.",
         "add": "Add",

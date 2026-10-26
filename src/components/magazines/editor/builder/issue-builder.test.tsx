@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
 import type { MagazineIssue } from "@/payload-types";
 
-import { eventView, forumThreadView } from "../../test-fixtures";
+import {
+  eventView,
+  forumThreadView,
+  launchpadProjectView,
+} from "../../test-fixtures";
 import { renderWithIntl } from "../../test-intl";
 
 const T0 = "2026-10-20T10:00:00.000Z";
@@ -853,6 +857,30 @@ describe("IssueBuilder", () => {
     expect(within(preview).queryByText("Thread 1")).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: "Member" }));
     expect(within(preview).getByText("Thread 1")).toBeInTheDocument();
+  });
+
+  it("flags members-only projects in the row and leaves them out of Visitor preview", () => {
+    trpc.editing = twoArticles({
+      issue: issue({ visibility: "public" }),
+      items: [
+        { ...launchpadProjectView(), itemId: "blk-project", membersOnly: true },
+      ],
+      storedItems: [
+        { kind: "launchpadProject", id: "blk-project", projectId: 7 },
+      ],
+    });
+    renderBuilder();
+    expect(
+      screen.getByText("Only members see this", { exact: false }),
+    ).toBeVisible();
+    const preview = screen.getByTestId("issue-preview");
+    expect(
+      within(preview).getByRole("link", { name: "Project 1", hidden: true }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));
+    expect(within(preview).queryByText("Project 1")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Member" }));
+    expect(within(preview).getByText("Project 1")).toBeInTheDocument();
   });
 
   it("previews and publishes for who can really read it after a community became unlisted", async () => {

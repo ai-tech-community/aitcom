@@ -15,6 +15,7 @@ vi.mock("@/i18n/navigation", () => ({
 
 import {
   articleView,
+  launchpadProjectView,
   editorialView,
   eventView,
   forumThreadView,
@@ -35,6 +36,7 @@ describe("issue item registry", () => {
       "editorial",
       "event",
       "forumThread",
+      "launchpadProject",
       "newsItem",
       "storyline",
     ]);
@@ -308,4 +310,45 @@ describe("forum thread cards", () => {
     expect(screen.getByText("Door Sanne")).toBeInTheDocument();
     expect(screen.getByText("42 reacties")).toBeInTheDocument();
   });
+});
+
+it("renders a project with its existing stage label, pitch, votes, byline and intro", () => {
+  renderWithIntl(
+    <IssueItem
+      view={{ ...launchpadProjectView(), intro: "Our pick" }}
+      lead={false}
+      href={href}
+    />,
+  );
+  expect(screen.getByText("Launchpad project")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Project 1" })).toHaveAttribute(
+    "href",
+    "/launchpad/project-1",
+  );
+  expect(screen.getByText("Build together.")).toHaveClass("line-clamp-3");
+  expect(screen.getByText("Prototype")).toBeInTheDocument();
+  expect(screen.getByText("120 upvotes")).toHaveClass("font-mono");
+  expect(screen.getByText("By Sanne")).toBeInTheDocument();
+  expect(screen.getByText("Our pick")).toBeInTheDocument();
+});
+
+it("renders Dutch project copy and an unclamped lead pitch without an absent author", () => {
+  render(
+    <NextIntlClientProvider locale="nl" messages={nl}>
+      <IssueItem
+        view={launchpadProjectView(2, {
+          voteCount: 1,
+          authorName: null,
+          stage: "idea",
+        })}
+        lead={true}
+        href={href}
+      />
+    </NextIntlClientProvider>,
+  );
+  expect(screen.getByText("Launchpad-project")).toBeInTheDocument();
+  expect(screen.getByText("Idee")).toBeInTheDocument();
+  expect(screen.getByText("1 stem")).toHaveClass("font-mono");
+  expect(screen.getByText("Build together.")).not.toHaveClass("line-clamp-3");
+  expect(screen.queryByText(/Sanne/)).toBeNull();
 });
