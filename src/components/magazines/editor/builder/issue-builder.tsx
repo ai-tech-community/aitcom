@@ -49,8 +49,8 @@ type EditingData = RouterOutputs["magazines"]["getIssueForEditing"];
 
 const SLUG_MIN = 3;
 const SLUG_MAX = 60;
-/** Characters of an editorial block's text that name its row. */
-const ROW_TEXT_CHARS = 60;
+/** Most characters of an editorial block's text that name its row (CSS truncates the rest). */
+const ROW_TEXT_CHARS = 120;
 
 function detailsOf(issue: MagazineIssue): IssueDetailsDraft {
   return {

@@ -61,16 +61,14 @@ export function EditorialItemEditor({
         <p id={bodyLabelId} className="text-sm leading-none font-medium">
           {t("body")}
         </p>
-        <div className="rounded-md border px-3 py-2">
-          {/* Keyed by item: each block starts its own editor. */}
-          <RichTextEditor
-            key={item.key}
-            initialValue={item.body}
-            onChange={(body) => onChange({ body })}
-            placeholder={t("bodyPlaceholder")}
-            contentClassName="min-h-32"
-          />
-        </div>
+        {/* Keyed by item: each block starts its own editor. */}
+        <RichTextEditor
+          key={item.key}
+          initialValue={item.body}
+          onChange={(body) => onChange({ body })}
+          placeholder={t("bodyPlaceholder")}
+          contentClassName="min-h-32"
+        />
       </div>
       <Button
         type="button"

@@ -208,13 +208,11 @@ export function IssueDetails({
         <p id={noteLabelId} className="text-sm leading-none font-medium">
           {t("editorNote")}
         </p>
-        <div className="rounded-md border px-3 py-2">
-          <RichTextEditor
-            initialValue={initialEditorNote}
-            onChange={(state) => onChange({ editorNote: state })}
-            contentClassName="min-h-24"
-          />
-        </div>
+        <RichTextEditor
+          initialValue={initialEditorNote}
+          onChange={(state) => onChange({ editorNote: state })}
+          contentClassName="min-h-24"
+        />
         <p id={noteHintId} className="text-muted-foreground text-sm">
           {t("editorNoteHint")}
         </p>
