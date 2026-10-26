@@ -36,11 +36,14 @@ describe("listApprovedPublicStartupSlugs", () => {
       { slug: "filled", description: "a".repeat(80), openRoleCount: 0 },
       { slug: "hiring", description: "Hi", openRoleCount: 1 },
       { slug: "not a slug", description: "a".repeat(80), openRoleCount: 0 },
+      { slug: "kueez", description: null, openRoleCount: 0 },
+      { slug: "blank-co", description: null, openRoleCount: 0 },
     ];
 
     await expect(listApprovedPublicStartupSlugs()).resolves.toEqual([
       "filled",
       "hiring",
+      "kueez",
     ]);
   });
 });

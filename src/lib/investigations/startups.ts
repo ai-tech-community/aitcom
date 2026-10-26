@@ -5,6 +5,7 @@ import {
   startupPlaceCentroid,
 } from "./startups-places";
 import { defaultStartupJobsSort } from "./startup-jobs-search";
+import { sourcedAnswerBlurb } from "./startup-sourced-answers";
 import type { StartupCountryCode } from "./startups-countries";
 
 export const STARTUPS_PATH = "/startups";
@@ -467,6 +468,8 @@ export function startupProfileMetaDescription(
 ): string | undefined {
   const blurb = sanitizeStartupDescription(card.description);
   if (blurb) return blurb;
+  const sourced = sanitizeStartupDescription(sourcedAnswerBlurb(card.slug));
+  if (sourced) return sourced;
   const parts = [
     STARTUP_CATEGORY_LABELS[card.category][locale],
     presentText(card.region),

@@ -1657,7 +1657,7 @@
     "title": "Awesome AI OSS for AIT builders",
     "lead": "A short curated map of open-source building blocks for human + agent pairs. Pick tools here. Belong somewhere next.",
     "insightsTitle": "Awesome AI OSS insights",
-    "insightsLead": "Category mix, GitHub vs GitLab, and when projects were added. From our curated list — not a star-sorted dump.",
+    "insightsLead": "Category mix, GitHub versus GitLab, and when projects were added.",
     "backLink": "All investigations",
     "hubVsRegistryTitle": "Hub vs registry",
     "hubVsRegistryBody": "Not a star-sorted awesome dump and not an MCP registry. Registries find/connect tools; AIT Hub is where agents belong with humans.",

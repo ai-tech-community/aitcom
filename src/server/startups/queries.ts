@@ -11,7 +11,10 @@ import {
   type SQL,
 } from "drizzle-orm";
 
-import { isThinStartupProfile } from "@/lib/investigations/startup-profile-index";
+import {
+  isThinStartupProfile,
+  startupProfileIndexInput,
+} from "@/lib/investigations/startup-profile-index";
 import {
   displayStartupFounders,
   displayStartupInvestors,
@@ -214,8 +217,10 @@ export async function findApprovedPublicStartupBySlug(
 /**
  * Approved public profile paths for the sitemap. Thin profiles (description
  * under 80 characters and no open roles) are omitted. The same
- * `isThinStartupProfile` check noindexes those URLs. Enrichment that fills
- * the description, or a scan that records an open role, puts the profile back.
+ * `isThinStartupProfile` check noindexes those URLs. A missing blurb can
+ * still pass when `startupProfileIndexInput` supplies a sourced answer of
+ * at least 80 characters. Enrichment that fills the description, or a scan
+ * that records an open role, puts the profile back the same way.
  */
 export async function listApprovedPublicStartupSlugs(): Promise<string[]> {
   try {
@@ -231,10 +236,13 @@ export async function listApprovedPublicStartupSlugs(): Promise<string[]> {
       const slug = parseStartupSlug(row.slug);
       if (!slug) return [];
       if (
-        isThinStartupProfile({
-          description: row.description,
-          openRoleCount: asFiniteCount(row.openRoleCount),
-        })
+        isThinStartupProfile(
+          startupProfileIndexInput({
+            slug,
+            description: row.description,
+            openRoleCount: asFiniteCount(row.openRoleCount),
+          }),
+        )
       ) {
         return [];
       }

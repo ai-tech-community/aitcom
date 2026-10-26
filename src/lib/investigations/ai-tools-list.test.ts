@@ -58,6 +58,8 @@ describe("AI tools list copy", () => {
     expect(description).not.toMatch(NOTES);
     expect(title).not.toMatch(NOTES);
     expect(description).not.toMatch(/AI TOOLS LIST/);
+    expect(description).not.toContain("AIAI.Tools");
+    expect(aiToolsListCopy("nl").description).not.toContain("AIAI.Tools");
   });
 
   it("has a Dutch counterpart for the same route", () => {
