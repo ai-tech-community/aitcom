@@ -10,11 +10,19 @@ import {
   AI_TOOLS_LIST_COPY,
   AI_TOOLS_LIST_PATH,
   AI_TOOLS_LIST_TOOLS,
+  aiToolsHubPageHref,
+  aiToolsHubProfileHref,
+  aiToolsHubProfileUrl,
   aiToolsListCopy,
   aiToolsListJsonLd,
+  aiToolsOnPage,
+  isAiToolsHubStartup,
 } from "./ai-tools-list";
 
-const state = vi.hoisted(() => ({ locale: "en" as "en" | "nl" }));
+const state = vi.hoisted(() => ({
+  locale: "en" as "en" | "nl",
+  cards: [] as Array<{ name: string; slug: string }>,
+}));
 
 vi.mock("server-only", () => ({}));
 
@@ -34,6 +42,7 @@ vi.mock("@/server/better-auth/server", () => ({
 vi.mock("@/server/startups/queries", () => ({
   findApprovedPublicStartupBySlug: async () => null,
   listOpenStartupRolesForCompany: async () => [],
+  listAiToolsHubStartups: async () => state.cards,
 }));
 
 vi.mock("@/server/news/startup-links", () => ({
@@ -49,6 +58,7 @@ const dir = dirname(fileURLToPath(import.meta.url));
 
 beforeEach(() => {
   state.locale = "en";
+  state.cards = [];
 });
 
 describe("AI tools list copy", () => {
@@ -108,7 +118,9 @@ describe("AI tools list hreflang", () => {
 
 describe("AI tools list metadata", () => {
   it("indexes the English page with a self canonical and no noindex", async () => {
-    const meta = await generateMetadata();
+    const meta = await generateMetadata({
+      searchParams: Promise.resolve({}),
+    });
     expect(meta.title).toBe("AI tools");
     expect(meta.description).toBe(AI_TOOLS_LIST_COPY.en.description);
     expect(meta.robots).toEqual({ index: true, follow: true });
@@ -120,12 +132,34 @@ describe("AI tools list metadata", () => {
 
   it("keeps the Dutch page self-canonical", async () => {
     state.locale = "nl";
-    const meta = await generateMetadata();
+    const meta = await generateMetadata({
+      searchParams: Promise.resolve({}),
+    });
     expect(meta.title).toBe("AI-tools");
     expect(meta.robots).toEqual({ index: true, follow: true });
     expect(meta.alternates?.canonical).toBe(
       `${CANONICAL_PRODUCTION_ORIGIN}/nl${AI_TOOLS_LIST_PATH}`,
     );
+  });
+
+  it("keeps a later page self-canonical and links the previous page", async () => {
+    state.cards = Array.from({ length: 25 }, (_, index) => ({
+      name: `Startup ${index + 1}`,
+      slug: `startup-${index + 1}`,
+    }));
+    const meta = await generateMetadata({
+      searchParams: Promise.resolve({ page: "2" }),
+    });
+    const pageUrl = `${CANONICAL_PRODUCTION_ORIGIN}/en${AI_TOOLS_LIST_PATH}?page=2`;
+    expect(meta.alternates?.canonical).toBe(pageUrl);
+    expect(meta.alternates?.languages).toMatchObject({
+      en: pageUrl,
+      nl: `${CANONICAL_PRODUCTION_ORIGIN}/nl${AI_TOOLS_LIST_PATH}?page=2`,
+    });
+    expect(meta.pagination).toEqual({
+      previous: `${CANONICAL_PRODUCTION_ORIGIN}/en${AI_TOOLS_LIST_PATH}`,
+    });
+    expect(meta.robots).toEqual({ index: true, follow: true });
   });
 });
 
@@ -164,6 +198,104 @@ describe("AI tools list structured data", () => {
     expect(listed.url).toBe(
       `${CANONICAL_PRODUCTION_ORIGIN}/nl${AI_TOOLS_LIST_PATH}`,
     );
+
+    const pageTwo = aiToolsListJsonLd(
+      "en",
+      [
+        {
+          name: "Later",
+          url: "https://www.aitcommunity.org/en/startups/later",
+        },
+      ],
+      2,
+    );
+    expect(pageTwo.url).toBe(
+      `${CANONICAL_PRODUCTION_ORIGIN}/en${AI_TOOLS_LIST_PATH}?page=2`,
+    );
+  });
+
+  it("keeps only named tools with an http(s) URL", () => {
+    expect(
+      aiToolsOnPage([
+        { name: "Writer", url: "https://example.com/writer" },
+        { name: "  ", url: "https://example.com/blank" },
+        { name: "Skipped", url: "javascript:alert(1)" },
+      ]),
+    ).toEqual([{ name: "Writer", url: "https://example.com/writer" }]);
+  });
+});
+
+describe("AI tools hub startup set", () => {
+  const long = "a".repeat(80);
+  const short = "a".repeat(79);
+
+  it("keeps indexable agents and models and drops thin or other categories", () => {
+    expect(
+      isAiToolsHubStartup({
+        slug: "agent-co",
+        category: "agents",
+        description: long,
+        openRoleCount: 0,
+      }),
+    ).toBe(true);
+    expect(
+      isAiToolsHubStartup({
+        slug: "agent-co",
+        category: "agents",
+        description: short,
+        openRoleCount: 0,
+      }),
+    ).toBe(false);
+    expect(
+      isAiToolsHubStartup({
+        slug: "agent-co",
+        category: "agents",
+        description: `  ${short}  `,
+        openRoleCount: 0,
+      }),
+    ).toBe(false);
+    expect(
+      isAiToolsHubStartup({
+        slug: "agent-co",
+        category: "agents",
+        description: "Hi",
+        openRoleCount: 1,
+      }),
+    ).toBe(true);
+    expect(
+      isAiToolsHubStartup({
+        slug: "model-co",
+        category: "models",
+        description: long,
+        openRoleCount: 0,
+      }),
+    ).toBe(true);
+    expect(
+      isAiToolsHubStartup({
+        slug: "vert",
+        category: "vertical",
+        description: long,
+        openRoleCount: 0,
+      }),
+    ).toBe(false);
+    expect(
+      isAiToolsHubStartup({
+        slug: "blank",
+        category: "agents",
+        description: "",
+        openRoleCount: 0,
+      }),
+    ).toBe(false);
+  });
+
+  it("links a startup to its locale profile", () => {
+    expect(aiToolsHubProfileHref("en", "acme")).toBe("/en/startups/acme");
+    expect(aiToolsHubProfileHref("nl", "acme")).toBe("/nl/startups/acme");
+    expect(aiToolsHubProfileUrl("nl", "acme")).toBe(
+      `${CANONICAL_PRODUCTION_ORIGIN}/nl/startups/acme`,
+    );
+    expect(aiToolsHubPageHref("en", 1)).toBe(`/en${AI_TOOLS_LIST_PATH}`);
+    expect(aiToolsHubPageHref("nl", 2)).toBe(`/nl${AI_TOOLS_LIST_PATH}?page=2`);
   });
 });
 
@@ -183,5 +315,7 @@ describe("AI tools list route", () => {
     expect(page).not.toContain("StartupsProfilePage");
     expect(page).not.toContain("findApprovedPublicStartupBySlug");
     expect(page).not.toContain("startupProfileJsonLd");
+    expect(page).toContain("listAiToolsHubStartups");
+    expect(page).toContain("paginateStartupCards");
   });
 });
