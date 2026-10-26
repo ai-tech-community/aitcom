@@ -35,7 +35,7 @@ function matches(article: FakeArticle, where: Where | undefined): boolean {
     );
   }
   if (Array.isArray(where.and)) {
-    return where.and.every((clause) => matches(article, clause as Where));
+    return where.and.every((clause) => matches(article, clause));
   }
   const slug = (where.slug as { equals?: string } | undefined)?.equals;
   if (slug !== undefined) return article.slug === slug;
