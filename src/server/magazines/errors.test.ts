@@ -20,15 +20,21 @@ describe("magazineError", () => {
   });
 
   it("lets the caller override the tRPC code", () => {
-    expect(magazineError("ISSUE_EMPTY", { trpcCode: "PRECONDITION_FAILED" }).code).toBe(
-      "PRECONDITION_FAILED",
-    );
+    expect(
+      magazineError("ISSUE_EMPTY", { trpcCode: "PRECONDITION_FAILED" }).code,
+    ).toBe("PRECONDITION_FAILED");
   });
 
   it("carries the item index for the error formatter", () => {
-    expect(magazineErrorItemIndex(magazineError("ITEM_INVALID", { itemIndex: 2 }))).toBe(2);
-    expect(magazineErrorItemIndex(magazineError("ITEM_INVALID", { itemIndex: 0 }))).toBe(0);
+    expect(
+      magazineErrorItemIndex(magazineError("ITEM_INVALID", { itemIndex: 2 })),
+    ).toBe(2);
+    expect(
+      magazineErrorItemIndex(magazineError("ITEM_INVALID", { itemIndex: 0 })),
+    ).toBe(0);
     expect(magazineErrorItemIndex(magazineError("ISSUE_EMPTY"))).toBeNull();
-    expect(magazineErrorItemIndex(new TRPCError({ code: "BAD_REQUEST" }))).toBeNull();
+    expect(
+      magazineErrorItemIndex(new TRPCError({ code: "BAD_REQUEST" })),
+    ).toBeNull();
   });
 });

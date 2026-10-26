@@ -58,29 +58,88 @@ describe("resolveMagazineIssueAccess", () => {
     // [label, role, listed, status, visibility, confirmedAt, expected]
     ["editor sees a draft", "owner", true, "draft", "members", null, "editor"],
     ["admin is editor", "admin", false, "published", "members", null, "editor"],
-    ["moderator is a reader", "moderator", true, "draft", "members", null, "none"],
-    ["member reads a members issue", "member", false, "published", "members", null, "full"],
-    ["outsider: members issue is hidden", null, true, "published", "members", null, "none"],
-    ["outsider reads public in a listed community", null, true, "published", "public", null, "full"],
-    ["outsider: unconfirmed public in an unlisted community is members-only", null, false, "published", "public", null, "none"],
-    ["outsider reads confirmed public in an unlisted community", null, false, "published", "public", CONFIRMED, "full"],
-    ["nobody but editors sees a draft", "member", true, "draft", "public", null, "none"],
-  ])("resolver: %s", (_label, role, listed, status, visibility, confirmedAt, expected) => {
-    expect(
-      resolveMagazineIssueAccess(
-        input({ role, listed, status, visibility, confirmedAt }),
-      ),
-    ).toBe(expected);
-  });
+    [
+      "moderator is a reader",
+      "moderator",
+      true,
+      "draft",
+      "members",
+      null,
+      "none",
+    ],
+    [
+      "member reads a members issue",
+      "member",
+      false,
+      "published",
+      "members",
+      null,
+      "full",
+    ],
+    [
+      "outsider: members issue is hidden",
+      null,
+      true,
+      "published",
+      "members",
+      null,
+      "none",
+    ],
+    [
+      "outsider reads public in a listed community",
+      null,
+      true,
+      "published",
+      "public",
+      null,
+      "full",
+    ],
+    [
+      "outsider: unconfirmed public in an unlisted community is members-only",
+      null,
+      false,
+      "published",
+      "public",
+      null,
+      "none",
+    ],
+    [
+      "outsider reads confirmed public in an unlisted community",
+      null,
+      false,
+      "published",
+      "public",
+      CONFIRMED,
+      "full",
+    ],
+    [
+      "nobody but editors sees a draft",
+      "member",
+      true,
+      "draft",
+      "public",
+      null,
+      "none",
+    ],
+  ])(
+    "resolver: %s",
+    (_label, role, listed, status, visibility, confirmedAt, expected) => {
+      expect(
+        resolveMagazineIssueAccess(
+          input({ role, listed, status, visibility, confirmedAt }),
+        ),
+      ).toBe(expected);
+    },
+  );
 
   it("a deleted or missing community is none for everyone, editors included", () => {
     for (const role of ["owner", "admin", "member", null] as const) {
-      expect(
-        resolveMagazineIssueAccess(input({ role, deleted: true })),
-      ).toBe("none");
-      expect(
-        resolveMagazineIssueAccess(input({ role, community: null })),
-      ).toBe("none");
+      expect(resolveMagazineIssueAccess(input({ role, deleted: true }))).toBe(
+        "none",
+      );
+      expect(resolveMagazineIssueAccess(input({ role, community: null }))).toBe(
+        "none",
+      );
     }
   });
 
@@ -108,9 +167,15 @@ describe("effectiveVisibility", () => {
   });
 
   it("counts an unconfirmed public issue as members in a content-private community", () => {
-    expect(effectiveVisibility(issue("public", null), unlisted)).toBe("members");
-    expect(effectiveVisibility(issue("public", CONFIRMED), unlisted)).toBe("public");
-    expect(effectiveVisibility(issue("members", CONFIRMED), unlisted)).toBe("members");
+    expect(effectiveVisibility(issue("public", null), unlisted)).toBe(
+      "members",
+    );
+    expect(effectiveVisibility(issue("public", CONFIRMED), unlisted)).toBe(
+      "public",
+    );
+    expect(effectiveVisibility(issue("members", CONFIRMED), unlisted)).toBe(
+      "members",
+    );
   });
 });
 

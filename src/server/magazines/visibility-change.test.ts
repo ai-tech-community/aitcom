@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { planVisibilityChange, type VisibilityRecord } from "./visibility-change";
+import {
+  planVisibilityChange,
+  type VisibilityRecord,
+} from "./visibility-change";
 
 const NOW = new Date("2026-10-26T12:00:00.000Z");
 const ACTOR = "editor-1";
@@ -91,7 +94,11 @@ describe("planVisibilityChange", () => {
         }),
       ).toEqual({
         ok: true,
-        record: { visibility: "public", publicConfirmedBy: null, publicConfirmedAt: null },
+        record: {
+          visibility: "public",
+          publicConfirmedBy: null,
+          publicConfirmedAt: null,
+        },
       });
     }
   });
