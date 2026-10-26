@@ -1,32 +1,6 @@
-import type { Block, CollectionConfig } from "payload";
-import {
-  BlocksFeature,
-  CodeBlock,
-  lexicalEditor,
-} from "@payloadcms/richtext-lexical";
+import type { CollectionConfig } from "payload";
 
-const ImageBlock: Block = {
-  slug: "Image",
-  fields: [
-    { name: "src", type: "text", required: true },
-    { name: "alt", type: "text" },
-  ],
-};
-// Add bash to the language list (not in Monaco defaults, but Shiki supports it)
-const codeLanguages = {
-  bash: "Bash",
-  css: "CSS",
-  html: "HTML",
-  javascript: "JavaScript",
-  json: "JSON",
-  markdown: "Markdown",
-  plaintext: "Plain Text",
-  python: "Python",
-  shell: "Shell",
-  sql: "SQL",
-  typescript: "TypeScript",
-  yaml: "YAML",
-};
+import { articleRichTextEditor } from "./shared/article-rich-text";
 
 export const Articles: CollectionConfig = {
   slug: "articles",
@@ -149,14 +123,7 @@ export const Articles: CollectionConfig = {
       type: "richText",
       required: true,
       localized: true,
-      editor: lexicalEditor({
-        features: ({ defaultFeatures }) => [
-          ...defaultFeatures,
-          BlocksFeature({
-            blocks: [CodeBlock({ languages: codeLanguages }), ImageBlock],
-          }),
-        ],
-      }),
+      editor: articleRichTextEditor,
     },
     {
       name: "type",
@@ -210,5 +177,26 @@ export const Articles: CollectionConfig = {
       admin: { position: "sidebar" },
     },
     { name: "publishedAt", type: "date", admin: { position: "sidebar" } },
+    {
+      name: "magazine",
+      type: "relationship",
+      relationTo: "magazines",
+      index: true,
+      admin: {
+        position: "sidebar",
+        description: "Set for articles written for a community magazine.",
+      },
+    },
+    {
+      name: "magazineIssue",
+      type: "relationship",
+      relationTo: "magazine-issues",
+      index: true,
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description: "Set by the issue builder",
+      },
+    },
   ],
 };
