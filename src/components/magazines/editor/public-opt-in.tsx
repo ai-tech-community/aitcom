@@ -9,7 +9,7 @@ import type { CommunityVisibility } from "@/server/communities/content-visibilit
 import {
   planVisibilityChange,
   type VisibilityRecord,
-} from "@/server/magazines/visibility-change";
+} from "@/lib/magazines/visibility";
 
 /**
  * Whether saving `next` needs the editor's opt-in, by the same rule the

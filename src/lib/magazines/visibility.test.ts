@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
+import type { IssueVisibility } from "./values";
+
 import {
+  effectiveVisibility,
   planVisibilityChange,
   type VisibilityRecord,
-} from "./visibility-change";
+} from "./visibility";
 
 const NOW = new Date("2026-10-26T12:00:00.000Z");
 const ACTOR = "editor-1";
@@ -101,5 +104,38 @@ describe("planVisibilityChange", () => {
         },
       });
     }
+  });
+});
+
+describe("effectiveVisibility", () => {
+  const issue = (visibility: IssueVisibility, confirmedAt: string | null) => ({
+    status: "published" as const,
+    visibility,
+    publicConfirmedAt: confirmedAt,
+  });
+  const listed = { slug: "garden-club", isListedInDirectory: true };
+  const unlisted = { slug: "garden-club", isListedInDirectory: false };
+
+  it("is the stored value in a content-public community", () => {
+    expect(effectiveVisibility(issue("public", null), listed)).toBe("public");
+    expect(effectiveVisibility(issue("members", null), listed)).toBe("members");
+  });
+
+  it("counts an unconfirmed public issue as members in a content-private community", () => {
+    expect(effectiveVisibility(issue("public", null), unlisted)).toBe(
+      "members",
+    );
+    expect(
+      effectiveVisibility(
+        issue("public", "2026-10-20T09:00:00.000Z"),
+        unlisted,
+      ),
+    ).toBe("public");
+    expect(
+      effectiveVisibility(
+        issue("members", "2026-10-20T09:00:00.000Z"),
+        unlisted,
+      ),
+    ).toBe("members");
   });
 });

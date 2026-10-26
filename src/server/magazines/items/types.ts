@@ -1,6 +1,7 @@
 import type { z } from "zod";
 
 import type { AppLocale } from "@/i18n/messages";
+import type { IssueReaderAccess } from "@/lib/magazines/access";
 import type {
   ItemKindId,
   ItemProblem,
@@ -18,8 +19,12 @@ export type ItemContext = {
   /** Null while the issue is not saved yet. */
   issueId: number | null;
   locale: AppLocale;
-  /** A magazine editor: sees latest draft text and unavailable markers. */
-  editor: boolean;
+  /**
+   * The viewer's access to the issue. Strategies decide per level with an
+   * exhaustive `switch`, so a new level (slice 6 `teaser`) is a compile
+   * error in every kind until the kind decides what it shows.
+   */
+  access: IssueReaderAccess;
 };
 
 type IssueItemBlock = NonNullable<MagazineIssue["items"]>[number];

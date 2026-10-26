@@ -86,5 +86,12 @@ export const editorialItemKind: IssueItemKind<
     return views;
   },
 
-  isReadable: () => true,
+  // The issue's own text: every level that may read the issue reads it.
+  isReadable: (_view, ctx) => {
+    switch (ctx.access) {
+      case "full":
+      case "editor":
+        return true;
+    }
+  },
 };

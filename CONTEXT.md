@@ -1018,9 +1018,10 @@ code checks "is this a magazine article?" to change behaviour. See
 A person who may create and change a [[magazine]] and its [[issue]]s, write and
 mark [[magazine-article]]s ready, and see drafts and unavailable items. Today
 this is an **active owner or admin** of the magazine's [[Community]];
-moderators and members are readers. One predicate (`isMagazineEditorRole`)
-decides it, so per-magazine staff roles (editor-in-chief, editor, contributor)
-can replace it later without touching the access rules.
+moderators and members are readers. One loader (`loadMagazineEditorship`,
+with its batched twin `loadEditorScope`) decides it, so per-magazine staff
+roles (editor-in-chief, editor, contributor) can replace it later without
+touching the access rules or any caller.
 
 ## Benchmark domain
 

@@ -2,6 +2,10 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Where } from "payload";
 
 import type { AppLocale } from "@/i18n/messages";
+import {
+  articleTextModeFor,
+  type IssueReaderAccess,
+} from "@/lib/magazines/access";
 import type {
   ArticleItemView,
   EditorItemView,
@@ -12,6 +16,7 @@ import {
   type IssueStatus,
   type IssueVisibility,
 } from "@/lib/magazines/values";
+import { effectiveVisibility } from "@/lib/magazines/visibility";
 import type { Article, Magazine, MagazineIssue } from "@/payload-types";
 import {
   canReadContent,
@@ -20,13 +25,8 @@ import {
 import { communities } from "@/server/db/schema";
 
 import type { Deps } from "./deps";
-import {
-  effectiveVisibility,
-  issueAccessFacts,
-  isMagazineEditorRole,
-  type MagazineIssueAccess,
-  resolveMagazineIssueAccess,
-} from "./issue-access";
+import { loadMagazineEditorship } from "./editorship";
+import { issueAccessFacts, resolveMagazineIssueAccess } from "./issue-access";
 import { loadIssueItemViews, type StoredBlock } from "./items/registry";
 import { getMagazineForCommunity, normalizeTopics } from "./magazine-service";
 import {
@@ -35,7 +35,6 @@ import {
   readableIssueWhere,
 } from "./readable-issues";
 import { relationIdOrNull } from "./relation-id";
-import { activeCommunityRole } from "./viewer-role";
 
 /**
  * Read models for the magazine reading pages (ADR-0042): the `/magazines`
@@ -88,8 +87,7 @@ export type MagazineCard = MagazineSummary & {
   latest: IssueCard;
 };
 
-/** What a reader may do with an issue page that answers (never `none`). */
-export type IssueReaderAccess = Exclude<MagazineIssueAccess, "none">;
+export type { IssueReaderAccess } from "@/lib/magazines/access";
 
 /** Issues in "Just published" on the home, besides the featured one. */
 const JUST_PUBLISHED_COUNT = 4;
@@ -450,16 +448,16 @@ export async function loadCommunityMagazineTab(
   if (!community) return null;
   const magazine = await getMagazineForCommunity(deps.payload, community.id);
   if (!magazine) {
-    const role = await activeCommunityRole(
+    const standing = await loadMagazineEditorship(
       deps.db,
-      community.id,
+      { communityId: community.id, magazineId: null },
       opts.viewerId,
     );
     return {
       magazine: null,
       latest: null,
       issues: [],
-      viewerIsEditor: isMagazineEditorRole(role),
+      viewerIsEditor: standing.isEditor,
     };
   }
   const shelf = await loadShelf(
@@ -507,7 +505,7 @@ async function loadReadableIssue(
 ): Promise<ReadableIssue | null> {
   const magazine = await findMagazineBySlug(deps.payload, opts.magazineSlug);
   if (!magazine) return null;
-  const [{ docs }, communitiesById, role] = await Promise.all([
+  const [{ docs }, communitiesById, viewer] = await Promise.all([
     deps.payload.find({
       collection: "magazine-issues",
       where: {
@@ -522,7 +520,11 @@ async function loadReadableIssue(
       locale: opts.locale,
     }),
     liveCommunitiesById(deps.db, [magazine.communityId]),
-    activeCommunityRole(deps.db, magazine.communityId, opts.viewerId),
+    loadMagazineEditorship(
+      deps.db,
+      { communityId: magazine.communityId, magazineId: magazine.id },
+      opts.viewerId,
+    ),
   ]);
   const issue = docs[0];
   const community = communitiesById.get(magazine.communityId);
@@ -531,7 +533,7 @@ async function loadReadableIssue(
   if (!facts) return null;
 
   const access = resolveMagazineIssueAccess({
-    viewer: { userId: opts.viewerId, role },
+    viewer,
     community: { ...community, deleted: false },
     issue: facts,
   });
@@ -560,7 +562,7 @@ function itemViewsOf(
     magazineId: found.magazine.id,
     issueId: found.issue.id,
     locale,
-    editor: found.access === "editor",
+    access: found.access,
   });
 }
 
@@ -662,7 +664,7 @@ export async function loadMagazineArticlePage(
   const found = await loadReadableIssue(deps, opts);
   if (!found) return null;
   const { access, magazine, community, issue } = found;
-  const editor = access === "editor";
+  const textMode = articleTextModeFor(access);
 
   const { docs } = await deps.payload.find({
     collection: "articles",
@@ -673,7 +675,7 @@ export async function loadMagazineArticlePage(
         { magazineIssue: { equals: issue.id } },
       ],
     },
-    draft: editor,
+    draft: textMode === "latest_draft",
     depth: 0,
     limit: 1,
     pagination: false,
@@ -681,7 +683,7 @@ export async function loadMagazineArticlePage(
   });
   const article = docs[0];
   if (!article) return null;
-  if (!editor && article.status !== "published") return null;
+  if (textMode === "published" && article.status !== "published") return null;
 
   const articles = (await itemViewsOf(deps, found, opts.locale)).filter(
     isArticleView,

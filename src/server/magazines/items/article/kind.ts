@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { estimateReadingTime, extractPlainText } from "@/lib/lexical";
+import type { IssueReaderAccess } from "@/lib/magazines/access";
 import type { ItemProblem, UnavailableItem } from "@/lib/magazines/item-views";
 import type { Article } from "@/payload-types";
 
@@ -36,6 +37,25 @@ function excerptOf(content: unknown): string {
   return words.length > EXCERPT_WORDS
     ? `${words.slice(0, EXCERPT_WORDS).join(" ")}…`
     : words.join(" ");
+}
+
+/**
+ * How an access level reads the articles of an issue. Exhaustive: a new
+ * level is a compile error here until this kind decides what it shows.
+ * - full:   the published document; an unpublished article is a marker
+ *           (readers never see it, preflight F2)
+ * - editor: the latest draft text, published or not
+ */
+function articleReadingFor(access: IssueReaderAccess): {
+  draft: boolean;
+  showsUnpublished: boolean;
+} {
+  switch (access) {
+    case "full":
+      return { draft: false, showsUnpublished: false };
+    case "editor":
+      return { draft: true, showsUnpublished: true };
+  }
 }
 
 /** The articles behind a batch of items, by id: one query. */
@@ -127,8 +147,8 @@ export const articleItemKind: IssueItemKind<
   },
 
   async load(items, ctx) {
-    // Editors preview the latest text; readers read the published document.
-    const articles = await findArticles(items, ctx, ctx.editor);
+    const reading = articleReadingFor(ctx.access);
+    const articles = await findArticles(items, ctx, reading.draft);
     const views = new Map<string, ItemViewOf<"article"> | UnavailableItem>();
     for (const stored of items) {
       const itemId = itemIdOf(stored);
@@ -146,7 +166,7 @@ export const articleItemKind: IssueItemKind<
         views.set(itemId, unavailable("missing"));
       } else if (relationIdOrNull(article.magazine) !== ctx.magazineId) {
         views.set(itemId, unavailable("other_magazine"));
-      } else if (!ctx.editor && article.status !== "published") {
+      } else if (!reading.showsUnpublished && article.status !== "published") {
         // A magazine article is published with its issue; until then
         // readers never see it (preflight F2).
         views.set(itemId, unavailable("not_ready"));
@@ -170,7 +190,13 @@ export const articleItemKind: IssueItemKind<
     return views;
   },
 
-  // `load` already turns unpublished articles into `not_ready` markers for
-  // readers, so every loaded article view is readable.
-  isReadable: () => true,
+  // `load` already turns what a level may not see into markers
+  // (`articleReadingFor`), so every loaded article view is readable.
+  isReadable: (_view, ctx) => {
+    switch (ctx.access) {
+      case "full":
+      case "editor":
+        return true;
+    }
+  },
 };

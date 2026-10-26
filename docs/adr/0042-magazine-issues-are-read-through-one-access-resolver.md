@@ -37,12 +37,14 @@ resolver" under "Decided structure"; "Visibility rules").
 
 1. **One resolver.** `resolveMagazineIssueAccess(input)` in
    `src/server/magazines/issue-access.ts` is a pure function that returns
-   `none | full | editor`. `loadMagazineIssueAccess(db, issue, viewerId)`
-   loads the community (including `deletedAt`) and the viewer's membership and
+   `none | full | editor` (the union lives in `src/lib/magazines/access.ts`,
+   shared with item strategies and components).
+   `loadMagazineIssueAccess(db, issue, viewerId)` loads the community
+   (including `deletedAt`) and the viewer's standing in the magazine and
    calls it. The rules, in order:
    1. the community is missing or deleted → `none`;
-   2. the viewer is a [[magazine-editor]] (`isMagazineEditorRole(role)`: an
-      active owner or admin in slice 1) → `editor`;
+   2. the viewer is a [[magazine-editor]] (`standing.isEditor`: an active
+      owner or admin in slice 1) → `editor`;
    3. the issue is not `published` → `none`;
    4. the viewer is an active member of the community → `full`;
    5. the issue's effective visibility is `public` → `full`;
@@ -51,14 +53,27 @@ resolver" under "Decided structure"; "Visibility rules").
    `none` is answered as "not found", never "forbidden", so a members-only
    issue is not confirmed to exist. `editor` is about *seeing* (drafts,
    unavailable-item markers, latest draft text), not a separate reading page.
-   `isMagazineEditorRole` is the single seam that slice 3 replaces with
-   per-magazine staff roles; moderators are readers.
+   Moderators are readers.
+
+   **The editorship seam.** The resolver takes the viewer's standing
+   (`{ isEditor, isMember }`), never a community role. The standing comes
+   from one loader in `src/server/magazines/editorship.ts`:
+   `loadMagazineEditorship(db, { communityId, magazineId }, userId)` for one
+   magazine and its batched twin `loadEditorScope(db, userId)` for the read
+   scope. Every editor gate goes through them: the resolver's loader, the
+   reading pages and Magazine tab, the builder, write and edit page gates,
+   the article-editing gate and the tRPC `editorProcedure`. Slice 3 changes
+   these two loaders to read per-magazine staff rows; no caller changes.
 
 2. **The access union grows with the visibility list.** Slice 1 has two issue
    visibilities, `members | public`. Slice 6 adds `teaser` to **both** the
    visibility list and the access union (`none | teaser | full | editor`) in
-   the same change. Every surface handles access with an exhaustive `switch`,
-   so the compiler lists each surface that must decide what a teaser shows.
+   the same change. Every surface handles access with an exhaustive `switch`
+   (or a `Record` over the union), never `access === "editor"`, so the
+   compiler lists each surface that must decide what a teaser shows: the
+   item strategies receive the access value (`ItemContext.access`) and switch
+   on it in `load` and `isReadable`; read models and components ask
+   `articleTextModeFor(access)` and `seesEditorLayer(access)`.
    We do not declare `teaser` now: a value with no behaviour would be handled
    by guesswork.
 
@@ -90,7 +105,8 @@ resolver" under "Decided structure"; "Visibility rules").
 
    For a magazine issue, an editor of an unlisted (content-private) community
    may choose `public`. The rule lives in one pure function,
-   `effectiveVisibility(issue, community)`, used by the resolver, mirrored by
+   `effectiveVisibility(issue, community)` in the client-safe
+   `src/lib/magazines/visibility.ts`, used by the resolver, mirrored by
    `readableIssueWhere`, and used by every surface that shows a visibility
    (issue cards on the shelf, the builder, settings):
 
@@ -110,7 +126,7 @@ resolver" under "Decided structure"; "Visibility rules").
    `publicConfirmedBy` and `publicConfirmedAt`. Choosing `public` in a
    content-private community without confirming is refused
    (`CONFIRM_UNLISTED_PUBLIC`); `planVisibilityChange` in
-   `src/server/magazines/visibility-change.ts` is the one place that writes
+   `src/lib/magazines/visibility.ts` is the one place that writes
    the record. Choosing `members` clears it, so going back to `public` asks
    again. A new issue created from a confirmed public default copies the
    magazine's confirmation. Because an unconfirmed `public` issue counts as
@@ -176,8 +192,10 @@ resolver" under "Decided structure"; "Visibility rules").
   this slice.
 - **Slice 6 work is mechanical.** Adding `teaser` widens two unions; the
   compiler then names every surface that must render a teaser.
-- **Slice 3 replaces one predicate.** Per-magazine staff roles replace
-  `isMagazineEditorRole`; the resolver's rule order stays.
+- **Slice 3 replaces one loader.** Per-magazine staff roles change
+  `loadMagazineEditorship` and `loadEditorScope` in
+  `src/server/magazines/editorship.ts`; callers, the resolver and its rule
+  order stay. The parity test's viewer matrix must then gain staff viewers.
 - **ADR-0030 gains one documented exception.** Any other community content
   that wants an unlisted opt-in needs its own ADR; this one covers magazine
   issues only.

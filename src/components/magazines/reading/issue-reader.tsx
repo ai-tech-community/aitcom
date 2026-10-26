@@ -5,6 +5,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 import type { AppLocale } from "@/i18n/messages";
 import { Link } from "@/i18n/navigation";
 import { LexicalRenderer } from "@/lib/lexical";
+import { seesEditorLayer } from "@/lib/magazines/access";
 import { issueBuilderPath, magazineArticlePath } from "@/lib/magazines/paths";
 import type { IssuePageData } from "@/server/magazines/reading";
 
@@ -102,7 +103,7 @@ export function IssueReader({
         </aside>
 
         <article className="@container flex min-w-0 flex-col gap-8">
-          {access === "editor" && (
+          {seesEditorLayer(access) && (
             <EditorBar
               draft={issue.status === "draft"}
               communitySlug={community.slug}

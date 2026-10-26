@@ -6,10 +6,9 @@ import type { Article, Magazine } from "@/payload-types";
 import { communities } from "@/server/db/schema";
 
 import type { Deps, PayloadClient } from "./deps";
-import { isMagazineEditorRole } from "./issue-access";
+import { loadMagazineEditorship } from "./editorship";
 import { getMagazineForCommunity } from "./magazine-service";
 import { relationIdOrNull } from "./relation-id";
-import { activeCommunityRole } from "./viewer-role";
 
 /**
  * Magazine articles from the editor's side (ADR-0043): who may write them,
@@ -20,9 +19,16 @@ import { activeCommunityRole } from "./viewer-role";
 /** An approved article an editor can still place in an issue. */
 export type AvailableMagazineArticle = {
   id: number;
+  slug: string;
   title: string;
   authorName: string | null;
   updatedAt: string;
+  /**
+   * Whether the viewer may open it in the article editor: the edit page's
+   * gate (`loadMagazineArticleForEditing`) beyond editorship, which every
+   * caller of this list already has: the viewer wrote it.
+   */
+  editableByViewer: boolean;
 };
 
 /** One of the editor's own magazine articles that is not ready yet. */
@@ -50,9 +56,9 @@ async function isLiveCommunity(
 }
 
 /**
- * The magazine and whether the user is an editor of its community (an
- * active owner or admin of a live community, today). Null when the
- * magazine does not exist. The one editor check for magazine articles.
+ * The magazine and whether the user edits it (the editorship seam, on a
+ * live community). Null when the magazine does not exist. The one editor
+ * check for magazine articles.
  */
 async function loadMagazineEditing(
   deps: Deps,
@@ -70,10 +76,15 @@ async function loadMagazineEditing(
           disableErrors: true,
         });
   if (!doc) return null;
-  const role = (await isLiveCommunity(deps.db, doc.communityId))
-    ? await activeCommunityRole(deps.db, doc.communityId, userId)
-    : null;
-  return { magazine: doc, isEditor: isMagazineEditorRole(role) };
+  if (!(await isLiveCommunity(deps.db, doc.communityId))) {
+    return { magazine: doc, isEditor: false };
+  }
+  const standing = await loadMagazineEditorship(
+    deps.db,
+    { communityId: doc.communityId, magazineId: doc.id },
+    userId,
+  );
+  return { magazine: doc, isEditor: standing.isEditor };
 }
 
 /**
@@ -125,12 +136,16 @@ export async function loadMagazineWriting(
     columns: { id: true },
   });
   if (!community) return null;
-  const [role, magazine] = await Promise.all([
-    activeCommunityRole(deps.db, community.id, opts.viewerId),
-    getMagazineForCommunity(deps.payload, community.id),
-  ]);
-  if (!magazine || !isMagazineEditorRole(role)) return null;
-  return { magazineId: magazine.id, magazineName: magazine.name };
+  const magazine = await getMagazineForCommunity(deps.payload, community.id);
+  if (!magazine) return null;
+  const standing = await loadMagazineEditorship(
+    deps.db,
+    { communityId: community.id, magazineId: magazine.id },
+    opts.viewerId,
+  );
+  return standing.isEditor
+    ? { magazineId: magazine.id, magazineName: magazine.name }
+    : null;
 }
 
 /**
@@ -156,14 +171,19 @@ export async function loadMagazineArticleForEditing(
   const article = docs[0];
   if (!article) return null;
   const isOwnArticleHere =
-    article.authorId === opts.viewerId &&
+    isEditableBy(article, opts.viewerId) &&
     relationIdOrNull(article.magazine) === writing.magazineId;
   return isOwnArticleHere ? { ...writing, article } : null;
 }
 
+/**
+ * The magazine's approved, unplaced articles, for an editor of the
+ * magazine (`viewerId`).
+ */
 export async function listAvailableArticles(
   payload: PayloadClient,
   magazineId: number,
+  viewerId: string,
 ): Promise<AvailableMagazineArticle[]> {
   const { docs } = await payload.find({
     collection: "articles",
@@ -182,10 +202,25 @@ export async function listAvailableArticles(
   });
   return docs.map((doc) => ({
     id: doc.id,
+    slug: doc.slug,
     title: doc.title,
     authorName: doc.authorName ?? null,
     updatedAt: doc.updatedAt,
+    editableByViewer: isEditableBy(doc, viewerId),
   }));
+}
+
+/**
+ * The part of the edit page's gate an article list can answer for an
+ * editor of its magazine: the viewer wrote it. Shared with
+ * `loadMagazineArticleForEditing`, so a link is offered exactly when the
+ * page will open.
+ */
+function isEditableBy(
+  article: Pick<Article, "authorId">,
+  viewerId: string | null,
+): boolean {
+  return viewerId !== null && article.authorId === viewerId;
 }
 
 /** Not approved: never submitted (null), sent back, or refused. */

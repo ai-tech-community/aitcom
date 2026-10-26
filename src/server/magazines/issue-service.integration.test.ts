@@ -970,7 +970,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
         magazineId: mag.id,
         issueId: issueA.id,
         locale: "en",
-        editor: false,
+        access: "full",
       },
     );
     expect(readerViews.map((v) => v.kind)).toEqual(["editorial"]);

@@ -31,7 +31,7 @@ import {
 } from "./payload-writes";
 import type { MagazineCommunity } from "./magazine-service";
 import { requireRelationId } from "./relation-id";
-import { planVisibilityChange } from "./visibility-change";
+import { planVisibilityChange } from "@/lib/magazines/visibility";
 
 /** Who is writing, and the community the issue belongs to. */
 export type IssueActor = { userId: string; community: MagazineCommunity };
@@ -181,7 +181,7 @@ async function assertItemsValid(
     issueId: issue.id,
     // Validation reads review state and placement, not text.
     locale: routing.defaultLocale,
-    editor: true,
+    access: "editor",
   });
   if (problem) throw problemError(problem);
 }

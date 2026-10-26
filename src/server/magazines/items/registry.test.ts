@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { IssueReaderAccess } from "@/lib/magazines/access";
+
 import type { PayloadClient } from "../deps";
 import { ISSUE_ITEM_BLOCKS } from "./blocks";
 import {
@@ -59,8 +61,8 @@ function fakePayload(articles: FakeArticle[]) {
   return { payload: { find } as unknown as PayloadClient, find };
 }
 
-function ctx(payload: PayloadClient, editor: boolean): ItemContext {
-  return { payload, magazineId: MAGAZINE_ID, issueId: 1, locale: "en", editor };
+function ctx(payload: PayloadClient, access: IssueReaderAccess): ItemContext {
+  return { payload, magazineId: MAGAZINE_ID, issueId: 1, locale: "en", access };
 }
 
 function articleBlock(id: string, articleId: number): StoredBlock {
@@ -136,7 +138,7 @@ describe("issue item registry", () => {
         editorialBlock("e2", "   "),
         { ...editorialBlock("e3"), body: { root: { children: [] } } },
       ],
-      ctx(payload, true),
+      ctx(payload, "editor"),
     );
     expect(problems).toEqual([
       { itemIndex: 1, code: "ITEM_INVALID" },
@@ -161,7 +163,7 @@ describe("issue item registry", () => {
         editorialBlock("e2"),
         articleBlock("a3", 3),
       ],
-      ctx(payload, false),
+      ctx(payload, "full"),
     );
 
     expect(articleLoad).toHaveBeenCalledTimes(1);
@@ -194,7 +196,7 @@ describe("issue item registry", () => {
     const reader = fakePayload(articles);
     const readerViews = await loadIssueItemViews(
       blocks,
-      ctx(reader.payload, false),
+      ctx(reader.payload, "full"),
     );
     expect(reader.find).toHaveBeenCalledWith(
       expect.objectContaining({ draft: false }),
@@ -225,7 +227,7 @@ describe("issue item registry", () => {
     const editor = fakePayload(articles);
     const editorViews = await loadIssueItemViews(
       blocks,
-      ctx(editor.payload, true),
+      ctx(editor.payload, "editor"),
     );
     expect(editor.find).toHaveBeenCalledWith(
       expect.objectContaining({ draft: true }),
@@ -242,9 +244,9 @@ describe("issue item registry", () => {
     vi.spyOn(ITEM_KINDS.editorial, "isReadable").mockReturnValue(false);
     const blocks = [editorialBlock("e1")];
 
-    expect(await loadIssueItemViews(blocks, ctx(payload, false))).toEqual([]);
+    expect(await loadIssueItemViews(blocks, ctx(payload, "full"))).toEqual([]);
     expect(
-      (await loadIssueItemViews(blocks, ctx(payload, true))).map(
+      (await loadIssueItemViews(blocks, ctx(payload, "editor"))).map(
         (v) => v.itemId,
       ),
     ).toEqual(["e1"]);

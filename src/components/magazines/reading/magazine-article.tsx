@@ -11,6 +11,7 @@ import {
   extractHeadings,
   LexicalRenderer,
 } from "@/lib/lexical";
+import { seesEditorLayer } from "@/lib/magazines/access";
 import {
   isMagazineArticleIndexable,
   isMagazineArticleOut,
@@ -213,7 +214,7 @@ export function MagazineArticle({
       )}
       <div className="flex justify-center gap-12">
         <article className="flex w-full max-w-[72ch] min-w-0 flex-col gap-8">
-          {access === "editor" && !readersSeeIt && (
+          {seesEditorLayer(access) && !readersSeeIt && (
             <p className="bg-secondary/60 text-muted-foreground rounded-lg border px-4 py-2.5 text-sm">
               {t("draftNotice")}
             </p>

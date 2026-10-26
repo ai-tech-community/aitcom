@@ -6,11 +6,14 @@ import {
   MAGAZINE_SLUG_PATTERN,
   MAX_MAGAZINE_TOPICS,
 } from "@/lib/magazines/values";
-import type { Magazine, MagazineIssue } from "@/payload-types";
+import type { Magazine } from "@/payload-types";
 import { communityProcedure, createTRPCRouter } from "@/server/api/trpc";
 import { isContentPublic } from "@/server/communities/content-visibility";
 import type { Deps, PayloadClient } from "@/server/magazines/deps";
-import { requireMagazineEditor } from "@/server/magazines/issue-access";
+import {
+  loadMagazineEditorship,
+  requireEditorStanding,
+} from "@/server/magazines/editorship";
 import {
   findIssueInCommunity,
   listMagazineIssues,
@@ -93,20 +96,54 @@ const issueDetailsInput = issueWrite.extend({
 
 const MAX_ISSUE_ITEMS = 50;
 
-/** Every procedure below: a community procedure for magazine editors only. */
-const editorProcedure = communityProcedure.use(({ ctx, next }) => {
-  requireMagazineEditor(ctx.communityRole);
-  return next();
+/**
+ * Every procedure below: a community procedure for magazine editors only,
+ * gated by the editorship seam. The community's magazine (null until the
+ * first settings save creates it) and the Payload client go on `ctx`.
+ */
+const editorProcedure = communityProcedure.use(async ({ ctx, next }) => {
+  const payload = await getPayloadClient();
+  const magazine = await getMagazineForCommunity(payload, ctx.community.id);
+  requireEditorStanding(
+    await loadMagazineEditorship(
+      ctx.db,
+      { communityId: ctx.community.id, magazineId: magazine?.id ?? null },
+      ctx.session.user.id,
+    ),
+  );
+  return next({ ctx: { payload, magazine } });
 });
+
+/**
+ * An editor procedure on one issue of THIS community: the issue is loaded
+ * here and put on `ctx`, and an id of another community's issue (or of no
+ * issue) is NOT_FOUND. Every issue-scoped procedure is built on it, so the
+ * community boundary is structural, not a call each procedure must
+ * remember.
+ */
+const issueProcedure = editorProcedure
+  .input(issueRef)
+  .use(async ({ ctx, input, next }) => {
+    const issue = await findIssueInCommunity(
+      ctx.payload,
+      input.issueId,
+      ctx.community.id,
+    );
+    if (!issue) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Issue not found" });
+    }
+    return next({ ctx: { issue } });
+  });
 
 type EditorCtx = {
   db: Deps["db"];
+  payload: PayloadClient;
   session: { user: { id: string } };
   community: { id: string; slug: string; isListedInDirectory: boolean };
 };
 
-async function depsOf(ctx: EditorCtx): Promise<Deps> {
-  return { db: ctx.db, payload: await getPayloadClient() };
+function depsOf(ctx: EditorCtx): Deps {
+  return { db: ctx.db, payload: ctx.payload };
 }
 
 function communityOf(ctx: EditorCtx): MagazineCommunity {
@@ -121,51 +158,32 @@ function actorOf(ctx: EditorCtx): IssueActor {
   return { userId: ctx.session.user.id, community: communityOf(ctx) };
 }
 
-async function requireMagazine(
-  payload: PayloadClient,
-  communityId: string,
-): Promise<Magazine> {
-  const magazine = await getMagazineForCommunity(payload, communityId);
+function requireMagazine(magazine: Magazine | null): Magazine {
   if (!magazine) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Magazine not found" });
   }
   return magazine;
 }
 
-async function requireIssue(
-  payload: PayloadClient,
-  issueId: number,
-  communityId: string,
-): Promise<MagazineIssue> {
-  const issue = await findIssueInCommunity(payload, issueId, communityId);
-  if (!issue) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Issue not found" });
-  }
-  return issue;
-}
-
 export const magazinesRouter = createTRPCRouter({
   getSettings: editorProcedure
     .input(z.object({ slug: z.string() }))
-    .query(async ({ ctx }) => {
-      const payload = await getPayloadClient();
-      return {
-        magazine: await getMagazineForCommunity(payload, ctx.community.id),
-        communityIsPrivate: !isContentPublic(ctx.community),
-        // What the settings form runs `planVisibilityChange` against, so it
-        // asks for the opt-in exactly when the save would.
-        community: {
-          slug: ctx.community.slug,
-          isListedInDirectory: ctx.community.isListedInDirectory,
-        },
-      };
-    }),
+    .query(({ ctx }) => ({
+      magazine: ctx.magazine,
+      communityIsPrivate: !isContentPublic(ctx.community),
+      // What the settings form runs `planVisibilityChange` against, so it
+      // asks for the opt-in exactly when the save would.
+      community: {
+        slug: ctx.community.slug,
+        isListedInDirectory: ctx.community.isListedInDirectory,
+      },
+    })),
 
   saveSettings: editorProcedure
     .input(settingsInput)
     .mutation(async ({ ctx, input }) => {
       return saveMagazineSettings(
-        await depsOf(ctx),
+        depsOf(ctx),
         communityOf(ctx),
         {
           name: input.name,
@@ -182,11 +200,9 @@ export const magazinesRouter = createTRPCRouter({
 
   listIssues: editorProcedure
     .input(z.object({ slug: z.string() }))
-    .query(async ({ ctx }) => {
-      const payload = await getPayloadClient();
-      const magazine = await getMagazineForCommunity(payload, ctx.community.id);
-      return magazine ? listMagazineIssues(payload, magazine.id) : [];
-    }),
+    .query(async ({ ctx }) =>
+      ctx.magazine ? listMagazineIssues(ctx.payload, ctx.magazine.id) : [],
+    ),
 
   createIssue: editorProcedure
     .input(
@@ -196,49 +212,33 @@ export const magazinesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const deps = await depsOf(ctx);
-      const magazine = await requireMagazine(deps.payload, ctx.community.id);
       const issue = await createIssue(
-        deps,
-        magazine,
+        depsOf(ctx),
+        requireMagazine(ctx.magazine),
         { title: input.title },
         actorOf(ctx),
       );
       return { id: issue.id };
     }),
 
-  getIssueForEditing: editorProcedure
-    .input(issueRef)
-    .query(async ({ ctx, input }) => {
-      const payload = await getPayloadClient();
-      const issue = await requireIssue(
-        payload,
-        input.issueId,
-        ctx.community.id,
-      );
-      const magazine = await requireMagazine(payload, ctx.community.id);
-      return {
-        ...(await loadIssueEditorView(payload, issue)),
-        magazine: { name: magazine.name, slug: magazine.slug },
-        communityIsPrivate: !isContentPublic(ctx.community),
-        // What the builder runs `planVisibilityChange` against, so it asks
-        // for the opt-in exactly when the save would.
-        community: {
-          slug: ctx.community.slug,
-          isListedInDirectory: ctx.community.isListedInDirectory,
-        },
-      };
-    }),
+  getIssueForEditing: issueProcedure.query(async ({ ctx }) => {
+    const magazine = requireMagazine(ctx.magazine);
+    return {
+      ...(await loadIssueEditorView(ctx.payload, ctx.issue)),
+      magazine: { name: magazine.name, slug: magazine.slug },
+      communityIsPrivate: !isContentPublic(ctx.community),
+      // What the builder runs `planVisibilityChange` against, so it asks
+      // for the opt-in exactly when the save would.
+      community: {
+        slug: ctx.community.slug,
+        isListedInDirectory: ctx.community.isListedInDirectory,
+      },
+    };
+  }),
 
-  updateIssue: editorProcedure
+  updateIssue: issueProcedure
     .input(issueDetailsInput)
     .mutation(async ({ ctx, input }) => {
-      const deps = await depsOf(ctx);
-      const issue = await requireIssue(
-        deps.payload,
-        input.issueId,
-        ctx.community.id,
-      );
       const patch: IssueDetailsPatch = {
         title: input.title,
         slug: input.issueSlug,
@@ -248,80 +248,67 @@ export const magazinesRouter = createTRPCRouter({
         confirmUnlistedPublic: input.confirmUnlistedPublic,
       };
       return updateIssueDetails(
-        deps,
-        issue,
+        depsOf(ctx),
+        ctx.issue,
         patch,
         input.expectedUpdatedAt,
         actorOf(ctx),
       );
     }),
 
-  setIssueItems: editorProcedure
+  setIssueItems: issueProcedure
     .input(
       issueWrite.extend({
         items: z.array(issueItemInputSchema).max(MAX_ISSUE_ITEMS),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const deps = await depsOf(ctx);
-      const issue = await requireIssue(
-        deps.payload,
-        input.issueId,
-        ctx.community.id,
-      );
       const saved = await setIssueItems(
-        deps,
-        issue,
+        depsOf(ctx),
+        ctx.issue,
         input.items,
         input.expectedUpdatedAt,
         actorOf(ctx),
       );
       return {
         issue: saved,
-        items: await loadEditorItems(deps.payload, saved),
+        items: await loadEditorItems(ctx.payload, saved),
       };
     }),
 
-  publishIssue: editorProcedure
+  publishIssue: issueProcedure
     .input(issueWrite)
-    .mutation(async ({ ctx, input }) => {
-      const deps = await depsOf(ctx);
-      const issue = await requireIssue(
-        deps.payload,
-        input.issueId,
-        ctx.community.id,
-      );
-      return publishIssue(deps, issue, input.expectedUpdatedAt, actorOf(ctx));
-    }),
+    .mutation(async ({ ctx, input }) =>
+      publishIssue(
+        depsOf(ctx),
+        ctx.issue,
+        input.expectedUpdatedAt,
+        actorOf(ctx),
+      ),
+    ),
 
-  deleteDraftIssue: editorProcedure
-    .input(issueRef)
-    .mutation(async ({ ctx, input }) => {
-      const deps = await depsOf(ctx);
-      const issue = await requireIssue(
-        deps.payload,
-        input.issueId,
-        ctx.community.id,
-      );
-      await deleteDraftIssue(deps, issue, actorOf(ctx));
-      return { ok: true as const };
-    }),
+  deleteDraftIssue: issueProcedure.mutation(async ({ ctx }) => {
+    await deleteDraftIssue(depsOf(ctx), ctx.issue, actorOf(ctx));
+    return { ok: true as const };
+  }),
 
   availableArticles: editorProcedure
     .input(z.object({ slug: z.string() }))
-    .query(async ({ ctx }) => {
-      const payload = await getPayloadClient();
-      const magazine = await getMagazineForCommunity(payload, ctx.community.id);
-      return magazine ? listAvailableArticles(payload, magazine.id) : [];
-    }),
+    .query(async ({ ctx }) =>
+      ctx.magazine
+        ? listAvailableArticles(
+            ctx.payload,
+            ctx.magazine.id,
+            ctx.session.user.id,
+          )
+        : [],
+    ),
 
   myDraftArticles: editorProcedure
     .input(z.object({ slug: z.string() }))
-    .query(async ({ ctx }) => {
-      const payload = await getPayloadClient();
-      const magazine = await getMagazineForCommunity(payload, ctx.community.id);
-      return magazine
-        ? listDraftArticles(payload, magazine.id, ctx.session.user.id)
-        : [];
-    }),
+    .query(async ({ ctx }) =>
+      ctx.magazine
+        ? listDraftArticles(ctx.payload, ctx.magazine.id, ctx.session.user.id)
+        : [],
+    ),
 });

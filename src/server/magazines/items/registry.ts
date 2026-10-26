@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { seesEditorLayer } from "@/lib/magazines/access";
 import type {
   EditorItemView,
   ItemKindId,
@@ -164,7 +165,7 @@ async function loadKind<K extends ItemKindId>(
     );
   const shown = new Map<string, EditorItemView>();
   for (const [itemId, view] of views) {
-    if (ctx.editor) {
+    if (seesEditorLayer(ctx.access)) {
       shown.set(itemId, view);
     } else if (!isUnavailable(view) && strategy.isReadable(view, ctx)) {
       shown.set(itemId, view);
@@ -200,7 +201,7 @@ export async function loadIssueItemViews(
     const view = loaded.get(block.blockType)?.get(itemId);
     if (view) {
       views.push(view);
-    } else if (ctx.editor) {
+    } else if (seesEditorLayer(ctx.access)) {
       // A strategy that returns nothing for an item: mark it, never hide it
       // from the editor.
       views.push({

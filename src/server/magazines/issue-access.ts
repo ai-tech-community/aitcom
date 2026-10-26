@@ -1,57 +1,35 @@
-import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 
+import type { MagazineIssueAccess } from "@/lib/magazines/access";
 import {
   ISSUE_STATUSES,
   ISSUE_VISIBILITIES,
   type IssueStatus,
   type IssueVisibility,
 } from "@/lib/magazines/values";
-import {
-  type CommunityVisibility,
-  isContentPublic,
-} from "@/server/communities/content-visibility";
-import type { CommunityRole } from "@/server/communities/role-utils";
+import { effectiveVisibility } from "@/lib/magazines/visibility";
+import type { CommunityVisibility } from "@/server/communities/content-visibility";
 import type { db } from "@/server/db";
 import { communities } from "@/server/db/schema";
 
-import { activeCommunityRole } from "./viewer-role";
+import {
+  loadMagazineEditorship,
+  type MagazineStanding,
+  NO_STANDING,
+} from "./editorship";
+import { relationIdOrNull } from "./relation-id";
 
 /**
  * Who may read a magazine issue (ADR-0042). The single source of the issue
- * read rules; `readableIssueWhere` is its query twin, pinned by a parity test.
- *
- * - none   — may not know the issue exists (callers answer NOT_FOUND)
- * - full   — may read the published issue
- * - editor — a magazine editor: sees drafts, unavailable-item markers and
- *            the latest draft text
- *
- * Slice 6 adds `teaser` here and to `ISSUE_VISIBILITIES` in the same change;
- * every surface switches exhaustively over this union.
+ * read rules; `readableIssueWhere` is its query twin, pinned by a parity
+ * test. The access union itself is shared with every layer from
+ * `@/lib/magazines/access`.
  */
-export type MagazineIssueAccess = "none" | "full" | "editor";
-
-const EDITOR_ROLES: ReadonlySet<CommunityRole> = new Set(["owner", "admin"]);
-
-/**
- * Whether an active community role edits the community's magazine. Slice 1:
- * owner or admin; moderators are readers. Slice 3 replaces this predicate
- * with per-magazine staff roles.
- */
-export function isMagazineEditorRole(role: CommunityRole | null): boolean {
-  return role !== null && EDITOR_ROLES.has(role);
-}
-
-/** The gate for every magazine editing procedure: non-editors get FORBIDDEN. */
-export function requireMagazineEditor(role: CommunityRole | null): void {
-  if (!isMagazineEditorRole(role)) {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
-}
+export type { MagazineIssueAccess } from "@/lib/magazines/access";
 
 export type IssueAccessInput = {
-  /** `role` is the viewer's active membership role, or null. */
-  viewer: { userId: string | null; role: CommunityRole | null };
+  /** The viewer's standing in the issue's magazine (`./editorship`). */
+  viewer: MagazineStanding;
   community: (CommunityVisibility & { deleted: boolean }) | null;
   issue: {
     status: IssueStatus;
@@ -60,39 +38,21 @@ export type IssueAccessInput = {
   };
 };
 
-/**
- * The visibility a non-member effectively gets (ADR-0042, Decision 5). In a
- * content-public community (the Hub or a listed community) it is the stored
- * value. In a content-private community, `public` counts only when a
- * confirmation is recorded; an unconfirmed public issue counts as members.
- */
-export function effectiveVisibility(
-  issue: Pick<IssueAccessInput["issue"], "visibility" | "publicConfirmedAt">,
-  community: CommunityVisibility,
-): IssueVisibility {
-  switch (issue.visibility) {
-    case "members":
-      return "members";
-    case "public":
-      return isContentPublic(community) || issue.publicConfirmedAt
-        ? "public"
-        : "members";
-  }
-}
-
 export function resolveMagazineIssueAccess(
   input: IssueAccessInput,
 ): MagazineIssueAccess {
   const { viewer, community, issue } = input;
   if (community === null || community.deleted) return "none";
-  if (isMagazineEditorRole(viewer.role)) return "editor";
+  if (viewer.isEditor) return "editor";
   if (issue.status !== "published") return "none";
-  if (viewer.role !== null) return "full";
+  if (viewer.isMember) return "full";
   return effectiveVisibility(issue, community) === "public" ? "full" : "none";
 }
 
 export type LoadableIssue = {
   communityId: string;
+  /** The issue's magazine (id or populated); null only for a broken row. */
+  magazine?: unknown;
   status: string;
   visibility: string;
   publicConfirmedAt?: string | null;
@@ -112,7 +72,7 @@ function isIssueVisibility(value: string): value is IssueVisibility {
  * that as `none`, so an unknown value never widens access.
  */
 export function issueAccessFacts(
-  issue: Omit<LoadableIssue, "communityId">,
+  issue: Omit<LoadableIssue, "communityId" | "magazine">,
 ): IssueAccessInput["issue"] | null {
   if (!isIssueStatus(issue.status) || !isIssueVisibility(issue.visibility)) {
     return null;
@@ -142,12 +102,19 @@ export async function loadMagazineIssueAccess(
     where: eq(communities.id, issue.communityId),
     columns: { slug: true, isListedInDirectory: true, deletedAt: true },
   });
-  const role = community
-    ? await activeCommunityRole(database, issue.communityId, viewerId)
-    : null;
+  const viewer = community
+    ? await loadMagazineEditorship(
+        database,
+        {
+          communityId: issue.communityId,
+          magazineId: relationIdOrNull(issue.magazine),
+        },
+        viewerId,
+      )
+    : NO_STANDING;
 
   return resolveMagazineIssueAccess({
-    viewer: { userId: viewerId, role },
+    viewer,
     community: community
       ? {
           slug: community.slug,

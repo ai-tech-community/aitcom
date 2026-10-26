@@ -311,11 +311,16 @@ describe.skipIf(!RUN_DB)(
       }
     });
 
-    it("an issue id from another community is NOT_FOUND", async () => {
+    it("every issue-scoped procedure refuses another community's issue with NOT_FOUND", async () => {
       await saveMagazine();
       const { id: issueId } = await callerAs(fx.ownerId).magazines.createIssue({
         slug: slug(),
         title: "Ours",
+      });
+      const before = await m.payload.findByID({
+        collection: "magazine-issues",
+        id: issueId,
+        depth: 0,
       });
       // The outsider owns the other community: an editor there, not here.
       await callerAs(fx.outsiderId).magazines.saveSettings({
@@ -326,18 +331,53 @@ describe.skipIf(!RUN_DB)(
         defaultVisibility: "members",
       });
       const theirs = callerAs(fx.outsiderId).magazines;
-      await expect(
-        theirs.getIssueForEditing({ slug: fx.other.slug, issueId }),
-      ).rejects.toMatchObject({ code: "NOT_FOUND" });
-      await expect(
-        theirs.deleteDraftIssue({ slug: fx.other.slug, issueId }),
-      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      const ref = { slug: fx.other.slug, issueId };
+      const write = { ...ref, expectedUpdatedAt: before.updatedAt };
+      const calls: [string, () => Promise<unknown>][] = [
+        ["getIssueForEditing", () => theirs.getIssueForEditing(ref)],
+        [
+          "updateIssue",
+          () => theirs.updateIssue({ ...write, title: "Taken over" }),
+        ],
+        [
+          "setIssueItems",
+          () =>
+            theirs.setIssueItems({
+              ...write,
+              items: [
+                {
+                  kind: "editorial",
+                  heading: "Theirs",
+                  body: richText("Theirs"),
+                },
+              ],
+            }),
+        ],
+        ["publishIssue", () => theirs.publishIssue(write)],
+        ["deleteDraftIssue", () => theirs.deleteDraftIssue(ref)],
+      ];
+      for (const [name, call] of calls) {
+        await expect(call(), name).rejects.toMatchObject({
+          code: "NOT_FOUND",
+        });
+      }
       await expect(
         theirs.getIssueForEditing({
           slug: fx.other.slug,
           issueId: 999_999_999,
         }),
       ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+      // Nothing of it reached the issue.
+      const after = await m.payload.findByID({
+        collection: "magazine-issues",
+        id: issueId,
+        depth: 0,
+      });
+      expect(after.status).toBe("draft");
+      expect(after.title).toBe("Ours");
+      expect(after.items ?? []).toEqual([]);
+      expect(after.updatedAt).toBe(before.updatedAt);
     });
 
     it("full editor flow: settings → write → mark ready → add → publish", async () => {
@@ -388,9 +428,19 @@ describe.skipIf(!RUN_DB)(
       expect(available).toEqual([
         expect.objectContaining({
           id: article.id,
+          slug: article.slug,
           title: "Our first story",
           authorName: fx.ownerId,
+          // The owner wrote it, so the desk links it to the editor.
+          editableByViewer: true,
         }),
+      ]);
+      // Another editor of the magazine sees it, but cannot open it.
+      const asAdmin = await callerAs(fx.adminId).magazines.availableArticles({
+        slug: slug(),
+      });
+      expect(asAdmin).toEqual([
+        expect.objectContaining({ id: article.id, editableByViewer: false }),
       ]);
 
       const { id: issueId } = await owner.magazines.createIssue({

@@ -7,7 +7,7 @@ import type { MagazineIssue } from "@/payload-types";
 import { communities } from "@/server/db/schema";
 
 import type { Deps, PayloadClient } from "./deps";
-import { isMagazineEditorRole } from "./issue-access";
+import { loadMagazineEditorship } from "./editorship";
 import {
   type IssueItemInput,
   loadIssueItemViews,
@@ -16,8 +16,7 @@ import {
   validateIssueItems,
 } from "./items/registry";
 import type { ItemContext } from "./items/types";
-import { requireRelationId } from "./relation-id";
-import { activeCommunityRole } from "./viewer-role";
+import { relationIdOrNull, requireRelationId } from "./relation-id";
 
 /**
  * Editor-side reads of issues: what the issue list and the issue builder
@@ -88,11 +87,21 @@ export async function canEditIssueAt(
     columns: { id: true },
   });
   if (!community) return false;
-  const [role, issue] = await Promise.all([
-    activeCommunityRole(deps.db, community.id, opts.viewerId),
-    findIssueInCommunity(deps.payload, opts.issueId, community.id),
-  ]);
-  return issue !== null && isMagazineEditorRole(role);
+  const issue = await findIssueInCommunity(
+    deps.payload,
+    opts.issueId,
+    community.id,
+  );
+  if (!issue) return false;
+  const standing = await loadMagazineEditorship(
+    deps.db,
+    {
+      communityId: community.id,
+      magazineId: relationIdOrNull(issue.magazine),
+    },
+    opts.viewerId,
+  );
+  return standing.isEditor;
 }
 
 /** Every issue of the magazine, drafts included, newest number first. */
@@ -141,7 +150,7 @@ function editorContext(
     // The editor API reads and writes the default locale, like the
     // articles router.
     locale: routing.defaultLocale,
-    editor: true,
+    access: "editor",
   };
 }
 

@@ -2,6 +2,10 @@ import { and, desc, eq } from "drizzle-orm";
 
 import type { IssueVisibility } from "@/lib/magazines/values";
 import { MAX_MAGAZINE_TOPICS } from "@/lib/magazines/values";
+import {
+  planVisibilityChange,
+  type VisibilityRecord,
+} from "@/lib/magazines/visibility";
 import type { Magazine } from "@/payload-types";
 import type { db } from "@/server/db";
 import { spaces } from "@/server/db/schema";
@@ -9,10 +13,6 @@ import { spaces } from "@/server/db/schema";
 import type { Deps, PayloadClient } from "./deps";
 import { magazineError } from "./errors";
 import { uniqueViolationPath } from "./payload-writes";
-import {
-  planVisibilityChange,
-  type VisibilityRecord,
-} from "./visibility-change";
 
 export type MagazineSettingsInput = {
   name: string;

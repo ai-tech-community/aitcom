@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { HUB_SLUG } from "@/server/communities/hub";
 
+import { editorScopeOf } from "./editorship";
 import {
   buildIssueReadScope,
   type IssueReadScope,
@@ -137,44 +138,33 @@ describe("buildIssueReadScope", () => {
   const hub = { id: "c-hub", slug: HUB_SLUG, isListedInDirectory: false };
 
   it("the Hub is content-public although it is unlisted", () => {
-    const s = buildIssueReadScope(
-      [],
-      [
-        { ...hub, deletedAt: null },
-        { ...unlisted, deletedAt: null },
-        { ...listed, deletedAt: null },
-      ],
-    );
+    const s = buildIssueReadScope(editorScopeOf([]), [
+      { ...hub, deletedAt: null },
+      { ...unlisted, deletedAt: null },
+      { ...listed, deletedAt: null },
+    ]);
     expect(s.privateCommunityIds).toEqual(["c-unl"]);
     expect(s.deletedCommunityIds).toEqual([]);
   });
 
-  it("only active memberships count; owner and admin are editors", () => {
+  it("takes the editor and member ids from the editorship seam", () => {
     const s = buildIssueReadScope(
-      [
+      editorScopeOf([
         { communityId: "a", role: "owner", status: "active" },
-        { communityId: "b", role: "admin", status: "active" },
-        { communityId: "c", role: "moderator", status: "active" },
         { communityId: "d", role: "member", status: "active" },
-        { communityId: "e", role: "member", status: "pending_approval" },
-        { communityId: "f", role: "admin", status: "banned" },
-        { communityId: "g", role: "member", status: "invited" },
-      ],
+      ]),
       [],
     );
-    expect(s.editorCommunityIds).toEqual(["a", "b"]);
-    expect(s.memberCommunityIds).toEqual(["a", "b", "c", "d"]);
+    expect(s.editorCommunityIds).toEqual(["a"]);
+    expect(s.memberCommunityIds).toEqual(["a", "d"]);
   });
 
   it("a soft-deleted community is listed as deleted, listed or not", () => {
     const when = new Date("2026-01-01T00:00:00Z");
-    const s = buildIssueReadScope(
-      [],
-      [
-        { ...listed, deletedAt: when },
-        { ...hub, deletedAt: when },
-      ],
-    );
+    const s = buildIssueReadScope(editorScopeOf([]), [
+      { ...listed, deletedAt: when },
+      { ...hub, deletedAt: when },
+    ]);
     expect(s.deletedCommunityIds).toEqual(["c-listed", "c-hub"]);
     expect(s.privateCommunityIds).toEqual([]);
   });

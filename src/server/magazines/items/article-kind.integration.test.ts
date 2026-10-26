@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import type { IssueReaderAccess } from "@/lib/magazines/access";
 import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
 
@@ -207,9 +208,9 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
   function ctx(
     magazineId: number,
     issueId: number | null,
-    editor: boolean,
+    access: IssueReaderAccess,
   ): ItemContext {
-    return { payload: m.payload, magazineId, issueId, locale: "en", editor };
+    return { payload: m.payload, magazineId, issueId, locale: "en", access };
   }
 
   it("refuses an article from another magazine, one not approved, and one placed in another issue", async () => {
@@ -241,7 +242,7 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
     expect(
       await m.registry.validateIssueItems(
         blocks,
-        ctx(ours.id, thisIssue.id, true),
+        ctx(ours.id, thisIssue.id, "editor"),
       ),
     ).toEqual([
       { itemIndex: 0, code: "ITEM_INVALID" },
@@ -293,7 +294,7 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
       titles(
         await m.registry.loadIssueItemViews(
           blocks,
-          ctx(ours.id, saved.id, false),
+          ctx(ours.id, saved.id, "full"),
         ),
       ),
     ).toEqual(["published first text"]);
@@ -302,7 +303,7 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
       titles(
         await m.registry.loadIssueItemViews(
           blocks,
-          ctx(ours.id, saved.id, true),
+          ctx(ours.id, saved.id, "editor"),
         ),
       ),
     ).toEqual([`${unpublished} latest text`, `${published} latest text`]);

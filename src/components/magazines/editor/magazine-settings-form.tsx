@@ -22,7 +22,7 @@ import {
 import { slugify } from "@/lib/text-utils";
 import type { Magazine } from "@/payload-types";
 import type { CommunityVisibility } from "@/server/communities/content-visibility";
-import type { VisibilityRecord } from "@/server/magazines/visibility-change";
+import type { VisibilityRecord } from "@/lib/magazines/visibility";
 import { api } from "@/trpc/react";
 
 import { readEditorError } from "./editor-errors";

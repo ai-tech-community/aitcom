@@ -89,6 +89,7 @@ async function canReadMagazineArticle(
           disableErrors: true,
           select: {
             communityId: true,
+            magazine: true,
             status: true,
             visibility: true,
             publicConfirmedAt: true,

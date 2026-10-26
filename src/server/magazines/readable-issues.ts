@@ -2,13 +2,11 @@ import { eq, isNotNull, or } from "drizzle-orm";
 import type { Where } from "payload";
 
 import { isContentPublic } from "@/server/communities/content-visibility";
-import type { CommunityRole } from "@/server/communities/role-utils";
 import type { db } from "@/server/db";
-import { communities, communityMemberships } from "@/server/db/schema";
+import { communities } from "@/server/db/schema";
 
 import type { PayloadClient } from "./deps";
-import { isMagazineEditorRole } from "./issue-access";
-import { activeRoleOf } from "./viewer-role";
+import { type EditorScope, loadEditorScope } from "./editorship";
 
 /**
  * What a viewer may read across all magazine issues, as id lists a Payload
@@ -17,20 +15,14 @@ import { activeRoleOf } from "./viewer-role";
  * `issue-access.integration.test.ts` pins the two forms together.
  */
 export type IssueReadScope = {
-  /** Active owner/admin memberships: every issue, any status. */
+  /** Communities whose magazine the viewer edits: every issue, any status. */
   editorCommunityIds: readonly string[];
-  /** Active memberships, any role: published issues at any visibility. */
+  /** Active memberships: published issues at any visibility. */
   memberCommunityIds: readonly string[];
   /** Content-private: unlisted and not the Hub. */
   privateCommunityIds: readonly string[];
   /** Soft-deleted: no access for anyone, editors included. */
   deletedCommunityIds: readonly string[];
-};
-
-export type ScopeMembership = {
-  communityId: string;
-  role: CommunityRole;
-  status: string;
 };
 
 export type ScopeCommunity = {
@@ -41,24 +33,19 @@ export type ScopeCommunity = {
 };
 
 /**
- * The pure half of `loadIssueReadScope`. Uses the same predicates as the
- * resolver (`isMagazineEditorRole`, `isContentPublic`), so the Hub rule and
- * the editor rule have one definition. Communities that are listed and live
- * may be omitted from `rows`; they add nothing to the scope.
+ * The pure half of `loadIssueReadScope`. The editor and member ids come
+ * from the editorship seam (`loadEditorScope`), the private and deleted
+ * ids from the same predicate as the resolver (`isContentPublic`), so the
+ * Hub rule and the editor rule each have one definition. Communities that
+ * are listed and live may be omitted from `rows`; they add nothing.
  */
 export function buildIssueReadScope(
-  memberships: readonly ScopeMembership[],
+  standing: EditorScope,
   rows: readonly ScopeCommunity[],
 ): IssueReadScope {
-  const active = memberships.flatMap((ms) => {
-    const role = activeRoleOf(ms);
-    return role === null ? [] : [{ communityId: ms.communityId, role }];
-  });
   return {
-    editorCommunityIds: active
-      .filter((ms) => isMagazineEditorRole(ms.role))
-      .map((ms) => ms.communityId),
-    memberCommunityIds: active.map((ms) => ms.communityId),
+    editorCommunityIds: standing.editorCommunityIds,
+    memberCommunityIds: standing.memberCommunityIds,
     privateCommunityIds: rows
       .filter((c) => c.deletedAt === null && !isContentPublic(c))
       .map((c) => c.id),
@@ -69,26 +56,17 @@ export function buildIssueReadScope(
 }
 
 /**
- * The viewer's issue read scope: one membership query and one community
- * query (unlisted or soft-deleted rows). Like `hiddenContentCommunityIds`,
- * the id lists grow with the number of such communities; fine at today's
- * scale, keep it off per-row hot paths.
+ * The viewer's issue read scope: the viewer's editorship across magazines
+ * (one query) and one community query (unlisted or soft-deleted rows).
+ * Like `hiddenContentCommunityIds`, the id lists grow with the number of
+ * such communities; fine at today's scale, keep it off per-row hot paths.
  */
 export async function loadIssueReadScope(
   database: typeof db,
   viewerId: string | null,
 ): Promise<IssueReadScope> {
-  const [memberships, rows] = await Promise.all([
-    viewerId === null
-      ? Promise.resolve([])
-      : database
-          .select({
-            communityId: communityMemberships.communityId,
-            role: communityMemberships.role,
-            status: communityMemberships.status,
-          })
-          .from(communityMemberships)
-          .where(eq(communityMemberships.userId, viewerId)),
+  const [standing, rows] = await Promise.all([
+    loadEditorScope(database, viewerId),
     database
       .select({
         id: communities.id,
@@ -104,7 +82,7 @@ export async function loadIssueReadScope(
         ),
       ),
   ]);
-  return buildIssueReadScope(memberships, rows);
+  return buildIssueReadScope(standing, rows);
 }
 
 function allOf(...clauses: Where[]): Where {
