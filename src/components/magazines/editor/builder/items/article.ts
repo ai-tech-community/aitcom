@@ -1,8 +1,10 @@
+import { itemReference } from "@/lib/magazines/references";
+
 import type { BuilderItemKind } from "./types";
 
 /** The reference key of a magazine article (one article, one issue item). */
 export function articleReference(articleId: number): string {
-  return `article:${articleId}`;
+  return itemReference("article", articleId);
 }
 
 /**

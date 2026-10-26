@@ -20,6 +20,7 @@ import type * as ArticlePublication from "./article-publication";
 import type * as IssueService from "./issue-service";
 import type * as MagazineService from "./magazine-service";
 import type * as Registry from "./items/registry";
+import { itemContextFor } from "./items/context";
 
 /**
  * The real credit, with a switch that makes the next N credits throw AFTER
@@ -965,13 +966,14 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
 
     const readerViews = await m.registry.loadIssueItemViews(
       (trimmedA.items ?? []) as Registry.StoredBlock[],
-      {
-        payload: m.payload,
+      itemContextFor(m, {
         magazineId: mag.id,
+        community: c,
         issueId: issueA.id,
         locale: "en",
         access: "full",
-      },
+        viewerId: fx.userId,
+      }),
     );
     expect(readerViews.map((v) => v.kind)).toEqual(["editorial"]);
   });

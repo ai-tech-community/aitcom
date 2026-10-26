@@ -3,16 +3,16 @@ import { z } from "zod";
 import { lexicalHasText } from "@/lib/lexical-text";
 import type { ItemProblem } from "@/lib/magazines/item-views";
 
+import { introInput, itemBaseInput, storedIntro } from "../base-input";
 import { itemIdOf } from "../item-id";
 import type { IssueItemKind, ItemViewOf, StoredItem } from "../types";
 
 const editorialItemInput = z.object({
   kind: z.literal("editorial"),
-  id: z.string().optional(),
+  ...itemBaseInput,
   heading: z.string().max(160).optional(),
   /** Lexical editor state; `validate` checks it holds some text. */
   body: z.unknown(),
-  intro: z.string().max(280).optional(),
 });
 
 export type EditorialItemInput = z.infer<typeof editorialItemInput>;
@@ -32,7 +32,7 @@ export const editorialItemKind: IssueItemKind<
 
   toStored(input) {
     return {
-      intro: input.intro ?? null,
+      intro: storedIntro(input.intro),
       heading: input.heading ?? null,
       // The editor state is checked by `validate` and Payload's richText
       // field; its exact Lexical shape is the editor's business.
@@ -46,9 +46,11 @@ export const editorialItemKind: IssueItemKind<
       ...(stored.id ? { id: stored.id } : {}),
       ...(stored.heading ? { heading: stored.heading } : {}),
       body: stored.body,
-      ...(stored.intro ? { intro: stored.intro } : {}),
+      ...introInput(stored.intro),
     };
   },
+
+  referenceOf: () => null,
 
   async validate(items) {
     const problems: ItemProblem[] = [];

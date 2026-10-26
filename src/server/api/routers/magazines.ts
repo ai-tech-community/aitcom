@@ -229,7 +229,7 @@ export const magazinesRouter = createTRPCRouter({
   getIssueForEditing: issueProcedure.query(async ({ ctx }) => {
     const magazine = requireMagazine(ctx.magazine);
     const [view, editableArticles] = await Promise.all([
-      loadIssueEditorView(ctx.payload, ctx.issue),
+      loadIssueEditorView(depsOf(ctx), ctx.issue, actorOf(ctx)),
       listEditableArticles(
         ctx.payload,
         magazine.id,
@@ -292,7 +292,7 @@ export const magazinesRouter = createTRPCRouter({
       );
       return {
         issue: saved,
-        items: await loadEditorItems(ctx.payload, saved),
+        items: await loadEditorItems(depsOf(ctx), saved, actorOf(ctx)),
       };
     }),
 

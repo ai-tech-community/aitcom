@@ -8,6 +8,8 @@ import { communities } from "@/server/db/schema";
 
 import type { Deps, PayloadClient } from "./deps";
 import { loadMagazineEditorship } from "./editorship";
+import type { IssueActor } from "./issue-service";
+import { itemContextFor } from "./items/context";
 import {
   type IssueItemInput,
   loadIssueItemViews,
@@ -140,39 +142,43 @@ export async function listMagazineIssues(
 }
 
 function editorContext(
-  payload: PayloadClient,
+  deps: Deps,
   issue: MagazineIssue,
+  actor: IssueActor,
 ): ItemContext {
-  return {
-    payload,
+  return itemContextFor(deps, {
     magazineId: requireRelationId(issue.magazine),
+    community: actor.community,
     issueId: issue.id,
     // The editor API reads and writes the default locale, like the
     // articles router.
     locale: routing.defaultLocale,
     access: "editor",
-  };
+    viewerId: actor.userId,
+  });
 }
 
 /** The saved items of an issue as the editor sees them. */
 export async function loadEditorItems(
-  payload: PayloadClient,
+  deps: Deps,
   issue: MagazineIssue,
+  actor: IssueActor,
 ): Promise<EditorItemView[]> {
   const blocks = (issue.items ?? []) as StoredBlock[];
-  return loadIssueItemViews(blocks, editorContext(payload, issue));
+  return loadIssueItemViews(blocks, editorContext(deps, issue, actor));
 }
 
 /** Everything the issue builder needs to edit one issue. */
 export async function loadIssueEditorView(
-  payload: PayloadClient,
+  deps: Deps,
   issue: MagazineIssue,
+  actor: IssueActor,
 ): Promise<IssueEditorView> {
   const blocks = (issue.items ?? []) as StoredBlock[];
-  const ctx = editorContext(payload, issue);
+  const ctx = editorContext(deps, issue, actor);
   const [items, problems] = await Promise.all([
     loadIssueItemViews(blocks, ctx),
-    validateIssueItems(blocks, ctx),
+    validateIssueItems(blocks, ctx, blocks),
   ]);
   return { issue, items, storedItems: toItemInputs(blocks), problems };
 }

@@ -17,6 +17,7 @@ import {
 } from "./article-publication";
 import type { Deps, PayloadClient } from "./deps";
 import { magazineError, type MagazineErrorCode } from "./errors";
+import { itemContextFor } from "./items/context";
 import {
   type IssueItemInput,
   type StoredBlock,
@@ -171,18 +172,24 @@ function problemError(problem: ItemProblem) {
 }
 
 async function assertItemsValid(
-  payload: PayloadClient,
+  deps: Deps,
   issue: MagazineIssue,
   blocks: StoredBlock[],
+  actor: IssueActor,
 ): Promise<void> {
-  const [problem] = await validateIssueItems(blocks, {
-    payload,
-    magazineId: requireRelationId(issue.magazine),
-    issueId: issue.id,
-    // Validation reads review state and placement, not text.
-    locale: routing.defaultLocale,
-    access: "editor",
-  });
+  const [problem] = await validateIssueItems(
+    blocks,
+    itemContextFor(deps, {
+      magazineId: requireRelationId(issue.magazine),
+      community: actor.community,
+      issueId: issue.id,
+      // The editor API always reads in the default locale.
+      locale: routing.defaultLocale,
+      access: "editor",
+      viewerId: actor.userId,
+    }),
+    storedBlocksOf(issue),
+  );
   if (problem) throw problemError(problem);
 }
 
@@ -392,11 +399,11 @@ export async function setIssueItems(
   issue: MagazineIssue,
   items: IssueItemInput[],
   expectedUpdatedAt: string,
-  _actor: IssueActor,
+  actor: IssueActor,
 ): Promise<MagazineIssue> {
   assertFresh(issue, expectedUpdatedAt);
   const blocks = toStoredItems(keepOwnBlockIds(items, storedBlocksOf(issue)));
-  await assertItemsValid(deps.payload, issue, blocks);
+  await assertItemsValid(deps, issue, blocks, actor);
 
   const saved = await writeIssue(deps, issue, expectedUpdatedAt, async (tx) => {
     await syncArticlePlacement(
@@ -446,7 +453,7 @@ export async function publishIssue(
   assertFresh(issue, expectedUpdatedAt);
   const blocks = storedBlocksOf(issue);
   if (blocks.length === 0) throw magazineError("ISSUE_EMPTY");
-  await assertItemsValid(deps.payload, issue, blocks);
+  await assertItemsValid(deps, issue, blocks, actor);
 
   const published = await writeIssue(
     deps,

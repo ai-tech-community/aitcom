@@ -7,6 +7,7 @@ import type * as Schema from "@/server/db/schema";
 
 import type { PayloadClient } from "../deps";
 import type * as Registry from "./registry";
+import { itemContextFor } from "./context";
 import type { ItemContext } from "./types";
 
 function looksLikeCloudNeon(url: string): boolean {
@@ -118,7 +119,7 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
   /** A community with its magazine (one magazine per community). */
   async function magazine(
     label: string,
-  ): Promise<{ id: number; communityId: string }> {
+  ): Promise<{ id: number; communityId: string; communitySlug: string }> {
     const [community] = await m.db
       .insert(m.schema.communities)
       .values({
@@ -138,7 +139,11 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
       },
     });
     fx.magazineIds.push(doc.id);
-    return { id: doc.id, communityId: community!.id };
+    return {
+      id: doc.id,
+      communityId: community!.id,
+      communitySlug: community!.slug,
+    };
   }
 
   async function issue(
@@ -206,11 +211,18 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
   }
 
   function ctx(
-    magazineId: number,
+    magazine: { id: number; communityId: string; communitySlug: string },
     issueId: number | null,
     access: IssueReaderAccess,
   ): ItemContext {
-    return { payload: m.payload, magazineId, issueId, locale: "en", access };
+    return itemContextFor(m, {
+      magazineId: magazine.id,
+      community: { id: magazine.communityId, slug: magazine.communitySlug },
+      issueId,
+      locale: "en",
+      access,
+      viewerId: access === "editor" ? fx.userId : null,
+    });
   }
 
   it("refuses an article from another magazine, one not approved, and one placed in another issue", async () => {
@@ -242,7 +254,7 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
     expect(
       await m.registry.validateIssueItems(
         blocks,
-        ctx(ours.id, thisIssue.id, "editor"),
+        ctx(ours, thisIssue.id, "editor"),
       ),
     ).toEqual([
       { itemIndex: 0, code: "ITEM_INVALID" },
@@ -294,7 +306,7 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
       titles(
         await m.registry.loadIssueItemViews(
           blocks,
-          ctx(ours.id, saved.id, "full"),
+          ctx(ours, saved.id, "full"),
         ),
       ),
     ).toEqual(["published first text"]);
@@ -303,7 +315,7 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
       titles(
         await m.registry.loadIssueItemViews(
           blocks,
-          ctx(ours.id, saved.id, "editor"),
+          ctx(ours, saved.id, "editor"),
         ),
       ),
     ).toEqual([`${unpublished} latest text`, `${published} latest text`]);

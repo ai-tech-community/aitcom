@@ -28,7 +28,12 @@ import { memberDisplayName } from "@/server/members/display-name";
 import type { Deps } from "./deps";
 import { loadMagazineEditorship } from "./editorship";
 import { issueAccessFacts, resolveMagazineIssueAccess } from "./issue-access";
-import { loadIssueItemViews, type StoredBlock } from "./items/registry";
+import { itemContextFor } from "./items/context";
+import {
+  loadIssueItemViews,
+  loadIssueItemViewsOfKinds,
+  type StoredBlock,
+} from "./items/registry";
 import { getMagazineForCommunity, normalizeTopics } from "./magazine-service";
 import {
   type IssueReadScope,
@@ -557,14 +562,19 @@ function itemViewsOf(
   deps: Deps,
   found: ReadableIssue,
   locale: AppLocale,
+  viewerId: string | null,
 ): Promise<EditorItemView[]> {
-  return loadIssueItemViews((found.issue.items ?? []) as StoredBlock[], {
-    payload: deps.payload,
-    magazineId: found.magazine.id,
-    issueId: found.issue.id,
-    locale,
-    access: found.access,
-  });
+  return loadIssueItemViews(
+    (found.issue.items ?? []) as StoredBlock[],
+    itemContextFor(deps, {
+      magazineId: found.magazine.id,
+      community: found.community,
+      issueId: found.issue.id,
+      locale,
+      access: found.access,
+      viewerId,
+    }),
+  );
 }
 
 /**
@@ -602,7 +612,7 @@ export async function loadIssuePage(
   const { access, magazine, community, issue } = found;
 
   const [items, pastIssues, signedBy] = await Promise.all([
-    itemViewsOf(deps, found, opts.locale),
+    itemViewsOf(deps, found, opts.locale, opts.viewerId),
     loadIssueReadScope(deps.db, opts.viewerId).then((scope) =>
       readableMagazineIssues(deps, scope, magazine.id, opts.locale, {
         excludeId: issue.id,
@@ -690,9 +700,20 @@ export async function loadMagazineArticlePage(
   if (!article) return null;
   if (textMode === "published" && article.status !== "published") return null;
 
-  const articles = (await itemViewsOf(deps, found, opts.locale)).filter(
-    isArticleView,
-  );
+  const articles = (
+    await loadIssueItemViewsOfKinds(
+      (issue.items ?? []) as StoredBlock[],
+      itemContextFor(deps, {
+        magazineId: magazine.id,
+        community,
+        issueId: issue.id,
+        locale: opts.locale,
+        access,
+        viewerId: opts.viewerId,
+      }),
+      ["article"],
+    )
+  ).filter(isArticleView);
   const position = articles.findIndex((view) => view.article.id === article.id);
 
   return {
