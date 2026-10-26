@@ -950,7 +950,7 @@ magazine. Created and run by its [[magazine-editor]]s; it appears as the
 community's Magazine tab and on the `/magazines` shelf. Distinct from the
 [[articles]]/blog (single pieces on the Hub-wide blog) by its one irreducible
 feature: **curated, numbered issues** that collect articles, editorial text
-and, later, platform content. See
+and platform content. See
 [[adr-0042-magazine-issues-are-read-through-one-access-resolver]] and
 [[adr-0043-magazine-issue-items-are-a-registry-of-kind-strategies]].
 
@@ -978,12 +978,30 @@ Being in a public issue never widens access to the referenced content.
 
 ### Item kind
 
-The type of an [[issue-item]]: `article` and `editorial` today; `storyline`,
-`newsItem`, `event`, `forumThread` and `launchpadProject` later. Each kind is
+The type of an [[issue-item]]: `article`, `editorial`, `storyline`,
+`newsItem`, `event`, `forumThread` and `launchpadProject`. Each kind is
 one strategy in a registry (input, stored shape, validation, batched load,
 readability) plus one renderer, so the issue page and the builder never
 branch on the kind. See
 [[adr-0043-magazine-issue-items-are-a-registry-of-kind-strategies]].
+
+### Reference item
+
+An [[issue-item]] that points at platform content by id and renders it live,
+such as a story, news item, event, forum thread or launchpad project. Its
+content must pass the reader's own access check; being in a public issue
+never widens access. New references are checked strictly, while kept
+references can become an [[unavailable-marker]] without blocking other edits
+or publication. See
+[[adr-0044-platform-content-in-issues-is-referenced-live-and-read-per-reader]].
+
+### Unavailable marker
+
+What editors see in place of an [[issue-item]] whose content its reader cannot
+get: it is missing, not ready, unpublished, private to its community or in
+another magazine. The marker gives the reason without exposing the content.
+Readers never receive markers; they see the remaining items in issue order.
+See [[adr-0044-platform-content-in-issues-is-referenced-live-and-read-per-reader]].
 
 ### Magazine article
 
