@@ -12,6 +12,10 @@ import {
 } from "drizzle-orm";
 
 import {
+  AI_TOOLS_LIST_CATEGORIES,
+  isAiToolsHubStartup,
+} from "@/lib/investigations/ai-tools-list";
+import {
   isThinStartupProfile,
   startupProfileIndexInput,
 } from "@/lib/investigations/startup-profile-index";
@@ -248,6 +252,40 @@ export async function listApprovedPublicStartupSlugs(): Promise<string[]> {
       }
       return [slug];
     });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Approved agents and models that the thin-profile rule still indexes.
+ * Sorted by name. Soft-empty when the query fails. No writes.
+ */
+export async function listAiToolsHubStartups(): Promise<StartupPublicCard[]> {
+  const where = and(
+    eq(startups.status, "approved"),
+    inArray(startups.category, [...AI_TOOLS_LIST_CATEGORIES]),
+  );
+  try {
+    let rows;
+    try {
+      rows = await db.select().from(startups).where(where);
+    } catch (error) {
+      if (!isMissingUsesAiColumn(error)) throw error;
+      const legacy = await db
+        .select(startupColumnsWithoutUsesAi)
+        .from(startups)
+        .where(where);
+      rows = legacy.map((row) => ({ ...row, usesAi: null }));
+    }
+    return rows
+      .map((row) => toPublicCard(row))
+      .filter((card) => isAiToolsHubStartup(card))
+      .sort(
+        (a, b) =>
+          a.name.localeCompare(b.name, "en", { sensitivity: "base" }) ||
+          a.slug.localeCompare(b.slug),
+      );
   } catch {
     return [];
   }

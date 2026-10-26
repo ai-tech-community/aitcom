@@ -1,3 +1,8 @@
+import {
+  isThinStartupProfile,
+  startupProfileIndexInput,
+} from "@/lib/investigations/startup-profile-index";
+import { buildStartupProfilePath } from "@/lib/investigations/startups";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 
 /**
@@ -7,6 +12,14 @@ import { absoluteLocaleUrl } from "@/lib/metadata";
  * shares this slug, and it does not invent a tool count.
  */
 export const AI_TOOLS_LIST_PATH = "/startups/ai-tools-list";
+
+/**
+ * Category values that this hub treats as its set. This is a mapping of the
+ * existing build taxonomy, not a field that says "AI tool".
+ */
+export const AI_TOOLS_LIST_CATEGORIES = ["agents", "models"] as const;
+
+export type AiToolsListCategory = (typeof AI_TOOLS_LIST_CATEGORIES)[number];
 
 export type AiToolsListTool = {
   name: string;
@@ -20,18 +33,18 @@ export const AI_TOOLS_LIST_COPY = {
   en: {
     title: "AI tools",
     description:
-      "AI tools are software for a task, such as writing, research, coding, or images. Open a tool by following the link on its listing.",
+      "Approved startups whose recorded category is agents or models. Open a name to read that startup's own profile on this site.",
     intro:
-      "Choose an AI tool from this directory and follow its link to the page where the software opens.",
+      "These names are startups filed as agents or models. Follow one to open its profile.",
     heading: "AI tools",
     kicker: "Directory",
   },
   nl: {
     title: "AI-tools",
     description:
-      "AI-tools zijn software voor een taak, zoals schrijven, onderzoek, code of beelden. Open een tool door de link bij de vermelding te volgen.",
+      "Goedgekeurde startups met de categorie agents of models. Open een naam om het profiel van die startup op deze site te lezen.",
     intro:
-      "Kies een AI-tool in deze directory en volg de link naar de pagina waar de software opent.",
+      "De namen hieronder zijn startups in de categorie agents of models. Volg een naam naar het profiel.",
     heading: "AI-tools",
     kicker: "Lijst",
   },
@@ -41,6 +54,58 @@ export type AiToolsListLocale = keyof typeof AI_TOOLS_LIST_COPY;
 
 export function aiToolsListCopy(locale: string) {
   return locale === "nl" ? AI_TOOLS_LIST_COPY.nl : AI_TOOLS_LIST_COPY.en;
+}
+
+export function isAiToolsListCategory(
+  category: string,
+): category is AiToolsListCategory {
+  return (AI_TOOLS_LIST_CATEGORIES as readonly string[]).includes(category);
+}
+
+/**
+ * Approved agents/models rows that the thin-profile rule still indexes.
+ * A short blurb with no open roles stays off this page, same as noindex.
+ */
+export function isAiToolsHubStartup(card: {
+  slug: string;
+  category: string;
+  description: string | null | undefined;
+  openRoleCount: number;
+}): boolean {
+  if (!isAiToolsListCategory(card.category)) return false;
+  return !isThinStartupProfile(
+    startupProfileIndexInput({
+      slug: card.slug,
+      description: card.description,
+      openRoleCount: card.openRoleCount,
+    }),
+  );
+}
+
+export function aiToolsHubLocale(locale: string): "en" | "nl" {
+  return locale === "nl" ? "nl" : "en";
+}
+
+/** Profile path with the locale prefix, for example `/en/startups/acme`. */
+export function aiToolsHubProfileHref(locale: string, slug: string): string {
+  return `/${aiToolsHubLocale(locale)}${buildStartupProfilePath(slug)}`;
+}
+
+export function aiToolsHubProfileUrl(locale: string, slug: string): string {
+  return absoluteLocaleUrl(
+    aiToolsHubLocale(locale),
+    buildStartupProfilePath(slug),
+  );
+}
+
+/** Path without a locale prefix. Page 1 omits the query. */
+export function aiToolsHubPagePath(page: number): string {
+  return page <= 1 ? AI_TOOLS_LIST_PATH : `${AI_TOOLS_LIST_PATH}?page=${page}`;
+}
+
+/** Locale-prefixed pager href, for example `/nl/startups/ai-tools-list?page=2`. */
+export function aiToolsHubPageHref(locale: string, page: number): string {
+  return `/${aiToolsHubLocale(locale)}${aiToolsHubPagePath(page)}`;
 }
 
 /** Tools that render on the page: a name and an http(s) URL, nothing else. */
@@ -70,6 +135,7 @@ function listedTools(tools: readonly AiToolsListTool[]): AiToolsListTool[] {
 export function aiToolsListJsonLd(
   locale: string,
   tools: readonly AiToolsListTool[] = AI_TOOLS_LIST_TOOLS,
+  page = 1,
 ): Record<string, unknown> {
   const copy = aiToolsListCopy(locale);
   const resolved = locale === "nl" ? "nl" : "en";
@@ -83,7 +149,7 @@ export function aiToolsListJsonLd(
     "@type": "CollectionPage",
     name: copy.heading,
     description: copy.description,
-    url: absoluteLocaleUrl(resolved, AI_TOOLS_LIST_PATH),
+    url: absoluteLocaleUrl(resolved, aiToolsHubPagePath(page)),
     inLanguage: resolved,
     mainEntity: {
       "@type": "ItemList",
