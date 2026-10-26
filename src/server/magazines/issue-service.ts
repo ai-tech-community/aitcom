@@ -433,7 +433,8 @@ export async function setIssueItems(
  * claimed issue's connection: either all of it lands or none of it does,
  * and a concurrent second publish waits on the claim and gets
  * `ISSUE_CHANGED`. Authors are credited after the commit; a credit failure
- * never fails the publish (it is retried on the next save).
+ * never fails the publish (it stays pending, and the next publish or save
+ * of a published issue of the same magazine retries it).
  */
 export async function publishIssue(
   deps: Deps,

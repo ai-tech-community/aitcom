@@ -132,15 +132,19 @@ async function creditOne(deps: Deps, articleId: number): Promise<boolean> {
 
 /**
  * Credits the authors of a magazine's published, not yet credited member
- * articles: exactly once each, never lost. "Pending" is a property of the
- * article (published, no claim row), not of the issue it sits in now, so a
- * credit that failed is still retried after the article moved to another
- * issue or left every issue.
+ * articles, exactly once each. "Pending" is a property of the article
+ * (published, no claim row), not of the issue it sits in now: the query
+ * scans the whole magazine, so a credit that failed is retried after the
+ * article moved to another issue or left every issue.
  *
- * Never throws: a failed credit is logged and left pending, and the next
- * run (after the next publish or save of a published issue of the same
- * magazine) retries it. Call it after that write has committed. A
- * scheduled sweep, if one is wanted later, runs the same query.
+ * The guarantee: a failed credit is never dropped, but it is settled only
+ * by a later run. Every publish of an issue and every save of a published
+ * issue of the same magazine runs it, after that write has committed. A
+ * magazine that is never edited again keeps its pending credits until a
+ * scheduled sweep (none yet; it would run this same function) or the next
+ * edit.
+ *
+ * Never throws: a failed credit is logged and left pending.
  */
 export async function creditPendingMagazineArticles(
   deps: Deps,

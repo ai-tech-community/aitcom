@@ -1349,7 +1349,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     expect(await pointsEventCount(fx.userId)).toBe(0);
 
     // A details save of ANOTHER published issue of the magazine settles it.
-    await m.issues.updateIssueDetails(
+    const renamedB = await m.issues.updateIssueDetails(
       m,
       publishedB,
       { title: "B renamed" },
@@ -1357,6 +1357,32 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       actor(c),
     );
     expect(await isCredited(a)).toBe(true);
+    expect(await pointsEventCount(fx.userId)).toBe(1);
+
+    // Exactly once: later saves of either issue, and a new issue's
+    // publish, find nothing pending.
+    await m.issues.updateIssueDetails(
+      m,
+      renamedB,
+      { title: "B again" },
+      renamedB.updatedAt,
+      actor(c),
+    );
+    const latestA = await m.payload.findByID({
+      collection: "magazine-issues",
+      id: publishedA.id,
+      depth: 0,
+    });
+    await m.issues.updateIssueDetails(
+      m,
+      latestA,
+      { title: "A renamed" },
+      latestA.updatedAt,
+      actor(c),
+    );
+    const issueC = await m.issues.createIssue(m, mag, { title: "C" }, actor(c));
+    const filledC = await setItems(c, issueC, [editorialItem("C")]);
+    await m.issues.publishIssue(m, filledC, filledC.updatedAt, actor(c));
     expect(await pointsEventCount(fx.userId)).toBe(1);
   });
 
