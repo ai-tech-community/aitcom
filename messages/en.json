@@ -2294,7 +2294,17 @@
     "backToEditing": "Back to editing",
     "featuredImagePreview": "Preview",
     "featuredImagePlaceholder": "No image — add a URL above",
-    "articleTitlePlaceholder": "Article title..."
+    "articleTitlePlaceholder": "Article title...",
+    "magazine": {
+      "markReady": "Mark ready for an issue",
+      "markedReady": "Marked ready. An editor can now place it in an issue.",
+      "prePublishTitle": "Ready for an issue?",
+      "prePublishSubtitle": "Check your article. Once it is marked ready, an editor can place it in an issue. It goes live when that issue is published.",
+      "writingFor": "Writing for {magazine}",
+      "backToMagazine": "Back to the Magazine tab",
+      "writeMetaTitle": "Write a magazine article",
+      "editMetaTitle": "Edit magazine article"
+    }
   },
   "impact": {
     "title": "Collaboration Impact",

@@ -7,6 +7,7 @@ import { isTrustedAuthor } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
 import { channelFor } from "@/server/articles/channels";
 import { ArticleEditor } from "@/components/article-editor";
+import { articleEditorInitialData } from "@/components/article-editor/initial-data";
 
 export default async function EditArticlePage({
   params,
@@ -48,17 +49,7 @@ export default async function EditArticlePage({
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12">
       <ArticleEditor
-        initialData={{
-          id: article.id,
-          title: article.title,
-          slug: article.slug,
-          content: article.content,
-          type: article.type as "article" | "tutorial",
-          tags: (article.tags as { tag: string }[]) ?? [],
-          mediaUrl: article.mediaUrl ?? undefined,
-          reviewStatus: article.reviewStatus ?? undefined,
-          reviewNote: article.reviewNote ?? undefined,
-        }}
+        initialData={articleEditorInitialData(article)}
         isTrustedAuthor={trusted}
       />
     </div>

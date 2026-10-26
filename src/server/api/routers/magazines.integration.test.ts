@@ -512,6 +512,61 @@ describe.skipIf(!RUN_DB)("magazines editor API [DB integration]", () => {
     expect(await at(fx.ownerId, `missing-${fx.sfx}`)).toBe(false);
   });
 
+  it("the magazine write and edit pages let in only editors, and only the author edits", async () => {
+    const { loadMagazineWriting, loadMagazineArticleForEditing } =
+      await import("@/server/magazines/magazine-articles");
+    const deps = { db: m.db, payload: m.payload };
+    const write = (viewerId: string | null, communitySlug = slug()) =>
+      loadMagazineWriting(deps, { communitySlug, viewerId });
+
+    // No magazine yet: nobody writes for it.
+    expect(await write(fx.ownerId)).toBeNull();
+
+    const magazine = await saveMagazine();
+    const expected = { magazineId: magazine.id, magazineName: "The Gazette" };
+    expect(await write(fx.ownerId)).toEqual(expected);
+    expect(await write(fx.adminId)).toEqual(expected);
+    for (const viewerId of [fx.moderatorId, fx.memberId, fx.outsiderId, null]) {
+      expect(await write(viewerId)).toBeNull();
+    }
+    expect(await write(fx.outsiderId, fx.other.slug)).toBeNull();
+    expect(await write(fx.ownerId, `missing-${fx.sfx}`)).toBeNull();
+
+    const article = await writeArticle(magazine.id, "Owl notes");
+    const blog = await callerAs(fx.ownerId).articles.create({
+      title: "Blog owl",
+      slug: "blog-owl",
+      content: richText("blog"),
+      type: "article",
+    });
+    const edit = (
+      viewerId: string | null,
+      articleSlug = article.slug,
+      communitySlug = slug(),
+    ) =>
+      loadMagazineArticleForEditing(deps, {
+        communitySlug,
+        articleSlug,
+        viewerId,
+      });
+
+    expect(await edit(fx.ownerId)).toMatchObject({
+      ...expected,
+      article: { id: article.id, title: "Owl notes" },
+    });
+    // Another editor of the same magazine is not its author.
+    expect(await edit(fx.adminId)).toBeNull();
+    expect(await edit(fx.memberId)).toBeNull();
+    // A blog article is not edited from the magazine.
+    expect(await edit(fx.ownerId, blog.slug)).toBeNull();
+    expect(await edit(fx.ownerId, `missing-${fx.sfx}`)).toBeNull();
+    // Not under another community's address.
+    expect(await edit(fx.ownerId, article.slug, fx.other.slug)).toBeNull();
+    // An author who stops being an editor no longer opens it.
+    await setRole(fx.ownerId, "member");
+    expect(await edit(fx.ownerId)).toBeNull();
+  });
+
   it("updateIssue takes the issue slug as issueSlug and validates slugs", async () => {
     const owner = callerAs(fx.ownerId);
     await expect(

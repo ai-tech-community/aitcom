@@ -2,11 +2,12 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Where } from "payload";
 
-import type { Magazine } from "@/payload-types";
+import type { Article, Magazine } from "@/payload-types";
 import { communities } from "@/server/db/schema";
 
 import type { Deps, PayloadClient } from "./deps";
 import { isMagazineEditorRole } from "./issue-access";
+import { getMagazineForCommunity } from "./magazine-service";
 import { relationIdOrNull } from "./relation-id";
 import { activeCommunityRole } from "./viewer-role";
 
@@ -101,6 +102,63 @@ export async function isEditorOfMagazine(
   return (
     (await loadMagazineEditing(deps, magazine, viewerId))?.isEditor ?? false
   );
+}
+
+/** The magazine an editor writes for, as the article editor names it. */
+export type MagazineWriting = { magazineId: number; magazineName: string };
+
+/**
+ * The write page's gate (Gate-Before-Fail): the magazine of a live
+ * community, when the viewer is its editor; null otherwise (no community,
+ * no magazine yet, or not an editor), which the page answers with a 404.
+ */
+export async function loadMagazineWriting(
+  deps: Deps,
+  opts: { communitySlug: string; viewerId: string | null },
+): Promise<MagazineWriting | null> {
+  if (opts.viewerId === null) return null;
+  const community = await deps.db.query.communities.findFirst({
+    where: and(
+      eq(communities.slug, opts.communitySlug),
+      isNull(communities.deletedAt),
+    ),
+    columns: { id: true },
+  });
+  if (!community) return null;
+  const [role, magazine] = await Promise.all([
+    activeCommunityRole(deps.db, community.id, opts.viewerId),
+    getMagazineForCommunity(deps.payload, community.id),
+  ]);
+  if (!magazine || !isMagazineEditorRole(role)) return null;
+  return { magazineId: magazine.id, magazineName: magazine.name };
+}
+
+/**
+ * The edit page's gate: the write page's gate, plus the article must be
+ * this magazine's and the viewer must be its author. Null otherwise, so
+ * nobody learns which article slugs exist in other magazines or the blog.
+ * The article is its latest draft version (what the author last saved).
+ */
+export async function loadMagazineArticleForEditing(
+  deps: Deps,
+  opts: { communitySlug: string; articleSlug: string; viewerId: string | null },
+): Promise<(MagazineWriting & { article: Article }) | null> {
+  const writing = await loadMagazineWriting(deps, opts);
+  if (!writing) return null;
+  const { docs } = await deps.payload.find({
+    collection: "articles",
+    where: { slug: { equals: opts.articleSlug } },
+    depth: 0,
+    draft: true,
+    limit: 1,
+    pagination: false,
+  });
+  const article = docs[0];
+  if (!article) return null;
+  const isOwnArticleHere =
+    article.authorId === opts.viewerId &&
+    relationIdOrNull(article.magazine) === writing.magazineId;
+  return isOwnArticleHere ? { ...writing, article } : null;
 }
 
 export async function listAvailableArticles(

@@ -76,6 +76,9 @@ import { SlashCommandMenu } from "./slash-command-menu";
 import { FloatingToolbar } from "./floating-toolbar";
 import { BlockHandles } from "./block-handles";
 import { PrePublishDialog } from "./pre-publish-dialog";
+import { destinationBehaviour, type ArticleDestination } from "./destination";
+
+const BLOG_DESTINATION: ArticleDestination = { kind: "blog" };
 
 function EditorBridge({
   onReady,
@@ -94,9 +97,20 @@ function EditorBridge({
 export function ArticleEditor({
   initialData,
   isTrustedAuthor,
+  destination = BLOG_DESTINATION,
 }: ArticleEditorProps) {
   const t = useTranslations("articleEditor");
+  const tErrors = useTranslations("magazineEditor.errors");
   const router = useRouter();
+  // Every difference between the blog and a magazine comes from here.
+  const behaviour = useMemo(
+    () => destinationBehaviour(destination),
+    [destination],
+  );
+  const publishesDirectly = behaviour.showTrustedPublish && isTrustedAuthor;
+  const submitLabel = publishesDirectly
+    ? t("publish")
+    : t(behaviour.submitLabelKey);
 
   const [state, dispatch] = useReducer(editorReducer, {
     title: initialData?.title ?? "",
@@ -205,6 +219,16 @@ export function ArticleEditor({
     [],
   );
 
+  /** A failed call as the writer reads it; `fallback` when it says nothing. */
+  const errorText = useCallback(
+    (err: unknown, fallback: string) => {
+      const key = behaviour.errorKey(err);
+      if (key !== null) return tErrors(key);
+      return err instanceof Error ? err.message : fallback;
+    },
+    [behaviour, tErrors],
+  );
+
   const saveDraftInternal = useCallback(
     async (showToast: boolean) => {
       if (!title.trim() || !editorState) {
@@ -254,6 +278,7 @@ export function ArticleEditor({
           type,
           tags: tags.map((tag) => ({ tag })),
           mediaUrl: mediaUrl || undefined,
+          ...behaviour.createExtras,
         });
 
         const createdId = Number(created.id);
@@ -276,19 +301,14 @@ export function ArticleEditor({
           window.history.replaceState(
             null,
             "",
-            `/${locale}/blog/edit/${createdSlug}`,
+            `/${locale}${behaviour.editPath(createdSlug)}`,
           );
         }
 
         return createdId;
       } catch (err) {
         dispatch({ type: "SAVE_ERROR" });
-        if (showToast) {
-          showMessage(
-            err instanceof Error ? err.message : t("failedToSave"),
-            "error",
-          );
-        }
+        if (showToast) showMessage(errorText(err, t("failedToSave")), "error");
         return null;
       } finally {
         dispatch({ type: "SAVE_END" });
@@ -296,8 +316,10 @@ export function ArticleEditor({
     },
     [
       articleId,
+      behaviour,
       createMutation,
       editorState,
+      errorText,
       initialData?.id,
       mediaUrl,
       showMessage,
@@ -413,22 +435,21 @@ export function ArticleEditor({
       await submitMutation.mutateAsync({ id });
       setPublishDialogOpen(false);
       showMessage(
-        isTrustedAuthor ? t("publishedSuccess") : t("submitted"),
+        publishesDirectly ? t("publishedSuccess") : t(behaviour.submittedKey),
         "success",
       );
-      setTimeout(() => router.push("/blog/my-articles"), 1400);
+      setTimeout(() => router.push(behaviour.afterSubmitHref), 1400);
     } catch (err) {
-      showMessage(
-        err instanceof Error ? err.message : t("failedToSubmit"),
-        "error",
-      );
+      showMessage(errorText(err, t("failedToSubmit")), "error");
     } finally {
       dispatch({ type: "SUBMIT_END" });
     }
   }, [
     articleId,
+    behaviour,
     blockingChecks,
-    isTrustedAuthor,
+    errorText,
+    publishesDirectly,
     router,
     saveDraftInternal,
     showMessage,
@@ -744,9 +765,7 @@ export function ArticleEditor({
             onClick={() => setPublishDialogOpen(true)}
             className="bg-foreground text-background hover:bg-foreground/90 rounded px-4 py-1.5 font-mono text-xs tracking-wider transition-colors"
           >
-            {isTrustedAuthor
-              ? t("publish").toUpperCase()
-              : t("submitForReview").toUpperCase()}
+            {submitLabel.toUpperCase()}
           </button>
         </div>
       </div>
@@ -807,7 +826,9 @@ export function ArticleEditor({
         onClose={() => setPublishDialogOpen(false)}
         onSubmit={handleSubmit}
         submitting={submitting}
-        isTrustedAuthor={isTrustedAuthor}
+        submitLabel={submitLabel}
+        title={t(behaviour.prePublishTitleKey)}
+        subtitle={t(behaviour.prePublishSubtitleKey)}
         blockingChecks={blockingChecks}
         warningChecks={warningChecks}
         outline={outline}

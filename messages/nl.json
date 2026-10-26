@@ -2294,7 +2294,17 @@
     "backToEditing": "Terug naar bewerken",
     "featuredImagePreview": "Voorbeeld",
     "featuredImagePlaceholder": "Geen afbeelding — voeg een URL toe",
-    "articleTitlePlaceholder": "Artikel titel..."
+    "articleTitlePlaceholder": "Artikel titel...",
+    "magazine": {
+      "markReady": "Klaarzetten voor een nummer",
+      "markedReady": "Klaargezet. Een redacteur kan het nu in een nummer plaatsen.",
+      "prePublishTitle": "Klaar voor een nummer?",
+      "prePublishSubtitle": "Controleer je artikel. Zodra het klaar staat, kan een redacteur het in een nummer plaatsen. Het verschijnt wanneer dat nummer wordt gepubliceerd.",
+      "writingFor": "Je schrijft voor {magazine}",
+      "backToMagazine": "Terug naar het tabblad Magazine",
+      "writeMetaTitle": "Een magazine-artikel schrijven",
+      "editMetaTitle": "Magazine-artikel bewerken"
+    }
   },
   "impact": {
     "title": "Samenwerkingsimpact",
