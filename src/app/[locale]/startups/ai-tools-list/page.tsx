@@ -25,11 +25,9 @@ function parseHubPage(value: string | undefined): number {
   return Number(value);
 }
 
-export async function generateMetadata(
-  { searchParams }: PageProps = {
-    searchParams: Promise.resolve({}),
-  },
-): Promise<Metadata> {
+export async function generateMetadata({
+  searchParams,
+}: PageProps): Promise<Metadata> {
   const locale = await getLocale();
   const raw = await searchParams;
   const copy = aiToolsListCopy(locale);

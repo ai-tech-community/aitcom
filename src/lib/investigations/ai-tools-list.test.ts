@@ -118,7 +118,9 @@ describe("AI tools list hreflang", () => {
 
 describe("AI tools list metadata", () => {
   it("indexes the English page with a self canonical and no noindex", async () => {
-    const meta = await generateMetadata();
+    const meta = await generateMetadata({
+      searchParams: Promise.resolve({}),
+    });
     expect(meta.title).toBe("AI tools");
     expect(meta.description).toBe(AI_TOOLS_LIST_COPY.en.description);
     expect(meta.robots).toEqual({ index: true, follow: true });
@@ -130,7 +132,9 @@ describe("AI tools list metadata", () => {
 
   it("keeps the Dutch page self-canonical", async () => {
     state.locale = "nl";
-    const meta = await generateMetadata();
+    const meta = await generateMetadata({
+      searchParams: Promise.resolve({}),
+    });
     expect(meta.title).toBe("AI-tools");
     expect(meta.robots).toEqual({ index: true, follow: true });
     expect(meta.alternates?.canonical).toBe(
