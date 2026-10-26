@@ -40,6 +40,7 @@ import { PublishDialog } from "./publish-dialog";
 import {
   hasUnsavedWork,
   type IssueDetailsDraft,
+  type IssueDetailsSave,
   type IssueSaveFailure,
   type IssueSaveValue,
   useIssueSave,
@@ -59,6 +60,23 @@ function detailsOf(issue: MagazineIssue): IssueDetailsDraft {
     coverImageUrl: issue.coverImageUrl ?? null,
     editorNote: issue.editorNote ?? null,
     visibility: issue.visibility,
+  };
+}
+
+/**
+ * The issue's details as the server holds them, as a save baseline: the
+ * opt-in counts as given only when the issue records a confirmation.
+ */
+function savedDetailsOf(
+  issue: MagazineIssue,
+  communityIsPrivate: boolean,
+): IssueDetailsSave {
+  return {
+    ...detailsOf(issue),
+    publicConfirmed:
+      communityIsPrivate &&
+      issue.visibility === "public" &&
+      Boolean(issue.publicConfirmedAt),
   };
 }
 
@@ -217,19 +235,32 @@ function IssueWorkspace({
   const optInPending = optInRequired && !confirmed;
 
   // What can be saved now; the rest stays as unsaved work until it can.
-  const savable: IssueSaveValue = useMemo(
-    () => ({
+  const communityIsPrivate = data.communityIsPrivate;
+  const savable: IssueSaveValue = useMemo(() => {
+    const visibility = optInPending ? issue.visibility : details.visibility;
+    return {
       details: {
         title: titleValid ? details.title.trim() : issue.title,
         slug: slugValid ? details.slug : issue.slug,
         coverImageUrl: details.coverImageUrl,
         editorNote: details.editorNote,
-        visibility: optInPending ? issue.visibility : details.visibility,
+        visibility,
+        // Ticking the box is a change of its own: it saves even when the
+        // issue was `public` already, so the server records the opt-in.
+        publicConfirmed:
+          communityIsPrivate && visibility === "public" && !optInPending,
       },
       items: items.filter(isSavableItem),
-    }),
-    [details, items, issue, titleValid, slugValid, optInPending],
-  );
+    };
+  }, [
+    details,
+    items,
+    issue,
+    titleValid,
+    slugValid,
+    optInPending,
+    communityIsPrivate,
+  ]);
   const paused =
     !titleValid ||
     !slugValid ||
@@ -261,10 +292,12 @@ function IssueWorkspace({
     communitySlug,
     issueId,
     writer,
-    initial: { details: initial.details, items: initial.items },
+    initial: {
+      details: savedDetailsOf(data.issue, communityIsPrivate),
+      items: initial.items,
+    },
     value: savable,
     enabled: true,
-    communityIsPrivate: data.communityIsPrivate,
     onDetailsSaved,
     onItemsSaved,
     onFailed: setFailure,

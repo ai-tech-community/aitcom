@@ -325,6 +325,57 @@ describe("IssueBuilder", () => {
     });
   });
 
+  it("records the opt-in for an issue already public but unconfirmed in a private community", async () => {
+    // Saved `public` before the community became unlisted: no confirmation.
+    trpc.editing = twoArticles({
+      issue: issue({ visibility: "public" }),
+      communityIsPrivate: true,
+      community: { slug: "night-owls", isListedInDirectory: false },
+    });
+    trpc.updateIssue.mockImplementation(async (input: object) =>
+      issue({
+        ...input,
+        publicConfirmedBy: "u1",
+        publicConfirmedAt: T1,
+        updatedAt: T1,
+      } as Partial<MagazineIssue>),
+    );
+    renderBuilder();
+    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+    await settleSaves();
+    expect(trpc.updateIssue).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "I understand, show this outside the community",
+      }),
+    );
+    await settleSaves();
+    // The tick alone is the change: the visibility is sent again with it.
+    expect(trpc.updateIssue).toHaveBeenCalledTimes(1);
+    expect(trpc.updateIssue).toHaveBeenCalledWith({
+      slug: "night-owls",
+      issueId: 5,
+      expectedUpdatedAt: T0,
+      visibility: "public",
+      confirmUnlistedPublic: true,
+    });
+    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+
+    // Once the server holds the confirmation, nothing more is sent.
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Summer special" },
+    });
+    await settleSaves();
+    expect(trpc.updateIssue).toHaveBeenCalledTimes(2);
+    expect(trpc.updateIssue).toHaveBeenLastCalledWith({
+      slug: "night-owls",
+      issueId: 5,
+      expectedUpdatedAt: T1,
+      title: "Summer special",
+    });
+  });
+
   it("points at the item a refused save names", async () => {
     trpc.setIssueItems.mockRejectedValue(refusal("ARTICLE_PLACED", 0));
     renderBuilder();

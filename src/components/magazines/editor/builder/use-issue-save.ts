@@ -24,9 +24,25 @@ export type IssueDetailsDraft = {
   visibility: IssueVisibility;
 };
 
+/**
+ * The issue's details as they are saved. Besides the edited fields, a save
+ * carries whether the issue's `public` visibility holds the editor's
+ * unlisted-community opt-in (ADR-0042). It is part of the value, not a side
+ * flag, because ticking the box must save even when the visibility itself
+ * does not change: an issue already saved `public` without a confirmation
+ * (its community became unlisted later) is confirmed by the tick alone.
+ */
+export type IssueDetailsSave = IssueDetailsDraft & {
+  /**
+   * `public` in a private community, with the opt-in recorded on the
+   * server or given by the editor. Always false in a public community.
+   */
+  publicConfirmed: boolean;
+};
+
 /** Everything the builder saves: one value, one autosave (preflight F3). */
 export type IssueSaveValue = {
-  details: IssueDetailsDraft;
+  details: IssueDetailsSave;
   items: BuilderItem[];
 };
 
@@ -41,8 +57,14 @@ export const ISSUE_CONFLICT_CODES: ReadonlySet<string> = new Set([
 const jsonEqual = (a: unknown, b: unknown) =>
   JSON.stringify(a) === JSON.stringify(b);
 
-/** `updateIssue`'s patch: only the fields that changed since the last save. */
-function detailsPatch(next: IssueDetailsDraft, saved: IssueDetailsDraft) {
+/**
+ * `updateIssue`'s patch: only the fields that changed since the last save.
+ * A new opt-in sends `visibility: "public"` with `confirmUnlistedPublic`,
+ * also when the issue was `public` already: the server records the
+ * confirmation only as part of a visibility write.
+ */
+function detailsPatch(next: IssueDetailsSave, saved: IssueDetailsSave) {
+  const confirming = next.publicConfirmed && !saved.publicConfirmed;
   return {
     ...(next.title !== saved.title ? { title: next.title } : {}),
     ...(next.slug !== saved.slug ? { issueSlug: next.slug } : {}),
@@ -52,9 +74,10 @@ function detailsPatch(next: IssueDetailsDraft, saved: IssueDetailsDraft) {
     ...(!jsonEqual(next.editorNote, saved.editorNote)
       ? { editorNote: next.editorNote }
       : {}),
-    ...(next.visibility !== saved.visibility
+    ...(next.visibility !== saved.visibility || confirming
       ? { visibility: next.visibility }
       : {}),
+    ...(confirming ? { confirmUnlistedPublic: true } : {}),
   };
 }
 
@@ -69,7 +92,8 @@ function detailsPatch(next: IssueDetailsDraft, saved: IssueDetailsDraft) {
  *
  * `value` must be savable as it is: the caller leaves out what the server
  * would refuse (a blank title, an unfinished block, a public choice that
- * still needs the opt-in) and keeps it as unsaved work.
+ * still needs the opt-in) and keeps it as unsaved work. The opt-in itself
+ * travels in `value.details.publicConfirmed`.
  */
 export function useIssueSave({
   communitySlug,
@@ -78,7 +102,6 @@ export function useIssueSave({
   initial,
   value,
   enabled,
-  communityIsPrivate,
   onDetailsSaved,
   onItemsSaved,
   onFailed,
@@ -90,12 +113,6 @@ export function useIssueSave({
   initial: IssueSaveValue;
   value: IssueSaveValue;
   enabled: boolean;
-  /**
-   * A private community: a switch to `public` carries the editor's opt-in.
-   * `value` only ever holds such a switch once the editor ticked the box
-   * (or the issue already holds a confirmation, and nothing switches).
-   */
-  communityIsPrivate: boolean;
   onDetailsSaved: (issue: MagazineIssue) => void;
   /** The saved issue and its items as views, by builder key. */
   onItemsSaved: (saved: {
@@ -130,9 +147,6 @@ export function useIssueSave({
               issueId,
               expectedUpdatedAt,
               ...patch,
-              ...(patch.visibility === "public" && communityIsPrivate
-                ? { confirmUnlistedPublic: true }
-                : {}),
             });
             onDetailsSaved(issue);
             return issue.updatedAt;
@@ -179,7 +193,6 @@ export function useIssueSave({
       saveItems,
       communitySlug,
       issueId,
-      communityIsPrivate,
       onDetailsSaved,
       onItemsSaved,
       onFailed,
