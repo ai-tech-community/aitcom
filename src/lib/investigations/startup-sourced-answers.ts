@@ -106,3 +106,12 @@ export function startupSourcedAnswer(
 ): StartupSourcedAnswer | null {
   return ANSWERS_BY_SLUG.get(slug) ?? null;
 }
+
+/** The sourced "what it does" sentence, when one was recorded. Nothing else. */
+export function sourcedAnswerBlurb(slug: string): string | null {
+  const text =
+    startupSourcedAnswer(slug)
+      ?.statements.find((statement) => statement.id === "does")
+      ?.text.trim() ?? "";
+  return text.length > 0 ? text : null;
+}

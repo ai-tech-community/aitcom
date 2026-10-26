@@ -15,13 +15,13 @@ export const AI_TOOLS_LIST_SITE = "https://aiai.tools";
 export const AI_TOOLS_LIST_COPY = {
   en: {
     title: "AI tools",
-    description: "AIAI.Tools is a public directory of AI tools.",
+    description: "A public directory of AI tools.",
     heading: "AI tools",
     body: "AIAI.Tools publishes a public directory of AI tools.",
   },
   nl: {
     title: "AI-tools",
-    description: "AIAI.Tools is een openbare lijst met AI-tools.",
+    description: "Een openbare lijst met AI-tools.",
     heading: "AI-tools",
     body: "AIAI.Tools publiceert een openbare lijst met AI-tools.",
   },
