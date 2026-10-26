@@ -223,6 +223,41 @@ function isEditableBy(
   return viewerId !== null && article.authorId === viewerId;
 }
 
+/** An article the viewer may open in the article editor. */
+export type EditableArticle = { id: number; slug: string };
+
+/**
+ * The articles among `articleIds` (of this magazine) that the viewer, an
+ * editor of the magazine, may open in the article editor: the same rule as
+ * the edit page's gate, so the builder offers "Open article" exactly when
+ * the page will open.
+ */
+export async function listEditableArticles(
+  payload: PayloadClient,
+  magazineId: number,
+  articleIds: readonly number[],
+  viewerId: string,
+): Promise<EditableArticle[]> {
+  if (articleIds.length === 0) return [];
+  const { docs } = await payload.find({
+    collection: "articles",
+    where: {
+      and: [
+        { id: { in: [...articleIds] } },
+        { magazine: { equals: magazineId } },
+      ],
+    },
+    select: { slug: true, authorId: true },
+    depth: 0,
+    draft: true,
+    limit: articleIds.length,
+    pagination: false,
+  });
+  return docs
+    .filter((doc) => isEditableBy(doc, viewerId))
+    .map((doc) => ({ id: doc.id, slug: doc.slug }));
+}
+
 /** Not approved: never submitted (null), sent back, or refused. */
 const NOT_READY: Where = {
   or: [

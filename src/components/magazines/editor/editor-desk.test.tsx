@@ -65,9 +65,19 @@ vi.mock("@/trpc/react", () => ({
           query([
             {
               id: 5,
+              slug: "why-evals-matter",
               title: "Why evals matter",
               authorName: "Ada",
               updatedAt: "2026-10-18T00:00:00.000Z",
+              editableByViewer: true,
+            },
+            {
+              id: 7,
+              slug: "someone-elses",
+              title: "Someone else's story",
+              authorName: "Grace",
+              updatedAt: "2026-10-17T00:00:00.000Z",
+              editableByViewer: false,
             },
           ]),
       },
@@ -143,8 +153,19 @@ describe("EditorDesk", () => {
     ).toHaveTextContent("Published");
 
     const ready = screen.getByRole("region", { name: /Ready for an issue/ });
-    expect(within(ready).getByText("Why evals matter")).toBeInTheDocument();
+    // The writer can reopen a ready article to fix a typo.
+    expect(
+      within(ready).getByRole("link", { name: /Why evals matter/ }),
+    ).toHaveAttribute(
+      "href",
+      "/communities/amsterdam-ai/magazine/articles/why-evals-matter/edit",
+    );
     expect(within(ready).getByText("By Ada")).toBeInTheDocument();
+    // Another author's ready article is listed, but not a link.
+    expect(within(ready).getByText("Someone else's story")).toBeInTheDocument();
+    expect(
+      within(ready).queryByRole("link", { name: /Someone else's story/ }),
+    ).toBeNull();
 
     const drafts = screen.getByRole("region", { name: /Your drafts/ });
     expect(

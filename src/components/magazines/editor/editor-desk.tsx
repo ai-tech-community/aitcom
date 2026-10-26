@@ -214,24 +214,41 @@ export function EditorDesk({ slug }: { slug: string }) {
           query={ready}
           empty={readyRows.length === 0 ? t("readyEmpty") : null}
         >
-          {readyRows.map((article) => (
-            <li
-              key={article.id}
-              className="flex items-start justify-between gap-3 px-3 py-2.5"
-            >
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-sm font-medium break-words">
-                  {article.title}
-                </span>
-                {article.authorName && (
-                  <span className="text-muted-foreground text-xs">
-                    {t("byAuthor", { name: article.authorName })}
+          {readyRows.map((article) => {
+            const content = (
+              <>
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-sm font-medium break-words">
+                    {article.title}
                   </span>
+                  {article.authorName && (
+                    <span className="text-muted-foreground text-xs">
+                      {t("byAuthor", { name: article.authorName })}
+                    </span>
+                  )}
+                </span>
+                <UpdatedAt value={article.updatedAt} />
+              </>
+            );
+            // The writer can still reopen a ready article to fix it; other
+            // editors see it listed (the edit page only opens for its author).
+            return (
+              <li key={article.id}>
+                {article.editableByViewer ? (
+                  <Link
+                    href={magazineArticleEditPath(slug, article.slug)}
+                    className="hover:bg-secondary/50 flex items-start justify-between gap-3 px-3 py-2.5 transition-colors"
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div className="flex items-start justify-between gap-3 px-3 py-2.5">
+                    {content}
+                  </div>
                 )}
-              </span>
-              <UpdatedAt value={article.updatedAt} />
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </DeskList>
 
         <DeskList

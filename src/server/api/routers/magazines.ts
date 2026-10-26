@@ -9,6 +9,7 @@ import {
 import type { Magazine } from "@/payload-types";
 import { communityProcedure, createTRPCRouter } from "@/server/api/trpc";
 import { isContentPublic } from "@/server/communities/content-visibility";
+import { placedArticlesOf } from "@/server/magazines/article-placement";
 import type { Deps, PayloadClient } from "@/server/magazines/deps";
 import {
   loadMagazineEditorship,
@@ -29,10 +30,14 @@ import {
   setIssueItems,
   updateIssueDetails,
 } from "@/server/magazines/issue-service";
-import { issueItemInputSchema } from "@/server/magazines/items/registry";
+import {
+  issueItemInputSchema,
+  type StoredBlock,
+} from "@/server/magazines/items/registry";
 import {
   listAvailableArticles,
   listDraftArticles,
+  listEditableArticles,
 } from "@/server/magazines/magazine-articles";
 import {
   getMagazineForCommunity,
@@ -223,8 +228,21 @@ export const magazinesRouter = createTRPCRouter({
 
   getIssueForEditing: issueProcedure.query(async ({ ctx }) => {
     const magazine = requireMagazine(ctx.magazine);
+    const [view, editableArticles] = await Promise.all([
+      loadIssueEditorView(ctx.payload, ctx.issue),
+      listEditableArticles(
+        ctx.payload,
+        magazine.id,
+        placedArticlesOf((ctx.issue.items ?? []) as StoredBlock[]).map(
+          (placed) => placed.articleId,
+        ),
+        ctx.session.user.id,
+      ),
+    ]);
     return {
-      ...(await loadIssueEditorView(ctx.payload, ctx.issue)),
+      ...view,
+      // The issue's articles the viewer may open in the article editor.
+      editableArticles,
       magazine: { name: magazine.name, slug: magazine.slug },
       communityIsPrivate: !isContentPublic(ctx.community),
       // What the builder runs `planVisibilityChange` against, so it asks
