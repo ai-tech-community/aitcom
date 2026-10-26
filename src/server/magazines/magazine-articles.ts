@@ -3,12 +3,12 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { Where } from "payload";
 
 import type { Magazine } from "@/payload-types";
-import type { CommunityRole } from "@/server/communities/role-utils";
-import { communities, communityMemberships } from "@/server/db/schema";
+import { communities } from "@/server/db/schema";
 
 import type { Deps, PayloadClient } from "./deps";
 import { isMagazineEditorRole } from "./issue-access";
 import { relationIdOrNull } from "./relation-id";
+import { activeCommunityRole } from "./viewer-role";
 
 /**
  * Magazine articles from the editor's side (ADR-0043): who may write them,
@@ -36,24 +36,16 @@ export type DraftMagazineArticle = {
 /** Most articles an editor list returns. */
 const EDITOR_LIST_LIMIT = 100;
 
-async function activeRoleIn(
+/** Whether the community exists and is not soft-deleted. */
+async function isLiveCommunity(
   database: Deps["db"],
   communityId: string,
-  userId: string,
-): Promise<CommunityRole | null> {
+): Promise<boolean> {
   const community = await database.query.communities.findFirst({
     where: and(eq(communities.id, communityId), isNull(communities.deletedAt)),
     columns: { id: true },
   });
-  if (!community) return null;
-  const membership = await database.query.communityMemberships.findFirst({
-    where: and(
-      eq(communityMemberships.communityId, communityId),
-      eq(communityMemberships.userId, userId),
-    ),
-    columns: { role: true, status: true },
-  });
-  return membership?.status === "active" ? membership.role : null;
+  return community !== undefined;
 }
 
 /**
@@ -78,7 +70,9 @@ export async function requireEditorOfMagazine(
           disableErrors: true,
         });
   if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
-  const role = await activeRoleIn(deps.db, doc.communityId, userId);
+  const role = (await isLiveCommunity(deps.db, doc.communityId))
+    ? await activeCommunityRole(deps.db, doc.communityId, userId)
+    : null;
   if (!isMagazineEditorRole(role)) throw new TRPCError({ code: "FORBIDDEN" });
   return doc;
 }

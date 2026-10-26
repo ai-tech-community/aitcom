@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import {
   ISSUE_STATUSES,
@@ -13,7 +13,9 @@ import {
 } from "@/server/communities/content-visibility";
 import type { CommunityRole } from "@/server/communities/role-utils";
 import type { db } from "@/server/db";
-import { communities, communityMemberships } from "@/server/db/schema";
+import { communities } from "@/server/db/schema";
+
+import { activeCommunityRole } from "./viewer-role";
 
 /**
  * Who may read a magazine issue (ADR-0042). The single source of the issue
@@ -105,6 +107,24 @@ function isIssueVisibility(value: string): value is IssueVisibility {
 }
 
 /**
+ * An issue's stored access facts, checked against the known value lists.
+ * Null when the stored status or visibility is outside them: callers treat
+ * that as `none`, so an unknown value never widens access.
+ */
+export function issueAccessFacts(
+  issue: Omit<LoadableIssue, "communityId">,
+): IssueAccessInput["issue"] | null {
+  if (!isIssueStatus(issue.status) || !isIssueVisibility(issue.visibility)) {
+    return null;
+  }
+  return {
+    status: issue.status,
+    visibility: issue.visibility,
+    publicConfirmedAt: issue.publicConfirmedAt ?? null,
+  };
+}
+
+/**
  * The viewer's access to an issue, read from the database. A community that
  * is missing or soft-deleted is `none` for everyone, editors included. A
  * stored status or visibility outside the known lists is `none`: an unknown
@@ -115,26 +135,16 @@ export async function loadMagazineIssueAccess(
   issue: LoadableIssue,
   viewerId: string | null,
 ): Promise<MagazineIssueAccess> {
-  if (!isIssueStatus(issue.status) || !isIssueVisibility(issue.visibility)) {
-    return "none";
-  }
+  const facts = issueAccessFacts(issue);
+  if (facts === null) return "none";
 
   const community = await database.query.communities.findFirst({
     where: eq(communities.id, issue.communityId),
     columns: { slug: true, isListedInDirectory: true, deletedAt: true },
   });
-
-  let role: CommunityRole | null = null;
-  if (community && viewerId !== null) {
-    const membership = await database.query.communityMemberships.findFirst({
-      where: and(
-        eq(communityMemberships.communityId, issue.communityId),
-        eq(communityMemberships.userId, viewerId),
-      ),
-      columns: { role: true, status: true },
-    });
-    if (membership?.status === "active") role = membership.role;
-  }
+  const role = community
+    ? await activeCommunityRole(database, issue.communityId, viewerId)
+    : null;
 
   return resolveMagazineIssueAccess({
     viewer: { userId: viewerId, role },
@@ -145,10 +155,6 @@ export async function loadMagazineIssueAccess(
           deleted: community.deletedAt !== null,
         }
       : null,
-    issue: {
-      status: issue.status,
-      visibility: issue.visibility,
-      publicConfirmedAt: issue.publicConfirmedAt ?? null,
-    },
+    issue: facts,
   });
 }
