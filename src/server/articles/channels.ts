@@ -28,6 +28,16 @@ export type ArticleSubmitPolicy = "staff_review" | "editor_approves";
  */
 export type PublishedEditPolicy = "trusted_author" | "magazine_editor";
 
+/**
+ * When a reader may comment on an article. Commenting is a channel
+ * decision, not the read rule: a magazine editor reads unpublished work,
+ * but a preview has no readers, so it has no comment thread (ruling 60).
+ * - `public_article`: the blog rule — published and public.
+ * - `published_issue_reader`: published, and placed in a published issue
+ *   the viewer may read. An editor previewing unpublished work may not.
+ */
+export type CommentPolicy = "public_article" | "published_issue_reader";
+
 /** The article fields the channels read and write. */
 export type ArticleData = {
   status?: string | null;
@@ -55,6 +65,7 @@ export interface ArticleChannel {
   readonly creditsOnApproval: boolean;
   readonly submitPolicy: ArticleSubmitPolicy;
   readonly publishedEditPolicy: PublishedEditPolicy;
+  readonly commentPolicy: CommentPolicy;
 }
 
 function sendBackToDraftOnRefusal(
@@ -77,6 +88,7 @@ export const blogChannel: ArticleChannel = {
   creditsOnApproval: true,
   submitPolicy: "staff_review",
   publishedEditPolicy: "trusted_author",
+  commentPolicy: "public_article",
   onReviewChange(data, originalDoc) {
     if (
       data.reviewStatus === "approved" &&
@@ -106,6 +118,7 @@ export const magazineChannel: ArticleChannel = {
   creditsOnApproval: false,
   submitPolicy: "editor_approves",
   publishedEditPolicy: "magazine_editor",
+  commentPolicy: "published_issue_reader",
   onReviewChange(data, originalDoc) {
     sendBackToDraftOnRefusal(data, originalDoc);
   },

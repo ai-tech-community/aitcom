@@ -69,15 +69,52 @@ export async function canReadArticle(
     case "blog":
       return isPublicArticle(article);
     case "magazine":
-      return canReadMagazineArticle(deps, article, viewerId);
+      return (await magazineArticleReach(deps, article, viewerId)).readable;
   }
 }
 
-async function canReadMagazineArticle(
+/**
+ * Whether the viewer may comment on an article, by its channel's
+ * `commentPolicy` (ADR-0043):
+ * - `open`: they may.
+ * - `unpublished`: they may read it, but it has no readers yet (a blog
+ *   article not public yet, an editor's preview of unpublished magazine
+ *   work), so it has no comment thread.
+ * - `not_found`: they may not read it; its existence is not revealed.
+ */
+export type ArticleCommentAccess = "open" | "unpublished" | "not_found";
+
+export async function articleCommentAccess(
   deps: Deps,
   article: ReadableArticleFacts,
   viewerId: string | null,
-): Promise<boolean> {
+): Promise<ArticleCommentAccess> {
+  const policy = channelFor(article).commentPolicy;
+  switch (policy) {
+    case "public_article":
+      return isPublicArticle(article) ? "open" : "unpublished";
+    case "published_issue_reader": {
+      const reach = await magazineArticleReach(deps, article, viewerId);
+      if (!reach.readable) return "not_found";
+      return reach.inPublishedIssue && article.status === "published"
+        ? "open"
+        : "unpublished";
+    }
+  }
+}
+
+type MagazineArticleReach = {
+  /** The viewer may read the article (the read rule above). */
+  readable: boolean;
+  /** It is placed in an issue that is published. */
+  inPublishedIssue: boolean;
+};
+
+async function magazineArticleReach(
+  deps: Deps,
+  article: ReadableArticleFacts,
+  viewerId: string | null,
+): Promise<MagazineArticleReach> {
   const issueId = relationIdOrNull(article.magazineIssue);
   const issue =
     issueId === null
@@ -96,16 +133,25 @@ async function canReadMagazineArticle(
           },
         });
   // Not placed (or its issue is gone): only the magazine's editors read it.
-  if (!issue) return isEditorOfMagazine(deps, article.magazine, viewerId);
+  if (!issue) {
+    return {
+      readable: await isEditorOfMagazine(deps, article.magazine, viewerId),
+      inPublishedIssue: false,
+    };
+  }
 
+  const inPublishedIssue = issue.status === "published";
   const access = await loadMagazineIssueAccess(deps.db, issue, viewerId);
   switch (access) {
     case "editor":
-      return true;
+      return { readable: true, inPublishedIssue };
     case "full":
-      return article.status === "published";
+      return {
+        readable: article.status === "published",
+        inPublishedIssue,
+      };
     case "none":
-      return false;
+      return { readable: false, inPublishedIssue };
   }
 }
 

@@ -186,6 +186,10 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
     }
     if (fx.articleIds.length > 0) {
       await payload.delete({
+        collection: "comments",
+        where: { articleId: { in: fx.articleIds } },
+      });
+      await payload.delete({
         collection: "articles",
         where: { id: { in: fx.articleIds } },
       });
@@ -350,6 +354,23 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
     return results.filter((r) => r.type === "article").map((r) => r.id);
   }
 
+  async function commentCount(articleId: number): Promise<number> {
+    const { totalDocs } = await m.payload.count({
+      collection: "comments",
+      where: { articleId: { equals: articleId } },
+    });
+    return totalDocs;
+  }
+
+  async function pointsEventCount(userId: string): Promise<number> {
+    const { eq } = await import("drizzle-orm");
+    const rows = await m.db
+      .select({ id: m.schema.pointsEvents.id })
+      .from(m.schema.pointsEvents)
+      .where(eq(m.schema.pointsEvents.userId, userId));
+    return rows.length;
+  }
+
   // ── Tests ─────────────────────────────────────────────────────────────
 
   it("public: on the profile with the magazine link, in agent search, in the sitemap, comments readable", async () => {
@@ -464,6 +485,113 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
     await expect(
       callerAs(fx.memberId).comments.list({ articleId: article.id }),
     ).resolves.toEqual([]);
+  }, 60_000);
+
+  // ── Commenting is the channel's call ──────────────────────────────────
+
+  it("blog: a public article takes comments, an unpublished one refuses them", async () => {
+    async function blogArticle(label: string, status: "published" | "draft") {
+      const doc = await m.payload.create({
+        collection: "articles",
+        data: {
+          title: `Surfaces blog ${label} ${fx.sfx}`,
+          slug: `as-blog-${label}-${fx.sfx}`,
+          content: richText("blog text"),
+          type: "article",
+          authorId: fx.editorId,
+          authorName: "Editor",
+          authorType: "admin",
+          status,
+          ...(status === "published"
+            ? { publishedAt: new Date().toISOString() }
+            : {}),
+        } as never,
+      });
+      fx.articleIds.push(doc.id);
+      return doc;
+    }
+    const live = await blogArticle("live", "published");
+    const draft = await blogArticle("draft", "draft");
+
+    await expect(
+      callerAs(fx.outsiderId).comments.create({
+        articleId: live.id,
+        content: "hello",
+      }),
+    ).resolves.toMatchObject({ authorId: fx.outsiderId });
+    await expect(
+      callerAs(fx.editorId).comments.create({
+        articleId: draft.id,
+        content: "hello",
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Cannot comment on unpublished articles",
+    });
+    expect(await commentCount(live.id)).toBe(1);
+    expect(await commentCount(draft.id)).toBe(0);
+  }, 60_000);
+
+  it("magazine: readers of a published issue comment; an editor previewing unpublished work may not", async () => {
+    const { c, magazine, article } = await publishedMagazineArticle();
+
+    // Published in a published public issue: readers and editors comment.
+    await expect(
+      callerAs(fx.outsiderId).comments.create({
+        articleId: article.id,
+        content: "reader",
+      }),
+    ).resolves.toMatchObject({ authorId: fx.outsiderId });
+    await expect(
+      callerAs(fx.editorId).comments.create({
+        articleId: article.id,
+        content: "editor",
+      }),
+    ).resolves.toMatchObject({ authorId: fx.editorId });
+    expect(await commentCount(article.id)).toBe(2);
+
+    // Ready but in no issue, and placed in a draft issue: the editor reads
+    // both (a preview), but neither has readers, so neither takes comments.
+    const unplaced = await approvedArticle(magazine.id, "unplaced");
+    const inDraft = await approvedArticle(magazine.id, "in-draft");
+    const draftIssue = await m.issues.createIssue(
+      m,
+      magazine,
+      { title: `Draft ${fx.sfx}` },
+      actor(c),
+    );
+    await m.issues.setIssueItems(
+      m,
+      draftIssue,
+      [{ kind: "article", articleId: inDraft.id }],
+      draftIssue.updatedAt,
+      actor(c),
+    );
+    const editorPoints = await pointsEventCount(fx.editorId);
+    for (const preview of [unplaced, inDraft]) {
+      await expect(
+        callerAs(fx.editorId).comments.list({ articleId: preview.id }),
+      ).resolves.toEqual([]);
+      await expect(
+        callerAs(fx.editorId).comments.create({
+          articleId: preview.id,
+          content: "preview",
+        }),
+      ).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+        message: "Cannot comment on unpublished articles",
+      });
+      // Anyone else may not even read it: not found.
+      await expect(
+        callerAs(fx.memberId).comments.create({
+          articleId: preview.id,
+          content: "member",
+        }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+      expect(await commentCount(preview.id)).toBe(0);
+    }
+    // A refused comment awards no XP.
+    expect(await pointsEventCount(fx.editorId)).toBe(editorPoints);
   }, 60_000);
 
   it("badge metrics count a published magazine article and not an approved unpublished one", async () => {
