@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Magazine } from "@/payload-types";
@@ -191,5 +191,52 @@ describe("MagazineSettingsForm", () => {
       target: { value: "Not OK" },
     });
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
+
+  it("uploads a logo from its labelled button and waits for it before saving", async () => {
+    trpc.settings = {
+      magazine: existingMagazine(),
+      communityIsPrivate: false,
+      community: { slug: "amsterdam-ai", isListedInDirectory: true },
+    };
+    let finish: (res: Response) => void = () => undefined;
+    const fetchMock = vi.fn(
+      () => new Promise<Response>((resolve) => (finish = resolve)),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      renderWithIntl(<MagazineSettingsForm slug="amsterdam-ai" />);
+
+      // The file input is out of the tab order; the button is the control.
+      const input =
+        document.querySelector<HTMLInputElement>('input[type="file"]')!;
+      expect(input).toHaveAttribute("tabindex", "-1");
+      const upload = screen.getByRole("button", {
+        name: "Logo Upload a logo",
+      });
+      expect(upload).toHaveAccessibleDescription("A square image works best.");
+
+      fireEvent.change(input, {
+        target: { files: [new File(["x"], "logo.png", { type: "image/png" })] },
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toBeDisabled();
+
+      await act(async () => {
+        finish(
+          new Response(JSON.stringify({ url: "https://example.test/l.png" })),
+        );
+      });
+      expect(
+        screen.getByRole("button", { name: "Logo Replace logo" }),
+      ).toBeEnabled();
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toBeEnabled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

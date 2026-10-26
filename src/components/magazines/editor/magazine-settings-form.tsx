@@ -26,6 +26,7 @@ import type { VisibilityRecord } from "@/lib/magazines/visibility";
 import { api } from "@/trpc/react";
 
 import { readEditorError } from "./editor-errors";
+import { ImageUploadField } from "./image-upload-field";
 import { PublicOptIn, publicOptInRequired } from "./public-opt-in";
 
 const NAME_MAX = 120;
@@ -153,7 +154,6 @@ function SettingsEditor({
   const [topicInput, setTopicInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const topicInputRef = useRef<HTMLInputElement>(null);
   /** Set when a topic chip's × was used: its button is gone after render. */
   const focusTopicInput = useRef(false);
@@ -164,8 +164,6 @@ function SettingsEditor({
   const slugErrorId = useId();
   const descriptionId = useId();
   const descriptionHintId = useId();
-  const logoId = useId();
-  const logoHintId = useId();
   const topicsId = useId();
   const topicsHintId = useId();
 
@@ -235,29 +233,6 @@ function SettingsEditor({
     update({ defaultVisibility: next });
     // Leaving `public` withdraws the tick: coming back asks again.
     if (next !== "public") setConfirmed(false);
-  };
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("alt", "magazine logo");
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Upload failed");
-      const json = (await res.json()) as { url: string };
-      update({ logoUrl: json.url });
-    } catch {
-      toast.error(t("uploadFailed"));
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -350,56 +325,30 @@ function SettingsEditor({
         </p>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={logoId}>{t("logoLabel")}</Label>
-        <div className="flex flex-wrap items-center gap-3">
-          {draft.logoUrl && (
-            // Any host an editor links to: next/image only serves listed hosts.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={draft.logoUrl}
-              alt=""
-              className="bg-secondary size-16 rounded-lg border object-cover"
-            />
-          )}
-          <input
-            ref={fileInputRef}
-            id={logoId}
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            aria-describedby={logoHintId}
-            onChange={(e) => void handleLogoUpload(e)}
-            disabled={isUploading}
+      <ImageUploadField
+        value={draft.logoUrl}
+        onChange={(logoUrl) => update({ logoUrl })}
+        onUploadingChange={setIsUploading}
+        uploadAlt="magazine logo"
+        text={{
+          label: t("logoLabel"),
+          hint: t("logoHint"),
+          upload: t("logoUpload"),
+          replace: t("logoReplace"),
+          remove: t("logoRemove"),
+          uploading: t("logoUploading"),
+          failed: t("uploadFailed"),
+        }}
+        renderPreview={(url) => (
+          // Any host an editor links to: next/image only serves listed hosts.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={url}
+            alt=""
+            className="bg-secondary size-16 rounded-lg border object-cover"
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isUploading}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {isUploading
-              ? t("logoUploading")
-              : draft.logoUrl
-                ? t("logoReplace")
-                : t("logoUpload")}
-          </Button>
-          {draft.logoUrl && !isUploading && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => update({ logoUrl: null })}
-            >
-              {t("logoRemove")}
-            </Button>
-          )}
-        </div>
-        <p id={logoHintId} className="text-muted-foreground text-sm">
-          {t("logoHint")}
-        </p>
-      </div>
+        )}
+      />
 
       <div className="flex flex-col gap-2">
         <Label htmlFor={topicsId}>{t("topicsLabel")}</Label>

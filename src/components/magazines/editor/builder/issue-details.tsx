@@ -1,17 +1,16 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useId, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useId } from "react";
 
 import { RichTextEditor } from "@/components/article-editor/rich-text-editor";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { IssueVisibility } from "@/lib/magazines/values";
 
+import { ImageUploadField } from "../image-upload-field";
 import { PublicOptIn } from "../public-opt-in";
 import type { IssueDetailsDraft } from "./use-issue-save";
 
@@ -51,15 +50,11 @@ export function IssueDetails({
   onConfirmedChange: (confirmed: boolean) => void;
 }) {
   const t = useTranslations("magazineEditor.builder.details");
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const titleId = useId();
   const titleErrorId = useId();
   const slugId = useId();
   const slugHintId = useId();
-  const coverId = useId();
-  const coverHintId = useId();
   const noteLabelId = useId();
   const noteHintId = useId();
 
@@ -69,29 +64,6 @@ export function IssueDetails({
     onChange({ visibility: next });
     // Leaving `public` withdraws the tick: coming back asks again.
     if (next !== "public") onConfirmedChange(false);
-  };
-
-  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("alt", details.title || "issue cover");
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Upload failed");
-      const json = (await res.json()) as { url: string };
-      onChange({ coverImageUrl: json.url });
-    } catch {
-      toast.error(t("coverFailed"));
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
   };
 
   return (
@@ -148,56 +120,29 @@ export function IssueDetails({
         </p>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={coverId}>{t("cover")}</Label>
-        <div className="flex flex-wrap items-center gap-3">
-          {details.coverImageUrl && (
-            // Any host an editor links to: next/image only serves listed hosts.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={details.coverImageUrl}
-              alt={details.title}
-              className="bg-secondary aspect-[3/4] w-16 rounded-md border object-cover"
-            />
-          )}
-          <input
-            ref={fileInputRef}
-            id={coverId}
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            aria-describedby={coverHintId}
-            onChange={(e) => void handleCoverUpload(e)}
-            disabled={isUploading}
+      <ImageUploadField
+        value={details.coverImageUrl}
+        onChange={(coverImageUrl) => onChange({ coverImageUrl })}
+        uploadAlt={details.title || "issue cover"}
+        text={{
+          label: t("cover"),
+          hint: t("coverHint"),
+          upload: t("coverUpload"),
+          replace: t("coverReplace"),
+          remove: t("coverRemove"),
+          uploading: t("coverUploading"),
+          failed: t("coverFailed"),
+        }}
+        renderPreview={(url) => (
+          // Any host an editor links to: next/image only serves listed hosts.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={url}
+            alt=""
+            className="bg-secondary aspect-[3/4] w-16 rounded-md border object-cover"
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isUploading}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {isUploading
-              ? t("coverUploading")
-              : details.coverImageUrl
-                ? t("coverReplace")
-                : t("coverUpload")}
-          </Button>
-          {details.coverImageUrl && !isUploading && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onChange({ coverImageUrl: null })}
-            >
-              {t("coverRemove")}
-            </Button>
-          )}
-        </div>
-        <p id={coverHintId} className="text-muted-foreground text-sm">
-          {t("coverHint")}
-        </p>
-      </div>
+        )}
+      />
 
       <div className="flex flex-col gap-2">
         {/* Names the writing surface itself (its textbox), not a wrapper. */}
