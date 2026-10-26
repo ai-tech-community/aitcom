@@ -10,11 +10,20 @@ import { IssueCoverArt } from "./issue-cover-card";
 import { useIssueDateline } from "./issue-dateline";
 
 /**
+ * How the lead action is ranked (One Voice Rule). `primary` where "Read the
+ * issue" is the page's single most important action (the `/magazines`
+ * home); `ink` where the page around it already owns the orange action —
+ * a community's pages, whose frame carries Join.
+ */
+export type FeaturedIssueEmphasis = "primary" | "ink";
+
+/**
  * A page's lead issue: its cover beside its magazine, dateline, title,
- * community and the page's one orange action, "Read the issue" (One Voice
- * Rule). The `/magazines` home leads with it ("Featured issue"), and so does
- * the community Magazine tab ("Latest issue", without the community, whose
- * page it is). The card's sections stack in a narrow column and sit side by
+ * community and the lead action, "Read the issue". The `/magazines` home
+ * leads with it ("Featured issue", the page's one orange action), and so
+ * does the community Magazine tab ("Latest issue", without the community,
+ * whose page it is, and in ink: the community frame's Join is that page's
+ * orange). The card's sections stack in a narrow column and sit side by
  * side from the container's `xl` width.
  */
 export function FeaturedIssue({
@@ -22,6 +31,7 @@ export function FeaturedIssue({
   labelId,
   label,
   showCommunity = true,
+  emphasis = "primary",
 }: {
   issue: IssueCard;
   /** The id of the label that names the section. */
@@ -30,6 +40,8 @@ export function FeaturedIssue({
   label?: string;
   /** Name the issue's community ("From …"); off on the community's own tab. */
   showCommunity?: boolean;
+  /** The lead action's rank; see `FeaturedIssueEmphasis`. */
+  emphasis?: FeaturedIssueEmphasis;
 }) {
   const t = useTranslations("magazines");
   const dateline = useIssueDateline(issue);
@@ -69,7 +81,11 @@ export function FeaturedIssue({
               </span>
             </p>
           </div>
-          <Button asChild className="self-start">
+          <Button
+            asChild
+            variant={emphasis === "ink" ? "ink" : "default"}
+            className="self-start"
+          >
             <Link href={issuePath(issue.magazine, issue)}>
               {t("home.readIssue")}
             </Link>

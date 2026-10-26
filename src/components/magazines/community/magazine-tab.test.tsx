@@ -60,14 +60,26 @@ describe("MagazineTab", () => {
       <MagazineTab data={tabData()} communitySlug="amsterdam-ai" />,
     );
 
-    expect(
-      screen.getByRole("link", { name: "Read the issue" }),
-    ).toHaveAttribute("href", "/magazines/agents-weekly/issue-4");
+    const read = screen.getByRole("link", { name: "Read the issue" });
+    expect(read).toHaveAttribute("href", "/magazines/agents-weekly/issue-4");
+    // Ink, not orange: the community frame's Join is this page's one orange
+    // action, so a signed-in non-member never sees two (One Voice Rule).
+    expect(read).toHaveAttribute("data-variant", "ink");
     const shelf = screen.getByRole("region", { name: /Past issues/ });
     const covers = within(shelf).getAllByRole("listitem");
     expect(covers).toHaveLength(1);
     expect(within(covers[0]!).getByText("Issue three")).toBeInTheDocument();
     expect(within(covers[0]!).getByText("Members only")).toBeInTheDocument();
+  });
+
+  it("spends no orange of its own: the community frame owns it", () => {
+    const { container } = renderWithIntl(
+      <MagazineTab data={tabData()} communitySlug="amsterdam-ai" />,
+    );
+    expect(container.querySelectorAll('[data-variant="default"]')).toHaveLength(
+      0,
+    );
+    expect(container.querySelectorAll(".bg-primary")).toHaveLength(0);
   });
 
   it("shows the editor desk only to editors", () => {

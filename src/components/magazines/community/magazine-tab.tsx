@@ -63,7 +63,8 @@ function PastIssues({ issues }: { issues: IssueCard[] }) {
 
 /**
  * The community's Magazine tab (spec flow 5): the latest issue large with
- * the page's one orange action, "Read the issue", then the archive shelf
+ * "Read the issue" in ink (the community frame's Join is this page's one
+ * orange action, One Voice Rule), then the archive shelf
  * of older covers. Editors also get the editor desk. Server-rendered from
  * `loadCommunityMagazineTab`; a community without a magazine reaches this
  * only for editors (the page answers 404 for everyone else).
@@ -117,6 +118,7 @@ export function MagazineTab({
             labelId={latestId}
             label={t("latest")}
             showCommunity={false}
+            emphasis="ink"
           />
         </section>
       ) : (
