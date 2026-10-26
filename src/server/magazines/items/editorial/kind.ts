@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { extractPlainText } from "@/lib/lexical";
+import { lexicalHasText } from "@/lib/lexical-text";
 import type { ItemProblem } from "@/lib/magazines/item-views";
 
 import { itemIdOf } from "../item-id";
@@ -17,17 +17,6 @@ const editorialItemInput = z.object({
 
 export type EditorialItemInput = z.infer<typeof editorialItemInput>;
 export type EditorialItemStored = StoredItem<"editorial">;
-
-/** Whether a Lexical state has at least one non-empty text node. */
-function hasText(body: unknown): boolean {
-  const children = (body as { root?: { children?: unknown } } | null)?.root
-    ?.children;
-  if (!Array.isArray(children)) return false;
-  return (
-    extractPlainText(children as Parameters<typeof extractPlainText>[0])
-      .length > 0
-  );
-}
 
 /**
  * Free-form text owned by the issue (an editor's column, a section opener).
@@ -64,7 +53,7 @@ export const editorialItemKind: IssueItemKind<
   async validate(items) {
     const problems: ItemProblem[] = [];
     for (const { index, stored } of items) {
-      if (!hasText(stored.body)) {
+      if (!lexicalHasText(stored.body)) {
         problems.push({ itemIndex: index, code: "ITEM_INVALID" });
       }
     }

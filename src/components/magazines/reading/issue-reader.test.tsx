@@ -58,6 +58,25 @@ describe("IssueReader", () => {
     expect(within(contents).queryByText("From the editor")).toBeNull();
   });
 
+  it("leaves 'From the editor' out when the note was cleared to an empty paragraph", () => {
+    const cleared = {
+      root: {
+        type: "root",
+        version: 1,
+        children: [{ type: "paragraph", version: 1, children: [] }],
+      },
+    };
+    renderWithIntl(
+      <IssueReader
+        data={issuePage({ issue: { editorNote: cleared } })}
+        locale="en"
+      />,
+    );
+    const contents = screen.getByRole("navigation", { name: "Contents" });
+    expect(within(contents).queryByText("From the editor")).toBeNull();
+    expect(screen.queryByText("From the editor")).toBeNull();
+  });
+
   it("only one primary (orange) button on the page", () => {
     const { container } = renderWithIntl(
       <IssueReader data={issuePage({ access: "editor" })} locale="en" />,

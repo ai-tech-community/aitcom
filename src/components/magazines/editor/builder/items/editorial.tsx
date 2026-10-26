@@ -8,27 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SectionLabel } from "@/components/ui/section-label";
-import { extractPlainText } from "@/lib/lexical";
+import { lexicalHasText, lexicalPlainText } from "@/lib/lexical-text";
 
 import type { BuilderItemEditorProps, BuilderItemKind } from "./types";
 
 const HEADING_MAX = 160;
 /** Most characters of a block's text that name its row (CSS truncates the rest). */
 const ROW_TEXT_CHARS = 120;
-
-/** The plain text of a Lexical state ("" for anything else). */
-function plainTextOf(state: unknown): string {
-  const children = (state as { root?: { children?: unknown } } | null)?.root
-    ?.children;
-  return Array.isArray(children)
-    ? extractPlainText(children as Parameters<typeof extractPlainText>[0])
-    : "";
-}
-
-/** Whether a Lexical state holds some text. */
-export function lexicalHasText(state: unknown): boolean {
-  return plainTextOf(state).trim().length > 0;
-}
 
 /**
  * Writes one editorial block: an optional heading and its text. Changes go
@@ -100,11 +86,13 @@ export const editorialBuilderKind: BuilderItemKind<"editorial"> = {
   rowTitle(item, ctx) {
     const heading = item.heading?.trim();
     if (heading) return heading;
-    const text = plainTextOf(item.body).trim();
+    const text = lexicalPlainText(item.body);
     return text ? text.slice(0, ROW_TEXT_CHARS) : ctx.t("editorialEmpty");
   },
   Editor: EditorialItemEditor,
-  // The server's `ITEM_INVALID` rule: a block needs some text.
+  // The server's `ITEM_INVALID` rule: a block needs some text. Both sides
+  // use `lexicalHasText`, so a save the server would refuse is never sent
+  // (ruling 85).
   isSavable: (item) => lexicalHasText(item.body),
   previewView: (item) => ({
     kind: "editorial",

@@ -5,6 +5,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 import type { AppLocale } from "@/i18n/messages";
 import { Link } from "@/i18n/navigation";
 import { LexicalRenderer } from "@/lib/lexical";
+import { lexicalHasText } from "@/lib/lexical-text";
 import { seesEditorLayer } from "@/lib/magazines/access";
 import { issueBuilderPath, magazineArticlePath } from "@/lib/magazines/paths";
 import type { IssuePageData } from "@/server/magazines/reading";
@@ -16,10 +17,13 @@ import { IssueContents } from "./issue-contents";
 import { IssueCover } from "./issue-cover";
 import { IssueRail } from "./issue-rail";
 
-/** Lexical state with at least one block: an empty note is no note. */
+/**
+ * Whether the issue has an editor's note to show: an empty note is no note.
+ * An editor that was cleared still holds an empty paragraph, so the test is
+ * text, not blocks.
+ */
 export function hasEditorNote(note: unknown): boolean {
-  const root = (note as { root?: { children?: unknown[] } } | null)?.root;
-  return Array.isArray(root?.children) && root.children.length > 0;
+  return lexicalHasText(note);
 }
 
 /** The editor's note card; the reading page and the builder preview show it. */

@@ -1,6 +1,8 @@
 import React from "react";
 import { slugify } from "@/lib/text-utils";
 
+import { extractPlainText } from "./lexical-text";
+
 type LexicalNode = {
   type: string;
   text?: string;
@@ -28,17 +30,9 @@ type LexicalRoot = {
   root?: { children?: LexicalNode[] };
 };
 
-export function extractPlainText(nodes: LexicalNode[]): string {
-  return nodes
-    .map((n) => {
-      if (typeof n.text === "string") return n.text;
-      if (n.children?.length) return extractPlainText(n.children);
-      return "";
-    })
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+// The text rule lives in its own client-safe module; re-exported here for
+// the readers that already import it from this one.
+export { extractPlainText } from "./lexical-text";
 
 /**
  * Estimate reading time in minutes from Lexical JSON content.

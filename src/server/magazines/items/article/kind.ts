@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { estimateReadingTime, extractPlainText } from "@/lib/lexical";
+import { estimateReadingTime } from "@/lib/lexical";
+import { lexicalPlainText } from "@/lib/lexical-text";
 import type { IssueReaderAccess } from "@/lib/magazines/access";
 import type { ItemProblem, UnavailableItem } from "@/lib/magazines/item-views";
 import type { Article } from "@/payload-types";
@@ -28,12 +29,7 @@ export type ArticleItemStored = StoredItem<"article">;
 const EXCERPT_WORDS = 40;
 
 function excerptOf(content: unknown): string {
-  const children = (content as { root?: { children?: unknown } } | null)?.root
-    ?.children;
-  const text = Array.isArray(children)
-    ? extractPlainText(children as Parameters<typeof extractPlainText>[0])
-    : "";
-  const words = text.split(/\s+/).filter(Boolean);
+  const words = lexicalPlainText(content).split(/\s+/).filter(Boolean);
   return words.length > EXCERPT_WORDS
     ? `${words.slice(0, EXCERPT_WORDS).join(" ")}…`
     : words.join(" ");
