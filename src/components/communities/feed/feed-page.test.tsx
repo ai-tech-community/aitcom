@@ -30,7 +30,9 @@ vi.mock("@/components/auth/auth-required-dialog", () => ({
   useRequireAuth: () => ({ promptAuth: vi.fn(), requireAuth: vi.fn() }),
 }));
 vi.mock("./post-composer", () => ({ PostComposer: () => null }));
-vi.mock("./community-sidebar", () => ({ CommunitySidebar: () => null }));
+vi.mock("./community-sidebar", () => ({
+  CommunitySidebar: () => <div data-testid="community-sidebar" />,
+}));
 vi.mock("./topic-chips", () => ({ TopicChips: () => null }));
 vi.mock("./community-activity-feed", () => ({
   CommunityActivityFeed: () => null,
@@ -88,5 +90,18 @@ describe("FeedPage Reels entry", () => {
     expect(
       screen.queryByRole("link", { name: "Reels" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("FeedPage side panel", () => {
+  it("renders the side panel once, beside or below the feed by screen size", () => {
+    const { container } = renderPage(true);
+    expect(screen.getAllByTestId("community-sidebar")).toHaveLength(1);
+    const panel = container.querySelector("[data-feed-side-panel]");
+    expect(panel).toContainElement(screen.getByTestId("community-sidebar"));
+    // Beside the feed only from xl: below that the community rail is
+    // already taking the left of the page.
+    expect(panel?.className).toMatch(/\bxl:sticky\b/);
+    expect(panel?.className).not.toMatch(/\b(hidden|lg:sticky)\b/);
   });
 });

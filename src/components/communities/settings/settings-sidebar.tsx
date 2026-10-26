@@ -44,7 +44,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <nav className="hidden w-48 shrink-0 space-y-1 md:sticky md:top-24 md:block md:self-start">
+      <nav className="hidden w-48 shrink-0 space-y-1 @3xl:sticky @3xl:top-24 @3xl:block @3xl:self-start">
         {visibleItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
@@ -80,7 +80,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
       </nav>
 
       {/* Mobile horizontal tabs */}
-      <nav className="flex gap-1 overflow-x-auto border-b pb-2 md:hidden">
+      <nav className="flex gap-1 overflow-x-auto border-b pb-2 @3xl:hidden">
         {visibleItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
