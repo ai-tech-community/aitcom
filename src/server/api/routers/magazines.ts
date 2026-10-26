@@ -246,8 +246,10 @@ export const magazinesRouter = createTRPCRouter({
       magazine: { name: magazine.name, slug: magazine.slug },
       communityIsPrivate: !isContentPublic(ctx.community),
       // What the builder runs `planVisibilityChange` against, so it asks
-      // for the opt-in exactly when the save would.
+      // for the opt-in exactly when the save would. The name heads the
+      // builder's preview.
       community: {
+        name: ctx.community.name,
         slug: ctx.community.slug,
         isListedInDirectory: ctx.community.isListedInDirectory,
       },

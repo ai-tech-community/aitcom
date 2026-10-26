@@ -111,6 +111,65 @@ describe("IssueReader", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens on the hero: cover beside the title, community, date and the signed note", () => {
+    const { container } = renderWithIntl(
+      <IssueReader
+        data={issuePage({
+          issue: {
+            coverImageUrl: "https://example.test/cover.png",
+            publishedAt: "2026-11-02T10:00:00.000Z",
+          },
+        })}
+        locale="en"
+      />,
+    );
+    const hero = screen.getByRole("heading", { level: 1 }).closest("header")!;
+    // The cover is decorative: the heading names the issue.
+    expect(hero.querySelector("img")).toHaveAttribute("alt", "");
+    expect(hero.querySelector("img")).toHaveAttribute(
+      "src",
+      "https://example.test/cover.png",
+    );
+    expect(
+      within(hero).getByText(/A magazine by Amsterdam AI Builders/),
+    ).toBeInTheDocument();
+    expect(
+      within(hero).getByText("Published November 2, 2026"),
+    ).toHaveAttribute("dateTime", "2026-11-02T10:00:00.000Z");
+    const note = within(hero).getByRole("region", { name: /From the editor/ });
+    expect(
+      within(note).getByText("Welcome to this issue."),
+    ).toBeInTheDocument();
+    expect(within(note).getByText("— Noa K., editor")).toBeInTheDocument();
+    // The note opens the issue in the hero, not again in the layout.
+    expect(container.querySelectorAll("#from-the-editor")).toHaveLength(1);
+  });
+
+  it("typesets the cover when the issue has no cover image", () => {
+    renderWithIntl(
+      <IssueReader
+        data={issuePage({ issue: { coverImageUrl: null } })}
+        locale="en"
+      />,
+    );
+    const hero = screen.getByRole("heading", { level: 1 }).closest("header")!;
+    expect(hero.querySelector("img")).toBeNull();
+    const typeset = hero.querySelector('[aria-hidden="true"]');
+    expect(typeset).toHaveTextContent("04");
+    expect(typeset).toHaveTextContent("Agents Weekly");
+    expect(typeset).toHaveTextContent("The month agents learned to say no");
+  });
+
+  it("links to the magazine's shelf from every issue, the first one included", () => {
+    renderWithIntl(
+      <IssueReader data={issuePage({ pastIssues: [] })} locale="en" />,
+    );
+    expect(screen.getByRole("link", { name: "Agents Weekly" })).toHaveAttribute(
+      "href",
+      "/magazines/agents-weekly",
+    );
+  });
+
   it("draft notice and Edit link appear only for editors", () => {
     const draft = { status: "draft" as const, publishedAt: null };
 

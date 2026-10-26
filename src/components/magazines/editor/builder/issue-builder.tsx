@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -251,6 +251,19 @@ function IssueWorkspace({
   const [failure, setFailure] = useState<IssueSaveFailure | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
+  /**
+   * Text sections added here that have never had text yet. While one is
+   * open in its editor its row stays quiet: "write something" is not an
+   * error before the editor had a chance to. Once it had text it counts as
+   * written, so emptying it again is reported. (Content, not change events,
+   * decides: a rich-text editor also reports a mere click into it.)
+   */
+  const [untouched, setUntouched] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  /** The item editor that takes focus once it renders (a section just added). */
+  const focusEditorOf = useRef<string | null>(null);
+  const editorPanel = useRef<HTMLDivElement>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
 
@@ -362,21 +375,49 @@ function IssueWorkspace({
 
   const handleAddEditorial = () => {
     const next = addEditorial(items);
+    const added = next.at(-1)?.key ?? null;
     setItems(next);
-    setEditingKey(next.at(-1)?.key ?? null);
+    setEditingKey(added);
+    if (added) {
+      setUntouched((keys) => new Set(keys).add(added));
+      // The editor opens in another column: take the keyboard there.
+      focusEditorOf.current = added;
+    }
   };
+
+  // Move focus into an item editor that was opened for a new item, on the
+  // editor's first field, whatever kind of item it is.
+  useEffect(() => {
+    if (editingKey === null || focusEditorOf.current !== editingKey) return;
+    focusEditorOf.current = null;
+    editorPanel.current
+      ?.querySelector<HTMLElement>(
+        'input:not([disabled]), textarea:not([disabled]), [contenteditable="true"]',
+      )
+      ?.focus();
+  }, [editingKey]);
 
   const handleRemove = (key: string) => {
     if (editingKey === key) setEditingKey(null);
     setItems((current) => removeItem(current, key));
   };
 
-  const updateItem = (key: string, patch: Partial<BuilderItem>) =>
-    setItems((current) =>
-      current.map((item) =>
+  const updateItem = (key: string, patch: Partial<BuilderItem>) => {
+    const current = items.find((item) => item.key === key);
+    const updated = current && ({ ...current, ...patch } as BuilderItem);
+    if (updated && untouched.has(key) && isSavableItem(updated)) {
+      setUntouched((keys) => {
+        const next = new Set(keys);
+        next.delete(key);
+        return next;
+      });
+    }
+    setItems((all) =>
+      all.map((item) =>
         item.key === key ? ({ ...item, ...patch } as BuilderItem) : item,
       ),
     );
+  };
 
   // ── Rows ────────────────────────────────────────────────────────────────
 
@@ -389,10 +430,13 @@ function IssueWorkspace({
     const view = savedViews.get(item.key);
     const loadedProblem = problems.get(item.key);
     const highlighted = failure?.itemKey === item.key;
+    const beingStarted = untouched.has(item.key) && editingKey === item.key;
     const problem = highlighted
       ? failureMessage
       : !isSavableItem(item)
-        ? tItems("unfinished")
+        ? beingStarted
+          ? null
+          : tItems("unfinished")
         : loadedProblem
           ? tErrors(editorErrorKey(loadedProblem))
           : null;
@@ -507,6 +551,8 @@ function IssueWorkspace({
         onReload={onReload}
         onPublish={() => {
           setPublishError(null);
+          // The dialog points at the rows marked in the list: mark them all.
+          setUntouched(new Set());
           setPublishOpen(true);
         }}
         publishDisabled={optInPending || autosave.status === "conflict"}
@@ -537,17 +583,25 @@ function IssueWorkspace({
             }
             onRemove={handleRemove}
           />
-          {editing &&
-            renderBuilderItemEditor(editing, {
-              onChange: (patch) =>
-                updateItem(editing.key, patch as Partial<BuilderItem>),
-              onDone: () => setEditingKey(null),
-            })}
+          {editing && (
+            <div ref={editorPanel}>
+              {renderBuilderItemEditor(editing, {
+                onChange: (patch) =>
+                  updateItem(editing.key, patch as Partial<BuilderItem>),
+                onDone: () => setEditingKey(null),
+              })}
+            </div>
+          )}
         </div>
 
         <div className="min-w-0 lg:col-start-2 lg:row-span-2 xl:row-span-1">
           <LivePreview
             magazine={data.magazine}
+            community={data.community}
+            issue={{
+              number: Number(issue.number),
+              publishedAt: issue.publishedAt ?? null,
+            }}
             details={details}
             layout={issue.layout ?? "cover-story"}
             items={items}

@@ -29,11 +29,8 @@ describe("cover-story layout", () => {
       <CoverStoryLayout
         items={[articleView(1), editorialView(2), articleView(3)]}
         href={href}
-        editorNote={<p>Editor note slot</p>}
       />,
     );
-
-    expect(screen.getByText("Editor note slot")).toBeInTheDocument();
 
     const lead = screen.getByTestId("issue-lead");
     expect(
@@ -58,7 +55,6 @@ describe("cover-story layout", () => {
       <CoverStoryLayout
         items={[editorialView(1), editorialView(2)]}
         href={href}
-        editorNote={null}
       />,
     );
 
@@ -74,11 +70,8 @@ describe("cover-story layout", () => {
     ).toBeInTheDocument();
   });
 
-  it("an issue without items shows only the editor's note", () => {
-    renderWithIntl(
-      <CoverStoryLayout items={[]} href={href} editorNote={<p>Only note</p>} />,
-    );
-    expect(screen.getByText("Only note")).toBeInTheDocument();
+  it("an issue without items renders neither a lead nor a grid", () => {
+    renderWithIntl(<CoverStoryLayout items={[]} href={href} />);
     expect(screen.queryByTestId("issue-lead")).toBeNull();
     expect(screen.queryByTestId("issue-grid")).toBeNull();
   });

@@ -14,7 +14,7 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
-import { homeData, issueCard } from "../test-fixtures";
+import { homeData, magazineCard, issueCard } from "../test-fixtures";
 import { renderWithIntl } from "../test-intl";
 
 import { MagazinesHome } from "./magazines-home";
@@ -45,9 +45,14 @@ describe("MagazinesHome", () => {
     expect(
       within(featured).getByRole("link", { name: "Read the issue" }),
     ).toHaveAttribute("href", "/magazines/agents-weekly/featured-issue");
+    // The cover is decorative: the heading beside it names the issue.
+    const cover = featured.querySelector("img");
+    expect(cover).toHaveAttribute("src", "https://example.test/cover.png");
+    expect(cover).toHaveAttribute("alt", "");
+    // The home's one orange action.
     expect(
-      within(featured).getByAltText("Featured issue title"),
-    ).toHaveAttribute("src", "https://example.test/cover.png");
+      within(featured).getByRole("link", { name: "Read the issue" }),
+    ).toHaveAttribute("data-variant", "default");
 
     const justPublished = screen.getByRole("region", {
       name: /Just published/,
@@ -149,6 +154,24 @@ describe("MagazinesHome", () => {
         .getAllByRole("link", { name: /Magazine \d/ })
         .map((link) => link.getAttribute("href")),
     ).toEqual(["/magazines/magazine-1", "/magazines/magazine-2"]);
+  });
+
+  it("names a magazine tile by the magazine, not by its newest issue's cover", () => {
+    const withCover = magazineCard(1);
+    withCover.latest = {
+      ...withCover.latest,
+      coverImageUrl: "https://example.test/latest.png",
+    };
+    renderWithIntl(
+      <MagazinesHome
+        data={homeData({ magazines: [withCover] })}
+        activeTopic={null}
+      />,
+    );
+    const all = screen.getByRole("region", { name: /All magazines/ });
+    const tile = within(all).getByRole("link", { name: /Magazine 1/ });
+    expect(tile.querySelector("img")).toHaveAttribute("alt", "");
+    expect(tile).not.toHaveAccessibleName(/Latest of magazine 1/);
   });
 
   it("marks 'All' when no topic is chosen and keeps an active topic missing from the chips", () => {

@@ -114,6 +114,7 @@ export function issuePage(
       ...issueCard(),
       status: "published",
       editorNote: lexicalParagraph("Welcome to this issue."),
+      signedBy: "Noa K.",
       layout: "cover-story",
       ...issue,
     },

@@ -538,12 +538,14 @@ describe.skipIf(!RUN_DB)(
       expect(editing.problems).toEqual([
         expect.objectContaining({ itemIndex: 0, code: "ARTICLE_NOT_READY" }),
       ]);
-      // The builder's kicker, reading link and opt-in dry run read these.
+      // The builder's kicker, reading link, preview and opt-in dry run
+      // read these.
       expect(editing.magazine).toEqual({
         name: "The Gazette",
         slug: `gazette-${fx.sfx}`,
       });
       expect(editing.community).toEqual({
+        name: `Magazine ${fx.sfx}`,
         slug: slug(),
         isListedInDirectory: false,
       });

@@ -17,7 +17,7 @@ type EditingData = {
   problems: ItemProblem[];
   magazine: { name: string; slug: string };
   communityIsPrivate: boolean;
-  community: { slug: string; isListedInDirectory: boolean };
+  community: { name: string; slug: string; isListedInDirectory: boolean };
   editableArticles: { id: number; slug: string }[];
 };
 
@@ -163,7 +163,11 @@ function twoArticles(overrides: Partial<EditingData> = {}): EditingData {
     problems: [],
     magazine: { name: "The Gazette", slug: "gazette" },
     communityIsPrivate: false,
-    community: { slug: "night-owls", isListedInDirectory: true },
+    community: {
+      name: "Night Owls",
+      slug: "night-owls",
+      isListedInDirectory: true,
+    },
     editableArticles: [],
     ...overrides,
   };
@@ -326,7 +330,11 @@ describe("IssueBuilder", () => {
   it("blocks Publish when visibility is public in a private community until the box is checked", async () => {
     trpc.editing = twoArticles({
       communityIsPrivate: true,
-      community: { slug: "night-owls", isListedInDirectory: false },
+      community: {
+        name: "Night Owls",
+        slug: "night-owls",
+        isListedInDirectory: false,
+      },
     });
     renderBuilder();
     expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
@@ -357,7 +365,11 @@ describe("IssueBuilder", () => {
     trpc.editing = twoArticles({
       issue: issue({ visibility: "public" }),
       communityIsPrivate: true,
-      community: { slug: "night-owls", isListedInDirectory: false },
+      community: {
+        name: "Night Owls",
+        slug: "night-owls",
+        isListedInDirectory: false,
+      },
     });
     trpc.updateIssue.mockImplementation(async (input: object) =>
       issue({
@@ -440,27 +452,25 @@ describe("IssueBuilder", () => {
     });
     const dialog = screen.getByRole("dialog");
     expect(
-      within(dialog).getByText("Fix the items marked in the list."),
+      within(dialog).getByText("Fix the parts marked in the list."),
     ).toBeVisible();
     expect(
       within(dialog).getByRole("button", { name: "Publish" }),
     ).toBeDisabled();
   });
 
-  it("adds a ready article and an editorial block, saving only finished items", async () => {
+  it("adds a ready article and a text section, saving only finished items", async () => {
     trpc.available = [availableArticle(21, "Fresh piece")];
     renderBuilder();
     fireEvent.click(
       screen.getByRole("button", { name: "Add Fresh piece to the issue" }),
     );
     // Radix tabs switch on mouse down.
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Editorial block" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Add an editorial block" }),
-    );
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text section" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add a text section" }));
     await settleSaves();
 
-    // The empty block stays out of the save until it has text.
+    // The empty section stays out of the save until it has text.
     expect(trpc.setIssueItems).toHaveBeenLastCalledWith(
       expect.objectContaining({
         items: [
@@ -470,11 +480,6 @@ describe("IssueBuilder", () => {
         ],
       }),
     );
-    expect(
-      screen.getByText(
-        "Write something in this block. It is saved once it has text.",
-      ),
-    ).toBeVisible();
 
     fireEvent.change(screen.getByRole("textbox", { name: "Text" }), {
       target: { value: "Welcome to summer" },
@@ -492,6 +497,112 @@ describe("IssueBuilder", () => {
       articleId: 21,
     });
     expect(last.items[3]).toMatchObject({ kind: "editorial" });
+  });
+
+  it("opens a new text section with focus in its editor and no error before it is written", async () => {
+    renderBuilder();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text section" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add a text section" }));
+
+    // The keyboard follows the new section to its editor.
+    expect(document.activeElement).toBe(
+      screen.getByRole("textbox", { name: "Heading (optional)" }),
+    );
+    // Not written yet is not an error yet.
+    expect(screen.queryByText(/Write something in this section/)).toBeNull();
+    // A change that leaves the text empty (a heading, or the rich-text
+    // editor reporting a click) is still not written.
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Heading (optional)" }),
+      { target: { value: "Opening" } },
+    );
+    expect(screen.queryByText(/Write something in this section/)).toBeNull();
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Heading (optional)" }),
+      { target: { value: "" } },
+    );
+
+    // Leaving it empty is: the row says so, and its controls read it out.
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    const problem =
+      "Write something in this section. It is saved once it has text.";
+    expect(screen.getByText(problem)).toBeVisible();
+    const row = within(
+      screen.getByRole("list", { name: "In this issue" }),
+    ).getAllByRole("listitem")[2]!;
+    expect(row).not.toHaveAttribute("aria-describedby");
+    expect(
+      within(row).getByRole("button", {
+        name: "Actions for Text section, not written yet",
+      }),
+    ).toHaveAccessibleDescription(problem);
+    expect(
+      within(row).getByRole("button", {
+        name: /^Text section, not written yet/,
+      }),
+    ).toHaveAccessibleDescription(problem);
+    expect(
+      within(row).getByRole("button", {
+        name: "Drag to reorder Text section, not written yet",
+      }),
+    ).toHaveAccessibleDescription(expect.stringContaining(problem));
+  });
+
+  it("marks an unwritten section once Publish is opened, even while it is open", async () => {
+    renderBuilder();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text section" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add a text section" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    expect(
+      within(screen.getByRole("dialog")).getByText(
+        "Fix the parts marked in the list.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "Write something in this section. It is saved once it has text.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the preview as a picture: inert, with the issue's hero", () => {
+    trpc.editing = twoArticles({
+      issue: issue({ editorNote: null, coverImageUrl: null }),
+    });
+    renderBuilder();
+    const preview = screen.getByTestId("issue-preview");
+    const picture = preview.querySelector("[inert]");
+    expect(picture).not.toBeNull();
+    // Every article link of the preview sits inside the inert picture.
+    const links = preview.querySelectorAll("a");
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) expect(picture!.contains(link)).toBe(true);
+    expect(picture).toHaveTextContent("Summer");
+    expect(picture).toHaveTextContent("A magazine by Night Owls");
+  });
+
+  it("opens the cover picker from its one visible, labelled button", () => {
+    renderBuilder();
+    const input =
+      document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    expect(input).toHaveAttribute("tabindex", "-1");
+    expect(input).toHaveAttribute("aria-hidden", "true");
+    const click = vi.spyOn(input, "click");
+    const button = screen.getByRole("button", { name: "Cover Upload a cover" });
+    expect(button).toHaveAccessibleDescription(
+      "A tall image works best. Readers see it on the shelf and at the top of the issue.",
+    );
+    fireEvent.click(button);
+    expect(click).toHaveBeenCalledTimes(1);
+  });
+
+  it("names where the back link goes", () => {
+    renderBuilder();
+    expect(
+      screen.getByRole("link", { name: "Back to The Gazette" }),
+    ).toHaveAttribute("href", "/communities/night-owls/magazine");
   });
 
   it("publishes with the latest version and then shows Published", async () => {
@@ -568,7 +679,7 @@ describe("IssueBuilder", () => {
     renderBuilder();
     expect(screen.queryByRole("main")).toBeNull();
     expect(
-      screen.getByRole("region", { name: "Issue builder" }),
+      screen.getByRole("region", { name: "Put the issue together" }),
     ).toBeInTheDocument();
   });
 
@@ -578,10 +689,8 @@ describe("IssueBuilder", () => {
     expect(note).toHaveAccessibleDescription(
       "A short welcome at the top of the issue. Leave it empty if you do not need one.",
     );
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Editorial block" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Add an editorial block" }),
-    );
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text section" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add a text section" }));
     expect(screen.getByRole("textbox", { name: "Text" })).toBeInTheDocument();
   });
 
@@ -598,7 +707,7 @@ describe("IssueBuilder", () => {
     await pickMenuItem("Remove from issue");
     // The list is empty now: focus lands on its empty text.
     expect(document.activeElement).toHaveTextContent(
-      "This issue is empty. Add articles or an editorial block from Add more.",
+      "This issue is empty. Add articles or a text section from Add more.",
     );
   });
 
@@ -666,7 +775,11 @@ describe("IssueBuilder", () => {
     trpc.editing = twoArticles({
       issue: issue({ visibility: "public" }),
       communityIsPrivate: true,
-      community: { slug: "night-owls", isListedInDirectory: false },
+      community: {
+        name: "Night Owls",
+        slug: "night-owls",
+        isListedInDirectory: false,
+      },
     });
     renderBuilder();
     fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));

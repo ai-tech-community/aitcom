@@ -34,9 +34,9 @@ describe("PublishDialog", () => {
 
     expect(screen.getByText("Before you can publish")).toBeVisible();
     expect(screen.getByText("Give the issue a title.")).toBeVisible();
-    expect(screen.getByText("Fix the items marked in the list.")).toBeVisible();
+    expect(screen.getByText("Fix the parts marked in the list.")).toBeVisible();
     expect(
-      screen.queryByText("Add at least one article or editorial block."),
+      screen.queryByText("Add at least one article or text section."),
     ).toBeNull();
     const publish = screen.getByRole("button", { name: "Publish" });
     expect(publish).toBeDisabled();

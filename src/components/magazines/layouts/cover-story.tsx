@@ -4,15 +4,14 @@ import { itemAnchorId } from "../reading/anchors";
 import type { LayoutProps } from "./types";
 
 /**
- * The cover-story layout: the editor's note, the first item as the lead
+ * The cover-story layout: the first item as the lead
  * (full width, larger heading, its opening and "Read article"), then the
  * rest in a grid that splits on its own width, in issue order.
  */
-export function CoverStoryLayout({ items, href, editorNote }: LayoutProps) {
+export function CoverStoryLayout({ items, href }: LayoutProps) {
   const [lead, ...rest] = items;
   return (
     <div className="@container flex flex-col gap-6">
-      {editorNote}
       {lead && (
         <div
           id={itemAnchorId(lead.itemId)}

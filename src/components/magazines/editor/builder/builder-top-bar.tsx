@@ -29,9 +29,9 @@ export type BuilderTopBarProps = {
 };
 
 /**
- * The issue builder's one row of chrome: back to the Magazine tab, where you
- * are (`/ magazine · Issue n · Draft`), whether your work is safe, and the
- * single Publish action (the screen's only orange). A conflict shows a
+ * The issue builder's one row of chrome: back to the Magazine tab ("Back to
+ * <magazine>"), where you are (`/ magazine · Issue n · Draft`), whether your
+ * work is safe, and the single Publish action (the screen's only orange). A conflict shows a
  * reload banner under it, never a silent overwrite.
  */
 export function BuilderTopBar({
@@ -58,7 +58,7 @@ export function BuilderTopBar({
             className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-sm text-sm outline-none focus-visible:ring-[3px]"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            {t("backToMagazine")}
+            {t("backToMagazine", { magazine: magazineName })}
           </Link>
           <div className="flex min-w-0 flex-col">
             <SectionLabel as="p" bordered={false} className="truncate">

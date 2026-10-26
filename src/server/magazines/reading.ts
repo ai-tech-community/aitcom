@@ -23,6 +23,7 @@ import {
   type CommunityVisibility,
 } from "@/server/communities/content-visibility";
 import { communities } from "@/server/db/schema";
+import { memberDisplayName } from "@/server/members/display-name";
 
 import type { Deps } from "./deps";
 import { loadMagazineEditorship } from "./editorship";
@@ -588,6 +589,8 @@ export async function loadIssuePage(
     /** Readers only ever get `published`; editors also open drafts. */
     status: IssueStatus;
     editorNote: unknown;
+    /** Who signs the editor's note: the editor who published the issue. */
+    signedBy: string | null;
     layout: IssueLayout;
   };
   items: EditorItemView[];
@@ -598,7 +601,7 @@ export async function loadIssuePage(
   if (!found) return null;
   const { access, magazine, community, issue } = found;
 
-  const [items, pastIssues] = await Promise.all([
+  const [items, pastIssues, signedBy] = await Promise.all([
     itemViewsOf(deps, found, opts.locale),
     loadIssueReadScope(deps.db, opts.viewerId).then((scope) =>
       readableMagazineIssues(deps, scope, magazine.id, opts.locale, {
@@ -606,6 +609,7 @@ export async function loadIssuePage(
         limit: PAST_ISSUE_COUNT,
       }),
     ),
+    issue.publishedBy ? memberDisplayName(deps.db, issue.publishedBy) : null,
   ]);
   const articleMinutes = items
     .filter(isArticleView)
@@ -619,6 +623,7 @@ export async function loadIssuePage(
       ...toIssueCard(issue, magazine, community),
       status: issue.status,
       editorNote: issue.editorNote ?? null,
+      signedBy,
       layout: issueLayoutOf(issue),
     },
     items,

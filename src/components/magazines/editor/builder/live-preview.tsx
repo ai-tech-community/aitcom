@@ -12,7 +12,7 @@ import type { IssueLayout, IssueVisibility } from "@/lib/magazines/values";
 import { cn } from "@/lib/utils";
 
 import { LAYOUTS } from "../../layouts/registry";
-import { EditorNote, hasEditorNote } from "../../reading/issue-reader";
+import { IssueHero } from "../../reading/issue-hero";
 import { builderPreviewView } from "./items/registry";
 import type { BuilderItem } from "./items-model";
 import type { IssueDetailsDraft } from "./use-issue-save";
@@ -42,13 +42,22 @@ export function previewViews(
 }
 
 /**
- * The live preview: the issue in its real layout (`LAYOUTS[layout]`), as a
- * member sees it, in a phone-sized frame, or as a visitor from outside the
- * community sees it (nothing for a members-only issue, the full issue for
- * a public one).
+ * The live preview: the issue's hero and its real layout
+ * (`LAYOUTS[layout]`), as a member sees it, in a phone-sized frame, or as a
+ * visitor from outside the community sees it (nothing for a members-only
+ * issue, the full issue for a public one).
+ *
+ * The preview is a picture of the page, not the page: it is `inert`, so its
+ * links and any control an item kind renders can be neither clicked nor
+ * focused, and keyboard users go from the mode switch straight on. Inert
+ * also takes it out of the accessibility tree; the item list says the same
+ * in words. The note is unsigned here: an issue is signed by the editor who
+ * publishes it.
  */
 export function LivePreview({
   magazine,
+  community,
+  issue,
   details,
   layout,
   items,
@@ -56,6 +65,9 @@ export function LivePreview({
   audience,
 }: {
   magazine: { name: string; slug: string };
+  community: { name: string };
+  /** The saved issue's number and publish date (null for a draft). */
+  issue: { number: number; publishedAt: string | null };
   details: IssueDetailsDraft;
   layout: IssueLayout;
   items: BuilderItem[];
@@ -75,7 +87,6 @@ export function LivePreview({
       { slug: details.slug },
       { slug: articleSlug },
     );
-  const showNote = hasEditorNote(details.editorNote);
   const hiddenFromVisitors = mode === "visitor" && audience === "members";
 
   return (
@@ -110,31 +121,24 @@ export function LivePreview({
             description={t("visitorNothing")}
           />
         ) : (
-          <div className="@container flex flex-col gap-6">
-            <header className="flex items-end justify-between gap-4">
-              <div className="flex min-w-0 flex-col gap-2">
-                <p className="font-semibold tracking-tight">{magazine.name}</p>
-                <p className="text-2xl leading-tight font-semibold tracking-tight text-balance break-words @xl:text-3xl">
-                  {details.title.trim() || t("untitled")}
-                </p>
-              </div>
-              {details.coverImageUrl && (
-                // Any host an editor links to: next/image only serves listed hosts.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={details.coverImageUrl}
-                  alt={details.title}
-                  className="bg-secondary aspect-[3/4] w-24 shrink-0 rounded-md border object-cover @xl:w-32"
-                />
-              )}
-            </header>
-            <Layout
-              items={views}
-              href={href}
-              editorNote={
-                showNote ? <EditorNote note={details.editorNote} /> : null
-              }
-            />
+          <div className="flex flex-col gap-6">
+            <div inert className="@container flex flex-col gap-6">
+              <IssueHero
+                titleAs="h2"
+                issue={{
+                  number: issue.number,
+                  title: details.title.trim() || t("untitled"),
+                  coverImageUrl: details.coverImageUrl,
+                  publishedAt: issue.publishedAt,
+                  magazine,
+                  community,
+                  editorNote: details.editorNote,
+                  signedBy: null,
+                }}
+              />
+              <Layout items={views} href={href} />
+            </div>
+            {/* Outside the inert picture: these say what the preview is waiting for. */}
             {views.length === 0 && !waiting && (
               <p className="text-muted-foreground text-sm">{t("empty")}</p>
             )}

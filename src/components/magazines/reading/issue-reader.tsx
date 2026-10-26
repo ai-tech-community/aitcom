@@ -1,49 +1,17 @@
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
-import { SectionLabel } from "@/components/ui/section-label";
 import type { AppLocale } from "@/i18n/messages";
 import { Link } from "@/i18n/navigation";
-import { LexicalRenderer } from "@/lib/lexical";
-import { lexicalHasText } from "@/lib/lexical-text";
 import { seesEditorLayer } from "@/lib/magazines/access";
 import { issueBuilderPath, magazineArticlePath } from "@/lib/magazines/paths";
 import type { IssuePageData } from "@/server/magazines/reading";
 
 import { LAYOUTS } from "../layouts/registry";
-import { EDITOR_NOTE_ANCHOR } from "./anchors";
 import { READING_FRAME } from "./frame";
 import { IssueContents } from "./issue-contents";
-import { IssueCover } from "./issue-cover";
+import { hasEditorNote, IssueHero } from "./issue-hero";
 import { IssueRail } from "./issue-rail";
-
-/**
- * Whether the issue has an editor's note to show: an empty note is no note.
- * An editor that was cleared still holds an empty paragraph, so the test is
- * text, not blocks.
- */
-export function hasEditorNote(note: unknown): boolean {
-  return lexicalHasText(note);
-}
-
-/** The editor's note card; the reading page and the builder preview show it. */
-export function EditorNote({ note }: { note: unknown }) {
-  const t = useTranslations("magazines.issue");
-  return (
-    <section
-      id={EDITOR_NOTE_ANCHOR}
-      aria-labelledby={`${EDITOR_NOTE_ANCHOR}-label`}
-      className="bg-card text-card-foreground scroll-mt-24 rounded-xl border p-5 @xl:p-8"
-    >
-      <SectionLabel id={`${EDITOR_NOTE_ANCHOR}-label`}>
-        {t("fromTheEditor")}
-      </SectionLabel>
-      <div className="min-w-0">
-        <LexicalRenderer content={note} />
-      </div>
-    </section>
-  );
-}
 
 function NoItems() {
   const t = useTranslations("magazines.issue");
@@ -77,8 +45,8 @@ function EditorBar({
 
 /**
  * The issue reading view (mockup screen 2, DESIGN.md frame exception for
- * the issue reading view): sticky contents, the cover with the editor's
- * note and the issue's layout, and the rail. Phones get one column with
+ * the issue reading view): sticky contents, the hero (cover beside the
+ * editor's note) above the issue's layout, and the rail. Phones get one column with
  * the contents first; from `lg` the contents sit beside the issue and the
  * rail drops below it; from `xl` all three columns show.
  */
@@ -114,14 +82,8 @@ export function IssueReader({
               issueId={issue.id}
             />
           )}
-          <IssueCover issue={issue} />
-          <Layout
-            items={items}
-            href={href}
-            editorNote={
-              showNote ? <EditorNote note={issue.editorNote} /> : null
-            }
-          />
+          <IssueHero issue={issue} />
+          <Layout items={items} href={href} />
           {items.length === 0 && <NoItems />}
         </article>
 

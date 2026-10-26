@@ -461,6 +461,8 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     expect(ids(asMember!.pastIssues)).toEqual([older.id]);
     expect(asMember!.readingMinutes).toBeGreaterThanOrEqual(1);
     expect(asMember!.community.slug).toBe(c.slug);
+    // The editor who published it signs the note, by their profile name.
+    expect(asMember!.issue.signedBy).toBe(fx.editorId);
 
     expect(await page(draft.slug, fx.memberId)).toBeNull();
     expect(await page(draft.slug, fx.outsiderId)).toBeNull();
@@ -469,6 +471,8 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     expect(asEditor!.access).toBe("editor");
     expect(asEditor!.issue.id).toBe(draft.id);
     expect(asEditor!.issue.status).toBe("draft");
+    // Nobody has published a draft, so nobody signs it yet.
+    expect(asEditor!.issue.signedBy).toBeNull();
   });
 
   // ── Article page ──────────────────────────────────────────────────────

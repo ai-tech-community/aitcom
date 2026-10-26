@@ -7,18 +7,36 @@ import type { IssueCard } from "@/server/magazines/reading";
 
 import { issueNumberText, useIssueDateline } from "./issue-dateline";
 
+/** What a cover is drawn from. */
+export type CoverArtIssue = Pick<IssueCard, "number" | "coverImageUrl"> & {
+  title: string;
+  magazine: { name: string };
+};
+
 /**
- * The cover art of an issue: its cover image (alt text is the issue title),
- * or a typeset stand-in with the magazine name and issue number.
+ * How large a cover is drawn. `thumb` is a small row thumbnail (the stand-in
+ * shows the issue number only); `card` a shelf or grid cover; `hero` the
+ * issue page's large cover, whose stand-in is typeset like a printed cover:
+ * issue number, masthead and the issue title as its lead.
+ */
+export type CoverArtSize = "thumb" | "card" | "hero";
+
+/**
+ * The cover art of an issue: its cover image, or a typeset stand-in with the
+ * magazine name and issue number.
+ *
+ * The image is decorative (`alt=""`): every cover sits beside or inside text
+ * that already names the issue or the magazine (a card's title, the page
+ * heading, a tile's magazine name), so alt text would only make screen
+ * readers say that name twice.
  */
 export function IssueCoverArt({
   issue,
-  compact = false,
+  size = "card",
   className,
 }: {
-  issue: IssueCard;
-  /** A thumbnail: the stand-in shows the issue number only. */
-  compact?: boolean;
+  issue: CoverArtIssue;
+  size?: CoverArtSize;
   className?: string;
 }) {
   return (
@@ -33,15 +51,32 @@ export function IssueCoverArt({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={issue.coverImageUrl}
-          alt={issue.title}
+          alt=""
           className="size-full object-cover"
         />
-      ) : compact ? (
+      ) : size === "thumb" ? (
         <div
           aria-hidden="true"
           className="text-muted-foreground flex size-full items-center justify-center font-mono text-xs"
         >
           {issueNumberText(issue.number)}
+        </div>
+      ) : size === "hero" ? (
+        <div
+          aria-hidden="true"
+          className="flex size-full flex-col justify-between gap-6 p-6 @3xl:p-8"
+        >
+          <span className="text-muted-foreground font-mono text-xs">
+            {issueNumberText(issue.number)}
+          </span>
+          <span className="flex flex-col gap-3">
+            <span className="text-3xl leading-none font-bold tracking-tight break-words @3xl:text-4xl">
+              {issue.magazine.name}
+            </span>
+            <span className="line-clamp-4 text-lg leading-snug font-semibold text-balance break-words">
+              {issue.title}
+            </span>
+          </span>
         </div>
       ) : (
         <div
@@ -95,7 +130,7 @@ export function IssueCoverCard({
     >
       <IssueCoverArt
         issue={issue}
-        compact={row}
+        size={row ? "thumb" : "card"}
         className={cn(row && "w-14 shrink-0")}
       />
       <span className="flex min-w-0 flex-col gap-1">

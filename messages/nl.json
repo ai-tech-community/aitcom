@@ -4779,7 +4779,9 @@
       "itemCount": "{count, plural, one {# onderdeel} other {# onderdelen}}",
       "draftNotice": "Concept — alleen redacteuren zien dit",
       "editIssue": "Nummer bewerken",
-      "noItems": "Dit nummer heeft nog geen artikelen."
+      "noItems": "Dit nummer heeft nog geen artikelen.",
+      "published": "Verschenen op {date}",
+      "signature": "— {name}, redacteur"
     },
     "item": {
       "readArticle": "Lees artikel",
@@ -4830,9 +4832,9 @@
       "issueChanged": "Dit nummer is ergens anders gewijzigd. Laad opnieuw om de nieuwste versie te zien.",
       "issueSlugTaken": "Een ander nummer van dit magazine gebruikt dit adres al. Kies een ander adres.",
       "issueSlugLocked": "Het adres van een gepubliceerd nummer blijft hetzelfde, zodat links ernaar blijven werken.",
-      "issueEmpty": "Voeg minstens één artikel of notitie toe voordat je publiceert.",
+      "issueEmpty": "Voeg minstens één artikel of tekstgedeelte toe voordat je publiceert.",
       "issueNotDraft": "Dit nummer is al gepubliceerd.",
-      "itemInvalid": "Een van de onderdelen is niet compleet. Controleer het en probeer het opnieuw.",
+      "itemInvalid": "Een deel van dit nummer is niet compleet. Controleer de gemarkeerde delen in de lijst en probeer het opnieuw.",
       "articlePlaced": "Dit artikel staat al in een ander nummer.",
       "articleNotReady": "Dit artikel is nog niet klaar voor een nummer.",
       "articleMagazineLocked": "Een magazine-artikel blijft in zijn magazine. Het kan niet naar de blog of naar een ander magazine.",
@@ -4918,7 +4920,7 @@
     },
     "builder": {
       "metaTitle": "Nummer bewerken",
-      "backToMagazine": "Magazine",
+      "backToMagazine": "Terug naar {magazine}",
       "kicker": "{magazine} · Nummer {number} · {status}",
       "status": {
         "draft": "Concept",
@@ -4962,10 +4964,10 @@
       },
       "items": {
         "label": "In dit nummer",
-        "empty": "Dit nummer is leeg. Voeg artikelen of een redactioneel blok toe via Meer toevoegen.",
+        "empty": "Dit nummer is leeg. Voeg artikelen of een tekstgedeelte toe via Meer toevoegen.",
         "article": "Artikel",
-        "editorial": "Redactioneel blok",
-        "editorialEmpty": "Redactioneel blok, nog niet geschreven",
+        "editorial": "Tekstgedeelte",
+        "editorialEmpty": "Tekstgedeelte, nog niet geschreven",
         "dragHandle": "Sleep om {title} te verplaatsen",
         "actions": "Acties voor {title}",
         "edit": "Bewerken",
@@ -4974,11 +4976,11 @@
         "moveUp": "Omhoog",
         "moveDown": "Omlaag",
         "remove": "Uit nummer halen",
-        "unfinished": "Schrijf iets in dit blok. Het wordt opgeslagen zodra er tekst in staat.",
+        "unfinished": "Schrijf iets in dit gedeelte. Het wordt opgeslagen zodra er tekst in staat.",
         "unavailable": "Niet meer beschikbaar",
         "position": "{position} van {total}",
         "announce": {
-          "instructions": "Om te verplaatsen: druk op Spatie of Enter op de greep, verplaats het item met de pijltjestoetsen en druk dan op Spatie of Enter om het neer te zetten. Druk op Escape om te annuleren.",
+          "instructions": "Om te verplaatsen: druk op Spatie of Enter op de greep, verplaats het met de pijltjestoetsen en druk dan op Spatie of Enter om het neer te zetten. Druk op Escape om te annuleren.",
           "pickedUp": "{title} opgepakt.",
           "movedTo": "{title} staat nu op plek {position} van {total}.",
           "dropped": "{title} neergezet op plek {position} van {total}.",
@@ -4986,7 +4988,7 @@
         }
       },
       "editorial": {
-        "label": "Redactioneel blok",
+        "label": "Tekstgedeelte",
         "heading": "Kop (optioneel)",
         "body": "Tekst",
         "bodyPlaceholder": "Schrijf een inleiding, een opening van een rubriek of een korte column…",
@@ -4996,13 +4998,13 @@
         "label": "Meer toevoegen",
         "kind": "Wat wil je toevoegen",
         "articles": "Artikelen",
-        "editorial": "Redactioneel blok",
+        "editorial": "Tekstgedeelte",
         "articlesEmpty": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
         "add": "Toevoegen",
         "addArticle": "{title} aan het nummer toevoegen",
         "byAuthor": "Door {name}",
-        "editorialHint": "Een blok met je eigen tekst: een inleiding, een opening van een rubriek of een korte column.",
-        "addEditorial": "Redactioneel blok toevoegen",
+        "editorialHint": "Je eigen tekst: een inleiding, een opening voor een deel van het nummer of een korte column.",
+        "addEditorial": "Tekstgedeelte toevoegen",
         "loadFailed": "De artikelen die klaar zijn konden niet worden geladen.",
         "tryAgain": "Probeer opnieuw"
       },
@@ -5015,7 +5017,7 @@
         "visitorNothingTitle": "Bezoekers zien niets",
         "visitorNothing": "Dit nummer is alleen voor leden. Mensen buiten je community kunnen het niet openen.",
         "unsavedArticles": "Artikelen die je net hebt toegevoegd verschijnen hier zodra ze zijn opgeslagen.",
-        "empty": "Voeg een artikel of een redactioneel blok toe om het nummer hier te zien.",
+        "empty": "Voeg een artikel of een tekstgedeelte toe om het nummer hier te zien.",
         "untitled": "Nummer zonder titel"
       },
       "publishDialog": {
@@ -5023,8 +5025,8 @@
         "blockersTitle": "Voordat je kunt publiceren",
         "blocker": {
           "NO_TITLE": "Geef het nummer een titel.",
-          "NO_ITEMS": "Voeg minstens één artikel of redactioneel blok toe.",
-          "INVALID_ITEM": "Herstel de items die in de lijst zijn gemarkeerd."
+          "NO_ITEMS": "Voeg minstens één artikel of tekstgedeelte toe.",
+          "INVALID_ITEM": "Herstel de delen die in de lijst zijn gemarkeerd."
         },
         "ready": "Alles is klaar.",
         "audienceMembers": "Alleen leden van je community kunnen het lezen.",
