@@ -4905,6 +4905,127 @@
       },
       "loadFailed": "This list could not be loaded.",
       "tryAgain": "Try again"
+    },
+    "builder": {
+      "metaTitle": "Edit issue",
+      "backToMagazine": "Magazine",
+      "kicker": "{magazine} · Issue {number} · {status}",
+      "status": {
+        "draft": "Draft",
+        "published": "Published"
+      },
+      "workspaceLabel": "Issue builder",
+      "loadFailed": "This issue could not be loaded.",
+      "tryAgain": "Try again",
+      "save": {
+        "saving": "Saving…",
+        "saved": "Saved",
+        "unsaved": "Not saved yet",
+        "failed": "Couldn't save",
+        "retry": "Retry"
+      },
+      "conflict": "This issue changed somewhere else. Your changes here are not saved.",
+      "reload": "Reload",
+      "publish": "Publish",
+      "published": "Published",
+      "details": {
+        "label": "Issue details",
+        "title": "Title",
+        "titleRequired": "Give the issue a title. It is saved once it has one.",
+        "slug": "Address",
+        "slugHint": "Lower-case letters, numbers and hyphens.",
+        "slugInvalid": "Use 3 to 60 lower-case letters, numbers and hyphens. It is saved once it fits.",
+        "slugLocked": "The address stays the same once the issue is published, so links to it keep working.",
+        "cover": "Cover",
+        "coverHint": "A tall image works best. Readers see it on the shelf and at the top of the issue.",
+        "coverUpload": "Upload a cover",
+        "coverReplace": "Replace cover",
+        "coverRemove": "Remove cover",
+        "coverUploading": "Uploading…",
+        "coverFailed": "The cover could not be uploaded. Try again.",
+        "editorNote": "Editor's note",
+        "editorNoteHint": "A short welcome at the top of the issue. Leave it empty if you do not need one.",
+        "visibility": "Who can read this issue",
+        "visibilityMembers": "Members only",
+        "visibilityPublic": "Everyone",
+        "optInPending": "Tick the box to save this choice."
+      },
+      "items": {
+        "label": "In this issue",
+        "empty": "This issue is empty. Add articles or an editorial block from Add more.",
+        "article": "Article",
+        "editorial": "Editorial block",
+        "editorialEmpty": "Editorial block, not written yet",
+        "dragHandle": "Drag to reorder {title}",
+        "actions": "Actions for {title}",
+        "edit": "Edit",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "remove": "Remove from issue",
+        "unfinished": "Write something in this block. It is saved once it has text.",
+        "unavailable": "No longer available",
+        "position": "{position} of {total}",
+        "announce": {
+          "instructions": "To reorder, press Space or Enter on the handle, use the arrow keys to move the item, then press Space or Enter to drop it. Press Escape to cancel.",
+          "pickedUp": "Picked up {title}.",
+          "movedTo": "{title} is now at position {position} of {total}.",
+          "dropped": "{title} dropped at position {position} of {total}.",
+          "cancelled": "Reordering cancelled. {title} is back where it was."
+        }
+      },
+      "editorial": {
+        "label": "Editorial block",
+        "heading": "Heading (optional)",
+        "body": "Text",
+        "bodyPlaceholder": "Write an introduction, a section opener or a short column…",
+        "done": "Done"
+      },
+      "add": {
+        "label": "Add more",
+        "kind": "What to add",
+        "articles": "Articles",
+        "editorial": "Editorial block",
+        "articlesEmpty": "No articles are ready. Articles marked ready for an issue show up here.",
+        "add": "Add",
+        "addArticle": "Add {title} to the issue",
+        "byAuthor": "By {name}",
+        "editorialHint": "A block of your own text: an introduction, a section opener or a short column.",
+        "addEditorial": "Add an editorial block",
+        "loadFailed": "The ready articles could not be loaded.",
+        "tryAgain": "Try again"
+      },
+      "preview": {
+        "label": "Preview",
+        "mode": "Preview as",
+        "member": "Member",
+        "phone": "Phone",
+        "visitor": "Visitor",
+        "visitorNothingTitle": "Visitors see nothing",
+        "visitorNothing": "This issue is for members only. People outside your community cannot open it.",
+        "unsavedArticles": "Articles you just added show here once they are saved.",
+        "empty": "Add an article or an editorial block to see the issue here.",
+        "untitled": "Untitled issue"
+      },
+      "publishDialog": {
+        "title": "Publish this issue?",
+        "blockersTitle": "Before you can publish",
+        "blocker": {
+          "NO_TITLE": "Give the issue a title.",
+          "NO_ITEMS": "Add at least one article or editorial block.",
+          "INVALID_ITEM": "Fix the items marked in the list."
+        },
+        "ready": "Everything is ready.",
+        "audienceMembers": "Only members of your community will be able to read it.",
+        "audiencePublic": "Anyone will be able to read it, also people outside your community. It will show on the Magazines page.",
+        "confirm": "Publish",
+        "publishing": "Publishing…",
+        "cancel": "Not yet",
+        "notSaved": "Your latest changes are not saved yet. Wait until they are saved, then publish.",
+        "successTitle": "Your issue is published",
+        "successLead": "Readers can open it now.",
+        "read": "Read the issue",
+        "keepEditing": "Keep editing"
+      }
     }
   }
 }

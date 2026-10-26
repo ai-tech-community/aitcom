@@ -16,12 +16,13 @@ import { IssueCover } from "./issue-cover";
 import { IssueRail } from "./issue-rail";
 
 /** Lexical state with at least one block: an empty note is no note. */
-function hasContent(note: unknown): boolean {
+export function hasEditorNote(note: unknown): boolean {
   const root = (note as { root?: { children?: unknown[] } } | null)?.root;
   return Array.isArray(root?.children) && root.children.length > 0;
 }
 
-function EditorNote({ note }: { note: unknown }) {
+/** The editor's note card; the reading page and the builder preview show it. */
+export function EditorNote({ note }: { note: unknown }) {
   const t = useTranslations("magazines.issue");
   return (
     <section
@@ -87,7 +88,7 @@ export function IssueReader({
   const Layout = LAYOUTS[issue.layout];
   const href = (articleSlug: string) =>
     magazineArticlePath(magazine, issue, { slug: articleSlug });
-  const showNote = hasContent(issue.editorNote);
+  const showNote = hasEditorNote(issue.editorNote);
 
   return (
     <div className={READING_FRAME}>

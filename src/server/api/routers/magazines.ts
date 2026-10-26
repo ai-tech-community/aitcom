@@ -216,9 +216,17 @@ export const magazinesRouter = createTRPCRouter({
         input.issueId,
         ctx.community.id,
       );
+      const magazine = await requireMagazine(payload, ctx.community.id);
       return {
         ...(await loadIssueEditorView(payload, issue)),
+        magazine: { name: magazine.name, slug: magazine.slug },
         communityIsPrivate: !isContentPublic(ctx.community),
+        // What the builder runs `planVisibilityChange` against, so it asks
+        // for the opt-in exactly when the save would.
+        community: {
+          slug: ctx.community.slug,
+          isListedInDirectory: ctx.community.isListedInDirectory,
+        },
       };
     }),
 

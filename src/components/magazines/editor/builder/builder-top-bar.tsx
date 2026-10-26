@@ -1,0 +1,154 @@
+"use client";
+
+import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { useTranslations } from "next-intl";
+
+import { Button } from "@/components/ui/button";
+import { SectionLabel } from "@/components/ui/section-label";
+import type { AutosaveStatus } from "@/components/use-autosave";
+import { Link } from "@/i18n/navigation";
+import { communityMagazinePath } from "@/lib/magazines/paths";
+import type { IssueStatus } from "@/lib/magazines/values";
+
+export type BuilderTopBarProps = {
+  communitySlug: string;
+  magazineName: string;
+  issueNumber: number;
+  status: IssueStatus;
+  /** The title as typed; an untitled issue says so. */
+  title: string;
+  saveStatus: AutosaveStatus;
+  /** Why the last save failed, in friendly words, when no item row shows it. */
+  saveError: string | null;
+  onRetry: () => void;
+  /** Conflict recovery: load the issue again from the server. */
+  onReload: () => void;
+  onPublish: () => void;
+  /** Publish waits (e.g. for the public opt-in or after a conflict). */
+  publishDisabled: boolean;
+};
+
+/**
+ * The issue builder's one row of chrome: back to the Magazine tab, where you
+ * are (`/ magazine · Issue n · Draft`), whether your work is safe, and the
+ * single Publish action (the screen's only orange). A conflict shows a
+ * reload banner under it, never a silent overwrite.
+ */
+export function BuilderTopBar({
+  communitySlug,
+  magazineName,
+  issueNumber,
+  status,
+  title,
+  saveStatus,
+  saveError,
+  onRetry,
+  onReload,
+  onPublish,
+  publishDisabled,
+}: BuilderTopBarProps) {
+  const t = useTranslations("magazineEditor.builder");
+
+  return (
+    <header className="bg-background border-border sticky top-12 z-40 border-b">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 sm:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <Link
+            href={communityMagazinePath(communitySlug)}
+            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-sm text-sm outline-none focus-visible:ring-[3px]"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            {t("backToMagazine")}
+          </Link>
+          <div className="flex min-w-0 flex-col">
+            <SectionLabel as="p" bordered={false} className="truncate">
+              {t("kicker", {
+                magazine: magazineName,
+                number: issueNumber,
+                status: t(`status.${status}`),
+              })}
+            </SectionLabel>
+            <h1 className="truncate text-base leading-tight font-semibold tracking-tight">
+              {title.trim() || t("preview.untitled")}
+            </h1>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-3">
+          <SaveStatusText status={saveStatus} onRetry={onRetry} />
+          {status === "published" ? (
+            <Button type="button" variant="outline" size="sm" disabled>
+              {t("published")}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              onClick={onPublish}
+              disabled={publishDisabled}
+            >
+              {t("publish")}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {saveStatus === "error" && saveError ? (
+        <p className="text-destructive border-border border-t px-4 py-2 text-sm sm:px-6">
+          {saveError}
+        </p>
+      ) : null}
+
+      {saveStatus === "conflict" ? (
+        <div
+          role="alert"
+          className="border-border flex flex-wrap items-center gap-x-3 gap-y-2 border-t px-4 py-2 text-sm sm:px-6"
+        >
+          <AlertTriangle
+            className="text-destructive size-4 shrink-0"
+            aria-hidden="true"
+          />
+          <p className="min-w-0 flex-1">{t("conflict")}</p>
+          <Button type="button" variant="outline" size="sm" onClick={onReload}>
+            {t("reload")}
+          </Button>
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+function SaveStatusText({
+  status,
+  onRetry,
+}: {
+  status: AutosaveStatus;
+  onRetry: () => void;
+}) {
+  const t = useTranslations("magazineEditor.builder.save");
+
+  let content: React.ReactNode = null;
+  if (status === "saving") content = t("saving");
+  else if (status === "dirty") content = t("unsaved");
+  else if (status === "saved") content = t("saved");
+  else if (status === "error") {
+    content = (
+      <span className="text-destructive inline-flex items-center gap-2">
+        <AlertTriangle className="size-4" aria-hidden="true" />
+        {t("failed")}
+        <Button type="button" variant="outline" size="xs" onClick={onRetry}>
+          {t("retry")}
+        </Button>
+      </span>
+    );
+  }
+
+  return (
+    <div
+      aria-live="polite"
+      className="text-muted-foreground min-h-5 text-xs leading-5"
+    >
+      {content}
+    </div>
+  );
+}

@@ -474,6 +474,42 @@ describe.skipIf(!RUN_DB)("magazines editor API [DB integration]", () => {
     expect(editing.problems).toEqual([
       expect.objectContaining({ itemIndex: 0, code: "ARTICLE_NOT_READY" }),
     ]);
+    // The builder's kicker, reading link and opt-in dry run read these.
+    expect(editing.magazine).toEqual({
+      name: "The Gazette",
+      slug: `gazette-${fx.sfx}`,
+    });
+    expect(editing.community).toEqual({
+      slug: slug(),
+      isListedInDirectory: false,
+    });
+  });
+
+  it("the issue builder page lets in only editors of the issue's community", async () => {
+    const { canEditIssueAt } = await import("@/server/magazines/issue-editing");
+    await saveMagazine();
+    const { id: issueId } = await callerAs(fx.ownerId).magazines.createIssue({
+      slug: slug(),
+      title: "Gate",
+    });
+    const deps = { db: m.db, payload: m.payload };
+    const at = (
+      viewerId: string | null,
+      communitySlug = slug(),
+      id = issueId,
+    ) => canEditIssueAt(deps, { communitySlug, issueId: id, viewerId });
+
+    expect(await at(fx.ownerId)).toBe(true);
+    expect(await at(fx.adminId)).toBe(true);
+    expect(await at(fx.moderatorId)).toBe(false);
+    expect(await at(fx.memberId)).toBe(false);
+    expect(await at(fx.outsiderId)).toBe(false);
+    expect(await at(null)).toBe(false);
+    // The issue must belong to the community in the URL.
+    expect(await at(fx.outsiderId, fx.other.slug)).toBe(false);
+    expect(await at(fx.ownerId, fx.other.slug)).toBe(false);
+    expect(await at(fx.ownerId, slug(), 999_999_999)).toBe(false);
+    expect(await at(fx.ownerId, `missing-${fx.sfx}`)).toBe(false);
   });
 
   it("updateIssue takes the issue slug as issueSlug and validates slugs", async () => {

@@ -1,0 +1,457 @@
+import { act, fireEvent, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
+import type { MagazineIssue } from "@/payload-types";
+
+import { renderWithIntl } from "../../test-intl";
+
+const T0 = "2026-10-20T10:00:00.000Z";
+const T1 = "2026-10-20T10:00:05.000Z";
+const T2 = "2026-10-20T10:00:09.000Z";
+
+type EditingData = {
+  issue: MagazineIssue;
+  items: EditorItemView[];
+  storedItems: unknown[];
+  problems: ItemProblem[];
+  magazine: { name: string; slug: string };
+  communityIsPrivate: boolean;
+  community: { slug: string; isListedInDirectory: boolean };
+};
+
+const trpc = vi.hoisted(() => ({
+  editing: null as unknown,
+  refetch: vi.fn(),
+  available: [] as unknown[],
+  updateIssue: vi.fn(),
+  setIssueItems: vi.fn(),
+  publishIssue: vi.fn(),
+  invalidate: vi.fn(),
+}));
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+// Lexical does not need to run here: rich text is a plain textarea.
+vi.mock("@/components/article-editor/rich-text-editor", () => ({
+  RichTextEditor: ({
+    onChange,
+    placeholder,
+  }: {
+    onChange: (state: unknown) => void;
+    placeholder?: string;
+  }) => (
+    <textarea
+      aria-label={placeholder ?? "Rich text"}
+      onChange={(e) =>
+        onChange({
+          root: {
+            type: "root",
+            children: [
+              {
+                type: "paragraph",
+                children: [{ type: "text", text: e.target.value }],
+              },
+            ],
+          },
+        })
+      }
+    />
+  ),
+}));
+vi.mock("@/trpc/react", () => ({
+  api: {
+    useUtils: () => ({
+      magazines: { availableArticles: { invalidate: trpc.invalidate } },
+    }),
+    magazines: {
+      getIssueForEditing: {
+        useQuery: () => ({
+          data: trpc.editing,
+          dataUpdatedAt: 1,
+          isLoading: false,
+          isError: false,
+          refetch: trpc.refetch,
+        }),
+      },
+      availableArticles: {
+        useQuery: () => ({
+          data: trpc.available,
+          isLoading: false,
+          isError: false,
+          refetch: vi.fn(),
+        }),
+      },
+      updateIssue: { useMutation: () => ({ mutateAsync: trpc.updateIssue }) },
+      setIssueItems: {
+        useMutation: () => ({ mutateAsync: trpc.setIssueItems }),
+      },
+      publishIssue: {
+        useMutation: () => ({ mutateAsync: trpc.publishIssue }),
+      },
+    },
+  },
+}));
+
+import { IssueBuilder } from "./issue-builder";
+
+function issue(overrides: Partial<MagazineIssue> = {}): MagazineIssue {
+  return {
+    id: 5,
+    magazine: 3,
+    communityId: "c1",
+    number: 2,
+    title: "Summer",
+    slug: "summer",
+    coverImageUrl: null,
+    editorNote: null,
+    layout: "cover-story",
+    visibility: "members",
+    publicConfirmedBy: null,
+    publicConfirmedAt: null,
+    status: "draft",
+    items: [],
+    updatedAt: T0,
+    createdAt: T0,
+    ...overrides,
+  } as MagazineIssue;
+}
+
+function articleView(itemId: string, id: number, title: string) {
+  return {
+    kind: "article" as const,
+    itemId,
+    intro: null,
+    article: {
+      id,
+      slug: `story-${id}`,
+      title,
+      authorName: "Ada",
+      excerpt: `${title} excerpt`,
+      readingMinutes: 3,
+      imageUrl: null,
+    },
+  };
+}
+
+/** An issue with two saved articles. */
+function twoArticles(overrides: Partial<EditingData> = {}): EditingData {
+  return {
+    issue: issue(),
+    items: [
+      articleView("blk-1", 11, "First story"),
+      articleView("blk-2", 12, "Second story"),
+    ],
+    storedItems: [
+      { kind: "article", id: "blk-1", articleId: 11 },
+      { kind: "article", id: "blk-2", articleId: 12 },
+    ],
+    problems: [],
+    magazine: { name: "The Gazette", slug: "gazette" },
+    communityIsPrivate: false,
+    community: { slug: "night-owls", isListedInDirectory: true },
+    ...overrides,
+  };
+}
+
+/** A tRPC refusal as the client sees it. */
+function refusal(code: string, itemIndex: number | null = null) {
+  return Object.assign(new Error(code), {
+    data: { magazineItemIndex: itemIndex },
+  });
+}
+
+function renderBuilder() {
+  return renderWithIntl(
+    <IssueBuilder communitySlug="night-owls" issueId={5} />,
+  );
+}
+
+/** Lets the autosave debounce fire and its saves settle. */
+async function settleSaves() {
+  await act(() => vi.advanceTimersByTimeAsync(1500));
+}
+
+async function openRowMenu(title: string) {
+  await act(async () => {
+    fireEvent.keyDown(
+      screen.getByRole("button", { name: `Actions for ${title}` }),
+      { key: "Enter" },
+    );
+  });
+}
+
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  trpc.editing = twoArticles();
+  trpc.available = [];
+  trpc.refetch.mockReset();
+  trpc.invalidate.mockReset();
+  trpc.updateIssue.mockReset();
+  trpc.setIssueItems.mockReset();
+  trpc.publishIssue.mockReset();
+  trpc.updateIssue.mockImplementation(async (input: { title?: string }) =>
+    issue({ ...input, updatedAt: T1 } as Partial<MagazineIssue>),
+  );
+  trpc.setIssueItems.mockImplementation(
+    async (input: { items: { id?: string }[] }) => ({
+      issue: issue({
+        updatedAt: T2,
+        items: input.items.map((item, i) => ({
+          ...item,
+          id: item.id ?? `new-blk-${i}`,
+        })) as MagazineIssue["items"],
+      }),
+      items: [],
+    }),
+  );
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("IssueBuilder", () => {
+  it("reorders by the menu and saves the new order with expectedUpdatedAt", async () => {
+    renderBuilder();
+    await openRowMenu("First story");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Move down" }));
+    });
+
+    const rows = within(screen.getByRole("list", { name: "In this issue" }))
+      .getAllByRole("listitem")
+      .map((row) => row.textContent);
+    expect(rows[0]).toContain("Second story");
+    expect(rows[1]).toContain("First story");
+
+    await settleSaves();
+    expect(trpc.setIssueItems).toHaveBeenCalledTimes(1);
+    expect(trpc.setIssueItems).toHaveBeenCalledWith({
+      slug: "night-owls",
+      issueId: 5,
+      expectedUpdatedAt: T0,
+      items: [
+        { kind: "article", id: "blk-2", articleId: 12 },
+        { kind: "article", id: "blk-1", articleId: 11 },
+      ],
+    });
+    expect(trpc.updateIssue).not.toHaveBeenCalled();
+    expect(screen.getByText("Saved")).toBeVisible();
+  });
+
+  it("saves details and items through one queue, each with the version the last save returned", async () => {
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Late summer" },
+    });
+    await openRowMenu("Second story");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Move up" }));
+    });
+
+    await settleSaves();
+    expect(trpc.updateIssue).toHaveBeenCalledWith({
+      slug: "night-owls",
+      issueId: 5,
+      expectedUpdatedAt: T0,
+      title: "Late summer",
+    });
+    // The items save waits for the details save and uses its new version.
+    expect(trpc.setIssueItems).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedUpdatedAt: T1 }),
+    );
+    expect(screen.queryByText(/changed somewhere else/)).toBeNull();
+  });
+
+  it("shows the reload message on ISSUE_CHANGED and keeps local edits", async () => {
+    trpc.updateIssue.mockRejectedValue(refusal("ISSUE_CHANGED"));
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "My better title" },
+    });
+    await settleSaves();
+
+    expect(trpc.updateIssue).toHaveBeenCalledTimes(1);
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("This issue changed somewhere else");
+    expect(screen.getByLabelText("Title")).toHaveValue("My better title");
+
+    // Nothing more is sent: the next save would only be refused again.
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "My better title!" },
+    });
+    await settleSaves();
+    expect(trpc.updateIssue).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      fireEvent.click(within(alert).getByRole("button", { name: "Reload" }));
+    });
+    expect(trpc.refetch).toHaveBeenCalled();
+  });
+
+  it("blocks Publish when visibility is public in a private community until the box is checked", async () => {
+    trpc.editing = twoArticles({
+      communityIsPrivate: true,
+      community: { slug: "night-owls", isListedInDirectory: false },
+    });
+    renderBuilder();
+    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("radio", { name: "Everyone" }));
+    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+    await settleSaves();
+    expect(trpc.updateIssue).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "I understand, show this outside the community",
+      }),
+    );
+    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+    await settleSaves();
+    expect(trpc.updateIssue).toHaveBeenCalledWith({
+      slug: "night-owls",
+      issueId: 5,
+      expectedUpdatedAt: T0,
+      visibility: "public",
+      confirmUnlistedPublic: true,
+    });
+  });
+
+  it("points at the item a refused save names", async () => {
+    trpc.setIssueItems.mockRejectedValue(refusal("ARTICLE_PLACED", 0));
+    renderBuilder();
+    await openRowMenu("First story");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "Move down" }));
+    });
+    await settleSaves();
+
+    // Index 0 of the order that was sent: "Second story".
+    const rows = within(
+      screen.getByRole("list", { name: "In this issue" }),
+    ).getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent(
+      "This article is already in another issue.",
+    );
+    expect(rows[1]).not.toHaveTextContent("already in another issue");
+    expect(screen.getByText("Couldn't save")).toBeVisible();
+  });
+
+  it("shows the problems the issue loaded with and blocks Publish on them", async () => {
+    trpc.editing = twoArticles({
+      problems: [{ itemIndex: 1, code: "ARTICLE_NOT_READY" }],
+    });
+    renderBuilder();
+    const rows = within(
+      screen.getByRole("list", { name: "In this issue" }),
+    ).getAllByRole("listitem");
+    expect(rows[1]).toHaveTextContent(
+      "This article is not ready for an issue yet.",
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText("Fix the items marked in the list."),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole("button", { name: "Publish" }),
+    ).toBeDisabled();
+  });
+
+  it("adds a ready article and an editorial block, saving only finished items", async () => {
+    trpc.available = [
+      { id: 21, title: "Fresh piece", authorName: "Bo", updatedAt: T0 },
+    ];
+    renderBuilder();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add Fresh piece to the issue" }),
+    );
+    // Radix tabs switch on mouse down.
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Editorial block" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add an editorial block" }),
+    );
+    await settleSaves();
+
+    // The empty block stays out of the save until it has text.
+    expect(trpc.setIssueItems).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        items: [
+          { kind: "article", id: "blk-1", articleId: 11 },
+          { kind: "article", id: "blk-2", articleId: 12 },
+          { kind: "article", articleId: 21 },
+        ],
+      }),
+    );
+    expect(
+      screen.getByText(
+        "Write something in this block. It is saved once it has text.",
+      ),
+    ).toBeVisible();
+
+    fireEvent.change(
+      screen.getByLabelText(
+        "Write an introduction, a section opener or a short column…",
+      ),
+      { target: { value: "Welcome to summer" } },
+    );
+    await settleSaves();
+    const last = trpc.setIssueItems.mock.lastCall![0] as {
+      items: unknown[];
+      expectedUpdatedAt: string;
+    };
+    expect(last.expectedUpdatedAt).toBe(T2);
+    // The article keeps the block id its first save gave it.
+    expect(last.items[2]).toEqual({
+      kind: "article",
+      id: "new-blk-2",
+      articleId: 21,
+    });
+    expect(last.items[3]).toMatchObject({ kind: "editorial" });
+  });
+
+  it("publishes with the latest version and then shows Published", async () => {
+    trpc.publishIssue.mockResolvedValue(
+      issue({ status: "published", updatedAt: T2 }),
+    );
+    renderBuilder();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText(
+        "Only members of your community will be able to read it.",
+      ),
+    ).toBeVisible();
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
+    });
+
+    expect(trpc.publishIssue).toHaveBeenCalledWith({
+      slug: "night-owls",
+      issueId: 5,
+      expectedUpdatedAt: T0,
+    });
+    expect(
+      within(screen.getByRole("dialog")).getByRole("link", {
+        name: "Read the issue",
+      }),
+    ).toHaveAttribute("href", "/magazines/gazette/summer");
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(screen.getByRole("button", { name: "Published" })).toBeDisabled();
+    // The address is fixed once published.
+    expect(screen.getByLabelText("Address")).toHaveAttribute("readonly");
+  });
+});

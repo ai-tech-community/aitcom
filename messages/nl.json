@@ -4905,6 +4905,127 @@
       },
       "loadFailed": "Deze lijst kon niet worden geladen.",
       "tryAgain": "Opnieuw proberen"
+    },
+    "builder": {
+      "metaTitle": "Nummer bewerken",
+      "backToMagazine": "Magazine",
+      "kicker": "{magazine} · Nummer {number} · {status}",
+      "status": {
+        "draft": "Concept",
+        "published": "Gepubliceerd"
+      },
+      "workspaceLabel": "Nummer samenstellen",
+      "loadFailed": "Dit nummer kon niet worden geladen.",
+      "tryAgain": "Probeer opnieuw",
+      "save": {
+        "saving": "Opslaan…",
+        "saved": "Opgeslagen",
+        "unsaved": "Nog niet opgeslagen",
+        "failed": "Opslaan lukte niet",
+        "retry": "Opnieuw"
+      },
+      "conflict": "Dit nummer is ergens anders gewijzigd. Je wijzigingen hier zijn niet opgeslagen.",
+      "reload": "Opnieuw laden",
+      "publish": "Publiceren",
+      "published": "Gepubliceerd",
+      "details": {
+        "label": "Gegevens van het nummer",
+        "title": "Titel",
+        "titleRequired": "Geef het nummer een titel. Het wordt opgeslagen zodra het er een heeft.",
+        "slug": "Adres",
+        "slugHint": "Kleine letters, cijfers en streepjes.",
+        "slugInvalid": "Gebruik 3 tot 60 kleine letters, cijfers en streepjes. Het wordt opgeslagen zodra het klopt.",
+        "slugLocked": "Het adres blijft hetzelfde zodra het nummer is gepubliceerd, zodat links blijven werken.",
+        "cover": "Omslag",
+        "coverHint": "Een staande afbeelding werkt het best. Lezers zien die in de kast en bovenaan het nummer.",
+        "coverUpload": "Omslag uploaden",
+        "coverReplace": "Omslag vervangen",
+        "coverRemove": "Omslag verwijderen",
+        "coverUploading": "Uploaden…",
+        "coverFailed": "De omslag kon niet worden geüpload. Probeer het opnieuw.",
+        "editorNote": "Woord van de redactie",
+        "editorNoteHint": "Een kort welkom bovenaan het nummer. Laat het leeg als je het niet nodig hebt.",
+        "visibility": "Wie dit nummer kan lezen",
+        "visibilityMembers": "Alleen leden",
+        "visibilityPublic": "Iedereen",
+        "optInPending": "Vink het vakje aan om deze keuze op te slaan."
+      },
+      "items": {
+        "label": "In dit nummer",
+        "empty": "Dit nummer is leeg. Voeg artikelen of een redactioneel blok toe via Meer toevoegen.",
+        "article": "Artikel",
+        "editorial": "Redactioneel blok",
+        "editorialEmpty": "Redactioneel blok, nog niet geschreven",
+        "dragHandle": "Sleep om {title} te verplaatsen",
+        "actions": "Acties voor {title}",
+        "edit": "Bewerken",
+        "moveUp": "Omhoog",
+        "moveDown": "Omlaag",
+        "remove": "Uit nummer halen",
+        "unfinished": "Schrijf iets in dit blok. Het wordt opgeslagen zodra er tekst in staat.",
+        "unavailable": "Niet meer beschikbaar",
+        "position": "{position} van {total}",
+        "announce": {
+          "instructions": "Om te verplaatsen: druk op Spatie of Enter op de greep, verplaats het item met de pijltjestoetsen en druk dan op Spatie of Enter om het neer te zetten. Druk op Escape om te annuleren.",
+          "pickedUp": "{title} opgepakt.",
+          "movedTo": "{title} staat nu op plek {position} van {total}.",
+          "dropped": "{title} neergezet op plek {position} van {total}.",
+          "cancelled": "Verplaatsen geannuleerd. {title} staat weer op zijn plek."
+        }
+      },
+      "editorial": {
+        "label": "Redactioneel blok",
+        "heading": "Kop (optioneel)",
+        "body": "Tekst",
+        "bodyPlaceholder": "Schrijf een inleiding, een opening van een rubriek of een korte column…",
+        "done": "Klaar"
+      },
+      "add": {
+        "label": "Meer toevoegen",
+        "kind": "Wat wil je toevoegen",
+        "articles": "Artikelen",
+        "editorial": "Redactioneel blok",
+        "articlesEmpty": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
+        "add": "Toevoegen",
+        "addArticle": "{title} aan het nummer toevoegen",
+        "byAuthor": "Door {name}",
+        "editorialHint": "Een blok met je eigen tekst: een inleiding, een opening van een rubriek of een korte column.",
+        "addEditorial": "Redactioneel blok toevoegen",
+        "loadFailed": "De artikelen die klaar zijn konden niet worden geladen.",
+        "tryAgain": "Probeer opnieuw"
+      },
+      "preview": {
+        "label": "Voorbeeld",
+        "mode": "Bekijk als",
+        "member": "Lid",
+        "phone": "Telefoon",
+        "visitor": "Bezoeker",
+        "visitorNothingTitle": "Bezoekers zien niets",
+        "visitorNothing": "Dit nummer is alleen voor leden. Mensen buiten je community kunnen het niet openen.",
+        "unsavedArticles": "Artikelen die je net hebt toegevoegd verschijnen hier zodra ze zijn opgeslagen.",
+        "empty": "Voeg een artikel of een redactioneel blok toe om het nummer hier te zien.",
+        "untitled": "Nummer zonder titel"
+      },
+      "publishDialog": {
+        "title": "Dit nummer publiceren?",
+        "blockersTitle": "Voordat je kunt publiceren",
+        "blocker": {
+          "NO_TITLE": "Geef het nummer een titel.",
+          "NO_ITEMS": "Voeg minstens één artikel of redactioneel blok toe.",
+          "INVALID_ITEM": "Herstel de items die in de lijst zijn gemarkeerd."
+        },
+        "ready": "Alles is klaar.",
+        "audienceMembers": "Alleen leden van je community kunnen het lezen.",
+        "audiencePublic": "Iedereen kan het lezen, ook mensen buiten je community. Het verschijnt op de pagina Magazines.",
+        "confirm": "Publiceren",
+        "publishing": "Publiceren…",
+        "cancel": "Nog niet",
+        "notSaved": "Je laatste wijzigingen zijn nog niet opgeslagen. Wacht tot ze zijn opgeslagen en publiceer dan.",
+        "successTitle": "Je nummer is gepubliceerd",
+        "successLead": "Lezers kunnen het nu openen.",
+        "read": "Lees het nummer",
+        "keepEditing": "Verder bewerken"
+      }
     }
   }
 }

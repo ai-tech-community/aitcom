@@ -1,8 +1,13 @@
+import { and, eq, isNull } from "drizzle-orm";
+
 import { routing } from "@/i18n/routing";
 import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
 import type { MagazineIssue } from "@/payload-types";
 
-import type { PayloadClient } from "./deps";
+import { communities } from "@/server/db/schema";
+
+import type { Deps, PayloadClient } from "./deps";
+import { isMagazineEditorRole } from "./issue-access";
 import {
   type IssueItemInput,
   loadIssueItemViews,
@@ -12,6 +17,7 @@ import {
 } from "./items/registry";
 import type { ItemContext } from "./items/types";
 import { requireRelationId } from "./relation-id";
+import { activeCommunityRole } from "./viewer-role";
 
 /**
  * Editor-side reads of issues: what the issue list and the issue builder
@@ -61,6 +67,32 @@ export async function findIssueInCommunity(
     disableErrors: true,
   });
   return issue?.communityId === communityId ? issue : null;
+}
+
+/**
+ * The issue builder page's gate (Gate-Before-Fail): true only when the
+ * community is live, the issue belongs to it, and the viewer edits its
+ * magazine. The page answers 404 otherwise, so nobody learns which issue
+ * ids exist.
+ */
+export async function canEditIssueAt(
+  deps: Deps,
+  opts: { communitySlug: string; issueId: number; viewerId: string | null },
+): Promise<boolean> {
+  if (opts.viewerId === null) return false;
+  const community = await deps.db.query.communities.findFirst({
+    where: and(
+      eq(communities.slug, opts.communitySlug),
+      isNull(communities.deletedAt),
+    ),
+    columns: { id: true },
+  });
+  if (!community) return false;
+  const [role, issue] = await Promise.all([
+    activeCommunityRole(deps.db, community.id, opts.viewerId),
+    findIssueInCommunity(deps.payload, opts.issueId, community.id),
+  ]);
+  return issue !== null && isMagazineEditorRole(role);
 }
 
 /** Every issue of the magazine, drafts included, newest number first. */
