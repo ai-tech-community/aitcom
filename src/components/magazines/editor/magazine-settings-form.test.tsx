@@ -182,6 +182,11 @@ describe("MagazineSettingsForm", () => {
     ).toHaveLength(5);
     expect(topic).toBeDisabled();
 
+    // Removing a topic frees a place and puts focus back in the field.
+    fireEvent.click(screen.getByRole("button", { name: "Remove topic rag" }));
+    expect(topic).toBeEnabled();
+    expect(document.activeElement).toBe(topic);
+
     fireEvent.change(screen.getByLabelText("Address"), {
       target: { value: "Not OK" },
     });

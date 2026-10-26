@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -154,6 +154,9 @@ function SettingsEditor({
   const [isUploading, setIsUploading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const topicInputRef = useRef<HTMLInputElement>(null);
+  /** Set when a topic chip's × was used: its button is gone after render. */
+  const focusTopicInput = useRef(false);
 
   const nameId = useId();
   const slugId = useId();
@@ -195,6 +198,14 @@ function SettingsEditor({
   const showSlugError = draft.magazineSlug.length > 0 && !slugValid;
   const nameValid = draft.name.trim().length > 0;
   const topicsFull = draft.topics.length >= MAX_MAGAZINE_TOPICS;
+
+  // A removed chip takes its × with it: put focus in the topic field, where
+  // a keyboard user adds the next topic (WCAG 2.4.3).
+  useEffect(() => {
+    if (!focusTopicInput.current) return;
+    focusTopicInput.current = false;
+    topicInputRef.current?.focus();
+  }, [draft.topics]);
   const canSave =
     nameValid &&
     slugValid &&
@@ -403,9 +414,10 @@ function SettingsEditor({
                 <button
                   type="button"
                   aria-label={t("topicRemove", { topic })}
-                  onClick={() =>
-                    update({ topics: draft.topics.filter((x) => x !== topic) })
-                  }
+                  onClick={() => {
+                    focusTopicInput.current = true;
+                    update({ topics: draft.topics.filter((x) => x !== topic) });
+                  }}
                   className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex size-5 items-center justify-center rounded-full outline-none focus-visible:ring-[3px]"
                 >
                   <span aria-hidden="true">×</span>
@@ -416,6 +428,7 @@ function SettingsEditor({
         )}
         <div className="flex gap-2">
           <Input
+            ref={topicInputRef}
             id={topicsId}
             value={topicInput}
             onChange={(e) => setTopicInput(e.target.value)}
