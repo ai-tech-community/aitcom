@@ -9,6 +9,7 @@ import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { canReadArticle } from "@/server/articles/article-access";
+import { listArticleComments } from "@/server/articles/article-comments";
 import { channelFor } from "@/server/articles/channels";
 import type { Deps } from "@/server/magazines/deps";
 
@@ -82,22 +83,7 @@ export const commentsRouter = createTRPCRouter({
         ctx.session?.user.id ?? null,
       );
       if (!found?.readable) throw new TRPCError({ code: "NOT_FOUND" });
-      const { docs } = await payload.find({
-        collection: "comments",
-        where: { articleId: { equals: input.articleId } },
-        sort: "createdAt",
-        limit: 100,
-        depth: 0,
-      });
-
-      return docs.map((doc) => ({
-        id: doc.id,
-        content: doc.content,
-        parentId: doc.parentId ?? null,
-        createdAt: doc.createdAt,
-        authorId: doc.authorId,
-        authorName: doc.authorName ?? null,
-      }));
+      return listArticleComments(payload, input.articleId);
     }),
 
   // ── Create a comment ──────────────────────────────────────────────────────

@@ -639,7 +639,10 @@ export async function loadMagazineArticlePage(
 ): Promise<null | {
   access: IssueReaderAccess;
   magazine: MagazineSummary;
-  issue: IssueCard;
+  issue: IssueCard & {
+    /** Readers only ever get `published`; editors also open drafts. */
+    status: IssueStatus;
+  };
   article: Article;
   nextInIssue: ArticleItemView | null;
 }> {
@@ -675,8 +678,13 @@ export async function loadMagazineArticlePage(
   return {
     access,
     magazine: toMagazineSummary(magazine),
-    issue: toIssueCard(issue, magazine, community),
+    issue: { ...toIssueCard(issue, magazine, community), status: issue.status },
     article,
     nextInIssue: position === -1 ? null : (articles[position + 1] ?? null),
   };
 }
+
+/** What the magazine article page renders. */
+export type MagazineArticlePageData = NonNullable<
+  Awaited<ReturnType<typeof loadMagazineArticlePage>>
+>;

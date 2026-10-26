@@ -3,7 +3,7 @@ import { issuePath } from "@/lib/magazines/paths";
 import { cn } from "@/lib/utils";
 import type { IssueCard } from "@/server/magazines/reading";
 
-import { useIssueDateline } from "./issue-dateline";
+import { issueNumberText, useIssueDateline } from "./issue-dateline";
 
 /**
  * The cover art of an issue: its cover image (alt text is the issue title),
@@ -39,7 +39,7 @@ export function IssueCoverArt({
           aria-hidden="true"
           className="text-muted-foreground flex size-full items-center justify-center font-mono text-xs"
         >
-          {String(issue.number).padStart(2, "0")}
+          {issueNumberText(issue.number)}
         </div>
       ) : (
         <div
@@ -47,7 +47,7 @@ export function IssueCoverArt({
           className="flex size-full flex-col justify-between p-3"
         >
           <span className="text-muted-foreground font-mono text-xs">
-            {String(issue.number).padStart(2, "0")}
+            {issueNumberText(issue.number)}
           </span>
           <span className="line-clamp-3 text-sm leading-tight font-semibold tracking-tight break-words">
             {issue.magazine.name}

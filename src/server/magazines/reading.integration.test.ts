@@ -506,6 +506,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     expect(read!.access).toBe("full");
     expect(read!.article.id).toBe(first.id);
     expect(read!.issue.id).toBe(holding.id);
+    expect(read!.issue.status).toBe("published");
     expect(read!.nextInIssue?.article.id).toBe(second.id);
     expect(
       (await page(holding.slug, second.slug, null))!.nextInIssue,
@@ -549,7 +550,9 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
 
     expect(await page(null)).toBeNull();
     expect(await page(fx.memberId)).toBeNull();
-    expect((await page(fx.editorId))!.access).toBe("editor");
+    const asEditor = await page(fx.editorId);
+    expect(asEditor!.access).toBe("editor");
+    expect(asEditor!.issue.status).toBe("draft");
   });
 
   // ── Community tab ─────────────────────────────────────────────────────

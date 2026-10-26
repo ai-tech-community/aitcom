@@ -7,7 +7,12 @@ import type {
   EditorialItemView,
   UnavailableItem,
 } from "@/lib/magazines/item-views";
-import type { IssueCard, IssuePageData } from "@/server/magazines/reading";
+import type { Article } from "@/payload-types";
+import type {
+  IssueCard,
+  IssuePageData,
+  MagazineArticlePageData,
+} from "@/server/magazines/reading";
 
 export function articleView(
   n: number,
@@ -114,6 +119,78 @@ export function issuePage(
       issueCard({ id: 6, number: 3, slug: "issue-3", title: "Issue three" }),
     ],
     readingMinutes: 8,
+    ...rest,
+  };
+}
+
+/** A Lexical document: an opening paragraph, then each heading with a paragraph. */
+export function lexicalWithHeadings(
+  opening: string,
+  headings: string[],
+): Article["content"] {
+  const paragraph = (text: string) => ({
+    type: "paragraph",
+    version: 1,
+    children: [{ type: "text", text, format: 0, version: 1 }],
+  });
+  return {
+    root: {
+      type: "root",
+      version: 1,
+      direction: "ltr",
+      format: "",
+      indent: 0,
+      children: [
+        paragraph(opening),
+        ...headings.flatMap((text) => [
+          {
+            type: "heading",
+            tag: "h2",
+            version: 1,
+            children: [{ type: "text", text, format: 0, version: 1 }],
+          },
+          paragraph(`More about ${text.toLowerCase()}.`),
+        ]),
+      ],
+    },
+  };
+}
+
+export function magazineArticle(overrides: Partial<Article> = {}): Article {
+  return {
+    id: 1,
+    title: "Agents that know when to stop",
+    slug: "agents-that-know-when-to-stop",
+    content: lexicalWithHeadings("Every agent needs a way to say no.", [
+      "Why agents refuse",
+      "What changes for builders",
+    ]),
+    type: "article",
+    authorName: "Sanne de Vries",
+    authorType: "member",
+    status: "published",
+    publishedAt: "2026-11-02T09:00:00.000Z",
+    magazine: 3,
+    magazineIssue: 7,
+    updatedAt: "2026-11-02T09:00:00.000Z",
+    createdAt: "2026-10-20T09:00:00.000Z",
+    ...overrides,
+  };
+}
+
+export function articlePage(
+  overrides: Partial<Omit<MagazineArticlePageData, "issue">> & {
+    issue?: Partial<MagazineArticlePageData["issue"]>;
+  } = {},
+): MagazineArticlePageData {
+  const { issue, ...rest } = overrides;
+  const page = issuePage();
+  return {
+    access: "full",
+    magazine: page.magazine,
+    issue: { ...issueCard(), status: "published", ...issue },
+    article: magazineArticle(),
+    nextInIssue: articleView(2),
     ...rest,
   };
 }

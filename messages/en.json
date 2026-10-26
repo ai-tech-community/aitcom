@@ -4761,8 +4761,19 @@
       "linkCopied": "Link copied",
       "linkCopyFailed": "Could not copy the link"
     },
+    "article": {
+      "context": "Where this article appears",
+      "byAuthor": "By {name}",
+      "readingTime": "{minutes} min read",
+      "contents": "In this article",
+      "nextInIssue": "Next in this issue",
+      "lastInIssue": "This is the last article in this issue.",
+      "backToIssue": "Back to the issue",
+      "draftNotice": "Draft — only editors can see this"
+    },
     "meta": {
-      "issueDescription": "Issue {number} of {magazine}, a magazine by {community}."
+      "issueDescription": "Issue {number} of {magazine}, a magazine by {community}.",
+      "articleDescription": "An article in issue {number} of {magazine}, a magazine by {community}."
     }
   }
 }

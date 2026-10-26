@@ -4761,8 +4761,19 @@
       "linkCopied": "Link gekopieerd",
       "linkCopyFailed": "Kon de link niet kopiëren"
     },
+    "article": {
+      "context": "Waar dit artikel verschijnt",
+      "byAuthor": "Door {name}",
+      "readingTime": "{minutes} min lezen",
+      "contents": "In dit artikel",
+      "nextInIssue": "Volgende in dit nummer",
+      "lastInIssue": "Dit is het laatste artikel in dit nummer.",
+      "backToIssue": "Terug naar het nummer",
+      "draftNotice": "Concept — alleen redacteuren zien dit"
+    },
     "meta": {
-      "issueDescription": "Nummer {number} van {magazine}, een magazine van {community}."
+      "issueDescription": "Nummer {number} van {magazine}, een magazine van {community}.",
+      "articleDescription": "Een artikel in nummer {number} van {magazine}, een magazine van {community}."
     }
   }
 }

@@ -5,6 +5,7 @@ import { cache } from "react";
 
 import { IssueReader } from "@/components/magazines/reading/issue-reader";
 import { resolveLocale, type AppLocale } from "@/i18n/messages";
+import { isIssueIndexable } from "@/lib/magazines/indexing";
 import { issuePath } from "@/lib/magazines/paths";
 import {
   buildOgImageMeta,
@@ -67,8 +68,7 @@ export async function generateMetadata({
     });
   // Only an issue anyone may read is indexed: the effective value, so an
   // unconfirmed public issue in an unlisted community stays out (F10).
-  const indexable =
-    issue.status === "published" && issue.effectiveVisibility === "public";
+  const indexable = isIssueIndexable(issue);
 
   return {
     title,
