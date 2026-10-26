@@ -175,11 +175,8 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       const magazineIds = mags.map((mag) => mag.id);
       // Issues first: their article blocks hold a required reference.
       if (magazineIds.length > 0) {
-        await payload.update({
-          collection: "articles",
-          where: { magazine: { in: magazineIds } },
-          data: { magazineIssue: null },
-        });
+        // Deleting the issues clears their articles' placement (the
+        // foreign key is ON DELETE set null).
         await payload.delete({
           collection: "magazine-issues",
           where: { magazine: { in: magazineIds } },
@@ -331,14 +328,24 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       : (value ?? null);
   }
 
-  async function creditMarkerOf(articleId: number, draft: boolean) {
-    const doc = await m.payload.findByID({
-      collection: "articles",
-      id: articleId,
-      depth: 0,
-      draft,
-    });
-    return doc.magazineCreditedAt ?? null;
+  /** Whether the article holds its exactly-once credit claim. */
+  async function isCredited(articleId: number): Promise<boolean> {
+    const { eq } = await import("drizzle-orm");
+    const rows = await m.db
+      .select({ articleId: m.schema.magazineArticleCredits.articleId })
+      .from(m.schema.magazineArticleCredits)
+      .where(eq(m.schema.magazineArticleCredits.articleId, articleId));
+    return rows.length > 0;
+  }
+
+  /** The placement on the main row, as reader queries see it (raw SQL). */
+  async function livePlacementOf(articleId: number): Promise<number | null> {
+    const { sql } = await import("drizzle-orm");
+    const { rows } = await m.db.execute<{ issue: number | null }>(sql`
+      SELECT "magazine_issue_id" AS issue FROM "public"."articles"
+      WHERE "id" = ${articleId}
+    `);
+    return rows[0]?.issue ?? null;
   }
 
   async function xpOf(userId: string): Promise<number> {
@@ -1199,10 +1206,10 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     expect(creditFault.failNext).toBe(0);
     expect(logged).toHaveBeenCalledWith(
       "[magazines] article credit failed; will retry",
-      expect.objectContaining({ articleId: a, issueId: issue.id }),
+      expect.objectContaining({ articleId: a, magazineId: mag.id }),
     );
     logged.mockRestore();
-    expect(await creditMarkerOf(a, false)).toBeNull();
+    expect(await isCredited(a)).toBe(false);
     expect(await xpOf(fx.userId)).toBe(xpBefore);
     expect(await pointsEventCount(fx.userId)).toBe(0);
 
@@ -1212,21 +1219,20 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     ]);
     expect(await xpOf(fx.userId)).toBe(xpBefore + m.xpArticlePublished);
     expect(await pointsEventCount(fx.userId)).toBe(1);
-    expect(await creditMarkerOf(a, false)).not.toBeNull();
-    expect(await creditMarkerOf(a, true)).not.toBeNull();
+    expect(await isCredited(a)).toBe(true);
 
     await setItems(c, resaved, [articleItem(a, resaved.items![0]!.id!)]);
     expect(await pointsEventCount(fx.userId)).toBe(1);
 
-    // A later Payload save of the article keeps the marker (it is on every
-    // version), so nothing credits it again.
+    // A later Payload save of the article cannot touch the claim (Payload
+    // never reads or writes its table), so nothing credits it again.
     await m.payload.update({
       collection: "articles",
       id: a,
       data: { title: "typo fixed" },
     });
-    expect(await creditMarkerOf(a, false)).not.toBeNull();
-    await m.publication.creditPendingMagazineArticles(m, issue.id);
+    expect(await isCredited(a)).toBe(true);
+    await m.publication.creditPendingMagazineArticles(m, mag.id);
     expect(await pointsEventCount(fx.userId)).toBe(1);
   });
 
@@ -1250,12 +1256,290 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     expect(await pointsEventCount(fx.userId)).toBe(0);
 
     const runs = await Promise.all([
-      m.publication.creditPendingMagazineArticles(m, issue.id),
-      m.publication.creditPendingMagazineArticles(m, issue.id),
-      m.publication.creditPendingMagazineArticles(m, issue.id),
+      m.publication.creditPendingMagazineArticles(m, mag.id),
+      m.publication.creditPendingMagazineArticles(m, mag.id),
+      m.publication.creditPendingMagazineArticles(m, mag.id),
     ]);
     expect(runs.flatMap((r) => r.credited)).toEqual([a]);
     expect(runs.flatMap((r) => r.failed)).toEqual([]);
     expect(await pointsEventCount(fx.userId)).toBe(1);
+  });
+  it("a failed credit is still retried after the article moved to another issue", async () => {
+    const c = await community("credit-moved");
+    const mag = await magazineIn(c);
+    const issueA = await m.issues.createIssue(m, mag, { title: "A" }, actor(c));
+    const a = await article("credit-moved", mag.id);
+    const filledA = await setItems(c, issueA, [
+      articleItem(a),
+      editorialItem("stays in A"),
+    ]);
+    const logged = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    creditFault.failNext = 1;
+    const publishedA = await m.issues.publishIssue(
+      m,
+      filledA,
+      filledA.updatedAt,
+      actor(c),
+    );
+    logged.mockRestore();
+    expect(await isCredited(a)).toBe(false);
+    expect(await pointsEventCount(fx.userId)).toBe(0);
+
+    // The editor moves the article out of A before anything retried it.
+    await setItems(c, publishedA, [
+      { ...editorialItem("stays in A"), id: publishedA.items![1]!.id! },
+    ]);
+    // A's own save already retried it: pending is a property of the
+    // article, not of the issue it sits in now.
+    expect(await isCredited(a)).toBe(true);
+    expect(await pointsEventCount(fx.userId)).toBe(1);
+
+    // Placed in another published issue later: still credited once.
+    const issueB = await m.issues.createIssue(m, mag, { title: "B" }, actor(c));
+    const filledB = await setItems(c, issueB, [editorialItem("B opener")]);
+    const publishedB = await m.issues.publishIssue(
+      m,
+      filledB,
+      filledB.updatedAt,
+      actor(c),
+    );
+    await setItems(c, publishedB, [
+      { ...editorialItem("B opener"), id: publishedB.items![0]!.id! },
+      articleItem(a),
+    ]);
+    expect(await pointsEventCount(fx.userId)).toBe(1);
+  });
+
+  it("a failed credit of an article that left every issue is retried by any save of a published issue of the magazine", async () => {
+    const c = await community("credit-left");
+    const mag = await magazineIn(c);
+    const issueA = await m.issues.createIssue(m, mag, { title: "A" }, actor(c));
+    const issueB = await m.issues.createIssue(m, mag, { title: "B" }, actor(c));
+    const filledB = await setItems(c, issueB, [editorialItem("B")]);
+    const publishedB = await m.issues.publishIssue(
+      m,
+      filledB,
+      filledB.updatedAt,
+      actor(c),
+    );
+    const a = await article("credit-left", mag.id);
+    const filledA = await setItems(c, issueA, [
+      articleItem(a),
+      editorialItem("A"),
+    ]);
+    const logged = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    // Fail the publish's credit AND the retry run by A's next save.
+    creditFault.failNext = 2;
+    const publishedA = await m.issues.publishIssue(
+      m,
+      filledA,
+      filledA.updatedAt,
+      actor(c),
+    );
+    await setItems(c, publishedA, [
+      { ...editorialItem("A"), id: publishedA.items![1]!.id! },
+    ]);
+    logged.mockRestore();
+    expect(await livePlacementOf(a)).toBeNull();
+    expect(await isCredited(a)).toBe(false);
+    expect(await pointsEventCount(fx.userId)).toBe(0);
+
+    // A details save of ANOTHER published issue of the magazine settles it.
+    await m.issues.updateIssueDetails(
+      m,
+      publishedB,
+      { title: "B renamed" },
+      publishedB.updatedAt,
+      actor(c),
+    );
+    expect(await isCredited(a)).toBe(true);
+    expect(await pointsEventCount(fx.userId)).toBe(1);
+  });
+
+  it("an article save that read before the credit cannot make it credit twice", async () => {
+    const c = await community("credit-save-race");
+    const mag = await magazineIn(c);
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Race" },
+      actor(c),
+    );
+    const a = await article("credit-save-race", mag.id);
+    const filled = await setItems(c, issue, [articleItem(a)]);
+    const logged = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    creditFault.failNext = 1;
+    const published = await m.issues.publishIssue(
+      m,
+      filled,
+      filled.updatedAt,
+      actor(c),
+    );
+    logged.mockRestore();
+    expect(await isCredited(a)).toBe(false);
+
+    // The author's draft autosave runs at the same time as the credit.
+    await Promise.all([
+      m.publication.creditPendingMagazineArticles(m, mag.id),
+      m.payload.update({
+        collection: "articles",
+        id: a,
+        draft: true,
+        data: { title: "autosaved while crediting" },
+      }),
+    ]);
+    // Then a non-draft save, then the published issue is saved again.
+    await m.payload.update({
+      collection: "articles",
+      id: a,
+      data: { title: "fixed and saved live" },
+    });
+    await setItems(c, published, [articleItem(a, published.items![0]!.id!)]);
+
+    expect(await isCredited(a)).toBe(true);
+    expect(await pointsEventCount(fx.userId)).toBe(1);
+  });
+
+  it("a duplicate of a credited article is not credited and does not re-credit the original", async () => {
+    const c = await community("credit-dup");
+    const mag = await magazineIn(c);
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Dup" },
+      actor(c),
+    );
+    const a = await article("credit-dup", mag.id);
+    const filled = await setItems(c, issue, [articleItem(a)]);
+    const published = await m.issues.publishIssue(
+      m,
+      filled,
+      filled.updatedAt,
+      actor(c),
+    );
+    expect(await pointsEventCount(fx.userId)).toBe(1);
+
+    const copy = await m.payload.duplicate({
+      collection: "articles",
+      id: a,
+      depth: 0,
+    });
+    fx.articleIds.push(copy.id);
+    expect(copy.status).toBe("draft");
+    expect(copy.magazineIssue ?? null).toBeNull();
+    expect(await livePlacementOf(copy.id)).toBeNull();
+
+    await setItems(c, published, [articleItem(a, published.items![0]!.id!)]);
+    expect(await isCredited(a)).toBe(true);
+    expect(await isCredited(copy.id)).toBe(false);
+    expect(await pointsEventCount(fx.userId)).toBe(1);
+  });
+
+  // ── Placement under concurrent article saves ─────────────────────────
+
+  it("an article save that read before a placement claim committed keeps the new placement", async () => {
+    const c = await community("place-race");
+    const mag = await magazineIn(c);
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Race" },
+      actor(c),
+    );
+    // A published, unplaced article (its author saves it live).
+    const a = await article("place-race", mag.id, { status: "published" });
+    const { sql } = await import("drizzle-orm");
+
+    // An in-flight claim holds the row while the author's save starts.
+    let save: Promise<unknown> | undefined;
+    await m.db.transaction(async (t) => {
+      await t.execute(sql`
+        UPDATE "public"."articles" SET "magazine_issue_id" = ${issue.id}
+        WHERE "id" = ${a} AND "magazine_issue_id" IS NULL
+      `);
+      save = m.payload.update({
+        collection: "articles",
+        id: a,
+        data: { title: "author edit during the claim" },
+      });
+      // Let the save read the article (it sees no placement yet) and reach
+      // its write before the claim commits.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    });
+    await save;
+
+    expect(await livePlacementOf(a)).toBe(issue.id);
+    expect(await placementOf(a, false)).toBe(issue.id);
+    expect(await placementOf(a, true)).toBe(issue.id);
+  });
+
+  it("article saves at the same time as setIssueItems never lose or invent a placement", async () => {
+    const c = await community("place-concurrent");
+    const mag = await magazineIn(c);
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Busy" },
+      actor(c),
+    );
+    const a = await article("place-concurrent", mag.id, {
+      status: "published",
+    });
+
+    const [placed] = await Promise.all([
+      setItems(c, issue, [articleItem(a)]),
+      m.payload.update({
+        collection: "articles",
+        id: a,
+        data: { title: "author edit one" },
+      }),
+      m.payload.update({
+        collection: "articles",
+        id: a,
+        draft: true,
+        data: { title: "author autosave" },
+      }),
+    ]);
+    expect(await livePlacementOf(a)).toBe(issue.id);
+    expect(await placementOf(a, true)).toBe(issue.id);
+
+    await Promise.all([
+      setItems(c, placed, []),
+      m.payload.update({
+        collection: "articles",
+        id: a,
+        data: { title: "author edit two" },
+      }),
+    ]);
+    expect(await livePlacementOf(a)).toBeNull();
+    expect(await placementOf(a, true)).toBeNull();
+  });
+
+  it("a Payload save never places an article, on create or update", async () => {
+    const c = await community("place-owned");
+    const mag = await magazineIn(c);
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Own" },
+      actor(c),
+    );
+    const created = await article("place-owned", mag.id, {
+      magazineIssue: issue.id,
+    });
+    expect(await livePlacementOf(created)).toBeNull();
+    await m.payload.update({
+      collection: "articles",
+      id: created,
+      data: { magazineIssue: issue.id },
+    });
+    expect(await livePlacementOf(created)).toBeNull();
+    expect(await placementOf(created, true)).toBeNull();
   });
 });

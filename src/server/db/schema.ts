@@ -1248,6 +1248,25 @@ export const referralCredits = appSchema.table(
   ],
 );
 
+/**
+ * The exactly-once credit claim for a magazine article (ADR-0043): one row
+ * per article whose author was credited for its publication in an issue,
+ * inserted in the same transaction as the credit. Kept out of Payload's
+ * `articles` columns, which every Payload save rewrites from the version it
+ * read and a duplicate copies. `article_id` references `public.articles`
+ * (ON DELETE cascade, in migration 20261026a).
+ */
+export const magazineArticleCredits = appSchema.table(
+  "magazine_article_credit",
+  (d) => ({
+    articleId: d.integer().primaryKey(),
+    creditedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+);
+
 export const communityOnboardingStep = appSchema.table(
   "community_onboarding_step",
   (d) => ({

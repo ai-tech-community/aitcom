@@ -46,6 +46,11 @@ export interface ArticleChannel {
    * Mutates `data`.
    */
   onReviewChange(data: ArticleData, originalDoc: ArticleData | undefined): void;
+  /**
+   * beforeChange on a duplicate (a create copied from another article):
+   * adjust what the copy must not inherit. Mutates `data`.
+   */
+  onDuplicate(data: ArticleData): void;
   /** afterChange: whether reaching `approved` publishes and credits now. */
   readonly creditsOnApproval: boolean;
   readonly submitPolicy: ArticleSubmitPolicy;
@@ -86,6 +91,9 @@ export const blogChannel: ArticleChannel = {
       sendBackToDraftOnRefusal(data, originalDoc);
     }
   },
+  onDuplicate() {
+    // Today's behaviour: a copy keeps what its source has.
+  },
 };
 
 /**
@@ -100,6 +108,12 @@ export const magazineChannel: ArticleChannel = {
   publishedEditPolicy: "magazine_editor",
   onReviewChange(data, originalDoc) {
     sendBackToDraftOnRefusal(data, originalDoc);
+  },
+  onDuplicate(data) {
+    // Only an issue publishes a magazine article, and the copy has never
+    // been in one: it starts unpublished (so it is not credited either).
+    data.status = "draft";
+    data.publishedAt = null;
   },
 };
 

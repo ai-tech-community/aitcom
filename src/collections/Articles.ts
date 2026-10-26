@@ -33,7 +33,7 @@ export const Articles: CollectionConfig = {
       },
     ],
     beforeChange: [
-      async ({ data, operation, originalDoc }) => {
+      async ({ data, operation, originalDoc, req }) => {
         // By now Payload's field beforeValidate has filled every field the
         // update left out from the saved doc, so `data` is the whole
         // article, `magazine` included.
@@ -46,6 +46,27 @@ export const Articles: CollectionConfig = {
         if (data.authorType === "member") {
           channelFor(data).onReviewChange(data, originalDoc);
         }
+        // A duplicate is a create whose `originalDoc` is its source (Payload
+        // strips the source's id; a plain create gets `{}`).
+        if (
+          operation === "create" &&
+          originalDoc &&
+          Object.keys(originalDoc).length > 0
+        ) {
+          channelFor(data).onDuplicate(data);
+        }
+        // Placement belongs to the issue service (ADR-0043): every save
+        // writes the row's current value, read under a row lock, so a save
+        // racing a placement cannot put a stale one back, and a create (or
+        // a duplicate) is never placed.
+        const { placementForSave } =
+          await import("@/server/magazines/article-placement");
+        data.magazineIssue = await placementForSave(
+          req,
+          operation === "update" && originalDoc?.id != null
+            ? Number(originalDoc.id)
+            : null,
+        );
         return data;
       },
     ],
@@ -201,21 +222,6 @@ export const Articles: CollectionConfig = {
         position: "sidebar",
         readOnly: true,
         description: "Set by the issue builder",
-      },
-    },
-    {
-      // Exactly-once magazine credit (ADR-0043): set when the author is
-      // credited for this article's publication in an issue. Only server
-      // code writes it; nobody can clear it over Payload's API (a cleared
-      // marker would credit the author twice).
-      name: "magazineCreditedAt",
-      type: "date",
-      access: { update: () => false },
-      admin: {
-        position: "sidebar",
-        readOnly: true,
-        description:
-          "When the author was credited for the magazine publication",
       },
     },
   ],

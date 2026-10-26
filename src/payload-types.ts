@@ -488,10 +488,6 @@ export interface Article {
    * Set by the issue builder
    */
   magazineIssue?: (number | null) | MagazineIssue;
-  /**
-   * When the author was credited for the magazine publication
-   */
-  magazineCreditedAt?: string | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -2061,7 +2057,6 @@ export interface ArticlesSelect<T extends boolean = true> {
   publishedAt?: T;
   magazine?: T;
   magazineIssue?: T;
-  magazineCreditedAt?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;

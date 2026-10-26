@@ -176,11 +176,8 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
       });
       const magazineIds = mags.map((mag) => mag.id);
       if (magazineIds.length > 0) {
-        await payload.update({
-          collection: "articles",
-          where: { magazine: { in: magazineIds } },
-          data: { magazineIssue: null },
-        });
+        // Deleting the issues clears their articles' placement (the
+        // foreign key is ON DELETE set null).
         await payload.delete({
           collection: "magazine-issues",
           where: { magazine: { in: magazineIds } },

@@ -1,4 +1,4 @@
-import { sql } from "@payloadcms/db-postgres";
+import { type PostgresAdapter, sql } from "@payloadcms/db-postgres";
 import type { PayloadRequest } from "payload";
 
 import type { PayloadClient } from "./deps";
@@ -10,8 +10,12 @@ import type { PayloadTransaction } from "./payload-writes";
 /**
  * Article placement (ADR-0043, decision 6): an article's `magazineIssue`
  * names the one issue whose `article` block holds it. Only the issue
- * service writes it, in the same transaction as the issue's blocks, so the
- * two never disagree.
+ * service writes it, with a raw conditional UPDATE of the main row in the
+ * same transaction as the issue's blocks, so the two never disagree. Every
+ * other Payload save of the article carries the main row's value forward
+ * (`placementForSave`, run by the Articles `beforeChange` hook), so a save
+ * that read the article before a placement committed cannot write a stale
+ * value back.
  */
 
 /** An article block's article and its position in the issue. */
@@ -120,6 +124,40 @@ export async function syncArticlePlacement(
   // reads) now get the same values.
   await writePlacement(payload, tx, placedNow, issueId);
   await writePlacement(payload, tx, leftNow, null);
+}
+
+/**
+ * The `magazineIssue` a Payload save of an article must write: the main
+ * row's current value, read with a row lock on the save's own
+ * transaction. Payload's update is a read-modify-write of the whole row
+ * with no lock, so without this a save that read the article before a
+ * placement claim committed would write the old placement back. The lock
+ * orders the save with the claim: a save that starts while a claim holds
+ * the row waits for it and then reads the new value; a claim that starts
+ * while a save holds the row waits for the save. `FOR NO KEY UPDATE` is
+ * the lock the claim's own UPDATE takes, so the two exclude each other,
+ * while inserts that only reference the article (its version rows, an
+ * issue's article block) are not blocked.
+ *
+ * Inside the issue service's own transaction the claim has already written
+ * the main row, so this returns the value being placed. A new article (or
+ * a duplicate) is never placed: only the issue service places.
+ */
+export async function placementForSave(
+  req: PayloadRequest,
+  articleId: number | null,
+): Promise<number | null> {
+  if (articleId === null) return null;
+  const adapter = req.payload.db as unknown as PostgresAdapter;
+  const session = req.transactionID
+    ? adapter.sessions[await req.transactionID]?.db
+    : undefined;
+  const { rows } = await (session ?? adapter.drizzle).execute(sql`
+    SELECT "magazine_issue_id" FROM "articles"
+    WHERE "id" = ${articleId}
+    FOR NO KEY UPDATE
+  `);
+  return relationIdOrNull(rows[0]?.magazine_issue_id);
 }
 
 /** Clears every placement in an issue (before the issue is deleted). */

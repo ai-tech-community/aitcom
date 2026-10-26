@@ -152,11 +152,8 @@ describe.skipIf(!RUN_DB)(
       const magazineIds = mags.map((mag) => mag.id);
       if (magazineIds.length > 0) {
         // Issues first: their article blocks hold a required reference.
-        await payload.update({
-          collection: "articles",
-          where: { magazine: { in: magazineIds } },
-          data: { magazineIssue: null },
-        });
+        // Deleting the issues clears their articles' placement (the
+        // foreign key is ON DELETE set null).
         await payload.delete({
           collection: "magazine-issues",
           where: { magazine: { in: magazineIds } },

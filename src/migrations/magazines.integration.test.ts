@@ -28,12 +28,12 @@ const EXPECTED_COLUMNS = [
   "magazine_issues.visibility",
   "articles.magazine_id",
   "articles.magazine_issue_id",
-  "articles.magazine_credited_at",
   "_articles_v.version_magazine_id",
   "_articles_v.version_magazine_issue_id",
-  "_articles_v.version_magazine_credited_at",
   "payload_locked_documents_rels.magazines_id",
   "payload_locked_documents_rels.magazine_issues_id",
+  "app.magazine_article_credit.article_id",
+  "app.magazine_article_credit.credited_at",
 ];
 
 describe.skipIf(!isLocalDbConfigured())(
@@ -49,13 +49,17 @@ describe.skipIf(!isLocalDbConfigured())(
       on: Pick<typeof Db, "execute"> = db,
     ): Promise<string[]> {
       const { rows } = await on.execute<{ key: string }>(sql`
-        SELECT table_name || '.' || column_name AS key
+        SELECT
+          CASE WHEN table_schema = 'public' THEN '' ELSE table_schema || '.' END
+            || table_name || '.' || column_name AS key
         FROM information_schema.columns
-        WHERE table_schema = 'public'
+        WHERE (
+          table_schema = 'public'
           AND table_name IN (
             'magazines', 'magazine_issues', 'articles', '_articles_v',
             'payload_locked_documents_rels'
           )
+        ) OR (table_schema = 'app' AND table_name = 'magazine_article_credit')
       `);
       const have = new Set(rows.map((r) => r.key));
       return EXPECTED_COLUMNS.filter((key) => have.has(key));

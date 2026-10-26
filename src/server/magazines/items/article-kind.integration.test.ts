@@ -185,6 +185,25 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
     return doc.id;
   }
 
+  /**
+   * Places an article the way the issue service does: the claim writes the
+   * main row by SQL, then a draft save carries it to the latest version
+   * (a Payload save never places by itself; see `placementForSave`).
+   */
+  async function place(articleId: number, issueId: number) {
+    const { sql } = await import("drizzle-orm");
+    await m.db.execute(sql`
+      UPDATE "public"."articles" SET "magazine_issue_id" = ${issueId}
+      WHERE "id" = ${articleId}
+    `);
+    await m.payload.update({
+      collection: "articles",
+      id: articleId,
+      data: {},
+      draft: true,
+    });
+  }
+
   function ctx(
     magazineId: number,
     issueId: number | null,
@@ -207,14 +226,10 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
       magazine: ours.id,
       reviewStatus: "pending_review",
     });
-    const placedElsewhere = await article("placed", {
-      magazine: ours.id,
-      magazineIssue: otherIssue.id,
-    });
-    const placedHere = await article("here", {
-      magazine: ours.id,
-      magazineIssue: thisIssue.id,
-    });
+    const placedElsewhere = await article("placed", { magazine: ours.id });
+    await place(placedElsewhere, otherIssue.id);
+    const placedHere = await article("here", { magazine: ours.id });
+    await place(placedHere, thisIssue.id);
     const ready = await article("ready", { magazine: ours.id });
 
     const blocks = m.registry.toStoredItems(

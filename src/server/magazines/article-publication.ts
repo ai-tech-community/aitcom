@@ -86,15 +86,17 @@ export async function publishPlacedArticles(
 
 /**
  * Credits one published article if it has not been credited yet. The
- * marker and the credit (XP, badges, activity) commit in ONE database
- * transaction: a credit that throws rolls the marker back, so the article
- * stays pending and a later run retries it; a marker that is set means the
- * credit happened. The conditional UPDATE locks the row, so two runs at
- * once credit it once.
+ * claim (a row in `app.magazine_article_credit`) and the credit (XP,
+ * badges, activity) commit in ONE database transaction: a credit that
+ * throws rolls the claim back, so the article stays pending and a later run
+ * retries it; a claim row that exists means the credit happened. The
+ * primary key makes the claim exactly-once: of two runs at once, the second
+ * insert waits on the first and then conflicts (or claims, if the first
+ * rolled back).
  *
- * The marker is written to every version row as well: Payload builds an
- * update on the latest version, and a version without the marker would
- * clear it from the main row on the next save, crediting the author again.
+ * The claim lives in its own table, not in a Payload column: Payload never
+ * reads or writes it, so no article save (which rewrites its columns from
+ * the version it read) and no admin duplicate can reset or copy it.
  */
 async function creditOne(deps: Deps, articleId: number): Promise<boolean> {
   const article = await deps.payload.findByID({
@@ -106,20 +108,14 @@ async function creditOne(deps: Deps, articleId: number): Promise<boolean> {
   const authorId = article.authorId;
 
   return deps.db.transaction(async (t) => {
-    const { rows } = await t.execute<{ credited_at: string }>(sql`
-      UPDATE "public"."articles" SET "magazine_credited_at" = now()
-      WHERE "id" = ${articleId}
-        AND "magazine_credited_at" IS NULL
-        AND "status" = 'published'
-      RETURNING "magazine_credited_at" AS credited_at
+    const { rows } = await t.execute<{ article_id: number }>(sql`
+      INSERT INTO "app"."magazine_article_credit" ("article_id")
+      SELECT "id" FROM "public"."articles"
+      WHERE "id" = ${articleId} AND "status" = 'published'
+      ON CONFLICT ("article_id") DO NOTHING
+      RETURNING "article_id"
     `);
-    const claimed = rows[0];
-    if (!claimed) return false;
-    await t.execute(sql`
-      UPDATE "public"."_articles_v"
-      SET "version_magazine_credited_at" = ${claimed.credited_at}
-      WHERE "parent_id" = ${articleId}
-    `);
+    if (rows.length === 0) return false;
     await creditArticlePublication(
       t,
       {
@@ -135,35 +131,39 @@ async function creditOne(deps: Deps, articleId: number): Promise<boolean> {
 }
 
 /**
- * Credits the authors of an issue's published, not yet credited member
- * articles: exactly once each, never lost. Never throws: a failed credit is
- * logged and left pending, and the next run (after the next save of the
- * published issue) retries it. Call it after a publish or a save of a
- * published issue has committed. (A scheduled sweep over all pending
- * articles could be added later; slice 1 retries on the next editor
- * action.)
+ * Credits the authors of a magazine's published, not yet credited member
+ * articles: exactly once each, never lost. "Pending" is a property of the
+ * article (published, no claim row), not of the issue it sits in now, so a
+ * credit that failed is still retried after the article moved to another
+ * issue or left every issue.
+ *
+ * Never throws: a failed credit is logged and left pending, and the next
+ * run (after the next publish or save of a published issue of the same
+ * magazine) retries it. Call it after that write has committed. A
+ * scheduled sweep, if one is wanted later, runs the same query.
  */
 export async function creditPendingMagazineArticles(
   deps: Deps,
-  issueId: number,
+  magazineId: number,
 ): Promise<{ credited: number[]; failed: number[] }> {
   const credited: number[] = [];
   const failed: number[] = [];
   let pending: number[];
   try {
     const { rows } = await deps.db.execute<{ id: number }>(sql`
-      SELECT "id" FROM "public"."articles"
-      WHERE "magazine_issue_id" = ${issueId}
-        AND "status" = 'published'
-        AND "magazine_credited_at" IS NULL
-        AND "author_type" = 'member'
-        AND "author_id" IS NOT NULL
-      ORDER BY "id"
+      SELECT a."id" FROM "public"."articles" a
+      LEFT JOIN "app"."magazine_article_credit" c ON c."article_id" = a."id"
+      WHERE c."article_id" IS NULL
+        AND a."magazine_id" = ${magazineId}
+        AND a."status" = 'published'
+        AND a."author_type" = 'member'
+        AND a."author_id" IS NOT NULL
+      ORDER BY a."id"
     `);
     pending = rows.map((row) => Number(row.id));
   } catch (error) {
     console.error("[magazines] could not list articles to credit", {
-      issueId,
+      magazineId,
       error,
     });
     return { credited, failed };
@@ -176,7 +176,7 @@ export async function creditPendingMagazineArticles(
       failed.push(articleId);
       console.error("[magazines] article credit failed; will retry", {
         articleId,
-        issueId,
+        magazineId,
         action: CREDIT_ACTION,
         error,
       });

@@ -8,10 +8,15 @@
 //   the article reference, `editorial` its localized heading/body in
 //   `_blocks_editorial_locales`. Compound unique indexes keep issue slugs and
 //   numbers unique per magazine.
-// - `articles.magazine_id` / `magazine_issue_id` / `magazine_credited_at`
-//   (the exactly-once credit marker) and the matching
+// - `articles.magazine_id` / `magazine_issue_id` and the matching
 //   `_articles_v.version_*` columns (Articles has drafts, so every field also
 //   lives on the version table; without them every article query fails).
+// - `app.magazine_article_credit`: the exactly-once credit claim for a
+//   magazine article (ADR-0043). One row per credited article, written only
+//   by the credit path in the same transaction as the credit. It lives
+//   outside Payload's tables on purpose: a Payload save rewrites every
+//   column it owns from the version it read, and a duplicate copies them,
+//   so a marker there could be reset or copied.
 // - The admin-lock columns on payload_locked_documents_rels (every Payload
 //   update/delete by id reads one <collection>_id column per collection;
 //   without them they all fail — see 20260927a).
@@ -179,7 +184,6 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
     ALTER TABLE "articles" ADD COLUMN IF NOT EXISTS "magazine_id" integer;
     ALTER TABLE "articles" ADD COLUMN IF NOT EXISTS "magazine_issue_id" integer;
-    ALTER TABLE "articles" ADD COLUMN IF NOT EXISTS "magazine_credited_at" timestamp(3) with time zone;
     DO $$ BEGIN
       ALTER TABLE "articles"
         ADD CONSTRAINT "articles_magazine_id_magazines_id_fk"
@@ -197,7 +201,6 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
     ALTER TABLE "_articles_v" ADD COLUMN IF NOT EXISTS "version_magazine_id" integer;
     ALTER TABLE "_articles_v" ADD COLUMN IF NOT EXISTS "version_magazine_issue_id" integer;
-    ALTER TABLE "_articles_v" ADD COLUMN IF NOT EXISTS "version_magazine_credited_at" timestamp(3) with time zone;
     DO $$ BEGIN
       ALTER TABLE "_articles_v"
         ADD CONSTRAINT "_articles_v_version_magazine_id_magazines_id_fk"
@@ -213,6 +216,12 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     CREATE INDEX IF NOT EXISTS "_articles_v_version_version_magazine_idx" ON "_articles_v"("version_magazine_id");
     CREATE INDEX IF NOT EXISTS "_articles_v_version_version_magazine_issue_idx" ON "_articles_v"("version_magazine_issue_id");
 
+    CREATE TABLE IF NOT EXISTS "app"."magazine_article_credit" (
+      "article_id" integer PRIMARY KEY NOT NULL
+        REFERENCES "public"."articles"("id") ON DELETE cascade,
+      "credited_at" timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL
+    );
+
     ALTER TABLE "payload_locked_documents_rels"
       ADD COLUMN IF NOT EXISTS "magazines_id" integer REFERENCES "magazines"("id") ON DELETE cascade;
     ALTER TABLE "payload_locked_documents_rels"
@@ -226,14 +235,13 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
   await db.execute(sql`
+    DROP TABLE IF EXISTS "app"."magazine_article_credit";
     ALTER TABLE "payload_locked_documents_rels"
       DROP COLUMN IF EXISTS "magazine_issues_id";
     ALTER TABLE "payload_locked_documents_rels"
       DROP COLUMN IF EXISTS "magazines_id";
-    ALTER TABLE "_articles_v" DROP COLUMN IF EXISTS "version_magazine_credited_at";
     ALTER TABLE "_articles_v" DROP COLUMN IF EXISTS "version_magazine_issue_id";
     ALTER TABLE "_articles_v" DROP COLUMN IF EXISTS "version_magazine_id";
-    ALTER TABLE "articles" DROP COLUMN IF EXISTS "magazine_credited_at";
     ALTER TABLE "articles" DROP COLUMN IF EXISTS "magazine_issue_id";
     ALTER TABLE "articles" DROP COLUMN IF EXISTS "magazine_id";
     DROP TABLE IF EXISTS "magazine_issues_blocks_editorial_locales";

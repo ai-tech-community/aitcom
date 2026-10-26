@@ -88,6 +88,24 @@ describe("magazine channel", () => {
     expect(data.publishedAt).toBeUndefined();
   });
 
+  it("a duplicate of a published magazine article starts unpublished; a blog copy keeps its status", () => {
+    const magazineCopy: ArticleData = {
+      status: "published",
+      publishedAt: "2026-10-01T00:00:00.000Z",
+      magazine: 3,
+    };
+    magazineChannel.onDuplicate(magazineCopy);
+    expect(magazineCopy.status).toBe("draft");
+    expect(magazineCopy.publishedAt).toBeNull();
+
+    const blogCopy: ArticleData = {
+      status: "published",
+      publishedAt: "2026-10-01T00:00:00.000Z",
+    };
+    blogChannel.onDuplicate(blogCopy);
+    expect(blogCopy.status).toBe("published");
+  });
+
   it("only the blog credits on approval", () => {
     expect(magazineChannel.creditsOnApproval).toBe(false);
     expect(blogChannel.creditsOnApproval).toBe(true);

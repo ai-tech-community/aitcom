@@ -360,7 +360,7 @@ export async function updateIssueDetails(
     Object.assign(data, plan.record);
   }
 
-  return writeIssue(deps, issue, expectedUpdatedAt, (tx) =>
+  const saved = await writeIssue(deps, issue, expectedUpdatedAt, (tx) =>
     deps.payload.update({
       collection: "magazine-issues",
       id: issue.id,
@@ -369,6 +369,14 @@ export async function updateIssueDetails(
       req: tx.req,
     }),
   );
+  // Every save of a published issue retries the magazine's pending credits.
+  if (saved.status === "published") {
+    await creditPendingMagazineArticles(
+      deps,
+      requireRelationId(saved.magazine),
+    );
+  }
+  return saved;
 }
 
 /**
@@ -411,7 +419,10 @@ export async function setIssueItems(
   });
 
   if (saved.status === "published") {
-    await creditPendingMagazineArticles(deps, saved.id);
+    await creditPendingMagazineArticles(
+      deps,
+      requireRelationId(saved.magazine),
+    );
   }
   return saved;
 }
@@ -456,7 +467,10 @@ export async function publishIssue(
     },
   );
 
-  await creditPendingMagazineArticles(deps, published.id);
+  await creditPendingMagazineArticles(
+    deps,
+    requireRelationId(published.magazine),
+  );
   return published;
 }
 
