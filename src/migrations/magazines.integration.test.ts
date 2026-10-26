@@ -28,8 +28,10 @@ const EXPECTED_COLUMNS = [
   "magazine_issues.visibility",
   "articles.magazine_id",
   "articles.magazine_issue_id",
+  "articles.magazine_credited_at",
   "_articles_v.version_magazine_id",
   "_articles_v.version_magazine_issue_id",
+  "_articles_v.version_magazine_credited_at",
   "payload_locked_documents_rels.magazines_id",
   "payload_locked_documents_rels.magazine_issues_id",
 ];

@@ -58,3 +58,21 @@ export function uniqueViolationPath(error: unknown): string | null {
   const path = error.data.errors[0]?.path;
   return typeof path === "string" && path.length > 0 ? path : null;
 }
+
+/** Postgres SQLSTATEs for a transaction aborted by a concurrent one. */
+const CONCURRENCY_ABORTS = new Set(["40P01", "40001"]);
+
+/**
+ * Whether an error is Postgres aborting the transaction because of a
+ * concurrent one (deadlock or serialization failure), however deeply the
+ * driver or Payload wrapped it.
+ */
+export function isConcurrencyAbort(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current; depth++) {
+    const code = (current as { code?: unknown }).code;
+    if (typeof code === "string" && CONCURRENCY_ABORTS.has(code)) return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}

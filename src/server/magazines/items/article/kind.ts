@@ -4,6 +4,7 @@ import { estimateReadingTime, extractPlainText } from "@/lib/lexical";
 import type { ItemProblem, UnavailableItem } from "@/lib/magazines/item-views";
 import type { Article } from "@/payload-types";
 
+import { relationIdOrNull } from "../../relation-id";
 import { itemIdOf } from "../item-id";
 import type {
   IssueItemKind,
@@ -24,16 +25,6 @@ export type ArticleItemStored = StoredItem<"article">;
 
 /** Words shown as an article's excerpt in an issue. */
 const EXCERPT_WORDS = 40;
-
-/** A relationship value as stored (id) or populated (`{ id }`), or null. */
-function relationNumber(value: unknown): number | null {
-  const id =
-    typeof value === "object" && value !== null
-      ? (value as { id?: unknown }).id
-      : value;
-  const n = typeof id === "string" ? Number(id) : id;
-  return typeof n === "number" && Number.isFinite(n) ? n : null;
-}
 
 function excerptOf(content: unknown): string {
   const children = (content as { root?: { children?: unknown } } | null)?.root
@@ -56,7 +47,7 @@ async function findArticles(
   const ids = [
     ...new Set(
       stored
-        .map((s) => relationNumber(s.article))
+        .map((s) => relationIdOrNull(s.article))
         .filter((id): id is number => id !== null),
     ),
   ];
@@ -90,7 +81,7 @@ export const articleItemKind: IssueItemKind<
   },
 
   toInput(stored) {
-    const articleId = relationNumber(stored.article);
+    const articleId = relationIdOrNull(stored.article);
     if (articleId === null) {
       throw new Error("A stored article item has no article");
     }
@@ -112,9 +103,9 @@ export const articleItemKind: IssueItemKind<
     const seen = new Set<number>();
     const problems: ItemProblem[] = [];
     for (const { index, stored } of items) {
-      const articleId = relationNumber(stored.article);
+      const articleId = relationIdOrNull(stored.article);
       const article = articleId === null ? undefined : articles.get(articleId);
-      if (!article || relationNumber(article.magazine) !== ctx.magazineId) {
+      if (!article || relationIdOrNull(article.magazine) !== ctx.magazineId) {
         problems.push({ itemIndex: index, code: "ITEM_INVALID" });
       } else if (seen.has(article.id)) {
         problems.push({
@@ -125,7 +116,7 @@ export const articleItemKind: IssueItemKind<
       } else if (article.reviewStatus !== "approved") {
         problems.push({ itemIndex: index, code: "ARTICLE_NOT_READY" });
       } else {
-        const placedIn = relationNumber(article.magazineIssue);
+        const placedIn = relationIdOrNull(article.magazineIssue);
         if (placedIn !== null && placedIn !== ctx.issueId) {
           problems.push({ itemIndex: index, code: "ARTICLE_PLACED" });
         }
@@ -141,7 +132,7 @@ export const articleItemKind: IssueItemKind<
     const views = new Map<string, ItemViewOf<"article"> | UnavailableItem>();
     for (const stored of items) {
       const itemId = itemIdOf(stored);
-      const articleId = relationNumber(stored.article);
+      const articleId = relationIdOrNull(stored.article);
       const article = articleId === null ? undefined : articles.get(articleId);
       const unavailable = (
         reason: UnavailableItem["reason"],
@@ -153,7 +144,7 @@ export const articleItemKind: IssueItemKind<
       });
       if (!article) {
         views.set(itemId, unavailable("missing"));
-      } else if (relationNumber(article.magazine) !== ctx.magazineId) {
+      } else if (relationIdOrNull(article.magazine) !== ctx.magazineId) {
         views.set(itemId, unavailable("other_magazine"));
       } else if (!ctx.editor && article.status !== "published") {
         // A magazine article is published with its issue; until then

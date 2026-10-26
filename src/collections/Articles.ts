@@ -22,6 +22,16 @@ export const Articles: CollectionConfig = {
   },
   versions: { drafts: true },
   hooks: {
+    beforeDelete: [
+      async ({ id, req }) => {
+        // An issue's article block keeps a required reference: refuse the
+        // delete with ARTICLE_PLACED (every path: site, admin, scripts)
+        // instead of a raw foreign-key error.
+        const { assertArticleNotPlaced } =
+          await import("@/server/magazines/article-placement");
+        await assertArticleNotPlaced(req.payload, Number(id), req);
+      },
+    ],
     beforeChange: [
       async ({ data, operation, originalDoc }) => {
         // By now Payload's field beforeValidate has filled every field the
@@ -191,6 +201,21 @@ export const Articles: CollectionConfig = {
         position: "sidebar",
         readOnly: true,
         description: "Set by the issue builder",
+      },
+    },
+    {
+      // Exactly-once magazine credit (ADR-0043): set when the author is
+      // credited for this article's publication in an issue. Only server
+      // code writes it; nobody can clear it over Payload's API (a cleared
+      // marker would credit the author twice).
+      name: "magazineCreditedAt",
+      type: "date",
+      access: { update: () => false },
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description:
+          "When the author was credited for the magazine publication",
       },
     },
   ],

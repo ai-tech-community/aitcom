@@ -1,15 +1,46 @@
 // @vitest-environment node
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
 import type { MagazineIssue } from "@/payload-types";
+import type * as ArticleCredit from "@/server/articles/credit";
 
 import type { PayloadClient } from "./deps";
 import type * as ArticlePlacement from "./article-placement";
+import type * as ArticlePublication from "./article-publication";
 import type * as IssueService from "./issue-service";
 import type * as MagazineService from "./magazine-service";
 import type * as Registry from "./items/registry";
+
+/**
+ * The real credit, with a switch that makes the next N credits throw AFTER
+ * they have written XP: a failed credit must leave no XP behind.
+ */
+const creditFault = vi.hoisted(() => ({ failNext: 0 }));
+vi.mock("@/server/articles/credit", async (importOriginal) => {
+  const real = await importOriginal<typeof ArticleCredit>();
+  return {
+    ...real,
+    creditArticlePublication: async (
+      ...args: Parameters<typeof real.creditArticlePublication>
+    ) => {
+      await real.creditArticlePublication(...args);
+      if (creditFault.failNext > 0) {
+        creditFault.failNext--;
+        throw new Error("credit failed (test)");
+      }
+    },
+  };
+});
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -61,6 +92,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     magazines: typeof MagazineService;
     issues: typeof IssueService;
     placement: typeof ArticlePlacement;
+    publication: typeof ArticlePublication;
     registry: typeof Registry;
     payload: PayloadClient;
     writerMetric: (userId: string) => Promise<number>;
@@ -83,6 +115,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       magazines,
       issues,
       placement,
+      publication,
       registry,
       { getPayloadClient },
       { TRACK_METRICS },
@@ -93,6 +126,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       import("./magazine-service"),
       import("./issue-service"),
       import("./article-placement"),
+      import("./article-publication"),
       import("./items/registry"),
       import("@/server/payload"),
       import("@/server/badges/metrics"),
@@ -105,6 +139,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       magazines,
       issues,
       placement,
+      publication,
       registry,
       payload,
       writerMetric: (userId) =>
@@ -124,6 +159,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       .insert(schema.memberProfiles)
       .values({ userId, displayName: "Editor" });
     fx = { sfx, userId, communityIds: [], articleIds: [] };
+    creditFault.failNext = 0;
   }, 60_000);
 
   afterEach(async () => {
@@ -293,6 +329,16 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     return typeof value === "object" && value !== null
       ? value.id
       : (value ?? null);
+  }
+
+  async function creditMarkerOf(articleId: number, draft: boolean) {
+    const doc = await m.payload.findByID({
+      collection: "articles",
+      id: articleId,
+      depth: 0,
+      draft,
+    });
+    return doc.magazineCreditedAt ?? null;
   }
 
   async function xpOf(userId: string): Promise<number> {
@@ -692,10 +738,22 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     expect(
       await refusal(m.placement.assertArticleNotPlaced(m.payload, a)),
     ).toBe("ARTICLE_PLACED");
+    // Every delete path, the Payload admin included, gets the same refusal
+    // (Articles beforeDelete hook), not a raw foreign-key error.
+    expect(
+      await refusal(m.payload.delete({ collection: "articles", id: a })),
+    ).toBe("ARTICLE_PLACED");
+
     await setItems(c, saved, []);
     await expect(
       m.placement.assertArticleNotPlaced(m.payload, a),
     ).resolves.toBeUndefined();
+    await m.payload.delete({ collection: "articles", id: a });
+    const { totalDocs } = await m.payload.count({
+      collection: "articles",
+      where: { id: { equals: a } },
+    });
+    expect(totalDocs).toBe(0);
   });
 
   it("deletes a draft issue and clears its placements; a published one stays", async () => {
@@ -1026,5 +1084,178 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       actor(c),
     );
     expect(retitled.title).toBe("New title");
+  });
+  it("concurrent creates with the same title get the next free number and slug", async () => {
+    const c = await community("race-create");
+    const mag = await magazineIn(c);
+    const created = await Promise.all(
+      [1, 2, 3].map(() =>
+        m.issues.createIssue(m, mag, { title: "Same title" }, actor(c)),
+      ),
+    );
+    expect(created.map((i) => Number(i.number)).sort()).toEqual([1, 2, 3]);
+    expect(new Set(created.map((i) => i.slug)).size).toBe(3);
+    expect(created.map((i) => i.slug)).toContain("same-title");
+  });
+
+  it("moving a published article with a pending draft edit never pushes the edit live", async () => {
+    const c = await community("pending");
+    const mag = await magazineIn(c);
+    const issueA = await m.issues.createIssue(m, mag, { title: "A" }, actor(c));
+    const a = await article("pending", mag.id);
+    const filledA = await setItems(c, issueA, [
+      articleItem(a),
+      editorialItem("stays in A"),
+    ]);
+    const publishedA = await m.issues.publishIssue(
+      m,
+      filledA,
+      filledA.updatedAt,
+      actor(c),
+    );
+
+    // The author starts an edit, saved as a draft version only.
+    await m.payload.update({
+      collection: "articles",
+      id: a,
+      draft: true,
+      data: { title: "pending edit", content: richText("pending body") },
+    });
+    const live = async () =>
+      m.payload.findByID({
+        collection: "articles",
+        id: a,
+        depth: 0,
+        draft: false,
+      });
+
+    // Removed from A, placed in B, then removed from B.
+    const trimmedA = await setItems(c, publishedA, [
+      { ...editorialItem("stays in A"), id: publishedA.items![1]!.id! },
+    ]);
+    expect(trimmedA.items).toHaveLength(1);
+    const issueB = await m.issues.createIssue(m, mag, { title: "B" }, actor(c));
+    const filledB = await setItems(c, issueB, [articleItem(a)]);
+    expect(await placementOf(a, false)).toBe(issueB.id);
+    expect((await live()).title).toBe("pending first text");
+
+    // A refusal saved as a draft version: the live row must stay approved.
+    await m.payload.update({
+      collection: "articles",
+      id: a,
+      draft: true,
+      data: { reviewStatus: "changes_requested" },
+    });
+    await setItems(c, filledB, []);
+    expect(await placementOf(a, false)).toBeNull();
+    expect(await placementOf(a, true)).toBeNull();
+
+    const after = await live();
+    expect(after.title).toBe("pending first text");
+    expect(JSON.stringify(after.content)).not.toContain("pending body");
+    expect(after.status).toBe("published");
+    expect(after.reviewStatus).toBe("approved");
+    // The pending edit is still there for the author.
+    const latest = await m.payload.findByID({
+      collection: "articles",
+      id: a,
+      depth: 0,
+      draft: true,
+    });
+    expect(latest.title).toBe("pending edit");
+  });
+
+  // ── Credit ────────────────────────────────────────────────────────────
+
+  it("a failed credit never fails the publish, leaves no XP, and the next save credits once", async () => {
+    const c = await community("credit-retry");
+    const mag = await magazineIn(c);
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Retry" },
+      actor(c),
+    );
+    const a = await article("retry", mag.id);
+    const filled = await setItems(c, issue, [articleItem(a)]);
+    const xpBefore = await xpOf(fx.userId);
+
+    const logged = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    creditFault.failNext = 1;
+    const published = await m.issues.publishIssue(
+      m,
+      filled,
+      filled.updatedAt,
+      actor(c),
+    );
+    expect(published.status).toBe("published");
+    expect(
+      (await m.payload.findByID({ collection: "articles", id: a, depth: 0 }))
+        .status,
+    ).toBe("published");
+    // The credit ran (XP written) and then threw: all of it rolled back.
+    expect(creditFault.failNext).toBe(0);
+    expect(logged).toHaveBeenCalledWith(
+      "[magazines] article credit failed; will retry",
+      expect.objectContaining({ articleId: a, issueId: issue.id }),
+    );
+    logged.mockRestore();
+    expect(await creditMarkerOf(a, false)).toBeNull();
+    expect(await xpOf(fx.userId)).toBe(xpBefore);
+    expect(await pointsEventCount(fx.userId)).toBe(0);
+
+    // The next editor action settles it, once.
+    const resaved = await setItems(c, published, [
+      articleItem(a, published.items![0]!.id!),
+    ]);
+    expect(await xpOf(fx.userId)).toBe(xpBefore + m.xpArticlePublished);
+    expect(await pointsEventCount(fx.userId)).toBe(1);
+    expect(await creditMarkerOf(a, false)).not.toBeNull();
+    expect(await creditMarkerOf(a, true)).not.toBeNull();
+
+    await setItems(c, resaved, [articleItem(a, resaved.items![0]!.id!)]);
+    expect(await pointsEventCount(fx.userId)).toBe(1);
+
+    // A later Payload save of the article keeps the marker (it is on every
+    // version), so nothing credits it again.
+    await m.payload.update({
+      collection: "articles",
+      id: a,
+      data: { title: "typo fixed" },
+    });
+    expect(await creditMarkerOf(a, false)).not.toBeNull();
+    await m.publication.creditPendingMagazineArticles(m, issue.id);
+    expect(await pointsEventCount(fx.userId)).toBe(1);
+  });
+
+  it("concurrent credit runs credit an article once", async () => {
+    const c = await community("credit-race");
+    const mag = await magazineIn(c);
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Race" },
+      actor(c),
+    );
+    const a = await article("race", mag.id);
+    const filled = await setItems(c, issue, [articleItem(a)]);
+    const logged = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    creditFault.failNext = 1;
+    await m.issues.publishIssue(m, filled, filled.updatedAt, actor(c));
+    logged.mockRestore();
+    expect(await pointsEventCount(fx.userId)).toBe(0);
+
+    const runs = await Promise.all([
+      m.publication.creditPendingMagazineArticles(m, issue.id),
+      m.publication.creditPendingMagazineArticles(m, issue.id),
+      m.publication.creditPendingMagazineArticles(m, issue.id),
+    ]);
+    expect(runs.flatMap((r) => r.credited)).toEqual([a]);
+    expect(runs.flatMap((r) => r.failed)).toEqual([]);
+    expect(await pointsEventCount(fx.userId)).toBe(1);
   });
 });

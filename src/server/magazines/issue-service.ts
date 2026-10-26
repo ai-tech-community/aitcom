@@ -11,9 +11,12 @@ import {
   placedArticlesOf,
   syncArticlePlacement,
 } from "./article-placement";
-import { publishPlacedArticles } from "./article-publication";
+import {
+  creditPendingMagazineArticles,
+  publishPlacedArticles,
+} from "./article-publication";
 import type { Deps, PayloadClient } from "./deps";
-import { magazineError } from "./errors";
+import { magazineError, type MagazineErrorCode } from "./errors";
 import {
   type IssueItemInput,
   type StoredBlock,
@@ -22,10 +25,12 @@ import {
 } from "./items/registry";
 import {
   inPayloadTransaction,
+  isConcurrencyAbort,
   type PayloadTransaction,
   uniqueViolationPath,
 } from "./payload-writes";
 import type { MagazineCommunity } from "./magazine-service";
+import { requireRelationId } from "./relation-id";
 import { planVisibilityChange } from "./visibility-change";
 
 /** Who is writing, and the community the issue belongs to. */
@@ -44,19 +49,14 @@ export type IssueDetailsPatch = {
 const ISSUE_SLUG_MIN = 3;
 const ISSUE_SLUG_MAX = 60;
 
-/** Attempts at a new issue number when another editor takes it first. */
-const CREATE_ATTEMPTS = 3;
+/**
+ * Attempts at creating an issue when another editor takes the number or
+ * the generated slug first.
+ */
+const CREATE_ATTEMPTS = 5;
 
-/** A relationship value as stored (id) or populated (`{ id }`). */
-function relationNumber(value: unknown): number {
-  const id =
-    typeof value === "object" && value !== null
-      ? (value as { id?: unknown }).id
-      : value;
-  const n = Number(id);
-  if (!Number.isFinite(n)) throw new Error("Missing relationship id");
-  return n;
-}
+/** Generated slug candidates checked in one query. */
+const SLUG_CANDIDATES = 25;
 
 function storedBlocksOf(issue: MagazineIssue): StoredBlock[] {
   return (issue.items ?? []) as StoredBlock[];
@@ -84,6 +84,9 @@ function assertFresh(issue: MagazineIssue, expectedUpdatedAt: string): void {
  * conditional UPDATE on `updated_at`. The claim locks the row, so of two
  * saves made from the same `expectedUpdatedAt` the second waits, then
  * finds the time moved and gets `ISSUE_CHANGED`: nothing is overwritten.
+ * A save Postgres aborts for a concurrent one (a deadlock between two saves
+ * reshuffling the same articles) is also `ISSUE_CHANGED`: the builder
+ * reloads and the editor saves again.
  */
 async function writeIssue(
   deps: Deps,
@@ -108,8 +111,9 @@ async function writeIssue(
   }
 }
 
-/** A unique-index violation from an issue write, as a magazine refusal. */
+/** A unique-index violation or concurrency abort, as a magazine refusal. */
 function mapIssueWriteError(error: unknown): unknown {
+  if (isConcurrencyAbort(error)) return magazineError("ISSUE_CHANGED");
   const path = uniqueViolationPath(error);
   if (path !== null && /\bslug\b/.test(path)) {
     return magazineError("ISSUE_SLUG_TAKEN");
@@ -117,9 +121,10 @@ function mapIssueWriteError(error: unknown): unknown {
   return error;
 }
 
-function isIssueNumberTaken(error: unknown): boolean {
+/** A clash on the issue number or slug that `createIssue` picked itself. */
+function isGeneratedValueTaken(error: unknown): boolean {
   const path = uniqueViolationPath(error);
-  return path !== null && /\bnumber\b/.test(path);
+  return path !== null && /\b(number|slug)\b/.test(path);
 }
 
 // ── Items ───────────────────────────────────────────────────────────────
@@ -150,11 +155,17 @@ function keepOwnBlockIds(
   });
 }
 
+/** `T`, accepted only when it is a subset of `U`. */
+type Subset<T extends U, U> = T;
+
 /**
- * An item problem as a refusal. `problem.code` passing as a
- * `MagazineErrorCode` is the compile-time check that every `ItemProblem`
- * code is a magazine refusal code the client can translate.
+ * Compile-time check: every `ItemProblem` code is a magazine refusal code
+ * the client can translate. Adding a problem code that is not in
+ * `MAGAZINE_ERROR_CODES` fails the build here.
  */
+export type ItemProblemCode = Subset<ItemProblem["code"], MagazineErrorCode>;
+
+/** An item problem as a refusal, pointing at the item. */
 function problemError(problem: ItemProblem) {
   return magazineError(problem.code, { itemIndex: problem.itemIndex });
 }
@@ -166,7 +177,7 @@ async function assertItemsValid(
 ): Promise<void> {
   const [problem] = await validateIssueItems(blocks, {
     payload,
-    magazineId: relationNumber(issue.magazine),
+    magazineId: requireRelationId(issue.magazine),
     issueId: issue.id,
     // Validation reads review state and placement, not text.
     locale: routing.defaultLocale,
@@ -203,28 +214,61 @@ async function nextIssueNumber(
   return docs[0] ? Number(docs[0].number) + 1 : 1;
 }
 
+/** `base` with `-<suffix>`, cut so the whole slug stays within the limit. */
+function withSuffix(base: string, suffix: string): string {
+  const cut = base.slice(0, ISSUE_SLUG_MAX - suffix.length - 1);
+  return `${cut.replace(/-+$/, "")}-${suffix}`;
+}
+
+/**
+ * The slugs `createIssue` may give an issue, best first: the title slug,
+ * then `-<number>`, then `-<number>-2`, `-<number>-3`, …
+ */
+export function issueSlugCandidates(
+  title: string,
+  number: number,
+  count = SLUG_CANDIDATES,
+): string[] {
+  const base = issueSlugFor(title, number);
+  const candidates = [base, withSuffix(base, String(number))];
+  for (let k = 2; candidates.length < count; k++) {
+    candidates.push(withSuffix(base, `${number}-${k}`));
+  }
+  return candidates;
+}
+
+/** The first candidate slug no issue of the magazine uses (one query). */
 async function freeIssueSlug(
   payload: PayloadClient,
   magazineId: number,
   title: string,
   number: number,
 ): Promise<string> {
-  const slug = issueSlugFor(title, number);
-  const { totalDocs } = await payload.count({
+  const candidates = issueSlugCandidates(title, number);
+  const { docs } = await payload.find({
     collection: "magazine-issues",
     where: {
-      and: [{ magazine: { equals: magazineId } }, { slug: { equals: slug } }],
+      and: [{ magazine: { equals: magazineId } }, { slug: { in: candidates } }],
     },
+    select: { slug: true },
+    depth: 0,
+    limit: candidates.length,
+    pagination: false,
   });
-  if (totalDocs === 0) return slug;
-  const base = slug.slice(0, ISSUE_SLUG_MAX - `-${number}`.length);
-  return `${base.replace(/-+$/, "")}-${number}`;
+  const taken = new Set(docs.map((doc) => doc.slug));
+  const free = candidates.find((slug) => !taken.has(slug));
+  // Every candidate taken: the number suffix with the time is still unique.
+  return (
+    free ?? withSuffix(candidates[0]!, `${number}-${Date.now().toString(36)}`)
+  );
 }
 
 /**
  * Creates the magazine's next issue as a draft: numbered after the highest
  * existing one, slugged from its title, with the magazine's default
- * visibility and its unlisted-public confirmation copied in.
+ * visibility and its unlisted-public confirmation copied in. The number and
+ * the slug are picked here, never typed, so a clash with a concurrent
+ * create picks the next free ones instead of refusing.
  */
 export async function createIssue(
   deps: Deps,
@@ -267,8 +311,8 @@ export async function createIssue(
         depth: 0,
       });
     } catch (error) {
-      // Another editor created an issue between our count and our insert.
-      if (isIssueNumberTaken(error) && attempt < CREATE_ATTEMPTS) continue;
+      // Another editor created an issue between our reads and our insert.
+      if (isGeneratedValueTaken(error) && attempt < CREATE_ATTEMPTS) continue;
       throw mapIssueWriteError(error);
     }
   }
@@ -330,8 +374,10 @@ export async function updateIssueDetails(
 /**
  * Saves an issue's item list and syncs article placement with it, in one
  * transaction. Every problem refuses the save with the problem's code and
- * item index. In an already published issue, newly added articles are
- * published (and credited) right after the save.
+ * item index. In an already published issue, articles that are not yet
+ * published are published in the same transaction, and pending credits
+ * are settled after it commits (which also retries a credit that failed
+ * before).
  */
 export async function setIssueItems(
   deps: Deps,
@@ -351,6 +397,10 @@ export async function setIssueItems(
       issue.id,
       placedArticlesOf(blocks),
     );
+    // The claim makes `issue.status` the stored status.
+    if (issue.status === "published") {
+      await publishPlacedArticles(deps, articleIdsOf(blocks), tx);
+    }
     return deps.payload.update({
       collection: "magazine-issues",
       id: issue.id,
@@ -361,20 +411,18 @@ export async function setIssueItems(
   });
 
   if (saved.status === "published") {
-    // Idempotent: only articles still in draft are published and credited,
-    // so a save after a failed publish also completes it.
-    await publishPlacedArticles(deps, articleIdsOf(blocks));
+    await creditPendingMagazineArticles(deps, saved.id);
   }
   return saved;
 }
 
 /**
  * Publishes a draft issue. Refuses an empty issue and any item problem.
- * Inside the claimed transaction the articles are published first, then
- * the issue: if an article fails, the issue stays a draft at the same
- * `updatedAt`, and a retry publishes the rest (`publishPlacedArticles` is
- * idempotent). A concurrent second publish waits on the claim and gets
- * `ISSUE_CHANGED`.
+ * The articles and the issue are published in ONE transaction, on the
+ * claimed issue's connection: either all of it lands or none of it does,
+ * and a concurrent second publish waits on the claim and gets
+ * `ISSUE_CHANGED`. Authors are credited after the commit; a credit failure
+ * never fails the publish (it is retried on the next save).
  */
 export async function publishIssue(
   deps: Deps,
@@ -388,20 +436,28 @@ export async function publishIssue(
   if (blocks.length === 0) throw magazineError("ISSUE_EMPTY");
   await assertItemsValid(deps.payload, issue, blocks);
 
-  return writeIssue(deps, issue, expectedUpdatedAt, async (tx) => {
-    await publishPlacedArticles(deps, articleIdsOf(blocks));
-    return deps.payload.update({
-      collection: "magazine-issues",
-      id: issue.id,
-      data: {
-        status: "published",
-        publishedAt: new Date().toISOString(),
-        publishedBy: actor.userId,
-      },
-      depth: 0,
-      req: tx.req,
-    });
-  });
+  const published = await writeIssue(
+    deps,
+    issue,
+    expectedUpdatedAt,
+    async (tx) => {
+      await publishPlacedArticles(deps, articleIdsOf(blocks), tx);
+      return deps.payload.update({
+        collection: "magazine-issues",
+        id: issue.id,
+        data: {
+          status: "published",
+          publishedAt: new Date().toISOString(),
+          publishedBy: actor.userId,
+        },
+        depth: 0,
+        req: tx.req,
+      });
+    },
+  );
+
+  await creditPendingMagazineArticles(deps, published.id);
+  return published;
 }
 
 /**

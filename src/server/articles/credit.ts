@@ -6,7 +6,7 @@ import {
   onArticleApproved,
   onArticleApprovedAfterSave,
 } from "@/server/badges/article-approved";
-import type { db } from "@/server/db";
+import type { BadgeDb } from "@/server/badges/metrics";
 
 export type ArticlePublicationAction =
   | "article.approved"
@@ -21,10 +21,11 @@ export type ArticlePublicationAction =
  *
  * Pass `req` when running inside Payload's save (the after-change hook):
  * badges are then earned after the save commits. Without `req` they are
- * earned now.
+ * earned now. `database` may be a transaction, so a caller can commit the
+ * credit together with its own exactly-once marker.
  */
 export async function creditArticlePublication(
-  database: typeof db,
+  database: BadgeDb,
   article: { id: number; authorId: string; type: string | null; title: string },
   options: { action: ArticlePublicationAction; req?: PayloadRequest },
 ): Promise<void> {

@@ -1,7 +1,9 @@
 import { sql } from "@payloadcms/db-postgres";
+import type { PayloadRequest } from "payload";
 
 import type { PayloadClient } from "./deps";
 import { magazineError } from "./errors";
+import { relationIdOrNull } from "./relation-id";
 import type { StoredBlock } from "./items/registry";
 import type { PayloadTransaction } from "./payload-writes";
 
@@ -15,28 +17,18 @@ import type { PayloadTransaction } from "./payload-writes";
 /** An article block's article and its position in the issue. */
 export type PlacedArticle = { articleId: number; itemIndex: number };
 
-/** A relationship value as stored (id) or populated (`{ id }`), or null. */
-function relationNumber(value: unknown): number | null {
-  const id =
-    typeof value === "object" && value !== null
-      ? (value as { id?: unknown }).id
-      : value;
-  const n = typeof id === "string" ? Number(id) : id;
-  return typeof n === "number" && Number.isFinite(n) ? n : null;
-}
-
 /** The articles an issue's blocks hold, in issue order. */
 export function placedArticlesOf(blocks: StoredBlock[]): PlacedArticle[] {
   const placed: PlacedArticle[] = [];
   blocks.forEach((block, itemIndex) => {
     if (block.blockType !== "article") return;
-    const articleId = relationNumber(block.article);
+    const articleId = relationIdOrNull(block.article);
     if (articleId !== null) placed.push({ articleId, itemIndex });
   });
   return placed;
 }
 
-function idList(ids: readonly number[]) {
+export function idList(ids: readonly number[]) {
   return sql.join(
     ids.map((id) => sql`${id}`),
     sql`, `,
@@ -48,15 +40,14 @@ function rowIds(rows: Record<string, unknown>[]): number[] {
 }
 
 /**
- * Writes `magazineIssue` through Payload with `draft: false` (preflight
- * F22): the main row is what reader queries filter on. The article's own
- * `status` is unchanged, so nothing becomes public.
+ * Brings the article's latest version in line with the placement the SQL
+ * claim already wrote to the main row (the row reader queries filter on).
  *
- * One update per article, by id: Payload builds an update by id on the
- * latest version, so a draft edit not yet on the main row is carried
- * forward. A
- * bulk update (`where`) builds on the main row and would bury that edit
- * under an older version.
+ * `draft: true` (preflight F22 as amended in fix round 1): Payload then
+ * saves only a new version built on the latest one and never touches the
+ * main row, so a pending draft edit of a published article is not pushed
+ * live by a move. One update per id: an update by id builds on the latest
+ * version, so the pending edit is carried forward, not buried.
  */
 async function writePlacement(
   payload: PayloadClient,
@@ -69,7 +60,7 @@ async function writePlacement(
       collection: "articles",
       id,
       data: { magazineIssue: issueId },
-      draft: false,
+      draft: true,
       depth: 0,
       req: tx.req,
     });
@@ -125,8 +116,8 @@ export async function syncArticlePlacement(
     `),
   );
 
-  // The claim wrote the main rows; Payload now writes the same values so
-  // the latest version (what `draft: true` reads) agrees.
+  // The claim wrote the main rows; the latest versions (what `draft: true`
+  // reads) now get the same values.
   await writePlacement(payload, tx, placedNow, issueId);
   await writePlacement(payload, tx, leftNow, null);
 }
@@ -141,7 +132,8 @@ export async function clearArticlePlacement(
 }
 
 /**
- * The guard for deleting an article: an article an issue holds cannot be
+ * The guard for deleting an article, run by the Articles `beforeDelete`
+ * hook so every delete path gets it: an article an issue holds cannot be
  * deleted (the issue's block keeps a required reference to it), so the
  * delete is refused with `ARTICLE_PLACED` until an editor takes it out of
  * the issue. Refusing beats unplacing silently: removing a story from an
@@ -150,10 +142,12 @@ export async function clearArticlePlacement(
 export async function assertArticleNotPlaced(
   payload: PayloadClient,
   articleId: number,
+  req?: Partial<PayloadRequest>,
 ): Promise<void> {
   const { totalDocs } = await payload.count({
     collection: "magazine-issues",
     where: { "items.article": { equals: articleId } },
+    req,
   });
   if (totalDocs > 0) throw magazineError("ARTICLE_PLACED");
 }

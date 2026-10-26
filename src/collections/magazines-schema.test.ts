@@ -98,6 +98,9 @@ describe("articles collection", () => {
     expect(placement.type).toBe("relationship");
     expect(placement.relationTo).toBe("magazine-issues");
     expect(placement.admin?.readOnly).toBe(true);
+    const credited = pick(Articles.fields, "magazineCreditedAt");
+    expect(credited.type).toBe("date");
+    expect(credited.admin?.readOnly).toBe(true);
   });
 });
 
@@ -113,6 +116,8 @@ describe("magazines migration", () => {
       'CREATE UNIQUE INDEX IF NOT EXISTS "magazines_community_id_idx"',
       'ADD COLUMN IF NOT EXISTS "magazine_id"',
       'ADD COLUMN IF NOT EXISTS "version_magazine_id"',
+      'ADD COLUMN IF NOT EXISTS "magazine_credited_at" timestamp(3) with time zone',
+      'ADD COLUMN IF NOT EXISTS "version_magazine_credited_at" timestamp(3) with time zone',
       '"magazines_id" integer REFERENCES "magazines"("id") ON DELETE cascade',
       '"magazine_issues_id" integer REFERENCES "magazine_issues"("id") ON DELETE cascade',
       'DROP TABLE IF EXISTS "magazine_issues"',
