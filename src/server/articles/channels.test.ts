@@ -5,6 +5,7 @@ import {
   assertMagazineUnchanged,
   blogChannel,
   channelFor,
+  isArticleMagazineLocked,
   magazineChannel,
   type ArticleData,
 } from "./channels";
@@ -137,6 +138,22 @@ describe("assertMagazineUnchanged", () => {
     expect(() =>
       assertMagazineUnchanged({ magazine: 4 }, { magazine: { id: 3 } }),
     ).toThrow("ARTICLE_MAGAZINE_LOCKED");
+  });
+
+  it("throws an error the routers can recognise, even when wrapped", () => {
+    let thrown: unknown;
+    try {
+      assertMagazineUnchanged({ magazine: 3 }, { magazine: null });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(isArticleMagazineLocked(thrown)).toBe(true);
+    expect(isArticleMagazineLocked(new Error("x", { cause: thrown }))).toBe(
+      true,
+    );
+    expect(isArticleMagazineLocked(new Error("ARTICLE_MAGAZINE_LOCKED"))).toBe(
+      false,
+    );
   });
 
   it("allows creating with a magazine and saves that keep it", () => {

@@ -117,6 +117,28 @@ export function channelFor(article: { magazine?: unknown }): ArticleChannel {
 }
 
 /**
+ * The refusal of a save that would move an article between channels. A
+ * plain Error (it is thrown inside Payload's save, admin included); the
+ * routers turn it into the magazine refusal code of the same name.
+ */
+export class ArticleMagazineLockedError extends Error {
+  constructor() {
+    super("ARTICLE_MAGAZINE_LOCKED");
+    this.name = "ArticleMagazineLockedError";
+  }
+}
+
+/** Whether an error is, or wraps, an `ArticleMagazineLockedError`. */
+export function isArticleMagazineLocked(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current; depth++) {
+    if (current instanceof ArticleMagazineLockedError) return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
+/**
  * beforeChange guard: an article never moves into, out of, or between
  * magazines. Its channel is fixed when it is created. `data` is the whole
  * article as Payload hands it to the hook.
@@ -127,6 +149,6 @@ export function assertMagazineUnchanged(
 ): void {
   if (!originalDoc) return;
   if (relationId(data.magazine) !== relationId(originalDoc.magazine)) {
-    throw new Error("ARTICLE_MAGAZINE_LOCKED");
+    throw new ArticleMagazineLockedError();
   }
 }
