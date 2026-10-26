@@ -43,6 +43,7 @@ describe.skipIf(!isLocalDbConfigured())(
       editorId: string;
       outsiderId: string;
       eventIds: number[];
+      threadIds: number[];
       communityIds: string[];
       storyIds: string[];
       newsIds: string[];
@@ -96,6 +97,7 @@ describe.skipIf(!isLocalDbConfigured())(
         editorId: `pk-editor-${sfx}`,
         outsiderId: `pk-outsider-${sfx}`,
         eventIds: [],
+        threadIds: [],
         communityIds: [],
         storyIds: [],
         newsIds: [],
@@ -127,6 +129,11 @@ describe.skipIf(!isLocalDbConfigured())(
     afterEach(async () => {
       const { eq, inArray } = await import("drizzle-orm");
       const { db, payload, schema } = m;
+      if (fx.threadIds.length)
+        await payload.delete({
+          collection: "forum-threads",
+          where: { id: { in: fx.threadIds } },
+        });
       if (fx.eventIds.length)
         await payload.delete({
           collection: "events",
@@ -418,6 +425,232 @@ describe.skipIf(!isLocalDbConfigured())(
           message: "ITEM_INVALID",
         });
       }
+    });
+
+    async function thread(
+      communityId: string | null,
+      label = "discussion",
+      isDeleted = false,
+    ) {
+      const doc = await m.payload.create({
+        collection: "forum-threads",
+        data: {
+          title: `Local thread ${label} ${fx.sfx}`,
+          slug: `pk-thread-${label}-${fx.sfx}`,
+          content: {
+            root: {
+              type: "root",
+              children: [
+                {
+                  type: "paragraph",
+                  version: 1,
+                  children: [
+                    {
+                      type: "text",
+                      text: "Talk with the community",
+                      version: 1,
+                    },
+                  ],
+                },
+              ],
+              direction: null,
+              format: "",
+              indent: 0,
+              version: 1,
+            },
+          },
+          category: "general",
+          authorId: fx.editorId,
+          authorName: "Sanne",
+          replyCount: 42,
+          lastActivityAt: "2026-10-24T10:00:00.000Z",
+          communityId,
+          isDeleted,
+        },
+      });
+      fx.threadIds.push(Number(doc.id));
+      return doc;
+    }
+
+    it("a thread soft-deleted after it was added becomes a marker", async () => {
+      const { c, magazine, actor, issue } = await issueFixture();
+      const doc = await thread(c.id);
+      const saved = await m.issues.setIssueItems(
+        m,
+        issue,
+        [{ kind: "forumThread", threadId: Number(doc.id) }],
+        issue.updatedAt,
+        actor,
+      );
+      const load = (access: IssueReaderAccess) =>
+        m.registry.loadIssueItemViews(
+          saved.items as Registry.StoredBlock[],
+          m.context.itemContextFor(m, {
+            magazineId: magazine.id,
+            community: c,
+            issueId: saved.id,
+            locale: "en",
+            access,
+            viewerId: fx.editorId,
+          }),
+        );
+      expect(await load("full")).toMatchObject([
+        {
+          kind: "forumThread",
+          thread: {
+            path: `/communities/${c.slug}/forum/${doc.slug}`,
+            title: doc.title,
+            replyCount: 42,
+            authorName: "Sanne",
+          },
+        },
+      ]);
+      await m.payload.update({
+        collection: "forum-threads",
+        id: doc.id,
+        data: { title: "The conversation continues", replyCount: 43 },
+      });
+      expect(await load("full")).toMatchObject([
+        { thread: { title: "The conversation continues", replyCount: 43 } },
+      ]);
+      await m.payload.update({
+        collection: "forum-threads",
+        id: doc.id,
+        data: { isDeleted: true },
+      });
+      expect(await load("full")).toEqual([]);
+      expect(await load("editor")).toEqual([
+        {
+          kind: "forumThread",
+          itemId: saved.items![0]!.id,
+          unavailable: true,
+          reason: "missing",
+        },
+      ]);
+      const reloaded = await m.payload.findByID({
+        collection: "magazine-issues",
+        id: saved.id,
+        depth: 0,
+      });
+      expect(
+        m.registry.toItemInputs(reloaded.items as Registry.StoredBlock[]),
+      ).toMatchObject([{ kind: "forumThread", threadId: Number(doc.id) }]);
+      const kept = await m.issues.setIssueItems(
+        m,
+        reloaded,
+        [
+          {
+            kind: "forumThread",
+            threadId: Number(doc.id),
+            intro: "Still our pick",
+          },
+        ],
+        reloaded.updatedAt,
+        actor,
+      );
+      expect(kept.items![0]!.intro).toBe("Still our pick");
+    });
+
+    it("the forum tab offers this community's threads only", async () => {
+      const { c, magazine, actor, issue } = await issueFixture();
+      const first = await thread(c.id, "models");
+      const second = await thread(c.id, "tools");
+      const deleted = await thread(c.id, "deleted", true);
+      const other = await community("other");
+      const otherThread = await thread(other.id, "other");
+      const unscoped = await thread(null, "hub");
+      const ctx = {
+        deps: m,
+        magazineId: magazine.id,
+        community: c,
+        viewerId: fx.editorId,
+        locale: "en" as const,
+      };
+      const candidates = await m.pickers.searchPickerCandidates(
+        "forumThread",
+        "",
+        ctx,
+      );
+      expect(
+        candidates.map((v) => Number(v.input.threadId)).sort((a, b) => a - b),
+      ).toEqual([Number(first.id), Number(second.id)].sort((a, b) => a - b));
+      expect(candidates[0]!.facts).toEqual([
+        { type: "count", what: "replies", value: 42 },
+        { type: "date", label: "lastActive", at: "2026-10-24T10:00:00.000Z" },
+        { type: "byline", name: "Sanne" },
+      ]);
+      expect(
+        (
+          await m.pickers.searchPickerCandidates(
+            "forumThread",
+            `models ${fx.sfx}`,
+            ctx,
+          )
+        ).map((v) => Number(v.input.threadId)),
+      ).toEqual([Number(first.id)]);
+      for (const doc of [deleted, otherThread, unscoped]) {
+        await expect(
+          m.issues.setIssueItems(
+            m,
+            issue,
+            [{ kind: "forumThread", threadId: Number(doc.id) }],
+            issue.updatedAt,
+            actor,
+          ),
+        ).rejects.toMatchObject({
+          code: "BAD_REQUEST",
+          message: "ITEM_INVALID",
+        });
+      }
+    });
+
+    it("an unlisted community's thread stays private inside a public issue", async () => {
+      const { c, magazine, actor, issue } = await issueFixture({
+        listed: false,
+      });
+      const doc = await thread(c.id);
+      const saved = await m.issues.setIssueItems(
+        m,
+        issue,
+        [{ kind: "forumThread", threadId: Number(doc.id) }],
+        issue.updatedAt,
+        actor,
+      );
+      const load = (
+        viewerId: string | null,
+        access: IssueReaderAccess = "full",
+      ) =>
+        m.registry.loadIssueItemViews(
+          saved.items as Registry.StoredBlock[],
+          m.context.itemContextFor(m, {
+            magazineId: magazine.id,
+            community: c,
+            issueId: saved.id,
+            locale: "en",
+            access,
+            viewerId,
+          }),
+        );
+      expect(await load(fx.editorId)).toMatchObject([
+        {
+          kind: "forumThread",
+          membersOnly: false,
+          thread: { title: doc.title },
+        },
+      ]);
+      expect(await load(fx.outsiderId)).toEqual([]);
+      expect(await load(null)).toEqual([]);
+      expect(await load(fx.editorId, "editor")).toMatchObject([
+        { kind: "forumThread", membersOnly: true },
+      ]);
+      expect(await load(fx.outsiderId, "editor")).toEqual([
+        {
+          kind: "forumThread",
+          itemId: saved.items![0]!.id,
+          unavailable: true,
+          reason: "no_access",
+        },
+      ]);
     });
 
     it("a story loads live and drops out when unpublished", async () => {

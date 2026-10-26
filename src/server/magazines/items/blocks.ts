@@ -3,6 +3,7 @@ import type { Block } from "payload";
 import { articleItemBlock } from "./article/block";
 import { editorialItemBlock } from "./editorial/block";
 import { storylineItemBlock } from "./storyline/block";
+import { forumThreadItemBlock } from "./forumThread/block";
 import { eventItemBlock } from "./event/block";
 import { newsItemBlock } from "./newsItem/block";
 
@@ -18,4 +19,5 @@ export const ISSUE_ITEM_BLOCKS: Block[] = [
   storylineItemBlock,
   newsItemBlock,
   eventItemBlock,
+  forumThreadItemBlock,
 ];

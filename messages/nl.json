@@ -4806,7 +4806,9 @@
       "eventKind": "Evenement",
       "online": "Online",
       "cancelled": "Afgelast",
-      "completed": "Afgelopen"
+      "completed": "Afgelopen",
+      "forumKind": "Uit het forum",
+      "replies": "{count, plural, one {# reactie} other {# reacties}}"
     },
     "rail": {
       "visitCommunity": "Bezoek {community}",
@@ -5004,7 +5006,8 @@
         "storyline": "Verhaal",
         "newsItem": "Nieuws",
         "event": "Evenement",
-        "membersOnly": "Alleen leden zien dit"
+        "membersOnly": "Alleen leden zien dit",
+        "forumThread": "Forumgesprek"
       },
       "editorial": {
         "heading": "Kop (optioneel)",
@@ -5019,25 +5022,29 @@
           "editorial": "Tekst",
           "storyline": "Verhalen",
           "newsItem": "Nieuws",
-          "event": "Evenementen"
+          "event": "Evenementen",
+          "forumThread": "Forum"
         },
         "search": {
           "article": "Zoek artikelen die klaar zijn",
           "storyline": "Zoek verhalen uit AIT News",
           "newsItem": "Zoek nieuwsberichten",
-          "event": "Zoek evenementen van je community"
+          "event": "Zoek evenementen van je community",
+          "forumThread": "Zoek in het forum van je community"
         },
         "empty": {
           "article": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
           "storyline": "Geen verhalen gevonden.",
           "newsItem": "Geen nieuwsberichten gevonden.",
-          "event": "Je community heeft nog geen evenementen."
+          "event": "Je community heeft nog geen evenementen.",
+          "forumThread": "Geen gesprekken gevonden."
         },
         "hint": {
           "article": "Alleen artikelen die klaar zijn voor een nummer en niet al in een ander nummer staan, verschijnen hier.",
           "storyline": "Verhalen worden bijgewerkt: lezers zien altijd de nieuwste versie.",
           "newsItem": "Nieuwsberichten linken naar het oorspronkelijke artikel.",
-          "event": "Evenementen van je community. Lezers zien altijd de laatste informatie."
+          "event": "Evenementen van je community. Lezers zien altijd de laatste informatie.",
+          "forumThread": "Gesprekken gaan door: lezers zien ook nieuwe reacties."
         },
         "noMatch": "Niets gevonden voor “{query}”.",
         "add": "Toevoegen",

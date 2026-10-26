@@ -4806,7 +4806,9 @@
       "eventKind": "Event",
       "online": "Online",
       "cancelled": "Cancelled",
-      "completed": "Took place"
+      "completed": "Took place",
+      "forumKind": "From the forum",
+      "replies": "{count, plural, one {# reply} other {# replies}}"
     },
     "rail": {
       "visitCommunity": "Visit {community}",
@@ -5004,7 +5006,8 @@
         "storyline": "Story",
         "newsItem": "News",
         "event": "Event",
-        "membersOnly": "Only members see this"
+        "membersOnly": "Only members see this",
+        "forumThread": "Forum thread"
       },
       "editorial": {
         "heading": "Heading (optional)",
@@ -5019,25 +5022,29 @@
           "editorial": "Text",
           "storyline": "Stories",
           "newsItem": "News",
-          "event": "Events"
+          "event": "Events",
+          "forumThread": "Forum"
         },
         "search": {
           "article": "Search ready articles",
           "storyline": "Search AIT News stories",
           "newsItem": "Search news headlines",
-          "event": "Search your community's events"
+          "event": "Search your community's events",
+          "forumThread": "Search your community's forum"
         },
         "empty": {
           "article": "No articles are ready. Articles marked ready for an issue show up here.",
           "storyline": "No stories found.",
           "newsItem": "No headlines found.",
-          "event": "Your community has no events yet."
+          "event": "Your community has no events yet.",
+          "forumThread": "No threads found."
         },
         "hint": {
           "article": "Only articles marked ready and not in another issue show here.",
           "storyline": "Stories stay live: readers always see the newest version.",
           "newsItem": "Headlines link to the original article.",
-          "event": "Events of your community. Readers see the latest details."
+          "event": "Events of your community. Readers see the latest details.",
+          "forumThread": "Threads stay live: readers see new replies too."
         },
         "noMatch": "Nothing matches “{query}”.",
         "add": "Add",

@@ -8,6 +8,7 @@ import type {
 } from "@/lib/magazines/item-views";
 
 import { StorylineItem, storylineItemTitle } from "./storyline-item";
+import { ForumThreadItem, forumThreadItemTitle } from "./forum-thread-item";
 import { EventItem, eventItemTitle } from "./event-item";
 import { NewsItemCard, newsItemTitle } from "./news-item";
 import { ArticleItem, articleItemTitle } from "./article-item";
@@ -34,6 +35,7 @@ export const ITEM_RENDERERS: {
   storyline: StorylineItem,
   newsItem: NewsItemCard,
   event: EventItem,
+  forumThread: ForumThreadItem,
 };
 
 /** Each kind's title for the issue's contents list. */
@@ -43,6 +45,7 @@ const ITEM_TITLES: { [K in ItemKindId]: ItemTitle<K> } = {
   storyline: storylineItemTitle,
   newsItem: newsItemTitle,
   event: eventItemTitle,
+  forumThread: forumThreadItemTitle,
 };
 
 export function isUnavailableItem(

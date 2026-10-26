@@ -5,7 +5,12 @@ vi.mock("@/trpc/react", () => ({ api: {} }));
 
 import { ITEM_KINDS } from "@/server/magazines/items/registry";
 
-import { eventView, newsItemView, storylineView } from "../../../test-fixtures";
+import {
+  eventView,
+  forumThreadView,
+  newsItemView,
+  storylineView,
+} from "../../../test-fixtures";
 import { ITEM_RENDERERS } from "../../../items/registry";
 import type { BuilderItem } from "../items-model";
 import {
@@ -60,6 +65,7 @@ describe("builder item registry", () => {
       "storyline",
       "newsItem",
       "event",
+      "forumThread",
       "editorial",
     ]);
     const item: BuilderItem = {
@@ -158,6 +164,32 @@ it("adds events after news and follows the saved event and edited intro", () => 
     ...saved,
     itemId: "event",
     intro: "Join us",
+  });
+  expect(isSavableBuilderItem(item)).toBe(true);
+  expect(hasBuilderItemEditor(item)).toBe(false);
+});
+
+it("adds forum threads after events and follows the saved title and edited intro", () => {
+  const item: BuilderItem = {
+    kind: "forumThread",
+    key: "thread",
+    threadId: 7,
+    intro: "Our discussion",
+  };
+  const saved = forumThreadView();
+  expect(ADD_TAB_ORDER.indexOf("forumThread")).toBe(
+    ADD_TAB_ORDER.indexOf("event") + 1,
+  );
+  expect(builderKindLabelKey(item)).toBe("forumThread");
+  expect(builderReferenceKey(item)).toBe("forumThread:7");
+  expect(builderRowTitle(item, { saved, titleHint: "Old title", t })).toBe(
+    "Thread 1",
+  );
+  expect(builderPreviewView(item, undefined)).toBeNull();
+  expect(builderPreviewView(item, saved)).toEqual({
+    ...saved,
+    itemId: "thread",
+    intro: "Our discussion",
   });
   expect(isSavableBuilderItem(item)).toBe(true);
   expect(hasBuilderItemEditor(item)).toBe(false);

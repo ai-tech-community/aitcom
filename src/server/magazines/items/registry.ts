@@ -1,3 +1,4 @@
+import { forumThreadItemKind } from "./forumThread/kind";
 import { eventItemKind } from "./event/kind";
 import { z } from "zod";
 
@@ -33,6 +34,7 @@ const STRATEGIES = {
   storyline: storylineItemKind,
   newsItem: newsItemKind,
   event: eventItemKind,
+  forumThread: forumThreadItemKind,
 };
 
 /** The builder input type a kind's strategy declares. */

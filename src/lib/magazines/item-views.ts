@@ -75,13 +75,29 @@ export type EventItemView = {
   };
 };
 
+/** A live forum thread, linked through its community's forum. */
+export type ForumThreadItemView = {
+  kind: "forumThread";
+  itemId: string;
+  intro: string | null;
+  membersOnly: boolean;
+  thread: {
+    path: string;
+    title: string;
+    replyCount: number;
+    authorName: string | null;
+    lastActivityAt: string | null;
+  };
+};
+
 /** What a reader sees for one issue item, by kind. */
 export type IssueItemView =
   | ArticleItemView
   | EditorialItemView
   | StorylineItemView
   | NewsItemView
-  | EventItemView;
+  | EventItemView
+  | ForumThreadItemView;
 
 /** The item kinds; each has one strategy, one block and one renderer. */
 export type ItemKindId = IssueItemView["kind"];

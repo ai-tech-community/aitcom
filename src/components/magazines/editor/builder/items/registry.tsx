@@ -4,6 +4,7 @@ import type { EditorItemView, ItemKindId } from "@/lib/magazines/item-views";
 
 import type { BuilderItem } from "../items-model";
 import { storylineBuilderKind } from "./storyline";
+import { forumThreadBuilderKind } from "./forum-thread";
 import { eventBuilderKind } from "./event";
 import { newsItemBuilderKind } from "./news-item";
 import { articleBuilderKind } from "./article";
@@ -30,6 +31,7 @@ export const BUILDER_ITEM_KINDS: { [K in ItemKindId]: BuilderItemKind<K> } = {
   storyline: storylineBuilderKind,
   newsItem: newsItemBuilderKind,
   event: eventBuilderKind,
+  forumThread: forumThreadBuilderKind,
 };
 
 /**
@@ -41,6 +43,7 @@ export const ADD_TAB_ORDER: readonly ItemKindId[] = [
   "storyline",
   "newsItem",
   "event",
+  "forumThread",
   "editorial",
 ];
 

@@ -1,3 +1,4 @@
+import { forumThreadPicker } from "./forumThread/picker";
 import { eventPicker } from "./event/picker";
 import type { PickableKindId } from "@/lib/magazines/picker";
 
@@ -19,6 +20,7 @@ export const ITEM_PICKERS: {
   storyline: storylinePicker,
   newsItem: newsItemPicker,
   event: eventPicker,
+  forumThread: forumThreadPicker,
 };
 
 /** Search one source and attach the kind strategy's content identity. */

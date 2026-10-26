@@ -17,6 +17,7 @@ import {
   articleView,
   editorialView,
   eventView,
+  forumThreadView,
   newsItemView,
   storylineView,
   unavailableView,
@@ -33,6 +34,7 @@ describe("issue item registry", () => {
       "article",
       "editorial",
       "event",
+      "forumThread",
       "newsItem",
       "storyline",
     ]);
@@ -257,5 +259,53 @@ describe("event cards", () => {
     );
     expect(screen.queryByText(/·/)).toBeNull();
     expect(container.querySelector('[data-slot="badge"]')).toBeNull();
+  });
+});
+
+describe("forum thread cards", () => {
+  it("uses the server-built path, with a byline, reply count and intro", () => {
+    renderWithIntl(
+      <IssueItem
+        view={{
+          ...forumThreadView(1, {
+            path: "/communities/custom/forum/server-built",
+          }),
+          intro: "Join the conversation",
+        }}
+        lead={true}
+        href={href}
+      />,
+    );
+    expect(screen.getByText("From the forum")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Thread 1" })).toHaveAttribute(
+      "href",
+      "/communities/custom/forum/server-built",
+    );
+    expect(screen.getByText("By Sanne")).not.toHaveClass("font-mono");
+    expect(screen.getByText("42 replies")).toHaveClass("font-mono");
+    expect(screen.getByText("Join the conversation")).toBeInTheDocument();
+  });
+
+  it("shows a single reply and no absent author", () => {
+    renderWithIntl(
+      <IssueItem
+        view={forumThreadView(1, { replyCount: 1, authorName: null })}
+        lead={false}
+        href={href}
+      />,
+    );
+    expect(screen.getByText("1 reply")).toBeInTheDocument();
+    expect(screen.queryByText(/^By /)).toBeNull();
+  });
+
+  it("shows forum copy and reply plurals in everyday Dutch", () => {
+    render(
+      <NextIntlClientProvider locale="nl" messages={nl} timeZone="UTC">
+        <IssueItem view={forumThreadView()} lead={false} href={href} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("Uit het forum")).toBeInTheDocument();
+    expect(screen.getByText("Door Sanne")).toBeInTheDocument();
+    expect(screen.getByText("42 reacties")).toBeInTheDocument();
   });
 });

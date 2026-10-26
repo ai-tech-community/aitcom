@@ -5,6 +5,7 @@
 import type {
   ArticleItemView,
   EventItemView,
+  ForumThreadItemView,
   EditorialItemView,
   NewsItemView,
   StorylineItemView,
@@ -99,6 +100,27 @@ export function eventView(
       city: "Amsterdam",
       online: false,
       status: "published",
+      ...overrides,
+    },
+  };
+}
+
+/** A live forum thread linked through its own community. */
+export function forumThreadView(
+  n = 1,
+  overrides: Partial<ForumThreadItemView["thread"]> = {},
+): ForumThreadItemView {
+  return {
+    kind: "forumThread",
+    itemId: `thread-${n}`,
+    intro: null,
+    membersOnly: false,
+    thread: {
+      path: `/communities/local-builders/forum/thread-${n}`,
+      title: `Thread ${n}`,
+      replyCount: 42,
+      authorName: "Sanne",
+      lastActivityAt: "2026-10-24T10:00:00.000Z",
       ...overrides,
     },
   };
