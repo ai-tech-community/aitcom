@@ -54,6 +54,18 @@ describe("CommunityIdentity", () => {
     expect(screen.getByText(/42 members/)).toBeInTheDocument();
   });
 
+  it("says member, not members, for one", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <CommunityIdentity
+          community={{ ...community, memberCount: 1 } as typeof community}
+          membershipStatus={null}
+        />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("1 member")).toBeInTheDocument();
+  });
+
   it("adds how many were active this week, when anyone was", () => {
     const { unmount } = renderIdentity();
     expect(screen.queryByText(/active this week/)).toBeNull();

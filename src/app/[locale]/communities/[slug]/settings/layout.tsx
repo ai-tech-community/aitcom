@@ -40,9 +40,13 @@ export default function CommunitySettingsLayout({
   }
 
   return (
-    <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
-      <SettingsSidebar slug={slug} memberRole={myMembership.role} />
-      <div className="min-w-0 flex-1">{children}</div>
+    // Columns follow the settings area's own width, not the screen's: the
+    // community rail takes part of the screen from `lg`.
+    <div className="@container">
+      <div className="flex flex-col gap-6 @3xl:flex-row @3xl:items-start @3xl:gap-8">
+        <SettingsSidebar slug={slug} memberRole={myMembership.role} />
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
     </div>
   );
 }

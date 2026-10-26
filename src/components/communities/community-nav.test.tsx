@@ -4,7 +4,10 @@ import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../messages/en.json";
 
-const m = vi.hoisted(() => ({ pathname: "/communities/mlops" }));
+const m = vi.hoisted(() => ({
+  pathname: "/communities/mlops",
+  rooms: [] as unknown[],
+}));
 
 vi.mock("@/trpc/react", () => ({
   api: {
@@ -12,17 +15,7 @@ vi.mock("@/trpc/react", () => ({
       // The built-in fallback list: no space rows needed.
       list: { useQuery: () => ({ data: undefined, isError: true }) },
       listRooms: {
-        useQuery: () => ({
-          data: [
-            {
-              id: 7,
-              slug: "lab",
-              name: "Lab",
-              visibility: "private",
-              membership: null,
-            },
-          ],
-        }),
+        useQuery: () => ({ data: m.rooms }),
       },
     },
   },
@@ -53,8 +46,17 @@ function renderNav(memberRole: "owner" | "member" | null = null) {
   );
 }
 
+const LAB = {
+  id: 7,
+  slug: "lab",
+  name: "Lab",
+  visibility: "private",
+  membership: null,
+};
+
 beforeEach(() => {
   m.pathname = "/communities/mlops";
+  m.rooms = [LAB];
 });
 
 describe("CommunityNav", () => {
@@ -99,10 +101,30 @@ describe("CommunityNav", () => {
     expect(lab).toHaveTextContent("private room");
   });
 
+  it("does not mark a room current on a room whose slug only starts the same", () => {
+    m.rooms = [
+      { ...LAB, visibility: "public" },
+      { ...LAB, id: 8, slug: "lab-2", name: "Lab 2", visibility: "public" },
+    ];
+    m.pathname = "/communities/mlops/spaces/lab-2";
+    renderNav();
+    const current = screen
+      .getAllByRole("link")
+      .filter((l) => l.getAttribute("aria-current") === "page");
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("Lab 2");
+  });
+
   it("shows Settings to an owner only", () => {
-    renderNav("member");
+    const { unmount } = renderNav("member");
     expect(
       screen.queryByRole("link", { name: "Settings" }),
     ).not.toBeInTheDocument();
+    unmount();
+    renderNav("owner");
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute(
+      "href",
+      "/communities/mlops/settings",
+    );
   });
 });

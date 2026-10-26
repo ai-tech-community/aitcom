@@ -77,7 +77,7 @@ export function CommunityLayoutClient({
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
             <div
               data-community-rail=""
-              className="contents lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col lg:gap-6 lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:thin]"
+              className="contents lg:sticky lg:top-24 lg:-m-1 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col lg:gap-6 lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:p-1 lg:[scrollbar-width:thin]"
             >
               <CommunityIdentity
                 community={community}

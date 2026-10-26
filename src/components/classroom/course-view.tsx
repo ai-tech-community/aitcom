@@ -185,7 +185,7 @@ export function CourseView({
   const Title = embedded ? "h2" : "h1";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 py-6">
+    <div className="@container mx-auto max-w-6xl space-y-6 py-6">
       <Link
         href={`/communities/${slug}/classroom` as never}
         className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
@@ -296,9 +296,9 @@ export function CourseView({
       </div>
 
       {/* Two-pane layout */}
-      <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
+      <div className="grid gap-6 @4xl:grid-cols-[18rem_minmax(0,1fr)]">
         {/* Left sidebar */}
-        <aside className="lg:sticky lg:top-6 lg:self-start">
+        <aside className="@4xl:sticky @4xl:top-6 @4xl:self-start">
           <div className="space-y-4">
             <h2 className="text-sm font-semibold">{course.title}</h2>
 

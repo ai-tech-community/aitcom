@@ -107,7 +107,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
           const isActive =
             item.key === "overview"
               ? pathname === basePath || pathname === `${basePath}/`
-              : pathname.startsWith(item.href);
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <Link
@@ -115,7 +115,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
               href={item.href as never}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "border-b-2 px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors lg:rounded-md lg:border-b-0 lg:py-2 lg:whitespace-normal",
+                "focus-visible:ring-ring/50 border-b-2 px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-inset lg:rounded-md lg:border-b-0 lg:py-2 lg:whitespace-normal",
                 isActive
                   ? "border-foreground text-foreground lg:bg-secondary"
                   : "text-muted-foreground hover:text-foreground hover:border-border lg:hover:bg-secondary/50 border-transparent",

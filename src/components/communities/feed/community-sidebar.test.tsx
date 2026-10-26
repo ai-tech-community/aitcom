@@ -23,7 +23,14 @@ vi.mock("@/trpc/react", () => ({
     },
     forum: { getIdeas: { useQuery: () => ({ data: [] }) } },
     links: { list: { useQuery: () => ({ data: [] }) } },
-    communities: { getBySlug: { useQuery: () => ({ data: undefined }) } },
+    // A loaded community, so the old members section would have rendered.
+    communities: {
+      getBySlug: {
+        useQuery: () => ({
+          data: { memberCount: 4, liveness: { activeContributors: 2 } },
+        }),
+      },
+    },
     news: {
       communityStories: {
         useQuery: () => ({
@@ -195,6 +202,8 @@ describe("CommunitySidebar — upcoming events", () => {
     expect(
       container.querySelector('[data-sidebar-section="about"]'),
     ).toBeNull();
+    expect(screen.queryByText(/4 members/)).toBeNull();
+    expect(screen.queryByText(/active this week/)).toBeNull();
   });
 
   it("formats nothing on its own", () => {
