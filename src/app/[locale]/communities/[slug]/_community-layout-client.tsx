@@ -12,7 +12,7 @@ import {
   type HubAuthUser,
   type HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
-import { CommunityHeader } from "@/components/communities/community-header";
+import { CommunityIdentity } from "@/components/communities/community-identity";
 import { CommunityNav } from "@/components/communities/community-nav";
 import { Spinner } from "@/components/ui/spinner";
 import { resolveCommunityLayoutVariant } from "@/lib/communities/layout-variant";
@@ -69,15 +69,25 @@ export function CommunityLayoutClient({
       {variant === "workspace" ? (
         children
       ) : (
-        <div className="flex flex-col">
-          <CommunityHeader
-            community={community}
-            membershipStatus={membershipStatus}
-            memberRole={memberRole}
-          />
-          <CommunityNav slug={slug} memberRole={memberRole} />
-          <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-            {children}
+        // Full width on the top nav's gutters, with the community rail on the
+        // left from `lg` — a named exception to the default page frame
+        // (DESIGN.md "Page frame"). Below `lg` the rail's wrapper drops out
+        // (`contents`), so identity and the sticky tab bar stack above the page.
+        <div className="px-4 py-8 sm:px-8">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
+            <div
+              data-community-rail=""
+              className="contents lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-7rem)] lg:flex-col lg:gap-6 lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:thin]"
+            >
+              <CommunityIdentity
+                community={community}
+                membershipStatus={membershipStatus}
+                memberRole={memberRole}
+              />
+              <CommunityNav slug={slug} memberRole={memberRole} />
+            </div>
+            {/* Not <main>: the root layout already provides the main landmark. */}
+            <div className="min-w-0">{children}</div>
           </div>
         </div>
       )}

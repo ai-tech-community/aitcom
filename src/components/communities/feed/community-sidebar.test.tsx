@@ -190,6 +190,13 @@ describe("CommunitySidebar — upcoming events", () => {
     expect(eventsSection()).toBeNull();
   });
 
+  it("leaves who-is-here to the community rail", () => {
+    const { container } = renderSidebar();
+    expect(
+      container.querySelector('[data-sidebar-section="about"]'),
+    ).toBeNull();
+  });
+
   it("formats nothing on its own", () => {
     const source = readFileSync(
       join(__dirname, "community-sidebar.tsx"),

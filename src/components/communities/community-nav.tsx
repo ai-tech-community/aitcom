@@ -96,44 +96,45 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   ];
 
   return (
-    <div className="bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-12 z-40 border-b backdrop-blur">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        <nav
-          className="-mb-px flex gap-1 overflow-x-auto"
-          aria-label="Community navigation"
-        >
-          {navItems.map((item) => {
-            const isActive =
-              item.key === "overview"
-                ? pathname === basePath || pathname === `${basePath}/`
-                : pathname.startsWith(item.href);
+    // A sticky tab bar, edge to edge, on small screens; from `lg` a vertical
+    // list in the community rail.
+    <div className="bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-12 z-40 -mx-4 border-b px-4 backdrop-blur sm:-mx-8 sm:px-8 lg:static lg:z-auto lg:mx-0 lg:border-t lg:border-b-0 lg:bg-transparent lg:px-0 lg:pt-4 lg:backdrop-blur-none">
+      <nav
+        className="-mb-px flex gap-1 overflow-x-auto lg:mb-0 lg:flex-col lg:gap-0.5 lg:overflow-visible"
+        aria-label="Community navigation"
+      >
+        {navItems.map((item) => {
+          const isActive =
+            item.key === "overview"
+              ? pathname === basePath || pathname === `${basePath}/`
+              : pathname.startsWith(item.href);
 
-            return (
-              <Link
-                key={item.key}
-                href={item.href as never}
-                className={cn(
-                  "border-b-2 px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors",
-                  isActive
-                    ? "border-foreground text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:border-border border-transparent",
-                )}
-              >
-                {item.label}
-                {item.isPrivate && (
-                  <>
-                    <Lock
-                      className="text-muted-foreground ml-1 inline-block size-3"
-                      aria-hidden="true"
-                    />
-                    <span className="sr-only">private room</span>
-                  </>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+          return (
+            <Link
+              key={item.key}
+              href={item.href as never}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "border-b-2 px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors lg:rounded-md lg:border-b-0 lg:py-2 lg:whitespace-normal",
+                isActive
+                  ? "border-foreground text-foreground lg:bg-secondary"
+                  : "text-muted-foreground hover:text-foreground hover:border-border lg:hover:bg-secondary/50 border-transparent",
+              )}
+            >
+              {item.label}
+              {item.isPrivate && (
+                <>
+                  <Lock
+                    className="text-muted-foreground ml-1 inline-block size-3"
+                    aria-hidden="true"
+                  />
+                  <span className="sr-only">private room</span>
+                </>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }
