@@ -5,6 +5,7 @@ import type {
   RitualMode,
   RitualStatus,
 } from "../communities/rituals";
+import type { BuiltinSurface } from "../communities/space-defaults";
 import type { FailureDetail } from "../collectors/errors";
 import type { RunStatus, StopReason } from "../collectors/run-status";
 import {
@@ -3623,7 +3624,8 @@ export const communityMemberships = appSchema.table(
 
 // Community Spaces — composable navigation surfaces + rooms (Slice 3, Plan 1).
 // kind="builtin": a configurable pointer to an existing community surface
-// (forum/events/classroom/ideas/members); the surface's data stays community-level.
+// (forum/events/classroom/ideas/members, plus the optional magazine); the
+// surface's data stays community-level.
 // kind="room": (Plan 2) a real container with its own membership + chat/posts.
 // `name` is an optional display override — for builtins, null means "use the
 // default i18n label"; rooms set it at creation (enforced in the app layer).
@@ -3646,7 +3648,7 @@ export const spaces = appSchema.table(
       .$type<"builtin" | "room">(),
     builtinSurface: d
       .varchar("builtin_surface", { length: 20 })
-      .$type<"forum" | "events" | "classroom" | "ideas" | "members">(),
+      .$type<BuiltinSurface>(),
     visibility: d.varchar({ length: 10 }).$type<"public" | "private">(),
     name: d.text(),
     purpose: d.text(),

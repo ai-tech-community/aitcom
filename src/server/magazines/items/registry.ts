@@ -177,6 +177,10 @@ async function loadKind<K extends ItemKindId>(
  * An issue's items as views, in issue order. Readers get readable views
  * only; editors also get `UnavailableItem` markers in place. One batched
  * load per kind present in the issue.
+ *
+ * Saved blocks only: every block must carry the block id Payload gave it
+ * on save (`itemIdOf` throws otherwise). Do not call it on unsaved builder
+ * input; a preview renders the last saved views.
  */
 export async function loadIssueItemViews(
   blocks: StoredBlock[],

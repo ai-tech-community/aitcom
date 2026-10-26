@@ -12,15 +12,28 @@ export const BUILTIN_SURFACES = [
   "members",
 ] as const;
 
-export type BuiltinSurface = (typeof BUILTIN_SURFACES)[number];
+/** A surface every new community gets. */
+export type DefaultBuiltinSurface = (typeof BUILTIN_SURFACES)[number];
+
+/**
+ * Builtin surfaces a community gains by turning a feature on, never by
+ * default: the Magazine tab is added when the community's magazine is
+ * created. Once added, they rename, hide and reorder like the defaults.
+ */
+export const OPTIONAL_BUILTIN_SURFACES = ["magazine"] as const;
+
+/** Any builtin surface a space row can point at. */
+export type BuiltinSurface =
+  | DefaultBuiltinSurface
+  | (typeof OPTIONAL_BUILTIN_SURFACES)[number];
 
 /** Shape of a default builtin space row (pre-insert; id/createdAt are DB-filled). */
 export interface DefaultSpaceRow {
   communityId: string;
   kind: "builtin";
-  builtinSurface: BuiltinSurface;
+  builtinSurface: DefaultBuiltinSurface;
   name: null;
-  slug: BuiltinSurface;
+  slug: DefaultBuiltinSurface;
   position: number;
 }
 

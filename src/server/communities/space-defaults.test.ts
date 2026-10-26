@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   BUILTIN_SURFACES,
+  OPTIONAL_BUILTIN_SURFACES,
   buildDefaultSpaceRows,
   resolveSpaceLabel,
 } from "./space-defaults";
@@ -30,6 +31,19 @@ describe("buildDefaultSpaceRows", () => {
       expect(r.slug).toBe(r.builtinSurface);
       expect(r.name).toBeNull();
     }
+  });
+});
+
+describe("OPTIONAL_BUILTIN_SURFACES", () => {
+  it("magazine is an optional surface, not one of the five defaults", () => {
+    expect(buildDefaultSpaceRows("c").map((r) => r.slug)).toEqual([
+      "forum",
+      "events",
+      "classroom",
+      "ideas",
+      "members",
+    ]);
+    expect(OPTIONAL_BUILTIN_SURFACES).toContain("magazine");
   });
 });
 
