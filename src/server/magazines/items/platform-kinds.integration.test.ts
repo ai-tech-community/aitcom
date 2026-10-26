@@ -487,6 +487,39 @@ describe.skipIf(!isLocalDbConfigured())(
       ]);
     }, 60_000);
 
+    it("higher-voted unscoped projects by non-members do not crowd out community candidates", async () => {
+      const { c, magazine } = await issueFixture();
+      const local = await project(c.id, "local", {
+        authorId: fx.outsiderId,
+      });
+      const member = await project(null, "member", { voteCount: 2 });
+      const nonMemberIds: number[] = [];
+      for (let n = 0; n < 51; n++) {
+        const doc = await project(null, `non-member-${n}`, {
+          authorId: fx.outsiderId,
+          voteCount: 10000 + n,
+        });
+        nonMemberIds.push(Number(doc.id));
+      }
+
+      const candidates = await m.pickers.searchPickerCandidates(
+        "launchpadProject",
+        "",
+        {
+          deps: m,
+          magazineId: magazine.id,
+          community: c,
+          viewerId: fx.editorId,
+          locale: "en",
+        },
+      );
+      const projectIds = candidates.map((v) => Number(v.input.projectId));
+      expect(projectIds).toEqual(
+        expect.arrayContaining([Number(local.id), Number(member.id)]),
+      );
+      expect(projectIds.filter((id) => nonMemberIds.includes(id))).toEqual([]);
+    }, 60_000);
+
     it("an unlisted community's project stays private inside a public issue", async () => {
       const { c, magazine, actor, issue } = await issueFixture({
         listed: false,

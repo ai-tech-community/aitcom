@@ -26,6 +26,23 @@ import type {
 
 type ProjectScope = { communityId?: string | null; authorId?: string | null };
 
+export async function activeCommunityMemberIds(
+  deps: Pick<Deps, "db">,
+  community: ItemCommunity,
+  authorIds?: string[],
+): Promise<string[]> {
+  if (authorIds?.length === 0) return [];
+  const memberships = await deps.db.query.communityMemberships.findMany({
+    columns: { userId: true },
+    where: and(
+      eq(communityMemberships.communityId, community.id),
+      eq(communityMemberships.status, "active"),
+      authorIds ? inArray(communityMemberships.userId, authorIds) : undefined,
+    ),
+  });
+  return memberships.map((membership) => membership.userId);
+}
+
 /** This community's projects, or unscoped projects by its active members. */
 export async function communityProjectFilter(
   deps: Pick<Deps, "db">,
@@ -41,17 +58,9 @@ export async function communityProjectFilter(
       ),
     ),
   ];
-  const memberships = authorIds.length
-    ? await deps.db.query.communityMemberships.findMany({
-        columns: { userId: true },
-        where: and(
-          eq(communityMemberships.communityId, community.id),
-          eq(communityMemberships.status, "active"),
-          inArray(communityMemberships.userId, authorIds),
-        ),
-      })
-    : [];
-  const members = new Set(memberships.map((membership) => membership.userId));
+  const members = new Set(
+    await activeCommunityMemberIds(deps, community, authorIds),
+  );
   return (project) =>
     project.communityId != null
       ? project.communityId === community.id

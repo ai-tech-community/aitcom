@@ -299,12 +299,11 @@ describe("launchpad project item kind", () => {
 });
 
 describe("launchpad project picker", () => {
-  it("limits this community's candidates before filtering member projects and formats facts", async () => {
+  it("limits projects scoped to this community and its active members and formats facts", async () => {
     find.mockResolvedValue({
       docs: [
-        project(1, { communityId: null, authorId: "outsider" }),
         project(2, { voteCount: "120" as unknown as number }),
-        ...Array.from({ length: 13 }, (_, i) =>
+        ...Array.from({ length: PICKER_LIMIT - 1 }, (_, i) =>
           project(i + 3, {
             communityId: null,
             voteCount: null,
@@ -327,7 +326,12 @@ describe("launchpad project picker", () => {
           {
             or: [
               { communityId: { equals: "community" } },
-              { communityId: { exists: false } },
+              {
+                and: [
+                  { communityId: { exists: false } },
+                  { authorId: { in: ["member"] } },
+                ],
+              },
             ],
           },
         ],
@@ -335,7 +339,7 @@ describe("launchpad project picker", () => {
       sort: "-voteCount",
       depth: 0,
       locale: "nl",
-      limit: 50,
+      limit: PICKER_LIMIT,
     });
     expect(candidates).toHaveLength(PICKER_LIMIT);
     expect(candidates[0]).toEqual({
@@ -356,5 +360,36 @@ describe("launchpad project picker", () => {
     expect(find.mock.lastCall![0].where.and).toContainEqual({
       title: { like: "models" },
     });
+  });
+
+  it("only offers community projects when there are no active members", async () => {
+    memberships.mockResolvedValue([]);
+    find.mockResolvedValue({
+      docs: [project(1, { authorId: "outsider" })],
+    });
+
+    const candidates = await searchPickerCandidates(
+      "launchpadProject",
+      "",
+      pickerContext(),
+    );
+
+    expect(find).toHaveBeenCalledExactlyOnceWith({
+      collection: "launchpad-projects",
+      where: {
+        and: [
+          { status: { equals: "published" } },
+          { or: [{ communityId: { equals: "community" } }] },
+        ],
+      },
+      sort: "-voteCount",
+      depth: 0,
+      locale: "nl",
+      limit: PICKER_LIMIT,
+    });
+    expect(candidates.map((candidate) => candidate.reference)).toEqual([
+      "launchpadProject:1",
+    ]);
+    expect(memberships).toHaveBeenCalledTimes(1);
   });
 });
