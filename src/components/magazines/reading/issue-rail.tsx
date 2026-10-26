@@ -46,10 +46,10 @@ export function IssueRail({
       {pastIssues.length > 0 && (
         <section className="flex flex-col gap-3">
           <SectionLabel>{t("pastIssues")}</SectionLabel>
-          <ul className="grid grid-cols-3 gap-3">
+          <ul className="flex flex-col gap-4">
             {pastIssues.map((issue) => (
               <li key={issue.id} className="min-w-0">
-                <IssueCoverCard issue={issue} />
+                <IssueCoverCard issue={issue} variant="row" />
               </li>
             ))}
           </ul>
@@ -63,8 +63,8 @@ export function IssueRail({
         </section>
       )}
 
-      <section className="flex flex-col gap-3">
-        <SectionLabel>{t("share")}</SectionLabel>
+      <section className="flex flex-col items-start gap-3">
+        <SectionLabel className="self-stretch">{t("share")}</SectionLabel>
         <CopyLinkButton />
       </section>
     </div>
