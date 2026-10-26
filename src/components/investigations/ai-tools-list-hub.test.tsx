@@ -31,7 +31,8 @@ describe("AI tools hub page", () => {
   it("shows its own intro and a CollectionPage, even if the startup row exists", async () => {
     const page = render(await AiToolsListPage());
     const intro = page.container.querySelector("p.text-muted-foreground");
-    expect(intro?.textContent).toBe(AI_TOOLS_LIST_COPY.en.description);
+    expect(intro?.textContent).toBe(AI_TOOLS_LIST_COPY.en.intro);
+    expect(intro?.textContent).not.toBe(AI_TOOLS_LIST_COPY.en.description);
     expect(page.container.textContent).not.toContain("AI TOOLS LIST");
     expect(page.container.textContent).not.toContain("limitless");
     expect(page.container.textContent).not.toContain("aiai.tools");
@@ -52,6 +53,38 @@ describe("AI tools hub page", () => {
     const dutch = render(<AiToolsListHub locale="nl" />);
     expect(
       dutch.container.querySelector("p.text-muted-foreground")?.textContent,
-    ).toBe(AI_TOOLS_LIST_COPY.nl.description);
+    ).toBe(AI_TOOLS_LIST_COPY.nl.intro);
+    dutch.unmount();
+
+    const mixed = render(
+      <AiToolsListHub
+        locale="en"
+        tools={[
+          { name: "Writer", url: "https://example.com/writer" },
+          { name: "Skipped", url: "javascript:alert(1)" },
+        ]}
+      />,
+    );
+    const links = [...mixed.container.querySelectorAll("ul a")].map(
+      (anchor) => ({
+        name: anchor.textContent,
+        url: anchor.getAttribute("href"),
+      }),
+    );
+    const listed = JSON.parse(
+      mixed.container.querySelector("script[type='application/ld+json']")
+        ?.textContent ?? "{}",
+    ) as { mainEntity: { itemListElement: unknown[] } };
+    expect(links).toEqual([
+      { name: "Writer", url: "https://example.com/writer" },
+    ]);
+    expect(listed.mainEntity.itemListElement).toEqual([
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Writer",
+        url: "https://example.com/writer",
+      },
+    ]);
   });
 });
