@@ -22,6 +22,8 @@ function isLocalDbConfigured(): boolean {
 const EXPECTED_COLUMNS = [
   "magazine_issues_blocks_storyline.storyline_id",
   "magazine_issues_blocks_storyline.intro",
+  "magazine_issues_blocks_news_item.news_item_id",
+  "magazine_issues_blocks_news_item.intro",
 ];
 
 describe.skipIf(!isLocalDbConfigured())(
@@ -36,7 +38,9 @@ describe.skipIf(!isLocalDbConfigured())(
       const { rows } = await on.execute<{ key: string }>(sql`
       SELECT table_name || '.' || column_name AS key
       FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'magazine_issues_blocks_storyline'
+      WHERE table_schema = 'public' AND table_name IN (
+        'magazine_issues_blocks_storyline', 'magazine_issues_blocks_news_item'
+      )
     `);
       const have = new Set(rows.map((row) => row.key));
       return EXPECTED_COLUMNS.filter((key) => have.has(key));
@@ -69,7 +73,7 @@ describe.skipIf(!isLocalDbConfigured())(
     });
 
     it("down removes them, up restores them", async () => {
-      // Preserve any storyline blocks other DB suites have already saved.
+      // Preserve any platform blocks other DB suites have already saved.
       const rollback = new Error("rollback migration exercise");
       await expect(
         db.transaction(async (tx) => {

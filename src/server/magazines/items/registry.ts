@@ -11,6 +11,7 @@ import type {
 import { articleItemKind } from "./article/kind";
 import { editorialItemKind } from "./editorial/kind";
 import { storylineItemKind } from "./storyline/kind";
+import { newsItemKind } from "./newsItem/kind";
 import { itemIdOf } from "./item-id";
 import type {
   IssueItemKind,
@@ -29,6 +30,7 @@ const STRATEGIES = {
   article: articleItemKind,
   editorial: editorialItemKind,
   storyline: storylineItemKind,
+  newsItem: newsItemKind,
 };
 
 /** The builder input type a kind's strategy declares. */

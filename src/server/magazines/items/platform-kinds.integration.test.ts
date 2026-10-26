@@ -351,6 +351,164 @@ describe.skipIf(!isLocalDbConfigured())(
       expect(kept.items![0]!.intro).toBe("Still our pick");
     });
 
+    it("a news item loads live and becomes missing when deleted", async () => {
+      const { c, magazine, actor, issue } = await issueFixture();
+      const newsItemId = fx.newsIds[0]!;
+      const saved = await m.issues.setIssueItems(
+        m,
+        issue,
+        [{ kind: "newsItem", newsItemId, intro: "Our take" }],
+        issue.updatedAt,
+        actor,
+      );
+      const load = (access: IssueReaderAccess) =>
+        m.registry.loadIssueItemViews(
+          saved.items as Registry.StoredBlock[],
+          m.context.itemContextFor(m, {
+            magazineId: magazine.id,
+            community: c,
+            issueId: saved.id,
+            locale: "en",
+            access,
+            viewerId: access === "editor" ? fx.editorId : null,
+          }),
+        );
+      expect(await load("full")).toMatchObject([
+        {
+          kind: "newsItem",
+          intro: "Our take",
+          news: {
+            title: "Local models keep documents on the device 0",
+            source: "example.test",
+          },
+        },
+      ]);
+      const { eq } = await import("drizzle-orm");
+      await m.db
+        .update(m.schema.newsItems)
+        .set({ title: "The headline changed live" })
+        .where(eq(m.schema.newsItems.id, newsItemId));
+      expect(await load("full")).toMatchObject([
+        { news: { title: "The headline changed live" } },
+      ]);
+      await m.db
+        .delete(m.schema.newsItems)
+        .where(eq(m.schema.newsItems.id, newsItemId));
+      expect(await load("full")).toEqual([]);
+      expect(await load("editor")).toEqual([
+        {
+          kind: "newsItem",
+          itemId: saved.items![0]!.id,
+          unavailable: true,
+          reason: "missing",
+        },
+      ]);
+      const reloaded = await m.payload.findByID({
+        collection: "magazine-issues",
+        id: saved.id,
+        depth: 0,
+      });
+      expect(
+        m.registry.toItemInputs(reloaded.items as Registry.StoredBlock[]),
+      ).toMatchObject([{ kind: "newsItem", newsItemId }]);
+      const kept = await m.issues.setIssueItems(
+        m,
+        reloaded,
+        [{ kind: "newsItem", newsItemId, intro: "Still our pick" }],
+        reloaded.updatedAt,
+        actor,
+      );
+      expect(kept.items![0]!.intro).toBe("Still our pick");
+      await expect(
+        m.issues.setIssueItems(
+          m,
+          kept,
+          [{ kind: "newsItem", newsItemId: crypto.randomUUID() }],
+          kept.updatedAt,
+          actor,
+        ),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST", message: "ITEM_INVALID" });
+    });
+
+    it("the news tab finds headlines by words in the title, including % and _", async () => {
+      const { c, magazine } = await issueFixture();
+      const [literal, wildcard, underscoreWildcard, undated] = await m.db
+        .insert(m.schema.newsItems)
+        .values([
+          {
+            title: `${fx.sfx} Local AI grows 50%_today`,
+            url: `https://www.example.com/literal-${fx.sfx}`,
+            publishedAt: new Date("2026-11-01T10:00:00.000Z"),
+            createdAt: new Date("2026-11-01T09:00:00.000Z"),
+          },
+          {
+            title: `${fx.sfx} Local AI grows 500Xtoday`,
+            url: `https://example.com/wildcard-${fx.sfx}`,
+            publishedAt: new Date("2026-10-31T10:00:00.000Z"),
+            createdAt: new Date("2026-11-02T09:00:00.000Z"),
+          },
+          {
+            title: `${fx.sfx} Local AI grows 50%Xtoday`,
+            url: `https://example.com/underscore-${fx.sfx}`,
+            publishedAt: new Date("2026-10-31T10:00:00.000Z"),
+            createdAt: new Date("2026-11-01T09:00:00.000Z"),
+          },
+          {
+            title: `${fx.sfx} Local AI without a date`,
+            url: `https://example.com/undated-${fx.sfx}`,
+            publishedAt: null,
+            createdAt: new Date("2026-11-03T09:00:00.000Z"),
+          },
+        ])
+        .returning();
+      fx.newsIds.push(
+        literal!.id,
+        wildcard!.id,
+        underscoreWildcard!.id,
+        undated!.id,
+      );
+      const ctx = {
+        deps: m,
+        magazineId: magazine.id,
+        community: c,
+        viewerId: fx.editorId,
+        locale: "en" as const,
+      };
+      const candidates = await m.pickers.searchPickerCandidates(
+        "newsItem",
+        `${fx.sfx} local ai`,
+        ctx,
+      );
+      expect(candidates.map((candidate) => candidate.input.newsItemId)).toEqual(
+        [literal!.id, wildcard!.id, underscoreWildcard!.id, undated!.id],
+      );
+      expect(candidates[0]).toMatchObject({
+        reference: `newsItem:${literal!.id}`,
+        facts: [
+          { type: "source", host: "example.com" },
+          { type: "date", label: "published", at: "2026-11-01T10:00:00.000Z" },
+        ],
+        openHref: null,
+      });
+      for (const [query, expectedIds] of [
+        [`${fx.sfx} Local AI grows 50%`, [literal!.id, underscoreWildcard!.id]],
+        [`${fx.sfx} Local AI grows 50%_today`, [literal!.id]],
+      ] as const) {
+        expect(
+          (await m.pickers.searchPickerCandidates("newsItem", query, ctx)).map(
+            (candidate) => candidate.input.newsItemId,
+          ),
+        ).toEqual(expectedIds);
+      }
+      expect(
+        await m.pickers.searchPickerCandidates(
+          "newsItem",
+          `${fx.sfx} title not present`,
+          ctx,
+        ),
+      ).toEqual([]);
+    });
+
     it("the stories tab searches public stories only", async () => {
       const { c, magazine } = await issueFixture();
       await story("draft", "draft");

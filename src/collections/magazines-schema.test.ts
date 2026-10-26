@@ -86,6 +86,7 @@ describe("magazine-issues collection", () => {
       "article",
       "editorial",
       "storyline",
+      "newsItem",
     ]);
     for (const block of items.blocks!) {
       expect(block.fields[0]?.name).toBe("intro");
@@ -141,7 +142,7 @@ describe("magazines migration", () => {
 });
 
 describe("magazine platform items migration", () => {
-  it("ships an idempotent storyline block migration registered after magazines", () => {
+  it("ships idempotent platform block migrations registered after magazines", () => {
     const source = readFileSync(
       join(
         process.cwd(),
@@ -151,6 +152,9 @@ describe("magazine platform items migration", () => {
     );
     expect(source).toContain(
       'CREATE TABLE IF NOT EXISTS "magazine_issues_blocks_storyline"',
+    );
+    expect(source).toContain(
+      'CREATE TABLE IF NOT EXISTS "magazine_issues_blocks_news_item"',
     );
     const index = readFileSync(
       join(process.cwd(), "src/migrations/index.ts"),

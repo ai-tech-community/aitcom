@@ -4,6 +4,7 @@ import type { EditorItemView, ItemKindId } from "@/lib/magazines/item-views";
 
 import type { BuilderItem } from "../items-model";
 import { storylineBuilderKind } from "./storyline";
+import { newsItemBuilderKind } from "./news-item";
 import { articleBuilderKind } from "./article";
 import { editorialBuilderKind } from "./editorial";
 import type {
@@ -26,6 +27,7 @@ export const BUILDER_ITEM_KINDS: { [K in ItemKindId]: BuilderItemKind<K> } = {
   article: articleBuilderKind,
   editorial: editorialBuilderKind,
   storyline: storylineBuilderKind,
+  newsItem: newsItemBuilderKind,
 };
 
 /**
@@ -35,6 +37,7 @@ export const BUILDER_ITEM_KINDS: { [K in ItemKindId]: BuilderItemKind<K> } = {
 export const ADD_TAB_ORDER: readonly ItemKindId[] = [
   "article",
   "storyline",
+  "newsItem",
   "editorial",
 ];
 

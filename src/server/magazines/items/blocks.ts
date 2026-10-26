@@ -3,6 +3,7 @@ import type { Block } from "payload";
 import { articleItemBlock } from "./article/block";
 import { editorialItemBlock } from "./editorial/block";
 import { storylineItemBlock } from "./storyline/block";
+import { newsItemBlock } from "./newsItem/block";
 
 /**
  * The `items` blocks of the `magazine-issues` collection, one per item kind
@@ -14,4 +15,5 @@ export const ISSUE_ITEM_BLOCKS: Block[] = [
   articleItemBlock,
   editorialItemBlock,
   storylineItemBlock,
+  newsItemBlock,
 ];

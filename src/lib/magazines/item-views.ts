@@ -44,11 +44,26 @@ export type StorylineItemView = {
   };
 };
 
+/** An AIT News headline, read live from its source. */
+export type NewsItemView = {
+  kind: "newsItem";
+  itemId: string;
+  intro: string | null;
+  news: {
+    url: string | null;
+    title: string;
+    source: string | null;
+    publishedAt: string | null;
+    summary: string;
+  };
+};
+
 /** What a reader sees for one issue item, by kind. */
 export type IssueItemView =
   | ArticleItemView
   | EditorialItemView
-  | StorylineItemView;
+  | StorylineItemView
+  | NewsItemView;
 
 /** The item kinds; each has one strategy, one block and one renderer. */
 export type ItemKindId = IssueItemView["kind"];

@@ -16,6 +16,7 @@ vi.mock("@/i18n/navigation", () => ({
 import {
   articleView,
   editorialView,
+  newsItemView,
   storylineView,
   unavailableView,
 } from "../test-fixtures";
@@ -30,6 +31,7 @@ describe("issue item registry", () => {
     expect(Object.keys(ITEM_RENDERERS).sort()).toEqual([
       "article",
       "editorial",
+      "newsItem",
       "storyline",
     ]);
 
@@ -113,6 +115,76 @@ describe("issue item registry", () => {
     expect(
       screen.getByRole("link", { name: "Lees het verhaal" }),
     ).toHaveAttribute("href", "/news/stories/story-1");
+  });
+
+  it("renders a headline with its source, date and accessible external link", () => {
+    const { container } = renderWithIntl(
+      <IssueItem
+        view={{ ...newsItemView(), intro: "Our take" }}
+        lead={true}
+        href={href}
+      />,
+    );
+    expect(screen.getByText("From AIT News")).toBeInTheDocument();
+    const link = screen.getByRole("link", {
+      name: "Headline 1 (opens in a new tab)",
+    });
+    expect(link).toHaveAttribute("href", "https://www.example.com/news-1");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByText("(opens in a new tab)")).toHaveClass("sr-only");
+    expect(screen.getByText("example.com · 01 Nov 2026")).toHaveClass(
+      "font-mono",
+    );
+    expect(screen.getByText("Our take")).toBeInTheDocument();
+    expect(screen.getByText("Summary of headline 1.")).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-item-kind="newsItem"]'),
+    ).not.toBeNull();
+  });
+
+  it("shows a plain headline without a web URL and leaves summaries out of compact cards", () => {
+    renderWithIntl(
+      <IssueItem
+        view={newsItemView(1, { url: null, source: null, publishedAt: null })}
+        lead={false}
+        href={href}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Headline 1" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.queryByText("Summary of headline 1.")).toBeNull();
+    expect(screen.queryByText("·", { exact: false })).toBeNull();
+  });
+
+  it("renders a single news fact without a stray separator", () => {
+    renderWithIntl(
+      <IssueItem
+        view={newsItemView(1, { publishedAt: null })}
+        lead={false}
+        href={href}
+      />,
+    );
+    expect(screen.getByText("example.com", { exact: true })).toHaveClass(
+      "font-mono",
+    );
+  });
+
+  it("announces the news link in everyday Dutch", () => {
+    render(
+      <NextIntlClientProvider locale="nl" messages={nl} timeZone="UTC">
+        <IssueItem view={newsItemView()} lead={false} href={href} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("Uit AIT News")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: "Headline 1 (opent in een nieuw tabblad)",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("example.com · 01 nov 2026")).toBeInTheDocument();
   });
 
   it("shows editors a 'No longer available' marker and renders nothing else for it", () => {

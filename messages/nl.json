@@ -4799,7 +4799,9 @@
       "storylineKind": "Uit AIT News",
       "sources": "{count, plural, one {# bron} other {# bronnen}}",
       "updated": "Bijgewerkt op {date}",
-      "readStory": "Lees het verhaal"
+      "readStory": "Lees het verhaal",
+      "newsKind": "Uit AIT News",
+      "opensInNewTab": "(opent in een nieuw tabblad)"
     },
     "rail": {
       "visitCommunity": "Bezoek {community}",
@@ -4994,7 +4996,8 @@
           "dropped": "{title} neergezet op plek {position} van {total}.",
           "cancelled": "Verplaatsen geannuleerd. {title} staat weer op zijn plek."
         },
-        "storyline": "Verhaal"
+        "storyline": "Verhaal",
+        "newsItem": "Nieuws"
       },
       "editorial": {
         "heading": "Kop (optioneel)",
@@ -5007,19 +5010,23 @@
         "tabs": {
           "article": "Artikelen",
           "editorial": "Tekst",
-          "storyline": "Verhalen"
+          "storyline": "Verhalen",
+          "newsItem": "Nieuws"
         },
         "search": {
           "article": "Zoek artikelen die klaar zijn",
-          "storyline": "Zoek verhalen uit AIT News"
+          "storyline": "Zoek verhalen uit AIT News",
+          "newsItem": "Zoek nieuwsberichten"
         },
         "empty": {
           "article": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
-          "storyline": "Geen verhalen gevonden."
+          "storyline": "Geen verhalen gevonden.",
+          "newsItem": "Geen nieuwsberichten gevonden."
         },
         "hint": {
           "article": "Alleen artikelen die klaar zijn voor een nummer en niet al in een ander nummer staan, verschijnen hier.",
-          "storyline": "Verhalen worden bijgewerkt: lezers zien altijd de nieuwste versie."
+          "storyline": "Verhalen worden bijgewerkt: lezers zien altijd de nieuwste versie.",
+          "newsItem": "Nieuwsberichten linken naar het oorspronkelijke artikel."
         },
         "noMatch": "Niets gevonden voor “{query}”.",
         "add": "Toevoegen",

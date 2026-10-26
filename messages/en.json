@@ -4799,7 +4799,9 @@
       "storylineKind": "From AIT News",
       "sources": "{count, plural, one {# source} other {# sources}}",
       "updated": "Updated {date}",
-      "readStory": "Read the story"
+      "readStory": "Read the story",
+      "newsKind": "From AIT News",
+      "opensInNewTab": "(opens in a new tab)"
     },
     "rail": {
       "visitCommunity": "Visit {community}",
@@ -4994,7 +4996,8 @@
           "dropped": "{title} dropped at position {position} of {total}.",
           "cancelled": "Reordering cancelled. {title} is back where it was."
         },
-        "storyline": "Story"
+        "storyline": "Story",
+        "newsItem": "News"
       },
       "editorial": {
         "heading": "Heading (optional)",
@@ -5007,19 +5010,23 @@
         "tabs": {
           "article": "Articles",
           "editorial": "Text",
-          "storyline": "Stories"
+          "storyline": "Stories",
+          "newsItem": "News"
         },
         "search": {
           "article": "Search ready articles",
-          "storyline": "Search AIT News stories"
+          "storyline": "Search AIT News stories",
+          "newsItem": "Search news headlines"
         },
         "empty": {
           "article": "No articles are ready. Articles marked ready for an issue show up here.",
-          "storyline": "No stories found."
+          "storyline": "No stories found.",
+          "newsItem": "No headlines found."
         },
         "hint": {
           "article": "Only articles marked ready and not in another issue show here.",
-          "storyline": "Stories stay live: readers always see the newest version."
+          "storyline": "Stories stay live: readers always see the newest version.",
+          "newsItem": "Headlines link to the original article."
         },
         "noMatch": "Nothing matches “{query}”.",
         "add": "Add",

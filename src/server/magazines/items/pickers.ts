@@ -1,6 +1,7 @@
 import type { PickableKindId } from "@/lib/magazines/picker";
 
 import { storylinePicker } from "./storyline/picker";
+import { newsItemPicker } from "./newsItem/picker";
 import { articlePicker } from "./article/picker";
 import { ITEM_KINDS, type InputOf } from "./registry";
 import type {
@@ -15,6 +16,7 @@ export const ITEM_PICKERS: {
 } = {
   article: articlePicker,
   storyline: storylinePicker,
+  newsItem: newsItemPicker,
 };
 
 /** Search one source and attach the kind strategy's content identity. */

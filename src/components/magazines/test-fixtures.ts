@@ -5,6 +5,7 @@
 import type {
   ArticleItemView,
   EditorialItemView,
+  NewsItemView,
   StorylineItemView,
   UnavailableItem,
 } from "@/lib/magazines/item-views";
@@ -54,6 +55,26 @@ export function storylineView(
       overview: `Overview of story ${n}.`,
       sourceCount: 14,
       updatedAt: "2026-10-24T10:00:00.000Z",
+      ...overrides,
+    },
+  };
+}
+
+/** A live headline with the shared absolute date format. */
+export function newsItemView(
+  n = 1,
+  overrides: Partial<NewsItemView["news"]> = {},
+): NewsItemView {
+  return {
+    kind: "newsItem",
+    itemId: `news-${n}`,
+    intro: null,
+    news: {
+      url: `https://www.example.com/news-${n}`,
+      title: `Headline ${n}`,
+      source: "example.com",
+      publishedAt: "2026-11-01T10:00:00.000Z",
+      summary: `Summary of headline ${n}.`,
       ...overrides,
     },
   };
