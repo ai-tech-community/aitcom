@@ -144,7 +144,7 @@ export function LivePreview({
             )}
             {waiting && (
               <p className="text-muted-foreground text-sm">
-                {t("unsavedArticles")}
+                {t("unsavedItems")}
               </p>
             )}
           </div>

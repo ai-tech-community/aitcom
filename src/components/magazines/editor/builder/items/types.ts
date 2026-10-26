@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { EditorItemView, ItemKindId } from "@/lib/magazines/item-views";
+import type { IssueItemInput } from "@/server/magazines/items/registry";
 
 import type { BuilderItem } from "../items-model";
 
@@ -10,12 +11,26 @@ export type BuilderItemOf<K extends ItemKindId> = Extract<
   { kind: K }
 >;
 
-/** Messages under `magazineEditor.builder.items` a kind names itself with. */
-export type BuilderItemsMessage =
-  | "article"
-  | "editorial"
-  | "editorialEmpty"
-  | "openArticle";
+/**
+ * Was a closed union ("article" | "editorial" | …); now every kind id is a
+ * label key by construction, so Tasks 4–8 need no edit here — each adds
+ * `magazineEditor.builder.items.<kind>` in its copy step.
+ */
+export type BuilderItemsMessage = ItemKindId | "editorialEmpty" | "openArticle";
+
+/** What "Add more" knows about the content it just put in the issue. */
+export type AddedContent = {
+  title: string | null;
+  openHref: string | null;
+};
+
+/** What every kind's "Add more" panel receives. */
+export type AddPanelProps = {
+  communitySlug: string;
+  /** What the issue already references (`builderReferenceKey`). */
+  referencesInIssue: ReadonlySet<string>;
+  onAdd: (input: IssueItemInput, added: AddedContent) => void;
+};
 
 /** What a kind may use to name its row. */
 export type BuilderRowContext = {
@@ -26,11 +41,10 @@ export type BuilderRowContext = {
   t: (key: BuilderItemsMessage) => string;
 };
 
-/** What a kind's own editor panel gets (an editorial block's text). */
+/** What a kind's own editor gets. The details panel owns Done. */
 export type BuilderItemEditorProps<K extends ItemKindId> = {
   item: BuilderItemOf<K>;
   onChange: (patch: Partial<Omit<BuilderItemOf<K>, "kind" | "key">>) => void;
-  onDone: () => void;
 };
 
 /**
@@ -66,4 +80,6 @@ export interface BuilderItemKind<K extends ItemKindId> {
   referenceKey?(item: BuilderItemOf<K>): string;
   /** The ⋯ menu label for opening the referenced content in its editor. */
   readonly openLabelKey?: BuilderItemsMessage;
+  /** The "Add more" panel for this kind. */
+  readonly AddPanel: ComponentType<AddPanelProps>;
 }

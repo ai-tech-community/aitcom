@@ -26,6 +26,12 @@ export const BUILDER_ITEM_KINDS: { [K in ItemKindId]: BuilderItemKind<K> } = {
   editorial: editorialBuilderKind,
 };
 
+/**
+ * The "Add more" tabs, one per kind. Each later kind inserts its id here.
+ * A permutation of `BUILDER_ITEM_KINDS`: a kind without a tab is a test failure.
+ */
+export const ADD_TAB_ORDER: readonly ItemKindId[] = ["article", "editorial"];
+
 function kindOf<K extends ItemKindId>(
   item: BuilderItemOf<K>,
 ): BuilderItemKind<K> {

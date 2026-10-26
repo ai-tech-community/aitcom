@@ -335,6 +335,7 @@ export const magazinesRouter = createTRPCRouter({
         : [],
     ),
 
+  // Serves the editor desk's ready list; the issue builder uses pickerCandidates.
   availableArticles: editorProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) =>

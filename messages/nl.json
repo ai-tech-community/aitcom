@@ -4960,7 +4960,10 @@
         "visibility": "Wie dit nummer kan lezen",
         "visibilityMembers": "Alleen leden",
         "visibilityPublic": "Iedereen",
-        "optInPending": "Vink het vakje aan om deze keuze op te slaan."
+        "optInPending": "Vink het vakje aan om deze keuze op te slaan.",
+        "intro": "Introregel (optioneel)",
+        "introHelp": "Eén regel die boven dit onderdeel in het nummer staat.",
+        "done": "Klaar"
       },
       "items": {
         "label": "In dit nummer",
@@ -4988,25 +4991,45 @@
         }
       },
       "editorial": {
-        "label": "Tekstgedeelte",
         "heading": "Kop (optioneel)",
         "body": "Tekst",
-        "bodyPlaceholder": "Schrijf een inleiding, een opening van een rubriek of een korte column…",
-        "done": "Klaar"
+        "bodyPlaceholder": "Schrijf een inleiding, een opening van een rubriek of een korte column…"
       },
       "add": {
         "label": "Meer toevoegen",
         "kind": "Wat wil je toevoegen",
-        "articles": "Artikelen",
-        "editorial": "Tekstgedeelte",
-        "articlesEmpty": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
+        "tabs": {
+          "article": "Artikelen",
+          "editorial": "Tekst"
+        },
+        "search": {
+          "article": "Zoek artikelen die klaar zijn"
+        },
+        "empty": {
+          "article": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier."
+        },
+        "hint": {
+          "article": "Alleen artikelen die klaar zijn voor een nummer en niet al in een ander nummer staan, verschijnen hier."
+        },
+        "noMatch": "Niets gevonden voor “{query}”.",
         "add": "Toevoegen",
-        "addArticle": "{title} aan het nummer toevoegen",
-        "byAuthor": "Door {name}",
+        "addItem": "{title} aan het nummer toevoegen",
         "editorialHint": "Je eigen tekst: een inleiding, een opening voor een deel van het nummer of een korte column.",
         "addEditorial": "Tekstgedeelte toevoegen",
-        "loadFailed": "De artikelen die klaar zijn konden niet worden geladen.",
-        "tryAgain": "Probeer opnieuw"
+        "loadFailed": "Deze lijst kon niet worden geladen.",
+        "tryAgain": "Probeer opnieuw",
+        "facts": {
+          "byline": "Door {name}",
+          "updated": "Bijgewerkt op {date}",
+          "published": "{date}",
+          "starts": "{date}",
+          "lastActive": "Laatste reactie {date}",
+          "sources": "{count, plural, one {# bron} other {# bronnen}}",
+          "replies": "{count, plural, one {# reactie} other {# reacties}}",
+          "upvotes": "{count, plural, one {# stem} other {# stemmen}}",
+          "cancelled": "Geannuleerd",
+          "completed": "Vond plaats"
+        }
       },
       "preview": {
         "label": "Voorbeeld",
@@ -5016,7 +5039,7 @@
         "visitor": "Bezoeker",
         "visitorNothingTitle": "Bezoekers zien niets",
         "visitorNothing": "Dit nummer is alleen voor leden. Mensen buiten je community kunnen het niet openen.",
-        "unsavedArticles": "Artikelen die je net hebt toegevoegd verschijnen hier zodra ze zijn opgeslagen.",
+        "unsavedItems": "Wat je net hebt toegevoegd, verschijnt hier zodra het is opgeslagen.",
         "empty": "Voeg een artikel of een tekstgedeelte toe om het nummer hier te zien.",
         "untitled": "Nummer zonder titel"
       },

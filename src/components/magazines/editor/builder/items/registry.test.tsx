@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/i18n/navigation", () => ({ Link: () => null }));
+vi.mock("@/trpc/react", () => ({ api: {} }));
 
 import { ITEM_KINDS } from "@/server/magazines/items/registry";
 
 import { ITEM_RENDERERS } from "../../../items/registry";
 import type { BuilderItem } from "../items-model";
 import {
+  ADD_TAB_ORDER,
   BUILDER_ITEM_KINDS,
   builderKindLabelKey,
   builderPreviewView,
@@ -38,6 +40,12 @@ describe("builder item registry", () => {
     const kinds = Object.keys(BUILDER_ITEM_KINDS).sort();
     expect(kinds).toEqual(Object.keys(ITEM_KINDS).sort());
     expect(kinds).toEqual(Object.keys(ITEM_RENDERERS).sort());
+  });
+
+  it("offers one add tab per kind", () => {
+    expect([...ADD_TAB_ORDER].sort()).toEqual(
+      Object.keys(BUILDER_ITEM_KINDS).sort(),
+    );
   });
 
   it("names each kind by its own label, never a fallback", () => {

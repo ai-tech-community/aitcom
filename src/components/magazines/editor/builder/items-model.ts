@@ -81,11 +81,6 @@ export function addItem(
   return [...items, added];
 }
 
-/** An empty editorial block at the end of the issue, for the editor to fill. */
-export function addEditorial(items: BuilderItem[]): BuilderItem[] {
-  return addItem(items, { kind: "editorial", body: null });
-}
-
 /**
  * Whether the server would accept the item as it is (its kind's rule).
  * Unsavable items stay in the builder, out of each save, until they are
