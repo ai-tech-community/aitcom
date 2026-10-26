@@ -336,23 +336,11 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
   }
 
   async function profileArticles() {
-    // The test DB's events status enum lacks "completed" (it was built from
-    // older code), so the profile's events read fails there. Events are not
-    // under test: answer that one read empty, keep every other read real.
-    const payload = {
-      find: ((args: { collection: string }) =>
-        args.collection === "events"
-          ? Promise.resolve({ docs: [], totalDocs: 0 })
-          : m.payload.find(args as never)) as PayloadClient["find"],
-    };
-    const work = await m.loadProfileWork(
-      { db: m.db, payload },
-      {
-        userId: fx.editorId,
-        viewerId: null,
-        locale: "en",
-      },
-    );
+    const work = await m.loadProfileWork(m, {
+      userId: fx.editorId,
+      viewerId: null,
+      locale: "en",
+    });
     return work.articles.items;
   }
 

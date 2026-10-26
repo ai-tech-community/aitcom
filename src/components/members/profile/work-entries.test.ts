@@ -14,7 +14,6 @@ const work: ProfileWork = {
       {
         id: 1,
         title: "A",
-        slug: "a",
         href: "/magazines/weekly/issue-1/a",
         publishedAt: "2026-03-01T00:00:00Z",
       },
@@ -114,9 +113,7 @@ describe("recentWork", () => {
     const undated: ProfileWork = {
       ...work,
       articles: {
-        items: [
-          { id: 9, title: "U", slug: "u", href: "/blog/u", publishedAt: null },
-        ],
+        items: [{ id: 9, title: "U", href: "/blog/u", publishedAt: null }],
         hasMore: false,
       },
       projects: empty,

@@ -50,7 +50,6 @@ export interface WorkList<T> {
 export interface ProfileWorkArticle {
   id: number;
   title: string;
-  slug: string;
   /** Locale-less: the blog page, or the magazine page under its issue. */
   href: string;
   publishedAt: string | null;
@@ -478,7 +477,6 @@ export async function loadProfileWork(
               {
                 id: article.id,
                 title: article.title,
-                slug: article.slug,
                 href,
                 publishedAt: article.publishedAt ?? null,
               },
