@@ -26,12 +26,19 @@ function formatDate(dateStr: string): string {
   return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
+/**
+ * The blog article at `slug`, only when the blog's one read rule
+ * (`publicArticleWhere`) lets the public read it. Metadata, the page and
+ * every other read on this route use this lookup, so none of them can see
+ * an article the blog does not show (a magazine article, a member's
+ * article still in review).
+ */
 const getArticleBySlug = cache(async (slug: string, locale: string) => {
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
     collection: "articles",
     where: {
-      and: [{ slug: { equals: slug } }, { status: { equals: "published" } }],
+      and: [{ slug: { equals: slug } }, publicArticleWhere()],
     },
     locale: locale as "en" | "nl",
     limit: 1,
@@ -77,6 +84,7 @@ export default async function ArticleDetailPage({
 
   const article = await getArticleBySlug(slug, locale);
   if (!article) return notFound();
+  // The lookup already applies the rule; this guards a future edit of it.
   if (!isPublicArticle(article)) return notFound();
 
   const typeLabels: Record<string, string> = {
