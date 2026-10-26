@@ -9,7 +9,8 @@
  * row is still missing one. That migration is already recorded on
  * production, so `20261019a` writes the five November points with the same
  * null guard. `20261021a` writes the next ten the same way. `20261022a`
- * writes the next seven the same way. A fresh database
+ * writes the next seven the same way. `20261026b` writes the next five
+ * the same way. A fresh database
  * inserts those rows in `20260925a`, before `20261013b`, and the later write
  * leaves the stored points alone.
  */
@@ -234,6 +235,32 @@ export const EVENT_COORDINATE_BACKFILL: readonly EventCoordinate[] = [
     slug: "the-ai-summit-new-york-2026",
     latitude: 40.7583595,
     longitude: -74.0022114,
+  },
+  {
+    slug: "big-data-ai-world-madrid-2026",
+    latitude: 40.4663707,
+    longitude: -3.617214,
+  },
+  {
+    // Nominatim for 100 Stockton Street. The room name is not a separate point.
+    slug: "data-outpost-2026",
+    latitude: 37.7869895,
+    longitude: -122.406369,
+  },
+  {
+    slug: "adopt-ai-2026",
+    latitude: 48.8661614,
+    longitude: 2.3122229,
+  },
+  {
+    slug: "ai-coding-summit-berlin-2026",
+    latitude: 52.5172459,
+    longitude: 13.45001,
+  },
+  {
+    slug: "chatbot-summit-berlin-2027",
+    latitude: 52.5103653,
+    longitude: 13.3753306,
   },
 ];
 
