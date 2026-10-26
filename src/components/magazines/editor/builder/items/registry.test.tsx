@@ -5,7 +5,7 @@ vi.mock("@/trpc/react", () => ({ api: {} }));
 
 import { ITEM_KINDS } from "@/server/magazines/items/registry";
 
-import { newsItemView, storylineView } from "../../../test-fixtures";
+import { eventView, newsItemView, storylineView } from "../../../test-fixtures";
 import { ITEM_RENDERERS } from "../../../items/registry";
 import type { BuilderItem } from "../items-model";
 import {
@@ -59,6 +59,7 @@ describe("builder item registry", () => {
       "article",
       "storyline",
       "newsItem",
+      "event",
       "editorial",
     ]);
     const item: BuilderItem = {
@@ -135,4 +136,29 @@ describe("builder item registry", () => {
     expect(hasBuilderItemEditor(article)).toBe(false);
     expect(hasBuilderItemEditor(editorial)).toBe(true);
   });
+});
+
+it("adds events after news and follows the saved event and edited intro", () => {
+  const item: BuilderItem = {
+    kind: "event",
+    key: "event",
+    eventId: 7,
+    intro: "Join us",
+  };
+  const saved = eventView();
+  expect(ADD_TAB_ORDER.indexOf("event")).toBe(
+    ADD_TAB_ORDER.indexOf("newsItem") + 1,
+  );
+  expect(builderKindLabelKey(item)).toBe("event");
+  expect(builderReferenceKey(item)).toBe("event:7");
+  expect(builderRowTitle(item, { saved, titleHint: "Old title", t })).toBe(
+    "Event 1",
+  );
+  expect(builderPreviewView(item, saved)).toEqual({
+    ...saved,
+    itemId: "event",
+    intro: "Join us",
+  });
+  expect(isSavableBuilderItem(item)).toBe(true);
+  expect(hasBuilderItemEditor(item)).toBe(false);
 });

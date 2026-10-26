@@ -7,7 +7,11 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUnsavedChangesGuard } from "@/components/use-autosave";
 import { createVersionedWriter } from "@/components/versioned-writer";
-import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
+import {
+  isMembersOnlyView,
+  type EditorItemView,
+  type ItemProblem,
+} from "@/lib/magazines/item-views";
 import { issuePath, magazineArticleEditPath } from "@/lib/magazines/paths";
 import {
   type IssueVisibility,
@@ -457,6 +461,7 @@ function IssueWorkspace({
       }),
       kindLabel: tItems(builderKindLabelKey(item)),
       unavailable: view !== undefined && "unavailable" in view,
+      membersOnly: view !== undefined && isMembersOnlyView(view),
       problem,
       highlighted,
       selected: editingKey === item.key,

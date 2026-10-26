@@ -58,12 +58,30 @@ export type NewsItemView = {
   };
 };
 
+/** A community event, read live for the current viewer. */
+export type EventItemView = {
+  kind: "event";
+  itemId: string;
+  intro: string | null;
+  membersOnly: boolean;
+  event: {
+    slug: string;
+    title: string;
+    date: string;
+    endDate: string | null;
+    city: string | null;
+    online: boolean;
+    status: "published" | "cancelled" | "completed";
+  };
+};
+
 /** What a reader sees for one issue item, by kind. */
 export type IssueItemView =
   | ArticleItemView
   | EditorialItemView
   | StorylineItemView
-  | NewsItemView;
+  | NewsItemView
+  | EventItemView;
 
 /** The item kinds; each has one strategy, one block and one renderer. */
 export type ItemKindId = IssueItemView["kind"];
@@ -77,7 +95,12 @@ export type UnavailableItem = {
   kind: ItemKindId;
   itemId: string;
   unavailable: true;
-  reason: "missing" | "not_ready" | "other_magazine" | "unpublished";
+  reason:
+    | "missing"
+    | "not_ready"
+    | "other_magazine"
+    | "unpublished"
+    | "no_access";
 };
 
 /** What an editor sees for one issue item. */
@@ -93,3 +116,8 @@ export type ItemProblem = {
   code: "ITEM_INVALID" | "ARTICLE_PLACED" | "ARTICLE_NOT_READY";
   detail?: string;
 };
+
+/** Audience flag shared by community-scoped kinds and editor previews. */
+export function isMembersOnlyView(view: EditorItemView): boolean {
+  return "membersOnly" in view && view.membersOnly;
+}

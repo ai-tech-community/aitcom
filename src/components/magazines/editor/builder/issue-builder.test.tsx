@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
 import type { MagazineIssue } from "@/payload-types";
 
+import { eventView } from "../../test-fixtures";
 import { renderWithIntl } from "../../test-intl";
 
 const T0 = "2026-10-20T10:00:00.000Z";
@@ -810,6 +811,26 @@ describe("IssueBuilder", () => {
       "href",
       "/communities/night-owls/magazine/articles/story-21/edit",
     );
+  });
+
+  it("flags members-only events in the row and leaves them out of Visitor preview", () => {
+    trpc.editing = twoArticles({
+      issue: issue({ visibility: "public" }),
+      items: [{ ...eventView(), itemId: "blk-event", membersOnly: true }],
+      storedItems: [{ kind: "event", id: "blk-event", eventId: 7 }],
+    });
+    renderBuilder();
+    expect(
+      screen.getByText("Only members see this", { exact: false }),
+    ).toBeVisible();
+    const preview = screen.getByTestId("issue-preview");
+    expect(
+      within(preview).getByRole("link", { name: "Event 1", hidden: true }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));
+    expect(within(preview).queryByText("Event 1")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Member" }));
+    expect(within(preview).getByText("Event 1")).toBeInTheDocument();
   });
 
   it("previews and publishes for who can really read it after a community became unlisted", async () => {

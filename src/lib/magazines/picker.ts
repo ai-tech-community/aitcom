@@ -4,6 +4,7 @@ export const PICKABLE_ITEM_KINDS = [
   "article",
   "storyline",
   "newsItem",
+  "event",
 ] as const satisfies readonly ItemKindId[];
 
 export type PickableKindId = (typeof PICKABLE_ITEM_KINDS)[number];

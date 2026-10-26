@@ -8,6 +8,7 @@ import type {
 } from "@/lib/magazines/item-views";
 
 import { StorylineItem, storylineItemTitle } from "./storyline-item";
+import { EventItem, eventItemTitle } from "./event-item";
 import { NewsItemCard, newsItemTitle } from "./news-item";
 import { ArticleItem, articleItemTitle } from "./article-item";
 import { EditorialItem, editorialItemTitle } from "./editorial-item";
@@ -32,6 +33,7 @@ export const ITEM_RENDERERS: {
   editorial: EditorialItem,
   storyline: StorylineItem,
   newsItem: NewsItemCard,
+  event: EventItem,
 };
 
 /** Each kind's title for the issue's contents list. */
@@ -40,6 +42,7 @@ const ITEM_TITLES: { [K in ItemKindId]: ItemTitle<K> } = {
   editorial: editorialItemTitle,
   storyline: storylineItemTitle,
   newsItem: newsItemTitle,
+  event: eventItemTitle,
 };
 
 export function isUnavailableItem(

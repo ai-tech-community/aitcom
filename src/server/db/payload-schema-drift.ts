@@ -22,6 +22,7 @@ export const GUARDED_PAYLOAD_TABLES = [
   "magazine_issues_blocks_editorial",
   "magazine_issues_blocks_storyline",
   "magazine_issues_blocks_news_item",
+  "magazine_issues_blocks_event",
 ];
 
 /** "table.column" for each expected column the database does not have. */

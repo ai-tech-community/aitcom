@@ -4793,7 +4793,8 @@
         "missing": "This item was deleted. Remove it from the issue.",
         "not_ready": "Readers cannot see this item yet.",
         "other_magazine": "This article belongs to another magazine. Remove it from the issue.",
-        "unpublished": "This was taken offline. Readers skip it until it is back."
+        "unpublished": "This was taken offline. Readers skip it until it is back.",
+        "no_access": "This is private to its community. Only people who can open it see it."
       },
       "editorsOnly": "Only editors see this.",
       "storylineKind": "From AIT News",
@@ -4801,7 +4802,11 @@
       "updated": "Updated {date}",
       "readStory": "Read the story",
       "newsKind": "From AIT News",
-      "opensInNewTab": "(opens in a new tab)"
+      "opensInNewTab": "(opens in a new tab)",
+      "eventKind": "Event",
+      "online": "Online",
+      "cancelled": "Cancelled",
+      "completed": "Took place"
     },
     "rail": {
       "visitCommunity": "Visit {community}",
@@ -4997,7 +5002,9 @@
           "cancelled": "Reordering cancelled. {title} is back where it was."
         },
         "storyline": "Story",
-        "newsItem": "News"
+        "newsItem": "News",
+        "event": "Event",
+        "membersOnly": "Only members see this"
       },
       "editorial": {
         "heading": "Heading (optional)",
@@ -5011,22 +5018,26 @@
           "article": "Articles",
           "editorial": "Text",
           "storyline": "Stories",
-          "newsItem": "News"
+          "newsItem": "News",
+          "event": "Events"
         },
         "search": {
           "article": "Search ready articles",
           "storyline": "Search AIT News stories",
-          "newsItem": "Search news headlines"
+          "newsItem": "Search news headlines",
+          "event": "Search your community's events"
         },
         "empty": {
           "article": "No articles are ready. Articles marked ready for an issue show up here.",
           "storyline": "No stories found.",
-          "newsItem": "No headlines found."
+          "newsItem": "No headlines found.",
+          "event": "Your community has no events yet."
         },
         "hint": {
           "article": "Only articles marked ready and not in another issue show here.",
           "storyline": "Stories stay live: readers always see the newest version.",
-          "newsItem": "Headlines link to the original article."
+          "newsItem": "Headlines link to the original article.",
+          "event": "Events of your community. Readers see the latest details."
         },
         "noMatch": "Nothing matches “{query}”.",
         "add": "Add",

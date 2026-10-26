@@ -4793,7 +4793,8 @@
         "missing": "Dit onderdeel is verwijderd. Haal het uit het nummer.",
         "not_ready": "Lezers kunnen dit onderdeel nog niet zien.",
         "other_magazine": "Dit artikel hoort bij een ander magazine. Haal het uit het nummer.",
-        "unpublished": "Dit is offline gehaald. Lezers slaan het over tot het weer online staat."
+        "unpublished": "Dit is offline gehaald. Lezers slaan het over tot het weer online staat.",
+        "no_access": "Dit is alleen voor de community. Alleen mensen met toegang zien het."
       },
       "editorsOnly": "Alleen redacteuren zien dit.",
       "storylineKind": "Uit AIT News",
@@ -4801,7 +4802,11 @@
       "updated": "Bijgewerkt op {date}",
       "readStory": "Lees het verhaal",
       "newsKind": "Uit AIT News",
-      "opensInNewTab": "(opent in een nieuw tabblad)"
+      "opensInNewTab": "(opent in een nieuw tabblad)",
+      "eventKind": "Evenement",
+      "online": "Online",
+      "cancelled": "Afgelast",
+      "completed": "Afgelopen"
     },
     "rail": {
       "visitCommunity": "Bezoek {community}",
@@ -4997,7 +5002,9 @@
           "cancelled": "Verplaatsen geannuleerd. {title} staat weer op zijn plek."
         },
         "storyline": "Verhaal",
-        "newsItem": "Nieuws"
+        "newsItem": "Nieuws",
+        "event": "Evenement",
+        "membersOnly": "Alleen leden zien dit"
       },
       "editorial": {
         "heading": "Kop (optioneel)",
@@ -5011,22 +5018,26 @@
           "article": "Artikelen",
           "editorial": "Tekst",
           "storyline": "Verhalen",
-          "newsItem": "Nieuws"
+          "newsItem": "Nieuws",
+          "event": "Evenementen"
         },
         "search": {
           "article": "Zoek artikelen die klaar zijn",
           "storyline": "Zoek verhalen uit AIT News",
-          "newsItem": "Zoek nieuwsberichten"
+          "newsItem": "Zoek nieuwsberichten",
+          "event": "Zoek evenementen van je community"
         },
         "empty": {
           "article": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
           "storyline": "Geen verhalen gevonden.",
-          "newsItem": "Geen nieuwsberichten gevonden."
+          "newsItem": "Geen nieuwsberichten gevonden.",
+          "event": "Je community heeft nog geen evenementen."
         },
         "hint": {
           "article": "Alleen artikelen die klaar zijn voor een nummer en niet al in een ander nummer staan, verschijnen hier.",
           "storyline": "Verhalen worden bijgewerkt: lezers zien altijd de nieuwste versie.",
-          "newsItem": "Nieuwsberichten linken naar het oorspronkelijke artikel."
+          "newsItem": "Nieuwsberichten linken naar het oorspronkelijke artikel.",
+          "event": "Evenementen van je community. Lezers zien altijd de laatste informatie."
         },
         "noMatch": "Niets gevonden voor “{query}”.",
         "add": "Toevoegen",

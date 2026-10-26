@@ -16,6 +16,7 @@ vi.mock("@/i18n/navigation", () => ({
 import {
   articleView,
   editorialView,
+  eventView,
   newsItemView,
   storylineView,
   unavailableView,
@@ -31,6 +32,7 @@ describe("issue item registry", () => {
     expect(Object.keys(ITEM_RENDERERS).sort()).toEqual([
       "article",
       "editorial",
+      "event",
       "newsItem",
       "storyline",
     ]);
@@ -196,5 +198,64 @@ describe("issue item registry", () => {
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByRole("heading")).toBeNull();
     expect(container.querySelector("[data-item-kind]")).toBeNull();
+  });
+});
+
+describe("event cards", () => {
+  it("links an event with its date range, city, cancelled badge and intro", () => {
+    renderWithIntl(
+      <IssueItem
+        view={{
+          ...eventView(1, {
+            status: "cancelled",
+            endDate: "2026-10-25T00:00:00.000Z",
+          }),
+          intro: "Meet our neighbours",
+        }}
+        lead={true}
+        href={href}
+      />,
+    );
+    expect(screen.getByText("Event", { exact: true })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Event 1" })).toHaveAttribute(
+      "href",
+      "/events/event-1",
+    );
+    expect(screen.getByText("24–25 Oct 2026")).toHaveClass("font-mono");
+    expect(screen.getByText("· Amsterdam")).not.toHaveClass("font-mono");
+    expect(screen.getByText("Cancelled")).toHaveAttribute(
+      "data-variant",
+      "secondary",
+    );
+    expect(screen.getByText("Meet our neighbours")).toBeInTheDocument();
+  });
+
+  it("shows online events and completed status in everyday Dutch", () => {
+    render(
+      <NextIntlClientProvider locale="nl" messages={nl} timeZone="UTC">
+        <IssueItem
+          view={eventView(1, { online: true, status: "completed" })}
+          lead={false}
+          href={href}
+        />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("Evenement", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("24 okt 2026")).toHaveClass("font-mono");
+    expect(screen.getByText("· Online")).toBeInTheDocument();
+    expect(screen.getByText("Afgelopen")).toBeInTheDocument();
+    expect(screen.queryByText(/Amsterdam/)).toBeNull();
+  });
+
+  it("leaves out an absent city and the status badge for a published event", () => {
+    const { container } = renderWithIntl(
+      <IssueItem
+        view={eventView(1, { city: null })}
+        lead={false}
+        href={href}
+      />,
+    );
+    expect(screen.queryByText(/·/)).toBeNull();
+    expect(container.querySelector('[data-slot="badge"]')).toBeNull();
   });
 });

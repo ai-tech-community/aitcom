@@ -4,6 +4,7 @@
  */
 import type {
   ArticleItemView,
+  EventItemView,
   EditorialItemView,
   NewsItemView,
   StorylineItemView,
@@ -75,6 +76,29 @@ export function newsItemView(
       source: "example.com",
       publishedAt: "2026-11-01T10:00:00.000Z",
       summary: `Summary of headline ${n}.`,
+      ...overrides,
+    },
+  };
+}
+
+/** A live community event with an absolute day. */
+export function eventView(
+  n = 1,
+  overrides: Partial<EventItemView["event"]> = {},
+): EventItemView {
+  return {
+    kind: "event",
+    itemId: `event-${n}`,
+    intro: null,
+    membersOnly: false,
+    event: {
+      slug: `event-${n}`,
+      title: `Event ${n}`,
+      date: "2026-10-24T00:00:00.000Z",
+      endDate: null,
+      city: "Amsterdam",
+      online: false,
+      status: "published",
       ...overrides,
     },
   };

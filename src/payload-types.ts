@@ -622,6 +622,16 @@ export interface MagazineIssue {
             blockName?: string | null;
             blockType: 'newsItem';
           }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            eventId: number;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'event';
+          }
       )[]
     | null;
   updatedAt: string;
@@ -2826,6 +2836,14 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
           | {
               intro?: T;
               newsItemId?: T;
+              id?: T;
+              blockName?: T;
+            };
+        event?:
+          | T
+          | {
+              intro?: T;
+              eventId?: T;
               id?: T;
               blockName?: T;
             };

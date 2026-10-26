@@ -6,7 +6,10 @@ import { useId, useState } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import type { EditorItemView } from "@/lib/magazines/item-views";
+import {
+  isMembersOnlyView,
+  type EditorItemView,
+} from "@/lib/magazines/item-views";
 import { magazineArticlePath } from "@/lib/magazines/paths";
 import type { IssueLayout, IssueVisibility } from "@/lib/magazines/values";
 import { cn } from "@/lib/utils";
@@ -80,7 +83,11 @@ export function LivePreview({
   const [mode, setMode] = useState<PreviewMode>("member");
 
   const Layout = LAYOUTS[layout];
-  const { views, waiting } = previewViews(items, savedViews);
+  const { views: loadedViews, waiting } = previewViews(items, savedViews);
+  const views =
+    mode === "visitor"
+      ? loadedViews.filter((view) => !isMembersOnlyView(view))
+      : loadedViews;
   const href = (articleSlug: string) =>
     magazineArticlePath(
       magazine,

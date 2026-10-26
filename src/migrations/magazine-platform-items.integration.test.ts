@@ -24,6 +24,8 @@ const EXPECTED_COLUMNS = [
   "magazine_issues_blocks_storyline.intro",
   "magazine_issues_blocks_news_item.news_item_id",
   "magazine_issues_blocks_news_item.intro",
+  "magazine_issues_blocks_event.event_id",
+  "magazine_issues_blocks_event.intro",
 ];
 
 describe.skipIf(!isLocalDbConfigured())(
@@ -39,7 +41,8 @@ describe.skipIf(!isLocalDbConfigured())(
       SELECT table_name || '.' || column_name AS key
       FROM information_schema.columns
       WHERE table_schema = 'public' AND table_name IN (
-        'magazine_issues_blocks_storyline', 'magazine_issues_blocks_news_item'
+        'magazine_issues_blocks_storyline', 'magazine_issues_blocks_news_item',
+        'magazine_issues_blocks_event'
       )
     `);
       const have = new Set(rows.map((row) => row.key));

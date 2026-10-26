@@ -46,6 +46,7 @@ export type ItemRowView = {
    */
   open?: { href: string; label: string };
   selected: boolean;
+  membersOnly?: boolean;
 };
 
 export type ItemRowActions = {
@@ -102,6 +103,7 @@ export function ItemRow({
       <span className="text-muted-foreground text-xs">
         {view.kindLabel}
         {view.unavailable && <> · {t("unavailable")}</>}
+        {view.membersOnly && <> · {t("membersOnly")}</>}
       </span>
     </span>
   );

@@ -1,3 +1,4 @@
+import { eventItemKind } from "./event/kind";
 import { z } from "zod";
 
 import { seesEditorLayer } from "@/lib/magazines/access";
@@ -31,6 +32,7 @@ const STRATEGIES = {
   editorial: editorialItemKind,
   storyline: storylineItemKind,
   newsItem: newsItemKind,
+  event: eventItemKind,
 };
 
 /** The builder input type a kind's strategy declares. */

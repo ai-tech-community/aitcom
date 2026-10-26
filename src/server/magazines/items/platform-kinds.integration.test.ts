@@ -41,6 +41,8 @@ describe.skipIf(!isLocalDbConfigured())(
     let fx: {
       sfx: string;
       editorId: string;
+      outsiderId: string;
+      eventIds: number[];
       communityIds: string[];
       storyIds: string[];
       newsIds: string[];
@@ -92,15 +94,19 @@ describe.skipIf(!isLocalDbConfigured())(
       fx = {
         sfx,
         editorId: `pk-editor-${sfx}`,
+        outsiderId: `pk-outsider-${sfx}`,
+        eventIds: [],
         communityIds: [],
         storyIds: [],
         newsIds: [],
       };
-      await m.db.insert(m.schema.user).values({
-        id: fx.editorId,
-        email: `${fx.editorId}@example.test`,
-        name: "Editor",
-      });
+      await m.db.insert(m.schema.user).values(
+        [fx.editorId, fx.outsiderId].map((id) => ({
+          id,
+          email: `${id}@example.test`,
+          name: "Reader",
+        })),
+      );
       await m.db
         .insert(m.schema.memberProfiles)
         .values({ userId: fx.editorId, displayName: "Editor" });
@@ -121,6 +127,11 @@ describe.skipIf(!isLocalDbConfigured())(
     afterEach(async () => {
       const { eq, inArray } = await import("drizzle-orm");
       const { db, payload, schema } = m;
+      if (fx.eventIds.length)
+        await payload.delete({
+          collection: "events",
+          where: { id: { in: fx.eventIds } },
+        });
       if (fx.communityIds.length) {
         const { docs } = await payload.find({
           collection: "magazines",
@@ -174,7 +185,9 @@ describe.skipIf(!isLocalDbConfigured())(
       await db
         .delete(schema.memberProfiles)
         .where(eq(schema.memberProfiles.userId, fx.editorId));
-      await db.delete(schema.user).where(eq(schema.user.id, fx.editorId));
+      await db
+        .delete(schema.user)
+        .where(inArray(schema.user.id, [fx.editorId, fx.outsiderId]));
     }, 60_000);
 
     async function story(
@@ -224,8 +237,8 @@ describe.skipIf(!isLocalDbConfigured())(
       return c!;
     }
 
-    async function issueFixture() {
-      const c = await community("stories");
+    async function issueFixture(opts: { listed?: boolean } = {}) {
+      const c = await community("stories", opts);
       const magazine = await m.magazines.saveMagazineSettings(
         m,
         c,
@@ -234,6 +247,7 @@ describe.skipIf(!isLocalDbConfigured())(
           slug: `pk-${fx.sfx}`,
           topics: [],
           defaultVisibility: "public",
+          confirmUnlistedPublic: true,
         },
         fx.editorId,
       );
@@ -246,6 +260,165 @@ describe.skipIf(!isLocalDbConfigured())(
       );
       return { c, magazine, actor, issue };
     }
+
+    async function event(
+      communityId: string | null,
+      status:
+        | "published"
+        | "draft"
+        | "rejected"
+        | "cancelled"
+        | "completed" = "published",
+      label: string = status,
+    ) {
+      const doc = await m.payload.create({
+        collection: "events",
+        data: {
+          title: `Local event ${label} ${fx.sfx}`,
+          slug: `pk-event-${label}-${fx.sfx}`,
+          description: {
+            root: {
+              type: "root",
+              children: [
+                {
+                  type: "paragraph",
+                  version: 1,
+                  children: [
+                    { type: "text", text: "Meet the community", version: 1 },
+                  ],
+                },
+              ],
+              direction: null,
+              format: "",
+              indent: 0,
+              version: 1,
+            },
+          },
+          type: "meetup",
+          status,
+          _status: "published",
+          date: "2026-10-24",
+          location: "Test Lab",
+          communityId,
+        },
+        context: { skipGeocode: true },
+      });
+      fx.eventIds.push(Number(doc.id));
+      return doc;
+    }
+
+    it("an event of an unlisted community loads for members, not for outsiders", async () => {
+      const { c, magazine, actor, issue } = await issueFixture({
+        listed: false,
+      });
+      const doc = await event(c.id);
+      const saved = await m.issues.setIssueItems(
+        m,
+        issue,
+        [{ kind: "event", eventId: Number(doc.id) }],
+        issue.updatedAt,
+        actor,
+      );
+      const load = (
+        viewerId: string | null,
+        access: IssueReaderAccess = "full",
+      ) =>
+        m.registry.loadIssueItemViews(
+          saved.items as Registry.StoredBlock[],
+          m.context.itemContextFor(m, {
+            magazineId: magazine.id,
+            community: c,
+            issueId: saved.id,
+            locale: "en",
+            access,
+            viewerId,
+          }),
+        );
+      expect(await load(fx.editorId)).toMatchObject([
+        { kind: "event", membersOnly: false, event: { title: doc.title } },
+      ]);
+      expect(await load(fx.outsiderId)).toEqual([]);
+      expect(await load(null)).toEqual([]);
+      expect(await load(fx.editorId, "editor")).toMatchObject([
+        { kind: "event", membersOnly: true },
+      ]);
+      expect(await load(fx.outsiderId, "editor")).toEqual([
+        {
+          kind: "event",
+          itemId: saved.items![0]!.id,
+          unavailable: true,
+          reason: "no_access",
+        },
+      ]);
+      // The saved reference remains intact when the event is deleted.
+      await m.payload.delete({ collection: "events", id: doc.id });
+      expect(await load(fx.editorId)).toEqual([]);
+      expect(await load(fx.editorId, "editor")).toMatchObject([
+        { reason: "missing" },
+      ]);
+      const kept = await m.issues.setIssueItems(
+        m,
+        saved,
+        [{ kind: "event", eventId: Number(doc.id), intro: "Still our pick" }],
+        saved.updatedAt,
+        actor,
+      );
+      expect(kept.items![0]!.intro).toBe("Still our pick");
+    });
+
+    it("the events tab offers only this community's listed events", async () => {
+      const { c, magazine, actor, issue } = await issueFixture();
+      const listed = await event(c.id);
+      const cancelled = await event(c.id, "cancelled");
+      const completed = await event(c.id, "completed");
+      const draft = await event(c.id, "draft");
+      const rejected = await event(c.id, "rejected");
+      const other = await community("other");
+      const otherEvent = await event(other.id, "published", "other");
+      const unscoped = await event(null, "published", "hub");
+      const ctx = {
+        deps: m,
+        magazineId: magazine.id,
+        community: c,
+        viewerId: fx.editorId,
+        locale: "en" as const,
+      };
+      const candidates = await m.pickers.searchPickerCandidates(
+        "event",
+        "",
+        ctx,
+      );
+      expect(
+        candidates.map((v) => Number(v.input.eventId)).sort((a, b) => a - b),
+      ).toEqual(
+        [listed, cancelled, completed]
+          .map((v) => Number(v.id))
+          .sort((a, b) => a - b),
+      );
+      expect(
+        (
+          await m.pickers.searchPickerCandidates(
+            "event",
+            `cancelled ${fx.sfx}`,
+            ctx,
+          )
+        ).map((v) => Number(v.input.eventId)),
+      ).toEqual([Number(cancelled.id)]);
+      for (const doc of [draft, rejected, otherEvent, unscoped]) {
+        await expect(
+          m.issues.setIssueItems(
+            m,
+            issue,
+            [{ kind: "event", eventId: Number(doc.id) }],
+            issue.updatedAt,
+            actor,
+          ),
+        ).rejects.toMatchObject({
+          code: "BAD_REQUEST",
+          message: "ITEM_INVALID",
+        });
+      }
+    });
 
     it("a story loads live and drops out when unpublished", async () => {
       const { c, magazine, actor, issue } = await issueFixture();
