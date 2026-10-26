@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Link } from "@/i18n/navigation";
 import { issuePath } from "@/lib/magazines/paths";
 import { cn } from "@/lib/utils";
@@ -68,10 +70,16 @@ export function IssueCoverArt({
 export function IssueCoverCard({
   issue,
   variant = "stacked",
+  showMagazine = false,
+  badge,
   className,
 }: {
   issue: IssueCard;
   variant?: "stacked" | "row";
+  /** Name the magazine too: for lists that mix magazines (the home). */
+  showMagazine?: boolean;
+  /** A quiet label beside the dateline, e.g. "Members only" on a shelf. */
+  badge?: ReactNode;
   className?: string;
 }) {
   const dateline = useIssueDateline(issue);
@@ -91,8 +99,16 @@ export function IssueCoverCard({
         className={cn(row && "w-14 shrink-0")}
       />
       <span className="flex min-w-0 flex-col gap-1">
-        <span className="text-muted-foreground font-mono text-xs">
-          {dateline}
+        {showMagazine && (
+          <span className="text-sm leading-tight font-semibold break-words">
+            {issue.magazine.name}
+          </span>
+        )}
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-muted-foreground font-mono text-xs">
+            {dateline}
+          </span>
+          {badge}
         </span>
         <span className="text-sm leading-snug font-medium text-balance break-words underline-offset-4 group-hover:underline">
           {issue.title}

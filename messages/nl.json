@@ -25,7 +25,8 @@
     "messages": "Berichten",
     "more": "Meer",
     "agents": "Agents",
-    "ideas": "Ideeën"
+    "ideas": "Ideeën",
+    "magazines": "Magazines"
   },
   "hero": {
     "title": "AIT Community",
@@ -4727,6 +4728,35 @@
     }
   },
   "magazines": {
+    "home": {
+      "label": "Magazines",
+      "title": "Verhalen uit de communities die AI bouwen",
+      "intro": "Geschreven en samengesteld door leden van de community. Gratis te lezen.",
+      "featured": "Uitgelicht nummer",
+      "fromCommunity": "Van {community}",
+      "readIssue": "Lees het nummer",
+      "justPublished": "Net verschenen",
+      "allMagazines": "Alle magazines",
+      "topicFilter": "Magazines filteren op onderwerp",
+      "allTopics": "Alles",
+      "emptyTitle": "Nog geen magazines om te lezen",
+      "emptyDescription": "Communities maken magazines van de beste artikelen van hun leden. Zodra een community een nummer voor iedereen publiceert, staat het hier.",
+      "emptyAction": "Communities ontdekken",
+      "noTopicTitle": "Nog geen magazines over {topic}",
+      "noTopicDescription": "Kies een ander onderwerp of bekijk alle magazines.",
+      "showAll": "Alle magazines tonen"
+    },
+    "shelf": {
+      "byCommunity": "Een magazine van <link>{community}</link>",
+      "topics": "Onderwerpen",
+      "issues": "Nummers",
+      "membersOnly": "Alleen voor leden",
+      "manage": "Magazine beheren",
+      "emptyTitle": "Nog geen nummers",
+      "emptyDescription": "Het eerste nummer van {magazine} komt eraan. Bezoek de community om te zien waar de leden over schrijven.",
+      "emptyEditorDescription": "Maak het eerste nummer via het tabblad Magazine van je community.",
+      "visitCommunity": "Bezoek {community}"
+    },
     "issue": {
       "number": "Nummer {number}",
       "dateline": "Nummer {number} · {month}",
@@ -4773,7 +4803,10 @@
     },
     "meta": {
       "issueDescription": "Nummer {number} van {magazine}, een magazine van {community}.",
-      "articleDescription": "Een artikel in nummer {number} van {magazine}, een magazine van {community}."
+      "articleDescription": "Een artikel in nummer {number} van {magazine}, een magazine van {community}.",
+      "homeTitle": "Magazines",
+      "homeDescription": "Verhalen uit de communities die AI bouwen, geschreven en samengesteld door leden van de community. Gratis te lezen.",
+      "shelfDescription": "{magazine}, een magazine van {community}."
     }
   }
 }

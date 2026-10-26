@@ -25,7 +25,8 @@
     "messages": "Messages",
     "more": "More",
     "agents": "Agents",
-    "ideas": "Ideas"
+    "ideas": "Ideas",
+    "magazines": "Magazines"
   },
   "hero": {
     "title": "AIT Community",
@@ -4727,6 +4728,35 @@
     }
   },
   "magazines": {
+    "home": {
+      "label": "Magazines",
+      "title": "Stories from the communities building AI",
+      "intro": "Written and edited by community members. Free to read.",
+      "featured": "Featured issue",
+      "fromCommunity": "From {community}",
+      "readIssue": "Read the issue",
+      "justPublished": "Just published",
+      "allMagazines": "All magazines",
+      "topicFilter": "Filter magazines by topic",
+      "allTopics": "All",
+      "emptyTitle": "No magazines to read yet",
+      "emptyDescription": "Communities make magazines from their members' best articles. When a community publishes an issue for everyone, it shows up here.",
+      "emptyAction": "Explore communities",
+      "noTopicTitle": "No magazines about {topic} yet",
+      "noTopicDescription": "Try another topic, or see every magazine.",
+      "showAll": "Show all magazines"
+    },
+    "shelf": {
+      "byCommunity": "A magazine by <link>{community}</link>",
+      "topics": "Topics",
+      "issues": "Issues",
+      "membersOnly": "Members only",
+      "manage": "Manage magazine",
+      "emptyTitle": "No issues yet",
+      "emptyDescription": "The first issue of {magazine} is on its way. Visit the community to see what its members are writing.",
+      "emptyEditorDescription": "Make the first issue from your community's Magazine tab.",
+      "visitCommunity": "Visit {community}"
+    },
     "issue": {
       "number": "Issue {number}",
       "dateline": "Issue {number} · {month}",
@@ -4773,7 +4803,10 @@
     },
     "meta": {
       "issueDescription": "Issue {number} of {magazine}, a magazine by {community}.",
-      "articleDescription": "An article in issue {number} of {magazine}, a magazine by {community}."
+      "articleDescription": "An article in issue {number} of {magazine}, a magazine by {community}.",
+      "homeTitle": "Magazines",
+      "homeDescription": "Stories from the communities building AI, written and edited by community members. Free to read.",
+      "shelfDescription": "{magazine}, a magazine by {community}."
     }
   }
 }

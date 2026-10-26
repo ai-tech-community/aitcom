@@ -6,6 +6,7 @@ import {
   issuePath,
   magazineArticlePath,
   magazinePath,
+  magazinesTopicPath,
 } from "./paths";
 
 const magazine = { slug: "agents-weekly" };
@@ -13,6 +14,14 @@ const issue = { slug: "the-tools-issue-3" };
 const article = { slug: "why-evals-matter" };
 
 describe("magazine paths", () => {
+  it("magazinesTopicPath filters the home by an encoded topic", () => {
+    expect(magazinesTopicPath(null)).toBe("/magazines");
+    expect(magazinesTopicPath("agents")).toBe("/magazines?topic=agents");
+    expect(magazinesTopicPath("data & ai")).toBe(
+      "/magazines?topic=data%20%26%20ai",
+    );
+  });
+
   it("magazinePath is the public shelf", () => {
     expect(magazinePath(magazine)).toBe("/magazines/agents-weekly");
   });

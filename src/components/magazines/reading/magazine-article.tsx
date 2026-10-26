@@ -24,6 +24,7 @@ import { absoluteLocaleUrl } from "@/lib/metadata";
 import type { MagazineArticlePageData } from "@/server/magazines/reading";
 
 import { ArticleItem } from "../items/article-item";
+import { READING_FRAME } from "./frame";
 import { issueNumberText } from "./issue-dateline";
 
 /** The comments a page hands the shared thread, as the blog does. */
@@ -206,7 +207,7 @@ export function MagazineArticle({
   const readersSeeIt = isMagazineArticleOut(issue, article);
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-4 py-8 sm:px-8 lg:py-12">
+    <div className={READING_FRAME}>
       {isMagazineArticleIndexable(issue, article) && (
         <ArticleJsonLd data={data} locale={locale} />
       )}

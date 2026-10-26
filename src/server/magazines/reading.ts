@@ -365,6 +365,9 @@ export async function loadMagazinesHome(
   };
 }
 
+/** What the `/magazines` home renders. */
+export type MagazinesHomeData = Awaited<ReturnType<typeof loadMagazinesHome>>;
+
 // ── Shelf and community tab ──────────────────────────────────────────────
 
 type Shelf = { issues: IssueCard[]; viewerIsEditor: boolean };
@@ -422,6 +425,11 @@ export async function loadMagazineShelf(
     ...shelf,
   };
 }
+
+/** What a magazine's shelf page renders. */
+export type MagazineShelfData = NonNullable<
+  Awaited<ReturnType<typeof loadMagazineShelf>>
+>;
 
 /**
  * The community's Magazine tab. `null` only for 404 (no such live

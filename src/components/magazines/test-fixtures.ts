@@ -12,6 +12,9 @@ import type {
   IssueCard,
   IssuePageData,
   MagazineArticlePageData,
+  MagazineCard,
+  MagazineShelfData,
+  MagazinesHomeData,
 } from "@/server/magazines/reading";
 
 export function articleView(
@@ -192,5 +195,77 @@ export function articlePage(
     article: magazineArticle(),
     nextInIssue: articleView(2),
     ...rest,
+  };
+}
+
+/** A magazine on the `/magazines` home with its newest public issue. */
+export function magazineCard(
+  n: number,
+  overrides: Partial<MagazineCard> = {},
+): MagazineCard {
+  const slug = `magazine-${n}`;
+  return {
+    id: n,
+    name: `Magazine ${n}`,
+    slug,
+    logoUrl: null,
+    description: `About magazine ${n}.`,
+    topics: ["agents"],
+    community: { name: `Community ${n}`, slug: `community-${n}` },
+    latest: issueCard({
+      id: 100 + n,
+      slug: `issue-of-${n}`,
+      title: `Latest of magazine ${n}`,
+      magazine: { name: `Magazine ${n}`, slug, logoUrl: null },
+      community: { name: `Community ${n}`, slug: `community-${n}` },
+    }),
+    ...overrides,
+  };
+}
+
+/** The `/magazines` home: a featured issue, four just published, two magazines. */
+export function homeData(
+  overrides: Partial<MagazinesHomeData> = {},
+): MagazinesHomeData {
+  return {
+    featured: issueCard({
+      id: 1,
+      slug: "featured-issue",
+      title: "Featured issue title",
+      coverImageUrl: "https://example.test/cover.png",
+    }),
+    justPublished: [2, 3, 4, 5].map((n) =>
+      issueCard({ id: n, slug: `issue-${n}`, title: `Just published ${n}` }),
+    ),
+    magazines: [
+      magazineCard(1, { topics: ["agents", "evals"] }),
+      magazineCard(2, { topics: ["robots"] }),
+    ],
+    topics: ["agents", "evals", "robots"],
+    ...overrides,
+  };
+}
+
+/** A magazine shelf: one members-only issue, then a public one. */
+export function shelfData(
+  overrides: Partial<MagazineShelfData> = {},
+): MagazineShelfData {
+  const page = issuePage();
+  return {
+    magazine: page.magazine,
+    community: page.community,
+    issues: [
+      issueCard({
+        id: 9,
+        number: 5,
+        slug: "issue-5",
+        title: "For members",
+        visibility: "members",
+        effectiveVisibility: "members",
+      }),
+      issueCard(),
+    ],
+    viewerIsEditor: false,
+    ...overrides,
   };
 }

@@ -56,6 +56,7 @@ const navLinks = [
   { href: "/ideas", key: "ideas", shortcut: "F", primary: false },
   { href: "/members", key: "members", shortcut: "M", primary: false },
   { href: "/blog", key: "blog", shortcut: "B", primary: false },
+  { href: "/magazines", key: "magazines", shortcut: "G", primary: false },
   {
     href: "/investigations",
     key: "investigations",

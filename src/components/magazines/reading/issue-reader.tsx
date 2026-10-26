@@ -10,6 +10,7 @@ import type { IssuePageData } from "@/server/magazines/reading";
 
 import { LAYOUTS } from "../layouts/registry";
 import { EDITOR_NOTE_ANCHOR } from "./anchors";
+import { READING_FRAME } from "./frame";
 import { IssueContents } from "./issue-contents";
 import { IssueCover } from "./issue-cover";
 import { IssueRail } from "./issue-rail";
@@ -89,7 +90,7 @@ export function IssueReader({
   const showNote = hasContent(issue.editorNote);
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-4 py-8 sm:px-8 lg:py-12">
+    <div className={READING_FRAME}>
       <div className="grid gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[14rem_minmax(0,1fr)_18rem]">
         <aside className="lg:sticky lg:top-24 lg:row-span-2 lg:max-h-[calc(100dvh-7rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain xl:row-span-1">
           <IssueContents
