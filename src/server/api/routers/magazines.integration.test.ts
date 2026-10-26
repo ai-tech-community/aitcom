@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { magazineArticleEditPath } from "@/lib/magazines/paths";
 import type { createCaller as CreateCaller } from "@/server/api/root";
 import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
@@ -282,6 +283,93 @@ describe.skipIf(!RUN_DB)(
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────
+
+    it("pickerCandidates offers ready articles, filtered by the search", async () => {
+      const magazine = await saveMagazine();
+      const owner = callerAs(fx.ownerId);
+      const agents = await writeArticle(magazine.id, "Agents at work");
+      const evals = await writeArticle(magazine.id, "Evals", fx.adminId);
+      const placed = await writeArticle(magazine.id, "Placed agents");
+      await writeArticle(magazine.id, "Draft agents");
+      for (const article of [agents, placed]) {
+        await owner.articles.submit({ id: article.id });
+      }
+      await callerAs(fx.adminId).articles.submit({ id: evals.id });
+
+      const { id: issueId } = await owner.magazines.createIssue({
+        slug: slug(),
+        title: "With agents",
+      });
+      const { issue } = await owner.magazines.getIssueForEditing({
+        slug: slug(),
+        issueId,
+      });
+      await owner.magazines.setIssueItems({
+        slug: slug(),
+        issueId,
+        expectedUpdatedAt: issue.updatedAt,
+        items: [{ kind: "article", articleId: placed.id }],
+      });
+
+      const candidate = {
+        input: { kind: "article", articleId: agents.id },
+        reference: `article:${agents.id}`,
+        title: "Agents at work",
+        facts: [{ type: "byline", name: fx.ownerId }],
+        openHref: magazineArticleEditPath(slug(), agents.slug),
+      };
+      expect(
+        await owner.magazines.pickerCandidates({
+          slug: slug(),
+          kind: "article",
+          query: " agent ",
+        }),
+      ).toEqual([candidate]);
+      expect(
+        await callerAs(fx.adminId).magazines.pickerCandidates({
+          slug: slug(),
+          kind: "article",
+          query: "agent",
+        }),
+      ).toEqual([{ ...candidate, openHref: null }]);
+
+      const unfiltered = await owner.magazines.pickerCandidates({
+        slug: slug(),
+        kind: "article",
+      });
+      expect(unfiltered).toHaveLength(2);
+      expect(unfiltered).toEqual(
+        expect.arrayContaining([
+          candidate,
+          {
+            input: { kind: "article", articleId: evals.id },
+            reference: `article:${evals.id}`,
+            title: "Evals",
+            facts: [{ type: "byline", name: fx.adminId }],
+            openHref: null,
+          },
+        ]),
+      );
+    });
+
+    it("pickerCandidates is for editors only", async () => {
+      await saveMagazine();
+      await expect(
+        callerAs(fx.memberId).magazines.pickerCandidates({
+          slug: slug(),
+          kind: "article",
+        }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+
+    it("pickerCandidates returns no candidates before the magazine exists", async () => {
+      expect(
+        await callerAs(fx.ownerId).magazines.pickerCandidates({
+          slug: slug(),
+          kind: "article",
+        }),
+      ).toEqual([]);
+    });
 
     it("only owner and admin reach editor procedures", async () => {
       await saveMagazine();

@@ -8,6 +8,7 @@ import type {
   IssueItemView,
   UnavailableItem,
 } from "@/lib/magazines/item-views";
+import type { CandidateFact } from "@/lib/magazines/picker";
 import type { MagazineIssue } from "@/payload-types";
 
 import type { Deps, PayloadClient } from "../deps";
@@ -15,6 +16,34 @@ import type { MagazineCommunity } from "../magazine-service";
 import type { ItemReader } from "./reader";
 
 export type ItemCommunity = Pick<MagazineCommunity, "id" | "slug">;
+
+export type PickerContext = {
+  deps: Deps;
+  magazineId: number;
+  community: ItemCommunity;
+  viewerId: string;
+  locale: AppLocale;
+};
+
+/** What a kind's source returns; the registry adds the reference. */
+export type PickerSourceCandidate<Input> = {
+  input: Input;
+  title: string;
+  facts: CandidateFact[];
+  openHref: string | null;
+};
+
+/** A candidate with its content identity in `itemReference` form. */
+export type PickerCandidate<Input> = PickerSourceCandidate<Input> & {
+  reference: string;
+};
+
+export interface ItemPickerSource<Input> {
+  search(
+    query: string,
+    ctx: PickerContext,
+  ): Promise<PickerSourceCandidate<Input>[]>;
+}
 
 /** What an item strategy knows about the issue it works for. */
 export type ItemContext = {

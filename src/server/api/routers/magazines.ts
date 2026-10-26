@@ -1,6 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { routing } from "@/i18n/routing";
+import { PICKABLE_ITEM_KINDS } from "@/lib/magazines/picker";
 import {
   ISSUE_VISIBILITIES,
   MAGAZINE_SLUG_PATTERN,
@@ -34,6 +36,7 @@ import {
   issueItemInputSchema,
   type StoredBlock,
 } from "@/server/magazines/items/registry";
+import { searchPickerCandidates } from "@/server/magazines/items/pickers";
 import {
   listAvailableArticles,
   listDraftArticles,
@@ -311,6 +314,26 @@ export const magazinesRouter = createTRPCRouter({
     await deleteDraftIssue(depsOf(ctx), ctx.issue, actorOf(ctx));
     return { ok: true as const };
   }),
+
+  pickerCandidates: editorProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        kind: z.enum(PICKABLE_ITEM_KINDS),
+        query: z.string().trim().max(100).default(""),
+      }),
+    )
+    .query(async ({ ctx, input }) =>
+      ctx.magazine
+        ? searchPickerCandidates(input.kind, input.query, {
+            deps: depsOf(ctx),
+            magazineId: ctx.magazine.id,
+            community: communityOf(ctx),
+            viewerId: ctx.session.user.id,
+            locale: routing.defaultLocale,
+          })
+        : [],
+    ),
 
   availableArticles: editorProcedure
     .input(z.object({ slug: z.string() }))

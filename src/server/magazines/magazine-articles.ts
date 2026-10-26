@@ -184,6 +184,7 @@ export async function listAvailableArticles(
   payload: PayloadClient,
   magazineId: number,
   viewerId: string,
+  query = "",
 ): Promise<AvailableMagazineArticle[]> {
   const { docs } = await payload.find({
     collection: "articles",
@@ -192,6 +193,7 @@ export async function listAvailableArticles(
         { magazine: { equals: magazineId } },
         { reviewStatus: { equals: "approved" } },
         { magazineIssue: { exists: false } },
+        ...(query ? [{ title: { like: query } }] : []),
       ],
     },
     sort: "-updatedAt",
