@@ -25,12 +25,33 @@ interface FeedPageProps {
   feedPostPolicy: "all_members" | "admins_only";
 }
 
-export function FeedPage({
+export function FeedPage(props: FeedPageProps) {
+  return (
+    <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+      {/* Left column: composer + feed */}
+      <FeedMain {...props} className="min-w-0 flex-1 space-y-4" />
+
+      {/* Right column: sidebar (desktop) — sticks below the community nav */}
+      <div className="hidden w-80 shrink-0 lg:sticky lg:top-24 lg:block lg:self-start">
+        <CommunitySidebar slug={props.slug} />
+      </div>
+
+      {/* Sidebar (mobile, below feed) */}
+      <div className="lg:hidden">
+        <CommunitySidebar slug={props.slug} />
+      </div>
+    </div>
+  );
+}
+
+/** The feed column on its own: onboarding, composer, topics, posts. */
+export function FeedMain({
   slug,
   memberRole,
   currentUserId,
   feedPostPolicy,
-}: FeedPageProps) {
+  className,
+}: FeedPageProps & { className?: string }) {
   const t = useTranslations("communities.feed");
   const [activeTopic, setActiveTopic] = useState("all");
 
@@ -46,79 +67,66 @@ export function FeedPage({
   const isMember = !!memberRole;
 
   return (
-    <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-      {/* Left column: composer + feed */}
-      <div className="min-w-0 flex-1 space-y-4">
-        {isAuthenticated && isMember && (
-          <HubFirstSessionPath slug={slug} isMember={isMember} />
-        )}
-        {isAuthenticated && isMember && <WelcomeChecklist slug={slug} />}
+    <div className={className}>
+      {isAuthenticated && isMember && (
+        <HubFirstSessionPath slug={slug} isMember={isMember} />
+      )}
+      {isAuthenticated && isMember && <WelcomeChecklist slug={slug} />}
 
-        <ReelsEntry slug={slug} />
+      <ReelsEntry slug={slug} />
 
-        {currentUserId ? (
-          <PostComposer
-            slug={slug}
-            userId={currentUserId}
-            canPost={canPost}
-            canAnnounce={canBroadcast(memberRole)}
-          />
-        ) : null}
+      {currentUserId ? (
+        <PostComposer
+          slug={slug}
+          userId={currentUserId}
+          canPost={canPost}
+          canAnnounce={canBroadcast(memberRole)}
+        />
+      ) : null}
 
-        {isAuthenticated && isMember ? (
-          <TopicChips
-            slug={slug}
-            active={activeTopic}
-            onSelect={setActiveTopic}
-          />
-        ) : null}
+      {isAuthenticated && isMember ? (
+        <TopicChips
+          slug={slug}
+          active={activeTopic}
+          onSelect={setActiveTopic}
+        />
+      ) : null}
 
-        {!isAuthenticated ? (
-          <div className="bg-primary/5 border-primary/20 flex flex-col items-start gap-3 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col gap-1">
-              <h2 className="font-medium">{t("signInTitle")}</h2>
-              <p className="text-muted-foreground text-sm">
-                {t("signInDescription")}
-              </p>
-            </div>
-            <Button
-              onClick={() => promptAuth("Sign in to see the community feed")}
-            >
-              <LogIn className="h-4 w-4" /> Sign in
-            </Button>
-          </div>
-        ) : !isMember ? (
-          <div className="bg-primary/5 border-primary/20 rounded-md border p-4">
-            <h2 className="font-medium">{t("joinTitle")}</h2>
+      {!isAuthenticated ? (
+        <div className="bg-primary/5 border-primary/20 flex flex-col items-start gap-3 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <h2 className="font-medium">{t("signInTitle")}</h2>
             <p className="text-muted-foreground text-sm">
-              {t("joinDescription")}
+              {t("signInDescription")}
             </p>
           </div>
-        ) : activeTopic === "all" ? (
-          <CommunityActivityFeed
-            slug={slug}
-            currentUserId={currentUserId}
-            memberRole={memberRole}
-          />
-        ) : (
-          <TopicPostsFeed
-            slug={slug}
-            topicSlug={activeTopic}
-            currentUserId={currentUserId}
-            memberRole={memberRole}
-          />
-        )}
-      </div>
-
-      {/* Right column: sidebar (desktop) — sticks below the community nav */}
-      <div className="hidden w-80 shrink-0 lg:sticky lg:top-24 lg:block lg:self-start">
-        <CommunitySidebar slug={slug} />
-      </div>
-
-      {/* Sidebar (mobile, below feed) */}
-      <div className="lg:hidden">
-        <CommunitySidebar slug={slug} />
-      </div>
+          <Button
+            onClick={() => promptAuth("Sign in to see the community feed")}
+          >
+            <LogIn className="h-4 w-4" /> Sign in
+          </Button>
+        </div>
+      ) : !isMember ? (
+        <div className="bg-primary/5 border-primary/20 rounded-md border p-4">
+          <h2 className="font-medium">{t("joinTitle")}</h2>
+          <p className="text-muted-foreground text-sm">
+            {t("joinDescription")}
+          </p>
+        </div>
+      ) : activeTopic === "all" ? (
+        <CommunityActivityFeed
+          slug={slug}
+          currentUserId={currentUserId}
+          memberRole={memberRole}
+        />
+      ) : (
+        <TopicPostsFeed
+          slug={slug}
+          topicSlug={activeTopic}
+          currentUserId={currentUserId}
+          memberRole={memberRole}
+        />
+      )}
     </div>
   );
 }

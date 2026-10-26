@@ -18,6 +18,16 @@ import { Spinner } from "@/components/ui/spinner";
 import { resolveCommunityLayoutVariant } from "@/lib/communities/layout-variant";
 import { useJoinDeepLink } from "@/components/communities/use-community-join";
 import { useRouter } from "@/i18n/navigation";
+import { PrototypeSwitcher } from "@/components/prototype/prototype-switcher";
+import {
+  COMMUNITY_LAYOUT_VARIANTS,
+  useCommunityLayoutPrototype,
+} from "@/components/communities/prototype-full-width/variants";
+import {
+  BoardFrame,
+  IdentityRailFrame,
+  WideTabsFrame,
+} from "@/components/communities/prototype-full-width/frames";
 
 export function CommunityLayoutClient({
   children,
@@ -35,6 +45,8 @@ export function CommunityLayoutClient({
   // A guest who pressed Join here comes back from sign-in with ?join=.
   useJoinDeepLink(() => router.refresh());
   const variant = resolveCommunityLayoutVariant(useSelectedLayoutSegments());
+  // PROTOTYPE — full-width layout study; see prototype-full-width/variants.ts
+  const prototype = useCommunityLayoutPrototype();
   const { data: session } = authClient.useSession();
   const user = documentAuthUser(null, initialUser, session?.user);
 
@@ -68,6 +80,24 @@ export function CommunityLayoutClient({
     <PageDocumentAuthProvider user={initialUser}>
       {variant === "workspace" ? (
         children
+      ) : prototype !== "A" ? (
+        (() => {
+          const Frame = {
+            B: IdentityRailFrame,
+            C: WideTabsFrame,
+            D: BoardFrame,
+          }[prototype];
+          return (
+            <Frame
+              community={community}
+              membershipStatus={membershipStatus}
+              memberRole={memberRole ?? null}
+              variant={prototype}
+            >
+              {children}
+            </Frame>
+          );
+        })()
       ) : (
         <div className="flex flex-col">
           <CommunityHeader
@@ -80,6 +110,12 @@ export function CommunityLayoutClient({
             {children}
           </div>
         </div>
+      )}
+      {variant === "workspace" ? null : (
+        <PrototypeSwitcher
+          variants={COMMUNITY_LAYOUT_VARIANTS}
+          current={prototype}
+        />
       )}
     </PageDocumentAuthProvider>
   );

@@ -10,23 +10,29 @@ import {
   resolveSpaceLabel,
   type BuiltinSurface,
 } from "@/server/communities/space-defaults";
+import {
+  useCommunityLayoutPrototype,
+  withVariant,
+} from "./prototype-full-width/variants";
 
 interface CommunityNavProps {
   slug: string;
   memberRole?: "owner" | "admin" | "moderator" | "member" | null;
 }
 
-interface NavItem {
+export interface NavItem {
   key: string;
   href: string;
   label: string;
   isPrivate?: boolean;
 }
 
-export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
+export function useCommunityNavItems({
+  slug,
+  memberRole,
+}: CommunityNavProps): NavItem[] {
   const tRooms = useTranslations("communities.rooms");
   const t = useTranslations("communities.profile");
-  const pathname = usePathname();
 
   const basePath = `/communities/${slug}`;
   const isAdminOrOwner = memberRole === "owner" || memberRole === "admin";
@@ -94,6 +100,24 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
         ]
       : []),
   ];
+  return navItems;
+}
+
+export function isCommunityNavItemActive(
+  item: NavItem,
+  pathname: string,
+  basePath: string,
+): boolean {
+  return item.key === "overview"
+    ? pathname === basePath || pathname === `${basePath}/`
+    : pathname.startsWith(item.href);
+}
+
+export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
+  const pathname = usePathname();
+  const variant = useCommunityLayoutPrototype();
+  const basePath = `/communities/${slug}`;
+  const navItems = useCommunityNavItems({ slug, memberRole });
 
   return (
     <div className="bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-12 z-40 border-b backdrop-blur">
@@ -103,15 +127,12 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
           aria-label="Community navigation"
         >
           {navItems.map((item) => {
-            const isActive =
-              item.key === "overview"
-                ? pathname === basePath || pathname === `${basePath}/`
-                : pathname.startsWith(item.href);
+            const isActive = isCommunityNavItemActive(item, pathname, basePath);
 
             return (
               <Link
                 key={item.key}
-                href={item.href as never}
+                href={withVariant(item.href, variant) as never}
                 className={cn(
                   "border-b-2 px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors",
                   isActive

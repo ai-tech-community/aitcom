@@ -9,7 +9,8 @@ import {
   type HubAuthUser,
   type HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
-import { FeedPage } from "@/components/communities/feed/feed-page";
+import { PrototypeOverview } from "@/components/communities/prototype-full-width/overviews";
+import { useCommunityLayoutPrototype } from "@/components/communities/prototype-full-width/variants";
 import { Activity } from "lucide-react";
 
 export function CommunityOverviewPageClient({
@@ -37,6 +38,7 @@ export function CommunityOverviewPageClient({
     slug,
   );
   const isMember = !!memberRole;
+  const prototype = useCommunityLayoutPrototype();
 
   return (
     <>
@@ -80,7 +82,8 @@ export function CommunityOverviewPageClient({
           </div>
         )}
 
-      <FeedPage
+      <PrototypeOverview
+        variant={prototype}
         slug={slug}
         memberRole={memberRole}
         currentUserId={user?.id}

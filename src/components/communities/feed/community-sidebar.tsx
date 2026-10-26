@@ -21,14 +21,25 @@ interface CommunitySidebarProps {
   slug: string;
   /** "Now" for picking upcoming events; tests pin it. */
   now?: Date;
+  /** PROTOTYPE — render only these sections (all when omitted). */
+  only?: ReadonlyArray<SidebarSection>;
+  className?: string;
 }
+
+export type SidebarSection = "about" | "news" | "links" | "events" | "ideas";
 
 /**
  * Supporting context beside the feed: who is here, links, what is coming
  * up, and the ideas members back most. Discussions live in the feed itself.
  * Sections with nothing to show are left out rather than saying "none".
  */
-export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
+export function CommunitySidebar({
+  slug,
+  now,
+  only,
+  className,
+}: CommunitySidebarProps) {
+  const show = (s: SidebarSection) => !only || only.includes(s);
   const t = useTranslations("communities.profile");
   const tCommon = useTranslations("common");
   const locale = useLocale();
@@ -62,8 +73,8 @@ export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
   const active = community?.liveness?.activeContributors ?? 0;
 
   return (
-    <div className="flex flex-col gap-8">
-      {community ? (
+    <div className={className ?? "flex flex-col gap-8"}>
+      {show("about") && community ? (
         <section data-sidebar-section="about">
           <SectionHeader title={t("members")} />
           <p className="mt-3 text-sm">
@@ -80,9 +91,9 @@ export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
         </section>
       ) : null}
 
-      <CommunitySectorNews slug={slug} />
+      {show("news") ? <CommunitySectorNews slug={slug} /> : null}
 
-      {links && links.length > 0 ? (
+      {show("links") && links && links.length > 0 ? (
         <section data-sidebar-section="links">
           <SectionHeader title={t("links")} />
           <div className="mt-3 space-y-1">
@@ -108,7 +119,7 @@ export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
         </section>
       ) : null}
 
-      {eventsLoading ? (
+      {!show("events") ? null : eventsLoading ? (
         <div className="space-y-2">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-14 rounded-lg" />
@@ -134,7 +145,7 @@ export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
         </section>
       ) : null}
 
-      {ideas.length > 0 ? (
+      {show("ideas") && ideas.length > 0 ? (
         <section data-sidebar-section="ideas">
           <SectionHeader
             title={t("topIdeas")}
