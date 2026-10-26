@@ -9,7 +9,9 @@ import { buildAlternates } from "@/lib/metadata";
 import {
   AI_TOOLS_LIST_COPY,
   AI_TOOLS_LIST_PATH,
+  AI_TOOLS_LIST_TOOLS,
   aiToolsListCopy,
+  aiToolsListJsonLd,
 } from "./ai-tools-list";
 
 const state = vi.hoisted(() => ({ locale: "en" as "en" | "nl" }));
@@ -54,8 +56,15 @@ describe("AI tools list copy", () => {
     const { title, description } = AI_TOOLS_LIST_COPY.en;
     expect(title).toBe("AI tools");
     expect(description.endsWith(".")).toBe(true);
-    expect(description.length).toBeLessThanOrEqual(160);
+    expect(description.length).toBeGreaterThanOrEqual(120);
+    expect(description.length).toBeLessThanOrEqual(155);
+    expect(aiToolsListCopy("nl").description.length).toBeGreaterThanOrEqual(
+      120,
+    );
+    expect(aiToolsListCopy("nl").description.length).toBeLessThanOrEqual(155);
     expect(description).not.toMatch(NOTES);
+    expect(description).not.toMatch(/\d/);
+    expect(aiToolsListCopy("nl").description).not.toMatch(/\d/);
     expect(title).not.toMatch(NOTES);
     expect(description).not.toMatch(/AI TOOLS LIST/);
     expect(description).not.toContain("AIAI.Tools");
@@ -112,9 +121,59 @@ describe("AI tools list metadata", () => {
   });
 });
 
+describe("AI tools list structured data", () => {
+  it("is a CollectionPage whose ItemList is the listed tools, or none", () => {
+    const data = aiToolsListJsonLd("en");
+    expect(data["@type"]).toBe("CollectionPage");
+    expect(data.url).toBe(
+      `${CANONICAL_PRODUCTION_ORIGIN}/en${AI_TOOLS_LIST_PATH}`,
+    );
+    const list = data.mainEntity as {
+      "@type": string;
+      itemListElement: unknown[];
+    };
+    expect(list["@type"]).toBe("ItemList");
+    expect(list.itemListElement).toEqual([]);
+    expect(AI_TOOLS_LIST_TOOLS).toEqual([]);
+    expect(JSON.stringify(data)).not.toMatch(
+      /Organization|AI TOOLS LIST|aiai\.tools/i,
+    );
+
+    const listed = aiToolsListJsonLd("nl", [
+      { name: "Example Tool", url: "https://example.com/tool" },
+    ]);
+    const items = (
+      listed.mainEntity as { itemListElement: Array<Record<string, unknown>> }
+    ).itemListElement;
+    expect(items).toEqual([
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Example Tool",
+        url: "https://example.com/tool",
+      },
+    ]);
+    expect(listed.url).toBe(
+      `${CANONICAL_PRODUCTION_ORIGIN}/nl${AI_TOOLS_LIST_PATH}`,
+    );
+  });
+});
+
 describe("AI tools list sitemap", () => {
   it("is a static sitemap path", () => {
     const sitemap = readFileSync(join(dir, "../../app/sitemap.ts"), "utf8");
     expect(sitemap).toContain(`"${AI_TOOLS_LIST_PATH}"`);
+  });
+});
+
+describe("AI tools list route", () => {
+  it("does not render the startup record", () => {
+    const page = readFileSync(
+      join(dir, "../../app/[locale]/startups/ai-tools-list/page.tsx"),
+      "utf8",
+    );
+    expect(page).not.toContain("StartupsProfilePage");
+    expect(page).not.toContain("findApprovedPublicStartupBySlug");
+    expect(page).not.toContain("startupProfileJsonLd");
   });
 });
