@@ -30,8 +30,25 @@ export type EditorialItemView = {
   body: unknown;
 };
 
+/** An AIT News story, read live from its source. */
+export type StorylineItemView = {
+  kind: "storyline";
+  itemId: string;
+  intro: string | null;
+  storyline: {
+    slug: string;
+    title: string;
+    overview: string;
+    sourceCount: number;
+    updatedAt: string | null;
+  };
+};
+
 /** What a reader sees for one issue item, by kind. */
-export type IssueItemView = ArticleItemView | EditorialItemView;
+export type IssueItemView =
+  | ArticleItemView
+  | EditorialItemView
+  | StorylineItemView;
 
 /** The item kinds; each has one strategy, one block and one renderer. */
 export type ItemKindId = IssueItemView["kind"];
@@ -45,7 +62,7 @@ export type UnavailableItem = {
   kind: ItemKindId;
   itemId: string;
   unavailable: true;
-  reason: "missing" | "not_ready" | "other_magazine";
+  reason: "missing" | "not_ready" | "other_magazine" | "unpublished";
 };
 
 /** What an editor sees for one issue item. */

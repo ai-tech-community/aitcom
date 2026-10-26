@@ -4792,9 +4792,14 @@
       "unavailableReason": {
         "missing": "Dit onderdeel is verwijderd. Haal het uit het nummer.",
         "not_ready": "Lezers kunnen dit onderdeel nog niet zien.",
-        "other_magazine": "Dit artikel hoort bij een ander magazine. Haal het uit het nummer."
+        "other_magazine": "Dit artikel hoort bij een ander magazine. Haal het uit het nummer.",
+        "unpublished": "Dit is offline gehaald. Lezers slaan het over tot het weer online staat."
       },
-      "editorsOnly": "Alleen redacteuren zien dit."
+      "editorsOnly": "Alleen redacteuren zien dit.",
+      "storylineKind": "Uit AIT News",
+      "sources": "{count, plural, one {# bron} other {# bronnen}}",
+      "updated": "Bijgewerkt op {date}",
+      "readStory": "Lees het verhaal"
     },
     "rail": {
       "visitCommunity": "Bezoek {community}",
@@ -4988,7 +4993,8 @@
           "movedTo": "{title} staat nu op plek {position} van {total}.",
           "dropped": "{title} neergezet op plek {position} van {total}.",
           "cancelled": "Verplaatsen geannuleerd. {title} staat weer op zijn plek."
-        }
+        },
+        "storyline": "Verhaal"
       },
       "editorial": {
         "heading": "Kop (optioneel)",
@@ -5000,16 +5006,20 @@
         "kind": "Wat wil je toevoegen",
         "tabs": {
           "article": "Artikelen",
-          "editorial": "Tekst"
+          "editorial": "Tekst",
+          "storyline": "Verhalen"
         },
         "search": {
-          "article": "Zoek artikelen die klaar zijn"
+          "article": "Zoek artikelen die klaar zijn",
+          "storyline": "Zoek verhalen uit AIT News"
         },
         "empty": {
-          "article": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier."
+          "article": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
+          "storyline": "Geen verhalen gevonden."
         },
         "hint": {
-          "article": "Alleen artikelen die klaar zijn voor een nummer en niet al in een ander nummer staan, verschijnen hier."
+          "article": "Alleen artikelen die klaar zijn voor een nummer en niet al in een ander nummer staan, verschijnen hier.",
+          "storyline": "Verhalen worden bijgewerkt: lezers zien altijd de nieuwste versie."
         },
         "noMatch": "Niets gevonden voor “{query}”.",
         "add": "Toevoegen",

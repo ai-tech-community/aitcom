@@ -4792,9 +4792,14 @@
       "unavailableReason": {
         "missing": "This item was deleted. Remove it from the issue.",
         "not_ready": "Readers cannot see this item yet.",
-        "other_magazine": "This article belongs to another magazine. Remove it from the issue."
+        "other_magazine": "This article belongs to another magazine. Remove it from the issue.",
+        "unpublished": "This was taken offline. Readers skip it until it is back."
       },
-      "editorsOnly": "Only editors see this."
+      "editorsOnly": "Only editors see this.",
+      "storylineKind": "From AIT News",
+      "sources": "{count, plural, one {# source} other {# sources}}",
+      "updated": "Updated {date}",
+      "readStory": "Read the story"
     },
     "rail": {
       "visitCommunity": "Visit {community}",
@@ -4988,7 +4993,8 @@
           "movedTo": "{title} is now at position {position} of {total}.",
           "dropped": "{title} dropped at position {position} of {total}.",
           "cancelled": "Reordering cancelled. {title} is back where it was."
-        }
+        },
+        "storyline": "Story"
       },
       "editorial": {
         "heading": "Heading (optional)",
@@ -5000,16 +5006,20 @@
         "kind": "What to add",
         "tabs": {
           "article": "Articles",
-          "editorial": "Text"
+          "editorial": "Text",
+          "storyline": "Stories"
         },
         "search": {
-          "article": "Search ready articles"
+          "article": "Search ready articles",
+          "storyline": "Search AIT News stories"
         },
         "empty": {
-          "article": "No articles are ready. Articles marked ready for an issue show up here."
+          "article": "No articles are ready. Articles marked ready for an issue show up here.",
+          "storyline": "No stories found."
         },
         "hint": {
-          "article": "Only articles marked ready and not in another issue show here."
+          "article": "Only articles marked ready and not in another issue show here.",
+          "storyline": "Stories stay live: readers always see the newest version."
         },
         "noMatch": "Nothing matches “{query}”.",
         "add": "Add",

@@ -7,6 +7,7 @@ import type {
   UnavailableItem,
 } from "@/lib/magazines/item-views";
 
+import { StorylineItem, storylineItemTitle } from "./storyline-item";
 import { ArticleItem, articleItemTitle } from "./article-item";
 import { EditorialItem, editorialItemTitle } from "./editorial-item";
 import type {
@@ -28,12 +29,14 @@ export const ITEM_RENDERERS: {
 } = {
   article: ArticleItem,
   editorial: EditorialItem,
+  storyline: StorylineItem,
 };
 
 /** Each kind's title for the issue's contents list. */
 const ITEM_TITLES: { [K in ItemKindId]: ItemTitle<K> } = {
   article: articleItemTitle,
   editorial: editorialItemTitle,
+  storyline: storylineItemTitle,
 };
 
 export function isUnavailableItem(

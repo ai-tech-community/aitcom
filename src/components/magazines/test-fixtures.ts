@@ -5,6 +5,7 @@
 import type {
   ArticleItemView,
   EditorialItemView,
+  StorylineItemView,
   UnavailableItem,
 } from "@/lib/magazines/item-views";
 import type { Article } from "@/payload-types";
@@ -33,6 +34,26 @@ export function articleView(
       excerpt: `Excerpt of article ${n}.`,
       readingMinutes: 4,
       imageUrl: null,
+      ...overrides,
+    },
+  };
+}
+
+/** A live AIT News story with the shared absolute date format. */
+export function storylineView(
+  n = 1,
+  overrides: Partial<StorylineItemView["storyline"]> = {},
+): StorylineItemView {
+  return {
+    kind: "storyline",
+    itemId: `storyline-${n}`,
+    intro: null,
+    storyline: {
+      slug: `story-${n}`,
+      title: `Story ${n}`,
+      overview: `Overview of story ${n}.`,
+      sourceCount: 14,
+      updatedAt: "2026-10-24T10:00:00.000Z",
       ...overrides,
     },
   };

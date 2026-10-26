@@ -18,6 +18,9 @@ export const GUARDED_PAYLOAD_TABLES = [
   "magazine_issues",
   "articles",
   "_articles_v",
+  "magazine_issues_blocks_article",
+  "magazine_issues_blocks_editorial",
+  "magazine_issues_blocks_storyline",
 ];
 
 /** "table.column" for each expected column the database does not have. */

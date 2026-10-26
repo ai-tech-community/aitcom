@@ -10,6 +10,7 @@ import type {
 
 import { articleItemKind } from "./article/kind";
 import { editorialItemKind } from "./editorial/kind";
+import { storylineItemKind } from "./storyline/kind";
 import { itemIdOf } from "./item-id";
 import type {
   IssueItemKind,
@@ -27,13 +28,20 @@ import type {
 const STRATEGIES = {
   article: articleItemKind,
   editorial: editorialItemKind,
+  storyline: storylineItemKind,
 };
 
 /** The builder input type a kind's strategy declares. */
-export type InputOf<K extends ItemKindId> =
-  (typeof STRATEGIES)[K] extends IssueItemKind<K, infer Input, StoredItem<K>>
+type KindInputs = {
+  [K in ItemKindId]: (typeof STRATEGIES)[K] extends IssueItemKind<
+    K,
+    infer Input,
+    StoredItem<K>
+  >
     ? Input
     : never;
+};
+export type InputOf<K extends ItemKindId> = KindInputs[K];
 
 /**
  * One strategy per kind id: a kind without a strategy, or a strategy whose

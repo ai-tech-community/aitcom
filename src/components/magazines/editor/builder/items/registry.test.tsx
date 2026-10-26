@@ -5,6 +5,7 @@ vi.mock("@/trpc/react", () => ({ api: {} }));
 
 import { ITEM_KINDS } from "@/server/magazines/items/registry";
 
+import { storylineView } from "../../../test-fixtures";
 import { ITEM_RENDERERS } from "../../../items/registry";
 import type { BuilderItem } from "../items-model";
 import {
@@ -51,6 +52,30 @@ describe("builder item registry", () => {
   it("names each kind by its own label, never a fallback", () => {
     expect(builderKindLabelKey(article)).toBe("article");
     expect(builderKindLabelKey(editorial)).toBe("editorial");
+  });
+
+  it("adds stories after articles and follows their saved title and edited intro", () => {
+    expect(ADD_TAB_ORDER).toEqual(["article", "storyline", "editorial"]);
+    const item: BuilderItem = {
+      kind: "storyline",
+      key: "story",
+      storylineId: "s1",
+      intro: "Our take",
+    };
+    const saved = storylineView();
+    expect(builderKindLabelKey(item)).toBe("storyline");
+    expect(builderReferenceKey(item)).toBe("storyline:s1");
+    expect(builderRowTitle(item, { saved, titleHint: "Old title", t })).toBe(
+      "Story 1",
+    );
+    expect(builderPreviewView(item, undefined)).toBeNull();
+    expect(builderPreviewView(item, saved)).toEqual({
+      ...saved,
+      itemId: "story",
+      intro: "Our take",
+    });
+    expect(isSavableBuilderItem(item)).toBe(true);
+    expect(hasBuilderItemEditor(item)).toBe(false);
   });
 
   it("dispatches row titles, saving rules, previews and references per kind", () => {

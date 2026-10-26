@@ -10,6 +10,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { db as Db } from "@/server/db";
 
 import type { down as Down, up as Up } from "./20261026a_magazines";
+import type * as PlatformItems from "./20261026b_magazine_platform_items";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -43,6 +44,7 @@ describe.skipIf(!isLocalDbConfigured())(
     let sql: typeof Sql;
     let up: typeof Up;
     let down: typeof Down;
+    let platformItems: typeof PlatformItems;
 
     /** "table.column" for each expected column the database has. */
     async function presentColumns(
@@ -90,15 +92,17 @@ describe.skipIf(!isLocalDbConfigured())(
     }
 
     beforeAll(async () => {
-      const [dbMod, drizzle, migration] = await Promise.all([
+      const [dbMod, drizzle, migration, platformMigration] = await Promise.all([
         import("@/server/db"),
         import("drizzle-orm"),
         import("./20261026a_magazines"),
+        import("./20261026b_magazine_platform_items"),
       ]);
       db = dbMod.db;
       sql = drizzle.sql;
       up = migration.up;
       down = migration.down;
+      platformItems = platformMigration;
       const { rows } = await db.execute<{ name: string }>(
         sql`select current_database() as name`,
       );
@@ -157,19 +161,25 @@ describe.skipIf(!isLocalDbConfigured())(
     });
 
     it("down removes the tables and columns, up restores them", async () => {
-      // One transaction: other DB suites running in parallel never see the
-      // articles table without its columns (they wait on the lock).
-      await db.transaction(async (tx) => {
-        await down({ db: tx } as never);
-        expect(await presentColumns(tx)).toEqual([]);
-        const { rows } = await tx.execute<{ n: number }>(sql`
+      // Roll back dependent migrations first, in reverse deployment order.
+      // Roll back the exercise itself too: concurrent suites keep their rows.
+      const rollback = new Error("rollback migration exercise");
+      await expect(
+        db.transaction(async (tx) => {
+          await platformItems.down({ db: tx } as never);
+          await down({ db: tx } as never);
+          expect(await presentColumns(tx)).toEqual([]);
+          const { rows } = await tx.execute<{ n: number }>(sql`
           SELECT count(*)::int AS n FROM information_schema.tables
           WHERE table_schema = 'public' AND table_name LIKE 'magazine%'
         `);
-        expect(rows[0]?.n).toBe(0);
-        await up({ db: tx } as never);
-        expect(await presentColumns(tx)).toEqual(EXPECTED_COLUMNS);
-      });
+          expect(rows[0]?.n).toBe(0);
+          await up({ db: tx } as never);
+          expect(await presentColumns(tx)).toEqual(EXPECTED_COLUMNS);
+          await platformItems.up({ db: tx } as never);
+          throw rollback;
+        }),
+      ).rejects.toBe(rollback);
       // The test database keeps the tables for every other suite.
       expect(await presentColumns()).toEqual(EXPECTED_COLUMNS);
     });

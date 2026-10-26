@@ -82,7 +82,11 @@ describe("magazine-issues collection", () => {
   it("builds the items blocks from the registry blocks", () => {
     const items = pick(MagazineIssues.fields, "items");
     expect(items.type).toBe("blocks");
-    expect(items.blocks!.map((b) => b.slug)).toEqual(["article", "editorial"]);
+    expect(items.blocks!.map((b) => b.slug)).toEqual([
+      "article",
+      "editorial",
+      "storyline",
+    ]);
     for (const block of items.blocks!) {
       expect(block.fields[0]?.name).toBe("intro");
     }
@@ -133,5 +137,28 @@ describe("magazines migration", () => {
       "utf8",
     );
     expect(index).toContain('name: "20261026a_magazines"');
+  });
+});
+
+describe("magazine platform items migration", () => {
+  it("ships an idempotent storyline block migration registered after magazines", () => {
+    const source = readFileSync(
+      join(
+        process.cwd(),
+        "src/migrations/20261026b_magazine_platform_items.ts",
+      ),
+      "utf8",
+    );
+    expect(source).toContain(
+      'CREATE TABLE IF NOT EXISTS "magazine_issues_blocks_storyline"',
+    );
+    const index = readFileSync(
+      join(process.cwd(), "src/migrations/index.ts"),
+      "utf8",
+    );
+    expect(index).toContain('name: "20261026b_magazine_platform_items"');
+    expect(
+      index.indexOf('name: "20261026b_magazine_platform_items"'),
+    ).toBeGreaterThan(index.indexOf('name: "20261026a_magazines"'));
   });
 });
