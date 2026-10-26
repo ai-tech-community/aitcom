@@ -49,16 +49,15 @@ async function isLiveCommunity(
 }
 
 /**
- * The magazine a user writes for, when they are an editor of its
- * community (an active owner or admin of a live community, today).
- * `NOT_FOUND` when the magazine does not exist, `FORBIDDEN` when the user
- * is not its editor. The one gate for writing magazine articles.
+ * The magazine and whether the user is an editor of its community (an
+ * active owner or admin of a live community, today). Null when the
+ * magazine does not exist. The one editor check for magazine articles.
  */
-export async function requireEditorOfMagazine(
+async function loadMagazineEditing(
   deps: Deps,
   magazine: unknown,
-  userId: string,
-): Promise<Magazine> {
+  userId: string | null,
+): Promise<{ magazine: Magazine; isEditor: boolean } | null> {
   const magazineId = relationIdOrNull(magazine);
   const doc =
     magazineId === null
@@ -69,18 +68,41 @@ export async function requireEditorOfMagazine(
           depth: 0,
           disableErrors: true,
         });
-  if (!doc) throw new TRPCError({ code: "NOT_FOUND" });
+  if (!doc) return null;
   const role = (await isLiveCommunity(deps.db, doc.communityId))
     ? await activeCommunityRole(deps.db, doc.communityId, userId)
     : null;
-  if (!isMagazineEditorRole(role)) throw new TRPCError({ code: "FORBIDDEN" });
-  return doc;
+  return { magazine: doc, isEditor: isMagazineEditorRole(role) };
 }
 
 /**
- * Approved articles of the magazine that no issue holds yet, newest first.
- * Read from the latest versions, so titles are what the author last saved.
+ * The magazine a user writes for, when they are an editor of its
+ * community. `NOT_FOUND` when the magazine does not exist, `FORBIDDEN`
+ * when the user is not its editor. The one gate for writing magazine
+ * articles.
  */
+export async function requireEditorOfMagazine(
+  deps: Deps,
+  magazine: unknown,
+  userId: string,
+): Promise<Magazine> {
+  const editing = await loadMagazineEditing(deps, magazine, userId);
+  if (!editing) throw new TRPCError({ code: "NOT_FOUND" });
+  if (!editing.isEditor) throw new TRPCError({ code: "FORBIDDEN" });
+  return editing.magazine;
+}
+
+/** Whether the viewer edits this magazine; false for a missing magazine. */
+export async function isEditorOfMagazine(
+  deps: Deps,
+  magazine: unknown,
+  viewerId: string | null,
+): Promise<boolean> {
+  return (
+    (await loadMagazineEditing(deps, magazine, viewerId))?.isEditor ?? false
+  );
+}
+
 export async function listAvailableArticles(
   payload: PayloadClient,
   magazineId: number,

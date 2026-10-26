@@ -5,6 +5,7 @@ import { memberProfiles, memberBadges } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
 import { isTrustedAuthor } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
+import { channelFor } from "@/server/articles/channels";
 import { ArticleEditor } from "@/components/article-editor";
 
 export default async function EditArticlePage({
@@ -28,6 +29,9 @@ export default async function EditArticlePage({
   const article = docs[0];
   if (!article) return notFound();
   if (article.authorId !== session.user.id) return notFound();
+  // The blog editor edits blog articles only; a magazine article is written
+  // from its magazine.
+  if (channelFor(article).id !== "blog") return notFound();
 
   const profile = await db.query.memberProfiles.findFirst({
     where: eq(memberProfiles.userId, session.user.id),

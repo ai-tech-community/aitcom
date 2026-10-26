@@ -8,6 +8,7 @@ import { communities, communityMemberships } from "@/server/db/schema";
 
 import type { PayloadClient } from "./deps";
 import { isMagazineEditorRole } from "./issue-access";
+import { activeRoleOf } from "./viewer-role";
 
 /**
  * What a viewer may read across all magazine issues, as id lists a Payload
@@ -49,7 +50,10 @@ export function buildIssueReadScope(
   memberships: readonly ScopeMembership[],
   rows: readonly ScopeCommunity[],
 ): IssueReadScope {
-  const active = memberships.filter((ms) => ms.status === "active");
+  const active = memberships.flatMap((ms) => {
+    const role = activeRoleOf(ms);
+    return role === null ? [] : [{ communityId: ms.communityId, role }];
+  });
   return {
     editorCommunityIds: active
       .filter((ms) => isMagazineEditorRole(ms.role))
@@ -164,7 +168,7 @@ export function readableIssueWhere(scope: IssueReadScope): Where {
 
 /** Ids of issues readable in this scope, optionally narrowed (e.g. by magazine). */
 export async function readableIssueIds(
-  payload: PayloadClient,
+  payload: Pick<PayloadClient, "find">,
   scope: IssueReadScope,
   narrow?: Where,
 ): Promise<number[]> {

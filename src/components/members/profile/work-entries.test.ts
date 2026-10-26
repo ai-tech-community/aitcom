@@ -11,7 +11,13 @@ const NOW = new Date("2026-10-02T12:00:00Z");
 const work: ProfileWork = {
   articles: {
     items: [
-      { id: 1, title: "A", slug: "a", publishedAt: "2026-03-01T00:00:00Z" },
+      {
+        id: 1,
+        title: "A",
+        slug: "a",
+        href: "/magazines/weekly/issue-1/a",
+        publishedAt: "2026-03-01T00:00:00Z",
+      },
     ],
     hasMore: false,
   },
@@ -77,7 +83,8 @@ const work: ProfileWork = {
 describe("toWorkEntries", () => {
   it("links each item to its own page", () => {
     const entries = toWorkEntries(work, NOW);
-    expect(entries.articles[0]?.href).toBe("/blog/a");
+    // The server decides an article's page: the blog or its magazine issue.
+    expect(entries.articles[0]?.href).toBe("/magazines/weekly/issue-1/a");
     expect(entries.projects[0]?.href).toBe("/launchpad/p");
     expect(entries.courses[0]?.href).toBe("/communities/club/classroom/c");
     expect(entries.events[0]?.href).toBe("/events/e");
@@ -107,7 +114,9 @@ describe("recentWork", () => {
     const undated: ProfileWork = {
       ...work,
       articles: {
-        items: [{ id: 9, title: "U", slug: "u", publishedAt: null }],
+        items: [
+          { id: 9, title: "U", slug: "u", href: "/blog/u", publishedAt: null },
+        ],
         hasMore: false,
       },
       projects: empty,

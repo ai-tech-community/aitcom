@@ -8,6 +8,28 @@ import {
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { canReadArticle } from "@/server/articles/article-access";
+import { channelFor } from "@/server/articles/channels";
+import type { Deps } from "@/server/magazines/deps";
+
+/**
+ * The live article and whether the viewer may read it (`canReadArticle`).
+ * Null when it does not exist.
+ */
+async function loadArticleForViewer(
+  deps: Deps,
+  articleId: number,
+  viewerId: string | null,
+) {
+  const article = await deps.payload.findByID({
+    collection: "articles",
+    id: articleId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!article) return null;
+  return { article, readable: await canReadArticle(deps, article, viewerId) };
+}
 
 async function requireRulesAcceptance(userId: string, communityId?: string) {
   if (!communityId) return;
@@ -50,8 +72,16 @@ export const commentsRouter = createTRPCRouter({
 
   list: publicProcedure
     .input(z.object({ articleId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
+      // Comments are as private as their article; an unreadable one is
+      // not found, so its existence is not revealed.
+      const found = await loadArticleForViewer(
+        { db: ctx.db, payload },
+        input.articleId,
+        ctx.session?.user.id ?? null,
+      );
+      if (!found?.readable) throw new TRPCError({ code: "NOT_FOUND" });
       const { docs } = await payload.find({
         collection: "comments",
         where: { articleId: { equals: input.articleId } },
@@ -85,19 +115,24 @@ export const commentsRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
 
-      // Validate article exists and is published
-      const article = await payload.findByID({
-        collection: "articles",
-        id: input.articleId,
-        depth: 0,
-      });
-
-      if (article.status !== "published") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Cannot comment on unpublished articles",
-        });
+      const found = await loadArticleForViewer(
+        { db: ctx.db, payload },
+        input.articleId,
+        ctx.session.user.id,
+      );
+      if (!found) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!found.readable) {
+        // A blog article that is not public yet keeps its own message; a
+        // magazine article the viewer may not read is not found.
+        if (channelFor(found.article).id === "blog") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Cannot comment on unpublished articles",
+          });
+        }
+        throw new TRPCError({ code: "NOT_FOUND" });
       }
+      const { article } = found;
 
       // Validate parentId if provided (one-level threading)
       if (input.parentId !== undefined) {

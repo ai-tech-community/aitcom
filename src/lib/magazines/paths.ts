@@ -6,9 +6,12 @@
 
 type Slugged = { slug: string };
 
+/** The `/magazines` home: every public issue on the platform. */
+export const MAGAZINES_HOME_PATH = "/magazines";
+
 /** The public shelf of one magazine. */
 export function magazinePath(magazine: Slugged): string {
-  return `/magazines/${magazine.slug}`;
+  return `${MAGAZINES_HOME_PATH}/${magazine.slug}`;
 }
 
 /** The reading page of one issue. */
