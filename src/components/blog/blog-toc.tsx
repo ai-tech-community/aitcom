@@ -62,7 +62,7 @@ export function BlogToc({
 
   return (
     <aside className="hidden w-64 shrink-0 lg:block">
-      <nav className="sticky top-24">
+      <nav aria-label={label} className="sticky top-24">
         <h2 className="text-muted-foreground mb-3 font-mono text-xs font-medium tracking-wider">
           / {label}
         </h2>

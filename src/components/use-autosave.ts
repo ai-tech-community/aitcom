@@ -15,6 +15,12 @@ export type UseAutosaveOptions<T> = {
   value: T;
   /** Persists a value. Throws on failure; an Error whose message is a conflict code marks a conflict. */
   save: (value: T) => Promise<void>;
+  /**
+   * The server codes that mean "someone else changed this first": a
+   * conflict, not an error. Each feature passes its own (the classroom
+   * its course and lesson codes, the issue builder `ISSUE_CHANGED`).
+   */
+  conflictCodes: ReadonlySet<string>;
   /** Debounce after the last change. Default 1000 ms. */
   delayMs?: number;
   /** false = never saves (read-only / archived). */
@@ -34,18 +40,20 @@ export type UseAutosaveResult = {
   flush: () => Promise<AutosaveStatus>;
   /** Try again after an error. Does nothing in a conflict — the server would reject it again. */
   retry: () => Promise<AutosaveStatus>;
+  /**
+   * Report a conflict found by another write to the same document (a
+   * publish refused because someone else changed it first). It is the same
+   * conflict a save would hit next: saving stops, the status is
+   * `conflict`, and only a reload clears it.
+   */
+  markConflict: () => void;
 };
 
-/** Server codes meaning "someone else changed this first": a conflict, not an error. */
-export const CONFLICT_CODES: ReadonlySet<string> = new Set([
-  "COURSE_CHANGED",
-  "LESSON_CHANGED",
-]);
 const jsonEqual = (a: unknown, b: unknown) =>
   JSON.stringify(a) === JSON.stringify(b);
 
 /**
- * Debounced autosave for one draft value — the builder's single save model:
+ * Debounced autosave for one draft value — a builder's single save model:
  * no Save buttons, one visible status.
  *
  * Design: all mutable save state lives in refs, so timers, the unmount flush
@@ -60,6 +68,7 @@ const jsonEqual = (a: unknown, b: unknown) =>
 export function useAutosave<T>({
   value,
   save,
+  conflictCodes,
   delayMs = 1000,
   enabled = true,
   isEqual = jsonEqual,
@@ -70,6 +79,7 @@ export function useAutosave<T>({
   const latestRef = useRef(value);
   const persistedRef = useRef(value);
   const saveRef = useRef(save);
+  const conflictCodesRef = useRef(conflictCodes);
   const isEqualRef = useRef(isEqual);
   const enabledRef = useRef(enabled);
   const statusRef = useRef<AutosaveStatus>("idle");
@@ -83,6 +93,7 @@ export function useAutosave<T>({
   useEffect(() => {
     latestRef.current = value;
     saveRef.current = save;
+    conflictCodesRef.current = conflictCodes;
     isEqualRef.current = isEqual;
     enabledRef.current = enabled;
   });
@@ -128,7 +139,10 @@ export function useAutosave<T>({
             await saveRef.current(snapshot);
           } catch (err) {
             const code = err instanceof Error ? err.message : undefined;
-            if (code && CONFLICT_CODES.has(code)) {
+            if (
+              conflictRef.current ||
+              (code && conflictCodesRef.current.has(code))
+            ) {
               conflictRef.current = true;
               clearTimer();
               updateStatus("conflict");
@@ -148,7 +162,10 @@ export function useAutosave<T>({
           (followUpRef.current || timerRef.current === null)
         );
         // Still dirty here means a debounce timer is pending for the newer value, or saving is off.
-        updateStatus(isDirty() ? "dirty" : "saved");
+        // A conflict reported while this pass ran (markConflict) wins.
+        updateStatus(
+          conflictRef.current ? "conflict" : isDirty() ? "dirty" : "saved",
+        );
       } finally {
         settled = true;
         loopRef.current = null;
@@ -203,7 +220,13 @@ export function useAutosave<T>({
     return statusRef.current;
   }, [clearTimer, drain]);
 
-  return { status, savedAt, flush, retry: flush };
+  const markConflict = useCallback(() => {
+    conflictRef.current = true;
+    clearTimer();
+    updateStatus("conflict");
+  }, [clearTimer, updateStatus]);
+
+  return { status, savedAt, flush, retry: flush, markConflict };
 }
 
 /** Browser "leave site?" prompt while there is work that is not safely saved. */

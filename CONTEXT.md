@@ -941,6 +941,88 @@ missing-capability suggestion is an idea on the Hub-wide ideas surface
 participation like any other idea. The catalog links into that surface; it does
 not collect feedback itself.
 
+### Magazine
+
+A [[Community]]'s publication: a named series of [[issue]]s, with a name, a
+platform-wide slug (`/magazines/[slug]`), a description, a logo, topics and a
+**default visibility** for new issues. A community has **at most one**
+magazine. Created and run by its [[magazine-editor]]s; it appears as the
+community's Magazine tab and on the `/magazines` shelf. Distinct from the
+[[articles]]/blog (single pieces on the Hub-wide blog) by its one irreducible
+feature: **curated, numbered issues** that collect articles, editorial text
+and, later, platform content. See
+[[adr-0042-magazine-issues-are-read-through-one-access-resolver]] and
+[[adr-0043-magazine-issue-items-are-a-registry-of-kind-strategies]].
+
+### Issue
+
+One numbered edition of a [[magazine]]: a title, a slug, a cover, an editor's
+note and an ordered list of [[issue-item]]s. An issue is `draft` (editors
+only) or `published`; a published issue does not go back to draft, and its
+slug is locked so links do not break. Each issue stores its **own visibility**
+— `members` or `public` — copied from the magazine's default when it is
+created; changing the default never changes existing issues. A `public` issue
+in an unlisted [[community]] counts as public only when an editor confirmed it
+(who and when are recorded); without that it is members-only for outsiders.
+Who may read an issue is one **issue access** decision: `none` (answered as
+not-found), `full` or `editor`. Every page, list, search and sitemap asks the
+same resolver. See [[adr-0042-magazine-issues-are-read-through-one-access-resolver]].
+
+### Issue item
+
+One entry in an [[issue]]'s ordered list, of exactly one [[item-kind]], with an
+optional intro line from the editor. Items **reference** content and render it
+live; they never copy it. An item whose content is no longer readable is
+skipped for readers and shown to editors with a "no longer available" marker.
+Being in a public issue never widens access to the referenced content.
+
+### Item kind
+
+The type of an [[issue-item]]: `article` and `editorial` today; `storyline`,
+`newsItem`, `event`, `forumThread` and `launchpadProject` later. Each kind is
+one strategy in a registry (input, stored shape, validation, batched load,
+readability) plus one renderer, so the issue page and the builder never
+branch on the kind. See
+[[adr-0043-magazine-issue-items-are-a-registry-of-kind-strategies]].
+
+### Magazine article
+
+An [[articles|article]] that belongs to a [[magazine]] (the `magazine` relation
+on `Articles`). It uses the same editor, renderer and review fields as a blog
+article, but follows the magazine [[publication-channel]]: its
+[[magazine-editor]] marks it ready (not platform staff), it never appears on
+`/blog` or in the blog feed, and it is **published and credited (XP, badges)
+when its issue is published**, not when it is approved. It is readable through
+its issue only. An article never moves into, out of, or between magazines.
+
+### Placement
+
+The [[issue]] a [[magazine-article]] is placed in, stored on the article
+(`magazineIssue`) and written only by the issue service, next to the issue's
+`article` item that holds its order. An article has **at most one** placement.
+Moving it to another issue drops the old placement, so its old URL answers
+not-found. Placement is how every surface finds the issue whose access decides
+whether the article may be read.
+
+### Publication channel
+
+How an article is reviewed, published and credited: **blog** (platform staff
+review; approval publishes and credits) or **magazine** (the magazine's editors
+review; approval means "ready for an issue"; publishing and credit happen when
+the issue is published). Decided in one place, `channelFor(article)`; no other
+code checks "is this a magazine article?" to change behaviour. See
+[[adr-0043-magazine-issue-items-are-a-registry-of-kind-strategies]].
+
+### Magazine editor
+
+A person who may create and change a [[magazine]] and its [[issue]]s, write and
+mark [[magazine-article]]s ready, and see drafts and unavailable items. Today
+this is an **active owner or admin** of the magazine's [[Community]];
+moderators and members are readers. One loader (`loadMagazineEditorship`,
+with its batched twin `loadEditorScope`) decides it, so per-magazine staff
+roles (editor-in-chief, editor, contributor) can replace it later without
+touching the access rules or any caller.
+
 ## Benchmark domain
 
 ### Benchmark

@@ -22,6 +22,7 @@ import {
 import type { CommunityRole } from "@/server/communities/role-utils";
 import { checkRateLimit } from "@/server/agent/rate-limit";
 import { HUB_SLUG } from "@/server/communities/hub";
+import { magazineErrorItemIndex } from "@/server/magazines/errors";
 
 export { HUB_SLUG };
 
@@ -64,6 +65,7 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
         ...shape.data,
         zodError:
           error.cause instanceof ZodError ? error.cause.flatten() : null,
+        magazineItemIndex: magazineErrorItemIndex(error),
       },
     };
   },

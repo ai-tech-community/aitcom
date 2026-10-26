@@ -6,7 +6,176 @@ import { logActivity } from "@/server/agent/activity";
 import { memberProfiles, memberBadges } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
 import { isTrustedAuthor, awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import type { Article } from "@/payload-types";
 import { onArticleApproved } from "@/server/badges/article-approved";
+import {
+  channelFor,
+  isArticleMagazineLocked,
+} from "@/server/articles/channels";
+import type { Deps, PayloadClient } from "@/server/magazines/deps";
+import { assertArticleNotPlaced } from "@/server/magazines/article-placement";
+import { magazineError } from "@/server/magazines/errors";
+import { requireEditorOfMagazine } from "@/server/magazines/magazine-articles";
+
+type MemberCtx = {
+  db: Deps["db"];
+  session: { user: { id: string; name?: string | null } };
+};
+
+/** Whether the caller is a trusted author (may publish blog articles directly). */
+async function isTrustedMember(ctx: MemberCtx): Promise<boolean> {
+  const profile = await ctx.db.query.memberProfiles.findFirst({
+    where: eq(memberProfiles.userId, ctx.session.user.id),
+  });
+  if (!profile) return false;
+  const badges = await ctx.db
+    .select()
+    .from(memberBadges)
+    .where(eq(memberBadges.userId, ctx.session.user.id));
+  return isTrustedAuthor(profile.xp, badges);
+}
+
+/**
+ * Runs an article write, turning the Articles hook's channel lock (a plain
+ * Error thrown inside Payload's save) into the magazine refusal code.
+ */
+async function articleWrite<T>(write: () => Promise<T>): Promise<T> {
+  try {
+    return await write();
+  } catch (error) {
+    if (isArticleMagazineLocked(error)) {
+      throw magazineError("ARTICLE_MAGAZINE_LOCKED");
+    }
+    throw error;
+  }
+}
+
+/**
+ * Whether the author may still edit the article, decided by its channel's
+ * `publishedEditPolicy` (ADR-0043):
+ * - `trusted_author` (blog): a published article only when trusted.
+ * - `magazine_editor`: the author must be an editor of the magazine's
+ *   community, before and after publishing (slice 1: editors write magazine
+ *   articles), so a published issue's typo can be fixed.
+ */
+async function assertMayEdit(
+  ctx: MemberCtx,
+  payload: PayloadClient,
+  existing: Article,
+): Promise<void> {
+  const policy = channelFor(existing).publishedEditPolicy;
+  switch (policy) {
+    case "trusted_author":
+      if (existing.status === "published" && !(await isTrustedMember(ctx))) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Cannot edit published articles. Contact an admin.",
+        });
+      }
+      return;
+    case "magazine_editor":
+      await requireEditorOfMagazine(
+        { db: ctx.db, payload },
+        existing.magazine,
+        ctx.session.user.id,
+      );
+      return;
+  }
+}
+
+/**
+ * The blog's submit: a trusted author publishes directly; anyone else goes
+ * to the staff review queue (submit XP on the first submit).
+ */
+async function submitForStaffReview(
+  ctx: MemberCtx,
+  payload: PayloadClient,
+  article: Article,
+): Promise<Article> {
+  const userId = ctx.session.user.id;
+
+  if (await isTrustedMember(ctx)) {
+    // Direct publish
+    const published = await articleWrite(() =>
+      payload.update({
+        collection: "articles",
+        id: article.id,
+        data: {
+          status: "published",
+          reviewStatus: "approved",
+          publishedAt: new Date().toISOString(),
+        },
+      }),
+    );
+
+    // Approval XP comes from the Articles collection hook, which this
+    // update triggers. The hook also evaluates badges when the review
+    // status changed; earning is idempotent, and this covers a
+    // re-publish of an article approved before.
+    await onArticleApproved(ctx.db, { authorId: userId, type: article.type });
+
+    await logActivity(ctx.db, {
+      actorId: userId,
+      actorType: "member",
+      action: "article.published",
+      targetType: "articles",
+      targetId: String(article.id),
+      metadata: { title: article.title, type: article.type },
+    });
+
+    return published;
+  }
+
+  // Submit for review
+  const submitted = await articleWrite(() =>
+    payload.update({
+      collection: "articles",
+      id: article.id,
+      data: { reviewStatus: "pending_review" },
+    }),
+  );
+
+  // Award submit XP only on first submit
+  if (!article.reviewStatus) {
+    await awardXp(ctx.db, userId, XP_AMOUNTS.ARTICLE_SUBMITTED);
+  }
+
+  await logActivity(ctx.db, {
+    actorId: userId,
+    actorType: "member",
+    action: "article.submitted",
+    targetType: "articles",
+    targetId: String(article.id),
+    metadata: { title: article.title, type: article.type },
+  });
+
+  return submitted;
+}
+
+/**
+ * A magazine's submit: the author is an editor, so marking the article
+ * ready IS the approval. Only `reviewStatus` changes: the article stays a
+ * draft, earns no submit XP and takes no trusted shortcut; it is published
+ * and credited when an issue holding it is published.
+ */
+async function markReadyForIssue(
+  ctx: MemberCtx,
+  payload: PayloadClient,
+  article: Article,
+): Promise<Article> {
+  await requireEditorOfMagazine(
+    { db: ctx.db, payload },
+    article.magazine,
+    ctx.session.user.id,
+  );
+  return articleWrite(() =>
+    payload.update({
+      collection: "articles",
+      id: article.id,
+      data: { reviewStatus: "approved" },
+    }),
+  );
+}
 
 export const articlesRouter = createTRPCRouter({
   // ── My Articles ─────────────────────────────────────────────────────────────
@@ -15,7 +184,13 @@ export const articlesRouter = createTRPCRouter({
     const payload = await getPayloadClient();
     const { docs } = await payload.find({
       collection: "articles",
-      where: { authorId: { equals: ctx.session.user.id } },
+      // The blog's list: magazine articles live on their magazine's tab.
+      where: {
+        and: [
+          { authorId: { equals: ctx.session.user.id } },
+          { magazine: { exists: false } },
+        ],
+      },
       sort: "-updatedAt",
       limit: 50,
       depth: 0,
@@ -63,11 +238,24 @@ export const articlesRouter = createTRPCRouter({
         type: z.enum(["article", "tutorial"]),
         tags: z.array(z.object({ tag: z.string() })).optional(),
         mediaUrl: z.string().url().optional(),
+        /** Write for this community magazine instead of the blog. */
+        magazineId: z.number().int().positive().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
+
+      // The channel is fixed here, once: only an editor of the magazine's
+      // community may write for it.
+      const magazine =
+        input.magazineId === undefined
+          ? null
+          : await requireEditorOfMagazine(
+              { db: ctx.db, payload },
+              input.magazineId,
+              ctx.session.user.id,
+            );
 
       // Generate unique slug
       const baseSlug = input.slug
@@ -90,6 +278,7 @@ export const articlesRouter = createTRPCRouter({
           authorId: ctx.session.user.id,
           authorName: userName,
           authorType: "member",
+          ...(magazine && { magazine: magazine.id }),
         },
         draft: true,
       });
@@ -125,23 +314,8 @@ export const articlesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "Not your article" });
       }
 
-      // Only allow editing drafts, changes_requested, or if trusted author
-      const profile = await ctx.db.query.memberProfiles.findFirst({
-        where: eq(memberProfiles.userId, ctx.session.user.id),
-      });
-      const badges = await ctx.db
-        .select()
-        .from(memberBadges)
-        .where(eq(memberBadges.userId, ctx.session.user.id));
-
-      const trusted = profile ? isTrustedAuthor(profile.xp, badges) : false;
-
-      if (existing.status === "published" && !trusted) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Cannot edit published articles. Contact an admin.",
-        });
-      }
+      // Whether a published article may still be edited is the channel's call.
+      await assertMayEdit(ctx, payload, existing);
 
       if (
         existing.status !== "published" &&
@@ -156,24 +330,26 @@ export const articlesRouter = createTRPCRouter({
 
       const { id, ...data } = input;
 
-      const updated = await payload.update({
-        collection: "articles",
-        id,
-        data: {
-          ...(data.title !== undefined && { title: data.title }),
-          ...(data.content !== undefined && { content: data.content }),
-          ...(data.type !== undefined && { type: data.type }),
-          ...(data.tags !== undefined && { tags: data.tags }),
-          ...(data.mediaUrl !== undefined && {
-            mediaUrl: data.mediaUrl ?? undefined,
-          }),
-          ...(existing.reviewStatus === "changes_requested" && {
-            reviewStatus: null,
-            reviewNote: null,
-          }),
-        },
-        draft: existing.status === "draft",
-      });
+      const updated = await articleWrite(() =>
+        payload.update({
+          collection: "articles",
+          id,
+          data: {
+            ...(data.title !== undefined && { title: data.title }),
+            ...(data.content !== undefined && { content: data.content }),
+            ...(data.type !== undefined && { type: data.type }),
+            ...(data.tags !== undefined && { tags: data.tags }),
+            ...(data.mediaUrl !== undefined && {
+              mediaUrl: data.mediaUrl ?? undefined,
+            }),
+            ...(existing.reviewStatus === "changes_requested" && {
+              reviewStatus: null,
+              reviewNote: null,
+            }),
+          },
+          draft: existing.status === "draft",
+        }),
+      );
 
       return updated;
     }),
@@ -203,77 +379,13 @@ export const articlesRouter = createTRPCRouter({
         });
       }
 
-      // Check if trusted author
-      const profile = await ctx.db.query.memberProfiles.findFirst({
-        where: eq(memberProfiles.userId, ctx.session.user.id),
-      });
-      const badges = await ctx.db
-        .select()
-        .from(memberBadges)
-        .where(eq(memberBadges.userId, ctx.session.user.id));
-
-      const trusted = profile ? isTrustedAuthor(profile.xp, badges) : false;
-
-      if (trusted) {
-        // Direct publish
-        const published = await payload.update({
-          collection: "articles",
-          id: input.id,
-          data: {
-            status: "published",
-            reviewStatus: "approved",
-            publishedAt: new Date().toISOString(),
-          },
-        });
-
-        // Approval XP comes from the Articles collection hook, which this
-        // update triggers. The hook also evaluates badges when the review
-        // status changed; earning is idempotent, and this covers a
-        // re-publish of an article approved before.
-        await onArticleApproved(ctx.db, {
-          authorId: ctx.session.user.id,
-          type: article.type,
-        });
-
-        await logActivity(ctx.db, {
-          actorId: ctx.session.user.id,
-          actorType: "member",
-          action: "article.published",
-          targetType: "articles",
-          targetId: String(input.id),
-          metadata: { title: article.title, type: article.type },
-        });
-
-        return published;
-      } else {
-        // Submit for review
-        const submitted = await payload.update({
-          collection: "articles",
-          id: input.id,
-          data: {
-            reviewStatus: "pending_review",
-          },
-        });
-
-        // Award submit XP only on first submit
-        if (!article.reviewStatus) {
-          await awardXp(
-            ctx.db,
-            ctx.session.user.id,
-            XP_AMOUNTS.ARTICLE_SUBMITTED,
-          );
-        }
-
-        await logActivity(ctx.db, {
-          actorId: ctx.session.user.id,
-          actorType: "member",
-          action: "article.submitted",
-          targetType: "articles",
-          targetId: String(input.id),
-          metadata: { title: article.title, type: article.type },
-        });
-
-        return submitted;
+      // How an article is handed in is the channel's call (ADR-0043).
+      const policy = channelFor(article).submitPolicy;
+      switch (policy) {
+        case "staff_review":
+          return submitForStaffReview(ctx, payload, article);
+        case "editor_approves":
+          return markReadyForIssue(ctx, payload, article);
       }
     }),
 
@@ -301,6 +413,10 @@ export const articlesRouter = createTRPCRouter({
           message: "Cannot delete published articles.",
         });
       }
+
+      // An issue still holds it: the editor takes it out first. (The
+      // Articles beforeDelete hook guards every other delete path.)
+      await assertArticleNotPlaced(payload, input.id);
 
       await payload.delete({ collection: "articles", id: input.id });
       return { success: true };

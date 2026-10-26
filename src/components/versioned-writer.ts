@@ -1,12 +1,13 @@
 /**
- * The one door for every write to a versioned record (a course, or one lesson)
- * from the builder.
+ * The one door for every write to a versioned record (a course, one lesson,
+ * a magazine issue) from a builder.
  *
  * A save must name the version it was based on (`expectedUpdatedAt`) so a
  * stale tab is refused instead of overwriting newer edits. Several parts of
- * the builder write to the same record — the details pane's autosave and the
+ * a builder write to the same record — the details pane's autosave and the
  * publish control write the course; a lesson's autosave and outline changes
- * that rewrite the lesson — so they must share one version and must not race:
+ * that rewrite the lesson; an issue's autosave and its publish — so they
+ * must share one version and must not race:
  * two writes in flight with the same expected version would make the second
  * one look like a conflict with ourselves.
  *

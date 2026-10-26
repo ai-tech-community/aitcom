@@ -14,6 +14,10 @@
 export const GUARDED_PAYLOAD_TABLES = [
   "payload_locked_documents_rels",
   "hosted_materials",
+  "magazines",
+  "magazine_issues",
+  "articles",
+  "_articles_v",
 ];
 
 /** "table.column" for each expected column the database does not have. */

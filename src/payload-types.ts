@@ -102,6 +102,8 @@ export interface Config {
     lessons: Lesson;
     modules: Module;
     'hosted-materials': HostedMaterial;
+    magazines: Magazine;
+    'magazine-issues': MagazineIssue;
     'email-templates': EmailTemplate;
     users: User;
     'payload-kv': PayloadKv;
@@ -146,6 +148,8 @@ export interface Config {
     lessons: LessonsSelect<false> | LessonsSelect<true>;
     modules: ModulesSelect<false> | ModulesSelect<true>;
     'hosted-materials': HostedMaterialsSelect<false> | HostedMaterialsSelect<true>;
+    magazines: MagazinesSelect<false> | MagazinesSelect<true>;
+    'magazine-issues': MagazineIssuesSelect<false> | MagazineIssuesSelect<true>;
     'email-templates': EmailTemplatesSelect<false> | EmailTemplatesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -261,6 +265,9 @@ export interface Event {
   latitude?: number | null;
   longitude?: number | null;
   geocodedAt?: string | null;
+  /**
+   * First calendar day.
+   */
   date: string;
   /**
    * Last calendar day, when the event runs more than one day. Leave empty for a single day.
@@ -473,9 +480,132 @@ export interface Article {
   reviewNote?: string | null;
   status: 'draft' | 'published';
   publishedAt?: string | null;
+  /**
+   * Set for articles written for a community magazine.
+   */
+  magazine?: (number | null) | Magazine;
+  /**
+   * Set by the issue builder
+   */
+  magazineIssue?: (number | null) | MagazineIssue;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "magazines".
+ */
+export interface Magazine {
+  id: number;
+  name: string;
+  slug: string;
+  communityId: string;
+  description?: string | null;
+  logoUrl?: string | null;
+  topics?:
+    | {
+        topic?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Copied to each new issue.
+   */
+  defaultVisibility?: ('members' | 'public') | null;
+  /**
+   * Who confirmed a public default for an unlisted community (Better Auth user ID).
+   */
+  publicConfirmedBy?: string | null;
+  publicConfirmedAt?: string | null;
+  /**
+   * Better Auth user ID.
+   */
+  createdBy: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "magazine-issues".
+ */
+export interface MagazineIssue {
+  id: number;
+  magazine: number | Magazine;
+  communityId: string;
+  number: number;
+  title: string;
+  slug: string;
+  coverImageUrl?: string | null;
+  editorNote?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  layout?: 'cover-story' | null;
+  visibility: 'members' | 'public';
+  /**
+   * Who confirmed public visibility for an unlisted community (Better Auth user ID).
+   */
+  publicConfirmedBy?: string | null;
+  publicConfirmedAt?: string | null;
+  status: 'draft' | 'published';
+  publishedAt?: string | null;
+  /**
+   * Better Auth user ID.
+   */
+  publishedBy?: string | null;
+  items?:
+    | (
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            article: number | Article;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'article';
+          }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            heading?: string | null;
+            body: {
+              root: {
+                type: string;
+                children: {
+                  type: any;
+                  version: number;
+                  [k: string]: unknown;
+                }[];
+                direction: ('ltr' | 'rtl') | null;
+                format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+                indent: number;
+                version: number;
+              };
+              [k: string]: unknown;
+            };
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'editorial';
+          }
+      )[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * Community discussion threads. Pin important threads, lock spam, delete abuse.
@@ -1746,6 +1876,14 @@ export interface PayloadLockedDocument {
         value: number | HostedMaterial;
       } | null)
     | ({
+        relationTo: 'magazines';
+        value: number | Magazine;
+      } | null)
+    | ({
+        relationTo: 'magazine-issues';
+        value: number | MagazineIssue;
+      } | null)
+    | ({
         relationTo: 'email-templates';
         value: number | EmailTemplate;
       } | null)
@@ -1917,6 +2055,8 @@ export interface ArticlesSelect<T extends boolean = true> {
   reviewNote?: T;
   status?: T;
   publishedAt?: T;
+  magazine?: T;
+  magazineIssue?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -2588,6 +2728,72 @@ export interface HostedMaterialsSelect<T extends boolean = true> {
   bytes?: T;
   storageKey?: T;
   uploadId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "magazines_select".
+ */
+export interface MagazinesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  communityId?: T;
+  description?: T;
+  logoUrl?: T;
+  topics?:
+    | T
+    | {
+        topic?: T;
+        id?: T;
+      };
+  defaultVisibility?: T;
+  publicConfirmedBy?: T;
+  publicConfirmedAt?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "magazine-issues_select".
+ */
+export interface MagazineIssuesSelect<T extends boolean = true> {
+  magazine?: T;
+  communityId?: T;
+  number?: T;
+  title?: T;
+  slug?: T;
+  coverImageUrl?: T;
+  editorNote?: T;
+  layout?: T;
+  visibility?: T;
+  publicConfirmedBy?: T;
+  publicConfirmedAt?: T;
+  status?: T;
+  publishedAt?: T;
+  publishedBy?: T;
+  items?:
+    | T
+    | {
+        article?:
+          | T
+          | {
+              intro?: T;
+              article?: T;
+              id?: T;
+              blockName?: T;
+            };
+        editorial?:
+          | T
+          | {
+              intro?: T;
+              heading?: T;
+              body?: T;
+              id?: T;
+              blockName?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
 }

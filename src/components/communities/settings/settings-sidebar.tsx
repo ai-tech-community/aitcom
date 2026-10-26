@@ -30,6 +30,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
     { key: "topics", href: `${basePath}/topics` },
     { key: "links", href: `${basePath}/links` },
     { key: "classroom", href: `${basePath}/classroom` },
+    { key: "magazine", href: `${basePath}/magazine` },
     { key: "broadcast", href: `${basePath}/broadcast` },
     { key: "autonomy", href: `${basePath}/autonomy` },
     { key: "acquire", href: `${basePath}/acquire` },
@@ -68,6 +69,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "topics"
                   | "links"
                   | "classroom"
+                  | "magazine"
                   | "broadcast"
                   | "autonomy"
                   | "acquire"
@@ -104,6 +106,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "topics"
                   | "links"
                   | "classroom"
+                  | "magazine"
                   | "broadcast"
                   | "autonomy"
                   | "acquire"

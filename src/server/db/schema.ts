@@ -5,6 +5,7 @@ import type {
   RitualMode,
   RitualStatus,
 } from "../communities/rituals";
+import type { BuiltinSurface } from "../communities/space-defaults";
 import type { FailureDetail } from "../collectors/errors";
 import type { RunStatus, StopReason } from "../collectors/run-status";
 import {
@@ -1245,6 +1246,25 @@ export const referralCredits = appSchema.table(
     uniqueIndex("referral_credit_referred_uidx").on(t.referredUserId),
     index("referral_credit_referrer_idx").on(t.referrerId),
   ],
+);
+
+/**
+ * The exactly-once credit claim for a magazine article (ADR-0043): one row
+ * per article whose author was credited for its publication in an issue,
+ * inserted in the same transaction as the credit. Kept out of Payload's
+ * `articles` columns, which every Payload save rewrites from the version it
+ * read and a duplicate copies. `article_id` references `public.articles`
+ * (ON DELETE cascade, in migration 20261026a).
+ */
+export const magazineArticleCredits = appSchema.table(
+  "magazine_article_credit",
+  (d) => ({
+    articleId: d.integer().primaryKey(),
+    creditedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
 );
 
 export const communityOnboardingStep = appSchema.table(
@@ -3623,7 +3643,8 @@ export const communityMemberships = appSchema.table(
 
 // Community Spaces — composable navigation surfaces + rooms (Slice 3, Plan 1).
 // kind="builtin": a configurable pointer to an existing community surface
-// (forum/events/classroom/ideas/members); the surface's data stays community-level.
+// (forum/events/classroom/ideas/members, plus the optional magazine); the
+// surface's data stays community-level.
 // kind="room": (Plan 2) a real container with its own membership + chat/posts.
 // `name` is an optional display override — for builtins, null means "use the
 // default i18n label"; rooms set it at creation (enforced in the app layer).
@@ -3646,7 +3667,7 @@ export const spaces = appSchema.table(
       .$type<"builtin" | "room">(),
     builtinSurface: d
       .varchar("builtin_surface", { length: 20 })
-      .$type<"forum" | "events" | "classroom" | "ideas" | "members">(),
+      .$type<BuiltinSurface>(),
     visibility: d.varchar({ length: 10 }).$type<"public" | "private">(),
     name: d.text(),
     purpose: d.text(),

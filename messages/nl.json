@@ -25,7 +25,8 @@
     "messages": "Berichten",
     "more": "Meer",
     "agents": "Agents",
-    "ideas": "Ideeën"
+    "ideas": "Ideeën",
+    "magazines": "Magazines"
   },
   "hero": {
     "title": "AIT Community",
@@ -2293,7 +2294,17 @@
     "backToEditing": "Terug naar bewerken",
     "featuredImagePreview": "Voorbeeld",
     "featuredImagePlaceholder": "Geen afbeelding — voeg een URL toe",
-    "articleTitlePlaceholder": "Artikel titel..."
+    "articleTitlePlaceholder": "Artikel titel...",
+    "magazine": {
+      "markReady": "Klaarzetten voor een nummer",
+      "markedReady": "Klaargezet. Een redacteur kan het nu in een nummer plaatsen.",
+      "prePublishTitle": "Klaar voor een nummer?",
+      "prePublishSubtitle": "Controleer je artikel. Zodra het klaar staat, kan een redacteur het in een nummer plaatsen. Het verschijnt wanneer dat nummer wordt gepubliceerd.",
+      "writingFor": "Je schrijft voor {magazine}",
+      "backToMagazine": "Terug naar het tabblad Magazine",
+      "writeMetaTitle": "Een magazine-artikel schrijven",
+      "editMetaTitle": "Magazine-artikel bewerken"
+    }
   },
   "impact": {
     "title": "Samenwerkingsimpact",
@@ -2910,7 +2921,8 @@
       "news": "Nieuws",
       "newsAll": "Al het {sector}-nieuws",
       "newsEmpty": "Voor {sector} zijn nog geen nieuwsfeeds gekoppeld. Hier wordt niets verzonnen.",
-      "newsNoStories": "Nog geen berichten uit de {sector}-feeds."
+      "newsNoStories": "Nog geen berichten uit de {sector}-feeds.",
+      "magazine": "Magazine"
     },
     "manage": {
       "settings": "Instellingen",
@@ -2961,6 +2973,7 @@
         "topics": "Onderwerpen",
         "links": "Links",
         "classroom": "Klaslokaal",
+        "magazine": "Magazine",
         "ownership": "Eigenaarschap",
         "integrations": "Integraties",
         "broadcast": "Aankondigingen",
@@ -4724,6 +4737,309 @@
       "claimExpired": "Deze claim van 24 uur is afgelopen.",
       "coverage": "{covered} van {total} onderwerpen vandaag gedekt",
       "yourAgentFallback": "je agent"
+    }
+  },
+  "magazines": {
+    "home": {
+      "label": "Magazines",
+      "title": "Verhalen uit de communities die AI bouwen",
+      "intro": "Geschreven en samengesteld door leden van de community. Gratis te lezen.",
+      "featured": "Uitgelicht nummer",
+      "fromCommunity": "Van {community}",
+      "readIssue": "Lees het nummer",
+      "justPublished": "Net verschenen",
+      "allMagazines": "Alle magazines",
+      "topicFilter": "Magazines filteren op onderwerp",
+      "allTopics": "Alles",
+      "emptyTitle": "Nog geen magazines om te lezen",
+      "emptyDescription": "Communities maken magazines van de beste artikelen van hun leden. Zodra een community een nummer voor iedereen publiceert, staat het hier.",
+      "emptyAction": "Communities ontdekken",
+      "noTopicTitle": "Nog geen magazines over {topic}",
+      "noTopicDescription": "Kies een ander onderwerp of bekijk alle magazines.",
+      "showAll": "Alle magazines tonen"
+    },
+    "shelf": {
+      "byCommunity": "Een magazine van <link>{community}</link>",
+      "topics": "Onderwerpen",
+      "issues": "Nummers",
+      "membersOnly": "Alleen voor leden",
+      "manage": "Magazine beheren",
+      "emptyTitle": "Nog geen nummers",
+      "emptyDescription": "Het eerste nummer van {magazine} komt eraan. Bezoek de community om te zien waar de leden over schrijven.",
+      "emptyEditorDescription": "Maak het eerste nummer via het tabblad Magazine van je community.",
+      "visitCommunity": "Bezoek {community}"
+    },
+    "issue": {
+      "number": "Nummer {number}",
+      "dateline": "Nummer {number} · {month}",
+      "byCommunity": "Een magazine van {community}",
+      "contents": "Inhoud",
+      "fromTheEditor": "Van de redactie",
+      "readingTime": "{minutes} min lezen",
+      "itemCount": "{count, plural, one {# onderdeel} other {# onderdelen}}",
+      "draftNotice": "Concept — alleen redacteuren zien dit",
+      "editIssue": "Nummer bewerken",
+      "noItems": "Dit nummer heeft nog geen artikelen.",
+      "published": "Verschenen op {date}",
+      "signature": "— {name}, redacteur"
+    },
+    "item": {
+      "readArticle": "Lees artikel",
+      "byAuthor": "Door {name}",
+      "readingTime": "{minutes} min lezen",
+      "untitledEditorial": "Een notitie van de redactie",
+      "unavailable": "Niet meer beschikbaar",
+      "unavailableReason": {
+        "missing": "Dit onderdeel is verwijderd. Haal het uit het nummer.",
+        "not_ready": "Lezers kunnen dit onderdeel nog niet zien.",
+        "other_magazine": "Dit artikel hoort bij een ander magazine. Haal het uit het nummer."
+      },
+      "editorsOnly": "Alleen redacteuren zien dit."
+    },
+    "rail": {
+      "visitCommunity": "Bezoek {community}",
+      "pastIssues": "Eerdere nummers",
+      "allIssues": "Alle nummers bekijken",
+      "share": "Delen",
+      "copyLink": "Link kopiëren",
+      "linkCopied": "Link gekopieerd",
+      "linkCopyFailed": "Kon de link niet kopiëren"
+    },
+    "article": {
+      "context": "Waar dit artikel verschijnt",
+      "byAuthor": "Door {name}",
+      "readingTime": "{minutes} min lezen",
+      "contents": "In dit artikel",
+      "nextInIssue": "Volgende in dit nummer",
+      "lastInIssue": "Dit is het laatste artikel in dit nummer.",
+      "backToIssue": "Terug naar het nummer",
+      "draftNotice": "Concept — alleen redacteuren zien dit"
+    },
+    "meta": {
+      "issueDescription": "Nummer {number} van {magazine}, een magazine van {community}.",
+      "articleDescription": "Een artikel in nummer {number} van {magazine}, een magazine van {community}.",
+      "homeTitle": "Magazines",
+      "homeDescription": "Verhalen uit de communities die AI bouwen, geschreven en samengesteld door leden van de community. Gratis te lezen.",
+      "shelfDescription": "{magazine}, een magazine van {community}."
+    }
+  },
+  "magazineEditor": {
+    "errors": {
+      "confirmUnlistedPublic": "Je community is privé. Vink het vakje aan om te bevestigen dat iedereen dit mag zien.",
+      "magazineExists": "Je community heeft al een magazine. Laad de pagina opnieuw om het te bewerken.",
+      "magazineSlugTaken": "Een ander magazine gebruikt dit adres al. Kies een ander adres.",
+      "spaceSlugTaken": "Een ruimte in je community heet al “magazine”. Geef die ruimte een andere naam bij Ruimtes en probeer het opnieuw.",
+      "issueChanged": "Dit nummer is ergens anders gewijzigd. Laad opnieuw om de nieuwste versie te zien.",
+      "issueSlugTaken": "Een ander nummer van dit magazine gebruikt dit adres al. Kies een ander adres.",
+      "issueSlugLocked": "Het adres van een gepubliceerd nummer blijft hetzelfde, zodat links ernaar blijven werken.",
+      "issueEmpty": "Voeg minstens één artikel of tekstgedeelte toe voordat je publiceert.",
+      "issueNotDraft": "Dit nummer is al gepubliceerd.",
+      "itemInvalid": "Een deel van dit nummer is niet compleet. Controleer de gemarkeerde delen in de lijst en probeer het opnieuw.",
+      "articlePlaced": "Dit artikel staat al in een ander nummer.",
+      "articleNotReady": "Dit artikel is nog niet klaar voor een nummer.",
+      "articleMagazineLocked": "Een magazine-artikel blijft in zijn magazine. Het kan niet naar de blog of naar een ander magazine.",
+      "generic": "Er ging iets mis. Probeer het opnieuw."
+    },
+    "publicOptIn": {
+      "warning": "Je community is privé. Als je dit aan iedereen laat zien, ziet iedereen op internet de naam van je community en een link ernaartoe. Je leden, berichten en andere pagina's blijven privé.",
+      "confirm": "Ik begrijp het, laat dit buiten de community zien"
+    },
+    "settings": {
+      "title": "Magazine",
+      "intro": "Een magazine bundelt de beste artikelen van je leden in nummers die mensen kunnen lezen en delen.",
+      "nameLabel": "Naam",
+      "slugLabel": "Adres",
+      "slugHint": "Kleine letters, cijfers en streepjes. Als je het later wijzigt, werken oude links naar je magazine niet meer.",
+      "slugInvalid": "Gebruik 3 tot 60 kleine letters, cijfers en streepjes.",
+      "descriptionLabel": "Beschrijving",
+      "descriptionHint": "Eén of twee zinnen voor lezers. Dit staat op de magazinepagina.",
+      "logoLabel": "Logo",
+      "logoHint": "Een vierkante afbeelding werkt het best.",
+      "logoUpload": "Logo uploaden",
+      "logoReplace": "Logo vervangen",
+      "logoRemove": "Logo verwijderen",
+      "logoUploading": "Uploaden…",
+      "uploadFailed": "Het logo kon niet worden geüpload. Probeer het opnieuw.",
+      "topicsLabel": "Onderwerpen",
+      "topicsHint": "Maximaal 5. Mensen vinden magazines per onderwerp op de pagina Magazines. Druk op Enter om er een toe te voegen.",
+      "topicsFull": "Je hebt 5 onderwerpen. Verwijder er een om een ander toe te voegen.",
+      "topicAdd": "Onderwerp toevoegen",
+      "topicRemove": "Onderwerp {topic} verwijderen",
+      "visibilityLabel": "Wie kan nieuwe nummers lezen",
+      "visibilityMembers": "Alleen leden",
+      "visibilityPublic": "Iedereen",
+      "visibilityHint": "Geldt alleen voor nieuwe nummers. Je kunt elk nummer nog apart aanpassen.",
+      "alreadyConfirmed": "Je hebt al bevestigd dat iedereen nieuwe nummers mag lezen, ook al is je community privé.",
+      "create": "Magazine maken",
+      "save": "Wijzigingen opslaan",
+      "saving": "Opslaan…",
+      "created": "Je magazine staat klaar. Het heeft nu een eigen tabblad in je community.",
+      "saved": "Magazine opgeslagen",
+      "loadFailed": "De magazine-instellingen konden niet worden geladen.",
+      "tryAgain": "Opnieuw proberen",
+      "openTab": "Open het tabblad Magazine"
+    },
+    "tab": {
+      "metaTitle": "Magazine",
+      "startTitle": "Je community heeft nog geen magazine",
+      "startDescription": "Een magazine bundelt de beste artikelen van je leden in nummers die mensen kunnen lezen en delen. Geef het een naam om te beginnen.",
+      "start": "Een magazine starten",
+      "latest": "Nieuwste nummer",
+      "pastIssues": "Eerdere nummers",
+      "membersOnly": "Alleen voor leden",
+      "magazinePage": "Magazinepagina",
+      "emptyTitle": "Nog geen nummers",
+      "emptyDescription": "Het eerste nummer van {magazine} komt eraan.",
+      "emptyEditorDescription": "Maak het eerste nummer met Nieuw nummer in de redactietafel hieronder."
+    },
+    "desk": {
+      "label": "Redactietafel",
+      "newIssue": "Nieuw nummer",
+      "newIssueTitle": "Nummer {number}",
+      "write": "Een artikel schrijven",
+      "settings": "Magazine-instellingen",
+      "issues": "Nummers",
+      "issuesEmpty": "Nog geen nummers. Begin er een met Nieuw nummer.",
+      "status": {
+        "draft": "Concept",
+        "published": "Gepubliceerd"
+      },
+      "ready": "Klaar voor een nummer",
+      "readyEmpty": "Er wachten geen artikelen. Artikelen die klaar zijn voor een nummer verschijnen hier.",
+      "byAuthor": "Door {name}",
+      "drafts": "Jouw concepten",
+      "draftsEmpty": "Je hebt geen artikelen in bewerking. Schrijf er een voor je volgende nummer.",
+      "reviewStatus": {
+        "draft": "Concept",
+        "pending_review": "Wacht op beoordeling",
+        "changes_requested": "Wijzigingen gevraagd",
+        "rejected": "Niet geaccepteerd"
+      },
+      "loadFailed": "Deze lijst kon niet worden geladen.",
+      "tryAgain": "Opnieuw proberen"
+    },
+    "builder": {
+      "metaTitle": "Nummer bewerken",
+      "backToMagazine": "Terug naar {magazine}",
+      "kicker": "{magazine} · Nummer {number} · {status}",
+      "status": {
+        "draft": "Concept",
+        "published": "Gepubliceerd"
+      },
+      "workspaceLabel": "Nummer samenstellen",
+      "loadFailed": "Dit nummer kon niet worden geladen.",
+      "tryAgain": "Probeer opnieuw",
+      "save": {
+        "saving": "Opslaan…",
+        "saved": "Opgeslagen",
+        "unsaved": "Nog niet opgeslagen",
+        "failed": "Opslaan lukte niet",
+        "retry": "Opnieuw"
+      },
+      "conflict": "Dit nummer is ergens anders gewijzigd. Je wijzigingen hier zijn niet opgeslagen.",
+      "reload": "Opnieuw laden",
+      "publish": "Publiceren",
+      "published": "Gepubliceerd",
+      "details": {
+        "label": "Gegevens van het nummer",
+        "title": "Titel",
+        "titleRequired": "Geef het nummer een titel. Het wordt opgeslagen zodra het er een heeft.",
+        "slug": "Adres",
+        "slugHint": "Kleine letters, cijfers en streepjes.",
+        "slugInvalid": "Gebruik 3 tot 60 kleine letters, cijfers en streepjes. Het wordt opgeslagen zodra het klopt.",
+        "slugLocked": "Het adres blijft hetzelfde zodra het nummer is gepubliceerd, zodat links blijven werken.",
+        "cover": "Omslag",
+        "coverHint": "Een staande afbeelding werkt het best. Lezers zien die in de kast en bovenaan het nummer.",
+        "coverUpload": "Omslag uploaden",
+        "coverReplace": "Omslag vervangen",
+        "coverRemove": "Omslag verwijderen",
+        "coverUploading": "Uploaden…",
+        "coverFailed": "De omslag kon niet worden geüpload. Probeer het opnieuw.",
+        "editorNote": "Woord van de redactie",
+        "editorNoteHint": "Een kort welkom bovenaan het nummer. Laat het leeg als je het niet nodig hebt.",
+        "visibility": "Wie dit nummer kan lezen",
+        "visibilityMembers": "Alleen leden",
+        "visibilityPublic": "Iedereen",
+        "optInPending": "Vink het vakje aan om deze keuze op te slaan."
+      },
+      "items": {
+        "label": "In dit nummer",
+        "empty": "Dit nummer is leeg. Voeg artikelen of een tekstgedeelte toe via Meer toevoegen.",
+        "article": "Artikel",
+        "editorial": "Tekstgedeelte",
+        "editorialEmpty": "Tekstgedeelte, nog niet geschreven",
+        "dragHandle": "Sleep om {title} te verplaatsen",
+        "actions": "Acties voor {title}",
+        "edit": "Bewerken",
+        "openArticle": "Artikel openen",
+        "opensInNewTab": "(opent in een nieuw tabblad)",
+        "moveUp": "Omhoog",
+        "moveDown": "Omlaag",
+        "remove": "Uit nummer halen",
+        "unfinished": "Schrijf iets in dit gedeelte. Het wordt opgeslagen zodra er tekst in staat.",
+        "unavailable": "Niet meer beschikbaar",
+        "position": "{position} van {total}",
+        "announce": {
+          "instructions": "Om te verplaatsen: druk op Spatie of Enter op de greep, verplaats het met de pijltjestoetsen en druk dan op Spatie of Enter om het neer te zetten. Druk op Escape om te annuleren.",
+          "pickedUp": "{title} opgepakt.",
+          "movedTo": "{title} staat nu op plek {position} van {total}.",
+          "dropped": "{title} neergezet op plek {position} van {total}.",
+          "cancelled": "Verplaatsen geannuleerd. {title} staat weer op zijn plek."
+        }
+      },
+      "editorial": {
+        "label": "Tekstgedeelte",
+        "heading": "Kop (optioneel)",
+        "body": "Tekst",
+        "bodyPlaceholder": "Schrijf een inleiding, een opening van een rubriek of een korte column…",
+        "done": "Klaar"
+      },
+      "add": {
+        "label": "Meer toevoegen",
+        "kind": "Wat wil je toevoegen",
+        "articles": "Artikelen",
+        "editorial": "Tekstgedeelte",
+        "articlesEmpty": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
+        "add": "Toevoegen",
+        "addArticle": "{title} aan het nummer toevoegen",
+        "byAuthor": "Door {name}",
+        "editorialHint": "Je eigen tekst: een inleiding, een opening voor een deel van het nummer of een korte column.",
+        "addEditorial": "Tekstgedeelte toevoegen",
+        "loadFailed": "De artikelen die klaar zijn konden niet worden geladen.",
+        "tryAgain": "Probeer opnieuw"
+      },
+      "preview": {
+        "label": "Voorbeeld",
+        "mode": "Bekijk als",
+        "member": "Lid",
+        "phone": "Telefoon",
+        "visitor": "Bezoeker",
+        "visitorNothingTitle": "Bezoekers zien niets",
+        "visitorNothing": "Dit nummer is alleen voor leden. Mensen buiten je community kunnen het niet openen.",
+        "unsavedArticles": "Artikelen die je net hebt toegevoegd verschijnen hier zodra ze zijn opgeslagen.",
+        "empty": "Voeg een artikel of een tekstgedeelte toe om het nummer hier te zien.",
+        "untitled": "Nummer zonder titel"
+      },
+      "publishDialog": {
+        "title": "Dit nummer publiceren?",
+        "blockersTitle": "Voordat je kunt publiceren",
+        "blocker": {
+          "NO_TITLE": "Geef het nummer een titel.",
+          "NO_ITEMS": "Voeg minstens één artikel of tekstgedeelte toe.",
+          "INVALID_ITEM": "Herstel de delen die in de lijst zijn gemarkeerd."
+        },
+        "ready": "Alles is klaar.",
+        "audienceMembers": "Alleen leden van je community kunnen het lezen.",
+        "audiencePublic": "Iedereen kan het lezen, ook mensen buiten je community. Het verschijnt op de pagina Magazines.",
+        "confirm": "Publiceren",
+        "publishing": "Publiceren…",
+        "cancel": "Nog niet",
+        "notSaved": "Je laatste wijzigingen zijn nog niet opgeslagen. Wacht tot ze zijn opgeslagen en publiceer dan.",
+        "successTitle": "Je nummer is gepubliceerd",
+        "successLead": "Lezers kunnen het nu openen.",
+        "read": "Lees het nummer",
+        "keepEditing": "Verder bewerken"
+      }
     }
   }
 }

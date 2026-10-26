@@ -12,6 +12,8 @@ describe("nav.explore i18n", () => {
       expect((label ?? "").trim().length).toBeGreaterThan(0);
       expect(typeof m.nav.startups).toBe("string");
       expect((m.nav.startups ?? "").trim().length).toBeGreaterThan(0);
+      expect(typeof m.nav.magazines).toBe("string");
+      expect((m.nav.magazines ?? "").trim().length).toBeGreaterThan(0);
     }
     expect(en.nav.startups).toBe("Startups");
     expect(nl.nav.startups).toBe("Startups");

@@ -36,6 +36,15 @@ import {
 } from "@/server/communities/content-visibility-queries";
 import { getPayloadClient } from "@/server/payload";
 import {
+  readableArticleWhere,
+  readableMagazineArticleWhere,
+} from "@/server/articles/article-access";
+import type { Deps, PayloadClient } from "@/server/magazines/deps";
+import {
+  loadIssueReadScope,
+  readableIssueIds,
+} from "@/server/magazines/readable-issues";
+import {
   upcomingEventsQueryFloor,
   upcomingFromCandidates,
 } from "@/lib/event-time";
@@ -55,6 +64,29 @@ import { agentCommunityRouter } from "./agent-communities";
 import { publicRosterVisibility } from "@/server/members/public-roster";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+/**
+ * The articles agent search may return (spec Decision 8: the anonymous
+ * issue scope, whoever asks). Unscoped: blog-public articles plus
+ * published magazine articles in public issues. Scoped to a community:
+ * only that community's magazine articles in its public issues (blog
+ * articles belong to no community); null when it has none.
+ */
+async function searchableArticleWhere(
+  database: Deps["db"],
+  payload: PayloadClient,
+  communityId: string | undefined,
+): Promise<Where | null> {
+  const scope = await loadIssueReadScope(database, null);
+  if (communityId === undefined) {
+    return readableArticleWhere(await readableIssueIds(payload, scope));
+  }
+  return readableMagazineArticleWhere(
+    await readableIssueIds(payload, scope, {
+      communityId: { equals: communityId },
+    }),
+  );
+}
 
 /**
  * Extract a plain-text snippet from a Payload rich-text (Lexical) field.
@@ -583,21 +615,20 @@ export const agentRouter = createTRPCRouter({
         }
       }
 
-      // Search articles
-      if (input.type === "all" || input.type === "articles") {
-        const articleWhere: Where = {
-          and: [
-            { status: { equals: "published" } },
-            { title: { contains: input.query } },
-          ],
-        };
-        const articleConditions: Where[] = [articleWhere];
-        if (communityId) {
-          articleConditions.push({ communityId: { equals: communityId } });
-        }
+      // Search articles. Agent search reads magazines in the anonymous scope,
+      // whoever asks (spec Decision 8). Blog articles belong to no
+      // community, so a community search finds only that community's
+      // magazine articles in its public issues.
+      const articleAccess =
+        input.type === "all" || input.type === "articles"
+          ? await searchableArticleWhere(ctx.db, payload, communityId)
+          : null;
+      if (articleAccess) {
         const { docs } = await payload.find({
           collection: "articles",
-          where: communityId ? { and: articleConditions } : articleWhere,
+          where: {
+            and: [articleAccess, { title: { contains: input.query } }],
+          },
           limit: perType,
           sort: "-createdAt",
           locale: "en",

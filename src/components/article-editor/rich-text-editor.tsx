@@ -299,6 +299,13 @@ export interface RichTextEditorProps {
   extensions?: readonly RichTextEditorExtension[];
   /** Extra classes for the writing surface, e.g. a taller minimum height. */
   contentClassName?: string;
+  /**
+   * Id of the visible label that names the writing surface (its textbox).
+   * Without it a screen reader announces only "edit text".
+   */
+  ariaLabelledBy?: string;
+  /** Id of hint text that describes the writing surface. */
+  ariaDescribedBy?: string;
 }
 
 /**
@@ -315,6 +322,8 @@ export function RichTextEditor({
   placeholder,
   extensions = NO_EXTENSIONS,
   contentClassName,
+  ariaLabelledBy,
+  ariaDescribedBy,
 }: RichTextEditorProps) {
   const [slash, slashDispatch] = useReducer(slashMenuReducer, {
     open: false,
@@ -667,6 +676,8 @@ export function RichTextEditor({
                   "min-h-48 px-4 py-3 text-sm leading-relaxed focus:outline-none sm:px-14",
                   contentClassName,
                 )}
+                ariaLabelledBy={ariaLabelledBy}
+                ariaDescribedBy={ariaDescribedBy}
                 onKeyDown={handleEditorKeyDown}
               />
             }

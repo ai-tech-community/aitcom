@@ -25,7 +25,8 @@
     "messages": "Messages",
     "more": "More",
     "agents": "Agents",
-    "ideas": "Ideas"
+    "ideas": "Ideas",
+    "magazines": "Magazines"
   },
   "hero": {
     "title": "AIT Community",
@@ -2293,7 +2294,17 @@
     "backToEditing": "Back to editing",
     "featuredImagePreview": "Preview",
     "featuredImagePlaceholder": "No image — add a URL above",
-    "articleTitlePlaceholder": "Article title..."
+    "articleTitlePlaceholder": "Article title...",
+    "magazine": {
+      "markReady": "Mark ready for an issue",
+      "markedReady": "Marked ready. An editor can now place it in an issue.",
+      "prePublishTitle": "Ready for an issue?",
+      "prePublishSubtitle": "Check your article. Once it is marked ready, an editor can place it in an issue. It goes live when that issue is published.",
+      "writingFor": "Writing for {magazine}",
+      "backToMagazine": "Back to the Magazine tab",
+      "writeMetaTitle": "Write a magazine article",
+      "editMetaTitle": "Edit magazine article"
+    }
   },
   "impact": {
     "title": "Collaboration Impact",
@@ -2910,7 +2921,8 @@
       "news": "News",
       "newsAll": "All {sector} news",
       "newsEmpty": "No news feeds are connected for {sector} yet. Nothing here is invented.",
-      "newsNoStories": "No stories from the {sector} feeds yet."
+      "newsNoStories": "No stories from the {sector} feeds yet.",
+      "magazine": "Magazine"
     },
     "manage": {
       "settings": "Settings",
@@ -2961,6 +2973,7 @@
         "topics": "Topics",
         "links": "Links",
         "classroom": "Classroom",
+        "magazine": "Magazine",
         "ownership": "Ownership",
         "integrations": "Integrations",
         "broadcast": "Announcements",
@@ -4724,6 +4737,309 @@
       "claimExpired": "This 24-hour claim has ended.",
       "coverage": "{covered} of {total} topics covered today",
       "yourAgentFallback": "your agent"
+    }
+  },
+  "magazines": {
+    "home": {
+      "label": "Magazines",
+      "title": "Stories from the communities building AI",
+      "intro": "Written and edited by community members. Free to read.",
+      "featured": "Featured issue",
+      "fromCommunity": "From {community}",
+      "readIssue": "Read the issue",
+      "justPublished": "Just published",
+      "allMagazines": "All magazines",
+      "topicFilter": "Filter magazines by topic",
+      "allTopics": "All",
+      "emptyTitle": "No magazines to read yet",
+      "emptyDescription": "Communities make magazines from their members' best articles. When a community publishes an issue for everyone, it shows up here.",
+      "emptyAction": "Explore communities",
+      "noTopicTitle": "No magazines about {topic} yet",
+      "noTopicDescription": "Try another topic, or see every magazine.",
+      "showAll": "Show all magazines"
+    },
+    "shelf": {
+      "byCommunity": "A magazine by <link>{community}</link>",
+      "topics": "Topics",
+      "issues": "Issues",
+      "membersOnly": "Members only",
+      "manage": "Manage magazine",
+      "emptyTitle": "No issues yet",
+      "emptyDescription": "The first issue of {magazine} is on its way. Visit the community to see what its members are writing.",
+      "emptyEditorDescription": "Make the first issue from your community's Magazine tab.",
+      "visitCommunity": "Visit {community}"
+    },
+    "issue": {
+      "number": "Issue {number}",
+      "dateline": "Issue {number} · {month}",
+      "byCommunity": "A magazine by {community}",
+      "contents": "Contents",
+      "fromTheEditor": "From the editor",
+      "readingTime": "{minutes} min read",
+      "itemCount": "{count, plural, one {# item} other {# items}}",
+      "draftNotice": "Draft — only editors can see this",
+      "editIssue": "Edit issue",
+      "noItems": "This issue has no articles yet.",
+      "published": "Published {date}",
+      "signature": "— {name}, editor"
+    },
+    "item": {
+      "readArticle": "Read article",
+      "byAuthor": "By {name}",
+      "readingTime": "{minutes} min read",
+      "untitledEditorial": "A note from the editors",
+      "unavailable": "No longer available",
+      "unavailableReason": {
+        "missing": "This item was deleted. Remove it from the issue.",
+        "not_ready": "Readers cannot see this item yet.",
+        "other_magazine": "This article belongs to another magazine. Remove it from the issue."
+      },
+      "editorsOnly": "Only editors see this."
+    },
+    "rail": {
+      "visitCommunity": "Visit {community}",
+      "pastIssues": "Past issues",
+      "allIssues": "See all issues",
+      "share": "Share",
+      "copyLink": "Copy link",
+      "linkCopied": "Link copied",
+      "linkCopyFailed": "Could not copy the link"
+    },
+    "article": {
+      "context": "Where this article appears",
+      "byAuthor": "By {name}",
+      "readingTime": "{minutes} min read",
+      "contents": "In this article",
+      "nextInIssue": "Next in this issue",
+      "lastInIssue": "This is the last article in this issue.",
+      "backToIssue": "Back to the issue",
+      "draftNotice": "Draft — only editors can see this"
+    },
+    "meta": {
+      "issueDescription": "Issue {number} of {magazine}, a magazine by {community}.",
+      "articleDescription": "An article in issue {number} of {magazine}, a magazine by {community}.",
+      "homeTitle": "Magazines",
+      "homeDescription": "Stories from the communities building AI, written and edited by community members. Free to read.",
+      "shelfDescription": "{magazine}, a magazine by {community}."
+    }
+  },
+  "magazineEditor": {
+    "errors": {
+      "confirmUnlistedPublic": "Your community is private. Tick the box to confirm that everyone may see this.",
+      "magazineExists": "Your community already has a magazine. Reload the page to edit it.",
+      "magazineSlugTaken": "Another magazine already uses this address. Pick a different one.",
+      "spaceSlugTaken": "A space in your community is already called “magazine”. Rename that space in Spaces settings, then try again.",
+      "issueChanged": "This issue changed somewhere else. Reload to see the latest version.",
+      "issueSlugTaken": "Another issue of this magazine already uses this address. Pick a different one.",
+      "issueSlugLocked": "The address of a published issue stays the same, so links to it keep working.",
+      "issueEmpty": "Add at least one article or text section before you publish.",
+      "issueNotDraft": "This issue is already published.",
+      "itemInvalid": "Part of this issue is not complete. Check the parts marked in the list and try again.",
+      "articlePlaced": "This article is already in another issue.",
+      "articleNotReady": "This article is not ready for an issue yet.",
+      "articleMagazineLocked": "A magazine article stays in its magazine. It cannot move to the blog or to another magazine.",
+      "generic": "Something went wrong. Try again."
+    },
+    "publicOptIn": {
+      "warning": "Your community is private. If you show this to everyone, anyone on the internet will see your community's name and a link to it. Your members, posts and other pages stay private.",
+      "confirm": "I understand, show this outside the community"
+    },
+    "settings": {
+      "title": "Magazine",
+      "intro": "A magazine gathers your members' best articles into issues that people can read and share.",
+      "nameLabel": "Name",
+      "slugLabel": "Address",
+      "slugHint": "Lower-case letters, numbers and hyphens. If you change it later, old links to your magazine stop working.",
+      "slugInvalid": "Use 3 to 60 lower-case letters, numbers and hyphens.",
+      "descriptionLabel": "Description",
+      "descriptionHint": "One or two sentences for readers. It shows on the magazine page.",
+      "logoLabel": "Logo",
+      "logoHint": "A square image works best.",
+      "logoUpload": "Upload a logo",
+      "logoReplace": "Replace logo",
+      "logoRemove": "Remove logo",
+      "logoUploading": "Uploading…",
+      "uploadFailed": "The logo could not be uploaded. Try again.",
+      "topicsLabel": "Topics",
+      "topicsHint": "Up to 5. People find magazines by topic on the Magazines page. Press Enter to add one.",
+      "topicsFull": "You have 5 topics. Remove one to add another.",
+      "topicAdd": "Add topic",
+      "topicRemove": "Remove topic {topic}",
+      "visibilityLabel": "Who can read new issues",
+      "visibilityMembers": "Members only",
+      "visibilityPublic": "Everyone",
+      "visibilityHint": "Applies to new issues only. You can still change each issue on its own.",
+      "alreadyConfirmed": "You already confirmed that everyone may read new issues, even though your community is private.",
+      "create": "Create magazine",
+      "save": "Save changes",
+      "saving": "Saving…",
+      "created": "Your magazine is ready. It now has its own tab in your community.",
+      "saved": "Magazine saved",
+      "loadFailed": "The magazine settings could not be loaded.",
+      "tryAgain": "Try again",
+      "openTab": "Open the Magazine tab"
+    },
+    "tab": {
+      "metaTitle": "Magazine",
+      "startTitle": "Your community has no magazine yet",
+      "startDescription": "A magazine gathers your members' best articles into issues that people can read and share. Give it a name to begin.",
+      "start": "Start a magazine",
+      "latest": "Latest issue",
+      "pastIssues": "Past issues",
+      "membersOnly": "Members only",
+      "magazinePage": "Magazine page",
+      "emptyTitle": "No issues yet",
+      "emptyDescription": "The first issue of {magazine} is on its way.",
+      "emptyEditorDescription": "Make the first issue with New issue in the editor's desk below."
+    },
+    "desk": {
+      "label": "Editor's desk",
+      "newIssue": "New issue",
+      "newIssueTitle": "Issue {number}",
+      "write": "Write an article",
+      "settings": "Magazine settings",
+      "issues": "Issues",
+      "issuesEmpty": "No issues yet. Start one with New issue.",
+      "status": {
+        "draft": "Draft",
+        "published": "Published"
+      },
+      "ready": "Ready for an issue",
+      "readyEmpty": "No articles are waiting. Articles marked ready for an issue show up here.",
+      "byAuthor": "By {name}",
+      "drafts": "Your drafts",
+      "draftsEmpty": "You have no articles in progress. Write one to fill your next issue.",
+      "reviewStatus": {
+        "draft": "Draft",
+        "pending_review": "Waiting for review",
+        "changes_requested": "Changes requested",
+        "rejected": "Not accepted"
+      },
+      "loadFailed": "This list could not be loaded.",
+      "tryAgain": "Try again"
+    },
+    "builder": {
+      "metaTitle": "Edit issue",
+      "backToMagazine": "Back to {magazine}",
+      "kicker": "{magazine} · Issue {number} · {status}",
+      "status": {
+        "draft": "Draft",
+        "published": "Published"
+      },
+      "workspaceLabel": "Put the issue together",
+      "loadFailed": "This issue could not be loaded.",
+      "tryAgain": "Try again",
+      "save": {
+        "saving": "Saving…",
+        "saved": "Saved",
+        "unsaved": "Not saved yet",
+        "failed": "Couldn't save",
+        "retry": "Retry"
+      },
+      "conflict": "This issue changed somewhere else. Your changes here are not saved.",
+      "reload": "Reload",
+      "publish": "Publish",
+      "published": "Published",
+      "details": {
+        "label": "Issue details",
+        "title": "Title",
+        "titleRequired": "Give the issue a title. It is saved once it has one.",
+        "slug": "Address",
+        "slugHint": "Lower-case letters, numbers and hyphens.",
+        "slugInvalid": "Use 3 to 60 lower-case letters, numbers and hyphens. It is saved once it fits.",
+        "slugLocked": "The address stays the same once the issue is published, so links to it keep working.",
+        "cover": "Cover",
+        "coverHint": "A tall image works best. Readers see it on the shelf and at the top of the issue.",
+        "coverUpload": "Upload a cover",
+        "coverReplace": "Replace cover",
+        "coverRemove": "Remove cover",
+        "coverUploading": "Uploading…",
+        "coverFailed": "The cover could not be uploaded. Try again.",
+        "editorNote": "Editor's note",
+        "editorNoteHint": "A short welcome at the top of the issue. Leave it empty if you do not need one.",
+        "visibility": "Who can read this issue",
+        "visibilityMembers": "Members only",
+        "visibilityPublic": "Everyone",
+        "optInPending": "Tick the box to save this choice."
+      },
+      "items": {
+        "label": "In this issue",
+        "empty": "This issue is empty. Add articles or a text section from Add more.",
+        "article": "Article",
+        "editorial": "Text section",
+        "editorialEmpty": "Text section, not written yet",
+        "dragHandle": "Drag to reorder {title}",
+        "actions": "Actions for {title}",
+        "edit": "Edit",
+        "openArticle": "Open the article",
+        "opensInNewTab": "(opens in a new tab)",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "remove": "Remove from issue",
+        "unfinished": "Write something in this section. It is saved once it has text.",
+        "unavailable": "No longer available",
+        "position": "{position} of {total}",
+        "announce": {
+          "instructions": "To reorder, press Space or Enter on the handle, use the arrow keys to move it, then press Space or Enter to drop it. Press Escape to cancel.",
+          "pickedUp": "Picked up {title}.",
+          "movedTo": "{title} is now at position {position} of {total}.",
+          "dropped": "{title} dropped at position {position} of {total}.",
+          "cancelled": "Reordering cancelled. {title} is back where it was."
+        }
+      },
+      "editorial": {
+        "label": "Text section",
+        "heading": "Heading (optional)",
+        "body": "Text",
+        "bodyPlaceholder": "Write an introduction, a section opener or a short column…",
+        "done": "Done"
+      },
+      "add": {
+        "label": "Add more",
+        "kind": "What to add",
+        "articles": "Articles",
+        "editorial": "Text section",
+        "articlesEmpty": "No articles are ready. Articles marked ready for an issue show up here.",
+        "add": "Add",
+        "addArticle": "Add {title} to the issue",
+        "byAuthor": "By {name}",
+        "editorialHint": "Your own words: an introduction, an opening for a part of the issue or a short column.",
+        "addEditorial": "Add a text section",
+        "loadFailed": "The ready articles could not be loaded.",
+        "tryAgain": "Try again"
+      },
+      "preview": {
+        "label": "Preview",
+        "mode": "Preview as",
+        "member": "Member",
+        "phone": "Phone",
+        "visitor": "Visitor",
+        "visitorNothingTitle": "Visitors see nothing",
+        "visitorNothing": "This issue is for members only. People outside your community cannot open it.",
+        "unsavedArticles": "Articles you just added show here once they are saved.",
+        "empty": "Add an article or a text section to see the issue here.",
+        "untitled": "Untitled issue"
+      },
+      "publishDialog": {
+        "title": "Publish this issue?",
+        "blockersTitle": "Before you can publish",
+        "blocker": {
+          "NO_TITLE": "Give the issue a title.",
+          "NO_ITEMS": "Add at least one article or text section.",
+          "INVALID_ITEM": "Fix the parts marked in the list."
+        },
+        "ready": "Everything is ready.",
+        "audienceMembers": "Only members of your community will be able to read it.",
+        "audiencePublic": "Anyone will be able to read it, also people outside your community. It will show on the Magazines page.",
+        "confirm": "Publish",
+        "publishing": "Publishing…",
+        "cancel": "Not yet",
+        "notSaved": "Your latest changes are not saved yet. Wait until they are saved, then publish.",
+        "successTitle": "Your issue is published",
+        "successLead": "Readers can open it now.",
+        "read": "Read the issue",
+        "keepEditing": "Keep editing"
+      }
     }
   }
 }

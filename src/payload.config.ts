@@ -42,6 +42,8 @@ import { Courses } from "./collections/Courses";
 import { Lessons } from "./collections/Lessons";
 import { Modules } from "./collections/Modules";
 import { HostedMaterials } from "./collections/HostedMaterials";
+import { Magazines } from "./collections/Magazines";
+import { MagazineIssues } from "./collections/MagazineIssues";
 import { EmailTemplates } from "./collections/EmailTemplates";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
@@ -114,6 +116,8 @@ export default buildConfig({
     Lessons,
     Modules,
     HostedMaterials,
+    Magazines,
+    MagazineIssues,
     EmailTemplates,
     {
       slug: "users",

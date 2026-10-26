@@ -3,6 +3,12 @@ import { StrictMode, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAutosave, useUnsavedChangesGuard } from "./use-autosave";
 
+/** The codes the classroom builder treats as "changed elsewhere". */
+const CONFLICTS: ReadonlySet<string> = new Set([
+  "COURSE_CHANGED",
+  "LESSON_CHANGED",
+]);
+
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
@@ -12,7 +18,14 @@ function setup(
   enabled = true,
 ) {
   return renderHook(
-    ({ value }) => useAutosave({ value, save, delayMs: 1000, enabled }),
+    ({ value }) =>
+      useAutosave({
+        value,
+        save,
+        conflictCodes: CONFLICTS,
+        delayMs: 1000,
+        enabled,
+      }),
     {
       initialProps: { value: initial },
     },
@@ -211,11 +224,40 @@ describe("useAutosave", () => {
     expect(result.current.status).toBe("conflict");
   });
 
+  it("treats only the caller's codes as conflicts", async () => {
+    const save = vi.fn().mockRejectedValue(new Error("ISSUE_CHANGED"));
+    const issue = renderHook(
+      ({ value }) =>
+        useAutosave({
+          value,
+          save,
+          conflictCodes: new Set(["ISSUE_CHANGED"]),
+          delayMs: 1000,
+        }),
+      { initialProps: { value: "a" } },
+    );
+    issue.rerender({ value: "b" });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(issue.result.current.status).toBe("conflict");
+
+    // The classroom's codes do not include the issue's: a plain error.
+    const classroom = setup(save);
+    classroom.rerender({ value: "b" });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(classroom.result.current.status).toBe("error");
+  });
+
   it("starts the debounce when enabled flips to true with an already-changed value", async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     const { result, rerender } = renderHook(
       ({ value, enabled }) =>
-        useAutosave({ value, save, delayMs: 1000, enabled }),
+        useAutosave({
+          value,
+          save,
+          conflictCodes: CONFLICTS,
+          delayMs: 1000,
+          enabled,
+        }),
       { initialProps: { value: "a", enabled: false } },
     );
     rerender({ value: "b", enabled: false });
@@ -311,6 +353,44 @@ describe("useAutosave", () => {
     expect(result.current.status).toBe("conflict");
   });
 
+  it("markConflict stops saving and holds the conflict until reload", async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    const { result, rerender } = setup(save);
+    rerender({ value: "b" });
+    expect(result.current.status).toBe("dirty");
+
+    // Another write to the same document was refused as stale.
+    act(() => result.current.markConflict());
+    expect(result.current.status).toBe("conflict");
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    rerender({ value: "c" });
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(await act(() => result.current.flush())).toBe("conflict");
+    expect(save).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("conflict");
+  });
+
+  it("a conflict marked during an in-flight save survives the save's end", async () => {
+    let finish!: () => void;
+    const save = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { result, rerender } = setup(save);
+    rerender({ value: "b" });
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(result.current.status).toBe("saving");
+
+    act(() => result.current.markConflict());
+    rerender({ value: "c" });
+    await act(async () => finish());
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe("conflict");
+  });
+
   describe("under React StrictMode", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <StrictMode>{children}</StrictMode>
@@ -318,7 +398,8 @@ describe("useAutosave", () => {
 
     function setupStrict(save: (v: string) => Promise<void>) {
       return renderHook(
-        ({ value }) => useAutosave({ value, save, delayMs: 1000 }),
+        ({ value }) =>
+          useAutosave({ value, save, conflictCodes: CONFLICTS, delayMs: 1000 }),
         {
           initialProps: { value: "a" },
           wrapper,
