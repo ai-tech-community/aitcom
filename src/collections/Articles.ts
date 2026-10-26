@@ -1,5 +1,10 @@
 import type { CollectionConfig } from "payload";
 
+import {
+  assertMagazineUnchanged,
+  channelFor,
+} from "@/server/articles/channels";
+
 import { articleRichTextEditor } from "./shared/article-rich-text";
 
 export const Articles: CollectionConfig = {
@@ -18,25 +23,18 @@ export const Articles: CollectionConfig = {
   versions: { drafts: true },
   hooks: {
     beforeChange: [
-      async ({ data, originalDoc }) => {
-        if (data?.authorType === "member") {
-          if (
-            data.reviewStatus === "approved" &&
-            originalDoc?.reviewStatus !== "approved"
-          ) {
-            data.status = "published";
-            data.publishedAt = data.publishedAt ?? new Date().toISOString();
-          } else if (
-            (data.reviewStatus === "rejected" ||
-              data.reviewStatus === "changes_requested") &&
-            originalDoc?.reviewStatus !== data.reviewStatus
-          ) {
-            data.status = "draft";
-            data.publishedAt = null;
-          } else if (data.reviewStatus === "pending_review") {
-            data.status = "draft";
-            data.publishedAt = null;
-          }
+      async ({ data, operation, originalDoc }) => {
+        // Payload passes a partial `data` on update; the channel and the
+        // member gate read the saved doc merged with the change.
+        const merged = { ...originalDoc, ...data };
+        // On create `originalDoc` is `{}` (or the source of a duplicate):
+        // only an update can move an article between channels.
+        assertMagazineUnchanged(
+          data,
+          operation === "update" ? originalDoc : undefined,
+        );
+        if (merged.authorType === "member") {
+          channelFor(merged).onReviewChange(data, originalDoc);
         }
         return data;
       },
@@ -54,33 +52,27 @@ export const Articles: CollectionConfig = {
         const { db } = await import("@/server/db");
         const { logActivity } = await import("@/server/agent/activity");
 
-        // Award XP and badges when admin approves a member article
+        // The blog publishes and credits on approval; a magazine credits
+        // when an issue holding the article is published.
         if (
           doc.reviewStatus === "approved" &&
-          previousDoc?.reviewStatus !== "approved"
+          previousDoc?.reviewStatus !== "approved" &&
+          channelFor(doc).creditsOnApproval
         ) {
-          const { awardXp, XP_AMOUNTS } = await import("@/lib/gamification");
-          const { onArticleApprovedAfterSave } =
-            await import("@/server/badges/article-approved");
-
-          // The one place approval XP is granted: an admin approval and a
-          // trusted author's direct publish both pass through here.
-          await awardXp(db, doc.authorId, XP_AMOUNTS.ARTICLE_PUBLISHED);
-
-          await onArticleApprovedAfterSave(
+          const { creditArticlePublication } =
+            await import("@/server/articles/credit");
+          // The one place blog approval XP is granted: an admin approval
+          // and a trusted author's direct publish both pass through here.
+          await creditArticlePublication(
             db,
-            { authorId: doc.authorId, type: doc.type },
-            req,
+            {
+              id: doc.id,
+              authorId: doc.authorId,
+              type: doc.type,
+              title: doc.title,
+            },
+            { action: "article.approved", req },
           );
-
-          await logActivity(db, {
-            actorId: doc.authorId,
-            actorType: "member",
-            action: "article.approved",
-            targetType: "articles",
-            targetId: String(doc.id),
-            metadata: { title: doc.title, type: doc.type },
-          });
         }
 
         // Notify member when changes are requested
