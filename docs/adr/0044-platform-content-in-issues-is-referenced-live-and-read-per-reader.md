@@ -45,7 +45,10 @@ not copies", "Assemble", delivery slice 2); implementation plan:
    article relationships and placement rules stay as ADR-0043 defines them.
    `itemReference(kind, id)` produces the shared `kind:id` identity used by
    strategies, validation and the builder; block ids identify placements,
-   not the referenced content. `referenceOf` returns null for content the
+   not the referenced content. The client-safe input-to-reference functions
+   in `src/lib/magazines/references.ts` are shared by the builder and
+   strategies; parity tests pin stored and builder identities together.
+   `referenceOf` returns null for content the
    issue owns, such as editorial text.
 
 2. **Each platform kind uses its content's readability rule, for the actual
@@ -74,7 +77,8 @@ not copies", "Assemble", delivery slice 2); implementation plan:
    an `ItemReader` for the viewer. The reader lazily memoizes the promises of
    the hidden-community and anonymous members-only sets, so concurrent kinds
    share one query per set. For an anonymous viewer both methods share the
-   same promise and query. Nothing is cached across requests.
+   same promise and query. Item saves reuse their validation context when
+   loading the returned editor views. Nothing is cached across requests.
 
 3. **Unreadable content becomes a marker only for editors.** The unavailable
    reasons add `unpublished` and `no_access` to `missing`, `not_ready` and
@@ -117,19 +121,29 @@ not copies", "Assemble", delivery slice 2); implementation plan:
    `src/server/communities/forum-scope.ts` express that rule, with the existing
    forum functions delegating to them. Launchpad projects belong to this
    community, or have no community and an author with active membership in
-   it. Readability still applies within that scope.
+   it. `items/launchpadProject/scope.ts` pairs the picker's SQL membership
+   predicate with validation's bounded author check, with a parity test.
+   The picker checks membership with `EXISTS`, so it never loads a whole
+   community's member ids. Readability still applies within that scope.
 
 7. **Picker sources form a typed registry.** `ITEM_PICKERS` is keyed by
    `PICKABLE_ITEM_KINDS` (every kind except editorial) and dispatched through
    the single editor procedure
-   `magazines.pickerCandidates({ slug, kind, query })`. The article tab moves
+   `magazines.pickerCandidates({ slug, kind, query, exclude })`. The article tab moves
    to it and `availableArticles` is removed. Each candidate carries builder
    input, the shared reference key, a title, typed facts formatted by the
    client and an optional `openHref` only for an article the viewer wrote.
-   A generic picker can hide already-added references and move focus after
-   adding without knowing a kind's id field. Searches return twelve results
+   Each source excludes the issue's reference ids before applying its limit;
+   the router bounds the exclusion array. A generic picker can move focus
+   after adding without knowing a kind's id field. Searches return twelve results
    (`PICKER_LIMIT` in the client-safe `src/lib/magazines/picker.ts`), including
    when the query is empty.
+
+   Saved items use the optional `openHrefs(items, ctx)` strategy seam, keyed
+   by content reference and aggregated by the registry into
+   `getIssueForEditing.openHrefs`. The article strategy applies the same
+   author gate as its edit page. The builder consumes this map and candidate
+   links without naming article ids or constructing kind-specific paths.
 
 8. **Every kind has an editable intro line.** Selecting a row opens one item
    details panel with an intro field above the kind's own editor (editorial
@@ -177,7 +191,11 @@ not copies", "Assemble", delivery slice 2); implementation plan:
   editors see markers and can keep editing or publishing.
 - **Shared context bounds query work.** Each kind batch-loads once per issue;
   the request's `ItemReader` shares community sets even across concurrent
-  loads and validation. Article-only pages avoid unrelated kinds entirely.
+  loads and validation, including the views returned after an item save.
+  Article-only pages avoid unrelated kinds entirely.
+- **Editor links stay within kinds.** Kinds that offer a saved-item edit
+  destination implement `openHrefs`; the router and builder only carry the
+  resulting reference-keyed map.
 - **Suggestions can reuse picker queries.** Slice 5 can add `suggest` using
   each picker module's queries and scope rules, without introducing another
   set of content access rules or premature strategy methods.

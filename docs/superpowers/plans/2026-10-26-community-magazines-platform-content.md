@@ -41,7 +41,7 @@
 - Unit test prefix: `SKIP_ENV_VALIDATION=1 pnpm vitest run`.
 - **DB test prefix** (use exactly; never host port 5432 — it is an SSH tunnel to a remote DB):
   `RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 NEON_LOCAL_PROXY=127.0.0.1:5433 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test`
-  One-time setup if `aitcom_test` is not reachable: `pnpm dev:db`; `docker run -d --rm --name aitcom-test-pg-forward --network aitcom_default -p 127.0.0.1:55432:5432 alpine/socat tcp-listen:5432,fork,reuseaddr tcp:postgres:5432`. Never set `PAYLOAD_PUSH` against `aitcom_test` (prefix commands with `env -u PAYLOAD_PUSH` when unsure). A DB suite that reports *skipped* is a setup failure — fix the env, do not continue.
+  One-time setup if `aitcom_test` is not reachable: `pnpm dev:db`; `docker run -d --rm --name aitcom-test-pg-forward --network aitcom_default -p 127.0.0.1:55432:5432 alpine/socat tcp-listen:5432,fork,reuseaddr tcp:postgres:5432`. Never set `PAYLOAD_PUSH` against `aitcom_test` (prefix commands with `env -u PAYLOAD_PUSH` when unsure). A DB suite that reports _skipped_ is a setup failure — fix the env, do not continue.
 - Integration tests copy the `isLocalDbConfigured` guard and fixture style of `src/server/magazines/reading.integration.test.ts` (unique suffix per test, users + member profiles, `community(label, { listed })`, cleanup in `afterEach`).
 - Payload `number` values may come back as strings: `Number()` before comparing or counting (`eventId`, `threadId`, `projectId`, `replyCount`, `voteCount`).
 - **Regenerate Payload types** (every task that adds a block): `env -u PAYLOAD_PUSH SKIP_ENV_VALIDATION=1 NEON_LOCAL_PROXY=127.0.0.1:5433 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test RESEND_API_KEY= npx payload generate:types` (if it stops on one missing variable, pass that one inline with a dummy local value), then `git diff -- src/payload-types.ts` must show only the new block's hunks. Do not run `generate:db-schema`.
@@ -64,28 +64,28 @@
 
 **Create**
 
-| File | Responsibility |
-|---|---|
-| `src/lib/magazines/references.ts` | `itemReference(kind, id)` — the one reference key format, shared by server validation and the builder. |
-| `src/lib/magazines/picker.ts` | `PICKABLE_ITEM_KINDS`, `PickableKindId`, `CandidateFact`, `PICKER_LIMIT` (client-safe; kind pickers import the limit from here, never from the registry). |
-| `src/lib/events/event-status.ts` | `PUBLICLY_LISTED_EVENT_STATUSES`, `isPubliclyListedEventStatus`. |
-| `src/server/magazines/items/reader.ts` | `ItemReader` + `createItemReader` (memoized community content sets). |
-| `src/server/magazines/items/context.ts` | `itemContextFor` — the one way callers build an `ItemContext`. |
-| `src/server/magazines/items/base-input.ts` | Shared builder input fields (`id`, `intro`), intro helpers and `cutWords`. |
-| `src/server/magazines/items/references.ts` | `validateReferences` — the one seen-set / duplicate / strict-new / lenient-kept loop every reference kind uses. |
-| `src/server/magazines/items/community-content.ts` | `loadCommunityContentRule(reader)` for community-scoped kinds. |
-| `src/server/magazines/items/pickers.ts` | `ITEM_PICKERS` registry + `searchPickerCandidates`. |
-| `src/server/magazines/items/<kind>/{block,kind,picker}.ts` for `article` (picker only), `storyline`, `newsItem`, `event`, `forumThread`, `launchpadProject` | One module per kind. |
-| `src/server/magazines/items/<kind>/kind.test.ts` | Unit tests per new kind (fakes). |
-| `src/server/magazines/items/platform-kinds.integration.test.ts` | DB tests of every new kind's load/validate/picker against real rows. |
-| `src/server/magazines/platform-items-reading.integration.test.ts` | Cross-kind per-reader reading + editor tests. |
-| `src/migrations/20261026b_magazine_platform_items.ts`, `src/migrations/magazine-platform-items.integration.test.ts` | Block tables, migration test. |
-| `src/components/magazines/items/{storyline,news-item,event,forum-thread,launchpad-project}-item.tsx` | One renderer per kind. |
-| `src/components/magazines/editor/builder/items/reference.ts` | `referenceBuilderKind` factory shared by every pickable kind. |
-| `src/components/magazines/editor/builder/items/{storyline,news-item,event,forum-thread,launchpad-project}.ts` | Builder strategy per kind. |
-| `src/components/magazines/editor/builder/picker-panel.tsx` (+ test) | Generic search-and-add list for one kind. |
-| `src/components/magazines/editor/builder/item-details-panel.tsx` (+ test) | Intro line + the kind's own editor. |
-| `docs/adr/0044-platform-content-in-issues-is-referenced-live-and-read-per-reader.md` | ADR. |
+| File                                                                                                                                                        | Responsibility                                                                                                                                            |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/magazines/references.ts`                                                                                                                           | `itemReference(kind, id)` — the one reference key format, shared by server validation and the builder.                                                    |
+| `src/lib/magazines/picker.ts`                                                                                                                               | `PICKABLE_ITEM_KINDS`, `PickableKindId`, `CandidateFact`, `PICKER_LIMIT` (client-safe; kind pickers import the limit from here, never from the registry). |
+| `src/lib/events/event-status.ts`                                                                                                                            | `PUBLICLY_LISTED_EVENT_STATUSES`, `isPubliclyListedEventStatus`.                                                                                          |
+| `src/server/magazines/items/reader.ts`                                                                                                                      | `ItemReader` + `createItemReader` (memoized community content sets).                                                                                      |
+| `src/server/magazines/items/context.ts`                                                                                                                     | `itemContextFor` — the one way callers build an `ItemContext`.                                                                                            |
+| `src/server/magazines/items/base-input.ts`                                                                                                                  | Shared builder input fields (`id`, `intro`), intro helpers and `cutWords`.                                                                                |
+| `src/server/magazines/items/references.ts`                                                                                                                  | `validateReferences` — the one seen-set / duplicate / strict-new / lenient-kept loop every reference kind uses.                                           |
+| `src/server/magazines/items/community-content.ts`                                                                                                           | `loadCommunityContentRule(reader)` for community-scoped kinds.                                                                                            |
+| `src/server/magazines/items/pickers.ts`                                                                                                                     | `ITEM_PICKERS` registry + `searchPickerCandidates`.                                                                                                       |
+| `src/server/magazines/items/<kind>/{block,kind,picker}.ts` for `article` (picker only), `storyline`, `newsItem`, `event`, `forumThread`, `launchpadProject` | One module per kind.                                                                                                                                      |
+| `src/server/magazines/items/<kind>/kind.test.ts`                                                                                                            | Unit tests per new kind (fakes).                                                                                                                          |
+| `src/server/magazines/items/platform-kinds.integration.test.ts`                                                                                             | DB tests of every new kind's load/validate/picker against real rows.                                                                                      |
+| `src/server/magazines/platform-items-reading.integration.test.ts`                                                                                           | Cross-kind per-reader reading + editor tests.                                                                                                             |
+| `src/migrations/20261026b_magazine_platform_items.ts`, `src/migrations/magazine-platform-items.integration.test.ts`                                         | Block tables, migration test.                                                                                                                             |
+| `src/components/magazines/items/{storyline,news-item,event,forum-thread,launchpad-project}-item.tsx`                                                        | One renderer per kind.                                                                                                                                    |
+| `src/components/magazines/editor/builder/items/reference.ts`                                                                                                | `referenceBuilderKind` factory shared by every pickable kind.                                                                                             |
+| `src/components/magazines/editor/builder/items/{storyline,news-item,event,forum-thread,launchpad-project}.ts`                                               | Builder strategy per kind.                                                                                                                                |
+| `src/components/magazines/editor/builder/picker-panel.tsx` (+ test)                                                                                         | Generic search-and-add list for one kind.                                                                                                                 |
+| `src/components/magazines/editor/builder/item-details-panel.tsx` (+ test)                                                                                   | Intro line + the kind's own editor.                                                                                                                       |
+| `docs/adr/0044-platform-content-in-issues-is-referenced-live-and-read-per-reader.md`                                                                        | ADR.                                                                                                                                                      |
 
 **Modify**
 
@@ -96,13 +96,16 @@
 ## Task 1: Reader-aware item context, reference keys and kept-reference validation
 
 **Files:**
+
 - Create: `src/lib/magazines/references.ts`, `src/server/magazines/items/{reader,context,base-input,references}.ts`, `src/server/magazines/items/{reader,references}.test.ts`, `docs/adr/0044-platform-content-in-issues-is-referenced-live-and-read-per-reader.md`
 - Modify: `src/server/magazines/items/{types,registry}.ts`, `items/article/kind.ts`, `items/editorial/kind.ts`, `src/server/magazines/{reading,issue-editing,issue-service}.ts`, `src/server/api/routers/magazines.ts`, `src/components/magazines/editor/builder/items/article.ts`, `CONTEXT.md`
 - Test: `src/server/magazines/items/registry.test.ts`, `reader.test.ts`, `references.test.ts`; existing `issue-service.integration.test.ts`, `src/server/magazines/items/article-kind.integration.test.ts` (its hand-built `ctx()` at lines ~208-213 moves onto `itemContextFor`; its `validate` calls pass `isNew`), `src/server/api/routers/magazines.integration.test.ts` (call sites only). `reading.integration.test.ts` goes through `loadIssuePage` and needs no change; run it anyway.
 
 **Interfaces:**
+
 - Consumes: `hiddenContentCommunityIds(db, userId)` (`src/server/communities/content-visibility-queries.ts`), `Deps` (`deps.ts`), `MagazineCommunity` (`magazine-service.ts`, has `id`, `slug`), `IssueActor` (`issue-service.ts`, `{ userId; community: MagazineCommunity }`) and the router's `actorOf(ctx)`.
 - Produces:
+
   ```ts
   // src/lib/magazines/references.ts
   export function itemReference(kind: ItemKindId, id: string | number): string; // `${kind}:${id}`
@@ -149,6 +152,7 @@
   export function loadEditorItems(deps: Deps, issue: MagazineIssue, actor: IssueActor): Promise<EditorItemView[]>;
   export function loadIssueEditorView(deps: Deps, issue: MagazineIssue, actor: IssueActor): Promise<IssueEditorView>;
   ```
+
   `ItemCommunity` is structurally `MagazineCommunity` (`{ id; slug }`); declare it as `Pick<MagazineCommunity, "id" | "slug">` so an `IssueActor`'s community passes straight into `itemContextFor`.
 
 - [ ] **Step 1: Write the failing tests.**
@@ -168,41 +172,79 @@
 ## Task 2: Picker source registry and the `pickerCandidates` procedure
 
 **Files:**
+
 - Create: `src/lib/magazines/picker.ts`, `src/server/magazines/items/pickers.ts`, `src/server/magazines/items/article/picker.ts`, `src/server/magazines/items/pickers.test.ts`
 - Modify: `src/server/magazines/items/types.ts`, `src/server/magazines/magazine-articles.ts` (`listAvailableArticles` gains `query`), `src/server/api/routers/magazines.ts`. (Kind pickers import `PICKER_LIMIT` from `@/lib/magazines/picker`, never from `items/pickers.ts` — that would be an import cycle.)
 - Test: `pickers.test.ts`, `src/server/api/routers/magazines.integration.test.ts`
 
 **Interfaces:**
+
 - Consumes: `InputOf<K>`, `ItemCommunity` (Task 1); `listAvailableArticles`, `magazineArticleEditPath` (`src/lib/magazines/paths.ts`).
 - Produces:
+
   ```ts
   // src/lib/magazines/picker.ts (each kind task appends its id)
-  export const PICKABLE_ITEM_KINDS = ["article"] as const satisfies readonly ItemKindId[];
+  export const PICKABLE_ITEM_KINDS = [
+    "article",
+  ] as const satisfies readonly ItemKindId[];
   export type PickableKindId = (typeof PICKABLE_ITEM_KINDS)[number];
   export type CandidateFact =
     | { type: "byline"; name: string }
     | { type: "source"; host: string }
-    | { type: "date"; label: "updated" | "published" | "starts" | "lastActive"; at: string }
+    | {
+        type: "date";
+        label: "updated" | "published" | "starts" | "lastActive";
+        at: string;
+      }
     | { type: "count"; what: "sources" | "replies" | "upvotes"; value: number }
     | { type: "eventStatus"; status: "cancelled" | "completed" };
   export const PICKER_LIMIT = 12; // here, not in items/pickers.ts: kind pickers import it, and pickers.ts imports every kind picker
   // items/types.ts
-  export type PickerContext = { deps: Deps; magazineId: number; community: ItemCommunity; viewerId: string; locale: AppLocale };
+  export type PickerContext = {
+    deps: Deps;
+    magazineId: number;
+    community: ItemCommunity;
+    viewerId: string;
+    locale: AppLocale;
+  };
   /** What a kind's source returns; the registry adds the reference. */
-  export type PickerSourceCandidate<Input> = { input: Input; title: string; facts: CandidateFact[]; openHref: string | null };
+  export type PickerSourceCandidate<Input> = {
+    input: Input;
+    title: string;
+    facts: CandidateFact[];
+    openHref: string | null;
+  };
   /** What the procedure returns: `reference` is `itemReference` form, so the client never needs kind-specific id fields. */
-  export type PickerCandidate<Input> = PickerSourceCandidate<Input> & { reference: string };
-  export interface ItemPickerSource<Input> { search(query: string, ctx: PickerContext): Promise<PickerSourceCandidate<Input>[]> }
+  export type PickerCandidate<Input> = PickerSourceCandidate<Input> & {
+    reference: string;
+  };
+  export interface ItemPickerSource<Input> {
+    search(
+      query: string,
+      ctx: PickerContext,
+    ): Promise<PickerSourceCandidate<Input>[]>;
+  }
   // items/pickers.ts
-  export const ITEM_PICKERS: { [K in PickableKindId]: ItemPickerSource<InputOf<K>> };
-  export function searchPickerCandidates(kind: PickableKindId, query: string, ctx: PickerContext): Promise<PickerCandidate<IssueItemInput>[]>;
+  export const ITEM_PICKERS: {
+    [K in PickableKindId]: ItemPickerSource<InputOf<K>>;
+  };
+  export function searchPickerCandidates(
+    kind: PickableKindId,
+    query: string,
+    ctx: PickerContext,
+  ): Promise<PickerCandidate<IssueItemInput>[]>;
   //   fills reference = ITEM_KINDS[kind].referenceOf(ITEM_KINDS[kind].toStored(c.input)) for every candidate
   // router
-  pickerCandidates: editorProcedure.input(z.object({ slug: z.string(), kind: z.enum(PICKABLE_ITEM_KINDS),
-    query: z.string().trim().max(100).default("") })) // → [] when the community has no magazine
+  pickerCandidates: editorProcedure.input(
+    z.object({
+      slug: z.string(),
+      kind: z.enum(PICKABLE_ITEM_KINDS),
+      query: z.string().trim().max(100).default(""),
+    }),
+  ); // → [] when the community has no magazine
   ```
 
-- [ ] **Step 1: Write the failing tests.** `pickers.test.ts`: `it("has one picker source per pickable kind")` — `Object.keys(ITEM_PICKERS)` equals `[...PICKABLE_ITEM_KINDS]`; `it("every pickable kind is a registry kind other than editorial")`; `it("gives every candidate its reference key")` — a stubbed article source returning `{ input: { kind: "article", articleId: 7 } … }` → `reference: "article:7"`. Router DB test (extend the existing suite): `it("pickerCandidates offers ready articles, filtered by the search")` — two approved unplaced articles "Agents at work" / "Evals", `query: "agent"` → one candidate `{ input: { kind: "article", articleId }, reference: \`article:${articleId}\`, title: "Agents at work", facts: [{ type: "byline", name }] }`; an article placed in an issue is not offered; `openHref` is the edit path only for the caller's own article; `it("pickerCandidates is for editors only")` — member → FORBIDDEN.
+- [ ] **Step 1: Write the failing tests.** `pickers.test.ts`: `it("has one picker source per pickable kind")` — `Object.keys(ITEM_PICKERS)` equals `[...PICKABLE_ITEM_KINDS]`; `it("every pickable kind is a registry kind other than editorial")`; `it("gives every candidate its reference key")` — a stubbed article source returning `{ input: { kind: "article", articleId: 7 } … }` → `reference: "article:7"`. Router DB test (extend the existing suite): `it("pickerCandidates offers ready articles, filtered by the search")` — two approved unplaced articles "Agents at work" / "Evals", `query: "agent"` → one candidate `{ input: { kind: "article", articleId }, reference: \`article:${articleId}\`, title: "Agents at work", facts: [{ type: "byline", name }] }`; an article placed in an issue is not offered; `openHref`is the edit path only for the caller's own article;`it("pickerCandidates is for editors only")` — member → FORBIDDEN.
 - [ ] **Step 2: Run** them → FAIL.
 - [ ] **Step 3: Implement.** `listAvailableArticles(payload, magazineId, viewerId, query = "")` adds `{ title: { like: query } }` when the query is not empty. The article picker maps to candidates with `openHref = editableByViewer ? magazineArticleEditPath(community.slug, slug) : null`, at most `PICKER_LIMIT`. The procedure builds `PickerContext` from `ctx` (`locale: routing.defaultLocale`, like the rest of the editor API). Keep `availableArticles` for now (Task 3 removes its last caller).
 - [ ] **Step 4: Run** `SKIP_ENV_VALIDATION=1 pnpm vitest run src/server/magazines/items && <DB test prefix> pnpm vitest run src/server/api/routers/magazines.integration.test.ts` → PASS.
@@ -213,35 +255,54 @@
 ## Task 3: Builder — generic "Add more" tabs, picker panel and intro editing
 
 **Files:**
+
 - Create: `src/components/magazines/editor/builder/picker-panel.tsx`, `picker-panel.test.tsx`, `item-details-panel.tsx`, `item-details-panel.test.tsx`, `builder/items/reference.ts`
 - Modify: `builder/items/{types.ts,registry.tsx,article.ts,editorial.tsx,registry.test.tsx}`, `builder/{add-items-panel.tsx,issue-builder.tsx,items-model.ts,items-model.test.ts,live-preview.tsx,issue-builder.test.tsx}`, `src/server/api/routers/magazines.ts` (remove `availableArticles`), `messages/{en,nl}.json`
 - Test: as listed
 
 **Interfaces:**
+
 - Consumes: `pickerCandidates` (Task 2), `itemTitle` (`src/components/magazines/items/registry.tsx`), `useDebouncedValue` (`src/hooks/use-debounced-value.ts`), `itemReference`.
 - Produces:
+
   ```ts
   // builder/items/types.ts
   /** Was a closed union ("article" | "editorial" | …); now every kind id is a label key by construction,
       so Tasks 4–8 need no edit here — each adds `magazineEditor.builder.items.<kind>` in its copy step. */
-  export type BuilderItemsMessage = ItemKindId | "editorialEmpty" | "openArticle";
+  export type BuilderItemsMessage =
+    | ItemKindId
+    | "editorialEmpty"
+    | "openArticle";
   export type AddedContent = { title: string | null; openHref: string | null };
-  export type AddPanelProps = { communitySlug: string; referencesInIssue: ReadonlySet<string>;
-    onAdd: (input: IssueItemInput, added: AddedContent) => void };
+  export type AddPanelProps = {
+    communitySlug: string;
+    referencesInIssue: ReadonlySet<string>;
+    onAdd: (input: IssueItemInput, added: AddedContent) => void;
+  };
   // BuilderItemKind<K> gains:  readonly AddPanel: ComponentType<AddPanelProps>;
   // BuilderItemEditorProps<K> loses onDone (the details panel owns Done).
   // builder/items/registry.tsx
   export const ADD_TAB_ORDER: readonly ItemKindId[]; // ["article", "editorial"] now; each kind task inserts its id
   // builder/items/reference.ts
   export function referenceBuilderKind<K extends PickableKindId>(opts: {
-    kind: K; labelKey: BuilderItemsMessage; referenceOf: (item: BuilderItemOf<K>) => string; openLabelKey?: BuilderItemsMessage;
+    kind: K;
+    labelKey: BuilderItemsMessage;
+    referenceOf: (item: BuilderItemOf<K>) => string;
+    openLabelKey?: BuilderItemsMessage;
   }): BuilderItemKind<K>;
   // picker-panel.tsx
-  export function PickerPanel(props: AddPanelProps & { kind: PickableKindId }): JSX.Element;
+  export function PickerPanel(
+    props: AddPanelProps & { kind: PickableKindId },
+  ): JSX.Element;
   // item-details-panel.tsx
-  export function ItemDetailsPanel(props: { item: BuilderItem; kindLabel: string;
-    onChange: (patch: Partial<BuilderItem>) => void; onDone: () => void }): JSX.Element;
+  export function ItemDetailsPanel(props: {
+    item: BuilderItem;
+    kindLabel: string;
+    onChange: (patch: Partial<BuilderItem>) => void;
+    onDone: () => void;
+  }): JSX.Element;
   ```
+
   `referenceBuilderKind` behaviour: `rowTitle` = the saved view's `itemTitle` (when not a marker) ?? `titleHint` ?? `t(labelKey)`; `isSavable: () => true`; `previewView(item, saved)` = `null` before the first save, the marker unchanged (with `itemId: item.key`) when saved is unavailable, else `{ ...saved, itemId: item.key, intro: item.intro ?? null }`; `referenceKey = referenceOf`; `AddPanel` = a module-level component rendering `<PickerPanel kind={kind} …/>`.
 
 - [ ] **Step 1: Write the failing tests.**
@@ -251,7 +312,7 @@
   - `builder/items/registry.test.tsx`: `it("offers one add tab per kind")` — `ADD_TAB_ORDER` is a permutation of `Object.keys(BUILDER_ITEM_KINDS)`.
   - `items-model.test.ts`: delete the `addEditorial` describe block and import (the function is removed in Step 3).
 - [ ] **Step 2: Run** `SKIP_ENV_VALIDATION=1 pnpm vitest run src/components/magazines/editor` → FAIL.
-- [ ] **Step 3: Implement.** `AddItemsPanel` renders one tab per `ADD_TAB_ORDER` entry (`t(\`tabs.${kind}\`)`, `TabsList` wraps on narrow screens) with the kind's `AddPanel`; default tab `article`. `PickerPanel` is the old `ReadyArticles` made generic: a labelled search input (`search.<kind>` as label and placeholder), the list keyed, filtered (`!referencesInIssue.has(c.reference)`) and focus-tracked by `candidate.reference` (title + facts line: Sans for bylines/sources, Mono for counts and dates; date facts formatted with `formatEventDay(at, locale)`), `hint.<kind>` under the list, Skeleton / ErrorState / empty (`empty.<kind>`, or `noMatch` with a query). Editorial's `AddPanel` is the hint + "Add a text section" button calling `onAdd({ kind: "editorial", body: null }, { title: null, openHref: null })`. In `issue-builder.tsx` one `handleAdd(input, added)` replaces `handleAddArticle`/`handleAddEditorial`: `addItem`; `items-model.ts` `addEditorial` loses its last caller, so remove it (and its test block); store `added.title` as title hint; store `added.openHref` under the item's reference; if the kind has an `Editor`, open the details panel on it, mark it untouched when not savable and focus its first field. Every row gets `onEdit` (details panel). `onItemsSaved` invalidates `utils.magazines.pickerCandidates`. Article moves onto `referenceBuilderKind({ kind: "article", labelKey: "article", referenceOf: (i) => articleReference(i.articleId), openLabelKey: "openArticle" })`. The editorial editor drops its own section wrapper and Done button. Remove the `availableArticles` procedure and `AddableArticle`. Live preview's "unsavedArticles" note becomes `unsavedItems`.
+- [ ] **Step 3: Implement.** `AddItemsPanel` renders one tab per `ADD_TAB_ORDER` entry (`t(\`tabs.${kind}\`)`, `TabsList`wraps on narrow screens) with the kind's`AddPanel`; default tab `article`. `PickerPanel`is the old`ReadyArticles` made generic: a labelled search input (`search.<kind>` as label and placeholder), the list keyed, filtered (`!referencesInIssue.has(c.reference)`) and focus-tracked by `candidate.reference`(title + facts line: Sans for bylines/sources, Mono for counts and dates; date facts formatted with`formatEventDay(at, locale)`), `hint.<kind>` under the list, Skeleton / ErrorState / empty (`empty.<kind>`, or `noMatch`with a query). Editorial's`AddPanel`is the hint + "Add a text section" button calling`onAdd({ kind: "editorial", body: null }, { title: null, openHref: null })`. In `issue-builder.tsx`one`handleAdd(input, added)`replaces`handleAddArticle`/`handleAddEditorial`: `addItem`; `items-model.ts` `addEditorial`loses its last caller, so remove it (and its test block); store`added.title`as title hint; store`added.openHref`under the item's reference; if the kind has an`Editor`, open the details panel on it, mark it untouched when not savable and focus its first field. Every row gets `onEdit`(details panel).`onItemsSaved`invalidates`utils.magazines.pickerCandidates`. Article moves onto `referenceBuilderKind({ kind: "article", labelKey: "article", referenceOf: (i) => articleReference(i.articleId), openLabelKey: "openArticle" })`. The editorial editor drops its own section wrapper and Done button. Remove the `availableArticles`procedure and`AddableArticle`. Live preview's "unsavedArticles" note becomes `unsavedItems`.
 - [ ] **Step 4: Copy (en + nl), replacing the old `add.*` keys** (`articles`, `articlesEmpty`, `editorialHint`, `addEditorial`, `addArticle`, `loadFailed`, `byAuthor` — replaced by `add.facts.byline` — and `editorial` — replaced by `add.tabs.editorial`): `add.tabs.{article: "Articles", editorial: "Text"}`, `add.search.article` "Search ready articles", `add.empty.article` "No articles are ready. Articles marked ready for an issue show up here.", `add.hint.article` "Only articles marked ready and not in another issue show here.", `add.noMatch` "Nothing matches “{query}”.", `add.addItem` "Add {title} to the issue", `add.loadFailed` "This list could not be loaded.", `add.editorialHint` (existing text), `add.addEditorial` "Add a text section", `add.facts.{byline: "By {name}", updated: "Updated {date}", published: "{date}", starts: "{date}", lastActive: "Last reply {date}", sources: "{count, plural, one {# source} other {# sources}}", replies: "{count, plural, one {# reply} other {# replies}}", upvotes: "{count, plural, one {# upvote} other {# upvotes}}", cancelled: "Cancelled", completed: "Took place"}`, `details.{intro: "Intro line (optional)", introHelp: "One line shown above this item in the issue.", done: "Done"}`, `preview.unsavedItems` "Items you just added show here once they are saved." Grep both files for every removed key and for leftover uses.
 - [ ] **Step 5: Run** `SKIP_ENV_VALIDATION=1 pnpm vitest run src/components/magazines && pnpm typecheck && pnpm lint` → PASS; `<DB test prefix> pnpm vitest run src/server/api/routers/magazines.integration.test.ts` → PASS.
 - [ ] **Step 6: Commit** — `feat(magazines): generic add-more tabs, picker panel and intro editing`. (Before the visual check: "Running the app" exports `git archive HEAD`, so it only sees committed code.)
@@ -264,20 +325,45 @@
 Every kind task from here has the same shape: block → migration piece → types → strategy → picker source → renderer → builder file → copy → tests. Later tasks say only what differs.
 
 **Files:**
+
 - Create: `src/server/magazines/items/storyline/{block,kind,picker,kind.test}.ts`, `src/migrations/20261026b_magazine_platform_items.ts`, `src/migrations/magazine-platform-items.integration.test.ts`, `src/server/magazines/items/platform-kinds.integration.test.ts`, `src/components/magazines/items/storyline-item.tsx`, `src/components/magazines/editor/builder/items/storyline.ts`
 - Modify: `src/server/news/storylines.ts`, `src/lib/magazines/{item-views,picker}.ts`, `items/{blocks,registry,pickers}.ts`, `src/components/magazines/items/registry.tsx` (+ its test), `builder/items/registry.tsx`, `src/components/magazines/test-fixtures.ts`, `src/migrations/index.ts`, `src/server/db/payload-schema-drift.ts`, `src/collections/magazines-schema.test.ts`, `src/payload-types.ts`, `messages/{en,nl}.json`
 
 **Interfaces:**
+
 - Consumes: Tasks 1–3; `publicStoryline`, `listStorylines` (`src/server/news/storylines.ts`).
 - Produces:
+
   ```ts
   // src/server/news/storylines.ts — one query, any status
-  export type StorylineCard = { id: string; slug: string; titleEn: string; titleNl: string; overviewEn: string;
-    overviewNl: string; articleCount: number; latestAt: Date | null; isPublic: boolean };
-  export async function loadStorylineCards(ids: readonly string[], database?: typeof db): Promise<Map<string, StorylineCard>>;
+  export type StorylineCard = {
+    id: string;
+    slug: string;
+    titleEn: string;
+    titleNl: string;
+    overviewEn: string;
+    overviewNl: string;
+    articleCount: number;
+    latestAt: Date | null;
+    isPublic: boolean;
+  };
+  export async function loadStorylineCards(
+    ids: readonly string[],
+    database?: typeof db,
+  ): Promise<Map<string, StorylineCard>>;
   // item-views.ts
-  export type StorylineItemView = { kind: "storyline"; itemId: string; intro: string | null;
-    storyline: { slug: string; title: string; overview: string; sourceCount: number; updatedAt: string | null } };
+  export type StorylineItemView = {
+    kind: "storyline";
+    itemId: string;
+    intro: string | null;
+    storyline: {
+      slug: string;
+      title: string;
+      overview: string;
+      sourceCount: number;
+      updatedAt: string | null;
+    };
+  };
   // UnavailableItem.reason adds "unpublished"
   // block: slug "storyline", fields [...itemBaseFields, { name: "storylineId", type: "text", required: true }]
   // input: { kind: "storyline", id?, intro?, storylineId: z.string().min(1).max(255) }
@@ -296,7 +382,8 @@ docker exec aitcom-postgres-1 pg_dump -U postgres --schema-only -n public -t 'ma
 docker exec aitcom-postgres-1 dropdb -U postgres aitcom_magazines_scratch
 ```
 
-  Create `src/migrations/20261026b_magazine_platform_items.ts` in the style of `20261026a_magazines.ts` (header comment says why each table exists and that references are plain ids on purpose — ADR-0044; every statement `IF NOT EXISTS` / `DO $$ … duplicate_object`; `down` drops in reverse). It holds only the new block table (expected `magazine_issues_blocks_storyline` with `_order`, `_parent_id`, `_path`, `id`, `intro`, `storyline_id`, `block_name`, the order/parent/path indexes and the parent FK — use Payload's names from the dump if they differ). Register it in `src/migrations/index.ts` after `20261026a_magazines`. **Drift guard (core ruling F14 applies):** `GUARDED_PAYLOAD_TABLES` does not guard the existing `magazine_issues_blocks_article` / `_editorial` tables today. Guard block tables only after the read-only drift check at the end of this step is clean for them, and then guard all of them together (`magazine_issues_blocks_article`, `_editorial`, `_storyline`, and each later kind's table as its task adds it) — or none. Record the outcome as a ruling in this plan's `-rulings.md` (create it in the core rulings' format if missing) with the verify output summary; later kind tasks follow the same ruling (guard their table iff block tables are guarded). Write `magazine-platform-items.integration.test.ts` (style of `src/migrations/magazines.integration.test.ts`: refuses any database but `aitcom_test`; `EXPECTED_COLUMNS` = `["magazine_issues_blocks_storyline.storyline_id", "magazine_issues_blocks_storyline.intro"]`): `it("creates the block tables and can run twice")`, `it("down removes them, up restores them")`. Extend `magazines-schema.test.ts`: block slugs `["article","editorial","storyline"]`, every block's first field `intro`, migration source contains `CREATE TABLE IF NOT EXISTS "magazine_issues_blocks_storyline"` and `index.ts` contains `name: "20261026b_magazine_platform_items"`. Run `<DB test prefix> pnpm vitest run src/migrations/magazine-platform-items.integration.test.ts` → PASS (applies the table to `aitcom_test`), then regenerate Payload types (Global Constraints) and check the diff holds only the storyline block. Read-only drift check: `env -i PATH="$PATH" HOME="$HOME" SKIP_ENV_VALIDATION=1 NEON_LOCAL_PROXY=127.0.0.1:5433 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test PAYLOAD_SECRET=local-check pnpm exec tsx scripts/db-verify-payload-schema.ts` → no missing columns.
+Create `src/migrations/20261026b_magazine_platform_items.ts` in the style of `20261026a_magazines.ts` (header comment says why each table exists and that references are plain ids on purpose — ADR-0044; every statement `IF NOT EXISTS` / `DO $$ … duplicate_object`; `down` drops in reverse). It holds only the new block table (expected `magazine_issues_blocks_storyline` with `_order`, `_parent_id`, `_path`, `id`, `intro`, `storyline_id`, `block_name`, the order/parent/path indexes and the parent FK — use Payload's names from the dump if they differ). Register it in `src/migrations/index.ts` after `20261026a_magazines`. **Drift guard (core ruling F14 applies):** `GUARDED_PAYLOAD_TABLES` does not guard the existing `magazine_issues_blocks_article` / `_editorial` tables today. Guard block tables only after the read-only drift check at the end of this step is clean for them, and then guard all of them together (`magazine_issues_blocks_article`, `_editorial`, `_storyline`, and each later kind's table as its task adds it) — or none. Record the outcome as a ruling in this plan's `-rulings.md` (create it in the core rulings' format if missing) with the verify output summary; later kind tasks follow the same ruling (guard their table iff block tables are guarded). Write `magazine-platform-items.integration.test.ts` (style of `src/migrations/magazines.integration.test.ts`: refuses any database but `aitcom_test`; `EXPECTED_COLUMNS` = `["magazine_issues_blocks_storyline.storyline_id", "magazine_issues_blocks_storyline.intro"]`): `it("creates the block tables and can run twice")`, `it("down removes them, up restores them")`. Extend `magazines-schema.test.ts`: block slugs `["article","editorial","storyline"]`, every block's first field `intro`, migration source contains `CREATE TABLE IF NOT EXISTS "magazine_issues_blocks_storyline"` and `index.ts` contains `name: "20261026b_magazine_platform_items"`. Run `<DB test prefix> pnpm vitest run src/migrations/magazine-platform-items.integration.test.ts` → PASS (applies the table to `aitcom_test`), then regenerate Payload types (Global Constraints) and check the diff holds only the storyline block. Read-only drift check: `env -i PATH="$PATH" HOME="$HOME" SKIP_ENV_VALIDATION=1 NEON_LOCAL_PROXY=127.0.0.1:5433 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55432/aitcom_test PAYLOAD_SECRET=local-check pnpm exec tsx scripts/db-verify-payload-schema.ts` → no missing columns.
+
 - [ ] **Step 2: Write the failing unit tests** `storyline/kind.test.ts` (fake `loadStorylineCards` injected by `vi.mock("@/server/news/storylines")`):
   - `it("loads every story of an issue in one query")` — three items → `loadStorylineCards` called once with the three ids.
   - `it("shows a public story live, marks unpublished and deleted ones")` — editor context: public card → view with `sourceCount` 14, `updatedAt` ISO, `overview` cut to 40 words with "…" (`cutWords`); `isPublic: false` → marker `unpublished`; absent id → `missing`. Reader context through `loadIssueItemViews`: only the public one.
@@ -304,7 +391,7 @@ docker exec aitcom-postgres-1 dropdb -U postgres aitcom_magazines_scratch
   - `it("refuses a new story that is not public, accepts it when kept")` — `isNew: true` + `isPublic: false` → `{ itemIndex, code: "ITEM_INVALID" }`; `isNew: false` → no problem; unknown id new → `ITEM_INVALID`.
   - `it("refuses a duplicate story")` — two items with one `storylineId` → second gets `ITEM_INVALID` with `detail: "duplicate"`, kept or not.
   - `it("round-trips input and keeps the intro")` — `toStored({ kind:"storyline", storylineId:"s1", intro:" Our take " })` → `{ intro: "Our take", storylineId: "s1" }`; `toInput` back; `referenceOf` → `"storyline:s1"`.
-- [ ] **Step 3: Run** → FAIL. **Implement** `loadStorylineCards` next to `publicStoryline` (select the story columns plus the module's `articleCount`, `latestAt` and the public rule, where `id in ids`; empty ids → empty map without a query). `publicStoryline` is `and(...)`, typed `SQL | undefined`, and a bare SQL field in the select list makes Drizzle reprint columns without table names (comment at `storylines.ts:104-107`), so wrap every computed column exactly as `listStorylines` does: `articleCount: sql<number>\`${articleCount}\``, `latestAt: sql<Date | null>\`${latestAt}\``, `isPublic: sql<boolean>\`(${publicStoryline!})\``. Implement the strategy: `load` per access with an exhaustive `switch` like `articleReadingFor` (both levels read live content; the registry turns markers into skips for readers); `isReadable` exhaustive `true`; `validate` batch-loads the cards once, then returns `validateReferences(items, { referenceOf, acceptNew: (s) => cards.get(s.storylineId)?.isPublic === true })`; the overview uses `cutWords(overview, 40)`. Add `"storyline"` to `PICKABLE_ITEM_KINDS`; the picker source (importing `PICKER_LIMIT` from `@/lib/magazines/picker`) calls `listStorylines({ q: query, limit: PICKER_LIMIT })` (public stories only, its escaping and ranking) and maps to `{ input: { kind: "storyline", storylineId }, title (locale fallback), facts: [count sources, date updated (latestAt)], openHref: null }`. Register in `ITEM_KINDS`, `ITEM_PICKERS`.
+- [ ] **Step 3: Run** → FAIL. **Implement** `loadStorylineCards` next to `publicStoryline` (select the story columns plus the module's `articleCount`, `latestAt` and the public rule, where `id in ids`; empty ids → empty map without a query). `publicStoryline` is `and(...)`, typed `SQL | undefined`, and a bare SQL field in the select list makes Drizzle reprint columns without table names (comment at `storylines.ts:104-107`), so wrap every computed column exactly as `listStorylines` does: `articleCount: sql<number>\`${articleCount}\``, `latestAt: sql<Date | null>\`${latestAt}\``, `isPublic: sql<boolean>\`(${publicStoryline!})\``. Implement the strategy: `load`per access with an exhaustive`switch`like`articleReadingFor`(both levels read live content; the registry turns markers into skips for readers);`isReadable`exhaustive`true`; `validate`batch-loads the cards once, then returns`validateReferences(items, { referenceOf, acceptNew: (s) => cards.get(s.storylineId)?.isPublic === true })`; the overview uses `cutWords(overview, 40)`. Add `"storyline"`to`PICKABLE_ITEM_KINDS`; the picker source (importing `PICKER_LIMIT`from`@/lib/magazines/picker`) calls `listStorylines({ q: query, limit: PICKER_LIMIT })`(public stories only, its escaping and ranking) and maps to`{ input: { kind: "storyline", storylineId }, title (locale fallback), facts: [count sources, date updated (latestAt)], openHref: null }`. Register in `ITEM_KINDS`, `ITEM_PICKERS`.
 - [ ] **Step 4: Renderer and builder.** `StorylineItem`: kind line "From AIT News", title linking to `/news/stories/${slug}` (`Link`), the intro (as the article card shows it), the overview (lead: full excerpt; otherwise 3-line clamp), a Mono facts line "14 sources · Updated 24 Oct 2026" (`formatEventDay(updatedAt, locale)`, Decision 10 — not `format.dateTime`), and when `lead`, a "Read the story" link. `storylineItemTitle = (v) => v.storyline.title`. Builder: `referenceBuilderKind({ kind: "storyline", labelKey: "storyline", referenceOf: (i) => itemReference("storyline", i.storylineId) })` (`labelKey` type-checks because `BuilderItemsMessage` includes every `ItemKindId` since Task 3); insert `"storyline"` in `ADD_TAB_ORDER` after `article`. Add `storylineView()` to `test-fixtures.ts`; extend the render registry test with `it("renders a story card that links to the story")` (asserts the facts line reads "14 sources · Updated 24 Oct 2026").
 - [ ] **Step 5: Copy (en + nl):** `magazines.item.{storylineKind: "From AIT News", sources (plural), updated: "Updated {date}", readStory: "Read the story"}`, `magazines.item.unavailableReason.unpublished` "This was taken offline. Readers skip it until it is back.", `magazineEditor.builder.items.storyline` "Story", `add.tabs.storyline` "Stories", `add.search.storyline` "Search AIT News stories", `add.empty.storyline` "No stories found.", `add.hint.storyline` "Stories stay live: readers always see the newest version."
 - [ ] **Step 6: DB test** — create `platform-kinds.integration.test.ts` (fixtures: two `newsItems` and one `newsStorylines` row with two `newsStorylineArticles` memberships whose `noteEn` is set and whose `evidence` is a ≥ 12-character substring of the news title, so `publicStoryline` holds; a magazine + draft issue through the services; cleanup deletes the story rows): `it("a story loads live and drops out when unpublished")` — load as reader shows the current title; update the title → the next load shows the new one (no snapshot); set `status: "draft"` → reader gets nothing, editor gets `unpublished`. `it("setIssueItems accepts a public story and refuses a draft one")`. `it("the stories tab searches public stories only")` — through `searchPickerCandidates("storyline", …)`.
@@ -318,17 +405,37 @@ docker exec aitcom-postgres-1 dropdb -U postgres aitcom_magazines_scratch
 **Files:** Create `items/newsItem/{block,kind,picker,kind.test}.ts`, `src/components/magazines/items/news-item.tsx`, `builder/items/news-item.ts`. Modify the Task 4 list (migration, drift guard, schema test, types, registries, picker kinds, fixtures, copy), `src/server/news/list.ts`, `platform-kinds.integration.test.ts`.
 
 **Interfaces:**
+
 - Produces:
+
   ```ts
   // src/server/news/list.ts
-  export async function findNewsItemsByIds(ids: readonly string[], database?: typeof db): Promise<Map<string, NewsListItem>>; // one query, no AI flags
-  export async function searchNewsItems(query: string, limit: number, database?: typeof db): Promise<NewsListItem[]>;
-    // title ilike %escapeLike(query)% (src/server/db/escape-like.ts — no hand-written escaping); newest first (publishedAt desc nulls last, createdAt desc); empty query = newest
+  export async function findNewsItemsByIds(
+    ids: readonly string[],
+    database?: typeof db,
+  ): Promise<Map<string, NewsListItem>>; // one query, no AI flags
+  export async function searchNewsItems(
+    query: string,
+    limit: number,
+    database?: typeof db,
+  ): Promise<NewsListItem[]>;
+  // title ilike %escapeLike(query)% (src/server/db/escape-like.ts — no hand-written escaping); newest first (publishedAt desc nulls last, createdAt desc); empty query = newest
   // item-views.ts
-  export type NewsItemView = { kind: "newsItem"; itemId: string; intro: string | null;
-    news: { url: string | null; title: string; source: string | null; publishedAt: string | null; summary: string } };
+  export type NewsItemView = {
+    kind: "newsItem";
+    itemId: string;
+    intro: string | null;
+    news: {
+      url: string | null;
+      title: string;
+      source: string | null;
+      publishedAt: string | null;
+      summary: string;
+    };
+  };
   // block: slug "newsItem", field { name: "newsItemId", type: "text", required: true }
   ```
+
   `url` is the item's URL only when it starts with `http://` or `https://` (else null: the card shows no link); `source` is its hostname without `www.`; `summary` = `cutWords(aiSummary ?? summary, 30)`. `validate` loads the batch once (`findNewsItemsByIds`) and returns `validateReferences(items, { referenceOf, acceptNew: (s) => found.has(s.newsItemId) })`.
 
 - [ ] **Step 1: Block + migration piece + types** exactly as Task 4 Step 1 (append the `newsItem` block table to the same migration's `up`/`down`; extend `EXPECTED_COLUMNS` with its `news_item_id` column using Payload's dumped table name; schema test slugs gain `"newsItem"`).
@@ -346,25 +453,53 @@ docker exec aitcom-postgres-1 dropdb -U postgres aitcom_magazines_scratch
 **Files:** Create `src/lib/events/event-status.ts` (+ `event-status.test.ts`), `src/server/magazines/items/community-content.ts` (+ test), `items/event/{block,kind,picker,kind.test}.ts`, `src/components/magazines/items/event-item.tsx`, `builder/items/event.ts`. Modify the Task 4 list, `src/server/agent/event-delivery-audience.ts`, `src/app/[locale]/events/[slug]/page.tsx`, `src/server/communities/forum-scope.ts` (+ its test), `platform-kinds.integration.test.ts`.
 
 **Interfaces:**
+
 - Produces:
+
   ```ts
   // src/lib/events/event-status.ts
-  export const PUBLICLY_LISTED_EVENT_STATUSES = ["published", "cancelled", "completed"] as const;
-  export function isPubliclyListedEventStatus(status: string | null | undefined): boolean;
+  export const PUBLICLY_LISTED_EVENT_STATUSES = [
+    "published",
+    "cancelled",
+    "completed",
+  ] as const;
+  export function isPubliclyListedEventStatus(
+    status: string | null | undefined,
+  ): boolean;
   // items/community-content.ts
-  export type CommunityContentRule = { readable(communityId: string | null | undefined): boolean;
-    membersOnly(communityId: string | null | undefined): boolean };
-  export async function loadCommunityContentRule(reader: ItemReader, access: IssueReaderAccess): Promise<CommunityContentRule>;
+  export type CommunityContentRule = {
+    readable(communityId: string | null | undefined): boolean;
+    membersOnly(communityId: string | null | undefined): boolean;
+  };
+  export async function loadCommunityContentRule(
+    reader: ItemReader,
+    access: IssueReaderAccess,
+  ): Promise<CommunityContentRule>;
   //   null id: readable, not membersOnly. Exhaustive switch on access: `editor` loads both sets;
   //   `full` loads only the hidden set and membersOnly() is always false (Decision 4).
   // src/server/communities/forum-scope.ts — the Hub-aware scope, now shared by events and threads (Decision 6)
-  export function communityContentWhere(community: CommunityRef): Where;        // body of today's forumThreadCommunityWhere
-  export function communityContentMatches(communityId: string | null | undefined, community: CommunityRef): boolean;
+  export function communityContentWhere(community: CommunityRef): Where; // body of today's forumThreadCommunityWhere
+  export function communityContentMatches(
+    communityId: string | null | undefined,
+    community: CommunityRef,
+  ): boolean;
   //   forumThreadCommunityWhere / forumThreadMatchesCommunity become one-line delegates (callers unchanged)
   // item-views.ts
-  export type EventItemView = { kind: "event"; itemId: string; intro: string | null; membersOnly: boolean;
-    event: { slug: string; title: string; date: string; endDate: string | null; city: string | null; online: boolean;
-             status: "published" | "cancelled" | "completed" } };
+  export type EventItemView = {
+    kind: "event";
+    itemId: string;
+    intro: string | null;
+    membersOnly: boolean;
+    event: {
+      slug: string;
+      title: string;
+      date: string;
+      endDate: string | null;
+      city: string | null;
+      online: boolean;
+      status: "published" | "cancelled" | "completed";
+    };
+  };
   export function isMembersOnlyView(view: EditorItemView): boolean; // "membersOnly" in view && view.membersOnly
   // UnavailableItem.reason adds "no_access"
   // block: slug "event", field { name: "eventId", type: "number", required: true }
@@ -388,11 +523,24 @@ docker exec aitcom-postgres-1 dropdb -U postgres aitcom_magazines_scratch
 **Files:** Create `items/forumThread/{block,kind,picker,kind.test}.ts`, `src/components/magazines/items/forum-thread-item.tsx`, `builder/items/forum-thread.ts`. Modify the Task 4 list and `platform-kinds.integration.test.ts`.
 
 **Interfaces:**
+
 - Consumes: `forumThreadMatchesCommunity`, `forumThreadCommunityWhere`, `forumThreadSitemapPath` (`src/server/communities/forum-scope.ts`), `loadCommunityContentRule` (Task 6).
 - Produces:
+
   ```ts
-  export type ForumThreadItemView = { kind: "forumThread"; itemId: string; intro: string | null; membersOnly: boolean;
-    thread: { path: string; title: string; replyCount: number; authorName: string | null; lastActivityAt: string | null } };
+  export type ForumThreadItemView = {
+    kind: "forumThread";
+    itemId: string;
+    intro: string | null;
+    membersOnly: boolean;
+    thread: {
+      path: string;
+      title: string;
+      replyCount: number;
+      authorName: string | null;
+      lastActivityAt: string | null;
+    };
+  };
   // path is built on the server: forumThreadSitemapPath(thread, new Map([[ctx.community.id, ctx.community.slug]]))
   //   → `/communities/${communitySlug}/forum/${slug}` (Hub slug for a thread with no community), the same link
   //   thread-card.tsx and activity-row.tsx use. A thread with no slug (path null) loads as `missing`.
@@ -414,15 +562,35 @@ docker exec aitcom-postgres-1 dropdb -U postgres aitcom_magazines_scratch
 **Files:** Create `items/launchpadProject/{block,kind,picker,kind.test}.ts`, `src/components/magazines/items/launchpad-project-item.tsx`, `builder/items/launchpad-project.ts`. Modify the Task 4 list and `platform-kinds.integration.test.ts`.
 
 **Interfaces:**
+
 - Produces:
+
   ```ts
-  export type LaunchpadProjectItemView = { kind: "launchpadProject"; itemId: string; intro: string | null; membersOnly: boolean;
-    project: { slug: string; title: string; pitch: string; stage: "idea" | "prototype" | "mvp" | "launched"; voteCount: number; authorName: string | null } };
+  export type LaunchpadProjectItemView = {
+    kind: "launchpadProject";
+    itemId: string;
+    intro: string | null;
+    membersOnly: boolean;
+    project: {
+      slug: string;
+      title: string;
+      pitch: string;
+      stage: "idea" | "prototype" | "mvp" | "launched";
+      voteCount: number;
+      authorName: string | null;
+    };
+  };
   // LaunchpadProjects.pitch is richText (Lexical): the view's pitch = cutWords(lexicalPlainText(project.pitch), 40)
   //   (`src/lib/lexical-text.ts`), never the raw editor state.
   /** Decision 6: the project's community, or an unscoped project by an active member. One membership query per batch. */
-  export async function communityProjectFilter(deps: Pick<Deps, "db">, community: ItemCommunity,
-    projects: readonly { communityId?: string | null; authorId?: string | null }[]): Promise<(p) => boolean>;
+  export async function communityProjectFilter(
+    deps: Pick<Deps, "db">,
+    community: ItemCommunity,
+    projects: readonly {
+      communityId?: string | null;
+      authorId?: string | null;
+    }[],
+  ): Promise<(p) => boolean>;
   // block: slug "launchpadProject", field { name: "projectId", type: "number", required: true }
   ```
 
@@ -439,11 +607,13 @@ docker exec aitcom-postgres-1 dropdb -U postgres aitcom_magazines_scratch
 ## Task 9: Per-reader guarantees across kinds, editor signals and the final pass
 
 **Files:**
+
 - Create: `src/server/magazines/platform-items-reading.integration.test.ts`
 - Modify: `builder/{item-row.tsx,issue-builder.tsx,live-preview.tsx,publish-dialog.tsx}` (+ their tests), `src/server/magazines/reading.ts` (drop `IssueCard.itemCount`), `src/components/magazines/reading/featured-issue.tsx`, the existing test that renders `FeaturedIssue` (grep `magazines-home` / `magazine-tab` tests; else create `featured-issue.test.tsx`), `src/components/magazines/test-fixtures.ts`, `messages/{en,nl}.json`
 - Test: as listed
 
 **Interfaces:**
+
 - Consumes: `isMembersOnlyView`, `isUnavailableItem`; `loadIssuePage`, `setIssueItems`, `publishIssue`, `getIssueForEditing`.
 - Produces: `ItemRowView.membersOnly: boolean`; `PublishDialog` prop `skippedCount: number`; `LivePreview` visitor mode filters with `visibleToVisitors(view: EditorItemView): boolean` (exported from `live-preview.tsx`): not a marker and not members-only.
 
