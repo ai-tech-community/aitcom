@@ -1034,13 +1034,45 @@ code checks "is this a magazine article?" to change behaviour. See
 
 ### Magazine editor
 
-A person who may create and change a [[magazine]] and its [[issue]]s, write and
-mark [[magazine-article]]s ready, and see drafts and unavailable items. Today
-this is an **active owner or admin** of the magazine's [[Community]];
-moderators and members are readers. One loader (`loadMagazineEditorship`,
-with its batched twin `loadEditorScope`) decides it, so per-magazine staff
-roles (editor-in-chief, editor, contributor) can replace it later without
-touching the access rules or any caller.
+A person with the `edit` capability in a [[magazine]]: an editor-in-chief or
+editor on its [[magazine-team]]. An active community owner/admin is implicitly
+editor-in-chief. Editors build and publish [[issue]]s, review
+[[magazine-article]]s, see drafts and unavailable items, and mark their own
+articles ready. Settings and team management require `manage`, held by
+editors-in-chief. The editorship seam (`loadMagazineEditorship` and its batched
+twin `loadEditorScope`) resolves standing from active membership and
+assignments. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
+
+### Magazine team
+
+The people assigned a [[magazine-role]] in a [[magazine]], plus its
+[[Community]]'s implicit editors-in-chief (active owners/admins). Assignments
+live in Drizzle's `app.magazine_staff`, one per person per magazine. Leaving or
+being banned keeps an assignment but makes it inert: only active community
+membership lets it grant anything. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
+
+### Magazine role
+
+A job on a [[magazine-team]]: `editor_in_chief`, `editor` or `contributor`.
+Roles grant capabilities through one table: all three grant `write`, editors
+and editors-in-chief grant `edit`, and editors-in-chief grant `manage`.
+Callers ask for a capability rather than compare role names. An appointed
+editor-in-chief can manage settings and the team, but only community
+owners/admins can confirm making an unlisted community's magazine or issue
+public. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
+
+### Magazine contributor
+
+An active member with the contributor [[magazine-role]]: they write
+[[magazine-article]]s and send them to the editors. They may change an article
+before sending it or after changes are requested; sent, approved and declined
+articles are locked. They see their own text in the article editor, not other
+contributors' unplaced articles. Publication and credit happen when the
+[[issue]] publishes. Distinct from a benchmark contributor. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
 
 ## Benchmark domain
 

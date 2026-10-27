@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import type { MagazineRole } from "@/lib/magazines/roles";
 import type {
   OccurrenceStatus,
   RitualMode,
@@ -1265,6 +1266,44 @@ export const magazineArticleCredits = appSchema.table(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   }),
+);
+
+/**
+ * Site-owned team assignments (ADR-0045). Membership gates whether a row
+ * grants anything; leaving never removes it. The magazine FK crosses into
+ * Payload's public schema and lives in migration 20261027a.
+ */
+export const magazineStaff = appSchema.table(
+  "magazine_staff",
+  (d) => ({
+    magazineId: d.integer().notNull(),
+    communityId: d.varchar({ length: 255 }).notNull(),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: d.varchar({ length: 20 }).$type<MagazineRole>().notNull(),
+    assignedBy: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.magazineId, t.userId] }),
+    index("magazine_staff_user_idx").on(t.userId),
+    check(
+      "magazine_staff_role_check",
+      sql`${t.role} IN ('editor_in_chief', 'editor', 'contributor')`,
+    ),
+  ],
 );
 
 export const communityOnboardingStep = appSchema.table(

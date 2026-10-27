@@ -11,6 +11,7 @@ import type { db as Db } from "@/server/db";
 
 import type { down as Down, up as Up } from "./20261026a_magazines";
 import type * as PlatformItems from "./20261026b_magazine_platform_items";
+import type * as Staff from "./20261027a_magazine_staff";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -45,6 +46,7 @@ describe.skipIf(!isLocalDbConfigured())(
     let up: typeof Up;
     let down: typeof Down;
     let platformItems: typeof PlatformItems;
+    let staff: typeof Staff;
 
     /** "table.column" for each expected column the database has. */
     async function presentColumns(
@@ -92,17 +94,20 @@ describe.skipIf(!isLocalDbConfigured())(
     }
 
     beforeAll(async () => {
-      const [dbMod, drizzle, migration, platformMigration] = await Promise.all([
-        import("@/server/db"),
-        import("drizzle-orm"),
-        import("./20261026a_magazines"),
-        import("./20261026b_magazine_platform_items"),
-      ]);
+      const [dbMod, drizzle, migration, platformMigration, staffMigration] =
+        await Promise.all([
+          import("@/server/db"),
+          import("drizzle-orm"),
+          import("./20261026a_magazines"),
+          import("./20261026b_magazine_platform_items"),
+          import("./20261027a_magazine_staff"),
+        ]);
       db = dbMod.db;
       sql = drizzle.sql;
       up = migration.up;
       down = migration.down;
       platformItems = platformMigration;
+      staff = staffMigration;
       const { rows } = await db.execute<{ name: string }>(
         sql`select current_database() as name`,
       );
@@ -166,6 +171,7 @@ describe.skipIf(!isLocalDbConfigured())(
       const rollback = new Error("rollback migration exercise");
       await expect(
         db.transaction(async (tx) => {
+          await staff.down({ db: tx } as never);
           await platformItems.down({ db: tx } as never);
           await down({ db: tx } as never);
           expect(await presentColumns(tx)).toEqual([]);
@@ -177,6 +183,7 @@ describe.skipIf(!isLocalDbConfigured())(
           await up({ db: tx } as never);
           expect(await presentColumns(tx)).toEqual(EXPECTED_COLUMNS);
           await platformItems.up({ db: tx } as never);
+          await staff.up({ db: tx } as never);
           throw rollback;
         }),
       ).rejects.toBe(rollback);
