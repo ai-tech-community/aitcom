@@ -297,11 +297,11 @@ const NOT_READY: Where = {
   ],
 };
 
-/** The author's articles for the magazine that are not ready yet. */
-export async function listDraftArticles(
+async function listAuthorArticles(
   payload: PayloadClient,
   magazineId: number,
   authorId: string,
+  filter: Where,
 ): Promise<DraftMagazineArticle[]> {
   const { docs } = await payload.find({
     collection: "articles",
@@ -309,7 +309,7 @@ export async function listDraftArticles(
       and: [
         { magazine: { equals: magazineId } },
         { authorId: { equals: authorId } },
-        NOT_READY,
+        filter,
       ],
     },
     sort: "-updatedAt",
@@ -328,33 +328,22 @@ export async function listDraftArticles(
   }));
 }
 
+/** The author's articles for the magazine that are not ready yet. */
+export async function listDraftArticles(
+  payload: PayloadClient,
+  magazineId: number,
+  authorId: string,
+): Promise<DraftMagazineArticle[]> {
+  return listAuthorArticles(payload, magazineId, authorId, NOT_READY);
+}
+
 /** The author's unpublished articles, including those ready for an issue. */
 export async function listWriterArticles(
   payload: PayloadClient,
   magazineId: number,
   authorId: string,
 ): Promise<DraftMagazineArticle[]> {
-  const { docs } = await payload.find({
-    collection: "articles",
-    where: {
-      and: [
-        { magazine: { equals: magazineId } },
-        { authorId: { equals: authorId } },
-        { status: { not_equals: "published" } },
-      ],
-    },
-    sort: "-updatedAt",
-    depth: 0,
-    draft: true,
-    limit: EDITOR_LIST_LIMIT,
-    pagination: false,
+  return listAuthorArticles(payload, magazineId, authorId, {
+    status: { not_equals: "published" },
   });
-  return docs.map((doc) => ({
-    id: doc.id,
-    slug: doc.slug,
-    title: doc.title,
-    reviewStatus: doc.reviewStatus ?? null,
-    reviewNote: doc.reviewNote ?? null,
-    updatedAt: doc.updatedAt,
-  }));
 }
