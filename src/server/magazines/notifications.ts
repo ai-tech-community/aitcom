@@ -7,6 +7,7 @@ import {
   issueBuilderPath,
   issuePath,
   magazineArticleEditPath,
+  magazineAutoDraftPath,
   magazineReviewPath,
 } from "@/lib/magazines/paths";
 import type { ReviewDecision } from "@/lib/magazines/review";
@@ -274,5 +275,93 @@ export async function notifyArticleReviewed(
         },
       ];
     }),
+  );
+}
+
+export const MAGAZINE_AUTO_DRAFT_READY_NOTIFICATION =
+  "magazine_auto_draft_ready";
+export const MAGAZINE_AUTO_DRAFT_SKIPPED_NOTIFICATION =
+  "magazine_auto_draft_skipped";
+
+export async function notifyAutoDraftReady(
+  db: Deps["db"],
+  input: {
+    editorIds: readonly string[];
+    magazineName: string;
+    issue: { id: number; title: string };
+    itemCount: number;
+    goesOutAt: string | null;
+    community: NoticeCommunity;
+  },
+): Promise<void> {
+  await insertMagazineNotices(
+    db,
+    magazineNoticeTranslator("magazineEditor").then((t) => {
+      const content =
+        input.goesOutAt === null
+          ? t("notifications.autoDraftReady.content.notify", {
+              count: input.itemCount,
+            })
+          : t("notifications.autoDraftReady.content.auto", {
+              count: input.itemCount,
+              date: new Intl.DateTimeFormat("en-GB", {
+                dateStyle: "long",
+                timeZone: "Europe/Amsterdam",
+              }).format(new Date(input.goesOutAt)),
+            });
+      return input.editorIds.map((userId) => ({
+        userId,
+        type: MAGAZINE_AUTO_DRAFT_READY_NOTIFICATION,
+        title: t("notifications.autoDraftReady.title", {
+          magazine: input.magazineName,
+        }),
+        content,
+        communityId: input.community.id,
+        path: issueBuilderPath(input.community.slug, input.issue.id),
+        linkLabel: t("notifications.autoDraftReady.linkLabel"),
+        extra: {
+          issueId: input.issue.id,
+          itemCount: input.itemCount,
+          goesOutAt: input.goesOutAt,
+        },
+      }));
+    }),
+  );
+}
+
+export async function notifyAutoDraftSkipped(
+  db: Deps["db"],
+  input: {
+    editorIds: readonly string[];
+    magazineName: string;
+    reason: "too_few" | "no_rights";
+    found: number | null;
+    needed: number | null;
+    community: NoticeCommunity;
+  },
+): Promise<void> {
+  await insertMagazineNotices(
+    db,
+    magazineNoticeTranslator("magazineEditor").then((t) =>
+      input.editorIds.map((userId) => ({
+        userId,
+        type: MAGAZINE_AUTO_DRAFT_SKIPPED_NOTIFICATION,
+        title: t("notifications.autoDraftSkipped.title", {
+          magazine: input.magazineName,
+        }),
+        content: t(`notifications.autoDraftSkipped.content.${input.reason}`, {
+          found: input.found ?? 0,
+          needed: input.needed ?? 0,
+        }),
+        communityId: input.community.id,
+        path: magazineAutoDraftPath(input.community.slug),
+        linkLabel: t("notifications.autoDraftSkipped.linkLabel"),
+        extra: {
+          reason: input.reason,
+          found: input.found,
+          needed: input.needed,
+        },
+      })),
+    ),
   );
 }

@@ -40,6 +40,8 @@ const PROCEDURE_CAPABILITY: Record<string, MagazineCapability | "public"> = {
   getSettings: "manage",
   saveSettings: "manage",
   autoDraftSettings: "edit",
+  makeAutoDraftNow: "edit",
+  autoDraftHistory: "edit",
   saveAutoDraftSettings: "manage",
   listStaff: "manage",
   searchStaffCandidates: "manage",
@@ -406,6 +408,10 @@ describe.skipIf(!RUN_DB)(
     it("automatic draft settings need a magazine before they can be saved", async () => {
       const owner = callerAs(fx.ownerId).magazines;
       expect(await owner.autoDraftSettings({ slug: slug() })).toBeNull();
+      expect(await owner.autoDraftHistory({ slug: slug() })).toEqual([]);
+      await expect(
+        owner.makeAutoDraftNow({ slug: slug() }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
       await expect(
         owner.saveAutoDraftSettings({
           ...DEFAULT_AUTO_DRAFT_SETTINGS,
@@ -701,6 +707,8 @@ describe.skipIf(!RUN_DB)(
         const write = { ...ref, expectedUpdatedAt: issue.updatedAt };
         const calls: Record<string, () => Promise<unknown>> = {
           autoDraftSettings: () => caller.autoDraftSettings({ slug: slug() }),
+          makeAutoDraftNow: () => caller.makeAutoDraftNow({ slug: slug() }),
+          autoDraftHistory: () => caller.autoDraftHistory({ slug: slug() }),
           saveAutoDraftSettings: () =>
             caller.saveAutoDraftSettings({
               ...DEFAULT_AUTO_DRAFT_SETTINGS,

@@ -421,6 +421,8 @@ describe.skipIf(!isLocalDbConfigured())(
         inbox: 0,
         email: 0,
         completed: 1,
+        drafted: 0,
+        skipped: 0,
         purged: 0,
       });
       expect(await load(issue.id)).toMatchObject({

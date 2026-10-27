@@ -50,6 +50,8 @@ import {
 import { issueItemInputSchema } from "@/server/magazines/items/registry";
 import { pickerCandidatesFor } from "@/server/magazines/items/pickers";
 import { suggestContextFor } from "@/server/magazines/items/context";
+import { makeAutoDraft } from "@/server/magazines/auto-draft/drafter";
+import { listIssueHistory } from "@/server/magazines/issue-history";
 import { suggestWindowFor } from "@/server/magazines/auto-draft/window";
 import {
   listAvailableArticles,
@@ -219,6 +221,26 @@ const staffUserInput = z.object({
 });
 
 export const magazinesRouter = createTRPCRouter({
+  makeAutoDraftNow: editorProcedure
+    .input(z.object({ slug: z.string() }))
+    .mutation(({ ctx }) =>
+      makeAutoDraft(depsOf(ctx), {
+        magazine: requireMagazine(ctx.magazine),
+        community: { ...communityOf(ctx), name: ctx.community.name },
+        periodKey: `manual:${crypto.randomUUID()}`,
+        trigger: "manual",
+        actingUserId: ctx.session.user.id,
+        requestedBy: ctx.session.user.id,
+        now: new Date(),
+      }),
+    ),
+
+  autoDraftHistory: editorProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(({ ctx }) =>
+      ctx.magazine ? listIssueHistory(ctx.db, ctx.magazine.id) : [],
+    ),
+
   autoDraftSettings: editorProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {

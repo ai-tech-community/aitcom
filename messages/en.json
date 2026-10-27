@@ -4895,6 +4895,7 @@
   },
   "magazineEditor": {
     "autoDraft": {
+      "issueTitle": "Issue of {date}",
       "welcome": {
         "heading": "Welcome to our new members",
         "body": "{count} people joined {community} since {date}. Say hello!"
@@ -5261,6 +5262,22 @@
       }
     },
     "notifications": {
+      "autoDraftReady": {
+        "title": "A new draft of {magazine} is ready",
+        "content": {
+          "notify": "We picked {count} things for you. Check the draft and publish it when you are happy.",
+          "auto": "We picked {count} things for you. It goes out by itself on {date} unless you stop it. Any change you make stops that."
+        },
+        "linkLabel": "Open the draft"
+      },
+      "autoDraftSkipped": {
+        "title": "No new draft of {magazine} this time",
+        "content": {
+          "too_few": "We found only {found} things to put in it, and a draft needs at least {needed}. Switch on more kinds of content, look back further, or add topics to your magazine.",
+          "no_rights": "The person who set up automatic drafts can no longer edit the magazine. Save the automatic draft settings again to restart them."
+        },
+        "linkLabel": "Open automatic drafts"
+      },
       "scheduleFailed": {
         "title": "“{title}” did not go out",
         "content": {

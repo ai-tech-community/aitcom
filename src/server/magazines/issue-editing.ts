@@ -2,10 +2,12 @@ import { and, eq, isNull } from "drizzle-orm";
 
 import { routing } from "@/i18n/routing";
 import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
+import type { SuggestionReason } from "@/lib/magazines/suggestions";
 import type { MagazineIssue } from "@/payload-types";
 
 import { communities } from "@/server/db/schema";
 
+import { loadAutoDraftForIssue } from "./auto-draft/picks";
 import type { Deps, PayloadClient } from "./deps";
 import { loadMagazineEditorship } from "./editorship";
 import type { IssueActor } from "./issue-service";
@@ -45,6 +47,7 @@ export type IssueListRow = Pick<
 /** What the issue builder loads. */
 export type IssueEditorView = {
   issue: MagazineIssue;
+  autoDraft: { reasons: Record<string, SuggestionReason> } | null;
   /** The saved items as the editor sees them, markers included. */
   items: EditorItemView[];
   /** The saved items as builder input, block ids kept. */
@@ -172,14 +175,16 @@ export async function loadIssueEditorView(
 ): Promise<IssueEditorView> {
   const blocks = (issue.items ?? []) as StoredBlock[];
   const ctx = editorContext(deps, issue, actor);
-  const [items, problems, openHrefs] = await Promise.all([
+  const [items, problems, openHrefs, autoDraft] = await Promise.all([
     loadIssueItemViews(blocks, ctx),
     validateIssueItems(blocks, ctx, blocks),
     loadIssueItemOpenHrefs(blocks, ctx),
+    loadAutoDraftForIssue(deps.db, issue.id),
   ]);
   return {
     issue,
     items,
+    autoDraft,
     storedItems: toItemInputs(blocks),
     problems,
     openHrefs,

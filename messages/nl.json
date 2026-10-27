@@ -4895,6 +4895,7 @@
   },
   "magazineEditor": {
     "autoDraft": {
+      "issueTitle": "Nummer van {date}",
       "welcome": {
         "heading": "Welkom aan onze nieuwe leden",
         "body": "Sinds {date} zijn {count} mensen lid geworden van {community}. Zeg even hallo!"
@@ -5261,6 +5262,22 @@
       }
     },
     "notifications": {
+      "autoDraftReady": {
+        "title": "Er staat een nieuw concept van {magazine} klaar",
+        "content": {
+          "notify": "We hebben {count} dingen voor je uitgekozen. Bekijk het concept en publiceer het als je tevreden bent.",
+          "auto": "We hebben {count} dingen voor je uitgekozen. Het wordt op {date} vanzelf gepubliceerd, tenzij je dat stopt. Elke wijziging die je maakt stopt dat ook."
+        },
+        "linkLabel": "Open het concept"
+      },
+      "autoDraftSkipped": {
+        "title": "Deze keer geen nieuw concept van {magazine}",
+        "content": {
+          "too_few": "We vonden maar {found} dingen om erin te zetten. Een concept heeft er minstens {needed} nodig. Zet meer soorten inhoud aan, kijk verder terug of voeg onderwerpen toe aan je magazine.",
+          "no_rights": "Degene die automatische concepten heeft ingesteld, mag het magazine niet meer bewerken. Sla de instellingen voor automatische concepten opnieuw op om ze weer te starten."
+        },
+        "linkLabel": "Open automatische concepten"
+      },
       "scheduleFailed": {
         "title": "‘{title}’ is niet verschenen",
         "content": {

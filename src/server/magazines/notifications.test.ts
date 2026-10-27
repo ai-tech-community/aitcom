@@ -8,6 +8,8 @@ import type { Deps } from "./deps";
 import {
   insertMagazineNoticesIn,
   issuePublishedNotices,
+  notifyAutoDraftReady,
+  notifyAutoDraftSkipped,
   notifyRoleAssigned,
   notifyScheduleFailed,
 } from "./notifications";
@@ -193,4 +195,81 @@ it("insertMagazineNoticesIn throws", async () => {
       ],
     ),
   ).rejects.toThrow("Inbox unavailable");
+});
+
+describe("automatic draft notices", () => {
+  const common = {
+    editorIds: ["owner", "editor"],
+    magazineName: "The Gazette",
+    community: { id: "community", slug: "our-community" },
+  };
+  it.each([null, "2026-11-04T06:00:00Z"])(
+    "tells editors a draft is ready (%s)",
+    async (goesOutAt) => {
+      const values = vi.fn(async () => undefined);
+      const insert = vi.fn(() => ({ values }));
+      await notifyAutoDraftReady({ insert } as unknown as Deps["db"], {
+        ...common,
+        issue: { id: 42, title: "November" },
+        itemCount: 6,
+        goesOutAt,
+      });
+      expect(insert).toHaveBeenCalledExactlyOnceWith(notifications);
+      expect(values).toHaveBeenCalledExactlyOnceWith(
+        common.editorIds.map((userId) => ({
+          userId,
+          type: "magazine_auto_draft_ready",
+          title: "A new draft of The Gazette is ready",
+          content: goesOutAt
+            ? "We picked 6 things for you. It goes out by itself on 4 November 2026 unless you stop it. Any change you make stops that."
+            : "We picked 6 things for you. Check the draft and publish it when you are happy.",
+          communityId: "community",
+          metadata: {
+            reviewPath: "/communities/our-community/magazine/issues/42/edit",
+            linkLabel: "Open the draft",
+            communityId: "community",
+            issueId: 42,
+            itemCount: 6,
+            goesOutAt,
+          },
+        })),
+      );
+    },
+  );
+  it.each(["too_few", "no_rights"] as const)(
+    "tells editors why no draft was made (%s)",
+    async (reason) => {
+      const values = vi.fn(async () => undefined);
+      const insert = vi.fn(() => ({ values }));
+      const found = reason === "too_few" ? 1 : null;
+      const needed = reason === "too_few" ? 3 : null;
+      await notifyAutoDraftSkipped({ insert } as unknown as Deps["db"], {
+        ...common,
+        reason,
+        found,
+        needed,
+      });
+      expect(insert).toHaveBeenCalledExactlyOnceWith(notifications);
+      expect(values).toHaveBeenCalledExactlyOnceWith(
+        common.editorIds.map((userId) => ({
+          userId,
+          type: "magazine_auto_draft_skipped",
+          title: "No new draft of The Gazette this time",
+          content:
+            reason === "too_few"
+              ? "We found only 1 things to put in it, and a draft needs at least 3. Switch on more kinds of content, look back further, or add topics to your magazine."
+              : "The person who set up automatic drafts can no longer edit the magazine. Save the automatic draft settings again to restart them.",
+          communityId: "community",
+          metadata: {
+            reviewPath: "/communities/our-community/magazine/auto-draft",
+            linkLabel: "Open automatic drafts",
+            communityId: "community",
+            reason,
+            found,
+            needed,
+          },
+        })),
+      );
+    },
+  );
 });

@@ -352,6 +352,8 @@ describe.skipIf(!isLocalDbConfigured())(
         published: 1,
         failed: 0,
         retried: 0,
+        drafted: 0,
+        skipped: 0,
         purged: 0,
         inbox: 0, // The publish path already delivered the inbox notice inline.
         email: 1,
@@ -393,6 +395,8 @@ describe.skipIf(!isLocalDbConfigured())(
         published: 0,
         failed: 0,
         retried: 0,
+        drafted: 0,
+        skipped: 0,
         purged: 0,
         inbox: 0,
         email: 0,
