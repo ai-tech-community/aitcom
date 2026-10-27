@@ -4854,7 +4854,13 @@
       "articlePlaced": "Dit artikel staat al in een ander nummer.",
       "articleNotReady": "Dit artikel is nog niet klaar voor een nummer.",
       "articleMagazineLocked": "Een magazine-artikel blijft in zijn magazine. Het kan niet naar de blog of naar een ander magazine.",
-      "generic": "Er ging iets mis. Probeer het opnieuw."
+      "generic": "Er ging iets mis. Probeer het opnieuw.",
+      "staffNotMember": "Alleen leden van deze community kunnen bij het tijdschriftteam komen.",
+      "staffLeadsCommunity": "Eigenaren en beheerders van de community beheren het tijdschrift al.",
+      "articleLocked": "Dit artikel ligt nu bij de redactie en kan daarom niet worden gewijzigd.",
+      "articleNotPending": "Er is al een besluit over dit artikel genomen. Laad de pagina opnieuw om te zien wat er is veranderd.",
+      "reviewNoteRequired": "Vertel de schrijver wat er moet veranderen.",
+      "unlistedPublicLeadersOnly": "Deze community staat niet in de lijst. Alleen de eigenaren en beheerders kunnen dit openbaar maken."
     },
     "publicOptIn": {
       "warning": "Je community is privé. Als je dit aan iedereen laat zien, ziet iedereen op internet de naam van je community en een link ernaartoe. Je leden, berichten en andere pagina's blijven privé.",
@@ -5109,6 +5115,31 @@
         "successLead": "Lezers kunnen het nu openen.",
         "read": "Lees het nummer",
         "keepEditing": "Verder bewerken"
+      }
+    },
+    "roles": {
+      "editor_in_chief": {
+        "name": "Hoofdredacteur",
+        "help": "Beheert het tijdschrift: de instellingen, het team, de nummers en de artikelen die leden insturen."
+      },
+      "editor": {
+        "name": "Redacteur",
+        "help": "Stelt nummers samen, publiceert ze en leest de artikelen die leden insturen."
+      },
+      "contributor": {
+        "name": "Schrijver",
+        "help": "Schrijft artikelen en stuurt ze naar de redactie."
+      }
+    },
+    "notifications": {
+      "roleAssigned": {
+        "title": "Je zit nu in het team van {magazine}",
+        "linkLabel": "Open het tijdschrift",
+        "content": {
+          "editor_in_chief": "Je bent nu hoofdredacteur. {help}",
+          "editor": "Je bent nu redacteur. {help}",
+          "contributor": "Je bent nu schrijver. {help}"
+        }
       }
     }
   }

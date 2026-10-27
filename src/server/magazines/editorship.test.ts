@@ -10,7 +10,6 @@ import {
   loadMagazineEditorship,
   NO_STANDING,
   requireCapability,
-  requireEditorStanding,
   standingCan,
   standingOf,
 } from "./editorship";
@@ -203,12 +202,12 @@ describe("requireCapability", () => {
     }
   });
 
-  it("keeps the editor wrapper until its callers move to capabilities", () => {
+  it("requires edit to open editor procedures", () => {
     expect(() =>
-      requireEditorStanding(standingOf("member", "editor")),
+      requireCapability(standingOf("member", "editor"), "edit"),
     ).not.toThrow();
     expect(() =>
-      requireEditorStanding(standingOf("member", "contributor")),
+      requireCapability(standingOf("member", "contributor"), "edit"),
     ).toThrow(TRPCError);
   });
 });

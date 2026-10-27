@@ -4854,7 +4854,13 @@
       "articlePlaced": "This article is already in another issue.",
       "articleNotReady": "This article is not ready for an issue yet.",
       "articleMagazineLocked": "A magazine article stays in its magazine. It cannot move to the blog or to another magazine.",
-      "generic": "Something went wrong. Try again."
+      "generic": "Something went wrong. Try again.",
+      "staffNotMember": "Only members of this community can join the magazine team.",
+      "staffLeadsCommunity": "Community owners and admins already run the magazine.",
+      "articleLocked": "The editors have this article now, so it cannot be changed.",
+      "articleNotPending": "Someone already decided on this article. Reload to see what changed.",
+      "reviewNoteRequired": "Tell the writer what to change.",
+      "unlistedPublicLeadersOnly": "This community is unlisted. Only its owners and admins can make this public."
     },
     "publicOptIn": {
       "warning": "Your community is private. If you show this to everyone, anyone on the internet will see your community's name and a link to it. Your members, posts and other pages stay private.",
@@ -5109,6 +5115,31 @@
         "successLead": "Readers can open it now.",
         "read": "Read the issue",
         "keepEditing": "Keep editing"
+      }
+    },
+    "roles": {
+      "editor_in_chief": {
+        "name": "Editor-in-chief",
+        "help": "Runs the magazine: its settings, its team, its issues and the articles members send in."
+      },
+      "editor": {
+        "name": "Editor",
+        "help": "Builds and publishes issues, and reads the articles members send in."
+      },
+      "contributor": {
+        "name": "Contributor",
+        "help": "Writes articles and sends them to the editors."
+      }
+    },
+    "notifications": {
+      "roleAssigned": {
+        "title": "You joined the team of {magazine}",
+        "linkLabel": "Open the magazine",
+        "content": {
+          "editor_in_chief": "You are now an editor-in-chief. {help}",
+          "editor": "You are now an editor. {help}",
+          "contributor": "You are now a contributor. {help}"
+        }
       }
     }
   }

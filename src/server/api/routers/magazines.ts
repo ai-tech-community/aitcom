@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { routing } from "@/i18n/routing";
+import { MAGAZINE_ROLES, type MagazineCapability } from "@/lib/magazines/roles";
 import {
   PICKABLE_ITEM_KINDS,
   PICKER_EXCLUDE_LIMIT,
@@ -17,8 +18,10 @@ import { isContentPublic } from "@/server/communities/content-visibility";
 import type { Deps, PayloadClient } from "@/server/magazines/deps";
 import {
   loadMagazineEditorship,
-  requireEditorStanding,
+  type MagazineStanding,
+  requireCapability,
 } from "@/server/magazines/editorship";
+import { magazineError } from "@/server/magazines/errors";
 import {
   findIssueInCommunity,
   listMagazineIssues,
@@ -44,11 +47,17 @@ import {
   type MagazineCommunity,
   saveMagazineSettings,
 } from "@/server/magazines/magazine-service";
+import {
+  assignMagazineRole,
+  listMagazineStaff,
+  removeMagazineRole,
+  searchStaffCandidates,
+} from "@/server/magazines/staff-service";
 import { getPayloadClient } from "@/server/payload";
 
 /**
  * The magazine editor API (ADR-0042/0043). Every procedure is a community
- * procedure (input `slug` is the COMMUNITY slug) gated to magazine editors.
+ * procedure (input `slug` is the COMMUNITY slug) gated by capability.
  * Procedures stay thin: parse, gate, load what the call names (refusing ids
  * of another community with NOT_FOUND), call the service. Services throw
  * `magazineError(code)`; the client maps codes to friendly text.
@@ -102,22 +111,26 @@ const issueDetailsInput = issueWrite.extend({
 const MAX_ISSUE_ITEMS = 50;
 
 /**
- * Every procedure below: a community procedure for magazine editors only,
- * gated by the editorship seam. The community's magazine (null until the
- * first settings save creates it) and the Payload client go on `ctx`.
+ * The editorship seam gates every procedure by capability. The community's
+ * magazine (null until the first settings save), standing and Payload go on ctx.
  */
-const editorProcedure = communityProcedure.use(async ({ ctx, next }) => {
-  const payload = await getPayloadClient();
-  const magazine = await getMagazineForCommunity(payload, ctx.community.id);
-  requireEditorStanding(
-    await loadMagazineEditorship(
+function magazineProcedure(capability: MagazineCapability) {
+  return communityProcedure.use(async ({ ctx, next }) => {
+    const payload = await getPayloadClient();
+    const magazine = await getMagazineForCommunity(payload, ctx.community.id);
+    const standing = await loadMagazineEditorship(
       ctx.db,
       { communityId: ctx.community.id, magazineId: magazine?.id ?? null },
       ctx.session.user.id,
-    ),
-  );
-  return next({ ctx: { payload, magazine } });
-});
+    );
+    requireCapability(standing, capability);
+    return next({ ctx: { payload, magazine, standing } });
+  });
+}
+
+const writerProcedure = magazineProcedure("write");
+const editorProcedure = magazineProcedure("edit");
+const managerProcedure = magazineProcedure("manage");
 
 /**
  * An editor procedure on one issue of THIS community: the issue is loaded
@@ -170,8 +183,22 @@ function requireMagazine(magazine: Magazine | null): Magazine {
   return magazine;
 }
 
+/** Only community leaders may confirm their unlisted community's public choice. */
+function assertMayConfirmUnlistedPublic(
+  standing: MagazineStanding,
+  confirm: boolean | undefined,
+): void {
+  if (confirm === true && !standing.leadsCommunity)
+    throw magazineError("UNLISTED_PUBLIC_LEADERS_ONLY");
+}
+
+const staffUserInput = z.object({
+  slug: z.string(),
+  userId: z.string().min(1).max(255),
+});
+
 export const magazinesRouter = createTRPCRouter({
-  getSettings: editorProcedure
+  getSettings: managerProcedure
     .input(z.object({ slug: z.string() }))
     .query(({ ctx }) => ({
       magazine: ctx.magazine,
@@ -184,9 +211,10 @@ export const magazinesRouter = createTRPCRouter({
       },
     })),
 
-  saveSettings: editorProcedure
+  saveSettings: managerProcedure
     .input(settingsInput)
     .mutation(async ({ ctx, input }) => {
+      assertMayConfirmUnlistedPublic(ctx.standing, input.confirmUnlistedPublic);
       return saveMagazineSettings(
         depsOf(ctx),
         communityOf(ctx),
@@ -201,6 +229,40 @@ export const magazinesRouter = createTRPCRouter({
         },
         ctx.session.user.id,
       );
+    }),
+
+  listStaff: managerProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(({ ctx }) =>
+      listMagazineStaff(ctx.db, requireMagazine(ctx.magazine)),
+    ),
+
+  searchStaffCandidates: managerProcedure
+    .input(z.object({ slug: z.string(), query: z.string().trim().max(100) }))
+    .query(({ ctx, input }) =>
+      searchStaffCandidates(ctx.db, requireMagazine(ctx.magazine), input.query),
+    ),
+
+  assignStaffRole: managerProcedure
+    .input(staffUserInput.extend({ role: z.enum(MAGAZINE_ROLES) }))
+    .mutation(({ ctx, input }) =>
+      assignMagazineRole(
+        ctx.db,
+        requireMagazine(ctx.magazine),
+        input,
+        actorOf(ctx),
+      ),
+    ),
+
+  removeStaffRole: managerProcedure
+    .input(staffUserInput)
+    .mutation(async ({ ctx, input }) => {
+      await removeMagazineRole(
+        ctx.db,
+        requireMagazine(ctx.magazine),
+        input.userId,
+      );
+      return { ok: true as const };
     }),
 
   listIssues: editorProcedure
@@ -251,6 +313,7 @@ export const magazinesRouter = createTRPCRouter({
   updateIssue: issueProcedure
     .input(issueDetailsInput)
     .mutation(async ({ ctx, input }) => {
+      assertMayConfirmUnlistedPublic(ctx.standing, input.confirmUnlistedPublic);
       const patch: IssueDetailsPatch = {
         title: input.title,
         slug: input.issueSlug,
@@ -342,7 +405,7 @@ export const magazinesRouter = createTRPCRouter({
         : [],
     ),
 
-  myDraftArticles: editorProcedure
+  myDraftArticles: writerProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) =>
       ctx.magazine

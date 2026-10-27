@@ -2,6 +2,11 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { magazineArticleEditPath } from "@/lib/magazines/paths";
+import {
+  roleCan,
+  type MagazineCapability,
+  type MagazineRole,
+} from "@/lib/magazines/roles";
 import type { createCaller as CreateCaller } from "@/server/api/root";
 import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
@@ -19,6 +24,25 @@ function isLocalDbConfigured(): boolean {
   );
 }
 const RUN_DB = isLocalDbConfigured();
+
+const PROCEDURE_CAPABILITY: Record<string, MagazineCapability | "public"> = {
+  getSettings: "manage",
+  saveSettings: "manage",
+  listStaff: "manage",
+  searchStaffCandidates: "manage",
+  assignStaffRole: "manage",
+  removeStaffRole: "manage",
+  listIssues: "edit",
+  createIssue: "edit",
+  getIssueForEditing: "edit",
+  updateIssue: "edit",
+  setIssueItems: "edit",
+  publishIssue: "edit",
+  deleteDraftIssue: "edit",
+  pickerCandidates: "edit",
+  availableArticles: "edit",
+  myDraftArticles: "write",
+};
 
 function richText(text: string) {
   return {
@@ -65,6 +89,7 @@ describe.skipIf(!RUN_DB)(
       other: { id: string; slug: string };
     };
     let fx: Fixture;
+    let extraUserIds: string[];
 
     beforeAll(async () => {
       const [{ db }, schema, { createCaller }, { getPayloadClient }] =
@@ -78,6 +103,7 @@ describe.skipIf(!RUN_DB)(
     }, 120_000);
 
     beforeEach(async () => {
+      extraUserIds = [];
       const { db, schema } = m;
       const sfx = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
       const ids = {
@@ -143,7 +169,11 @@ describe.skipIf(!RUN_DB)(
         fx.moderatorId,
         fx.memberId,
         fx.outsiderId,
+        ...extraUserIds,
       ];
+      await db
+        .delete(schema.magazineStaff)
+        .where(inArray(schema.magazineStaff.userId, userIds));
       const { docs: mags } = await payload.find({
         collection: "magazines",
         where: { communityId: { in: communityIds } },
@@ -374,7 +404,7 @@ describe.skipIf(!RUN_DB)(
       ).toEqual([]);
     });
 
-    it("only owner and admin reach editor procedures", async () => {
+    it("moderators and members without a job reach no editor procedure", async () => {
       await saveMagazine();
       const { id: issueId } = await callerAs(fx.adminId).magazines.createIssue({
         slug: slug(),
@@ -400,6 +430,188 @@ describe.skipIf(!RUN_DB)(
           }),
         ).rejects.toMatchObject({ code: "FORBIDDEN" });
       }
+    });
+
+    async function appointed(magazineId: number, role: MagazineRole) {
+      const { db, schema } = m;
+      const userId = `mz-appointed-${extraUserIds.length}-${fx.sfx}`;
+      extraUserIds.push(userId);
+      await db
+        .insert(schema.user)
+        .values({ id: userId, name: userId, email: `${userId}@example.test` });
+      await db
+        .insert(schema.memberProfiles)
+        .values({ userId, displayName: userId });
+      await db
+        .insert(schema.communityMemberships)
+        .values({ communityId: fx.community.id, userId, role: "member" });
+      await db
+        .insert(schema.magazineStaff)
+        .values({ magazineId, communityId: fx.community.id, userId, role });
+      return userId;
+    }
+
+    it.each([
+      ["staff contributor", "contributor"],
+      ["staff editor", "editor"],
+      ["appointed editor-in-chief", "editor_in_chief"],
+      ["moderator", null],
+      ["outsider", null],
+    ] as const)(
+      "each capability opens exactly its procedures (%s)",
+      async (viewer, role) => {
+        const { magazinesRouter } = await import("./magazines");
+        expect(Object.keys(magazinesRouter._def.procedures).sort()).toEqual(
+          Object.keys(PROCEDURE_CAPABILITY).sort(),
+        );
+        const magazine = await saveMagazine();
+        const { id: issueId } = await callerAs(
+          fx.ownerId,
+        ).magazines.createIssue({ slug: slug(), title: "Gate fixture" });
+        const { issue } = await callerAs(
+          fx.ownerId,
+        ).magazines.getIssueForEditing({ slug: slug(), issueId });
+        const userId = role
+          ? await appointed(magazine.id, role)
+          : viewer === "moderator"
+            ? fx.moderatorId
+            : fx.outsiderId;
+        const caller = callerAs(userId).magazines;
+        const ref = { slug: slug(), issueId };
+        const write = { ...ref, expectedUpdatedAt: issue.updatedAt };
+        const calls: Record<string, () => Promise<unknown>> = {
+          getSettings: () => caller.getSettings({ slug: slug() }),
+          saveSettings: () =>
+            caller.saveSettings({
+              slug: slug(),
+              name: magazine.name,
+              magazineSlug: magazine.slug,
+              topics: [],
+              defaultVisibility: "members",
+            }),
+          listStaff: () => caller.listStaff({ slug: slug() }),
+          searchStaffCandidates: () =>
+            caller.searchStaffCandidates({ slug: slug(), query: "" }),
+          assignStaffRole: () =>
+            caller.assignStaffRole({
+              slug: slug(),
+              userId: fx.memberId,
+              role: "contributor",
+            }),
+          removeStaffRole: () =>
+            caller.removeStaffRole({ slug: slug(), userId: fx.memberId }),
+          listIssues: () => caller.listIssues({ slug: slug() }),
+          createIssue: () =>
+            caller.createIssue({ slug: slug(), title: "Gate result" }),
+          getIssueForEditing: () => caller.getIssueForEditing(ref),
+          updateIssue: () =>
+            caller.updateIssue({ ...write, title: "Gate updated" }),
+          setIssueItems: () => caller.setIssueItems({ ...write, items: [] }),
+          publishIssue: () => caller.publishIssue(write),
+          pickerCandidates: () =>
+            caller.pickerCandidates({ slug: slug(), kind: "article" }),
+          availableArticles: () => caller.availableArticles({ slug: slug() }),
+          myDraftArticles: () => caller.myDraftArticles({ slug: slug() }),
+          deleteDraftIssue: () => caller.deleteDraftIssue(ref),
+        };
+        expect(Object.keys(calls).sort()).toEqual(
+          Object.keys(PROCEDURE_CAPABILITY).sort(),
+        );
+        for (const [name, call] of Object.entries(calls)) {
+          const capability = PROCEDURE_CAPABILITY[name]!;
+          if (capability === "public") continue;
+          const outcome = await call().then(
+            () => null,
+            (error: unknown) => error,
+          );
+          if (roleCan(role, capability))
+            expect(outcome, name).not.toMatchObject({ code: "FORBIDDEN" });
+          else expect(outcome, name).toMatchObject({ code: "FORBIDDEN" });
+        }
+      },
+    );
+
+    it("an editor cannot give themselves a job", async () => {
+      const { eq } = await import("drizzle-orm");
+      const magazine = await saveMagazine();
+      for (const role of ["editor", "contributor"] as const) {
+        const userId = await appointed(magazine.id, role);
+        await expect(
+          callerAs(userId).magazines.assignStaffRole({
+            slug: slug(),
+            userId,
+            role: "editor_in_chief",
+          }),
+        ).rejects.toMatchObject({ code: "FORBIDDEN" });
+        expect(
+          await m.db.query.magazineStaff.findFirst({
+            where: eq(m.schema.magazineStaff.userId, userId),
+          }),
+        ).toMatchObject({ role });
+      }
+    });
+
+    it("only community leaders confirm public in an unlisted community", async () => {
+      const magazine = await saveMagazine();
+      const chief = callerAs(
+        await appointed(magazine.id, "editor_in_chief"),
+      ).magazines;
+      const owner = callerAs(fx.ownerId).magazines;
+      const { id: issueId } = await owner.createIssue({
+        slug: slug(),
+        title: "Public choice",
+      });
+      const { issue } = await owner.getIssueForEditing({
+        slug: slug(),
+        issueId,
+      });
+      const update = {
+        slug: slug(),
+        issueId,
+        expectedUpdatedAt: issue.updatedAt,
+        visibility: "public" as const,
+        confirmUnlistedPublic: true,
+      };
+      const settings = {
+        slug: slug(),
+        name: magazine.name,
+        magazineSlug: magazine.slug,
+        topics: [],
+        defaultVisibility: "public" as const,
+        confirmUnlistedPublic: true,
+      };
+      await expect(chief.updateIssue(update)).rejects.toMatchObject({
+        code: "FORBIDDEN",
+        message: "UNLISTED_PUBLIC_LEADERS_ONLY",
+      });
+      await expect(chief.saveSettings(settings)).rejects.toMatchObject({
+        code: "FORBIDDEN",
+        message: "UNLISTED_PUBLIC_LEADERS_ONLY",
+      });
+      expect(await owner.updateIssue(update)).toMatchObject({
+        visibility: "public",
+        publicConfirmedBy: fx.ownerId,
+      });
+      expect(await owner.saveSettings(settings)).toMatchObject({
+        defaultVisibility: "public",
+        publicConfirmedBy: fx.ownerId,
+      });
+    });
+
+    it("team procedures answer NOT_FOUND before a magazine exists", async () => {
+      const caller = callerAs(fx.ownerId).magazines;
+      for (const call of [
+        () => caller.listStaff({ slug: slug() }),
+        () => caller.searchStaffCandidates({ slug: slug(), query: "" }),
+        () =>
+          caller.assignStaffRole({
+            slug: slug(),
+            userId: fx.memberId,
+            role: "contributor",
+          }),
+        () => caller.removeStaffRole({ slug: slug(), userId: fx.memberId }),
+      ])
+        await expect(call()).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
 
     it("every issue-scoped procedure refuses another community's issue with NOT_FOUND", async () => {

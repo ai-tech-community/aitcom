@@ -51,14 +51,19 @@ export const NO_STANDING: MagazineStanding = {
 };
 
 /** The one community leadership rule for magazines, also used by SQL filters. */
-export const LEADING_COMMUNITY_ROLES: readonly CommunityRole[] = [
+export const LEADING_COMMUNITY_ROLES = [
   "owner",
   "admin",
-];
+] as const satisfies readonly CommunityRole[];
 
-export function leadsCommunity(communityRole: CommunityRole | null): boolean {
+export function leadsCommunity(
+  communityRole: CommunityRole | null,
+): communityRole is (typeof LEADING_COMMUNITY_ROLES)[number] {
   return (
-    communityRole !== null && LEADING_COMMUNITY_ROLES.includes(communityRole)
+    communityRole !== null &&
+    (LEADING_COMMUNITY_ROLES as readonly CommunityRole[]).includes(
+      communityRole,
+    )
   );
 }
 
@@ -91,11 +96,6 @@ export function requireCapability(
 ): void {
   if (!standingCan(standing, capability))
     throw new TRPCError({ code: "FORBIDDEN" });
-}
-
-/** Temporary router compatibility; Task 3 replaces this with capability gates. */
-export function requireEditorStanding(standing: MagazineStanding): void {
-  requireCapability(standing, "edit");
 }
 
 /**
