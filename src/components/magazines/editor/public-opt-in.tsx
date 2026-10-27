@@ -31,6 +31,7 @@ export function publicOptInRequired(input: {
     community: input.community,
     confirmUnlistedPublic: false,
     actorId: "",
+    actorLeadsCommunity: false,
     now: new Date(0),
   });
   return !plan.ok;

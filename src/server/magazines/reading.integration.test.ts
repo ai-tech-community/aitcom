@@ -249,6 +249,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
         ...extra,
       },
       fx.editorId,
+      true,
     );
   }
 
@@ -284,6 +285,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
         },
         issue.updatedAt,
         actor(c),
+        true,
       );
     }
     return (

@@ -58,10 +58,17 @@ export function planVisibilityChange(input: {
   community: CommunityVisibility;
   confirmUnlistedPublic: boolean;
   actorId: string;
+  actorLeadsCommunity: boolean;
   now: Date;
 }):
   | { ok: true; record: VisibilityRecord }
-  | { ok: false; code: "CONFIRM_UNLISTED_PUBLIC" } {
+  | {
+      ok: false;
+      code: "CONFIRM_UNLISTED_PUBLIC" | "UNLISTED_PUBLIC_LEADERS_ONLY";
+    } {
+  if (input.confirmUnlistedPublic && !input.actorLeadsCommunity) {
+    return { ok: false, code: "UNLISTED_PUBLIC_LEADERS_ONLY" };
+  }
   const { next, current, community } = input;
 
   switch (next) {

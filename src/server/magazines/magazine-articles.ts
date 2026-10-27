@@ -116,16 +116,6 @@ export async function requireMagazineCapability(
   return loaded;
 }
 
-/** Compatibility gate for callers that still require edit. */
-export async function requireEditorOfMagazine(
-  deps: Deps,
-  magazine: unknown,
-  userId: string,
-): Promise<Magazine> {
-  return (await requireMagazineCapability(deps, magazine, userId, "edit"))
-    .magazine;
-}
-
 /** Whether the viewer edits this magazine; false for a missing magazine. */
 export async function isEditorOfMagazine(
   deps: Deps,

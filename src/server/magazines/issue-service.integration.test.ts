@@ -275,7 +275,13 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
   }
 
   async function magazineIn(c: Community, label = "mag") {
-    return m.magazines.saveMagazineSettings(m, c, settings(label), fx.userId);
+    return m.magazines.saveMagazineSettings(
+      m,
+      c,
+      settings(label),
+      fx.userId,
+      true,
+    );
   }
 
   function actor(c: Community): IssueService.IssueActor {
@@ -387,8 +393,20 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     // Two editors create at the same moment (preflight F4): the unique
     // community index lets one through.
     const results = await Promise.allSettled([
-      m.magazines.saveMagazineSettings(m, c, settings("first"), fx.userId),
-      m.magazines.saveMagazineSettings(m, c, settings("second"), fx.userId),
+      m.magazines.saveMagazineSettings(
+        m,
+        c,
+        settings("first"),
+        fx.userId,
+        true,
+      ),
+      m.magazines.saveMagazineSettings(
+        m,
+        c,
+        settings("second"),
+        fx.userId,
+        true,
+      ),
     ]);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const rejected = results.filter((r) => r.status === "rejected");
@@ -403,6 +421,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
         topics: [" AI ", "ai", "Robots", "", "a", "b", "c", "d"],
       }),
       fx.userId,
+      true,
     );
     expect(updated.name).toBe("Magazine renamed");
     expect((updated.topics ?? []).map((t) => t.topic)).toEqual([
@@ -460,10 +479,22 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
   it("refuses a magazine slug another community uses", async () => {
     const a = await community("slug-a");
     const b = await community("slug-b");
-    await m.magazines.saveMagazineSettings(m, a, settings("shared"), fx.userId);
+    await m.magazines.saveMagazineSettings(
+      m,
+      a,
+      settings("shared"),
+      fx.userId,
+      true,
+    );
     expect(
       await refusal(
-        m.magazines.saveMagazineSettings(m, b, settings("shared"), fx.userId),
+        m.magazines.saveMagazineSettings(
+          m,
+          b,
+          settings("shared"),
+          fx.userId,
+          true,
+        ),
       ),
     ).toBe("MAGAZINE_SLUG_TAKEN");
   });
@@ -480,6 +511,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
         confirmUnlistedPublic: true,
       }),
       fx.userId,
+      true,
     );
     expect(mag.publicConfirmedBy).toBe(fx.userId);
 
@@ -539,6 +571,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
           c,
           settings("confirm", { defaultVisibility: "public" }),
           fx.userId,
+          true,
         ),
       ),
     ).toBe("CONFIRM_UNLISTED_PUBLIC");
@@ -559,6 +592,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
           { visibility: "public" },
           issue.updatedAt,
           actor(c),
+          true,
         ),
       ),
     ).toBe("CONFIRM_UNLISTED_PUBLIC");
@@ -570,6 +604,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { visibility: "public", confirmUnlistedPublic: true },
       issue.updatedAt,
       actor(c),
+      true,
     );
     expect(confirmed.visibility).toBe("public");
     expect(confirmed.publicConfirmedBy).toBe(fx.userId);
@@ -584,9 +619,64 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { visibility: "members" },
       confirmed.updatedAt,
       actor(c),
+      true,
     );
     expect(members.publicConfirmedBy ?? null).toBeNull();
     expect(members.publicConfirmedAt ?? null).toBeNull();
+  });
+
+  it("the services refuse a public confirmation by a non-leader", async () => {
+    const c = await community("leaders-confirm", { listed: false });
+    const mag = await magazineIn(c, "leaders-confirm");
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Private" },
+      actor(c),
+    );
+
+    await expect(
+      m.magazines.saveMagazineSettings(
+        m,
+        c,
+        settings("leaders-confirm", {
+          defaultVisibility: "public",
+          confirmUnlistedPublic: true,
+        }),
+        fx.userId,
+        false,
+      ),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "UNLISTED_PUBLIC_LEADERS_ONLY",
+    });
+
+    for (const patch of [
+      { visibility: "public" as const, confirmUnlistedPublic: true },
+      { title: "Still private", confirmUnlistedPublic: true },
+    ]) {
+      await expect(
+        m.issues.updateIssueDetails(
+          m,
+          issue,
+          patch,
+          issue.updatedAt,
+          actor(c),
+          false,
+        ),
+      ).rejects.toMatchObject({
+        code: "FORBIDDEN",
+        message: "UNLISTED_PUBLIC_LEADERS_ONLY",
+      });
+    }
+    expect(
+      (
+        await m.payload.findByID({
+          collection: "magazine-issues",
+          id: issue.id,
+        })
+      ).visibility,
+    ).toBe("members");
   });
 
   it("stale expectedUpdatedAt is refused", async () => {
@@ -620,6 +710,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
           { title: "Stale title" },
           issue.updatedAt,
           actor(c),
+          true,
         ),
       ),
     ).toBe("ISSUE_CHANGED");
@@ -1057,6 +1148,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { slug: "renamed-slug" },
       issue.updatedAt,
       actor(c),
+      true,
     );
     expect(renamed.slug).toBe("renamed-slug");
 
@@ -1074,6 +1166,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
           { slug: "renamed-slug" },
           taken.updatedAt,
           actor(c),
+          true,
         ),
       ),
     ).toBe("ISSUE_SLUG_TAKEN");
@@ -1093,6 +1186,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
           { slug: "another-slug" },
           published.updatedAt,
           actor(c),
+          true,
         ),
       ),
     ).toBe("ISSUE_SLUG_LOCKED");
@@ -1103,6 +1197,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { slug: "renamed-slug", title: "New title" },
       published.updatedAt,
       actor(c),
+      true,
     );
     expect(retitled.title).toBe("New title");
   });
@@ -1287,6 +1382,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { title: "Contributors revised" },
       published.updatedAt,
       actor(c),
+      true,
     );
     expect(await xpOf(contributorId)).toBe(xpBefore + 2 * m.xpArticlePublished);
     expect(await pointsEventCount(contributorId)).toBe(2);
@@ -1560,6 +1656,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { title: "B renamed" },
       publishedB.updatedAt,
       actor(c),
+      true,
     );
     expect(await isCredited(a)).toBe(true);
     expect(await pointsEventCount(fx.userId)).toBe(1);
@@ -1572,6 +1669,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { title: "B again" },
       renamedB.updatedAt,
       actor(c),
+      true,
     );
     const latestA = await m.payload.findByID({
       collection: "magazine-issues",
@@ -1584,6 +1682,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { title: "A renamed" },
       latestA.updatedAt,
       actor(c),
+      true,
     );
     const issueC = await m.issues.createIssue(m, mag, { title: "C" }, actor(c));
     const filledC = await setItems(c, issueC, [editorialItem("C")]);

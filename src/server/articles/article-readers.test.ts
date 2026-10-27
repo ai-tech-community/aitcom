@@ -45,7 +45,7 @@ const READERS: Record<string, string> = {
   "src/server/magazines/items/article/kind.ts":
     "issue items; readers get unavailable unless the article is published",
   "src/server/magazines/magazine-articles.ts":
-    "editor lists, behind requireEditorOfMagazine",
+    "editor lists, behind requireMagazineCapability(edit)",
 };
 
 function sourceFiles(dir: string): string[] {

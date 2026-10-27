@@ -310,6 +310,7 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
         defaultVisibility: "public",
       },
       fx.editorId,
+      true,
     );
     const article = await approvedArticle(magazine.id, "long-read");
     let issue = await m.issues.createIssue(
@@ -524,6 +525,7 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
       { visibility: "members" },
       issue.updatedAt,
       actor(c),
+      true,
     );
 
     expect((await profileArticles()).map((a) => a.id)).not.toContain(

@@ -38,6 +38,7 @@ import {
 import { getMagazineForCommunity, normalizeTopics } from "./magazine-service";
 import {
   type IssueReadScope,
+  issueReadScopeForCommunity,
   loadIssueReadScope,
   readableIssueWhere,
 } from "./readable-issues";
@@ -384,10 +385,9 @@ async function loadShelf(
   deps: Deps,
   magazine: Magazine,
   community: CommunityRow,
-  viewerId: string | null,
+  scope: IssueReadScope,
   locale: AppLocale,
 ): Promise<Shelf | null> {
-  const scope = await loadIssueReadScope(deps.db, viewerId);
   const issues = await readableMagazineIssues(deps, scope, magazine.id, locale);
   const isMember = scope.memberCommunityIds.includes(community.id);
   if (issues.length === 0 && !canReadContent(community, isMember)) return null;
@@ -417,7 +417,7 @@ export async function loadMagazineShelf(
     deps,
     magazine,
     community,
-    opts.viewerId,
+    await loadIssueReadScope(deps.db, opts.viewerId),
     opts.locale,
   );
   if (!shelf) return null;
@@ -470,7 +470,7 @@ export async function loadCommunityMagazineTab(
     deps,
     magazine,
     community,
-    opts.viewerId,
+    issueReadScopeForCommunity(standing, community),
     opts.locale,
   );
   if (!shelf) return null;
@@ -478,7 +478,6 @@ export async function loadCommunityMagazineTab(
     magazine: toMagazineSummary(magazine),
     latest: shelf.issues[0] ?? null,
     ...shelf,
-    viewerIsEditor: standing.isEditor,
     viewerRole: standing.role,
   };
 }

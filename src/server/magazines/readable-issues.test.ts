@@ -6,6 +6,7 @@ import { editorScopeOf } from "./editorship";
 import {
   buildIssueReadScope,
   type IssueReadScope,
+  issueReadScopeForCommunity,
   readableIssueWhere,
 } from "./readable-issues";
 
@@ -21,6 +22,48 @@ function scope(partial: Partial<IssueReadScope>): IssueReadScope {
 
 const PUBLISHED = { status: { equals: "published" } };
 const PUBLIC = { visibility: { equals: "public" } };
+
+describe("issueReadScopeForCommunity", () => {
+  const communities = [
+    {
+      label: "listed community",
+      row: { id: "listed", slug: "listed", isListedInDirectory: true },
+      privateCommunityIds: [],
+    },
+    {
+      label: "unlisted community",
+      row: { id: "unlisted", slug: "unlisted", isListedInDirectory: false },
+      privateCommunityIds: ["unlisted"],
+    },
+    {
+      label: "unlisted Hub",
+      row: { id: "hub", slug: HUB_SLUG, isListedInDirectory: false },
+      privateCommunityIds: [],
+    },
+  ];
+  const standings = [
+    { label: "editor", isEditor: true, isMember: true },
+    { label: "member", isEditor: false, isMember: true },
+    { label: "outsider", isEditor: false, isMember: false },
+  ];
+
+  it.each(
+    communities.flatMap((community) =>
+      standings.map((standing) => ({
+        name: `${standing.label} in a live ${community.label}`,
+        community,
+        standing,
+      })),
+    ),
+  )("builds the scope for $name", ({ community, standing }) => {
+    expect(issueReadScopeForCommunity(standing, community.row)).toEqual({
+      editorCommunityIds: standing.isEditor ? [community.row.id] : [],
+      memberCommunityIds: standing.isMember ? [community.row.id] : [],
+      privateCommunityIds: community.privateCommunityIds,
+      deletedCommunityIds: [],
+    });
+  });
+});
 
 describe("readableIssueWhere", () => {
   it("anonymous scope: published, public, and listed or confirmed", () => {

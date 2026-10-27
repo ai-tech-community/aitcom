@@ -23,10 +23,8 @@ import {
 } from "@/server/magazines/article-review";
 import {
   loadMagazineEditorship,
-  type MagazineStanding,
   requireCapability,
 } from "@/server/magazines/editorship";
-import { magazineError } from "@/server/magazines/errors";
 import {
   findIssueInCommunity,
   listMagazineIssues,
@@ -189,15 +187,6 @@ function requireMagazine(magazine: Magazine | null): Magazine {
   return magazine;
 }
 
-/** Only community leaders may confirm their unlisted community's public choice. */
-function assertMayConfirmUnlistedPublic(
-  standing: MagazineStanding,
-  confirm: boolean | undefined,
-): void {
-  if (confirm === true && !standing.leadsCommunity)
-    throw magazineError("UNLISTED_PUBLIC_LEADERS_ONLY");
-}
-
 const staffUserInput = z.object({
   slug: z.string(),
   userId: z.string().min(1).max(255),
@@ -220,7 +209,6 @@ export const magazinesRouter = createTRPCRouter({
   saveSettings: managerProcedure
     .input(settingsInput)
     .mutation(async ({ ctx, input }) => {
-      assertMayConfirmUnlistedPublic(ctx.standing, input.confirmUnlistedPublic);
       return saveMagazineSettings(
         depsOf(ctx),
         communityOf(ctx),
@@ -234,6 +222,7 @@ export const magazinesRouter = createTRPCRouter({
           confirmUnlistedPublic: input.confirmUnlistedPublic,
         },
         ctx.session.user.id,
+        ctx.standing.leadsCommunity,
       );
     }),
 
@@ -319,7 +308,6 @@ export const magazinesRouter = createTRPCRouter({
   updateIssue: issueProcedure
     .input(issueDetailsInput)
     .mutation(async ({ ctx, input }) => {
-      assertMayConfirmUnlistedPublic(ctx.standing, input.confirmUnlistedPublic);
       const patch: IssueDetailsPatch = {
         title: input.title,
         slug: input.issueSlug,
@@ -334,6 +322,7 @@ export const magazinesRouter = createTRPCRouter({
         patch,
         input.expectedUpdatedAt,
         actorOf(ctx),
+        ctx.standing.leadsCommunity,
       );
     }),
 

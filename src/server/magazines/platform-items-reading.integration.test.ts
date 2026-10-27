@@ -272,6 +272,7 @@ describe.skipIf(!isLocalDbConfigured())(
           defaultVisibility: "members",
         },
         fx.editorId,
+        true,
       );
       const actor = { userId: fx.editorId, community: c };
       const news = await m.db
@@ -377,6 +378,7 @@ describe.skipIf(!isLocalDbConfigured())(
         { visibility: "public", confirmUnlistedPublic: true },
         issue.updatedAt,
         actor,
+        true,
       );
       issue = await m.issues.publishIssue(m, issue, issue.updatedAt, actor);
       return { c, magazine, actor, issue, event, thread, project };

@@ -162,6 +162,7 @@ export async function saveMagazineSettings(
   community: MagazineCommunity,
   input: MagazineSettingsInput,
   actorId: string,
+  actorLeadsCommunity: boolean,
 ): Promise<Magazine> {
   const existing = await getMagazineForCommunity(deps.payload, community.id);
 
@@ -171,6 +172,7 @@ export async function saveMagazineSettings(
     community,
     confirmUnlistedPublic: input.confirmUnlistedPublic ?? false,
     actorId,
+    actorLeadsCommunity,
     now: new Date(),
   });
   if (!plan.ok) throw magazineError(plan.code);

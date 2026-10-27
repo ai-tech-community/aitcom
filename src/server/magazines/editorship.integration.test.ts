@@ -391,10 +391,11 @@ describe.skipIf(!RUN_DB)("magazine editorship [DB integration]", () => {
       ),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(
-      m.articles.requireEditorOfMagazine(
+      m.articles.requireMagazineCapability(
         m.deps,
         fx.magazine.id,
         fx.users.editor,
+        "edit",
       ),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(
