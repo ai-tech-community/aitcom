@@ -1,4 +1,10 @@
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { RouterOutputs } from "@/trpc/react";
@@ -128,15 +134,29 @@ describe("SubscribeButton", () => {
         "Get a message in your inbox when there is a new issue.",
       ),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Subscribe" }));
+    const subscribe = screen.getByRole("button", { name: "Subscribe" });
+    expect(subscribe).toHaveAccessibleDescription(
+      "Get a message in your inbox when there is a new issue.",
+    );
+    const helpId = subscribe.getAttribute("aria-describedby")!;
+    expect(document.getElementById(helpId)).toHaveTextContent(
+      "Get a message in your inbox",
+    );
+    subscribe.focus();
+    fireEvent.click(subscribe);
 
     expect(trpc.subscribe).toHaveBeenCalledExactlyOnceWith({
       magazineSlug: "m",
       locale: "en",
     });
-    expect(
-      await screen.findByRole("button", { name: "Subscribed" }),
-    ).toHaveAttribute("data-variant", "outline");
+    expect(await screen.findByText("Subscribed")).toHaveAttribute(
+      "data-variant",
+      "outline",
+    );
+    expect(screen.queryByRole("button", { name: "Subscribed" })).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Unsubscribe" }),
+    );
     expect(screen.getByRole("status")).toHaveTextContent(
       "You are subscribed to Monthly.",
     );
@@ -149,13 +169,14 @@ describe("SubscribeButton", () => {
     trpc.status = { signedIn: true, subscribed: true };
     trpc.nextStatus = { signedIn: true, subscribed: false };
     renderWithIntl(button);
-    const subscribed = screen.getByRole("button", { name: "Subscribed" });
+    const subscribed = screen.getByText("Subscribed");
     expect(subscribed.querySelector("svg")).toHaveAttribute(
       "aria-hidden",
       "true",
     );
     const unsubscribe = screen.getByRole("button", { name: "Unsubscribe" });
     expect(unsubscribe).toHaveAttribute("data-variant", "ghost");
+    unsubscribe.focus();
     fireEvent.click(unsubscribe);
 
     expect(trpc.unsubscribe).toHaveBeenCalledExactlyOnceWith({
@@ -165,6 +186,11 @@ describe("SubscribeButton", () => {
       "You are no longer subscribed to Monthly.",
     );
     expect(screen.getByRole("button", { name: "Subscribe" })).toBeEnabled();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Subscribe" }),
+      ),
+    );
     expect(trpc.invalidate).toHaveBeenCalledExactlyOnceWith({
       magazineSlug: "m",
     });
@@ -174,6 +200,8 @@ describe("SubscribeButton", () => {
     trpc.status = { signedIn: false, subscribed: false };
     renderWithIntl(button);
     const disclose = screen.getByRole("button", { name: "Subscribe" });
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
     expect(disclose).toHaveAttribute("aria-expanded", "false");
     const controls = disclose.getAttribute("aria-controls")!;
     fireEvent.click(disclose);
@@ -193,6 +221,9 @@ describe("SubscribeButton", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "Check your email and click the link in it to start getting new issues.",
     );
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveAttribute("tabindex", "-1");
+    await waitFor(() => expect(document.activeElement).toBe(status));
     expect(screen.queryByLabelText("Your email address")).toBeNull();
   });
 
@@ -209,7 +240,7 @@ describe("SubscribeButton", () => {
       "Too many tries. Wait a while, then try again.",
     );
     expect(email).toHaveAttribute("aria-describedby", `${helpId} ${alert.id}`);
-    expect(email).toHaveAttribute("aria-invalid", "true");
+    expect(email).not.toHaveAttribute("aria-invalid");
     expect(
       screen.getByRole("button", { name: "Send me a link" }),
     ).toBeEnabled();
@@ -280,9 +311,31 @@ describe("SubscribeButton", () => {
       expect(await screen.findByRole("alert")).toHaveTextContent(
         "That did not work. Try again.",
       );
-      expect(email).toHaveAttribute("aria-invalid", "true");
+      expect(email).not.toHaveAttribute("aria-invalid");
     },
   );
+
+  it.each([false, true])(
+    "does not move focus on first load (subscribed: %s)",
+    (subscribed) => {
+      trpc.status = { signedIn: true, subscribed };
+      const before = document.activeElement;
+      renderWithIntl(button);
+      expect(document.activeElement).toBe(before);
+    },
+  );
+
+  it("does not move focus when an account mutation fails", async () => {
+    trpc.subscribe.mockRejectedValue({
+      data: { code: "INTERNAL_SERVER_ERROR" },
+    });
+    renderWithIntl(button);
+    const subscribe = screen.getByRole("button", { name: "Subscribe" });
+    subscribe.focus();
+    fireEvent.click(subscribe);
+    await screen.findByRole("alert");
+    expect(document.activeElement).toBe(subscribe);
+  });
 
   it("disables the email button while the request runs", async () => {
     let finish!: (result: { ok: true }) => void;

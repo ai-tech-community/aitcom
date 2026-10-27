@@ -5041,7 +5041,7 @@
       "loadFailed": "Deze lijst kon niet worden geladen.",
       "tryAgain": "Opnieuw proberen",
       "team": "Team",
-      "goesOut": "Verschijnt op {time}",
+      "goesOut": "Verschijnt op <timestamp>{time}</timestamp>",
       "subscribers": "{count, plural, =0 {Nog geen abonnees} one {<number>#</number> abonnee} other {<number>#</number> abonnees}}",
       "subscribersWithAccount": "<number>{count}</number> met een account",
       "subscribersByEmail": "<number>{count}</number> via e-mail",
@@ -5344,7 +5344,7 @@
     "confirm": {
       "subject": "Bevestig: nieuwe nummers van {magazine} per e-mail",
       "heading": "Nieuwe nummers van {magazine} ontvangen?",
-      "body": "Iemand, hopelijk jij, heeft gevraagd om op dit adres een e-mail te krijgen als {magazine} een nieuw nummer heeft. Klik op de knop om ja te zeggen.",
+      "body": "Iemand, hopelijk jij, heeft gevraagd om op dit adres een e-mail te krijgen als {magazine} een nieuw nummer heeft. Klik op de link hieronder om ja te zeggen.",
       "action": "Ja, mail me nieuwe nummers",
       "expires": "De link werkt 7 dagen.",
       "ignore": "Heb je hier niet om gevraagd? Negeer deze e-mail dan. We mailen je niet opnieuw."

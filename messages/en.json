@@ -5041,7 +5041,7 @@
       "loadFailed": "This list could not be loaded.",
       "tryAgain": "Try again",
       "team": "Team",
-      "goesOut": "Goes out {time}",
+      "goesOut": "Goes out <timestamp>{time}</timestamp>",
       "subscribers": "{count, plural, =0 {No subscribers yet} one {<number>#</number> subscriber} other {<number>#</number> subscribers}}",
       "subscribersWithAccount": "<number>{count}</number> with an account",
       "subscribersByEmail": "<number>{count}</number> by email",
@@ -5344,7 +5344,7 @@
     "confirm": {
       "subject": "Confirm: new issues of {magazine} by email",
       "heading": "Get new issues of {magazine}?",
-      "body": "Someone, hopefully you, asked us to email this address when {magazine} has a new issue. Click the button to say yes.",
+      "body": "Someone, hopefully you, asked us to email this address when {magazine} has a new issue. Click the link below to say yes.",
       "action": "Yes, email me new issues",
       "expires": "The link works for 7 days.",
       "ignore": "Did not ask for this? Then ignore this email. We will not write again."

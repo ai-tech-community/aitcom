@@ -181,8 +181,12 @@ describe("EditorDesk", () => {
         "data-variant",
         "secondary",
       );
-      const time = row.getByText(/^Goes out /);
-      expect(time).toHaveClass("font-mono");
+      const time = row.getByText(/^Goes out/);
+      expect(time).not.toHaveClass("font-mono");
+      expect(time.querySelector("span.font-mono")).toHaveTextContent("9:30 AM");
+      expect(time.querySelector("span.font-mono")).not.toHaveTextContent(
+        "Goes out",
+      );
       expect(time).toHaveTextContent("9:30 AM");
       expect(time).not.toHaveTextContent(/5:30 PM|17:30/);
     } finally {

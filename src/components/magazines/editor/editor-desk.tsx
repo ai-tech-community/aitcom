@@ -61,10 +61,13 @@ function IssueRow({ issue, slug }: { issue: IssueListRow; slug: string }) {
         {issue.status === "scheduled" && issue.scheduledFor && (
           <time
             dateTime={issue.scheduledFor}
-            className="text-muted-foreground font-mono text-xs"
+            className="text-muted-foreground text-xs"
           >
-            {t("goesOut", {
+            {t.rich("goesOut", {
               time: displayTime(issue.scheduledFor),
+              timestamp: (chunks) => (
+                <span className="font-mono">{chunks}</span>
+              ),
             })}
           </time>
         )}
