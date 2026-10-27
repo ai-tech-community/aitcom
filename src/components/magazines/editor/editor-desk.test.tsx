@@ -195,17 +195,17 @@ describe("EditorDesk", () => {
     }
   });
 
-  it("shows how many people subscribe", () => {
+  it("shows how many people subscribe, not counting those still waiting to confirm", () => {
     const { unmount } = renderWithIntl(
       <EditorDesk slug="amsterdam-ai" canManage />,
     );
     expect(trpc.countsInput).toHaveBeenCalledWith({ slug: "amsterdam-ai" });
     const total = screen.getByText(/subscribers$/);
-    expect(total).toHaveTextContent("6 subscribers");
+    expect(total).toHaveTextContent("5 subscribers");
     expect(screen.getByText(/with an account/)).toHaveTextContent(
       "3 with an account · 2 by email · 1 waiting to confirm",
     );
-    expect(within(total).getByText("6")).toHaveClass("font-mono");
+    expect(within(total).getByText("5")).toHaveClass("font-mono");
     expect(screen.queryByRole("status")).toBeNull();
     unmount();
     trpc.counts = { withAccount: 0, byEmail: 0, waiting: 0 };

@@ -23,7 +23,8 @@ export function SubscriberCountLine({ slug }: { slug: string }) {
     <div className="flex flex-col gap-1 text-sm">
       <p>
         {t.rich("subscribers", {
-          count: withAccount + byEmail + waiting,
+          // People still waiting to confirm are not subscribers yet.
+          count: withAccount + byEmail,
           number: (chunks) => <span className="font-mono">{chunks}</span>,
         })}
       </p>
