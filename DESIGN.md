@@ -129,13 +129,14 @@ components:
 
 **Creative North Star: "The Town Square"**
 
-AIT Community is a town square where engineers and AI agents gather to build together. The square is built on a precise technical grid — monospace labels, OKLCH tokens, ruled borders, an orange-dot wordmark — but the grid is the *pavement*, not the point. Warmth comes from the people, the imagery (the illustrated isometric town square, the village landscape), the language, and the disciplined use of a single warm accent. The system reads as *well-built and welcoming at the same time*: you can tell an engineer made this, and you can tell you're meant to belong here.
+AIT Community is a town square where engineers and AI agents gather to build together. The square is built on a precise technical grid — monospace labels, OKLCH tokens, ruled borders, an orange-dot wordmark — but the grid is the _pavement_, not the point. Warmth comes from the people, the imagery (the illustrated isometric town square, the village landscape), the language, and the disciplined use of a single warm accent. The system reads as _well-built and welcoming at the same time_: you can tell an engineer made this, and you can tell you're meant to belong here.
 
 The system is **balanced**: one shared core of tokens, type, and components serves both the public square (home, communities directory, members leaderboard, blog, benchmark, impact) and the workshops behind it (dashboards, community settings, event and challenge workspaces, classroom). Public surfaces get more expressive latitude — bigger type, more imagery, more air — but they never invent a parallel system. App surfaces are information-dense by necessity, and they earn warmth through clear hierarchy and human copy, not by stripping function. A member should feel the same product whether they're on the homepage or three levels deep in an event workspace.
 
 This system explicitly **rejects** four things. It is not a **generic SaaS template** (no cream/sand backgrounds, no gradient hero text, no hero-metric blocks, no endless identical icon+heading+text card grids). It is not a **cold, sterile dashboard** (density without coldness — never an all-gray enterprise admin panel). It is not **crypto/Web3 hype** (no neon-on-black, no aggressive gradients, no "to the moon" energy). And it is not **corporate or stuffy** (no stock photography, no navy-and-gray, no jargon).
 
 **Key Characteristics:**
+
 - Pure-white (or true-dark) canvas, never tinted warm-neutral cream.
 - One warm accent — Signal Orange — used sparingly and on purpose.
 - Geist Sans for everything human; Geist Mono reserved for the house `/ LABEL` voice, stats, and timestamps.
@@ -147,9 +148,11 @@ This system explicitly **rejects** four things. It is not a **generic SaaS templ
 A near-monochrome canvas of true white through ink, lit by a single warm orange. The discipline of the neutral field is what makes the one accent carry meaning.
 
 ### Primary
-- **Signal Orange** (`oklch(0.705 0.213 47.604)`): The one warm accent and the wordmark dot. It is a *wayfinding* color — primary buttons, focus rings, active states, the rare "act here." In dark mode it deepens slightly to `oklch(0.646 0.222 41.116)` for comfort on a dark field. Rarity is the entire point; see the One Voice Rule.
+
+- **Signal Orange** (`oklch(0.705 0.213 47.604)`): The one warm accent and the wordmark dot. It is a _wayfinding_ color — primary buttons, focus rings, active states, the rare "act here." In dark mode it deepens slightly to `oklch(0.646 0.222 41.116)` for comfort on a dark field. Rarity is the entire point; see the One Voice Rule.
 
 ### Neutral
+
 - **Ink** (`oklch(0.145 0 0)`): Primary text on light surfaces; the dark-mode canvas. The default foreground.
 - **Surface** (`oklch(1 0 0)`, pure white): The canvas and card background in light mode. Never a tinted cream.
 - **Surface Raised** (`oklch(0.985 0 0)`): Sidebar and subtly distinguished panels.
@@ -159,27 +162,33 @@ A near-monochrome canvas of true white through ink, lit by a single warm orange.
 - **Border** (`oklch(0.922 0 0)`): Hairline borders, dividers, input strokes. The ruled-grid feel comes from here.
 
 ### Tertiary (data only)
+
 - **Charts 1–5** (`oklch(0.646 0.222 41.116)` orange, `oklch(0.6 0.118 184.704)` teal, `oklch(0.398 0.07 227.392)` deep blue, `oklch(0.828 0.189 84.429)` yellow, `oklch(0.769 0.188 70.08)` amber): Reserved for data visualization (Recharts) only. **Never** borrow chart colors into UI chrome — that's how a clean palette turns into confetti.
 - **Heat 1–3** (`--heat-1/2/3`, a contained success-green intensity ramp light→mid→dark; brightened in dark mode): the one sanctioned heatmap ramp, used **only** by the hackathon team-heatmap (`cell-heat.ts`) to encode claimed → completed → verified as data intensity. A documented exception to the Chart-Containment Rule — like the chart hues, these tokens never appear in UI chrome.
 
 - **Emblem hues** (`--emblem-hue-*`, with `--emblem-ink-l/-c` and `--emblem-tint-l/-c` per theme): one quiet hue per badge track, drawn only by `BadgeEmblem` (`src/components/badges/badge-emblem.tsx`). Each hue token is a bare OKLCH angle; the theme sets lightness and chroma (ink ≈ L 0.45 / C 0.075 on a tint ≈ L 0.96 / C 0.02 in light, ink L 0.84 on tint L 0.27 in dark), so a track keeps its hue in both themes and ink on tint stays ≥4.5:1. Hues 20–80 are never used, so no emblem reads as Signal Orange (One Voice Rule); milestones are neutral (no chroma). Shape and glyph carry a badge's identity, the hue is only a second cue (Pair-With-A-Cue). A documented exception to the Chart-Containment Rule, like the heat ramp: these tokens never appear in UI chrome. The chart tokens themselves are not used: there are five for eleven tracks, chart-1 is orange in light mode, and their hues change between themes.
 
 ### Illustration (the town square only)
+
 - **Night Sky** (`--night-sky`, `bg-night-sky`; light `oklch(0.9 0.035 262)`, dark `oklch(0.25 0.05 264)`): the cool dusk tint behind the homepage town square's rooftops when a visitor turns night on. Cool blue-grey on purpose — never warm (No-Cream Rule), never orange (One Voice Rule). It fades in with the night level, only above the street and right of the hero copy's keep-clear zone, so it never sits under text. Lit windows and stars stay legible on it in both themes (ink on the light tint, near-white on the dark one). Like the chart hues, it never appears in UI chrome.
 
 ### Status (semantic — meaning, not decoration)
+
 A fixed four-color vocabulary. Each is WCAG AA verified both as colored text on white (≥4.5:1) and as white-on-solid-fill, with brighter dark-mode tones (≥7:1 on the dark surface). Each has a paired `-foreground` token (white in light mode, near-black in dark) for solid fills. Available as Tailwind utilities: `bg-success`/`text-success`/`border-success` (and `warning`/`info`/`destructive`), plus the soft pattern `bg-success/15 text-success`.
+
 - **Success** (`oklch(0.52 0.14 150)`): completed, verified, passed, healthy, online.
 - **Warning** (`oklch(0.54 0.13 85)`): pending, at-risk, needs-attention, expiring. Pushed yellow-of-amber so it never reads as Signal Orange.
 - **Info** (`oklch(0.55 0.16 240)`): informational, in-progress, neutral-notice.
 - **Destructive** (`oklch(0.577 0.245 27.325)`): errors, destructive actions, failed, invalid-field rings. The only red in the system.
 
 ### Named Rules (status)
+
 **The Semantic-Status Rule.** Status color comes only from these four tokens — never raw Tailwind palette classes (`text-green-600`, `bg-red-500`, `text-amber-600`) and never a hardcoded hex. If a state needs color, it maps to success/warning/info/destructive. Categorical things that are NOT a status (challenge difficulty, post type, tags) are NOT status colors — use neutral Badges whose label carries the meaning.
 
 **The Pair-With-A-Cue Rule.** Status is never communicated by color alone (8% of men can't distinguish red/green). Every status color ships with an icon, label, or shape — a check for success, an alert glyph for warning, etc.
 
 ### Named Rules
+
 **The One Voice Rule.** Signal Orange appears on ≤10% of any given screen. It marks the single most important action or the active state — nothing else. If two things on a screen are orange, one of them is wrong. When a screen's main actions are equal peers there is no single most important action: render them all as Ink buttons and spend no orange on them.
 
 **The No-Cream Rule.** The body background is pure white (`oklch(1 0 0)`) or true dark (`oklch(0.145 0 0)`). Never a warm-tinted near-white. The instant a surface drifts toward cream/sand/parchment, it reads as a generic AI-generated landing page — the exact anti-reference.
@@ -194,6 +203,7 @@ A fixed four-color vocabulary. Each is WCAG AA verified both as colored text on 
 **Character:** One geometric-humanist sans does all the human-facing work across every weight; a single monospace carries the system's "machine voice." The contrast axis is sans-vs-mono, never two similar sans pitted against each other. The pairing reads modern, engineered, and unfussy.
 
 ### Hierarchy
+
 - **Display** (600, `clamp(2rem, 5vw, 3.5rem)`, line-height 1.05, letter-spacing −0.02em): Hero and page-defining headlines on public surfaces only. Use `text-wrap: balance`. Ceiling is ~3.5rem — the square speaks, it doesn't shout.
 - **Headline** (600, ~1.5rem, line-height 1.2): Section and card-group headings.
 - **Title** (600, ~1rem, line-height 1, "leading-none font-semibold"): Card titles and compact headings.
@@ -201,21 +211,24 @@ A fixed four-color vocabulary. Each is WCAG AA verified both as colored text on 
 - **Label** (500, 0.75rem, letter-spacing 0.05em, Geist Mono): The signature `/ SECTION_NAME` marker, stat tickers, timestamps, and metadata. Often uppercase, always monospace, always `text-muted`.
 
 ### Named Rules
-**The House Kicker Rule.** The monospace `/ LABEL` (e.g. `/ COMMUNITIES`, `/ MEMBERS`) is the one sanctioned eyebrow and it is a *system*, not decoration. Use it as a consistent section marker. Do not also sprinkle uppercase tracked eyebrows or `01 · 02 · 03` numbered markers on top of it — that's the AI-grammar tell. Numbers earn their place only when the section truly is an ordered sequence.
+
+**The House Kicker Rule.** The monospace `/ LABEL` (e.g. `/ COMMUNITIES`, `/ MEMBERS`) is the one sanctioned eyebrow and it is a _system_, not decoration. Use it as a consistent section marker. Do not also sprinkle uppercase tracked eyebrows or `01 · 02 · 03` numbered markers on top of it — that's the AI-grammar tell. Numbers earn their place only when the section truly is an ordered sequence.
 
 **The Mono-Is-Machine Rule.** Geist Mono is reserved for the machine voice: labels, code, stats, IDs, timestamps. Member bios, community descriptions, and any warm human copy are Geist Sans. Monospace everywhere is how the town square turns cold.
 
 ## 4. Elevation
 
-Flat by default. Surfaces are defined by hairline borders (`oklch(0.922 0 0)`) and tonal layering (surface → surface-raised → surface-muted), not by drop shadows. Shadows are present but minimal and almost entirely *functional*: they signal that something is interactive or floating, never decorate a resting surface.
+Flat by default. Surfaces are defined by hairline borders (`oklch(0.922 0 0)`) and tonal layering (surface → surface-raised → surface-muted), not by drop shadows. Shadows are present but minimal and almost entirely _functional_: they signal that something is interactive or floating, never decorate a resting surface.
 
 ### Shadow Vocabulary
+
 - **Hairline lift** (`shadow-xs`): Buttons (outline variant) and inputs at rest — barely-there separation from the canvas.
 - **Resting card** (`shadow-sm`): Cards. Paired always with a full border; the border does the real work, the shadow just softens.
 - **Floating** (default popover/dropdown/dialog shadow): Reserved for genuinely floating layers (popovers, dropdown menus, dialogs, toasts) that escape the document flow.
 
 ### Named Rules
-**The Flat-By-Default Rule.** A resting surface is border-defined and nearly flat. Reach for a heavier shadow only when an element is *floating* (overlay) or *responding* (hover/active). If a static card has a big soft shadow, it's wrong — that's the 2014-app tell.
+
+**The Flat-By-Default Rule.** A resting surface is border-defined and nearly flat. Reach for a heavier shadow only when an element is _floating_ (overlay) or _responding_ (hover/active). If a static card has a big soft shadow, it's wrong — that's the 2014-app tell.
 
 **The Border-Carries-Depth Rule.** Depth is communicated by borders and tonal steps first, shadow second. Removing every shadow should still leave the hierarchy legible.
 
@@ -224,9 +237,10 @@ Flat by default. Surfaces are defined by hairline borders (`oklch(0.922 0 0)`) a
 The feel across all components is **precise and quietly warm**: clean, grid-aligned, confident, with warmth coming through clarity and restraint rather than ornament. All interactive components share one focus treatment — a 3px Signal-Orange ring at 50% (`focus-visible:ring-ring/50 ring-[3px]`) plus a border shift — and one invalid treatment (destructive ring + border).
 
 ### Buttons
+
 - **Shape:** Gently rounded (`rounded-md`, 8px). Default height 36px (`h-9`), with `xs/sm/lg` and square `icon` sizes.
 - **Primary:** Signal Orange fill, white text (`bg-primary text-primary-foreground`), padding 8px 16px. Hover darkens to 90% (`hover:bg-primary/90`).
-- **Ink** (`variant="ink"`): solid foreground fill, background-coloured text (`bg-foreground text-background`, hover to 85%); inverts in dark mode automatically. Use it when a surface offers **two or more equal-weight paths** and none of them is *the* single most important action — e.g. the homepage hero's "Explore communities" (members) and "Host your community" (organizers), which the product treats as equal ways in. Ranking one of them orange would tell half the audience they are secondary. Rule of thumb: one clear next step → **Primary**; several peer paths → all **Ink**, same size; never mix one Primary with Ink peers in the same group.
+- **Ink** (`variant="ink"`): solid foreground fill, background-coloured text (`bg-foreground text-background`, hover to 85%); inverts in dark mode automatically. Use it when a surface offers **two or more equal-weight paths** and none of them is _the_ single most important action — e.g. the homepage hero's "Explore communities" (members) and "Host your community" (organizers), which the product treats as equal ways in. Ranking one of them orange would tell half the audience they are secondary. Rule of thumb: one clear next step → **Primary**; several peer paths → all **Ink**, same size; never mix one Primary with Ink peers in the same group.
 - **Secondary:** Surface-muted fill, strong-text (`bg-secondary`), hover to 80%.
 - **Outline:** White background, hairline border, `shadow-xs`; hover fills with `accent` (surface-muted) and accent-foreground.
 - **Ghost:** No fill at rest; hover fills with `accent`. For low-emphasis and icon actions.
@@ -234,6 +248,7 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 - **Transitions:** `transition-all`; disabled drops to 50% opacity and blocks pointer events.
 
 ### Cards / Containers
+
 - **Corner Style:** `rounded-xl` (14px) — slightly softer than buttons, the warm-communal touch.
 - **Background:** Surface (white) on Ink-foreground.
 - **Border:** Always a full hairline border. **Never** a colored side-stripe (`border-left`/`border-right` accent) — that's a banned pattern.
@@ -241,17 +256,20 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 - **Internal Padding:** 24px (`py-6`/`px-6`), 24px gap between sections (`gap-6`). Header uses a `@container` grid with an optional right-aligned action slot.
 
 ### Inputs / Fields
+
 - **Style:** Transparent/white background, hairline `border-input`, `rounded-md`, `shadow-xs`, height 36px, padding 4px 12px.
 - **Focus:** Border shifts to Signal Orange + 3px ring at 50% (`focus-visible:border-ring focus-visible:ring-ring/50 ring-[3px]`).
 - **Error:** `aria-invalid` → destructive border + destructive ring. Placeholder uses `text-muted-foreground` — never lighter.
 - **Disabled:** 50% opacity, `cursor-not-allowed`.
 
 ### Badges
+
 - **Shape:** Pill (`rounded-full`), 0.75rem, font-medium, padding 2px 8px, optional 12px leading icon.
 - **Variants:** Default (Signal Orange fill), Secondary (muted), Destructive, **Success / Warning / Info** (soft status pills — `bg-{token}/15 text-{token}`, built on the semantic status tokens), Outline (bordered, transparent), Ghost, Link.
-- **Status vs. category:** use `success`/`warning`/`info`/`destructive` for *states*; use `secondary` (neutral) for *categories* (difficulty, type, tags) and let the label carry the meaning.
+- **Status vs. category:** use `success`/`warning`/`info`/`destructive` for _states_; use `secondary` (neutral) for _categories_ (difficulty, type, tags) and let the label carry the meaning.
 
 ### Badge emblems
+
 - **One component:** `BadgeEmblem` draws every earned badge, award and (owner-only) locked badge in code from catalog data — never a trophy icon, image or pill. Sizes `sm` 24px (compact rows: dashboard You card, `/members` roster, other tiers), `md` 48px (milestones, limited editions, awards on the Badges tab), `lg` 96px (a track's highest tier, the Overview showcase). Stroke weights are set per size in screen pixels, so each size is drawn crisp rather than scaled; the tier III pattern is dropped at `sm`.
 - **Silhouette per track:** Regular ticket, Host arch, Challenger shield, Writer dog-eared page, Builder hexagon, Learner pentagon, Teacher octagon, Connector quatrefoil, Agent wrangler rounded square, Benchmarker diamond, Streak drop. Milestones share a plain circle, the limited edition is a rosette, awards are a medal on a ribbon. Glyphs are lucide line icons, one per track.
 - **Tier ring:** I a hairline outline, II a double hairline, III a solid band in the track's ink with a fine dotted pattern. The silhouette never changes with the tier.
@@ -262,11 +280,13 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 - **Server-rendered:** `BadgeEmblem` has no client hooks, so lists like the `/members` roster hydrate nothing; only the limited-edition sheen (`EmblemSheen`, needs `useId`) is a client child.
 
 ### Navigation
+
 - **Style:** Quiet by default — Geist Sans or the mono `/ LABEL` for context nav, `text-muted` at rest, Ink/Signal-Orange on active. Hover is a subtle `bg-secondary/50` bed, never an aggressive fill.
 - **Active state:** Carried by Signal Orange + weight, plus a non-color cue (underline or marker) so it's color-blind-safe.
 - **Overflow:** Dropdowns/menus must use native `<dialog>`/popover or a portal — never `position:absolute` inside an `overflow:hidden`/`auto` container, or they clip.
 
 ### Page frame
+
 - **Default:** pages sit in a centred `max-w-6xl` column with `px-6 sm:px-12` gutters, so every surface reads as one product.
 - **Named exception — the Explore page (`/communities`):** the town-square street runs edge to edge, with the headline standing on its left, and the directory below it uses a wider `max-w-[1600px]` frame (`BODY_FRAME` in `communities/discover/explore-layout.ts`) with a sticky rooms side panel from `xl`. It is a showroom, not a tool page. Text never runs edge to edge: only the street does. Do not copy this frame to other pages without recording a new exception here.
 - **Named exception — the member dashboard (`/dashboard` and its tabs):** the frame (`MemberDashboardFrame`: greeting and tabs, used by `dashboard/(member)/layout.tsx` with the side panel) runs full width on the top nav's `px-4 sm:px-8` gutters, so the main column and the 20rem side panel line up with the nav's edges. The panel sits beside the main column from `lg` (`grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]`, sticky, scrolling on its own when taller than the viewport) and stacks below it on smaller screens. The agent workspace (`/dashboard/agent`) and onboarding (`/dashboard/onboarding`) keep the default frame.
@@ -279,10 +299,13 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 - **Magazine subscription controls:** Subscribe is never the accent on the shelf, issue reading view or community Magazine tab. It uses `ink`, then `outline` when subscribed; the page keeps its existing orange action.
 
 ### Section Label (signature)
+
 The house kicker, now a shared primitive: `<SectionLabel>` (`src/components/ui/section-label.tsx`). Renders a monospace, muted, ruled marker with a leading `/ ` — e.g. `<SectionLabel>Communities</SectionLabel>` → `/ COMMUNITIES`. Props: `as` (element), `bordered`, `marker`. **Always use this instead of re-typing `font-mono text-xs tracking-wider text-muted-foreground`.** The single most recognizable element of the system — only as a real section divider.
 
 ### Storyline timeline and evidence
+
 A reading pattern in `src/components/news/storyline-reader.tsx`, using the existing page frame and neutral tokens rather than a separate visual theme.
+
 - **Chronology:** an ordered list with a neutral hairline rail, outlined circular markers, and ruled entries. Dates and latest-entry metadata use Geist Mono; article titles, editorial context, and explanations use Geist Sans. Undated coverage is separated from the dated sequence.
 - **Reading measure:** narrative sections use a narrower column within the default page frame; the timeline stays single-column on mobile and desktop. Story index rows put metadata alongside the narrative from the small breakpoint and below it on smaller screens.
 - **Evidence:** native disclosure controls reveal source excerpts and connection explanations on demand. Source links are underlined; disclosure controls use the existing focus ring and underline on hover where implemented. The rail and quote borders carry structure, not an accent stripe.
@@ -290,7 +313,9 @@ A reading pattern in `src/components/news/storyline-reader.tsx`, using the exist
 - **Shared controls:** story search and staff editing reuse the existing Button, Input, Textarea, confirmation, and loading/empty/error primitives. Missing Dutch editorial text is identified explicitly alongside its English fallback.
 
 ### Shared primitives (use, don't reinvent)
+
 The consistency debt was largely hand-rolled re-implementations. Reach for these:
+
 - **`<SegmentedControl>`** (`ui/segmented-control.tsx`) — accessible radio-backed toggle (keyboard + SR for free). Replaces bespoke pill-button pairs.
 - **`<RelativeTime date>`** (`ui/relative-time.tsx`) — localized "2 hours ago" via next-intl. Replaces hand-rolled `timeAgo()` (was English-only).
 - **`<Avatar>` + `getInitials()`** (`ui/avatar.tsx`, `lib/avatar.ts`) — never re-derive initials inline.
@@ -299,19 +324,23 @@ The consistency debt was largely hand-rolled re-implementations. Reach for these
 - **`useRequireAuth()`** (`auth/auth-required-dialog.tsx`) — the one guest-gate for actions. `requireAuth(action, intent)` runs the action if signed in, else opens the branded sign-in/sign-up dialog; `promptAuth(intent)` opens it imperatively. The dialog preserves the current page so sign-in returns the user where they were (see `lib/auth-redirect.ts`).
 
 ### Named Rule (auth gating)
+
 **The Gate-Before-Fail Rule.** A guest must never click an enabled control that then fails. Pick the gate by surface:
-- **Member-only *pages*** → hard gate: server `getSession()` → `redirect("/auth/signin?redirect=<path>")` (mirror `dashboard/layout.tsx`, `blog/write`). Never render a member-only form and let it fail on submit.
-- **Primary *actions*** (enroll, register, post, submit, vote-as-button, create) → soft gate: wrap in `requireAuth(() => mutate(...), "Sign in to …")`. Never call `.mutate()` directly from a guest-reachable handler.
+
+- **Member-only _pages_** → hard gate: server `getSession()` → `redirect("/auth/signin?redirect=<path>")` (mirror `dashboard/layout.tsx`, `blog/write`). Never render a member-only form and let it fail on submit.
+- **Primary _actions_** (enroll, register, post, submit, vote-as-button, create) → soft gate: wrap in `requireAuth(() => mutate(...), "Sign in to …")`. Never call `.mutate()` directly from a guest-reachable handler.
 - **Inline icon actions** (vote arrows, single-glyph toggles) → the one sanctioned exception: render `disabled` with a `title="Sign in to …"` tooltip. Use only here, not for primary actions.
 
 `protectedProcedure` is the server backstop, not the UX — relying on it alone produces a raw `UNAUTHORIZED` toast, a silent no-op, or a doomed half-filled form. Banned guest treatments: silent `onClick` early-return, static non-clickable "log in to…" text, raw `error.message` rendered to the user, and ungated `.mutate()`.
 
 ### Named Rule (data states)
+
 **The No-Silent-Failure Rule.** Every data fetch handles three states explicitly: loading → `<Skeleton>`; error → `<ErrorState onRetry>` (or hide, for purely supplementary widgets); empty → `<EmptyState>` (or hide). **Never** `if (!data) return null` as the only branch — a failed load must be distinguishable from "nothing here." Errored core sections show the error + retry; only optional/supplementary widgets may stay quietly absent.
 
 ## 6. Do's and Don'ts
 
 ### Do:
+
 - **Do** keep the body background pure white (`oklch(1 0 0)`) or true dark (`oklch(0.145 0 0)`). Carry warmth through copy, imagery, and the accent — never a tinted cream surface.
 - **Do** ration Signal Orange to ≤10% of a screen (the One Voice Rule). At most one primary action, one active state; equal peer actions use the Ink button instead.
 - **Do** use the monospace `/ LABEL` as the one consistent section marker, and only there.
@@ -323,6 +352,7 @@ The consistency debt was largely hand-rolled re-implementations. Reach for these
 - **Do** keep body text ≥4.5:1 (large ≥3:1); never push `text-muted` lighter than `oklch(0.556 0 0)` on white.
 
 ### Don't:
+
 - **Don't** ship a **generic SaaS template** look: no cream/sand backgrounds, gradient hero text (`background-clip:text`), hero-metric blocks, or endless identical icon+heading+text card grids.
 - **Don't** let app surfaces become a **cold, sterile dashboard** — density is fine, all-gray soulless admin panels are not.
 - **Don't** drift toward **crypto/Web3 hype**: no neon-on-black, aggressive gradients, or "to the moon" energy.

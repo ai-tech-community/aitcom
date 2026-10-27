@@ -36,7 +36,7 @@ resolver" under "Decided structure"; "Visibility rules").
 - **Precedent.** The classroom already has one access decision per course
   (`resolveCourseAccess` / `loadCourseAccess` in
   `src/server/classroom/course-access.ts`: `none | visitor | member |
-  manager`, not-found on `none`). We follow its shape.
+manager`, not-found on `none`). We follow its shape.
 
 ## Decision
 
@@ -56,7 +56,7 @@ resolver" under "Decided structure"; "Visibility rules").
    6. otherwise → `none`.
 
    `none` is answered as "not found", never "forbidden", so a members-only
-   issue is not confirmed to exist. `editor` is about *seeing* (draft and
+   issue is not confirmed to exist. `editor` is about _seeing_ (draft and
    scheduled issues, unavailable-item markers, latest draft text), not a separate
    reading page.
    Moderators are readers.
@@ -118,7 +118,6 @@ resolver" under "Decided structure"; "Visibility rules").
    `src/lib/magazines/visibility.ts`, used by the resolver, mirrored by
    `readableIssueWhere`, and used by every surface that shows a visibility
    (issue cards on the shelf, the builder, settings):
-
    - in a content-public community (the Hub or a listed community), the
      issue's visibility is its effective visibility;
    - in a content-private community, `public` counts as `public` **only when a

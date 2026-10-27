@@ -45,18 +45,24 @@ It extends [ADR-0042](0042-magazine-issues-are-read-through-one-access-resolver.
    Cross-store foreign keys to Payload live in the migration.
 
 2. **Subscription eligibility follows magazine visibility (plan Decision 2).**
-   `canKnowMagazine` is shared by shelf reads and subscription lookup: a
-   readable published issue or permission to read the community's content
-   makes the magazine knowable; otherwise answer not-found. Email uses the
-   anonymous scope and also needs an existing published issue whose
-   `issueAudience` is `everyone`. Without one, it silently does nothing.
+   `mayKnowMagazine` is shared by shelf reads and `findMagazineForViewer`:
+   a readable published issue or permission to read the community's content
+   makes the magazine knowable; otherwise answer not-found. Subscription
+   lookup uses `readableIssueExists` for its small existence query. Email uses
+   the anonymous scope and requires `readableIssueExists` for that scope too,
+   so it needs an existing published public issue. Without one, it silently
+   does nothing.
 
 3. **Accounts use the inbox; addresses use email (plan Decision 3).**
    Follow spec Flow 6 over Goal 8's wording: a signed-in non-member also
    receives inbox notices. **Please check — accepted ruling:** membership
    controls which issues they hear about, not their delivery channel.
    Subscribing with an account merges an email row for the same magazine and
-   account address, preserving the earlier confirmation time. The address
+   account address, preserving the earlier confirmation time and delivery
+   history. Convert the email row in place so a refusal of an in-flight send
+   can still release its claim. If an account row already exists, move its
+   claims to the retained row first, keeping inbox claims on conflict. Any
+   channel's claim means that subscriber has already been told. The address
    comes from `app.user`, never the session. An email request for an already
    subscribed account is a silent no-op.
 
@@ -236,9 +242,10 @@ It extends [ADR-0042](0042-magazine-issues-are-read-through-one-access-resolver.
   first unknown error may already exceed that window.
 - **Confirmation quotas can delay signup.** The per-magazine quota is 50 rows
   with `confirm_sent_at` in the past 24 hours. Further requests get the same
-  answer without mail until capacity returns. As ruled in Task 4, resends of
-  the same row do not increase this count, so this is not a strict 50-message
-  cap. Raise `CONFIRM_MAILS_PER_MAGAZINE_PER_DAY` if traffic warrants it.
+  answer without mail until capacity returns. Resends of the same row do not
+  increase this count (the quota counts rows, not send events), so this is not
+  a strict 50-message cap. Raise `CONFIRM_MAILS_PER_MAGAZINE_PER_DAY` if traffic
+  warrants it.
 - **Three links per waiting row.** An address that uses all three confirmation
   sends for a magazine cannot request another until its waiting row is purged,
   30 days after the last send. This protects strangers' inboxes.
