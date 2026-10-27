@@ -39,6 +39,7 @@ export type StaffMember = {
   role: MagazineRole;
   source: (typeof LEADING_COMMUNITY_ROLES)[number] | "assigned";
   isActiveMember: boolean;
+  isViewer: boolean;
 };
 export type StaffMagazine = { id: number; name: string; communityId: string };
 export type StaffCandidate = {
@@ -61,6 +62,7 @@ const membershipFields = {
 export async function listMagazineStaff(
   database: Deps["db"],
   magazine: StaffMagazine,
+  viewerId: string,
 ): Promise<StaffMember[]> {
   const [leaders, assigned] = await Promise.all([
     database
@@ -102,6 +104,7 @@ export async function listMagazineStaff(
               role: COMMUNITY_LEADER_ROLE,
               source: communityRole,
               isActiveMember: true,
+              isViewer: person.userId === viewerId,
             },
           ]
         : [],
@@ -119,7 +122,12 @@ export async function listMagazineStaff(
     const communityRole = activeRoleOf(membership);
     if (leadsCommunity(communityRole)) return [];
     return [
-      { ...person, source: "assigned", isActiveMember: communityRole !== null },
+      {
+        ...person,
+        source: "assigned",
+        isActiveMember: communityRole !== null,
+        isViewer: person.userId === viewerId,
+      },
     ];
   });
   team.sort(
@@ -233,6 +241,7 @@ export async function assignMagazineRole(
     role: current.role,
     source: "assigned",
     isActiveMember: true,
+    isViewer: person.userId === actor.userId,
   };
 }
 

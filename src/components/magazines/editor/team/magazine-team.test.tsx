@@ -1,6 +1,8 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { useState } from "react";
+
 import type { MagazineRole } from "@/lib/magazines/roles";
 import type {
   StaffCandidate,
@@ -38,6 +40,13 @@ const trpc = vi.hoisted(() => ({
   searchLoading: false,
   searchError: false,
   pending: false,
+  defer: false,
+  finishAssign: null as (() => void) | null,
+  push: vi.fn(),
+}));
+
+vi.mock("@/i18n/navigation", () => ({
+  useRouter: () => ({ push: trpc.push }),
 }));
 
 vi.mock("@/trpc/react", () => ({
@@ -74,27 +83,52 @@ vi.mock("@/trpc/react", () => ({
         },
       },
       assignStaffRole: {
-        useMutation: (opts: AssignOptions) => ({
-          isPending: trpc.pending,
-          mutate: (input: Assignment) => {
-            trpc.assign(input);
-            if (trpc.failure) opts.onError({ message: trpc.failure });
-            else {
-              const person = [...trpc.staff, ...trpc.candidates].find(
-                (p) => p.userId === input.userId,
-              )!;
-              opts.onSuccess(
-                {
-                  ...person,
-                  role: input.role,
-                  source: "assigned",
-                  isActiveMember: true,
-                },
-                input,
-              );
-            }
-          },
-        }),
+        useMutation: (opts: AssignOptions) => {
+          const [pending, setPending] = useState(false);
+          return {
+            isPending: trpc.pending || pending,
+            mutate: (input: Assignment) => {
+              trpc.assign(input);
+              if (trpc.defer) {
+                setPending(true);
+                const person = [...trpc.staff, ...trpc.candidates].find(
+                  (p) => p.userId === input.userId,
+                )!;
+                trpc.finishAssign = () => {
+                  setPending(false);
+                  opts.onSuccess(
+                    {
+                      ...person,
+                      role: input.role,
+                      source: "assigned",
+                      isActiveMember: true,
+                      isViewer:
+                        "isViewer" in person && person.isViewer === true,
+                    },
+                    input,
+                  );
+                };
+                return;
+              }
+              if (trpc.failure) opts.onError({ message: trpc.failure });
+              else {
+                const person = [...trpc.staff, ...trpc.candidates].find(
+                  (p) => p.userId === input.userId,
+                )!;
+                opts.onSuccess(
+                  {
+                    ...person,
+                    role: input.role,
+                    source: "assigned",
+                    isActiveMember: true,
+                    isViewer: "isViewer" in person && person.isViewer === true,
+                  },
+                  input,
+                );
+              }
+            },
+          };
+        },
       },
       removeStaffRole: {
         useMutation: (opts: RemoveOptions) => ({
@@ -125,6 +159,7 @@ beforeEach(() => {
       role: "editor_in_chief",
       source: "owner",
       isActiveMember: true,
+      isViewer: false,
     },
     {
       userId: "admin",
@@ -133,6 +168,7 @@ beforeEach(() => {
       role: "editor_in_chief",
       source: "admin",
       isActiveMember: true,
+      isViewer: false,
     },
     {
       userId: "editor",
@@ -141,6 +177,7 @@ beforeEach(() => {
       role: "editor",
       source: "assigned",
       isActiveMember: true,
+      isViewer: false,
     },
     {
       userId: "former",
@@ -149,6 +186,7 @@ beforeEach(() => {
       role: "contributor",
       source: "assigned",
       isActiveMember: false,
+      isViewer: false,
     },
   ];
   trpc.candidates = [
@@ -161,6 +199,8 @@ beforeEach(() => {
   trpc.searchLoading = false;
   trpc.searchError = false;
   trpc.pending = false;
+  trpc.defer = false;
+  trpc.finishAssign = null;
 });
 afterEach(() => vi.useRealTimers());
 
@@ -177,6 +217,152 @@ function chooseRole(control: HTMLElement, name: string) {
 }
 
 describe("MagazineTeam", () => {
+  it("labels each row's controls with the person's name", () => {
+    renderWithIntl(<MagazineTeam slug="night-owls" />);
+    expect(
+      screen.getByRole("combobox", { name: "Eden Job on the team" }),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Remove Eden" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Remove Fran" })).toBeVisible();
+  });
+
+  it("confirms losing your own management access before changing your job, then redirects", async () => {
+    trpc.staff[2] = {
+      ...trpc.staff[2]!,
+      role: "editor_in_chief",
+      isViewer: true,
+    };
+    renderWithIntl(<MagazineTeam slug="night-owls" />);
+    const row = screen.getByRole("listitem", { name: "Eden" });
+    expect(within(row).getByText("You")).toBeVisible();
+    const trigger = within(row).getByRole("combobox", {
+      name: "Eden Job on the team",
+    });
+    chooseRole(trigger, "Contributor");
+    expect(trpc.assign).not.toHaveBeenCalled();
+    let dialog = screen.getByRole("alertdialog", {
+      name: "Leave the team page?",
+    });
+    expect(dialog).toHaveTextContent("You will lose access to this team page.");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(trpc.assign).not.toHaveBeenCalled();
+    expect(trigger).toHaveFocus();
+    chooseRole(trigger, "Contributor");
+    dialog = screen.getByRole("alertdialog");
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Change my job" }),
+    );
+    expect(trpc.assign).toHaveBeenCalledExactlyOnceWith({
+      slug: "night-owls",
+      userId: "editor",
+      role: "contributor",
+    });
+    expect(trpc.push).toHaveBeenCalledExactlyOnceWith(
+      "/communities/night-owls/magazine",
+    );
+    expect(trpc.invalidate).not.toHaveBeenCalled();
+    expect(trpc.invalidateSearch).not.toHaveBeenCalled();
+  });
+
+  it("warns before removing yourself and redirects after confirmation", () => {
+    trpc.staff[2] = {
+      ...trpc.staff[2]!,
+      role: "editor_in_chief",
+      isViewer: true,
+    };
+    renderWithIntl(<MagazineTeam slug="night-owls" />);
+    fireEvent.click(screen.getByRole("button", { name: "Remove Eden" }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog).toHaveTextContent("You will lose access to this team page.");
+    expect(trpc.remove).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
+    expect(trpc.remove).toHaveBeenCalledOnce();
+    expect(trpc.push).toHaveBeenCalledExactlyOnceWith(
+      "/communities/night-owls/magazine",
+    );
+    expect(trpc.invalidate).not.toHaveBeenCalled();
+  });
+
+  it("keeps Add focus while busy, ignores repeats, and returns to search on success", async () => {
+    trpc.defer = true;
+    renderWithIntl(<MagazineTeam slug="night-owls" />);
+    await search();
+    fireEvent.click(screen.getByRole("radio", { name: "Ada" }));
+    chooseRole(
+      within(screen.getByRole("region", { name: "Add someone" })).getByRole(
+        "combobox",
+      ),
+      "Contributor",
+    );
+    const add = screen.getByRole("button", { name: "Add to the team" });
+    add.focus();
+    fireEvent.click(add);
+    expect(add).toHaveFocus();
+    expect(add).not.toBeDisabled();
+    expect(add).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(add);
+    fireEvent.submit(add.closest("form")!);
+    expect(trpc.assign).toHaveBeenCalledOnce();
+    expect(
+      screen.getAllByRole("status")[0]!.closest("[aria-busy=true]"),
+    ).toBeNull();
+    act(() => trpc.finishAssign!());
+    expect(
+      screen.getByRole("textbox", { name: "Find a member" }),
+    ).toHaveFocus();
+  });
+
+  it("keeps a member's job trigger focus during an update and after success", async () => {
+    trpc.defer = true;
+    renderWithIntl(<MagazineTeam slug="night-owls" />);
+    const trigger = screen.getByRole("combobox", {
+      name: "Eden Job on the team",
+    });
+    trigger.focus();
+    chooseRole(trigger, "Contributor");
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(trigger).not.toBeDisabled();
+    expect(trigger).toHaveAttribute("aria-disabled", "true");
+    expect(trigger).toHaveFocus();
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    act(() => trpc.finishAssign!());
+    expect(trigger).toHaveFocus();
+    expect(trpc.assign).toHaveBeenCalledOnce();
+  });
+
+  it("allows Tab and Shift+Tab away from a busy job trigger", () => {
+    trpc.pending = true;
+    renderWithIntl(<MagazineTeam slug="night-owls" />);
+    const trigger = screen.getByRole("combobox", {
+      name: "Eden Job on the team",
+    });
+    trigger.focus();
+    expect(fireEvent.keyDown(trigger, { key: "Tab" })).toBe(true);
+    expect(fireEvent.keyDown(trigger, { key: "Tab", shiftKey: true })).toBe(
+      true,
+    );
+    expect(fireEvent.keyDown(trigger, { key: "ArrowDown" })).toBe(false);
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("returns to search when an updated member row is gone", async () => {
+    trpc.defer = true;
+    renderWithIntl(<MagazineTeam slug="night-owls" />);
+    const trigger = screen.getByRole("combobox", {
+      name: "Eden Job on the team",
+    });
+    trigger.focus();
+    chooseRole(trigger, "Contributor");
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    trpc.staff = trpc.staff.filter((member) => member.userId !== "editor");
+    act(() => trpc.finishAssign!());
+    expect(
+      screen.getByRole("textbox", { name: "Find a member" }),
+    ).toHaveFocus();
+  });
+
   it("adds a found member with the chosen role", async () => {
     renderWithIntl(<MagazineTeam slug="night-owls" />);
     await search();
@@ -207,7 +393,7 @@ describe("MagazineTeam", () => {
     renderWithIntl(<MagazineTeam slug="night-owls" />);
     const row = screen.getByRole("listitem", { name: "Eden" });
     chooseRole(
-      within(row).getByRole("combobox", { name: "Job on the team" }),
+      within(row).getByRole("combobox", { name: "Eden Job on the team" }),
       "Editor-in-chief",
     );
     expect(trpc.assign).toHaveBeenCalledWith({
@@ -224,7 +410,7 @@ describe("MagazineTeam", () => {
   it("removes only after confirming", async () => {
     renderWithIntl(<MagazineTeam slug="night-owls" />);
     const row = screen.getByRole("listitem", { name: "Eden" });
-    fireEvent.click(within(row).getByRole("button", { name: "Remove" }));
+    fireEvent.click(within(row).getByRole("button", { name: "Remove Eden" }));
     expect(trpc.remove).not.toHaveBeenCalled();
     let dialog = screen.getByRole("alertdialog", {
       name: "Remove Eden from the team?",
@@ -235,8 +421,10 @@ describe("MagazineTeam", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await act(() => vi.advanceTimersByTimeAsync(0));
     expect(trpc.remove).not.toHaveBeenCalled();
-    expect(within(row).getByRole("button", { name: "Remove" })).toHaveFocus();
-    fireEvent.click(within(row).getByRole("button", { name: "Remove" }));
+    expect(
+      within(row).getByRole("button", { name: "Remove Eden" }),
+    ).toHaveFocus();
+    fireEvent.click(within(row).getByRole("button", { name: "Remove Eden" }));
     dialog = screen.getByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Remove" }));
     expect(trpc.remove).toHaveBeenCalledExactlyOnceWith({
@@ -245,7 +433,9 @@ describe("MagazineTeam", () => {
     });
     expect(trpc.invalidate).toHaveBeenCalledWith({ slug: "night-owls" });
     expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(screen.getByRole("status")).toHaveTextContent("Eden left the team.");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Eden is no longer on the team.",
+    );
     await act(() => vi.advanceTimersByTimeAsync(0));
     expect(
       screen.getByRole("textbox", { name: "Find a member" }),
@@ -271,7 +461,7 @@ describe("MagazineTeam", () => {
     fireEvent.click(
       within(screen.getByRole("listitem", { name: "Eden" })).getByRole(
         "button",
-        { name: "Remove" },
+        { name: "Remove Eden" },
       ),
     );
     const dialog = screen.getByRole("alertdialog");
@@ -288,8 +478,10 @@ describe("MagazineTeam", () => {
     expect(within(row).getByText("Not a member now")).toBeVisible();
     expect(within(row).getByText("Contributor")).toBeVisible();
     expect(within(row).queryByRole("combobox")).toBeNull();
-    expect(within(row).getByRole("button", { name: "Remove" })).toBeEnabled();
-    fireEvent.click(within(row).getByRole("button", { name: "Remove" }));
+    expect(
+      within(row).getByRole("button", { name: "Remove Fran" }),
+    ).toBeEnabled();
+    fireEvent.click(within(row).getByRole("button", { name: "Remove Fran" }));
     fireEvent.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
         name: "Remove",

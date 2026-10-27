@@ -92,6 +92,27 @@ beforeEach(() => {
 });
 
 describe("MagazineSettingsForm", () => {
+  it("can hide its Magazine tab link while retaining it by default", () => {
+    trpc.settings = {
+      magazine: existingMagazine(),
+      communityIsPrivate: false,
+      community: { ...UNLISTED, isListedInDirectory: true },
+    };
+    const { unmount } = renderWithIntl(
+      <MagazineSettingsForm slug="night-owls" />,
+    );
+    expect(
+      screen.getByRole("link", { name: "Open the Magazine tab" }),
+    ).toHaveAttribute("href", "/communities/night-owls/magazine");
+    unmount();
+    renderWithIntl(
+      <MagazineSettingsForm slug="night-owls" showOpenTabLink={false} />,
+    );
+    expect(
+      screen.queryByRole("link", { name: "Open the Magazine tab" }),
+    ).toBeNull();
+  });
+
   it("sends confirmUnlistedPublic only when the box is checked", () => {
     trpc.settings = {
       magazine: null,

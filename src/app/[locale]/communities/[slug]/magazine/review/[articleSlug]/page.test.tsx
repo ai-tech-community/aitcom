@@ -139,7 +139,8 @@ describe("magazine review page", () => {
   });
 
   it.each([
-    ["approved", "Approved", null],
+    [null, "Not sent yet", null],
+    ["approved", "Ready for an issue", null],
     ["changes_requested", "Changes asked for", "Add a source"],
     ["rejected", "Not accepted", "Outside this issue's topic"],
   ])(
@@ -147,7 +148,11 @@ describe("magazine review page", () => {
     async (reviewStatus, label, reviewNote) => {
       Object.assign(state.data!.article, { reviewStatus, reviewNote });
       renderWithIntl(await MagazineReviewPage({ params: params() }));
-      expect(screen.getByRole("status")).toHaveTextContent(label);
+      expect(screen.getByText(label)).toBeVisible();
+      expect(screen.queryByRole("status")).toBeNull();
+      expect(screen.getByText("Oct 27, 2026").parentElement).toHaveTextContent(
+        "By Ada · last changed Oct 27, 2026",
+      );
       if (reviewNote) expect(screen.getByText(reviewNote)).toBeVisible();
       expect(
         screen.queryByRole("region", { name: "Your decision" }),

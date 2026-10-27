@@ -70,6 +70,7 @@ describe("ContributorDesk", () => {
       "/communities/amsterdam-ai/magazine/articles/story-1/edit",
     );
     expect(changes).toHaveTextContent("Changes asked for");
+    expect(screen.queryByRole("status")).toBeNull();
     expect(screen.getByText("Note from the editors")).toBeInTheDocument();
     expect(screen.getByText("Please explain the example.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Story 2/ })).toHaveTextContent(
@@ -101,6 +102,7 @@ describe("ContributorDesk", () => {
       expect(within(rows[index]!).queryByRole("link")).toBeNull();
     }
     expect(screen.getByText("Outside this issue's theme.")).toBeInTheDocument();
+    expect(screen.queryByRole("status")).toBeNull();
     expect(screen.getByText("Note from the editors")).toBeInTheDocument();
   });
 

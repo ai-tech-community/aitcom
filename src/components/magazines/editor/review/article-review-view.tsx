@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { LexicalRenderer } from "@/lib/lexical";
 import { communityMagazinePath } from "@/lib/magazines/paths";
+import { writerStatusOf } from "@/lib/magazines/review";
 import type { ReviewPageData } from "@/server/magazines/article-review";
 
 import { ReviewActions } from "./review-actions";
@@ -18,14 +19,11 @@ export function ArticleReviewView({
   communitySlug: string;
 }) {
   const t = useTranslations("magazineEditor.review");
+  const tWriter = useTranslations("magazineEditor.contributorDesk");
   const format = useFormatter();
   const { article } = data;
-  const decided =
-    article.reviewStatus === "approved" ||
-    article.reviewStatus === "changes_requested" ||
-    article.reviewStatus === "rejected"
-      ? article.reviewStatus
-      : null;
+  const pending = article.reviewStatus === "pending_review";
+  const writerStatus = writerStatusOf(article.reviewStatus);
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
@@ -46,7 +44,7 @@ export function ArticleReviewView({
             {article.title}
           </h1>
           <p className="text-muted-foreground text-sm break-words">
-            {t.rich("byline", {
+            {t.rich(pending ? "byline" : "lastChangedByline", {
               author: article.authorName ?? t("unknownAuthor"),
               dateLabel: format.dateTime(new Date(article.updatedAt), {
                 day: "numeric",
@@ -63,13 +61,10 @@ export function ArticleReviewView({
               ),
             })}
           </p>
-          {decided && (
-            <div
-              role="status"
-              className="flex flex-col gap-2 border-y py-3 text-sm"
-            >
-              <p className="font-medium">{t(`status.${decided}`)}</p>
-              {article.reviewNote && decided !== "approved" && (
+          {!pending && (
+            <div className="flex flex-col gap-2 border-y py-3 text-sm">
+              <p className="font-medium">{tWriter(`status.${writerStatus}`)}</p>
+              {article.reviewNote && writerStatus !== "approved" && (
                 <p className="break-words whitespace-pre-wrap">
                   {article.reviewNote}
                 </p>
@@ -80,7 +75,7 @@ export function ArticleReviewView({
         <div className="min-w-0 [overflow-wrap:anywhere] break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto">
           <LexicalRenderer content={article.content} />
         </div>
-        {article.reviewStatus === "pending_review" && (
+        {pending && (
           <ReviewActions
             communitySlug={communitySlug}
             articleId={article.id}

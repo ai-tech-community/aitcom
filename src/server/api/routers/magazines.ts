@@ -229,7 +229,11 @@ export const magazinesRouter = createTRPCRouter({
   listStaff: managerProcedure
     .input(z.object({ slug: z.string() }))
     .query(({ ctx }) =>
-      listMagazineStaff(ctx.db, requireMagazine(ctx.magazine)),
+      listMagazineStaff(
+        ctx.db,
+        requireMagazine(ctx.magazine),
+        ctx.session.user.id,
+      ),
     ),
 
   searchStaffCandidates: managerProcedure

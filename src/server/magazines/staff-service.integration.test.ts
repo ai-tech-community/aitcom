@@ -178,7 +178,8 @@ describe.skipIf(!RUN_DB)(
         { userId, role },
         { userId: fx.users.owner, community: fx.community },
       );
-    const list = () => m.staff.listMagazineStaff(m.db, fx.magazine);
+    const list = (viewerId = fx.users.owner) =>
+      m.staff.listMagazineStaff(m.db, fx.magazine, viewerId);
     const stored = () =>
       m.db
         .select()
@@ -250,6 +251,21 @@ describe.skipIf(!RUN_DB)(
           isActiveMember: true,
         },
       ]);
+    });
+
+    it("marks only the viewer on implicit and assigned team rows", async () => {
+      await assign(fx.users.member, "editor_in_chief");
+      for (const viewerId of [fx.users.owner, fx.users.member]) {
+        const team = await list(viewerId);
+        expect(team.filter((person) => person.isViewer)).toEqual([
+          expect.objectContaining({ userId: viewerId, isViewer: true }),
+        ]);
+        expect(
+          team
+            .filter((person) => person.userId !== viewerId)
+            .every((person) => person.isViewer === false),
+        ).toBe(true);
+      }
     });
 
     it("assigns a member, changes the role, and tells them each time", async () => {

@@ -184,6 +184,7 @@ describe("ReviewActions", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       en.magazineEditor.errors.articleNotPending,
     );
+    expect(screen.getByRole("alert")).toHaveFocus();
     expect(screen.queryByText("ARTICLE_NOT_PENDING")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Reload" }));
     expect(trpc.refresh).toHaveBeenCalledTimes(1);
@@ -200,6 +201,7 @@ describe("ReviewActions", () => {
       { slug: "night-owls", articleId: 7, decision: "reject" },
     ]);
     const dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByRole("alert")).toHaveFocus();
     expect(within(dialog).getByRole("alert")).toHaveTextContent(
       en.magazineEditor.errors.articleNotPending,
     );
@@ -218,11 +220,33 @@ describe("ReviewActions", () => {
     ]);
   });
 
-  it("disables the decision controls while the mutation is pending", () => {
+  it("focuses the refusal after sending changes fails", () => {
+    trpc.outcome = { message: "ARTICLE_NOT_PENDING" };
+    renderWithIntl(view());
+    fireEvent.click(screen.getByRole("button", { name: "Ask for changes" }));
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "What should change?" }),
+      { target: { value: "Add a source" } },
+    );
+    const send = screen.getByRole("button", { name: "Send to the writer" });
+    send.focus();
+    fireEvent.click(send);
+    expect(screen.getByRole("alert")).toHaveFocus();
+  });
+
+  it("keeps busy decision controls focusable and ignores their clicks", () => {
     trpc.isPending = true;
     renderWithIntl(view());
-    for (const button of screen.getAllByRole("button"))
-      expect(button).toBeDisabled();
+    for (const button of screen.getAllByRole("button")) {
+      expect(button).not.toBeDisabled();
+      expect(button).toHaveAttribute("aria-disabled", "true");
+      button.focus();
+      expect(button).toHaveFocus();
+      fireEvent.click(button);
+    }
+    expect(trpc.calls).toEqual([]);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByRole("textbox")).toBeNull();
   });
 
   it("every control has a label", () => {

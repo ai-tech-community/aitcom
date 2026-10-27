@@ -44,12 +44,17 @@ export function ReviewActions({
   const [error, setError] = useState<EditorErrorKey | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const changesRef = useRef<HTMLTextAreaElement>(null);
+  const refusalRef = useRef<HTMLParagraphElement>(null);
   // Also guard clicks before React has rendered the mutation's pending state.
   const inFlight = useRef(false);
 
   useEffect(() => {
     if (changesOpen) changesRef.current?.focus();
   }, [changesOpen]);
+
+  useEffect(() => {
+    if (error) refusalRef.current?.focus();
+  }, [error]);
 
   const review = api.magazines.reviewArticle.useMutation({
     onSuccess: ({ reviewStatus }) => {
@@ -83,7 +88,12 @@ export function ReviewActions({
 
   const refusal = error && (
     <div className="flex flex-col items-start gap-2">
-      <p role="alert" className="text-destructive text-sm">
+      <p
+        ref={refusalRef}
+        role="alert"
+        tabIndex={-1}
+        className="text-destructive text-sm"
+      >
         {tErrors(error)}
       </p>
       {error === "articleNotPending" && (
@@ -112,23 +122,29 @@ export function ReviewActions({
       </p>
       {!declineOpen && refusal}
       <div className="flex flex-wrap gap-2">
-        <Button type="button" disabled={busy} onClick={() => decide("approve")}>
+        <Button
+          type="button"
+          aria-disabled={busy}
+          onClick={() => decide("approve")}
+        >
           {t("approve")}
         </Button>
         <Button
           type="button"
           variant="outline"
-          disabled={busy}
+          aria-disabled={busy}
           aria-expanded={changesOpen}
           aria-controls={`${id}-changes`}
-          onClick={() => setChangesOpen((open) => !open)}
+          onClick={() => {
+            if (!busy && !inFlight.current) setChangesOpen((open) => !open);
+          }}
         >
           {t("askChanges")}
         </Button>
         <AlertDialog
           open={declineOpen}
           onOpenChange={(open) => {
-            if (!busy) setDeclineOpen(open);
+            if (!busy && !inFlight.current) setDeclineOpen(open);
           }}
         >
           <AlertDialogTrigger asChild>
@@ -136,7 +152,10 @@ export function ReviewActions({
               type="button"
               variant="ghost"
               className="text-destructive hover:text-destructive"
-              disabled={busy}
+              aria-disabled={busy}
+              onClick={(event) => {
+                if (busy || inFlight.current) event.preventDefault();
+              }}
             >
               {t("decline")}
             </Button>
@@ -157,9 +176,12 @@ export function ReviewActions({
                 id={`${id}-decline-note`}
                 aria-describedby={`${id}-decline-count`}
                 value={declineNote}
-                onChange={(event) => setDeclineNote(event.target.value)}
+                onChange={(event) => {
+                  if (!busy) setDeclineNote(event.target.value);
+                }}
                 maxLength={REVIEW_NOTE_MAX}
-                disabled={busy}
+                aria-disabled={busy}
+                readOnly={busy}
               />
               <p
                 id={`${id}-decline-count`}
@@ -170,13 +192,18 @@ export function ReviewActions({
             </div>
             {declineOpen && refusal}
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={busy}>
+              <AlertDialogCancel
+                aria-disabled={busy}
+                onClick={(event) => {
+                  if (busy || inFlight.current) event.preventDefault();
+                }}
+              >
                 {t("cancel")}
               </AlertDialogCancel>
               <Button
                 type="button"
                 variant="destructive"
-                disabled={busy}
+                aria-disabled={busy}
                 onClick={() => decide("reject", declineNote)}
               >
                 {t("declineConfirm")}
@@ -200,10 +227,13 @@ export function ReviewActions({
               id={`${id}-changes-note`}
               aria-describedby={`${id}-changes-count`}
               value={changesNote}
-              onChange={(event) => setChangesNote(event.target.value)}
+              onChange={(event) => {
+                if (!busy) setChangesNote(event.target.value);
+              }}
               required
               maxLength={REVIEW_NOTE_MAX}
-              disabled={busy}
+              aria-disabled={busy}
+              readOnly={busy}
             />
             <p
               id={`${id}-changes-count`}
@@ -215,7 +245,8 @@ export function ReviewActions({
               type="submit"
               variant="ink"
               className="h-auto min-h-9 max-w-full whitespace-normal"
-              disabled={busy || !changesNote.trim()}
+              disabled={!changesNote.trim()}
+              aria-disabled={busy || !changesNote.trim()}
             >
               {t("sendChanges")}
             </Button>

@@ -4850,6 +4850,7 @@
       "metaTitle": "Read an article",
       "back": "Back to the Magazine tab",
       "byline": "By {author} · sent <date>{dateLabel}</date>",
+      "lastChangedByline": "By {author} · last changed <date>{dateLabel}</date>",
       "unknownAuthor": "Unknown writer",
       "decision": "Your decision",
       "approve": "Approve",
@@ -4866,11 +4867,6 @@
         "approved": "Approved. It is ready for an issue.",
         "changes_requested": "Sent to the writer.",
         "rejected": "Article declined."
-      },
-      "status": {
-        "approved": "Approved",
-        "changes_requested": "Changes asked for",
-        "rejected": "Not accepted"
       },
       "reload": "Reload"
     },
@@ -5242,7 +5238,13 @@
         "editor": "{name} is now an editor.",
         "contributor": "{name} is now a contributor."
       },
-      "removed": "{name} left the team.",
+      "removed": "{name} is no longer on the team.",
+      "you": "You",
+      "removeNamed": "Remove {name}",
+      "loseAccessTitle": "Leave the team page?",
+      "loseAccessBody": "You will lose access to this team page. Your articles stay in the magazine.",
+      "loseAccessConfirm": "Change my job",
+      "removeSelfBody": "You will lose access to this team page. Your articles stay in the magazine, but you can no longer write for it or edit issues.",
       "back": "Back to the Magazine tab",
       "membersTitle": "The team",
       "empty": "Add someone to help write articles and make issues."

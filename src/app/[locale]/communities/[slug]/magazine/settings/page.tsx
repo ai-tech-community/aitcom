@@ -62,7 +62,10 @@ export default async function MagazineSettingsPage({
       >
         {t("back")}
       </Link>
-      <MagazineSettingsForm slug={slug} />
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+      </header>
+      <MagazineSettingsForm slug={slug} showOpenTabLink={false} />
     </div>
   );
 }

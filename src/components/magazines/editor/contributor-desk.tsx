@@ -45,7 +45,7 @@ export function ContributorDesk({ slug }: { slug: string }) {
               <span className="text-sm font-medium break-words">
                 {article.title}
               </span>
-              <span role="status" className="text-muted-foreground text-xs">
+              <span className="text-muted-foreground text-xs">
                 {t(`status.${writerStatusOf(article.reviewStatus)}`)}
               </span>
               <UpdatedAt value={article.updatedAt} />

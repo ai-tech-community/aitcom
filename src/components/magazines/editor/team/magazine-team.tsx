@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import {
   AlertDialog,
@@ -26,10 +26,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "@/i18n/navigation";
 import { getInitials } from "@/lib/avatar";
+import { communityMagazinePath } from "@/lib/magazines/paths";
 import {
   isMagazineRole,
   MAGAZINE_ROLES,
+  roleCan,
   type MagazineRole,
 } from "@/lib/magazines/roles";
 import type {
@@ -44,28 +47,47 @@ import { readEditorError, type EditorErrorKey } from "../editor-errors";
 function TeamJob({
   value,
   onChange,
-  disabled,
+  busy,
+  memberNameId,
 }: {
   value: MagazineRole | "";
-  onChange: (role: MagazineRole) => void;
-  disabled: boolean;
+  onChange: (role: MagazineRole, trigger: HTMLButtonElement | null) => void;
+  busy: boolean;
+  memberNameId?: string;
 }) {
   const t = useTranslations("magazineEditor.team");
   const roles = useTranslations("magazineEditor.roles");
   const id = useId();
+  const trigger = useRef<HTMLButtonElement | null>(null);
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <Label htmlFor={id}>{t("roleLabel")}</Label>
+      <Label id={`${id}-label`} htmlFor={id}>
+        {t("roleLabel")}
+      </Label>
       <Select
         value={value}
-        disabled={disabled}
         onValueChange={(next) => {
-          if (isMagazineRole(next)) onChange(next);
+          if (!busy && isMagazineRole(next)) onChange(next, trigger.current);
         }}
       >
         <SelectTrigger
           id={id}
+          ref={trigger}
+          aria-disabled={busy}
+          aria-labelledby={
+            memberNameId ? `${memberNameId} ${id}-label` : `${id}-label`
+          }
           aria-describedby={value ? `${id}-help` : undefined}
+          onPointerDown={(event) => {
+            if (busy) event.preventDefault();
+          }}
+          onKeyDown={(event) => {
+            if (
+              busy &&
+              ["Enter", " ", "ArrowUp", "ArrowDown"].includes(event.key)
+            )
+              event.preventDefault();
+          }}
           className="w-full min-w-0 shadow-none"
         >
           <SelectValue placeholder={t("roleLabel")}>
@@ -116,17 +138,34 @@ export function MagazineTeam({ slug }: { slug: string }) {
   const roles = useTranslations("magazineEditor.roles");
   const tErrors = useTranslations("magazineEditor.errors");
   const id = useId();
+  const router = useRouter();
   const utils = api.useUtils();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [person, setPerson] = useState<StaffCandidate | null>(null);
   const [role, setRole] = useState<MagazineRole | "">("");
   const [removing, setRemoving] = useState<StaffMember | null>(null);
+  const [changingSelf, setChangingSelf] = useState<{
+    member: StaffMember;
+    role: MagazineRole;
+  } | null>(null);
   const [error, setError] = useState<EditorErrorKey | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  const [focusAfterAssign, setFocusAfterAssign] = useState(0);
   const inFlight = useRef(false);
   const removeTrigger = useRef<HTMLButtonElement | null>(null);
   const searchInput = useRef<HTMLInputElement | null>(null);
+  const assignmentTrigger = useRef<HTMLButtonElement | null>(null);
+  const restoreAssignmentFocus = useCallback(() => {
+    const target = assignmentTrigger.current?.isConnected
+      ? assignmentTrigger.current
+      : searchInput.current;
+    target?.focus();
+  }, []);
+  useEffect(() => {
+    if (focusAfterAssign === 0) return;
+    restoreAssignmentFocus();
+  }, [focusAfterAssign, restoreAssignmentFocus]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query.trim()), 250);
@@ -151,18 +190,30 @@ export function MagazineTeam({ slug }: { slug: string }) {
   };
   const assign = api.magazines.assignStaffRole.useMutation({
     onSuccess: (assigned) => {
+      if (changingSelf) {
+        inFlight.current = false;
+        router.push(communityMagazinePath(slug));
+        return;
+      }
       setAnnouncement(t(`assigned.${assigned.role}`, { name: assigned.name }));
       if (person?.userId === assigned.userId) {
         setPerson(null);
         setRole("");
         setQuery("");
+        assignmentTrigger.current = null;
       }
+      setFocusAfterAssign((request) => request + 1);
       changed();
     },
     onError: refused,
   });
   const remove = api.magazines.removeStaffRole.useMutation({
     onSuccess: () => {
+      if (removing?.isViewer && roleCan(removing.role, "manage")) {
+        inFlight.current = false;
+        router.push(communityMagazinePath(slug));
+        return;
+      }
       if (removing) setAnnouncement(t("removed", { name: removing.name }));
       // The refetch removes this row; restore focus to a stable control.
       removeTrigger.current = null;
@@ -178,6 +229,24 @@ export function MagazineTeam({ slug }: { slug: string }) {
     setError(null);
     setAnnouncement("");
     assign.mutate({ slug, userId, role: next });
+  };
+  const changeJob = (
+    member: StaffMember,
+    next: MagazineRole,
+    trigger: HTMLButtonElement | null,
+  ) => {
+    if (busy || inFlight.current) return;
+    assignmentTrigger.current = trigger;
+    if (
+      member.isViewer &&
+      roleCan(member.role, "manage") &&
+      !roleCan(next, "manage")
+    ) {
+      setError(null);
+      setChangingSelf({ member, role: next });
+      return;
+    }
+    assignJob(member.userId, next);
   };
   const confirmRemove = () => {
     if (!removing || busy || inFlight.current) return;
@@ -198,11 +267,11 @@ export function MagazineTeam({ slug }: { slug: string }) {
     candidates.data !== undefined;
 
   return (
-    <div className="flex min-w-0 flex-col gap-8" aria-busy={busy}>
+    <div className="flex min-w-0 flex-col gap-8">
       <p role="status" aria-live="polite" className="text-sm">
         {announcement}
       </p>
-      {!removing && refusal}
+      {!removing && !changingSelf && refusal}
       <section
         aria-labelledby={`${id}-add`}
         className="flex min-w-0 flex-col gap-4"
@@ -224,9 +293,10 @@ export function MagazineTeam({ slug }: { slug: string }) {
               id={`${id}-search`}
               value={query}
               maxLength={100}
-              disabled={busy}
+              aria-disabled={busy}
               aria-describedby={`${id}-hint`}
               onChange={(event) => {
+                if (busy || inFlight.current) return;
                 setQuery(event.target.value);
                 setPerson(null);
               }}
@@ -259,8 +329,15 @@ export function MagazineTeam({ slug }: { slug: string }) {
                           name={`${id}-candidate`}
                           value={candidate.userId}
                           checked={person?.userId === candidate.userId}
-                          disabled={busy}
-                          onChange={() => setPerson(candidate)}
+                          aria-disabled={busy}
+                          onClick={(event) => {
+                            if (busy || inFlight.current)
+                              event.preventDefault();
+                          }}
+                          onChange={() => {
+                            if (!busy && !inFlight.current)
+                              setPerson(candidate);
+                          }}
                           className="accent-foreground focus-visible:ring-ring size-4 shrink-0 focus-visible:ring-2 focus-visible:ring-offset-2"
                         />
                         <span className="min-w-0 break-words">
@@ -288,11 +365,12 @@ export function MagazineTeam({ slug }: { slug: string }) {
             </div>
           )}
           <div className="w-full max-w-sm min-w-0">
-            <TeamJob value={role} onChange={setRole} disabled={busy} />
+            <TeamJob value={role} onChange={setRole} busy={busy} />
           </div>
           <Button
             type="submit"
-            disabled={!person || !role || busy || !resultsReady}
+            disabled={!busy && (!person || !role || !resultsReady)}
+            aria-disabled={busy || !person || !role || !resultsReady}
             className="h-auto min-h-9 max-w-full whitespace-normal"
           >
             {t("addButton")}
@@ -329,6 +407,9 @@ export function MagazineTeam({ slug }: { slug: string }) {
                   >
                     {member.name}
                   </p>
+                  {member.isViewer && (
+                    <p className="text-muted-foreground text-sm">{t("you")}</p>
+                  )}
                   <p className="text-muted-foreground text-sm">
                     {member.source === "assigned"
                       ? roles(`${member.role}.name`)
@@ -346,16 +427,21 @@ export function MagazineTeam({ slug }: { slug: string }) {
                       <div className="min-w-0 flex-1">
                         <TeamJob
                           value={member.role}
-                          onChange={(next) => assignJob(member.userId, next)}
-                          disabled={busy}
+                          memberNameId={`${id}-member-${index}`}
+                          onChange={(next, trigger) =>
+                            changeJob(member, next, trigger)
+                          }
+                          busy={busy}
                         />
                       </div>
                     )}
                     <Button
                       type="button"
                       variant="ghost"
-                      disabled={busy}
+                      aria-disabled={busy}
+                      aria-label={t("removeNamed", { name: member.name })}
                       onClick={(event) => {
+                        if (busy || inFlight.current) return;
                         removeTrigger.current = event.currentTarget;
                         setError(null);
                         setRemoving(member);
@@ -392,18 +478,74 @@ export function MagazineTeam({ slug }: { slug: string }) {
             <AlertDialogTitle className="break-words">
               {t("removeTitle", { name: removing?.name ?? "" })}
             </AlertDialogTitle>
-            <AlertDialogDescription>{t("removeBody")}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {t(
+                removing?.isViewer && roleCan(removing.role, "manage")
+                  ? "removeSelfBody"
+                  : "removeBody",
+              )}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           {refusal}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogCancel
+              aria-disabled={busy}
+              onClick={(event) => {
+                if (busy || inFlight.current) event.preventDefault();
+              }}
+            >
+              {t("cancel")}
+            </AlertDialogCancel>
             <Button
               type="button"
               variant="destructive"
-              disabled={busy}
+              aria-disabled={busy}
               onClick={confirmRemove}
             >
               {t("removeConfirm")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={changingSelf !== null}
+        onOpenChange={(open) => {
+          if (!open && !busy) setChangingSelf(null);
+        }}
+      >
+        <AlertDialogContent
+          className="max-h-[calc(100dvh-2rem)] overflow-y-auto"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            restoreAssignmentFocus();
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("loseAccessTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("loseAccessBody")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {refusal}
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              aria-disabled={busy}
+              onClick={(event) => {
+                if (busy || inFlight.current) event.preventDefault();
+              }}
+            >
+              {t("cancel")}
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              variant="ink"
+              aria-disabled={busy}
+              onClick={() => {
+                if (changingSelf)
+                  assignJob(changingSelf.member.userId, changingSelf.role);
+              }}
+            >
+              {t("loseAccessConfirm")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { magazineSettingsPath } from "@/lib/magazines/paths";
 
 interface SettingsSidebarProps {
   slug: string;
@@ -30,7 +31,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
     { key: "topics", href: `${basePath}/topics` },
     { key: "links", href: `${basePath}/links` },
     { key: "classroom", href: `${basePath}/classroom` },
-    { key: "magazine", href: `${basePath}/magazine` },
+    { key: "magazine", href: magazineSettingsPath(slug) },
     { key: "broadcast", href: `${basePath}/broadcast` },
     { key: "autonomy", href: `${basePath}/autonomy` },
     { key: "acquire", href: `${basePath}/acquire` },

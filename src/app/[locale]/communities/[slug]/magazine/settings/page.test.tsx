@@ -56,8 +56,18 @@ vi.mock("@/components/magazines/editor/team/magazine-team", () => ({
   ),
 }));
 vi.mock("@/components/magazines/editor/magazine-settings-form", () => ({
-  MagazineSettingsForm: ({ slug }: { slug: string }) => (
-    <div data-testid="settings" data-slug={slug} />
+  MagazineSettingsForm: ({
+    slug,
+    showOpenTabLink,
+  }: {
+    slug: string;
+    showOpenTabLink?: boolean;
+  }) => (
+    <div
+      data-testid="settings"
+      data-slug={slug}
+      data-show-open-tab={String(showOpenTabLink)}
+    />
   ),
 }));
 
@@ -129,6 +139,16 @@ describe("magazine settings page", () => {
         screen.getByRole("link", { name: "Back to the Magazine tab" }),
       ).toHaveAttribute("href", "/communities/night-owls/magazine");
 
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Magazine" }),
+      ).toBeVisible();
+      expect(
+        screen.getAllByRole("link", { name: "Back to the Magazine tab" }),
+      ).toHaveLength(1);
+      expect(screen.getByTestId("settings")).toHaveAttribute(
+        "data-show-open-tab",
+        "false",
+      );
       unmount();
     }
     expect(state.gateCalls).toEqual(
