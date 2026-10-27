@@ -130,9 +130,9 @@ describe("magazine channel", () => {
 
   it("names the policies the routers dispatch on", () => {
     expect(blogChannel.submitPolicy).toBe("staff_review");
-    expect(magazineChannel.submitPolicy).toBe("editor_approves");
-    expect(blogChannel.publishedEditPolicy).toBe("trusted_author");
-    expect(magazineChannel.publishedEditPolicy).toBe("magazine_editor");
+    expect(magazineChannel.submitPolicy).toBe("magazine_review");
+    expect(blogChannel.editPolicy).toBe("trusted_author");
+    expect(magazineChannel.editPolicy).toBe("magazine");
     expect(blogChannel.commentPolicy).toBe("public_article");
     expect(magazineChannel.commentPolicy).toBe("published_issue_reader");
   });

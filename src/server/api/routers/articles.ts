@@ -15,7 +15,13 @@ import {
 import type { Deps, PayloadClient } from "@/server/magazines/deps";
 import { assertArticleNotPlaced } from "@/server/magazines/article-placement";
 import { magazineError } from "@/server/magazines/errors";
-import { requireEditorOfMagazine } from "@/server/magazines/magazine-articles";
+import { requireMagazineCapability } from "@/server/magazines/magazine-articles";
+import {
+  deleteMagazineArticle,
+  saveMagazineArticle,
+  submitMagazineArticle,
+  type ArticlePatch,
+} from "@/server/magazines/article-submission";
 
 type MemberCtx = {
   db: Deps["db"];
@@ -50,36 +56,16 @@ async function articleWrite<T>(write: () => Promise<T>): Promise<T> {
   }
 }
 
-/**
- * Whether the author may still edit the article, decided by its channel's
- * `publishedEditPolicy` (ADR-0043):
- * - `trusted_author` (blog): a published article only when trusted.
- * - `magazine_editor`: the author must be an editor of the magazine's
- *   community, before and after publishing (slice 1: editors write magazine
- *   articles), so a published issue's typo can be fixed.
- */
-async function assertMayEdit(
+/** The blog's published edits still require a trusted author. */
+async function assertMayEditBlog(
   ctx: MemberCtx,
-  payload: PayloadClient,
   existing: Article,
 ): Promise<void> {
-  const policy = channelFor(existing).publishedEditPolicy;
-  switch (policy) {
-    case "trusted_author":
-      if (existing.status === "published" && !(await isTrustedMember(ctx))) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Cannot edit published articles. Contact an admin.",
-        });
-      }
-      return;
-    case "magazine_editor":
-      await requireEditorOfMagazine(
-        { db: ctx.db, payload },
-        existing.magazine,
-        ctx.session.user.id,
-      );
-      return;
+  if (existing.status === "published" && !(await isTrustedMember(ctx))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Cannot edit published articles. Contact an admin.",
+    });
   }
 }
 
@@ -152,31 +138,6 @@ async function submitForStaffReview(
   return submitted;
 }
 
-/**
- * A magazine's submit: the author is an editor, so marking the article
- * ready IS the approval. Only `reviewStatus` changes: the article stays a
- * draft, earns no submit XP and takes no trusted shortcut; it is published
- * and credited when an issue holding it is published.
- */
-async function markReadyForIssue(
-  ctx: MemberCtx,
-  payload: PayloadClient,
-  article: Article,
-): Promise<Article> {
-  await requireEditorOfMagazine(
-    { db: ctx.db, payload },
-    article.magazine,
-    ctx.session.user.id,
-  );
-  return articleWrite(() =>
-    payload.update({
-      collection: "articles",
-      id: article.id,
-      data: { reviewStatus: "approved" },
-    }),
-  );
-}
-
 export const articlesRouter = createTRPCRouter({
   // ── My Articles ─────────────────────────────────────────────────────────────
 
@@ -246,16 +207,18 @@ export const articlesRouter = createTRPCRouter({
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
 
-      // The channel is fixed here, once: only an editor of the magazine's
-      // community may write for it.
+      // The channel is fixed here, once: the magazine grants write to its team.
       const magazine =
         input.magazineId === undefined
           ? null
-          : await requireEditorOfMagazine(
-              { db: ctx.db, payload },
-              input.magazineId,
-              ctx.session.user.id,
-            );
+          : (
+              await requireMagazineCapability(
+                { db: ctx.db, payload },
+                input.magazineId,
+                ctx.session.user.id,
+                "write",
+              )
+            ).magazine;
 
       // Generate unique slug
       const baseSlug = input.slug
@@ -314,8 +277,31 @@ export const articlesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "Not your article" });
       }
 
-      // Whether a published article may still be edited is the channel's call.
-      await assertMayEdit(ctx, payload, existing);
+      const { id, ...data } = input;
+      const patch: ArticlePatch = {
+        ...(data.title !== undefined && { title: data.title }),
+        ...(data.content !== undefined && { content: data.content }),
+        ...(data.type !== undefined && { type: data.type }),
+        ...(data.tags !== undefined && { tags: data.tags }),
+        ...(data.mediaUrl !== undefined && {
+          mediaUrl: data.mediaUrl ?? undefined,
+        }),
+      };
+
+      switch (channelFor(existing).editPolicy) {
+        case "magazine":
+          return articleWrite(() =>
+            saveMagazineArticle(
+              { db: ctx.db, payload },
+              id,
+              ctx.session.user.id,
+              patch,
+            ),
+          );
+        case "trusted_author":
+          await assertMayEditBlog(ctx, existing);
+          break;
+      }
 
       if (
         existing.status !== "published" &&
@@ -328,20 +314,12 @@ export const articlesRouter = createTRPCRouter({
         });
       }
 
-      const { id, ...data } = input;
-
       const updated = await articleWrite(() =>
         payload.update({
           collection: "articles",
           id,
           data: {
-            ...(data.title !== undefined && { title: data.title }),
-            ...(data.content !== undefined && { content: data.content }),
-            ...(data.type !== undefined && { type: data.type }),
-            ...(data.tags !== undefined && { tags: data.tags }),
-            ...(data.mediaUrl !== undefined && {
-              mediaUrl: data.mediaUrl ?? undefined,
-            }),
+            ...patch,
             ...(existing.reviewStatus === "changes_requested" && {
               reviewStatus: null,
               reviewNote: null,
@@ -384,8 +362,14 @@ export const articlesRouter = createTRPCRouter({
       switch (policy) {
         case "staff_review":
           return submitForStaffReview(ctx, payload, article);
-        case "editor_approves":
-          return markReadyForIssue(ctx, payload, article);
+        case "magazine_review":
+          return articleWrite(() =>
+            submitMagazineArticle(
+              { db: ctx.db, payload },
+              article,
+              ctx.session.user.id,
+            ),
+          );
       }
     }),
 
@@ -405,6 +389,20 @@ export const articlesRouter = createTRPCRouter({
 
       if (article.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not your article" });
+      }
+
+      switch (channelFor(article).editPolicy) {
+        case "magazine":
+          await articleWrite(() =>
+            deleteMagazineArticle(
+              { db: ctx.db, payload },
+              article.id,
+              ctx.session.user.id,
+            ),
+          );
+          return { success: true };
+        case "trusted_author":
+          break;
       }
 
       if (article.status === "published") {

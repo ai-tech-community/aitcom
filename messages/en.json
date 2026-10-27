@@ -5132,6 +5132,12 @@
       }
     },
     "notifications": {
+      "articleSubmitted": {
+        "title": "{author} sent “{title}” to {magazine}",
+        "content": "Read it, then approve it, ask for changes or decline it.",
+        "linkLabel": "Read the article",
+        "author": "A member"
+      },
       "roleAssigned": {
         "title": "You joined the team of {magazine}",
         "linkLabel": "Open the magazine",

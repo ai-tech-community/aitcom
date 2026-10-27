@@ -40,6 +40,14 @@ export function communityMagazinePath(communitySlug: string): string {
   return `/communities/${communitySlug}/magazine`;
 }
 
+/** Where the editors read and decide on an article sent to the magazine. */
+export function magazineReviewPath(
+  communitySlug: string,
+  articleSlug: string,
+): string {
+  return `${communityMagazinePath(communitySlug)}/review/${articleSlug}`;
+}
+
 /** The issue builder for one issue of the community's magazine. */
 export function issueBuilderPath(
   communitySlug: string,

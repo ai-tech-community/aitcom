@@ -1,7 +1,10 @@
 import { createTranslator } from "next-intl";
 
 import { loadMessages } from "@/i18n/messages";
-import { communityMagazinePath } from "@/lib/magazines/paths";
+import {
+  communityMagazinePath,
+  magazineReviewPath,
+} from "@/lib/magazines/paths";
 import type { MagazineRole } from "@/lib/magazines/roles";
 import { clipText } from "@/lib/text-utils";
 import { notifications } from "@/server/db/schema";
@@ -91,5 +94,37 @@ export async function notifyRoleAssigned(
         extra: { magazineRole: input.role },
       },
     ]),
+  );
+}
+
+export async function notifyArticleSubmitted(
+  db: Deps["db"],
+  input: {
+    editorIds: readonly string[];
+    authorName: string | null;
+    articleTitle: string;
+    articleSlug: string;
+    magazineName: string;
+    community: NoticeCommunity;
+  },
+): Promise<void> {
+  await insertMagazineNotices(
+    db,
+    magazineNoticeTranslator().then((t) =>
+      input.editorIds.map((userId) => ({
+        userId,
+        type: MAGAZINE_ARTICLE_SUBMITTED_NOTIFICATION,
+        title: t("notifications.articleSubmitted.title", {
+          author:
+            input.authorName ?? t("notifications.articleSubmitted.author"),
+          title: input.articleTitle,
+          magazine: input.magazineName,
+        }),
+        content: t("notifications.articleSubmitted.content"),
+        communityId: input.community.id,
+        path: magazineReviewPath(input.community.slug, input.articleSlug),
+        linkLabel: t("notifications.articleSubmitted.linkLabel"),
+      })),
+    ),
   );
 }

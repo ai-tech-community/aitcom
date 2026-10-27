@@ -5132,6 +5132,12 @@
       }
     },
     "notifications": {
+      "articleSubmitted": {
+        "title": "{author} stuurde ‘{title}’ naar {magazine}",
+        "content": "Lees het artikel en keur het goed, vraag om aanpassingen of wijs het af.",
+        "linkLabel": "Lees het artikel",
+        "author": "Een lid"
+      },
       "roleAssigned": {
         "title": "Je zit nu in het team van {magazine}",
         "linkLabel": "Open het tijdschrift",

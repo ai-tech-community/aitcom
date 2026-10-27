@@ -190,7 +190,10 @@ export async function loadEditorScope(
   return editorScopeOf(memberships, staff);
 }
 
-/** Active community leaders and staff with edit, unique and sorted for notices. */
+/**
+ * Active community leaders and staff with edit, unique and sorted for notices.
+ * Callers must have checked that the community is live.
+ */
 export async function listMagazineEditorIds(
   database: typeof db,
   magazine: { communityId: string; magazineId: number },

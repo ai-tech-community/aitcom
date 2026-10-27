@@ -7,6 +7,7 @@ import {
   magazineArticleEditPath,
   magazineArticlePath,
   magazinePath,
+  magazineReviewPath,
   magazineSettingsPath,
   magazinesTopicPath,
   magazineWritePath,
@@ -50,6 +51,12 @@ describe("magazine paths", () => {
   it("issueBuilderPath is the issue builder in the community", () => {
     expect(issueBuilderPath("builders", 42)).toBe(
       "/communities/builders/magazine/issues/42/edit",
+    );
+  });
+
+  it("magazineReviewPath opens the article for the editors", () => {
+    expect(magazineReviewPath("c", "a")).toBe(
+      "/communities/c/magazine/review/a",
     );
   });
 
