@@ -16,13 +16,13 @@
 2. **Roles grant capabilities (Strategy-as-data table).** `contributor` → `write`. `editor` → `write`, `edit`. `editor_in_chief` → `write`, `edit`, `manage`. `write` means: write magazine articles and hand them in. `edit` means: issues (build, publish), review, see drafts. `manage` means: magazine settings and the team. Callers ask `standingCan(standing, capability)`. No code outside `roles.ts` compares role names. A new role, or a capability moving between roles, is a one-line change. Queries that must pick roles in SQL use `rolesWith(capability)` (built from the table), never a literal list. `MagazineStanding.role` is for display only (the Magazine tab desk choice goes through `roleCan`); a guard test (Task 10) fails when a role literal appears outside `roles.ts`, messages and tests.
 3. **Community owner/admin = implicit editor-in-chief.** This is not stored. They cannot be given a role (`STAFF_LEADS_COMMUNITY`). Moderators are readers unless given a role. The owner/admin rule lives in one function, `leadsCommunity(communityRole)` in `editorship.ts`; `standingOf`, `listMagazineEditorIds` and `staff-service.ts` all use it, and nothing else names `"owner"`/`"admin"` for magazines.
 4. **A role counts only while its holder is an active community member.** Rows are not deleted when someone leaves or is banned. They stay inert. The team page lists them as "Not a member now" with a Remove button. We rejected deleting rows from every leave, ban and remove path (five call sites in `communities.ts`): that is easy to miss, and a missed path would leave a live role behind.
-5. **`manage` belongs to editors-in-chief, appointed or implicit.** The spec says "owners/admins assign the others". An appointed editor-in-chief would then be only a title. So we let editors-in-chief run the team and the settings too. *(Claude's call. Reversible by removing `manage` from `editor_in_chief` in one table row.)* An appointed editor-in-chief need not be a community admin, so the magazine's settings and team pages move into the magazine area: `/communities/[slug]/magazine/settings` and `/communities/[slug]/magazine/team`. The old `/communities/[slug]/settings/magazine` route redirects to the new settings page.
+5. **`manage` belongs to editors-in-chief, appointed or implicit.** The spec says "owners/admins assign the others". An appointed editor-in-chief would then be only a title. So we let editors-in-chief run the team and the settings too. _(Claude's call. Reversible by removing `manage` from `editor_in_chief` in one table row.)_ An appointed editor-in-chief need not be a community admin, so the magazine's settings and team pages move into the magazine area: `/communities/[slug]/magazine/settings` and `/communities/[slug]/magazine/team`. The old `/communities/[slug]/settings/magazine` route redirects to the new settings page.
 6. **Two ways to hand in an article, chosen by capability.** A writer with `edit` marks it ready (approval, as in slice 1). A contributor sends it for review (`reviewStatus = pending_review`), and editors are notified. `handInFor(canEdit: boolean)` decides, and it is the only place that decides: the UI reads it through `MagazineWriting.handIn`, and `submitMagazineArticle` switches exhaustively on `handInFor(standingCan(standing, "edit"))`. The article editor learns which one through `ArticleDestination.handIn`. The channel policy names change: `submitPolicy: "magazine_review"` (was `editor_approves`) and the field `publishedEditPolicy` is renamed `editPolicy` (it now also governs edits before publication) with the value `"magazine"` (was `magazine_editor`). The channel still only says "the magazine decides"; the magazine module decides how.
 7. **A contributor's article is locked unless it is open for the writer.** Open means: not published, and `reviewStatus` is null or `changes_requested` (`isOpenForWriter`). The one rule "may this writer still change it" is `mayWriterChange(canEdit, article)` in `src/lib/magazines/review.ts` (`canEdit || isOpenForWriter(article)`); the edit page gate, the API (update, submit, delete) and the desk links all call it. **Delete** follows the same rule: a magazine article may be deleted by its author only with `write` and while `mayWriterChange` holds (plus the existing "not published, not placed" checks); so a contributor cannot pull an article that is with the editors or approved, and a writer removed from the team cannot delete. When the writer saves an article that has changes requested, `reviewStatus` clears, so they send it again; for magazine articles the editors' `reviewNote` is **kept** until the next send-in (which sets it to null), so the note stays visible while they work. Lock check and write happen in one transaction under a row lock (Decision 12), so an autosave that read the article before it was sent in cannot change it afterwards. Writers with `edit` may always edit their own articles (slice 1 rule). Nobody in the site edits a contributor's published article in this slice (see Risks).
 8. **Review decisions apply only to `pending_review` articles.** They are `approve` → `approved` (note cleared), `request_changes` → `changes_requested` (note required, 1–2000 characters), and `reject` → `rejected` (note optional). The write is a Payload update without `draft` (like `markReadyForIssue`). The Articles hooks log only `changes_requested` / `rejected` (with the writer as actor) and nothing on approval, so `reviewMagazineArticle` logs its own `magazine_article.reviewed` activity (actor: the reviewer; metadata: `{ decision, magazineId, title }`) for every decision. Magazine articles earn no submit XP: credit comes only when the issue is published (spec).
 9. **Notifications are rows in the `notification` table.** The text is English, taken from `messages/en.json` (the `badges/notify.ts` precedent). Links go in `metadata.reviewPath` / `linkLabel`. They never fail the action that caused them: they are logged and dropped. Types: `magazine_role_assigned`, `magazine_article_submitted`, `magazine_article_reviewed`. There is no email in this slice.
 10. **Credit: XP and the writer badges already fire on issue publish (slice 1).** This slice adds the milestone badge `magazine_published` ("Published in a magazine", glyph `book`). It is awarded right after an article's credit commits, through `awardMilestone`, which never throws. Authors credited before this slice get it from the badge backfill. The backfill gains a small `DERIVED_MILESTONES` registry: one entry now, one entry per future data-derived milestone. Greg runs the backfill CLI on prod.
-11. **Who may read an unplaced magazine article does not change: editors only.** A contributor sees their own text in the article editor. The review page is an editor surface, never indexed. *This narrows the spec* ("visible only to its author and magazine staff", where contributors are staff): contributors do not read each other's unplaced articles. Also *narrowed*: spec Goal 7 says "members can submit articles"; here only members on the team as contributor (or editor) can. Both go in ADR-0045 and the PR's "please check" list.
+11. **Who may read an unplaced magazine article does not change: editors only.** A contributor sees their own text in the article editor. The review page is an editor surface, never indexed. _This narrows the spec_ ("visible only to its author and magazine staff", where contributors are staff): contributors do not read each other's unplaced articles. Also _narrowed_: spec Goal 7 says "members can submit articles"; here only members on the team as contributor (or editor) can. Both go in ADR-0045 and the PR's "please check" list.
 12. **Hand-ins, decisions, saves and deletes of a magazine article serialize on the article row.** Each runs inside `inPayloadTransaction` and first calls `lockArticle(tx, payload, articleId)` (Task 4, `payload-writes.ts`): `SELECT 1 FROM "articles" WHERE "id" = $1 FOR UPDATE`, then `payload.findByID({ draft: true, req: tx.req, disableErrors: true })` (the latest version, read after the lock). The check (`mayWriterChange`, or `reviewStatus === "pending_review"`) runs on that fresh read, and the Payload write uses `req: tx.req`. Notices are sent after commit. So of two decisions at once, the second waits, sees the new status and gets `ARTICLE_NOT_PENDING`; of two send-ins (double click), the second gets `ARTICLE_LOCKED` and no notices; an autosave in flight after a send-in gets `ARTICLE_LOCKED`. This is the shipped `publishIn` pattern (`article-publication.ts`, a conditional claim inside `inPayloadTransaction`); we lock rather than claim with a conditional UPDATE because Payload's draft saves write the latest version, not the main row's column, so the status must be read through Payload after the lock.
 13. **One migration, `src/migrations/20261027a_magazine_staff.ts`.** If `origin/main` has a later migration when Task 1 starts, use the next free date-letter name everywhere below.
 14. **Making an issue or the magazine public in an unlisted community stays with community owners and admins.** In slice 1 only they could pass `confirmUnlistedPublic`. An appointed editor or editor-in-chief who passes `confirmUnlistedPublic: true` (in `updateIssue` or `saveSettings`) gets `UNLISTED_PUBLIC_LEADERS_ONLY` (FORBIDDEN). They can still publish members-only issues, and public issues in a listed community. Reason: the unlisted choice belongs to the community's leaders (ADR-0030 exception in ADR-0042). `MagazineStanding` carries `leadsCommunity: boolean` for this.
@@ -59,23 +59,23 @@
 
 **Create**
 
-| File | Responsibility |
-|---|---|
-| `src/lib/magazines/roles.ts` | `MAGAZINE_ROLES`, capabilities table, `roleCan`, `rolesWith`, `handInFor`, `isMagazineRole` (client-safe). |
-| `src/lib/magazines/review.ts` | `REVIEW_DECISIONS`, `REVIEW_NOTE_MAX`, `reviewStatusFor`, `isOpenForWriter`, `mayWriterChange`, `WRITER_REVIEW_STATUSES`, `writerStatusOf` (client-safe). |
-| `src/migrations/20261027a_magazine_staff.ts` (+ `magazine-staff.integration.test.ts`) | The staff table. |
-| `src/server/magazines/desk.ts` | `loadMagazineDesk`: community + magazine + viewer standing by community slug, for the new magazine-area pages (settings, team, review). Existing gates keep their own lookups, which already go through `loadMagazineEditorship`. |
-| `src/server/magazines/staff-service.ts` | List, search candidates, assign, remove. |
-| `src/server/magazines/notifications.ts` | The inbox notices, built on one private `insertMagazineNotices`. |
-| `src/i18n/messages-parity.test.ts` | en/nl key parity for this slice's namespaces. |
-| `src/server/magazines/article-submission.ts` | Hand-in and the contributor edit rule. |
-| `src/server/magazines/article-review.ts` | Review queue, review page read model, decisions. |
-| `src/components/magazines/editor/desk-list.tsx` | `DeskList`, `UpdatedAt` (moved out of `editor-desk.tsx`). |
-| `src/components/magazines/editor/contributor-desk.tsx` | The contributor's desk on the Magazine tab. |
-| `src/components/magazines/editor/review/{article-review-view,review-actions}.tsx` | The review page body and its decision controls. |
-| `src/components/magazines/editor/team/magazine-team.tsx` | The team page. |
-| `src/app/[locale]/communities/[slug]/magazine/{review/[articleSlug],team,settings}/page.tsx` | Magazine-area routes. |
-| `docs/adr/0045-magazine-roles-are-capabilities-read-through-the-editorship-seam.md` | ADR. |
+| File                                                                                         | Responsibility                                                                                                                                                                                                                    |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/magazines/roles.ts`                                                                 | `MAGAZINE_ROLES`, capabilities table, `roleCan`, `rolesWith`, `handInFor`, `isMagazineRole` (client-safe).                                                                                                                        |
+| `src/lib/magazines/review.ts`                                                                | `REVIEW_DECISIONS`, `REVIEW_NOTE_MAX`, `reviewStatusFor`, `isOpenForWriter`, `mayWriterChange`, `WRITER_REVIEW_STATUSES`, `writerStatusOf` (client-safe).                                                                         |
+| `src/migrations/20261027a_magazine_staff.ts` (+ `magazine-staff.integration.test.ts`)        | The staff table.                                                                                                                                                                                                                  |
+| `src/server/magazines/desk.ts`                                                               | `loadMagazineDesk`: community + magazine + viewer standing by community slug, for the new magazine-area pages (settings, team, review). Existing gates keep their own lookups, which already go through `loadMagazineEditorship`. |
+| `src/server/magazines/staff-service.ts`                                                      | List, search candidates, assign, remove.                                                                                                                                                                                          |
+| `src/server/magazines/notifications.ts`                                                      | The inbox notices, built on one private `insertMagazineNotices`.                                                                                                                                                                  |
+| `src/i18n/messages-parity.test.ts`                                                           | en/nl key parity for this slice's namespaces.                                                                                                                                                                                     |
+| `src/server/magazines/article-submission.ts`                                                 | Hand-in and the contributor edit rule.                                                                                                                                                                                            |
+| `src/server/magazines/article-review.ts`                                                     | Review queue, review page read model, decisions.                                                                                                                                                                                  |
+| `src/components/magazines/editor/desk-list.tsx`                                              | `DeskList`, `UpdatedAt` (moved out of `editor-desk.tsx`).                                                                                                                                                                         |
+| `src/components/magazines/editor/contributor-desk.tsx`                                       | The contributor's desk on the Magazine tab.                                                                                                                                                                                       |
+| `src/components/magazines/editor/review/{article-review-view,review-actions}.tsx`            | The review page body and its decision controls.                                                                                                                                                                                   |
+| `src/components/magazines/editor/team/magazine-team.tsx`                                     | The team page.                                                                                                                                                                                                                    |
+| `src/app/[locale]/communities/[slug]/magazine/{review/[articleSlug],team,settings}/page.tsx` | Magazine-area routes.                                                                                                                                                                                                             |
+| `docs/adr/0045-magazine-roles-are-capabilities-read-through-the-editorship-seam.md`          | ADR.                                                                                                                                                                                                                              |
 
 **Modify**
 
@@ -86,20 +86,31 @@
 ## Task 1: Roles, review values, the staff table and ADR-0045
 
 **Files:**
+
 - Create: `src/lib/magazines/roles.ts`, `src/lib/magazines/review.ts`, `src/migrations/20261027a_magazine_staff.ts`, `docs/adr/0045-magazine-roles-are-capabilities-read-through-the-editorship-seam.md`
 - Modify: `src/server/db/schema.ts` (after `magazineArticleCredits`), `src/migrations/index.ts`, `src/collections/Magazines.ts` (`communityId` field gets `access: { update: () => false }`, with a comment pointing at Decision 1), `docs/adr/0042-magazine-issues-are-read-through-one-access-resolver.md` (an "Amended by ADR-0045" line under its status, and the same note beside Decision 1's "no caller changes" sentence and the "Slice 3 replaces one loader" consequence), `CONTEXT.md`
 - Test: `src/lib/magazines/roles.test.ts`, `src/lib/magazines/review.test.ts`, `src/migrations/magazine-staff.integration.test.ts`
 
 **Interfaces:**
+
 - Produces (`roles.ts`):
   ```ts
-  export const MAGAZINE_ROLES = ["editor_in_chief", "editor", "contributor"] as const; // display order
+  export const MAGAZINE_ROLES = [
+    "editor_in_chief",
+    "editor",
+    "contributor",
+  ] as const; // display order
   export type MagazineRole = (typeof MAGAZINE_ROLES)[number];
   export const MAGAZINE_CAPABILITIES = ["write", "edit", "manage"] as const;
   export type MagazineCapability = (typeof MAGAZINE_CAPABILITIES)[number];
-  export function roleCan(role: MagazineRole | null, capability: MagazineCapability): boolean;
+  export function roleCan(
+    role: MagazineRole | null,
+    capability: MagazineCapability,
+  ): boolean;
   /** The roles that grant a capability, in MAGAZINE_ROLES order: for SQL filters (`inArray(magazineStaff.role, rolesWith("edit"))`). */
-  export function rolesWith(capability: MagazineCapability): readonly MagazineRole[];
+  export function rolesWith(
+    capability: MagazineCapability,
+  ): readonly MagazineRole[];
   export type MagazineHandIn = "mark_ready" | "send_for_review";
   /** The one hand-in decision: with "edit" the writer marks it ready, otherwise sends it for review. */
   export function handInFor(canEdit: boolean): MagazineHandIn;
@@ -107,10 +118,16 @@
   ```
 - Produces (`review.ts`):
   ```ts
-  export const REVIEW_DECISIONS = ["approve", "request_changes", "reject"] as const;
+  export const REVIEW_DECISIONS = [
+    "approve",
+    "request_changes",
+    "reject",
+  ] as const;
   export type ReviewDecision = (typeof REVIEW_DECISIONS)[number];
   export const REVIEW_NOTE_MAX = 2000;
-  export function reviewStatusFor(d: ReviewDecision): "approved" | "changes_requested" | "rejected";
+  export function reviewStatusFor(
+    d: ReviewDecision,
+  ): "approved" | "changes_requested" | "rejected";
   type ArticleState = { status?: string | null; reviewStatus?: string | null };
   /** A contributor may still change or send in the article. */
   export function isOpenForWriter(a: ArticleState): boolean;
@@ -118,7 +135,12 @@
    *  Shared by the edit page gate, articles.update/submit/delete and the desk links. */
   export function mayWriterChange(canEdit: boolean, a: ArticleState): boolean;
   /** Moved from editor-desk.tsx (REVIEW_STATUSES / draftStatusOf), extended with "approved". */
-  export const WRITER_REVIEW_STATUSES = ["pending_review", "changes_requested", "rejected", "approved"] as const;
+  export const WRITER_REVIEW_STATUSES = [
+    "pending_review",
+    "changes_requested",
+    "rejected",
+    "approved",
+  ] as const;
   export type WriterStatus = (typeof WRITER_REVIEW_STATUSES)[number] | "draft";
   export function writerStatusOf(reviewStatus: string | null): WriterStatus;
   ```
@@ -150,33 +172,54 @@
 ## Task 2: The editorship seam reads roles
 
 **Files:**
+
 - Create: `src/server/magazines/desk.ts`
 - Modify: `src/server/magazines/editorship.ts`, `src/server/magazines/magazine-articles.ts`, `src/server/magazines/viewer-role.ts` (comment only: it names `isMagazineEditorRole`, which does not exist; say "every magazine standing (`loadMagazineEditorship`)"), `src/server/magazines/readable-issues.test.ts` (the three one-argument `editorScopeOf(...)` calls gain `, []`), `src/server/magazines/issue-access.test.ts` (the `STANDING` literals gain `role` and `leadsCommunity`)
 - Test: `src/server/magazines/editorship.test.ts` (update), `src/server/magazines/editorship.integration.test.ts` (new), `src/server/magazines/issue-access.integration.test.ts` (add parity rows), existing `readable-issues.test.ts`, `issue-access.test.ts`, `reading.integration.test.ts`, `src/server/api/routers/magazines.integration.test.ts`
 
 **Interfaces:**
+
 - Consumes: `MagazineRole`, `MagazineCapability`, `roleCan`, `rolesWith`, `handInFor`, `mayWriterChange` (Task 1); `magazineStaff` (Task 1).
 - Produces (`editorship.ts`):
   ```ts
   export type MagazineStanding = {
     /** For display only (which desk, which job name). Gates use standingCan, never this. */
-    role: MagazineRole | null;   // owner/admin → "editor_in_chief"; else the staff role while an active member
-    isEditor: boolean;           // roleCan(role, "edit") — unchanged meaning for every reader
-    isMember: boolean;           // active community member
-    leadsCommunity: boolean;     // active owner/admin (Decision 14: only they confirm "public in an unlisted community")
+    role: MagazineRole | null; // owner/admin → "editor_in_chief"; else the staff role while an active member
+    isEditor: boolean; // roleCan(role, "edit") — unchanged meaning for every reader
+    isMember: boolean; // active community member
+    leadsCommunity: boolean; // active owner/admin (Decision 14: only they confirm "public in an unlisted community")
   };
   export const NO_STANDING: MagazineStanding; // all false / null
   /** The one owner/admin rule for magazines (replaces EDITOR_ROLES). Exported for SQL filters: LEADING_COMMUNITY_ROLES. */
   export function leadsCommunity(communityRole: CommunityRole | null): boolean;
   export const LEADING_COMMUNITY_ROLES: readonly CommunityRole[]; // ["owner", "admin"]; leadsCommunity reads it
-  export function standingOf(communityRole: CommunityRole | null, staffRole: MagazineRole | null): MagazineStanding;
-  export function standingCan(standing: MagazineStanding, capability: MagazineCapability): boolean;
-  export function requireCapability(standing: MagazineStanding, capability: MagazineCapability): void; // FORBIDDEN
+  export function standingOf(
+    communityRole: CommunityRole | null,
+    staffRole: MagazineRole | null,
+  ): MagazineStanding;
+  export function standingCan(
+    standing: MagazineStanding,
+    capability: MagazineCapability,
+  ): boolean;
+  export function requireCapability(
+    standing: MagazineStanding,
+    capability: MagazineCapability,
+  ): void; // FORBIDDEN
   // loadMagazineEditorship: signature unchanged; reads the staff row when magazineId !== null.
   export type StaffRoleRow = { communityId: string; role: MagazineRole };
-  export function editorScopeOf(memberships: readonly { communityId: string; role: CommunityRole; status: string }[], staff: readonly StaffRoleRow[] = []): EditorScope;
+  export function editorScopeOf(
+    memberships: readonly {
+      communityId: string;
+      role: CommunityRole;
+      status: string;
+    }[],
+    staff: readonly StaffRoleRow[] = [],
+  ): EditorScope;
   // loadEditorScope: signature unchanged; one more query (staff rows of the user).
-  export async function listMagazineEditorIds(database: typeof db, magazine: { communityId: string; magazineId: number }): Promise<string[]>;
+  export async function listMagazineEditorIds(
+    database: typeof db,
+    magazine: { communityId: string; magazineId: number },
+  ): Promise<string[]>;
   //   active members whose community role is in LEADING_COMMUNITY_ROLES, plus staff rows with role in rolesWith("edit")
   //   whose membership is active; unique, sorted. No role literal in the query.
   ```
@@ -184,24 +227,43 @@
 - Produces (`desk.ts`):
   ```ts
   export type MagazineDesk = {
-    community: { id: string; slug: string; name: string; isListedInDirectory: boolean };
+    community: {
+      id: string;
+      slug: string;
+      name: string;
+      isListedInDirectory: boolean;
+    };
     magazine: Magazine | null;
     standing: MagazineStanding;
   };
   /** Null when there is no live community with this slug. */
-  export async function loadMagazineDesk(deps: Deps, opts: { communitySlug: string; viewerId: string | null }): Promise<MagazineDesk | null>;
+  export async function loadMagazineDesk(
+    deps: Deps,
+    opts: { communitySlug: string; viewerId: string | null },
+  ): Promise<MagazineDesk | null>;
   ```
 - Produces (`magazine-articles.ts`):
+
   ```ts
-  export async function requireMagazineCapability(deps: Deps, magazine: unknown, userId: string, capability: MagazineCapability): Promise<{ magazine: Magazine; standing: MagazineStanding }>; // NOT_FOUND / FORBIDDEN
+  export async function requireMagazineCapability(
+    deps: Deps,
+    magazine: unknown,
+    userId: string,
+    capability: MagazineCapability,
+  ): Promise<{ magazine: Magazine; standing: MagazineStanding }>; // NOT_FOUND / FORBIDDEN
   //   Keeps today's rule: a soft-deleted community (isLiveCommunity false) gives no standing → FORBIDDEN, even for a staff row.
   // requireEditorOfMagazine(deps, magazine, userId) keeps its signature: requireMagazineCapability(…, "edit").magazine
-  export type MagazineWriting = { magazineId: number; magazineName: string; handIn: MagazineHandIn };
+  export type MagazineWriting = {
+    magazineId: number;
+    magazineName: string;
+    handIn: MagazineHandIn;
+  };
   // loadMagazineWriting: built on loadMagazineDesk; needs "write" (was: editor); handIn = handInFor(standingCan(standing, "edit"))
   // loadMagazineArticleForEditing now returns (MagazineWriting & { article: Article; editable: boolean }) | null
   //   editable = mayWriterChange(standingCan(standing, "edit"), article)
   // DraftMagazineArticle gains: reviewNote: string | null
   ```
+
   Between this task and Task 4 a contributor can open the write page while `articles.create`/`update` still need `edit`. That gap is intentional and never ships (the branch merges whole); Task 4 closes it.
 
 - [ ] **Step 1: Update the unit tests** in `editorship.test.ts`:
@@ -229,52 +291,100 @@
 ## Task 3: Team service, role notice and capability-gated editor API
 
 **Files:**
+
 - Create: `src/server/magazines/staff-service.ts`, `src/server/magazines/notifications.ts`
 - Modify: `src/server/magazines/{errors,editorship}.ts`, `src/server/api/routers/magazines.ts`, `src/components/magazines/editor/editor-errors.ts`, `src/server/db/schema.ts` (the `notification.type` comment only), `messages/{en,nl}.json`
 - Create (test): `src/i18n/messages-parity.test.ts`
 - Test: `src/server/magazines/staff-service.integration.test.ts`, `src/server/magazines/notifications.test.ts`, `src/server/magazines/errors.test.ts`, `src/components/magazines/editor/editor-errors.test.ts`, `src/server/api/routers/magazines.integration.test.ts`, `src/i18n/messages-parity.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 2's `loadMagazineEditorship`, `requireCapability`, `standingOf`, `leadsCommunity`, `LEADING_COMMUNITY_ROLES`; Task 1's `rolesWith`, `MAGAZINE_ROLES`; `communityMagazinePath` (`src/lib/magazines/paths.ts`); `escapeLike` (`src/server/db/escape-like.ts`); `clipText` (`src/lib/text-utils.ts`).
 - `staff-service.ts` never names a role or community-role literal: owner/admin through `LEADING_COMMUNITY_ROLES` / `leadsCommunity`, magazine roles through `MAGAZINE_ROLES` / `rolesWith`.
 - Produces (`staff-service.ts`):
   ```ts
   export const STAFF_SEARCH_LIMIT = 10;
-  export type StaffMember = { userId: string; name: string; image: string | null; role: MagazineRole;
-    source: "owner" | "admin" | "assigned"; isActiveMember: boolean };
+  export type StaffMember = {
+    userId: string;
+    name: string;
+    image: string | null;
+    role: MagazineRole;
+    source: "owner" | "admin" | "assigned";
+    isActiveMember: boolean;
+  };
   export type StaffMagazine = { id: number; name: string; communityId: string };
-  export async function listMagazineStaff(database: Deps["db"], magazine: StaffMagazine): Promise<StaffMember[]>;
+  export async function listMagazineStaff(
+    database: Deps["db"],
+    magazine: StaffMagazine,
+  ): Promise<StaffMember[]>;
   //   owners, then admins (role editor_in_chief, isActiveMember true), then assigned rows by MAGAZINE_ROLES order, then name.
   //   An assigned row whose holder is now an active owner/admin is left out (they appear once, as owner/admin; the row stays inert in the table).
-  export type StaffCandidate = { userId: string; name: string; image: string | null };
-  export async function searchStaffCandidates(database: Deps["db"], magazine: StaffMagazine, query: string): Promise<StaffCandidate[]>;
+  export type StaffCandidate = {
+    userId: string;
+    name: string;
+    image: string | null;
+  };
+  export async function searchStaffCandidates(
+    database: Deps["db"],
+    magazine: StaffMagazine,
+    query: string,
+  ): Promise<StaffCandidate[]>;
   //   active members, not owner/admin, without a staff row; name = memberProfiles.displayName ?? user.name; ILIKE on both
-  export async function assignMagazineRole(database: Deps["db"], magazine: StaffMagazine,
-    input: { userId: string; role: MagazineRole }, actor: { userId: string; community: { id: string; slug: string } }): Promise<StaffMember>;
+  export async function assignMagazineRole(
+    database: Deps["db"],
+    magazine: StaffMagazine,
+    input: { userId: string; role: MagazineRole },
+    actor: { userId: string; community: { id: string; slug: string } },
+  ): Promise<StaffMember>;
   //   STAFF_NOT_MEMBER when not an active member; STAFF_LEADS_COMMUNITY for owner/admin;
   //   ONE statement: INSERT … ON CONFLICT (magazine_id, user_id) DO UPDATE SET role = EXCLUDED.role, assigned_by = EXCLUDED.assigned_by,
   //   updated_at = now() WHERE "magazine_staff"."role" IS DISTINCT FROM EXCLUDED.role RETURNING *.
   //   A returned row → notify (new or changed job). No row → the job did not change: no notice; return the current row.
-  export async function removeMagazineRole(database: Deps["db"], magazine: Pick<StaffMagazine, "id">, userId: string): Promise<void>; // idempotent
+  export async function removeMagazineRole(
+    database: Deps["db"],
+    magazine: Pick<StaffMagazine, "id">,
+    userId: string,
+  ): Promise<void>; // idempotent
   ```
 - Produces (`notifications.ts`). One private helper owns the shared rules; each `notify*` only builds text and recipients:
   ```ts
-  type MagazineNotice = { userId: string; type: string; title: string; content: string; communityId: string;
-    path: string; linkLabel: string; extra?: Record<string, unknown> };
+  type MagazineNotice = {
+    userId: string;
+    type: string;
+    title: string;
+    content: string;
+    communityId: string;
+    path: string;
+    linkLabel: string;
+    extra?: Record<string, unknown>;
+  };
   /** Never throws: catches, logs `[magazines] notification failed`, returns. Clips title to 255. Writes
    *  metadata { reviewPath: path, linkLabel, communityId, ...extra }. One multi-row insert. */
-  async function insertMagazineNotices(db: Deps["db"], notices: readonly MagazineNotice[]): Promise<void>;
+  async function insertMagazineNotices(
+    db: Deps["db"],
+    notices: readonly MagazineNotice[],
+  ): Promise<void>;
   /** The English "magazineEditor" translator (createTranslator + loadMessages("en"), as in src/server/badges/notify.ts). */
   async function magazineNoticeTranslator(): Promise<Translator>;
   export const MAGAZINE_ROLE_ASSIGNED_NOTIFICATION = "magazine_role_assigned";
-  export const MAGAZINE_ARTICLE_SUBMITTED_NOTIFICATION = "magazine_article_submitted"; // used in Task 4
-  export const MAGAZINE_ARTICLE_REVIEWED_NOTIFICATION = "magazine_article_reviewed";   // used in Task 5
+  export const MAGAZINE_ARTICLE_SUBMITTED_NOTIFICATION =
+    "magazine_article_submitted"; // used in Task 4
+  export const MAGAZINE_ARTICLE_REVIEWED_NOTIFICATION =
+    "magazine_article_reviewed"; // used in Task 5
   export type NoticeCommunity = { id: string; slug: string };
-  export async function notifyRoleAssigned(db: Deps["db"], input: { userId: string; role: MagazineRole; magazineName: string; community: NoticeCommunity }): Promise<void>;
+  export async function notifyRoleAssigned(
+    db: Deps["db"],
+    input: {
+      userId: string;
+      role: MagazineRole;
+      magazineName: string;
+      community: NoticeCommunity;
+    },
+  ): Promise<void>;
   //   extra: { magazineRole }
   ```
   Later tasks (4, 5, and slices 4–5) add `notify*` functions built on `insertMagazineNotices`; they never write the `notification` table directly.
-- Produces (errors): `MAGAZINE_ERROR_CODES` gains `"STAFF_NOT_MEMBER"` (BAD_REQUEST), `"STAFF_LEADS_COMMUNITY"` (BAD_REQUEST), `"ARTICLE_LOCKED"` (CONFLICT), `"ARTICLE_NOT_PENDING"` (CONFLICT), `"REVIEW_NOTE_REQUIRED"` (BAD_REQUEST) and `"UNLISTED_PUBLIC_LEADERS_ONLY"` (FORBIDDEN). All six are added now, so the client map is complete once. Tasks 4–5 use `ARTICLE_*` and `REVIEW_NOTE_REQUIRED`.
+- Produces (errors): `MAGAZINE_ERROR_CODES` gains `"STAFF_NOT_MEMBER"` (BAD*REQUEST), `"STAFF_LEADS_COMMUNITY"` (BAD_REQUEST), `"ARTICLE_LOCKED"` (CONFLICT), `"ARTICLE_NOT_PENDING"` (CONFLICT), `"REVIEW_NOTE_REQUIRED"` (BAD_REQUEST) and `"UNLISTED_PUBLIC_LEADERS_ONLY"` (FORBIDDEN). All six are added now, so the client map is complete once. Tasks 4–5 use `ARTICLE*\*`and`REVIEW_NOTE_REQUIRED`.
 - Produces (router): `magazineProcedure(capability)` builds `writerProcedure` / `editorProcedure` / `managerProcedure`; `ctx` gains `standing`. Gates: `getSettings`, `saveSettings` → `manage`. `listIssues`, `createIssue`, every issue procedure, `pickerCandidates`, `availableArticles` → `edit`. `myDraftArticles` → `write`. Decision 14: `saveSettings` and `updateIssue` throw `UNLISTED_PUBLIC_LEADERS_ONLY` when `input.confirmUnlistedPublic === true && !ctx.standing.leadsCommunity` (one small router helper `assertMayConfirmUnlistedPublic(standing, confirm)`, called before the service). New `manage` procedures, each with input `{ slug }` plus the following:
   - `listStaff` → `StaffMember[]`
   - `searchStaffCandidates({ query: z.string().trim().max(100) })` → `StaffCandidate[]`
@@ -282,6 +392,7 @@
   - `removeStaffRole({ userId })` → `{ ok: true }`
 
   All of them answer `NOT_FOUND` while the community has no magazine (`requireMagazine`). `requireEditorStanding` is deleted.
+
 - Produces (messages, en + nl): `magazineEditor.roles.<role>.name` ("Editor-in-chief", "Editor", "Contributor") and `.help`:
   - editor_in_chief: "Runs the magazine: its settings, its team, its issues and the articles members send in."
   - editor: "Builds and publishes issues, and reads the articles members send in."
@@ -320,11 +431,13 @@
 ## Task 4: Contributors write and send articles to the editors
 
 **Files:**
+
 - Create: `src/server/magazines/article-submission.ts`
 - Modify: `src/server/articles/channels.ts`, `src/server/api/routers/articles.ts`, `src/server/magazines/notifications.ts`, `src/server/magazines/payload-writes.ts` (`lockArticle`), `src/server/magazines/magazine-articles.ts` (`listDraftArticles` adds `reviewNote`), `src/lib/magazines/paths.ts`, `messages/{en,nl}.json`
 - Test: `src/server/magazines/article-submission.integration.test.ts`, `src/server/articles/channels.test.ts`, `src/lib/magazines/paths.test.ts`, existing `src/server/api/routers/magazines.integration.test.ts`, `src/server/articles/article-surfaces.integration.test.ts`
 
 **Interfaces:**
+
 - Consumes: `requireMagazineCapability`, `listMagazineEditorIds`, `standingCan` (Task 2); `mayWriterChange`, `handInFor` (Task 1); `magazineError` codes `ARTICLE_LOCKED` (Task 3); `MAGAZINE_ARTICLE_SUBMITTED_NOTIFICATION`, `NoticeCommunity`, the private `insertMagazineNotices` (Task 3); `inPayloadTransaction`, `PayloadTransaction` (`payload-writes.ts`).
 - Produces (`paths.ts`): `export function magazineReviewPath(communitySlug: string, articleSlug: string): string; // ${communityMagazinePath}/review/${articleSlug}`
 - Produces (`channels.ts`): `ArticleSubmitPolicy = "staff_review" | "magazine_review"`; the field `publishedEditPolicy` is renamed **`editPolicy`**, type `ArticleEditPolicy = "trusted_author" | "magazine"`, with doc comments saying the magazine module decides (Decision 6). Update every reader (`grep -rn "publishedEditPolicy\|editor_approves\|magazine_editor" src`: `channels.ts`, `channels.test.ts`, `articles.ts`).
@@ -332,7 +445,11 @@
   ```ts
   /** Decision 12: takes the article row lock (SELECT 1 FROM "articles" WHERE "id" = $1 FOR UPDATE), then reads the
    *  latest version through Payload (draft: true, req: tx.req, disableErrors: true, depth 0). Null when gone. */
-  export async function lockArticle(tx: PayloadTransaction, payload: PayloadClient, articleId: number): Promise<Article | null>;
+  export async function lockArticle(
+    tx: PayloadTransaction,
+    payload: PayloadClient,
+    articleId: number,
+  ): Promise<Article | null>;
   ```
 - Produces (`article-submission.ts`). Each runs inside `inPayloadTransaction`, starts with `lockArticle`, checks on the locked read, and writes with `req: tx.req`; notices go out after commit.
   ```ts
@@ -340,16 +457,33 @@
    *  "mark_ready" → markReadyForIssue; "send_for_review" → ARTICLE_LOCKED unless mayWriterChange(false, locked),
    *  write { reviewStatus: "pending_review", reviewNote: null } (no `draft` flag, like markReadyForIssue), no XP,
    *  then notifyArticleSubmitted to listMagazineEditorIds. */
-  export async function submitMagazineArticle(deps: Deps, article: Article, userId: string): Promise<Article>;
+  export async function submitMagazineArticle(
+    deps: Deps,
+    article: Article,
+    userId: string,
+  ): Promise<Article>;
   /** Unexported; moved from the articles router. The caller already checked "edit". Writes { reviewStatus: "approved" }. */
-  async function markReadyForIssue(deps: Deps, tx: PayloadTransaction, article: Article): Promise<Article>;
+  async function markReadyForIssue(
+    deps: Deps,
+    tx: PayloadTransaction,
+    article: Article,
+  ): Promise<Article>;
   /** The magazine's save (editPolicy "magazine"): FORBIDDEN without "write"; ARTICLE_LOCKED unless
    *  mayWriterChange(standingCan(standing,"edit"), locked). Applies `patch` with draft: locked.status === "draft".
    *  When locked.reviewStatus === "changes_requested": sets reviewStatus null and KEEPS reviewNote (Decision 7). */
-  export async function saveMagazineArticle(deps: Deps, articleId: number, userId: string, patch: ArticlePatch): Promise<Article>;
+  export async function saveMagazineArticle(
+    deps: Deps,
+    articleId: number,
+    userId: string,
+    patch: ArticlePatch,
+  ): Promise<Article>;
   /** The magazine's delete rule: FORBIDDEN without "write"; ARTICLE_LOCKED unless mayWriterChange(…, locked);
    *  then the router's existing "not published / not placed" checks and payload.delete with req: tx.req. */
-  export async function deleteMagazineArticle(deps: Deps, articleId: number, userId: string): Promise<void>;
+  export async function deleteMagazineArticle(
+    deps: Deps,
+    articleId: number,
+    userId: string,
+  ): Promise<void>;
   ```
   `ArticlePatch` is the `{ title?, content?, type?, tags?, mediaUrl? }` shape `articles.update` builds today (export it from the router's helper or define it here; one definition).
 - Produces (`notifications.ts`): `notifyArticleSubmitted(db, input: { editorIds: readonly string[]; authorName: string | null; articleTitle: string; articleSlug: string; magazineName: string; community: NoticeCommunity }): Promise<void>`, built on `insertMagazineNotices`. It writes one row per editor. `reviewPath` = `magazineReviewPath(community.slug, articleSlug)`. Copy is `magazineEditor.notifications.articleSubmitted.{title,content,linkLabel}`: "{author} sent “{title}” to {magazine}" / "Read it, then approve it, ask for changes or decline it." / "Read the article". When the name is null, `{author}` is "A member".
@@ -376,25 +510,58 @@
 ## Task 5: Editors review articles in the site
 
 **Files:**
+
 - Create: `src/server/magazines/article-review.ts`
 - Modify: `src/server/magazines/notifications.ts`, `src/server/api/routers/magazines.ts`, `messages/{en,nl}.json`
 - Test: `src/server/magazines/article-review.integration.test.ts`
 
 **Interfaces:**
+
 - Consumes: `REVIEW_DECISIONS`, `REVIEW_NOTE_MAX`, `reviewStatusFor` (Task 1); `loadMagazineDesk`, `standingCan` (Task 2); `ARTICLE_NOT_PENDING`, `REVIEW_NOTE_REQUIRED` (Task 3); `insertMagazineNotices` (Task 3); `lockArticle`, `inPayloadTransaction` (Task 4, `payload-writes.ts`); `logActivity` (`src/server/agent/activity.ts`); `magazineArticleEditPath`, `communityMagazinePath`, `magazineReviewPath` (`paths.ts`).
 - Produces (`article-review.ts`):
   ```ts
-  export type PendingMagazineArticle = { id: number; slug: string; title: string; authorName: string | null; sentAt: string /* updatedAt */ };
-  export async function listPendingArticles(payload: PayloadClient, magazineId: number): Promise<PendingMagazineArticle[]>;
+  export type PendingMagazineArticle = {
+    id: number;
+    slug: string;
+    title: string;
+    authorName: string | null;
+    sentAt: string; /* updatedAt */
+  };
+  export async function listPendingArticles(
+    payload: PayloadClient,
+    magazineId: number,
+  ): Promise<PendingMagazineArticle[]>;
   //   magazine = id, reviewStatus = pending_review, draft: true, sort "updatedAt" (oldest first), limit 100
-  export type ArticleForReview = { id: number; slug: string; title: string; type: string | null; authorName: string | null;
-    content: unknown; reviewStatus: string | null; reviewNote: string | null; updatedAt: string };
-  export type ReviewPageData = { magazine: { id: number; name: string }; article: ArticleForReview };
+  export type ArticleForReview = {
+    id: number;
+    slug: string;
+    title: string;
+    type: string | null;
+    authorName: string | null;
+    content: unknown;
+    reviewStatus: string | null;
+    reviewNote: string | null;
+    updatedAt: string;
+  };
+  export type ReviewPageData = {
+    magazine: { id: number; name: string };
+    article: ArticleForReview;
+  };
   /** Editors only ("edit"); the article must be this magazine's and written by a member; latest draft. Null → 404. */
-  export async function loadArticleForReview(deps: Deps, opts: { communitySlug: string; articleSlug: string; viewerId: string | null }): Promise<ReviewPageData | null>;
-  export async function reviewMagazineArticle(deps: Deps, magazine: Magazine,
+  export async function loadArticleForReview(
+    deps: Deps,
+    opts: {
+      communitySlug: string;
+      articleSlug: string;
+      viewerId: string | null;
+    },
+  ): Promise<ReviewPageData | null>;
+  export async function reviewMagazineArticle(
+    deps: Deps,
+    magazine: Magazine,
     input: { articleId: number; decision: ReviewDecision; note?: string },
-    reviewer: { userId: string; community: { id: string; slug: string } }): Promise<{ reviewStatus: "approved" | "changes_requested" | "rejected" }>;
+    reviewer: { userId: string; community: { id: string; slug: string } },
+  ): Promise<{ reviewStatus: "approved" | "changes_requested" | "rejected" }>;
   //   REVIEW_NOTE_REQUIRED for request_changes with an empty trimmed note (checked first, before any read);
   //   inside inPayloadTransaction: lockArticle → null (deleted) or another magazine's → NOT_FOUND (never Payload's NotFound/500);
   //   ARTICLE_NOT_PENDING unless the locked read is pending_review;
@@ -434,10 +601,12 @@
 ## Task 6: "Published in a magazine" badge
 
 **Files:**
+
 - Modify: `src/lib/badges/catalog.ts`, `src/server/badges/{engine,backfill}.ts`, `src/server/magazines/article-publication.ts`, `scripts/backfill-badges.ts` (header comment only), `messages/{en,nl}.json` (`badges.names.magazine_published`, `badges.descriptions.magazine_published`)
 - Test: `src/lib/badges/catalog.test.ts`, `src/server/magazines/issue-service.integration.test.ts`, `src/server/badges/backfill.integration.test.ts`
 
 **Interfaces:**
+
 - Consumes: `awardMilestone(db, userId, slug)` (`src/server/badges/engine.ts`); `creditPendingMagazineArticles` (`article-publication.ts`, unchanged signature).
 - Produces:
   ```ts
@@ -476,16 +645,26 @@
 ## Task 7: The writer's side in the UI — article editor and the Magazine tab desks
 
 **Files:**
+
 - Create: `src/components/magazines/editor/desk-list.tsx`, `src/components/magazines/editor/contributor-desk.tsx`
 - Modify: `src/components/article-editor/destination.ts`, `src/components/magazines/editor/magazine-article-workspace.tsx`, `src/components/magazines/editor/editor-desk.tsx`, `src/components/magazines/community/magazine-tab.tsx`, `src/server/magazines/reading.ts` (`loadCommunityMagazineTab`), `src/server/magazines/magazine-articles.ts` (`listWriterArticles`), `src/server/api/routers/magazines.ts` (`myMagazineArticles`), `src/components/magazines/test-fixtures.ts`, `src/app/[locale]/communities/[slug]/magazine/articles/[articleSlug]/edit/page.tsx`, `messages/{en,nl}.json`
 - Test: `src/components/article-editor/destination.test.ts`, `src/components/article-editor/article-editor-magazine.test.tsx`, `src/components/magazines/editor/editor-desk.test.tsx`, `src/components/magazines/editor/contributor-desk.test.tsx` (new), `src/components/magazines/community/magazine-tab.test.tsx`, `src/app/[locale]/communities/[slug]/magazine/articles/[articleSlug]/edit/page.test.tsx`, `src/server/magazines/reading.integration.test.ts`, `src/server/api/routers/magazines.integration.test.ts` (add `myMagazineArticles: "write"` to `PROCEDURE_CAPABILITY`)
 
 **Interfaces:**
+
 - Consumes: `MagazineWriting.handIn`, `loadMagazineArticleForEditing(...).editable`, `loadMagazineEditorship` (Task 2); `myDraftArticles` with `reviewNote` (Task 4); `reviewQueue` (Task 5); `magazineReviewPath` (Task 4); `roleCan`, `mayWriterChange`, `WRITER_REVIEW_STATUSES`, `writerStatusOf` (Task 1). Settings links use the existing `magazineSettingsPath`. The Team link and its test belong to Task 9 (`magazineTeamPath` does not exist yet).
 - Produces:
   ```ts
   // destination.ts
-  export type ArticleDestination = { kind: "blog" } | { kind: "magazine"; magazineId: number; magazineName: string; communitySlug: string; handIn: MagazineHandIn };
+  export type ArticleDestination =
+    | { kind: "blog" }
+    | {
+        kind: "magazine";
+        magazineId: number;
+        magazineName: string;
+        communitySlug: string;
+        handIn: MagazineHandIn;
+      };
   // DestinationBehaviour key unions gain "magazine.sendForReview", "magazine.sentForReview",
   // "magazine.reviewPrePublishTitle", "magazine.reviewPrePublishSubtitle"; chosen by an exhaustive switch on handIn
   // reading.ts — loadCommunityMagazineTab's result gains: viewerRole: MagazineRole | null  (viewerIsEditor stays).
@@ -494,14 +673,26 @@
   //   overriding the shelf's scope-derived flag, so the two fields cannot disagree. (loadMagazineShelf is unchanged.)
   // magazine-articles.ts
   /** The author's unpublished articles for the magazine, any review status (approved included), -updatedAt, same limit as listDraftArticles. */
-  export async function listWriterArticles(payload: PayloadClient, magazineId: number, authorId: string): Promise<DraftMagazineArticle[]>;
+  export async function listWriterArticles(
+    payload: PayloadClient,
+    magazineId: number,
+    authorId: string,
+  ): Promise<DraftMagazineArticle[]>;
   // router: myMagazineArticles({ slug }) → write; DraftMagazineArticle[]  ([] without a magazine)
   // editor-desk.tsx: the local REVIEW_STATUSES / draftStatusOf are deleted; it imports writerStatusOf from review.ts
-  export function EditorDesk(props: { slug: string; canManage: boolean }): JSX.Element;
+  export function EditorDesk(props: {
+    slug: string;
+    canManage: boolean;
+  }): JSX.Element;
   // contributor-desk.tsx
   export function ContributorDesk(props: { slug: string }): JSX.Element;
   // desk-list.tsx
-  export function DeskList(props: { label: string; query: ListQuery; empty: string | null; children: ReactNode }): JSX.Element;
+  export function DeskList(props: {
+    label: string;
+    query: ListQuery;
+    empty: string | null;
+    children: ReactNode;
+  }): JSX.Element;
   export function UpdatedAt(props: { value: string }): JSX.Element;
   ```
 - Copy (en; nl alongside):
@@ -536,16 +727,25 @@
 ## Task 8: The review page
 
 **Files:**
+
 - Create: `src/app/[locale]/communities/[slug]/magazine/review/[articleSlug]/page.tsx`, `src/components/magazines/editor/review/article-review-view.tsx`, `src/components/magazines/editor/review/review-actions.tsx`
 - Modify: `messages/{en,nl}.json`
 - Test: `src/app/[locale]/communities/[slug]/magazine/review/[articleSlug]/page.test.tsx`, `src/components/magazines/editor/review/review-actions.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `loadArticleForReview`, `ReviewPageData` (Task 5); `api.magazines.reviewArticle` (Task 5); `REVIEW_NOTE_MAX` (Task 1); `readEditorError`; `LexicalRenderer` (`src/lib/lexical.tsx`); `communityMagazinePath`, `magazineReviewPath`.
 - Produces:
   ```ts
-  export function ArticleReviewView(props: { data: ReviewPageData; communitySlug: string }): JSX.Element; // server component
-  export function ReviewActions(props: { communitySlug: string; articleId: number; articleTitle: string }): JSX.Element; // "use client"
+  export function ArticleReviewView(props: {
+    data: ReviewPageData;
+    communitySlug: string;
+  }): JSX.Element; // server component
+  export function ReviewActions(props: {
+    communitySlug: string;
+    articleId: number;
+    articleTitle: string;
+  }): JSX.Element; // "use client"
   ```
 - Page: `dynamic = "force-dynamic"`, metadata `{ title: t("metaTitle"), robots: { index: false } }`. Guests are redirected to sign-in with `redirect=` set to the review path (same shape as the write page). `null` → `notFound()`.
 - Layout (community frame, workspace): a back link "Back to the Magazine tab". The title (h1) and the line "By {author} · sent {date}" (date in mono). A status line when the article is not waiting ("Approved", "Changes asked for" plus the note, "Not accepted"). The article body in `max-w-[72ch]` through `<LexicalRenderer content>`. Then `ReviewActions`, shown only for `pending_review`, in a bordered panel below the text with heading "Your decision".
@@ -576,16 +776,18 @@
 ## Task 9: The team page, and the magazine settings move into the magazine area
 
 **Files:**
+
 - Create: `src/app/[locale]/communities/[slug]/magazine/team/page.tsx`, `src/app/[locale]/communities/[slug]/magazine/settings/page.tsx`, `src/components/magazines/editor/team/magazine-team.tsx`
 - Modify: `src/lib/magazines/paths.ts`, `src/app/[locale]/communities/[slug]/settings/magazine/page.tsx` (becomes a redirect), `src/components/magazines/editor/editor-desk.tsx` (Team link), `messages/{en,nl}.json`
 - Test: `src/lib/magazines/paths.test.ts`, `src/components/magazines/editor/editor-desk.test.tsx`, `src/components/magazines/editor/team/magazine-team.test.tsx`, `src/app/[locale]/communities/[slug]/magazine/team/page.test.tsx`, `src/app/[locale]/communities/[slug]/magazine/settings/page.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `loadMagazineDesk`, `standingCan` (Task 2); `listStaff`, `searchStaffCandidates`, `assignStaffRole`, `removeStaffRole`, `StaffMember`, `StaffCandidate` (Task 3); `MAGAZINE_ROLES`, `magazineEditor.roles.*` copy (Tasks 1, 3); the existing `MagazineSettingsForm`.
 - Produces (`paths.ts`):
   ```ts
   export function magazineSettingsPath(communitySlug: string): string; // CHANGED → `${communityMagazinePath}/settings`
-  export function magazineTeamPath(communitySlug: string): string;     // `${communityMagazinePath}/team`
+  export function magazineTeamPath(communitySlug: string): string; // `${communityMagazinePath}/team`
   ```
 - Both new pages are RSC with `dynamic = "force-dynamic"`, `robots: { index: false }`, and a sign-in redirect for guests.
   - Settings page: `desk` is null, or the viewer lacks `manage` → `notFound()`. A community without a magazine is fine for `manage` (owner/admin start one here). It renders a back link and `<MagazineSettingsForm slug>`.
@@ -622,10 +824,12 @@
 ## Task 10: Slice guarantees, visual check and docs
 
 **Files:**
+
 - Create: `src/server/magazines/contributors.integration.test.ts`, `src/lib/magazines/roles-boundary.test.ts`
 - Modify: `DESIGN.md`, `docs/adr/0045-magazine-roles-are-capabilities-read-through-the-editorship-seam.md` (Consequences), `CONTEXT.md` (only if a term changed during the build)
 
 **Interfaces:**
+
 - Consumes: everything above, through `createCaller` only (the whole slice end to end).
 
 - [ ] **Step 1: Write the end-to-end guarantee test** `contributors.integration.test.ts` (DB). `it("a member goes from team invite to published contributor")`, in one test, in order:
