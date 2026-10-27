@@ -268,7 +268,7 @@ describe.skipIf(!isLocalDbConfigured())(
         ["weekday", 0],
         ["auto_publish_days", 15],
         ["cadence", "daily"],
-        ["visibility", "teaser"],
+        ["visibility", "everyone"],
         ["layout", "grid"],
         ["look_back", "forever"],
         ["when_ready", "publish_now"],

@@ -88,7 +88,7 @@ export async function generateMetadata({
     ),
     // The effective visibility, so an unconfirmed public issue in an
     // unlisted community stays out of search (F10).
-    ...(isMagazineArticleIndexable(issue, article)
+    ...(isMagazineArticleIndexable(issue, article, magazine)
       ? {}
       : { robots: { index: false } }),
   };

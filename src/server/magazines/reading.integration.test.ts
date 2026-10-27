@@ -143,6 +143,12 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
       });
       const magazineIds = mags.map((mag) => mag.id);
       if (magazineIds.length > 0) {
+        await db
+          .delete(schema.magazineReads)
+          .where(inArray(schema.magazineReads.magazineId, magazineIds));
+        await db
+          .delete(schema.magazineSubscriptions)
+          .where(inArray(schema.magazineSubscriptions.magazineId, magazineIds));
         // Deleting the issues clears their articles' placement (the
         // foreign key is ON DELETE set null).
         await payload.delete({
@@ -664,6 +670,98 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     const asEditor = await page(fx.editorId);
     expect(asEditor!.access).toBe("editor");
     expect(asEditor!.issue.status).toBe("draft");
+  });
+
+  it("a hidden magazine leaves the home and the sitemap but its pages still open", async () => {
+    const { magazineSitemapPaths } = await import("./sitemap-paths");
+    const c = await community("hidden");
+    const mag = await magazineIn(c, "hidden");
+    const art = await approvedArticle("hidden", mag.id);
+    const issue = await publishedIssue(c, mag, "Hidden issue", {
+      coverImageUrl: "https://example.test/hidden-cover.png",
+      items: [{ kind: "article", articleId: art.id }],
+    });
+    const homeBefore = await m.reading.loadMagazinesHome(m, { locale: LOCALE });
+    expect(ids(homeBefore.magazines)).toContain(Number(mag.id));
+    const prefix = `/magazines/${mag.slug}`;
+    const beforePaths = await magazineSitemapPaths(m);
+    expect(beforePaths).toContain(prefix);
+    expect(beforePaths).toContain(`${prefix}/${issue.slug}`);
+    expect(beforePaths).toContain(`${prefix}/${issue.slug}/${art.slug}`);
+    await m.payload.update({
+      collection: "magazines",
+      id: mag.id,
+      data: { listingHidden: true },
+    });
+    const home = await m.reading.loadMagazinesHome(m, { locale: LOCALE });
+    expect(ids(home.magazines)).not.toContain(Number(mag.id));
+    expect(home.featured?.id).not.toBe(Number(issue.id));
+    expect(ids(home.justPublished)).not.toContain(Number(issue.id));
+    expect(
+      (await magazineSitemapPaths(m)).some((path) => path.startsWith(prefix)),
+    ).toBe(false);
+    const opts = {
+      magazineSlug: mag.slug,
+      viewerId: fx.outsiderId,
+      locale: LOCALE,
+    };
+    expect(
+      (await m.reading.loadIssuePage(m, { ...opts, issueSlug: issue.slug }))
+        ?.magazine.staffHidden,
+    ).toBe(true);
+    expect(
+      (await m.reading.loadMagazineShelf(m, opts))?.magazine.staffHidden,
+    ).toBe(true);
+    expect(
+      (
+        await m.reading.loadMagazineArticlePage(m, {
+          ...opts,
+          issueSlug: issue.slug,
+          articleSlug: art.slug,
+        })
+      )?.magazine.staffHidden,
+    ).toBe(true);
+    expect(
+      (
+        await m.reading.loadCommunityMagazineTab(m, {
+          communitySlug: c.slug,
+          viewerId: fx.outsiderId,
+          locale: LOCALE,
+        })
+      )?.latest?.id,
+    ).toBe(Number(issue.id));
+  });
+
+  it("saving the settings never shows a hidden magazine again", async () => {
+    const c = await community("hidden-settings");
+    const mag = await magazineIn(c, "hidden-settings");
+    await m.payload.update({
+      collection: "magazines",
+      id: mag.id,
+      data: { listingHidden: true },
+    });
+    const hidden = await m.payload.findByID({
+      collection: "magazines",
+      id: mag.id,
+      depth: 0,
+    });
+    const saved = await m.magazines.saveMagazineSettings(
+      m,
+      c,
+      {
+        name: "Changed name",
+        slug: mag.slug,
+        topics: [],
+        defaultVisibility: "public",
+      },
+      fx.editorId,
+      true,
+    );
+    expect(saved).toMatchObject({
+      listingHidden: true,
+      listingHiddenAt: hidden.listingHiddenAt,
+      listingHiddenBy: hidden.listingHiddenBy,
+    });
   });
 
   // ── Community tab ─────────────────────────────────────────────────────

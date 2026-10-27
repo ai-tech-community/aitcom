@@ -522,6 +522,15 @@ export interface Magazine {
    * Better Auth user ID.
    */
   createdBy: string;
+  /**
+   * Hide this magazine from the Magazines page and from search engines. Its pages still open by link.
+   */
+  listingHidden?: boolean | null;
+  listingHiddenAt?: string | null;
+  /**
+   * Payload admin user who hid it
+   */
+  listingHiddenBy?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2814,6 +2823,9 @@ export interface MagazinesSelect<T extends boolean = true> {
   publicConfirmedBy?: T;
   publicConfirmedAt?: T;
   createdBy?: T;
+  listingHidden?: T;
+  listingHiddenAt?: T;
+  listingHiddenBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }

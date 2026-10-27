@@ -180,6 +180,9 @@ describe("MagazineArticle", () => {
     // Stored public but unconfirmed in an unlisted community: members-only.
     for (const data of [
       articlePage({
+        magazine: { ...articlePage().magazine, staffHidden: true },
+      }),
+      articlePage({
         issue: { visibility: "public", effectiveVisibility: "members" },
       }),
       articlePage({

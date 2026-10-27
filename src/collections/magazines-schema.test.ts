@@ -11,9 +11,11 @@ import {
   SCHEDULE_ORIGINS,
 } from "@/lib/magazines/values";
 
+import type { Magazine } from "@/payload-types";
+
 import { Articles } from "./Articles";
 import { MagazineIssues } from "./MagazineIssues";
-import { Magazines } from "./Magazines";
+import { Magazines, stampListingHidden } from "./Magazines";
 
 type Field = {
   name?: string;
@@ -47,6 +49,9 @@ describe("magazines collection", () => {
       "publicConfirmedBy",
       "publicConfirmedAt",
       "createdBy",
+      "listingHidden",
+      "listingHiddenAt",
+      "listingHiddenBy",
     ]);
     expect(pick(Magazines.fields, "communityId").unique).toBe(true);
     expect(pick(Magazines.fields, "slug").unique).toBe(true);
@@ -56,6 +61,63 @@ describe("magazines collection", () => {
       ...ISSUE_VISIBILITIES,
     ]);
     expect(visibility.defaultValue).toBe("members");
+  });
+  it("has the staff switch fields", () => {
+    expect(pick(Magazines.fields, "listingHidden")).toMatchObject({
+      type: "checkbox",
+      defaultValue: false,
+      admin: {
+        description:
+          "Hide this magazine from the Magazines page and from search engines. Its pages still open by link.",
+      },
+    });
+    expect(pick(Magazines.fields, "listingHiddenAt")).toMatchObject({
+      type: "date",
+      admin: { readOnly: true },
+    });
+    expect(pick(Magazines.fields, "listingHiddenBy")).toMatchObject({
+      type: "text",
+      admin: { readOnly: true, description: "Payload admin user who hid it" },
+    });
+    expect(Magazines.hooks?.beforeChange).toContain(stampListingHidden);
+  });
+
+  it("stamps who hid a magazine and clears it when shown again", async () => {
+    const stamp = async (
+      data: Partial<Magazine>,
+      originalDoc: Partial<Magazine>,
+      user: { id: number } | null = { id: 7 },
+    ) =>
+      stampListingHidden({
+        data,
+        originalDoc,
+        req: { user },
+      } as never) as Partial<Magazine>;
+    const hidden = await stamp(
+      { listingHidden: true },
+      { listingHidden: false },
+    );
+    expect(hidden).toMatchObject({ listingHidden: true, listingHiddenBy: "7" });
+    expect(new Date(hidden.listingHiddenAt!).toISOString()).toBe(
+      hidden.listingHiddenAt,
+    );
+    expect(await stamp({ listingHidden: false }, hidden)).toEqual({
+      listingHidden: false,
+      listingHiddenAt: null,
+      listingHiddenBy: null,
+    });
+    expect(await stamp({ name: "New name" }, hidden)).toEqual({
+      name: "New name",
+    });
+    expect(await stamp({ listingHidden: true }, hidden)).toEqual({
+      listingHidden: true,
+    });
+    expect(
+      await stamp({ listingHidden: false }, { listingHidden: null }),
+    ).toEqual({ listingHidden: false });
+    expect(await stamp({ listingHidden: true }, {}, null)).toMatchObject({
+      listingHiddenBy: null,
+    });
   });
 });
 

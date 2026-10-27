@@ -10,6 +10,7 @@ import {
 
 import type { Deps, PayloadClient } from "./deps";
 import { loadIssuePlaces } from "./issue-places";
+import { hiddenMagazineIds } from "./listing";
 import { loadIssueReadScope, readableIssueIds } from "./readable-issues";
 
 /**
@@ -24,9 +25,12 @@ export async function magazineSitemapPaths(
   deps: Pick<Deps, "db"> & { payload: Pick<PayloadClient, "find"> },
 ): Promise<string[]> {
   const { db, payload } = deps;
+  const scope = await loadIssueReadScope(db, null);
+  const hidden = await hiddenMagazineIds(payload);
   const issueIds = await readableIssueIds(
     payload,
-    await loadIssueReadScope(db, null),
+    scope,
+    hidden.length > 0 ? { magazine: { not_in: hidden } } : undefined,
   );
   const articleWhere = readableMagazineArticleWhere(issueIds);
   if (articleWhere === null) return [MAGAZINES_HOME_PATH];

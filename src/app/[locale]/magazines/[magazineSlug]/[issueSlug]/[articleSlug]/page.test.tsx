@@ -125,6 +125,15 @@ describe("magazine article page", () => {
     }
   });
 
+  it("keeps a staff-hidden magazine out of search while the page still opens", async () => {
+    state.data = articlePage();
+    state.data.magazine.staffHidden = true;
+    expect((await generateMetadata({ params })).robots).toEqual({
+      index: false,
+    });
+    await expect(MagazineArticlePage({ params })).resolves.toBeTruthy();
+  });
+
   it("uses the article image as the share image when there is one", async () => {
     state.data = articlePage({
       article: magazineArticle({ mediaUrl: "https://cdn.example.com/a.jpg" }),

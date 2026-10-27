@@ -14,8 +14,15 @@ type IndexFacts = {
 };
 
 /** A published issue anyone may read. */
-export function isIssueIndexable(issue: IndexFacts): boolean {
-  return issue.status === "published" && issue.effectiveVisibility === "public";
+export function isIssueIndexable(
+  issue: IndexFacts,
+  magazine: { staffHidden: boolean },
+): boolean {
+  return (
+    !magazine.staffHidden &&
+    issue.status === "published" &&
+    issue.effectiveVisibility === "public"
+  );
 }
 
 type ArticleFacts = { status: "draft" | "published" };
@@ -35,6 +42,17 @@ export function isMagazineArticleOut(
 export function isMagazineArticleIndexable(
   issue: IndexFacts,
   article: ArticleFacts,
+  magazine: { staffHidden: boolean },
 ): boolean {
-  return isIssueIndexable(issue) && isMagazineArticleOut(issue, article);
+  return (
+    isIssueIndexable(issue, magazine) && isMagazineArticleOut(issue, article)
+  );
+}
+
+/** A magazine staff did not hide, with at least one indexable issue. */
+export function isShelfIndexable(
+  magazine: { staffHidden: boolean },
+  issues: readonly IndexFacts[],
+): boolean {
+  return issues.some((issue) => isIssueIndexable(issue, magazine));
 }

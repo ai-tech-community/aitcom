@@ -1,10 +1,30 @@
-import type { CollectionConfig } from "payload";
+import type { CollectionBeforeChangeHook, CollectionConfig } from "payload";
 
 import {
   ISSUE_VISIBILITIES,
   ISSUE_VISIBILITY_LABELS,
   MAX_MAGAZINE_TOPICS,
 } from "@/lib/magazines/values";
+import type { Magazine } from "@/payload-types";
+
+/** Stamp staff moderation changes without rewriting the record on other saves. */
+export const stampListingHidden: CollectionBeforeChangeHook<Magazine> = ({
+  data,
+  originalDoc,
+  req,
+}) => {
+  if (
+    data.listingHidden === undefined ||
+    data.listingHidden === (originalDoc?.listingHidden ?? false)
+  )
+    return data;
+  return {
+    ...data,
+    listingHiddenAt: data.listingHidden ? new Date().toISOString() : null,
+    listingHiddenBy:
+      data.listingHidden && req.user?.id != null ? String(req.user.id) : null,
+  };
+};
 
 /**
  * A community's magazine (spec 2026-10-26, ADR-0043). One per community: the
@@ -19,6 +39,7 @@ export const Magazines: CollectionConfig = {
     useAsTitle: "name",
     defaultColumns: ["name", "slug", "communityId", "defaultVisibility"],
   },
+  hooks: { beforeChange: [stampListingHidden] },
   fields: [
     { name: "name", type: "text", required: true, maxLength: 120 },
     { name: "slug", type: "text", required: true, unique: true, index: true },
@@ -65,6 +86,21 @@ export const Magazines: CollectionConfig = {
       type: "text",
       required: true,
       admin: { description: "Better Auth user ID." },
+    },
+    {
+      name: "listingHidden",
+      type: "checkbox",
+      defaultValue: false,
+      admin: {
+        description:
+          "Hide this magazine from the Magazines page and from search engines. Its pages still open by link.",
+      },
+    },
+    { name: "listingHiddenAt", type: "date", admin: { readOnly: true } },
+    {
+      name: "listingHiddenBy",
+      type: "text",
+      admin: { readOnly: true, description: "Payload admin user who hid it" },
     },
   ],
 };

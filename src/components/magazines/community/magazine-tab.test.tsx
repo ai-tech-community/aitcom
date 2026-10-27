@@ -65,6 +65,7 @@ function tabData(
 ): CommunityMagazineTabData {
   return {
     magazine: {
+      staffHidden: false,
       id: 3,
       name: "Agents Weekly",
       slug: "agents-weekly",

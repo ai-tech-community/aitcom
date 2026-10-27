@@ -238,6 +238,7 @@ export function unavailableView(n: number): UnavailableItem {
 export function issueCard(overrides: Partial<IssueCard> = {}): IssueCard {
   return {
     id: 7,
+    status: "published",
     number: 4,
     title: "The month agents learned to say no",
     slug: "issue-4",
@@ -260,6 +261,7 @@ export function issuePage(
   return {
     access: "full",
     magazine: {
+      staffHidden: false,
       id: 3,
       name: "Agents Weekly",
       slug: "agents-weekly",
@@ -364,6 +366,7 @@ export function magazineCard(
 ): MagazineCard {
   const slug = `magazine-${n}`;
   return {
+    staffHidden: false,
     id: n,
     name: `Magazine ${n}`,
     slug,

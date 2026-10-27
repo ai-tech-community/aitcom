@@ -112,6 +112,15 @@ describe("issue page", () => {
     });
   });
 
+  it("keeps a staff-hidden magazine out of search while the page still opens", async () => {
+    state.data = issuePage();
+    state.data.magazine.staffHidden = true;
+    expect((await generateMetadata({ params })).robots).toEqual({
+      index: false,
+    });
+    await expect(IssuePage({ params })).resolves.toBeTruthy();
+  });
+
   it("uses the cover as the share image when there is one", async () => {
     state.data = issuePage({
       issue: { coverImageUrl: "https://cdn.example.com/cover.jpg" },

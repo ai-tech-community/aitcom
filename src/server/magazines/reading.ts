@@ -29,6 +29,7 @@ import { memberDisplayName } from "@/server/members/display-name";
 import type { Deps } from "./deps";
 import { loadMagazineEditorship } from "./editorship";
 import { issueAccessFacts, resolveMagazineIssueAccess } from "./issue-access";
+import { hiddenMagazineIds, isHiddenByStaff } from "./listing";
 import { itemContextFor } from "./items/context";
 import {
   loadIssueItemViews,
@@ -63,6 +64,7 @@ export type ReadingCommunity = { name: string; slug: string };
 
 /** A magazine's identity on its reading pages. */
 export type MagazineSummary = {
+  staffHidden: boolean;
   id: number;
   name: string;
   slug: string;
@@ -73,6 +75,7 @@ export type MagazineSummary = {
 
 /** One issue as a cover card on any listing. */
 export type IssueCard = {
+  status: IssueStatus;
   id: number;
   number: number;
   title: string;
@@ -166,6 +169,7 @@ export async function findMagazineBySlug(
 
 function toMagazineSummary(magazine: Magazine): MagazineSummary {
   return {
+    staffHidden: isHiddenByStaff(magazine),
     id: magazine.id,
     name: magazine.name,
     slug: magazine.slug,
@@ -186,6 +190,7 @@ function toIssueCard(
 ): IssueCard {
   return {
     id: issue.id,
+    status: issue.status,
     number: Number(issue.number),
     title: issue.title,
     slug: issue.slug,
@@ -270,11 +275,18 @@ export async function loadMagazinesHome(
   topics: string[];
 }> {
   const scope = await loadIssueReadScope(deps.db, null);
+  const hidden = await hiddenMagazineIds(deps.payload);
 
   // Pass 1: every listed issue, light columns only, newest first.
   const { docs: listed } = await deps.payload.find({
     collection: "magazine-issues",
-    where: { and: [readableIssueWhere(scope), PUBLISHED] },
+    where: {
+      and: [
+        readableIssueWhere(scope),
+        PUBLISHED,
+        ...(hidden.length > 0 ? [{ magazine: { not_in: hidden } }] : []),
+      ],
+    },
     sort: ["-publishedAt", "-id"],
     select: { magazine: true, publishedAt: true, coverImageUrl: true },
     depth: 0,

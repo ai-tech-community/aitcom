@@ -89,4 +89,12 @@ describe("magazine shelf page", () => {
     const meta = await generateMetadata({ params });
     expect(meta.robots).toEqual({ index: false });
   });
+  it("keeps a staff-hidden magazine out of search while the page still opens", async () => {
+    state.data = shelfData();
+    state.data.magazine.staffHidden = true;
+    expect((await generateMetadata({ params })).robots).toEqual({
+      index: false,
+    });
+    await expect(MagazineShelfPage({ params })).resolves.toBeTruthy();
+  });
 });

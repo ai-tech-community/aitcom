@@ -209,7 +209,7 @@ export function MagazineArticle({
 
   return (
     <div className={READING_FRAME}>
-      {isMagazineArticleIndexable(issue, article) && (
+      {isMagazineArticleIndexable(issue, article, data.magazine) && (
         <ArticleJsonLd data={data} locale={locale} />
       )}
       <div className="flex justify-center gap-12">

@@ -68,7 +68,7 @@ export async function generateMetadata({
     });
   // Only an issue anyone may read is indexed: the effective value, so an
   // unconfirmed public issue in an unlisted community stays out (F10).
-  const indexable = isIssueIndexable(issue);
+  const indexable = isIssueIndexable(issue, magazine);
 
   return {
     title,
