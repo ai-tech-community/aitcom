@@ -19,9 +19,9 @@ import { FeaturedIssue } from "../reading/featured-issue";
 import { IssueCoverCard } from "../reading/issue-cover-card";
 
 /** Desk choice follows capabilities, so role changes stay in roles.ts. */
-function deskFor(role: MagazineRole | null): "editor" | "contributor" | null {
-  if (roleCan(role, "edit")) return "editor";
-  if (roleCan(role, "write")) return "contributor";
+function deskFor(role: MagazineRole | null): "edit" | "write" | null {
+  if (roleCan(role, "edit")) return "edit";
+  if (roleCan(role, "write")) return "write";
   return null;
 }
 
@@ -34,9 +34,9 @@ function MagazineDesk({
 }) {
   const desk = deskFor(role);
   switch (desk) {
-    case "editor":
+    case "edit":
       return <EditorDesk slug={slug} canManage={roleCan(role, "manage")} />;
-    case "contributor":
+    case "write":
       return <ContributorDesk slug={slug} />;
     case null:
       return null;
