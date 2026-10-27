@@ -1,12 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { lexicalPlainText } from "@/lib/lexical-text";
 import type { UnavailableItem } from "@/lib/magazines/item-views";
-import { itemReference } from "@/lib/magazines/references";
-import { communityMemberships } from "@/server/db/schema";
+import { launchpadProjectInputReference } from "@/lib/magazines/references";
 
-import type { Deps } from "../../deps";
 import {
   cutWords,
   introInput,
@@ -18,54 +15,12 @@ import { itemIdOf } from "../item-id";
 import { validateReferences } from "../references";
 import type {
   IssueItemKind,
-  ItemCommunity,
   ItemContext,
   ItemViewOf,
   StoredItem,
 } from "../types";
 
-type ProjectScope = { communityId?: string | null; authorId?: string | null };
-
-export async function activeCommunityMemberIds(
-  deps: Pick<Deps, "db">,
-  community: ItemCommunity,
-  authorIds?: string[],
-): Promise<string[]> {
-  if (authorIds?.length === 0) return [];
-  const memberships = await deps.db.query.communityMemberships.findMany({
-    columns: { userId: true },
-    where: and(
-      eq(communityMemberships.communityId, community.id),
-      eq(communityMemberships.status, "active"),
-      authorIds ? inArray(communityMemberships.userId, authorIds) : undefined,
-    ),
-  });
-  return memberships.map((membership) => membership.userId);
-}
-
-/** This community's projects, or unscoped projects by its active members. */
-export async function communityProjectFilter(
-  deps: Pick<Deps, "db">,
-  community: ItemCommunity,
-  projects: readonly ProjectScope[],
-): Promise<(project: ProjectScope) => boolean> {
-  const authorIds = [
-    ...new Set(
-      projects.flatMap((project) =>
-        project.communityId == null && project.authorId
-          ? [project.authorId]
-          : [],
-      ),
-    ),
-  ];
-  const members = new Set(
-    await activeCommunityMemberIds(deps, community, authorIds),
-  );
-  return (project) =>
-    project.communityId != null
-      ? project.communityId === community.id
-      : !!project.authorId && members.has(project.authorId);
-}
+import { communityProjectFilter } from "./scope";
 
 const projectInput = z.object({
   kind: z.literal("launchpadProject"),
@@ -85,8 +40,7 @@ async function loadProjects(items: ProjectStored[], ctx: ItemContext) {
   });
   return new Map(docs.map((project) => [Number(project.id), project]));
 }
-const referenceOf = (stored: ProjectStored) =>
-  itemReference("launchpadProject", Number(stored.projectId));
+const referenceOf = launchpadProjectInputReference;
 
 export const launchpadProjectItemKind: IssueItemKind<
   "launchpadProject",

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { UnavailableItem } from "@/lib/magazines/item-views";
-import { itemReference } from "@/lib/magazines/references";
+import { forumThreadInputReference } from "@/lib/magazines/references";
 import {
   forumThreadMatchesCommunity,
   forumThreadSitemapPath,
@@ -37,8 +37,7 @@ async function loadThreads(items: ThreadStored[], ctx: ItemContext) {
   return new Map(docs.map((thread) => [Number(thread.id), thread]));
 }
 
-const referenceOf = (stored: ThreadStored) =>
-  itemReference("forumThread", Number(stored.threadId));
+const referenceOf = forumThreadInputReference;
 
 export const forumThreadItemKind: IssueItemKind<
   "forumThread",

@@ -42,6 +42,7 @@ export interface ItemPickerSource<Input> {
   search(
     query: string,
     ctx: PickerContext,
+    exclude: readonly string[],
   ): Promise<PickerSourceCandidate<Input>[]>;
 }
 
@@ -103,6 +104,11 @@ export interface IssueItemKind<
   toInput(stored: Stored): Input;
   /** Content identity, or null when the issue owns the content. */
   referenceOf(stored: Stored): string | null;
+  /** Editor links for saved items, keyed by their content reference. */
+  openHrefs?(
+    items: Stored[],
+    ctx: ItemContext,
+  ): Promise<Record<string, string>>;
   /** Batched: every item of this kind in one issue, one query at most. */
   validate(
     items: { index: number; stored: Stored; isNew: boolean }[],

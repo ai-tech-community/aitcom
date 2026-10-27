@@ -113,6 +113,9 @@ describe.skipIf(!RUN_DB)("article item kind [DB integration]", () => {
     await db
       .delete(schema.communities)
       .where(inArray(schema.communities.id, fx.communityIds));
+    await db
+      .delete(schema.communityMemberships)
+      .where(eq(schema.communityMemberships.userId, fx.userId));
     await db.delete(schema.user).where(eq(schema.user.id, fx.userId));
   }, 60_000);
 

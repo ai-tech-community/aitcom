@@ -161,6 +161,32 @@ function referenceOfBlock<K extends ItemKindId>(
   return ITEM_KINDS[kind].referenceOf(asStored<K>(block));
 }
 
+async function openHrefsOfKind<K extends ItemKindId>(
+  kind: K,
+  group: IndexedBlock[],
+  ctx: ItemContext,
+): Promise<Record<string, string>> {
+  return (
+    ITEM_KINDS[kind].openHrefs?.(
+      group.map(({ block }) => asStored<K>(block)),
+      ctx,
+    ) ?? {}
+  );
+}
+
+/** Saved-item editor links, dispatched only to kinds present in the issue. */
+export async function loadIssueItemOpenHrefs(
+  blocks: StoredBlock[],
+  ctx: ItemContext,
+): Promise<Record<string, string>> {
+  const maps = await Promise.all(
+    [...groupByKind(blocks)].map(([kind, group]) =>
+      openHrefsOfKind(kind, group, ctx),
+    ),
+  );
+  return Object.fromEntries(maps.flatMap((map) => Object.entries(map)));
+}
+
 /**
  * Every problem with an issue's items, in item order. One batched check per
  * kind present in the issue.

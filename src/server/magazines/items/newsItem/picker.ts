@@ -1,13 +1,20 @@
 import { PICKER_LIMIT, type CandidateFact } from "@/lib/magazines/picker";
 import { searchNewsItems } from "@/server/news/list";
 
+import { excludedReferenceIds } from "../picker-exclusions";
 import type { InputOf } from "../registry";
 import type { ItemPickerSource } from "../types";
 import { newsItemSource } from "./source";
 
 export const newsItemPicker: ItemPickerSource<InputOf<"newsItem">> = {
-  async search(query, ctx) {
-    const items = await searchNewsItems(query, PICKER_LIMIT, ctx.deps.db);
+  async search(query, ctx, exclude) {
+    const excludedIds = excludedReferenceIds("newsItem", exclude);
+    const items = await searchNewsItems(
+      query,
+      PICKER_LIMIT,
+      ctx.deps.db,
+      excludedIds,
+    );
     return items.map((news) => {
       const { source } = newsItemSource(news.url);
       const facts: CandidateFact[] = [];

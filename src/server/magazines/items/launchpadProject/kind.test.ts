@@ -1,3 +1,5 @@
+import type { SQL } from "drizzle-orm";
+import { drizzle, type RemoteCallback } from "drizzle-orm/pg-proxy";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PICKER_LIMIT } from "@/lib/magazines/picker";
@@ -6,16 +8,21 @@ import type { LaunchpadProject } from "@/payload-types";
 import { searchPickerCandidates } from "../pickers";
 import { loadIssueItemViews } from "../registry";
 import type { ItemContext, PickerContext } from "../types";
-import { communityProjectFilter, launchpadProjectItemKind } from "./kind";
+import { launchpadProjectItemKind } from "./kind";
+import { communityProjectFilter } from "./scope";
 
 const find = vi.fn();
 const memberships = vi.fn();
+const projectQuery = vi.fn<RemoteCallback>();
 function context(access: ItemContext["access"] = "editor") {
+  const database = drizzle(projectQuery, { casing: "snake_case" });
+  const executeRows = database.execute.bind(database);
   return {
     payload: { find } as unknown as ItemContext["payload"],
-    db: {
+    db: Object.assign(database, {
+      execute: async (query: SQL) => ({ rows: await executeRows(query) }),
       query: { communityMemberships: { findMany: memberships } },
-    } as unknown as ItemContext["db"],
+    }) as unknown as ItemContext["db"],
     magazineId: 1,
     issueId: 2,
     community: { id: "community", slug: "local-builders" },
@@ -78,6 +85,7 @@ const pickerContext = (): PickerContext => {
 };
 beforeEach(() => {
   find.mockReset().mockResolvedValue({ docs: [] });
+  projectQuery.mockReset().mockResolvedValue({ rows: [{ id: 3 }] });
   memberships.mockReset().mockResolvedValue([{ userId: "member" }]);
 });
 
@@ -327,10 +335,7 @@ describe("launchpad project picker", () => {
             or: [
               { communityId: { equals: "community" } },
               {
-                and: [
-                  { communityId: { exists: false } },
-                  { authorId: { in: ["member"] } },
-                ],
+                and: [{ communityId: { exists: false } }, { id: { in: [3] } }],
               },
             ],
           },
@@ -355,7 +360,7 @@ describe("launchpad project picker", () => {
     expect(candidates[1]!.facts).toEqual([
       { type: "count", what: "upvotes", value: 0 },
     ]);
-    expect(memberships).toHaveBeenCalledTimes(1);
+    expect(memberships).not.toHaveBeenCalled();
     await searchPickerCandidates("launchpadProject", "models", ctx);
     expect(find.mock.lastCall![0].where.and).toContainEqual({
       title: { like: "models" },
@@ -363,7 +368,7 @@ describe("launchpad project picker", () => {
   });
 
   it("only offers community projects when there are no active members", async () => {
-    memberships.mockResolvedValue([]);
+    projectQuery.mockResolvedValue({ rows: [] });
     find.mockResolvedValue({
       docs: [project(1, { authorId: "outsider" })],
     });
@@ -390,6 +395,6 @@ describe("launchpad project picker", () => {
     expect(candidates.map((candidate) => candidate.reference)).toEqual([
       "launchpadProject:1",
     ]);
-    expect(memberships).toHaveBeenCalledTimes(1);
+    expect(memberships).not.toHaveBeenCalled();
   });
 });

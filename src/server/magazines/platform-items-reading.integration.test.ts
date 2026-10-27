@@ -236,6 +236,9 @@ describe.skipIf(!isLocalDbConfigured())(
       await db
         .delete(schema.memberProfiles)
         .where(inArray(schema.memberProfiles.userId, userIds));
+      await db
+        .delete(schema.communityMemberships)
+        .where(inArray(schema.communityMemberships.userId, userIds));
       await db.delete(schema.user).where(inArray(schema.user.id, userIds));
     }, 60_000);
 
@@ -353,19 +356,21 @@ describe.skipIf(!isLocalDbConfigured())(
         { title: "Community picks" },
         actor,
       );
-      issue = await m.issues.setIssueItems(
-        m,
-        issue,
-        [
-          { kind: "storyline", storylineId: story!.id },
-          { kind: "newsItem", newsItemId: news[0]!.id },
-          { kind: "event", eventId: Number(event.id) },
-          { kind: "forumThread", threadId: Number(thread.id) },
-          { kind: "launchpadProject", projectId: Number(project.id) },
-        ],
-        issue.updatedAt,
-        actor,
-      );
+      issue = (
+        await m.issues.setIssueItems(
+          m,
+          issue,
+          [
+            { kind: "storyline", storylineId: story!.id },
+            { kind: "newsItem", newsItemId: news[0]!.id },
+            { kind: "event", eventId: Number(event.id) },
+            { kind: "forumThread", threadId: Number(thread.id) },
+            { kind: "launchpadProject", projectId: Number(project.id) },
+          ],
+          issue.updatedAt,
+          actor,
+        )
+      ).issue;
       issue = await m.issues.updateIssueDetails(
         m,
         issue,

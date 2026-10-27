@@ -200,6 +200,14 @@ describe.skipIf(!isLocalDbConfigured())(
         .delete(schema.memberProfiles)
         .where(eq(schema.memberProfiles.userId, fx.editorId));
       await db
+        .delete(schema.communityMemberships)
+        .where(
+          inArray(schema.communityMemberships.userId, [
+            fx.editorId,
+            fx.outsiderId,
+          ]),
+        );
+      await db
         .delete(schema.user)
         .where(inArray(schema.user.id, [fx.editorId, fx.outsiderId]));
     }, 60_000);
@@ -323,13 +331,15 @@ describe.skipIf(!isLocalDbConfigured())(
       const { c, magazine, actor, issue } = await issueFixture();
       const doc = await project(c.id, "archive");
       const projectId = Number(doc.id);
-      const saved = await m.issues.setIssueItems(
-        m,
-        issue,
-        [{ kind: "launchpadProject", projectId, intro: "Our pick" }],
-        issue.updatedAt,
-        actor,
-      );
+      const saved = (
+        await m.issues.setIssueItems(
+          m,
+          issue,
+          [{ kind: "launchpadProject", projectId, intro: "Our pick" }],
+          issue.updatedAt,
+          actor,
+        )
+      ).issue;
       const load = (access: IssueReaderAccess) =>
         m.registry.loadIssueItemViews(
           saved.items as Registry.StoredBlock[],
@@ -379,13 +389,15 @@ describe.skipIf(!isLocalDbConfigured())(
       expect(
         m.registry.toItemInputs(reloaded.items as Registry.StoredBlock[]),
       ).toMatchObject([{ kind: "launchpadProject", projectId }]);
-      const kept = await m.issues.setIssueItems(
-        m,
-        reloaded,
-        [{ kind: "launchpadProject", projectId, intro: "Still our pick" }],
-        reloaded.updatedAt,
-        actor,
-      );
+      const kept = (
+        await m.issues.setIssueItems(
+          m,
+          reloaded,
+          [{ kind: "launchpadProject", projectId, intro: "Still our pick" }],
+          reloaded.updatedAt,
+          actor,
+        )
+      ).issue;
       expect(kept.items![0]!.intro).toBe("Still our pick");
       await m.issues.publishIssue(m, kept, kept.updatedAt, actor);
     });
@@ -475,13 +487,15 @@ describe.skipIf(!isLocalDbConfigured())(
           code: "BAD_REQUEST",
           message: "ITEM_INVALID",
         });
-      const saved = await m.issues.setIssueItems(
-        m,
-        issue,
-        [{ kind: "launchpadProject", projectId: Number(member.id) }],
-        issue.updatedAt,
-        actor,
-      );
+      const saved = (
+        await m.issues.setIssueItems(
+          m,
+          issue,
+          [{ kind: "launchpadProject", projectId: Number(member.id) }],
+          issue.updatedAt,
+          actor,
+        )
+      ).issue;
       expect(saved.items).toMatchObject([
         { blockType: "launchpadProject", projectId: member.id },
       ]);
@@ -526,16 +540,18 @@ describe.skipIf(!isLocalDbConfigured())(
       });
       const scoped = await project(c.id, "private");
       const unscoped = await project(null, "platform");
-      const saved = await m.issues.setIssueItems(
-        m,
-        issue,
-        [
-          { kind: "launchpadProject", projectId: Number(scoped.id) },
-          { kind: "launchpadProject", projectId: Number(unscoped.id) },
-        ],
-        issue.updatedAt,
-        actor,
-      );
+      const saved = (
+        await m.issues.setIssueItems(
+          m,
+          issue,
+          [
+            { kind: "launchpadProject", projectId: Number(scoped.id) },
+            { kind: "launchpadProject", projectId: Number(unscoped.id) },
+          ],
+          issue.updatedAt,
+          actor,
+        )
+      ).issue;
       const load = (
         viewerId: string | null,
         access: IssueReaderAccess = "full",
@@ -624,13 +640,15 @@ describe.skipIf(!isLocalDbConfigured())(
         listed: false,
       });
       const doc = await event(c.id);
-      const saved = await m.issues.setIssueItems(
-        m,
-        issue,
-        [{ kind: "event", eventId: Number(doc.id) }],
-        issue.updatedAt,
-        actor,
-      );
+      const saved = (
+        await m.issues.setIssueItems(
+          m,
+          issue,
+          [{ kind: "event", eventId: Number(doc.id) }],
+          issue.updatedAt,
+          actor,
+        )
+      ).issue;
       const load = (
         viewerId: string | null,
         access: IssueReaderAccess = "full",
@@ -668,13 +686,15 @@ describe.skipIf(!isLocalDbConfigured())(
       expect(await load(fx.editorId, "editor")).toMatchObject([
         { reason: "missing" },
       ]);
-      const kept = await m.issues.setIssueItems(
-        m,
-        saved,
-        [{ kind: "event", eventId: Number(doc.id), intro: "Still our pick" }],
-        saved.updatedAt,
-        actor,
-      );
+      const kept = (
+        await m.issues.setIssueItems(
+          m,
+          saved,
+          [{ kind: "event", eventId: Number(doc.id), intro: "Still our pick" }],
+          saved.updatedAt,
+          actor,
+        )
+      ).issue;
       expect(kept.items![0]!.intro).toBe("Still our pick");
     });
 
@@ -780,13 +800,15 @@ describe.skipIf(!isLocalDbConfigured())(
     it("a thread soft-deleted after it was added becomes a marker", async () => {
       const { c, magazine, actor, issue } = await issueFixture();
       const doc = await thread(c.id);
-      const saved = await m.issues.setIssueItems(
-        m,
-        issue,
-        [{ kind: "forumThread", threadId: Number(doc.id) }],
-        issue.updatedAt,
-        actor,
-      );
+      const saved = (
+        await m.issues.setIssueItems(
+          m,
+          issue,
+          [{ kind: "forumThread", threadId: Number(doc.id) }],
+          issue.updatedAt,
+          actor,
+        )
+      ).issue;
       const load = (access: IssueReaderAccess) =>
         m.registry.loadIssueItemViews(
           saved.items as Registry.StoredBlock[],
@@ -840,19 +862,21 @@ describe.skipIf(!isLocalDbConfigured())(
       expect(
         m.registry.toItemInputs(reloaded.items as Registry.StoredBlock[]),
       ).toMatchObject([{ kind: "forumThread", threadId: Number(doc.id) }]);
-      const kept = await m.issues.setIssueItems(
-        m,
-        reloaded,
-        [
-          {
-            kind: "forumThread",
-            threadId: Number(doc.id),
-            intro: "Still our pick",
-          },
-        ],
-        reloaded.updatedAt,
-        actor,
-      );
+      const kept = (
+        await m.issues.setIssueItems(
+          m,
+          reloaded,
+          [
+            {
+              kind: "forumThread",
+              threadId: Number(doc.id),
+              intro: "Still our pick",
+            },
+          ],
+          reloaded.updatedAt,
+          actor,
+        )
+      ).issue;
       expect(kept.items![0]!.intro).toBe("Still our pick");
     });
 
@@ -914,13 +938,15 @@ describe.skipIf(!isLocalDbConfigured())(
         listed: false,
       });
       const doc = await thread(c.id);
-      const saved = await m.issues.setIssueItems(
-        m,
-        issue,
-        [{ kind: "forumThread", threadId: Number(doc.id) }],
-        issue.updatedAt,
-        actor,
-      );
+      const saved = (
+        await m.issues.setIssueItems(
+          m,
+          issue,
+          [{ kind: "forumThread", threadId: Number(doc.id) }],
+          issue.updatedAt,
+          actor,
+        )
+      ).issue;
       const load = (
         viewerId: string | null,
         access: IssueReaderAccess = "full",
@@ -961,13 +987,15 @@ describe.skipIf(!isLocalDbConfigured())(
     it("a story loads live and drops out when unpublished", async () => {
       const { c, magazine, actor, issue } = await issueFixture();
       const storylineId = fx.storyIds[0]!;
-      const saved = await m.issues.setIssueItems(
-        m,
-        issue,
-        [{ kind: "storyline", storylineId }],
-        issue.updatedAt,
-        actor,
-      );
+      const saved = (
+        await m.issues.setIssueItems(
+          m,
+          issue,
+          [{ kind: "storyline", storylineId }],
+          issue.updatedAt,
+          actor,
+        )
+      ).issue;
       const load = (access: IssueReaderAccess) =>
         m.registry.loadIssueItemViews(
           saved.items as Registry.StoredBlock[],
@@ -1027,13 +1055,15 @@ describe.skipIf(!isLocalDbConfigured())(
     it("setIssueItems accepts a public story and refuses a draft one", async () => {
       const { actor, issue } = await issueFixture();
       const storylineId = fx.storyIds[0]!;
-      const saved: MagazineIssue = await m.issues.setIssueItems(
-        m,
-        issue,
-        [{ kind: "storyline", storylineId }],
-        issue.updatedAt,
-        actor,
-      );
+      const saved: MagazineIssue = (
+        await m.issues.setIssueItems(
+          m,
+          issue,
+          [{ kind: "storyline", storylineId }],
+          issue.updatedAt,
+          actor,
+        )
+      ).issue;
       expect(
         m.registry.toItemInputs(saved.items as Registry.StoredBlock[]),
       ).toMatchObject([{ kind: "storyline", storylineId }]);
@@ -1052,26 +1082,30 @@ describe.skipIf(!isLocalDbConfigured())(
         .update(m.schema.newsStorylines)
         .set({ status: "draft" })
         .where(eq(m.schema.newsStorylines.id, storylineId));
-      const kept = await m.issues.setIssueItems(
-        m,
-        saved,
-        [{ kind: "storyline", storylineId, intro: "Still our pick" }],
-        saved.updatedAt,
-        actor,
-      );
+      const kept = (
+        await m.issues.setIssueItems(
+          m,
+          saved,
+          [{ kind: "storyline", storylineId, intro: "Still our pick" }],
+          saved.updatedAt,
+          actor,
+        )
+      ).issue;
       expect(kept.items![0]!.intro).toBe("Still our pick");
     });
 
     it("a news item loads live and becomes missing when deleted", async () => {
       const { c, magazine, actor, issue } = await issueFixture();
       const newsItemId = fx.newsIds[0]!;
-      const saved = await m.issues.setIssueItems(
-        m,
-        issue,
-        [{ kind: "newsItem", newsItemId, intro: "Our take" }],
-        issue.updatedAt,
-        actor,
-      );
+      const saved = (
+        await m.issues.setIssueItems(
+          m,
+          issue,
+          [{ kind: "newsItem", newsItemId, intro: "Our take" }],
+          issue.updatedAt,
+          actor,
+        )
+      ).issue;
       const load = (access: IssueReaderAccess) =>
         m.registry.loadIssueItemViews(
           saved.items as Registry.StoredBlock[],
@@ -1122,13 +1156,15 @@ describe.skipIf(!isLocalDbConfigured())(
       expect(
         m.registry.toItemInputs(reloaded.items as Registry.StoredBlock[]),
       ).toMatchObject([{ kind: "newsItem", newsItemId }]);
-      const kept = await m.issues.setIssueItems(
-        m,
-        reloaded,
-        [{ kind: "newsItem", newsItemId, intro: "Still our pick" }],
-        reloaded.updatedAt,
-        actor,
-      );
+      const kept = (
+        await m.issues.setIssueItems(
+          m,
+          reloaded,
+          [{ kind: "newsItem", newsItemId, intro: "Still our pick" }],
+          reloaded.updatedAt,
+          actor,
+        )
+      ).issue;
       expect(kept.items![0]!.intro).toBe("Still our pick");
       await expect(
         m.issues.setIssueItems(

@@ -2,27 +2,31 @@ import type { Where } from "payload";
 
 import { PICKER_LIMIT, type CandidateFact } from "@/lib/magazines/picker";
 
+import { excludedNumericReferenceIds } from "../picker-exclusions";
 import type { InputOf } from "../registry";
 import type { ItemPickerSource } from "../types";
-import { activeCommunityMemberIds } from "./kind";
+import { communityProjectWhere } from "./scope";
 
 export const launchpadProjectPicker: ItemPickerSource<
   InputOf<"launchpadProject">
 > = {
-  async search(query, ctx) {
-    const memberIds = await activeCommunityMemberIds(ctx.deps, ctx.community);
-    const scope: Where[] = [{ communityId: { equals: ctx.community.id } }];
-    if (memberIds.length)
-      scope.push({
-        and: [
-          { communityId: { exists: false } },
-          { authorId: { in: memberIds } },
-        ],
-      });
+  async search(query, ctx, exclude) {
+    const excludedIds = excludedNumericReferenceIds(
+      "launchpadProject",
+      exclude,
+    );
+    const scope = await communityProjectWhere(
+      ctx.deps,
+      ctx.community,
+      query,
+      excludedIds,
+      PICKER_LIMIT,
+    );
     const and: Where[] = [
       { status: { equals: "published" } },
-      { or: scope },
+      scope,
       ...(query ? [{ title: { like: query } }] : []),
+      ...(excludedIds.length ? [{ id: { not_in: excludedIds } }] : []),
     ];
     const { docs } = await ctx.deps.payload.find({
       collection: "launchpad-projects",

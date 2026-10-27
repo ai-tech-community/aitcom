@@ -30,8 +30,9 @@ export async function searchPickerCandidates<K extends PickableKindId>(
   kind: K,
   query: string,
   ctx: PickerContext,
+  exclude: readonly string[] = [],
 ): Promise<PickerCandidate<InputOf<K>>[]> {
-  const candidates = await ITEM_PICKERS[kind].search(query, ctx);
+  const candidates = await ITEM_PICKERS[kind].search(query, ctx, exclude);
   const strategy = ITEM_KINDS[kind];
   return candidates.map((candidate) => {
     // toStored omits only the optional block id; references identify content.

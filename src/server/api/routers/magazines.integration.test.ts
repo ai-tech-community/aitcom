@@ -194,6 +194,9 @@ describe.skipIf(!RUN_DB)(
       await db
         .delete(schema.memberProfiles)
         .where(inArray(schema.memberProfiles.userId, userIds));
+      await db
+        .delete(schema.communityMemberships)
+        .where(inArray(schema.communityMemberships.userId, userIds));
       await db.delete(schema.user).where(inArray(schema.user.id, userIds));
     }, 60_000);
 

@@ -146,7 +146,7 @@ describe("news item kind", () => {
       news: {
         url: "http://www.example.com/a",
         source: "example.com",
-        summary: "",
+        summary: "Your files stay on your device.",
       },
     });
   });
@@ -224,7 +224,12 @@ describe("news picker", () => {
       viewerId: "editor",
       locale: "en" as const,
     };
-    expect(await searchPickerCandidates("newsItem", "local", ctx)).toEqual([
+    expect(
+      await searchPickerCandidates("newsItem", "local", ctx, [
+        "newsItem:held",
+        "storyline:other",
+      ]),
+    ).toEqual([
       {
         input: { kind: "newsItem", newsItemId: "n1" },
         reference: "newsItem:n1",
@@ -240,6 +245,7 @@ describe("news picker", () => {
       "local",
       PICKER_LIMIT,
       ctx.deps.db,
+      ["held"],
     );
     vi.mocked(searchNewsItems).mockResolvedValue([
       news("n1", { url: "javascript:alert(1)", publishedAt: null }),

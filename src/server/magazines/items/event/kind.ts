@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { isPubliclyListedEventStatus } from "@/lib/events/event-status";
 import type { UnavailableItem } from "@/lib/magazines/item-views";
-import { itemReference } from "@/lib/magazines/references";
+import { eventInputReference } from "@/lib/magazines/references";
 import { communityContentMatches } from "@/server/communities/forum-scope";
 
 import { introInput, itemBaseInput, storedIntro } from "../base-input";
@@ -36,8 +36,7 @@ async function loadEvents(items: EventStored[], ctx: ItemContext) {
   return new Map(docs.map((event) => [Number(event.id), event]));
 }
 
-const referenceOf = (stored: EventStored) =>
-  itemReference("event", Number(stored.eventId));
+const referenceOf = eventInputReference;
 
 export const eventItemKind: IssueItemKind<"event", EventInput, EventStored> = {
   kind: "event",

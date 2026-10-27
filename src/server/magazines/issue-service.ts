@@ -1,7 +1,7 @@
 import { sql } from "@payloadcms/db-postgres";
 
 import { routing } from "@/i18n/routing";
-import type { ItemProblem } from "@/lib/magazines/item-views";
+import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
 import type { IssueVisibility } from "@/lib/magazines/values";
 import { slugify } from "@/lib/text-utils";
 import type { Magazine, MagazineIssue } from "@/payload-types";
@@ -21,9 +21,11 @@ import { itemContextFor } from "./items/context";
 import {
   type IssueItemInput,
   type StoredBlock,
+  loadIssueItemViews,
   toStoredItems,
   validateIssueItems,
 } from "./items/registry";
+import type { ItemContext } from "./items/types";
 import {
   inPayloadTransaction,
   isConcurrencyAbort,
@@ -176,21 +178,23 @@ async function assertItemsValid(
   issue: MagazineIssue,
   blocks: StoredBlock[],
   actor: IssueActor,
-): Promise<void> {
+): Promise<ItemContext> {
+  const ctx = itemContextFor(deps, {
+    magazineId: requireRelationId(issue.magazine),
+    community: actor.community,
+    issueId: issue.id,
+    // The editor API always reads in the default locale.
+    locale: routing.defaultLocale,
+    access: "editor",
+    viewerId: actor.userId,
+  });
   const [problem] = await validateIssueItems(
     blocks,
-    itemContextFor(deps, {
-      magazineId: requireRelationId(issue.magazine),
-      community: actor.community,
-      issueId: issue.id,
-      // The editor API always reads in the default locale.
-      locale: routing.defaultLocale,
-      access: "editor",
-      viewerId: actor.userId,
-    }),
+    ctx,
     storedBlocksOf(issue),
   );
   if (problem) throw problemError(problem);
+  return ctx;
 }
 
 function articleIdsOf(blocks: StoredBlock[]): number[] {
@@ -400,10 +404,10 @@ export async function setIssueItems(
   items: IssueItemInput[],
   expectedUpdatedAt: string,
   actor: IssueActor,
-): Promise<MagazineIssue> {
+): Promise<{ issue: MagazineIssue; items: EditorItemView[] }> {
   assertFresh(issue, expectedUpdatedAt);
   const blocks = toStoredItems(keepOwnBlockIds(items, storedBlocksOf(issue)));
-  await assertItemsValid(deps, issue, blocks, actor);
+  const ctx = await assertItemsValid(deps, issue, blocks, actor);
 
   const saved = await writeIssue(deps, issue, expectedUpdatedAt, async (tx) => {
     await syncArticlePlacement(
@@ -431,7 +435,10 @@ export async function setIssueItems(
       requireRelationId(saved.magazine),
     );
   }
-  return saved;
+  return {
+    issue: saved,
+    items: await loadIssueItemViews(storedBlocksOf(saved), ctx),
+  };
 }
 
 /**

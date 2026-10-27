@@ -185,6 +185,8 @@ export async function listAvailableArticles(
   magazineId: number,
   viewerId: string,
   query = "",
+  exclude: readonly number[] = [],
+  limit = EDITOR_LIST_LIMIT,
 ): Promise<AvailableMagazineArticle[]> {
   const { docs } = await payload.find({
     collection: "articles",
@@ -193,13 +195,14 @@ export async function listAvailableArticles(
         { magazine: { equals: magazineId } },
         { reviewStatus: { equals: "approved" } },
         { magazineIssue: { exists: false } },
+        ...(exclude.length ? [{ id: { not_in: [...exclude] } }] : []),
         ...(query ? [{ title: { like: query } }] : []),
       ],
     },
     sort: "-updatedAt",
     depth: 0,
     draft: true,
-    limit: EDITOR_LIST_LIMIT,
+    limit,
     pagination: false,
   });
   return docs.map((doc) => ({

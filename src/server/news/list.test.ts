@@ -91,3 +91,14 @@ describe("magazine news reads", () => {
     expect(query.mock.calls[0]?.[0]).not.toContain(" where ");
   });
 });
+
+it("excludes already-added news before applying the picker limit", async () => {
+  const { client, query } = database();
+  await searchNewsItems("local", 12, client, ["n1", "n2"]);
+  expect(query).toHaveBeenCalledExactlyOnceWith(
+    expect.stringContaining('"app"."news_item"."id" not in ($2, $3)'),
+    ["%local%", "n1", "n2", 12],
+    "all",
+    expect.any(Array),
+  );
+});

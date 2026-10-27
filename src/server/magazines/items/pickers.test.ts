@@ -83,3 +83,26 @@ describe("item picker registry", () => {
     });
   });
 });
+
+describe("picker exclusions", () => {
+  it.each(["article", "event", "forumThread"] as const)(
+    "%s excludes its held ids in the source query before the limit",
+    async (kind) => {
+      const find = vi.fn().mockResolvedValue({ docs: [] });
+      const ctx = context({ find } as unknown as PayloadClient);
+      await searchPickerCandidates(kind, "", ctx, [
+        `${kind}:7`,
+        `${kind}:8`,
+        "newsItem:other",
+      ]);
+      expect(find).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            and: expect.arrayContaining([{ id: { not_in: [7, 8] } }]),
+          }),
+          limit: PICKER_LIMIT,
+        }),
+      );
+    },
+  );
+});

@@ -12,6 +12,7 @@ import type { IssueActor } from "./issue-service";
 import { itemContextFor } from "./items/context";
 import {
   type IssueItemInput,
+  loadIssueItemOpenHrefs,
   loadIssueItemViews,
   type StoredBlock,
   toItemInputs,
@@ -49,6 +50,8 @@ export type IssueEditorView = {
   storedItems: IssueItemInput[];
   /** What would stop a publish now (preflight F7). */
   problems: ItemProblem[];
+  /** Saved-item editor links supplied by the kinds, keyed by reference. */
+  openHrefs: Record<string, string>;
 };
 
 /**
@@ -158,16 +161,6 @@ function editorContext(
   });
 }
 
-/** The saved items of an issue as the editor sees them. */
-export async function loadEditorItems(
-  deps: Deps,
-  issue: MagazineIssue,
-  actor: IssueActor,
-): Promise<EditorItemView[]> {
-  const blocks = (issue.items ?? []) as StoredBlock[];
-  return loadIssueItemViews(blocks, editorContext(deps, issue, actor));
-}
-
 /** Everything the issue builder needs to edit one issue. */
 export async function loadIssueEditorView(
   deps: Deps,
@@ -176,9 +169,16 @@ export async function loadIssueEditorView(
 ): Promise<IssueEditorView> {
   const blocks = (issue.items ?? []) as StoredBlock[];
   const ctx = editorContext(deps, issue, actor);
-  const [items, problems] = await Promise.all([
+  const [items, problems, openHrefs] = await Promise.all([
     loadIssueItemViews(blocks, ctx),
     validateIssueItems(blocks, ctx, blocks),
+    loadIssueItemOpenHrefs(blocks, ctx),
   ]);
-  return { issue, items, storedItems: toItemInputs(blocks), problems };
+  return {
+    issue,
+    items,
+    storedItems: toItemInputs(blocks),
+    problems,
+    openHrefs,
+  };
 }

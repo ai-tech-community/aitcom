@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { UnavailableItem } from "@/lib/magazines/item-views";
-import { itemReference } from "@/lib/magazines/references";
+import { storylineInputReference } from "@/lib/magazines/references";
 import {
   loadStorylineCards,
   type StorylineCard,
@@ -46,8 +46,7 @@ function cardsFor(
   }
 }
 
-const referenceOf = (stored: StorylineItemStored) =>
-  itemReference("storyline", stored.storylineId);
+const referenceOf = storylineInputReference;
 
 export const storylineItemKind: IssueItemKind<
   "storyline",

@@ -1,4 +1,4 @@
-import { desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, notInArray, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { escapeLike } from "@/server/db/escape-like";
@@ -51,11 +51,17 @@ export async function searchNewsItems(
   query: string,
   limit: number,
   database: typeof db = db,
+  exclude: readonly string[] = [],
 ): Promise<NewsListItem[]> {
   return database
     .select(newsListColumns)
     .from(newsItems)
-    .where(query ? ilike(newsItems.title, `%${escapeLike(query)}%`) : undefined)
+    .where(
+      and(
+        query ? ilike(newsItems.title, `%${escapeLike(query)}%`) : undefined,
+        exclude.length ? notInArray(newsItems.id, [...exclude]) : undefined,
+      ),
+    )
     .orderBy(
       sql`${newsItems.publishedAt} desc nulls last`,
       desc(newsItems.createdAt),

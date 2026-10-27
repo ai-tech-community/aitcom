@@ -3,12 +3,15 @@ import type { Where } from "payload";
 import { PICKER_LIMIT, type CandidateFact } from "@/lib/magazines/picker";
 import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
 
+import { excludedNumericReferenceIds } from "../picker-exclusions";
 import type { InputOf } from "../registry";
 import type { ItemPickerSource } from "../types";
 
 export const forumThreadPicker: ItemPickerSource<InputOf<"forumThread">> = {
-  async search(query, ctx) {
+  async search(query, ctx, exclude) {
+    const excludedIds = excludedNumericReferenceIds("forumThread", exclude);
     const and: Where[] = [
+      ...(excludedIds.length ? [{ id: { not_in: excludedIds } }] : []),
       forumThreadCommunityWhere(ctx.community),
       { isDeleted: { not_equals: true } },
       ...(query ? [{ title: { like: query } }] : []),

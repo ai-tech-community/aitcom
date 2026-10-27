@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IssueReaderAccess } from "@/lib/magazines/access";
 import {
   loadStorylineCards,
-  listStorylines,
+  searchPublicStorylines,
   type StorylineCard,
 } from "@/server/news/storylines";
 
@@ -16,7 +16,7 @@ import { storylineItemKind } from "./kind";
 
 vi.mock("@/server/news/storylines", () => ({
   loadStorylineCards: vi.fn(),
-  listStorylines: vi.fn(),
+  searchPublicStorylines: vi.fn(),
 }));
 
 const loadCards = vi.mocked(loadStorylineCards);
@@ -235,7 +235,7 @@ describe("storyline picker", () => {
   it("searches the public story list with localized titles and structured facts", async () => {
     const summary = {
       ...card("s1", { titleNl: "  " }),
-      latestAt: "2026-10-24T10:00:00.000Z",
+      latestAt: new Date("2026-10-24T10:00:00.000Z"),
       status: "published" as const,
       questionsEn: [],
       questionsNl: [],
@@ -250,12 +250,7 @@ describe("storyline picker", () => {
       myVote: null,
       credit: { human: null, agentName: null },
     };
-    vi.mocked(listStorylines).mockResolvedValue({
-      items: [summary],
-      total: 1,
-      page: 1,
-      totalPages: 1,
-    });
+    vi.mocked(searchPublicStorylines).mockResolvedValue([summary]);
     const ctx = {
       deps: { db: {} as Deps["db"], payload: {} as PayloadClient },
       magazineId: 1,
@@ -263,7 +258,12 @@ describe("storyline picker", () => {
       viewerId: "editor",
       locale: "nl" as const,
     };
-    expect(await searchPickerCandidates("storyline", "local", ctx)).toEqual([
+    expect(
+      await searchPickerCandidates("storyline", "local", ctx, [
+        "storyline:held",
+        "newsItem:other",
+      ]),
+    ).toEqual([
       {
         input: { kind: "storyline", storylineId: "s1" },
         reference: "storyline:s1",
@@ -275,16 +275,15 @@ describe("storyline picker", () => {
         openHref: null,
       },
     ]);
-    expect(listStorylines).toHaveBeenCalledWith({
-      q: "local",
-      limit: PICKER_LIMIT,
-    });
-    vi.mocked(listStorylines).mockResolvedValue({
-      items: [{ ...summary, titleNl: "AI op je apparaat", latestAt: null }],
-      total: 1,
-      page: 1,
-      totalPages: 1,
-    });
+    expect(searchPublicStorylines).toHaveBeenCalledWith(
+      "local",
+      PICKER_LIMIT,
+      ctx.deps.db,
+      ["held"],
+    );
+    vi.mocked(searchPublicStorylines).mockResolvedValue([
+      { ...summary, titleNl: "AI op je apparaat", latestAt: null },
+    ]);
     expect(
       (await searchPickerCandidates("storyline", "", ctx))[0],
     ).toMatchObject({

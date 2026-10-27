@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { UnavailableItem } from "@/lib/magazines/item-views";
-import { itemReference } from "@/lib/magazines/references";
+import { newsItemInputReference } from "@/lib/magazines/references";
 import { findNewsItemsByIds, type NewsListItem } from "@/server/news/list";
 
 import {
@@ -44,8 +44,7 @@ function newsFor(
   }
 }
 
-const referenceOf = (stored: NewsItemStored) =>
-  itemReference("newsItem", stored.newsItemId);
+const referenceOf = newsItemInputReference;
 
 export const newsItemKind: IssueItemKind<
   "newsItem",
@@ -97,7 +96,9 @@ export const newsItemKind: IssueItemKind<
             ...newsItemSource(news.url),
             title: news.title,
             publishedAt: news.publishedAt?.toISOString() ?? null,
-            summary: cutWords(news.aiSummary ?? news.summary, 30),
+            // Empty or whitespace-only AI text should use the feed summary too.
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            summary: cutWords(news.aiSummary?.trim() || news.summary, 30),
           },
         });
       }

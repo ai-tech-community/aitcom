@@ -24,3 +24,6 @@ export type CandidateFact =
   | { type: "eventStatus"; status: "cancelled" | "completed" };
 
 export const PICKER_LIMIT = 12;
+
+/** Bounds query input to the references of one generously sized issue. */
+export const PICKER_EXCLUDE_LIMIT = 1000;

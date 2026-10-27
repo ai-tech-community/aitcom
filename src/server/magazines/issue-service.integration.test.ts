@@ -217,6 +217,9 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     await db
       .delete(schema.memberProfiles)
       .where(eq(schema.memberProfiles.userId, fx.userId));
+    await db
+      .delete(schema.communityMemberships)
+      .where(eq(schema.communityMemberships.userId, fx.userId));
     await db.delete(schema.user).where(eq(schema.user.id, fx.userId));
   }, 60_000);
 
@@ -313,7 +316,9 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     issue: MagazineIssue,
     items: Registry.IssueItemInput[],
   ): Promise<MagazineIssue> {
-    return m.issues.setIssueItems(m, issue, items, issue.updatedAt, actor(c));
+    return (
+      await m.issues.setIssueItems(m, issue, items, issue.updatedAt, actor(c))
+    ).issue;
   }
 
   async function placementOf(articleId: number, draft: boolean) {
@@ -641,7 +646,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       id: issue.id,
       depth: 0,
     });
-    const winner = won[0]!.value;
+    const winner = won[0]!.value.issue;
     expect(stored.items).toHaveLength(1);
     expect((stored.items![0] as { heading?: string }).heading).toBe(
       (winner.items![0] as { heading?: string }).heading,
