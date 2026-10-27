@@ -23,6 +23,7 @@ import type { CommunityVisibility } from "@/server/communities/content-visibilit
 import type { IssueItemInput } from "@/server/magazines/items/registry";
 import { api, type RouterOutputs } from "@/trpc/react";
 
+import { isUnavailableItem } from "../../items/registry";
 import { editorErrorKey, readEditorError } from "../editor-errors";
 import { publicOptInRequired } from "../public-opt-in";
 import { AddItemsPanel } from "./add-items-panel";
@@ -632,6 +633,7 @@ function IssueWorkspace({
         open={publishOpen}
         onOpenChange={setPublishOpen}
         blockers={blockers}
+        skippedCount={[...savedViews.values()].filter(isUnavailableItem).length}
         audience={audience}
         onConfirm={publish}
         error={publishError}

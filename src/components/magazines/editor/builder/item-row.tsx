@@ -46,7 +46,7 @@ export type ItemRowView = {
    */
   open?: { href: string; label: string };
   selected: boolean;
-  membersOnly?: boolean;
+  membersOnly: boolean;
 };
 
 export type ItemRowActions = {

@@ -14,6 +14,7 @@ import { magazineArticlePath } from "@/lib/magazines/paths";
 import type { IssueLayout, IssueVisibility } from "@/lib/magazines/values";
 import { cn } from "@/lib/utils";
 
+import { isUnavailableItem } from "../../items/registry";
 import { LAYOUTS } from "../../layouts/registry";
 import { IssueHero } from "../../reading/issue-hero";
 import { builderPreviewView } from "./items/registry";
@@ -21,6 +22,11 @@ import type { BuilderItem } from "./items-model";
 import type { IssueDetailsDraft } from "./use-issue-save";
 
 type PreviewMode = "member" | "phone" | "visitor";
+
+/** A public issue still follows each item's own availability and audience. */
+export function visibleToVisitors(view: EditorItemView): boolean {
+  return !isUnavailableItem(view) && !isMembersOnlyView(view);
+}
 
 /**
  * The views the preview renders, in the builder's order (preflight F32).
@@ -85,9 +91,7 @@ export function LivePreview({
   const Layout = LAYOUTS[layout];
   const { views: loadedViews, waiting } = previewViews(items, savedViews);
   const views =
-    mode === "visitor"
-      ? loadedViews.filter((view) => !isMembersOnlyView(view))
-      : loadedViews;
+    mode === "visitor" ? loadedViews.filter(visibleToVisitors) : loadedViews;
   const href = (articleSlug: string) =>
     magazineArticlePath(
       magazine,

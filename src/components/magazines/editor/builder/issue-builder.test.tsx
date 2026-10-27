@@ -817,6 +817,42 @@ describe("IssueBuilder", () => {
     );
   });
 
+  it("counts saved markers for the publish notice without blocking Publish", () => {
+    trpc.editing = twoArticles({
+      items: [
+        {
+          kind: "storyline",
+          itemId: "gone-story",
+          unavailable: true,
+          reason: "unpublished",
+        },
+        { ...eventView(), itemId: "private-event", membersOnly: true },
+        {
+          kind: "forumThread",
+          itemId: "gone-thread",
+          unavailable: true,
+          reason: "missing",
+        },
+      ],
+      storedItems: [
+        { kind: "storyline", id: "gone-story", storylineId: "s1" },
+        { kind: "event", id: "private-event", eventId: 7 },
+        { kind: "forumThread", id: "gone-thread", threadId: 8 },
+      ],
+    });
+    renderBuilder();
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText(
+        "2 items are no longer available. Readers will not see them.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole("button", { name: "Publish" }),
+    ).toBeEnabled();
+  });
+
   it("flags members-only events in the row and leaves them out of Visitor preview", () => {
     trpc.editing = twoArticles({
       issue: issue({ visibility: "public" }),

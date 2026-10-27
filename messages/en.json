@@ -4954,7 +4954,10 @@
       },
       "conflict": "This issue changed somewhere else. Your changes here are not saved.",
       "reload": "Reload",
-      "publish": "Publish",
+      "publish": {
+        "label": "Publish",
+        "skipped": "{count, plural, one {# item is no longer available. Readers will not see it.} other {# items are no longer available. Readers will not see them.}}"
+      },
       "published": "Published",
       "details": {
         "label": "Issue details",

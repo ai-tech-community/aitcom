@@ -18,6 +18,7 @@ function renderDialog(overrides: Partial<PublishDialogProps> = {}) {
     open: true,
     onOpenChange: vi.fn(),
     blockers: [],
+    skippedCount: 0,
     audience: "members",
     onConfirm: vi.fn().mockResolvedValue(undefined),
     error: null,
@@ -29,6 +30,30 @@ function renderDialog(overrides: Partial<PublishDialogProps> = {}) {
 }
 
 describe("PublishDialog", () => {
+  it("says how many items readers will skip", () => {
+    const { unmount } = renderWithIntl(
+      <PublishDialog
+        open
+        onOpenChange={vi.fn()}
+        blockers={[]}
+        skippedCount={2}
+        audience="public"
+        onConfirm={vi.fn()}
+        error={null}
+        readingHref="/magazines/gazette/summer"
+      />,
+    );
+    expect(
+      screen.getByText(
+        "2 items are no longer available. Readers will not see them.",
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+    unmount();
+    renderDialog({ skippedCount: 0 });
+    expect(screen.queryByText(/no longer available/)).toBeNull();
+  });
+
   it("lists blockers and disables Publish while any remain", () => {
     const props = renderDialog({ blockers: ["NO_TITLE", "INVALID_ITEM"] });
 

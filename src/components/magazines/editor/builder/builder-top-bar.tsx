@@ -87,7 +87,7 @@ export function BuilderTopBar({
               onClick={onPublish}
               disabled={publishDisabled}
             >
-              {t("publish")}
+              {t("publish.label")}
             </Button>
           )}
         </div>

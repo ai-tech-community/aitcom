@@ -4954,7 +4954,10 @@
       },
       "conflict": "Dit nummer is ergens anders gewijzigd. Je wijzigingen hier zijn niet opgeslagen.",
       "reload": "Opnieuw laden",
-      "publish": "Publiceren",
+      "publish": {
+        "label": "Publiceren",
+        "skipped": "{count, plural, one {# item is niet meer beschikbaar. Lezers zien het niet.} other {# items zijn niet meer beschikbaar. Lezers zien ze niet.}}"
+      },
       "published": "Gepubliceerd",
       "details": {
         "label": "Gegevens van het nummer",

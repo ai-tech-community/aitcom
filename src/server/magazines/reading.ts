@@ -81,8 +81,6 @@ export type IssueCard = {
    * this value.
    */
   effectiveVisibility: IssueVisibility;
-  /** Items stored in the issue. */
-  itemCount: number;
   magazine: { name: string; slug: string; logoUrl: string | null };
   community: ReadingCommunity;
 };
@@ -198,7 +196,6 @@ function toIssueCard(
       },
       community,
     ),
-    itemCount: issue.items?.length ?? 0,
     magazine: {
       name: magazine.name,
       slug: magazine.slug,

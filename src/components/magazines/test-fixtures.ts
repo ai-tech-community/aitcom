@@ -197,7 +197,6 @@ export function issueCard(overrides: Partial<IssueCard> = {}): IssueCard {
     publishedAt: "2026-11-02T09:00:00.000Z",
     visibility: "public",
     effectiveVisibility: "public",
-    itemCount: 2,
     magazine: { name: "Agents Weekly", slug: "agents-weekly", logoUrl: null },
     community: { name: "Amsterdam AI Builders", slug: "amsterdam-ai" },
     ...overrides,

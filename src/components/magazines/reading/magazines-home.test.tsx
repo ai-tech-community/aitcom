@@ -28,6 +28,15 @@ function keyPaths(value: unknown, prefix = ""): string[] {
 }
 
 describe("MagazinesHome", () => {
+  it("shows no item count on the cover", () => {
+    renderWithIntl(<MagazinesHome data={homeData()} activeTopic={null} />);
+    const featured = screen.getByRole("region", { name: /Featured issue/ });
+    expect(
+      within(featured).getByRole("heading", { name: "Featured issue title" }),
+    ).toBeInTheDocument();
+    expect(within(featured).queryByText(/\d+ items?\b/)).toBeNull();
+  });
+
   it("features the newest issue and lists the next four as just published", () => {
     renderWithIntl(<MagazinesHome data={homeData()} activeTopic={null} />);
 
