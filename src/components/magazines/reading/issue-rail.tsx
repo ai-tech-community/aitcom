@@ -13,11 +13,11 @@ import type {
 
 import { CopyLinkButton } from "./copy-link-button";
 import { IssueCoverCard } from "./issue-cover-card";
+import { SubscribeButton } from "./subscribe-button";
 
 /**
  * The issue page's side rail: about the magazine with a link to its
- * community, up to three past issues, and sharing (copy link only in
- * slice 1; subscribing comes with slice 2).
+ * community, subscribing, up to three past issues, and sharing a link.
  */
 export function IssueRail({
   magazine,
@@ -36,7 +36,11 @@ export function IssueRail({
         {magazine.description && (
           <p className="text-sm leading-relaxed">{magazine.description}</p>
         )}
-        <Button variant="ink" size="sm" asChild className="self-start">
+        <SubscribeButton
+          magazineSlug={magazine.slug}
+          magazineName={magazine.name}
+        />
+        <Button variant="outline" size="sm" asChild className="self-start">
           <Link href={`/communities/${community.slug}`}>
             {t("visitCommunity", { community: community.name })}
           </Link>

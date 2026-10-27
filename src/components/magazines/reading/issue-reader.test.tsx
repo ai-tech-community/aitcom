@@ -3,6 +3,20 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("./subscribe-button", () => ({
+  SubscribeButton: ({
+    magazineSlug,
+    magazineName,
+  }: {
+    magazineSlug: string;
+    magazineName: string;
+  }) => (
+    <div data-testid="subscribe" data-slug={magazineSlug}>
+      {magazineName}
+    </div>
+  ),
+}));
+
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
     <a href={href} {...props}>
@@ -18,6 +32,25 @@ import { IssueReader } from "./issue-reader";
 import { itemAnchorId } from "./anchors";
 
 describe("IssueReader", () => {
+  it("offers to subscribe in the rail", () => {
+    renderWithIntl(<IssueReader data={issuePage()} locale="en" />);
+    const subscribe = screen.getByTestId("subscribe");
+    expect(subscribe).toHaveAttribute("data-slug", "agents-weekly");
+    expect(subscribe).toHaveTextContent("Agents Weekly");
+    const section = subscribe.closest("section")!;
+    expect(
+      within(section).getByText("A monthly magazine about agents that work."),
+    ).toBeInTheDocument();
+    const visit = within(section).getByRole("link", {
+      name: "Visit Amsterdam AI Builders",
+    });
+    expect(visit).toHaveAttribute("data-variant", "outline");
+    expect(
+      subscribe.compareDocumentPosition(visit) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("contents list links to every item anchor in order", () => {
     const data = issuePage();
     const { container } = renderWithIntl(

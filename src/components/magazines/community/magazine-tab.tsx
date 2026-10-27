@@ -17,6 +17,7 @@ import { ContributorDesk } from "../editor/contributor-desk";
 import { EditorDesk } from "../editor/editor-desk";
 import { FeaturedIssue } from "../reading/featured-issue";
 import { IssueCoverCard } from "../reading/issue-cover-card";
+import { SubscribeButton } from "../reading/subscribe-button";
 
 /** Desk choice follows capabilities, so role changes stay in roles.ts. */
 function deskFor(role: MagazineRole | null): "edit" | "write" | null {
@@ -137,9 +138,15 @@ export function MagazineTab({
             </p>
           )}
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link href={magazinePath(magazine)}>{t("magazinePage")}</Link>
-        </Button>
+        <div className="flex min-w-0 flex-wrap items-start gap-3">
+          <SubscribeButton
+            magazineSlug={magazine.slug}
+            magazineName={magazine.name}
+          />
+          <Button variant="outline" size="sm" asChild>
+            <Link href={magazinePath(magazine)}>{t("magazinePage")}</Link>
+          </Button>
+        </div>
       </header>
 
       {latest ? (

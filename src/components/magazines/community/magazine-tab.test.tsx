@@ -6,6 +6,20 @@ import { describe, expect, it, vi } from "vitest";
 import { roleCan, type MagazineRole } from "@/lib/magazines/roles";
 import type { CommunityMagazineTabData } from "@/server/magazines/reading";
 
+vi.mock("../reading/subscribe-button", () => ({
+  SubscribeButton: ({
+    magazineSlug,
+    magazineName,
+  }: {
+    magazineSlug: string;
+    magazineName: string;
+  }) => (
+    <div data-testid="subscribe" data-slug={magazineSlug}>
+      {magazineName}
+    </div>
+  ),
+}));
+
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
     <a href={href} {...props}>
@@ -67,6 +81,51 @@ function tabData(
 }
 
 describe("MagazineTab", () => {
+  it.each(["contributor", "editor", "editor_in_chief", null] as const)(
+    "offers to subscribe on the Magazine tab (%s)",
+    (viewerRole) => {
+      renderWithIntl(
+        <MagazineTab
+          communitySlug="amsterdam-ai"
+          data={tabData({
+            viewerRole,
+            viewerIsEditor: roleCan(viewerRole, "edit"),
+          })}
+        />,
+      );
+      const subscribe = screen.getByTestId("subscribe");
+      expect(subscribe).toHaveAttribute("data-slug", "agents-weekly");
+      expect(subscribe).toHaveTextContent("Agents Weekly");
+      const header = screen
+        .getByRole("heading", { name: "Agents Weekly" })
+        .closest("header")!;
+      expect(header).toContainElement(subscribe);
+      expect(
+        within(subscribe.parentElement!).getByRole("link", {
+          name: "Magazine page",
+        }),
+      ).toHaveAttribute("data-variant", "outline");
+    },
+  );
+
+  it.each([true, false])(
+    "offers no subscription when the community has no magazine (editor: %s)",
+    (viewerIsEditor) => {
+      renderWithIntl(
+        <MagazineTab
+          communitySlug="amsterdam-ai"
+          data={tabData({
+            magazine: null,
+            latest: null,
+            issues: [],
+            viewerIsEditor,
+          })}
+        />,
+      );
+      expect(screen.queryByTestId("subscribe")).toBeNull();
+    },
+  );
+
   it.each(["contributor", "editor", "editor_in_chief", null] as const)(
     "shows the writing desk to contributors and the editor's desk to editors (%s)",
     (viewerRole: MagazineRole | null) => {

@@ -4771,6 +4771,21 @@
     }
   },
   "magazines": {
+    "subscribe": {
+      "subscribe": "Abonneren",
+      "subscribed": "Geabonneerd",
+      "unsubscribe": "Afmelden",
+      "inboxHelp": "Je krijgt een bericht in je inbox als er een nieuw nummer is.",
+      "subscribedNow": "Je bent nu geabonneerd op {magazine}.",
+      "unsubscribedNow": "Je bent niet meer geabonneerd op {magazine}.",
+      "emailLabel": "Je e-mailadres",
+      "emailSubmit": "Stuur me een link",
+      "emailHelp": "We sturen één e-mail om te controleren of jij het bent. Je kunt je altijd afmelden.",
+      "emailSent": "Kijk in je e-mail en klik op de link om nieuwe nummers te ontvangen.",
+      "signInInstead": "Heb je een account? Log in om nieuwe nummers in je inbox te krijgen.",
+      "tooMany": "Te vaak geprobeerd. Wacht even en probeer het dan opnieuw.",
+      "failed": "Dat is niet gelukt. Probeer het opnieuw."
+    },
     "notifications": {
       "issuePublished": {
         "title": "Nieuw in {magazine}: {title}",

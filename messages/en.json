@@ -4771,6 +4771,21 @@
     }
   },
   "magazines": {
+    "subscribe": {
+      "subscribe": "Subscribe",
+      "subscribed": "Subscribed",
+      "unsubscribe": "Unsubscribe",
+      "inboxHelp": "Get a message in your inbox when there is a new issue.",
+      "subscribedNow": "You are subscribed to {magazine}.",
+      "unsubscribedNow": "You are no longer subscribed to {magazine}.",
+      "emailLabel": "Your email address",
+      "emailSubmit": "Send me a link",
+      "emailHelp": "We send one email to check it is you. You can stop any time.",
+      "emailSent": "Check your email and click the link in it to start getting new issues.",
+      "signInInstead": "Have an account? Sign in to get new issues in your inbox.",
+      "tooMany": "Too many tries. Wait a while, then try again.",
+      "failed": "That did not work. Try again."
+    },
     "notifications": {
       "issuePublished": {
         "title": "New in {magazine}: {title}",

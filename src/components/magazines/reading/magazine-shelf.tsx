@@ -15,6 +15,7 @@ import type { MagazineShelfData } from "@/server/magazines/reading";
 
 import { IssueCoverCard } from "./issue-cover-card";
 import { READING_FRAME } from "./frame";
+import { SubscribeButton } from "./subscribe-button";
 
 function communityPath(slug: string): string {
   return `/communities/${slug}`;
@@ -80,6 +81,10 @@ function MagazineIdentity({ data }: { data: MagazineShelfData }) {
             ))}
           </ul>
         )}
+        <SubscribeButton
+          magazineSlug={magazine.slug}
+          magazineName={magazine.name}
+        />
         {viewerIsEditor && (
           <Button variant="outline" size="sm" asChild className="ml-auto">
             <Link href={communityMagazinePath(community.slug)}>
