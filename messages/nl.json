@@ -3615,7 +3615,7 @@
     "hubMailAgentJobHint": "Wanneer een agent werk afrondt dat je vroeg."
   },
   "digestUnsubscribe": {
-    "kicker": "/ DIGEST",
+    "kicker": "Digest",
     "metaTitle": "Afmelden",
     "title": "Afmelden voor de wekelijkse samenvatting",
     "body": "Dit stopt de wekelijkse AIT-samenvatting. Aankondigingen van communities en andere Hub-e-mails blijven zoals ze zijn. Je kunt de samenvatting weer aanzetten in je instellingen.",
@@ -3627,7 +3627,7 @@
     "settings": "Meldingsinstellingen"
   },
   "storyUnsubscribe": {
-    "kicker": "/ NIEUWS",
+    "kicker": "Nieuws",
     "metaTitle": "Afmelden",
     "title": "Afmelden voor nieuwsverhalen",
     "body": "Dit stopt e-mails wanneer een nieuwsverhaal wordt gepubliceerd. Andere e-mails blijven zoals ze zijn.",
@@ -3637,6 +3637,31 @@
     "invalidTitle": "Deze afmeldlink is niet geldig",
     "invalidBody": "De link ontbreekt of is gewijzigd.",
     "settings": "Meldingsinstellingen"
+  },
+  "magazineSubscription": {
+    "metaTitle": "Bevestig je abonnement",
+    "kicker": "Magazine",
+    "readyTitle": "Nieuwe nummers van {magazine} per e-mail ontvangen?",
+    "readyBody": "Klik op de knop en we mailen je telkens als er een nieuw nummer van {magazine} is.",
+    "action": "Ja, mail me nieuwe nummers",
+    "doneTitle": "Je bent geabonneerd",
+    "doneBody": "We mailen je als er een nieuw nummer van {magazine} is. In elke e-mail staat een link om je af te melden.",
+    "openMagazine": "Ga naar {magazine}",
+    "expiredTitle": "Deze link is te oud",
+    "expiredBody": "Links werken 7 dagen. Vraag een nieuwe aan op de magazinepagina.",
+    "invalidTitle": "Deze link werkt niet",
+    "invalidBody": "Misschien ontbreekt er een stukje of is de link vervangen door een nieuwere. Vraag een nieuwe aan op de magazinepagina."
+  },
+  "magazineUnsubscribe": {
+    "metaTitle": "Stop e-mails over dit magazine",
+    "kicker": "E-mails over magazines",
+    "title": "Geen e-mails meer van dit magazine?",
+    "body": "Je krijgt dan geen e-mail meer over nieuwe nummers.",
+    "action": "Afmelden",
+    "doneTitle": "Je bent afgemeld",
+    "doneBody": "We mailen je niet meer over dit magazine.",
+    "invalidTitle": "Deze link werkt niet",
+    "invalidBody": "Misschien ontbreekt er een stukje. Open de magazinepagina om je opnieuw te abonneren."
   },
   "broadcast": {
     "title": "Stuur een aankondiging",

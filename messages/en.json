@@ -3615,7 +3615,7 @@
     "hubMailAgentJobHint": "When an agent completes work you asked for."
   },
   "digestUnsubscribe": {
-    "kicker": "/ DIGEST",
+    "kicker": "Digest",
     "metaTitle": "Unsubscribe",
     "title": "Unsubscribe from the weekly digest",
     "body": "This stops the weekly AIT digest. Community announcements and other Hub emails stay as they are. You can turn the digest back on from your settings.",
@@ -3627,7 +3627,7 @@
     "settings": "Notification settings"
   },
   "storyUnsubscribe": {
-    "kicker": "/ NEWS",
+    "kicker": "News",
     "metaTitle": "Unsubscribe",
     "title": "Unsubscribe from news stories",
     "body": "This stops emails when a news story is published. Other emails stay as they are.",
@@ -3637,6 +3637,31 @@
     "invalidTitle": "This unsubscribe link is not valid",
     "invalidBody": "The link is missing or has been changed.",
     "settings": "Notification settings"
+  },
+  "magazineSubscription": {
+    "metaTitle": "Confirm your subscription",
+    "kicker": "Magazine",
+    "readyTitle": "Get new issues of {magazine} by email?",
+    "readyBody": "Click the button and we will email you each time {magazine} has a new issue.",
+    "action": "Yes, email me new issues",
+    "doneTitle": "You are subscribed",
+    "doneBody": "We will email you when {magazine} has a new issue. Every email has a link to stop.",
+    "openMagazine": "Go to {magazine}",
+    "expiredTitle": "This link is too old",
+    "expiredBody": "Links work for 7 days. Ask for a new one on the magazine page.",
+    "invalidTitle": "This link does not work",
+    "invalidBody": "It may be cut off or replaced by a newer one. Ask for a new one on the magazine page."
+  },
+  "magazineUnsubscribe": {
+    "metaTitle": "Stop magazine emails",
+    "kicker": "Magazine emails",
+    "title": "Stop emails from this magazine?",
+    "body": "You will not get an email about new issues any more.",
+    "action": "Unsubscribe",
+    "doneTitle": "You are unsubscribed",
+    "doneBody": "We will not email you about this magazine again.",
+    "invalidTitle": "This link does not work",
+    "invalidBody": "It may be cut off. Open the magazine page to subscribe again."
   },
   "broadcast": {
     "title": "Send an announcement",
