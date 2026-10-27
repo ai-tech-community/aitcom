@@ -44,26 +44,45 @@ describe("AutoDraftNotice", () => {
     ).toBeDisabled();
   });
 
+  it("explains the draft without offering to stop a schedule", () => {
+    renderWithIntl(
+      <AutoDraftNotice
+        status="draft"
+        scheduledVia={null}
+        scheduledFor={null}
+        onStop={vi.fn()}
+        stopping={false}
+      />,
+    );
+    expect(
+      screen.getByRole("region", { name: "Made automatically" }),
+    ).toHaveTextContent(
+      "The magazine made this draft from what happened in your community. Check it, change what you like, and publish it when you are happy.",
+    );
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
   it.each([
-    { status: "draft" as const, scheduledVia: null },
-    { status: "scheduled" as const, scheduledVia: "schedule" as const },
-  ])(
-    "explains the draft without offering to stop an editor's schedule ($status)",
-    (schedule) => {
-      renderWithIntl(
-        <AutoDraftNotice
-          {...schedule}
-          scheduledFor="2026-10-29T12:00:00.000Z"
-          onStop={vi.fn()}
-          stopping={false}
-        />,
-      );
-      expect(
-        screen.getByRole("region", { name: "Made automatically" }),
-      ).toHaveTextContent(
-        "The magazine made this draft from what happened in your community. Check it, change what you like, and publish it when you are happy.",
-      );
-      expect(screen.queryByRole("button")).toBeNull();
+    {
+      status: "published" as const,
+      scheduledVia: null,
+      scheduledFor: null,
     },
-  );
+    {
+      status: "scheduled" as const,
+      scheduledVia: "schedule" as const,
+      scheduledFor: "2026-10-29T12:00:00.000Z",
+    },
+  ])("does not show draft instructions for a $status issue", (schedule) => {
+    renderWithIntl(
+      <AutoDraftNotice {...schedule} onStop={vi.fn()} stopping={false} />,
+    );
+    expect(
+      screen.queryByText(/publish it when you are happy/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Made automatically" }),
+    ).toHaveTextContent(/^Made automatically$/);
+    expect(screen.queryByRole("button")).toBeNull();
+  });
 });

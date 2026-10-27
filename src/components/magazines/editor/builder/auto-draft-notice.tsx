@@ -46,7 +46,9 @@ export function AutoDraftNotice({
                 <span className="font-mono">{chunks}</span>
               ),
             })
-          : t("draft")}
+          : status === "draft"
+            ? t("draft")
+            : t("label")}
       </p>
       {automatic && (
         <Button

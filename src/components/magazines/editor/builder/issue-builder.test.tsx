@@ -319,6 +319,42 @@ describe("IssueBuilder", () => {
     ).not.toHaveTextContent("Picked because");
   });
 
+  it.each([
+    {
+      status: "published" as const,
+      scheduledVia: null,
+      scheduledFor: null,
+    },
+    {
+      status: "scheduled" as const,
+      scheduledVia: "schedule" as const,
+      scheduledFor: "2030-01-02T09:30:00.000Z",
+    },
+  ])(
+    "keeps pick reasons without draft instructions for a $status automatic issue",
+    (publication) => {
+      trpc.editing = twoArticles({
+        issue: issue(publication),
+        autoDraft: automaticDraft({
+          "blk-1": { type: "topic", topic: "agents" },
+        }),
+      });
+      renderBuilder();
+      expect(
+        screen.queryByText(/publish it when you are happy/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("region", { name: "Made automatically" }),
+      ).toHaveTextContent(/^Made automatically$/);
+      expect(
+        screen.queryByRole("button", { name: "Stop the automatic publish" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("issue-item-blk-1")).toHaveTextContent(
+        "Picked because: Matches your topic agents",
+      );
+    },
+  );
+
   it.each(["details", "items"])(
     "says that a change stopped the automatic publish (%s)",
     async (part) => {
