@@ -8,6 +8,21 @@ import {
 } from "./errors";
 
 describe("magazineError", () => {
+  it.each([
+    ["STAFF_NOT_MEMBER", "BAD_REQUEST"],
+    ["STAFF_LEADS_COMMUNITY", "BAD_REQUEST"],
+    ["ARTICLE_LOCKED", "CONFLICT"],
+    ["ARTICLE_NOT_PENDING", "CONFLICT"],
+    ["REVIEW_NOTE_REQUIRED", "BAD_REQUEST"],
+    ["UNLISTED_PUBLIC_LEADERS_ONLY", "FORBIDDEN"],
+  ] as const)("gives %s its transport code", (code, transport) => {
+    expect(MAGAZINE_ERROR_CODES).toContain(code);
+    expect(magazineError(code)).toMatchObject({
+      message: code,
+      code: transport,
+    });
+  });
+
   it("uses the code as the message and a default tRPC code for every code", () => {
     for (const code of MAGAZINE_ERROR_CODES) {
       const err = magazineError(code);

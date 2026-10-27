@@ -1,0 +1,67 @@
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+
+import { MagazineTeam } from "@/components/magazines/editor/team/magazine-team";
+import { Link } from "@/i18n/navigation";
+import { resolveLocale } from "@/i18n/messages";
+import { communityMagazinePath, magazineTeamPath } from "@/lib/magazines/paths";
+import { getSession } from "@/server/better-auth/server";
+import { db } from "@/server/db";
+import { loadMagazineDesk } from "@/server/magazines/desk";
+import { standingCan } from "@/server/magazines/editorship";
+import { getPayloadClient } from "@/server/payload";
+
+export const dynamic = "force-dynamic";
+
+type Params = Promise<{ locale: string; slug: string }>;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Params;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({
+    locale: resolveLocale(locale),
+    namespace: "magazineEditor.team",
+  });
+  return { title: t("metaTitle"), robots: { index: false } };
+}
+
+export default async function MagazineTeamPage({ params }: { params: Params }) {
+  const { locale, slug } = await params;
+  const session = await getSession();
+  if (!session?.user) {
+    redirect(
+      `/${locale}/auth/signin?redirect=/${locale}${magazineTeamPath(slug)}`,
+    );
+  }
+  const desk = await loadMagazineDesk(
+    { db, payload: await getPayloadClient() },
+    { communitySlug: slug, viewerId: session.user.id },
+  );
+  if (!desk?.magazine || !standingCan(desk.standing, "manage")) notFound();
+
+  const t = await getTranslations({
+    locale: resolveLocale(locale),
+    namespace: "magazineEditor.team",
+  });
+  return (
+    <div className="flex min-w-0 flex-col gap-6">
+      <Link
+        href={communityMagazinePath(slug)}
+        className="text-muted-foreground w-fit text-sm underline underline-offset-4"
+      >
+        {t("back")}
+      </Link>
+      <header className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground max-w-prose text-sm">
+          {t("intro", { magazine: desk.magazine.name })}
+        </p>
+      </header>
+      <MagazineTeam slug={slug} />
+    </div>
+  );
+}

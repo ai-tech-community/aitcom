@@ -1,14 +1,12 @@
-"use client";
+import { redirect } from "@/i18n/navigation";
+import { resolveLocale } from "@/i18n/messages";
+import { magazineSettingsPath } from "@/lib/magazines/paths";
 
-import { use } from "react";
-
-import { MagazineSettingsForm } from "@/components/magazines/editor/magazine-settings-form";
-
-export default function MagazineSettingsPage({
+export default async function MagazineSettingsPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ locale: string; slug: string }>;
 }) {
-  const { slug } = use(params);
-  return <MagazineSettingsForm slug={slug} />;
+  const { locale, slug } = await params;
+  redirect({ href: magazineSettingsPath(slug), locale: resolveLocale(locale) });
 }

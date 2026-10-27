@@ -2,12 +2,24 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Where } from "payload";
 
+import { mayWriterChange } from "@/lib/magazines/review";
+import {
+  handInFor,
+  type MagazineCapability,
+  type MagazineHandIn,
+} from "@/lib/magazines/roles";
 import type { Article, Magazine } from "@/payload-types";
 import { communities } from "@/server/db/schema";
 
 import type { Deps, PayloadClient } from "./deps";
-import { loadMagazineEditorship } from "./editorship";
-import { getMagazineForCommunity } from "./magazine-service";
+import { loadMagazineDesk, type MagazineDesk } from "./desk";
+import {
+  loadMagazineEditorship,
+  type MagazineStanding,
+  NO_STANDING,
+  requireCapability,
+  standingCan,
+} from "./editorship";
 import { relationIdOrNull } from "./relation-id";
 
 /**
@@ -31,12 +43,13 @@ export type AvailableMagazineArticle = {
   editableByViewer: boolean;
 };
 
-/** One of the editor's own magazine articles that is not ready yet. */
+/** An unpublished article on the writer's magazine desk. */
 export type DraftMagazineArticle = {
   id: number;
   slug: string;
   title: string;
   reviewStatus: string | null;
+  reviewNote: string | null;
   updatedAt: string;
 };
 
@@ -56,15 +69,15 @@ async function isLiveCommunity(
 }
 
 /**
- * The magazine and whether the user edits it (the editorship seam, on a
+ * The magazine and the user's standing (the editorship seam, on a
  * live community). Null when the magazine does not exist. The one editor
  * check for magazine articles.
  */
-async function loadMagazineEditing(
+async function loadMagazineStanding(
   deps: Deps,
   magazine: unknown,
   userId: string | null,
-): Promise<{ magazine: Magazine; isEditor: boolean } | null> {
+): Promise<{ magazine: Magazine; standing: MagazineStanding } | null> {
   const magazineId = relationIdOrNull(magazine);
   const doc =
     magazineId === null
@@ -77,31 +90,30 @@ async function loadMagazineEditing(
         });
   if (!doc) return null;
   if (!(await isLiveCommunity(deps.db, doc.communityId))) {
-    return { magazine: doc, isEditor: false };
+    return { magazine: doc, standing: NO_STANDING };
   }
   const standing = await loadMagazineEditorship(
     deps.db,
     { communityId: doc.communityId, magazineId: doc.id },
     userId,
   );
-  return { magazine: doc, isEditor: standing.isEditor };
+  return { magazine: doc, standing };
 }
 
 /**
- * The magazine a user writes for, when they are an editor of its
- * community. `NOT_FOUND` when the magazine does not exist, `FORBIDDEN`
- * when the user is not its editor. The one gate for writing magazine
- * articles.
+ * The one capability gate for magazine articles. A missing magazine gives
+ * NOT_FOUND; missing standing (including a deleted community) gives FORBIDDEN.
  */
-export async function requireEditorOfMagazine(
+export async function requireMagazineCapability(
   deps: Deps,
   magazine: unknown,
   userId: string,
-): Promise<Magazine> {
-  const editing = await loadMagazineEditing(deps, magazine, userId);
-  if (!editing) throw new TRPCError({ code: "NOT_FOUND" });
-  if (!editing.isEditor) throw new TRPCError({ code: "FORBIDDEN" });
-  return editing.magazine;
+  capability: MagazineCapability,
+): Promise<{ magazine: Magazine; standing: MagazineStanding }> {
+  const loaded = await loadMagazineStanding(deps, magazine, userId);
+  if (!loaded) throw new TRPCError({ code: "NOT_FOUND" });
+  requireCapability(loaded.standing, capability);
+  return loaded;
 }
 
 /** Whether the viewer edits this magazine; false for a missing magazine. */
@@ -110,42 +122,38 @@ export async function isEditorOfMagazine(
   magazine: unknown,
   viewerId: string | null,
 ): Promise<boolean> {
-  return (
-    (await loadMagazineEditing(deps, magazine, viewerId))?.isEditor ?? false
-  );
+  const loaded = await loadMagazineStanding(deps, magazine, viewerId);
+  return loaded !== null && standingCan(loaded.standing, "edit");
 }
 
-/** The magazine an editor writes for, as the article editor names it. */
-export type MagazineWriting = { magazineId: number; magazineName: string };
+/** The magazine a writer writes for, including how they hand in an article. */
+export type MagazineWriting = {
+  magazineId: number;
+  magazineName: string;
+  handIn: MagazineHandIn;
+};
+
+/** The write-page gate, shared with the edit page without reloading standing. */
+function writingAt(desk: MagazineDesk | null): MagazineWriting | null {
+  if (!desk?.magazine || !standingCan(desk.standing, "write")) return null;
+  return {
+    magazineId: desk.magazine.id,
+    magazineName: desk.magazine.name,
+    handIn: handInFor(standingCan(desk.standing, "edit")),
+  };
+}
 
 /**
  * The write page's gate (Gate-Before-Fail): the magazine of a live
- * community, when the viewer is its editor; null otherwise (no community,
- * no magazine yet, or not an editor), which the page answers with a 404.
+ * community, when the viewer may write; null otherwise (no community,
+ * no magazine yet, or no write capability), which the page answers with a 404.
  */
 export async function loadMagazineWriting(
   deps: Deps,
   opts: { communitySlug: string; viewerId: string | null },
 ): Promise<MagazineWriting | null> {
   if (opts.viewerId === null) return null;
-  const community = await deps.db.query.communities.findFirst({
-    where: and(
-      eq(communities.slug, opts.communitySlug),
-      isNull(communities.deletedAt),
-    ),
-    columns: { id: true },
-  });
-  if (!community) return null;
-  const magazine = await getMagazineForCommunity(deps.payload, community.id);
-  if (!magazine) return null;
-  const standing = await loadMagazineEditorship(
-    deps.db,
-    { communityId: community.id, magazineId: magazine.id },
-    opts.viewerId,
-  );
-  return standing.isEditor
-    ? { magazineId: magazine.id, magazineName: magazine.name }
-    : null;
+  return writingAt(await loadMagazineDesk(deps, opts));
 }
 
 /**
@@ -157,9 +165,11 @@ export async function loadMagazineWriting(
 export async function loadMagazineArticleForEditing(
   deps: Deps,
   opts: { communitySlug: string; articleSlug: string; viewerId: string | null },
-): Promise<(MagazineWriting & { article: Article }) | null> {
-  const writing = await loadMagazineWriting(deps, opts);
-  if (!writing) return null;
+): Promise<(MagazineWriting & { article: Article; editable: boolean }) | null> {
+  if (opts.viewerId === null) return null;
+  const desk = await loadMagazineDesk(deps, opts);
+  const writing = writingAt(desk);
+  if (!desk || !writing) return null;
   const { docs } = await deps.payload.find({
     collection: "articles",
     where: { slug: { equals: opts.articleSlug } },
@@ -173,7 +183,13 @@ export async function loadMagazineArticleForEditing(
   const isOwnArticleHere =
     isEditableBy(article, opts.viewerId) &&
     relationIdOrNull(article.magazine) === writing.magazineId;
-  return isOwnArticleHere ? { ...writing, article } : null;
+  return isOwnArticleHere
+    ? {
+        ...writing,
+        article,
+        editable: mayWriterChange(standingCan(desk.standing, "edit"), article),
+      }
+    : null;
 }
 
 /**
@@ -271,11 +287,11 @@ const NOT_READY: Where = {
   ],
 };
 
-/** The author's articles for the magazine that are not ready yet. */
-export async function listDraftArticles(
+async function listAuthorArticles(
   payload: PayloadClient,
   magazineId: number,
   authorId: string,
+  filter: Where,
 ): Promise<DraftMagazineArticle[]> {
   const { docs } = await payload.find({
     collection: "articles",
@@ -283,7 +299,7 @@ export async function listDraftArticles(
       and: [
         { magazine: { equals: magazineId } },
         { authorId: { equals: authorId } },
-        NOT_READY,
+        filter,
       ],
     },
     sort: "-updatedAt",
@@ -297,6 +313,27 @@ export async function listDraftArticles(
     slug: doc.slug,
     title: doc.title,
     reviewStatus: doc.reviewStatus ?? null,
+    reviewNote: doc.reviewNote ?? null,
     updatedAt: doc.updatedAt,
   }));
+}
+
+/** The author's articles for the magazine that are not ready yet. */
+export async function listDraftArticles(
+  payload: PayloadClient,
+  magazineId: number,
+  authorId: string,
+): Promise<DraftMagazineArticle[]> {
+  return listAuthorArticles(payload, magazineId, authorId, NOT_READY);
+}
+
+/** The author's unpublished articles, including those ready for an issue. */
+export async function listWriterArticles(
+  payload: PayloadClient,
+  magazineId: number,
+  authorId: string,
+): Promise<DraftMagazineArticle[]> {
+  return listAuthorArticles(payload, magazineId, authorId, {
+    status: { not_equals: "published" },
+  });
 }

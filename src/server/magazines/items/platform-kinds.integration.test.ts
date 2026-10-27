@@ -272,6 +272,7 @@ describe.skipIf(!isLocalDbConfigured())(
           confirmUnlistedPublic: true,
         },
         fx.editorId,
+        true,
       );
       const actor = { userId: fx.editorId, community: c };
       const issue = await m.issues.createIssue(

@@ -6,7 +6,11 @@ import type { db } from "@/server/db";
 import { communities } from "@/server/db/schema";
 
 import type { PayloadClient } from "./deps";
-import { type EditorScope, loadEditorScope } from "./editorship";
+import {
+  type EditorScope,
+  loadEditorScope,
+  type MagazineStanding,
+} from "./editorship";
 
 /**
  * What a viewer may read across all magazine issues, as id lists a Payload
@@ -53,6 +57,23 @@ export function buildIssueReadScope(
       .filter((c) => c.deletedAt !== null)
       .map((c) => c.id),
   };
+}
+
+/**
+ * Derive one live community's issue scope from its already-loaded standing.
+ * The caller must exclude soft-deleted communities before using this helper.
+ */
+export function issueReadScopeForCommunity(
+  standing: Pick<MagazineStanding, "isEditor" | "isMember">,
+  community: Omit<ScopeCommunity, "deletedAt">,
+): IssueReadScope {
+  return buildIssueReadScope(
+    {
+      editorCommunityIds: standing.isEditor ? [community.id] : [],
+      memberCommunityIds: standing.isMember ? [community.id] : [],
+    },
+    [{ ...community, deletedAt: null }],
+  );
 }
 
 /**

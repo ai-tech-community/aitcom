@@ -7,8 +7,10 @@ import {
   magazineArticleEditPath,
   magazineArticlePath,
   magazinePath,
+  magazineReviewPath,
   magazineSettingsPath,
   magazinesTopicPath,
+  magazineTeamPath,
   magazineWritePath,
 } from "./paths";
 
@@ -53,9 +55,18 @@ describe("magazine paths", () => {
     );
   });
 
+  it("magazineReviewPath opens the article for the editors", () => {
+    expect(magazineReviewPath("c", "a")).toBe(
+      "/communities/c/magazine/review/a",
+    );
+  });
+
   it("editor paths live under the community", () => {
     expect(magazineSettingsPath("builders")).toBe(
-      "/communities/builders/settings/magazine",
+      "/communities/builders/magazine/settings",
+    );
+    expect(magazineTeamPath("builders")).toBe(
+      "/communities/builders/magazine/team",
     );
     expect(magazineWritePath("builders")).toBe(
       "/communities/builders/magazine/write",

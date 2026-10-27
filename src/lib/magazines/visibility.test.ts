@@ -27,6 +27,7 @@ describe("planVisibilityChange", () => {
         community: unlisted,
         confirmUnlistedPublic: false,
         actorId: ACTOR,
+        actorLeadsCommunity: true,
         now: NOW,
       }),
     ).toEqual({ ok: false, code: "CONFIRM_UNLISTED_PUBLIC" });
@@ -39,6 +40,7 @@ describe("planVisibilityChange", () => {
       community: unlisted,
       confirmUnlistedPublic: true,
       actorId: ACTOR,
+      actorLeadsCommunity: true,
       now: NOW,
     });
     expect(result).toEqual({
@@ -63,6 +65,7 @@ describe("planVisibilityChange", () => {
       community: unlisted,
       confirmUnlistedPublic: false,
       actorId: ACTOR,
+      actorLeadsCommunity: true,
       now: NOW,
     });
     expect(result).toEqual({ ok: true, record: current });
@@ -79,6 +82,7 @@ describe("planVisibilityChange", () => {
       community: unlisted,
       confirmUnlistedPublic: true,
       actorId: ACTOR,
+      actorLeadsCommunity: true,
       now: NOW,
     });
     expect(result).toEqual({ ok: true, record: membersRecord });
@@ -93,6 +97,7 @@ describe("planVisibilityChange", () => {
           community: listed,
           confirmUnlistedPublic,
           actorId: ACTOR,
+          actorLeadsCommunity: true,
           now: NOW,
         }),
       ).toEqual({
@@ -104,6 +109,38 @@ describe("planVisibilityChange", () => {
         },
       });
     }
+  });
+
+  it("only a community leader may pass a public confirmation", () => {
+    for (const community of [unlisted, listed]) {
+      for (const next of ["public", "members"] as const) {
+        expect(
+          planVisibilityChange({
+            next,
+            current: membersRecord,
+            community,
+            confirmUnlistedPublic: true,
+            actorId: ACTOR,
+            actorLeadsCommunity: false,
+            now: NOW,
+          }),
+        ).toEqual({ ok: false, code: "UNLISTED_PUBLIC_LEADERS_ONLY" });
+      }
+    }
+  });
+
+  it("a non-leader may save without confirming public", () => {
+    expect(
+      planVisibilityChange({
+        next: "public",
+        current: membersRecord,
+        community: listed,
+        confirmUnlistedPublic: false,
+        actorId: ACTOR,
+        actorLeadsCommunity: false,
+        now: NOW,
+      }),
+    ).toEqual({ ok: true, record: { ...membersRecord, visibility: "public" } });
   });
 });
 

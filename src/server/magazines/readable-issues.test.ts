@@ -6,6 +6,7 @@ import { editorScopeOf } from "./editorship";
 import {
   buildIssueReadScope,
   type IssueReadScope,
+  issueReadScopeForCommunity,
   readableIssueWhere,
 } from "./readable-issues";
 
@@ -21,6 +22,48 @@ function scope(partial: Partial<IssueReadScope>): IssueReadScope {
 
 const PUBLISHED = { status: { equals: "published" } };
 const PUBLIC = { visibility: { equals: "public" } };
+
+describe("issueReadScopeForCommunity", () => {
+  const communities = [
+    {
+      label: "listed community",
+      row: { id: "listed", slug: "listed", isListedInDirectory: true },
+      privateCommunityIds: [],
+    },
+    {
+      label: "unlisted community",
+      row: { id: "unlisted", slug: "unlisted", isListedInDirectory: false },
+      privateCommunityIds: ["unlisted"],
+    },
+    {
+      label: "unlisted Hub",
+      row: { id: "hub", slug: HUB_SLUG, isListedInDirectory: false },
+      privateCommunityIds: [],
+    },
+  ];
+  const standings = [
+    { label: "editor", isEditor: true, isMember: true },
+    { label: "member", isEditor: false, isMember: true },
+    { label: "outsider", isEditor: false, isMember: false },
+  ];
+
+  it.each(
+    communities.flatMap((community) =>
+      standings.map((standing) => ({
+        name: `${standing.label} in a live ${community.label}`,
+        community,
+        standing,
+      })),
+    ),
+  )("builds the scope for $name", ({ community, standing }) => {
+    expect(issueReadScopeForCommunity(standing, community.row)).toEqual({
+      editorCommunityIds: standing.isEditor ? [community.row.id] : [],
+      memberCommunityIds: standing.isMember ? [community.row.id] : [],
+      privateCommunityIds: community.privateCommunityIds,
+      deletedCommunityIds: [],
+    });
+  });
+});
 
 describe("readableIssueWhere", () => {
   it("anonymous scope: published, public, and listed or confirmed", () => {
@@ -138,7 +181,7 @@ describe("buildIssueReadScope", () => {
   const hub = { id: "c-hub", slug: HUB_SLUG, isListedInDirectory: false };
 
   it("the Hub is content-public although it is unlisted", () => {
-    const s = buildIssueReadScope(editorScopeOf([]), [
+    const s = buildIssueReadScope(editorScopeOf([], []), [
       { ...hub, deletedAt: null },
       { ...unlisted, deletedAt: null },
       { ...listed, deletedAt: null },
@@ -149,10 +192,13 @@ describe("buildIssueReadScope", () => {
 
   it("takes the editor and member ids from the editorship seam", () => {
     const s = buildIssueReadScope(
-      editorScopeOf([
-        { communityId: "a", role: "owner", status: "active" },
-        { communityId: "d", role: "member", status: "active" },
-      ]),
+      editorScopeOf(
+        [
+          { communityId: "a", role: "owner", status: "active" },
+          { communityId: "d", role: "member", status: "active" },
+        ],
+        [],
+      ),
       [],
     );
     expect(s.editorCommunityIds).toEqual(["a"]);
@@ -161,7 +207,7 @@ describe("buildIssueReadScope", () => {
 
   it("a soft-deleted community is listed as deleted, listed or not", () => {
     const when = new Date("2026-01-01T00:00:00Z");
-    const s = buildIssueReadScope(editorScopeOf([]), [
+    const s = buildIssueReadScope(editorScopeOf([], []), [
       { ...listed, deletedAt: when },
       { ...hub, deletedAt: when },
     ]);

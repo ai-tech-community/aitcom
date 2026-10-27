@@ -8,6 +8,21 @@ import nl from "../../../../messages/nl.json";
 import { editorErrorKey, readEditorError } from "./editor-errors";
 
 describe("editorErrorKey", () => {
+  it.each([
+    ["STAFF_NOT_MEMBER", "staffNotMember"],
+    ["STAFF_LEADS_COMMUNITY", "staffLeadsCommunity"],
+    ["ARTICLE_LOCKED", "articleLocked"],
+    ["ARTICLE_NOT_PENDING", "articleNotPending"],
+    ["REVIEW_NOTE_REQUIRED", "reviewNoteRequired"],
+    ["UNLISTED_PUBLIC_LEADERS_ONLY", "unlistedPublicLeadersOnly"],
+  ])("maps %s to its own message", (code, key) => {
+    expect(editorErrorKey(code)).toBe(key);
+    expect(readEditorError({ message: code })).toEqual({
+      key,
+      itemIndex: null,
+    });
+  });
+
   it("maps every MagazineErrorCode to a message key present in en and nl", () => {
     const keys = new Set<string>();
     for (const code of MAGAZINE_ERROR_CODES) {

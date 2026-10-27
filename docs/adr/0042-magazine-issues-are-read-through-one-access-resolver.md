@@ -4,6 +4,9 @@ status: accepted
 
 # Magazine issues are read through one access resolver
 
+Amended by [ADR-0045](0045-magazine-roles-are-capabilities-read-through-the-editorship-seam.md):
+slice 3 introduces capability gates and deliberately changes callers.
+
 A community can run a [[magazine]]: a series of [[issue]]s, each an ordered
 list of [[issue-item]]s (magazine articles and editorial text in the core
 slice). An issue is read on many surfaces at once: its own page, the
@@ -64,6 +67,9 @@ resolver" under "Decided structure"; "Visibility rules").
    reading pages and Magazine tab, the builder, write and edit page gates,
    the article-editing gate and the tRPC `editorProcedure`. Slice 3 changes
    these two loaders to read per-magazine staff rows; no caller changes.
+   **Amended by [ADR-0045](0045-magazine-roles-are-capabilities-read-through-the-editorship-seam.md):**
+   slice 3 also changes callers to ask for `write`, `edit` or `manage`;
+   `isEditor` and the read resolver's rule order stay.
 
 2. **The access union grows with the visibility list.** Slice 1 has two issue
    visibilities, `members | public`. Slice 6 adds `teaser` to **both** the
@@ -196,6 +202,10 @@ resolver" under "Decided structure"; "Visibility rules").
   `loadMagazineEditorship` and `loadEditorScope` in
   `src/server/magazines/editorship.ts`; callers, the resolver and its rule
   order stay. The parity test's viewer matrix must then gain staff viewers.
+  **Amended by [ADR-0045](0045-magazine-roles-are-capabilities-read-through-the-editorship-seam.md):**
+  capability gates replace `requireEditorStanding`, writing requires `write`,
+  and the Magazine tab reads the viewer's role through `roleCan`. Caller
+  changes are intentional; the resolver and its rule order stay.
 - **ADR-0030 gains one documented exception.** Any other community content
   that wants an unlisted opt-in needs its own ADR; this one covers magazine
   issues only.

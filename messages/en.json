@@ -1318,6 +1318,7 @@
       "profile_complete": "Profile complete",
       "onboarding_complete": "Onboarding complete",
       "tutorial_creator": "Tutorial creator",
+      "magazine_published": "Published in a magazine",
       "early_adopter": "Early adopter",
       "news_first_scoop": "First scoop",
       "news_five_stories": "5 stories",
@@ -1355,6 +1356,7 @@
       "profile_complete": "Filled in every profile field",
       "onboarding_complete": "Finished every onboarding step",
       "tutorial_creator": "Published a first tutorial",
+      "magazine_published": "Had an article published in a community magazine.",
       "early_adopter": "One of the first {count} members",
       "news_first_scoop": "First to claim a breaking topic from collected reporting",
       "news_five_stories": "5 news stories published from your research",
@@ -2296,6 +2298,10 @@
     "featuredImagePlaceholder": "No image — add a URL above",
     "articleTitlePlaceholder": "Article title...",
     "magazine": {
+      "sendForReview": "Send to the editors",
+      "sentForReview": "Sent. The editors will read it and let you know.",
+      "reviewPrePublishTitle": "Send to the editors?",
+      "reviewPrePublishSubtitle": "Check your article first. You cannot change it while the editors read it. They can approve it, ask for changes or decline it.",
       "markReady": "Mark ready for an issue",
       "markedReady": "Marked ready. An editor can now place it in an issue.",
       "prePublishTitle": "Ready for an issue?",
@@ -4840,6 +4846,30 @@
     }
   },
   "magazineEditor": {
+    "review": {
+      "metaTitle": "Read an article",
+      "back": "Back to the Magazine tab",
+      "byline": "By {author} · sent <date>{dateLabel}</date>",
+      "lastChangedByline": "By {author} · last changed <date>{dateLabel}</date>",
+      "unknownAuthor": "Unknown writer",
+      "decision": "Your decision",
+      "approve": "Approve",
+      "askChanges": "Ask for changes",
+      "changesLabel": "What should change?",
+      "sendChanges": "Send to the writer",
+      "decline": "Decline",
+      "declineTitle": "Decline this article?",
+      "declineBody": "The writer gets your note. They cannot send this article again.",
+      "declineNoteLabel": "Note for the writer (optional)",
+      "declineConfirm": "Decline article",
+      "cancel": "Cancel",
+      "done": {
+        "approved": "Approved. It is ready for an issue.",
+        "changes_requested": "Sent to the writer.",
+        "rejected": "Article declined."
+      },
+      "reload": "Reload"
+    },
     "errors": {
       "confirmUnlistedPublic": "Your community is private. Tick the box to confirm that everyone may see this.",
       "magazineExists": "Your community already has a magazine. Reload the page to edit it.",
@@ -4854,7 +4884,13 @@
       "articlePlaced": "This article is already in another issue.",
       "articleNotReady": "This article is not ready for an issue yet.",
       "articleMagazineLocked": "A magazine article stays in its magazine. It cannot move to the blog or to another magazine.",
-      "generic": "Something went wrong. Try again."
+      "generic": "Something went wrong. Try again.",
+      "staffNotMember": "Only members of this community can join the magazine team.",
+      "staffLeadsCommunity": "Community owners and admins already run the magazine.",
+      "articleLocked": "The editors have this article now, so it cannot be changed.",
+      "articleNotPending": "Someone already decided on this article. Reload to see what changed.",
+      "reviewNoteRequired": "Tell the writer what to change.",
+      "unlistedPublicLeadersOnly": "This community is unlisted. Only its owners and admins can make this public."
     },
     "publicOptIn": {
       "warning": "Your community is private. If you show this to everyone, anyone on the internet will see your community's name and a link to it. Your members, posts and other pages stay private.",
@@ -4893,7 +4929,8 @@
       "saved": "Magazine saved",
       "loadFailed": "The magazine settings could not be loaded.",
       "tryAgain": "Try again",
-      "openTab": "Open the Magazine tab"
+      "openTab": "Open the Magazine tab",
+      "back": "Back to the Magazine tab"
     },
     "tab": {
       "metaTitle": "Magazine",
@@ -4908,7 +4945,24 @@
       "emptyDescription": "The first issue of {magazine} is on its way.",
       "emptyEditorDescription": "Make the first issue with New issue in the editor's desk below."
     },
+    "contributorDesk": {
+      "label": "Your writing desk",
+      "write": "Write an article",
+      "articles": "Your articles",
+      "articlesEmpty": "You have no articles in progress. Write one and send it to the editors.",
+      "editorNote": "Note from the editors",
+      "status": {
+        "draft": "Not sent yet",
+        "pending_review": "With the editors",
+        "changes_requested": "Changes asked for",
+        "approved": "Ready for an issue",
+        "rejected": "Not accepted"
+      }
+    },
     "desk": {
+      "waiting": "Waiting for you",
+      "waitingEmpty": "No articles are waiting. Articles members send in show up here.",
+      "sentOn": "Sent {date}",
       "label": "Editor's desk",
       "newIssue": "New issue",
       "newIssueTitle": "Issue {number}",
@@ -4926,13 +4980,15 @@
       "drafts": "Your drafts",
       "draftsEmpty": "You have no articles in progress. Write one to fill your next issue.",
       "reviewStatus": {
+        "approved": "Ready for an issue",
         "draft": "Draft",
         "pending_review": "Waiting for review",
         "changes_requested": "Changes requested",
         "rejected": "Not accepted"
       },
       "loadFailed": "This list could not be loaded.",
-      "tryAgain": "Try again"
+      "tryAgain": "Try again",
+      "team": "Team"
     },
     "builder": {
       "metaTitle": "Edit issue",
@@ -5110,6 +5166,88 @@
         "read": "Read the issue",
         "keepEditing": "Keep editing"
       }
+    },
+    "roles": {
+      "editor_in_chief": {
+        "name": "Editor-in-chief",
+        "help": "Runs the magazine: its settings, its team, its issues and the articles members send in."
+      },
+      "editor": {
+        "name": "Editor",
+        "help": "Builds and publishes issues, and reads the articles members send in."
+      },
+      "contributor": {
+        "name": "Contributor",
+        "help": "Writes articles and sends them to the editors."
+      }
+    },
+    "notifications": {
+      "articleReviewed": {
+        "approved": {
+          "title": "“{title}” is ready for an issue",
+          "content": "An editor of {magazine} approved your article. It goes live when an issue with it is published."
+        },
+        "changesRequested": {
+          "title": "Changes asked for “{title}”"
+        },
+        "rejected": {
+          "title": "“{title}” was not accepted",
+          "noNote": "An editor of {magazine} decided not to use this article."
+        },
+        "linkOpenArticle": "Open your article",
+        "linkOpenMagazine": "Open the magazine"
+      },
+      "articleSubmitted": {
+        "title": "{author} sent “{title}” to {magazine}",
+        "content": "Read it, then approve it, ask for changes or decline it.",
+        "linkLabel": "Read the article",
+        "author": "A member"
+      },
+      "roleAssigned": {
+        "title": "You joined the team of {magazine}",
+        "linkLabel": "Open the magazine",
+        "content": {
+          "editor_in_chief": "You are now an editor-in-chief. {help}",
+          "editor": "You are now an editor. {help}",
+          "contributor": "You are now a contributor. {help}"
+        }
+      }
+    },
+    "team": {
+      "metaTitle": "Magazine team",
+      "title": "Team",
+      "intro": "Choose who writes for and edits {magazine}. Owners and admins of the community always run it.",
+      "add": "Add someone",
+      "searchLabel": "Find a member",
+      "searchHint": "Type a name to find members of your community.",
+      "resultsLegend": "Choose a member",
+      "resultCount": "{count, plural, =0 {No members match} one {# member found} other {# members found}}",
+      "noResults": "No members match. Only members of this community can join the team.",
+      "roleLabel": "Job on the team",
+      "addButton": "Add to the team",
+      "owner": "Community owner",
+      "admin": "Community admin",
+      "notMember": "Not a member now",
+      "remove": "Remove",
+      "removeTitle": "Remove {name} from the team?",
+      "removeBody": "They keep their articles. They can no longer write for the magazine or edit issues.",
+      "removeConfirm": "Remove",
+      "cancel": "Cancel",
+      "assigned": {
+        "editor_in_chief": "{name} is now an editor-in-chief.",
+        "editor": "{name} is now an editor.",
+        "contributor": "{name} is now a contributor."
+      },
+      "removed": "{name} is no longer on the team.",
+      "you": "You",
+      "removeNamed": "Remove {name}",
+      "loseAccessTitle": "Leave the team page?",
+      "loseAccessBody": "You will lose access to this team page. Your articles stay in the magazine.",
+      "loseAccessConfirm": "Change my job",
+      "removeSelfBody": "You will lose access to this team page. Your articles stay in the magazine, but you can no longer write for it or edit issues.",
+      "back": "Back to the Magazine tab",
+      "membersTitle": "The team",
+      "empty": "Add someone to help write articles and make issues."
     }
   }
 }

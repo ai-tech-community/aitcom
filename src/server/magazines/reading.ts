@@ -10,6 +10,7 @@ import type {
   ArticleItemView,
   EditorItemView,
 } from "@/lib/magazines/item-views";
+import type { MagazineRole } from "@/lib/magazines/roles";
 import {
   ISSUE_LAYOUTS,
   type IssueLayout,
@@ -37,6 +38,7 @@ import {
 import { getMagazineForCommunity, normalizeTopics } from "./magazine-service";
 import {
   type IssueReadScope,
+  issueReadScopeForCommunity,
   loadIssueReadScope,
   readableIssueWhere,
 } from "./readable-issues";
@@ -383,10 +385,9 @@ async function loadShelf(
   deps: Deps,
   magazine: Magazine,
   community: CommunityRow,
-  viewerId: string | null,
+  scope: IssueReadScope,
   locale: AppLocale,
 ): Promise<Shelf | null> {
-  const scope = await loadIssueReadScope(deps.db, viewerId);
   const issues = await readableMagazineIssues(deps, scope, magazine.id, locale);
   const isMember = scope.memberCommunityIds.includes(community.id);
   if (issues.length === 0 && !canReadContent(community, isMember)) return null;
@@ -416,7 +417,7 @@ export async function loadMagazineShelf(
     deps,
     magazine,
     community,
-    opts.viewerId,
+    await loadIssueReadScope(deps.db, opts.viewerId),
     opts.locale,
   );
   if (!shelf) return null;
@@ -446,28 +447,30 @@ export async function loadCommunityMagazineTab(
   latest: IssueCard | null;
   issues: IssueCard[];
   viewerIsEditor: boolean;
+  viewerRole: MagazineRole | null;
 }> {
   const community = await liveCommunityBySlug(deps.db, opts.communitySlug);
   if (!community) return null;
   const magazine = await getMagazineForCommunity(deps.payload, community.id);
+  const standing = await loadMagazineEditorship(
+    deps.db,
+    { communityId: community.id, magazineId: magazine?.id ?? null },
+    opts.viewerId,
+  );
   if (!magazine) {
-    const standing = await loadMagazineEditorship(
-      deps.db,
-      { communityId: community.id, magazineId: null },
-      opts.viewerId,
-    );
     return {
       magazine: null,
       latest: null,
       issues: [],
       viewerIsEditor: standing.isEditor,
+      viewerRole: standing.role,
     };
   }
   const shelf = await loadShelf(
     deps,
     magazine,
     community,
-    opts.viewerId,
+    issueReadScopeForCommunity(standing, community),
     opts.locale,
   );
   if (!shelf) return null;
@@ -475,6 +478,7 @@ export async function loadCommunityMagazineTab(
     magazine: toMagazineSummary(magazine),
     latest: shelf.issues[0] ?? null,
     ...shelf,
+    viewerRole: standing.role,
   };
 }
 

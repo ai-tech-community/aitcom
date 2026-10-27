@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { roleCan } from "@/lib/magazines/roles";
 import type { MagazineIssue } from "@/payload-types";
 import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
@@ -60,6 +61,8 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     editorId: string;
     memberId: string;
     outsiderId: string;
+    contributorId: string;
+    staffEditorId: string;
     communityIds: string[];
     articleIds: number[];
   };
@@ -95,10 +98,18 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
       editorId: `rd-editor-${sfx}`,
       memberId: `rd-member-${sfx}`,
       outsiderId: `rd-outsider-${sfx}`,
+      contributorId: `rd-contributor-${sfx}`,
+      staffEditorId: `rd-staff-editor-${sfx}`,
       communityIds: [],
       articleIds: [],
     };
-    const userIds = [fx.editorId, fx.memberId, fx.outsiderId];
+    const userIds = [
+      fx.editorId,
+      fx.memberId,
+      fx.outsiderId,
+      fx.contributorId,
+      fx.staffEditorId,
+    ];
     await db
       .insert(schema.user)
       .values(
@@ -112,6 +123,17 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
   afterEach(async () => {
     const { db, schema, payload } = m;
     const { inArray } = await import("drizzle-orm");
+    await db
+      .delete(schema.magazineStaff)
+      .where(
+        inArray(schema.magazineStaff.userId, [
+          fx.editorId,
+          fx.memberId,
+          fx.outsiderId,
+          fx.contributorId,
+          fx.staffEditorId,
+        ]),
+      );
     if (fx.communityIds.length > 0) {
       const { docs: mags } = await payload.find({
         collection: "magazines",
@@ -152,7 +174,13 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
         .delete(schema.communities)
         .where(inArray(schema.communities.id, fx.communityIds));
     }
-    const userIds = [fx.editorId, fx.memberId, fx.outsiderId];
+    const userIds = [
+      fx.editorId,
+      fx.memberId,
+      fx.outsiderId,
+      fx.contributorId,
+      fx.staffEditorId,
+    ];
     await db
       .delete(schema.pointsEvents)
       .where(inArray(schema.pointsEvents.userId, userIds));
@@ -221,6 +249,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
         ...extra,
       },
       fx.editorId,
+      true,
     );
   }
 
@@ -256,6 +285,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
         },
         issue.updatedAt,
         actor(c),
+        true,
       );
     }
     return (
@@ -563,6 +593,60 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
 
   // ── Community tab ─────────────────────────────────────────────────────
 
+  it("the Magazine tab tells the viewer their role", async () => {
+    const c = await community("tab-roles");
+    await m.db.insert(m.schema.communityMemberships).values([
+      { communityId: c.id, userId: fx.contributorId, role: "member" },
+      { communityId: c.id, userId: fx.staffEditorId, role: "member" },
+    ]);
+    const tab = (viewerId: string) =>
+      m.reading.loadCommunityMagazineTab(m, {
+        communitySlug: c.slug,
+        viewerId,
+        locale: LOCALE,
+      });
+    // Before a magazine exists, only community leaders have a job on its desk.
+    for (const [viewerId, viewerRole] of [
+      [fx.editorId, "editor_in_chief"],
+      [fx.contributorId, null],
+      [fx.staffEditorId, null],
+      [fx.memberId, null],
+    ] as const) {
+      const data = await tab(viewerId);
+      expect(data).toMatchObject({
+        magazine: null,
+        viewerRole,
+        viewerIsEditor: roleCan(viewerRole, "edit"),
+      });
+      expect(data!.viewerIsEditor).toBe(roleCan(data!.viewerRole, "edit"));
+    }
+    const mag = await magazineIn(c, "tab-roles");
+    await m.db.insert(m.schema.magazineStaff).values([
+      {
+        communityId: c.id,
+        magazineId: mag.id,
+        userId: fx.contributorId,
+        role: "contributor",
+      },
+      {
+        communityId: c.id,
+        magazineId: mag.id,
+        userId: fx.staffEditorId,
+        role: "editor",
+      },
+    ]);
+    for (const [viewerId, viewerRole, viewerIsEditor] of [
+      [fx.contributorId, "contributor", false],
+      [fx.staffEditorId, "editor", true],
+      [fx.editorId, "editor_in_chief", true],
+      [fx.memberId, null, false],
+    ] as const) {
+      const data = await tab(viewerId);
+      expect(data).toMatchObject({ viewerRole, viewerIsEditor });
+      expect(data!.viewerIsEditor).toBe(roleCan(data!.viewerRole, "edit"));
+    }
+  });
+
   it("the community tab has no magazine (not null) when the community has none; null for an unknown community", async () => {
     const c = await community("tab");
 
@@ -578,6 +662,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
       latest: null,
       issues: [],
       viewerIsEditor: true,
+      viewerRole: "editor_in_chief",
     });
     expect((await tab(c.slug, fx.memberId))!.viewerIsEditor).toBe(false);
     expect(await tab(`rd-nowhere-${fx.sfx}`, fx.editorId)).toBeNull();

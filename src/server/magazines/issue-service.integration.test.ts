@@ -104,6 +104,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
   type Fixture = {
     sfx: string;
     userId: string;
+    userIds: string[];
     communityIds: string[];
     articleIds: number[];
   };
@@ -159,13 +160,13 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     await db
       .insert(schema.memberProfiles)
       .values({ userId, displayName: "Editor" });
-    fx = { sfx, userId, communityIds: [], articleIds: [] };
+    fx = { sfx, userId, userIds: [userId], communityIds: [], articleIds: [] };
     creditFault.failNext = 0;
   }, 60_000);
 
   afterEach(async () => {
     const { db, schema, payload } = m;
-    const { eq, inArray } = await import("drizzle-orm");
+    const { inArray } = await import("drizzle-orm");
     if (fx.communityIds.length > 0) {
       const { docs: mags } = await payload.find({
         collection: "magazines",
@@ -199,28 +200,34 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
         .delete(schema.spaces)
         .where(inArray(schema.spaces.communityId, fx.communityIds));
       await db
+        .delete(schema.magazineStaff)
+        .where(inArray(schema.magazineStaff.userId, fx.userIds));
+      await db
+        .delete(schema.communityMemberships)
+        .where(inArray(schema.communityMemberships.userId, fx.userIds));
+      await db
         .delete(schema.communities)
         .where(inArray(schema.communities.id, fx.communityIds));
     }
     await db
       .delete(schema.pointsEvents)
-      .where(eq(schema.pointsEvents.userId, fx.userId));
+      .where(inArray(schema.pointsEvents.userId, fx.userIds));
     await db
       .delete(schema.activityEvents)
-      .where(eq(schema.activityEvents.actorId, fx.userId));
+      .where(inArray(schema.activityEvents.actorId, fx.userIds));
     await db
       .delete(schema.notifications)
-      .where(eq(schema.notifications.userId, fx.userId));
+      .where(inArray(schema.notifications.userId, fx.userIds));
     await db
       .delete(schema.memberBadges)
-      .where(eq(schema.memberBadges.userId, fx.userId));
+      .where(inArray(schema.memberBadges.userId, fx.userIds));
     await db
       .delete(schema.memberProfiles)
-      .where(eq(schema.memberProfiles.userId, fx.userId));
+      .where(inArray(schema.memberProfiles.userId, fx.userIds));
     await db
       .delete(schema.communityMemberships)
-      .where(eq(schema.communityMemberships.userId, fx.userId));
-    await db.delete(schema.user).where(eq(schema.user.id, fx.userId));
+      .where(inArray(schema.communityMemberships.userId, fx.userIds));
+    await db.delete(schema.user).where(inArray(schema.user.id, fx.userIds));
   }, 60_000);
 
   // ── Fixtures ──────────────────────────────────────────────────────────
@@ -268,7 +275,13 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
   }
 
   async function magazineIn(c: Community, label = "mag") {
-    return m.magazines.saveMagazineSettings(m, c, settings(label), fx.userId);
+    return m.magazines.saveMagazineSettings(
+      m,
+      c,
+      settings(label),
+      fx.userId,
+      true,
+    );
   }
 
   function actor(c: Community): IssueService.IssueActor {
@@ -380,8 +393,20 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     // Two editors create at the same moment (preflight F4): the unique
     // community index lets one through.
     const results = await Promise.allSettled([
-      m.magazines.saveMagazineSettings(m, c, settings("first"), fx.userId),
-      m.magazines.saveMagazineSettings(m, c, settings("second"), fx.userId),
+      m.magazines.saveMagazineSettings(
+        m,
+        c,
+        settings("first"),
+        fx.userId,
+        true,
+      ),
+      m.magazines.saveMagazineSettings(
+        m,
+        c,
+        settings("second"),
+        fx.userId,
+        true,
+      ),
     ]);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const rejected = results.filter((r) => r.status === "rejected");
@@ -396,6 +421,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
         topics: [" AI ", "ai", "Robots", "", "a", "b", "c", "d"],
       }),
       fx.userId,
+      true,
     );
     expect(updated.name).toBe("Magazine renamed");
     expect((updated.topics ?? []).map((t) => t.topic)).toEqual([
@@ -453,10 +479,22 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
   it("refuses a magazine slug another community uses", async () => {
     const a = await community("slug-a");
     const b = await community("slug-b");
-    await m.magazines.saveMagazineSettings(m, a, settings("shared"), fx.userId);
+    await m.magazines.saveMagazineSettings(
+      m,
+      a,
+      settings("shared"),
+      fx.userId,
+      true,
+    );
     expect(
       await refusal(
-        m.magazines.saveMagazineSettings(m, b, settings("shared"), fx.userId),
+        m.magazines.saveMagazineSettings(
+          m,
+          b,
+          settings("shared"),
+          fx.userId,
+          true,
+        ),
       ),
     ).toBe("MAGAZINE_SLUG_TAKEN");
   });
@@ -473,6 +511,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
         confirmUnlistedPublic: true,
       }),
       fx.userId,
+      true,
     );
     expect(mag.publicConfirmedBy).toBe(fx.userId);
 
@@ -532,6 +571,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
           c,
           settings("confirm", { defaultVisibility: "public" }),
           fx.userId,
+          true,
         ),
       ),
     ).toBe("CONFIRM_UNLISTED_PUBLIC");
@@ -552,6 +592,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
           { visibility: "public" },
           issue.updatedAt,
           actor(c),
+          true,
         ),
       ),
     ).toBe("CONFIRM_UNLISTED_PUBLIC");
@@ -563,6 +604,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { visibility: "public", confirmUnlistedPublic: true },
       issue.updatedAt,
       actor(c),
+      true,
     );
     expect(confirmed.visibility).toBe("public");
     expect(confirmed.publicConfirmedBy).toBe(fx.userId);
@@ -577,9 +619,64 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { visibility: "members" },
       confirmed.updatedAt,
       actor(c),
+      true,
     );
     expect(members.publicConfirmedBy ?? null).toBeNull();
     expect(members.publicConfirmedAt ?? null).toBeNull();
+  });
+
+  it("the services refuse a public confirmation by a non-leader", async () => {
+    const c = await community("leaders-confirm", { listed: false });
+    const mag = await magazineIn(c, "leaders-confirm");
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Private" },
+      actor(c),
+    );
+
+    await expect(
+      m.magazines.saveMagazineSettings(
+        m,
+        c,
+        settings("leaders-confirm", {
+          defaultVisibility: "public",
+          confirmUnlistedPublic: true,
+        }),
+        fx.userId,
+        false,
+      ),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "UNLISTED_PUBLIC_LEADERS_ONLY",
+    });
+
+    for (const patch of [
+      { visibility: "public" as const, confirmUnlistedPublic: true },
+      { title: "Still private", confirmUnlistedPublic: true },
+    ]) {
+      await expect(
+        m.issues.updateIssueDetails(
+          m,
+          issue,
+          patch,
+          issue.updatedAt,
+          actor(c),
+          false,
+        ),
+      ).rejects.toMatchObject({
+        code: "FORBIDDEN",
+        message: "UNLISTED_PUBLIC_LEADERS_ONLY",
+      });
+    }
+    expect(
+      (
+        await m.payload.findByID({
+          collection: "magazine-issues",
+          id: issue.id,
+        })
+      ).visibility,
+    ).toBe("members");
   });
 
   it("stale expectedUpdatedAt is refused", async () => {
@@ -613,6 +710,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
           { title: "Stale title" },
           issue.updatedAt,
           actor(c),
+          true,
         ),
       ),
     ).toBe("ISSUE_CHANGED");
@@ -1050,6 +1148,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { slug: "renamed-slug" },
       issue.updatedAt,
       actor(c),
+      true,
     );
     expect(renamed.slug).toBe("renamed-slug");
 
@@ -1067,6 +1166,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
           { slug: "renamed-slug" },
           taken.updatedAt,
           actor(c),
+          true,
         ),
       ),
     ).toBe("ISSUE_SLUG_TAKEN");
@@ -1086,6 +1186,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
           { slug: "another-slug" },
           published.updatedAt,
           actor(c),
+          true,
         ),
       ),
     ).toBe("ISSUE_SLUG_LOCKED");
@@ -1096,6 +1197,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { slug: "renamed-slug", title: "New title" },
       published.updatedAt,
       actor(c),
+      true,
     );
     expect(retitled.title).toBe("New title");
   });
@@ -1180,6 +1282,198 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
   });
 
   // ── Credit ────────────────────────────────────────────────────────────
+
+  it("publishing credits contributors on publish only and gives the badge once", async () => {
+    const { and, eq, sql } = await import("drizzle-orm");
+    const { reviewMagazineArticle } = await import("./article-review");
+    const { db, schema } = m;
+    const c = await community("contributor-credit");
+    const mag = await magazineIn(c);
+    const contributorId = `isv-contributor-${fx.sfx}`;
+    fx.userIds.push(contributorId);
+    await db.insert(schema.user).values({
+      id: contributorId,
+      email: `${contributorId}@example.test`,
+      name: "Contributor",
+    });
+    await db.insert(schema.memberProfiles).values({
+      userId: contributorId,
+      displayName: "Contributor",
+    });
+    await db.insert(schema.communityMemberships).values([
+      { communityId: c.id, userId: fx.userId, role: "owner" },
+      { communityId: c.id, userId: contributorId, role: "member" },
+    ]);
+    await db.insert(schema.magazineStaff).values({
+      magazineId: mag.id,
+      communityId: c.id,
+      userId: contributorId,
+      role: "contributor",
+      assignedBy: fx.userId,
+    });
+    const badges = () =>
+      db
+        .select()
+        .from(schema.memberBadges)
+        .where(
+          and(
+            eq(schema.memberBadges.userId, contributorId),
+            eq(schema.memberBadges.badgeSlug, "magazine_published"),
+          ),
+        );
+    const notices = () =>
+      db
+        .select()
+        .from(schema.notifications)
+        .where(
+          and(
+            eq(schema.notifications.userId, contributorId),
+            eq(schema.notifications.type, "badge_earned"),
+            sql`${schema.notifications.metadata}->>'badgeSlug' = 'magazine_published'`,
+          ),
+        );
+    const xpBefore = await xpOf(contributorId);
+    const articleIds: number[] = [];
+    for (const label of ["first", "second"]) {
+      const id = await article(`contributor-${label}`, mag.id, {
+        authorId: contributorId,
+        authorName: "Contributor",
+        reviewStatus: "pending_review",
+      });
+      articleIds.push(id);
+      await reviewMagazineArticle(
+        m,
+        mag,
+        { articleId: id, decision: "approve" },
+        actor(c),
+      );
+    }
+    expect(await xpOf(contributorId)).toBe(xpBefore);
+    expect(await pointsEventCount(contributorId)).toBe(0);
+    expect(await badges()).toEqual([]);
+    expect(await notices()).toEqual([]);
+
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Contributors" },
+      actor(c),
+    );
+    const filled = await setItems(
+      c,
+      issue,
+      articleIds.map((id) => articleItem(id)),
+    );
+    const published = await m.issues.publishIssue(
+      m,
+      filled,
+      filled.updatedAt,
+      actor(c),
+    );
+    expect(await xpOf(contributorId)).toBe(xpBefore + 2 * m.xpArticlePublished);
+    expect(await pointsEventCount(contributorId)).toBe(2);
+    expect(await badges()).toHaveLength(1);
+    expect(await notices()).toHaveLength(1);
+    for (const id of articleIds) expect(await isCredited(id)).toBe(true);
+
+    await m.issues.updateIssueDetails(
+      m,
+      published,
+      { title: "Contributors revised" },
+      published.updatedAt,
+      actor(c),
+      true,
+    );
+    expect(await xpOf(contributorId)).toBe(xpBefore + 2 * m.xpArticlePublished);
+    expect(await pointsEventCount(contributorId)).toBe(2);
+    expect(await badges()).toHaveLength(1);
+    expect(await notices()).toHaveLength(1);
+  });
+
+  it("a failed magazine badge preserves committed credit and the backfill recovers it quietly", async () => {
+    const { and, eq, sql } = await import("drizzle-orm");
+    const { runBadgeBackfill } = await import("@/server/badges/backfill");
+    const { db, schema } = m;
+    const c = await community("badge-retry");
+    const mag = await magazineIn(c);
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Badge retry" },
+      actor(c),
+    );
+    const a = await article("badge-retry", mag.id);
+    const filled = await setItems(c, issue, [articleItem(a)]);
+    const xpBefore = await xpOf(fx.userId);
+    const fn = `magazine_badge_fail_${fx.sfx.replaceAll("-", "_")}`;
+    const ddl = (statement: string) => db.execute(sql.raw(statement));
+    const dropTrigger = async () => {
+      await ddl(`DROP TRIGGER IF EXISTS ${fn} ON "app"."member_badge"`);
+      await ddl(`DROP FUNCTION IF EXISTS "app".${fn}()`);
+    };
+    const badges = () =>
+      db
+        .select()
+        .from(schema.memberBadges)
+        .where(
+          and(
+            eq(schema.memberBadges.userId, fx.userId),
+            eq(schema.memberBadges.badgeSlug, "magazine_published"),
+          ),
+        );
+    const logged = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    try {
+      await ddl(`CREATE FUNCTION "app".${fn}() RETURNS trigger AS $$
+        BEGIN
+          IF NEW.user_id = '${fx.userId}' AND NEW.badge_slug = 'magazine_published' THEN
+            RAISE EXCEPTION 'test: magazine badge refused';
+          END IF;
+          RETURN NEW;
+        END $$ LANGUAGE plpgsql`);
+      await ddl(`CREATE TRIGGER ${fn} BEFORE INSERT ON "app"."member_badge"
+        FOR EACH ROW EXECUTE FUNCTION "app".${fn}()`);
+      const published = await m.issues.publishIssue(
+        m,
+        filled,
+        filled.updatedAt,
+        actor(c),
+      );
+      expect(published.status).toBe("published");
+      expect(await isCredited(a)).toBe(true);
+      expect(await xpOf(fx.userId)).toBe(xpBefore + m.xpArticlePublished);
+      expect(await pointsEventCount(fx.userId)).toBe(1);
+      expect(await badges()).toEqual([]);
+      expect(logged).toHaveBeenCalledWith(
+        `badges: awarding magazine_published to ${fx.userId} failed`,
+        expect.anything(),
+      );
+      await dropTrigger();
+      const report = await runBadgeBackfill(
+        { db, payload: async () => m.payload },
+        { apply: true, userIds: [fx.userId] },
+      );
+      expect(report.failures).toEqual([]);
+      expect(report.inserted).toBe(1);
+      expect((await badges())[0]?.seenAt).toBeInstanceOf(Date);
+      expect(await xpOf(fx.userId)).toBe(xpBefore + m.xpArticlePublished);
+      const notices = await db
+        .select()
+        .from(schema.notifications)
+        .where(
+          and(
+            eq(schema.notifications.userId, fx.userId),
+            eq(schema.notifications.type, "badge_earned"),
+            sql`${schema.notifications.metadata}->>'badgeSlug' = 'magazine_published'`,
+          ),
+        );
+      expect(notices).toEqual([]);
+    } finally {
+      await dropTrigger();
+      logged.mockRestore();
+    }
+  });
 
   it("a failed credit never fails the publish, leaves no XP, and the next save credits once", async () => {
     const c = await community("credit-retry");
@@ -1362,6 +1656,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { title: "B renamed" },
       publishedB.updatedAt,
       actor(c),
+      true,
     );
     expect(await isCredited(a)).toBe(true);
     expect(await pointsEventCount(fx.userId)).toBe(1);
@@ -1374,6 +1669,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { title: "B again" },
       renamedB.updatedAt,
       actor(c),
+      true,
     );
     const latestA = await m.payload.findByID({
       collection: "magazine-issues",
@@ -1386,6 +1682,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       { title: "A renamed" },
       latestA.updatedAt,
       actor(c),
+      true,
     );
     const issueC = await m.issues.createIssue(m, mag, { title: "C" }, actor(c));
     const filledC = await setItems(c, issueC, [editorialItem("C")]);

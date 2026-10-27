@@ -105,7 +105,13 @@ function SettingsSkeleton() {
  * ticked, and only then sends `confirmUnlistedPublic`. Refusals show as
  * friendly text through `editorErrorKey`.
  */
-export function MagazineSettingsForm({ slug }: { slug: string }) {
+export function MagazineSettingsForm({
+  slug,
+  showOpenTabLink = true,
+}: {
+  slug: string;
+  showOpenTabLink?: boolean;
+}) {
   const t = useTranslations("magazineEditor.settings");
   const settings = api.magazines.getSettings.useQuery({ slug });
 
@@ -128,6 +134,7 @@ export function MagazineSettingsForm({ slug }: { slug: string }) {
       magazine={magazine}
       communityIsPrivate={communityIsPrivate}
       community={community}
+      showOpenTabLink={showOpenTabLink}
     />
   );
 }
@@ -137,11 +144,13 @@ function SettingsEditor({
   magazine,
   communityIsPrivate,
   community,
+  showOpenTabLink,
 }: {
   slug: string;
   magazine: Magazine | null;
   communityIsPrivate: boolean;
   community: CommunityVisibility;
+  showOpenTabLink: boolean;
 }) {
   const t = useTranslations("magazineEditor.settings");
   const tErrors = useTranslations("magazineEditor.errors");
@@ -258,7 +267,7 @@ function SettingsEditor({
       <div className="flex flex-col gap-2">
         <SectionLabel>{t("title")}</SectionLabel>
         <p className="text-muted-foreground text-sm">{t("intro")}</p>
-        {magazine && (
+        {magazine && showOpenTabLink && (
           <Link
             href={communityMagazinePath(slug)}
             className="text-sm font-medium underline-offset-4 hover:underline"

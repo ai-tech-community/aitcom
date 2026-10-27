@@ -5,7 +5,10 @@ import { getTranslations } from "next-intl/server";
 import { articleEditorInitialData } from "@/components/article-editor/initial-data";
 import { MagazineArticleWorkspace } from "@/components/magazines/editor/magazine-article-workspace";
 import { resolveLocale } from "@/i18n/messages";
-import { magazineArticleEditPath } from "@/lib/magazines/paths";
+import {
+  communityMagazinePath,
+  magazineArticleEditPath,
+} from "@/lib/magazines/paths";
 import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
 import { loadMagazineArticleForEditing } from "@/server/magazines/magazine-articles";
@@ -32,8 +35,9 @@ export async function generateMetadata({
 /**
  * Editing one of the viewer's magazine articles, in the standard community
  * frame. Gate-Before-Fail: guests sign in first; the article must belong to
- * this community's magazine, and the viewer must edit that magazine and be
- * the article's author — anything else is a 404.
+ * this community's magazine, and the viewer must write for that magazine and be
+ * the article's author — anything else is a 404. Locked articles return
+ * the writer to their desk.
  */
 export default async function MagazineArticleEditPage({
   params,
@@ -55,7 +59,8 @@ export default async function MagazineArticleEditPage({
   );
   if (!editing) notFound();
 
-  const { article, ...writing } = editing;
+  const { article, editable, ...writing } = editing;
+  if (!editable) redirect(`/${locale}${communityMagazinePath(slug)}`);
   return (
     <MagazineArticleWorkspace
       communitySlug={slug}

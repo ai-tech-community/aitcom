@@ -299,6 +299,116 @@ describe.skipIf(!RUN_DB)("badge backfill [DB integration]", () => {
     expect(await rows.badges()).toEqual(badgesBefore);
     expect(await rows.awards()).toEqual(awardsBefore);
   });
+
+  it("gives the magazine badge to authors credited before it existed, quietly", async () => {
+    const { db, schema, drizzle } = m;
+    const { eq } = drizzle;
+    const userId = `bf-magazine-${suffix}`;
+    const payload = await m.getPayloadClient();
+    let articleId: number | undefined;
+    await db
+      .insert(schema.user)
+      .values({ id: userId, email: `${userId}@aitcom.test`, name: userId });
+    await db
+      .insert(schema.memberProfiles)
+      .values({ userId, displayName: userId });
+    const runScoped = (apply: boolean) =>
+      m.backfill.runBadgeBackfill(
+        { db, payload: m.getPayloadClient },
+        { apply, userIds: [userId] },
+      );
+    const badges = () =>
+      db
+        .select()
+        .from(schema.memberBadges)
+        .where(eq(schema.memberBadges.userId, userId));
+    const expectQuiet = async () => {
+      expect(
+        await db
+          .select()
+          .from(schema.notifications)
+          .where(eq(schema.notifications.userId, userId)),
+      ).toEqual([]);
+      expect(
+        await db
+          .select()
+          .from(schema.pointsEvents)
+          .where(eq(schema.pointsEvents.userId, userId)),
+      ).toEqual([]);
+      expect(
+        await db
+          .select()
+          .from(schema.activityEvents)
+          .where(eq(schema.activityEvents.actorId, userId)),
+      ).toEqual([]);
+      const profile = await db.query.memberProfiles.findFirst({
+        where: eq(schema.memberProfiles.userId, userId),
+      });
+      expect(profile?.xp).toBe(0);
+    };
+    try {
+      const article = await payload.create({
+        collection: "articles",
+        data: {
+          title: "An article credited before the badge",
+          slug: `bf-magazine-${suffix}`,
+          content: RICH_TEXT,
+          status: "draft",
+          type: "article",
+          authorType: "member",
+          authorId: userId,
+        },
+      });
+      articleId = article.id;
+      await db.insert(schema.magazineArticleCredits).values({ articleId });
+
+      const dry = await runScoped(false);
+      expect(dry.failures).toEqual([]);
+      expect(dry.newMilestones.magazine_published).toBe(1);
+      expect(dry.inserted).toBe(0);
+      expect(m.backfill.formatBackfillReport(dry).join("\n")).toContain(
+        "magazine_published: 1",
+      );
+      expect(await badges()).toEqual([]);
+      await expectQuiet();
+
+      const applied = await runScoped(true);
+      expect(applied.failures).toEqual([]);
+      expect(applied.newMilestones.magazine_published).toBe(1);
+      expect(applied.inserted).toBe(1);
+      const written = await badges();
+      expect(written).toHaveLength(1);
+      expect(written[0]?.badgeSlug).toBe("magazine_published");
+      expect(written[0]?.seenAt).toBeInstanceOf(Date);
+      await expectQuiet();
+
+      const again = await runScoped(true);
+      expect(again.failures).toEqual([]);
+      expect(again.newMilestones.magazine_published ?? 0).toBe(0);
+      expect(again.inserted).toBe(0);
+      expect(await badges()).toEqual(written);
+      await expectQuiet();
+    } finally {
+      if (articleId !== undefined)
+        await payload.delete({ collection: "articles", id: articleId });
+      await db
+        .delete(schema.notifications)
+        .where(eq(schema.notifications.userId, userId));
+      await db
+        .delete(schema.pointsEvents)
+        .where(eq(schema.pointsEvents.userId, userId));
+      await db
+        .delete(schema.activityEvents)
+        .where(eq(schema.activityEvents.actorId, userId));
+      await db
+        .delete(schema.memberBadges)
+        .where(eq(schema.memberBadges.userId, userId));
+      await db
+        .delete(schema.memberProfiles)
+        .where(eq(schema.memberProfiles.userId, userId));
+      await db.delete(schema.user).where(eq(schema.user.id, userId));
+    }
+  });
   describe("when writes fail", () => {
     const f = {
       /** Badge and award writes for this member fail (a test trigger). */
@@ -307,6 +417,7 @@ describe.skipIf(!RUN_DB)("badge backfill [DB integration]", () => {
       fine: `bf-fine-${suffix}`,
     };
     const fIds = Object.values(f);
+    const articleIds: number[] = [];
     const fn = `bf_fail_${suffix}`;
     const ddl = (statement: string) =>
       m.db.execute(m.drizzle.sql.raw(statement));
@@ -331,6 +442,25 @@ describe.skipIf(!RUN_DB)("badge backfill [DB integration]", () => {
       await db
         .insert(schema.memberProfiles)
         .values(fIds.map((id) => ({ userId: id, displayName: id })));
+      const payload = await m.getPayloadClient();
+      for (const userId of fIds) {
+        const article = await payload.create({
+          collection: "articles",
+          data: {
+            title: "Credited magazine article",
+            slug: `credited-${userId}`,
+            content: RICH_TEXT,
+            status: "draft",
+            type: "article",
+            authorType: "member",
+            authorId: userId,
+          },
+        });
+        articleIds.push(article.id);
+        await db
+          .insert(schema.magazineArticleCredits)
+          .values({ articleId: article.id });
+      }
       await db.insert(schema.eventRegistrations).values(
         fIds.map((userId, i) => ({
           eventId: 920_000 + i,
@@ -362,6 +492,9 @@ describe.skipIf(!RUN_DB)("badge backfill [DB integration]", () => {
     afterAll(async () => {
       if (!m) return;
       await dropTriggers();
+      const payload = await m.getPayloadClient();
+      for (const id of articleIds)
+        await payload.delete({ collection: "articles", id });
       const { db, schema } = m;
       const { inArray } = m.drizzle;
       for (const [table, column] of [
@@ -395,9 +528,16 @@ describe.skipIf(!RUN_DB)("badge backfill [DB integration]", () => {
           track: "regular",
           error: expect.stringContaining("write refused"),
         },
+        {
+          kind: "milestone",
+          userId: f.failing,
+          slug: "magazine_published",
+          error: expect.stringContaining("write refused"),
+        },
       ]);
       // The other member was written; the failing prize row was kept.
-      expect(report.inserted).toBe(1);
+      expect(report.inserted).toBe(2);
+      expect(report.newMilestones.magazine_published).toBe(2);
       expect(report.awardsMoved).toBe(0);
       const kept = await m.db
         .select({
@@ -407,18 +547,24 @@ describe.skipIf(!RUN_DB)("badge backfill [DB integration]", () => {
         .from(m.schema.memberBadges)
         .where(m.drizzle.inArray(m.schema.memberBadges.userId, fIds));
       expect(kept.map((row) => `${row.userId}:${row.slug}`).sort()).toEqual(
-        [`${f.failing}:${prize}`, `${f.fine}:first_event`].sort(),
+        [
+          `${f.failing}:${prize}`,
+          `${f.fine}:first_event`,
+          `${f.fine}:magazine_published`,
+        ].sort(),
       );
       const text = m.backfill.formatBackfillReport(report).join("\n");
-      expect(text).toContain("Failures: 2");
+      expect(text).toContain("Failures: 3");
       expect(text).toContain("regular badges not written");
+      expect(text).toContain("magazine_published milestone not recorded");
     });
 
     it("a re-run after the cause is fixed completes the work", async () => {
       await dropTriggers();
       const report = await runScoped();
       expect(m.backfill.backfillSucceeded(report)).toBe(true);
-      expect(report.inserted).toBe(1);
+      expect(report.inserted).toBe(2);
+      expect(report.newMilestones.magazine_published).toBe(1);
       expect(report.awardsMoved).toBe(1);
     });
   });

@@ -15,18 +15,18 @@ export type ArticleChannelId = "blog" | "magazine";
  * How a member hands in an article.
  * - `staff_review`: it goes to the platform review queue; a trusted author
  *   publishes directly.
- * - `editor_approves`: the author is an editor of the magazine's community
- *   and marking it ready is the approval; publishing waits for an issue.
+ * - `magazine_review`: the magazine module decides how the writer hands it
+ *   in; publishing waits for an issue.
  */
-export type ArticleSubmitPolicy = "staff_review" | "editor_approves";
+export type ArticleSubmitPolicy = "staff_review" | "magazine_review";
 
 /**
- * Who may still edit an article once it is published.
- * - `trusted_author`: its author, when trusted (today's blog rule).
- * - `magazine_editor`: its author, while an editor of the magazine's
- *   community (so a typo in a published issue can be fixed).
+ * Who may edit or delete an article, before and after publication.
+ * - `trusted_author`: today's blog rule; published edits require trust.
+ * - `magazine`: the magazine module decides from the writer's capabilities
+ *   and the article's latest state.
  */
-export type PublishedEditPolicy = "trusted_author" | "magazine_editor";
+export type ArticleEditPolicy = "trusted_author" | "magazine";
 
 /**
  * When a reader may comment on an article. Commenting is a channel
@@ -64,7 +64,8 @@ export interface ArticleChannel {
   /** afterChange: whether reaching `approved` publishes and credits now. */
   readonly creditsOnApproval: boolean;
   readonly submitPolicy: ArticleSubmitPolicy;
-  readonly publishedEditPolicy: PublishedEditPolicy;
+  /** The magazine module decides its own save and delete rules. */
+  readonly editPolicy: ArticleEditPolicy;
   readonly commentPolicy: CommentPolicy;
 }
 
@@ -87,7 +88,7 @@ export const blogChannel: ArticleChannel = {
   id: "blog",
   creditsOnApproval: true,
   submitPolicy: "staff_review",
-  publishedEditPolicy: "trusted_author",
+  editPolicy: "trusted_author",
   commentPolicy: "public_article",
   onReviewChange(data, originalDoc) {
     if (
@@ -116,8 +117,8 @@ export const blogChannel: ArticleChannel = {
 export const magazineChannel: ArticleChannel = {
   id: "magazine",
   creditsOnApproval: false,
-  submitPolicy: "editor_approves",
-  publishedEditPolicy: "magazine_editor",
+  submitPolicy: "magazine_review",
+  editPolicy: "magazine",
   commentPolicy: "published_issue_reader",
   onReviewChange(data, originalDoc) {
     sendBackToDraftOnRefusal(data, originalDoc);

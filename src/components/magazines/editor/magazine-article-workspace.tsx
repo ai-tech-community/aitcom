@@ -32,6 +32,7 @@ export function MagazineArticleWorkspace({
     magazineId: writing.magazineId,
     magazineName: writing.magazineName,
     communitySlug,
+    handIn: writing.handIn,
   };
   return (
     <div className="flex flex-col gap-4">

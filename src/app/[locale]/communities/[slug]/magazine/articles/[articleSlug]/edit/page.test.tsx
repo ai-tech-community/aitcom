@@ -70,6 +70,8 @@ beforeEach(() => {
   state.editing = {
     magazineId: 42,
     magazineName: "The Gazette",
+    handIn: "mark_ready",
+    editable: true,
     article: ARTICLE,
   };
   state.gateCalls = [];
@@ -106,11 +108,26 @@ describe("magazine article edit page", () => {
     ]);
   });
 
+  it("sends a contributor whose article is locked back to the Magazine tab", async () => {
+    state.editing = {
+      ...state.editing,
+      handIn: "send_for_review",
+      editable: false,
+    };
+    await expect(MagazineArticleEditPage({ params: params() })).rejects.toThrow(
+      "NEXT_REDIRECT /en/communities/night-owls/magazine",
+    );
+  });
+
   it("opens the saved article in the editor for the magazine", async () => {
     const page = await MagazineArticleEditPage({ params: params() });
     expect(page.props).toEqual({
       communitySlug: "night-owls",
-      writing: { magazineId: 42, magazineName: "The Gazette" },
+      writing: {
+        magazineId: 42,
+        magazineName: "The Gazette",
+        handIn: "mark_ready",
+      },
       initialData: {
         id: 7,
         title: "Owl notes",

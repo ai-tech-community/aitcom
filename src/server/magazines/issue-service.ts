@@ -339,6 +339,7 @@ export async function updateIssueDetails(
   patch: IssueDetailsPatch,
   expectedUpdatedAt: string,
   actor: IssueActor,
+  actorLeadsCommunity: boolean,
 ): Promise<MagazineIssue> {
   assertFresh(issue, expectedUpdatedAt);
 
@@ -354,9 +355,9 @@ export async function updateIssueDetails(
   if (patch.editorNote !== undefined) {
     data.editorNote = patch.editorNote as MagazineIssue["editorNote"];
   }
-  if (patch.visibility !== undefined) {
+  if (patch.visibility !== undefined || patch.confirmUnlistedPublic) {
     const plan = planVisibilityChange({
-      next: patch.visibility,
+      next: patch.visibility ?? issue.visibility,
       current: {
         visibility: issue.visibility,
         publicConfirmedBy: issue.publicConfirmedBy ?? null,
@@ -365,6 +366,7 @@ export async function updateIssueDetails(
       community: actor.community,
       confirmUnlistedPublic: patch.confirmUnlistedPublic ?? false,
       actorId: actor.userId,
+      actorLeadsCommunity,
       now: new Date(),
     });
     if (!plan.ok) throw magazineError(plan.code);

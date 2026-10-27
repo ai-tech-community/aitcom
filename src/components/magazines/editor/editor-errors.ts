@@ -21,6 +21,12 @@ const KEYS = {
   ARTICLE_PLACED: "articlePlaced",
   ARTICLE_NOT_READY: "articleNotReady",
   ARTICLE_MAGAZINE_LOCKED: "articleMagazineLocked",
+  STAFF_NOT_MEMBER: "staffNotMember",
+  STAFF_LEADS_COMMUNITY: "staffLeadsCommunity",
+  ARTICLE_LOCKED: "articleLocked",
+  ARTICLE_NOT_PENDING: "articleNotPending",
+  REVIEW_NOTE_REQUIRED: "reviewNoteRequired",
+  UNLISTED_PUBLIC_LEADERS_ONLY: "unlistedPublicLeadersOnly",
 } as const satisfies Record<MagazineErrorCode, string>;
 
 /** A key under `magazineEditor.errors`. */

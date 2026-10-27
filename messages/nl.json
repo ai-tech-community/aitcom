@@ -1318,6 +1318,7 @@
       "profile_complete": "Profiel compleet",
       "onboarding_complete": "Onboarding afgerond",
       "tutorial_creator": "Tutorialmaker",
+      "magazine_published": "Gepubliceerd in een magazine",
       "early_adopter": "Vroege gebruiker",
       "news_first_scoop": "Eerste scoop",
       "news_five_stories": "5 verhalen",
@@ -1355,6 +1356,7 @@
       "profile_complete": "Alle profielvelden ingevuld",
       "onboarding_complete": "Alle onboardingstappen afgerond",
       "tutorial_creator": "Een eerste tutorial gepubliceerd",
+      "magazine_published": "Had een artikel in een communitymagazine.",
       "early_adopter": "Een van de eerste {count} leden",
       "news_first_scoop": "Als eerste een breaking onderwerp uit verzamelde berichtgeving geclaimd",
       "news_five_stories": "5 nieuwsverhalen gepubliceerd vanuit je onderzoek",
@@ -2296,6 +2298,10 @@
     "featuredImagePlaceholder": "Geen afbeelding — voeg een URL toe",
     "articleTitlePlaceholder": "Artikel titel...",
     "magazine": {
+      "sendForReview": "Stuur naar de redactie",
+      "sentForReview": "Verstuurd. De redactie leest je artikel en laat je iets weten.",
+      "reviewPrePublishTitle": "Naar de redactie sturen?",
+      "reviewPrePublishSubtitle": "Controleer eerst je artikel. Je kunt het niet aanpassen terwijl de redactie het leest. De redactie kan het goedkeuren, om aanpassingen vragen of afwijzen.",
       "markReady": "Klaarzetten voor een nummer",
       "markedReady": "Klaargezet. Een redacteur kan het nu in een nummer plaatsen.",
       "prePublishTitle": "Klaar voor een nummer?",
@@ -4840,6 +4846,30 @@
     }
   },
   "magazineEditor": {
+    "review": {
+      "metaTitle": "Een artikel lezen",
+      "back": "Terug naar het tabblad Magazine",
+      "byline": "Door {author} · ingestuurd op <date>{dateLabel}</date>",
+      "lastChangedByline": "Door {author} · laatst aangepast op <date>{dateLabel}</date>",
+      "unknownAuthor": "Onbekende schrijver",
+      "decision": "Je besluit",
+      "approve": "Goedkeuren",
+      "askChanges": "Om aanpassingen vragen",
+      "changesLabel": "Wat moet er veranderen?",
+      "sendChanges": "Naar de schrijver sturen",
+      "decline": "Afwijzen",
+      "declineTitle": "Dit artikel afwijzen?",
+      "declineBody": "De schrijver krijgt je opmerking en kan dit artikel niet opnieuw insturen.",
+      "declineNoteLabel": "Opmerking voor de schrijver (optioneel)",
+      "declineConfirm": "Artikel afwijzen",
+      "cancel": "Annuleren",
+      "done": {
+        "approved": "Goedgekeurd. Het artikel is klaar voor een nummer.",
+        "changes_requested": "Naar de schrijver gestuurd.",
+        "rejected": "Artikel afgewezen."
+      },
+      "reload": "Opnieuw laden"
+    },
     "errors": {
       "confirmUnlistedPublic": "Je community is privé. Vink het vakje aan om te bevestigen dat iedereen dit mag zien.",
       "magazineExists": "Je community heeft al een magazine. Laad de pagina opnieuw om het te bewerken.",
@@ -4854,7 +4884,13 @@
       "articlePlaced": "Dit artikel staat al in een ander nummer.",
       "articleNotReady": "Dit artikel is nog niet klaar voor een nummer.",
       "articleMagazineLocked": "Een magazine-artikel blijft in zijn magazine. Het kan niet naar de blog of naar een ander magazine.",
-      "generic": "Er ging iets mis. Probeer het opnieuw."
+      "generic": "Er ging iets mis. Probeer het opnieuw.",
+      "staffNotMember": "Alleen leden van deze community kunnen bij het magazineteam komen.",
+      "staffLeadsCommunity": "Eigenaren en beheerders van de community beheren het magazine al.",
+      "articleLocked": "Dit artikel ligt nu bij de redactie en kan daarom niet worden gewijzigd.",
+      "articleNotPending": "Er is al een besluit over dit artikel genomen. Laad de pagina opnieuw om te zien wat er is veranderd.",
+      "reviewNoteRequired": "Vertel de schrijver wat er moet veranderen.",
+      "unlistedPublicLeadersOnly": "Deze community staat niet in de lijst. Alleen de eigenaren en beheerders kunnen dit openbaar maken."
     },
     "publicOptIn": {
       "warning": "Je community is privé. Als je dit aan iedereen laat zien, ziet iedereen op internet de naam van je community en een link ernaartoe. Je leden, berichten en andere pagina's blijven privé.",
@@ -4893,7 +4929,8 @@
       "saved": "Magazine opgeslagen",
       "loadFailed": "De magazine-instellingen konden niet worden geladen.",
       "tryAgain": "Opnieuw proberen",
-      "openTab": "Open het tabblad Magazine"
+      "openTab": "Open het tabblad Magazine",
+      "back": "Terug naar het tabblad Magazine"
     },
     "tab": {
       "metaTitle": "Magazine",
@@ -4908,7 +4945,24 @@
       "emptyDescription": "Het eerste nummer van {magazine} komt eraan.",
       "emptyEditorDescription": "Maak het eerste nummer met Nieuw nummer in de redactietafel hieronder."
     },
+    "contributorDesk": {
+      "label": "Je schrijftafel",
+      "write": "Schrijf een artikel",
+      "articles": "Je artikelen",
+      "articlesEmpty": "Je hebt nog geen artikelen in de maak. Schrijf er een en stuur het naar de redactie.",
+      "editorNote": "Opmerking van de redactie",
+      "status": {
+        "draft": "Nog niet verstuurd",
+        "pending_review": "Bij de redactie",
+        "changes_requested": "Aanpassingen gevraagd",
+        "approved": "Klaar voor een nummer",
+        "rejected": "Niet geaccepteerd"
+      }
+    },
     "desk": {
+      "waiting": "Wacht op jou",
+      "waitingEmpty": "Er wachten geen artikelen. Artikelen die leden insturen verschijnen hier.",
+      "sentOn": "Verstuurd op {date}",
       "label": "Redactietafel",
       "newIssue": "Nieuw nummer",
       "newIssueTitle": "Nummer {number}",
@@ -4926,13 +4980,15 @@
       "drafts": "Jouw concepten",
       "draftsEmpty": "Je hebt geen artikelen in bewerking. Schrijf er een voor je volgende nummer.",
       "reviewStatus": {
+        "approved": "Klaar voor een nummer",
         "draft": "Concept",
         "pending_review": "Wacht op beoordeling",
         "changes_requested": "Wijzigingen gevraagd",
         "rejected": "Niet geaccepteerd"
       },
       "loadFailed": "Deze lijst kon niet worden geladen.",
-      "tryAgain": "Opnieuw proberen"
+      "tryAgain": "Opnieuw proberen",
+      "team": "Team"
     },
     "builder": {
       "metaTitle": "Nummer bewerken",
@@ -5110,6 +5166,88 @@
         "read": "Lees het nummer",
         "keepEditing": "Verder bewerken"
       }
+    },
+    "roles": {
+      "editor_in_chief": {
+        "name": "Hoofdredacteur",
+        "help": "Beheert het magazine: de instellingen, het team, de nummers en de artikelen die leden insturen."
+      },
+      "editor": {
+        "name": "Redacteur",
+        "help": "Stelt nummers samen, publiceert ze en leest de artikelen die leden insturen."
+      },
+      "contributor": {
+        "name": "Schrijver",
+        "help": "Schrijft artikelen en stuurt ze naar de redactie."
+      }
+    },
+    "notifications": {
+      "articleReviewed": {
+        "approved": {
+          "title": "‘{title}’ is klaar voor een nummer",
+          "content": "Een redacteur van {magazine} heeft je artikel goedgekeurd. Het verschijnt zodra een nummer met je artikel wordt gepubliceerd."
+        },
+        "changesRequested": {
+          "title": "Aanpassingen gevraagd voor ‘{title}’"
+        },
+        "rejected": {
+          "title": "‘{title}’ is niet aangenomen",
+          "noNote": "Een redacteur van {magazine} heeft besloten dit artikel niet te gebruiken."
+        },
+        "linkOpenArticle": "Open je artikel",
+        "linkOpenMagazine": "Open het magazine"
+      },
+      "articleSubmitted": {
+        "title": "{author} stuurde ‘{title}’ naar {magazine}",
+        "content": "Lees het artikel en keur het goed, vraag om aanpassingen of wijs het af.",
+        "linkLabel": "Lees het artikel",
+        "author": "Een lid"
+      },
+      "roleAssigned": {
+        "title": "Je zit nu in het team van {magazine}",
+        "linkLabel": "Open het magazine",
+        "content": {
+          "editor_in_chief": "Je bent nu hoofdredacteur. {help}",
+          "editor": "Je bent nu redacteur. {help}",
+          "contributor": "Je bent nu schrijver. {help}"
+        }
+      }
+    },
+    "team": {
+      "metaTitle": "Magazineteam",
+      "title": "Team",
+      "intro": "Kies wie voor {magazine} schrijft en de redactie verzorgt. Eigenaren en beheerders van de community hebben altijd de leiding.",
+      "add": "Iemand toevoegen",
+      "searchLabel": "Zoek een lid",
+      "searchHint": "Typ een naam om leden van je community te vinden.",
+      "resultsLegend": "Kies een lid",
+      "resultCount": "{count, plural, =0 {Geen leden gevonden} one {# lid gevonden} other {# leden gevonden}}",
+      "noResults": "Geen leden gevonden. Alleen leden van deze community kunnen bij het team.",
+      "roleLabel": "Taak in het team",
+      "addButton": "Aan het team toevoegen",
+      "owner": "Eigenaar van de community",
+      "admin": "Beheerder van de community",
+      "notMember": "Nu geen lid",
+      "remove": "Verwijderen",
+      "removeTitle": "{name} uit het team verwijderen?",
+      "removeBody": "De artikelen blijven bewaard. Deze persoon kan niet meer voor het magazine schrijven of nummers bewerken.",
+      "removeConfirm": "Verwijderen",
+      "cancel": "Annuleren",
+      "assigned": {
+        "editor_in_chief": "{name} is nu hoofdredacteur.",
+        "editor": "{name} is nu redacteur.",
+        "contributor": "{name} is nu schrijver."
+      },
+      "removed": "{name} zit niet meer in het team.",
+      "you": "Jij",
+      "removeNamed": "{name} verwijderen",
+      "loseAccessTitle": "Teampagina verlaten?",
+      "loseAccessBody": "Je hebt hierna geen toegang meer tot deze teampagina. Je artikelen blijven in het magazine.",
+      "loseAccessConfirm": "Mijn taak wijzigen",
+      "removeSelfBody": "Je hebt hierna geen toegang meer tot deze teampagina. Je artikelen blijven in het magazine, maar je kunt er niet meer voor schrijven of edities bewerken.",
+      "back": "Terug naar het tabblad Magazine",
+      "membersTitle": "Het team",
+      "empty": "Voeg iemand toe om mee te schrijven en nummers te maken."
     }
   }
 }

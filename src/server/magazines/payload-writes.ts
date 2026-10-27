@@ -1,5 +1,7 @@
-import type { PostgresAdapter, sql } from "@payloadcms/db-postgres";
+import { type PostgresAdapter, sql } from "@payloadcms/db-postgres";
 import { type PayloadRequest, ValidationError } from "payload";
+
+import type { Article } from "@/payload-types";
 
 import type { PayloadClient } from "./deps";
 
@@ -14,6 +16,28 @@ export type PayloadTransaction = {
   req: Partial<PayloadRequest> | undefined;
   execute(query: SQL): Promise<Record<string, unknown>[]>;
 };
+
+/**
+ * Decision 12: lock the article row before reading its latest draft through
+ * Payload on the same transaction. Null when the article is gone.
+ */
+export async function lockArticle(
+  tx: PayloadTransaction,
+  payload: PayloadClient,
+  articleId: number,
+): Promise<Article | null> {
+  await tx.execute(sql`
+    SELECT 1 FROM "articles" WHERE "id" = ${articleId} FOR UPDATE
+  `);
+  return payload.findByID({
+    collection: "articles",
+    id: articleId,
+    draft: true,
+    req: tx.req,
+    disableErrors: true,
+    depth: 0,
+  });
+}
 
 /**
  * Runs `work` in one Payload transaction: committed when it returns, rolled

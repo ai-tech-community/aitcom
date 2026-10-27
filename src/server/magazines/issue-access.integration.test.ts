@@ -42,6 +42,7 @@ describe.skipIf(!RUN_DB)(
 
     type Issue = {
       id: number;
+      magazine: number;
       label: string;
       communityId: string;
       status: string;
@@ -55,6 +56,8 @@ describe.skipIf(!RUN_DB)(
         outsider: string;
         unlistedMember: string;
         unlistedAdmin: string;
+        unlistedEditor: string;
+        unlistedContributor: string;
         unlistedPending: string;
         unlistedBanned: string;
         deletedAdmin: string;
@@ -85,6 +88,8 @@ describe.skipIf(!RUN_DB)(
         outsider: `mia-outsider-${sfx}`,
         unlistedMember: `mia-member-${sfx}`,
         unlistedAdmin: `mia-admin-${sfx}`,
+        unlistedEditor: `mia-editor-${sfx}`,
+        unlistedContributor: `mia-contributor-${sfx}`,
         unlistedPending: `mia-pending-${sfx}`,
         unlistedBanned: `mia-banned-${sfx}`,
         deletedAdmin: `mia-deleted-admin-${sfx}`,
@@ -94,6 +99,12 @@ describe.skipIf(!RUN_DB)(
           id,
           email: `${id}@example.test`,
           name: id,
+        })),
+      );
+      await db.insert(schema.memberProfiles).values(
+        Object.values(users).map((userId) => ({
+          userId,
+          displayName: userId,
         })),
       );
 
@@ -133,6 +144,16 @@ describe.skipIf(!RUN_DB)(
         },
         {
           communityId: communities.unlisted,
+          userId: users.unlistedEditor,
+          role: "member",
+        },
+        {
+          communityId: communities.unlisted,
+          userId: users.unlistedContributor,
+          role: "member",
+        },
+        {
+          communityId: communities.unlisted,
           userId: users.unlistedPending,
           role: "member",
           status: "pending_approval",
@@ -163,6 +184,22 @@ describe.skipIf(!RUN_DB)(
           },
         });
         fx.magazineIds.push(doc.id);
+        if (communityId === communities.unlisted) {
+          await db.insert(schema.magazineStaff).values([
+            {
+              magazineId: doc.id,
+              communityId,
+              userId: users.unlistedEditor,
+              role: "editor",
+            },
+            {
+              magazineId: doc.id,
+              communityId,
+              userId: users.unlistedContributor,
+              role: "contributor",
+            },
+          ]);
+        }
         return doc.id;
       }
 
@@ -197,6 +234,7 @@ describe.skipIf(!RUN_DB)(
           });
           fx.issues.push({
             id: doc.id,
+            magazine: magazineId,
             label: name,
             communityId,
             status,
@@ -221,6 +259,10 @@ describe.skipIf(!RUN_DB)(
     afterEach(async () => {
       const { db, schema } = m;
       const { inArray } = await import("drizzle-orm");
+      const userIds = Object.values(fx.users);
+      await db
+        .delete(schema.magazineStaff)
+        .where(inArray(schema.magazineStaff.userId, userIds));
       await m.payload.delete({
         collection: "magazine-issues",
         where: { id: { in: fx.issues.map((i) => i.id) } },
@@ -241,6 +283,12 @@ describe.skipIf(!RUN_DB)(
         .where(
           inArray(schema.communityMemberships.userId, Object.values(fx.users)),
         );
+      await db
+        .delete(schema.notifications)
+        .where(inArray(schema.notifications.userId, userIds));
+      await db
+        .delete(schema.memberProfiles)
+        .where(inArray(schema.memberProfiles.userId, userIds));
       await db
         .delete(schema.user)
         .where(inArray(schema.user.id, Object.values(fx.users)));
@@ -295,6 +343,29 @@ describe.skipIf(!RUN_DB)(
             "unlisted-published-members-unconfirmed",
             "unlisted-published-public-confirmed",
             "unlisted-published-public-unconfirmed",
+          ],
+        ],
+        [
+          "contributor in the unlisted community",
+          u.unlistedContributor,
+          [
+            "listed-published-public-confirmed",
+            "listed-published-public-unconfirmed",
+            "unlisted-published-members-confirmed",
+            "unlisted-published-members-unconfirmed",
+            "unlisted-published-public-confirmed",
+            "unlisted-published-public-unconfirmed",
+          ],
+        ],
+        [
+          "staff editor of the unlisted community",
+          u.unlistedEditor,
+          [
+            "listed-published-public-confirmed",
+            "listed-published-public-unconfirmed",
+            ...fx.issues
+              .filter((i) => i.communityId === fx.communities.unlisted)
+              .map((i) => i.label),
           ],
         ],
         [

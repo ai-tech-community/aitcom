@@ -9,6 +9,7 @@ import {
   useReducer,
 } from "react";
 import { useTranslations } from "next-intl";
+import { SectionLabel } from "@/components/ui/section-label";
 import { api } from "@/trpc/react";
 import { useRouter } from "@/i18n/navigation";
 
@@ -422,15 +423,13 @@ export function ArticleEditor({
     if (blockingChecks.length > 0) return;
 
     dispatch({ type: "SUBMIT_START" });
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
     try {
-      let id = articleId;
-      if (!id) id = await saveDraftInternal(false);
-      else await saveDraftInternal(false);
-
-      if (!id) {
-        showMessage(t("failedToSubmit"), "error");
-        return;
-      }
+      const id = await saveDraftInternal(true);
+      if (id === null) return;
 
       await submitMutation.mutateAsync({ id });
       setPublishDialogOpen(false);
@@ -445,7 +444,6 @@ export function ArticleEditor({
       dispatch({ type: "SUBMIT_END" });
     }
   }, [
-    articleId,
     behaviour,
     blockingChecks,
     errorText,
@@ -726,13 +724,17 @@ export function ArticleEditor({
   return (
     <div>
       {/* Changes-requested banner */}
-      {initialData?.reviewStatus === "changes_requested" &&
-        initialData.reviewNote && (
-          <div className="mb-6 rounded border border-orange-500/30 bg-orange-500/10 px-4 py-3">
-            <p className="font-mono text-xs font-medium tracking-wider text-orange-400">
-              {t("changesRequested").toUpperCase()}
+      {initialData?.reviewNote &&
+        (initialData.reviewStatus === "changes_requested" ||
+          (behaviour.keepReviewNoteWhileWriting &&
+            initialData.reviewStatus == null)) && (
+          <div className="border-border text-foreground mb-6 rounded border px-4 py-3">
+            <SectionLabel bordered={false}>
+              {t("changesRequested")}
+            </SectionLabel>
+            <p className="mt-1 text-sm whitespace-pre-wrap">
+              {initialData.reviewNote}
             </p>
-            <p className="mt-1 text-sm">{initialData.reviewNote}</p>
           </div>
         )}
 

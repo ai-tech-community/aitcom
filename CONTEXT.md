@@ -947,7 +947,8 @@ not collect feedback itself.
 A [[Community]]'s publication: a named series of [[issue]]s, with a name, a
 platform-wide slug (`/magazines/[slug]`), a description, a logo, topics and a
 **default visibility** for new issues. A community has **at most one**
-magazine. Created and run by its [[magazine-editor]]s; it appears as the
+magazine. Created and managed by its [[magazine-team]]'s editors-in-chief;
+[[magazine-editor]]s assemble its issues. It appears as the
 community's Magazine tab and on the `/magazines` shelf. Distinct from the
 [[articles]]/blog (single pieces on the Hub-wide blog) by its one irreducible
 feature: **curated, numbered issues** that collect articles, editorial text
@@ -963,8 +964,9 @@ only) or `published`; a published issue does not go back to draft, and its
 slug is locked so links do not break. Each issue stores its **own visibility**
 — `members` or `public` — copied from the magazine's default when it is
 created; changing the default never changes existing issues. A `public` issue
-in an unlisted [[community]] counts as public only when an editor confirmed it
-(who and when are recorded); without that it is members-only for outsiders.
+in an unlisted [[community]] counts as public only when an active community
+owner or admin confirmed it (who and when are recorded); an appointed editor
+cannot confirm it. Without confirmation it is members-only for outsiders.
 Who may read an issue is one **issue access** decision: `none` (answered as
 not-found), `full` or `editor`. Every page, list, search and sitemap asks the
 same resolver. See [[adr-0042-magazine-issues-are-read-through-one-access-resolver]].
@@ -1034,13 +1036,45 @@ code checks "is this a magazine article?" to change behaviour. See
 
 ### Magazine editor
 
-A person who may create and change a [[magazine]] and its [[issue]]s, write and
-mark [[magazine-article]]s ready, and see drafts and unavailable items. Today
-this is an **active owner or admin** of the magazine's [[Community]];
-moderators and members are readers. One loader (`loadMagazineEditorship`,
-with its batched twin `loadEditorScope`) decides it, so per-magazine staff
-roles (editor-in-chief, editor, contributor) can replace it later without
-touching the access rules or any caller.
+A person with the `edit` capability in a [[magazine]]: an editor-in-chief or
+editor on its [[magazine-team]]. An active community owner/admin is implicitly
+editor-in-chief. Editors build and publish [[issue]]s, review
+[[magazine-article]]s, see drafts and unavailable items, and mark their own
+articles ready. Settings and team management require `manage`, held by
+editors-in-chief. The editorship seam (`loadMagazineEditorship` and its batched
+twin `loadEditorScope`) resolves standing from active membership and
+assignments. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
+
+### Magazine team
+
+The people assigned a [[magazine-role]] in a [[magazine]], plus its
+[[Community]]'s implicit editors-in-chief (active owners/admins). Assignments
+live in Drizzle's `app.magazine_staff`, one per person per magazine. Leaving or
+being banned keeps an assignment but makes it inert: only active community
+membership lets it grant anything. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
+
+### Magazine role
+
+A job on a [[magazine-team]]: `editor_in_chief`, `editor` or `contributor`.
+Roles grant capabilities through one table: all three grant `write`, editors
+and editors-in-chief grant `edit`, and editors-in-chief grant `manage`.
+Callers ask for a capability rather than compare role names. An appointed
+editor-in-chief can manage settings and the team, but only community
+owners/admins can confirm making an unlisted community's magazine or issue
+public. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
+
+### Magazine contributor
+
+An active member with the contributor [[magazine-role]]: they write
+[[magazine-article]]s and send them to the editors. They may change an article
+before sending it or after changes are requested; sent, approved and declined
+articles are locked. They see their own text in the article editor, not other
+contributors' unplaced articles. Publication and credit happen when the
+[[issue]] publishes. Distinct from a benchmark contributor. See
+[[adr-0045-magazine-roles-are-capabilities-read-through-the-editorship-seam]].
 
 ## Benchmark domain
 

@@ -25,6 +25,10 @@ export const Magazines: CollectionConfig = {
     {
       name: "communityId",
       type: "text",
+      // Contributors plan (2026-10-27), Decision 1: a magazine never moves
+      // community; magazine_staff copies this id for the batched read scope.
+      // Site Local API calls use overrideAccess and never change this field.
+      access: { update: () => false },
       required: true,
       unique: true,
       index: true,

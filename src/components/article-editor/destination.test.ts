@@ -7,6 +7,7 @@ const magazine: ArticleDestination = {
   magazineId: 42,
   magazineName: "The Gazette",
   communitySlug: "night-owls",
+  handIn: "mark_ready",
 };
 
 describe("destinationBehaviour", () => {
@@ -17,6 +18,7 @@ describe("destinationBehaviour", () => {
       afterSubmitHref: "/blog/my-articles",
       submitLabelKey: "submitForReview",
       showTrustedPublish: true,
+      keepReviewNoteWhileWriting: false,
       submittedKey: "submitted",
       prePublishTitleKey: "prePublishTitle",
       prePublishSubtitleKey: "prePublishSubtitle",
@@ -35,6 +37,7 @@ describe("destinationBehaviour", () => {
       afterSubmitHref: "/communities/night-owls/magazine",
       submitLabelKey: "magazine.markReady",
       showTrustedPublish: false,
+      keepReviewNoteWhileWriting: true,
       submittedKey: "magazine.markedReady",
       prePublishTitleKey: "magazine.prePublishTitle",
       prePublishSubtitleKey: "magazine.prePublishSubtitle",
@@ -44,6 +47,19 @@ describe("destinationBehaviour", () => {
     expect(behaviour.editPath("my-story-1")).toBe(
       "/communities/night-owls/magazine/articles/my-story-1/edit",
     );
+  });
+
+  it("a contributor's magazine destination sends to the editors", () => {
+    expect(
+      destinationBehaviour({ ...magazine, handIn: "send_for_review" }),
+    ).toMatchObject({
+      submitLabelKey: "magazine.sendForReview",
+      submittedKey: "magazine.sentForReview",
+      prePublishTitleKey: "magazine.reviewPrePublishTitle",
+      prePublishSubtitleKey: "magazine.reviewPrePublishSubtitle",
+      showTrustedPublish: false,
+      keepReviewNoteWhileWriting: true,
+    });
   });
 
   it("maps magazine refusals to friendly keys, never raw server text", () => {
