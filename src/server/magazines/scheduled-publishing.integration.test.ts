@@ -307,7 +307,7 @@ describe.skipIf(!isLocalDbConfigured())(
           now: at(120),
           mailer: {
             send: vi.fn(async () => true),
-            env: { VERCEL_ENV: "production", NODE_ENV: "production" },
+            recipient: (to) => to,
             sleep: async () => undefined,
           },
         }),

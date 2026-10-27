@@ -1,8 +1,14 @@
-import { expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import nl from "../../../../messages/nl.json";
 
-vi.mock("@/server/email", () => ({ sendGatedEmail: vi.fn() }));
+const send = vi.hoisted(() => vi.fn());
+vi.mock("@/env", () => ({ env: { RESEND_API_KEY: "test-key" } }));
+vi.mock("resend", () => ({
+  Resend: class {
+    emails = { send };
+  },
+}));
 vi.mock("@/server/payload", () => ({ getPayloadClient: vi.fn() }));
 
 import {
@@ -12,7 +18,61 @@ import {
   confirmationMail,
   magazineConfirmUrl,
   renderMagazineMail,
+  defaultMagazineMailer,
 } from "./mail";
+
+beforeEach(() => {
+  send.mockReset().mockResolvedValue({ error: null });
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
+
+it("shares its recipient decision with sending", async () => {
+  const mailer = defaultMagazineMailer();
+  expect(mailer.recipient("Greg@Klevox.com")).toBe("greg@klevox.com");
+  expect(mailer.recipient("member@example.test")).toBeNull();
+  expect(
+    await mailer.send("member@example.test", {
+      subject: "New issue",
+      html: "<p>Read it</p>",
+      text: "Read it",
+    }),
+  ).toBe(false);
+  expect(send).not.toHaveBeenCalled();
+});
+
+it("reports Resend's refusal after the rate-limit retry as false", async () => {
+  vi.useFakeTimers();
+  const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  send.mockResolvedValue({ error: { name: "rate_limit_exceeded" } });
+  const sending = defaultMagazineMailer().send("greg@klevox.com", {
+    subject: "New issue",
+    html: "<p>Read it</p>",
+    text: "Read it",
+  });
+  const result = expect(sending).resolves.toBe(false);
+  await vi.advanceTimersByTimeAsync(1000);
+  await result;
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(log).toHaveBeenCalledWith(
+    "magazines: resend rejected the email",
+    "rate_limit_exceeded",
+  );
+});
+
+it("keeps an uncertain network failure as an exception", async () => {
+  const error = new Error("Network unavailable");
+  send.mockRejectedValue(error);
+  await expect(
+    defaultMagazineMailer().send("greg@klevox.com", {
+      subject: "New issue",
+      html: "<p>Read it</p>",
+      text: "Read it",
+    }),
+  ).rejects.toBe(error);
+});
 
 it("escapes everything a magazine name can carry", async () => {
   const mail = await confirmationMail({
@@ -49,6 +109,7 @@ it("has a text part with the link", async () => {
   expect(mail.text).toContain("Yes, email me new issues");
   expect(mail.text).toContain("The link works for 7 days.");
   expect(mail.text).toContain("AIT Community");
+  expect(mail.text).toContain("Click the link below to say yes.");
 });
 
 it("writes the confirmation in the subscriber's language", async () => {
@@ -60,6 +121,7 @@ it("writes the confirmation in the subscriber's language", async () => {
     nl.magazineMail.confirm.subject.replace("{magazine}", "Gazette"),
   );
   expect(dutch.text).toContain(nl.magazineMail.confirm.action);
+  expect(dutch.text).toContain("Klik op de link hieronder om ja te zeggen.");
 });
 
 it("links to the confirm page in that language", () => {

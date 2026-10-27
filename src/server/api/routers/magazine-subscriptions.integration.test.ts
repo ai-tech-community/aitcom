@@ -76,6 +76,7 @@ describe.skipIf(!isLocalDbConfigured())(
     >;
     let mailer: MagazineMailer;
     let now: Date;
+    let scheduled: Array<() => Promise<void>>;
 
     beforeAll(async () => {
       const [
@@ -127,13 +128,15 @@ describe.skipIf(!isLocalDbConfigured())(
       send = vi.fn(async () => true);
       mailer = {
         send,
-        env: { VERCEL_ENV: "production", NODE_ENV: "production" },
+        recipient: (to) => to,
         sleep: async () => undefined,
       };
       now = new Date();
+      scheduled = [];
     });
 
     afterEach(async () => {
+      await runScheduled();
       if (!fx) return;
       const { db, schema, payload } = m;
       const ids = [fx.ownerId, fx.memberId, fx.outsiderId];
@@ -280,11 +283,16 @@ describe.skipIf(!isLocalDbConfigured())(
     function callerAs(userId: string | null, ip = `ip-${fx.sfx}`) {
       return m.createCaller({
         db: m.db,
+        afterResponse: (task) => scheduled.push(task),
         headers: new Headers({ "x-forwarded-for": ip }),
         session: userId
           ? ({ user: { id: userId, name: userId }, session: {} } as never)
           : null,
       }).magazineSubscriptions;
+    }
+
+    async function runScheduled() {
+      for (const task of scheduled.splice(0)) await task();
     }
 
     it("only people who may see the magazine can subscribe", async () => {
@@ -416,12 +424,15 @@ describe.skipIf(!isLocalDbConfigured())(
       };
       const caller = callerAs(null);
       const unknown = await caller.subscribeByEmail(input);
+      await runScheduled();
       const known = await caller.subscribeByEmail(input);
+      await runScheduled();
       await m.db
         .update(m.schema.magazineSubscriptions)
         .set({ confirmedAt: now })
         .where(eq(m.schema.magazineSubscriptions.magazineId, mag.id));
       const confirmed = await caller.subscribeByEmail(input);
+      await runScheduled();
       expect([unknown, known, confirmed]).toEqual([
         { ok: true },
         { ok: true },

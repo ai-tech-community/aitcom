@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createHash } from "node:crypto";
 import {
   afterEach,
   beforeAll,
@@ -20,6 +21,7 @@ import type {
 } from "@/server/magazines/subscriptions/mail";
 import type * as Magazines from "@/server/magazines/magazine-service";
 import type * as Issues from "@/server/magazines/issue-service";
+import type * as Announcements from "@/server/magazines/announcements";
 
 vi.mock("@/server/email", () => ({ sendGatedEmail: vi.fn(async () => true) }));
 
@@ -50,6 +52,14 @@ function richText(text: string) {
   };
 }
 
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
 describe.skipIf(!isLocalDbConfigured())(
   "magazine subscriptions [DB integration]",
   { timeout: 60_000 },
@@ -61,6 +71,7 @@ describe.skipIf(!isLocalDbConfigured())(
       service: typeof Service;
       magazines: typeof Magazines;
       issues: typeof Issues;
+      announcements: typeof Announcements;
     };
     let fx: {
       sfx: string;
@@ -76,15 +87,23 @@ describe.skipIf(!isLocalDbConfigured())(
     let now: Date;
 
     beforeAll(async () => {
-      const [{ db }, schema, { getPayloadClient }, service, magazines, issues] =
-        await Promise.all([
-          import("@/server/db"),
-          import("@/server/db/schema"),
-          import("@/server/payload"),
-          import("@/server/magazines/subscriptions/service"),
-          import("@/server/magazines/magazine-service"),
-          import("@/server/magazines/issue-service"),
-        ]);
+      const [
+        { db },
+        schema,
+        { getPayloadClient },
+        service,
+        magazines,
+        issues,
+        announcements,
+      ] = await Promise.all([
+        import("@/server/db"),
+        import("@/server/db/schema"),
+        import("@/server/payload"),
+        import("@/server/magazines/subscriptions/service"),
+        import("@/server/magazines/magazine-service"),
+        import("@/server/magazines/issue-service"),
+        import("@/server/magazines/announcements"),
+      ]);
       m = {
         db,
         schema,
@@ -92,6 +111,7 @@ describe.skipIf(!isLocalDbConfigured())(
         service,
         magazines,
         issues,
+        announcements,
       };
     }, 120_000);
 
@@ -116,13 +136,14 @@ describe.skipIf(!isLocalDbConfigured())(
       send = vi.fn(async () => true);
       mailer = {
         send,
-        env: { VERCEL_ENV: "production", NODE_ENV: "production" },
+        recipient: (to) => to,
         sleep: async () => undefined,
       };
       now = new Date();
     });
 
     afterEach(async () => {
+      vi.unstubAllEnvs();
       if (!fx) return;
       const { db, schema, payload } = m;
       const ids = [fx.ownerId, fx.memberId, fx.outsiderId];
@@ -474,6 +495,213 @@ describe.skipIf(!isLocalDbConfigured())(
           .confirmedAt,
       ).toEqual(later(24 * 60));
     });
+
+    it("merging a delivered email subscription neither repeats it in the inbox nor leaves the announcement open", async () => {
+      vi.stubEnv("DIGEST_UNSUBSCRIBE_SECRET", "merge-delivery-test-secret");
+      const mag = await magazine("merge-delivered", { issue: "none" });
+      const email = `${fx.memberId}@example.test`;
+      const [emailRow, waitingRow] = await m.db
+        .insert(m.schema.magazineSubscriptions)
+        .values([
+          { magazineId: mag.id, email, confirmedAt: now },
+          { magazineId: mag.id, email: address(), confirmedAt: now },
+        ])
+        .returning();
+      const actor = { userId: fx.ownerId, community: mag.community };
+      let issue = await m.issues.createIssue(
+        m,
+        mag,
+        { title: "Merge issue" },
+        actor,
+      );
+      ({ issue } = await m.issues.setIssueItems(
+        m,
+        issue,
+        [
+          {
+            kind: "editorial",
+            body: richText("News before the account subscription"),
+          },
+        ],
+        issue.updatedAt,
+        actor,
+      ));
+      await m.issues.publishIssue(m, issue, issue.updatedAt, actor, {
+        now: later(1),
+      });
+      const gatedMailer = {
+        ...mailer,
+        recipient: (to: string) => (to === email ? to : null),
+      };
+      const first = await m.announcements.deliverPendingAnnouncements(
+        m,
+        gatedMailer,
+        later(1),
+      );
+      expect(first.email).toBe(1);
+      expect(send).toHaveBeenCalledExactlyOnceWith(email, expect.anything());
+      expect(
+        await m.db.query.magazineIssueAnnouncements.findFirst({
+          where: eq(m.schema.magazineIssueAnnouncements.issueId, issue.id),
+        }),
+      ).toMatchObject({ completedAt: null });
+
+      await m.service.subscribeAccount(
+        m.db,
+        mag.id,
+        fx.memberId,
+        "en",
+        later(2),
+      );
+      const accountRow = (await rows(mag.id)).find(
+        (row) => row.userId === fx.memberId,
+      )!;
+      expect(accountRow).toMatchObject({ id: emailRow!.id, confirmedAt: now });
+      expect(
+        await m.db.query.magazineIssueDeliveries.findFirst({
+          where: eq(
+            m.schema.magazineIssueDeliveries.subscriptionId,
+            accountRow.id,
+          ),
+        }),
+      ).toMatchObject({ issueId: issue.id, channel: "email" });
+      expect(accountRow.email).toBeNull();
+      await m.service.removeSubscription(m.db, waitingRow!.id);
+
+      expect(
+        await m.announcements.deliverPendingAnnouncements(m, mailer, later(3)),
+      ).toMatchObject({
+        inbox: 0,
+        email: 0,
+        completed: 1,
+      });
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(
+        await m.db.query.notifications.findMany({
+          where: eq(m.schema.notifications.userId, fx.memberId),
+        }),
+      ).toEqual([]);
+      expect(
+        await m.db.query.magazineIssueAnnouncements.findFirst({
+          where: eq(m.schema.magazineIssueAnnouncements.issueId, issue.id),
+        }),
+      ).toMatchObject({ completedAt: later(3) });
+    });
+
+    it.each([false, true])(
+      "an in-flight email refusal still clears the merged claim (existing inbox delivery: %s)",
+      async (alreadyToldInInbox) => {
+        vi.stubEnv("DIGEST_UNSUBSCRIBE_SECRET", "merge-inflight-test-secret");
+        const mag = await magazine("merge-inflight", { issue: "none" });
+        const email = `${fx.memberId}@example.test`;
+        const [emailRow] = await m.db
+          .insert(m.schema.magazineSubscriptions)
+          .values({
+            magazineId: mag.id,
+            email,
+            confirmedAt: now,
+            confirmTokenHash: createHash("sha256").update(fx.sfx).digest("hex"),
+            confirmSentAt: now,
+            confirmSendCount: 1,
+          })
+          .returning();
+        let oldAccountId: string | undefined;
+        if (alreadyToldInInbox) {
+          const [oldAccount] = await m.db
+            .insert(m.schema.magazineSubscriptions)
+            .values({
+              magazineId: mag.id,
+              userId: fx.memberId,
+              confirmedAt: later(-1),
+            })
+            .returning();
+          oldAccountId = oldAccount!.id;
+        }
+        const actor = { userId: fx.ownerId, community: mag.community };
+        let issue = await m.issues.createIssue(
+          m,
+          mag,
+          { title: "In-flight merge" },
+          actor,
+        );
+        ({ issue } = await m.issues.setIssueItems(
+          m,
+          issue,
+          [
+            {
+              kind: "editorial",
+              body: richText("News during the account subscription"),
+            },
+          ],
+          issue.updatedAt,
+          actor,
+        ));
+        await m.issues.publishIssue(m, issue, issue.updatedAt, actor, {
+          now: later(1),
+        });
+        const started = deferred();
+        const release = deferred();
+        send.mockImplementationOnce(async () => {
+          started.resolve();
+          await release.promise;
+          return false;
+        });
+        const sending = m.announcements.deliverPendingAnnouncements(
+          m,
+          mailer,
+          later(1),
+        );
+        await started.promise;
+        try {
+          await m.service.subscribeAccount(
+            m.db,
+            mag.id,
+            fx.memberId,
+            "nl",
+            later(2),
+          );
+        } finally {
+          release.resolve();
+          await sending;
+        }
+
+        const rerun = await m.announcements.deliverPendingAnnouncements(
+          m,
+          mailer,
+          later(3),
+        );
+        expect(rerun).toMatchObject({
+          inbox: alreadyToldInInbox ? 0 : 1,
+          email: 0,
+          completed: alreadyToldInInbox ? 0 : 1,
+        });
+        expect(
+          await m.db.query.magazineIssueAnnouncements.findFirst({
+            where: eq(m.schema.magazineIssueAnnouncements.issueId, issue.id),
+          }),
+        ).toMatchObject({ completedAt: expect.any(Date) });
+        expect(
+          await m.db.query.notifications.findMany({
+            where: eq(m.schema.notifications.userId, fx.memberId),
+          }),
+        ).toHaveLength(1);
+        expect(await rows(mag.id)).toEqual([
+          expect.objectContaining({
+            id: emailRow!.id,
+            email: null,
+            userId: fx.memberId,
+            confirmedAt: alreadyToldInInbox ? later(-1) : now,
+            locale: "nl",
+            confirmTokenHash: null,
+            confirmSentAt: null,
+            confirmSendCount: 0,
+          }),
+        ]);
+        if (oldAccountId)
+          expect((await rows(mag.id))[0]!.id).not.toBe(oldAccountId);
+        expect(send).toHaveBeenCalledTimes(1);
+      },
+    );
 
     it("counts subscribers by kind", async () => {
       const mag = await magazine();

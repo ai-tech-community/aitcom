@@ -740,9 +740,13 @@ export async function sendGatedEmail(
     rejectedMessage: string;
     logPrefix: string;
     retryOnRateLimit: boolean;
+    onRejected?: "throw" | "refuse";
+    recipient?: (to: string) => string | null;
   },
 ): Promise<boolean> {
-  const recipient = gatedMailRecipient(to, env);
+  const recipient = (
+    opts.recipient ?? ((address) => gatedMailRecipient(address, env))
+  )(to);
   if (!recipient) return false;
   if (process.env.NODE_ENV === "test" && recipient !== MAIL_TEST_RECIPIENT) {
     throw new Error(opts.refusedMessage);
@@ -764,5 +768,6 @@ export async function sendGatedEmail(
   }
   if (!error) return true;
   console.error(`${opts.logPrefix}: resend rejected the email`, error.name);
+  if (opts.onRejected === "refuse") return false;
   throw new Error(opts.rejectedMessage);
 }

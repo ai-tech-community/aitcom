@@ -22,6 +22,7 @@ import {
   PENDING_SUBSCRIPTION_DAYS,
 } from "@/lib/magazines/subscriptions";
 import {
+  magazineIssueDeliveries as deliveries,
   magazineSubscriptions as subscriptions,
   user,
 } from "@/server/db/schema";
@@ -59,29 +60,82 @@ export async function subscribeAccount(
     if (!account) return;
     const email = normalizeSubscriberEmail(account.email);
     let confirmedAt = now;
+    let previous: { id: string; confirmedAt: Date | null } | undefined;
     if (email) {
       // Share the email request lock so a concurrent request cannot recreate the merged row.
       await tx.execute(
         sql`SELECT pg_advisory_xact_lock(hashtext(${"magazine-confirm:" + email}))`,
       );
-      const [previous] = await tx
-        .delete(subscriptions)
+      [previous] = await tx
+        .select({
+          id: subscriptions.id,
+          confirmedAt: subscriptions.confirmedAt,
+        })
+        .from(subscriptions)
         .where(
           and(
             eq(subscriptions.magazineId, magazineId),
             eq(subscriptions.email, email),
           ),
         )
-        .returning({ confirmedAt: subscriptions.confirmedAt });
+        .for("update");
       if (previous?.confirmedAt && previous.confirmedAt < now)
         confirmedAt = previous.confirmedAt;
+    }
+    if (previous) {
+      const [subscribed] = await tx
+        .select({
+          id: subscriptions.id,
+          confirmedAt: subscriptions.confirmedAt,
+        })
+        .from(subscriptions)
+        .where(
+          and(
+            eq(subscriptions.magazineId, magazineId),
+            eq(subscriptions.userId, userId),
+          ),
+        )
+        .for("update");
+      if (subscribed) {
+        if (subscribed.confirmedAt && subscribed.confirmedAt < confirmedAt)
+          confirmedAt = subscribed.confirmedAt;
+        await tx.execute(sql`
+          INSERT INTO ${deliveries} ("issue_id", "subscription_id", "channel", "delivered_at")
+          SELECT ${deliveries.issueId}, ${previous.id}, ${deliveries.channel}, ${deliveries.deliveredAt}
+          FROM ${deliveries}
+          WHERE ${deliveries.subscriptionId} = ${subscribed.id}
+          ON CONFLICT ("issue_id", "subscription_id") DO UPDATE SET
+            "channel" = CASE WHEN ${deliveries.channel} = 'inbox' THEN 'inbox' ELSE EXCLUDED."channel" END,
+            "delivered_at" = LEAST(${deliveries.deliveredAt}, EXCLUDED."delivered_at")
+        `);
+        await tx
+          .delete(subscriptions)
+          .where(eq(subscriptions.id, subscribed.id));
+      }
+      // Keep the email row's identity so an in-flight refusal still releases its claim.
+      await tx
+        .update(subscriptions)
+        .set({
+          userId,
+          email: null,
+          locale,
+          confirmedAt,
+          confirmTokenHash: null,
+          confirmSentAt: null,
+          confirmSendCount: 0,
+        })
+        .where(eq(subscriptions.id, previous.id));
+      return;
     }
     await tx
       .insert(subscriptions)
       .values({ magazineId, userId, locale, confirmedAt })
-      .onConflictDoNothing({
+      .onConflictDoUpdate({
         target: [subscriptions.magazineId, subscriptions.userId],
-        where: isNotNull(subscriptions.userId),
+        targetWhere: isNotNull(subscriptions.userId),
+        set: {
+          confirmedAt: sql`LEAST(${subscriptions.confirmedAt}, EXCLUDED.confirmed_at)`,
+        },
       });
   });
 }

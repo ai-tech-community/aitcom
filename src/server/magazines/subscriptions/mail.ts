@@ -1,7 +1,7 @@
 import { createTranslator } from "next-intl";
 
 import { loadMessages, type AppLocale } from "@/i18n/messages";
-import type { MailEnv } from "@/lib/email/recipient-gate";
+import { gatedMailRecipient } from "@/lib/email/recipient-gate";
 import {
   issuePath,
   MAGAZINE_SUBSCRIPTION_CONFIRM_PATH,
@@ -16,7 +16,7 @@ export type OutgoingMagazineMail = MagazineMail & {
 };
 export type MagazineMailer = {
   send(to: string, mail: OutgoingMagazineMail): Promise<boolean>;
-  env: MailEnv;
+  recipient(to: string): string | null;
   sleep?: (ms: number) => Promise<void>;
 };
 
@@ -25,14 +25,17 @@ export function defaultMagazineMailer(): MagazineMailer {
     VERCEL_ENV: process.env.VERCEL_ENV,
     NODE_ENV: process.env.NODE_ENV,
   };
+  const recipient = (to: string) => gatedMailRecipient(to, env);
   return {
-    env,
+    recipient,
     send: (to, mail) =>
       sendGatedEmail(to, mail, env, {
         refusedMessage: "Magazine email refused",
         rejectedMessage: "Resend rejected the magazine email",
         logPrefix: "magazines",
         retryOnRateLimit: true,
+        onRejected: "refuse",
+        recipient,
       }),
   };
 }

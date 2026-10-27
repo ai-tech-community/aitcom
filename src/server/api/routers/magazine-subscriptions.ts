@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { after } from "next/server";
 import { z } from "zod";
 
 import { routing } from "@/i18n/routing";
@@ -98,12 +99,18 @@ export const magazineSubscriptionsRouter = createTRPCRouter({
         input.magazineSlug,
         null,
       );
-      await subscribeByEmail(
-        deps,
-        { magazine, email: input.email, locale: input.locale },
-        defaultMagazineMailer(),
-        new Date(),
-      );
+      (ctx.afterResponse ?? after)(async () => {
+        try {
+          await subscribeByEmail(
+            deps,
+            { magazine, email: input.email, locale: input.locale },
+            defaultMagazineMailer(),
+            new Date(),
+          );
+        } catch {
+          console.error("[magazines] email subscription failed");
+        }
+      });
       return { ok: true };
     }),
 });

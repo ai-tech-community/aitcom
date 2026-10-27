@@ -11,6 +11,7 @@ import {
 } from "vitest";
 
 import { issuePath } from "@/lib/magazines/paths";
+import { gatedMailRecipient } from "@/lib/email/recipient-gate";
 import type { Magazine } from "@/payload-types";
 import type * as Schema from "@/server/db/schema";
 import { verifyUnsubscribeToken } from "@/server/notifications/unsubscribe-token";
@@ -36,6 +37,13 @@ function isLocalDbConfigured(): boolean {
 const now = new Date("2026-10-27T14:00:00Z");
 const before = new Date(now.getTime() - 1000);
 const secret = "announcement-test-secret";
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
 const richText = {
   root: {
     type: "root",
@@ -176,7 +184,7 @@ describe.skipIf(!isLocalDbConfigured())(
       send = vi.fn(async () => true);
       mailer = {
         send,
-        env: { VERCEL_ENV: "production", NODE_ENV: "production" },
+        recipient: (to) => to,
         sleep: vi.fn(async () => undefined),
       };
     });
@@ -338,19 +346,97 @@ describe.skipIf(!isLocalDbConfigured())(
       expect((await announcement(issue.id))!.completedAt).not.toBeNull();
       expect(mailer.sleep).toHaveBeenCalledWith(600);
     });
-    it("two deliveries at once still tell each subscriber once", async () => {
+    it("overlapping inbox claims still tell each subscriber once", async () => {
       const issue = await publish();
       await resetInbox();
-      const counts = await Promise.all([
-        m.a.deliverInboxAnnouncement(m, issue.id),
-        m.a.deliverInboxAnnouncement(m, issue.id),
-      ]);
+      const held = deferred();
+      const release = deferred();
+      const secondClaim = deferred();
+      const noticesModule = await import("./notifications");
+      const makeNotices = noticesModule.issuePublishedNotices;
+      vi.spyOn(noticesModule, "issuePublishedNotices").mockImplementationOnce(
+        async (input) => {
+          held.resolve();
+          await release.promise;
+          return makeNotices(input);
+        },
+      );
+      let claims = 0;
+      const concurrent = {
+        ...m,
+        db: new Proxy(m.db, {
+          get(target, key, receiver) {
+            if (key !== "transaction")
+              return Reflect.get(target, key, receiver) as unknown;
+            return (work: Parameters<typeof target.transaction>[0]) =>
+              target.transaction((tx) =>
+                work(
+                  new Proxy(tx, {
+                    get(transaction, operation, transactionReceiver) {
+                      if (operation !== "insert")
+                        return Reflect.get(
+                          transaction,
+                          operation,
+                          transactionReceiver,
+                        ) as unknown;
+                      return (table: typeof m.s.magazineIssueDeliveries) => {
+                        if (
+                          table === m.s.magazineIssueDeliveries &&
+                          ++claims === 2
+                        )
+                          secondClaim.resolve();
+                        return transaction.insert(table);
+                      };
+                    },
+                  }),
+                ),
+              );
+          },
+        }),
+      };
+      const first = m.a.deliverInboxAnnouncement(concurrent, issue.id);
+      await held.promise;
+      const second = m.a.deliverInboxAnnouncement(concurrent, issue.id);
+      await secondClaim.promise;
+      // Both transactions selected the same subscriptions before either
+      // committed. The second insert waits for the first claim to commit.
+      release.resolve();
+      const counts = await Promise.all([first, second]);
       expect(counts.reduce((a, b) => a + b, 0)).toBe(3);
       expect((await notices()).map((r) => r.userId).sort()).toEqual(
         [fx.member, fx.outsider, fx.pending].sort(),
       );
-      await Promise.all([run(), run()]);
-      expect(send).toHaveBeenCalledTimes(1);
+    });
+    it("overlapping email claims still tell each subscriber once", async () => {
+      await m.db.insert(m.s.magazineSubscriptions).values({
+        id: `${fx.x}-second`,
+        magazineId: fx.magazine.id,
+        email: "second@example.test",
+        confirmedAt: before,
+      });
+      await publish();
+      const started = deferred();
+      const release = deferred();
+      send.mockImplementationOnce(async () => {
+        started.resolve();
+        await release.promise;
+        return true;
+      });
+      // A has loaded both subscriptions in its first chunk, and holds its
+      // first claim while B claims and sends the second subscription.
+      const first = run();
+      await started.promise;
+      try {
+        expect(await run()).toMatchObject({ email: 1 });
+      } finally {
+        release.resolve();
+        await first;
+      }
+      expect(send).toHaveBeenCalledTimes(2);
+      expect(new Set(send.mock.calls.map(([to]) => to)).size).toBe(2);
+      expect(send.mock.calls.map(([to]) => to)).toContain(
+        "second@example.test",
+      );
     });
     it("late subscribers and leavers are not told", async () => {
       const issue = await publish();
@@ -465,9 +551,151 @@ describe.skipIf(!isLocalDbConfigured())(
       await run();
       expect(send).toHaveBeenCalledTimes(3);
     });
+    it("the first refusal stops email for the entire run and preserves the rest", async () => {
+      await m.db.insert(m.s.magazineSubscriptions).values({
+        magazineId: fx.magazine.id,
+        email: "second@example.test",
+        confirmedAt: before,
+      });
+      const first = await publish();
+      const second = await publish();
+      send.mockResolvedValueOnce(false);
+      expect(await run()).toMatchObject({ email: 0 });
+      expect(send).toHaveBeenCalledTimes(1);
+      expect((await announcement(first.id))!.completedAt).toBeNull();
+      expect((await announcement(second.id))!.completedAt).toBeNull();
+      expect(await run()).toMatchObject({ email: 4, completed: 2 });
+    });
+    it("rechecks the audience between bounded email chunks", async () => {
+      await m.db.insert(m.s.magazineSubscriptions).values(
+        Array.from({ length: 25 }, (_, i) => ({
+          magazineId: fx.magazine.id,
+          email: `audience-${i}@example.test`,
+          confirmedAt: before,
+        })),
+      );
+      const issue = await publish();
+      let sent = 0;
+      send.mockImplementation(async () => {
+        if (++sent === 20)
+          await m.issues.updateIssueDetails(
+            m,
+            issue,
+            { visibility: "members" },
+            issue.updatedAt,
+            actor(),
+            true,
+          );
+        return true;
+      });
+      expect(await run()).toMatchObject({ email: 20, completed: 1 });
+      expect(send).toHaveBeenCalledTimes(20);
+    });
+    it("bounds every email recipient query to a chunk and the remaining budget", async () => {
+      await m.db.insert(m.s.magazineSubscriptions).values(
+        Array.from({ length: 105 }, (_, i) => ({
+          magazineId: fx.magazine.id,
+          email: `bounded-${i}@example.test`,
+          confirmedAt: before,
+        })),
+      );
+      const first = await publish();
+      await publish();
+      const emailRows = await m.db
+        .select({ id: m.s.magazineSubscriptions.id })
+        .from(m.s.magazineSubscriptions)
+        .where(
+          and(
+            eq(m.s.magazineSubscriptions.magazineId, fx.magazine.id),
+            sql`${m.s.magazineSubscriptions.email} IS NOT NULL`,
+            sql`${m.s.magazineSubscriptions.confirmedAt} IS NOT NULL`,
+          ),
+        );
+      await m.db.insert(m.s.magazineIssueDeliveries).values(
+        emailRows.slice(7).map((row) => ({
+          issueId: first.id,
+          subscriptionId: row.id,
+          channel: "email" as const,
+        })),
+      );
+      const queries: { sql: string; params: unknown[] }[] = [];
+      const bounded = {
+        ...m,
+        db: new Proxy(m.db, {
+          get(target, key, receiver) {
+            if (key !== "select")
+              return Reflect.get(target, key, receiver) as unknown;
+            return (fields: Parameters<typeof target.select>[0]) => {
+              const builder = target.select(fields);
+              if (!fields?.email) return builder;
+              return new Proxy(builder, {
+                get(selection, operation, selectionReceiver) {
+                  if (operation !== "from")
+                    return Reflect.get(
+                      selection,
+                      operation,
+                      selectionReceiver,
+                    ) as unknown;
+                  return (table: typeof m.s.magazineSubscriptions) => {
+                    const query = selection.from(table);
+                    const then = query.then.bind(query);
+                    query.then = ((...args) => {
+                      queries.push(query.toSQL());
+                      return then(...args);
+                    }) as typeof query.then;
+                    return query;
+                  };
+                },
+              });
+            };
+          },
+        }),
+      };
+      expect(
+        await m.a.deliverPendingAnnouncements(bounded, mailer, now),
+      ).toMatchObject({ email: 100 });
+      expect(queries.length).toBeGreaterThanOrEqual(5);
+      expect(queries.some((query) => query.params.at(-1) === 13)).toBe(true);
+      for (const query of queries) {
+        expect(query.sql).toMatch(/\blimit\b/);
+        expect(query.params.at(-1)).toBeLessThanOrEqual(20);
+      }
+    });
+    it("counts gated skips toward the finite run budget without claiming them", async () => {
+      await m.db.insert(m.s.magazineSubscriptions).values(
+        Array.from({ length: 105 }, (_, i) => ({
+          magazineId: fx.magazine.id,
+          email: `gated-${i}@example.test`,
+          confirmedAt: before,
+        })),
+      );
+      const issue = await publish();
+      const recipient = vi.fn<(to: string) => null>(() => null);
+      mailer.recipient = recipient;
+      expect(await run()).toMatchObject({ email: 0, completed: 0 });
+      expect(recipient).toHaveBeenCalledTimes(100);
+      expect(new Set(recipient.mock.calls.map(([to]) => to)).size).toBe(100);
+      expect(send).not.toHaveBeenCalled();
+      expect((await announcement(issue.id))!.completedAt).toBeNull();
+      expect(
+        await m.db
+          .select()
+          .from(m.s.magazineIssueDeliveries)
+          .where(
+            and(
+              eq(m.s.magazineIssueDeliveries.issueId, issue.id),
+              eq(m.s.magazineIssueDeliveries.channel, "email"),
+            ),
+          ),
+      ).toHaveLength(0);
+    });
     it("outside production only the test address is mailed and the issue stays open", async () => {
       const issue = await publish();
-      mailer.env = { VERCEL_ENV: "preview", NODE_ENV: "production" };
+      mailer.recipient = (to) =>
+        gatedMailRecipient(to, {
+          VERCEL_ENV: "preview",
+          NODE_ENV: "production",
+        });
       await m.db.insert(m.s.magazineSubscriptions).values({
         magazineId: fx.magazine.id,
         email: "greg@klevox.com",
@@ -486,7 +714,11 @@ describe.skipIf(!isLocalDbConfigured())(
       ).toBeUndefined();
     });
     it("announcements that never finish do not block newer ones", async () => {
-      mailer.env = { VERCEL_ENV: "preview", NODE_ENV: "production" };
+      mailer.recipient = (to) =>
+        gatedMailRecipient(to, {
+          VERCEL_ENV: "preview",
+          NODE_ENV: "production",
+        });
 
       for (let i = 0; i < 11; i++) await publish();
       await resetInbox();

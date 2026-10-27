@@ -5,6 +5,7 @@ import {
   count,
   eq,
   exists,
+  gt,
   inArray,
   isNotNull,
   isNull,
@@ -14,7 +15,6 @@ import {
   sql,
 } from "drizzle-orm";
 
-import { gatedMailRecipient } from "@/lib/email/recipient-gate";
 import {
   communities,
   communityMemberships,
@@ -63,6 +63,7 @@ export async function recordIssueAnnouncement(
 
 export const INBOX_BATCH = 500;
 export const EMAIL_BATCH = 100;
+export const EMAIL_CHUNK = 20;
 export const EMAIL_PACE_MS = 600;
 export const OPEN_ANNOUNCEMENTS_PER_RUN = 10;
 export const ANNOUNCEMENT_MAX_DAYS = 7;
@@ -75,6 +76,45 @@ export type AnnouncementRecipients = {
   audience: IssueAudience;
 };
 type RecipientReader = Pick<Deps["db"], "select">;
+
+function inboxAudienceCondition(
+  reader: RecipientReader,
+  input: AnnouncementRecipients,
+) {
+  switch (input.audience) {
+    case "everyone":
+      return sql`true`;
+    case "members":
+      return exists(
+        reader
+          .select({ id: communityMemberships.id })
+          .from(communityMemberships)
+          .where(
+            and(
+              eq(communityMemberships.communityId, input.communityId),
+              eq(communityMemberships.userId, subscriptions.userId),
+              activeMembershipCondition(),
+            ),
+          ),
+      );
+    case "nobody":
+      return sql`false`;
+  }
+  const exhaustive: never = input.audience;
+  return exhaustive;
+}
+
+function emailAudienceCondition(audience: IssueAudience) {
+  switch (audience) {
+    case "everyone":
+      return sql`true`;
+    case "members":
+    case "nobody":
+      return sql`false`;
+  }
+  const exhaustive: never = audience;
+  return exhaustive;
+}
 
 /** The inbox query, shared by delivery, completion and resolver parity tests. */
 export function eligibleInboxSubscriptions(
@@ -89,22 +129,7 @@ export function eligibleInboxSubscriptions(
         eq(subscriptions.magazineId, input.magazineId),
         isNotNull(subscriptions.userId),
         lte(subscriptions.confirmedAt, input.publishedAt),
-        input.audience === "everyone"
-          ? sql`true`
-          : input.audience === "members"
-            ? exists(
-                reader
-                  .select({ id: communityMemberships.id })
-                  .from(communityMemberships)
-                  .where(
-                    and(
-                      eq(communityMemberships.communityId, input.communityId),
-                      eq(communityMemberships.userId, subscriptions.userId),
-                      activeMembershipCondition(),
-                    ),
-                  ),
-              )
-            : sql`false`,
+        inboxAudienceCondition(reader, input),
         notExists(
           reader
             .select({ id: deliveries.subscriptionId })
@@ -113,7 +138,6 @@ export function eligibleInboxSubscriptions(
               and(
                 eq(deliveries.issueId, input.issueId),
                 eq(deliveries.subscriptionId, subscriptions.id),
-                eq(deliveries.channel, "inbox"),
               ),
             ),
         ),
@@ -126,6 +150,7 @@ export function eligibleInboxSubscriptions(
 export function eligibleEmailSubscriptions(
   reader: RecipientReader,
   input: AnnouncementRecipients,
+  afterId?: string,
 ) {
   return reader
     .select({
@@ -139,7 +164,8 @@ export function eligibleEmailSubscriptions(
         eq(subscriptions.magazineId, input.magazineId),
         isNotNull(subscriptions.email),
         lte(subscriptions.confirmedAt, input.publishedAt),
-        input.audience === "everyone" ? sql`true` : sql`false`,
+        afterId ? gt(subscriptions.id, afterId) : undefined,
+        emailAudienceCondition(input.audience),
         notExists(
           reader
             .select({ id: deliveries.subscriptionId })
@@ -148,7 +174,6 @@ export function eligibleEmailSubscriptions(
               and(
                 eq(deliveries.issueId, input.issueId),
                 eq(deliveries.subscriptionId, subscriptions.id),
-                eq(deliveries.channel, "email"),
               ),
             ),
         ),
@@ -398,6 +423,7 @@ export async function deliverPendingAnnouncements(
   const secret = unsubscribeSecret();
   if (!secret) console.error("[magazines] announcement email secret missing");
   let attempted = 0;
+  let emailRefused = false;
   for (const { issueId } of picked) {
     try {
       let context = await loadAnnouncement(deps, issueId);
@@ -406,16 +432,23 @@ export async function deliverPendingAnnouncements(
         continue;
       }
       result.inbox += await deliverInboxAnnouncement(deps, issueId);
-      context = await loadAnnouncement(deps, issueId);
-      if (!context) continue;
-      const { recipients, issue, magazine, community } = context;
-      if (
-        secret &&
-        magazine &&
-        community &&
-        recipients.audience === "everyone" &&
-        attempted < EMAIL_BATCH
-      ) {
+      let afterId: string | undefined;
+      while (secret && !emailRefused && attempted < EMAIL_BATCH) {
+        context = await loadAnnouncement(deps, issueId);
+        if (
+          !context?.magazine ||
+          !context.community ||
+          context.recipients.audience !== "everyone"
+        )
+          break;
+        const { recipients, issue, magazine, community } = context;
+        const rows = await eligibleEmailSubscriptions(
+          deps.db,
+          recipients,
+          afterId,
+        ).limit(Math.min(EMAIL_CHUNK, EMAIL_BATCH - attempted));
+        if (!rows.length) break;
+        afterId = rows.at(-1)!.id;
         const dutch = await deps.payload.findByID({
           collection: "magazine-issues",
           id: issueId,
@@ -423,10 +456,11 @@ export async function deliverPendingAnnouncements(
           fallbackLocale: "en",
           depth: 0,
         });
-        const rows = await eligibleEmailSubscriptions(deps.db, recipients);
         for (const row of rows) {
-          if (attempted >= EMAIL_BATCH) break;
-          const to = gatedMailRecipient(row.email!, mailer.env);
+          // Skips count too: a gated, unclaimed row must not keep this run
+          // reading the same chunk forever.
+          attempted++;
+          const to = mailer.recipient(row.email!);
           if (!to) continue;
           const token = signUnsubscribeToken(
             { scope: "magazine", subscriptionId: row.id },
@@ -450,14 +484,14 @@ export async function deliverPendingAnnouncements(
             .onConflictDoNothing()
             .returning({ id: deliveries.subscriptionId });
           if (!claimed.length) continue;
-          attempted++;
           try {
             const sent = await mailer.send(to, {
               ...mail,
               headers: digestListUnsubscribeHeaders(token),
             });
             if (sent) result.email++;
-            else
+            else {
+              emailRefused = true;
               await deps.db.transaction(async (tx) => {
                 await tx
                   .delete(deliveries)
@@ -473,6 +507,7 @@ export async function deliverPendingAnnouncements(
                   .set({ completedAt: null })
                   .where(eq(announcements.issueId, issueId));
               });
+            }
           } catch (error) {
             console.error("[magazines] announcement email failed", {
               issueId,
@@ -480,6 +515,7 @@ export async function deliverPendingAnnouncements(
               error: error instanceof Error ? error.name : typeof error,
             });
           }
+          if (emailRefused) break;
           await (
             mailer.sleep ??
             ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))

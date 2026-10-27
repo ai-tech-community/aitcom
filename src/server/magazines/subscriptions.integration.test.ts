@@ -84,6 +84,7 @@ describe.skipIf(!isLocalDbConfigured())(
       typeof vi.fn<(to: string, mail: OutgoingMagazineMail) => Promise<boolean>>
     >;
     let mailer: MagazineMailer;
+    let scheduledWork: Array<() => Promise<void>>;
 
     beforeAll(async () => {
       const [
@@ -123,6 +124,7 @@ describe.skipIf(!isLocalDbConfigured())(
     function callerAs(userId: string | null) {
       return m.createCaller({
         db: m.db,
+        afterResponse: (task) => scheduledWork.push(task),
         headers: new Headers({ "x-forwarded-for": "192.0.2.91" }),
         session: userId
           ? ({ user: { id: userId, name: userId }, session: {} } as never)
@@ -153,9 +155,10 @@ describe.skipIf(!isLocalDbConfigured())(
       send = vi.fn(async () => true);
       mailer = {
         send,
-        env: { VERCEL_ENV: "production", NODE_ENV: "production" },
+        recipient: (to) => to,
         sleep: async () => undefined,
       };
+      scheduledWork = [];
       const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
       const ids = ["owner", "member", "contributor", "outsider"].map(
         (role) => `guarantee-${role}-${suffix}`,
@@ -221,6 +224,7 @@ describe.skipIf(!isLocalDbConfigured())(
     }, 60_000);
 
     afterEach(async () => {
+      for (const task of scheduledWork.splice(0)) await task();
       vi.unstubAllEnvs();
       if (!fx) return;
       const { db, schema: s, payload } = m;
@@ -286,6 +290,7 @@ describe.skipIf(!isLocalDbConfigured())(
           email: fx.email,
         }),
       ).toEqual({ ok: true });
+      for (const task of scheduledWork.splice(0)) await task();
       expect(sendGatedEmail).toHaveBeenCalledExactlyOnceWith(
         fx.email,
         expect.anything(),

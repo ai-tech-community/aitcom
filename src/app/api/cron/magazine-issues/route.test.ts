@@ -13,7 +13,10 @@ vi.mock("@/server/payload", () => ({ getPayloadClient }));
 vi.mock("@/server/db", () => ({ db }));
 
 vi.mock("@/server/magazines/subscriptions/mail", () => ({
-  defaultMagazineMailer: () => ({ send: vi.fn() }),
+  defaultMagazineMailer: () => ({
+    send: vi.fn(),
+    recipient: (to: string) => to,
+  }),
 }));
 
 import { GET } from "./route";
