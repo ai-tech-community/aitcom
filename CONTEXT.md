@@ -990,6 +990,32 @@ to draft and tell the editors; temporary errors retry for up to an hour.
 A newer edit always wins. A missing or deleted community returns it to draft
 silently. See [[adr-0046-magazine-issues-are-announced-through-an-outbox-once-per-subscriber]].
 
+### Automatic draft
+
+An [[issue]] the [[magazine]] made itself from suggestions based on its own
+and its community's activity. Only one automatic draft may be open at a time,
+including one waiting on a schedule. Once made, it is an ordinary draft:
+editors can change it or publish it, and readers cannot see it until it is
+published. See
+[[adr-0047-magazine-auto-drafts-are-ordinary-issues-assembled-from-kind-suggesters]].
+
+### Automatic publish
+
+A [[scheduled-issue]] whose schedule was set by [[automatic-draft]] settings,
+with `scheduledVia` set to `auto`. A person's change stops that automatic
+schedule and returns the issue to draft. Going out by itself needs both the
+scheduling person's current `edit` capability and settings that still allow
+it. See
+[[adr-0047-magazine-auto-drafts-are-ordinary-issues-assembled-from-kind-suggesters]].
+
+### Issue history
+
+What happened to a [[magazine]]'s issues and who did it: drafts made or
+skipped, items changed, automatic publication stopped, publication and
+deletion. Automatic actions have no person as actor. History keeps the
+issue's number and title after deletion and is visible to editors. See
+[[adr-0047-magazine-auto-drafts-are-ordinary-issues-assembled-from-kind-suggesters]].
+
 ### Issue announcement
 
 The durable record in `app.magazine_issue_announcement` written in the same

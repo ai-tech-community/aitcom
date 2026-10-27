@@ -40,8 +40,14 @@ export function canIssue(status: IssueStatus, action: IssueAction): boolean {
   return ISSUE_TRANSITIONS[status].includes(action);
 }
 
-export const PUBLISH_ORIGINS = ["button", "schedule"] as const; // slice 5 adds "auto"
+export const PUBLISH_ORIGINS = ["button", "schedule", "auto"] as const;
 export type PublishOrigin = (typeof PUBLISH_ORIGINS)[number];
+
+export const SCHEDULE_ORIGINS = [
+  "schedule",
+  "auto",
+] as const satisfies readonly PublishOrigin[];
+export type ScheduleOrigin = (typeof SCHEDULE_ORIGINS)[number];
 
 /** How an issue's items are laid out on its reading page. */
 export const ISSUE_LAYOUTS = ["cover-story"] as const;

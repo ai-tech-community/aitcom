@@ -571,9 +571,13 @@ export interface MagazineIssue {
    */
   scheduledBy?: string | null;
   /**
-   * How it was published: the Publish button or a schedule.
+   * Who set the schedule: a person, or automatic drafts. A person's change stops an automatic schedule.
    */
-  publishedVia?: ('button' | 'schedule') | null;
+  scheduledVia?: ('schedule' | 'auto') | null;
+  /**
+   * How it was published: the Publish button, a schedule, or automatically.
+   */
+  publishedVia?: ('button' | 'schedule' | 'auto') | null;
   items?:
     | (
         | {
@@ -2834,6 +2838,7 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
   publishedBy?: T;
   scheduledFor?: T;
   scheduledBy?: T;
+  scheduledVia?: T;
   publishedVia?: T;
   items?:
     | T
