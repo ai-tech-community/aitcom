@@ -306,8 +306,11 @@ describe("IssueBuilder", () => {
     });
     renderBuilder();
     expect(
-      screen.getByRole("region", { name: "Made automatically" }),
+      screen.getByRole("region", { name: "Draft details" }),
     ).toHaveTextContent("Check it, change what you like");
+    expect(
+      screen.getByRole("link", { name: "Change what gets picked" }),
+    ).toHaveAttribute("href", "/communities/night-owls/magazine/auto-draft");
     expect(screen.getByTestId("issue-item-blk-1")).toHaveTextContent(
       "Picked because: Approved and waiting since 24 Oct 2026",
     );
@@ -344,8 +347,8 @@ describe("IssueBuilder", () => {
         screen.queryByText(/publish it when you are happy/),
       ).not.toBeInTheDocument();
       expect(
-        screen.getByRole("region", { name: "Made automatically" }),
-      ).toHaveTextContent(/^Made automatically$/);
+        screen.getByRole("region", { name: "Draft details" }),
+      ).toHaveTextContent("Made automatically");
       expect(
         screen.queryByRole("button", { name: "Stop the automatic publish" }),
       ).not.toBeInTheDocument();
@@ -406,9 +409,7 @@ describe("IssueBuilder", () => {
 
   it("shows nothing extra for an issue an editor made", async () => {
     renderBuilder();
-    expect(
-      screen.queryByRole("region", { name: "Made automatically" }),
-    ).toBeNull();
+    expect(screen.queryByRole("region", { name: "Draft details" })).toBeNull();
     expect(screen.queryByText(/Picked because/)).toBeNull();
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "New title" },
@@ -471,9 +472,7 @@ describe("IssueBuilder", () => {
         .getByText("The issue is a draft again.")
         .closest('[role="status"]'),
     ).not.toBeNull();
-    expect(
-      screen.getByRole("region", { name: "Made automatically" }),
-    ).toHaveFocus();
+    expect(screen.getByRole("region", { name: "Draft details" })).toHaveFocus();
   });
 
   it("shows a refusal when stopping the automatic publish fails", async () => {

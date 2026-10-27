@@ -63,6 +63,7 @@ export function issueHistoryEntry(
     id: 1,
     detail,
     actorName: "Ada",
+    actorKind: "person",
     issue: { id: 42, number: 7, title: "Community news", status: "draft" },
     createdAt: "2026-10-27T12:00:00.000Z",
     ...overrides,

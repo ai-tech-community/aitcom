@@ -669,6 +669,25 @@ describe.skipIf(!isLocalDbConfigured())(
       ).toEqual([]);
     });
 
+    it("welcomes one new member with singular English copy", async () => {
+      await m.db
+        .update(m.schema.communityMemberships)
+        .set({ joinedAt: at(-60) })
+        .where(
+          and(
+            eq(m.schema.communityMemberships.communityId, fx.community.id),
+            eq(m.schema.communityMemberships.userId, fx.userIds[1]!),
+          ),
+        );
+      fx.ctx.locale = "nl";
+      const result = await suggest("welcome");
+      expect(result).toHaveLength(1);
+      expect(result[0]?.reason).toEqual({ type: "newMembers", count: 1 });
+      expect(lexicalToPlainText(result[0]!.input.body)).toBe(
+        `1 person joined ${fx.community.name} since 27 September 2026. Say hello!`,
+      );
+    });
+
     it("gives the same answer every time", async () => {
       await article("stable", 1);
       await event(1);

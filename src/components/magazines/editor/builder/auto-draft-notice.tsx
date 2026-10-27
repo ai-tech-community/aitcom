@@ -4,12 +4,15 @@ import { useTranslations } from "next-intl";
 import type { Ref } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
+import { magazineAutoDraftPath } from "@/lib/magazines/paths";
 import type { IssueStatus, ScheduleOrigin } from "@/lib/magazines/values";
 
 import { useScheduleTime } from "../use-schedule-time";
 
 /** Where this draft came from, and whether it will publish without an editor. */
 export function AutoDraftNotice({
+  slug,
   status,
   scheduledVia,
   scheduledFor,
@@ -17,6 +20,7 @@ export function AutoDraftNotice({
   stopping,
   ref,
 }: {
+  slug: string;
   status: IssueStatus;
   scheduledVia: ScheduleOrigin | null;
   scheduledFor: string | null;
@@ -34,7 +38,7 @@ export function AutoDraftNotice({
     <section
       ref={ref}
       role="region"
-      aria-label={t("label")}
+      aria-label={t("regionLabel")}
       tabIndex={-1}
       className="focus-visible:ring-ring/50 flex min-w-0 flex-col items-start gap-3 rounded-md border p-3 text-sm outline-none focus-visible:ring-[3px]"
     >
@@ -50,6 +54,12 @@ export function AutoDraftNotice({
             ? t("draft")
             : t("label")}
       </p>
+      <Link
+        href={magazineAutoDraftPath(slug)}
+        className="underline underline-offset-4"
+      >
+        {t("changePicks")}
+      </Link>
       {automatic && (
         <Button
           type="button"

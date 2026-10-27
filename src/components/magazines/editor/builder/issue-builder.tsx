@@ -677,6 +677,7 @@ function IssueWorkspace({
           {data.autoDraft && (
             <div className="flex flex-col gap-2">
               <AutoDraftNotice
+                slug={communitySlug}
                 ref={autoDraftNotice}
                 status={issue.status}
                 scheduledVia={issue.scheduledVia ?? null}

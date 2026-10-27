@@ -152,7 +152,9 @@ export function IssueHistoryList({ slug }: { slug: string }) {
           return (
             <li key={entry.id} className="space-y-2 py-4 text-sm break-words">
               <p>
-                {entry.actorName ?? t("history.automatic")}{" "}
+                {entry.actorKind === "automatic"
+                  ? t("history.automatic")
+                  : (entry.actorName ?? t("history.formerMember"))}{" "}
                 {historyText(entry.detail)}
               </p>
               {issueText &&

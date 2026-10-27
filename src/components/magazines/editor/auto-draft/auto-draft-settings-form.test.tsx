@@ -302,9 +302,95 @@ describe("AutoDraftSettingsForm", () => {
   });
   it("announces Saved", () => {
     renderForm();
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
     fireEvent.click(save());
+    expect(screen.getByRole("status")).toBe(status);
     expect(screen.getByRole("status")).toHaveTextContent("Saved.");
+    fireEvent.click(screen.getByRole("switch"));
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toBeEmptyDOMElement();
     expect(trpc.invalidate).toHaveBeenCalledWith({ slug: "night-owls" });
+  });
+  it("keeps the auto-publish label readable when its day count is invalid", () => {
+    renderForm();
+    fireEvent.click(
+      screen.getByRole("radio", { name: /^Publish it by itself/ }),
+    );
+    const days = screen.getByRole("spinbutton", {
+      name: "Days before it goes out",
+    });
+    for (const value of ["", "0", "15"]) {
+      fireEvent.change(days, { target: { value } });
+      expect(
+        screen.getByRole("radio", { name: /^Publish it by itself/ }),
+      ).toHaveAccessibleName(
+        "Publish it by itself after 3 days, unless someone stops it",
+      );
+      expect(document.body).not.toHaveTextContent("NaN");
+    }
+  });
+  it.each(["enabled", "cadence", "monthDay", "weekday"])(
+    "shows a save hint when the %s schedule value changes",
+    (field) => {
+      if (field === "weekday") trpc.data!.settings.cadence = "weekly";
+      renderForm();
+      const toggle = screen.getByRole("switch");
+      expect(toggle).toHaveAccessibleDescription(/^Next draft:/);
+      if (field === "enabled") fireEvent.click(toggle);
+      if (field === "cadence")
+        fireEvent.click(screen.getByRole("radio", { name: "Every week" }));
+      if (field === "monthDay")
+        fireEvent.change(screen.getByLabelText("Day of the month"), {
+          target: { value: "12" },
+        });
+      if (field === "weekday")
+        fireEvent.change(screen.getByLabelText("Day of the week"), {
+          target: { value: "4" },
+        });
+      expect(screen.queryByText(/^Next draft:/)).toBeNull();
+      expect(toggle).toHaveAccessibleDescription(
+        "The next date updates when you save.",
+      );
+      const description = document.getElementById(
+        toggle.getAttribute("aria-describedby")!,
+      );
+      expect(description).toBeVisible();
+    },
+  );
+  it("keeps the next date when only the picked content changes", () => {
+    renderForm();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Community events" }));
+    expect(screen.getByRole("switch")).toHaveAccessibleDescription(
+      /^Next draft:/,
+    );
+  });
+  it("does not describe an unchanged schedule with a missing next date", () => {
+    trpc.data!.nextDraftAt = null;
+    renderForm();
+    expect(screen.getByRole("switch")).not.toHaveAttribute("aria-describedby");
+  });
+  it("explains how each source is picked", () => {
+    renderForm();
+    const help = {
+      "Member articles ready for the magazine":
+        "Approved and waiting longest first",
+      "AIT News stories": "Stories about your topics, newest updates first",
+      "Community events":
+        "Coming up soonest first, then past events with the most people going",
+      "Forum threads": "Most replies, then most views",
+      "Launchpad projects": "Most upvotes",
+      "AIT News headlines": "Headlines about your topics, newest first",
+      "Welcome new members":
+        "A welcome when new people join, with a count and no names",
+    };
+    for (const [name, description] of Object.entries(help)) {
+      const checkbox = screen.getByRole("checkbox", { name });
+      expect(checkbox).toHaveAccessibleDescription(description);
+      expect(
+        document.getElementById(checkbox.getAttribute("aria-describedby")!),
+      ).toHaveClass("text-muted-foreground", "text-sm");
+    }
   });
   it("maps save errors to plain words", () => {
     trpc.error = "UNLISTED_PUBLIC_LEADERS_ONLY";

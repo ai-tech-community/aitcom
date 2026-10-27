@@ -119,12 +119,14 @@ describe("picker suggestions", () => {
 
   it("keeps the limit", async () => {
     const { ctx, loadSuggestion, search } = setup();
-    const suggestions = Array.from({ length: 13 }, (_, i) => suggestion(i + 1));
+    const suggestions = Array.from({ length: PICKER_LIMIT + 1 }, (_, i) =>
+      suggestion(i + 1),
+    );
     vi.mocked(suggestCandidates).mockResolvedValue(suggestions);
 
     expect(
       await pickerCandidatesFor("forumThread", "", ctx, [], loadSuggestion),
-    ).toEqual(suggestions.slice(0, 12));
+    ).toEqual(suggestions.slice(0, PICKER_LIMIT));
     expect(search).not.toHaveBeenCalled();
   });
 
@@ -195,7 +197,7 @@ describe("item picker registry", () => {
       context(payload),
     );
 
-    expect(candidates).toHaveLength(12);
+    expect(candidates).toHaveLength(PICKER_LIMIT);
     expect(candidates[0]).toEqual({
       input: { kind: "article", articleId: 1 },
       reference: "article:1",

@@ -4,11 +4,20 @@ import { describe, expect, it, vi } from "vitest";
 import { renderWithIntl } from "../../test-intl";
 import { AutoDraftNotice } from "./auto-draft-notice";
 
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
 describe("AutoDraftNotice", () => {
   it("explains the automatic schedule and lets the editor stop it", () => {
     const onStop = vi.fn();
     renderWithIntl(
       <AutoDraftNotice
+        slug="night-owls"
         status="scheduled"
         scheduledVia="auto"
         scheduledFor="2026-10-29T12:00:00.000Z"
@@ -16,11 +25,20 @@ describe("AutoDraftNotice", () => {
         stopping={false}
       />,
     );
-    const notice = screen.getByRole("region", { name: "Made automatically" });
+    const notice = screen.getByRole("region", { name: "Draft details" });
     expect(notice).toHaveTextContent(
       /The magazine made this draft\. It goes out by itself on .+ unless you stop it\. Any change you make stops that too\./,
     );
     expect(notice.querySelector(".font-mono")).not.toBeNull();
+    const settings = screen.getByRole("link", {
+      name: "Change what gets picked",
+    });
+    expect(settings).toHaveAttribute(
+      "href",
+      "/communities/night-owls/magazine/auto-draft",
+    );
+    expect(settings).toHaveClass("underline");
+    expect(settings).not.toHaveClass("font-mono", "text-primary");
     const stop = screen.getByRole("button", {
       name: "Stop the automatic publish",
     });
@@ -32,6 +50,7 @@ describe("AutoDraftNotice", () => {
   it("disables Stop while it is stopping", () => {
     renderWithIntl(
       <AutoDraftNotice
+        slug="night-owls"
         status="scheduled"
         scheduledVia="auto"
         scheduledFor="2026-10-29T12:00:00.000Z"
@@ -47,6 +66,7 @@ describe("AutoDraftNotice", () => {
   it("explains the draft without offering to stop a schedule", () => {
     renderWithIntl(
       <AutoDraftNotice
+        slug="night-owls"
         status="draft"
         scheduledVia={null}
         scheduledFor={null}
@@ -55,7 +75,7 @@ describe("AutoDraftNotice", () => {
       />,
     );
     expect(
-      screen.getByRole("region", { name: "Made automatically" }),
+      screen.getByRole("region", { name: "Draft details" }),
     ).toHaveTextContent(
       "The magazine made this draft from what happened in your community. Check it, change what you like, and publish it when you are happy.",
     );
@@ -75,14 +95,19 @@ describe("AutoDraftNotice", () => {
     },
   ])("does not show draft instructions for a $status issue", (schedule) => {
     renderWithIntl(
-      <AutoDraftNotice {...schedule} onStop={vi.fn()} stopping={false} />,
+      <AutoDraftNotice
+        slug="night-owls"
+        {...schedule}
+        onStop={vi.fn()}
+        stopping={false}
+      />,
     );
     expect(
       screen.queryByText(/publish it when you are happy/),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("region", { name: "Made automatically" }),
-    ).toHaveTextContent(/^Made automatically$/);
+      screen.getByRole("region", { name: "Draft details" }),
+    ).toHaveTextContent("Made automatically");
     expect(screen.queryByRole("button")).toBeNull();
   });
 });

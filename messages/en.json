@@ -4898,7 +4898,7 @@
       "issueTitle": "Issue of {date}",
       "welcome": {
         "heading": "Welcome to our new members",
-        "body": "{count} people joined {community} since {date}. Say hello!"
+        "body": "{count, plural, one {# person joined} other {# people joined}} {community} since {date}. Say hello!"
       },
       "metaTitle": "Automatic drafts",
       "title": "Automatic drafts",
@@ -4960,7 +4960,7 @@
       "whenReady": "When a draft is ready",
       "whenReadyOptions": {
         "notify": "Tell the editors, and we publish by hand",
-        "auto_publish": "Publish it by itself after {days} days, unless someone stops it"
+        "auto_publish": "Publish it by itself after {days, plural, one {# day} other {# days}}, unless someone stops it"
       },
       "autoPublishDays": "Days before it goes out",
       "whenReadyHelp": "Editors are told first. Any change to the draft stops the automatic publish.",
@@ -4973,19 +4973,19 @@
         "button": "Make a draft now",
         "made": "Your draft is ready.",
         "open": "Open the draft",
-        "too_few": "There is not enough yet: we found {found} things and a draft needs {needed}.",
+        "too_few": "There is not enough yet: we found {found, plural, one {# thing} other {# things}} and a draft needs {needed}.",
         "draft_open": "There is already an open draft. Finish or delete it first.",
         "no_rights": "You cannot make drafts for this magazine.",
         "busy": "A draft is being made right now. Try again in a minute."
       },
       "history": {
         "title": "History",
-        "automatic": "Automatic",
+        "automatic": "The magazine",
         "draftMade": "made a draft",
         "draftMadeScheduled": "made a draft that goes out on {date}",
         "draftSkipped": "made no draft: {reason}",
         "skipReasons": {
-          "too_few": "there was not enough yet (found {found}, a draft needs {needed})",
+          "too_few": "there was not enough yet (found {found, plural, one {# thing} other {# things}}, a draft needs {needed})",
           "draft_open": "there is already an open draft",
           "no_rights": "the person who set this up can no longer edit the magazine"
         },
@@ -5003,13 +5003,24 @@
         "published": {
           "button": "published it",
           "schedule": "published it on schedule",
-          "auto": "published it automatically"
+          "auto": "published it by itself"
         },
         "deleted": "deleted it",
         "issue": "Issue {number}: {title}",
-        "empty": "Nothing yet. When the magazine makes or skips a draft, you will see it here."
+        "empty": "Nothing yet. When the magazine makes or skips a draft, you will see it here.",
+        "formerMember": "A former member"
       },
-      "numberRange": "Use a whole number from 1 to {max}."
+      "numberRange": "Use a whole number from 1 to {max}.",
+      "nextDraftUpdatesOnSave": "The next date updates when you save.",
+      "sourceHelp": {
+        "article": "Approved and waiting longest first",
+        "storyline": "Stories about your topics, newest updates first",
+        "event": "Coming up soonest first, then past events with the most people going",
+        "forumThread": "Most replies, then most views",
+        "launchpadProject": "Most upvotes",
+        "newsItem": "Headlines about your topics, newest first",
+        "welcome": "A welcome when new people join, with a count and no names"
+      }
     },
     "review": {
       "metaTitle": "Read an article",
@@ -5170,16 +5181,18 @@
         "waitingSince": "Approved and waiting since <number>{date}</number>",
         "topic": "Matches your topic {topic}",
         "eventComingUp": "Coming up on <number>{date}</number>",
-        "eventRecap": "Took place on <number>{date}</number>, <number>{going}</number> going",
-        "mostReplies": "Most talked about: <number>{count}</number> replies",
-        "mostUpvotes": "Most upvoted: <number>{count}</number> upvotes",
-        "newMembers": "<number>{count}</number> new members joined"
+        "eventRecap": "Took place on <number>{date}</number>, {going, plural, one {<number>#</number> going} other {<number>#</number> going}}",
+        "mostReplies": "Most talked about: {count, plural, one {<number>#</number> reply} other {<number>#</number> replies}}",
+        "mostUpvotes": "Most upvoted: {count, plural, one {<number>#</number> upvote} other {<number>#</number> upvotes}}",
+        "newMembers": "{count, plural, one {<number>#</number> new member joined} other {<number>#</number> new members joined}}"
       },
       "autoDraft": {
         "label": "Made automatically",
         "scheduled": "The magazine made this draft. It goes out by itself on <timestamp>{time}</timestamp> unless you stop it. Any change you make stops that too.",
         "draft": "The magazine made this draft from what happened in your community. Check it, change what you like, and publish it when you are happy.",
-        "stop": "Stop the automatic publish"
+        "stop": "Stop the automatic publish",
+        "changePicks": "Change what gets picked",
+        "regionLabel": "Draft details"
       },
       "autoPublishStopped": "Your change stopped the automatic publish. Publish it yourself when it is ready.",
       "goesOutAutomatically": "Goes out by itself <timestamp>{time}</timestamp>",
@@ -5394,15 +5407,15 @@
       "autoDraftReady": {
         "title": "A new draft of {magazine} is ready",
         "content": {
-          "notify": "We picked {count} things for you. Check the draft and publish it when you are happy.",
-          "auto": "We picked {count} things for you. It goes out by itself on {date} unless you stop it. Any change you make stops that."
+          "notify": "We picked {count, plural, one {# thing} other {# things}} for you. Check the draft and publish it when you are happy.",
+          "auto": "We picked {count, plural, one {# thing} other {# things}} for you. It goes out by itself on {date} unless you stop it. Any change you make stops that."
         },
         "linkLabel": "Open the draft"
       },
       "autoDraftSkipped": {
         "title": "No new draft of {magazine} this time",
         "content": {
-          "too_few": "We found only {found} things to put in it, and a draft needs at least {needed}. Switch on more kinds of content, look back further, or add topics to your magazine.",
+          "too_few": "We found only {found, plural, one {# thing} other {# things}} to put in it, and a draft needs at least {needed}. Switch on more kinds of content, look back further, or add topics to your magazine.",
           "no_rights": "The person who set up automatic drafts can no longer edit the magazine. Save the automatic draft settings again to restart them."
         },
         "linkLabel": "Open automatic drafts"

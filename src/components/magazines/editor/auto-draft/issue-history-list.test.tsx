@@ -63,7 +63,7 @@ describe("IssueHistoryList", () => {
         found: 2,
         needed: 3,
       },
-      "made no draft: there was not enough yet (found 2, a draft needs 3)",
+      "made no draft: there was not enough yet (found 2 things, a draft needs 3)",
     ],
     [
       {
@@ -116,13 +116,15 @@ describe("IssueHistoryList", () => {
     ],
     [{ event: "published", origin: "button" }, "published it"],
     [{ event: "published", origin: "schedule" }, "published it on schedule"],
-    [{ event: "published", origin: "auto" }, "published it automatically"],
+    [{ event: "published", origin: "auto" }, "published it by itself"],
     [{ event: "deleted" }, "deleted it"],
   ])("says who did what, automatic when nobody did: %j", (detail, text) => {
-    trpc.data = [issueHistoryEntry(detail, { actorName: null })];
+    trpc.data = [
+      issueHistoryEntry(detail, { actorName: null, actorKind: "automatic" }),
+    ];
     const { unmount } = renderWithIntl(<IssueHistoryList slug="night-owls" />);
     const row = screen.getByRole("listitem");
-    expect(row).toHaveTextContent(`Automatic ${text}`);
+    expect(row).toHaveTextContent(`The magazine ${text}`);
     expect(row).toHaveTextContent("Issue 7: Community news");
     expect(row.querySelector("time")).toHaveAttribute(
       "datetime",
@@ -131,8 +133,22 @@ describe("IssueHistoryList", () => {
     expect(row.querySelector("time")).toHaveClass("font-mono");
     unmount();
     trpc.data[0]!.actorName = "Ada";
+    trpc.data[0]!.actorKind = "person";
     renderWithIntl(<IssueHistoryList slug="night-owls" />);
     expect(screen.getByRole("listitem")).toHaveTextContent(`Ada ${text}`);
+  });
+  it("keeps a deleted person's action distinct from an automatic action", () => {
+    trpc.data = [
+      issueHistoryEntry(
+        { event: "items_changed", itemCount: 3 },
+        { actorName: null, actorKind: "person" },
+      ),
+    ];
+    renderWithIntl(<IssueHistoryList slug="night-owls" />);
+    expect(screen.getByRole("listitem")).toHaveTextContent(
+      "A former member changed the items",
+    );
+    expect(screen.getByRole("listitem")).not.toHaveTextContent("The magazine");
   });
   it("links only issues that are still being worked on", () => {
     trpc.data = [

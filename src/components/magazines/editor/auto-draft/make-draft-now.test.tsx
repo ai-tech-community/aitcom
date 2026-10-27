@@ -98,8 +98,11 @@ describe("MakeDraftNow", () => {
     trpc.outcome = outcome;
     renderWithIntl(<MakeDraftNow slug="night-owls" />);
     const button = screen.getByRole("button", { name: "Make a draft now" });
+    const status = screen.getByRole("status");
+    expect(status).toBeEmptyDOMElement();
     expect(button).toHaveAttribute("data-variant", "ink");
     fireEvent.click(button);
+    expect(screen.getByRole("status")).toBe(status);
     expect(trpc.calls).toEqual([{ slug: "night-owls" }]);
     expect(screen.getByRole("status")).toHaveTextContent(message);
     if (

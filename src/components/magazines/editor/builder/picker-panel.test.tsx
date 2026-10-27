@@ -110,6 +110,12 @@ describe("PickerPanel", () => {
     expect(
       screen.getByRole("heading", { name: "Suggested for this issue" }),
     ).toBeVisible();
+    expect(
+      screen.getByRole("list", { name: "Suggested for this issue" }),
+    ).toHaveAttribute(
+      "aria-labelledby",
+      screen.getByRole("heading", { name: "Suggested for this issue" }).id,
+    );
     expect(screen.getByText(/Approved and waiting since/)).toHaveTextContent(
       "Approved and waiting since 24 Oct 2026",
     );

@@ -257,7 +257,7 @@ describe("automatic draft notices", () => {
           title: "No new draft of The Gazette this time",
           content:
             reason === "too_few"
-              ? "We found only 1 things to put in it, and a draft needs at least 3. Switch on more kinds of content, look back further, or add topics to your magazine."
+              ? "We found only 1 thing to put in it, and a draft needs at least 3. Switch on more kinds of content, look back further, or add topics to your magazine."
               : "The person who set up automatic drafts can no longer edit the magazine. Save the automatic draft settings again to restart them.",
           communityId: "community",
           metadata: {

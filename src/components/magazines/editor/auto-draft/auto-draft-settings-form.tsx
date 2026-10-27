@@ -131,6 +131,16 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
     });
   };
   const readyHelpId = `${id}-ready-help`;
+  const scheduleUnchanged =
+    draft.enabled === saved.enabled &&
+    draft.cadence === saved.cadence &&
+    draft.monthDay === saved.monthDay &&
+    draft.weekday === saved.weekday;
+  const nextDescriptionId = !scheduleUnchanged
+    ? `${id}-next-save`
+    : data.nextDraftAt
+      ? `${id}-next`
+      : undefined;
 
   return (
     <form onSubmit={submit} className="@container min-w-0 space-y-6">
@@ -155,12 +165,16 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
               checked={draft.enabled}
               disabled={disabled}
               onCheckedChange={(enabled) => update({ enabled })}
-              aria-describedby={data.nextDraftAt ? `${id}-next` : undefined}
+              aria-describedby={nextDescriptionId}
               className="data-[state=checked]:bg-foreground dark:data-[state=checked]:[&_[data-slot=switch-thumb]]:bg-background"
             />
             <Label htmlFor={`${id}-enabled`}>{t("enabled")}</Label>
           </div>
-          {data.nextDraftAt && (
+          {!scheduleUnchanged ? (
+            <p id={`${id}-next-save`} className="text-muted-foreground text-sm">
+              {t("nextDraftUpdatesOnSave")}
+            </p>
+          ) : data.nextDraftAt ? (
             <p id={`${id}-next`} className="text-muted-foreground text-sm">
               {t.rich("nextDraft", {
                 date: displayTime(data.nextDraftAt),
@@ -171,7 +185,7 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
                 ),
               })}
             </p>
-          )}
+          ) : null}
         </fieldset>
         <fieldset className="min-w-0 space-y-3">
           <legend className="mb-3 text-base font-semibold">
@@ -281,6 +295,7 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
               const sourceId = `${id}-source-${source}`;
               const labelId = `${sourceId}-label`;
               const upToId = `${sourceId}-up-to`;
+              const sourceHelpId = `${sourceId}-help`;
               const maxInvalid = !inRange(config.max, sourceMaxLimit(source));
               const maxErrorId = maxInvalid
                 ? `${sourceId}-max-error`
@@ -301,7 +316,9 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
                         tone="ink"
                         disabled={disabled}
                         checked={config.enabled}
-                        aria-describedby={helpId}
+                        aria-describedby={[sourceHelpId, helpId]
+                          .filter(Boolean)
+                          .join(" ")}
                         onCheckedChange={(checked) =>
                           update({
                             sources: {
@@ -326,6 +343,12 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
                         {t(`sources.${source}`)}
                       </Label>
                     </div>
+                    <p
+                      id={sourceHelpId}
+                      className="text-muted-foreground text-sm"
+                    >
+                      {t(`sourceHelp.${source}`)}
+                    </p>
                     {helpId && (
                       <p id={helpId} className="text-muted-foreground text-sm">
                         <Link
@@ -499,7 +522,9 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
                 className="leading-snug"
               >
                 {t(`whenReadyOptions.${whenReady}`, {
-                  days: draft.autoPublishDays,
+                  days: inRange(draft.autoPublishDays, AUTO_PUBLISH_DAYS_MAX)
+                    ? draft.autoPublishDays
+                    : saved.autoPublishDays,
                 })}
               </Label>
             </div>
@@ -555,11 +580,9 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
           {error}
         </p>
       )}
-      {savedMessage && (
-        <p role="status" className="text-sm">
-          {t("saved")}
-        </p>
-      )}
+      <p role="status" className="text-sm">
+        {savedMessage ? t("saved") : null}
+      </p>
       {data.canManage && (
         <Button type="submit" variant="default" disabled={!canSave}>
           {t("save")}

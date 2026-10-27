@@ -132,6 +132,8 @@ export function PickerPanel({
       ? t("noMatch", { query: words })
       : t("results", { count: offered.length })
     : "";
+  const showSuggested = !words && Boolean(offered[0]?.reason);
+  const suggestedId = `${searchId}-suggested`;
 
   let body;
   if (query.isLoading && !query.data) {
@@ -162,6 +164,7 @@ export function PickerPanel({
   } else {
     body = (
       <ul
+        aria-labelledby={showSuggested ? suggestedId : undefined}
         aria-busy={query.isPlaceholderData}
         className={cn(
           "divide-border flex flex-col divide-y rounded-md border",
@@ -239,8 +242,10 @@ export function PickerPanel({
           {resultStatus}
         </p>
       </div>
-      {!words && offered[0]?.reason && (
-        <h3 className="text-sm font-medium">{t("suggested")}</h3>
+      {showSuggested && (
+        <h3 id={suggestedId} className="text-sm font-medium">
+          {t("suggested")}
+        </h3>
       )}
       {body}
       {loaded && (

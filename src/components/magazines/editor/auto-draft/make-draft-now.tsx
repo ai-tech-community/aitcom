@@ -80,22 +80,20 @@ export function MakeDraftNow({ slug }: { slug: string }) {
       >
         {t("button")}
       </Button>
-      {message && (
-        <p role="status" className="text-sm">
-          {message}
-          {issueId !== null && (
-            <>
-              {" "}
-              <Link
-                href={issueBuilderPath(slug, issueId)}
-                className="font-medium underline underline-offset-4"
-              >
-                {t("open")}
-              </Link>
-            </>
-          )}
-        </p>
-      )}
+      <p role="status" className="text-sm">
+        {message}
+        {issueId !== null && (
+          <>
+            {" "}
+            <Link
+              href={issueBuilderPath(slug, issueId)}
+              className="font-medium underline underline-offset-4"
+            >
+              {t("open")}
+            </Link>
+          </>
+        )}
+      </p>
       {error && (
         <p role="alert" className="text-destructive text-sm">
           {error}
