@@ -157,6 +157,12 @@ beforeEach(() => {
 });
 
 describe("EditorDesk", () => {
+  it("shows Automatic drafts to every editor", () => {
+    renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage={false} />);
+    expect(
+      screen.getByRole("link", { name: "Automatic drafts" }),
+    ).toHaveAttribute("href", "/communities/amsterdam-ai/magazine/auto-draft");
+  });
   it("a scheduled issue says when it goes out", () => {
     const originalTz = process.env.TZ;
     process.env.TZ = "America/Los_Angeles";

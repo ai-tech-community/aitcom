@@ -13,6 +13,12 @@ import type {
   UnavailableItem,
 } from "@/lib/magazines/item-views";
 import type { Article } from "@/payload-types";
+import {
+  DEFAULT_AUTO_DRAFT_SETTINGS,
+  resolveSources,
+} from "@/lib/magazines/auto-draft";
+import type { IssueHistoryEntry } from "@/lib/magazines/issue-history";
+import type { RouterOutputs } from "@/trpc/react";
 import type { DraftMagazineArticle } from "@/server/magazines/magazine-articles";
 import type {
   IssueCard,
@@ -22,6 +28,37 @@ import type {
   MagazineShelfData,
   MagazinesHomeData,
 } from "@/server/magazines/reading";
+
+export function autoDraftSettings(
+  overrides: Partial<
+    NonNullable<RouterOutputs["magazines"]["autoDraftSettings"]>
+  > = {},
+): NonNullable<RouterOutputs["magazines"]["autoDraftSettings"]> {
+  return {
+    settings: { ...DEFAULT_AUTO_DRAFT_SETTINGS, sources: resolveSources(null) },
+    nextDraftAt: "2026-11-01T00:00:00.000Z",
+    canManage: true,
+    magazineDefaultVisibility: "members",
+    hasTopics: true,
+    communityIsPrivate: false,
+    community: { slug: "night-owls", isListedInDirectory: true },
+    ...overrides,
+  };
+}
+
+export function issueHistoryEntry(
+  detail: IssueHistoryEntry["detail"],
+  overrides: Partial<IssueHistoryEntry> = {},
+): IssueHistoryEntry {
+  return {
+    id: 1,
+    detail,
+    actorName: "Ada",
+    issue: { id: 42, number: 7, title: "Community news", status: "draft" },
+    createdAt: "2026-10-27T12:00:00.000Z",
+    ...overrides,
+  };
+}
 
 export function articleView(
   n: number,

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
   issueBuilderPath,
+  magazineAutoDraftPath,
   magazineArticleEditPath,
   magazineReviewPath,
   magazineSettingsPath,
@@ -91,6 +92,7 @@ export function EditorDesk({
   canManage: boolean;
 }) {
   const t = useTranslations("magazineEditor.desk");
+  const tAutoDraft = useTranslations("magazineEditor.autoDraft");
   const format = useFormatter();
   const tErrors = useTranslations("magazineEditor.errors");
   const router = useRouter();
@@ -141,6 +143,11 @@ export function EditorDesk({
           </Button>
           <Button variant="outline" size="sm" asChild>
             <Link href={magazineWritePath(slug)}>{t("write")}</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={magazineAutoDraftPath(slug)}>
+              {tAutoDraft("title")}
+            </Link>
           </Button>
           {canManage && (
             <>

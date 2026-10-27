@@ -4899,7 +4899,117 @@
       "welcome": {
         "heading": "Welcome to our new members",
         "body": "{count} people joined {community} since {date}. Say hello!"
-      }
+      },
+      "metaTitle": "Automatic drafts",
+      "title": "Automatic drafts",
+      "back": "Back to the Magazine tab",
+      "intro": "Let the magazine make a draft from what happened in your community. You check it and decide what goes out.",
+      "settingsTitle": "Settings for automatic drafts",
+      "readOnly": "Only the editor-in-chief can change these.",
+      "enabled": "Make drafts by themselves",
+      "nextDraft": "Next draft: <timestamp>{date}</timestamp>",
+      "howOften": "How often",
+      "cadences": {
+        "monthly": "Every month",
+        "biweekly": "Every two weeks",
+        "weekly": "Every week",
+        "after_event": "After each event of the community",
+        "on_demand": "Only when I ask"
+      },
+      "monthDay": "Day of the month",
+      "weekday": "Day of the week",
+      "weekdays": {
+        "1": "Monday",
+        "2": "Tuesday",
+        "3": "Wednesday",
+        "4": "Thursday",
+        "5": "Friday",
+        "6": "Saturday",
+        "7": "Sunday"
+      },
+      "lookBack": "Look back",
+      "lookBacks": {
+        "since_last_issue": "Since the last issue",
+        "days_30": "The last 30 days",
+        "days_7": "The last 7 days"
+      },
+      "whatToPick": "What to pick",
+      "sources": {
+        "article": "Member articles ready for the magazine",
+        "storyline": "AIT News stories",
+        "newsItem": "AIT News headlines",
+        "event": "Community events",
+        "forumThread": "Forum threads",
+        "launchpadProject": "Launchpad projects",
+        "welcome": "Welcome new members"
+      },
+      "upTo": "Up to<comma>,</comma>",
+      "addTopics": "Add topics to your magazine to get AIT News.",
+      "neverReuse": "Don't pick anything an earlier issue already has",
+      "draftsLookLike": "Drafts look like",
+      "layout": "Layout",
+      "layouts": {
+        "cover-story": "Cover story"
+      },
+      "visibility": "Visibility",
+      "inheritVisibility": "Same as the magazine ({current})",
+      "visibilities": {
+        "members": "Members only",
+        "public": "Everyone"
+      },
+      "whenReady": "When a draft is ready",
+      "whenReadyOptions": {
+        "notify": "Tell the editors, and we publish by hand",
+        "auto_publish": "Publish it by itself after {days} days, unless someone stops it"
+      },
+      "autoPublishDays": "Days before it goes out",
+      "whenReadyHelp": "Editors are told first. Any change to the draft stops the automatic publish.",
+      "save": "Save",
+      "saved": "Saved.",
+      "settingsLoadFailed": "The settings for automatic drafts could not be loaded.",
+      "historyLoadFailed": "The history could not be loaded.",
+      "tryAgain": "Try again",
+      "makeNow": {
+        "button": "Make a draft now",
+        "made": "Your draft is ready.",
+        "open": "Open the draft",
+        "too_few": "There is not enough yet: we found {found} things and a draft needs {needed}.",
+        "draft_open": "There is already an open draft. Finish or delete it first.",
+        "no_rights": "You cannot make drafts for this magazine.",
+        "busy": "A draft is being made right now. Try again in a minute."
+      },
+      "history": {
+        "title": "History",
+        "automatic": "Automatic",
+        "draftMade": "made a draft",
+        "draftMadeScheduled": "made a draft that goes out on {date}",
+        "draftSkipped": "made no draft: {reason}",
+        "skipReasons": {
+          "too_few": "there was not enough yet (found {found}, a draft needs {needed})",
+          "draft_open": "there is already an open draft",
+          "no_rights": "the person who set this up can no longer edit the magazine"
+        },
+        "itemsChanged": "changed the items",
+        "stopped": "stopped the automatic publish",
+        "stoppedByEditing": "stopped the automatic publish by editing",
+        "failed": "could not publish it by itself: {failure}",
+        "failures": {
+          "auto_off": "automatic publishing is switched off",
+          "no_rights": "the person who set it up can no longer edit the magazine",
+          "empty": "the issue is empty",
+          "invalid_item": "an item cannot be published",
+          "error": "something went wrong"
+        },
+        "published": {
+          "button": "published it",
+          "schedule": "published it on schedule",
+          "auto": "published it automatically"
+        },
+        "deleted": "deleted it",
+        "issue": "Issue {number}: {title}",
+        "empty": "Nothing yet. When the magazine makes or skips a draft, you will see it here."
+      },
+      "numberRange": "Use a whole number from 1 to {max}."
     },
     "review": {
       "metaTitle": "Read an article",
