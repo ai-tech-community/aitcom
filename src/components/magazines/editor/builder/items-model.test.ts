@@ -64,6 +64,12 @@ describe("removeItem", () => {
 });
 
 describe("addItem", () => {
+  it("keeps the key generated before a React updater is replayed", () => {
+    const input = { kind: "article" as const, articleId: 9 };
+    expect(addItem(abc, input, "pending-key").at(-1)?.key).toBe("pending-key");
+    expect(addItem(abc, input, "pending-key").at(-1)?.key).toBe("pending-key");
+  });
+
   it("adds the item at the end with a fresh key", () => {
     const next = addItem(abc, { kind: "article", articleId: 9 });
     expect(next).toHaveLength(4);

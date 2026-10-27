@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { formatEventDayRange } from "@/lib/event-time";
 import { cn } from "@/lib/utils";
 
+import { FactSeparator } from "./fact-separator";
 import type { ItemRendererProps, ItemTitle } from "./types";
 
 /** The current event details, within the reader's community audience. */
@@ -41,16 +42,21 @@ export function EventItem({ view, lead }: ItemRendererProps<"event">) {
             {event.title}
           </Link>
         </h2>
+        {view.intro && <p className="text-sm">{view.intro}</p>}
         <p className="text-muted-foreground flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-sm">
           <span className="font-mono text-xs">
             {formatEventDayRange(event.date, event.endDate, locale)}
           </span>
-          {place && <span>· {place}</span>}
+          {place && (
+            <>
+              <FactSeparator />
+              <span>{place}</span>
+            </>
+          )}
         </p>
         {event.status !== "published" && (
           <Badge variant="secondary">{t(event.status)}</Badge>
         )}
-        {view.intro && <p className="text-sm">{view.intro}</p>}
       </div>
     </article>
   );

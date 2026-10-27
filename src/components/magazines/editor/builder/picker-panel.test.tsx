@@ -1,4 +1,5 @@
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useState, type ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -21,18 +22,38 @@ type Candidate = {
 
 const trpc = vi.hoisted(() => ({
   candidates: [] as Candidate[],
-  queries: [] as { slug: string; kind: string; query: string }[],
+  queries: [] as {
+    slug: string;
+    kind: string;
+    query: string;
+    exclude: string[];
+  }[],
+  options: [] as { placeholderData: unknown }[],
+  loading: false,
+  placeholder: false,
+  fetching: false,
 }));
 
 vi.mock("@/trpc/react", () => ({
   api: {
     magazines: {
       pickerCandidates: {
-        useQuery: (input: { slug: string; kind: string; query: string }) => {
+        useQuery: (
+          input: {
+            slug: string;
+            kind: string;
+            query: string;
+            exclude: string[];
+          },
+          options: { placeholderData: unknown },
+        ) => {
+          trpc.options.push(options);
           trpc.queries.push(input);
           return {
             data: trpc.candidates,
-            isLoading: false,
+            isLoading: trpc.loading,
+            isPlaceholderData: trpc.placeholder,
+            isFetching: trpc.fetching,
             isError: false,
             refetch: vi.fn(),
           };
@@ -60,6 +81,10 @@ beforeEach(() => {
   vi.useFakeTimers();
   trpc.candidates = [];
   trpc.queries = [];
+  trpc.options = [];
+  trpc.loading = false;
+  trpc.placeholder = false;
+  trpc.fetching = false;
 });
 
 afterEach(() => {
@@ -73,6 +98,7 @@ describe("PickerPanel", () => {
       slug: "night-owls",
       kind: "article",
       query: "",
+      exclude: [],
     });
 
     fireEvent.change(
@@ -91,6 +117,7 @@ describe("PickerPanel", () => {
       slug: "night-owls",
       kind: "article",
       query: "eval",
+      exclude: [],
     });
   });
 
@@ -111,6 +138,9 @@ describe("PickerPanel", () => {
     ];
     renderPanel();
 
+    const facts = screen.getByText("By Ada").parentElement!;
+    expect(within(facts).getAllByText("·")).toHaveLength(3);
+    expect(within(facts).getAllByText(",")).toHaveLength(3);
     expect(screen.getByText("By Ada")).not.toHaveClass("font-mono");
     expect(screen.getByText("example.com")).not.toHaveClass("font-mono");
     expect(screen.getByText("14 sources")).toHaveClass("font-mono");
@@ -176,6 +206,7 @@ describe("PickerPanel", () => {
     }
 
     renderWithIntl(<Host />);
+    expect(trpc.queries.at(-1)?.exclude).toEqual(["ref-held"]);
     expect(screen.queryByText("Already in")).toBeNull();
     expect(screen.getByText("Kept")).toBeInTheDocument();
 
@@ -200,6 +231,119 @@ describe("PickerPanel", () => {
     );
   });
 
+  it.each(["wait", "move", "type"])(
+    "keeps focus through a server refill without overriding a later move (%s)",
+    (action) => {
+      trpc.candidates = [
+        {
+          input: { kind: "article", articleId: 1 },
+          reference: "article:1",
+          title: "Newest",
+          facts: [],
+          openHref: null,
+        },
+      ];
+      let refresh: () => void = vi.fn();
+      function Host() {
+        const [, setRender] = useState(0);
+        refresh = () => setRender((value) => value + 1);
+        const [refs, setRefs] = useState(new Set<string>());
+        return (
+          <>
+            <button type="button">Elsewhere</button>
+            <PickerPanel
+              kind="article"
+              communitySlug="night-owls"
+              referencesInIssue={refs}
+              onAdd={() => {
+                trpc.placeholder = true;
+                trpc.fetching = true;
+                setRefs(new Set(["article:1"]));
+              }}
+            />
+          </>
+        );
+      }
+      renderWithIntl(<Host />);
+      fireEvent.click(
+        screen.getByRole("button", { name: "Add Newest to the issue" }),
+      );
+      const elsewhere = screen.getByRole("button", { name: "Elsewhere" });
+      const input = screen.getByRole("textbox", {
+        name: "Search ready articles",
+      });
+      if (action === "move") elsewhere.focus();
+      if (action === "type")
+        fireEvent.change(input, { target: { value: "o" } });
+      trpc.candidates = [
+        {
+          input: { kind: "article", articleId: 2 },
+          reference: "article:2",
+          title: "Older",
+          facts: [],
+          openHref: null,
+        },
+      ];
+      trpc.placeholder = false;
+      trpc.fetching = false;
+      act(() => refresh());
+      expect(document.activeElement).toBe(
+        action === "move"
+          ? elsewhere
+          : action === "type"
+            ? input
+            : screen.getByRole("button", { name: "Add Older to the issue" }),
+      );
+    },
+  );
+
+  it("keeps a polite status mounted through loading and announces completed results", () => {
+    trpc.loading = true;
+    trpc.fetching = true;
+    renderPanel();
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveTextContent("");
+    trpc.loading = false;
+    trpc.fetching = false;
+    trpc.candidates = [
+      {
+        input: { kind: "article", articleId: 4 },
+        reference: "article:4",
+        title: "Evals",
+        facts: [],
+        openHref: null,
+      },
+    ];
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Search ready articles" }),
+      { target: { value: "e" } },
+    );
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toHaveTextContent("1 result");
+  });
+
+  it("keeps previous results visible and busy while the next search loads", () => {
+    trpc.placeholder = true;
+    trpc.fetching = true;
+    trpc.loading = true;
+    trpc.candidates = [
+      {
+        input: { kind: "article", articleId: 4 },
+        reference: "article:4",
+        title: "Evals",
+        facts: [],
+        openHref: null,
+      },
+    ];
+    renderPanel();
+    expect(trpc.options.at(-1)?.placeholderData).toBe(keepPreviousData);
+    expect(screen.getByRole("list")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("list")).toHaveClass("opacity-50");
+    expect(screen.getByText("Evals")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("");
+  });
+
   it("says nothing matches a search", async () => {
     renderPanel();
     fireEvent.change(
@@ -207,6 +351,9 @@ describe("PickerPanel", () => {
       { target: { value: "eval" } },
     );
     await act(() => vi.advanceTimersByTimeAsync(250));
-    expect(screen.getByText("Nothing matches “eval”.")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Nothing matches “eval”.",
+    );
+    expect(screen.getAllByText("Nothing matches “eval”.")).toHaveLength(2);
   });
 });

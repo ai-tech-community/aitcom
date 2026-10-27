@@ -99,6 +99,8 @@ export function LivePreview({
       { slug: articleSlug },
     );
   const hiddenFromVisitors = mode === "visitor" && audience === "members";
+  const visitorNoneVisible =
+    mode === "visitor" && loadedViews.length > 0 && views.length === 0;
 
   return (
     <section aria-labelledby={labelId} className="flex min-w-0 flex-col gap-4">
@@ -150,7 +152,12 @@ export function LivePreview({
               <Layout items={views} href={href} />
             </div>
             {/* Outside the inert picture: these say what the preview is waiting for. */}
-            {views.length === 0 && !waiting && (
+            {visitorNoneVisible && (
+              <p className="text-muted-foreground text-sm">
+                {t("visitorNoneVisible")}
+              </p>
+            )}
+            {views.length === 0 && !waiting && !visitorNoneVisible && (
               <p className="text-muted-foreground text-sm">{t("empty")}</p>
             )}
             {waiting && (

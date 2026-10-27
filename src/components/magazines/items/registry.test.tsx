@@ -30,6 +30,40 @@ import { IssueItem, ITEM_RENDERERS } from "./registry";
 const href = (slug: string) => `/magazines/agents-weekly/issue-4/${slug}`;
 
 describe("issue item registry", () => {
+  it.each([
+    newsItemView(),
+    eventView(),
+    forumThreadView(),
+    launchpadProjectView(),
+    articleView(1),
+  ])("places the $kind intro immediately after its heading", (view) => {
+    renderWithIntl(
+      <IssueItem
+        view={{ ...view, intro: "Editor's introduction" }}
+        lead={false}
+        href={href}
+      />,
+    );
+    expect(screen.getByRole("heading").nextElementSibling).toBe(
+      screen.getByText("Editor's introduction"),
+    );
+  });
+
+  it.each([articleView(1), storylineView(), newsItemView(), eventView()])(
+    "separates adjacent $kind facts visually and with a spoken comma",
+    (view) => {
+      const { container } = renderWithIntl(
+        <IssueItem view={view} lead={false} href={href} />,
+      );
+      const separator = [
+        ...container.querySelectorAll('span[aria-hidden="true"]'),
+      ].find((element) => element.textContent?.trim() === "·");
+      expect(separator).toBeDefined();
+      expect(separator?.nextElementSibling).toHaveClass("sr-only");
+      expect(separator?.nextElementSibling).toHaveTextContent(",");
+    },
+  );
+
   it("renders each kind through its own renderer", () => {
     expect(Object.keys(ITEM_RENDERERS).sort()).toEqual([
       "article",
@@ -78,9 +112,10 @@ describe("issue item registry", () => {
     );
     expect(screen.getByText("Our take")).toBeInTheDocument();
     expect(screen.getByText("Overview of story 1.")).toBeInTheDocument();
-    expect(screen.getByText("14 sources · Updated 24 Oct 2026")).toHaveClass(
+    expect(screen.getByText("14 sources").parentElement).toHaveClass(
       "font-mono",
     );
+    expect(screen.getByText("Updated 24 Oct 2026")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Read the story" }),
     ).toHaveAttribute("href", "/news/stories/story-1");
@@ -115,9 +150,8 @@ describe("issue item registry", () => {
       </NextIntlClientProvider>,
     );
     expect(screen.getByText("Uit AIT News")).toBeInTheDocument();
-    expect(
-      screen.getByText("14 bronnen · Bijgewerkt op 24 okt 2026"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Bijgewerkt op 24 okt 2026")).toBeInTheDocument();
+    expect(screen.getByText("14 bronnen")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Lees het verhaal" }),
     ).toHaveAttribute("href", "/news/stories/story-1");
@@ -139,9 +173,8 @@ describe("issue item registry", () => {
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
     expect(screen.getByText("(opens in a new tab)")).toHaveClass("sr-only");
-    expect(screen.getByText("example.com · 01 Nov 2026")).toHaveClass(
-      "font-mono",
-    );
+    expect(screen.getByText("01 Nov 2026")).toHaveClass("font-mono");
+    expect(screen.getByText("example.com").closest(".font-mono")).toBeNull();
     expect(screen.getByText("Our take")).toBeInTheDocument();
     expect(screen.getByText("Summary of headline 1.")).toBeInTheDocument();
     expect(
@@ -173,9 +206,10 @@ describe("issue item registry", () => {
         href={href}
       />,
     );
-    expect(screen.getByText("example.com", { exact: true })).toHaveClass(
-      "font-mono",
-    );
+    expect(
+      screen.getByText("example.com", { exact: true }).closest(".font-mono"),
+    ).toBeNull();
+    expect(screen.queryByText("·")).toBeNull();
   });
 
   it("announces the news link in everyday Dutch", () => {
@@ -190,7 +224,8 @@ describe("issue item registry", () => {
         name: "Headline 1 (opent in een nieuw tabblad)",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("example.com · 01 nov 2026")).toBeInTheDocument();
+    expect(screen.getByText("example.com")).toBeInTheDocument();
+    expect(screen.getByText("01 nov 2026")).toHaveClass("font-mono");
   });
 
   it("shows editors a 'No longer available' marker and renders nothing else for it", () => {
@@ -226,7 +261,7 @@ describe("event cards", () => {
       "/events/event-1",
     );
     expect(screen.getByText("24–25 Oct 2026")).toHaveClass("font-mono");
-    expect(screen.getByText("· Amsterdam")).not.toHaveClass("font-mono");
+    expect(screen.getByText("Amsterdam")).not.toHaveClass("font-mono");
     expect(screen.getByText("Cancelled")).toHaveAttribute(
       "data-variant",
       "secondary",
@@ -246,7 +281,7 @@ describe("event cards", () => {
     );
     expect(screen.getByText("Evenement", { exact: true })).toBeInTheDocument();
     expect(screen.getByText("24 okt 2026")).toHaveClass("font-mono");
-    expect(screen.getByText("· Online")).toBeInTheDocument();
+    expect(screen.getByText("Online")).toBeInTheDocument();
     expect(screen.getByText("Afgelopen")).toBeInTheDocument();
     expect(screen.queryByText(/Amsterdam/)).toBeNull();
   });

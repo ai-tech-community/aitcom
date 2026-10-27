@@ -4,6 +4,10 @@ vi.mock("@/i18n/navigation", () => ({ Link: () => null }));
 vi.mock("@/trpc/react", () => ({ api: {} }));
 
 import { ITEM_KINDS } from "@/server/magazines/items/registry";
+import type { InputOf } from "@/server/magazines/items/registry";
+import type { StoredItem } from "@/server/magazines/items/types";
+import type { ItemKindId } from "@/lib/magazines/item-views";
+import { PICKABLE_ITEM_KINDS } from "@/lib/magazines/picker";
 
 import {
   eventView,
@@ -42,7 +46,30 @@ const editorial: BuilderItem = {
   body: textBody("Welcome"),
 };
 
+const referenceInputs: { [K in ItemKindId]: InputOf<K> } = {
+  article: { kind: "article", articleId: 7 },
+  editorial: { kind: "editorial", body: textBody("Welcome") },
+  storyline: { kind: "storyline", storylineId: "story-id" },
+  newsItem: { kind: "newsItem", newsItemId: "news-id" },
+  event: { kind: "event", eventId: 7 },
+  forumThread: { kind: "forumThread", threadId: 7 },
+  launchpadProject: { kind: "launchpadProject", projectId: 7 },
+};
+
+function referenceParity<K extends ItemKindId>(kind: K) {
+  const input = referenceInputs[kind];
+  const strategy = ITEM_KINDS[kind];
+  // These generic boundaries hide fields that the checked fixture map supplies.
+  const stored = strategy.toStored(input) as StoredItem<K>;
+  const builderItem = { ...input, key: "x" } as unknown as BuilderItem;
+  expect(strategy.referenceOf(stored)).toBe(builderReferenceKey(builderItem));
+}
+
 describe("builder item registry", () => {
+  it.each([...PICKABLE_ITEM_KINDS, "editorial"] as const)(
+    "shares the %s reference identity with its server strategy",
+    referenceParity,
+  );
   it("has one builder strategy per item kind, the same kinds as the server and the renderers", () => {
     const kinds = Object.keys(BUILDER_ITEM_KINDS).sort();
     expect(kinds).toEqual(Object.keys(ITEM_KINDS).sort());

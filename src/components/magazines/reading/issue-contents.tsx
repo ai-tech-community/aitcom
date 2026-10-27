@@ -76,7 +76,7 @@ export function IssueContents({
       <p className="text-muted-foreground font-mono text-xs">
         {t("issue.readingTime", { minutes: readingMinutes })}
         <span aria-hidden="true"> · </span>
-        {t("issue.itemCount", { count: items.length })}
+        {t("issue.contentsCount", { count: items.length })}
       </p>
     </nav>
   );

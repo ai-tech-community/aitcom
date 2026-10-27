@@ -4776,12 +4776,12 @@
       "contents": "Contents",
       "fromTheEditor": "From the editor",
       "readingTime": "{minutes} min read",
-      "itemCount": "{count, plural, one {# item} other {# items}}",
       "draftNotice": "Draft — only editors can see this",
       "editIssue": "Edit issue",
       "noItems": "This issue has no articles yet.",
       "published": "Published {date}",
-      "signature": "— {name}, editor"
+      "signature": "— {name}, editor",
+      "contentsCount": "{count, plural, one {# item} other {# items}}"
     },
     "item": {
       "readArticle": "Read article",
@@ -4986,7 +4986,7 @@
       },
       "items": {
         "label": "In this issue",
-        "empty": "This issue is empty. Add articles or a text section from Add more.",
+        "empty": "This issue is empty. Add something from Add more.",
         "article": "Article",
         "editorial": "Text section",
         "editorialEmpty": "Text section, not written yet",
@@ -5074,7 +5074,8 @@
           "upvotes": "{count, plural, one {# upvote} other {# upvotes}}",
           "cancelled": "Cancelled",
           "completed": "Took place"
-        }
+        },
+        "results": "{count, plural, one {# result} other {# results}}"
       },
       "preview": {
         "label": "Preview",
@@ -5085,15 +5086,16 @@
         "visitorNothingTitle": "Visitors see nothing",
         "visitorNothing": "This issue is for members only. People outside your community cannot open it.",
         "unsavedItems": "Items you just added show here once they are saved.",
-        "empty": "Add an article or a text section to see the issue here.",
-        "untitled": "Untitled issue"
+        "empty": "Add something to see the issue here.",
+        "untitled": "Untitled issue",
+        "visitorNoneVisible": "Visitors cannot see any item in this issue yet. Members-only and missing items are hidden."
       },
       "publishDialog": {
         "title": "Publish this issue?",
         "blockersTitle": "Before you can publish",
         "blocker": {
           "NO_TITLE": "Give the issue a title.",
-          "NO_ITEMS": "Add at least one article or text section.",
+          "NO_ITEMS": "Add at least one item.",
           "INVALID_ITEM": "Fix the parts marked in the list."
         },
         "ready": "Everything is ready.",

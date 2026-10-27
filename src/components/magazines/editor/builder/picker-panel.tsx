@@ -1,7 +1,8 @@
 "use client";
 
+import { keepPreviousData } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useId, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
@@ -11,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { formatEventDay } from "@/lib/event-time";
 import type { CandidateFact, PickableKindId } from "@/lib/magazines/picker";
+import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 import type { AddPanelProps } from "./items/types";
@@ -70,26 +72,44 @@ export function PickerPanel({
   const searchId = useId();
   const [typed, setTyped] = useState("");
   const words = useDebouncedValue(typed.trim(), SEARCH_PAUSE_MS);
-  const query = api.magazines.pickerCandidates.useQuery({
-    slug: communitySlug,
-    kind,
-    query: words,
-  });
+  const query = api.magazines.pickerCandidates.useQuery(
+    {
+      slug: communitySlug,
+      kind,
+      query: words,
+      exclude: [...referencesInIssue],
+    },
+    { placeholderData: keepPreviousData },
+  );
   const addButtons = useRef(new Map<string, HTMLButtonElement>());
   const emptyRef = useRef<HTMLParagraphElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const pendingFocus = useRef<FocusTarget | null>(null);
 
-  const offered = (query.data ?? []).filter(
-    (candidate) => !referencesInIssue.has(candidate.reference),
+  const offered = useMemo(
+    () =>
+      (query.data ?? []).filter(
+        (candidate) => !referencesInIssue.has(candidate.reference),
+      ),
+    [query.data, referencesInIssue],
   );
 
   useEffect(() => {
     const target = pendingFocus.current;
     if (target === null) return;
+    if (target === "empty" && (query.isPlaceholderData || query.isFetching)) {
+      // Excluding the last displayed result starts a refill. Keep focus on
+      // the stable input until a replacement Add button or final empty text exists.
+      searchRef.current?.focus();
+      return;
+    }
     pendingFocus.current = null;
-    if (target === "empty") emptyRef.current?.focus();
-    else addButtons.current.get(target.reference)?.focus();
-  }, [referencesInIssue]);
+    if (target === "empty") {
+      const first = offered[0];
+      const button = first && addButtons.current.get(first.reference);
+      (button ?? emptyRef.current ?? searchRef.current)?.focus();
+    } else addButtons.current.get(target.reference)?.focus();
+  }, [offered, query.isPlaceholderData, query.isFetching]);
 
   const add = (index: number) => {
     const chosen = offered[index];
@@ -100,10 +120,20 @@ export function PickerPanel({
   };
 
   const searchLabel = t(`search.${kind}`);
-  const loaded = !query.isLoading && !query.isError && query.data !== undefined;
+  const loaded =
+    !query.isLoading &&
+    !query.isFetching &&
+    !query.isPlaceholderData &&
+    !query.isError &&
+    query.data !== undefined;
+  const resultStatus = loaded
+    ? offered.length === 0 && words
+      ? t("noMatch", { query: words })
+      : t("results", { count: offered.length })
+    : "";
 
   let body;
-  if (query.isLoading) {
+  if (query.isLoading && !query.data) {
     body = (
       <div className="flex flex-col gap-2" aria-hidden="true">
         <Skeleton className="h-12" />
@@ -130,7 +160,13 @@ export function PickerPanel({
     );
   } else {
     body = (
-      <ul className="divide-border flex flex-col divide-y rounded-md border">
+      <ul
+        aria-busy={query.isPlaceholderData}
+        className={cn(
+          "divide-border flex flex-col divide-y rounded-md border",
+          query.isPlaceholderData && "opacity-50",
+        )}
+      >
         {offered.map((candidate, index) => (
           <li
             key={candidate.reference}
@@ -143,7 +179,15 @@ export function PickerPanel({
               {candidate.facts.length > 0 && (
                 <p className="text-muted-foreground flex min-w-0 flex-wrap gap-x-2 text-xs">
                   {candidate.facts.map((fact, factIndex) => (
-                    <Fact key={factIndex} fact={fact} />
+                    <Fragment key={factIndex}>
+                      {factIndex > 0 && (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span className="sr-only">, </span>
+                        </>
+                      )}
+                      <Fact fact={fact} />
+                    </Fragment>
                   ))}
                 </p>
               )}
@@ -172,11 +216,22 @@ export function PickerPanel({
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={searchId}>{searchLabel}</Label>
         <Input
+          ref={searchRef}
           id={searchId}
           value={typed}
           placeholder={searchLabel}
-          onChange={(event) => setTyped(event.target.value)}
+          onChange={(event) => {
+            pendingFocus.current = null;
+            setTyped(event.target.value);
+          }}
+          onBlur={() => {
+            // A deliberate move while the request runs cancels the focus handoff.
+            if (pendingFocus.current === "empty") pendingFocus.current = null;
+          }}
         />
+        <p role="status" aria-live="polite" className="sr-only">
+          {resultStatus}
+        </p>
       </div>
       {body}
       {loaded && (

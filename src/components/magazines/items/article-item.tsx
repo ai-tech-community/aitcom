@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
+import { FactSeparator } from "./fact-separator";
 import type { ItemRendererProps, ItemTitle } from "./types";
 
 /** An original magazine article: title, byline and, as the lead, its opening. */
@@ -51,18 +52,18 @@ export function ArticleItem({
             {article.title}
           </Link>
         </h2>
+        {view.intro && <p className="text-sm">{view.intro}</p>}
         <p className="text-muted-foreground text-sm">
           {article.authorName && (
             <>
               {t("byAuthor", { name: article.authorName })}
-              <span aria-hidden="true"> · </span>
+              <FactSeparator />
             </>
           )}
           <span className="font-mono text-xs">
             {t("readingTime", { minutes: article.readingMinutes })}
           </span>
         </p>
-        {view.intro && <p className="text-sm">{view.intro}</p>}
         {lead && article.excerpt && (
           <p className="text-muted-foreground leading-relaxed">
             {article.excerpt}

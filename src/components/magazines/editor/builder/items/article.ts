@@ -1,11 +1,6 @@
-import { itemReference } from "@/lib/magazines/references";
+import { articleInputReference } from "@/lib/magazines/references";
 
 import { referenceBuilderKind } from "./reference";
-
-/** The reference key of a magazine article (one article, one issue item). */
-export function articleReference(articleId: number): string {
-  return itemReference("article", articleId);
-}
 
 /**
  * A magazine article in the builder. The article's text lives in the
@@ -14,6 +9,6 @@ export function articleReference(articleId: number): string {
 export const articleBuilderKind = referenceBuilderKind({
   kind: "article",
   labelKey: "article",
-  referenceOf: (item) => articleReference(item.articleId),
+  referenceOf: articleInputReference,
   openLabelKey: "openArticle",
 });

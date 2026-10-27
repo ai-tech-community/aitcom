@@ -40,6 +40,7 @@ export function ForumThreadItem({
             {thread.title}
           </Link>
         </h2>
+        {view.intro && <p className="text-sm">{view.intro}</p>}
         {thread.authorName && (
           <p className="text-muted-foreground text-sm">
             {t("byAuthor", { name: thread.authorName })}
@@ -48,7 +49,6 @@ export function ForumThreadItem({
         <p className="text-muted-foreground font-mono text-xs">
           {t("replies", { count: thread.replyCount })}
         </p>
-        {view.intro && <p className="text-sm">{view.intro}</p>}
       </div>
     </article>
   );

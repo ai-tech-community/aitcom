@@ -23,7 +23,7 @@ type EditingData = {
   magazine: { name: string; slug: string };
   communityIsPrivate: boolean;
   community: { name: string; slug: string; isListedInDirectory: boolean };
-  editableArticles: { id: number; slug: string }[];
+  openHrefs: Record<string, string>;
 };
 
 const trpc = vi.hoisted(() => ({
@@ -34,6 +34,7 @@ const trpc = vi.hoisted(() => ({
   setIssueItems: vi.fn(),
   publishIssue: vi.fn(),
   invalidate: vi.fn(),
+  removeItem: null as ((key: string) => void) | null,
 }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -112,6 +113,21 @@ vi.mock("@/trpc/react", () => ({
   },
 }));
 
+vi.mock("./items-list", async (importOriginal) => {
+  const actual = await importOriginal<{
+    ItemsList: typeof ItemsListComponent;
+  }>();
+  return {
+    ...actual,
+    ItemsList: (props: React.ComponentProps<typeof actual.ItemsList>) => {
+      trpc.removeItem = props.onRemove;
+      return <actual.ItemsList {...props} />;
+    },
+  };
+});
+
+import type { ItemsList as ItemsListComponent } from "./items-list";
+
 import { IssueBuilder } from "./issue-builder";
 
 function issue(overrides: Partial<MagazineIssue> = {}): MagazineIssue {
@@ -173,7 +189,7 @@ function twoArticles(overrides: Partial<EditingData> = {}): EditingData {
       slug: "night-owls",
       isListedInDirectory: true,
     },
-    editableArticles: [],
+    openHrefs: {},
     ...overrides,
   };
 }
@@ -521,7 +537,7 @@ describe("IssueBuilder", () => {
 
     // The keyboard follows the new section to its editor.
     expect(document.activeElement).toBe(
-      screen.getByRole("textbox", { name: "Intro line (optional)" }),
+      screen.getByRole("textbox", { name: "Heading (optional)" }),
     );
     // Not written yet is not an error yet.
     expect(screen.queryByText(/Write something in this section/)).toBeNull();
@@ -722,7 +738,7 @@ describe("IssueBuilder", () => {
     await pickMenuItem("Remove from issue");
     // The list is empty now: focus lands on its empty text.
     expect(document.activeElement).toHaveTextContent(
-      "This issue is empty. Add articles or a text section from Add more.",
+      "This issue is empty. Add something from Add more.",
     );
   });
 
@@ -756,6 +772,37 @@ describe("IssueBuilder", () => {
     expect(fresh).toHaveLength(1);
   });
 
+  it("does not resurrect a removed row when another candidate is added in the same tick", async () => {
+    trpc.candidates = [readyArticle(21, "Fresh piece")];
+    renderBuilder();
+    const add = screen.getByRole("button", {
+      name: "Add Fresh piece to the issue",
+    });
+    act(() => {
+      trpc.removeItem!("blk-1");
+      add.click();
+    });
+    const list = screen.getByRole("list", { name: "In this issue" });
+    expect(within(list).queryByText("First story")).toBeNull();
+    expect(within(list).getByText("Second story")).toBeInTheDocument();
+    expect(within(list).getByText("Fresh piece")).toBeInTheDocument();
+  });
+
+  it("returns focus to the row edit button when details are Done", () => {
+    renderBuilder();
+    const row = within(
+      screen.getByRole("list", { name: "In this issue" }),
+    ).getAllByRole("listitem")[0]!;
+    const edit = within(row).getByRole("button", { name: /^First story/ });
+    fireEvent.click(edit);
+    screen.getByRole("textbox", { name: "Intro line (optional)" }).focus();
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(
+      screen.queryByRole("textbox", { name: "Intro line (optional)" }),
+    ).toBeNull();
+    expect(document.activeElement).toBe(edit);
+  });
+
   it("every row opens the details panel and the preview shows the intro", () => {
     renderBuilder();
     const rows = within(
@@ -780,7 +827,9 @@ describe("IssueBuilder", () => {
 
   it("offers to open an article in the article editor only when the viewer may edit it", async () => {
     trpc.editing = twoArticles({
-      editableArticles: [{ id: 11, slug: "story-11" }],
+      openHrefs: {
+        "article:11": "/communities/night-owls/magazine/articles/story-11/edit",
+      },
     });
     trpc.candidates = [readyArticle(21, "Fresh piece", true)];
     renderBuilder();

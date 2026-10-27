@@ -26,6 +26,43 @@ import { LivePreview, visibleToVisitors } from "./live-preview";
 import type { BuilderItem } from "./items-model";
 
 describe("LivePreview", () => {
+  it.each([false, true])(
+    "explains when no loaded items are visible to visitors, including while another item waits for save (%s)",
+    (waiting) => {
+      const hidden = { ...eventView(), membersOnly: true };
+      renderWithIntl(
+        <LivePreview
+          magazine={{ name: "Gazette", slug: "gazette" }}
+          community={{ name: "Night Owls" }}
+          issue={{ number: 1, publishedAt: null }}
+          details={{
+            title: "Community picks",
+            slug: "picks",
+            coverImageUrl: null,
+            editorNote: null,
+            visibility: "public",
+          }}
+          layout="cover-story"
+          items={[
+            { kind: "event", eventId: 1, key: hidden.itemId },
+            ...(waiting
+              ? [{ kind: "article" as const, articleId: 9, key: "waiting" }]
+              : []),
+          ]}
+          savedViews={new Map([[hidden.itemId, hidden]])}
+          audience="public"
+        />,
+      );
+      fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));
+      expect(screen.getByTestId("issue-preview")).toHaveTextContent(
+        "Visitors cannot see any item in this issue yet. Members-only and missing items are hidden.",
+      );
+      expect(
+        screen.queryByText("Add something to see the issue here."),
+      ).toBeNull();
+    },
+  );
+
   it("visitor preview leaves out members-only items and markers", () => {
     const views: EditorItemView[] = [
       storylineView(),

@@ -4776,12 +4776,12 @@
       "contents": "Inhoud",
       "fromTheEditor": "Van de redactie",
       "readingTime": "{minutes} min lezen",
-      "itemCount": "{count, plural, one {# onderdeel} other {# onderdelen}}",
       "draftNotice": "Concept — alleen redacteuren zien dit",
       "editIssue": "Nummer bewerken",
       "noItems": "Dit nummer heeft nog geen artikelen.",
       "published": "Verschenen op {date}",
-      "signature": "— {name}, redacteur"
+      "signature": "— {name}, redacteur",
+      "contentsCount": "{count, plural, one {# onderdeel} other {# onderdelen}}"
     },
     "item": {
       "readArticle": "Lees artikel",
@@ -4805,7 +4805,7 @@
       "opensInNewTab": "(opent in een nieuw tabblad)",
       "eventKind": "Evenement",
       "online": "Online",
-      "cancelled": "Afgelast",
+      "cancelled": "Geannuleerd",
       "completed": "Afgelopen",
       "forumKind": "Uit het forum",
       "replies": "{count, plural, one {# reactie} other {# reacties}}",
@@ -4986,7 +4986,7 @@
       },
       "items": {
         "label": "In dit nummer",
-        "empty": "Dit nummer is leeg. Voeg artikelen of een tekstgedeelte toe via Meer toevoegen.",
+        "empty": "Dit nummer is leeg. Voeg iets toe via Meer toevoegen.",
         "article": "Artikel",
         "editorial": "Tekstgedeelte",
         "editorialEmpty": "Tekstgedeelte, nog niet geschreven",
@@ -5073,8 +5073,9 @@
           "replies": "{count, plural, one {# reactie} other {# reacties}}",
           "upvotes": "{count, plural, one {# stem} other {# stemmen}}",
           "cancelled": "Geannuleerd",
-          "completed": "Vond plaats"
-        }
+          "completed": "Afgelopen"
+        },
+        "results": "{count, plural, one {# resultaat} other {# resultaten}}"
       },
       "preview": {
         "label": "Voorbeeld",
@@ -5085,15 +5086,16 @@
         "visitorNothingTitle": "Bezoekers zien niets",
         "visitorNothing": "Dit nummer is alleen voor leden. Mensen buiten je community kunnen het niet openen.",
         "unsavedItems": "Wat je net hebt toegevoegd, verschijnt hier zodra het is opgeslagen.",
-        "empty": "Voeg een artikel of een tekstgedeelte toe om het nummer hier te zien.",
-        "untitled": "Nummer zonder titel"
+        "empty": "Voeg iets toe om het nummer hier te zien.",
+        "untitled": "Nummer zonder titel",
+        "visitorNoneVisible": "Bezoekers kunnen nog geen onderdelen van dit nummer zien. Onderdelen voor leden en ontbrekende onderdelen zijn verborgen."
       },
       "publishDialog": {
         "title": "Dit nummer publiceren?",
         "blockersTitle": "Voordat je kunt publiceren",
         "blocker": {
           "NO_TITLE": "Geef het nummer een titel.",
-          "NO_ITEMS": "Voeg minstens één artikel of tekstgedeelte toe.",
+          "NO_ITEMS": "Voeg minstens één onderdeel toe.",
           "INVALID_ITEM": "Herstel de delen die in de lijst zijn gemarkeerd."
         },
         "ready": "Alles is klaar.",

@@ -65,6 +65,7 @@ export function EditorialItemEditor({
         <Label htmlFor={headingId}>{t("heading")}</Label>
         <Input
           id={headingId}
+          data-autofocus
           value={item.heading ?? ""}
           maxLength={HEADING_MAX}
           onChange={(event) =>

@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { formatEventDay } from "@/lib/event-time";
 import { cn } from "@/lib/utils";
 
+import { FactSeparator } from "./fact-separator";
 import type { ItemRendererProps, ItemTitle } from "./types";
 
 /** An AIT News story that keeps following its live source. */
@@ -51,14 +52,15 @@ export function StorylineItem({ view, lead }: ItemRendererProps<"storyline">) {
           {storyline.overview}
         </p>
         <p className="text-muted-foreground font-mono text-xs">
-          {t("sources", { count: storyline.sourceCount })}
+          <span>{t("sources", { count: storyline.sourceCount })}</span>
           {storyline.updatedAt && (
             <>
-              {" "}
-              ·{" "}
-              {t("updated", {
-                date: formatEventDay(storyline.updatedAt, locale),
-              })}
+              <FactSeparator />
+              <span>
+                {t("updated", {
+                  date: formatEventDay(storyline.updatedAt, locale),
+                })}
+              </span>
             </>
           )}
         </p>

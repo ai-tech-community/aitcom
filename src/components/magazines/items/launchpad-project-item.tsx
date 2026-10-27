@@ -40,6 +40,7 @@ export function LaunchpadProjectItem({
             {project.title}
           </Link>
         </h2>
+        {view.intro && <p className="text-sm">{view.intro}</p>}
         <p className="text-muted-foreground text-sm">{stage(project.stage)}</p>
         <p className={cn("text-sm", !lead && "line-clamp-3")}>
           {project.pitch}
@@ -52,7 +53,6 @@ export function LaunchpadProjectItem({
         <p className="text-muted-foreground font-mono text-xs">
           {t("upvotes", { count: project.voteCount })}
         </p>
-        {view.intro && <p className="text-sm">{view.intro}</p>}
       </div>
     </article>
   );

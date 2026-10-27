@@ -40,6 +40,8 @@ export type ItemRowView = {
   highlighted: boolean;
   /** Opens the item's editor; absent for kinds without one (articles). */
   onEdit?: () => void;
+  /** The row edit button, where Done returns keyboard focus. */
+  editButtonRef?: Ref<HTMLButtonElement>;
   /**
    * Opens the content the item references in its own editor (an article
    * in the article editor), when the viewer may edit it.
@@ -142,6 +144,7 @@ export function ItemRow({
         {view.onEdit ? (
           <button
             type="button"
+            ref={view.editButtonRef}
             onClick={view.onEdit}
             aria-current={view.selected ? "true" : undefined}
             aria-describedby={describedBy()}

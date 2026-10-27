@@ -3,6 +3,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { formatEventDay } from "@/lib/event-time";
 import { cn } from "@/lib/utils";
 
+import { FactSeparator } from "./fact-separator";
 import type { ItemRendererProps, ItemTitle } from "./types";
 
 /** A compact headline linking to its original source. */
@@ -10,12 +11,6 @@ export function NewsItemCard({ view, lead }: ItemRendererProps<"newsItem">) {
   const t = useTranslations("magazines.item");
   const locale = useLocale();
   const { news } = view;
-  const facts = [
-    news.source,
-    news.publishedAt ? formatEventDay(news.publishedAt, locale) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 
   return (
     <article
@@ -50,10 +45,18 @@ export function NewsItemCard({ view, lead }: ItemRendererProps<"newsItem">) {
             news.title
           )}
         </h2>
-        {facts && (
-          <p className="text-muted-foreground font-mono text-xs">{facts}</p>
-        )}
         {view.intro && <p className="text-sm">{view.intro}</p>}
+        {(Boolean(news.source) || Boolean(news.publishedAt)) && (
+          <p className="text-muted-foreground text-xs">
+            {news.source && <span>{news.source}</span>}
+            {news.source && news.publishedAt && <FactSeparator />}
+            {news.publishedAt && (
+              <span className="font-mono">
+                {formatEventDay(news.publishedAt, locale)}
+              </span>
+            )}
+          </p>
+        )}
         {lead && news.summary && (
           <p className="text-muted-foreground leading-relaxed">
             {news.summary}

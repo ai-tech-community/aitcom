@@ -19,7 +19,7 @@ export type PublishBlocker = "NO_TITLE" | "NO_ITEMS" | "INVALID_ITEM";
 let keySequence = 0;
 
 /** A key no other item in this page has. */
-function newItemKey(): string {
+export function newItemKey(): string {
   keySequence += 1;
   return `new-${keySequence}`;
 }
@@ -69,8 +69,9 @@ export function removeItem(items: BuilderItem[], key: string): BuilderItem[] {
 export function addItem(
   items: BuilderItem[],
   input: IssueItemInput,
+  key = newItemKey(),
 ): BuilderItem[] {
-  const added = { ...input, key: newItemKey() } as BuilderItem;
+  const added = { ...input, key } as BuilderItem;
   const reference = builderReferenceKey(added);
   if (
     reference !== null &&
