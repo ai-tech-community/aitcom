@@ -1,3 +1,5 @@
+import { clientIpFromHeaders } from "@/server/rate-limit/client-ip";
+
 const windows = new Map<string, { count: number; resetAt: number }>();
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS = 60;
@@ -32,11 +34,7 @@ export function checkPublicApiRateLimit(ip: string): {
 }
 
 export function getClientIp(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0]!.trim();
-  const real = req.headers.get("x-real-ip");
-  if (real) return real;
-  return "unknown";
+  return clientIpFromHeaders(req.headers);
 }
 
 export function isSameOriginRequest(req: Request): boolean {

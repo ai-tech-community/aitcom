@@ -20,11 +20,14 @@ import {
   renderPostMentionText,
   type PostMentionMail,
 } from "@/server/notifications/post-mention-mail-copy";
+import {
+  gatedMailRecipient,
+  MAIL_TEST_RECIPIENT,
+  type MailEnv,
+} from "@/lib/email/recipient-gate";
 import { type StorylineAnnounceEnv } from "@/lib/news/storyline-announce";
 import {
   renderStorylineDraftReviewEmail,
-  STORYLINE_TEST_RECIPIENT,
-  storylineMailRecipient,
   type StorylineMailEnv,
 } from "@/lib/news/storyline-draft-review";
 
@@ -688,26 +691,12 @@ export async function sendStorylineDraftReviewEmail(
     NODE_ENV: process.env.NODE_ENV,
   },
 ): Promise<boolean> {
-  const recipient = storylineMailRecipient(to, env);
-  if (!recipient) return false;
-  if (
-    process.env.NODE_ENV === "test" &&
-    recipient !== STORYLINE_TEST_RECIPIENT
-  ) {
-    throw new Error("Storyline review email refused");
-  }
-  const resend = getResend();
-  if (!resend) return false;
-  const message = renderStorylineDraftReviewEmail(opts);
-  const { error } = await resend.emails.send({
-    from: FROM_EMAIL,
-    to: recipient,
-    subject: message.subject,
-    html: message.html,
-    text: message.text,
+  return sendGatedEmail(to, renderStorylineDraftReviewEmail(opts), env, {
+    refusedMessage: "Storyline review email refused",
+    rejectedMessage: "Resend rejected the storyline draft email",
+    logPrefix: "storyline-draft-review",
+    retryOnRateLimit: false,
   });
-  if (error) throw new Error("Resend rejected the storyline draft email");
-  return true;
 }
 
 /**
@@ -728,13 +717,35 @@ export async function sendStorylineAnnounceEmail(
     NODE_ENV: process.env.NODE_ENV,
   },
 ): Promise<boolean> {
-  const recipient = storylineMailRecipient(to, env);
+  return sendGatedEmail(to, message, env, {
+    refusedMessage: "Storyline announcement email refused",
+    rejectedMessage: "Resend rejected the storyline announcement",
+    logPrefix: "news-storyline-announce",
+    retryOnRateLimit: true,
+  });
+}
+
+/** Shared recipient gate and Resend error handling for storyline and magazine mail. */
+export async function sendGatedEmail(
+  to: string,
+  message: {
+    subject: string;
+    html: string;
+    text: string;
+    headers?: Record<string, string>;
+  },
+  env: MailEnv,
+  opts: {
+    refusedMessage: string;
+    rejectedMessage: string;
+    logPrefix: string;
+    retryOnRateLimit: boolean;
+  },
+): Promise<boolean> {
+  const recipient = gatedMailRecipient(to, env);
   if (!recipient) return false;
-  if (
-    process.env.NODE_ENV === "test" &&
-    recipient !== STORYLINE_TEST_RECIPIENT
-  ) {
-    throw new Error("Storyline announcement email refused");
+  if (process.env.NODE_ENV === "test" && recipient !== MAIL_TEST_RECIPIENT) {
+    throw new Error(opts.refusedMessage);
   }
   const resend = getResend();
   if (!resend) return false;
@@ -746,21 +757,12 @@ export async function sendStorylineAnnounceEmail(
     text: message.text,
     headers: message.headers,
   };
-  const first = await resend.emails.send(payload);
-  if (!first.error) return true;
-  if (first.error.name === "rate_limit_exceeded") {
+  let { error } = await resend.emails.send(payload);
+  if (error?.name === "rate_limit_exceeded" && opts.retryOnRateLimit) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    const retry = await resend.emails.send(payload);
-    if (!retry.error) return true;
-    console.error(
-      "news-storyline-announce: resend rejected the email",
-      retry.error.name,
-    );
-    throw new Error("Resend rejected the storyline announcement");
+    ({ error } = await resend.emails.send(payload));
   }
-  console.error(
-    "news-storyline-announce: resend rejected the email",
-    first.error.name,
-  );
-  throw new Error("Resend rejected the storyline announcement");
+  if (!error) return true;
+  console.error(`${opts.logPrefix}: resend rejected the email`, error.name);
+  throw new Error(opts.rejectedMessage);
 }
