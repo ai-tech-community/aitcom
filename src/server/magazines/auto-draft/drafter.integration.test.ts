@@ -11,7 +11,7 @@ import {
   isLocalDbConfigured,
   now,
   scheduleStartsAt,
-} from "./test-fixtures";
+} from "@/test/magazine-auto-draft-fixture";
 
 vi.mock("next-intl/server", async () => {
   const { createTranslator } = await import("next-intl");

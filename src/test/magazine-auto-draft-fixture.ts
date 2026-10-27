@@ -1,11 +1,11 @@
-import type * as Jobs from "../issue-jobs";
-import type * as Picks from "./picks";
-import type * as Runs from "./runs";
-import type * as Settings from "./settings";
-import type * as Editing from "../issue-editing";
-import type * as History from "../issue-history";
-import type * as Issues from "../issue-service";
-import type * as Drafter from "./drafter";
+import type * as Jobs from "@/server/magazines/issue-jobs";
+import type * as Picks from "@/server/magazines/auto-draft/picks";
+import type * as Runs from "@/server/magazines/auto-draft/runs";
+import type * as Settings from "@/server/magazines/auto-draft/settings";
+import type * as Editing from "@/server/magazines/issue-editing";
+import type * as History from "@/server/magazines/issue-history";
+import type * as Issues from "@/server/magazines/issue-service";
+import type * as Drafter from "@/server/magazines/auto-draft/drafter";
 import { eq, inArray, sql } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach } from "vitest";
 
@@ -17,7 +17,7 @@ import {
 import type { Event, Magazine } from "@/payload-types";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import type * as Schema from "@/server/db/schema";
-import type { Deps } from "../deps";
+import type { Deps } from "@/server/magazines/deps";
 
 export function isLocalDbConfigured(): boolean {
   if (process.env.RUN_DB_TESTS !== "1") return false;
@@ -73,8 +73,8 @@ export function drafterFixture() {
 
   beforeAll(async () => {
     // Resolve injected service wrappers before importing their consumers.
-    const issues = await import("../issue-service");
-    const picks = await import("./picks");
+    const issues = await import("@/server/magazines/issue-service");
+    const picks = await import("@/server/magazines/auto-draft/picks");
     const [
       { db },
       schema,
@@ -89,12 +89,12 @@ export function drafterFixture() {
       import("@/server/db"),
       import("@/server/db/schema"),
       import("@/server/payload"),
-      import("./drafter"),
-      import("../issue-history"),
-      import("../issue-editing"),
-      import("./settings"),
-      import("./runs"),
-      import("../issue-jobs"),
+      import("@/server/magazines/auto-draft/drafter"),
+      import("@/server/magazines/issue-history"),
+      import("@/server/magazines/issue-editing"),
+      import("@/server/magazines/auto-draft/settings"),
+      import("@/server/magazines/auto-draft/runs"),
+      import("@/server/magazines/issue-jobs"),
     ]);
     const { rows } = await db.execute<{ name: string }>(
       sql`select current_database() as name`,
@@ -258,7 +258,8 @@ export function drafterFixture() {
       })
       .returning();
     fx.communityIds.push(community!.id);
-    const { saveMagazineSettings } = await import("../magazine-service");
+    const { saveMagazineSettings } =
+      await import("@/server/magazines/magazine-service");
     const magazine = await saveMagazineSettings(
       m,
       community!,

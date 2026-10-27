@@ -17,7 +17,7 @@ import type { createCaller } from "@/server/api/root";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import type * as Schema from "@/server/db/schema";
 
-import { isLocalDbConfigured } from "./auto-draft/test-fixtures";
+import { isLocalDbConfigured } from "@/test/magazine-auto-draft-fixture";
 import type { Deps } from "./deps";
 import type * as IssueJobs from "./issue-jobs";
 import type * as Reading from "./reading";

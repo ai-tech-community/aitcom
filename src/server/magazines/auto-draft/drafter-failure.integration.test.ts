@@ -7,7 +7,12 @@ import type * as Picks from "./picks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { inArray } from "drizzle-orm";
 import { inPayloadTransaction } from "../payload-writes";
-import { at, drafterFixture, isLocalDbConfigured, now } from "./test-fixtures";
+import {
+  at,
+  drafterFixture,
+  isLocalDbConfigured,
+  now,
+} from "@/test/magazine-auto-draft-fixture";
 
 const failures = vi.hoisted(() => ({
   save: false,
