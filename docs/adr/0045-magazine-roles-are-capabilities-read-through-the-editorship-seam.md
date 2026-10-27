@@ -164,8 +164,53 @@ capabilities. It extends the publication-channel seam of
   appointed editors and contributors.
 - **A role change is local.** The capability table and `rolesWith` keep gates
   and SQL filters aligned. Retained assignments require every permission
-  read to pass through active membership in the editorship seam.
+  read to pass through active membership in the editorship seam. A source
+  guard keeps role literals in `roles.ts`; implicit leaders use the named
+  `COMMUNITY_LEADER_ROLE` from that module.
 - **The contributor desk keeps unpublished work visible.** Approved articles
   stay until issue publication; only open rows link to editing (plan Decision
   15, accepted ruling). Approval still grants no publication credit; issue
   publication remains the credit point under ADR-0043.
+- **The magazine area now owns review, team and settings.** The shipped routes
+  are `/communities/[slug]/magazine/review/[articleSlug]`,
+  `/communities/[slug]/magazine/team` and
+  `/communities/[slug]/magazine/settings`. The former
+  `/communities/[slug]/settings/magazine` redirects to the new settings page.
+  Review requires `edit`; team and settings require `manage`. All three pages
+  require sign-in, answer unauthorized access with not-found and are not indexed.
+- **Published contributor text has no site correction flow.** Editors edit
+  only their own articles. Nobody in the site can fix a typo in a contributor's
+  published article; allowing editors to edit any article in their magazine
+  would be a follow-up (plan Decision 7).
+- **Appointed editors-in-chief manage the team and settings.** This extends
+  the spec's owners/admins-only assignment rule (plan Decision 5, **please
+  check**). Public confirmation in an unlisted community still belongs only
+  to active community owners/admins (plan Decision 14). The settings form and
+  issue builder currently also show the confirmation box to appointed
+  editors; they receive a friendly refusal if they try to confirm. Hiding
+  that box for them remains a small follow-up.
+- **Retained assignments can become active again.** Rejoining restores an
+  inert assignment unless it has been removed. The team page exposes inert
+  rows for removal. Someone promoted to community admin appears once, as an
+  admin; their stored assignment is inert while they lead and takes effect
+  again if they stop being admin and remain an active member (plan Decision 4).
+- **Submission and unplaced reads retain two deliberate narrowings.** Only
+  team members with `write` can submit; ordinary community membership is not
+  enough. Contributors cannot read one another's unplaced articles, though
+  each sees their own text in the editor (plan Decision 11, both **please
+  check**).
+- **Contributors cannot withdraw sent or approved articles.** They must ask
+  an editor to decline the article instead; the writer lock applies to
+  deletion too (plan Decision 7).
+- **Publication earns credit, approval does not.** Each credited article
+  grants `ARTICLE_PUBLISHED` XP and contributes to the writer badges. Its
+  author also earns `magazine_published` once. Previously credited authors
+  receive that milestone through the badge backfill, which Greg runs after
+  merge (plan Decision 10).
+- **Inbox notices are stored in English.** This follows the existing
+  notification system; there is no email or recipient-locale storage in
+  this slice (plan Decision 9).
+- **Payload's staff queue can still list magazine submissions.** Filtering
+  for `pending_review` includes magazine articles. Platform staff should
+  leave those to the magazine's editors. An admin approval still follows
+  the magazine channel: it marks the article ready and cannot publish it.

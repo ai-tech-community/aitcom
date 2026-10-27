@@ -947,7 +947,8 @@ not collect feedback itself.
 A [[Community]]'s publication: a named series of [[issue]]s, with a name, a
 platform-wide slug (`/magazines/[slug]`), a description, a logo, topics and a
 **default visibility** for new issues. A community has **at most one**
-magazine. Created and run by its [[magazine-editor]]s; it appears as the
+magazine. Created and managed by its [[magazine-team]]'s editors-in-chief;
+[[magazine-editor]]s assemble its issues. It appears as the
 community's Magazine tab and on the `/magazines` shelf. Distinct from the
 [[articles]]/blog (single pieces on the Hub-wide blog) by its one irreducible
 feature: **curated, numbered issues** that collect articles, editorial text
@@ -963,8 +964,9 @@ only) or `published`; a published issue does not go back to draft, and its
 slug is locked so links do not break. Each issue stores its **own visibility**
 — `members` or `public` — copied from the magazine's default when it is
 created; changing the default never changes existing issues. A `public` issue
-in an unlisted [[community]] counts as public only when an editor confirmed it
-(who and when are recorded); without that it is members-only for outsiders.
+in an unlisted [[community]] counts as public only when an active community
+owner or admin confirmed it (who and when are recorded); an appointed editor
+cannot confirm it. Without confirmation it is members-only for outsiders.
 Who may read an issue is one **issue access** decision: `none` (answered as
 not-found), `full` or `editor`. Every page, list, search and sitemap asks the
 same resolver. See [[adr-0042-magazine-issues-are-read-through-one-access-resolver]].
