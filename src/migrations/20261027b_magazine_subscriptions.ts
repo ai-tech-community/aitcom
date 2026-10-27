@@ -50,6 +50,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       ON "app"."magazine_subscription" ("magazine_id", "email") WHERE "email" IS NOT NULL;
     CREATE UNIQUE INDEX IF NOT EXISTS "magazine_subscription_confirm_token_idx"
       ON "app"."magazine_subscription" ("confirm_token_hash") WHERE "confirm_token_hash" IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS "magazine_subscription_email_confirm_sent_idx"
+      ON "app"."magazine_subscription" ("email", "confirm_sent_at") WHERE "email" IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS "app"."magazine_issue_announcement" (
       "issue_id" integer PRIMARY KEY
@@ -81,6 +83,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
   await db.execute(sql`
+    DROP INDEX IF EXISTS "app"."magazine_subscription_email_confirm_sent_idx";
     DROP TABLE IF EXISTS "app"."magazine_issue_delivery";
     DROP TABLE IF EXISTS "app"."magazine_issue_announcement";
     DROP TABLE IF EXISTS "app"."magazine_subscription";

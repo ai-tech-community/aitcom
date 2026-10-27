@@ -1342,6 +1342,9 @@ export const magazineSubscriptions = appSchema.table(
     uniqueIndex("magazine_subscription_confirm_token_idx")
       .on(t.confirmTokenHash)
       .where(sql`${t.confirmTokenHash} IS NOT NULL`),
+    index("magazine_subscription_email_confirm_sent_idx")
+      .on(t.email, t.confirmSentAt)
+      .where(sql`${t.email} IS NOT NULL`),
     check(
       "magazine_subscription_one_subscriber_check",
       sql`(${t.userId} IS NOT NULL) <> (${t.email} IS NOT NULL)`,

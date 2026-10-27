@@ -11,7 +11,12 @@ export const dynamic = "force-dynamic";
 
 /** Mail scanners may open the page; only an explicit POST confirms. */
 export async function POST(req: Request) {
-  const form = await req.formData();
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  }
   const token = form.get("t");
   if (typeof token !== "string" || !token) {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
@@ -22,8 +27,12 @@ export async function POST(req: Request) {
     (routing.locales as readonly string[]).includes(rawLocale)
       ? rawLocale
       : routing.defaultLocale;
-  const payload = await getPayloadClient();
-  await confirmEmailSubscription({ db, payload }, token, new Date());
+  try {
+    const payload = await getPayloadClient();
+    await confirmEmailSubscription({ db, payload }, token, new Date());
+  } catch {
+    console.error("[magazine-subscriptions] confirmation failed");
+  }
   const path = `/${locale}${MAGAZINE_SUBSCRIPTION_CONFIRM_PATH}?t=${encodeURIComponent(token)}`;
   return NextResponse.redirect(new URL(path, req.url), 303);
 }

@@ -69,6 +69,15 @@ describe.skipIf(!isLocalDbConfigured())(
       return EXPECTED_COLUMNS.filter((key) => have.has(key));
     }
 
+    async function confirmationQuotaIndex(on: Pick<typeof Db, "execute"> = db) {
+      const { rows } = await on.execute<{ definition: string }>(sql`
+        SELECT indexdef AS definition FROM pg_indexes
+        WHERE schemaname = 'app'
+          AND indexname = 'magazine_subscription_email_confirm_sent_idx'
+      `);
+      return rows[0]?.definition ?? null;
+    }
+
     async function insertMagazine(label = "first") {
       const { rows } = await db.execute<{ id: number }>(sql`
         INSERT INTO "public"."magazines" ("name", "slug", "community_id", "created_by")
@@ -205,6 +214,7 @@ describe.skipIf(!isLocalDbConfigured())(
           "magazine_subscription_magazine_user_idx",
           "magazine_subscription_magazine_email_idx",
           "magazine_subscription_confirm_token_idx",
+          "magazine_subscription_email_confirm_sent_idx",
           "magazine_issue_announcement_open_idx",
           "magazine_issues_scheduled_for_idx",
         ]),
@@ -308,16 +318,23 @@ describe.skipIf(!isLocalDbConfigured())(
         db.transaction(async (tx) => {
           await migration.down({ db: tx } as never);
           expect(await presentColumns(tx)).toEqual([]);
+          expect(await confirmationQuotaIndex(tx)).toBeNull();
           const { rows } = await tx.execute<{ status: string }>(sql`
           SELECT "status" FROM "public"."magazine_issues" WHERE "id" = ${issueId}
         `);
           expect(rows[0]?.status).toBe("draft");
           await migration.up({ db: tx } as never);
           expect(await presentColumns(tx)).toEqual(EXPECTED_COLUMNS);
+          expect(await confirmationQuotaIndex(tx)).toContain(
+            "(email, confirm_sent_at) WHERE (email IS NOT NULL)",
+          );
           throw rollback;
         }),
       ).rejects.toBe(rollback);
       expect(await presentColumns()).toEqual(EXPECTED_COLUMNS);
+      expect(await confirmationQuotaIndex()).toContain(
+        "(email, confirm_sent_at) WHERE (email IS NOT NULL)",
+      );
     });
   },
 );

@@ -64,6 +64,37 @@ describe("POST /api/magazine-subscriptions/confirm", () => {
     expect(route).not.toHaveProperty("GET");
   });
 
+  it("refuses a JSON body", async () => {
+    const req = new Request(
+      "https://www.aitcommunity.org/api/magazine-subscriptions/confirm",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ t: "abc" }),
+      },
+    );
+    expect((await route.POST(req)).status).toBe(400);
+    expect(confirmEmailSubscription).not.toHaveBeenCalled();
+  });
+
+  it("returns to the same-origin page when confirmation fails", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    confirmEmailSubscription.mockRejectedValueOnce(new Error("secret token"));
+    try {
+      const req = post({ t: "private-token", locale: "nl" });
+      const res = await route.POST(req);
+      expect(res.status).toBe(303);
+      expect(res.headers.get("location")).toBe(
+        "https://www.aitcommunity.org/nl/magazine-subscriptions/confirm?t=private-token",
+      );
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        "[magazine-subscriptions] confirmation failed",
+      );
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it.each(["//evil.example", "de"])(
     "ignores a locale that is not ours (%s)",
     async (locale) => {
