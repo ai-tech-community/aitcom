@@ -58,6 +58,12 @@ export function normalizeTopics(topics: string[]): string[] {
   return [...seen].slice(0, MAX_MAGAZINE_TOPICS);
 }
 
+export function magazineTopicsOf(magazine: Magazine): string[] {
+  return (magazine.topics ?? [])
+    .map((t) => t.topic)
+    .filter((t): t is string => Boolean(t));
+}
+
 type SpaceSlugOwner = {
   kind: "builtin" | "room";
   builtinSurface: string | null;

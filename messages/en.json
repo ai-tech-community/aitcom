@@ -4894,6 +4894,12 @@
     }
   },
   "magazineEditor": {
+    "autoDraft": {
+      "welcome": {
+        "heading": "Welcome to our new members",
+        "body": "{count} people joined {community} since {date}. Say hello!"
+      }
+    },
     "review": {
       "metaTitle": "Read an article",
       "back": "Back to the Magazine tab",

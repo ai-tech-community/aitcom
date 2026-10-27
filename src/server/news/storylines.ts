@@ -7,6 +7,7 @@ import {
   sql,
   ilike,
   count,
+  gte,
 } from "drizzle-orm";
 import { newsTableSearchRegex } from "@/lib/news/table-query";
 import { db } from "@/server/db";
@@ -156,6 +157,64 @@ export async function searchPublicStorylines(
       stories.slug,
     )
     .limit(limit);
+  return rows.map((row) => ({
+    ...row,
+    latestAt: row.latestAt ? new Date(row.latestAt) : null,
+    isPublic: true,
+  }));
+}
+
+/** Public topic matches, newest valid source first, then score and slug. */
+export async function suggestPublicStorylines(
+  input: {
+    topics: readonly string[];
+    since: Date;
+    limit: number;
+    exclude: readonly string[];
+  },
+  database: typeof db = db,
+): Promise<(StorylineCard & { matchedTopic: string })[]> {
+  if (input.topics.length === 0 || input.limit <= 0) return [];
+  const matches = input.topics.map((topic) => {
+    const pattern = `%${escapeLike(topic)}%`;
+    return or(
+      ilike(stories.titleEn, pattern),
+      ilike(stories.titleNl, pattern),
+      ilike(stories.overviewEn, pattern),
+      ilike(stories.overviewNl, pattern),
+    )!;
+  });
+  const matchedTopic = sql<string>`case ${sql.join(
+    matches.map(
+      (match, index) => sql`when ${match} then ${input.topics[index]}`,
+    ),
+    sql` `,
+  )} end`;
+  const rows = await database
+    .select({
+      id: stories.id,
+      slug: stories.slug,
+      titleEn: stories.titleEn,
+      titleNl: stories.titleNl,
+      overviewEn: stories.overviewEn,
+      overviewNl: stories.overviewNl,
+      articleCount: sql<number>`${articleCount}`,
+      latestAt: sql<Date | null>`${latestAt}`,
+      matchedTopic,
+    })
+    .from(stories)
+    .where(
+      and(
+        publicStoryline,
+        or(...matches),
+        gte(latestAt, input.since),
+        input.exclude.length
+          ? notInArray(stories.id, [...input.exclude])
+          : undefined,
+      ),
+    )
+    .orderBy(sql`${latestAt} desc`, sql`${storylineScore} desc`, stories.slug)
+    .limit(input.limit);
   return rows.map((row) => ({
     ...row,
     latestAt: row.latestAt ? new Date(row.latestAt) : null,

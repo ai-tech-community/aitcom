@@ -204,6 +204,45 @@ export async function listAvailableArticles(
   exclude: readonly number[] = [],
   limit = EDITOR_LIST_LIMIT,
 ): Promise<AvailableMagazineArticle[]> {
+  return approvedUnplacedArticles(
+    payload,
+    magazineId,
+    viewerId,
+    query,
+    exclude,
+    limit,
+    "-updatedAt",
+  );
+}
+
+/** Same filter as listAvailableArticles, waiting longest first, then id. */
+export async function listApprovedArticlesOldestFirst(
+  payload: PayloadClient,
+  magazineId: number,
+  viewerId: string,
+  exclude: readonly number[],
+  limit: number,
+): Promise<AvailableMagazineArticle[]> {
+  return approvedUnplacedArticles(
+    payload,
+    magazineId,
+    viewerId,
+    "",
+    exclude,
+    limit,
+    ["updatedAt", "id"],
+  );
+}
+
+async function approvedUnplacedArticles(
+  payload: PayloadClient,
+  magazineId: number,
+  viewerId: string,
+  query: string,
+  exclude: readonly number[],
+  limit: number,
+  sort: string | string[],
+): Promise<AvailableMagazineArticle[]> {
   const { docs } = await payload.find({
     collection: "articles",
     where: {
@@ -215,14 +254,14 @@ export async function listAvailableArticles(
         ...(query ? [{ title: { like: query } }] : []),
       ],
     },
-    sort: "-updatedAt",
+    sort,
     depth: 0,
     draft: true,
     limit,
     pagination: false,
   });
   return docs.map((doc) => ({
-    id: doc.id,
+    id: Number(doc.id),
     slug: doc.slug,
     title: doc.title,
     authorName: doc.authorName ?? null,

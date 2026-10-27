@@ -6,13 +6,8 @@ import { storylinePicker } from "./storyline/picker";
 import { newsItemPicker } from "./newsItem/picker";
 import { launchpadProjectPicker } from "./launchpadProject/picker";
 import { articlePicker } from "./article/picker";
-import { ITEM_KINDS, type InputOf } from "./registry";
-import type {
-  ItemPickerSource,
-  PickerCandidate,
-  PickerContext,
-  StoredItem,
-} from "./types";
+import { referenceOfInput, type InputOf } from "./registry";
+import type { ItemPickerSource, PickerCandidate, PickerContext } from "./types";
 
 export const ITEM_PICKERS: {
   [K in PickableKindId]: ItemPickerSource<InputOf<K>>;
@@ -33,11 +28,8 @@ export async function searchPickerCandidates<K extends PickableKindId>(
   exclude: readonly string[] = [],
 ): Promise<PickerCandidate<InputOf<K>>[]> {
   const candidates = await ITEM_PICKERS[kind].search(query, ctx, exclude);
-  const strategy = ITEM_KINDS[kind];
   return candidates.map((candidate) => {
-    // toStored omits only the optional block id; references identify content.
-    const stored = strategy.toStored(candidate.input) as StoredItem<K>;
-    const reference = strategy.referenceOf(stored);
+    const reference = referenceOfInput(kind, candidate.input);
     if (reference === null) {
       throw new Error("A pickable item must have a reference");
     }

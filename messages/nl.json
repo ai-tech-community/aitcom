@@ -4894,6 +4894,12 @@
     }
   },
   "magazineEditor": {
+    "autoDraft": {
+      "welcome": {
+        "heading": "Welkom aan onze nieuwe leden",
+        "body": "Sinds {date} zijn {count} mensen lid geworden van {community}. Zeg even hallo!"
+      }
+    },
     "review": {
       "metaTitle": "Een artikel lezen",
       "back": "Terug naar het tabblad Magazine",

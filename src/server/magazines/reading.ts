@@ -35,7 +35,11 @@ import {
   loadIssueItemViewsOfKinds,
   type StoredBlock,
 } from "./items/registry";
-import { getMagazineForCommunity, normalizeTopics } from "./magazine-service";
+import {
+  getMagazineForCommunity,
+  magazineTopicsOf,
+  normalizeTopics,
+} from "./magazine-service";
 import {
   type IssueReadScope,
   issueReadScopeForCommunity,
@@ -160,12 +164,6 @@ export async function findMagazineBySlug(
   return docs[0] ?? null;
 }
 
-function topicsOf(magazine: Magazine): string[] {
-  return (magazine.topics ?? [])
-    .map((t) => t.topic)
-    .filter((t): t is string => Boolean(t));
-}
-
 function toMagazineSummary(magazine: Magazine): MagazineSummary {
   return {
     id: magazine.id,
@@ -173,7 +171,7 @@ function toMagazineSummary(magazine: Magazine): MagazineSummary {
     slug: magazine.slug,
     logoUrl: magazine.logoUrl ?? null,
     description: magazine.description ?? null,
-    topics: topicsOf(magazine),
+    topics: magazineTopicsOf(magazine),
   };
 }
 
@@ -245,7 +243,7 @@ async function readableMagazineIssues(
 function commonTopics(magazines: Magazine[], count: number): string[] {
   const tally = new Map<string, number>();
   for (const magazine of magazines) {
-    for (const topic of topicsOf(magazine)) {
+    for (const topic of magazineTopicsOf(magazine)) {
       tally.set(topic, (tally.get(topic) ?? 0) + 1);
     }
   }
@@ -312,7 +310,7 @@ export async function loadMagazinesHome(
     .filter((doc): doc is Magazine => doc !== undefined);
   const topic = opts.topic ? normalizeTopics([opts.topic])[0] : undefined;
   const shownMagazines = topic
-    ? listedMagazines.filter((doc) => topicsOf(doc).includes(topic))
+    ? listedMagazines.filter((doc) => magazineTopicsOf(doc).includes(topic))
     : listedMagazines;
 
   // Pass 2: full documents for the issues the page shows.

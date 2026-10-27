@@ -20,6 +20,7 @@ export async function communityProjectWhere(
   query: string,
   exclude: readonly number[],
   limit: number,
+  updatedSince?: Date,
 ): Promise<Where> {
   const words = query.split(/\s+/).filter(Boolean);
   // Payload owns this table. Use its SQL identifiers here so app queries do
@@ -48,7 +49,8 @@ export async function communityProjectWhere(
             )})`
           : sql``
       }
-    order by "launchpad_projects"."vote_count" desc limit ${limit}
+      ${updatedSince ? sql`and "launchpad_projects"."updated_at" >= ${updatedSince}` : sql``}
+    order by "launchpad_projects"."vote_count" desc${updatedSince ? sql`, "launchpad_projects"."id"` : sql``} limit ${limit}
   `);
   const scope: Where[] = [{ communityId: { equals: community.id } }];
   if (memberProjects.length)
@@ -58,7 +60,14 @@ export async function communityProjectWhere(
         { id: { in: memberProjects.map((project) => Number(project.id)) } },
       ],
     });
-  return { or: scope };
+  return updatedSince
+    ? {
+        and: [
+          { or: scope },
+          { updatedAt: { greater_than_equal: updatedSince.toISOString() } },
+        ],
+      }
+    : { or: scope };
 }
 
 export async function activeCommunityMemberIds(

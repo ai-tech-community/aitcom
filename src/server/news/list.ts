@@ -1,4 +1,15 @@
-import { and, desc, eq, ilike, inArray, notInArray, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lte,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { escapeLike } from "@/server/db/escape-like";
@@ -67,6 +78,48 @@ export async function searchNewsItems(
       desc(newsItems.createdAt),
     )
     .limit(limit);
+}
+
+/** Topic matches published in the window, newest first, then id. */
+export async function suggestNewsItems(
+  input: {
+    topics: readonly string[];
+    since: Date;
+    until: Date;
+    limit: number;
+    exclude: readonly string[];
+  },
+  database: typeof db = db,
+): Promise<(NewsListItem & { matchedTopic: string })[]> {
+  if (input.topics.length === 0 || input.limit <= 0) return [];
+  const matches = input.topics.map((topic) => {
+    const pattern = `%${escapeLike(topic)}%`;
+    return or(
+      ilike(newsItems.title, pattern),
+      ilike(newsItems.summary, pattern),
+    )!;
+  });
+  const matchedTopic = sql<string>`case ${sql.join(
+    matches.map(
+      (match, index) => sql`when ${match} then ${input.topics[index]}`,
+    ),
+    sql` `,
+  )} end`;
+  return database
+    .select({ ...newsListColumns, matchedTopic })
+    .from(newsItems)
+    .where(
+      and(
+        gte(newsItems.publishedAt, input.since),
+        lte(newsItems.publishedAt, input.until),
+        or(...matches),
+        input.exclude.length
+          ? notInArray(newsItems.id, [...input.exclude])
+          : undefined,
+      ),
+    )
+    .orderBy(desc(newsItems.publishedAt), newsItems.id)
+    .limit(input.limit);
 }
 
 async function withAiFlags(rows: NewsListItem[]): Promise<NewsListItem[]> {
