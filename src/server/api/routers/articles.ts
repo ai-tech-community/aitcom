@@ -288,7 +288,8 @@ export const articlesRouter = createTRPCRouter({
         }),
       };
 
-      switch (channelFor(existing).editPolicy) {
+      const policy = channelFor(existing).editPolicy;
+      switch (policy) {
         case "magazine":
           return articleWrite(() =>
             saveMagazineArticle(
@@ -298,38 +299,45 @@ export const articlesRouter = createTRPCRouter({
               patch,
             ),
           );
-        case "trusted_author":
+        case "trusted_author": {
           await assertMayEditBlog(ctx, existing);
-          break;
-      }
 
-      if (
-        existing.status !== "published" &&
-        existing.status !== "draft" &&
-        !["draft", "changes_requested"].includes(existing.reviewStatus ?? "")
-      ) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Article is pending review and cannot be edited.",
-        });
-      }
+          if (
+            existing.status !== "published" &&
+            existing.status !== "draft" &&
+            !["draft", "changes_requested"].includes(
+              existing.reviewStatus ?? "",
+            )
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Article is pending review and cannot be edited.",
+            });
+          }
 
-      const updated = await articleWrite(() =>
-        payload.update({
-          collection: "articles",
-          id,
-          data: {
-            ...patch,
-            ...(existing.reviewStatus === "changes_requested" && {
-              reviewStatus: null,
-              reviewNote: null,
+          const updated = await articleWrite(() =>
+            payload.update({
+              collection: "articles",
+              id,
+              data: {
+                ...patch,
+                ...(existing.reviewStatus === "changes_requested" && {
+                  reviewStatus: null,
+                  reviewNote: null,
+                }),
+              },
+              draft: existing.status === "draft",
             }),
-          },
-          draft: existing.status === "draft",
-        }),
-      );
+          );
 
-      return updated;
+          return updated;
+        }
+        default: {
+          const unreachable: never = policy;
+          // eslint-disable-next-line @typescript-eslint/only-throw-error -- Exhaustive policy: this branch is unreachable.
+          throw unreachable;
+        }
+      }
     }),
 
   // ── Submit for Review / Publish ─────────────────────────────────────────────
@@ -391,7 +399,8 @@ export const articlesRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "Not your article" });
       }
 
-      switch (channelFor(article).editPolicy) {
+      const policy = channelFor(article).editPolicy;
+      switch (policy) {
         case "magazine":
           await articleWrite(() =>
             deleteMagazineArticle(
@@ -401,22 +410,26 @@ export const articlesRouter = createTRPCRouter({
             ),
           );
           return { success: true };
-        case "trusted_author":
-          break;
+        case "trusted_author": {
+          if (article.status === "published") {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Cannot delete published articles.",
+            });
+          }
+
+          // An issue still holds it: the editor takes it out first. (The
+          // Articles beforeDelete hook guards every other delete path.)
+          await assertArticleNotPlaced(payload, input.id);
+
+          await payload.delete({ collection: "articles", id: input.id });
+          return { success: true };
+        }
+        default: {
+          const unreachable: never = policy;
+          // eslint-disable-next-line @typescript-eslint/only-throw-error -- Exhaustive policy: this branch is unreachable.
+          throw unreachable;
+        }
       }
-
-      if (article.status === "published") {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Cannot delete published articles.",
-        });
-      }
-
-      // An issue still holds it: the editor takes it out first. (The
-      // Articles beforeDelete hook guards every other delete path.)
-      await assertArticleNotPlaced(payload, input.id);
-
-      await payload.delete({ collection: "articles", id: input.id });
-      return { success: true };
     }),
 });
