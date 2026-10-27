@@ -22,6 +22,7 @@ import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
 
 import type { Deps, PayloadClient } from "./deps";
+import { interleaveArticleWrites } from "./test-row-lock";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -486,10 +487,12 @@ describe.skipIf(!RUN_DB)(
     });
 
     it("two decisions at once: one wins, one notice", async () => {
-      const results = await Promise.allSettled([
-        review("approve", fx.l.id),
-        review("reject", fx.l.id, undefined, fx.users.owner),
-      ]);
+      const results = await interleaveArticleWrites(
+        m.payload,
+        fx.l.id,
+        () => review("approve", fx.l.id),
+        () => review("reject", fx.l.id, undefined, fx.users.owner),
+      );
       expect(
         results.filter((result) => result.status === "fulfilled"),
       ).toHaveLength(1);
@@ -570,6 +573,11 @@ describe.skipIf(!RUN_DB)(
             eq(m.schema.communityMemberships.userId, fx.users.l),
           ),
         );
+      expect(
+        await callerAs(fx.users.editor).magazines.reviewQueue({
+          slug: fx.community.slug,
+        }),
+      ).toContainEqual(expect.objectContaining({ id: fx.l.id }));
       await expect(review("approve", fx.l.id)).resolves.toEqual({
         reviewStatus: "approved",
       });

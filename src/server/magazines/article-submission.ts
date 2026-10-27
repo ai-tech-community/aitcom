@@ -8,7 +8,11 @@ import { communities } from "@/server/db/schema";
 
 import { assertArticleNotPlaced } from "./article-placement";
 import type { Deps } from "./deps";
-import { listMagazineEditorIds, standingCan } from "./editorship";
+import {
+  listMagazineEditorIds,
+  standingCan,
+  type MagazineStanding,
+} from "./editorship";
 import { magazineError } from "./errors";
 import { requireMagazineCapability } from "./magazine-articles";
 import { notifyArticleSubmitted } from "./notifications";
@@ -22,6 +26,17 @@ import {
 export type ArticlePatch = Partial<
   Pick<Article, "title" | "content" | "type" | "tags" | "mediaUrl">
 >;
+
+/** Author and writer-open checks belong to the locked write seam. */
+function assertWriterMayChange(
+  article: Article,
+  userId: string,
+  standing: MagazineStanding,
+): void {
+  if (article.authorId !== userId) throw new TRPCError({ code: "FORBIDDEN" });
+  if (!mayWriterChange(standingCan(standing, "edit"), article))
+    throw magazineError("ARTICLE_LOCKED");
+}
 
 /**
  * The magazine decides the hand-in from the writer's current capabilities.
@@ -42,6 +57,7 @@ export async function submitMagazineArticle(
       userId,
       "write",
     );
+    assertWriterMayChange(locked, userId, standing);
     switch (handInFor(standingCan(standing, "edit"))) {
       case "mark_ready":
         return {
@@ -49,8 +65,6 @@ export async function submitMagazineArticle(
           magazine: null,
         };
       case "send_for_review":
-        if (!mayWriterChange(false, locked))
-          throw magazineError("ARTICLE_LOCKED");
         return {
           article: await deps.payload.update({
             collection: "articles",
@@ -104,7 +118,7 @@ async function markReadyForIssue(
   return deps.payload.update({
     collection: "articles",
     id: article.id,
-    data: { reviewStatus: "approved" },
+    data: { reviewStatus: "approved", reviewNote: null },
     req: tx.req,
   });
 }
@@ -125,8 +139,7 @@ export async function saveMagazineArticle(
       userId,
       "write",
     );
-    if (!mayWriterChange(standingCan(standing, "edit"), locked))
-      throw magazineError("ARTICLE_LOCKED");
+    assertWriterMayChange(locked, userId, standing);
     return deps.payload.update({
       collection: "articles",
       id: locked.id,
@@ -159,8 +172,7 @@ export async function deleteMagazineArticle(
       userId,
       "write",
     );
-    if (!mayWriterChange(standingCan(standing, "edit"), locked))
-      throw magazineError("ARTICLE_LOCKED");
+    assertWriterMayChange(locked, userId, standing);
     if (locked.status === "published") {
       throw new TRPCError({
         code: "FORBIDDEN",

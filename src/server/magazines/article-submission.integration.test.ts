@@ -7,6 +7,7 @@ import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
 
 import type { PayloadClient } from "./deps";
+import { interleaveArticleWrites } from "./test-row-lock";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -290,12 +291,53 @@ describe.skipIf(!RUN_DB)(
 
     it("an editor's own hand-in still approves directly", async () => {
       const article = await writeArticle(fx.editorId);
+      await setReview(article.id, "changes_requested", "Shorter intro");
       const xp = await xpOf(fx.editorId);
       await expect(
         callerAs(fx.editorId).articles.submit({ id: article.id }),
-      ).resolves.toMatchObject({ reviewStatus: "approved", status: "draft" });
+      ).resolves.toMatchObject({
+        reviewStatus: "approved",
+        reviewNote: null,
+        status: "draft",
+      });
+      expect(await latest(article.id)).toMatchObject({
+        reviewStatus: "approved",
+        reviewNote: null,
+      });
       expect(await submittedNotices()).toEqual([]);
       expect(await xpOf(fx.editorId)).toBe(xp);
+    });
+
+    it("a contributor cannot save, delete or hand in another contributor's draft through the service", async () => {
+      const {
+        saveMagazineArticle,
+        deleteMagazineArticle,
+        submitMagazineArticle,
+      } = await import("./article-submission");
+      await m.db.insert(m.schema.magazineStaff).values({
+        magazineId: fx.magazineId,
+        communityId: fx.community.id,
+        userId: fx.memberId,
+        role: "contributor",
+        assignedBy: fx.ownerId,
+      });
+      const article = await writeArticle(fx.memberId);
+      for (const action of [
+        () =>
+          saveMagazineArticle(m, article.id, fx.contributorId, {
+            title: "Not mine",
+          }),
+        () => deleteMagazineArticle(m, article.id, fx.contributorId),
+        () => submitMagazineArticle(m, article, fx.contributorId),
+        () => submitMagazineArticle(m, article, fx.editorId),
+      ])
+        await expect(action()).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(await latest(article.id)).toMatchObject({
+        title: "Original story",
+        authorId: fx.memberId,
+        reviewStatus: null,
+      });
+      expect(await submittedNotices()).toEqual([]);
     });
 
     it("a sent, approved or declined article is locked for its contributor", async () => {
@@ -458,10 +500,12 @@ describe.skipIf(!RUN_DB)(
     it("two send-ins at once notify each editor once", async () => {
       const article = await writeArticle();
       const writer = callerAs(fx.contributorId).articles;
-      const results = await Promise.allSettled([
-        writer.submit({ id: article.id }),
-        writer.submit({ id: article.id }),
-      ]);
+      const results = await interleaveArticleWrites(
+        m.payload,
+        article.id,
+        () => writer.submit({ id: article.id }),
+        () => writer.submit({ id: article.id }),
+      );
       expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
       expect(results.find((r) => r.status === "rejected")).toMatchObject({
         reason: { code: "CONFLICT", message: "ARTICLE_LOCKED" },
@@ -477,19 +521,20 @@ describe.skipIf(!RUN_DB)(
     it("a save racing a send-in cannot change the sent text", async () => {
       const article = await writeArticle();
       const writer = callerAs(fx.contributorId).articles;
-      const [save, submit] = await Promise.allSettled([
-        writer.update({ id: article.id, title: "Late" }),
-        writer.submit({ id: article.id }),
-      ]);
+      const [submit, save] = await interleaveArticleWrites(
+        m.payload,
+        article.id,
+        () => writer.submit({ id: article.id }),
+        () => writer.update({ id: article.id, title: "Late" }),
+      );
       expect(submit.status).toBe("fulfilled");
-      if (save.status === "rejected")
-        expect(save.reason).toMatchObject({
-          code: "CONFLICT",
-          message: "ARTICLE_LOCKED",
-        });
+      expect(save).toMatchObject({
+        status: "rejected",
+        reason: { code: "CONFLICT", message: "ARTICLE_LOCKED" },
+      });
       expect(await latest(article.id)).toMatchObject({
         reviewStatus: "pending_review",
-        title: save.status === "fulfilled" ? "Late" : "Original story",
+        title: "Original story",
       });
       expect(await submittedNotices()).toHaveLength(2);
     });
