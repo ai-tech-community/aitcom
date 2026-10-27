@@ -1,6 +1,7 @@
 import { createTranslator } from "next-intl";
 
 import { loadMessages } from "@/i18n/messages";
+import type { ScheduleFailure } from "@/lib/magazines/issue-history";
 import {
   communityMagazinePath,
   issueBuilderPath,
@@ -23,7 +24,10 @@ export const MAGAZINE_ARTICLE_REVIEWED_NOTIFICATION =
 export const MAGAZINE_ISSUE_SCHEDULE_FAILED_NOTIFICATION =
   "magazine_issue_schedule_failed";
 
-export type ScheduleFailure = "empty" | "invalid_item" | "no_rights" | "error";
+export {
+  SCHEDULE_FAILURES,
+  type ScheduleFailure,
+} from "@/lib/magazines/issue-history";
 
 export type NoticeCommunity = { id: string; slug: string };
 
@@ -128,6 +132,7 @@ export async function notifyScheduleFailed(
         invalid_item: "notifications.scheduleFailed.content.invalid_item",
         no_rights: "notifications.scheduleFailed.content.no_rights",
         error: "notifications.scheduleFailed.content.error",
+        auto_off: "notifications.scheduleFailed.content.auto_off",
       } as const satisfies Record<ScheduleFailure, string>;
       return input.editorIds.map((userId) => ({
         userId,

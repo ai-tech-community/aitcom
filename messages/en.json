@@ -5258,6 +5258,7 @@
       "scheduleFailed": {
         "title": "“{title}” did not go out",
         "content": {
+          "auto_off": "Automatic publishing is switched off for {magazine}, so this issue stays a draft. Publish it yourself when it is ready.",
           "empty": "It has no items, so it could not be published. It is a draft again.",
           "invalid_item": "Something in it needs fixing. Open it to see what. It is a draft again.",
           "no_rights": "The person who scheduled it can no longer publish for {magazine}. Open it to publish or schedule it yourself.",

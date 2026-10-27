@@ -1,10 +1,12 @@
 import { eq } from "drizzle-orm";
 
 import type { MagazineIssue } from "@/payload-types";
-import type { PublishOrigin } from "@/lib/magazines/values";
+import type { ScheduleFailure } from "@/lib/magazines/issue-history";
+import type { PublishOrigin, ScheduleOrigin } from "@/lib/magazines/values";
 import { communities } from "@/server/db/schema";
 
 import type { Deps } from "./deps";
+import { autoPublishAllowed } from "./auto-draft/settings";
 import {
   listMagazineEditorIds,
   loadMagazineEditorship,
@@ -17,12 +19,23 @@ import {
   unscheduleIssue,
   type IssueActor,
 } from "./issue-service";
-import { notifyScheduleFailed, type ScheduleFailure } from "./notifications";
+import { notifyScheduleFailed } from "./notifications";
 import { isConcurrencyAbort } from "./payload-writes";
 import { requireRelationId } from "./relation-id";
 
 export const DUE_BATCH = 20;
 export const SCHEDULE_RETRY_LIMIT_MINUTES = 60;
+
+const SCHEDULE_ORIGIN_CHECKS: Record<
+  ScheduleOrigin,
+  (deps: Deps, issue: MagazineIssue) => Promise<ScheduleFailure | null>
+> = {
+  schedule: async () => null,
+  auto: async (deps, issue) =>
+    (await autoPublishAllowed(deps.db, requireRelationId(issue.magazine)))
+      ? null
+      : "auto_off",
+};
 
 export type DueRunResult = {
   published: number;
@@ -37,7 +50,13 @@ async function failSchedule(
   reason: ScheduleFailure | null,
 ): Promise<boolean> {
   try {
-    await unscheduleIssue(deps, issue, issue.updatedAt, null);
+    await unscheduleIssue(
+      deps,
+      issue,
+      issue.updatedAt,
+      null,
+      reason ? { failure: reason } : undefined,
+    );
   } catch (error) {
     const code = magazineErrorCodeOf(error);
     if (code !== "ISSUE_CHANGED" && code !== "ISSUE_NOT_SCHEDULED") {
@@ -118,9 +137,12 @@ async function resolveScheduledPublisher(
   if (!issue.scheduledBy || !standingCan(standing, "edit")) {
     return "no_rights";
   }
+  const origin = issue.scheduledVia ?? "schedule";
+  const failure = await SCHEDULE_ORIGIN_CHECKS[origin](deps, issue);
+  if (failure) return failure;
   return {
     actor: { userId: issue.scheduledBy, community },
-    origin: "schedule",
+    origin,
   };
 }
 

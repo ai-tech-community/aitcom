@@ -388,13 +388,569 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     return rows.length;
   }
 
+  describe("automatic schedules and issue history", () => {
+    const baseTime = new Date("2026-10-27T12:00:00Z");
+    const at = (minutes: number) =>
+      new Date(baseTime.getTime() + minutes * 60_000);
+    const history = async (magazineId: number) =>
+      (await import("./issue-history")).listIssueHistory(m.db, magazineId);
+
+    async function fixture() {
+      const c = await community("automatic");
+      const mag = await magazineIn(c);
+      const editorId = `isv-appointed-${fx.sfx}`;
+      fx.userIds.push(editorId);
+      await m.db.insert(m.schema.user).values({
+        id: editorId,
+        email: `${editorId}@example.test`,
+        name: "Appointed editor",
+      });
+      await m.db.insert(m.schema.memberProfiles).values({
+        userId: editorId,
+        displayName: "Appointed editor",
+      });
+      await m.db.insert(m.schema.communityMemberships).values([
+        { communityId: c.id, userId: fx.userId, role: "owner" },
+        { communityId: c.id, userId: editorId, role: "member" },
+      ]);
+      await m.db.insert(m.schema.magazineStaff).values({
+        magazineId: mag.id,
+        communityId: c.id,
+        userId: editorId,
+        role: "editor",
+        assignedBy: fx.userId,
+      });
+      const editor = { userId: editorId, community: c };
+      const draft = await m.issues.createIssue(
+        m,
+        mag,
+        { title: "Automatic" },
+        actor(c),
+      );
+      const articleId = await article("automatic", mag.id);
+      const { issue } = await m.issues.setIssueItems(
+        m,
+        draft,
+        [articleItem(articleId), editorialItem("A note")],
+        draft.updatedAt,
+        { ...editor, via: "auto" },
+      );
+      return { c, mag, editor, issue, articleId };
+    }
+
+    async function automatic(
+      issue: MagazineIssue,
+      editor: IssueService.IssueActor,
+    ) {
+      return m.issues.scheduleIssue(
+        m,
+        issue,
+        at(60 * 24),
+        issue.updatedAt,
+        editor,
+        at(0),
+        { via: "auto" },
+      );
+    }
+
+    it("an automatic schedule is recorded as automatic", async () => {
+      const { c, mag, issue, editor } = await fixture();
+      const scheduled = await automatic(issue, editor);
+      expect(scheduled.scheduledVia).toBe("auto");
+      const stopped = await m.issues.unscheduleIssue(
+        m,
+        scheduled,
+        scheduled.updatedAt,
+        editor,
+      );
+      expect(stopped.scheduledVia).toBeNull();
+      const manual = await m.issues.scheduleIssue(
+        m,
+        stopped,
+        at(60 * 24),
+        stopped.updatedAt,
+        editor,
+        at(0),
+      );
+      expect(manual.scheduledVia).toBe("schedule");
+      const rescheduled = await automatic(manual, editor);
+      const takenOver = await m.issues.scheduleIssue(
+        m,
+        rescheduled,
+        at(60 * 24),
+        rescheduled.updatedAt,
+        editor,
+        at(0),
+      );
+      expect(takenOver.scheduledVia).toBe("schedule");
+      const published = await m.issues.publishIssue(
+        m,
+        takenOver,
+        takenOver.updatedAt,
+        actor(c),
+      );
+      expect(published.scheduledVia).toBeNull();
+      expect(await history(mag.id)).toHaveLength(2);
+    });
+
+    it("a person's edit stops the automatic publish", async () => {
+      const { issue, editor, mag, articleId } = await fixture();
+      const scheduled = await automatic(issue, editor);
+      const { issue: saved } = await m.issues.setIssueItems(
+        m,
+        scheduled,
+        [articleItem(articleId, scheduled.items![0]!.id!)],
+        scheduled.updatedAt,
+        editor,
+      );
+      expect(saved).toMatchObject({
+        status: "draft",
+        scheduledFor: null,
+        scheduledBy: null,
+        scheduledVia: null,
+      });
+      expect(saved.items).toHaveLength(1);
+      const rows = await history(mag.id);
+      expect(
+        rows.map(({ detail, actorName, issue: snapshot }) => ({
+          detail,
+          actorName,
+          issue: snapshot,
+        })),
+      ).toEqual([
+        {
+          detail: { event: "auto_publish_stopped", why: "edited" },
+          actorName: "Appointed editor",
+          issue: {
+            id: issue.id,
+            number: Number(issue.number),
+            title: issue.title,
+            status: "draft",
+          },
+        },
+        {
+          detail: { event: "items_changed", itemCount: 1 },
+          actorName: "Appointed editor",
+          issue: {
+            id: issue.id,
+            number: Number(issue.number),
+            title: issue.title,
+            status: "draft",
+          },
+        },
+      ]);
+      expect(rows[0]!.createdAt).toBe(rows[1]!.createdAt);
+      expect(rows[0]!.id).toBeGreaterThan(rows[1]!.id);
+      const again = await automatic(saved, editor);
+      const renamed = await m.issues.updateIssueDetails(
+        m,
+        again,
+        { title: "Edited title" },
+        again.updatedAt,
+        editor,
+        false,
+      );
+      expect(renamed).toMatchObject({
+        title: "Edited title",
+        status: "draft",
+        scheduledFor: null,
+        scheduledBy: null,
+        scheduledVia: null,
+      });
+      expect((await history(mag.id)).map((row) => row.detail)).toEqual([
+        { event: "auto_publish_stopped", why: "edited" },
+        { event: "auto_publish_stopped", why: "edited" },
+        { event: "items_changed", itemCount: 1 },
+      ]);
+      expect((await history(mag.id))[0]).toMatchObject({
+        actorName: "Appointed editor",
+        issue: { title: "Edited title" },
+      });
+    });
+
+    it("the auto-drafter's own save does not stop it", async () => {
+      const { issue, editor, mag, articleId } = await fixture();
+      const scheduled = await automatic(issue, editor);
+      const auto = { ...editor, via: "auto" as const };
+      const { issue: saved } = await m.issues.setIssueItems(
+        m,
+        scheduled,
+        [articleItem(articleId, scheduled.items![0]!.id!)],
+        scheduled.updatedAt,
+        auto,
+      );
+      const renamed = await m.issues.updateIssueDetails(
+        m,
+        saved,
+        { title: "Automatic title" },
+        saved.updatedAt,
+        auto,
+        false,
+      );
+      expect(renamed).toMatchObject({
+        status: "scheduled",
+        scheduledVia: "auto",
+        scheduledBy: editor.userId,
+        scheduledFor: at(60 * 24).toISOString(),
+      });
+      expect(await history(mag.id)).toEqual([]);
+    });
+
+    it("a person's schedule is not touched by edits", async () => {
+      const { issue, editor } = await fixture();
+      const scheduled = await m.issues.scheduleIssue(
+        m,
+        issue,
+        at(60 * 24),
+        issue.updatedAt,
+        editor,
+        at(0),
+      );
+      const { issue: saved } = await m.issues.setIssueItems(
+        m,
+        scheduled,
+        [editorialItem("Changed")],
+        scheduled.updatedAt,
+        editor,
+      );
+      const renamed = await m.issues.updateIssueDetails(
+        m,
+        saved,
+        { title: "Changed title" },
+        saved.updatedAt,
+        editor,
+        false,
+      );
+      expect(renamed).toMatchObject({
+        status: "scheduled",
+        scheduledVia: "schedule",
+        scheduledBy: editor.userId,
+        scheduledFor: at(60 * 24).toISOString(),
+      });
+    });
+
+    it("stopping an automatic publish is in the history", async () => {
+      const { issue, editor, mag } = await fixture();
+      const scheduled = await automatic(issue, editor);
+      const stopped = await m.issues.unscheduleIssue(
+        m,
+        scheduled,
+        scheduled.updatedAt,
+        editor,
+      );
+      const again = await automatic(stopped, editor);
+      const failed = await m.issues.unscheduleIssue(
+        m,
+        again,
+        again.updatedAt,
+        null,
+        { failure: "auto_off" },
+      );
+      const manual = await m.issues.scheduleIssue(
+        m,
+        failed,
+        at(60 * 24),
+        failed.updatedAt,
+        editor,
+        at(0),
+      );
+      await m.issues.unscheduleIssue(m, manual, manual.updatedAt, editor);
+      expect(
+        (await history(mag.id)).map(({ detail, actorName }) => ({
+          detail,
+          actorName,
+        })),
+      ).toEqual([
+        {
+          detail: {
+            event: "auto_publish_stopped",
+            why: "failed",
+            failure: "auto_off",
+          },
+          actorName: null,
+        },
+        {
+          detail: { event: "auto_publish_stopped", why: "stopped" },
+          actorName: "Appointed editor",
+        },
+      ]);
+    });
+
+    it("history says how and by whom an issue went out or was deleted", async () => {
+      const { c, issue, editor, mag } = await fixture();
+      await m.issues.publishIssue(m, issue, issue.updatedAt, actor(c));
+      const another = await m.issues.createIssue(
+        m,
+        mag,
+        { title: "Another" },
+        actor(c),
+      );
+      const { issue: filled } = await m.issues.setIssueItems(
+        m,
+        another,
+        [editorialItem("Automatic")],
+        another.updatedAt,
+        { ...editor, via: "auto" },
+      );
+      const scheduled = await automatic(filled, editor);
+      const published = await m.issues.publishIssue(
+        m,
+        scheduled,
+        scheduled.updatedAt,
+        editor,
+        { origin: "auto" },
+      );
+      expect(published.scheduledVia).toBeNull();
+      const deleted = await m.issues.createIssue(
+        m,
+        mag,
+        { title: "Deleted title" },
+        editor,
+      );
+      await m.issues.deleteDraftIssue(m, deleted, editor);
+      expect(
+        await m.payload.findByID({
+          collection: "magazine-issues",
+          id: deleted.id,
+          disableErrors: true,
+        }),
+      ).toBeNull();
+      const hidden = await m.issues.createIssue(
+        m,
+        mag,
+        { title: "Half-made" },
+        editor,
+      );
+      await m.issues.deleteDraftIssue(m, hidden, { ...editor, via: "auto" });
+      expect(await history(mag.id)).toMatchObject([
+        {
+          detail: { event: "deleted" },
+          actorName: "Appointed editor",
+          issue: {
+            id: null,
+            number: Number(deleted.number),
+            title: "Deleted title",
+            status: null,
+          },
+        },
+        {
+          detail: { event: "published", origin: "auto" },
+          actorName: null,
+          issue: { id: published.id, status: "published" },
+        },
+        {
+          detail: { event: "published", origin: "button" },
+          actorName: fx.userId,
+          issue: { id: issue.id, status: "published" },
+        },
+      ]);
+      const { eq } = await import("drizzle-orm");
+      const stored = await m.db
+        .select()
+        .from(m.schema.magazineIssueHistory)
+        .where(eq(m.schema.magazineIssueHistory.magazineId, mag.id));
+      expect(
+        stored
+          .filter((row) => row.event === "published")
+          .map((row) => row.origin)
+          .sort(),
+      ).toEqual(["auto", "button"]);
+      expect(stored.find((row) => row.event === "deleted")).toMatchObject({
+        origin: null,
+        issueId: null,
+        actorId: editor.userId,
+      });
+    });
+
+    it("deletion history snapshots the draft claimed for deletion", async () => {
+      const { issue, editor, mag } = await fixture();
+      await m.issues.updateIssueDetails(
+        m,
+        issue,
+        { title: "Renamed before deletion" },
+        issue.updatedAt,
+        editor,
+        false,
+      );
+      // The delete still holds the copy from before the other editor's save.
+      await m.issues.deleteDraftIssue(m, issue, editor);
+      expect(await history(mag.id)).toMatchObject([
+        {
+          detail: { event: "deleted" },
+          issue: {
+            id: null,
+            number: Number(issue.number),
+            title: "Renamed before deletion",
+            status: null,
+          },
+        },
+      ]);
+    });
+
+    it("many quick saves make one history line", async () => {
+      const { c, issue, editor, mag } = await fixture();
+      const save = async (current: MagazineIssue, who = editor) =>
+        (
+          await m.issues.setIssueItems(
+            m,
+            current,
+            [editorialItem("Saved")],
+            current.updatedAt,
+            who,
+          )
+        ).issue;
+      let saved = await save(issue);
+      saved = await save(saved);
+      expect(await history(mag.id)).toHaveLength(1);
+      saved = await save(saved, actor(c));
+      saved = await save(saved, actor(c));
+      expect(await history(mag.id)).toHaveLength(2);
+      const { sql } = await import("drizzle-orm");
+      await m.db.execute(
+        sql`UPDATE "app"."magazine_issue_history" SET "created_at" = CURRENT_TIMESTAMP - interval '61 minutes' WHERE "magazine_id" = ${mag.id}`,
+      );
+      saved = await save(saved, actor(c));
+      expect(await history(mag.id)).toHaveLength(3);
+      const rescheduled = await automatic(saved, editor);
+      const stopped = await m.issues.unscheduleIssue(
+        m,
+        rescheduled,
+        rescheduled.updatedAt,
+        editor,
+      );
+      await save(stopped, actor(c));
+      expect((await history(mag.id)).map((row) => row.detail.event)).toEqual([
+        "items_changed",
+        "auto_publish_stopped",
+        "items_changed",
+        "items_changed",
+        "items_changed",
+      ]);
+    });
+
+    it("creates a draft with the given layout and visibility", async () => {
+      const c = await community("overrides");
+      const mag = await magazineIn(c);
+      const custom = await m.issues.createIssue(
+        m,
+        mag,
+        { title: "Custom" },
+        actor(c),
+        {
+          layout: "cover-story",
+          visibility: {
+            visibility: "public",
+            publicConfirmedBy: fx.userId,
+            publicConfirmedAt: at(0).toISOString(),
+          },
+        },
+      );
+      expect(custom).toMatchObject({
+        status: "draft",
+        layout: "cover-story",
+        visibility: "public",
+        publicConfirmedBy: fx.userId,
+        publicConfirmedAt: at(0).toISOString(),
+      });
+      const plain = await m.issues.createIssue(
+        m,
+        mag,
+        { title: "Default" },
+        actor(c),
+      );
+      expect(plain).toMatchObject({
+        layout: "cover-story",
+        visibility: "members",
+        publicConfirmedBy: null,
+        publicConfirmedAt: null,
+      });
+    });
+
+    it("lists the latest 30 history entries, including events without an issue", async () => {
+      const { inPayloadTransaction } = await import("./payload-writes");
+      const { recordIssueHistory } = await import("./issue-history");
+      const mag = await magazineIn(await community("history-limit"));
+      const other = await magazineIn(await community("history-other"), "other");
+      await inPayloadTransaction(m.payload, async (tx) => {
+        for (let found = 0; found < 32; found++) {
+          await recordIssueHistory(
+            tx,
+            {
+              magazineId: mag.id,
+              issue: null,
+              actorId: null,
+              detail: {
+                event: "draft_skipped",
+                trigger: "schedule",
+                reason: "too_few",
+                found,
+                needed: 40,
+              },
+            },
+            at(0),
+          );
+        }
+        await recordIssueHistory(
+          tx,
+          {
+            magazineId: other.id,
+            issue: null,
+            actorId: null,
+            detail: {
+              event: "draft_skipped",
+              trigger: "schedule",
+              reason: "no_rights",
+              found: null,
+              needed: null,
+            },
+          },
+          at(0),
+        );
+      });
+      const rows = await history(mag.id);
+      expect(rows).toHaveLength(30);
+      expect(rows.map((row) => row.detail)).toEqual(
+        Array.from({ length: 30 }, (_, index) => ({
+          event: "draft_skipped",
+          trigger: "schedule",
+          reason: "too_few",
+          found: 31 - index,
+          needed: 40,
+        })),
+      );
+      for (const row of rows) {
+        expect(row).toMatchObject({
+          actorName: null,
+          issue: null,
+          createdAt: at(0).toISOString(),
+        });
+      }
+    });
+  });
+
   // ── Magazine ──────────────────────────────────────────────────────────
 
   it("creates the magazine once per community and adds the Magazine tab", async () => {
     const c = await community("once", { defaultSpaces: true });
 
     // Two editors create at the same moment (preflight F4): the unique
-    // community index lets one through.
+    // community index lets one through. Hold the first create until both
+    // callers have read: otherwise the second can legitimately update it.
+    let creating = 0;
+    let release!: () => void;
+    const bothCreating = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const create = m.payload.create.bind(m.payload);
+    const createSpy = vi
+      .spyOn(m.payload, "create")
+      .mockImplementation(async (args) => {
+        if (args.collection === "magazines") {
+          if (++creating === 2) release();
+          await bothCreating;
+        }
+        return create(args);
+      });
     const results = await Promise.allSettled([
       m.magazines.saveMagazineSettings(
         m,
@@ -410,7 +966,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
         fx.userId,
         true,
       ),
-    ]);
+    ]).finally(() => createSpy.mockRestore());
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const rejected = results.filter((r) => r.status === "rejected");
     expect(rejected).toHaveLength(1);

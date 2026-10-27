@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import * as messages from "@/i18n/messages";
+import type { ScheduleFailure } from "@/lib/magazines/issue-history";
 import { notifications } from "@/server/db/schema";
 
 import type { Deps } from "./deps";
@@ -9,7 +10,6 @@ import {
   issuePublishedNotices,
   notifyRoleAssigned,
   notifyScheduleFailed,
-  type ScheduleFailure,
 } from "./notifications";
 
 afterEach(() => vi.restoreAllMocks());
@@ -25,6 +25,8 @@ describe("magazine notices", () => {
         "The person who scheduled it can no longer publish for The Gazette. Open it to publish or schedule it yourself.",
       error:
         "Something went wrong on our side, so it could not be published. It is a draft again. Open it to try again.",
+      auto_off:
+        "Automatic publishing is switched off for The Gazette, so this issue stays a draft. Publish it yourself when it is ready.",
     };
     for (const reason of Object.keys(copy) as ScheduleFailure[]) {
       const values = vi.fn<
