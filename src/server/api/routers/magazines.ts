@@ -36,7 +36,9 @@ import {
   type IssueActor,
   type IssueDetailsPatch,
   publishIssue,
+  scheduleIssue,
   setIssueItems,
+  unscheduleIssue,
   updateIssueDetails,
 } from "@/server/magazines/issue-service";
 import { issueItemInputSchema } from "@/server/magazines/items/registry";
@@ -58,6 +60,7 @@ import {
   searchStaffCandidates,
 } from "@/server/magazines/staff-service";
 import { getPayloadClient } from "@/server/payload";
+import { countSubscribers } from "@/server/magazines/subscriptions/service";
 
 /**
  * The magazine editor API (ADR-0042/0043). Every procedure is a community
@@ -193,6 +196,11 @@ const staffUserInput = z.object({
 });
 
 export const magazinesRouter = createTRPCRouter({
+  subscriberCounts: writerProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(({ ctx }) =>
+      ctx.magazine ? countSubscribers(ctx.db, ctx.magazine.id) : null,
+    ),
   getSettings: managerProcedure
     .input(z.object({ slug: z.string() }))
     .query(({ ctx }) => ({
@@ -345,6 +353,31 @@ export const magazinesRouter = createTRPCRouter({
         actorOf(ctx),
       );
     }),
+
+  scheduleIssue: issueProcedure
+    .input(
+      issueWrite.extend({ publishAt: z.string().datetime({ offset: true }) }),
+    )
+    .mutation(async ({ ctx, input }) =>
+      scheduleIssue(
+        depsOf(ctx),
+        ctx.issue,
+        new Date(input.publishAt),
+        input.expectedUpdatedAt,
+        actorOf(ctx),
+      ),
+    ),
+
+  unscheduleIssue: issueProcedure
+    .input(issueWrite)
+    .mutation(async ({ ctx, input }) =>
+      unscheduleIssue(
+        depsOf(ctx),
+        ctx.issue,
+        input.expectedUpdatedAt,
+        actorOf(ctx),
+      ),
+    ),
 
   publishIssue: issueProcedure
     .input(issueWrite)

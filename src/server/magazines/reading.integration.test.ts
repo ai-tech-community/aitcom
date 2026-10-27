@@ -309,6 +309,81 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     return m.issues.publishIssue(m, draft, draft.updatedAt, actor(c));
   }
 
+  it("the subscription lookup and shelf agree on who may know a magazine", async () => {
+    const { loadIssueReadScope } = await import("./readable-issues");
+    for (const listed of [true, false]) {
+      const c = await community(listed ? "known-listed" : "known-private", {
+        listed,
+      });
+      const mag = await magazineIn(
+        c,
+        listed ? "known-listed" : "known-private",
+        { defaultVisibility: "members" },
+      );
+      for (const viewerId of [null, fx.outsiderId, fx.memberId, fx.editorId]) {
+        const opts = { magazineSlug: mag.slug, viewerId, locale: LOCALE };
+        const shelf = await m.reading.loadMagazineShelf(m, opts);
+        expect(Boolean(await m.reading.findMagazineForViewer(m, opts))).toBe(
+          Boolean(shelf),
+        );
+        expect(
+          await m.reading.readableIssueExists(
+            m,
+            await loadIssueReadScope(m.db, viewerId),
+            mag.id,
+          ),
+        ).toBe(false);
+      }
+      await publishedIssue(c, mag, "Private issue");
+      expect(
+        await m.reading.readableIssueExists(
+          m,
+          await loadIssueReadScope(m.db, fx.memberId),
+          mag.id,
+        ),
+      ).toBe(true);
+      expect(
+        await m.reading.readableIssueExists(
+          m,
+          await loadIssueReadScope(m.db, null),
+          mag.id,
+        ),
+      ).toBe(false);
+      const publicMag = await magazineIn(
+        c,
+        listed ? "known-listed" : "known-private",
+        {
+          defaultVisibility: "public",
+          confirmUnlistedPublic: true,
+        },
+      );
+      await publishedIssue(c, publicMag, "Public issue");
+      expect(
+        await m.reading.findMagazineForViewer(m, {
+          magazineSlug: mag.slug,
+          viewerId: null,
+        }),
+      ).not.toBeNull();
+      const { eq } = await import("drizzle-orm");
+      await m.db
+        .update(m.schema.communities)
+        .set({ deletedAt: new Date() })
+        .where(eq(m.schema.communities.id, c.id));
+      expect(
+        await m.reading.findMagazineForViewer(m, {
+          magazineSlug: mag.slug,
+          viewerId: fx.editorId,
+        }),
+      ).toBeNull();
+    }
+    expect(
+      await m.reading.findMagazineForViewer(m, {
+        magazineSlug: `missing-${fx.sfx}`,
+        viewerId: null,
+      }),
+    ).toBeNull();
+  }, 30_000);
+
   async function approvedArticle(
     label: string,
     magazineId: number,

@@ -3615,7 +3615,7 @@
     "hubMailAgentJobHint": "When an agent completes work you asked for."
   },
   "digestUnsubscribe": {
-    "kicker": "/ DIGEST",
+    "kicker": "Digest",
     "metaTitle": "Unsubscribe",
     "title": "Unsubscribe from the weekly digest",
     "body": "This stops the weekly AIT digest. Community announcements and other Hub emails stay as they are. You can turn the digest back on from your settings.",
@@ -3627,7 +3627,7 @@
     "settings": "Notification settings"
   },
   "storyUnsubscribe": {
-    "kicker": "/ NEWS",
+    "kicker": "News",
     "metaTitle": "Unsubscribe",
     "title": "Unsubscribe from news stories",
     "body": "This stops emails when a news story is published. Other emails stay as they are.",
@@ -3637,6 +3637,31 @@
     "invalidTitle": "This unsubscribe link is not valid",
     "invalidBody": "The link is missing or has been changed.",
     "settings": "Notification settings"
+  },
+  "magazineSubscription": {
+    "metaTitle": "Confirm your subscription",
+    "kicker": "Magazine",
+    "readyTitle": "Get new issues of {magazine} by email?",
+    "readyBody": "Click the button and we will email you each time {magazine} has a new issue.",
+    "action": "Yes, email me new issues",
+    "doneTitle": "You are subscribed",
+    "doneBody": "We will email you when {magazine} has a new issue. Every email has a link to stop.",
+    "openMagazine": "Go to {magazine}",
+    "expiredTitle": "This link is too old",
+    "expiredBody": "Links work for 7 days. Ask for a new one on the magazine page.",
+    "invalidTitle": "This link does not work",
+    "invalidBody": "It may be cut off or replaced by a newer one. Ask for a new one on the magazine page."
+  },
+  "magazineUnsubscribe": {
+    "metaTitle": "Stop magazine emails",
+    "kicker": "Magazine emails",
+    "title": "Stop emails from this magazine?",
+    "body": "You will not get an email about new issues any more.",
+    "action": "Unsubscribe",
+    "doneTitle": "You are unsubscribed",
+    "doneBody": "We will not email you about this magazine again.",
+    "invalidTitle": "This link does not work",
+    "invalidBody": "It may be cut off. Open the magazine page to subscribe again."
   },
   "broadcast": {
     "title": "Send an announcement",
@@ -4746,6 +4771,28 @@
     }
   },
   "magazines": {
+    "subscribe": {
+      "subscribe": "Subscribe",
+      "subscribed": "Subscribed",
+      "unsubscribe": "Unsubscribe",
+      "inboxHelp": "Get a message in your inbox when there is a new issue.",
+      "subscribedNow": "You are subscribed to {magazine}.",
+      "unsubscribedNow": "You are no longer subscribed to {magazine}.",
+      "emailLabel": "Your email address",
+      "emailSubmit": "Send me a link",
+      "emailHelp": "We send one email to check it is you. You can stop any time.",
+      "emailSent": "Check your email and click the link in it to start getting new issues.",
+      "signInInstead": "Have an account? Sign in to get new issues in your inbox.",
+      "tooMany": "Too many tries. Wait a while, then try again.",
+      "failed": "That did not work. Try again."
+    },
+    "notifications": {
+      "issuePublished": {
+        "title": "New in {magazine}: {title}",
+        "content": "Issue {number} is out.",
+        "linkLabel": "Read the issue"
+      }
+    },
     "home": {
       "label": "Magazines",
       "title": "Stories from the communities building AI",
@@ -4787,7 +4834,8 @@
       "noItems": "This issue has no articles yet.",
       "published": "Published {date}",
       "signature": "— {name}, editor",
-      "contentsCount": "{count, plural, one {# item} other {# items}}"
+      "contentsCount": "{count, plural, one {# item} other {# items}}",
+      "scheduledNotice": "Scheduled. Readers cannot see it yet."
     },
     "item": {
       "readArticle": "Read article",
@@ -4880,6 +4928,9 @@
       "issueSlugLocked": "The address of a published issue stays the same, so links to it keep working.",
       "issueEmpty": "Add at least one article or text section before you publish.",
       "issueNotDraft": "This issue is already published.",
+      "scheduleInPast": "Pick a time that is still to come.",
+      "scheduleTooFar": "Pick a time within the next year.",
+      "issueNotScheduled": "This issue is not scheduled any more. Reload to see what changed.",
       "itemInvalid": "Part of this issue is not complete. Check the parts marked in the list and try again.",
       "articlePlaced": "This article is already in another issue.",
       "articleNotReady": "This article is not ready for an issue yet.",
@@ -4972,6 +5023,7 @@
       "issuesEmpty": "No issues yet. Start one with New issue.",
       "status": {
         "draft": "Draft",
+        "scheduled": "Scheduled",
         "published": "Published"
       },
       "ready": "Ready for an issue",
@@ -4988,7 +5040,12 @@
       },
       "loadFailed": "This list could not be loaded.",
       "tryAgain": "Try again",
-      "team": "Team"
+      "team": "Team",
+      "goesOut": "Goes out <timestamp>{time}</timestamp>",
+      "subscribers": "{count, plural, =0 {No subscribers yet} one {<number>#</number> subscriber} other {<number>#</number> subscribers}}",
+      "subscribersWithAccount": "<number>{count}</number> with an account",
+      "subscribersByEmail": "<number>{count}</number> by email",
+      "subscribersWaiting": "<number>{count}</number> waiting to confirm"
     },
     "builder": {
       "metaTitle": "Edit issue",
@@ -4996,6 +5053,7 @@
       "kicker": "{magazine} · Issue {number} · {status}",
       "status": {
         "draft": "Draft",
+        "scheduled": "Scheduled",
         "published": "Published"
       },
       "workspaceLabel": "Put the issue together",
@@ -5164,8 +5222,23 @@
         "successTitle": "Your issue is published",
         "successLead": "Readers can open it now.",
         "read": "Read the issue",
-        "keepEditing": "Keep editing"
-      }
+        "keepEditing": "Keep editing",
+        "when": "When should it go out?",
+        "now": "Now",
+        "later": "Later, at a time I choose",
+        "timeLabel": "Date and time",
+        "timeHelp": "Your time zone: {zone}. It goes out within a few minutes of this time.",
+        "timeInvalid": "Enter a date and a time.",
+        "scheduleConfirm": "Schedule it",
+        "scheduling": "Scheduling…",
+        "currentSchedule": "Scheduled for {time}.",
+        "unschedule": "Cancel the schedule",
+        "scheduledTitle": "Your issue is scheduled",
+        "scheduledLead": "It goes out on {time}. You can still change it until then.",
+        "unscheduledTitle": "The schedule is cancelled",
+        "unscheduledLead": "The issue is a draft again."
+      },
+      "goesOut": "Goes out <timestamp>{time}</timestamp>"
     },
     "roles": {
       "editor_in_chief": {
@@ -5182,6 +5255,16 @@
       }
     },
     "notifications": {
+      "scheduleFailed": {
+        "title": "“{title}” did not go out",
+        "content": {
+          "empty": "It has no items, so it could not be published. It is a draft again.",
+          "invalid_item": "Something in it needs fixing. Open it to see what. It is a draft again.",
+          "no_rights": "The person who scheduled it can no longer publish for {magazine}. Open it to publish or schedule it yourself.",
+          "error": "Something went wrong on our side, so it could not be published. It is a draft again. Open it to try again."
+        },
+        "linkLabel": "Open the issue"
+      },
       "articleReviewed": {
         "approved": {
           "title": "“{title}” is ready for an issue",
@@ -5249,5 +5332,23 @@
       "membersTitle": "The team",
       "empty": "Add someone to help write articles and make issues."
     }
+  },
+  "magazineMail": {
+    "issue": {
+      "subject": "{magazine}: {title}",
+      "lead": "Issue {number} of {magazine}, from {community}, is out.",
+      "action": "Read the issue",
+      "why": "You get this email because you subscribed to {magazine}.",
+      "unsubscribe": "Unsubscribe"
+    },
+    "confirm": {
+      "subject": "Confirm: new issues of {magazine} by email",
+      "heading": "Get new issues of {magazine}?",
+      "body": "Someone, hopefully you, asked us to email this address when {magazine} has a new issue. Click the link below to say yes.",
+      "action": "Yes, email me new issues",
+      "expires": "The link works for 7 days.",
+      "ignore": "Did not ask for this? Then ignore this email. We will not write again."
+    },
+    "footer": "AIT Community"
   }
 }

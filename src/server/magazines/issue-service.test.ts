@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ITEM_PROBLEM_CODES } from "@/lib/magazines/item-views";
 import type { MagazineIssue } from "@/payload-types";
 import { hiddenContentCommunityIds } from "@/server/communities/content-visibility-queries";
 
 import type { Deps } from "./deps";
-import { setIssueItems } from "./issue-service";
+import { isItemProblemCode, setIssueItems } from "./issue-service";
 
 vi.mock("@/server/communities/content-visibility-queries", () => ({
   hiddenContentCommunityIds: vi.fn(async () => []),
@@ -27,6 +28,15 @@ vi.mock("./payload-writes", () => ({
 }));
 
 beforeEach(() => vi.clearAllMocks());
+
+describe("isItemProblemCode", () => {
+  it("accepts each item problem code and rejects ISSUE_EMPTY", () => {
+    for (const code of ITEM_PROBLEM_CODES) {
+      expect(isItemProblemCode(code)).toBe(true);
+    }
+    expect(isItemProblemCode("ISSUE_EMPTY")).toBe(false);
+  });
+});
 
 describe("saving issue items", () => {
   it("shares community sets between validation and the returned editor views", async () => {

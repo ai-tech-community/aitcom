@@ -1,11 +1,24 @@
 import { sql } from "@payloadcms/db-postgres";
 
 import { routing } from "@/i18n/routing";
-import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
-import type { IssueVisibility } from "@/lib/magazines/values";
+import {
+  ITEM_PROBLEM_CODES,
+  type EditorItemView,
+  type ItemProblem,
+} from "@/lib/magazines/item-views";
+import { scheduleProblem } from "@/lib/magazines/schedule";
+import {
+  canIssue,
+  type IssueVisibility,
+  type PublishOrigin,
+} from "@/lib/magazines/values";
 import { slugify } from "@/lib/text-utils";
 import type { Magazine, MagazineIssue } from "@/payload-types";
 
+import {
+  deliverInboxAnnouncement,
+  recordIssueAnnouncement,
+} from "./announcements";
 import {
   clearArticlePlacement,
   placedArticlesOf,
@@ -168,6 +181,12 @@ type Subset<T extends U, U> = T;
  */
 export type ItemProblemCode = Subset<ItemProblem["code"], MagazineErrorCode>;
 
+export function isItemProblemCode(
+  code: MagazineErrorCode,
+): code is ItemProblemCode {
+  return (ITEM_PROBLEM_CODES as readonly MagazineErrorCode[]).includes(code);
+}
+
 /** An item problem as a refusal, pointing at the item. */
 function problemError(problem: ItemProblem) {
   return magazineError(problem.code, { itemIndex: problem.itemIndex });
@@ -195,6 +214,43 @@ async function assertItemsValid(
   );
   if (problem) throw problemError(problem);
   return ctx;
+}
+
+/** Scheduling and publishing validate the same saved content. */
+async function assertPublishable(
+  deps: Deps,
+  issue: MagazineIssue,
+  actor: IssueActor,
+): Promise<void> {
+  const blocks = storedBlocksOf(issue);
+  if (blocks.length === 0) throw magazineError("ISSUE_EMPTY");
+  await assertItemsValid(deps, issue, blocks, actor);
+}
+
+/** Follow-up work cannot fail a publish that has already committed. */
+async function afterIssuePublished(
+  deps: Deps,
+  published: MagazineIssue,
+): Promise<void> {
+  try {
+    await creditPendingMagazineArticles(
+      deps,
+      requireRelationId(published.magazine),
+    );
+  } catch (error) {
+    console.error("[magazines] credit after publish failed", {
+      issueId: published.id,
+      error,
+    });
+  }
+  try {
+    await deliverInboxAnnouncement(deps, published.id);
+  } catch (error) {
+    console.error("[magazines] inbox announcement failed", {
+      issueId: published.id,
+      error,
+    });
+  }
 }
 
 function articleIdsOf(blocks: StoredBlock[]): number[] {
@@ -443,8 +499,57 @@ export async function setIssueItems(
   };
 }
 
+/** Checks the time before publish validation, then schedules a draft or reschedules. */
+export async function scheduleIssue(
+  deps: Deps,
+  issue: MagazineIssue,
+  publishAt: Date,
+  expectedUpdatedAt: string,
+  actor: IssueActor,
+  now: Date = new Date(),
+): Promise<MagazineIssue> {
+  if (!canIssue(issue.status, "schedule"))
+    throw magazineError("ISSUE_NOT_DRAFT");
+  const problem = scheduleProblem(publishAt, now);
+  if (problem) throw magazineError(problem);
+  await assertPublishable(deps, issue, actor);
+  return writeIssue(deps, issue, expectedUpdatedAt, (tx) =>
+    deps.payload.update({
+      collection: "magazine-issues",
+      id: issue.id,
+      data: {
+        status: "scheduled",
+        scheduledFor: publishAt.toISOString(),
+        scheduledBy: actor.userId,
+      },
+      depth: 0,
+      req: tx.req,
+    }),
+  );
+}
+
+/** Stops a schedule, preserving any newer editor save through the usual claim. */
+export async function unscheduleIssue(
+  deps: Deps,
+  issue: MagazineIssue,
+  expectedUpdatedAt: string,
+  _actor: IssueActor | null,
+): Promise<MagazineIssue> {
+  if (!canIssue(issue.status, "unschedule"))
+    throw magazineError("ISSUE_NOT_SCHEDULED");
+  return writeIssue(deps, issue, expectedUpdatedAt, (tx) =>
+    deps.payload.update({
+      collection: "magazine-issues",
+      id: issue.id,
+      data: { status: "draft", scheduledFor: null, scheduledBy: null },
+      depth: 0,
+      req: tx.req,
+    }),
+  );
+}
+
 /**
- * Publishes a draft issue. Refuses an empty issue and any item problem.
+ * Publishes a draft or scheduled issue. Refuses an empty issue and any item problem.
  * The articles and the issue are published in ONE transaction, on the
  * claimed issue's connection: either all of it lands or none of it does,
  * and a concurrent second publish waits on the claim and gets
@@ -457,12 +562,14 @@ export async function publishIssue(
   issue: MagazineIssue,
   expectedUpdatedAt: string,
   actor: IssueActor,
+  opts: { origin?: PublishOrigin; now?: Date } = {},
 ): Promise<MagazineIssue> {
-  if (issue.status !== "draft") throw magazineError("ISSUE_NOT_DRAFT");
+  if (!canIssue(issue.status, "publish"))
+    throw magazineError("ISSUE_NOT_DRAFT");
   assertFresh(issue, expectedUpdatedAt);
+  await assertPublishable(deps, issue, actor);
   const blocks = storedBlocksOf(issue);
-  if (blocks.length === 0) throw magazineError("ISSUE_EMPTY");
-  await assertItemsValid(deps, issue, blocks, actor);
+  const publishedAt = (opts.now ?? new Date()).toISOString();
 
   const published = await writeIssue(
     deps,
@@ -470,30 +577,36 @@ export async function publishIssue(
     expectedUpdatedAt,
     async (tx) => {
       await publishPlacedArticles(deps, articleIdsOf(blocks), tx);
-      return deps.payload.update({
+      const saved = await deps.payload.update({
         collection: "magazine-issues",
         id: issue.id,
         data: {
           status: "published",
-          publishedAt: new Date().toISOString(),
+          publishedAt,
           publishedBy: actor.userId,
+          publishedVia: opts.origin ?? "button",
+          scheduledFor: null,
+          scheduledBy: null,
         },
         depth: 0,
         req: tx.req,
       });
+      await recordIssueAnnouncement(tx, {
+        issueId: saved.id,
+        magazineId: requireRelationId(saved.magazine),
+        publishedAt,
+      });
+      return saved;
     },
   );
 
-  await creditPendingMagazineArticles(
-    deps,
-    requireRelationId(published.magazine),
-  );
+  await afterIssuePublished(deps, published);
   return published;
 }
 
 /**
- * Deletes a draft issue and clears its articles' placement. A published
- * issue cannot be deleted (`ISSUE_NOT_DRAFT`); the check runs on the locked
+ * Deletes a draft issue and clears its articles' placement. A scheduled or
+ * published issue cannot be deleted (`ISSUE_NOT_DRAFT`); the check runs on the locked
  * row, so a publish that lands first wins.
  */
 export async function deleteDraftIssue(
@@ -501,7 +614,7 @@ export async function deleteDraftIssue(
   issue: MagazineIssue,
   _actor: IssueActor,
 ): Promise<void> {
-  if (issue.status !== "draft") throw magazineError("ISSUE_NOT_DRAFT");
+  if (!canIssue(issue.status, "delete")) throw magazineError("ISSUE_NOT_DRAFT");
   await inPayloadTransaction(deps.payload, async (tx) => {
     const claimed = await tx.execute(sql`
       UPDATE "magazine_issues" SET "updated_at" = "updated_at"

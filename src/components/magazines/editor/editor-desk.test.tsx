@@ -1,6 +1,9 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { localDateTimeToIso } from "@/lib/magazines/schedule";
+import type { IssueListRow } from "@/server/magazines/issue-editing";
+
 import { renderWithIntl } from "../test-intl";
 
 type CreateOptions = {
@@ -12,6 +15,15 @@ const trpc = vi.hoisted(() => ({
   createCalls: [] as Record<string, unknown>[],
   createOutcome: { id: 42 } as { id: number } | { message: string },
   push: vi.fn(),
+  extraIssues: [] as IssueListRow[],
+  counts: { withAccount: 3, byEmail: 2, waiting: 1 } as {
+    withAccount: number;
+    byEmail: number;
+    waiting: number;
+  } | null,
+  countsLoading: false,
+  countsError: false,
+  countsInput: vi.fn(),
 }));
 
 const query = (data: unknown) => ({
@@ -33,9 +45,20 @@ vi.mock("@/i18n/navigation", () => ({
 vi.mock("@/trpc/react", () => ({
   api: {
     magazines: {
+      subscriberCounts: {
+        useQuery: (input: unknown) => {
+          trpc.countsInput(input);
+          return {
+            data: trpc.counts,
+            isLoading: trpc.countsLoading,
+            isError: trpc.countsError,
+          };
+        },
+      },
       listIssues: {
         useQuery: () =>
           query([
+            ...trpc.extraIssues,
             {
               id: 9,
               number: 4,
@@ -126,9 +149,94 @@ beforeEach(() => {
   trpc.createCalls = [];
   trpc.createOutcome = { id: 42 };
   trpc.push.mockReset();
+  trpc.extraIssues = [];
+  trpc.counts = { withAccount: 3, byEmail: 2, waiting: 1 };
+  trpc.countsLoading = false;
+  trpc.countsError = false;
+  trpc.countsInput.mockReset();
 });
 
 describe("EditorDesk", () => {
+  it("a scheduled issue says when it goes out", () => {
+    const originalTz = process.env.TZ;
+    process.env.TZ = "America/Los_Angeles";
+    try {
+      trpc.extraIssues = [
+        {
+          id: 10,
+          number: 5,
+          title: "The next issue",
+          slug: "issue-5",
+          status: "scheduled",
+          visibility: "members",
+          publishedAt: null,
+          coverImageUrl: null,
+          updatedAt: "2030-01-01T00:00:00.000Z",
+          scheduledFor: localDateTimeToIso("2030-01-02T09:30"),
+        },
+      ];
+      renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage />);
+      const row = within(screen.getByRole("link", { name: /The next issue/ }));
+      expect(row.getByText("Scheduled")).toHaveAttribute(
+        "data-variant",
+        "secondary",
+      );
+      const time = row.getByText(/^Goes out/);
+      expect(time).not.toHaveClass("font-mono");
+      expect(time.querySelector("span.font-mono")).toHaveTextContent("9:30 AM");
+      expect(time.querySelector("span.font-mono")).not.toHaveTextContent(
+        "Goes out",
+      );
+      expect(time).toHaveTextContent("9:30 AM");
+      expect(time).not.toHaveTextContent(/5:30 PM|17:30/);
+    } finally {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
+  });
+
+  it("shows how many people subscribe, not counting those still waiting to confirm", () => {
+    const { unmount } = renderWithIntl(
+      <EditorDesk slug="amsterdam-ai" canManage />,
+    );
+    expect(trpc.countsInput).toHaveBeenCalledWith({ slug: "amsterdam-ai" });
+    const total = screen.getByText(/subscribers$/);
+    expect(total).toHaveTextContent("5 subscribers");
+    expect(screen.getByText(/with an account/)).toHaveTextContent(
+      "3 with an account · 2 by email · 1 waiting to confirm",
+    );
+    expect(within(total).getByText("5")).toHaveClass("font-mono");
+    expect(screen.queryByRole("status")).toBeNull();
+    unmount();
+    trpc.counts = { withAccount: 0, byEmail: 0, waiting: 0 };
+    renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage />);
+    expect(screen.getByText("No subscribers yet")).toBeVisible();
+    expect(
+      screen.queryByText(/with an account|by email|waiting to confirm/),
+    ).toBeNull();
+  });
+
+  it("leaves out subscriber details with zero people", () => {
+    trpc.counts = { withAccount: 1, byEmail: 0, waiting: 0 };
+    renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage />);
+    expect(screen.getByText("subscriber")).toHaveTextContent("1 subscriber");
+    expect(screen.getByText(/with an account/)).toHaveTextContent(
+      "1 with an account",
+    );
+    expect(screen.queryByText(/by email|waiting to confirm/)).toBeNull();
+  });
+
+  it.each(["loading", "error", "missing"])(
+    "hides supplementary subscriber counts while %s",
+    (state) => {
+      trpc.countsLoading = state === "loading";
+      trpc.countsError = state === "error";
+      if (state === "missing") trpc.counts = null;
+      renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage />);
+      expect(screen.queryByRole("status")).toBeNull();
+      expect(screen.queryByText(/subscribers/)).toBeNull();
+    },
+  );
   it("shows Team only to those who manage the magazine", () => {
     const { unmount } = renderWithIntl(
       <EditorDesk slug="amsterdam-ai" canManage />,

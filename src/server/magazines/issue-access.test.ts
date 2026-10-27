@@ -5,6 +5,9 @@ import type { IssueStatus, IssueVisibility } from "@/lib/magazines/values";
 import { type MagazineStanding, NO_STANDING } from "./editorship";
 import {
   type IssueAccessInput,
+  type IssueAudience,
+  type MagazineIssueAccess,
+  issueAudience,
   resolveMagazineIssueAccess,
 } from "./issue-access";
 
@@ -153,5 +156,48 @@ describe("resolveMagazineIssueAccess", () => {
         input({ slug: "ait", listed: false, confirmedAt: null }),
       ),
     ).toBe("full");
+  });
+});
+
+describe("issueAudience", () => {
+  it("an issue's audience follows the resolver", () => {
+    const cases: [Parameters<typeof input>[0], IssueAudience][] = [
+      [{}, "everyone"],
+      [{ listed: false }, "members"],
+      [{ listed: false, confirmedAt: CONFIRMED }, "everyone"],
+      [{ visibility: "members" }, "members"],
+      [{ status: "scheduled" }, "nobody"],
+      [{ status: "draft" }, "nobody"],
+      [{ deleted: true }, "nobody"],
+      [{ community: null }, "nobody"],
+    ];
+    for (const [over, audience] of cases) {
+      const fixture = input(over);
+      expect(issueAudience(fixture.community, fixture.issue)).toBe(audience);
+    }
+  });
+
+  it("decides every access level explicitly", () => {
+    const OUTSIDER_ACCESS_DECIDED: Record<
+      MagazineIssueAccess,
+      IssueAudience | "via-member"
+    > = {
+      none: "via-member",
+      full: "everyone",
+      editor: "nobody",
+    };
+    const fixtures: Record<MagazineIssueAccess, IssueAccessInput> = {
+      none: input({ visibility: "members" }),
+      full: input({}),
+      editor: input({ who: "editor", status: "draft" }),
+    };
+    for (const access of Object.keys(fixtures) as MagazineIssueAccess[]) {
+      const fixture = fixtures[access];
+      expect(resolveMagazineIssueAccess(fixture)).toBe(access);
+      const decision = OUTSIDER_ACCESS_DECIDED[access];
+      expect(issueAudience(fixture.community, fixture.issue)).toBe(
+        decision === "via-member" ? "members" : decision,
+      );
+    }
   });
 });

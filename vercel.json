@@ -42,6 +42,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/magazine-issues",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/benchmark-aggregate",
       "schedule": "0 * * * *"
     },

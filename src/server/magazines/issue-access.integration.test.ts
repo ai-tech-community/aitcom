@@ -207,7 +207,7 @@ describe.skipIf(!RUN_DB)(
       async function issues(
         label: keyof Fixture["communities"],
         combos: Array<{
-          status: "draft" | "published";
+          status: "draft" | "scheduled" | "published";
           visibility: "members" | "public";
           confirmed: boolean;
         }>,
@@ -250,7 +250,10 @@ describe.skipIf(!RUN_DB)(
         ),
       );
       await issues("listed", every);
-      await issues("unlisted", every);
+      await issues("unlisted", [
+        ...every,
+        { status: "scheduled", visibility: "public", confirmed: true },
+      ]);
       await issues("deleted", [
         { status: "published", visibility: "public", confirmed: false },
       ]);
@@ -263,6 +266,11 @@ describe.skipIf(!RUN_DB)(
       await db
         .delete(schema.magazineStaff)
         .where(inArray(schema.magazineStaff.userId, userIds));
+      await db
+        .delete(schema.magazineSubscriptions)
+        .where(
+          inArray(schema.magazineSubscriptions.magazineId, fx.magazineIds),
+        );
       await m.payload.delete({
         collection: "magazine-issues",
         where: { id: { in: fx.issues.map((i) => i.id) } },

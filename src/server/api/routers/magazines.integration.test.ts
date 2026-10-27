@@ -37,12 +37,15 @@ const PROCEDURE_CAPABILITY: Record<string, MagazineCapability | "public"> = {
   getIssueForEditing: "edit",
   updateIssue: "edit",
   setIssueItems: "edit",
+  scheduleIssue: "edit",
+  unscheduleIssue: "edit",
   publishIssue: "edit",
   deleteDraftIssue: "edit",
   pickerCandidates: "edit",
   availableArticles: "edit",
   reviewQueue: "edit",
   reviewArticle: "edit",
+  subscriberCounts: "write",
   myDraftArticles: "write",
   myMagazineArticles: "write",
 };
@@ -185,6 +188,9 @@ describe.skipIf(!RUN_DB)(
       });
       const magazineIds = mags.map((mag) => mag.id);
       if (magazineIds.length > 0) {
+        await db
+          .delete(schema.magazineSubscriptions)
+          .where(inArray(schema.magazineSubscriptions.magazineId, magazineIds));
         // Issues first: their article blocks hold a required reference.
         // Deleting the issues clears their articles' placement (the
         // foreign key is ON DELETE set null).
@@ -318,7 +324,71 @@ describe.skipIf(!RUN_DB)(
       return { magazine, article, issue: published };
     }
 
+    it("magazine staff see subscriber counts", async () => {
+      const owner = callerAs(fx.ownerId).magazines;
+      expect(await owner.subscriberCounts({ slug: slug() })).toBeNull();
+      const magazine = await saveMagazine();
+      await m.db.insert(m.schema.magazineSubscriptions).values([
+        {
+          magazineId: magazine.id,
+          userId: fx.memberId,
+          confirmedAt: new Date(),
+        },
+        { magazineId: magazine.id, email: `waiting-${fx.sfx}@example.test` },
+      ]);
+      const contributorId = await appointed(magazine.id, "contributor");
+      for (const userId of [fx.ownerId, contributorId]) {
+        expect(
+          await callerAs(userId).magazines.subscriberCounts({ slug: slug() }),
+        ).toEqual({ withAccount: 1, byEmail: 0, waiting: 1 });
+      }
+    });
+
     // ── Tests ─────────────────────────────────────────────────────────────
+
+    it("schedules and unschedules through the API", async () => {
+      const magazine = await saveMagazine();
+      const owner = callerAs(fx.ownerId);
+      const article = await writeArticle(magazine.id, "Scheduled story");
+      await owner.articles.submit({ id: article.id });
+      const { id: issueId } = await owner.magazines.createIssue({
+        slug: slug(),
+        title: "Tomorrow",
+      });
+      const ref = { slug: slug(), issueId };
+      const editing = await owner.magazines.getIssueForEditing(ref);
+      const { issue } = await owner.magazines.setIssueItems({
+        ...ref,
+        expectedUpdatedAt: editing.issue.updatedAt,
+        items: [{ kind: "article", articleId: article.id }],
+      });
+      const publishAt = `${new Date(Date.now() + 86_400_000).toISOString().slice(0, -1)}+02:00`;
+      const scheduled = await owner.magazines.scheduleIssue({
+        ...ref,
+        expectedUpdatedAt: issue.updatedAt,
+        publishAt,
+      });
+      expect(scheduled).toMatchObject({
+        status: "scheduled",
+        scheduledBy: fx.ownerId,
+        scheduledFor: new Date(publishAt).toISOString(),
+      });
+      expect(await owner.magazines.listIssues({ slug: slug() })).toEqual([
+        expect.objectContaining({
+          id: issueId,
+          scheduledFor: new Date(publishAt).toISOString(),
+        }),
+      ]);
+      const draft = await owner.magazines.unscheduleIssue({
+        ...ref,
+        expectedUpdatedAt: scheduled.updatedAt,
+      });
+      expect(draft).toMatchObject({
+        status: "draft",
+        scheduledFor: null,
+        scheduledBy: null,
+      });
+    });
 
     it("pickerCandidates offers ready articles, filtered by the search", async () => {
       const magazine = await saveMagazine();
@@ -492,6 +562,7 @@ describe.skipIf(!RUN_DB)(
               topics: [],
               defaultVisibility: "members",
             }),
+          subscriberCounts: () => caller.subscriberCounts({ slug: slug() }),
           listStaff: () => caller.listStaff({ slug: slug() }),
           searchStaffCandidates: () =>
             caller.searchStaffCandidates({ slug: slug(), query: "" }),
@@ -510,6 +581,12 @@ describe.skipIf(!RUN_DB)(
           updateIssue: () =>
             caller.updateIssue({ ...write, title: "Gate updated" }),
           setIssueItems: () => caller.setIssueItems({ ...write, items: [] }),
+          scheduleIssue: () =>
+            caller.scheduleIssue({
+              ...write,
+              publishAt: new Date(Date.now() + 86_400_000).toISOString(),
+            }),
+          unscheduleIssue: () => caller.unscheduleIssue(write),
           publishIssue: () => caller.publishIssue(write),
           pickerCandidates: () =>
             caller.pickerCandidates({ slug: slug(), kind: "article" }),

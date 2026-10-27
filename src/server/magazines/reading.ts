@@ -107,7 +107,10 @@ const PUBLISHED: Where = { status: { equals: "published" } };
 
 // ── Loading helpers ──────────────────────────────────────────────────────
 
-type CommunityRow = CommunityVisibility & { id: string; name: string };
+export type MagazineCommunityRow = CommunityVisibility & {
+  id: string;
+  name: string;
+};
 
 const COMMUNITY_COLUMNS = {
   id: true,
@@ -120,7 +123,7 @@ const COMMUNITY_COLUMNS = {
 async function liveCommunitiesById(
   database: Deps["db"],
   ids: readonly string[],
-): Promise<Map<string, CommunityRow>> {
+): Promise<Map<string, MagazineCommunityRow>> {
   if (ids.length === 0) return new Map();
   const rows = await database.query.communities.findMany({
     where: and(
@@ -135,7 +138,7 @@ async function liveCommunitiesById(
 async function liveCommunityBySlug(
   database: Deps["db"],
   slug: string,
-): Promise<CommunityRow | null> {
+): Promise<MagazineCommunityRow | null> {
   const row = await database.query.communities.findFirst({
     where: and(eq(communities.slug, slug), isNull(communities.deletedAt)),
     columns: COMMUNITY_COLUMNS,
@@ -143,7 +146,7 @@ async function liveCommunityBySlug(
   return row ?? null;
 }
 
-async function findMagazineBySlug(
+export async function findMagazineBySlug(
   payload: Deps["payload"],
   slug: string,
 ): Promise<Magazine | null> {
@@ -174,14 +177,14 @@ function toMagazineSummary(magazine: Magazine): MagazineSummary {
   };
 }
 
-function toReadingCommunity(community: CommunityRow): ReadingCommunity {
+function toReadingCommunity(community: MagazineCommunityRow): ReadingCommunity {
   return { name: community.name, slug: community.slug };
 }
 
 function toIssueCard(
   issue: MagazineIssue,
   magazine: Magazine,
-  community: CommunityRow,
+  community: MagazineCommunityRow,
 ): IssueCard {
   return {
     id: issue.id,
@@ -368,6 +371,62 @@ export async function loadMagazinesHome(
   };
 }
 
+/** One rule for both the shelf and the subscription API. */
+export function mayKnowMagazine(input: {
+  hasReadableIssue: boolean;
+  community: MagazineCommunityRow;
+  isMember: boolean;
+}): boolean {
+  return (
+    input.hasReadableIssue || canReadContent(input.community, input.isMember)
+  );
+}
+
+/** A small existence query, always limited to published readable issues. */
+export async function readableIssueExists(
+  deps: Deps,
+  scope: IssueReadScope,
+  magazineId: number,
+): Promise<boolean> {
+  const { docs } = await deps.payload.find({
+    collection: "magazine-issues",
+    where: {
+      and: [
+        readableIssueWhere(scope),
+        PUBLISHED,
+        { magazine: { equals: magazineId } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+    select: { communityId: true },
+  });
+  return docs.length > 0;
+}
+
+export async function findMagazineForViewer(
+  deps: Deps,
+  opts: {
+    magazineSlug: string;
+    viewerId: string | null;
+  },
+): Promise<{ magazine: Magazine; community: MagazineCommunityRow } | null> {
+  const magazine = await findMagazineBySlug(deps.payload, opts.magazineSlug);
+  if (!magazine) return null;
+  const community = (
+    await liveCommunitiesById(deps.db, [magazine.communityId])
+  ).get(magazine.communityId);
+  if (!community) return null;
+  const scope = await loadIssueReadScope(deps.db, opts.viewerId);
+  return mayKnowMagazine({
+    hasReadableIssue: await readableIssueExists(deps, scope, magazine.id),
+    community,
+    isMember: scope.memberCommunityIds.includes(community.id),
+  })
+    ? { magazine, community }
+    : null;
+}
+
 /** What the `/magazines` home renders. */
 export type MagazinesHomeData = Awaited<ReturnType<typeof loadMagazinesHome>>;
 
@@ -384,13 +443,20 @@ type Shelf = { issues: IssueCard[]; viewerIsEditor: boolean };
 async function loadShelf(
   deps: Deps,
   magazine: Magazine,
-  community: CommunityRow,
+  community: MagazineCommunityRow,
   scope: IssueReadScope,
   locale: AppLocale,
 ): Promise<Shelf | null> {
   const issues = await readableMagazineIssues(deps, scope, magazine.id, locale);
   const isMember = scope.memberCommunityIds.includes(community.id);
-  if (issues.length === 0 && !canReadContent(community, isMember)) return null;
+  if (
+    !mayKnowMagazine({
+      hasReadableIssue: issues.length > 0,
+      community,
+      isMember,
+    })
+  )
+    return null;
   return {
     issues: issues.map((issue) => toIssueCard(issue, magazine, community)),
     viewerIsEditor: scope.editorCommunityIds.includes(community.id),
@@ -492,7 +558,7 @@ export type CommunityMagazineTabData = NonNullable<
 type ReadableIssue = {
   access: IssueReaderAccess;
   magazine: Magazine;
-  community: CommunityRow;
+  community: MagazineCommunityRow;
   issue: MagazineIssue;
 };
 

@@ -9,6 +9,9 @@ import { editorErrorKey, readEditorError } from "./editor-errors";
 
 describe("editorErrorKey", () => {
   it.each([
+    ["SCHEDULE_IN_PAST", "scheduleInPast"],
+    ["SCHEDULE_TOO_FAR", "scheduleTooFar"],
+    ["ISSUE_NOT_SCHEDULED", "issueNotScheduled"],
     ["STAFF_NOT_MEMBER", "staffNotMember"],
     ["STAFF_LEADS_COMMUNITY", "staffLeadsCommunity"],
     ["ARTICLE_LOCKED", "articleLocked"],

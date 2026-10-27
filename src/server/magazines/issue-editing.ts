@@ -37,6 +37,7 @@ export type IssueListRow = Pick<
   | "status"
   | "visibility"
   | "publishedAt"
+  | "scheduledFor"
   | "coverImageUrl"
   | "updatedAt"
 >;
@@ -125,6 +126,7 @@ export async function listMagazineIssues(
       status: true,
       visibility: true,
       publishedAt: true,
+      scheduledFor: true,
       coverImageUrl: true,
       updatedAt: true,
     },
@@ -139,6 +141,7 @@ export async function listMagazineIssues(
     status: doc.status,
     visibility: doc.visibility,
     publishedAt: doc.publishedAt ?? null,
+    scheduledFor: doc.scheduledFor ?? null,
     coverImageUrl: doc.coverImageUrl ?? null,
     updatedAt: doc.updatedAt,
   }));

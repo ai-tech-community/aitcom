@@ -15,12 +15,21 @@ import {
   magazineWritePath,
 } from "@/lib/magazines/paths";
 import { writerStatusOf } from "@/lib/magazines/review";
+import type { IssueStatus } from "@/lib/magazines/values";
 import type { IssueListRow } from "@/server/magazines/issue-editing";
 import { api } from "@/trpc/react";
 
 import { useIssueDateline } from "../reading/issue-dateline";
 import { DeskList, UpdatedAt } from "./desk-list";
 import { readEditorError } from "./editor-errors";
+import { SubscriberCountLine } from "./subscriber-count-line";
+import { useScheduleTime } from "./use-schedule-time";
+
+const STATUS_VARIANT: Record<IssueStatus, "secondary" | "outline"> = {
+  draft: "secondary",
+  scheduled: "secondary",
+  published: "outline",
+};
 
 /** The number the next issue will most likely get, for its working title. */
 function nextIssueNumber(issues: IssueListRow[]): number {
@@ -29,6 +38,7 @@ function nextIssueNumber(issues: IssueListRow[]): number {
 
 function IssueRow({ issue, slug }: { issue: IssueListRow; slug: string }) {
   const t = useTranslations("magazineEditor.desk");
+  const displayTime = useScheduleTime();
   const dateline = useIssueDateline({
     number: issue.number,
     publishedAt: issue.publishedAt ?? null,
@@ -43,14 +53,24 @@ function IssueRow({ issue, slug }: { issue: IssueListRow; slug: string }) {
           <span className="text-muted-foreground font-mono text-xs">
             {dateline}
           </span>
-          <Badge
-            variant={issue.status === "draft" ? "secondary" : "outline"}
-            className="font-normal"
-          >
+          <Badge variant={STATUS_VARIANT[issue.status]} className="font-normal">
             {t(`status.${issue.status}`)}
           </Badge>
         </span>
         <span className="text-sm font-medium break-words">{issue.title}</span>
+        {issue.status === "scheduled" && issue.scheduledFor && (
+          <time
+            dateTime={issue.scheduledFor}
+            className="text-muted-foreground text-xs"
+          >
+            {t.rich("goesOut", {
+              time: displayTime(issue.scheduledFor),
+              timestamp: (chunks) => (
+                <span className="font-mono">{chunks}</span>
+              ),
+            })}
+          </time>
+        )}
       </Link>
     </li>
   );
@@ -134,6 +154,7 @@ export function EditorDesk({
           )}
         </div>
       </div>
+      <SubscriberCountLine slug={slug} />
       {createError && (
         <p role="alert" className="text-destructive text-sm">
           {createError}

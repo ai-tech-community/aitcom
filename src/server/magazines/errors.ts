@@ -15,6 +15,9 @@ export const MAGAZINE_ERROR_CODES = [
   "ISSUE_SLUG_LOCKED",
   "ISSUE_EMPTY",
   "ISSUE_NOT_DRAFT",
+  "SCHEDULE_IN_PAST",
+  "SCHEDULE_TOO_FAR",
+  "ISSUE_NOT_SCHEDULED",
   "ITEM_INVALID",
   "ARTICLE_PLACED",
   "ARTICLE_NOT_READY",
@@ -46,6 +49,9 @@ const DEFAULT_TRPC_CODE: Record<MagazineErrorCode, TrpcCode> = {
   ISSUE_SLUG_LOCKED: "BAD_REQUEST",
   ISSUE_EMPTY: "BAD_REQUEST",
   ISSUE_NOT_DRAFT: "CONFLICT",
+  SCHEDULE_IN_PAST: "BAD_REQUEST",
+  SCHEDULE_TOO_FAR: "BAD_REQUEST",
+  ISSUE_NOT_SCHEDULED: "CONFLICT",
   ITEM_INVALID: "BAD_REQUEST",
   ARTICLE_PLACED: "CONFLICT",
   ARTICLE_NOT_READY: "BAD_REQUEST",
@@ -65,11 +71,24 @@ const DEFAULT_TRPC_CODE: Record<MagazineErrorCode, TrpcCode> = {
 export class MagazineErrorCause extends Error {
   readonly itemIndex: number | null;
 
-  constructor(code: MagazineErrorCode, itemIndex: number | null) {
+  constructor(
+    readonly code: MagazineErrorCode,
+    itemIndex: number | null,
+  ) {
     super(code);
     this.name = "MagazineErrorCause";
     this.itemIndex = itemIndex;
   }
+}
+
+/** The structured magazine refusal code, or null for anything else. */
+export function magazineErrorCodeOf(error: unknown): MagazineErrorCode | null {
+  return typeof error === "object" &&
+    error !== null &&
+    "cause" in error &&
+    error.cause instanceof MagazineErrorCause
+    ? error.cause.code
+    : null;
 }
 
 export function magazineError(

@@ -9,6 +9,9 @@ type Slugged = { slug: string };
 /** The `/magazines` home: every public issue on the platform. */
 export const MAGAZINES_HOME_PATH = "/magazines";
 
+export const MAGAZINE_SUBSCRIPTION_CONFIRM_PATH =
+  "/magazine-subscriptions/confirm";
+
 /** The `/magazines` home narrowed to one topic, or the whole home. */
 export function magazinesTopicPath(topic: string | null): string {
   return topic

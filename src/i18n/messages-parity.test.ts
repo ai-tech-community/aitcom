@@ -16,6 +16,10 @@ describe("message catalogues", () => {
   it("en and nl have the same keys for the magazine and badge copy", () => {
     for (const [english, dutch] of [
       [en.magazineEditor, nl.magazineEditor],
+      [en.magazines, nl.magazines],
+      [en.magazineMail, nl.magazineMail],
+      [en.magazineSubscription, nl.magazineSubscription],
+      [en.magazineUnsubscribe, nl.magazineUnsubscribe],
       [en.articleEditor.magazine, nl.articleEditor.magazine],
       [en.badges, nl.badges],
     ]) {

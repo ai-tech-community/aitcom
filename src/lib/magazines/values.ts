@@ -13,13 +13,35 @@ export const ISSUE_VISIBILITY_LABELS: Record<IssueVisibility, string> = {
   public: "Public",
 };
 
-/** An issue is drafted, then published (slice 1 has no scheduling). */
-export const ISSUE_STATUSES = ["draft", "published"] as const;
+/** An issue can be drafted, scheduled for later, or published. */
+export const ISSUE_STATUSES = ["draft", "scheduled", "published"] as const;
 export type IssueStatus = (typeof ISSUE_STATUSES)[number];
 export const ISSUE_STATUS_LABELS: Record<IssueStatus, string> = {
   draft: "Draft",
+  scheduled: "Scheduled",
   published: "Published",
 };
+
+export const ISSUE_ACTIONS = [
+  "schedule",
+  "unschedule",
+  "publish",
+  "delete",
+] as const;
+export type IssueAction = (typeof ISSUE_ACTIONS)[number];
+/** The one table of what an issue in each status may do next. Services pre-check with it; the UI branches on it. */
+export const ISSUE_TRANSITIONS: Record<IssueStatus, readonly IssueAction[]> = {
+  draft: ["schedule", "publish", "delete"],
+  scheduled: ["schedule", "unschedule", "publish"],
+  published: [],
+};
+
+export function canIssue(status: IssueStatus, action: IssueAction): boolean {
+  return ISSUE_TRANSITIONS[status].includes(action);
+}
+
+export const PUBLISH_ORIGINS = ["button", "schedule"] as const; // slice 5 adds "auto"
+export type PublishOrigin = (typeof PUBLISH_ORIGINS)[number];
 
 /** How an issue's items are laid out on its reading page. */
 export const ISSUE_LAYOUTS = ["cover-story"] as const;

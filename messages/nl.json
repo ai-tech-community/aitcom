@@ -3615,7 +3615,7 @@
     "hubMailAgentJobHint": "Wanneer een agent werk afrondt dat je vroeg."
   },
   "digestUnsubscribe": {
-    "kicker": "/ DIGEST",
+    "kicker": "Digest",
     "metaTitle": "Afmelden",
     "title": "Afmelden voor de wekelijkse samenvatting",
     "body": "Dit stopt de wekelijkse AIT-samenvatting. Aankondigingen van communities en andere Hub-e-mails blijven zoals ze zijn. Je kunt de samenvatting weer aanzetten in je instellingen.",
@@ -3627,7 +3627,7 @@
     "settings": "Meldingsinstellingen"
   },
   "storyUnsubscribe": {
-    "kicker": "/ NIEUWS",
+    "kicker": "Nieuws",
     "metaTitle": "Afmelden",
     "title": "Afmelden voor nieuwsverhalen",
     "body": "Dit stopt e-mails wanneer een nieuwsverhaal wordt gepubliceerd. Andere e-mails blijven zoals ze zijn.",
@@ -3637,6 +3637,31 @@
     "invalidTitle": "Deze afmeldlink is niet geldig",
     "invalidBody": "De link ontbreekt of is gewijzigd.",
     "settings": "Meldingsinstellingen"
+  },
+  "magazineSubscription": {
+    "metaTitle": "Bevestig je abonnement",
+    "kicker": "Magazine",
+    "readyTitle": "Nieuwe nummers van {magazine} per e-mail ontvangen?",
+    "readyBody": "Klik op de knop en we mailen je telkens als er een nieuw nummer van {magazine} is.",
+    "action": "Ja, mail me nieuwe nummers",
+    "doneTitle": "Je bent geabonneerd",
+    "doneBody": "We mailen je als er een nieuw nummer van {magazine} is. In elke e-mail staat een link om je af te melden.",
+    "openMagazine": "Ga naar {magazine}",
+    "expiredTitle": "Deze link is te oud",
+    "expiredBody": "Links werken 7 dagen. Vraag een nieuwe aan op de magazinepagina.",
+    "invalidTitle": "Deze link werkt niet",
+    "invalidBody": "Misschien ontbreekt er een stukje of is de link vervangen door een nieuwere. Vraag een nieuwe aan op de magazinepagina."
+  },
+  "magazineUnsubscribe": {
+    "metaTitle": "Stop e-mails over dit magazine",
+    "kicker": "E-mails over magazines",
+    "title": "Geen e-mails meer van dit magazine?",
+    "body": "Je krijgt dan geen e-mail meer over nieuwe nummers.",
+    "action": "Afmelden",
+    "doneTitle": "Je bent afgemeld",
+    "doneBody": "We mailen je niet meer over dit magazine.",
+    "invalidTitle": "Deze link werkt niet",
+    "invalidBody": "Misschien ontbreekt er een stukje. Open de magazinepagina om je opnieuw te abonneren."
   },
   "broadcast": {
     "title": "Stuur een aankondiging",
@@ -4746,6 +4771,28 @@
     }
   },
   "magazines": {
+    "subscribe": {
+      "subscribe": "Abonneren",
+      "subscribed": "Geabonneerd",
+      "unsubscribe": "Afmelden",
+      "inboxHelp": "Je krijgt een bericht in je inbox als er een nieuw nummer is.",
+      "subscribedNow": "Je bent nu geabonneerd op {magazine}.",
+      "unsubscribedNow": "Je bent niet meer geabonneerd op {magazine}.",
+      "emailLabel": "Je e-mailadres",
+      "emailSubmit": "Stuur me een link",
+      "emailHelp": "We sturen één e-mail om te controleren of jij het bent. Je kunt je altijd afmelden.",
+      "emailSent": "Kijk in je e-mail en klik op de link om nieuwe nummers te ontvangen.",
+      "signInInstead": "Heb je een account? Log in om nieuwe nummers in je inbox te krijgen.",
+      "tooMany": "Te vaak geprobeerd. Wacht even en probeer het dan opnieuw.",
+      "failed": "Dat is niet gelukt. Probeer het opnieuw."
+    },
+    "notifications": {
+      "issuePublished": {
+        "title": "Nieuw in {magazine}: {title}",
+        "content": "Nummer {number} is uit.",
+        "linkLabel": "Lees het nummer"
+      }
+    },
     "home": {
       "label": "Magazines",
       "title": "Verhalen uit de communities die AI bouwen",
@@ -4787,7 +4834,8 @@
       "noItems": "Dit nummer heeft nog geen artikelen.",
       "published": "Verschenen op {date}",
       "signature": "— {name}, redacteur",
-      "contentsCount": "{count, plural, one {# onderdeel} other {# onderdelen}}"
+      "contentsCount": "{count, plural, one {# onderdeel} other {# onderdelen}}",
+      "scheduledNotice": "Ingepland. Lezers kunnen dit nummer nog niet zien."
     },
     "item": {
       "readArticle": "Lees artikel",
@@ -4880,6 +4928,9 @@
       "issueSlugLocked": "Het adres van een gepubliceerd nummer blijft hetzelfde, zodat links ernaar blijven werken.",
       "issueEmpty": "Voeg minstens één artikel of tekstgedeelte toe voordat je publiceert.",
       "issueNotDraft": "Dit nummer is al gepubliceerd.",
+      "scheduleInPast": "Kies een tijdstip in de toekomst.",
+      "scheduleTooFar": "Kies een tijdstip binnen een jaar.",
+      "issueNotScheduled": "Dit nummer staat niet meer ingepland. Laad de pagina opnieuw om te zien wat er is veranderd.",
       "itemInvalid": "Een deel van dit nummer is niet compleet. Controleer de gemarkeerde delen in de lijst en probeer het opnieuw.",
       "articlePlaced": "Dit artikel staat al in een ander nummer.",
       "articleNotReady": "Dit artikel is nog niet klaar voor een nummer.",
@@ -4972,6 +5023,7 @@
       "issuesEmpty": "Nog geen nummers. Begin er een met Nieuw nummer.",
       "status": {
         "draft": "Concept",
+        "scheduled": "Ingepland",
         "published": "Gepubliceerd"
       },
       "ready": "Klaar voor een nummer",
@@ -4988,7 +5040,12 @@
       },
       "loadFailed": "Deze lijst kon niet worden geladen.",
       "tryAgain": "Opnieuw proberen",
-      "team": "Team"
+      "team": "Team",
+      "goesOut": "Verschijnt op <timestamp>{time}</timestamp>",
+      "subscribers": "{count, plural, =0 {Nog geen abonnees} one {<number>#</number> abonnee} other {<number>#</number> abonnees}}",
+      "subscribersWithAccount": "<number>{count}</number> met een account",
+      "subscribersByEmail": "<number>{count}</number> via e-mail",
+      "subscribersWaiting": "<number>{count}</number> nog niet bevestigd"
     },
     "builder": {
       "metaTitle": "Nummer bewerken",
@@ -4996,6 +5053,7 @@
       "kicker": "{magazine} · Nummer {number} · {status}",
       "status": {
         "draft": "Concept",
+        "scheduled": "Ingepland",
         "published": "Gepubliceerd"
       },
       "workspaceLabel": "Nummer samenstellen",
@@ -5164,8 +5222,23 @@
         "successTitle": "Je nummer is gepubliceerd",
         "successLead": "Lezers kunnen het nu openen.",
         "read": "Lees het nummer",
-        "keepEditing": "Verder bewerken"
-      }
+        "keepEditing": "Verder bewerken",
+        "when": "Wanneer moet het nummer verschijnen?",
+        "now": "Nu",
+        "later": "Later, op een tijdstip dat ik kies",
+        "timeLabel": "Datum en tijd",
+        "timeHelp": "Je tijdzone: {zone}. Het nummer verschijnt binnen een paar minuten na dit tijdstip.",
+        "timeInvalid": "Vul een datum en tijd in.",
+        "scheduleConfirm": "Inplannen",
+        "scheduling": "Inplannen…",
+        "currentSchedule": "Ingepland voor {time}.",
+        "unschedule": "Planning annuleren",
+        "scheduledTitle": "Je nummer is ingepland",
+        "scheduledLead": "Het verschijnt op {time}. Tot die tijd kun je het nog aanpassen.",
+        "unscheduledTitle": "De planning is geannuleerd",
+        "unscheduledLead": "Het nummer is weer een concept."
+      },
+      "goesOut": "Verschijnt op <timestamp>{time}</timestamp>"
     },
     "roles": {
       "editor_in_chief": {
@@ -5182,6 +5255,16 @@
       }
     },
     "notifications": {
+      "scheduleFailed": {
+        "title": "‘{title}’ is niet verschenen",
+        "content": {
+          "empty": "Er staat niets in, dus het kon niet worden gepubliceerd. Het is weer een concept.",
+          "invalid_item": "Er moet iets in worden aangepast. Open het nummer om te zien wat. Het is weer een concept.",
+          "no_rights": "Degene die het nummer inplande, mag niet meer publiceren voor {magazine}. Open het nummer om het zelf te publiceren of in te plannen.",
+          "error": "Er ging iets mis bij ons, dus het nummer kon niet worden gepubliceerd. Het is weer een concept. Open het om het opnieuw te proberen."
+        },
+        "linkLabel": "Open het nummer"
+      },
       "articleReviewed": {
         "approved": {
           "title": "‘{title}’ is klaar voor een nummer",
@@ -5249,5 +5332,23 @@
       "membersTitle": "Het team",
       "empty": "Voeg iemand toe om mee te schrijven en nummers te maken."
     }
+  },
+  "magazineMail": {
+    "issue": {
+      "subject": "{magazine}: {title}",
+      "lead": "Nummer {number} van {magazine}, van {community}, is uit.",
+      "action": "Lees het nummer",
+      "why": "Je krijgt deze e-mail omdat je je hebt geabonneerd op {magazine}.",
+      "unsubscribe": "Afmelden"
+    },
+    "confirm": {
+      "subject": "Bevestig: nieuwe nummers van {magazine} per e-mail",
+      "heading": "Nieuwe nummers van {magazine} ontvangen?",
+      "body": "Iemand, hopelijk jij, heeft gevraagd om op dit adres een e-mail te krijgen als {magazine} een nieuw nummer heeft. Klik op de link hieronder om ja te zeggen.",
+      "action": "Ja, mail me nieuwe nummers",
+      "expires": "De link werkt 7 dagen.",
+      "ignore": "Heb je hier niet om gevraagd? Negeer deze e-mail dan. We mailen je niet opnieuw."
+    },
+    "footer": "AIT Community"
   }
 }

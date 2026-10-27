@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { MagazineRole } from "@/lib/magazines/roles";
+import type { AppLocale } from "@/i18n/messages";
 import type {
   OccurrenceStatus,
   RitualMode,
@@ -703,7 +704,7 @@ export const notifications = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "event_conflict" | "introduction_request" | "referral_credited" | "webhook_proposed" | "community_invite" | "badge_earned" | "news_storyline_draft" | "magazine_role_assigned" | "magazine_article_submitted" | "magazine_article_reviewed"
+    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "event_conflict" | "introduction_request" | "referral_credited" | "webhook_proposed" | "community_invite" | "badge_earned" | "news_storyline_draft" | "magazine_role_assigned" | "magazine_article_submitted" | "magazine_article_reviewed" | "magazine_issue_published" | "magazine_issue_schedule_failed"
     title: d.varchar({ length: 255 }).notNull(),
     content: d.text().notNull(),
     metadata: d.json().$type<Record<string, unknown>>().default({}).notNull(),
@@ -1302,6 +1303,100 @@ export const magazineStaff = appSchema.table(
     check(
       "magazine_staff_role_check",
       sql`${t.role} IN ('editor_in_chief', 'editor', 'contributor')`,
+    ),
+  ],
+);
+
+/** Site-owned subscribers (ADR-0046); Payload magazine FKs live in the migration. */
+export const magazineSubscriptions = appSchema.table(
+  "magazine_subscription",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    magazineId: d.integer().notNull(),
+    userId: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "cascade" }),
+    email: d.varchar({ length: 255 }),
+    locale: d.varchar({ length: 5 }).$type<AppLocale>().notNull().default("en"),
+    confirmTokenHash: d.varchar({ length: 64 }),
+    confirmSentAt: d.timestamp({ withTimezone: true }),
+    confirmSendCount: d.integer().notNull().default(0),
+    confirmedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("magazine_subscription_user_idx").on(t.userId),
+    index("magazine_subscription_magazine_idx").on(t.magazineId),
+    uniqueIndex("magazine_subscription_magazine_user_idx")
+      .on(t.magazineId, t.userId)
+      .where(sql`${t.userId} IS NOT NULL`),
+    uniqueIndex("magazine_subscription_magazine_email_idx")
+      .on(t.magazineId, t.email)
+      .where(sql`${t.email} IS NOT NULL`),
+    uniqueIndex("magazine_subscription_confirm_token_idx")
+      .on(t.confirmTokenHash)
+      .where(sql`${t.confirmTokenHash} IS NOT NULL`),
+    index("magazine_subscription_email_confirm_sent_idx")
+      .on(t.email, t.confirmSentAt)
+      .where(sql`${t.email} IS NOT NULL`),
+    check(
+      "magazine_subscription_one_subscriber_check",
+      sql`(${t.userId} IS NOT NULL) <> (${t.email} IS NOT NULL)`,
+    ),
+    check(
+      "magazine_subscription_locale_check",
+      sql`${t.locale} IN ('en', 'nl')`,
+    ),
+  ],
+);
+
+/** One durable publication announcement per issue, outside Payload's saves. */
+export const magazineIssueAnnouncements = appSchema.table(
+  "magazine_issue_announcement",
+  (d) => ({
+    issueId: d.integer().primaryKey(),
+    magazineId: d.integer().notNull(),
+    publishedAt: d.timestamp({ withTimezone: true }).notNull(),
+    completedAt: d.timestamp({ withTimezone: true }),
+    lastAttemptedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("magazine_issue_announcement_open_idx")
+      .on(t.lastAttemptedAt, t.createdAt)
+      .where(sql`${t.completedAt} IS NULL`),
+  ],
+);
+
+/** Delivery claims prevent overlapping runs from telling a subscriber twice. */
+export const magazineIssueDeliveries = appSchema.table(
+  "magazine_issue_delivery",
+  (d) => ({
+    issueId: d.integer().notNull(),
+    subscriptionId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => magazineSubscriptions.id, { onDelete: "cascade" }),
+    channel: d.varchar({ length: 10 }).$type<"inbox" | "email">().notNull(),
+    deliveredAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.issueId, t.subscriptionId] }),
+    check(
+      "magazine_issue_delivery_channel_check",
+      sql`${t.channel} IN ('inbox', 'email')`,
     ),
   ],
 );

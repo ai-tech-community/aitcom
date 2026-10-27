@@ -1,14 +1,37 @@
 import { TRPCError } from "@trpc/server";
 import { describe, expect, it } from "vitest";
 
+import { ITEM_PROBLEM_CODES } from "@/lib/magazines/item-views";
+
 import {
   MAGAZINE_ERROR_CODES,
   magazineError,
+  magazineErrorCodeOf,
   magazineErrorItemIndex,
 } from "./errors";
 
 describe("magazineError", () => {
+  it("reads the code a magazine refusal carries", () => {
+    expect(magazineErrorCodeOf(magazineError("ISSUE_EMPTY"))).toBe(
+      "ISSUE_EMPTY",
+    );
+    expect(magazineErrorCodeOf(new Error("ISSUE_EMPTY"))).toBeNull();
+    expect(
+      magazineErrorCodeOf(new TRPCError({ code: "BAD_REQUEST" })),
+    ).toBeNull();
+    expect(magazineErrorCodeOf(null)).toBeNull();
+  });
+
+  it("item problem codes are refusal codes", () => {
+    for (const code of ITEM_PROBLEM_CODES) {
+      expect(MAGAZINE_ERROR_CODES).toContain(code);
+    }
+  });
+
   it.each([
+    ["SCHEDULE_IN_PAST", "BAD_REQUEST"],
+    ["SCHEDULE_TOO_FAR", "BAD_REQUEST"],
+    ["ISSUE_NOT_SCHEDULED", "CONFLICT"],
     ["STAFF_NOT_MEMBER", "BAD_REQUEST"],
     ["STAFF_LEADS_COMMUNITY", "BAD_REQUEST"],
     ["ARTICLE_LOCKED", "CONFLICT"],

@@ -14,6 +14,7 @@ import {
 } from "@/lib/magazines/item-views";
 import { issuePath } from "@/lib/magazines/paths";
 import {
+  canIssue,
   type IssueVisibility,
   MAGAZINE_SLUG_PATTERN,
 } from "@/lib/magazines/values";
@@ -263,7 +264,7 @@ function IssueWorkspace({
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
 
-  const published = issue.status === "published";
+  const published = !canIssue(issue.status, "publish");
   const titleValid =
     details.title.trim().length > 0 &&
     details.title.trim().length <= ISSUE_TITLE_MAX;
@@ -506,8 +507,15 @@ function IssueWorkspace({
 
   const { mutateAsync: publishIssue } =
     api.magazines.publishIssue.useMutation();
+  const { mutateAsync: scheduleIssue } =
+    api.magazines.scheduleIssue.useMutation();
+  const { mutateAsync: unscheduleIssue } =
+    api.magazines.unscheduleIssue.useMutation();
 
-  const publish = async () => {
+  /** All publication changes share autosave, the version queue, and refusal handling. */
+  const changePublication = async (
+    write: (expectedUpdatedAt: string) => Promise<MagazineIssue>,
+  ) => {
     setPublishError(null);
     const status = await autosave.flush();
     if (hasUnsavedWork(status, paused)) {
@@ -516,11 +524,7 @@ function IssueWorkspace({
     }
     try {
       await writer.run(async (expectedUpdatedAt) => {
-        const out = await publishIssue({
-          slug: communitySlug,
-          issueId,
-          expectedUpdatedAt,
-        });
+        const out = await write(expectedUpdatedAt);
         setIssue(out);
         return out.updatedAt;
       });
@@ -543,6 +547,24 @@ function IssueWorkspace({
     }
   };
 
+  const publish = () =>
+    changePublication((expectedUpdatedAt) =>
+      publishIssue({ slug: communitySlug, issueId, expectedUpdatedAt }),
+    );
+  const schedule = (publishAt: string) =>
+    changePublication((expectedUpdatedAt) =>
+      scheduleIssue({
+        slug: communitySlug,
+        issueId,
+        expectedUpdatedAt,
+        publishAt,
+      }),
+    );
+  const unschedule = () =>
+    changePublication((expectedUpdatedAt) =>
+      unscheduleIssue({ slug: communitySlug, issueId, expectedUpdatedAt }),
+    );
+
   const displayStatus =
     paused && (autosave.status === "saved" || autosave.status === "idle")
       ? "dirty"
@@ -555,6 +577,7 @@ function IssueWorkspace({
         magazineName={data.magazine.name}
         issueNumber={Number(issue.number)}
         status={issue.status}
+        scheduledFor={issue.scheduledFor ?? null}
         title={details.title}
         saveStatus={displayStatus}
         saveError={failure?.itemKey ? null : failureMessage}
@@ -641,6 +664,9 @@ function IssueWorkspace({
         skippedCount={[...savedViews.values()].filter(isUnavailableItem).length}
         audience={audience}
         onConfirm={publish}
+        scheduledFor={issue.scheduledFor ?? null}
+        onSchedule={schedule}
+        onUnschedule={unschedule}
         error={publishError}
         readingHref={issuePath(data.magazine, { slug: issue.slug })}
       />

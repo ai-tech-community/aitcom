@@ -5,6 +5,7 @@ import type { AppLocale } from "@/i18n/messages";
 import { Link } from "@/i18n/navigation";
 import { seesEditorLayer } from "@/lib/magazines/access";
 import { issueBuilderPath, magazineArticlePath } from "@/lib/magazines/paths";
+import type { IssueStatus } from "@/lib/magazines/values";
 import type { IssuePageData } from "@/server/magazines/reading";
 
 import { LAYOUTS } from "../layouts/registry";
@@ -18,21 +19,28 @@ function NoItems() {
   return <p className="text-muted-foreground text-sm">{t("noItems")}</p>;
 }
 
-/** Editors only: the issue builder link, and a quiet note on a draft. */
+const NOTICE: Record<IssueStatus, "draftNotice" | "scheduledNotice" | null> = {
+  draft: "draftNotice",
+  scheduled: "scheduledNotice",
+  published: null,
+};
+
+/** Editors only: the issue builder link and a note until readers can see it. */
 function EditorBar({
-  draft,
+  status,
   communitySlug,
   issueId,
 }: {
-  draft: boolean;
+  status: IssueStatus;
   communitySlug: string;
   issueId: number;
 }) {
   const t = useTranslations("magazines.issue");
+  const notice = NOTICE[status];
   return (
     <div className="bg-secondary/60 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-2.5">
       <p className="text-muted-foreground text-sm">
-        {draft ? t("draftNotice") : null}
+        {notice ? t(notice) : null}
       </p>
       <Button variant="outline" size="sm" asChild>
         <Link href={issueBuilderPath(communitySlug, issueId)}>
@@ -77,7 +85,7 @@ export function IssueReader({
         <article className="@container flex min-w-0 flex-col gap-8">
           {seesEditorLayer(access) && (
             <EditorBar
-              draft={issue.status === "draft"}
+              status={issue.status}
               communitySlug={community.slug}
               issueId={issue.id}
             />

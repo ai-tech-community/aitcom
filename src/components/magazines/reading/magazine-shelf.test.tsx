@@ -2,6 +2,20 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("./subscribe-button", () => ({
+  SubscribeButton: ({
+    magazineSlug,
+    magazineName,
+  }: {
+    magazineSlug: string;
+    magazineName: string;
+  }) => (
+    <div data-testid="subscribe" data-slug={magazineSlug}>
+      {magazineName}
+    </div>
+  ),
+}));
+
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
     <a href={href} {...props}>
@@ -22,6 +36,26 @@ function issueList() {
 }
 
 describe("MagazineShelf", () => {
+  it("offers to subscribe beside the topics", () => {
+    renderWithIntl(
+      <MagazineShelf data={shelfData({ viewerIsEditor: true })} />,
+    );
+    const subscribe = screen.getByTestId("subscribe");
+    expect(subscribe).toHaveAttribute("data-slug", "agents-weekly");
+    expect(subscribe).toHaveTextContent("Agents Weekly");
+    const actions = subscribe.parentElement!;
+    expect(
+      within(actions).getByRole("list", { name: "Topics" }),
+    ).toBeInTheDocument();
+    const manage = within(actions).getByRole("link", {
+      name: "Manage magazine",
+    });
+    expect(
+      subscribe.compareDocumentPosition(manage) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("shows the magazine, its community and its topics", () => {
     renderWithIntl(<MagazineShelf data={shelfData()} />);
     expect(

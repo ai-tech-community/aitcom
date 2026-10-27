@@ -959,9 +959,9 @@ and platform content. See
 ### Issue
 
 One numbered edition of a [[magazine]]: a title, a slug, a cover, an editor's
-note and an ordered list of [[issue-item]]s. An issue is `draft` (editors
-only) or `published`; a published issue does not go back to draft, and its
-slug is locked so links do not break. Each issue stores its **own visibility**
+note and an ordered list of [[issue-item]]s. An issue is `draft`, `scheduled`
+(editors only) or `published`; a published issue does not go back to draft,
+and its slug is locked so links do not break. Each issue stores its **own visibility**
 — `members` or `public` — copied from the magazine's default when it is
 created; changing the default never changes existing issues. A `public` issue
 in an unlisted [[community]] counts as public only when an active community
@@ -970,6 +970,37 @@ cannot confirm it. Without confirmation it is members-only for outsiders.
 Who may read an issue is one **issue access** decision: `none` (answered as
 not-found), `full` or `editor`. Every page, list, search and sitemap asks the
 same resolver. See [[adr-0042-magazine-issues-are-read-through-one-access-resolver]].
+
+### Magazine subscriber
+
+An account or a confirmed email address following a [[magazine]], stored in
+`app.magazine_subscription`. An account hears about new issues in the inbox,
+including a signed-in non-member; an email address hears by email in its saved
+language after confirming ownership. A subscription never grants reading
+rights. Every staff role can see subscriber counts, never names or addresses.
+See [[adr-0046-magazine-issues-are-announced-through-an-outbox-once-per-subscriber]].
+
+### Scheduled issue
+
+An [[issue]] with status `scheduled`, a `scheduledFor` instant and a
+`scheduledBy` user id. It stays editable and invisible to readers until it
+publishes through the same path as the Publish button, as the scheduler, who
+must still have `edit`. Empty issues, invalid items or lost rights return it
+to draft and tell the editors; temporary errors retry for up to an hour.
+A newer edit always wins. A missing or deleted community returns it to draft
+silently. See [[adr-0046-magazine-issues-are-announced-through-an-outbox-once-per-subscriber]].
+
+### Issue announcement
+
+The durable record in `app.magazine_issue_announcement` written in the same
+transaction that publishes an [[issue]]. Delivery tells each eligible
+[[magazine-subscriber]] once, with a claim per issue and subscription in
+`app.magazine_issue_delivery`. The issue access resolver decides the audience
+again for each batch: members-only issues reach active members in the inbox,
+and public issues may also reach email addresses. Only current subscriptions
+confirmed by publication time count. Inbox delivery starts after publication;
+the scheduled run finishes it and sends email. See
+[[adr-0046-magazine-issues-are-announced-through-an-outbox-once-per-subscriber]].
 
 ### Issue item
 
@@ -1039,8 +1070,8 @@ code checks "is this a magazine article?" to change behaviour. See
 A person with the `edit` capability in a [[magazine]]: an editor-in-chief or
 editor on its [[magazine-team]]. An active community owner/admin is implicitly
 editor-in-chief. Editors build and publish [[issue]]s, review
-[[magazine-article]]s, see drafts and unavailable items, and mark their own
-articles ready. Settings and team management require `manage`, held by
+[[magazine-article]]s, see draft and scheduled issues and unavailable items,
+and mark their own articles ready. Settings and team management require `manage`, held by
 editors-in-chief. The editorship seam (`loadMagazineEditorship` and its batched
 twin `loadEditorScope`) resolves standing from active membership and
 assignments. See

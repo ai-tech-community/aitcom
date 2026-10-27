@@ -559,12 +559,21 @@ export interface MagazineIssue {
    */
   publicConfirmedBy?: string | null;
   publicConfirmedAt?: string | null;
-  status: 'draft' | 'published';
+  status: 'draft' | 'scheduled' | 'published';
   publishedAt?: string | null;
   /**
    * Better Auth user ID.
    */
   publishedBy?: string | null;
+  scheduledFor?: string | null;
+  /**
+   * Who scheduled it (Better Auth user ID). The scheduled publish runs as this person.
+   */
+  scheduledBy?: string | null;
+  /**
+   * How it was published: the Publish button or a schedule.
+   */
+  publishedVia?: ('button' | 'schedule') | null;
   items?:
     | (
         | {
@@ -2823,6 +2832,9 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
   status?: T;
   publishedAt?: T;
   publishedBy?: T;
+  scheduledFor?: T;
+  scheduledBy?: T;
+  publishedVia?: T;
   items?:
     | T
     | {

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { db } from "@/server/db";
+import { removeSubscription } from "@/server/magazines/subscriptions/service";
 import { recordGlobalDigestOptOut } from "@/server/notifications/digest-optout";
 import { recordStoryEmailOptOut } from "@/server/notifications/story-email-optout";
 import {
@@ -39,8 +41,21 @@ export async function POST(req: Request) {
   }
 
   try {
-    if (payload.scope === "story") await recordStoryEmailOptOut(payload.userId);
-    else await recordGlobalDigestOptOut(payload.userId);
+    switch (payload.scope) {
+      case "digest":
+        await recordGlobalDigestOptOut(payload.userId);
+        break;
+      case "story":
+        await recordStoryEmailOptOut(payload.userId);
+        break;
+      case "magazine":
+        await removeSubscription(db, payload.subscriptionId);
+        break;
+      default: {
+        const unhandled: never = payload;
+        throw new Error(`Unknown unsubscribe scope: ${String(unhandled)}`);
+      }
+    }
   } catch (err) {
     console.error("email unsubscribe failed", err);
     return NextResponse.json(
@@ -51,7 +66,7 @@ export async function POST(req: Request) {
 
   if (confirmed && !oneClick) {
     const locale = localeFrom(body.get("locale"));
-    const kind = payload.scope === "story" ? "&kind=story" : "";
+    const kind = payload.scope === "digest" ? "" : `&kind=${payload.scope}`;
     return NextResponse.redirect(
       new URL(`/${locale}/unsubscribe?done=1${kind}`, req.url),
       303,

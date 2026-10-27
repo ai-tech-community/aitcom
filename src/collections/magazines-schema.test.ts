@@ -7,6 +7,7 @@ import {
   ISSUE_STATUSES,
   ISSUE_VISIBILITIES,
   MAX_MAGAZINE_TOPICS,
+  PUBLISH_ORIGINS,
 } from "@/lib/magazines/values";
 
 import { Articles } from "./Articles";
@@ -68,7 +69,18 @@ describe("magazine-issues collection", () => {
     ]);
     const status = pick(MagazineIssues.fields, "status");
     expect(status.options!.map((o) => o.value)).toEqual([...ISSUE_STATUSES]);
+    expect(status.options!.map((o) => o.value)).toContain("scheduled");
     expect(status.defaultValue).toBe("draft");
+    expect(pick(MagazineIssues.fields, "scheduledFor")).toMatchObject({
+      type: "date",
+      index: true,
+    });
+    expect(pick(MagazineIssues.fields, "scheduledBy").type).toBe("text");
+    const publishedVia = pick(MagazineIssues.fields, "publishedVia");
+    expect(publishedVia.type).toBe("select");
+    expect(publishedVia.options!.map((o) => o.value)).toEqual([
+      ...PUBLISH_ORIGINS,
+    ]);
     expect(
       pick(MagazineIssues.fields, "layout").options!.map((o) => o.value),
     ).toEqual([...ISSUE_LAYOUTS]);
@@ -176,5 +188,30 @@ describe("magazine platform items migration", () => {
     expect(
       index.indexOf('name: "20261026b_magazine_platform_items"'),
     ).toBeGreaterThan(index.indexOf('name: "20261026a_magazines"'));
+  });
+});
+
+describe("magazine subscriptions migration", () => {
+  it("ships an idempotent migration registered after magazine staff", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/migrations/20261027b_magazine_subscriptions.ts"),
+      "utf8",
+    );
+    for (const needle of [
+      "ADD VALUE IF NOT EXISTS 'scheduled'",
+      'CREATE TABLE IF NOT EXISTS "app"."magazine_subscription"',
+      'CREATE TABLE IF NOT EXISTS "app"."magazine_issue_announcement"',
+      'CREATE TABLE IF NOT EXISTS "app"."magazine_issue_delivery"',
+    ]) {
+      expect(source).toContain(needle);
+    }
+    const index = readFileSync(
+      join(process.cwd(), "src/migrations/index.ts"),
+      "utf8",
+    );
+    expect(index).toContain('name: "20261027b_magazine_subscriptions"');
+    expect(
+      index.indexOf('name: "20261027b_magazine_subscriptions"'),
+    ).toBeGreaterThan(index.indexOf('name: "20261027a_magazine_staff"'));
   });
 });
