@@ -4973,7 +4973,7 @@
         "button": "Make a draft now",
         "made": "Your draft is ready.",
         "open": "Open the draft",
-        "too_few": "There is not enough yet: we found {found, plural, one {# thing} other {# things}} and a draft needs {needed}.",
+        "too_few": "There is not enough yet: we found {found, plural, =0 {nothing} one {# thing} other {# things}} and a draft needs {needed}.",
         "draft_open": "There is already an open draft. Finish or delete it first.",
         "no_rights": "You cannot make drafts for this magazine.",
         "busy": "A draft is being made right now. Try again in a minute."
@@ -4985,7 +4985,7 @@
         "draftMadeScheduled": "made a draft that goes out on {date}",
         "draftSkipped": "made no draft: {reason}",
         "skipReasons": {
-          "too_few": "there was not enough yet (found {found, plural, one {# thing} other {# things}}, a draft needs {needed})",
+          "too_few": "there was not enough yet (found {found, plural, =0 {nothing} one {# thing} other {# things}}, a draft needs {needed})",
           "draft_open": "there is already an open draft",
           "no_rights": "the person who set this up can no longer edit the magazine"
         },
@@ -5415,7 +5415,7 @@
       "autoDraftSkipped": {
         "title": "No new draft of {magazine} this time",
         "content": {
-          "too_few": "We found only {found, plural, one {# thing} other {# things}} to put in it, and a draft needs at least {needed}. Switch on more kinds of content, look back further, or add topics to your magazine.",
+          "too_few": "We found {found, plural, =0 {nothing} one {only # thing} other {only # things}} to put in it, and a draft needs at least {needed}. Switch on more kinds of content, look back further, or add topics to your magazine.",
           "no_rights": "The person who set up automatic drafts can no longer edit the magazine. Save the automatic draft settings again to restart them."
         },
         "linkLabel": "Open automatic drafts"

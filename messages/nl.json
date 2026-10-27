@@ -4973,7 +4973,7 @@
         "button": "Maak nu een concept",
         "made": "Je concept staat klaar.",
         "open": "Open het concept",
-        "too_few": "Er is nog niet genoeg: we vonden {found, plural, one {# ding} other {# dingen}} en een concept heeft er {needed} nodig.",
+        "too_few": "Er is nog niet genoeg: we vonden {found, plural, =0 {niets} one {# ding} other {# dingen}} en een concept heeft er {needed} nodig.",
         "draft_open": "Er staat al een concept open. Maak het eerst af of verwijder het.",
         "no_rights": "Je kunt geen concepten maken voor dit magazine.",
         "busy": "Er wordt nu een concept gemaakt. Probeer het over een minuut opnieuw."
@@ -4985,7 +4985,7 @@
         "draftMadeScheduled": "heeft een concept gemaakt dat op {date} verschijnt",
         "draftSkipped": "heeft geen concept gemaakt: {reason}",
         "skipReasons": {
-          "too_few": "er was nog niet genoeg (gevonden: {found, plural, one {# ding} other {# dingen}}, een concept heeft er {needed} nodig)",
+          "too_few": "er was nog niet genoeg (gevonden: {found, plural, =0 {niets} one {# ding} other {# dingen}}, een concept heeft er {needed} nodig)",
           "draft_open": "er staat al een concept open",
           "no_rights": "degene die dit instelde mag het magazine niet meer bewerken"
         },
@@ -5415,7 +5415,7 @@
       "autoDraftSkipped": {
         "title": "Deze keer geen nieuw concept van {magazine}",
         "content": {
-          "too_few": "We vonden maar {found, plural, one {# ding} other {# dingen}} om erin te zetten. Een concept heeft er minstens {needed} nodig. Zet meer soorten inhoud aan, kijk verder terug of voeg onderwerpen toe aan je magazine.",
+          "too_few": "We vonden {found, plural, =0 {niets} one {maar # ding} other {maar # dingen}} om erin te zetten. Een concept heeft er minstens {needed} nodig. Zet meer soorten inhoud aan, kijk verder terug of voeg onderwerpen toe aan je magazine.",
           "no_rights": "Degene die automatische concepten heeft ingesteld, mag het magazine niet meer bewerken. Sla de instellingen voor automatische concepten opnieuw op om ze weer te starten."
         },
         "linkLabel": "Open automatische concepten"

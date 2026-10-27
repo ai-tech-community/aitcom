@@ -69,6 +69,16 @@ describe("MakeDraftNow", () => {
     [
       {
         status: "skipped",
+        reason: "too_few",
+        found: 0,
+        needed: 3,
+        openIssueId: null,
+      },
+      "There is not enough yet: we found nothing and a draft needs 3.",
+    ],
+    [
+      {
+        status: "skipped",
         reason: "draft_open",
         found: null,
         needed: null,

@@ -236,6 +236,23 @@ describe("automatic draft notices", () => {
       );
     },
   );
+  it.each([
+    [0, "We found nothing to put in it"],
+    [1, "We found only 1 thing to put in it"],
+    [2, "We found only 2 things to put in it"],
+  ])("says plainly how much was found (%i)", async (found, start) => {
+    const values = vi.fn(async (_rows: { content: string }[]) => undefined);
+    const insert = vi.fn(() => ({ values }));
+    await notifyAutoDraftSkipped({ insert } as unknown as Deps["db"], {
+      ...common,
+      reason: "too_few",
+      found,
+      needed: 3,
+    });
+    expect(values.mock.calls[0]![0][0]!.content).toBe(
+      `${start}, and a draft needs at least 3. Switch on more kinds of content, look back further, or add topics to your magazine.`,
+    );
+  });
   it.each(["too_few", "no_rights"] as const)(
     "tells editors why no draft was made (%s)",
     async (reason) => {
