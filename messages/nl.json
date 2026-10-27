@@ -4846,6 +4846,34 @@
     }
   },
   "magazineEditor": {
+    "review": {
+      "metaTitle": "Een artikel lezen",
+      "back": "Terug naar het tabblad Magazine",
+      "byline": "Door {author} · ingestuurd op <date>{dateLabel}</date>",
+      "unknownAuthor": "Onbekende schrijver",
+      "decision": "Je besluit",
+      "approve": "Goedkeuren",
+      "askChanges": "Om aanpassingen vragen",
+      "changesLabel": "Wat moet er veranderen?",
+      "sendChanges": "Naar de schrijver sturen",
+      "decline": "Afwijzen",
+      "declineTitle": "Dit artikel afwijzen?",
+      "declineBody": "De schrijver krijgt je opmerking en kan dit artikel niet opnieuw insturen.",
+      "declineNoteLabel": "Opmerking voor de schrijver (optioneel)",
+      "declineConfirm": "Artikel afwijzen",
+      "cancel": "Annuleren",
+      "done": {
+        "approved": "Goedgekeurd. Het artikel is klaar voor een nummer.",
+        "changes_requested": "Naar de schrijver gestuurd.",
+        "rejected": "Artikel afgewezen."
+      },
+      "status": {
+        "approved": "Goedgekeurd",
+        "changes_requested": "Om aanpassingen gevraagd",
+        "rejected": "Niet geaccepteerd"
+      },
+      "reload": "Opnieuw laden"
+    },
     "errors": {
       "confirmUnlistedPublic": "Je community is privé. Vink het vakje aan om te bevestigen dat iedereen dit mag zien.",
       "magazineExists": "Je community heeft al een magazine. Laad de pagina opnieuw om het te bewerken.",

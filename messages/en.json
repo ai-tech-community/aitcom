@@ -4846,6 +4846,34 @@
     }
   },
   "magazineEditor": {
+    "review": {
+      "metaTitle": "Read an article",
+      "back": "Back to the Magazine tab",
+      "byline": "By {author} · sent <date>{dateLabel}</date>",
+      "unknownAuthor": "Unknown writer",
+      "decision": "Your decision",
+      "approve": "Approve",
+      "askChanges": "Ask for changes",
+      "changesLabel": "What should change?",
+      "sendChanges": "Send to the writer",
+      "decline": "Decline",
+      "declineTitle": "Decline this article?",
+      "declineBody": "The writer gets your note. They cannot send this article again.",
+      "declineNoteLabel": "Note for the writer (optional)",
+      "declineConfirm": "Decline article",
+      "cancel": "Cancel",
+      "done": {
+        "approved": "Approved. It is ready for an issue.",
+        "changes_requested": "Sent to the writer.",
+        "rejected": "Article declined."
+      },
+      "status": {
+        "approved": "Approved",
+        "changes_requested": "Changes asked for",
+        "rejected": "Not accepted"
+      },
+      "reload": "Reload"
+    },
     "errors": {
       "confirmUnlistedPublic": "Your community is private. Tick the box to confirm that everyone may see this.",
       "magazineExists": "Your community already has a magazine. Reload the page to edit it.",
