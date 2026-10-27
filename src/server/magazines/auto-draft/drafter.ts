@@ -134,23 +134,20 @@ async function attemptAutoDraft(
     // The run is already terminal. A follow-up failure must never invite a
     // retry to delete a completed draft or repeat a finished skip.
     try {
+      // Use the transaction clock, like issue-service history, for one chronology.
       await inPayloadTransaction(deps.payload, (tx) =>
-        recordIssueHistory(
-          tx,
-          {
-            magazineId: magazine.id,
-            issue: issue
-              ? {
-                  id: issue.id,
-                  number: Number(issue.number),
-                  title: issue.title,
-                }
-              : null,
-            actorId,
-            detail,
-          },
-          now,
-        ),
+        recordIssueHistory(tx, {
+          magazineId: magazine.id,
+          issue: issue
+            ? {
+                id: issue.id,
+                number: Number(issue.number),
+                title: issue.title,
+              }
+            : null,
+          actorId,
+          detail,
+        }),
       );
     } catch (error) {
       console.error("[magazines] automatic draft history failed", {
