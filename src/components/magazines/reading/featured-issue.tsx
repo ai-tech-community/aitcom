@@ -69,17 +69,11 @@ export function FeaturedIssue({
             <h2 className="text-2xl leading-tight font-semibold tracking-tight text-balance break-words @xl:text-3xl">
               {issue.title}
             </h2>
-            <p className="text-muted-foreground text-sm">
-              {showCommunity && (
-                <>
-                  {t("home.fromCommunity", { community: issue.community.name })}
-                  {" · "}
-                </>
-              )}
-              <span className="font-mono text-xs">
-                {t("issue.itemCount", { count: issue.itemCount })}
-              </span>
-            </p>
+            {showCommunity && (
+              <p className="text-muted-foreground text-sm">
+                {t("home.fromCommunity", { community: issue.community.name })}
+              </p>
+            )}
           </div>
           <Button
             asChild

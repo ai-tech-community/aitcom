@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 
@@ -7,44 +8,70 @@ import { RichTextEditor } from "@/components/article-editor/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SectionLabel } from "@/components/ui/section-label";
 import { lexicalHasText, lexicalPlainText } from "@/lib/lexical-text";
 
-import type { BuilderItemEditorProps, BuilderItemKind } from "./types";
+import type {
+  AddPanelProps,
+  BuilderItemEditorProps,
+  BuilderItemKind,
+} from "./types";
 
 const HEADING_MAX = 160;
 /** Most characters of a block's text that name its row (CSS truncates the rest). */
 const ROW_TEXT_CHARS = 120;
 
+/** "Add more" for a text section: a hint and one button. */
+function EditorialAddPanel({ onAdd }: AddPanelProps) {
+  const t = useTranslations("magazineEditor.builder.add");
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-muted-foreground text-sm">{t("editorialHint")}</p>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="self-start"
+        onClick={() =>
+          onAdd(
+            { kind: "editorial", body: null },
+            { title: null, openHref: null },
+          )
+        }
+      >
+        <Plus aria-hidden="true" />
+        {t("addEditorial")}
+      </Button>
+    </div>
+  );
+}
+
 /**
- * Writes one editorial block: an optional heading and its text. Changes go
- * straight into the builder's item list and autosave with it; an empty
- * block waits until it has text.
+ * Writes one editorial block: an optional heading and its text. The details
+ * panel supplies the intro line and Done; changes go straight into the
+ * builder's item list and autosave with it. An empty block waits until it
+ * has text.
  */
 export function EditorialItemEditor({
   item,
   onChange,
-  onDone,
 }: BuilderItemEditorProps<"editorial">) {
   const t = useTranslations("magazineEditor.builder.editorial");
-  const labelId = useId();
   const headingId = useId();
   const bodyLabelId = useId();
 
   return (
-    <section
-      aria-labelledby={labelId}
-      className="flex flex-col gap-4 rounded-lg border p-4"
-    >
-      <SectionLabel id={labelId}>{t("label")}</SectionLabel>
+    <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={headingId}>{t("heading")}</Label>
         <Input
           id={headingId}
+          data-autofocus
           value={item.heading ?? ""}
           maxLength={HEADING_MAX}
-          onChange={(e) =>
-            onChange({ heading: e.target.value ? e.target.value : undefined })
+          onChange={(event) =>
+            onChange({
+              heading: event.target.value ? event.target.value : undefined,
+            })
           }
         />
       </div>
@@ -63,23 +90,14 @@ export function EditorialItemEditor({
           ariaLabelledBy={bodyLabelId}
         />
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="self-start"
-        onClick={onDone}
-      >
-        {t("done")}
-      </Button>
-    </section>
+    </div>
   );
 }
 
 /**
  * An editorial block: text the issue owns. Its row is named by its heading,
- * else its first words; it is written in its own panel and previewed from
- * the working copy, so the preview follows the editor's typing.
+ * else its first words; it is written under the shared intro line and
+ * previewed from the working copy, so the preview follows the typing.
  */
 export const editorialBuilderKind: BuilderItemKind<"editorial"> = {
   labelKey: "editorial",
@@ -101,4 +119,5 @@ export const editorialBuilderKind: BuilderItemKind<"editorial"> = {
     heading: item.heading ?? null,
     body: item.body,
   }),
+  AddPanel: EditorialAddPanel,
 };

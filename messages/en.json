@@ -4776,12 +4776,12 @@
       "contents": "Contents",
       "fromTheEditor": "From the editor",
       "readingTime": "{minutes} min read",
-      "itemCount": "{count, plural, one {# item} other {# items}}",
       "draftNotice": "Draft — only editors can see this",
       "editIssue": "Edit issue",
       "noItems": "This issue has no articles yet.",
       "published": "Published {date}",
-      "signature": "— {name}, editor"
+      "signature": "— {name}, editor",
+      "contentsCount": "{count, plural, one {# item} other {# items}}"
     },
     "item": {
       "readArticle": "Read article",
@@ -4792,9 +4792,25 @@
       "unavailableReason": {
         "missing": "This item was deleted. Remove it from the issue.",
         "not_ready": "Readers cannot see this item yet.",
-        "other_magazine": "This article belongs to another magazine. Remove it from the issue."
+        "other_magazine": "This article belongs to another magazine. Remove it from the issue.",
+        "unpublished": "This was taken offline. Readers skip it until it is back.",
+        "no_access": "This is private to its community. Only people who can open it see it."
       },
-      "editorsOnly": "Only editors see this."
+      "editorsOnly": "Only editors see this.",
+      "storylineKind": "From AIT News",
+      "sources": "{count, plural, one {# source} other {# sources}}",
+      "updated": "Updated {date}",
+      "readStory": "Read the story",
+      "newsKind": "From AIT News",
+      "opensInNewTab": "(opens in a new tab)",
+      "eventKind": "Event",
+      "online": "Online",
+      "cancelled": "Cancelled",
+      "completed": "Took place",
+      "forumKind": "From the forum",
+      "replies": "{count, plural, one {# reply} other {# replies}}",
+      "projectKind": "Launchpad project",
+      "upvotes": "{count, plural, one {# upvote} other {# upvotes}}"
     },
     "rail": {
       "visitCommunity": "Visit {community}",
@@ -4938,7 +4954,10 @@
       },
       "conflict": "This issue changed somewhere else. Your changes here are not saved.",
       "reload": "Reload",
-      "publish": "Publish",
+      "publish": {
+        "label": "Publish",
+        "skipped": "{count, plural, one {# item is no longer available. Readers will not see it.} other {# items are no longer available. Readers will not see them.}}"
+      },
       "published": "Published",
       "details": {
         "label": "Issue details",
@@ -4960,11 +4979,14 @@
         "visibility": "Who can read this issue",
         "visibilityMembers": "Members only",
         "visibilityPublic": "Everyone",
-        "optInPending": "Tick the box to save this choice."
+        "optInPending": "Tick the box to save this choice.",
+        "intro": "Intro line (optional)",
+        "introHelp": "One line shown above this item in the issue.",
+        "done": "Done"
       },
       "items": {
         "label": "In this issue",
-        "empty": "This issue is empty. Add articles or a text section from Add more.",
+        "empty": "This issue is empty. Add something from Add more.",
         "article": "Article",
         "editorial": "Text section",
         "editorialEmpty": "Text section, not written yet",
@@ -4985,28 +5007,75 @@
           "movedTo": "{title} is now at position {position} of {total}.",
           "dropped": "{title} dropped at position {position} of {total}.",
           "cancelled": "Reordering cancelled. {title} is back where it was."
-        }
+        },
+        "storyline": "Story",
+        "newsItem": "News",
+        "event": "Event",
+        "membersOnly": "Only members see this",
+        "forumThread": "Forum thread",
+        "launchpadProject": "Project"
       },
       "editorial": {
-        "label": "Text section",
         "heading": "Heading (optional)",
         "body": "Text",
-        "bodyPlaceholder": "Write an introduction, a section opener or a short column…",
-        "done": "Done"
+        "bodyPlaceholder": "Write an introduction, a section opener or a short column…"
       },
       "add": {
         "label": "Add more",
         "kind": "What to add",
-        "articles": "Articles",
-        "editorial": "Text section",
-        "articlesEmpty": "No articles are ready. Articles marked ready for an issue show up here.",
+        "tabs": {
+          "article": "Articles",
+          "editorial": "Text",
+          "storyline": "Stories",
+          "newsItem": "News",
+          "event": "Events",
+          "forumThread": "Forum",
+          "launchpadProject": "Projects"
+        },
+        "search": {
+          "article": "Search ready articles",
+          "storyline": "Search AIT News stories",
+          "newsItem": "Search news headlines",
+          "event": "Search your community's events",
+          "forumThread": "Search your community's forum",
+          "launchpadProject": "Search your members' projects"
+        },
+        "empty": {
+          "article": "No articles are ready. Articles marked ready for an issue show up here.",
+          "storyline": "No stories found.",
+          "newsItem": "No headlines found.",
+          "event": "Your community has no events yet.",
+          "forumThread": "No threads found.",
+          "launchpadProject": "No projects found."
+        },
+        "hint": {
+          "article": "Only articles marked ready and not in another issue show here.",
+          "storyline": "Stories stay live: readers always see the newest version.",
+          "newsItem": "Headlines link to the original article.",
+          "event": "Events of your community. Readers see the latest details.",
+          "forumThread": "Threads stay live: readers see new replies too.",
+          "launchpadProject": "Projects from your community or by its members."
+        },
+        "noMatch": "Nothing matches “{query}”.",
         "add": "Add",
-        "addArticle": "Add {title} to the issue",
-        "byAuthor": "By {name}",
+        "addItem": "Add {title} to the issue",
         "editorialHint": "Your own words: an introduction, an opening for a part of the issue or a short column.",
         "addEditorial": "Add a text section",
-        "loadFailed": "The ready articles could not be loaded.",
-        "tryAgain": "Try again"
+        "loadFailed": "This list could not be loaded.",
+        "tryAgain": "Try again",
+        "facts": {
+          "byline": "By {name}",
+          "updated": "Updated {date}",
+          "published": "{date}",
+          "starts": "{date}",
+          "lastActive": "Last reply {date}",
+          "sources": "{count, plural, one {# source} other {# sources}}",
+          "replies": "{count, plural, one {# reply} other {# replies}}",
+          "upvotes": "{count, plural, one {# upvote} other {# upvotes}}",
+          "cancelled": "Cancelled",
+          "completed": "Took place"
+        },
+        "results": "{count, plural, one {# result} other {# results}}"
       },
       "preview": {
         "label": "Preview",
@@ -5016,16 +5085,17 @@
         "visitor": "Visitor",
         "visitorNothingTitle": "Visitors see nothing",
         "visitorNothing": "This issue is for members only. People outside your community cannot open it.",
-        "unsavedArticles": "Articles you just added show here once they are saved.",
-        "empty": "Add an article or a text section to see the issue here.",
-        "untitled": "Untitled issue"
+        "unsavedItems": "Items you just added show here once they are saved.",
+        "empty": "Add something to see the issue here.",
+        "untitled": "Untitled issue",
+        "visitorNoneVisible": "Visitors cannot see any item in this issue yet. Members-only and missing items are hidden."
       },
       "publishDialog": {
         "title": "Publish this issue?",
         "blockersTitle": "Before you can publish",
         "blocker": {
           "NO_TITLE": "Give the issue a title.",
-          "NO_ITEMS": "Add at least one article or text section.",
+          "NO_ITEMS": "Add at least one item.",
           "INVALID_ITEM": "Fix the parts marked in the list."
         },
         "ready": "Everything is ready.",

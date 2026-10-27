@@ -2,12 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { IssueReaderAccess } from "@/lib/magazines/access";
 
-import type { PayloadClient } from "../deps";
+import type { Deps, PayloadClient } from "../deps";
 import { ISSUE_ITEM_BLOCKS } from "./blocks";
+import { itemContextFor } from "./context";
 import {
   ITEM_KINDS,
   issueItemInputSchema,
   loadIssueItemViews,
+  loadIssueItemViewsOfKinds,
   type StoredBlock,
   toItemInputs,
   toStoredItems,
@@ -62,7 +64,24 @@ function fakePayload(articles: FakeArticle[]) {
 }
 
 function ctx(payload: PayloadClient, access: IssueReaderAccess): ItemContext {
-  return { payload, magazineId: MAGAZINE_ID, issueId: 1, locale: "en", access };
+  return {
+    ...itemContextFor(
+      { payload, db: {} as Deps["db"] },
+      {
+        magazineId: MAGAZINE_ID,
+        community: { id: "community", slug: "community" },
+        issueId: 1,
+        locale: "en",
+        access,
+        viewerId: null,
+      },
+    ),
+    reader: {
+      viewerId: null,
+      hiddenCommunityIds: async () => new Set<string>(),
+      membersOnlyCommunityIds: async () => new Set<string>(),
+    },
+  };
 }
 
 function articleBlock(id: string, articleId: number): StoredBlock {
@@ -104,7 +123,7 @@ describe("issue item registry", () => {
         body: richText("x"),
       }),
     ).toEqual({ kind: "editorial", heading: "Hi", body: richText("x") });
-    expect(issueItemInputSchema.safeParse({ kind: "storyline" }).success).toBe(
+    expect(issueItemInputSchema.safeParse({ kind: "nope" }).success).toBe(
       false,
     );
     expect(issueItemInputSchema.safeParse({ kind: "article" }).success).toBe(
@@ -144,6 +163,92 @@ describe("issue item registry", () => {
       { itemIndex: 1, code: "ITEM_INVALID" },
       { itemIndex: 2, code: "ITEM_INVALID" },
     ]);
+  });
+
+  it("marks an item new only when its reference was not stored before", async () => {
+    const { payload } = fakePayload([]);
+    const context = ctx(payload, "editor");
+    const articleValidate = vi
+      .spyOn(ITEM_KINDS.article, "validate")
+      .mockResolvedValue([]);
+    const editorialValidate = vi
+      .spyOn(ITEM_KINDS.editorial, "validate")
+      .mockResolvedValue([]);
+    const article1 = articleBlock("a1", 1);
+    const article2 = articleBlock("a2", 2);
+    const editorial = editorialBlock("e1");
+
+    await validateIssueItems([article1, article2, editorial], context, [
+      articleBlock("old", 1),
+    ]);
+
+    expect(articleValidate).toHaveBeenCalledExactlyOnceWith(
+      [
+        { index: 0, stored: article1, isNew: false },
+        { index: 1, stored: article2, isNew: true },
+      ],
+      context,
+    );
+    expect(editorialValidate).toHaveBeenCalledExactlyOnceWith(
+      [{ index: 2, stored: editorial, isNew: true }],
+      context,
+    );
+  });
+
+  it("without previous blocks every reference is new", async () => {
+    const { payload } = fakePayload([]);
+    const context = ctx(payload, "editor");
+    const validate = vi
+      .spyOn(ITEM_KINDS.article, "validate")
+      .mockResolvedValue([]);
+    const block = articleBlock("a1", 1);
+
+    await validateIssueItems([block], context);
+
+    expect(validate).toHaveBeenCalledExactlyOnceWith(
+      [{ index: 0, stored: block, isNew: true }],
+      context,
+    );
+  });
+
+  it("article and editorial references", () => {
+    expect(ITEM_KINDS.article.referenceOf({ article: 3 })).toBe("article:3");
+    expect(
+      ITEM_KINDS.editorial.referenceOf(
+        ITEM_KINDS.editorial.toStored({
+          kind: "editorial",
+          body: richText("x"),
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("stores a trimmed intro", () => {
+    for (const [intro, stored] of [
+      [" x ", "x"],
+      ["  ", null],
+    ] as const) {
+      expect(
+        toStoredItems([
+          { kind: "article", articleId: 3, intro },
+          { kind: "editorial", body: richText("x"), intro },
+        ]).map((block) => block.intro),
+      ).toEqual([stored, stored]);
+    }
+  });
+
+  it("loads only the asked kinds", async () => {
+    const { payload } = fakePayload([{ id: 1, status: "published" }]);
+    const editorialLoad = vi.spyOn(ITEM_KINDS.editorial, "load");
+
+    const views = await loadIssueItemViewsOfKinds(
+      [editorialBlock("e1"), articleBlock("a1", 1)],
+      ctx(payload, "editor"),
+      ["article"],
+    );
+
+    expect(views.map((view) => view.itemId)).toEqual(["a1"]);
+    expect(editorialLoad).not.toHaveBeenCalled();
   });
 
   it("calls each kind's load once per issue, not once per item", async () => {

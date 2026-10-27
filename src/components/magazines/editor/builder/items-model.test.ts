@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/i18n/navigation", () => ({ Link: () => null }));
+vi.mock("@/trpc/react", () => ({ api: {} }));
 
 import type { ItemProblem } from "@/lib/magazines/item-views";
 
 import {
-  addEditorial,
   addItem,
   type BuilderItem,
   isSavableItem,
@@ -62,6 +64,12 @@ describe("removeItem", () => {
 });
 
 describe("addItem", () => {
+  it("keeps the key generated before a React updater is replayed", () => {
+    const input = { kind: "article" as const, articleId: 9 };
+    expect(addItem(abc, input, "pending-key").at(-1)?.key).toBe("pending-key");
+    expect(addItem(abc, input, "pending-key").at(-1)?.key).toBe("pending-key");
+  });
+
   it("adds the item at the end with a fresh key", () => {
     const next = addItem(abc, { kind: "article", articleId: 9 });
     expect(next).toHaveLength(4);
@@ -76,15 +84,6 @@ describe("addItem", () => {
   it("adds content the issue owns (an editorial block) every time", () => {
     const block = { kind: "editorial" as const, body: textBody("Hi") };
     expect(addItem(addItem(abc, block), block)).toHaveLength(5);
-  });
-});
-
-describe("addEditorial", () => {
-  it("adds an empty editorial block with a unique key", () => {
-    const one = addEditorial(abc);
-    const two = addEditorial(one);
-    expect(one[3]).toMatchObject({ kind: "editorial", body: null });
-    expect(new Set(keys(two)).size).toBe(5);
   });
 });
 
@@ -117,7 +116,7 @@ describe("isSavableItem", () => {
       key: "e",
       body,
     });
-    const [empty] = addEditorial([]);
+    const [empty] = addItem([], { kind: "editorial", body: null });
     expect(isSavableItem(empty!)).toBe(false);
     expect(isSavableItem(editorial(textBody("  ")))).toBe(false);
     expect(isSavableItem(editorial(textBody("Welcome")))).toBe(true);
@@ -153,7 +152,7 @@ describe("publishBlockers", () => {
     expect(
       publishBlockers({
         title: "June",
-        items: addEditorial(abc),
+        items: addItem(abc, { kind: "editorial", body: null }),
         problems: [],
       }),
     ).toEqual(["INVALID_ITEM"]);

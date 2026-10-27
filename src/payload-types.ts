@@ -602,6 +602,56 @@ export interface MagazineIssue {
             blockName?: string | null;
             blockType: 'editorial';
           }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            storylineId: string;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'storyline';
+          }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            newsItemId: string;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'newsItem';
+          }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            eventId: number;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'event';
+          }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            threadId: number;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'forumThread';
+          }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            projectId: number;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'launchpadProject';
+          }
       )[]
     | null;
   updatedAt: string;
@@ -2790,6 +2840,46 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
               intro?: T;
               heading?: T;
               body?: T;
+              id?: T;
+              blockName?: T;
+            };
+        storyline?:
+          | T
+          | {
+              intro?: T;
+              storylineId?: T;
+              id?: T;
+              blockName?: T;
+            };
+        newsItem?:
+          | T
+          | {
+              intro?: T;
+              newsItemId?: T;
+              id?: T;
+              blockName?: T;
+            };
+        event?:
+          | T
+          | {
+              intro?: T;
+              eventId?: T;
+              id?: T;
+              blockName?: T;
+            };
+        forumThread?:
+          | T
+          | {
+              intro?: T;
+              threadId?: T;
+              id?: T;
+              blockName?: T;
+            };
+        launchpadProject?:
+          | T
+          | {
+              intro?: T;
+              projectId?: T;
               id?: T;
               blockName?: T;
             };

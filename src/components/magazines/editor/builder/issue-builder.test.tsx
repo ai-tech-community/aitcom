@@ -4,6 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
 import type { MagazineIssue } from "@/payload-types";
 
+import {
+  eventView,
+  forumThreadView,
+  launchpadProjectView,
+} from "../../test-fixtures";
 import { renderWithIntl } from "../../test-intl";
 
 const T0 = "2026-10-20T10:00:00.000Z";
@@ -18,17 +23,18 @@ type EditingData = {
   magazine: { name: string; slug: string };
   communityIsPrivate: boolean;
   community: { name: string; slug: string; isListedInDirectory: boolean };
-  editableArticles: { id: number; slug: string }[];
+  openHrefs: Record<string, string>;
 };
 
 const trpc = vi.hoisted(() => ({
   editing: null as unknown,
   refetch: vi.fn(),
-  available: [] as unknown[],
+  candidates: [] as unknown[],
   updateIssue: vi.fn(),
   setIssueItems: vi.fn(),
   publishIssue: vi.fn(),
   invalidate: vi.fn(),
+  removeItem: null as ((key: string) => void) | null,
 }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -76,7 +82,7 @@ vi.mock("@/components/article-editor/rich-text-editor", () => ({
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
-      magazines: { availableArticles: { invalidate: trpc.invalidate } },
+      magazines: { pickerCandidates: { invalidate: trpc.invalidate } },
     }),
     magazines: {
       getIssueForEditing: {
@@ -88,9 +94,9 @@ vi.mock("@/trpc/react", () => ({
           refetch: trpc.refetch,
         }),
       },
-      availableArticles: {
+      pickerCandidates: {
         useQuery: () => ({
-          data: trpc.available,
+          data: trpc.candidates,
           isLoading: false,
           isError: false,
           refetch: vi.fn(),
@@ -106,6 +112,21 @@ vi.mock("@/trpc/react", () => ({
     },
   },
 }));
+
+vi.mock("./items-list", async (importOriginal) => {
+  const actual = await importOriginal<{
+    ItemsList: typeof ItemsListComponent;
+  }>();
+  return {
+    ...actual,
+    ItemsList: (props: React.ComponentProps<typeof actual.ItemsList>) => {
+      trpc.removeItem = props.onRemove;
+      return <actual.ItemsList {...props} />;
+    },
+  };
+});
+
+import type { ItemsList as ItemsListComponent } from "./items-list";
 
 import { IssueBuilder } from "./issue-builder";
 
@@ -168,20 +189,30 @@ function twoArticles(overrides: Partial<EditingData> = {}): EditingData {
       slug: "night-owls",
       isListedInDirectory: true,
     },
-    editableArticles: [],
+    openHrefs: {},
     ...overrides,
   };
 }
 
-function availableArticle(id: number, title: string, editableByViewer = false) {
+function readyArticle(id: number, title: string, editableByViewer = false) {
   return {
-    id,
-    slug: `story-${id}`,
+    input: { kind: "article" as const, articleId: id },
+    reference: `article:${id}`,
     title,
-    authorName: "Bo",
-    updatedAt: T0,
-    editableByViewer,
+    facts: [{ type: "byline" as const, name: "Bo" }],
+    openHref: editableByViewer
+      ? `/communities/night-owls/magazine/articles/story-${id}/edit`
+      : null,
   };
+}
+
+/** Two native clicks before React re-renders between them. */
+function clickAddTwice(name: string) {
+  const button = screen.getByRole("button", { name });
+  act(() => {
+    button.click();
+    button.click();
+  });
 }
 
 /** Picks an item from an open row menu. */
@@ -221,7 +252,7 @@ async function openRowMenu(title: string) {
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   trpc.editing = twoArticles();
-  trpc.available = [];
+  trpc.candidates = [];
   trpc.refetch.mockReset();
   trpc.invalidate.mockReset();
   trpc.updateIssue.mockReset();
@@ -460,13 +491,13 @@ describe("IssueBuilder", () => {
   });
 
   it("adds a ready article and a text section, saving only finished items", async () => {
-    trpc.available = [availableArticle(21, "Fresh piece")];
+    trpc.candidates = [readyArticle(21, "Fresh piece")];
     renderBuilder();
     fireEvent.click(
       screen.getByRole("button", { name: "Add Fresh piece to the issue" }),
     );
     // Radix tabs switch on mouse down.
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text section" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text" }));
     fireEvent.click(screen.getByRole("button", { name: "Add a text section" }));
     await settleSaves();
 
@@ -501,7 +532,7 @@ describe("IssueBuilder", () => {
 
   it("opens a new text section with focus in its editor and no error before it is written", async () => {
     renderBuilder();
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text section" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text" }));
     fireEvent.click(screen.getByRole("button", { name: "Add a text section" }));
 
     // The keyboard follows the new section to its editor.
@@ -550,7 +581,7 @@ describe("IssueBuilder", () => {
 
   it("marks an unwritten section once Publish is opened, even while it is open", async () => {
     renderBuilder();
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text section" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text" }));
     fireEvent.click(screen.getByRole("button", { name: "Add a text section" }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Publish" }));
@@ -689,7 +720,7 @@ describe("IssueBuilder", () => {
     expect(note).toHaveAccessibleDescription(
       "A short welcome at the top of the issue. Leave it empty if you do not need one.",
     );
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text section" }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Text" }));
     fireEvent.click(screen.getByRole("button", { name: "Add a text section" }));
     expect(screen.getByRole("textbox", { name: "Text" })).toBeInTheDocument();
   });
@@ -707,14 +738,14 @@ describe("IssueBuilder", () => {
     await pickMenuItem("Remove from issue");
     // The list is empty now: focus lands on its empty text.
     expect(document.activeElement).toHaveTextContent(
-      "This issue is empty. Add articles or a text section from Add more.",
+      "This issue is empty. Add something from Add more.",
     );
   });
 
   it("keeps keyboard focus in Add more when a ready article is added", async () => {
-    trpc.available = [
-      availableArticle(21, "Fresh piece"),
-      availableArticle(22, "Late piece"),
+    trpc.candidates = [
+      readyArticle(21, "Fresh piece"),
+      readyArticle(22, "Late piece"),
     ];
     renderBuilder();
     fireEvent.click(
@@ -731,11 +762,76 @@ describe("IssueBuilder", () => {
     );
   });
 
+  it("adding the same article twice keeps one item", () => {
+    trpc.candidates = [readyArticle(21, "Fresh piece")];
+    renderBuilder();
+    clickAddTwice("Add Fresh piece to the issue");
+    const fresh = within(screen.getByRole("list", { name: "In this issue" }))
+      .getAllByRole("listitem")
+      .filter((row) => row.textContent?.includes("Fresh piece"));
+    expect(fresh).toHaveLength(1);
+  });
+
+  it("does not resurrect a removed row when another candidate is added in the same tick", async () => {
+    trpc.candidates = [readyArticle(21, "Fresh piece")];
+    renderBuilder();
+    const add = screen.getByRole("button", {
+      name: "Add Fresh piece to the issue",
+    });
+    act(() => {
+      trpc.removeItem!("blk-1");
+      add.click();
+    });
+    const list = screen.getByRole("list", { name: "In this issue" });
+    expect(within(list).queryByText("First story")).toBeNull();
+    expect(within(list).getByText("Second story")).toBeInTheDocument();
+    expect(within(list).getByText("Fresh piece")).toBeInTheDocument();
+  });
+
+  it("returns focus to the row edit button when details are Done", () => {
+    renderBuilder();
+    const row = within(
+      screen.getByRole("list", { name: "In this issue" }),
+    ).getAllByRole("listitem")[0]!;
+    const edit = within(row).getByRole("button", { name: /^First story/ });
+    fireEvent.click(edit);
+    screen.getByRole("textbox", { name: "Intro line (optional)" }).focus();
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(
+      screen.queryByRole("textbox", { name: "Intro line (optional)" }),
+    ).toBeNull();
+    expect(document.activeElement).toBe(edit);
+  });
+
+  it("every row opens the details panel and the preview shows the intro", () => {
+    renderBuilder();
+    const rows = within(
+      screen.getByRole("list", { name: "In this issue" }),
+    ).getAllByRole("listitem");
+    expect(
+      within(rows[0]!).getByRole("button", { name: /^First story/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(rows[1]!).getByRole("button", { name: /^Second story/ }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      within(rows[0]!).getByRole("button", { name: /^First story/ }),
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Intro line (optional)" }),
+      { target: { value: "Our take" } },
+    );
+    expect(screen.getByTestId("issue-preview")).toHaveTextContent("Our take");
+  });
+
   it("offers to open an article in the article editor only when the viewer may edit it", async () => {
     trpc.editing = twoArticles({
-      editableArticles: [{ id: 11, slug: "story-11" }],
+      openHrefs: {
+        "article:11": "/communities/night-owls/magazine/articles/story-11/edit",
+      },
     });
-    trpc.available = [availableArticle(21, "Fresh piece", true)];
+    trpc.candidates = [readyArticle(21, "Fresh piece", true)];
     renderBuilder();
 
     await openRowMenu("First story");
@@ -768,6 +864,108 @@ describe("IssueBuilder", () => {
       "href",
       "/communities/night-owls/magazine/articles/story-21/edit",
     );
+  });
+
+  it("counts saved markers for the publish notice without blocking Publish", () => {
+    trpc.editing = twoArticles({
+      items: [
+        {
+          kind: "storyline",
+          itemId: "gone-story",
+          unavailable: true,
+          reason: "unpublished",
+        },
+        { ...eventView(), itemId: "private-event", membersOnly: true },
+        {
+          kind: "forumThread",
+          itemId: "gone-thread",
+          unavailable: true,
+          reason: "missing",
+        },
+      ],
+      storedItems: [
+        { kind: "storyline", id: "gone-story", storylineId: "s1" },
+        { kind: "event", id: "private-event", eventId: 7 },
+        { kind: "forumThread", id: "gone-thread", threadId: 8 },
+      ],
+    });
+    renderBuilder();
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByText(
+        "2 items are no longer available. Readers will not see them.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole("button", { name: "Publish" }),
+    ).toBeEnabled();
+  });
+
+  it("flags members-only events in the row and leaves them out of Visitor preview", () => {
+    trpc.editing = twoArticles({
+      issue: issue({ visibility: "public" }),
+      items: [{ ...eventView(), itemId: "blk-event", membersOnly: true }],
+      storedItems: [{ kind: "event", id: "blk-event", eventId: 7 }],
+    });
+    renderBuilder();
+    expect(
+      screen.getByText("Only members see this", { exact: false }),
+    ).toBeVisible();
+    const preview = screen.getByTestId("issue-preview");
+    expect(
+      within(preview).getByRole("link", { name: "Event 1", hidden: true }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));
+    expect(within(preview).queryByText("Event 1")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Member" }));
+    expect(within(preview).getByText("Event 1")).toBeInTheDocument();
+  });
+
+  it("flags members-only forum threads in the row and leaves them out of Visitor preview", () => {
+    trpc.editing = twoArticles({
+      issue: issue({ visibility: "public" }),
+      items: [
+        { ...forumThreadView(), itemId: "blk-thread", membersOnly: true },
+      ],
+      storedItems: [{ kind: "forumThread", id: "blk-thread", threadId: 7 }],
+    });
+    renderBuilder();
+    expect(
+      screen.getByText("Only members see this", { exact: false }),
+    ).toBeVisible();
+    const preview = screen.getByTestId("issue-preview");
+    expect(
+      within(preview).getByRole("link", { name: "Thread 1", hidden: true }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));
+    expect(within(preview).queryByText("Thread 1")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Member" }));
+    expect(within(preview).getByText("Thread 1")).toBeInTheDocument();
+  });
+
+  it("flags members-only projects in the row and leaves them out of Visitor preview", () => {
+    trpc.editing = twoArticles({
+      issue: issue({ visibility: "public" }),
+      items: [
+        { ...launchpadProjectView(), itemId: "blk-project", membersOnly: true },
+      ],
+      storedItems: [
+        { kind: "launchpadProject", id: "blk-project", projectId: 7 },
+      ],
+    });
+    renderBuilder();
+    expect(
+      screen.getByText("Only members see this", { exact: false }),
+    ).toBeVisible();
+    const preview = screen.getByTestId("issue-preview");
+    expect(
+      within(preview).getByRole("link", { name: "Project 1", hidden: true }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));
+    expect(within(preview).queryByText("Project 1")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Member" }));
+    expect(within(preview).getByText("Project 1")).toBeInTheDocument();
   });
 
   it("previews and publishes for who can really read it after a community became unlisted", async () => {

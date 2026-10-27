@@ -3,6 +3,11 @@ import type { ReactNode } from "react";
 import type { EditorItemView, ItemKindId } from "@/lib/magazines/item-views";
 
 import type { BuilderItem } from "../items-model";
+import { storylineBuilderKind } from "./storyline";
+import { forumThreadBuilderKind } from "./forum-thread";
+import { launchpadProjectBuilderKind } from "./launchpad-project";
+import { eventBuilderKind } from "./event";
+import { newsItemBuilderKind } from "./news-item";
 import { articleBuilderKind } from "./article";
 import { editorialBuilderKind } from "./editorial";
 import type {
@@ -24,7 +29,26 @@ export type { BuilderItemOf, BuilderRowContext } from "./types";
 export const BUILDER_ITEM_KINDS: { [K in ItemKindId]: BuilderItemKind<K> } = {
   article: articleBuilderKind,
   editorial: editorialBuilderKind,
+  storyline: storylineBuilderKind,
+  newsItem: newsItemBuilderKind,
+  event: eventBuilderKind,
+  forumThread: forumThreadBuilderKind,
+  launchpadProject: launchpadProjectBuilderKind,
 };
+
+/**
+ * The "Add more" tabs, one per kind. Each later kind inserts its id here.
+ * A permutation of `BUILDER_ITEM_KINDS`: a kind without a tab is a test failure.
+ */
+export const ADD_TAB_ORDER: readonly ItemKindId[] = [
+  "article",
+  "storyline",
+  "newsItem",
+  "event",
+  "forumThread",
+  "launchpadProject",
+  "editorial",
+];
 
 function kindOf<K extends ItemKindId>(
   item: BuilderItemOf<K>,

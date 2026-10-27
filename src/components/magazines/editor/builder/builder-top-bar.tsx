@@ -52,7 +52,7 @@ export function BuilderTopBar({
   return (
     <header className="bg-background border-border sticky top-12 z-40 border-b">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 sm:px-6">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="flex min-w-0 basis-full items-center gap-3 sm:flex-1 sm:basis-auto">
           <Link
             href={communityMagazinePath(communitySlug)}
             className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-sm text-sm outline-none focus-visible:ring-[3px]"
@@ -87,7 +87,7 @@ export function BuilderTopBar({
               onClick={onPublish}
               disabled={publishDisabled}
             >
-              {t("publish")}
+              {t("publish.label")}
             </Button>
           )}
         </div>

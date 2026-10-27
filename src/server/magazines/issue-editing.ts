@@ -8,8 +8,11 @@ import { communities } from "@/server/db/schema";
 
 import type { Deps, PayloadClient } from "./deps";
 import { loadMagazineEditorship } from "./editorship";
+import type { IssueActor } from "./issue-service";
+import { itemContextFor } from "./items/context";
 import {
   type IssueItemInput,
+  loadIssueItemOpenHrefs,
   loadIssueItemViews,
   type StoredBlock,
   toItemInputs,
@@ -47,6 +50,8 @@ export type IssueEditorView = {
   storedItems: IssueItemInput[];
   /** What would stop a publish now (preflight F7). */
   problems: ItemProblem[];
+  /** Saved-item editor links supplied by the kinds, keyed by reference. */
+  openHrefs: Record<string, string>;
 };
 
 /**
@@ -140,39 +145,40 @@ export async function listMagazineIssues(
 }
 
 function editorContext(
-  payload: PayloadClient,
+  deps: Deps,
   issue: MagazineIssue,
+  actor: IssueActor,
 ): ItemContext {
-  return {
-    payload,
+  return itemContextFor(deps, {
     magazineId: requireRelationId(issue.magazine),
+    community: actor.community,
     issueId: issue.id,
     // The editor API reads and writes the default locale, like the
     // articles router.
     locale: routing.defaultLocale,
     access: "editor",
-  };
-}
-
-/** The saved items of an issue as the editor sees them. */
-export async function loadEditorItems(
-  payload: PayloadClient,
-  issue: MagazineIssue,
-): Promise<EditorItemView[]> {
-  const blocks = (issue.items ?? []) as StoredBlock[];
-  return loadIssueItemViews(blocks, editorContext(payload, issue));
+    viewerId: actor.userId,
+  });
 }
 
 /** Everything the issue builder needs to edit one issue. */
 export async function loadIssueEditorView(
-  payload: PayloadClient,
+  deps: Deps,
   issue: MagazineIssue,
+  actor: IssueActor,
 ): Promise<IssueEditorView> {
   const blocks = (issue.items ?? []) as StoredBlock[];
-  const ctx = editorContext(payload, issue);
-  const [items, problems] = await Promise.all([
+  const ctx = editorContext(deps, issue, actor);
+  const [items, problems, openHrefs] = await Promise.all([
     loadIssueItemViews(blocks, ctx),
-    validateIssueItems(blocks, ctx),
+    validateIssueItems(blocks, ctx, blocks),
+    loadIssueItemOpenHrefs(blocks, ctx),
   ]);
-  return { issue, items, storedItems: toItemInputs(blocks), problems };
+  return {
+    issue,
+    items,
+    storedItems: toItemInputs(blocks),
+    problems,
+    openHrefs,
+  };
 }

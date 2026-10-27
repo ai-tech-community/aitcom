@@ -1,6 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { routing } from "@/i18n/routing";
+import {
+  PICKABLE_ITEM_KINDS,
+  PICKER_EXCLUDE_LIMIT,
+} from "@/lib/magazines/picker";
 import {
   ISSUE_VISIBILITIES,
   MAGAZINE_SLUG_PATTERN,
@@ -9,7 +14,6 @@ import {
 import type { Magazine } from "@/payload-types";
 import { communityProcedure, createTRPCRouter } from "@/server/api/trpc";
 import { isContentPublic } from "@/server/communities/content-visibility";
-import { placedArticlesOf } from "@/server/magazines/article-placement";
 import type { Deps, PayloadClient } from "@/server/magazines/deps";
 import {
   loadMagazineEditorship,
@@ -18,7 +22,6 @@ import {
 import {
   findIssueInCommunity,
   listMagazineIssues,
-  loadEditorItems,
   loadIssueEditorView,
 } from "@/server/magazines/issue-editing";
 import {
@@ -30,14 +33,11 @@ import {
   setIssueItems,
   updateIssueDetails,
 } from "@/server/magazines/issue-service";
-import {
-  issueItemInputSchema,
-  type StoredBlock,
-} from "@/server/magazines/items/registry";
+import { issueItemInputSchema } from "@/server/magazines/items/registry";
+import { searchPickerCandidates } from "@/server/magazines/items/pickers";
 import {
   listAvailableArticles,
   listDraftArticles,
-  listEditableArticles,
 } from "@/server/magazines/magazine-articles";
 import {
   getMagazineForCommunity,
@@ -228,21 +228,13 @@ export const magazinesRouter = createTRPCRouter({
 
   getIssueForEditing: issueProcedure.query(async ({ ctx }) => {
     const magazine = requireMagazine(ctx.magazine);
-    const [view, editableArticles] = await Promise.all([
-      loadIssueEditorView(ctx.payload, ctx.issue),
-      listEditableArticles(
-        ctx.payload,
-        magazine.id,
-        placedArticlesOf((ctx.issue.items ?? []) as StoredBlock[]).map(
-          (placed) => placed.articleId,
-        ),
-        ctx.session.user.id,
-      ),
-    ]);
+    const view = await loadIssueEditorView(
+      depsOf(ctx),
+      ctx.issue,
+      actorOf(ctx),
+    );
     return {
       ...view,
-      // The issue's articles the viewer may open in the article editor.
-      editableArticles,
       magazine: { name: magazine.name, slug: magazine.slug },
       communityIsPrivate: !isContentPublic(ctx.community),
       // What the builder runs `planVisibilityChange` against, so it asks
@@ -283,17 +275,13 @@ export const magazinesRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const saved = await setIssueItems(
+      return setIssueItems(
         depsOf(ctx),
         ctx.issue,
         input.items,
         input.expectedUpdatedAt,
         actorOf(ctx),
       );
-      return {
-        issue: saved,
-        items: await loadEditorItems(ctx.payload, saved),
-      };
     }),
 
   publishIssue: issueProcedure
@@ -312,6 +300,36 @@ export const magazinesRouter = createTRPCRouter({
     return { ok: true as const };
   }),
 
+  pickerCandidates: editorProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        kind: z.enum(PICKABLE_ITEM_KINDS),
+        query: z.string().trim().max(100).default(""),
+        exclude: z
+          .array(z.string().max(512))
+          .max(PICKER_EXCLUDE_LIMIT)
+          .default([]),
+      }),
+    )
+    .query(async ({ ctx, input }) =>
+      ctx.magazine
+        ? searchPickerCandidates(
+            input.kind,
+            input.query,
+            {
+              deps: depsOf(ctx),
+              magazineId: ctx.magazine.id,
+              community: communityOf(ctx),
+              viewerId: ctx.session.user.id,
+              locale: routing.defaultLocale,
+            },
+            input.exclude,
+          )
+        : [],
+    ),
+
+  // Serves the editor desk's ready list; the issue builder uses pickerCandidates.
   availableArticles: editorProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) =>

@@ -237,6 +237,11 @@ describe.skipIf(!RUN_DB)(
         .delete(schema.communities)
         .where(inArray(schema.communities.id, communityIds));
       await db
+        .delete(schema.communityMemberships)
+        .where(
+          inArray(schema.communityMemberships.userId, Object.values(fx.users)),
+        );
+      await db
         .delete(schema.user)
         .where(inArray(schema.user.id, Object.values(fx.users)));
     });

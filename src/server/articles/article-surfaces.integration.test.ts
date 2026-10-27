@@ -238,6 +238,9 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
     await db
       .delete(schema.memberProfiles)
       .where(inArray(schema.memberProfiles.userId, userIds));
+    await db
+      .delete(schema.communityMemberships)
+      .where(inArray(schema.communityMemberships.userId, userIds));
     await db.delete(schema.user).where(inArray(schema.user.id, userIds));
   }, 60_000);
 
@@ -315,13 +318,15 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
       { title: `Issue ${fx.sfx}` },
       actor(c),
     );
-    issue = await m.issues.setIssueItems(
-      m,
-      issue,
-      [{ kind: "article", articleId: article.id }],
-      issue.updatedAt,
-      actor(c),
-    );
+    issue = (
+      await m.issues.setIssueItems(
+        m,
+        issue,
+        [{ kind: "article", articleId: article.id }],
+        issue.updatedAt,
+        actor(c),
+      )
+    ).issue;
     issue = await m.issues.publishIssue(m, issue, issue.updatedAt, actor(c));
     const articlePath = `/magazines/${magazine.slug}/${issue.slug}/${article.slug}`;
     return { c, magazine, issue, article, articlePath };

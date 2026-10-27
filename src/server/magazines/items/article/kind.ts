@@ -4,9 +4,18 @@ import { estimateReadingTime } from "@/lib/lexical";
 import { lexicalPlainText } from "@/lib/lexical-text";
 import type { IssueReaderAccess } from "@/lib/magazines/access";
 import type { ItemProblem, UnavailableItem } from "@/lib/magazines/item-views";
+import { magazineArticleEditPath } from "@/lib/magazines/paths";
+import { articleInputReference } from "@/lib/magazines/references";
 import type { Article } from "@/payload-types";
 
-import { relationIdOrNull } from "../../relation-id";
+import { listEditableArticles } from "../../magazine-articles";
+import { relationIdOrNull, requireRelationId } from "../../relation-id";
+import {
+  cutWords,
+  introInput,
+  itemBaseInput,
+  storedIntro,
+} from "../base-input";
 import { itemIdOf } from "../item-id";
 import type {
   IssueItemKind,
@@ -17,23 +26,12 @@ import type {
 
 const articleItemInput = z.object({
   kind: z.literal("article"),
-  id: z.string().optional(),
+  ...itemBaseInput,
   articleId: z.number().int().positive(),
-  intro: z.string().max(280).optional(),
 });
 
 export type ArticleItemInput = z.infer<typeof articleItemInput>;
 export type ArticleItemStored = StoredItem<"article">;
-
-/** Words shown as an article's excerpt in an issue. */
-const EXCERPT_WORDS = 40;
-
-function excerptOf(content: unknown): string {
-  const words = lexicalPlainText(content).split(/\s+/).filter(Boolean);
-  return words.length > EXCERPT_WORDS
-    ? `${words.slice(0, EXCERPT_WORDS).join(" ")}…`
-    : words.join(" ");
-}
 
 /**
  * How an access level reads the articles of an issue. Exhaustive: a new
@@ -93,7 +91,7 @@ export const articleItemKind: IssueItemKind<
   input: articleItemInput,
 
   toStored(input) {
-    return { intro: input.intro ?? null, article: input.articleId };
+    return { intro: storedIntro(input.intro), article: input.articleId };
   },
 
   toInput(stored) {
@@ -105,8 +103,30 @@ export const articleItemKind: IssueItemKind<
       kind: "article",
       ...(stored.id ? { id: stored.id } : {}),
       articleId,
-      ...(stored.intro ? { intro: stored.intro } : {}),
+      ...introInput(stored.intro),
     };
+  },
+
+  referenceOf: (stored) =>
+    articleInputReference({ articleId: requireRelationId(stored.article) }),
+
+  async openHrefs(items, ctx) {
+    if (ctx.reader.viewerId === null) return {};
+    const ids = [
+      ...new Set(items.map((item) => requireRelationId(item.article))),
+    ];
+    const articles = await listEditableArticles(
+      ctx.payload,
+      ctx.magazineId,
+      ids,
+      ctx.reader.viewerId,
+    );
+    return Object.fromEntries(
+      articles.map((article) => [
+        articleInputReference({ articleId: article.id }),
+        magazineArticleEditPath(ctx.community.slug, article.slug),
+      ]),
+    );
   },
 
   async validate(items, ctx) {
@@ -176,7 +196,7 @@ export const articleItemKind: IssueItemKind<
             slug: article.slug,
             title: article.title,
             authorName: article.authorName ?? null,
-            excerpt: excerptOf(article.content),
+            excerpt: cutWords(lexicalPlainText(article.content), 40),
             readingMinutes: estimateReadingTime(article.content),
             imageUrl: article.mediaUrl ?? null,
           },

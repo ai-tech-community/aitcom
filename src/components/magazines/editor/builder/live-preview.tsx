@@ -6,11 +6,15 @@ import { useId, useState } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import type { EditorItemView } from "@/lib/magazines/item-views";
+import {
+  isMembersOnlyView,
+  type EditorItemView,
+} from "@/lib/magazines/item-views";
 import { magazineArticlePath } from "@/lib/magazines/paths";
 import type { IssueLayout, IssueVisibility } from "@/lib/magazines/values";
 import { cn } from "@/lib/utils";
 
+import { isUnavailableItem } from "../../items/registry";
 import { LAYOUTS } from "../../layouts/registry";
 import { IssueHero } from "../../reading/issue-hero";
 import { builderPreviewView } from "./items/registry";
@@ -18,6 +22,11 @@ import type { BuilderItem } from "./items-model";
 import type { IssueDetailsDraft } from "./use-issue-save";
 
 type PreviewMode = "member" | "phone" | "visitor";
+
+/** A public issue still follows each item's own availability and audience. */
+export function visibleToVisitors(view: EditorItemView): boolean {
+  return !isUnavailableItem(view) && !isMembersOnlyView(view);
+}
 
 /**
  * The views the preview renders, in the builder's order (preflight F32).
@@ -80,7 +89,9 @@ export function LivePreview({
   const [mode, setMode] = useState<PreviewMode>("member");
 
   const Layout = LAYOUTS[layout];
-  const { views, waiting } = previewViews(items, savedViews);
+  const { views: loadedViews, waiting } = previewViews(items, savedViews);
+  const views =
+    mode === "visitor" ? loadedViews.filter(visibleToVisitors) : loadedViews;
   const href = (articleSlug: string) =>
     magazineArticlePath(
       magazine,
@@ -88,6 +99,8 @@ export function LivePreview({
       { slug: articleSlug },
     );
   const hiddenFromVisitors = mode === "visitor" && audience === "members";
+  const visitorNoneVisible =
+    mode === "visitor" && loadedViews.length > 0 && views.length === 0;
 
   return (
     <section aria-labelledby={labelId} className="flex min-w-0 flex-col gap-4">
@@ -139,12 +152,17 @@ export function LivePreview({
               <Layout items={views} href={href} />
             </div>
             {/* Outside the inert picture: these say what the preview is waiting for. */}
-            {views.length === 0 && !waiting && (
+            {visitorNoneVisible && (
+              <p className="text-muted-foreground text-sm">
+                {t("visitorNoneVisible")}
+              </p>
+            )}
+            {views.length === 0 && !waiting && !visitorNoneVisible && (
               <p className="text-muted-foreground text-sm">{t("empty")}</p>
             )}
             {waiting && (
               <p className="text-muted-foreground text-sm">
-                {t("unsavedArticles")}
+                {t("unsavedItems")}
               </p>
             )}
           </div>

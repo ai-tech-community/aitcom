@@ -8,14 +8,50 @@ import type {
   IssueItemView,
   UnavailableItem,
 } from "@/lib/magazines/item-views";
+import type { CandidateFact } from "@/lib/magazines/picker";
 import type { MagazineIssue } from "@/payload-types";
 
-import type { PayloadClient } from "../deps";
+import type { Deps, PayloadClient } from "../deps";
+import type { MagazineCommunity } from "../magazine-service";
+import type { ItemReader } from "./reader";
+
+export type ItemCommunity = Pick<MagazineCommunity, "id" | "slug">;
+
+export type PickerContext = {
+  deps: Deps;
+  magazineId: number;
+  community: ItemCommunity;
+  viewerId: string;
+  locale: AppLocale;
+};
+
+/** What a kind's source returns; the registry adds the reference. */
+export type PickerSourceCandidate<Input> = {
+  input: Input;
+  title: string;
+  facts: CandidateFact[];
+  openHref: string | null;
+};
+
+/** A candidate with its content identity in `itemReference` form. */
+export type PickerCandidate<Input> = PickerSourceCandidate<Input> & {
+  reference: string;
+};
+
+export interface ItemPickerSource<Input> {
+  search(
+    query: string,
+    ctx: PickerContext,
+    exclude: readonly string[],
+  ): Promise<PickerSourceCandidate<Input>[]>;
+}
 
 /** What an item strategy knows about the issue it works for. */
 export type ItemContext = {
   payload: PayloadClient;
+  db: Deps["db"];
   magazineId: number;
+  community: ItemCommunity;
   /** Null while the issue is not saved yet. */
   issueId: number | null;
   locale: AppLocale;
@@ -25,6 +61,7 @@ export type ItemContext = {
    * error in every kind until the kind decides what it shows.
    */
   access: IssueReaderAccess;
+  reader: ItemReader;
 };
 
 type IssueItemBlock = NonNullable<MagazineIssue["items"]>[number];
@@ -65,9 +102,16 @@ export interface IssueItemKind<
   toStored(input: Input): Omit<Stored, "id">;
   /** Payload block data → builder input, keeping the block id. */
   toInput(stored: Stored): Input;
+  /** Content identity, or null when the issue owns the content. */
+  referenceOf(stored: Stored): string | null;
+  /** Editor links for saved items, keyed by their content reference. */
+  openHrefs?(
+    items: Stored[],
+    ctx: ItemContext,
+  ): Promise<Record<string, string>>;
   /** Batched: every item of this kind in one issue, one query at most. */
   validate(
-    items: { index: number; stored: Stored }[],
+    items: { index: number; stored: Stored; isNew: boolean }[],
     ctx: ItemContext,
   ): Promise<ItemProblem[]>;
   /**

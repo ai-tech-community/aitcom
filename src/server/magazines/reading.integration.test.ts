@@ -168,6 +168,9 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     await db
       .delete(schema.memberProfiles)
       .where(inArray(schema.memberProfiles.userId, userIds));
+    await db
+      .delete(schema.communityMemberships)
+      .where(inArray(schema.communityMemberships.userId, userIds));
     await db.delete(schema.user).where(inArray(schema.user.id, userIds));
   }, 60_000);
 
@@ -255,13 +258,15 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
         actor(c),
       );
     }
-    return m.issues.setIssueItems(
-      m,
-      issue,
-      opts.items ?? [editorialItem(`${title} note`)],
-      issue.updatedAt,
-      actor(c),
-    );
+    return (
+      await m.issues.setIssueItems(
+        m,
+        issue,
+        opts.items ?? [editorialItem(`${title} note`)],
+        issue.updatedAt,
+        actor(c),
+      )
+    ).issue;
   }
 
   async function publishedIssue(

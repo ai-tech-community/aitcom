@@ -1,3 +1,5 @@
+import { forumThreadItemKind } from "./forumThread/kind";
+import { eventItemKind } from "./event/kind";
 import { z } from "zod";
 
 import { seesEditorLayer } from "@/lib/magazines/access";
@@ -10,6 +12,9 @@ import type {
 
 import { articleItemKind } from "./article/kind";
 import { editorialItemKind } from "./editorial/kind";
+import { storylineItemKind } from "./storyline/kind";
+import { newsItemKind } from "./newsItem/kind";
+import { launchpadProjectItemKind } from "./launchpadProject/kind";
 import { itemIdOf } from "./item-id";
 import type {
   IssueItemKind,
@@ -27,13 +32,24 @@ import type {
 const STRATEGIES = {
   article: articleItemKind,
   editorial: editorialItemKind,
+  storyline: storylineItemKind,
+  newsItem: newsItemKind,
+  event: eventItemKind,
+  forumThread: forumThreadItemKind,
+  launchpadProject: launchpadProjectItemKind,
 };
 
 /** The builder input type a kind's strategy declares. */
-type InputOf<K extends ItemKindId> =
-  (typeof STRATEGIES)[K] extends IssueItemKind<K, infer Input, StoredItem<K>>
+type KindInputs = {
+  [K in ItemKindId]: (typeof STRATEGIES)[K] extends IssueItemKind<
+    K,
+    infer Input,
+    StoredItem<K>
+  >
     ? Input
     : never;
+};
+export type InputOf<K extends ItemKindId> = KindInputs[K];
 
 /**
  * One strategy per kind id: a kind without a strategy, or a strategy whose
@@ -121,24 +137,75 @@ function validateKind<K extends ItemKindId>(
   kind: K,
   group: IndexedBlock[],
   ctx: ItemContext,
+  previousReferences: ReadonlySet<string>,
 ): Promise<ItemProblem[]> {
+  const strategy = ITEM_KINDS[kind];
   return ITEM_KINDS[kind].validate(
-    group.map(({ index, block }) => ({ index, stored: asStored<K>(block) })),
+    group.map(({ index, block }) => {
+      const stored = asStored<K>(block);
+      const reference = strategy.referenceOf(stored);
+      return {
+        index,
+        stored,
+        isNew: reference === null || !previousReferences.has(reference),
+      };
+    }),
     ctx,
   );
+}
+
+function referenceOfBlock<K extends ItemKindId>(
+  kind: K,
+  block: StoredBlock,
+): string | null {
+  return ITEM_KINDS[kind].referenceOf(asStored<K>(block));
+}
+
+async function openHrefsOfKind<K extends ItemKindId>(
+  kind: K,
+  group: IndexedBlock[],
+  ctx: ItemContext,
+): Promise<Record<string, string>> {
+  return (
+    ITEM_KINDS[kind].openHrefs?.(
+      group.map(({ block }) => asStored<K>(block)),
+      ctx,
+    ) ?? {}
+  );
+}
+
+/** Saved-item editor links, dispatched only to kinds present in the issue. */
+export async function loadIssueItemOpenHrefs(
+  blocks: StoredBlock[],
+  ctx: ItemContext,
+): Promise<Record<string, string>> {
+  const maps = await Promise.all(
+    [...groupByKind(blocks)].map(([kind, group]) =>
+      openHrefsOfKind(kind, group, ctx),
+    ),
+  );
+  return Object.fromEntries(maps.flatMap((map) => Object.entries(map)));
 }
 
 /**
  * Every problem with an issue's items, in item order. One batched check per
  * kind present in the issue.
+ * `previous` is the issue's stored blocks before this save; omitted means
+ * every reference is new.
  */
 export async function validateIssueItems(
   blocks: StoredBlock[],
   ctx: ItemContext,
+  previous?: readonly StoredBlock[],
 ): Promise<ItemProblem[]> {
+  const previousReferences = new Set<string>();
+  for (const block of previous ?? []) {
+    const reference = referenceOfBlock(block.blockType, block);
+    if (reference !== null) previousReferences.add(reference);
+  }
   const perKind = await Promise.all(
     [...groupByKind(blocks)].map(([kind, group]) =>
-      validateKind(kind, group, ctx),
+      validateKind(kind, group, ctx, previousReferences),
     ),
   );
   return perKind.flat().sort((a, b) => a.itemIndex - b.itemIndex);
@@ -213,4 +280,16 @@ export async function loadIssueItemViews(
     }
   }
   return views;
+}
+
+/** Loads only blocks of the given kinds, filtering before any kind is loaded. */
+export function loadIssueItemViewsOfKinds(
+  blocks: StoredBlock[],
+  ctx: ItemContext,
+  kinds: readonly ItemKindId[],
+): Promise<EditorItemView[]> {
+  return loadIssueItemViews(
+    blocks.filter((block) => kinds.includes(block.blockType)),
+    ctx,
+  );
 }

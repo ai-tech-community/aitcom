@@ -4776,12 +4776,12 @@
       "contents": "Inhoud",
       "fromTheEditor": "Van de redactie",
       "readingTime": "{minutes} min lezen",
-      "itemCount": "{count, plural, one {# onderdeel} other {# onderdelen}}",
       "draftNotice": "Concept — alleen redacteuren zien dit",
       "editIssue": "Nummer bewerken",
       "noItems": "Dit nummer heeft nog geen artikelen.",
       "published": "Verschenen op {date}",
-      "signature": "— {name}, redacteur"
+      "signature": "— {name}, redacteur",
+      "contentsCount": "{count, plural, one {# onderdeel} other {# onderdelen}}"
     },
     "item": {
       "readArticle": "Lees artikel",
@@ -4792,9 +4792,25 @@
       "unavailableReason": {
         "missing": "Dit onderdeel is verwijderd. Haal het uit het nummer.",
         "not_ready": "Lezers kunnen dit onderdeel nog niet zien.",
-        "other_magazine": "Dit artikel hoort bij een ander magazine. Haal het uit het nummer."
+        "other_magazine": "Dit artikel hoort bij een ander magazine. Haal het uit het nummer.",
+        "unpublished": "Dit is offline gehaald. Lezers slaan het over tot het weer online staat.",
+        "no_access": "Dit is alleen voor de community. Alleen mensen met toegang zien het."
       },
-      "editorsOnly": "Alleen redacteuren zien dit."
+      "editorsOnly": "Alleen redacteuren zien dit.",
+      "storylineKind": "Uit AIT News",
+      "sources": "{count, plural, one {# bron} other {# bronnen}}",
+      "updated": "Bijgewerkt op {date}",
+      "readStory": "Lees het verhaal",
+      "newsKind": "Uit AIT News",
+      "opensInNewTab": "(opent in een nieuw tabblad)",
+      "eventKind": "Evenement",
+      "online": "Online",
+      "cancelled": "Geannuleerd",
+      "completed": "Afgelopen",
+      "forumKind": "Uit het forum",
+      "replies": "{count, plural, one {# reactie} other {# reacties}}",
+      "projectKind": "Launchpad-project",
+      "upvotes": "{count, plural, one {# stem} other {# stemmen}}"
     },
     "rail": {
       "visitCommunity": "Bezoek {community}",
@@ -4938,7 +4954,10 @@
       },
       "conflict": "Dit nummer is ergens anders gewijzigd. Je wijzigingen hier zijn niet opgeslagen.",
       "reload": "Opnieuw laden",
-      "publish": "Publiceren",
+      "publish": {
+        "label": "Publiceren",
+        "skipped": "{count, plural, one {# item is niet meer beschikbaar. Lezers zien het niet.} other {# items zijn niet meer beschikbaar. Lezers zien ze niet.}}"
+      },
       "published": "Gepubliceerd",
       "details": {
         "label": "Gegevens van het nummer",
@@ -4960,11 +4979,14 @@
         "visibility": "Wie dit nummer kan lezen",
         "visibilityMembers": "Alleen leden",
         "visibilityPublic": "Iedereen",
-        "optInPending": "Vink het vakje aan om deze keuze op te slaan."
+        "optInPending": "Vink het vakje aan om deze keuze op te slaan.",
+        "intro": "Introregel (optioneel)",
+        "introHelp": "Eén regel die boven dit onderdeel in het nummer staat.",
+        "done": "Klaar"
       },
       "items": {
         "label": "In dit nummer",
-        "empty": "Dit nummer is leeg. Voeg artikelen of een tekstgedeelte toe via Meer toevoegen.",
+        "empty": "Dit nummer is leeg. Voeg iets toe via Meer toevoegen.",
         "article": "Artikel",
         "editorial": "Tekstgedeelte",
         "editorialEmpty": "Tekstgedeelte, nog niet geschreven",
@@ -4985,28 +5007,75 @@
           "movedTo": "{title} staat nu op plek {position} van {total}.",
           "dropped": "{title} neergezet op plek {position} van {total}.",
           "cancelled": "Verplaatsen geannuleerd. {title} staat weer op zijn plek."
-        }
+        },
+        "storyline": "Verhaal",
+        "newsItem": "Nieuws",
+        "event": "Evenement",
+        "membersOnly": "Alleen leden zien dit",
+        "forumThread": "Forumgesprek",
+        "launchpadProject": "Project"
       },
       "editorial": {
-        "label": "Tekstgedeelte",
         "heading": "Kop (optioneel)",
         "body": "Tekst",
-        "bodyPlaceholder": "Schrijf een inleiding, een opening van een rubriek of een korte column…",
-        "done": "Klaar"
+        "bodyPlaceholder": "Schrijf een inleiding, een opening van een rubriek of een korte column…"
       },
       "add": {
         "label": "Meer toevoegen",
         "kind": "Wat wil je toevoegen",
-        "articles": "Artikelen",
-        "editorial": "Tekstgedeelte",
-        "articlesEmpty": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
+        "tabs": {
+          "article": "Artikelen",
+          "editorial": "Tekst",
+          "storyline": "Verhalen",
+          "newsItem": "Nieuws",
+          "event": "Evenementen",
+          "forumThread": "Forum",
+          "launchpadProject": "Projecten"
+        },
+        "search": {
+          "article": "Zoek artikelen die klaar zijn",
+          "storyline": "Zoek verhalen uit AIT News",
+          "newsItem": "Zoek nieuwsberichten",
+          "event": "Zoek evenementen van je community",
+          "forumThread": "Zoek in het forum van je community",
+          "launchpadProject": "Zoek projecten van je leden"
+        },
+        "empty": {
+          "article": "Er zijn geen artikelen klaar. Artikelen die klaar zijn voor een nummer verschijnen hier.",
+          "storyline": "Geen verhalen gevonden.",
+          "newsItem": "Geen nieuwsberichten gevonden.",
+          "event": "Je community heeft nog geen evenementen.",
+          "forumThread": "Geen gesprekken gevonden.",
+          "launchpadProject": "Geen projecten gevonden."
+        },
+        "hint": {
+          "article": "Alleen artikelen die klaar zijn voor een nummer en niet al in een ander nummer staan, verschijnen hier.",
+          "storyline": "Verhalen worden bijgewerkt: lezers zien altijd de nieuwste versie.",
+          "newsItem": "Nieuwsberichten linken naar het oorspronkelijke artikel.",
+          "event": "Evenementen van je community. Lezers zien altijd de laatste informatie.",
+          "forumThread": "Gesprekken gaan door: lezers zien ook nieuwe reacties.",
+          "launchpadProject": "Projecten van je community of van haar leden."
+        },
+        "noMatch": "Niets gevonden voor “{query}”.",
         "add": "Toevoegen",
-        "addArticle": "{title} aan het nummer toevoegen",
-        "byAuthor": "Door {name}",
+        "addItem": "{title} aan het nummer toevoegen",
         "editorialHint": "Je eigen tekst: een inleiding, een opening voor een deel van het nummer of een korte column.",
         "addEditorial": "Tekstgedeelte toevoegen",
-        "loadFailed": "De artikelen die klaar zijn konden niet worden geladen.",
-        "tryAgain": "Probeer opnieuw"
+        "loadFailed": "Deze lijst kon niet worden geladen.",
+        "tryAgain": "Probeer opnieuw",
+        "facts": {
+          "byline": "Door {name}",
+          "updated": "Bijgewerkt op {date}",
+          "published": "{date}",
+          "starts": "{date}",
+          "lastActive": "Laatste reactie {date}",
+          "sources": "{count, plural, one {# bron} other {# bronnen}}",
+          "replies": "{count, plural, one {# reactie} other {# reacties}}",
+          "upvotes": "{count, plural, one {# stem} other {# stemmen}}",
+          "cancelled": "Geannuleerd",
+          "completed": "Afgelopen"
+        },
+        "results": "{count, plural, one {# resultaat} other {# resultaten}}"
       },
       "preview": {
         "label": "Voorbeeld",
@@ -5016,16 +5085,17 @@
         "visitor": "Bezoeker",
         "visitorNothingTitle": "Bezoekers zien niets",
         "visitorNothing": "Dit nummer is alleen voor leden. Mensen buiten je community kunnen het niet openen.",
-        "unsavedArticles": "Artikelen die je net hebt toegevoegd verschijnen hier zodra ze zijn opgeslagen.",
-        "empty": "Voeg een artikel of een tekstgedeelte toe om het nummer hier te zien.",
-        "untitled": "Nummer zonder titel"
+        "unsavedItems": "Wat je net hebt toegevoegd, verschijnt hier zodra het is opgeslagen.",
+        "empty": "Voeg iets toe om het nummer hier te zien.",
+        "untitled": "Nummer zonder titel",
+        "visitorNoneVisible": "Bezoekers kunnen nog geen onderdelen van dit nummer zien. Onderdelen voor leden en ontbrekende onderdelen zijn verborgen."
       },
       "publishDialog": {
         "title": "Dit nummer publiceren?",
         "blockersTitle": "Voordat je kunt publiceren",
         "blocker": {
           "NO_TITLE": "Geef het nummer een titel.",
-          "NO_ITEMS": "Voeg minstens één artikel of tekstgedeelte toe.",
+          "NO_ITEMS": "Voeg minstens één onderdeel toe.",
           "INVALID_ITEM": "Herstel de delen die in de lijst zijn gemarkeerd."
         },
         "ready": "Alles is klaar.",

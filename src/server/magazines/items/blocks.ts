@@ -2,6 +2,11 @@ import type { Block } from "payload";
 
 import { articleItemBlock } from "./article/block";
 import { editorialItemBlock } from "./editorial/block";
+import { storylineItemBlock } from "./storyline/block";
+import { forumThreadItemBlock } from "./forumThread/block";
+import { eventItemBlock } from "./event/block";
+import { newsItemBlock } from "./newsItem/block";
+import { launchpadProjectItemBlock } from "./launchpadProject/block";
 
 /**
  * The `items` blocks of the `magazine-issues` collection, one per item kind
@@ -12,4 +17,9 @@ import { editorialItemBlock } from "./editorial/block";
 export const ISSUE_ITEM_BLOCKS: Block[] = [
   articleItemBlock,
   editorialItemBlock,
+  storylineItemBlock,
+  newsItemBlock,
+  eventItemBlock,
+  forumThreadItemBlock,
+  launchpadProjectItemBlock,
 ];

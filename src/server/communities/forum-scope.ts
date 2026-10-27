@@ -4,7 +4,7 @@ import { HUB_SLUG } from "./hub";
 
 export const HUB_FORUM_PATH = `/communities/${HUB_SLUG}/forum`;
 
-type CommunityRef = {
+export type CommunityRef = {
   id: string;
   slug: string;
 };
@@ -13,19 +13,19 @@ function isHubCommunity(community: CommunityRef): boolean {
   return community.slug === HUB_SLUG;
 }
 
-/** Hub forum includes unscoped (pre-multitenancy) threads and Hub-owned ones. */
-export function forumThreadMatchesCommunity(
-  threadCommunityId: string | null | undefined,
+/** The Hub also includes platform content without a community. */
+export function communityContentMatches(
+  communityId: string | null | undefined,
   community: CommunityRef,
 ): boolean {
   if (isHubCommunity(community)) {
-    return threadCommunityId == null || threadCommunityId === community.id;
+    return communityId == null || communityId === community.id;
   }
-  return threadCommunityId === community.id;
+  return communityId === community.id;
 }
 
-/** Payload `where` for listing threads on a community forum. */
-export function forumThreadCommunityWhere(community: CommunityRef): Where {
+/** Payload scope shared by community events and forum threads. */
+export function communityContentWhere(community: CommunityRef): Where {
   if (isHubCommunity(community)) {
     return {
       or: [
@@ -35,6 +35,18 @@ export function forumThreadCommunityWhere(community: CommunityRef): Where {
     };
   }
   return { communityId: { equals: community.id } };
+}
+
+/** Hub forum includes unscoped legacy threads and Hub-owned ones. */
+export function forumThreadMatchesCommunity(
+  threadCommunityId: string | null | undefined,
+  community: CommunityRef,
+): boolean {
+  return communityContentMatches(threadCommunityId, community);
+}
+
+export function forumThreadCommunityWhere(community: CommunityRef): Where {
+  return communityContentWhere(community);
 }
 
 /**

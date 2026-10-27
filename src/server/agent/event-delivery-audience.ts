@@ -10,6 +10,8 @@
 
 import { and, inArray } from "drizzle-orm";
 
+import { isPubliclyListedEventStatus } from "@/lib/events/event-status";
+
 import type { db as _db } from "@/server/db";
 import { agentProfiles, communities, memberProfiles } from "@/server/db/schema";
 import { hiddenContentCommunityIds } from "@/server/communities/content-visibility-queries";
@@ -24,9 +26,6 @@ import {
 } from "./event-delivery-policy";
 
 type DB = typeof _db;
-
-/** Event statuses whose event is listed to the community. */
-const LISTED_EVENT_STATUSES = new Set(["published", "cancelled", "completed"]);
 
 /** An `events` doc's community, as far as delivery is concerned. */
 export interface EventTarget {
@@ -172,7 +171,7 @@ export class EventDeliveryAudience {
           const target = id === null ? undefined : targets.get(id);
           claimed.set(
             event.id,
-            target?.status && LISTED_EVENT_STATUSES.has(target.status)
+            target && isPubliclyListedEventStatus(target.status)
               ? target.communityId
               : undefined,
           );

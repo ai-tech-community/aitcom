@@ -7,8 +7,12 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUnsavedChangesGuard } from "@/components/use-autosave";
 import { createVersionedWriter } from "@/components/versioned-writer";
-import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
-import { issuePath, magazineArticleEditPath } from "@/lib/magazines/paths";
+import {
+  isMembersOnlyView,
+  type EditorItemView,
+  type ItemProblem,
+} from "@/lib/magazines/item-views";
+import { issuePath } from "@/lib/magazines/paths";
 import {
   type IssueVisibility,
   MAGAZINE_SLUG_PATTERN,
@@ -16,30 +20,32 @@ import {
 import { effectiveVisibility } from "@/lib/magazines/visibility";
 import type { MagazineIssue } from "@/payload-types";
 import type { CommunityVisibility } from "@/server/communities/content-visibility";
+import type { IssueItemInput } from "@/server/magazines/items/registry";
 import { api, type RouterOutputs } from "@/trpc/react";
 
+import { isUnavailableItem } from "../../items/registry";
 import { editorErrorKey, readEditorError } from "../editor-errors";
 import { publicOptInRequired } from "../public-opt-in";
-import { type AddableArticle, AddItemsPanel } from "./add-items-panel";
+import { AddItemsPanel } from "./add-items-panel";
 import { BuilderTopBar } from "./builder-top-bar";
 import { ISSUE_TITLE_MAX, IssueDetails } from "./issue-details";
 import type { ItemRowView } from "./item-row";
-import { articleReference } from "./items/article";
+import { ItemDetailsPanel } from "./item-details-panel";
 import {
   builderKindLabelKey,
   builderOpenLabelKey,
   builderReferenceKey,
   builderRowTitle,
   hasBuilderItemEditor,
-  renderBuilderItemEditor,
 } from "./items/registry";
+import type { AddedContent } from "./items/types";
 import { ItemsList } from "./items-list";
 import {
-  addEditorial,
   addItem,
   type BuilderItem,
   isSavableItem,
   moveItem,
+  newItemKey,
   publishBlockers,
   removeItem,
   toBuilderItems,
@@ -116,19 +122,6 @@ function audienceOf(
         : confirmedAt,
     },
     community,
-  );
-}
-
-/** Edit links of the issue's articles the viewer may open, by reference. */
-function editHrefsOf(
-  communitySlug: string,
-  articles: readonly { id: number; slug: string }[],
-): Map<string, string> {
-  return new Map(
-    articles.map((article) => [
-      articleReference(article.id),
-      magazineArticleEditPath(communitySlug, article.slug),
-    ]),
   );
 }
 
@@ -245,8 +238,8 @@ function IssueWorkspace({
     () => new Map(),
   );
   /** Where the viewer edits content the issue references, by reference. */
-  const [editHrefs, setEditHrefs] = useState<ReadonlyMap<string, string>>(() =>
-    editHrefsOf(communitySlug, data.editableArticles),
+  const [editHrefs, setEditHrefs] = useState<ReadonlyMap<string, string>>(
+    () => new Map(Object.entries(data.openHrefs)),
   );
   const [failure, setFailure] = useState<IssueSaveFailure | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -264,6 +257,9 @@ function IssueWorkspace({
   /** The item editor that takes focus once it renders (a section just added). */
   const focusEditorOf = useRef<string | null>(null);
   const editorPanel = useRef<HTMLDivElement>(null);
+  const rowEditButtons = useRef(new Map<string, HTMLButtonElement>());
+  const focusRowAfterDone = useRef<string | null>(null);
+  const pendingAdds = useRef(new Map<string, AddedContent>());
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
 
@@ -329,8 +325,8 @@ function IssueWorkspace({
       setSavedViews(saved.viewsByKey);
       // The server checks every item on save: what it accepted is valid.
       setProblems(new Map());
-      // Articles taken out of the issue are free again.
-      void utils.magazines.availableArticles.invalidate({
+      // Content taken out of the issue can be added again.
+      void utils.magazines.pickerCandidates.invalidate({
         slug: communitySlug,
       });
     },
@@ -357,44 +353,56 @@ function IssueWorkspace({
 
   // ── Item edits ──────────────────────────────────────────────────────────
 
-  const handleAddArticle = (article: AddableArticle) => {
-    const next = addItem(items, { kind: "article", articleId: article.id });
-    const added = next.at(-1);
-    if (next === items || !added) return;
-    setItems(next);
-    setTitleHints((hints) => new Map(hints).set(added.key, article.title));
-    if (article.editableByViewer) {
-      setEditHrefs((hrefs) =>
-        new Map(hrefs).set(
-          articleReference(article.id),
-          magazineArticleEditPath(communitySlug, article.slug),
-        ),
-      );
-    }
+  const handleAdd = (input: IssueItemInput, added: AddedContent) => {
+    const key = newItemKey();
+    pendingAdds.current.set(key, added);
+    setItems((current) => addItem(current, input, key));
   };
 
-  const handleAddEditorial = () => {
-    const next = addEditorial(items);
-    const added = next.at(-1)?.key ?? null;
-    setItems(next);
-    setEditingKey(added);
-    if (added) {
-      setUntouched((keys) => new Set(keys).add(added));
-      // The editor opens in another column: take the keyboard there.
-      focusEditorOf.current = added;
+  // Apply titles and focus only for additions accepted by the current list.
+  // The functional list update handles removals and duplicate clicks in one tick.
+  useEffect(() => {
+    const additions = pendingAdds.current;
+    if (additions.size === 0) return;
+    pendingAdds.current = new Map();
+    for (const item of items) {
+      const added = additions.get(item.key);
+      if (!added) continue;
+      const { title, openHref } = added;
+      if (title !== null) {
+        setTitleHints((hints) => new Map(hints).set(item.key, title));
+      }
+      const reference = builderReferenceKey(item);
+      if (openHref && reference !== null) {
+        setEditHrefs((hrefs) => new Map(hrefs).set(reference, openHref));
+      }
+      if (!hasBuilderItemEditor(item)) continue;
+      setEditingKey(item.key);
+      if (!isSavableItem(item)) {
+        setUntouched((keys) => new Set(keys).add(item.key));
+      }
+      focusEditorOf.current = item.key;
     }
-  };
+  }, [items]);
+
+  useEffect(() => {
+    const closingKey = focusRowAfterDone.current;
+    if (editingKey !== null || closingKey === null) return;
+    focusRowAfterDone.current = null;
+    rowEditButtons.current.get(closingKey)?.focus();
+  }, [editingKey]);
 
   // Move focus into an item editor that was opened for a new item, on the
   // editor's first field, whatever kind of item it is.
   useEffect(() => {
     if (editingKey === null || focusEditorOf.current !== editingKey) return;
     focusEditorOf.current = null;
-    editorPanel.current
-      ?.querySelector<HTMLElement>(
-        'input:not([disabled]), textarea:not([disabled]), [contenteditable="true"]',
-      )
-      ?.focus();
+    const panel = editorPanel.current;
+    const preferred = panel?.querySelector<HTMLElement>("[data-autofocus]");
+    const fallback = panel?.querySelector<HTMLElement>(
+      'input:not([disabled]), textarea:not([disabled]), [contenteditable="true"]',
+    );
+    (preferred ?? fallback)?.focus();
   }, [editingKey]);
 
   const handleRemove = (key: string) => {
@@ -452,12 +460,15 @@ function IssueWorkspace({
       }),
       kindLabel: tItems(builderKindLabelKey(item)),
       unavailable: view !== undefined && "unavailable" in view,
+      membersOnly: view !== undefined && isMembersOnlyView(view),
       problem,
       highlighted,
       selected: editingKey === item.key,
-      onEdit: hasBuilderItemEditor(item)
-        ? () => setEditingKey((k) => (k === item.key ? null : item.key))
-        : undefined,
+      onEdit: () => setEditingKey((k) => (k === item.key ? null : item.key)),
+      editButtonRef: (button: HTMLButtonElement | null) => {
+        if (button) rowEditButtons.current.set(item.key, button);
+        else rowEditButtons.current.delete(item.key);
+      },
       open:
         openHref && openLabelKey
           ? { href: openHref, label: tItems(openLabelKey) }
@@ -585,11 +596,15 @@ function IssueWorkspace({
           />
           {editing && (
             <div ref={editorPanel}>
-              {renderBuilderItemEditor(editing, {
-                onChange: (patch) =>
-                  updateItem(editing.key, patch as Partial<BuilderItem>),
-                onDone: () => setEditingKey(null),
-              })}
+              <ItemDetailsPanel
+                item={editing}
+                kindLabel={tItems(builderKindLabelKey(editing))}
+                onChange={(patch) => updateItem(editing.key, patch)}
+                onDone={() => {
+                  focusRowAfterDone.current = editing.key;
+                  setEditingKey(null);
+                }}
+              />
             </div>
           )}
         </div>
@@ -614,8 +629,7 @@ function IssueWorkspace({
           <AddItemsPanel
             communitySlug={communitySlug}
             referencesInIssue={referencesInIssue}
-            onAddArticle={handleAddArticle}
-            onAddEditorial={handleAddEditorial}
+            onAdd={handleAdd}
           />
         </aside>
       </section>
@@ -624,6 +638,7 @@ function IssueWorkspace({
         open={publishOpen}
         onOpenChange={setPublishOpen}
         blockers={blockers}
+        skippedCount={[...savedViews.values()].filter(isUnavailableItem).length}
         audience={audience}
         onConfirm={publish}
         error={publishError}

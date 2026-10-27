@@ -1,7 +1,7 @@
 import { sql } from "@payloadcms/db-postgres";
 
 import { routing } from "@/i18n/routing";
-import type { ItemProblem } from "@/lib/magazines/item-views";
+import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
 import type { IssueVisibility } from "@/lib/magazines/values";
 import { slugify } from "@/lib/text-utils";
 import type { Magazine, MagazineIssue } from "@/payload-types";
@@ -17,12 +17,15 @@ import {
 } from "./article-publication";
 import type { Deps, PayloadClient } from "./deps";
 import { magazineError, type MagazineErrorCode } from "./errors";
+import { itemContextFor } from "./items/context";
 import {
   type IssueItemInput,
   type StoredBlock,
+  loadIssueItemViews,
   toStoredItems,
   validateIssueItems,
 } from "./items/registry";
+import type { ItemContext } from "./items/types";
 import {
   inPayloadTransaction,
   isConcurrencyAbort,
@@ -171,19 +174,27 @@ function problemError(problem: ItemProblem) {
 }
 
 async function assertItemsValid(
-  payload: PayloadClient,
+  deps: Deps,
   issue: MagazineIssue,
   blocks: StoredBlock[],
-): Promise<void> {
-  const [problem] = await validateIssueItems(blocks, {
-    payload,
+  actor: IssueActor,
+): Promise<ItemContext> {
+  const ctx = itemContextFor(deps, {
     magazineId: requireRelationId(issue.magazine),
+    community: actor.community,
     issueId: issue.id,
-    // Validation reads review state and placement, not text.
+    // The editor API always reads in the default locale.
     locale: routing.defaultLocale,
     access: "editor",
+    viewerId: actor.userId,
   });
+  const [problem] = await validateIssueItems(
+    blocks,
+    ctx,
+    storedBlocksOf(issue),
+  );
   if (problem) throw problemError(problem);
+  return ctx;
 }
 
 function articleIdsOf(blocks: StoredBlock[]): number[] {
@@ -392,11 +403,11 @@ export async function setIssueItems(
   issue: MagazineIssue,
   items: IssueItemInput[],
   expectedUpdatedAt: string,
-  _actor: IssueActor,
-): Promise<MagazineIssue> {
+  actor: IssueActor,
+): Promise<{ issue: MagazineIssue; items: EditorItemView[] }> {
   assertFresh(issue, expectedUpdatedAt);
   const blocks = toStoredItems(keepOwnBlockIds(items, storedBlocksOf(issue)));
-  await assertItemsValid(deps.payload, issue, blocks);
+  const ctx = await assertItemsValid(deps, issue, blocks, actor);
 
   const saved = await writeIssue(deps, issue, expectedUpdatedAt, async (tx) => {
     await syncArticlePlacement(
@@ -424,7 +435,10 @@ export async function setIssueItems(
       requireRelationId(saved.magazine),
     );
   }
-  return saved;
+  return {
+    issue: saved,
+    items: await loadIssueItemViews(storedBlocksOf(saved), ctx),
+  };
 }
 
 /**
@@ -446,7 +460,7 @@ export async function publishIssue(
   assertFresh(issue, expectedUpdatedAt);
   const blocks = storedBlocksOf(issue);
   if (blocks.length === 0) throw magazineError("ISSUE_EMPTY");
-  await assertItemsValid(deps.payload, issue, blocks);
+  await assertItemsValid(deps, issue, blocks, actor);
 
   const published = await writeIssue(
     deps,

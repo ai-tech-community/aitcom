@@ -43,6 +43,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
 import { getInitials } from "@/lib/avatar";
+import { PUBLICLY_LISTED_EVENT_STATUSES } from "@/lib/events/event-status";
 import { externalEventUrl } from "@/lib/events/event-source";
 import { parseStoredQuestions } from "@/lib/events/registration-questions";
 import {
@@ -117,7 +118,7 @@ export async function generateMetadata({
       and: [
         { slug: { equals: slug } },
         // Hide un-approved submissions (pending/rejected) from public view
-        { status: { not_in: ["draft", "rejected"] } },
+        { status: { in: [...PUBLICLY_LISTED_EVENT_STATUSES] } },
       ],
     },
     locale: locale as "en" | "nl",
@@ -173,7 +174,7 @@ export default async function EventDetailPage({
       and: [
         { slug: { equals: slug } },
         // Hide un-approved submissions (pending/rejected) from public view
-        { status: { not_in: ["draft", "rejected"] } },
+        { status: { in: [...PUBLICLY_LISTED_EVENT_STATUSES] } },
       ],
     },
     depth: 2,

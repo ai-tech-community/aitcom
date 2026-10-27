@@ -23,6 +23,8 @@ export type PublishDialogProps = {
   onOpenChange: (open: boolean) => void;
   /** What stops the publish now (`publishBlockers`); Publish waits for none. */
   blockers: PublishBlocker[];
+  /** Saved unavailable markers that readers will skip; these never block Publish. */
+  skippedCount: number;
   /** Who will be able to read the issue once it is out (its effective visibility). */
   audience: IssueVisibility;
   /**
@@ -47,12 +49,14 @@ export function PublishDialog({
   open,
   onOpenChange,
   blockers,
+  skippedCount,
   audience,
   onConfirm,
   error,
   readingHref,
 }: PublishDialogProps) {
   const t = useTranslations("magazineEditor.builder.publishDialog");
+  const tPublish = useTranslations("magazineEditor.builder.publish");
   const [phase, setPhase] = useState<Phase>("review");
   // The Publish button is gone once the issue is out: focus the next step.
   const readRef = useRef<HTMLAnchorElement>(null);
@@ -142,6 +146,12 @@ export function PublishDialog({
                   aria-hidden="true"
                 />
                 {t("ready")}
+              </p>
+            )}
+
+            {skippedCount > 0 && (
+              <p className="text-muted-foreground text-sm">
+                {tPublish("skipped", { count: skippedCount })}
               </p>
             )}
 
