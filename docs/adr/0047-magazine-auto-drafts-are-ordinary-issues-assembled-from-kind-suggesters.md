@@ -202,12 +202,27 @@ for the acting person's rights, and
 - Drafts use existing issue validation and access rules; referenced
   members-only content never becomes public merely by appearing in an issue.
 - Four Drizzle tables keep settings, claims, reasons and history outside
-  Payload. Migration `20261027c_magazine_auto_draft` adds them and the schedule
-  source, and extends the publish-origin enum. Rollback drops the new tables
-  and schedule source but leaves the `auto` enum value, which PostgreSQL
-  cannot remove individually.
-- Task 1 establishes values, pure rules and storage; the remaining tasks add
-  services, suggesters, jobs and screens through these boundaries.
+  Payload: `app.magazine_auto_draft_settings`, `app.magazine_auto_draft_run`,
+  `app.magazine_auto_pick` and `app.magazine_issue_history`. Migration
+  `20261027c_magazine_auto_draft` adds them and `scheduledVia`, and extends the
+  publish-origin enum. Rollback drops the new tables and schedule source but
+  leaves the `auto` enum value, which PostgreSQL cannot remove individually.
+- `runMagazineIssueJobs` assembles due drafts before scheduled publication,
+  subscription cleanup and announcement delivery. It uses the existing
+  `/api/cron/magazine-issues` route, every five minutes; no second route or
+  backfill is needed. Existing magazines keep their behaviour until an
+  editor-in-chief enables automatic drafts.
+- The automatic-drafts screen at
+  `/{locale}/communities/[slug]/magazine/auto-draft` ships settings, "Make a
+  draft now" and history, linked from the editor desk. Appointed editors can
+  read settings and make drafts; saving settings requires `manage`. The
+  builder shows the automatic-draft notice, pick reasons and automatic
+  publication time with a Stop control. Empty "Add more" searches reuse the
+  suggestions; ready and skipped inbox notices link to the relevant screen.
+- The DB guarantee test exercises settings, assembly, stop-on-edit, a person's
+  schedule, reader privacy, look-back and history through callers, the job
+  runner and reading loaders. History uses the transaction clock for both
+  assembly and issue edits, ordered by `created_at DESC, id DESC`.
 
 ### Risks and operating limits
 
@@ -218,9 +233,38 @@ for the acting person's rights, and
   draft settings for that small window; this is deliberately not done.
 - **Article ranking differs from the original most-read wording.** Approved
   articles are unpublished, so waiting longest is the useful deterministic
-  signal rather than readership.
+  signal rather than readership. This deviation needs product review.
+- **News needs topics.** A magazine without topics gets neither AIT News
+  stories nor headlines; the settings screen explains this. Matching is plain
+  text over titles, overviews and summaries, so a short topic such as "AI"
+  matches many words. Editors can choose sharper topics.
 - **Generated titles and welcome copy are English.** The builder currently
-  edits the default locale only; editors may replace that text.
+  edits the default locale only; a Dutch community changes that text by hand.
+- **Days are UTC.** Monthly day 1 falls due at 01:00 or 02:00 Amsterdam time;
+  the five-minute cron makes drafts early that morning. Switching on
+  mid-period waits for the next due period, avoiding a surprise draft;
+  "Make a draft now" covers an immediate request.
+- **The welcome counts people, never names.** An issue can be public, so the
+  generated welcome must not expose the community's member list.
+- **The last settings saver lends their rights.** Scheduled assembly acts as
+  that person and checks current `edit`. If they leave the team, assembly
+  stops and editors are told to save settings again.
+- **History covers every issue.** It also shows a person's publication of a
+  manually made issue. Quick item autosaves collapse into one line per person
+  per hour while that person's item change remains the latest event.
+- **Crashes have a retry limit.** A stale claim expires after 15 minutes and
+  can be retried up to three attempts per period. Its half-made draft blocks
+  another until the retry deletes it. After three failed attempts the period
+  is skipped without an inbox notice; failures are logged.
+- **Payload admin still bypasses the site publication path.** Publishing
+  there records neither issue history nor an announcement, as in slice 4.
+- **Suggesters amend the original interface plan.** They live in each kind's
+  folder but in a parallel registry keyed by source, allowing several sources
+  for one kind (the welcome is an editorial source). This supersedes
+  ADR-0043 Decision 4's proposed `suggest` method on the kind interface.
+- **Automatic publication checks both person and settings.** The scheduling
+  person must retain `edit` and settings must allow `auto_publish`. This
+  amends ADR-0046 Decision 8's settings-only rule.
 - **Small communities may produce no draft.** Three substantive items are
   required; a welcome alone does not count. Magazines without topics receive
   neither storyline nor news suggestions.

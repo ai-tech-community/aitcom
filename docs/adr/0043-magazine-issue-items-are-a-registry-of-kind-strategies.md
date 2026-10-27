@@ -74,6 +74,8 @@ structure"; "Review, credit and where magazine articles show").
    method to the interface when it has a caller. An optional method with no
    behaviour would be implemented by guesswork and tested by nothing.
 
+   Superseded by ADR-0047: suggesters are a parallel registry keyed by source, not a method on the kind interface.
+
 5. **Storage split.** The magazine and its issues are Payload collections
    (`magazines`, `magazine-issues`) with a text `communityId`, following
    `Courses` and `HostedMaterials`: the Lexical editor, the `blocks` field and
