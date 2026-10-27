@@ -7,6 +7,8 @@ status: accepted
 Amended by [ADR-0045](0045-magazine-roles-are-capabilities-read-through-the-editorship-seam.md):
 slice 3 introduces capability gates and deliberately changes callers.
 
+Used by ADR-0046: `issueAudience` derives notification recipients through this resolver.
+
 A community can run a [[magazine]]: a series of [[issue]]s, each an ordered
 list of [[issue-item]]s (magazine articles and editorial text in the core
 slice). An issue is read on many surfaces at once: its own page, the
@@ -54,8 +56,9 @@ resolver" under "Decided structure"; "Visibility rules").
    6. otherwise → `none`.
 
    `none` is answered as "not found", never "forbidden", so a members-only
-   issue is not confirmed to exist. `editor` is about *seeing* (drafts,
-   unavailable-item markers, latest draft text), not a separate reading page.
+   issue is not confirmed to exist. `editor` is about *seeing* (draft and
+   scheduled issues, unavailable-item markers, latest draft text), not a separate
+   reading page.
    Moderators are readers.
 
    **The editorship seam.** The resolver takes the viewer's standing

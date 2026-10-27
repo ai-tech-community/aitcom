@@ -1070,8 +1070,8 @@ code checks "is this a magazine article?" to change behaviour. See
 A person with the `edit` capability in a [[magazine]]: an editor-in-chief or
 editor on its [[magazine-team]]. An active community owner/admin is implicitly
 editor-in-chief. Editors build and publish [[issue]]s, review
-[[magazine-article]]s, see drafts and unavailable items, and mark their own
-articles ready. Settings and team management require `manage`, held by
+[[magazine-article]]s, see draft and scheduled issues and unavailable items,
+and mark their own articles ready. Settings and team management require `manage`, held by
 editors-in-chief. The editorship seam (`loadMagazineEditorship` and its batched
 twin `loadEditorScope`) resolves standing from active membership and
 assignments. See

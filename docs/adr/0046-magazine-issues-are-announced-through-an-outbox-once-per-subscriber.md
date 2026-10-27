@@ -188,7 +188,62 @@ It extends [ADR-0042](0042-magazine-issues-are-read-through-one-access-resolver.
   the deliberate uncertain-send loss described above.
 - Audience changes take effect before each batch. A subscription never
   grants reading rights, and members-only titles never reach outsiders.
-- The schema and shared values land first; later tasks implement services,
-  subscriber flows, delivery and the cron within these boundaries.
+- Shipped subscriber controls on the magazine shelf, issue page and community
+  Magazine tab, scheduling in the builder, and subscriber counts on editor and
+  contributor desks. `/{locale}/magazine-subscriptions/confirm` reads confirmation state;
+  `POST /api/magazine-subscriptions/confirm` confirms and redirects back. The
+  existing `/{locale}/unsubscribe` page and `POST /api/email/unsubscribe` now
+  accept magazine links, including RFC 8058 one-click requests.
+- `vercel.json` registers `/api/cron/magazine-issues` with `*/5 * * * *`.
+  `runMagazineIssueJobs` publishes due issues, purges stale waiting rows and
+  delivers announcements in that order. It starts on deployment; no backfill
+  is needed, and existing published issues are not announced. Production needs
+  `DIGEST_UNSUBSCRIBE_SECRET` or its `BETTER_AUTH_SECRET` fallback, as digests do.
 - Scheduled status remains in PostgreSQL after rollback because an enum
   value cannot be removed. Rollback first returns scheduled issues to draft.
+
+### Risks and operating limits
+
+- **Email speed.** A run sends at most 100 emails, paced for Resend. A magazine
+  with 2,000 email subscribers takes about 100 minutes to reach everyone at
+  the five-minute cadence. Raise `EMAIL_BATCH` or add a run when traffic
+  warrants it.
+- **Publish through the site.** Flipping an issue's status in Payload admin
+  bypasses the site's publication path, so it creates neither an announcement
+  nor article credit. Staff must use the site's Publish button.
+- **Schedule latency.** An issue can go out up to five minutes after its time;
+  the UI promises "within a few minutes".
+- **Visibility changes do not restart a completed announcement.** Narrowing
+  visibility limits the next batch's recipients. Widening a members-only issue
+  to public after completion does not email the email subscribers.
+- **Digest overlap.** Account subscribers who also receive the weekly digest
+  could hear about an issue through both channels if magazine issues are added
+  to that digest. It contains no magazine issues today; any future inclusion
+  should skip issues the reader already subscribes to.
+- **Email needs public issues.** Email-only subscribers receive public issues
+  only. Without an existing published public issue, the email form remains
+  visible and answers "check your email" but sends nothing, preserving the
+  anti-spam and non-disclosure rule. Hiding it would require exposing email
+  eligibility through `status`; the accepted ruling keeps the form visible.
+- **Signed-in non-members use the inbox.** This follows spec Flow 6 rather
+  than Goal 8's membership-based channel wording. Reading rights still decide
+  which issues reach them.
+- **Counts include contributor access.** Every magazine staff role can see
+  subscriber counts under `write`; no names or addresses are exposed.
+- **Persistent schedule errors return to draft.** Unknown errors retry until
+  more than 60 minutes after the scheduled time, then return the issue to
+  draft and notify editors with reason `error`. After a long cron outage, a
+  first unknown error may already exceed that window.
+- **Confirmation quotas can delay signup.** The per-magazine quota is 50 rows
+  with `confirm_sent_at` in the past 24 hours. Further requests get the same
+  answer without mail until capacity returns. As ruled in Task 4, resends of
+  the same row do not increase this count, so this is not a strict 50-message
+  cap. Raise `CONFIRM_MAILS_PER_MAGAZINE_PER_DAY` if traffic warrants it.
+- **Three links per waiting row.** An address that uses all three confirmation
+  sends for a magazine cannot request another until its waiting row is purged,
+  30 days after the last send. This protects strangers' inboxes.
+- **IP limits are per instance.** The in-memory limit follows the existing
+  event import precedent; database limits per address and magazine hold across
+  instances and provide the durable abuse guard.
+- **Inbox notices are stored in English**, following existing notification
+  types. Email uses the subscriber's saved language.
