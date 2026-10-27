@@ -6,6 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { db as Db } from "@/server/db";
 
 import type * as Migration from "./20261027c_magazine_auto_draft";
+import { up as followupUp } from "./20261027d_magazine_auto_draft_followups";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -100,6 +101,7 @@ describe.skipIf(!isLocalDbConfigured())(
         );
       }
       await migration.up({ db } as never);
+      await followupUp({ db } as never);
     }, 120_000);
 
     beforeEach(async () => {
@@ -157,6 +159,107 @@ describe.skipIf(!isLocalDbConfigured())(
           "magazine_issue_history_issue_idx",
         ]),
       );
+    });
+
+    it("adds recovery and actor columns idempotently and enforces actor kinds", async () => {
+      // An earlier application had a default; re-applying must remove it too.
+      await db.execute(sql`
+        ALTER TABLE "app"."magazine_issue_history"
+          ALTER COLUMN "actor_kind" SET DEFAULT 'automatic'
+      `);
+      await followupUp({ db } as never);
+      await followupUp({ db } as never);
+      const { rows } = await db.execute<{
+        table_name: string;
+        column_name: string;
+        column_default: string | null;
+        is_nullable: string;
+      }>(sql`
+        SELECT table_name, column_name, column_default, is_nullable
+        FROM information_schema.columns
+        WHERE table_schema = 'app' AND (
+          (table_name = 'magazine_auto_draft_run' AND column_name = 'last_write_at') OR
+          (table_name = 'magazine_issue_history' AND column_name = 'actor_kind')
+        ) ORDER BY table_name
+      `);
+      expect(rows).toEqual([
+        {
+          table_name: "magazine_auto_draft_run",
+          column_name: "last_write_at",
+          column_default: null,
+          is_nullable: "YES",
+        },
+        {
+          table_name: "magazine_issue_history",
+          column_name: "actor_kind",
+          column_default: null,
+          is_nullable: "NO",
+        },
+      ]);
+      await expectViolation(
+        sql`
+        INSERT INTO "app"."magazine_issue_history"
+          ("magazine_id", "event", "detail")
+        VALUES (${magazineId}, 'deleted', '{"event":"deleted"}'::jsonb)
+      `,
+        "23502",
+      );
+      await expectViolation(
+        sql`
+        INSERT INTO "app"."magazine_issue_history"
+          ("magazine_id", "event", "actor_kind", "detail")
+        VALUES (${magazineId}, 'deleted', 'unknown', '{"event":"deleted"}'::jsonb)
+      `,
+        "23514",
+      );
+    });
+
+    it("backfills only proven automatic history and keeps unknown people", async () => {
+      const rollback = new Error("rollback actor-kind backfill exercise");
+      await expect(
+        db.transaction(async (tx) => {
+          await tx.execute(sql`
+            ALTER TABLE "app"."magazine_issue_history" DROP COLUMN "actor_kind"
+          `);
+          await tx.execute(sql`
+          INSERT INTO "app"."magazine_issue_history"
+            ("magazine_id", "event", "origin", "actor_id", "detail")
+          VALUES
+            (${magazineId}, 'items_changed', null, ${userId}, '{"event":"items_changed","itemCount":1}'::jsonb),
+            (${magazineId}, 'items_changed', null, null, '{"event":"items_changed","itemCount":1}'::jsonb),
+            (${magazineId}, 'draft_made', null, null, '{"event":"draft_made","trigger":"manual"}'::jsonb),
+            (${magazineId}, 'draft_made', null, null, '{"event":"draft_made","trigger":"schedule"}'::jsonb),
+            (${magazineId}, 'draft_skipped', null, null, '{"event":"draft_skipped","trigger":"event"}'::jsonb),
+            (${magazineId}, 'published', 'button', null, '{"event":"published","origin":"button"}'::jsonb),
+            (${magazineId}, 'published', 'auto', null, '{"event":"published","origin":"auto"}'::jsonb),
+            (${magazineId}, 'auto_publish_stopped', null, null, '{"event":"auto_publish_stopped","why":"stopped"}'::jsonb),
+            (${magazineId}, 'auto_publish_stopped', null, null, '{"event":"auto_publish_stopped","why":"failed"}'::jsonb)
+        `);
+          await tx.execute(run("month:2026-11", "failed"));
+          await followupUp({ db: tx } as never);
+          const history = await tx.execute<{ actor_kind: string }>(sql`
+          SELECT "actor_kind" FROM "app"."magazine_issue_history"
+          WHERE "magazine_id" = ${magazineId} ORDER BY "id"
+        `);
+          expect(history.rows.map((row) => row.actor_kind)).toEqual([
+            "person",
+            "person",
+            "person",
+            "automatic",
+            "automatic",
+            "person",
+            "automatic",
+            "person",
+            "automatic",
+          ]);
+          const runs = await tx.execute<{ last_write_at: unknown }>(sql`
+          SELECT "last_write_at" FROM "app"."magazine_auto_draft_run"
+          WHERE "magazine_id" = ${magazineId}
+        `);
+          expect(runs.rows).toEqual([{ last_write_at: null }]);
+          throw rollback;
+        }),
+      ).rejects.toBe(rollback);
     });
 
     it("keeps settings in bounds", async () => {
@@ -224,8 +327,8 @@ describe.skipIf(!isLocalDbConfigured())(
     `);
       await db.execute(sql`
       INSERT INTO "app"."magazine_issue_history"
-        ("magazine_id", "issue_id", "issue_number", "issue_title", "event", "actor_id", "detail")
-      VALUES (${magazineId}, ${issueId}, 1, 'First issue', 'items_changed', ${userId}, '{"event":"items_changed","itemCount":1}'::jsonb)
+        ("magazine_id", "issue_id", "issue_number", "issue_title", "event", "actor_id", "actor_kind", "detail")
+      VALUES (${magazineId}, ${issueId}, 1, 'First issue', 'items_changed', ${userId}, 'person', '{"event":"items_changed","itemCount":1}'::jsonb)
     `);
       await db.execute(
         sql`DELETE FROM "public"."magazine_issues" WHERE "id" = ${issueId}`,
@@ -272,10 +375,10 @@ describe.skipIf(!isLocalDbConfigured())(
       expect(
         (
           await db.execute(
-            sql`SELECT "actor_id" FROM "app"."magazine_issue_history" WHERE "magazine_id" = ${magazineId}`,
+            sql`SELECT "actor_id", "actor_kind" FROM "app"."magazine_issue_history" WHERE "magazine_id" = ${magazineId}`,
           )
         ).rows,
-      ).toEqual([{ actor_id: null }]);
+      ).toEqual([{ actor_id: null, actor_kind: "person" }]);
 
       await db.execute(
         sql`DELETE FROM "public"."magazines" WHERE "id" = ${magazineId}`,
@@ -301,6 +404,13 @@ describe.skipIf(!isLocalDbConfigured())(
           expect(await presentTables(tx)).toEqual([]);
           expect(await hasScheduledVia(tx)).toBe(false);
           await migration.up({ db: tx } as never);
+          await followupUp({ db: tx } as never);
+          await tx.execute(
+            sql`SELECT "actor_kind" FROM "app"."magazine_issue_history" LIMIT 0`,
+          );
+          await tx.execute(
+            sql`SELECT "last_write_at" FROM "app"."magazine_auto_draft_run" LIMIT 0`,
+          );
           expect(await presentTables(tx)).toEqual([...TABLES].sort());
           expect(await hasScheduledVia(tx)).toBe(true);
           throw rollback;

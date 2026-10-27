@@ -1,4 +1,15 @@
-import { and, desc, eq, gte, inArray, lt, or, sql } from "drizzle-orm";
+import { sql as payloadSql } from "@payloadcms/db-postgres";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { AFTER_EVENT_LOOK_BACK_DAYS } from "@/lib/magazines/auto-draft";
 import type {
@@ -11,6 +22,7 @@ import { magazineAutoDraftRuns } from "@/server/db/schema";
 import type { Deps } from "../deps";
 import { endedCommunityEvents } from "../items/event/suggest";
 import type { ItemCommunity } from "../items/types";
+import type { PayloadTransaction } from "../payload-writes";
 
 /** Any run can hold an open issue, including a crashed or failed attempt. */
 export async function findOpenAutoDraft(
@@ -129,16 +141,92 @@ export async function claimAutoDraftRun(
   };
 }
 
-/** Name the issue before any fill or schedule can fail. */
+/** Record the issue and its write time on the issue transaction's connection. */
 export async function attachRunIssue(
-  db: Deps["db"],
+  tx: PayloadTransaction,
   runId: string,
   issueId: number,
+  updatedAt: string,
+): Promise<void> {
+  await tx.execute(payloadSql`
+    UPDATE "app"."magazine_auto_draft_run"
+    SET "issue_id" = ${issueId}, "last_write_at" = ${new Date(updatedAt)}
+    WHERE "id" = ${runId}
+  `);
+}
+
+/** Failed leftovers are recovered under the new claim's per-magazine lock. */
+export async function failedRunIssues(
+  db: Deps["db"],
+  magazineId: number,
+  claimedRunId: string,
+) {
+  return db
+    .select({
+      id: magazineAutoDraftRuns.id,
+      issueId: magazineAutoDraftRuns.issueId,
+      lastWriteAt: magazineAutoDraftRuns.lastWriteAt,
+    })
+    .from(magazineAutoDraftRuns)
+    .where(
+      and(
+        eq(magazineAutoDraftRuns.magazineId, magazineId),
+        isNotNull(magazineAutoDraftRuns.issueId),
+        or(
+          eq(magazineAutoDraftRuns.status, "failed"),
+          eq(magazineAutoDraftRuns.id, claimedRunId),
+        ),
+      ),
+    );
+}
+
+/** Detach a removed issue even when its Payload foreign key was already cleared. */
+export async function clearRunIssue(
+  db: Deps["db"],
+  runId: string,
 ): Promise<void> {
   await db
     .update(magazineAutoDraftRuns)
-    .set({ issueId })
+    .set({ issueId: null, lastWriteAt: null })
     .where(eq(magazineAutoDraftRuns.id, runId));
+}
+
+/** One batched finished-period read, before any magazine/community hydration. */
+export async function finishedCalendarPeriods(
+  db: Deps["db"],
+  periods: readonly { magazineId: number; periodKey: string }[],
+): Promise<Set<string>> {
+  if (periods.length === 0) return new Set();
+  const rows = await db
+    .select({
+      magazineId: magazineAutoDraftRuns.magazineId,
+      periodKey: magazineAutoDraftRuns.periodKey,
+    })
+    .from(magazineAutoDraftRuns)
+    .where(
+      and(
+        or(
+          ...periods.map(({ magazineId, periodKey }) =>
+            and(
+              eq(magazineAutoDraftRuns.magazineId, magazineId),
+              eq(magazineAutoDraftRuns.periodKey, periodKey),
+            ),
+          ),
+        ),
+        finishedRunCondition(),
+      ),
+    );
+  return new Set(rows.map((row) => `${row.magazineId}:${row.periodKey}`));
+}
+
+function finishedRunCondition() {
+  return or(
+    inArray(magazineAutoDraftRuns.status, ["made", "skipped"]),
+    and(
+      eq(magazineAutoDraftRuns.status, "failed"),
+      gte(magazineAutoDraftRuns.attempts, AUTO_DRAFT_MAX_ATTEMPTS),
+    ),
+  );
 }
 
 /** The one definition of an issue made automatically. */
@@ -172,13 +260,7 @@ export async function finishedPeriodKeys(
       and(
         eq(magazineAutoDraftRuns.magazineId, magazineId),
         inArray(magazineAutoDraftRuns.periodKey, [...periodKeys]),
-        or(
-          inArray(magazineAutoDraftRuns.status, ["made", "skipped"]),
-          and(
-            eq(magazineAutoDraftRuns.status, "failed"),
-            gte(magazineAutoDraftRuns.attempts, AUTO_DRAFT_MAX_ATTEMPTS),
-          ),
-        ),
+        finishedRunCondition(),
       ),
     );
   return new Set(rows.map((row) => row.key));

@@ -8,6 +8,9 @@ export const ISSUE_HISTORY_EVENTS = [
   "published",
   "deleted",
 ] as const;
+export const ISSUE_HISTORY_ACTOR_KINDS = ["person", "automatic"] as const;
+export type IssueHistoryActorKind = (typeof ISSUE_HISTORY_ACTOR_KINDS)[number];
+
 export type IssueHistoryEvent = (typeof ISSUE_HISTORY_EVENTS)[number];
 export const AUTO_DRAFT_SKIP_REASONS = [
   "too_few",
@@ -15,7 +18,15 @@ export const AUTO_DRAFT_SKIP_REASONS = [
   "no_rights",
 ] as const;
 export type AutoDraftSkipReason = (typeof AUTO_DRAFT_SKIP_REASONS)[number];
-export type AutoDraftTrigger = "schedule" | "event" | "manual";
+export const AUTO_DRAFT_TRIGGERS = ["schedule", "event", "manual"] as const;
+export type AutoDraftTrigger = (typeof AUTO_DRAFT_TRIGGERS)[number];
+export const AUTO_DRAFT_RUN_STATUSES = [
+  "running",
+  "made",
+  "skipped",
+  "failed",
+] as const;
+export type AutoDraftRunStatus = (typeof AUTO_DRAFT_RUN_STATUSES)[number];
 /** Why the scheduled run sent an issue back to draft. */
 export const SCHEDULE_FAILURES = [
   "empty",
@@ -52,6 +63,7 @@ export type IssueHistoryDetail =
 export type IssueHistoryEntry = {
   id: number;
   detail: IssueHistoryDetail;
+  actorKind: IssueHistoryActorKind;
   actorName: string | null;
   issue: {
     id: number | null;

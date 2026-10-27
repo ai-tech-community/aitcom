@@ -17,6 +17,7 @@ export const HISTORY_LIMIT = 30;
 export type HistoryWrite = {
   magazineId: number;
   issue: { id: number; number: number; title: string } | null;
+  /** Resolved by the caller: via:auto and system actors have no person id. */
   actorId: string | null;
   detail: IssueHistoryDetail;
 };
@@ -25,11 +26,9 @@ export type HistoryWrite = {
 export async function recordIssueHistory(
   tx: PayloadTransaction,
   entry: HistoryWrite,
-  now?: Date,
 ): Promise<void> {
-  const createdAt = now
-    ? payloadSql`${now.toISOString()}::timestamptz`
-    : payloadSql`CURRENT_TIMESTAMP`;
+  const createdAt = payloadSql`CURRENT_TIMESTAMP`;
+  const actorKind = entry.actorId === null ? "automatic" : "person";
   const insert =
     entry.detail.event === "items_changed"
       ? payloadSql`NOT EXISTS (
@@ -50,12 +49,12 @@ export async function recordIssueHistory(
   await tx.execute(payloadSql`
     INSERT INTO "app"."magazine_issue_history"
       ("magazine_id", "issue_id", "issue_number", "issue_title", "event",
-       "origin", "actor_id", "detail", "created_at")
+       "origin", "actor_id", "actor_kind", "detail", "created_at")
     SELECT ${entry.magazineId}, ${entry.issue?.id ?? null},
       ${entry.issue?.number ?? null}, ${entry.issue?.title ?? null},
       ${entry.detail.event},
       ${entry.detail.event === "published" ? entry.detail.origin : null},
-      ${entry.actorId}, ${JSON.stringify(entry.detail)}::jsonb, ${createdAt}
+      ${entry.actorId}, ${actorKind}, ${JSON.stringify(entry.detail)}::jsonb, ${createdAt}
     WHERE ${insert}
   `);
 }
@@ -69,6 +68,7 @@ export async function listIssueHistory(
     .select({
       id: magazineIssueHistory.id,
       detail: magazineIssueHistory.detail,
+      actorKind: magazineIssueHistory.actorKind,
       actorName: user.name,
       issueId: magazineIssueHistory.issueId,
       issueNumber: magazineIssueHistory.issueNumber,
@@ -91,6 +91,7 @@ export async function listIssueHistory(
   return rows.map((row) => ({
     id: row.id,
     detail: row.detail,
+    actorKind: row.actorKind,
     actorName: row.actorName,
     issue:
       row.issueId === null &&

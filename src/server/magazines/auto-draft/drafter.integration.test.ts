@@ -57,6 +57,9 @@ describe.skipIf(!isLocalDbConfigured())(
         "forumThread",
         "editorial",
       ]);
+      expect((await f.runs())[0]!.lastWriteAt?.toISOString()).toBe(
+        issue.updatedAt,
+      );
       const view = await f.m.editing.loadIssueEditorView(f.m, issue, f.actor());
       expect(Object.keys(view.autoDraft!.reasons).sort()).toEqual(
         issue.items!.map((item) => item.id!).sort(),
@@ -113,7 +116,61 @@ describe.skipIf(!isLocalDbConfigured())(
             outcome.status === "busy" ||
             (outcome.status === "skipped" && outcome.reason === "draft_open"),
         );
-      else expect(scheduled.drafted).toBe(0);
+      else {
+        expect(scheduled.drafted).toBe(0);
+        // A busy pass has not claimed its period; the next pass sees the made draft.
+        await f.pass(at(1));
+        expect(await f.runs()).toContainEqual(
+          expect.objectContaining({
+            periodKey: "month:2026-11",
+            status: "skipped",
+            skipReason: "draft_open",
+          }),
+        );
+      }
+    });
+
+    it("a fresh running claim makes a manual request busy", async () => {
+      await f.m.db.insert(f.m.schema.magazineAutoDraftRuns).values({
+        magazineId: f.fx.magazine.id,
+        periodKey: "month:2026-10",
+        trigger: "schedule",
+        status: "running",
+        claimedAt: now,
+      });
+      expect(await f.manual()).toEqual({ status: "busy" });
+      expect((await f.issues()).docs).toEqual([]);
+      expect(await f.notices()).toEqual([]);
+    });
+
+    it("a running claim refuses a failed period reclaim without another attempt", async () => {
+      await f.m.db.insert(f.m.schema.magazineAutoDraftRuns).values([
+        {
+          magazineId: f.fx.magazine.id,
+          periodKey: "month:2026-10",
+          trigger: "schedule",
+          status: "running",
+          claimedAt: now,
+        },
+        {
+          magazineId: f.fx.magazine.id,
+          periodKey: "month:2026-11",
+          trigger: "schedule",
+          status: "failed",
+          attempts: 1,
+          claimedAt: at(-20),
+        },
+      ]);
+      expect(await f.pass()).toEqual({ drafted: 0, skipped: 0 });
+      expect(await f.runs()).toContainEqual(
+        expect.objectContaining({
+          periodKey: "month:2026-11",
+          status: "failed",
+          attempts: 1,
+        }),
+      );
+      expect((await f.issues()).docs).toEqual([]);
+      expect(await f.notices()).toEqual([]);
     });
 
     it("make a draft now while a draft is open makes none", async () => {
@@ -297,6 +354,9 @@ describe.skipIf(!isLocalDbConfigured())(
         scheduledFor: at(3 * 24 * 60).toISOString(),
         scheduledBy: f.fx.editorId,
       });
+      expect((await f.runs())[0]!.lastWriteAt?.toISOString()).toBe(
+        issue.updatedAt,
+      );
       for (const n of await f.notices())
         expect(n.content).toContain("goes out by itself on 4 November 2026");
       const result = await f.m.jobs.runMagazineIssueJobs(f.m, {
@@ -304,17 +364,37 @@ describe.skipIf(!isLocalDbConfigured())(
         mailer: { recipient: () => null, send: vi.fn(async () => true) },
       });
       expect(result.published).toBeGreaterThanOrEqual(1);
-      expect((await f.issues()).docs[0]).toMatchObject({
+      const published = (await f.issues()).docs[0]!;
+      expect(published).toMatchObject({
         status: "published",
         publishedVia: "auto",
       });
+      const { loadIssuePage } = await import("../reading");
+      const page = await loadIssuePage(f.m, {
+        magazineSlug: f.fx.magazine.slug,
+        issueSlug: published.slug,
+        viewerId: null,
+        locale: "en",
+      });
+      expect(page).not.toBeNull();
+      expect(JSON.stringify(page)).not.toContain('"reason":');
+      expect(JSON.stringify(page)).not.toContain('"autoDraft":');
     });
 
     it("not due yet, or switched off, or on demand, makes nothing", async () => {
-      expect(await f.pass(new Date("2026-10-31T06:00:00Z"))).toEqual({
-        drafted: 0,
-        skipped: 0,
-      });
+      const communityLookup = vi.spyOn(f.m.db.query.communities, "findFirst");
+      const magazineLookup = vi.spyOn(f.m.payload, "findByID");
+      try {
+        expect(await f.pass(new Date("2026-10-31T06:00:00Z"))).toEqual({
+          drafted: 0,
+          skipped: 0,
+        });
+        expect(communityLookup).not.toHaveBeenCalled();
+        expect(magazineLookup).not.toHaveBeenCalled();
+      } finally {
+        communityLookup.mockRestore();
+        magazineLookup.mockRestore();
+      }
       await f.save({ enabled: false });
       expect(await f.pass()).toEqual({ drafted: 0, skipped: 0 });
       await f.save({ cadence: "on_demand" });
@@ -345,6 +425,20 @@ describe.skipIf(!isLocalDbConfigured())(
       expect((await f.runs()).map((r) => r.periodKey).sort()).toEqual(
         [`event:${ended}`, `event:${next}`].sort(),
       );
+    });
+
+    it("an after-event pass without unfinished events does not load the magazine", async () => {
+      await f.save({ cadence: "after_event" });
+      const lookup = vi.spyOn(f.m.payload, "findByID");
+      const communityLookup = vi.spyOn(f.m.db.query.communities, "findFirst");
+      try {
+        expect(await f.pass()).toEqual({ drafted: 0, skipped: 0 });
+        expect(lookup).not.toHaveBeenCalled();
+        expect(communityLookup).not.toHaveBeenCalled();
+      } finally {
+        lookup.mockRestore();
+        communityLookup.mockRestore();
+      }
     });
 
     it("keeps a full automatic draft within the builder's item limit", async () => {

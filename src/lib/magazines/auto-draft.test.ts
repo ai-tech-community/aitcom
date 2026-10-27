@@ -64,6 +64,19 @@ describe("automatic draft settings", () => {
     ).toEqual(AUTO_DRAFT_SOURCE_DEFAULTS.article);
   });
 
+  it("protects defaults from shared mutation and resolves fresh source records", () => {
+    expect(Object.isFrozen(DEFAULT_AUTO_DRAFT_SETTINGS.sources)).toBe(true);
+    for (const source of AUTO_DRAFT_SOURCE_ORDER)
+      expect(Object.isFrozen(DEFAULT_AUTO_DRAFT_SETTINGS.sources[source])).toBe(
+        true,
+      );
+    const first = resolveSources(null);
+    const second = resolveSources(null);
+    first.article.enabled = false;
+    expect(second.article.enabled).toBe(true);
+    expect(DEFAULT_AUTO_DRAFT_SETTINGS.sources.article.enabled).toBe(true);
+  });
+
   it("refuses settings out of bounds", () => {
     const { publicConfirmedBy, publicConfirmedAt, ...settings } =
       DEFAULT_AUTO_DRAFT_SETTINGS;

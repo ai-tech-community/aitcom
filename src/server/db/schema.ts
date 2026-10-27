@@ -9,8 +9,10 @@ import type {
   AutoDraftWhenReady,
 } from "@/lib/magazines/auto-draft";
 import type {
+  AutoDraftRunStatus,
   AutoDraftSkipReason,
   AutoDraftTrigger,
+  IssueHistoryActorKind,
   IssueHistoryDetail,
   IssueHistoryEvent,
 } from "@/lib/magazines/issue-history";
@@ -1519,10 +1521,7 @@ export const magazineAutoDraftRuns = appSchema.table(
     magazineId: d.integer().notNull(),
     periodKey: d.varchar({ length: 80 }).notNull(),
     trigger: d.varchar({ length: 16 }).$type<AutoDraftTrigger>().notNull(),
-    status: d
-      .varchar({ length: 16 })
-      .$type<"running" | "made" | "skipped" | "failed">()
-      .notNull(),
+    status: d.varchar({ length: 16 }).$type<AutoDraftRunStatus>().notNull(),
     skipReason: d.varchar({ length: 32 }).$type<AutoDraftSkipReason>(),
     foundCount: d.integer(),
     issueId: d.integer(),
@@ -1532,6 +1531,8 @@ export const magazineAutoDraftRuns = appSchema.table(
     attempts: d.smallint().notNull().default(1),
     claimedAt: d.timestamp({ withTimezone: true }).notNull(),
     finishedAt: d.timestamp({ withTimezone: true }),
+    /** Timestamp returned by the last automatic issue write; null means unknown. */
+    lastWriteAt: d.timestamp({ withTimezone: true }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -1590,6 +1591,10 @@ export const magazineIssueHistory = appSchema.table(
     actorId: d
       .varchar({ length: 255 })
       .references(() => user.id, { onDelete: "set null" }),
+    actorKind: d
+      .varchar({ length: 16 })
+      .$type<IssueHistoryActorKind>()
+      .notNull(),
     detail: d.jsonb().$type<IssueHistoryDetail>().notNull(),
     createdAt: d
       .timestamp({ withTimezone: true })
@@ -1606,6 +1611,10 @@ export const magazineIssueHistory = appSchema.table(
     check(
       "magazine_issue_history_origin_check",
       sql`${t.origin} IS NULL OR ${t.origin} IN ('button', 'schedule', 'auto')`,
+    ),
+    check(
+      "magazine_issue_history_actor_kind_check",
+      sql`${t.actorKind} IN ('person', 'automatic')`,
     ),
   ],
 );

@@ -21,6 +21,7 @@ import type * as IssueService from "./issue-service";
 import type * as MagazineService from "./magazine-service";
 import type * as Registry from "./items/registry";
 import { itemContextFor } from "./items/context";
+import { ISSUE_LAYOUTS, type IssueLayout } from "@/lib/magazines/values";
 
 /**
  * The real credit, with a switch that makes the next N credits throw AFTER
@@ -762,6 +763,40 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       });
     });
 
+    it("keeps a deleted person's history distinct from automatic history", async () => {
+      const { issue, mag } = await fixture();
+      const formerId = `isv-former-${fx.sfx}`;
+      fx.userIds.push(formerId);
+      await m.db.insert(m.schema.user).values({
+        id: formerId,
+        email: `${formerId}@example.test`,
+        name: "Former editor",
+      });
+      const { inPayloadTransaction } = await import("./payload-writes");
+      const { recordIssueHistory } = await import("./issue-history");
+      await inPayloadTransaction(m.payload, (tx) =>
+        recordIssueHistory(tx, {
+          magazineId: mag.id,
+          issue: {
+            id: issue.id,
+            number: Number(issue.number),
+            title: issue.title,
+          },
+          actorId: formerId,
+          detail: { event: "items_changed", itemCount: 2 },
+        }),
+      );
+      const { eq } = await import("drizzle-orm");
+      await m.db.delete(m.schema.user).where(eq(m.schema.user.id, formerId));
+      expect(await history(mag.id)).toMatchObject([
+        {
+          actorKind: "person",
+          actorName: null,
+          detail: { event: "items_changed" },
+        },
+      ]);
+    });
+
     it("deletion history snapshots the draft claimed for deletion", async () => {
       const { issue, editor, mag } = await fixture();
       await m.issues.updateIssueDetails(
@@ -829,6 +864,8 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     });
 
     it("creates a draft with the given layout and visibility", async () => {
+      // There is currently one supported layout; exercise its explicit override.
+      const configuredLayout: IssueLayout = ISSUE_LAYOUTS[0];
       const c = await community("overrides");
       const mag = await magazineIn(c);
       const custom = await m.issues.createIssue(
@@ -837,7 +874,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
         { title: "Custom" },
         actor(c),
         {
-          layout: "cover-story",
+          layout: configuredLayout,
           visibility: {
             visibility: "public",
             publicConfirmedBy: fx.userId,
@@ -847,11 +884,17 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       );
       expect(custom).toMatchObject({
         status: "draft",
-        layout: "cover-story",
+        layout: configuredLayout,
         visibility: "public",
         publicConfirmedBy: fx.userId,
         publicConfirmedAt: at(0).toISOString(),
       });
+      const persisted = await m.payload.findByID({
+        collection: "magazine-issues",
+        id: custom.id,
+        depth: 0,
+      });
+      expect(persisted.layout).toBe(configuredLayout);
       const plain = await m.issues.createIssue(
         m,
         mag,
@@ -873,39 +916,31 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       const other = await magazineIn(await community("history-other"), "other");
       await inPayloadTransaction(m.payload, async (tx) => {
         for (let found = 0; found < 32; found++) {
-          await recordIssueHistory(
-            tx,
-            {
-              magazineId: mag.id,
-              issue: null,
-              actorId: null,
-              detail: {
-                event: "draft_skipped",
-                trigger: "schedule",
-                reason: "too_few",
-                found,
-                needed: 40,
-              },
-            },
-            at(0),
-          );
-        }
-        await recordIssueHistory(
-          tx,
-          {
-            magazineId: other.id,
+          await recordIssueHistory(tx, {
+            magazineId: mag.id,
             issue: null,
             actorId: null,
             detail: {
               event: "draft_skipped",
               trigger: "schedule",
-              reason: "no_rights",
-              found: null,
-              needed: null,
+              reason: "too_few",
+              found,
+              needed: 40,
             },
+          });
+        }
+        await recordIssueHistory(tx, {
+          magazineId: other.id,
+          issue: null,
+          actorId: null,
+          detail: {
+            event: "draft_skipped",
+            trigger: "schedule",
+            reason: "no_rights",
+            found: null,
+            needed: null,
           },
-          at(0),
-        );
+        });
       });
       const rows = await history(mag.id);
       expect(rows).toHaveLength(30);
@@ -918,11 +953,14 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
           needed: 40,
         })),
       );
+      // Rows in one transaction share the database clock; id breaks ties.
+      expect(new Set(rows.map((row) => row.createdAt)).size).toBe(1);
       for (const row of rows) {
         expect(row).toMatchObject({
           actorName: null,
           issue: null,
-          createdAt: at(0).toISOString(),
+          actorKind: "automatic",
+          createdAt: expect.any(String),
         });
       }
     });

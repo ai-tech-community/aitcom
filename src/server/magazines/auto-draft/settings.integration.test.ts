@@ -575,6 +575,7 @@ describe.skipIf(!isLocalDbConfigured())(
           ...eligible,
           magazineId: fx.magazine.id,
           communityId: fx.community.id,
+          communitySlug: fx.community.slug,
           lastRunAt: null,
         },
       ]);

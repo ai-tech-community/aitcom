@@ -115,11 +115,13 @@ type _EveryKindHasASource = AssertNever<
 export const AUTO_DRAFT_SOURCE_DEFAULTS: Record<
   AutoDraftSourceId,
   AutoDraftSource
-> = Object.fromEntries(
-  AUTO_DRAFT_SOURCE_IDS.map((source) => [
-    source,
-    { ...AUTO_DRAFT_SOURCES[source].defaults },
-  ]),
+> = Object.freeze(
+  Object.fromEntries(
+    AUTO_DRAFT_SOURCE_IDS.map((source) => [
+      source,
+      Object.freeze({ ...AUTO_DRAFT_SOURCES[source].defaults }),
+    ]),
+  ),
 ) as Record<AutoDraftSourceId, AutoDraftSource>;
 
 export function sourceMaxLimit(source: AutoDraftSourceId): number {

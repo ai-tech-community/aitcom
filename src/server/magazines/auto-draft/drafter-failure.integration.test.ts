@@ -5,26 +5,57 @@ import type * as Issues from "../issue-service";
 import type * as Runs from "./runs";
 import type * as Picks from "./picks";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { inArray } from "drizzle-orm";
+import { inPayloadTransaction } from "../payload-writes";
 import { at, drafterFixture, isLocalDbConfigured, now } from "./test-fixtures";
 
 const failures = vi.hoisted(() => ({
   save: false,
+  crashAfterSave: false,
+  cleanupCrash: false,
   picks: false,
   schedule: false,
   history: false,
   editors: false,
   claim: false,
+  cleanupEdit: false,
 }));
 vi.mock("../issue-service", async (importOriginal) => {
   const real = await importOriginal<typeof Issues>();
   return {
     ...real,
+    deleteDraftIssue: async (
+      ...args: Parameters<typeof real.deleteDraftIssue>
+    ) => {
+      if (failures.cleanupCrash) {
+        failures.cleanupCrash = false;
+        throw new Error("Process stopped before cleanup");
+      }
+      if (failures.cleanupEdit) {
+        failures.cleanupEdit = false;
+        const [deps, issue] = args;
+        await deps.payload.update({
+          collection: "magazine-issues",
+          id: issue.id,
+          data: { title: "An edit during cleanup" },
+          depth: 0,
+        });
+      }
+      return real.deleteDraftIssue(...args);
+    },
     setIssueItems: async (...args: Parameters<typeof real.setIssueItems>) => {
       if (failures.save) {
         failures.save = false;
         throw new Error("Save failed");
       }
-      return real.setIssueItems(...args);
+      const saved = await real.setIssueItems(...args);
+      if (failures.crashAfterSave) {
+        failures.crashAfterSave = false;
+        // The write committed, but no caller-side follow-up or cleanup ran.
+        failures.cleanupCrash = true;
+        throw new Error("Process stopped after the item commit");
+      }
+      return saved;
     },
     scheduleIssue: async (...args: Parameters<typeof real.scheduleIssue>) => {
       if (failures.schedule) {
@@ -82,11 +113,21 @@ vi.mock("./runs", async (importOriginal) => {
   const real = await importOriginal<typeof Runs>();
   return {
     ...real,
+    failedRunIssues: async (
+      ...args: Parameters<typeof real.failedRunIssues>
+    ) => {
+      const rows = await real.failedRunIssues(...args);
+      // Exercise an adversarial database result order: the current claim first.
+      return rows.sort(
+        (a, b) => Number(b.id === args[2]) - Number(a.id === args[2]),
+      );
+    },
     claimAutoDraftRun: async (
       ...args: Parameters<typeof real.claimAutoDraftRun>
     ) => {
       if (failures.claim) {
         failures.claim = false;
+        failures.cleanupEdit = false;
         throw new Error("Claim unavailable");
       }
       return real.claimAutoDraftRun(...args);
@@ -119,11 +160,14 @@ describe.skipIf(!isLocalDbConfigured())(
     const f = drafterFixture();
     beforeEach(() => {
       failures.save = false;
+      failures.crashAfterSave = false;
+      failures.cleanupCrash = false;
       failures.picks = false;
       failures.schedule = false;
       failures.history = false;
       failures.editors = false;
       failures.claim = false;
+      failures.cleanupEdit = false;
     });
 
     it.each(["save", "picks"] as const)(
@@ -182,6 +226,56 @@ describe.skipIf(!isLocalDbConfigured())(
       }
     });
 
+    it("cleans a leftover after the item commit without mistaking it for a person's edit", async () => {
+      const log = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      try {
+        failures.crashAfterSave = true;
+        expect(await f.pass()).toEqual({ drafted: 0, skipped: 0 });
+        const leftovers = (await f.issues()).docs;
+        expect(leftovers).toHaveLength(1);
+        const leftover = leftovers[0]!;
+        expect(leftover.items?.length).toBeGreaterThan(0);
+        expect(await f.runs()).toEqual([
+          expect.objectContaining({
+            status: "failed",
+            attempts: 1,
+            issueId: leftover.id,
+            lastWriteAt: new Date(leftover.updatedAt),
+          }),
+        ]);
+        expect(await f.history()).toEqual([]);
+        expect(await f.notices()).toEqual([]);
+
+        expect(await f.pass(at(5))).toEqual({ drafted: 1, skipped: 0 });
+        const rebuilt = (await f.issues()).docs;
+        expect(rebuilt).toHaveLength(1);
+        expect(rebuilt[0]!.id).not.toBe(leftover.id);
+        expect(
+          await f.m.payload.findByID({
+            collection: "magazine-issues",
+            id: leftover.id,
+            disableErrors: true,
+            depth: 0,
+          }),
+        ).toBeNull();
+        expect(await f.runs()).toEqual([
+          expect.objectContaining({
+            status: "made",
+            attempts: 2,
+            issueId: rebuilt[0]!.id,
+          }),
+        ]);
+        expect((await f.history()).map((entry) => entry.detail.event)).toEqual([
+          "draft_made",
+        ]);
+        expect(await f.notices()).toHaveLength(3);
+      } finally {
+        log.mockRestore();
+      }
+    });
+
     it.each(["history", "editors"] as const)(
       "a completed draft survives a later %s failure",
       async (stage) => {
@@ -235,10 +329,18 @@ describe.skipIf(!isLocalDbConfigured())(
           f.m.db,
           f.fx.magazine.id,
         );
+        const otherMagazineIds: number[] = [];
+        // The fixture magazine was created first, so it is first by id in the due list.
         for (let i = 0; i < 5; i++) {
-          const { magazine } = await f.makeMagazine(
+          const { magazine, community } = await f.makeMagazine(
             `unclaimed-${i}-${f.fx.suffix}`,
           );
+          otherMagazineIds.push(magazine.id);
+          await f.m.db.insert(f.m.schema.communityMemberships).values({
+            communityId: community.id,
+            userId: f.fx.ownerId,
+            role: "owner",
+          });
           await f.m.db.insert(f.m.schema.magazineAutoDraftSettings).values({
             ...settings,
             publicConfirmedAt: null,
@@ -249,13 +351,35 @@ describe.skipIf(!isLocalDbConfigured())(
         failures.claim = true;
         expect(await f.pass()).toEqual({ drafted: 0, skipped: 5 });
         expect(await f.runs()).toEqual([]);
+        const otherRuns = await f.m.db
+          .select()
+          .from(f.m.schema.magazineAutoDraftRuns)
+          .where(
+            inArray(
+              f.m.schema.magazineAutoDraftRuns.magazineId,
+              otherMagazineIds,
+            ),
+          );
+        expect(otherRuns).toHaveLength(5);
+        expect(otherRuns.map((run) => run.magazineId).sort()).toEqual(
+          otherMagazineIds.sort(),
+        );
+        for (const run of otherRuns)
+          expect(run).toMatchObject({
+            status: "skipped",
+            skipReason: "too_few",
+            foundCount: 0,
+          });
         expect(log).toHaveBeenCalled();
       } finally {
         log.mockRestore();
       }
     });
 
-    async function crashedIssue(scheduled = false) {
+    async function crashedIssue(
+      scheduled = false,
+      run: Partial<typeof f.m.schema.magazineAutoDraftRuns.$inferInsert> = {},
+    ) {
       let issue = await f.m.issues.createIssue(
         f.m,
         f.fx.magazine,
@@ -291,17 +415,14 @@ describe.skipIf(!isLocalDbConfigured())(
         status: "running",
         claimedAt: at(-20),
         issueId: issue.id,
+        lastWriteAt: new Date(issue.updatedAt),
+        ...run,
       });
       return issue;
     }
 
     it("a run that died half-way is cleaned up, never doubled", async () => {
       const leftover = await crashedIssue();
-      expect(await f.manual()).toMatchObject({
-        status: "skipped",
-        reason: "draft_open",
-        openIssueId: leftover.id,
-      });
       expect(await f.pass()).toEqual({ drafted: 1, skipped: 0 });
       const { docs } = await f.issues();
       expect(docs).toHaveLength(1);
@@ -326,6 +447,160 @@ describe.skipIf(!isLocalDbConfigured())(
         expect.objectContaining({ status: "draft" }),
       ]);
       expect((await f.issues()).docs[0]!.id).not.toBe(leftover.id);
+      expect((await f.history()).map((entry) => entry.detail.event)).toEqual([
+        "draft_made",
+      ]);
+    });
+
+    it.each([
+      {
+        name: "manual crash",
+        periodKey: "manual:crashed",
+        trigger: "manual" as const,
+        status: "running" as const,
+        attempts: 1,
+      },
+      {
+        name: "ended calendar period",
+        periodKey: "month:2026-10",
+        trigger: "schedule" as const,
+        status: "failed" as const,
+        attempts: 1,
+      },
+      {
+        name: "exhausted attempts",
+        periodKey: "month:2026-10",
+        trigger: "schedule" as const,
+        status: "failed" as const,
+        attempts: 3,
+      },
+    ])(
+      "cleans a leftover from $name on the next scheduled pass",
+      async ({ periodKey, trigger, status, attempts }) => {
+        const run = { periodKey, trigger, status, attempts };
+        const leftover = await crashedIssue(false, run);
+        expect(await f.pass()).toEqual({ drafted: 1, skipped: 0 });
+        const { docs } = await f.issues();
+        expect(docs).toHaveLength(1);
+        expect(docs[0]!.id).not.toBe(leftover.id);
+        const old = (await f.runs()).find(
+          (entry) => entry.periodKey === run.periodKey,
+        )!;
+        expect(old.issueId).toBeNull();
+        expect((await f.history()).map((entry) => entry.detail.event)).toEqual([
+          "draft_made",
+        ]);
+      },
+    );
+
+    it.each(["history", "updatedAt"] as const)(
+      "keeps a person's draft edit traced by %s",
+      async (trace) => {
+        let leftover = await crashedIssue();
+        if (trace === "history") {
+          const { plainTextToLexical } =
+            await import("@/server/challenge-engine/lexical");
+          leftover = (
+            await f.m.issues.setIssueItems(
+              f.m,
+              leftover,
+              [
+                {
+                  kind: "editorial",
+                  body: plainTextToLexical("An editor's work"),
+                },
+              ],
+              leftover.updatedAt,
+              f.actor(),
+            )
+          ).issue;
+          // Prove the person history protects it even without a later issue timestamp.
+          const runId = (await f.runs())[0]!.id;
+          await inPayloadTransaction(f.m.payload, (tx) =>
+            f.m.runs.attachRunIssue(tx, runId, leftover.id, leftover.updatedAt),
+          );
+        } else {
+          leftover = await f.m.payload.update({
+            collection: "magazine-issues",
+            id: leftover.id,
+            data: { title: "An editor's title" },
+            depth: 0,
+          });
+        }
+        expect(await f.pass()).toEqual({ drafted: 1, skipped: 0 });
+        expect((await f.issues()).docs).toEqual([
+          expect.objectContaining({ id: leftover.id, title: leftover.title }),
+        ]);
+        expect(await f.runs()).toEqual([
+          expect.objectContaining({
+            status: "made",
+            issueId: leftover.id,
+            attempts: 2,
+          }),
+        ]);
+        expect(await f.notices()).toEqual([]);
+      },
+    );
+
+    it("keeps an editor save that lands between inspection and cleanup deletion", async () => {
+      const leftover = await crashedIssue();
+      failures.cleanupEdit = true;
+      expect(await f.pass()).toEqual({ drafted: 1, skipped: 0 });
+      expect((await f.issues()).docs).toEqual([
+        expect.objectContaining({
+          id: leftover.id,
+          title: "An edit during cleanup",
+        }),
+      ]);
+      expect(await f.notices()).toEqual([]);
+    });
+
+    it("cleans every other failed leftover before finishing a reclaimed takeover", async () => {
+      const kept = await crashedIssue();
+      await f.m.payload.update({
+        collection: "magazine-issues",
+        id: kept.id,
+        data: { title: "Taken over" },
+        depth: 0,
+      });
+      const removed = await crashedIssue(false, {
+        periodKey: "manual:another-crash",
+        trigger: "manual",
+        status: "failed",
+      });
+      expect(await f.pass()).toEqual({ drafted: 1, skipped: 0 });
+      expect((await f.issues()).docs).toEqual([
+        expect.objectContaining({ id: kept.id }),
+      ]);
+      expect(
+        (await f.runs()).find(
+          (run) => run.periodKey === "manual:another-crash",
+        ),
+      ).toMatchObject({ status: "failed", issueId: null });
+      expect(
+        await f.m.payload.findByID({
+          collection: "magazine-issues",
+          id: removed.id,
+          disableErrors: true,
+        }),
+      ).toBeNull();
+      expect(await f.notices()).toEqual([]);
+    });
+
+    it("a person's explicit stop records why the automatic publish stopped", async () => {
+      const leftover = await crashedIssue(true);
+      await f.m.issues.unscheduleIssue(
+        f.m,
+        leftover,
+        leftover.updatedAt,
+        f.actor(),
+      );
+      expect((await f.history()).map((entry) => entry.detail)).toEqual([
+        { event: "auto_publish_stopped", why: "stopped" },
+      ]);
+      expect((await f.history())[0]).toMatchObject({
+        actorName: f.fx.editorId,
+      });
     });
 
     it("keeps a crashed issue taken over by a person without another notice", async () => {

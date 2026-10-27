@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { routing } from "@/i18n/routing";
@@ -17,7 +17,7 @@ import type {
 } from "@/lib/magazines/issue-history";
 import type { SuggestionReason } from "@/lib/magazines/suggestions";
 import type { Magazine, MagazineIssue } from "@/payload-types";
-import { communities } from "@/server/db/schema";
+import { communities, magazineIssueHistory } from "@/server/db/schema";
 
 import type { Deps } from "../deps";
 import {
@@ -26,6 +26,7 @@ import {
   standingCan,
 } from "../editorship";
 import { recordIssueHistory } from "../issue-history";
+import { magazineErrorCodeOf } from "../errors";
 import {
   createIssue,
   deleteDraftIssue,
@@ -33,6 +34,7 @@ import {
   setIssueItems,
   unscheduleIssue,
   type IssueActor,
+  type IssueWriteOptions,
 } from "../issue-service";
 import { itemContextFor, suggestContextFor } from "../items/context";
 import {
@@ -51,7 +53,9 @@ import {
   attachRunIssue,
   claimAutoDraftRun,
   findOpenAutoDraft,
-  finishedPeriodKeys,
+  clearRunIssue,
+  failedRunIssues,
+  finishedCalendarPeriods,
   finishAutoDraftRun,
   pendingEventPeriods,
 } from "./runs";
@@ -98,6 +102,80 @@ function madeOutcome(
     goesOutAt:
       issue.status === "scheduled" ? (issue.scheduledFor ?? null) : null,
   };
+}
+
+/** Keep anything a person took over; remove only untouched automatic work. */
+async function cleanUpFailedRunIssue(
+  deps: Deps,
+  run: Awaited<ReturnType<typeof failedRunIssues>>[number],
+  community: DraftInput["community"],
+  now: Date,
+): Promise<MagazineIssue | null> {
+  const issue = await deps.payload.findByID({
+    collection: "magazine-issues",
+    id: run.issueId!,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!issue) {
+    await clearRunIssue(deps.db, run.id);
+    return null;
+  }
+  const [personTrace] = await deps.db
+    .select({ id: magazineIssueHistory.id })
+    .from(magazineIssueHistory)
+    .where(
+      and(
+        eq(magazineIssueHistory.issueId, issue.id),
+        eq(magazineIssueHistory.actorKind, "person"),
+      ),
+    )
+    .limit(1);
+  if (
+    issue.status === "published" ||
+    (issue.status === "scheduled" && issue.scheduledVia !== "auto") ||
+    personTrace ||
+    (run.lastWriteAt !== null &&
+      new Date(issue.updatedAt).getTime() > run.lastWriteAt.getTime())
+  ) {
+    await finishAutoDraftRun(
+      deps.db,
+      run.id,
+      { status: "made", issueId: issue.id },
+      now,
+    );
+    return issue;
+  }
+  const actor: IssueActor = { userId: "", community, via: "auto" };
+  try {
+    const leftover =
+      issue.status === "scheduled"
+        ? await unscheduleIssue(deps, issue, issue.updatedAt, actor)
+        : issue;
+    await deleteDraftIssue(deps, leftover, actor, {
+      expectedUpdatedAt: leftover.updatedAt,
+    });
+  } catch (error) {
+    if (magazineErrorCodeOf(error) !== "ISSUE_CHANGED") throw error;
+    // A save or publication won the issue lock after inspection. Keep its work.
+    const current = await deps.payload.findByID({
+      collection: "magazine-issues",
+      id: issue.id,
+      depth: 0,
+      disableErrors: true,
+    });
+    if (current) {
+      await finishAutoDraftRun(
+        deps.db,
+        run.id,
+        { status: "made", issueId: current.id },
+        now,
+      );
+      return current;
+    }
+  }
+  await clearRunIssue(deps.db, run.id);
+  return null;
 }
 
 /** One claimed attempt. Issue writes always use the ordinary issue service. */
@@ -196,43 +274,17 @@ async function attemptAutoDraft(
   };
 
   try {
-    if (claim.leftoverIssueId !== null) {
-      let leftover = await deps.payload.findByID({
-        collection: "magazine-issues",
-        id: claim.leftoverIssueId,
-        depth: 0,
-        disableErrors: true,
-      });
-      if (leftover) {
-        // Cleanup has no person or permission decision; via:auto writes no deletion history.
-        const cleanupActor: IssueActor = {
-          userId: input.actingUserId ?? "",
-          community,
-          via: "auto",
-        };
-        if (
-          leftover.status === "scheduled" &&
-          leftover.scheduledVia === "auto"
-        ) {
-          leftover = await unscheduleIssue(
-            deps,
-            leftover,
-            leftover.updatedAt,
-            cleanupActor,
-          );
-        }
-        if (leftover.status === "draft") {
-          await deleteDraftIssue(deps, leftover, cleanupActor);
-        } else {
-          await finishAutoDraftRun(
-            deps.db,
-            runId,
-            { status: "made", issueId: leftover.id },
-            now,
-          );
-          return madeOutcome(leftover);
-        }
-      }
+    const leftovers = await failedRunIssues(deps.db, magazine.id, runId);
+    // Finishing this claim releases the running lock, so its leftover goes last.
+    leftovers.sort((a, b) => Number(a.id === runId) - Number(b.id === runId));
+    for (const leftoverRun of leftovers) {
+      const kept = await cleanUpFailedRunIssue(
+        deps,
+        leftoverRun,
+        community,
+        now,
+      );
+      if (kept && leftoverRun.id === runId) return madeOutcome(kept);
     }
 
     const standing = await loadMagazineEditorship(
@@ -325,7 +377,12 @@ async function attemptAutoDraft(
         timeZone: "Europe/Amsterdam",
       }).format(now),
     });
+    const afterWrite: NonNullable<IssueWriteOptions["afterWrite"]> = (
+      tx,
+      written,
+    ) => attachRunIssue(tx, runId, written.id, written.updatedAt);
     const created = await createIssue(deps, magazine, { title }, actor, {
+      afterWrite,
       layout: settings.layout,
       ...(settings.visibility === null
         ? {}
@@ -339,7 +396,6 @@ async function attemptAutoDraft(
     });
     let saved: MagazineIssue;
     try {
-      await attachRunIssue(deps.db, runId, created.id);
       saved = (
         await setIssueItems(
           deps,
@@ -347,6 +403,7 @@ async function attemptAutoDraft(
           picked.map((pick) => pick.input),
           created.updatedAt,
           actor,
+          { afterWrite },
         )
       ).issue;
       await saveAutoPicks(
@@ -370,7 +427,7 @@ async function attemptAutoDraft(
           saved.updatedAt,
           actor,
           now,
-          { via: "auto" },
+          { via: "auto", afterWrite },
         );
       } catch (error) {
         console.error("[magazines] automatic draft schedule failed", {
@@ -421,9 +478,43 @@ export async function runDueAutoDrafts(
 ): Promise<{ drafted: number; skipped: number }> {
   const result = { drafted: 0, skipped: 0 };
   let claims = 0;
-  for (const settings of await listDueAutoDraftSettings(deps.db)) {
+  const candidates = (await listDueAutoDraftSettings(deps.db)).flatMap(
+    (settings) => {
+      if (settings.cadence === "after_event")
+        return [{ settings, keys: [] as string[] }];
+      const period = calendarPeriod(settings, now);
+      return period && isPeriodDue(period, now, settings.scheduleStartsAt)
+        ? [{ settings, keys: [period.key] }]
+        : [];
+    },
+  );
+  const finished = await finishedCalendarPeriods(
+    deps.db,
+    candidates.flatMap(({ settings, keys }) =>
+      keys.map((periodKey) => ({ magazineId: settings.magazineId, periodKey })),
+    ),
+  );
+  for (const { settings, keys: calendarKeys } of candidates) {
+    const unfinishedKeys = calendarKeys.filter(
+      (key) => !finished.has(`${settings.magazineId}:${key}`),
+    );
+    if (settings.cadence !== "after_event" && unfinishedKeys.length === 0)
+      continue;
     if (claims >= AUTO_DRAFT_RUNS_PER_PASS) break;
     try {
+      const keys =
+        settings.cadence === "after_event"
+          ? await pendingEventPeriods(deps, {
+              magazineId: settings.magazineId,
+              community: {
+                id: settings.communityId,
+                slug: settings.communitySlug,
+              },
+              scheduleStartsAt: settings.scheduleStartsAt!,
+              now,
+            })
+          : unfinishedKeys;
+      if (keys.length === 0) continue;
       const community = await deps.db.query.communities.findFirst({
         where: eq(communities.id, settings.communityId),
       });
@@ -435,22 +526,8 @@ export async function runDueAutoDrafts(
         disableErrors: true,
       });
       if (!magazine) continue;
-      const period = calendarPeriod(settings, now);
-      const keys =
-        settings.cadence === "after_event"
-          ? await pendingEventPeriods(deps, {
-              magazineId: magazine.id,
-              community,
-              scheduleStartsAt: settings.scheduleStartsAt!,
-              now,
-            })
-          : period && isPeriodDue(period, now, settings.scheduleStartsAt)
-            ? [period.key]
-            : [];
-      const finished = await finishedPeriodKeys(deps.db, magazine.id, keys);
       for (const periodKey of keys) {
         if (claims >= AUTO_DRAFT_RUNS_PER_PASS) break;
-        if (finished.has(periodKey)) continue;
         try {
           const outcome = await attemptAutoDraft(
             deps,

@@ -143,6 +143,7 @@ export async function saveAutoDraftSettings(
 export type DueAutoDraftSettings = StoredAutoDraftSettings & {
   magazineId: number;
   communityId: string;
+  communitySlug: string;
   lastRunAt: Date | null;
 };
 
@@ -162,6 +163,7 @@ export async function listDueAutoDraftSettings(
     .select({
       settings: magazineAutoDraftSettings,
       communityId: communities.id,
+      communitySlug: communities.slug,
       lastRunAt: latestRuns.lastRunAt,
     })
     .from(magazineAutoDraftSettings)
@@ -187,10 +189,11 @@ export async function listDueAutoDraftSettings(
       sql`${latestRuns.lastRunAt} ASC NULLS FIRST`,
       asc(magazineAutoDraftSettings.magazineId),
     );
-  return rows.map(({ settings, communityId, lastRunAt }) => ({
+  return rows.map(({ settings, communityId, communitySlug, lastRunAt }) => ({
     ...storedSettings(settings),
     magazineId: settings.magazineId,
     communityId,
+    communitySlug,
     lastRunAt,
   }));
 }
