@@ -11,6 +11,7 @@ import {
   magazineArticleEditPath,
   magazineReviewPath,
   magazineSettingsPath,
+  magazineTeamPath,
   magazineWritePath,
 } from "@/lib/magazines/paths";
 import { writerStatusOf } from "@/lib/magazines/review";
@@ -122,9 +123,14 @@ export function EditorDesk({
             <Link href={magazineWritePath(slug)}>{t("write")}</Link>
           </Button>
           {canManage && (
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={magazineSettingsPath(slug)}>{t("settings")}</Link>
-            </Button>
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={magazineTeamPath(slug)}>{t("team")}</Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={magazineSettingsPath(slug)}>{t("settings")}</Link>
+              </Button>
+            </>
           )}
         </div>
       </div>

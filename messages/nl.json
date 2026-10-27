@@ -4933,7 +4933,8 @@
       "saved": "Magazine opgeslagen",
       "loadFailed": "De magazine-instellingen konden niet worden geladen.",
       "tryAgain": "Opnieuw proberen",
-      "openTab": "Open het tabblad Magazine"
+      "openTab": "Open het tabblad Magazine",
+      "back": "Terug naar het tabblad Magazine"
     },
     "tab": {
       "metaTitle": "Magazine",
@@ -4990,7 +4991,8 @@
         "rejected": "Niet geaccepteerd"
       },
       "loadFailed": "Deze lijst kon niet worden geladen.",
-      "tryAgain": "Opnieuw proberen"
+      "tryAgain": "Opnieuw proberen",
+      "team": "Team"
     },
     "builder": {
       "metaTitle": "Nummer bewerken",
@@ -5214,6 +5216,36 @@
           "contributor": "Je bent nu schrijver. {help}"
         }
       }
+    },
+    "team": {
+      "metaTitle": "Magazineteam",
+      "title": "Team",
+      "intro": "Kies wie voor {magazine} schrijft en de redactie verzorgt. Eigenaren en beheerders van de community hebben altijd de leiding.",
+      "add": "Iemand toevoegen",
+      "searchLabel": "Zoek een lid",
+      "searchHint": "Typ een naam om leden van je community te vinden.",
+      "resultsLegend": "Kies een lid",
+      "resultCount": "{count, plural, =0 {Geen leden gevonden} one {# lid gevonden} other {# leden gevonden}}",
+      "noResults": "Geen leden gevonden. Alleen leden van deze community kunnen bij het team.",
+      "roleLabel": "Taak in het team",
+      "addButton": "Aan het team toevoegen",
+      "owner": "Eigenaar van de community",
+      "admin": "Beheerder van de community",
+      "notMember": "Nu geen lid",
+      "remove": "Verwijderen",
+      "removeTitle": "{name} uit het team verwijderen?",
+      "removeBody": "De artikelen blijven bewaard. Deze persoon kan niet meer voor het tijdschrift schrijven of nummers bewerken.",
+      "removeConfirm": "Verwijderen",
+      "cancel": "Annuleren",
+      "assigned": {
+        "editor_in_chief": "{name} is nu hoofdredacteur.",
+        "editor": "{name} is nu redacteur.",
+        "contributor": "{name} is nu schrijver."
+      },
+      "removed": "{name} is uit het team verwijderd.",
+      "back": "Terug naar het tabblad Magazine",
+      "membersTitle": "Het team",
+      "empty": "Voeg iemand toe om mee te schrijven en nummers te maken."
     }
   }
 }

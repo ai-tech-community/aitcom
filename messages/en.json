@@ -4933,7 +4933,8 @@
       "saved": "Magazine saved",
       "loadFailed": "The magazine settings could not be loaded.",
       "tryAgain": "Try again",
-      "openTab": "Open the Magazine tab"
+      "openTab": "Open the Magazine tab",
+      "back": "Back to the Magazine tab"
     },
     "tab": {
       "metaTitle": "Magazine",
@@ -4990,7 +4991,8 @@
         "rejected": "Not accepted"
       },
       "loadFailed": "This list could not be loaded.",
-      "tryAgain": "Try again"
+      "tryAgain": "Try again",
+      "team": "Team"
     },
     "builder": {
       "metaTitle": "Edit issue",
@@ -5214,6 +5216,36 @@
           "contributor": "You are now a contributor. {help}"
         }
       }
+    },
+    "team": {
+      "metaTitle": "Magazine team",
+      "title": "Team",
+      "intro": "Choose who writes for and edits {magazine}. Owners and admins of the community always run it.",
+      "add": "Add someone",
+      "searchLabel": "Find a member",
+      "searchHint": "Type a name to find members of your community.",
+      "resultsLegend": "Choose a member",
+      "resultCount": "{count, plural, =0 {No members match} one {# member found} other {# members found}}",
+      "noResults": "No members match. Only members of this community can join the team.",
+      "roleLabel": "Job on the team",
+      "addButton": "Add to the team",
+      "owner": "Community owner",
+      "admin": "Community admin",
+      "notMember": "Not a member now",
+      "remove": "Remove",
+      "removeTitle": "Remove {name} from the team?",
+      "removeBody": "They keep their articles. They can no longer write for the magazine or edit issues.",
+      "removeConfirm": "Remove",
+      "cancel": "Cancel",
+      "assigned": {
+        "editor_in_chief": "{name} is now an editor-in-chief.",
+        "editor": "{name} is now an editor.",
+        "contributor": "{name} is now a contributor."
+      },
+      "removed": "{name} left the team.",
+      "back": "Back to the Magazine tab",
+      "membersTitle": "The team",
+      "empty": "Add someone to help write articles and make issues."
     }
   }
 }

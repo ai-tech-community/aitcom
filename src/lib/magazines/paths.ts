@@ -56,9 +56,14 @@ export function issueBuilderPath(
   return `${communityMagazinePath(communitySlug)}/issues/${issueId}/edit`;
 }
 
-/** The magazine's settings (create or edit) in the community settings. */
+/** The magazine's settings (create or edit) in the magazine area. */
 export function magazineSettingsPath(communitySlug: string): string {
-  return `/communities/${communitySlug}/settings/magazine`;
+  return `${communityMagazinePath(communitySlug)}/settings`;
+}
+
+/** Where magazine managers choose the team. */
+export function magazineTeamPath(communitySlug: string): string {
+  return `${communityMagazinePath(communitySlug)}/team`;
 }
 
 /** Where an editor writes a new article for the community's magazine. */

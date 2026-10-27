@@ -129,6 +129,18 @@ beforeEach(() => {
 });
 
 describe("EditorDesk", () => {
+  it("shows Team only to those who manage the magazine", () => {
+    const { unmount } = renderWithIntl(
+      <EditorDesk slug="amsterdam-ai" canManage />,
+    );
+    expect(screen.getByRole("link", { name: "Team" })).toHaveAttribute(
+      "href",
+      "/communities/amsterdam-ai/magazine/team",
+    );
+    unmount();
+    renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage={false} />);
+    expect(screen.queryByRole("link", { name: "Team" })).toBeNull();
+  });
   it("lists articles waiting for review, linking to the review page", () => {
     renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage={false} />);
     const waiting = screen.getByRole("region", { name: /Waiting for you/ });
@@ -230,6 +242,6 @@ describe("EditorDesk", () => {
     ).toHaveAttribute("href", "/communities/amsterdam-ai/magazine/write");
     expect(
       screen.getByRole("link", { name: "Magazine settings" }),
-    ).toHaveAttribute("href", "/communities/amsterdam-ai/settings/magazine");
+    ).toHaveAttribute("href", "/communities/amsterdam-ai/magazine/settings");
   });
 });

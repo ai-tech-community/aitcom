@@ -174,7 +174,7 @@ describe("MagazineTab", () => {
 
     expect(
       screen.getByRole("link", { name: "Start a magazine" }),
-    ).toHaveAttribute("href", "/communities/amsterdam-ai/settings/magazine");
+    ).toHaveAttribute("href", "/communities/amsterdam-ai/magazine/settings");
     expect(
       screen.queryByRole("region", { name: "Editor desk stub" }),
     ).toBeNull();
