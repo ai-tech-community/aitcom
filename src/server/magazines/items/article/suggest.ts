@@ -1,9 +1,8 @@
-import { magazineArticleEditPath } from "@/lib/magazines/paths";
-
 import { listApprovedArticlesOldestFirst } from "../../magazine-articles";
 import { excludedNumericReferenceIds } from "../picker-exclusions";
 import type { InputOf } from "../registry";
 import type { ItemSuggestionSource } from "../types";
+import { articleCandidate } from "./picker";
 
 export const articleSuggester: ItemSuggestionSource<InputOf<"article">> = {
   async suggest(ctx, _window, config) {
@@ -16,14 +15,7 @@ export const articleSuggester: ItemSuggestionSource<InputOf<"article">> = {
       config.limit,
     );
     return articles.map((article) => ({
-      input: { kind: "article", articleId: article.id },
-      title: article.title,
-      facts: article.authorName
-        ? [{ type: "byline", name: article.authorName }]
-        : [],
-      openHref: article.editableByViewer
-        ? magazineArticleEditPath(ctx.community.slug, article.slug)
-        : null,
+      ...articleCandidate(article, ctx),
       reason: { type: "waitingSince", at: article.updatedAt },
     }));
   },

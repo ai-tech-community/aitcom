@@ -1,11 +1,38 @@
 import type { Where } from "payload";
 
 import { PICKER_LIMIT, type CandidateFact } from "@/lib/magazines/picker";
+import type { ForumThread } from "@/payload-types";
 import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
 
 import { excludedNumericReferenceIds } from "../picker-exclusions";
 import type { InputOf } from "../registry";
-import type { ItemPickerSource } from "../types";
+import type { ItemPickerSource, PickerSourceCandidate } from "../types";
+
+export function forumThreadCandidate(
+  thread: ForumThread,
+): PickerSourceCandidate<InputOf<"forumThread">> {
+  const facts: CandidateFact[] = [
+    {
+      type: "count",
+      what: "replies",
+      value: Number(thread.replyCount ?? 0),
+    },
+  ];
+  if (thread.lastActivityAt)
+    facts.push({
+      type: "date",
+      label: "lastActive",
+      at: thread.lastActivityAt,
+    });
+  if (thread.authorName)
+    facts.push({ type: "byline", name: thread.authorName });
+  return {
+    input: { kind: "forumThread", threadId: Number(thread.id) },
+    title: thread.title,
+    facts,
+    openHref: null,
+  };
+}
 
 export const forumThreadPicker: ItemPickerSource<InputOf<"forumThread">> = {
   async search(query, ctx, exclude) {
@@ -24,28 +51,6 @@ export const forumThreadPicker: ItemPickerSource<InputOf<"forumThread">> = {
       locale: ctx.locale,
       limit: PICKER_LIMIT,
     });
-    return docs.map((thread) => {
-      const facts: CandidateFact[] = [
-        {
-          type: "count",
-          what: "replies",
-          value: Number(thread.replyCount ?? 0),
-        },
-      ];
-      if (thread.lastActivityAt)
-        facts.push({
-          type: "date",
-          label: "lastActive",
-          at: thread.lastActivityAt,
-        });
-      if (thread.authorName)
-        facts.push({ type: "byline", name: thread.authorName });
-      return {
-        input: { kind: "forumThread", threadId: Number(thread.id) },
-        title: thread.title,
-        facts,
-        openHref: null,
-      };
-    });
+    return docs.map(forumThreadCandidate);
   },
 };

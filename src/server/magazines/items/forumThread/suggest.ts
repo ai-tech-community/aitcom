@@ -1,9 +1,9 @@
-import type { CandidateFact } from "@/lib/magazines/picker";
 import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
 
 import { excludedNumericReferenceIds } from "../picker-exclusions";
 import type { InputOf } from "../registry";
 import type { ItemSuggestionSource } from "../types";
+import { forumThreadCandidate } from "./picker";
 
 export const forumThreadSuggester: ItemSuggestionSource<
   InputOf<"forumThread">
@@ -31,26 +31,9 @@ export const forumThreadSuggester: ItemSuggestionSource<
       locale: ctx.locale,
       limit: config.limit,
     });
-    return docs.map((thread) => {
-      const count = Number(thread.replyCount ?? 0);
-      const facts: CandidateFact[] = [
-        { type: "count", what: "replies", value: count },
-      ];
-      if (thread.lastActivityAt)
-        facts.push({
-          type: "date",
-          label: "lastActive",
-          at: thread.lastActivityAt,
-        });
-      if (thread.authorName)
-        facts.push({ type: "byline", name: thread.authorName });
-      return {
-        input: { kind: "forumThread", threadId: Number(thread.id) },
-        title: thread.title,
-        facts,
-        openHref: null,
-        reason: { type: "mostReplies", count },
-      };
-    });
+    return docs.map((thread) => ({
+      ...forumThreadCandidate(thread),
+      reason: { type: "mostReplies", count: Number(thread.replyCount ?? 0) },
+    }));
   },
 };

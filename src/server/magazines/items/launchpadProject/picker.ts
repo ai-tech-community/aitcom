@@ -1,11 +1,32 @@
 import type { Where } from "payload";
 
 import { PICKER_LIMIT, type CandidateFact } from "@/lib/magazines/picker";
+import type { LaunchpadProject } from "@/payload-types";
 
 import { excludedNumericReferenceIds } from "../picker-exclusions";
 import type { InputOf } from "../registry";
-import type { ItemPickerSource } from "../types";
+import type { ItemPickerSource, PickerSourceCandidate } from "../types";
 import { communityProjectWhere } from "./scope";
+
+export function launchpadProjectCandidate(
+  project: LaunchpadProject,
+): PickerSourceCandidate<InputOf<"launchpadProject">> {
+  const facts: CandidateFact[] = [
+    {
+      type: "count",
+      what: "upvotes",
+      value: Number(project.voteCount ?? 0),
+    },
+  ];
+  if (project.authorName)
+    facts.push({ type: "byline", name: project.authorName });
+  return {
+    input: { kind: "launchpadProject", projectId: Number(project.id) },
+    title: project.title,
+    facts,
+    openHref: null,
+  };
+}
 
 export const launchpadProjectPicker: ItemPickerSource<
   InputOf<"launchpadProject">
@@ -36,22 +57,6 @@ export const launchpadProjectPicker: ItemPickerSource<
       locale: ctx.locale,
       limit: PICKER_LIMIT,
     });
-    return docs.map((project) => {
-      const facts: CandidateFact[] = [
-        {
-          type: "count",
-          what: "upvotes",
-          value: Number(project.voteCount ?? 0),
-        },
-      ];
-      if (project.authorName)
-        facts.push({ type: "byline", name: project.authorName });
-      return {
-        input: { kind: "launchpadProject", projectId: Number(project.id) },
-        title: project.title,
-        facts,
-        openHref: null,
-      };
-    });
+    return docs.map(launchpadProjectCandidate);
   },
 };

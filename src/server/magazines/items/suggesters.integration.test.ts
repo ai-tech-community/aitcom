@@ -485,7 +485,7 @@ describe.skipIf(!isLocalDbConfigured())(
       await event(40);
       const small = await event(-3);
       const large = await event(-5, { status: "completed" });
-      await event(-4, { status: "cancelled" });
+      const cancelled = await event(-4, { status: "cancelled" });
       const [other] = await m.db
         .insert(m.schema.communities)
         .values({
@@ -514,6 +514,23 @@ describe.skipIf(!isLocalDbConfigured())(
         { type: "eventComingUp", at: day(2) },
         { type: "eventRecap", at: day(-5), going: 2 },
         { type: "eventRecap", at: day(-3), going: 1 },
+      ]);
+      const { searchPickerCandidates } = await import("./pickers");
+      const search = await searchPickerCandidates("event", fx.suffix, fx.ctx);
+      for (const candidate of result) {
+        const picked = search.find(
+          (item) => item.reference === candidate.reference,
+        );
+        expect(picked).toBeDefined();
+        expect(candidate).toEqual({ ...picked, reason: candidate.reason });
+      }
+      expect(result.find((c) => c.input.eventId === large)!.facts).toEqual([
+        { type: "date", label: "starts", at: day(-5) },
+        { type: "eventStatus", status: "completed" },
+      ]);
+      expect(search.find((c) => c.input.eventId === cancelled)!.facts).toEqual([
+        { type: "date", label: "starts", at: day(-4) },
+        { type: "eventStatus", status: "cancelled" },
       ]);
       expect(
         (await suggest("event", 2, [`event:${today}`])).map(

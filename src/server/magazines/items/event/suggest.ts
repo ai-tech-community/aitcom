@@ -2,7 +2,6 @@ import { and, count, inArray } from "drizzle-orm";
 import type { Where } from "payload";
 
 import { EVENT_COMING_UP_DAYS } from "@/lib/magazines/auto-draft";
-import type { CandidateFact } from "@/lib/magazines/picker";
 import type { Event } from "@/payload-types";
 import { communityContentWhere } from "@/server/communities/forum-scope";
 import { eventRegistrations } from "@/server/db/schema";
@@ -10,11 +9,8 @@ import { eventRegistrations } from "@/server/db/schema";
 import type { Deps } from "../../deps";
 import { excludedNumericReferenceIds } from "../picker-exclusions";
 import type { InputOf } from "../registry";
-import type {
-  ItemCommunity,
-  ItemSuggestionSource,
-  SuggestionSourceCandidate,
-} from "../types";
+import type { ItemCommunity, ItemSuggestionSource } from "../types";
+import { eventCandidate } from "./picker";
 
 export const DRAFTABLE_EVENT_STATUSES = ["published", "completed"] as const;
 const DAY = 86_400_000;
@@ -66,24 +62,6 @@ export async function endedCommunityEvents(
     .sort((a, b) => a.endsAt.getTime() - b.endsAt.getTime() || a.id - b.id);
 }
 
-function candidate(
-  event: Event,
-  reason: SuggestionSourceCandidate<InputOf<"event">>["reason"],
-): SuggestionSourceCandidate<InputOf<"event">> {
-  const facts: CandidateFact[] = [
-    { type: "date", label: "starts", at: event.date },
-  ];
-  if (event.status === "completed")
-    facts.push({ type: "eventStatus", status: event.status });
-  return {
-    input: { kind: "event", eventId: Number(event.id) },
-    title: event.title,
-    facts,
-    openHref: null,
-    reason,
-  };
-}
-
 export const eventSuggester: ItemSuggestionSource<InputOf<"event">> = {
   async suggest(ctx, window, config) {
     if (config.limit <= 0) return [];
@@ -112,9 +90,10 @@ export const eventSuggester: ItemSuggestionSource<InputOf<"event">> = {
       locale: ctx.locale,
       limit: config.limit,
     });
-    const result = coming.map((event) =>
-      candidate(event, { type: "eventComingUp", at: event.date }),
-    );
+    const result = coming.map((event) => ({
+      ...eventCandidate(event),
+      reason: { type: "eventComingUp" as const, at: event.date },
+    }));
     if (result.length >= config.limit) return result;
 
     const ended = await endedCommunityEvents(
@@ -173,13 +152,14 @@ export const eventSuggester: ItemSuggestionSource<InputOf<"event">> = {
     );
     return [
       ...result,
-      ...past.slice(0, config.limit - result.length).map((event) =>
-        candidate(event, {
-          type: "eventRecap",
+      ...past.slice(0, config.limit - result.length).map((event) => ({
+        ...eventCandidate(event),
+        reason: {
+          type: "eventRecap" as const,
           at: event.date,
           going: attendance(event),
-        }),
-      ),
+        },
+      })),
     ];
   },
 };
