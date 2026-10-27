@@ -3,6 +3,7 @@ import { createTranslator } from "next-intl";
 import { loadMessages } from "@/i18n/messages";
 import {
   communityMagazinePath,
+  issueBuilderPath,
   magazineArticleEditPath,
   magazineReviewPath,
 } from "@/lib/magazines/paths";
@@ -18,6 +19,10 @@ export const MAGAZINE_ARTICLE_SUBMITTED_NOTIFICATION =
   "magazine_article_submitted";
 export const MAGAZINE_ARTICLE_REVIEWED_NOTIFICATION =
   "magazine_article_reviewed";
+export const MAGAZINE_ISSUE_SCHEDULE_FAILED_NOTIFICATION =
+  "magazine_issue_schedule_failed";
+
+export type ScheduleFailure = "empty" | "invalid_item" | "no_rights" | "error";
 
 export type NoticeCommunity = { id: string; slug: string };
 
@@ -67,6 +72,41 @@ async function magazineNoticeTranslator() {
     messages: await loadMessages("en"),
     namespace: "magazineEditor",
   });
+}
+
+export async function notifyScheduleFailed(
+  db: Deps["db"],
+  input: {
+    editorIds: readonly string[];
+    reason: ScheduleFailure;
+    issue: { id: number; title: string };
+    magazineName: string;
+    community: NoticeCommunity;
+  },
+): Promise<void> {
+  await insertMagazineNotices(
+    db,
+    magazineNoticeTranslator().then((t) => {
+      const contentKeys = {
+        empty: "notifications.scheduleFailed.content.empty",
+        invalid_item: "notifications.scheduleFailed.content.invalid_item",
+        no_rights: "notifications.scheduleFailed.content.no_rights",
+        error: "notifications.scheduleFailed.content.error",
+      } as const satisfies Record<ScheduleFailure, string>;
+      return input.editorIds.map((userId) => ({
+        userId,
+        type: MAGAZINE_ISSUE_SCHEDULE_FAILED_NOTIFICATION,
+        title: t("notifications.scheduleFailed.title", {
+          title: input.issue.title,
+        }),
+        content: t(contentKeys[input.reason], { magazine: input.magazineName }),
+        communityId: input.community.id,
+        path: issueBuilderPath(input.community.slug, input.issue.id),
+        linkLabel: t("notifications.scheduleFailed.linkLabel"),
+        extra: { reason: input.reason, issueId: input.issue.id },
+      }));
+    }),
+  );
 }
 
 export async function notifyRoleAssigned(

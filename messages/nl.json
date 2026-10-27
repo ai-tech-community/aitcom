@@ -5187,6 +5187,16 @@
       }
     },
     "notifications": {
+      "scheduleFailed": {
+        "title": "‘{title}’ is niet verschenen",
+        "content": {
+          "empty": "Er staat niets in, dus het kon niet worden gepubliceerd. Het is weer een concept.",
+          "invalid_item": "Er moet iets in worden aangepast. Open het nummer om te zien wat. Het is weer een concept.",
+          "no_rights": "Degene die het nummer inplande, mag niet meer publiceren voor {magazine}. Open het nummer om het zelf te publiceren of in te plannen.",
+          "error": "Er ging iets mis bij ons, dus het nummer kon niet worden gepubliceerd. Het is weer een concept. Open het om het opnieuw te proberen."
+        },
+        "linkLabel": "Open het nummer"
+      },
       "articleReviewed": {
         "approved": {
           "title": "‘{title}’ is klaar voor een nummer",

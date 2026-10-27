@@ -4,11 +4,58 @@ import * as messages from "@/i18n/messages";
 import { notifications } from "@/server/db/schema";
 
 import type { Deps } from "./deps";
-import { notifyRoleAssigned } from "./notifications";
+import {
+  notifyRoleAssigned,
+  notifyScheduleFailed,
+  type ScheduleFailure,
+} from "./notifications";
 
 afterEach(() => vi.restoreAllMocks());
 
 describe("magazine notices", () => {
+  it("tells each editor why a scheduled issue did not go out", async () => {
+    const copy: Record<ScheduleFailure, string> = {
+      empty:
+        "It has no items, so it could not be published. It is a draft again.",
+      invalid_item:
+        "Something in it needs fixing. Open it to see what. It is a draft again.",
+      no_rights:
+        "The person who scheduled it can no longer publish for The Gazette. Open it to publish or schedule it yourself.",
+      error:
+        "Something went wrong on our side, so it could not be published. It is a draft again. Open it to try again.",
+    };
+    for (const reason of Object.keys(copy) as ScheduleFailure[]) {
+      const values = vi.fn<
+        (rows: (typeof notifications.$inferInsert)[]) => Promise<void>
+      >(async () => undefined);
+      const insert = vi.fn(() => ({ values }));
+      await notifyScheduleFailed({ insert } as unknown as Deps["db"], {
+        editorIds: ["owner", "editor"],
+        reason,
+        issue: { id: 42, title: "Autumn" },
+        magazineName: "The Gazette",
+        community: { id: "community", slug: "our-community" },
+      });
+      expect(insert).toHaveBeenCalledExactlyOnceWith(notifications);
+      expect(values).toHaveBeenCalledExactlyOnceWith(
+        ["owner", "editor"].map((userId) => ({
+          userId,
+          type: "magazine_issue_schedule_failed",
+          title: "“Autumn” did not go out",
+          content: copy[reason],
+          communityId: "community",
+          metadata: {
+            reviewPath: "/communities/our-community/magazine/issues/42/edit",
+            linkLabel: "Open the issue",
+            communityId: "community",
+            reason,
+            issueId: 42,
+          },
+        })),
+      );
+    }
+  });
+
   it("clips long titles and writes the shared metadata", async () => {
     const values = vi.fn(async () => undefined);
     const insert = vi.fn(() => ({ values }));

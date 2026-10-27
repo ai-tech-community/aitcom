@@ -5187,6 +5187,16 @@
       }
     },
     "notifications": {
+      "scheduleFailed": {
+        "title": "“{title}” did not go out",
+        "content": {
+          "empty": "It has no items, so it could not be published. It is a draft again.",
+          "invalid_item": "Something in it needs fixing. Open it to see what. It is a draft again.",
+          "no_rights": "The person who scheduled it can no longer publish for {magazine}. Open it to publish or schedule it yourself.",
+          "error": "Something went wrong on our side, so it could not be published. It is a draft again. Open it to try again."
+        },
+        "linkLabel": "Open the issue"
+      },
       "articleReviewed": {
         "approved": {
           "title": "“{title}” is ready for an issue",

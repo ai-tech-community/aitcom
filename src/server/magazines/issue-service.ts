@@ -1,7 +1,11 @@
 import { sql } from "@payloadcms/db-postgres";
 
 import { routing } from "@/i18n/routing";
-import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
+import {
+  ITEM_PROBLEM_CODES,
+  type EditorItemView,
+  type ItemProblem,
+} from "@/lib/magazines/item-views";
 import { scheduleProblem } from "@/lib/magazines/schedule";
 import {
   canIssue,
@@ -173,6 +177,12 @@ type Subset<T extends U, U> = T;
  * `MAGAZINE_ERROR_CODES` fails the build here.
  */
 export type ItemProblemCode = Subset<ItemProblem["code"], MagazineErrorCode>;
+
+export function isItemProblemCode(
+  code: MagazineErrorCode,
+): code is ItemProblemCode {
+  return (ITEM_PROBLEM_CODES as readonly MagazineErrorCode[]).includes(code);
+}
 
 /** An item problem as a refusal, pointing at the item. */
 function problemError(problem: ItemProblem) {

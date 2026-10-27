@@ -144,9 +144,15 @@ export type EditorItemView = IssueItemView | UnavailableItem;
  * position in the issue; `code` is the magazine refusal code the client maps
  * to friendly text.
  */
+export const ITEM_PROBLEM_CODES = [
+  "ITEM_INVALID",
+  "ARTICLE_PLACED",
+  "ARTICLE_NOT_READY",
+] as const;
+
 export type ItemProblem = {
   itemIndex: number;
-  code: "ITEM_INVALID" | "ARTICLE_PLACED" | "ARTICLE_NOT_READY";
+  code: (typeof ITEM_PROBLEM_CODES)[number];
   detail?: string;
 };
 

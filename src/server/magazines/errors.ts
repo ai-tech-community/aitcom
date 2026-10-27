@@ -71,11 +71,24 @@ const DEFAULT_TRPC_CODE: Record<MagazineErrorCode, TrpcCode> = {
 export class MagazineErrorCause extends Error {
   readonly itemIndex: number | null;
 
-  constructor(code: MagazineErrorCode, itemIndex: number | null) {
+  constructor(
+    readonly code: MagazineErrorCode,
+    itemIndex: number | null,
+  ) {
     super(code);
     this.name = "MagazineErrorCause";
     this.itemIndex = itemIndex;
   }
+}
+
+/** The structured magazine refusal code, or null for anything else. */
+export function magazineErrorCodeOf(error: unknown): MagazineErrorCode | null {
+  return typeof error === "object" &&
+    error !== null &&
+    "cause" in error &&
+    error.cause instanceof MagazineErrorCause
+    ? error.cause.code
+    : null;
 }
 
 export function magazineError(
