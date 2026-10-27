@@ -6,6 +6,7 @@ import {
   issuePath,
   magazineArticleEditPath,
   magazineArticlePath,
+  magazineAutoDraftPath,
   magazinePath,
   magazineReviewPath,
   magazineSettingsPath,
@@ -73,6 +74,12 @@ describe("magazine paths", () => {
     );
     expect(magazineArticleEditPath("builders", "why-evals-matter")).toBe(
       "/communities/builders/magazine/articles/why-evals-matter/edit",
+    );
+  });
+
+  it("magazineAutoDraftPath opens automatic draft settings", () => {
+    expect(magazineAutoDraftPath("night-owls")).toBe(
+      "/communities/night-owls/magazine/auto-draft",
     );
   });
 });

@@ -2,6 +2,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { magazineArticleEditPath } from "@/lib/magazines/paths";
+import { DEFAULT_AUTO_DRAFT_SETTINGS } from "@/lib/magazines/auto-draft";
 import {
   roleCan,
   type MagazineCapability,
@@ -28,6 +29,8 @@ const RUN_DB = isLocalDbConfigured();
 const PROCEDURE_CAPABILITY: Record<string, MagazineCapability | "public"> = {
   getSettings: "manage",
   saveSettings: "manage",
+  autoDraftSettings: "edit",
+  saveAutoDraftSettings: "manage",
   listStaff: "manage",
   searchStaffCandidates: "manage",
   assignStaffRole: "manage",
@@ -346,6 +349,56 @@ describe.skipIf(!RUN_DB)(
 
     // ── Tests ─────────────────────────────────────────────────────────────
 
+    it("an editor sees the settings but cannot save them", async () => {
+      const magazine = await saveMagazine();
+      const editorId = await appointed(magazine.id, "editor");
+      const editor = callerAs(editorId).magazines;
+      expect(await editor.autoDraftSettings({ slug: slug() })).toEqual({
+        settings: DEFAULT_AUTO_DRAFT_SETTINGS,
+        nextDraftAt: null,
+        canManage: false,
+        magazineDefaultVisibility: "members",
+        hasTopics: true,
+        communityIsPrivate: true,
+        community: { slug: slug(), isListedInDirectory: false },
+      });
+      await expect(
+        editor.saveAutoDraftSettings({
+          ...DEFAULT_AUTO_DRAFT_SETTINGS,
+          slug: slug(),
+        }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      const owner = callerAs(fx.ownerId).magazines;
+      expect(
+        await owner.saveAutoDraftSettings({
+          ...DEFAULT_AUTO_DRAFT_SETTINGS,
+          enabled: true,
+          monthDay: 28,
+          slug: slug(),
+        }),
+      ).toEqual({
+        ...DEFAULT_AUTO_DRAFT_SETTINGS,
+        enabled: true,
+        monthDay: 28,
+      });
+      expect(await owner.autoDraftSettings({ slug: slug() })).toMatchObject({
+        canManage: true,
+        nextDraftAt: expect.any(String),
+        settings: { enabled: true, monthDay: 28 },
+      });
+    });
+
+    it("automatic draft settings need a magazine before they can be saved", async () => {
+      const owner = callerAs(fx.ownerId).magazines;
+      expect(await owner.autoDraftSettings({ slug: slug() })).toBeNull();
+      await expect(
+        owner.saveAutoDraftSettings({
+          ...DEFAULT_AUTO_DRAFT_SETTINGS,
+          slug: slug(),
+        }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
     it("schedules and unschedules through the API", async () => {
       const magazine = await saveMagazine();
       const owner = callerAs(fx.ownerId);
@@ -553,6 +606,12 @@ describe.skipIf(!RUN_DB)(
         const ref = { slug: slug(), issueId };
         const write = { ...ref, expectedUpdatedAt: issue.updatedAt };
         const calls: Record<string, () => Promise<unknown>> = {
+          autoDraftSettings: () => caller.autoDraftSettings({ slug: slug() }),
+          saveAutoDraftSettings: () =>
+            caller.saveAutoDraftSettings({
+              ...DEFAULT_AUTO_DRAFT_SETTINGS,
+              slug: slug(),
+            }),
           getSettings: () => caller.getSettings({ slug: slug() }),
           saveSettings: () =>
             caller.saveSettings({

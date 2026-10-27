@@ -2,6 +2,11 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { routing } from "@/i18n/routing";
+import {
+  autoDraftSettingsInput,
+  type AutoDraftSettings,
+} from "@/lib/magazines/auto-draft";
+import { nextDraftAt } from "@/lib/magazines/auto-draft-schedule";
 import { REVIEW_DECISIONS, REVIEW_NOTE_MAX } from "@/lib/magazines/review";
 import { MAGAZINE_ROLES, type MagazineCapability } from "@/lib/magazines/roles";
 import {
@@ -24,6 +29,7 @@ import {
 import {
   loadMagazineEditorship,
   requireCapability,
+  standingCan,
 } from "@/server/magazines/editorship";
 import {
   findIssueInCommunity,
@@ -50,6 +56,8 @@ import {
 } from "@/server/magazines/magazine-articles";
 import {
   getMagazineForCommunity,
+  magazineTopicsOf,
+  normalizeTopics,
   type MagazineCommunity,
   saveMagazineSettings,
 } from "@/server/magazines/magazine-service";
@@ -61,6 +69,11 @@ import {
 } from "@/server/magazines/staff-service";
 import { getPayloadClient } from "@/server/payload";
 import { countSubscribers } from "@/server/magazines/subscriptions/service";
+import {
+  readAutoDraftSettings,
+  saveAutoDraftSettings,
+  type StoredAutoDraftSettings,
+} from "@/server/magazines/auto-draft/settings";
 
 /**
  * The magazine editor API (ADR-0042/0043). Every procedure is a community
@@ -190,12 +203,57 @@ function requireMagazine(magazine: Magazine | null): Magazine {
   return magazine;
 }
 
+function autoDraftSettingsOf({
+  scheduleStartsAt: _scheduleStartsAt,
+  updatedBy: _updatedBy,
+  ...settings
+}: StoredAutoDraftSettings): AutoDraftSettings {
+  return settings;
+}
+
 const staffUserInput = z.object({
   slug: z.string(),
   userId: z.string().min(1).max(255),
 });
 
 export const magazinesRouter = createTRPCRouter({
+  autoDraftSettings: editorProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx }) => {
+      if (!ctx.magazine) return null;
+      const stored = await readAutoDraftSettings(ctx.db, ctx.magazine.id);
+      return {
+        settings: autoDraftSettingsOf(stored),
+        nextDraftAt:
+          nextDraftAt(
+            stored,
+            new Date(),
+            stored.scheduleStartsAt,
+          )?.toISOString() ?? null,
+        canManage: standingCan(ctx.standing, "manage"),
+        magazineDefaultVisibility: ctx.magazine.defaultVisibility,
+        hasTopics: normalizeTopics(magazineTopicsOf(ctx.magazine)).length > 0,
+        communityIsPrivate: !isContentPublic(ctx.community),
+        community: {
+          slug: ctx.community.slug,
+          isListedInDirectory: ctx.community.isListedInDirectory,
+        },
+      };
+    }),
+
+  saveAutoDraftSettings: managerProcedure
+    .input(autoDraftSettingsInput.extend({ slug: z.string() }))
+    .mutation(async ({ ctx, input }) =>
+      autoDraftSettingsOf(
+        await saveAutoDraftSettings(
+          depsOf(ctx),
+          requireMagazine(ctx.magazine),
+          input,
+          { ...actorOf(ctx), leadsCommunity: ctx.standing.leadsCommunity },
+        ),
+      ),
+    ),
+
   subscriberCounts: writerProcedure
     .input(z.object({ slug: z.string() }))
     .query(({ ctx }) =>
