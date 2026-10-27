@@ -177,6 +177,9 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       const magazineIds = mags.map((mag) => mag.id);
       // Issues first: their article blocks hold a required reference.
       if (magazineIds.length > 0) {
+        await db
+          .delete(schema.magazineSubscriptions)
+          .where(inArray(schema.magazineSubscriptions.magazineId, magazineIds));
         // Deleting the issues clears their articles' placement (the
         // foreign key is ON DELETE set null).
         await payload.delete({
@@ -910,6 +913,299 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
   });
 
   // ── Publishing ────────────────────────────────────────────────────────
+
+  // ── Scheduling and publication ────────────────────────────────────────
+
+  async function readyIssue(label: string) {
+    const c = await community(label);
+    const mag = await magazineIn(c);
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: label },
+      actor(c),
+    );
+    const articleId = await article(label, mag.id);
+    const filled = await setItems(c, issue, [articleItem(articleId)]);
+    return { c, mag, filled, articleId };
+  }
+
+  function storedIssue(issueId: number) {
+    return m.payload.findByID({
+      collection: "magazine-issues",
+      id: issueId,
+      depth: 0,
+    });
+  }
+
+  async function announcementsFor(issueId: number) {
+    const { eq } = await import("drizzle-orm");
+    return m.db
+      .select()
+      .from(m.schema.magazineIssueAnnouncements)
+      .where(eq(m.schema.magazineIssueAnnouncements.issueId, issueId));
+  }
+
+  const scheduleNow = new Date("2026-10-27T12:00:00Z");
+  const nextDay = new Date("2026-10-28T12:00:00Z");
+
+  it("schedules a draft and can move the time", async () => {
+    const { c, filled, articleId } = await readyIssue("schedule");
+    const scheduled = await m.issues.scheduleIssue(
+      m,
+      filled,
+      nextDay,
+      filled.updatedAt,
+      actor(c),
+      scheduleNow,
+    );
+    expect(scheduled).toMatchObject({
+      status: "scheduled",
+      scheduledFor: nextDay.toISOString(),
+      scheduledBy: fx.userId,
+    });
+    const later = new Date("2026-10-29T12:00:00Z");
+    const moved = await m.issues.scheduleIssue(
+      m,
+      scheduled,
+      later,
+      scheduled.updatedAt,
+      actor(c),
+      scheduleNow,
+    );
+    expect(moved.scheduledFor).toBe(later.toISOString());
+    expect(await storedIssue(filled.id)).toMatchObject({
+      status: "scheduled",
+      scheduledFor: later.toISOString(),
+      scheduledBy: fx.userId,
+    });
+    const held = await m.payload.findByID({
+      collection: "articles",
+      id: articleId,
+      depth: 0,
+    });
+    expect(held.status).toBe("draft");
+    expect(await announcementsFor(filled.id)).toEqual([]);
+  });
+
+  it("refuses to schedule a past time, a time over a year away, an empty or a published issue", async () => {
+    const { c, mag, filled } = await readyIssue("schedule-refused");
+    const empty = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Empty" },
+      actor(c),
+    );
+    const published = await m.issues.publishIssue(
+      m,
+      filled,
+      filled.updatedAt,
+      actor(c),
+    );
+    const cases = [
+      [empty, scheduleNow, "SCHEDULE_IN_PAST"],
+      [empty, new Date("2027-10-28T12:00:00Z"), "SCHEDULE_TOO_FAR"],
+      [empty, nextDay, "ISSUE_EMPTY"],
+      [published, nextDay, "ISSUE_NOT_DRAFT"],
+    ] as const;
+    for (const [issue, time, code] of cases) {
+      const before = await storedIssue(issue.id);
+      expect(
+        await refusal(
+          m.issues.scheduleIssue(
+            m,
+            issue,
+            time,
+            issue.updatedAt,
+            actor(c),
+            scheduleNow,
+          ),
+        ),
+      ).toBe(code);
+      expect(await storedIssue(issue.id)).toEqual(before);
+    }
+  });
+
+  it("refuses to schedule an issue whose article is no longer ready", async () => {
+    const { c, filled, articleId } = await readyIssue("schedule-invalid");
+    await m.payload.update({
+      collection: "articles",
+      id: articleId,
+      data: { reviewStatus: "pending_review" },
+    });
+    expect(
+      await refusal(
+        m.issues.scheduleIssue(
+          m,
+          filled,
+          nextDay,
+          filled.updatedAt,
+          actor(c),
+          scheduleNow,
+        ),
+      ),
+    ).toBe("ARTICLE_NOT_READY");
+    expect(await storedIssue(filled.id)).toEqual(filled);
+  });
+
+  it("a scheduled issue can still be edited, but not deleted", async () => {
+    const { c, filled, articleId } = await readyIssue("schedule-edit");
+    const scheduled = await m.issues.scheduleIssue(
+      m,
+      filled,
+      nextDay,
+      filled.updatedAt,
+      actor(c),
+      scheduleNow,
+    );
+    const saved = await setItems(c, scheduled, [
+      articleItem(articleId, scheduled.items![0]!.id!),
+      editorialItem("Later news"),
+    ]);
+    const renamed = await m.issues.updateIssueDetails(
+      m,
+      saved,
+      { title: "Updated while scheduled" },
+      saved.updatedAt,
+      actor(c),
+      true,
+    );
+    expect(renamed).toMatchObject({
+      title: "Updated while scheduled",
+      status: "scheduled",
+      scheduledFor: nextDay.toISOString(),
+      scheduledBy: fx.userId,
+    });
+    expect(renamed.items).toHaveLength(2);
+    expect(await refusal(m.issues.deleteDraftIssue(m, renamed, actor(c)))).toBe(
+      "ISSUE_NOT_DRAFT",
+    );
+    expect(await storedIssue(renamed.id)).toEqual(renamed);
+  });
+
+  it("unscheduling makes it a draft again", async () => {
+    const { c, filled } = await readyIssue("unschedule");
+    expect(
+      await refusal(
+        m.issues.unscheduleIssue(m, filled, filled.updatedAt, actor(c)),
+      ),
+    ).toBe("ISSUE_NOT_SCHEDULED");
+    const scheduled = await m.issues.scheduleIssue(
+      m,
+      filled,
+      nextDay,
+      filled.updatedAt,
+      actor(c),
+      scheduleNow,
+    );
+    const renamed = await m.issues.updateIssueDetails(
+      m,
+      scheduled,
+      { title: "Newer edit" },
+      scheduled.updatedAt,
+      actor(c),
+      true,
+    );
+    expect(
+      await refusal(
+        m.issues.unscheduleIssue(m, scheduled, scheduled.updatedAt, null),
+      ),
+    ).toBe("ISSUE_CHANGED");
+    expect(await storedIssue(filled.id)).toEqual(renamed);
+    const draft = await m.issues.unscheduleIssue(
+      m,
+      renamed,
+      renamed.updatedAt,
+      null,
+    );
+    expect(draft).toMatchObject({
+      status: "draft",
+      scheduledFor: null,
+      scheduledBy: null,
+    });
+    expect(await storedIssue(filled.id)).toEqual(draft);
+  });
+
+  it("publishing records how and when it went out", async () => {
+    const { c, mag, filled } = await readyIssue("publish-origin");
+    const time = new Date("2026-10-27T14:30:00Z");
+    const published = await m.issues.publishIssue(
+      m,
+      filled,
+      filled.updatedAt,
+      actor(c),
+      { origin: "schedule", now: time },
+    );
+    expect(published).toMatchObject({
+      publishedVia: "schedule",
+      publishedAt: time.toISOString(),
+    });
+    const second = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "By button" },
+      actor(c),
+    );
+    const ready = await setItems(c, second, [editorialItem("Another issue")]);
+    const byButton = await m.issues.publishIssue(
+      m,
+      ready,
+      ready.updatedAt,
+      actor(c),
+    );
+    expect(byButton.publishedVia).toBe("button");
+  });
+
+  it("publishing a scheduled issue clears the schedule and records one announcement", async () => {
+    const { c, mag, filled, articleId } = await readyIssue("publish-scheduled");
+    const scheduled = await m.issues.scheduleIssue(
+      m,
+      filled,
+      nextDay,
+      filled.updatedAt,
+      actor(c),
+      scheduleNow,
+    );
+    const published = await m.issues.publishIssue(
+      m,
+      scheduled,
+      scheduled.updatedAt,
+      actor(c),
+      { origin: "schedule", now: nextDay },
+    );
+    expect(published).toMatchObject({
+      status: "published",
+      scheduledFor: null,
+      scheduledBy: null,
+    });
+    const rows = await announcementsFor(filled.id);
+    expect(rows).toHaveLength(1);
+    expect(Number(rows[0]!.magazineId)).toBe(mag.id);
+    expect(rows[0]!.publishedAt.toISOString()).toBe(published.publishedAt);
+    await setItems(c, published, [
+      articleItem(articleId, published.items![0]!.id!),
+    ]);
+    expect(await announcementsFor(filled.id)).toEqual(rows);
+  });
+
+  it("a publish that fails records no announcement", async () => {
+    const { c, filled } = await readyIssue("publish-stale");
+    const renamed = await m.issues.updateIssueDetails(
+      m,
+      filled,
+      { title: "Newer draft" },
+      filled.updatedAt,
+      actor(c),
+      true,
+    );
+    expect(
+      await refusal(
+        m.issues.publishIssue(m, filled, filled.updatedAt, actor(c)),
+      ),
+    ).toBe("ISSUE_CHANGED");
+    expect(await storedIssue(filled.id)).toEqual(renamed);
+    expect(await announcementsFor(filled.id)).toEqual([]);
+  });
 
   it("publish publishes and credits placed articles once", async () => {
     const c = await community("publish");

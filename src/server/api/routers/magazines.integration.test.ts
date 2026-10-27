@@ -37,6 +37,8 @@ const PROCEDURE_CAPABILITY: Record<string, MagazineCapability | "public"> = {
   getIssueForEditing: "edit",
   updateIssue: "edit",
   setIssueItems: "edit",
+  scheduleIssue: "edit",
+  unscheduleIssue: "edit",
   publishIssue: "edit",
   deleteDraftIssue: "edit",
   pickerCandidates: "edit",
@@ -185,6 +187,9 @@ describe.skipIf(!RUN_DB)(
       });
       const magazineIds = mags.map((mag) => mag.id);
       if (magazineIds.length > 0) {
+        await db
+          .delete(schema.magazineSubscriptions)
+          .where(inArray(schema.magazineSubscriptions.magazineId, magazineIds));
         // Issues first: their article blocks hold a required reference.
         // Deleting the issues clears their articles' placement (the
         // foreign key is ON DELETE set null).
@@ -319,6 +324,50 @@ describe.skipIf(!RUN_DB)(
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────
+
+    it("schedules and unschedules through the API", async () => {
+      const magazine = await saveMagazine();
+      const owner = callerAs(fx.ownerId);
+      const article = await writeArticle(magazine.id, "Scheduled story");
+      await owner.articles.submit({ id: article.id });
+      const { id: issueId } = await owner.magazines.createIssue({
+        slug: slug(),
+        title: "Tomorrow",
+      });
+      const ref = { slug: slug(), issueId };
+      const editing = await owner.magazines.getIssueForEditing(ref);
+      const { issue } = await owner.magazines.setIssueItems({
+        ...ref,
+        expectedUpdatedAt: editing.issue.updatedAt,
+        items: [{ kind: "article", articleId: article.id }],
+      });
+      const publishAt = `${new Date(Date.now() + 86_400_000).toISOString().slice(0, -1)}+02:00`;
+      const scheduled = await owner.magazines.scheduleIssue({
+        ...ref,
+        expectedUpdatedAt: issue.updatedAt,
+        publishAt,
+      });
+      expect(scheduled).toMatchObject({
+        status: "scheduled",
+        scheduledBy: fx.ownerId,
+        scheduledFor: new Date(publishAt).toISOString(),
+      });
+      expect(await owner.magazines.listIssues({ slug: slug() })).toEqual([
+        expect.objectContaining({
+          id: issueId,
+          scheduledFor: new Date(publishAt).toISOString(),
+        }),
+      ]);
+      const draft = await owner.magazines.unscheduleIssue({
+        ...ref,
+        expectedUpdatedAt: scheduled.updatedAt,
+      });
+      expect(draft).toMatchObject({
+        status: "draft",
+        scheduledFor: null,
+        scheduledBy: null,
+      });
+    });
 
     it("pickerCandidates offers ready articles, filtered by the search", async () => {
       const magazine = await saveMagazine();
@@ -510,6 +559,12 @@ describe.skipIf(!RUN_DB)(
           updateIssue: () =>
             caller.updateIssue({ ...write, title: "Gate updated" }),
           setIssueItems: () => caller.setIssueItems({ ...write, items: [] }),
+          scheduleIssue: () =>
+            caller.scheduleIssue({
+              ...write,
+              publishAt: new Date(Date.now() + 86_400_000).toISOString(),
+            }),
+          unscheduleIssue: () => caller.unscheduleIssue(write),
           publishIssue: () => caller.publishIssue(write),
           pickerCandidates: () =>
             caller.pickerCandidates({ slug: slug(), kind: "article" }),

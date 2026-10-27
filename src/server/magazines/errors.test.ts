@@ -9,6 +9,9 @@ import {
 
 describe("magazineError", () => {
   it.each([
+    ["SCHEDULE_IN_PAST", "BAD_REQUEST"],
+    ["SCHEDULE_TOO_FAR", "BAD_REQUEST"],
+    ["ISSUE_NOT_SCHEDULED", "CONFLICT"],
     ["STAFF_NOT_MEMBER", "BAD_REQUEST"],
     ["STAFF_LEADS_COMMUNITY", "BAD_REQUEST"],
     ["ARTICLE_LOCKED", "CONFLICT"],

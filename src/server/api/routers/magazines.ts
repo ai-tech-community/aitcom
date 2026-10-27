@@ -36,7 +36,9 @@ import {
   type IssueActor,
   type IssueDetailsPatch,
   publishIssue,
+  scheduleIssue,
   setIssueItems,
+  unscheduleIssue,
   updateIssueDetails,
 } from "@/server/magazines/issue-service";
 import { issueItemInputSchema } from "@/server/magazines/items/registry";
@@ -345,6 +347,31 @@ export const magazinesRouter = createTRPCRouter({
         actorOf(ctx),
       );
     }),
+
+  scheduleIssue: issueProcedure
+    .input(
+      issueWrite.extend({ publishAt: z.string().datetime({ offset: true }) }),
+    )
+    .mutation(async ({ ctx, input }) =>
+      scheduleIssue(
+        depsOf(ctx),
+        ctx.issue,
+        new Date(input.publishAt),
+        input.expectedUpdatedAt,
+        actorOf(ctx),
+      ),
+    ),
+
+  unscheduleIssue: issueProcedure
+    .input(issueWrite)
+    .mutation(async ({ ctx, input }) =>
+      unscheduleIssue(
+        depsOf(ctx),
+        ctx.issue,
+        input.expectedUpdatedAt,
+        actorOf(ctx),
+      ),
+    ),
 
   publishIssue: issueProcedure
     .input(issueWrite)
