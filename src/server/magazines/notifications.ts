@@ -3,8 +3,10 @@ import { createTranslator } from "next-intl";
 import { loadMessages } from "@/i18n/messages";
 import {
   communityMagazinePath,
+  magazineArticleEditPath,
   magazineReviewPath,
 } from "@/lib/magazines/paths";
+import type { ReviewDecision } from "@/lib/magazines/review";
 import type { MagazineRole } from "@/lib/magazines/roles";
 import { clipText } from "@/lib/text-utils";
 import { notifications } from "@/server/db/schema";
@@ -126,5 +128,70 @@ export async function notifyArticleSubmitted(
         linkLabel: t("notifications.articleSubmitted.linkLabel"),
       })),
     ),
+  );
+}
+
+export async function notifyArticleReviewed(
+  db: Deps["db"],
+  input: {
+    authorId: string;
+    decision: ReviewDecision;
+    note: string | null;
+    articleTitle: string;
+    articleSlug: string;
+    magazineName: string;
+    community: NoticeCommunity;
+  },
+): Promise<void> {
+  await insertMagazineNotices(
+    db,
+    magazineNoticeTranslator().then((t) => {
+      const values = {
+        title: input.articleTitle,
+        magazine: input.magazineName,
+      };
+      const magazineLink = {
+        path: communityMagazinePath(input.community.slug),
+        linkLabel: t("notifications.articleReviewed.linkOpenMagazine"),
+      };
+      const copy = {
+        approve: {
+          title: t("notifications.articleReviewed.approved.title", values),
+          content: t("notifications.articleReviewed.approved.content", values),
+          ...magazineLink,
+        },
+        request_changes: {
+          title: t(
+            "notifications.articleReviewed.changesRequested.title",
+            values,
+          ),
+          content: input.note ?? "",
+          path: magazineArticleEditPath(
+            input.community.slug,
+            input.articleSlug,
+          ),
+          linkLabel: t("notifications.articleReviewed.linkOpenArticle"),
+        },
+        reject: {
+          title: t("notifications.articleReviewed.rejected.title", values),
+          content:
+            input.note === null || input.note.length === 0
+              ? t("notifications.articleReviewed.rejected.noNote", values)
+              : input.note,
+          ...magazineLink,
+        },
+      } satisfies Record<
+        ReviewDecision,
+        Pick<MagazineNotice, "title" | "content" | "path" | "linkLabel">
+      >;
+      return [
+        {
+          userId: input.authorId,
+          type: MAGAZINE_ARTICLE_REVIEWED_NOTIFICATION,
+          communityId: input.community.id,
+          ...copy[input.decision],
+        },
+      ];
+    }),
   );
 }

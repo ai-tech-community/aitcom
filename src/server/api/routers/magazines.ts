@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { routing } from "@/i18n/routing";
+import { REVIEW_DECISIONS, REVIEW_NOTE_MAX } from "@/lib/magazines/review";
 import { MAGAZINE_ROLES, type MagazineCapability } from "@/lib/magazines/roles";
 import {
   PICKABLE_ITEM_KINDS,
@@ -16,6 +17,10 @@ import type { Magazine } from "@/payload-types";
 import { communityProcedure, createTRPCRouter } from "@/server/api/trpc";
 import { isContentPublic } from "@/server/communities/content-visibility";
 import type { Deps, PayloadClient } from "@/server/magazines/deps";
+import {
+  listPendingArticles,
+  reviewMagazineArticle,
+} from "@/server/magazines/article-review";
 import {
   loadMagazineEditorship,
   type MagazineStanding,
@@ -403,6 +408,30 @@ export const magazinesRouter = createTRPCRouter({
             ctx.session.user.id,
           )
         : [],
+    ),
+
+  reviewQueue: editorProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(({ ctx }) =>
+      ctx.magazine ? listPendingArticles(ctx.payload, ctx.magazine.id) : [],
+    ),
+
+  reviewArticle: editorProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        articleId: z.number().int().positive(),
+        decision: z.enum(REVIEW_DECISIONS),
+        note: z.string().trim().max(REVIEW_NOTE_MAX).optional(),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      reviewMagazineArticle(
+        depsOf(ctx),
+        requireMagazine(ctx.magazine),
+        input,
+        actorOf(ctx),
+      ),
     ),
 
   myDraftArticles: writerProcedure

@@ -5132,6 +5132,21 @@
       }
     },
     "notifications": {
+      "articleReviewed": {
+        "approved": {
+          "title": "“{title}” is ready for an issue",
+          "content": "An editor of {magazine} approved your article. It goes live when an issue with it is published."
+        },
+        "changesRequested": {
+          "title": "Changes asked for “{title}”"
+        },
+        "rejected": {
+          "title": "“{title}” was not accepted",
+          "noNote": "An editor of {magazine} decided not to use this article."
+        },
+        "linkOpenArticle": "Open your article",
+        "linkOpenMagazine": "Open the magazine"
+      },
       "articleSubmitted": {
         "title": "{author} sent “{title}” to {magazine}",
         "content": "Read it, then approve it, ask for changes or decline it.",

@@ -41,6 +41,8 @@ const PROCEDURE_CAPABILITY: Record<string, MagazineCapability | "public"> = {
   deleteDraftIssue: "edit",
   pickerCandidates: "edit",
   availableArticles: "edit",
+  reviewQueue: "edit",
+  reviewArticle: "edit",
   myDraftArticles: "write",
 };
 
@@ -511,6 +513,13 @@ describe.skipIf(!RUN_DB)(
           pickerCandidates: () =>
             caller.pickerCandidates({ slug: slug(), kind: "article" }),
           availableArticles: () => caller.availableArticles({ slug: slug() }),
+          reviewQueue: () => caller.reviewQueue({ slug: slug() }),
+          reviewArticle: () =>
+            caller.reviewArticle({
+              slug: slug(),
+              articleId: 2_147_483_647,
+              decision: "approve",
+            }),
           myDraftArticles: () => caller.myDraftArticles({ slug: slug() }),
           deleteDraftIssue: () => caller.deleteDraftIssue(ref),
         };
@@ -612,6 +621,18 @@ describe.skipIf(!RUN_DB)(
         () => caller.removeStaffRole({ slug: slug(), userId: fx.memberId }),
       ])
         await expect(call()).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("the review queue is empty and decisions are not found before a magazine exists", async () => {
+      const caller = callerAs(fx.ownerId).magazines;
+      await expect(caller.reviewQueue({ slug: slug() })).resolves.toEqual([]);
+      await expect(
+        caller.reviewArticle({
+          slug: slug(),
+          articleId: 2_147_483_647,
+          decision: "approve",
+        }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
     });
 
     it("every issue-scoped procedure refuses another community's issue with NOT_FOUND", async () => {

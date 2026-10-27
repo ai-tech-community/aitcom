@@ -38,6 +38,8 @@ const READERS: Record<string, string> = {
     "writer: an article's placement in an issue",
   "src/server/magazines/article-submission.ts":
     "writer: router checks authorship; live magazine write capability and locked latest draft gate every change",
+  "src/server/magazines/article-review.ts":
+    "editor queue behind edit capability; review page checks live magazine editorship and member authorship; decisions check magazine and locked latest draft",
   "src/server/magazines/payload-writes.ts":
     "transaction helper: locks and reads the latest draft; its caller checks authorship and magazine capability",
   "src/server/magazines/items/article/kind.ts":

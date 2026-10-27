@@ -5132,6 +5132,21 @@
       }
     },
     "notifications": {
+      "articleReviewed": {
+        "approved": {
+          "title": "‘{title}’ is klaar voor een nummer",
+          "content": "Een redacteur van {magazine} heeft je artikel goedgekeurd. Het verschijnt zodra een nummer met je artikel wordt gepubliceerd."
+        },
+        "changesRequested": {
+          "title": "Aanpassingen gevraagd voor ‘{title}’"
+        },
+        "rejected": {
+          "title": "‘{title}’ is niet aangenomen",
+          "noNote": "Een redacteur van {magazine} heeft besloten dit artikel niet te gebruiken."
+        },
+        "linkOpenArticle": "Open je artikel",
+        "linkOpenMagazine": "Open het tijdschrift"
+      },
       "articleSubmitted": {
         "title": "{author} stuurde ‘{title}’ naar {magazine}",
         "content": "Lees het artikel en keur het goed, vraag om aanpassingen of wijs het af.",
