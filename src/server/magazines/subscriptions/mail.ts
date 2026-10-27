@@ -2,7 +2,10 @@ import { createTranslator } from "next-intl";
 
 import { loadMessages, type AppLocale } from "@/i18n/messages";
 import type { MailEnv } from "@/lib/email/recipient-gate";
-import { MAGAZINE_SUBSCRIPTION_CONFIRM_PATH } from "@/lib/magazines/paths";
+import {
+  issuePath,
+  MAGAZINE_SUBSCRIPTION_CONFIRM_PATH,
+} from "@/lib/magazines/paths";
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 import { sendGatedEmail } from "@/server/email";
 import { escapeHtml } from "@/server/email-template";
@@ -86,5 +89,49 @@ export async function confirmationMail(input: {
     paragraphs: [t("confirm.body", values)],
     action: { label: t("confirm.action"), href: input.confirmUrl },
     footer: [t("confirm.expires"), t("confirm.ignore"), t("footer")],
+  });
+}
+
+export function absoluteIssueUrl(
+  locale: AppLocale,
+  magazine: { slug: string },
+  issue: { slug: string },
+): string {
+  return `${CANONICAL_PRODUCTION_ORIGIN}/${locale}${issuePath(magazine, issue)}`;
+}
+
+export function magazineUnsubscribeUrl(
+  locale: AppLocale,
+  token: string,
+): string {
+  return `${CANONICAL_PRODUCTION_ORIGIN}/${locale}/unsubscribe?t=${encodeURIComponent(token)}`;
+}
+
+export async function issueMail(input: {
+  locale: AppLocale;
+  magazineName: string;
+  communityName: string;
+  issue: { number: number; title: string };
+  issueUrl: string;
+  unsubscribeUrl: string;
+}): Promise<MagazineMail> {
+  const t = createTranslator({
+    locale: input.locale,
+    messages: await loadMessages(input.locale),
+    namespace: "magazineMail",
+  });
+  const values = {
+    magazine: input.magazineName,
+    community: input.communityName,
+    number: input.issue.number,
+    title: input.issue.title,
+  };
+  return renderMagazineMail({
+    subject: t("issue.subject", values),
+    heading: input.issue.title,
+    paragraphs: [t("issue.lead", values)],
+    action: { label: t("issue.action"), href: input.issueUrl },
+    footer: [t("issue.why", values), t("footer")],
+    unsubscribe: { label: t("issue.unsubscribe"), href: input.unsubscribeUrl },
   });
 }

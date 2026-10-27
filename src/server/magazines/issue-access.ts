@@ -16,6 +16,7 @@ import {
   loadMagazineEditorship,
   type MagazineStanding,
   NO_STANDING,
+  standingOf,
 } from "./editorship";
 import { relationIdOrNull } from "./relation-id";
 
@@ -124,4 +125,44 @@ export async function loadMagazineIssueAccess(
       : null,
     issue: facts,
   });
+}
+
+export type IssueAudience = "nobody" | "members" | "everyone";
+
+/** Who may be told about a published issue (Decision 7).
+ * Slice 6 decides `teaser` here: teaser issues are meant to reach email subscribers.
+ */
+export function issueAudience(
+  community: (CommunityVisibility & { deleted: boolean }) | null,
+  issue: IssueAccessInput["issue"],
+): IssueAudience {
+  const access = resolveMagazineIssueAccess({
+    viewer: NO_STANDING,
+    community,
+    issue,
+  });
+  switch (access) {
+    case "full":
+      return "everyone";
+    case "editor":
+      return "nobody";
+    case "none": {
+      const access = resolveMagazineIssueAccess({
+        viewer: standingOf("member", null),
+        community,
+        issue,
+      });
+      switch (access) {
+        case "full":
+          return "members";
+        case "none":
+        case "editor":
+          return "nobody";
+      }
+      const _exhaustive: never = access;
+      return _exhaustive;
+    }
+  }
+  const _exhaustive: never = access;
+  return _exhaustive;
 }

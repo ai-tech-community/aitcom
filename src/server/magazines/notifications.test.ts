@@ -5,6 +5,8 @@ import { notifications } from "@/server/db/schema";
 
 import type { Deps } from "./deps";
 import {
+  insertMagazineNoticesIn,
+  issuePublishedNotices,
   notifyRoleAssigned,
   notifyScheduleFailed,
   type ScheduleFailure,
@@ -130,4 +132,63 @@ describe("magazine notices", () => {
     expect(insert).not.toHaveBeenCalled();
     expect(log).toHaveBeenCalledWith("[magazines] notification failed", error);
   });
+});
+
+it("writes one new-issue notice per user, linking to the issue", async () => {
+  const notices = await issuePublishedNotices({
+    userIds: ["member", "outsider"],
+    magazine: { id: 7, name: "The Gazette", slug: "gazette" },
+    issue: { id: 42, number: 3, title: "Autumn", slug: "autumn" },
+    community: { id: "community", slug: "our-community" },
+  });
+  expect(notices).toEqual(
+    ["member", "outsider"].map((userId) => ({
+      userId,
+      type: "magazine_issue_published",
+      title: "New in The Gazette: Autumn",
+      content: "Issue 3 is out.",
+      communityId: "community",
+      path: "/magazines/gazette/autumn",
+      linkLabel: "Read the issue",
+      extra: { issueId: 42, magazineId: 7 },
+    })),
+  );
+  const values = vi.fn(async () => undefined);
+  await insertMagazineNoticesIn(
+    { insert: () => ({ values }) } as unknown as Pick<Deps["db"], "insert">,
+    notices,
+  );
+  expect(values.mock.calls[0]).toEqual([
+    notices.map(({ path, linkLabel, extra, ...row }) => ({
+      ...row,
+      metadata: {
+        reviewPath: path,
+        linkLabel,
+        communityId: "community",
+        ...extra,
+      },
+    })),
+  ]);
+});
+
+it("insertMagazineNoticesIn throws", async () => {
+  const insert = () => {
+    throw new Error("Inbox unavailable");
+  };
+  await expect(
+    insertMagazineNoticesIn(
+      { insert } as unknown as Pick<Deps["db"], "insert">,
+      [
+        {
+          userId: "member",
+          type: "magazine_issue_published",
+          title: "New issue",
+          content: "Out now",
+          communityId: "community",
+          path: "/issue",
+          linkLabel: "Read the issue",
+        },
+      ],
+    ),
+  ).rejects.toThrow("Inbox unavailable");
 });

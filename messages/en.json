@@ -4771,6 +4771,13 @@
     }
   },
   "magazines": {
+    "notifications": {
+      "issuePublished": {
+        "title": "New in {magazine}: {title}",
+        "content": "Issue {number} is out.",
+        "linkLabel": "Read the issue"
+      }
+    },
     "home": {
       "label": "Magazines",
       "title": "Stories from the communities building AI",
@@ -5291,6 +5298,13 @@
     }
   },
   "magazineMail": {
+    "issue": {
+      "subject": "{magazine}: {title}",
+      "lead": "Issue {number} of {magazine}, from {community}, is out.",
+      "action": "Read the issue",
+      "why": "You get this email because you subscribed to {magazine}.",
+      "unsubscribe": "Unsubscribe"
+    },
     "confirm": {
       "subject": "Confirm: new issues of {magazine} by email",
       "heading": "Get new issues of {magazine}?",

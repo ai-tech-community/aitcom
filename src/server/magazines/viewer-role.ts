@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, type SQL } from "drizzle-orm";
 
 import type { CommunityRole } from "@/server/communities/role-utils";
 import type { db } from "@/server/db";
@@ -37,4 +37,9 @@ export async function activeCommunityRole(
     columns: { role: true, status: true },
   });
   return activeRoleOf(membership);
+}
+
+/** The SQL twin of activeRoleOf: only active memberships grant a role. */
+export function activeMembershipCondition(): SQL {
+  return eq(communityMemberships.status, "active");
 }

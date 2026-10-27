@@ -15,7 +15,10 @@ import {
 import { slugify } from "@/lib/text-utils";
 import type { Magazine, MagazineIssue } from "@/payload-types";
 
-import { recordIssueAnnouncement } from "./announcements";
+import {
+  deliverInboxAnnouncement,
+  recordIssueAnnouncement,
+} from "./announcements";
 import {
   clearArticlePlacement,
   placedArticlesOf,
@@ -236,6 +239,14 @@ async function afterIssuePublished(
     );
   } catch (error) {
     console.error("[magazines] credit after publish failed", {
+      issueId: published.id,
+      error,
+    });
+  }
+  try {
+    await deliverInboxAnnouncement(deps, published.id);
+  } catch (error) {
+    console.error("[magazines] inbox announcement failed", {
       issueId: published.id,
       error,
     });

@@ -4771,6 +4771,13 @@
     }
   },
   "magazines": {
+    "notifications": {
+      "issuePublished": {
+        "title": "Nieuw in {magazine}: {title}",
+        "content": "Nummer {number} is uit.",
+        "linkLabel": "Lees het nummer"
+      }
+    },
     "home": {
       "label": "Magazines",
       "title": "Verhalen uit de communities die AI bouwen",
@@ -5291,6 +5298,13 @@
     }
   },
   "magazineMail": {
+    "issue": {
+      "subject": "{magazine}: {title}",
+      "lead": "Nummer {number} van {magazine}, van {community}, is uit.",
+      "action": "Lees het nummer",
+      "why": "Je krijgt deze e-mail omdat je je hebt geabonneerd op {magazine}.",
+      "unsubscribe": "Afmelden"
+    },
     "confirm": {
       "subject": "Bevestig: nieuwe nummers van {magazine} per e-mail",
       "heading": "Nieuwe nummers van {magazine} ontvangen?",

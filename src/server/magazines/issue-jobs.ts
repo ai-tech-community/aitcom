@@ -1,12 +1,46 @@
+import {
+  deliverPendingAnnouncements,
+  type DeliveryResult,
+} from "./announcements";
 import type { Deps } from "./deps";
 import { publishDueIssues, type DueRunResult } from "./scheduled-publishing";
+import type { MagazineMailer } from "./subscriptions/mail";
+import { purgeUnconfirmedSubscriptions } from "./subscriptions/service";
 
-export type IssueJobsResult = DueRunResult;
+export type IssueJobsResult = DueRunResult &
+  DeliveryResult & { purged: number };
 
-/** The issue lifecycle jobs, in order; later delivery work extends this runner. */
+/** Independent steps keep one failure from skipping the rest of the lifecycle. */
 export async function runMagazineIssueJobs(
   deps: Deps,
-  opts: { now: Date },
+  opts: { now: Date; mailer: MagazineMailer },
 ): Promise<IssueJobsResult> {
-  return publishDueIssues(deps, opts.now);
+  const result: IssueJobsResult = {
+    published: 0,
+    failed: 0,
+    retried: 0,
+    purged: 0,
+    inbox: 0,
+    email: 0,
+    completed: 0,
+  };
+  try {
+    Object.assign(result, await publishDueIssues(deps, opts.now));
+  } catch (error) {
+    console.error("[magazines] scheduled publishing failed", { error });
+  }
+  try {
+    result.purged = await purgeUnconfirmedSubscriptions(deps.db, opts.now);
+  } catch (error) {
+    console.error("[magazines] subscription cleanup failed", { error });
+  }
+  try {
+    Object.assign(
+      result,
+      await deliverPendingAnnouncements(deps, opts.mailer, opts.now),
+    );
+  } catch (error) {
+    console.error("[magazines] announcement delivery failed", { error });
+  }
+  return result;
 }

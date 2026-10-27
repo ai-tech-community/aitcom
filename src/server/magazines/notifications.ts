@@ -4,6 +4,7 @@ import { loadMessages } from "@/i18n/messages";
 import {
   communityMagazinePath,
   issueBuilderPath,
+  issuePath,
   magazineArticleEditPath,
   magazineReviewPath,
 } from "@/lib/magazines/paths";
@@ -26,7 +27,7 @@ export type ScheduleFailure = "empty" | "invalid_item" | "no_rights" | "error";
 
 export type NoticeCommunity = { id: string; slug: string };
 
-type MagazineNotice = {
+export type MagazineNotice = {
   userId: string;
   type: string;
   title: string;
@@ -46,31 +47,66 @@ async function insertMagazineNotices(
   notices: readonly MagazineNotice[] | Promise<readonly MagazineNotice[]>,
 ): Promise<void> {
   try {
-    const rows = await notices;
-    if (rows.length === 0) return;
-    await db.insert(notifications).values(
-      rows.map(({ path, linkLabel, extra, ...notice }) => ({
-        ...notice,
-        title: clipText(notice.title, 255),
-        metadata: {
-          reviewPath: path,
-          linkLabel,
-          communityId: notice.communityId,
-          ...extra,
-        },
-      })),
-    );
+    await insertMagazineNoticesIn(db, await notices);
   } catch (error) {
     console.error("[magazines] notification failed", error);
   }
 }
 
+/** Throws so a caller can roll notices and delivery claims back together. */
+export async function insertMagazineNoticesIn(
+  writer: Pick<Deps["db"], "insert">,
+  notices: readonly MagazineNotice[],
+): Promise<void> {
+  if (notices.length === 0) return;
+  await writer.insert(notifications).values(
+    notices.map(({ path, linkLabel, extra, ...notice }) => ({
+      ...notice,
+      title: clipText(notice.title, 255),
+      metadata: {
+        reviewPath: path,
+        linkLabel,
+        communityId: notice.communityId,
+        ...extra,
+      },
+    })),
+  );
+}
+
+export const MAGAZINE_ISSUE_PUBLISHED_NOTIFICATION = "magazine_issue_published";
+
+export async function issuePublishedNotices(input: {
+  userIds: readonly string[];
+  magazine: { id: number; name: string; slug: string };
+  issue: { id: number; number: number; title: string; slug: string };
+  community: NoticeCommunity;
+}): Promise<MagazineNotice[]> {
+  const t = await magazineNoticeTranslator("magazines");
+  return input.userIds.map((userId) => ({
+    userId,
+    type: MAGAZINE_ISSUE_PUBLISHED_NOTIFICATION,
+    title: t("notifications.issuePublished.title", {
+      magazine: input.magazine.name,
+      title: input.issue.title,
+    }),
+    content: t("notifications.issuePublished.content", {
+      number: input.issue.number,
+    }),
+    communityId: input.community.id,
+    path: issuePath(input.magazine, input.issue),
+    linkLabel: t("notifications.issuePublished.linkLabel"),
+    extra: { issueId: input.issue.id, magazineId: input.magazine.id },
+  }));
+}
+
 /** Inbox text is stored in English, following the badge notices. */
-async function magazineNoticeTranslator() {
+async function magazineNoticeTranslator(
+  namespace: "magazineEditor" | "magazines",
+) {
   return createTranslator({
     locale: "en",
     messages: await loadMessages("en"),
-    namespace: "magazineEditor",
+    namespace,
   });
 }
 
@@ -86,7 +122,7 @@ export async function notifyScheduleFailed(
 ): Promise<void> {
   await insertMagazineNotices(
     db,
-    magazineNoticeTranslator().then((t) => {
+    magazineNoticeTranslator("magazineEditor").then((t) => {
       const contentKeys = {
         empty: "notifications.scheduleFailed.content.empty",
         invalid_item: "notifications.scheduleFailed.content.invalid_item",
@@ -120,7 +156,7 @@ export async function notifyRoleAssigned(
 ): Promise<void> {
   await insertMagazineNotices(
     db,
-    magazineNoticeTranslator().then((t) => [
+    magazineNoticeTranslator("magazineEditor").then((t) => [
       {
         userId: input.userId,
         type: MAGAZINE_ROLE_ASSIGNED_NOTIFICATION,
@@ -152,7 +188,7 @@ export async function notifyArticleSubmitted(
 ): Promise<void> {
   await insertMagazineNotices(
     db,
-    magazineNoticeTranslator().then((t) =>
+    magazineNoticeTranslator("magazineEditor").then((t) =>
       input.editorIds.map((userId) => ({
         userId,
         type: MAGAZINE_ARTICLE_SUBMITTED_NOTIFICATION,
@@ -185,7 +221,7 @@ export async function notifyArticleReviewed(
 ): Promise<void> {
   await insertMagazineNotices(
     db,
-    magazineNoticeTranslator().then((t) => {
+    magazineNoticeTranslator("magazineEditor").then((t) => {
       const values = {
         title: input.articleTitle,
         magazine: input.magazineName,

@@ -12,7 +12,11 @@ import type { CommunityRole } from "@/server/communities/role-utils";
 import type { db } from "@/server/db";
 import { communityMemberships, magazineStaff } from "@/server/db/schema";
 
-import { activeCommunityRole, activeRoleOf } from "./viewer-role";
+import {
+  activeCommunityRole,
+  activeMembershipCondition,
+  activeRoleOf,
+} from "./viewer-role";
 
 /**
  * The one editorship seam (ADR-0042): a viewer's magazine capabilities and
@@ -212,7 +216,7 @@ export async function listMagazineEditorIds(
     .where(
       and(
         eq(communityMemberships.communityId, magazine.communityId),
-        eq(communityMemberships.status, "active"),
+        activeMembershipCondition(),
         or(
           inArray(communityMemberships.role, [...LEADING_COMMUNITY_ROLES]),
           inArray(magazineStaff.role, [...rolesWith("edit")]),

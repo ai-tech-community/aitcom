@@ -12,6 +12,10 @@ vi.mock("@/server/magazines/issue-jobs", () => ({ runMagazineIssueJobs }));
 vi.mock("@/server/payload", () => ({ getPayloadClient }));
 vi.mock("@/server/db", () => ({ db }));
 
+vi.mock("@/server/magazines/subscriptions/mail", () => ({
+  defaultMagazineMailer: () => ({ send: vi.fn() }),
+}));
+
 import { GET } from "./route";
 
 function req(auth?: string) {
@@ -51,7 +55,9 @@ describe("magazine issue cron", () => {
   it("runs the issue jobs once and answers their counts", async () => {
     const response = await GET(req("Bearer s3cret"));
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
+    const body = await response.json();
+    expect(JSON.stringify(body)).not.toContain("@");
+    expect(body).toEqual({
       success: true,
       published: 2,
       failed: 1,
@@ -61,9 +67,10 @@ describe("magazine issue cron", () => {
     expect(getPayloadClient).toHaveBeenCalledOnce();
     expect(runMagazineIssueJobs).toHaveBeenCalledExactlyOnceWith(
       { db, payload },
-      {
+      expect.objectContaining({
         now: new Date("2026-10-27T14:00:00Z"),
-      },
+        mailer: expect.anything(),
+      }),
     );
   });
 

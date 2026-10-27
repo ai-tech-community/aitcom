@@ -302,10 +302,23 @@ describe.skipIf(!isLocalDbConfigured())(
       const { issue, articleId } = await scheduledIssue();
       expect(await run(30)).toEqual({ published: 0, failed: 0, retried: 0 });
       // Exercise the real job runner as well as the scheduled-publishing seam.
-      expect(await m.jobs.runMagazineIssueJobs(m, { now: at(120) })).toEqual({
+      expect(
+        await m.jobs.runMagazineIssueJobs(m, {
+          now: at(120),
+          mailer: {
+            send: vi.fn(async () => true),
+            env: { VERCEL_ENV: "production", NODE_ENV: "production" },
+            sleep: async () => undefined,
+          },
+        }),
+      ).toEqual({
         published: 1,
         failed: 0,
         retried: 0,
+        inbox: 0,
+        email: 0,
+        completed: 1,
+        purged: 0,
       });
       expect(await load(issue.id)).toMatchObject({
         status: "published",

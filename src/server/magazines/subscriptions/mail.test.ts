@@ -6,6 +6,9 @@ vi.mock("@/server/email", () => ({ sendGatedEmail: vi.fn() }));
 vi.mock("@/server/payload", () => ({ getPayloadClient: vi.fn() }));
 
 import {
+  absoluteIssueUrl,
+  issueMail,
+  magazineUnsubscribeUrl,
   confirmationMail,
   magazineConfirmUrl,
   renderMagazineMail,
@@ -64,4 +67,49 @@ it("links to the confirm page in that language", () => {
     "https://www.aitcommunity.org/nl/magazine-subscriptions/confirm?t=abc",
   );
   expect(magazineConfirmUrl("en", "a&b")).toContain("?t=a%26b");
+});
+
+it("an issue email links to the issue and to unsubscribe", async () => {
+  const issueUrl = absoluteIssueUrl(
+    "nl",
+    { slug: "gazette" },
+    { slug: "herfst" },
+  );
+  const unsubscribeUrl = magazineUnsubscribeUrl("nl", "a&b");
+  expect(issueUrl).toBe(
+    "https://www.aitcommunity.org/nl/magazines/gazette/herfst",
+  );
+  expect(unsubscribeUrl).toBe(
+    "https://www.aitcommunity.org/nl/unsubscribe?t=a%26b",
+  );
+  const dutch = await issueMail({
+    locale: "nl",
+    magazineName: "Gazette",
+    communityName: "Tuinclub",
+    issue: { number: 3, title: "Herfst" },
+    issueUrl,
+    unsubscribeUrl,
+  });
+  const english = await issueMail({
+    locale: "en",
+    magazineName: "Gazette",
+    communityName: "Garden club",
+    issue: { number: 3, title: "Autumn" },
+    issueUrl,
+    unsubscribeUrl,
+  });
+  expect(dutch.subject).toBe("Gazette: Herfst");
+  expect(dutch.text).toContain("Nummer 3 van Gazette, van Tuinclub, is uit.");
+  expect(english.subject).toBe("Gazette: Autumn");
+  expect(english.text).toContain(
+    "Issue 3 of Gazette, from Garden club, is out.",
+  );
+  expect(english.text).toContain(
+    "You get this email because you subscribed to Gazette.",
+  );
+  for (const mail of [dutch, english])
+    for (const part of [mail.html, mail.text]) {
+      expect(part).toContain(issueUrl);
+      expect(part).toContain(unsubscribeUrl);
+    }
 });

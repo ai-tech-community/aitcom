@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/server/db";
 import { runMagazineIssueJobs } from "@/server/magazines/issue-jobs";
+import { defaultMagazineMailer } from "@/server/magazines/subscriptions/mail";
 import { getPayloadClient } from "@/server/payload";
 
 export const runtime = "nodejs";
@@ -15,7 +16,10 @@ export async function GET(req: Request) {
   }
   try {
     const deps = { db, payload: await getPayloadClient() };
-    const result = await runMagazineIssueJobs(deps, { now: new Date() });
+    const result = await runMagazineIssueJobs(deps, {
+      now: new Date(),
+      mailer: defaultMagazineMailer(),
+    });
     return NextResponse.json({
       success: true,
       ...result,
