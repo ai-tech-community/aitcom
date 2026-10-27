@@ -1,5 +1,13 @@
 // @vitest-environment node
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import { magazineArticleEditPath } from "@/lib/magazines/paths";
 import { DEFAULT_AUTO_DRAFT_SETTINGS } from "@/lib/magazines/auto-draft";
@@ -25,6 +33,8 @@ function isLocalDbConfigured(): boolean {
   );
 }
 const RUN_DB = isLocalDbConfigured();
+const baseTime = new Date("2026-10-27T12:00:00Z");
+const at = (minutes: number) => new Date(baseTime.getTime() + minutes * 60_000);
 
 const PROCEDURE_CAPABILITY: Record<string, MagazineCapability | "public"> = {
   getSettings: "manage",
@@ -169,6 +179,7 @@ describe.skipIf(!RUN_DB)(
     }, 60_000);
 
     afterEach(async () => {
+      vi.useRealTimers();
       const { db, schema, payload } = m;
       const { inArray } = await import("drizzle-orm");
       const communityIds = [fx.community.id, fx.other.id];
@@ -212,6 +223,10 @@ describe.skipIf(!RUN_DB)(
           where: { id: { in: magazineIds } },
         });
       }
+      await payload.delete({
+        collection: "forum-threads",
+        where: { communityId: { in: communityIds } },
+      });
       await db
         .delete(schema.spaces)
         .where(inArray(schema.spaces.communityId, communityIds));
@@ -443,6 +458,80 @@ describe.skipIf(!RUN_DB)(
       });
     });
 
+    it("Add more lists suggestions first, with their reason", async () => {
+      const { eq } = await import("drizzle-orm");
+      const { searchPickerCandidates } =
+        await import("@/server/magazines/items/pickers");
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(baseTime);
+      await m.db
+        .update(m.schema.communities)
+        .set({ isListedInDirectory: true })
+        .where(eq(m.schema.communities.id, fx.community.id));
+      const magazine = await saveMagazine();
+      const owner = callerAs(fx.ownerId).magazines;
+      await owner.saveAutoDraftSettings({
+        ...DEFAULT_AUTO_DRAFT_SETTINGS,
+        slug: slug(),
+        lookBack: "days_7",
+      });
+      const threads = [];
+      for (const [days, replies] of [
+        [2, 9],
+        [1, 3],
+        [8, 100],
+        [35, 2],
+      ] as const) {
+        const thread = await m.payload.create({
+          collection: "forum-threads",
+          data: {
+            title: `Ranking ${days} ${fx.sfx}`,
+            slug: `ranking-${days}-${fx.sfx}`,
+            content: richText("Talk together"),
+            category: "general",
+            communityId: fx.community.id,
+            authorId: fx.ownerId,
+            authorName: "Editor",
+            replyCount: replies,
+            lastActivityAt: at(-days * 24 * 60).toISOString(),
+          },
+        });
+        threads.push(Number(thread.id));
+      }
+
+      const candidates = await owner.pickerCandidates({
+        slug: slug(),
+        kind: "forumThread",
+      });
+      expect(candidates.map((c) => c.reference)).toEqual(
+        threads.map((id) => `forumThread:${id}`),
+      );
+      expect(candidates.map((c) => c.reason)).toEqual([
+        { type: "mostReplies", count: 9 },
+        { type: "mostReplies", count: 3 },
+        null,
+        null,
+      ]);
+      expect(new Set(candidates.map((c) => c.reference)).size).toBe(
+        candidates.length,
+      );
+
+      const search = await searchPickerCandidates("forumThread", "Ranking", {
+        deps: m,
+        magazineId: magazine.id,
+        community: fx.community,
+        viewerId: fx.ownerId,
+        locale: "en",
+      });
+      expect(
+        await owner.pickerCandidates({
+          slug: slug(),
+          kind: "forumThread",
+          query: "Ranking",
+        }),
+      ).toEqual(search.map((candidate) => ({ ...candidate, reason: null })));
+    });
+
     it("pickerCandidates offers ready articles, filtered by the search", async () => {
       const magazine = await saveMagazine();
       const owner = callerAs(fx.ownerId);
@@ -476,6 +565,7 @@ describe.skipIf(!RUN_DB)(
         title: "Agents at work",
         facts: [{ type: "byline", name: fx.ownerId }],
         openHref: magazineArticleEditPath(slug(), agents.slug),
+        reason: null,
       };
       expect(
         await owner.magazines.pickerCandidates({
@@ -499,13 +589,17 @@ describe.skipIf(!RUN_DB)(
       expect(unfiltered).toHaveLength(2);
       expect(unfiltered).toEqual(
         expect.arrayContaining([
-          candidate,
+          {
+            ...candidate,
+            reason: { type: "waitingSince", at: expect.any(String) },
+          },
           {
             input: { kind: "article", articleId: evals.id },
             reference: `article:${evals.id}`,
             title: "Evals",
             facts: [{ type: "byline", name: fx.adminId }],
             openHref: null,
+            reason: { type: "waitingSince", at: expect.any(String) },
           },
         ]),
       );

@@ -48,7 +48,9 @@ import {
   updateIssueDetails,
 } from "@/server/magazines/issue-service";
 import { issueItemInputSchema } from "@/server/magazines/items/registry";
-import { searchPickerCandidates } from "@/server/magazines/items/pickers";
+import { pickerCandidatesFor } from "@/server/magazines/items/pickers";
+import { suggestContextFor } from "@/server/magazines/items/context";
+import { suggestWindowFor } from "@/server/magazines/auto-draft/window";
 import {
   listAvailableArticles,
   listDraftArticles,
@@ -465,22 +467,41 @@ export const magazinesRouter = createTRPCRouter({
           .default([]),
       }),
     )
-    .query(async ({ ctx, input }) =>
-      ctx.magazine
-        ? searchPickerCandidates(
-            input.kind,
-            input.query,
-            {
-              deps: depsOf(ctx),
-              magazineId: ctx.magazine.id,
-              community: communityOf(ctx),
+    .query(async ({ ctx, input }) => {
+      const magazine = ctx.magazine;
+      if (!magazine) return [];
+      const deps = depsOf(ctx);
+      return pickerCandidatesFor(
+        input.kind,
+        input.query,
+        {
+          deps,
+          magazineId: magazine.id,
+          community: communityOf(ctx),
+          viewerId: ctx.session.user.id,
+          locale: routing.defaultLocale,
+        },
+        input.exclude,
+        async () => {
+          const now = new Date();
+          return {
+            ctx: suggestContextFor(deps, {
+              magazine,
+              community: { ...communityOf(ctx), name: ctx.community.name },
               viewerId: ctx.session.user.id,
               locale: routing.defaultLocale,
-            },
-            input.exclude,
-          )
-        : [],
-    ),
+              now,
+            }),
+            window: await suggestWindowFor(
+              deps,
+              magazine.id,
+              (await readAutoDraftSettings(ctx.db, magazine.id)).lookBack,
+              now,
+            ),
+          };
+        },
+      );
+    }),
 
   // Serves the editor desk's ready list; the issue builder uses pickerCandidates.
   availableArticles: editorProcedure

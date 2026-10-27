@@ -4,9 +4,21 @@ import { magazineArticleEditPath } from "@/lib/magazines/paths";
 import { PICKABLE_ITEM_KINDS, PICKER_LIMIT } from "@/lib/magazines/picker";
 
 import type { Deps, PayloadClient } from "../deps";
-import { ITEM_PICKERS, searchPickerCandidates } from "./pickers";
-import { ITEM_KINDS } from "./registry";
-import type { PickerContext } from "./types";
+import {
+  ITEM_PICKERS,
+  pickerCandidatesFor,
+  searchPickerCandidates,
+  type SuggestionLoader,
+} from "./pickers";
+import { ITEM_KINDS, type InputOf } from "./registry";
+import { suggestCandidates } from "./suggesters";
+import type {
+  PickerContext,
+  PickerSourceCandidate,
+  SuggestContext,
+} from "./types";
+
+vi.mock("./suggesters");
 
 function context(payload = {} as PayloadClient): PickerContext {
   return {
@@ -20,6 +32,123 @@ function context(payload = {} as PayloadClient): PickerContext {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.mocked(suggestCandidates).mockReset();
+});
+
+describe("picker suggestions", () => {
+  function candidate(
+    threadId: number,
+    openHref: string | null = null,
+  ): PickerSourceCandidate<InputOf<"forumThread">> {
+    return {
+      input: { kind: "forumThread", threadId },
+      title: `Thread ${threadId}`,
+      facts: [],
+      openHref,
+    };
+  }
+
+  function suggestion(threadId: number, openHref: string | null = null) {
+    return {
+      ...candidate(threadId, openHref),
+      reference: `forumThread:${threadId}`,
+      reason: { type: "mostReplies" as const, count: 10 },
+    };
+  }
+
+  function setup() {
+    const ctx = context();
+    const now = new Date("2026-10-27T12:00:00Z");
+    const suggestCtx: SuggestContext = {
+      ...ctx,
+      community: { ...ctx.community, name: "Our community" },
+      topics: ["ai"],
+      now,
+    };
+    const window = { since: new Date("2026-10-20T12:00:00Z"), until: now };
+    const loadSuggestion = vi.fn<SuggestionLoader>().mockResolvedValue({
+      ctx: suggestCtx,
+      window,
+    });
+    const search = vi.spyOn(ITEM_PICKERS.forumThread, "search");
+    return { ctx, suggestCtx, window, loadSuggestion, search };
+  }
+
+  it("puts suggestions first and fills up with search", async () => {
+    const { ctx, suggestCtx, window, loadSuggestion, search } = setup();
+    const suggestions = [suggestion(1), suggestion(2)];
+    vi.mocked(suggestCandidates).mockResolvedValue(suggestions);
+    search.mockResolvedValue([candidate(2), candidate(3), candidate(4)]);
+    const exclude = ["forumThread:99"];
+
+    expect(
+      await pickerCandidatesFor(
+        "forumThread",
+        "",
+        ctx,
+        exclude,
+        loadSuggestion,
+      ),
+    ).toEqual([
+      ...suggestions,
+      { ...candidate(3), reference: "forumThread:3", reason: null },
+      { ...candidate(4), reference: "forumThread:4", reason: null },
+    ]);
+    expect(loadSuggestion).toHaveBeenCalledExactlyOnceWith();
+    expect(suggestCandidates).toHaveBeenCalledExactlyOnceWith(
+      "forumThread",
+      suggestCtx,
+      window,
+      { limit: PICKER_LIMIT, exclude },
+    );
+    expect(search).toHaveBeenCalledExactlyOnceWith("", ctx, exclude);
+  });
+
+  it("a duplicate keeps the search entry's open link", async () => {
+    const { ctx, loadSuggestion, search } = setup();
+    const suggested = suggestion(2);
+    vi.mocked(suggestCandidates).mockResolvedValue([suggested]);
+    search.mockResolvedValue([
+      { ...candidate(2, "/x"), title: "Search title" },
+    ]);
+
+    expect(
+      await pickerCandidatesFor("forumThread", "", ctx, [], loadSuggestion),
+    ).toEqual([{ ...suggested, openHref: "/x" }]);
+  });
+
+  it("keeps the limit", async () => {
+    const { ctx, loadSuggestion, search } = setup();
+    const suggestions = Array.from({ length: 13 }, (_, i) => suggestion(i + 1));
+    vi.mocked(suggestCandidates).mockResolvedValue(suggestions);
+
+    expect(
+      await pickerCandidatesFor("forumThread", "", ctx, [], loadSuggestion),
+    ).toEqual(suggestions.slice(0, 12));
+    expect(search).not.toHaveBeenCalled();
+  });
+
+  it("a typed search does not ask for suggestions", async () => {
+    const { ctx, loadSuggestion, search } = setup();
+    search.mockResolvedValue([candidate(2), candidate(1)]);
+    const exclude = ["forumThread:99"];
+
+    expect(
+      await pickerCandidatesFor(
+        "forumThread",
+        "thread",
+        ctx,
+        exclude,
+        loadSuggestion,
+      ),
+    ).toEqual([
+      { ...candidate(2), reference: "forumThread:2", reason: null },
+      { ...candidate(1), reference: "forumThread:1", reason: null },
+    ]);
+    expect(search).toHaveBeenCalledExactlyOnceWith("thread", ctx, exclude);
+    expect(loadSuggestion).not.toHaveBeenCalled();
+    expect(suggestCandidates).not.toHaveBeenCalled();
+  });
 });
 
 describe("item picker registry", () => {
