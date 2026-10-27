@@ -103,14 +103,20 @@ for the acting person's rights, and
    conflicts return busy. Attach the issue id immediately after creation.
    Save or pick failures delete the half-made draft and fail the run; a
    schedule refusal keeps the usable draft and sends a notify-only notice.
-   Reclaim deletes a leftover draft, or unschedules and deletes an automatic
-   schedule. A person's schedule or published issue is kept, finishes the run
-   as made and produces no new draft or notice.
+   After a successful claim, while holding the magazine's running lock, clean
+   every failed run with an attached issue, including manual runs, expired
+   calendar periods and exhausted retries. Record the run's last issue-write
+   time on attach and fill. A published issue, a person's schedule, a person
+   history row or an issue update later than that recorded write is kept and
+   marks its run made. Otherwise delete a leftover draft, or silently
+   unschedule and delete an automatic schedule, without issue history. Clear
+   deleted issue references so they cannot block later drafts. If the claimed
+   run's own issue was taken over, return it as made without a new notice.
 
 7. **One open automatic draft per magazine (plan Decision 7).** Any run's
-   attached draft or scheduled issue blocks another, including an interrupted
-   run's issue. Only a made run marks an issue as made automatically. An open
-   draft skips with `draft_open` and no notice. Fewer than three valid items
+   attached draft or scheduled issue blocks another after failed leftovers
+   have been cleaned. Only a made run marks an issue as made automatically.
+   An open draft skips with `draft_open` and no notice. Fewer than three valid items
    from sources that count skips with `too_few`, recording found and needed.
    Scheduled and event skips notify once per period; manual skips show their
    answer only to the person who pressed the button. The welcome never
@@ -141,8 +147,10 @@ for the acting person's rights, and
     `app.magazine_issue_history` stores draft-made, draft-skipped,
     items-changed, automatic-publish-stopped, published and deleted events,
     with structured detail, origin, actor and issue number/title snapshots.
-    Deleting an issue sets its history reference null; deleting the magazine
-    deletes its history. Issue writes record history in their transaction;
+    `actor_kind` distinguishes a person from an automatic action even after
+    the person's account is deleted; missing person names read as a former
+    member. Deleting an issue sets its history reference null; deleting the
+    magazine deletes its history. Issue writes record history in their transaction;
     deletion records after its claim but before deleting the issue. Automatic
     cleanup writes no deleted event. A person's item saves are coalesced when
     the latest event is their items-changed less than 60 minutes ago. All
@@ -205,7 +213,9 @@ for the acting person's rights, and
   Payload: `app.magazine_auto_draft_settings`, `app.magazine_auto_draft_run`,
   `app.magazine_auto_pick` and `app.magazine_issue_history`. Migration
   `20261027c_magazine_auto_draft` adds them and `scheduledVia`, and extends the
-  publish-origin enum. Rollback drops the new tables and schedule source but
+  publish-origin enum. The additive follow-up migration
+  `20261027d_magazine_auto_draft_followups` records run last-write times and
+  history actor kinds. Rollback drops the new tables and schedule source but
   leaves the `auto` enum value, which PostgreSQL cannot remove individually.
 - `runMagazineIssueJobs` assembles due drafts before scheduled publication,
   subscription cleanup and announcement delivery. It uses the existing
@@ -231,9 +241,9 @@ for the acting person's rights, and
   to publication, like one arriving just afterwards. Re-reading inside the
   claimed publication transaction would couple the core service to automatic
   draft settings for that small window; this is deliberately not done.
-- **Article ranking differs from the original most-read wording.** Approved
-  articles are unpublished, so waiting longest is the useful deterministic
-  signal rather than readership. This deviation needs product review.
+- **Article ranking uses waiting time.** Approved articles are unpublished
+  and have no readership yet; oldest-waiting-first gives them a fair,
+  deterministic order.
 - **News needs topics.** A magazine without topics gets neither AIT News
   stories nor headlines; the settings screen explains this. Matching is plain
   text over titles, overviews and summaries, so a short topic such as "AI"
@@ -252,10 +262,16 @@ for the acting person's rights, and
 - **History covers every issue.** It also shows a person's publication of a
   manually made issue. Quick item autosaves collapse into one line per person
   per hour while that person's item change remains the latest event.
-- **Crashes have a retry limit.** A stale claim expires after 15 minutes and
-  can be retried up to three attempts per period. Its half-made draft blocks
-  another until the retry deletes it. After three failed attempts the period
-  is skipped without an inbox notice; failures are logged.
+- **Crashes have a retry limit; leftovers do not depend on retrying that key.**
+  A stale claim expires after 15 minutes and can be retried up to three times
+  per period. The next successful claim for the magazine cleans every failed
+  leftover, including manual keys, ended periods and exhausted attempts, while
+  holding the running lock. Person history or an issue timestamp after the
+  run's recorded last write preserves an editor's work and marks the run made;
+  published issues and a person's schedules are also preserved. Other drafts
+  and automatic schedules are silently removed, so they cannot cause a false
+  open-draft skip. Without another successful claim, cleanup waits. Exhausted
+  failures remain logged without an inbox notice.
 - **Payload admin still bypasses the site publication path.** Publishing
   there records neither issue history nor an announcement, as in slice 4.
 - **Suggesters amend the original interface plan.** They live in each kind's

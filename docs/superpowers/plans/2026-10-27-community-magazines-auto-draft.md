@@ -31,7 +31,7 @@
 6. **One run per (magazine, period), claimed before any work.** `app.magazine_auto_draft_run` has a unique `(magazine_id, period_key)` and a partial unique `(magazine_id) WHERE status = 'running'`. `claimAutoDraftRun` first marks this magazine's `running` rows claimed more than `RUN_STALE_MINUTES = 15` ago as `failed`, then `INSERT … ON CONFLICT DO NOTHING RETURNING id` (no conflict target: either index refuses), then, if nothing was inserted, re-claims a `failed` row of the same period while `attempts < AUTO_DRAFT_MAX_ATTEMPTS = 3` (`23505` from the partial index there = busy). No row → `already_ran` (this period has a finished run) or `busy` (another run of this magazine is in progress). So two cron passes, or a cron pass and "Make a draft now", never make two drafts. **The run names its issue as soon as it exists:** `attachRunIssue(db, runId, issueId)` writes `run.issue_id` right after `createIssue`, before any other step. **Any failure after `createIssue` cleans up:** a throw from `setIssueItems` or `saveAutoPicks` deletes that draft (`deleteDraftIssue` with `via: "auto"`), marks the run `failed` and rethrows; a refusal from `scheduleIssue` (for example `assertPublishable`) is **not** a failure: the run ends `made` with `goesOutAt: null`, and the editors get the notify-only notice (the draft is good, it just will not go out by itself). **A re-claimed `failed` run whose `issue_id` names an issue** (the process died mid-way) first cleans that issue up: status `draft` → delete it (`via: "auto"`); `scheduled` with `scheduledVia = "auto"` → unschedule then delete it (`via: "auto"`); anything else (a person took it over: their own schedule, or published) → finish the run `made` with that issue, make nothing new, send no notice. Rejected: a `pg_advisory_xact_lock` (the work spans several Payload transactions; a session lock on a pooled connection is unreliable).
 7. **One open auto-draft per magazine.** Open = an issue named by **any** run of this magazine (`issue_id` non-null, whatever the run's status) whose status is `draft` or `scheduled`; so a half-made draft of a crashed run also blocks a second one until its re-claim cleans it up. **"Made automatically"** (for the builder's reasons and notice) = an issue named by a `made` run. Both definitions live in `auto-draft/runs.ts` only (`findOpenAutoDraft`, `isAutoMadeIssue`). A run that finds an open one ends `skipped` with reason `draft_open` (history only, no notice: the editors already have the open draft's notice). Too few: fewer than `AUTO_DRAFT_MIN_ITEMS = 3` valid candidates from sources with `AUTO_DRAFT_SOURCES[s].countsTowardMinimum` → `skipped`, reason `too_few` (with `found` and `needed`). For a scheduled or event run the editors are told once per period (the run row makes the notice once-only). **A manual run ("Make a draft now") sends no inbox notice for `too_few` or `no_rights`**: the presser sees the result on the screen, and each press is its own period, so a notice would repeat on every press.
 8. **Who the auto-drafter acts as.** `IssueActor` gains `via?: "auto"`. A scheduled run acts as `settings.updated_by` (the person who last saved the settings), whose `edit` capability is checked at every run (ADR-0045); without it the run is `skipped` / `no_rights` and the editors are told to save the settings again. "Make a draft now" acts as the person who pressed it. With `via: "auto"` the issue service records history with `actor_id = null` ("Automatic") and does not treat the write as a person's edit; the rule lives in one private `historyActorId(actor: IssueActor | null): string | null` in `issue-service.ts` (null for a null actor or `via: "auto"`, else `userId`). The auto-drafter's own history rows (`draft_made`, `draft_skipped`) use `trigger === "manual" ? requestedBy : null` as actor, so "Make a draft now" shows who pressed it. Rejected: a system user (a fake account in `app.user`, and no person's rights would be checked).
-9. **Auto-publish is an automatic schedule.** `PUBLISH_ORIGINS` gains `"auto"`; MagazineIssues gains `scheduledVia` (select of `SCHEDULE_ORIGINS = ["schedule", "auto"]`, null on rows from before). When `whenReady = "auto_publish"`, the auto-drafter calls `scheduleIssue(…, now, { via: "auto" })` for `now + autoPublishDays` days. **The lifecycle rule lives in the issue service, not the auto-drafter:** `setIssueItems` and `updateIssueDetails` by a person (`actor.via !== "auto"`) on an issue that is `scheduled` with `scheduledVia = "auto"` (and `canIssue(issue.status, "unschedule")`, so the `ISSUE_TRANSITIONS` table still governs) write `status: "draft"` plus the cleared schedule fields in the same claimed write, and record `auto_publish_stopped` (`why: "edited"`). The cleared fields are one private constant `CLEARED_SCHEDULE = { scheduledFor: null, scheduledBy: null, scheduledVia: null }` in `issue-service.ts`, used by `unscheduleIssue`, the stop-on-edit write and `publishIssue`. `unscheduleIssue` of an automatic schedule records `auto_publish_stopped`: `why: "failed"` with `failure` when called with `opts.failure` (the scheduled run's `failSchedule`), else `why: "stopped"`. Publishing early is the Publish button (`publishIssue` accepts `scheduled`). **Rights for auto-publish (amends ADR-0046 Decision 8, recorded in ADR-0047):** ADR-0046 said auto-publish rights are checked against the magazine's automatic-publication settings *instead of* a person. This plan requires **both**: `scheduledBy` (the person whose rights the auto-drafter used) must still have `edit` (ADR-0045), **and** the settings must still say `whenReady = "auto_publish"`. Why: the settings alone would let a draft go out on the authority of someone who has left the team. In `scheduled-publishing.ts` the per-origin rule is an exhaustive `SCHEDULE_ORIGIN_CHECKS: Record<ScheduleOrigin, (deps: Deps, issue: MagazineIssue) => Promise<ScheduleFailure | null>>` (`schedule → null`; `auto → (await autoPublishAllowed(deps.db, magazineId)) ? null : "auto_off"`), run after the `edit` check so `no_rights` wins; origin = `issue.scheduledVia ?? "schedule"`. Failure → back to draft, editors told (new `ScheduleFailure` `"auto_off"`). Saving settings to "tell me only" also stops the open automatic draft's **automatic** schedule at once (Task 4; a person's schedule is never touched). A person rescheduling an automatic schedule makes it a person's schedule (`via` defaults to `"schedule"`). Known small race (ADR-0047 risk): the publisher reads the settings just before `publishIssue`; a "tell me only" save landing in those milliseconds loses to the publish, the same as a save landing just after it. Rejected: a separate "publish after" timer outside the issue status (a second publish trigger next to ADR-0046's, and the desk and builder would not show the time); re-reading the settings inside `publishIssue`'s claimed transaction (the issue service would depend on the auto-draft module, for a window of milliseconds).
+9. **Auto-publish is an automatic schedule.** `PUBLISH_ORIGINS` gains `"auto"`; MagazineIssues gains `scheduledVia` (select of `SCHEDULE_ORIGINS = ["schedule", "auto"]`, null on rows from before). When `whenReady = "auto_publish"`, the auto-drafter calls `scheduleIssue(…, now, { via: "auto" })` for `now + autoPublishDays` days. **The lifecycle rule lives in the issue service, not the auto-drafter:** `setIssueItems` and `updateIssueDetails` by a person (`actor.via !== "auto"`) on an issue that is `scheduled` with `scheduledVia = "auto"` (and `canIssue(issue.status, "unschedule")`, so the `ISSUE_TRANSITIONS` table still governs) write `status: "draft"` plus the cleared schedule fields in the same claimed write, and record `auto_publish_stopped` (`why: "edited"`). The cleared fields are one private constant `CLEARED_SCHEDULE = { scheduledFor: null, scheduledBy: null, scheduledVia: null }` in `issue-service.ts`, used by `unscheduleIssue`, the stop-on-edit write and `publishIssue`. `unscheduleIssue` of an automatic schedule records `auto_publish_stopped`: `why: "failed"` with `failure` when called with `opts.failure` (the scheduled run's `failSchedule`), else `why: "stopped"`. Publishing early is the Publish button (`publishIssue` accepts `scheduled`). **Rights for auto-publish (amends ADR-0046 Decision 8, recorded in ADR-0047):** ADR-0046 said auto-publish rights are checked against the magazine's automatic-publication settings _instead of_ a person. This plan requires **both**: `scheduledBy` (the person whose rights the auto-drafter used) must still have `edit` (ADR-0045), **and** the settings must still say `whenReady = "auto_publish"`. Why: the settings alone would let a draft go out on the authority of someone who has left the team. In `scheduled-publishing.ts` the per-origin rule is an exhaustive `SCHEDULE_ORIGIN_CHECKS: Record<ScheduleOrigin, (deps: Deps, issue: MagazineIssue) => Promise<ScheduleFailure | null>>` (`schedule → null`; `auto → (await autoPublishAllowed(deps.db, magazineId)) ? null : "auto_off"`), run after the `edit` check so `no_rights` wins; origin = `issue.scheduledVia ?? "schedule"`. Failure → back to draft, editors told (new `ScheduleFailure` `"auto_off"`). Saving settings to "tell me only" also stops the open automatic draft's **automatic** schedule at once (Task 4; a person's schedule is never touched). A person rescheduling an automatic schedule makes it a person's schedule (`via` defaults to `"schedule"`). Known small race (ADR-0047 risk): the publisher reads the settings just before `publishIssue`; a "tell me only" save landing in those milliseconds loses to the publish, the same as a save landing just after it. Rejected: a separate "publish after" timer outside the issue status (a second publish trigger next to ADR-0046's, and the desk and builder would not show the time); re-reading the settings inside `publishIssue`'s claimed transaction (the issue service would depend on the auto-draft module, for a window of milliseconds).
 10. **Issue history for every issue, in one table.** `app.magazine_issue_history` (bigserial id, magazine, issue id `ON DELETE SET NULL` plus `issue_number`/`issue_title` snapshots, `event`, `origin`, `actor_id` null = automatic, `detail jsonb`, `created_at`). Events (`ISSUE_HISTORY_EVENTS`): `draft_made`, `draft_skipped` (written by the auto-drafter), `items_changed`, `auto_publish_stopped`, `published`, `deleted` (written by the issue service inside its claimed transactions through `recordIssueHistory(tx, entry)`). `items_changed` is written only for a person's save and skipped when the issue's latest history row (`ORDER BY created_at DESC, id DESC`) is an `items_changed` by the same person less than `ITEMS_CHANGED_QUIET_MINUTES = 60` ago (the builder autosaves). Rows written in one transaction share `created_at` (transaction time), so **every ordering is `created_at DESC, id DESC`**, and when one write makes two rows the service inserts `items_changed` first, then `auto_publish_stopped`. History rows are written in the write's transaction, after the write — **except `deleted`**, which is inserted after the delete's claim and **before** `payload.delete` (the row's `issue_id` FK would refuse a deleted issue; the delete then sets it null). The auto-drafter removing its own half-made draft (`via: "auto"`) writes no `deleted` row (editors never saw that draft; the run row records `failed`). `published` records `origin`; its actor is null for `"auto"`. The auto-draft screen shows the magazine's latest `HISTORY_LIMIT = 30` rows. Rejected: history only for auto-made issues (the issue service would need to know which issues the auto-drafter made, a special case; and "published / by whom" is useful for every issue).
 11. **Cron: one more step in the existing route.** `runMagazineIssueJobs` runs `runDueAutoDrafts(deps, now)` **first** (so a draft that is due is made before scheduled publishing and delivery), in its own `try`/log, at most `AUTO_DRAFT_RUNS_PER_PASS = 5` claims per pass, magazines with the oldest last run first. The due list (`listDueAutoDraftSettings` + the computed period keys) leaves out every (magazine, period) that already has a `made` or `skipped` run, or a `failed` run with `attempts >= AUTO_DRAFT_MAX_ATTEMPTS`, and only claims that were inserted or re-claimed count toward the 5 (an `already_ran`/`busy` answer does not use up the budget). `IssueJobsResult` gains `drafted` and `skipped`. Rejected: a second cron route (ADR-0046 Decision 10: an issue's lifecycle stays in one route).
 12. **Notices through the existing inbox (ADR-0025).** `notifications.ts` gains `notifyAutoDraftReady` (type `magazine_auto_draft_ready`, link to the builder; text says whether and when it goes out by itself) and `notifyAutoDraftSkipped` (type `magazine_auto_draft_skipped`, reasons `too_few` and `no_rights`, link to the auto-draft screen; never for a manual run, Decision 7), both to `listMagazineEditorIds`. `ScheduleFailure` gains `"auto_off"`. Stored in English (slice 3 precedent); dates in the text are formatted `en-GB`, `dateStyle: "long"`, `timeZone: "Europe/Amsterdam"`.
@@ -74,27 +74,27 @@
 
 **Create**
 
-| File                                                                                                          | Responsibility                                                                                         |
-| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `src/lib/magazines/auto-draft.ts`                                                                             | Settings values, defaults, input schema, `resolveSources` (client-safe).                               |
-| `src/lib/magazines/auto-draft-schedule.ts`                                                                    | `calendarPeriod`, `isPeriodDue`, `nextDraftAt`, `lookBackWindow`, `SuggestWindow` (client-safe, pure). |
-| `src/lib/magazines/suggestions.ts`                                                                            | `SuggestionReason` union and its zod schema (client-safe).                                             |
-| `src/lib/magazines/issue-history.ts`                                                                          | `ISSUE_HISTORY_EVENTS`, `IssueHistoryEntry` (client-safe).                                             |
-| `src/migrations/20261027c_magazine_auto_draft.ts` (+ `magazine-auto-draft.integration.test.ts`)               | Enum value, `scheduled_via`, four app tables.                                                          |
-| `src/server/magazines/issue-history.ts`                                                                       | `recordIssueHistory`, `listIssueHistory`.                                                              |
-| `src/server/magazines/items/suggesters.ts`                                                                    | `ITEM_SUGGESTERS`, `suggestCandidates`.                                                                |
-| `src/server/magazines/items/<kind>/suggest.ts` (7)                                                            | One suggester per kind.                                                                                |
+| File                                                                                                          | Responsibility                                                                                            |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `src/lib/magazines/auto-draft.ts`                                                                             | Settings values, defaults, input schema, `resolveSources` (client-safe).                                  |
+| `src/lib/magazines/auto-draft-schedule.ts`                                                                    | `calendarPeriod`, `isPeriodDue`, `nextDraftAt`, `lookBackWindow`, `SuggestWindow` (client-safe, pure).    |
+| `src/lib/magazines/suggestions.ts`                                                                            | `SuggestionReason` union and its zod schema (client-safe).                                                |
+| `src/lib/magazines/issue-history.ts`                                                                          | `ISSUE_HISTORY_EVENTS`, `IssueHistoryEntry` (client-safe).                                                |
+| `src/migrations/20261027c_magazine_auto_draft.ts` (+ `magazine-auto-draft.integration.test.ts`)               | Enum value, `scheduled_via`, four app tables.                                                             |
+| `src/server/magazines/issue-history.ts`                                                                       | `recordIssueHistory`, `listIssueHistory`.                                                                 |
+| `src/server/magazines/items/suggesters.ts`                                                                    | `ITEM_SUGGESTERS`, `suggestCandidates`.                                                                   |
+| `src/server/magazines/items/<kind>/suggest.ts` (7)                                                            | One suggester per kind.                                                                                   |
 | `src/server/magazines/auto-draft/settings.ts`                                                                 | The only reader/writer of the settings table: read, save, `autoPublishAllowed`, due list (Tasks 2, 4, 6). |
-| `src/server/magazines/auto-draft/window.ts`                                                                   | `suggestWindowFor` (Task 4).                                                                           |
-| `src/server/magazines/auto-draft/runs.ts`                                                                     | Claim, attach, finish runs; open auto-draft and "made automatically" lookups.                          |
-| `src/server/magazines/auto-draft/drafter.ts`                                                                  | `makeAutoDraft`, `runDueAutoDrafts`.                                                                   |
-| `src/server/magazines/auto-draft/drafter-failure.integration.test.ts`                                         | Failure and crash cleanup tests, in their own file for the module mock (Task 6).                      |
-| `src/server/magazines/auto-draft/picks.ts`                                                                    | Store and read auto-pick reasons.                                                                      |
-| `src/app/[locale]/communities/[slug]/magazine/auto-draft/page.tsx`                                            | The automatic-drafts screen.                                                                           |
-| `src/components/magazines/editor/auto-draft/{auto-draft-settings-form,make-draft-now,issue-history-list}.tsx` | The screen's parts.                                                                                    |
-| `src/components/magazines/editor/builder/auto-draft-notice.tsx`                                               | The builder's "made automatically" notice.                                                             |
-| `src/components/magazines/editor/suggestion-reason.tsx`                                                       | One reason in the viewer's language (rows and picker).                                                 |
-| `docs/adr/0047-magazine-auto-drafts-are-ordinary-issues-assembled-from-kind-suggesters.md`                    | ADR.                                                                                                   |
+| `src/server/magazines/auto-draft/window.ts`                                                                   | `suggestWindowFor` (Task 4).                                                                              |
+| `src/server/magazines/auto-draft/runs.ts`                                                                     | Claim, attach, finish runs; open auto-draft and "made automatically" lookups.                             |
+| `src/server/magazines/auto-draft/drafter.ts`                                                                  | `makeAutoDraft`, `runDueAutoDrafts`.                                                                      |
+| `src/server/magazines/auto-draft/drafter-failure.integration.test.ts`                                         | Failure and crash cleanup tests, in their own file for the module mock (Task 6).                          |
+| `src/server/magazines/auto-draft/picks.ts`                                                                    | Store and read auto-pick reasons.                                                                         |
+| `src/app/[locale]/communities/[slug]/magazine/auto-draft/page.tsx`                                            | The automatic-drafts screen.                                                                              |
+| `src/components/magazines/editor/auto-draft/{auto-draft-settings-form,make-draft-now,issue-history-list}.tsx` | The screen's parts.                                                                                       |
+| `src/components/magazines/editor/builder/auto-draft-notice.tsx`                                               | The builder's "made automatically" notice.                                                                |
+| `src/components/magazines/editor/suggestion-reason.tsx`                                                       | One reason in the viewer's language (rows and picker).                                                    |
+| `docs/adr/0047-magazine-auto-drafts-are-ordinary-issues-assembled-from-kind-suggesters.md`                    | ADR.                                                                                                      |
 
 **Modify**
 
@@ -236,7 +236,13 @@
   export type AutoDraftSkipReason = (typeof AUTO_DRAFT_SKIP_REASONS)[number];
   export type AutoDraftTrigger = "schedule" | "event" | "manual";
   /** Why the scheduled run sent an issue back to draft (moved here from notifications.ts, which re-exports the type). */
-  export const SCHEDULE_FAILURES = ["empty", "invalid_item", "no_rights", "error", "auto_off"] as const;
+  export const SCHEDULE_FAILURES = [
+    "empty",
+    "invalid_item",
+    "no_rights",
+    "error",
+    "auto_off",
+  ] as const;
   export type ScheduleFailure = (typeof SCHEDULE_FAILURES)[number];
   export type IssueHistoryDetail =
     | {
@@ -419,6 +425,7 @@
   - `deleteDraftIssue` → `deleted`, inserted **after the claim UPDATE and before `payload.delete`** in the same transaction (the FK refuses a row for an already-deleted issue; the delete then sets `issue_id` null and the snapshot stays). **No row** when `actor.via === "auto"` (the auto-drafter removing its own half-made draft).
 - Produces (`notifications.ts`): `ScheduleFailure` now imported from `src/lib/magazines/issue-history.ts` and re-exported (adds `"auto_off"`); content key `notifications.scheduleFailed.content.auto_off`: "Automatic publishing is switched off for {magazine}, so this issue stays a draft. Publish it yourself when it is ready."
 - Produces (`scheduled-publishing.ts`): `failSchedule` passes its reason as `unscheduleIssue(deps, issue, issue.updatedAt, null, reason ? { failure: reason } : undefined)` (the community-gone case passes no failure and records `why: "stopped"`). `resolveScheduledPublisher` keeps the `edit` check on `scheduledBy` first (`no_rights` wins), then runs the exhaustive per-origin check:
+
   ```ts
   const SCHEDULE_ORIGIN_CHECKS: Record<
     ScheduleOrigin,
@@ -426,9 +433,12 @@
   > = {
     schedule: async () => null,
     auto: async (deps, issue) =>
-      (await autoPublishAllowed(deps.db, requireRelationId(issue.magazine))) ? null : "auto_off",
+      (await autoPublishAllowed(deps.db, requireRelationId(issue.magazine)))
+        ? null
+        : "auto_off",
   };
   ```
+
   and returns `origin: issue.scheduledVia ?? "schedule"`. It never queries the settings table itself.
 
 - [ ] **Step 1: Write the failing tests** in `issue-service.integration.test.ts` (existing fixture; an issue with one approved article and one editorial):
@@ -629,10 +639,16 @@
   Note: "Make a draft now" works whether `enabled` is on or off, so the open automatic schedule is stopped only when `whenReady` becomes `"notify"`.
   Also in `settings.ts` (the only reader of the table, Decision 4):
   ```ts
-  export type DueAutoDraftSettings = StoredAutoDraftSettings & { magazineId: number; communityId: string; lastRunAt: Date | null };
+  export type DueAutoDraftSettings = StoredAutoDraftSettings & {
+    magazineId: number;
+    communityId: string;
+    lastRunAt: Date | null;
+  };
   /** Enabled rows with a cadence other than on_demand, a non-null scheduleStartsAt and updatedBy, of magazines whose
    *  community is not deleted; ordered by the magazine's latest run claimedAt (nulls first), then magazineId. */
-  export async function listDueAutoDraftSettings(db: Deps["db"]): Promise<DueAutoDraftSettings[]>;
+  export async function listDueAutoDraftSettings(
+    db: Deps["db"],
+  ): Promise<DueAutoDraftSettings[]>;
   ```
 - Produces (`runs.ts`): `export async function findOpenAutoDraft(deps: Deps, magazineId: number): Promise<MagazineIssue | null>` (Decision 7: an issue named by **any** run of this magazine (`issue_id` non-null) whose status is `draft` or `scheduled`; newest run first).
 - Produces (`paths.ts`): `export function magazineAutoDraftPath(communitySlug: string): string` → `${communityMagazinePath(slug)}/auto-draft`.
@@ -669,7 +685,10 @@
 - Produces (`pickers.ts`):
   ```ts
   export type PickerSuggestion = { reason: SuggestionReason | null };
-  export type SuggestionLoader = () => Promise<{ ctx: SuggestContext; window: SuggestWindow }>;
+  export type SuggestionLoader = () => Promise<{
+    ctx: SuggestContext;
+    window: SuggestWindow;
+  }>;
   /** Empty query: calls loadSuggestion once, asks every source of this kind (AUTO_DRAFT_SOURCE_ORDER entries whose
    *  AUTO_DRAFT_SOURCES[s].kind === kind) for suggestions (limit PICKER_LIMIT, the same exclude), then the plain search,
    *  de-duplicated by reference (the suggestion wins; when its openHref is null it takes the search entry's openHref),
@@ -721,11 +740,22 @@
     },
   ): Promise<RunClaim>;
   /** Names the run's issue right after createIssue (Decision 6), before any other step. */
-  export async function attachRunIssue(db: Deps["db"], runId: string, issueId: number): Promise<void>;
+  export async function attachRunIssue(
+    db: Deps["db"],
+    runId: string,
+    issueId: number,
+  ): Promise<void>;
   /** Decision 7: the issue is named by a `made` run. The one definition of "made automatically". */
-  export async function isAutoMadeIssue(db: Deps["db"], issueId: number): Promise<boolean>;
+  export async function isAutoMadeIssue(
+    db: Deps["db"],
+    issueId: number,
+  ): Promise<boolean>;
   /** (magazine, period) pairs that need no claim: a made or skipped run, or a failed run with attempts >= AUTO_DRAFT_MAX_ATTEMPTS. */
-  export async function finishedPeriodKeys(db: Deps["db"], magazineId: number, periodKeys: readonly string[]): Promise<Set<string>>;
+  export async function finishedPeriodKeys(
+    db: Deps["db"],
+    magazineId: number,
+    periodKeys: readonly string[],
+  ): Promise<Set<string>>;
   export async function finishAutoDraftRun(
     db: Deps["db"],
     runId: string,
@@ -814,7 +844,7 @@
   8. **Fill:** `setIssueItems(deps, issue, inputs, issue.updatedAt, actor)` with `actor.via = "auto"` → `saveAutoPicks` (saved block ids in order). If either throws: `deleteDraftIssue(issue, { ...actor, via: "auto" })`, `finishAutoDraftRun(failed)`, rethrow.
   9. **Schedule** when `whenReady = "auto_publish"`: `scheduleIssue(deps, saved, now + autoPublishDays days, saved.updatedAt, actor, now, { via: "auto" })`. If it throws (a refusal, for example `assertPublishable`): log it, keep the draft, `goesOutAt = null`.
   10. **Finish:** `finishAutoDraftRun(made)` → history `draft_made` → `notifyAutoDraftReady` (the notify-only text when `goesOutAt` is null).
-  History rows of the drafter (`draft_made`, `draft_skipped`) are written through `inPayloadTransaction` with actor `trigger === "manual" ? requestedBy : null` (Decision 8). Every `skipped` writes `draft_skipped`.
+      History rows of the drafter (`draft_made`, `draft_skipped`) are written through `inPayloadTransaction` with actor `trigger === "manual" ? requestedBy : null` (Decision 8). Every `skipped` writes `draft_skipped`.
 - Produces (`notifications.ts`), English, to `listMagazineEditorIds`:
   - `notifyAutoDraftReady(db, { editorIds, magazineName, issue: { id, title }, itemCount, goesOutAt: string | null, community })` → type `magazine_auto_draft_ready`; title "A new draft of {magazine} is ready"; content (notify) "We picked {count} things for you. Check the draft and publish it when you are happy."; content (auto) "We picked {count} things for you. It goes out by itself on {date} unless you stop it. Any change you make stops that."; link `issueBuilderPath`, label "Open the draft".
   - `notifyAutoDraftSkipped(db, { editorIds, magazineName, reason: "too_few" | "no_rights", found, needed, community })` → type `magazine_auto_draft_skipped` (the drafter never calls it for a manual run); title "No new draft of {magazine} this time"; `too_few`: "We found only {found} things to put in it, and a draft needs at least {needed}. Switch on more kinds of content, look back further, or add topics to your magazine."; `no_rights`: "The person who set up automatic drafts can no longer edit the magazine. Save the automatic draft settings again to restart them."; link `magazineAutoDraftPath`, label "Open automatic drafts".
@@ -823,7 +853,7 @@
 - Produces (messages): `magazineEditor.autoDraft.issueTitle` = "Issue of {date}" (en) and the Dutch equivalent (nl).
 - Router (add to `PROCEDURE_CAPABILITY` and `calls`): `makeAutoDraftNow: editorProcedure.input({ slug })` → `AutoDraftOutcome` (`requireMagazine(ctx.magazine)` → NOT_FOUND; period `manual:<crypto.randomUUID()>`, trigger `manual`, acting and requested by the caller, community `{ ...communityOf(ctx), name: ctx.community.name }`); `autoDraftHistory: editorProcedure.input({ slug })` → `IssueHistoryEntry[]` (`[]` without a magazine).
 
-- [ ] **Step 1: Write the failing DB tests** `drafter.integration.test.ts` (fixture: listed community, magazine with topics `[\`agents${suffix}\`]`, saved settings enabled monthly day 1 with `scheduleStartsAt = 2026-10-01T12:00:00Z` (noon, so the October period, due at midnight, never counts), sources `storyline` and `newsItem` **switched off** (global rows in the shared test DB must not change the counts), an **appointed editor** as `updatedBy` (so the no-rights test can remove them); content: 2 approved articles, 2 threads with replies, 1 coming event, 1 new member; `now = 2026-11-01T06:00:00Z` unless stated):
+- [ ] **Step 1: Write the failing DB tests** `drafter.integration.test.ts` (fixture: listed community, magazine with topics `[\`agents${suffix}\`]`, saved settings enabled monthly day 1 with `scheduleStartsAt = 2026-10-01T12:00:00Z`(noon, so the October period, due at midnight, never counts), sources`storyline`and`newsItem`**switched off** (global rows in the shared test DB must not change the counts), an **appointed editor** as`updatedBy`(so the no-rights test can remove them); content: 2 approved articles, 2 threads with replies, 1 coming event, 1 new member;`now = 2026-11-01T06:00:00Z` unless stated):
   - `it("makes one normal draft with reasons and tells the editors")`: `runDueAutoDrafts` → `{ drafted: 1, skipped: 0 }`; one draft issue, layout and visibility from settings, title "Issue of 1 November 2026", items in `AUTO_DRAFT_SOURCE_ORDER` (articles, event, threads, welcome last); `loadIssueEditorView(…).autoDraft.reasons` has one reason per saved block id; history `draft_made { trigger: "schedule", itemCount: 6, goesOutAt: null }` actor null; every editor has one `magazine_auto_draft_ready` notice linking the builder; the issue's `items_changed` history is empty (the auto-drafter is not a person).
   - `it("a second pass in the same period does nothing")`: run again at `+5 min` → `{ drafted: 0, skipped: 0 }`, still one issue, still one notice each.
   - `it("two runs at once make one draft")`: `Promise.all([runDueAutoDrafts(deps, now), makeAutoDraft(… manual …)])` → exactly one issue was created; the other outcome is `busy` or `skipped draft_open`.
@@ -964,7 +994,7 @@
 - **History is kept for every issue**, not only automatic ones, so the screen also shows a person's publish. Quick autosaves collapse into one line per person per hour.
 - **A run that crashes mid-way** is retried up to three times per period (the stale claim expires after 15 minutes); its half-made draft counts as open until the retry deletes it, so there is never a second one. After three tries the period is skipped silently (logged).
 - **Publishing from Payload admin** still bypasses the site path (no history, no announcement), as in slice 4.
-- **Suggesters are not a method on the kind interface.** The spec and ADR-0043 Decision 4 said `suggest` would be added to each item kind. The suggesters do live in each kind's folder, but in a parallel registry keyed by *source*, so one kind can have more than one source (the welcome is an editorial source). ADR-0047 supersedes ADR-0043 Decision 4.
+- **Suggesters are not a method on the kind interface.** The spec and ADR-0043 Decision 4 said `suggest` would be added to each item kind. The suggesters do live in each kind's folder, but in a parallel registry keyed by _source_, so one kind can have more than one source (the welcome is an editorial source). ADR-0047 supersedes ADR-0043 Decision 4.
 - **Auto-publish checks a person and the settings.** ADR-0046 said only the settings would be checked. We also require the person who set up automatic drafts to still have edit rights. ADR-0047 amends ADR-0046.
 - **A tiny race on switching auto-publish off.** If an editor saves "tell me only" in the same instant the scheduled run publishes, the publish can win, as if the save came just after. Recorded in ADR-0047.
 
