@@ -7,6 +7,7 @@ import {
   ISSUE_STATUS_LABELS,
   ISSUE_VISIBILITIES,
   ISSUE_VISIBILITY_LABELS,
+  PUBLISH_ORIGINS,
 } from "@/lib/magazines/values";
 import { ISSUE_ITEM_BLOCKS } from "@/server/magazines/items/blocks";
 
@@ -29,6 +30,7 @@ export const MagazineIssues: CollectionConfig = {
       "magazine",
       "number",
       "status",
+      "scheduledFor",
       "visibility",
       "publishedAt",
     ],
@@ -101,6 +103,29 @@ export const MagazineIssues: CollectionConfig = {
       name: "publishedBy",
       type: "text",
       admin: { description: "Better Auth user ID." },
+    },
+    {
+      name: "scheduledFor",
+      type: "date",
+      index: true,
+      admin: { date: { pickerAppearance: "dayAndTime" } },
+    },
+    {
+      name: "scheduledBy",
+      type: "text",
+      admin: {
+        description:
+          "Who scheduled it (Better Auth user ID). The scheduled publish runs as this person.",
+      },
+    },
+    {
+      name: "publishedVia",
+      type: "select",
+      options: PUBLISH_ORIGINS.map((value) => ({ label: value, value })),
+      admin: {
+        readOnly: true,
+        description: "How it was published: the Publish button or a schedule.",
+      },
     },
     { name: "items", type: "blocks", blocks: ISSUE_ITEM_BLOCKS },
   ],

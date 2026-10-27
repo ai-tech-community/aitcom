@@ -4972,6 +4972,7 @@
       "issuesEmpty": "Nog geen nummers. Begin er een met Nieuw nummer.",
       "status": {
         "draft": "Concept",
+        "scheduled": "Ingepland",
         "published": "Gepubliceerd"
       },
       "ready": "Klaar voor een nummer",
@@ -4996,6 +4997,7 @@
       "kicker": "{magazine} · Nummer {number} · {status}",
       "status": {
         "draft": "Concept",
+        "scheduled": "Ingepland",
         "published": "Gepubliceerd"
       },
       "workspaceLabel": "Nummer samenstellen",

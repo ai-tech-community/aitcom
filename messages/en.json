@@ -4972,6 +4972,7 @@
       "issuesEmpty": "No issues yet. Start one with New issue.",
       "status": {
         "draft": "Draft",
+        "scheduled": "Scheduled",
         "published": "Published"
       },
       "ready": "Ready for an issue",
@@ -4996,6 +4997,7 @@
       "kicker": "{magazine} · Issue {number} · {status}",
       "status": {
         "draft": "Draft",
+        "scheduled": "Scheduled",
         "published": "Published"
       },
       "workspaceLabel": "Put the issue together",
