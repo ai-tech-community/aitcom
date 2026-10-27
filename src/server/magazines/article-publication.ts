@@ -1,7 +1,8 @@
 import { sql as payloadSql } from "@payloadcms/db-postgres";
-import { sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 
 import { creditArticlePublication } from "@/server/articles/credit";
+import { awardMilestone } from "@/server/badges/engine";
 
 import { idList } from "./article-placement";
 import type { Deps } from "./deps";
@@ -18,7 +19,9 @@ import {
  * A magazine article is approved by its editor but stays a draft; it is
  * published when an issue holding it is published (or when it is added to
  * an already published issue). Its author is credited once for it, by
- * `creditPendingMagazineArticles`, after that publish commits.
+ * `creditPendingMagazineArticles`, after that publish commits. After the
+ * credit commits, its author earns the magazine milestone separately; a
+ * failed award never fails publishing and the badge backfill recovers it.
  */
 
 const CREDIT_ACTION = "magazine_article.published";
@@ -107,7 +110,7 @@ async function creditOne(deps: Deps, articleId: number): Promise<boolean> {
   if (!article.authorId) return false;
   const authorId = article.authorId;
 
-  return deps.db.transaction(async (t) => {
+  const credited = await deps.db.transaction(async (t) => {
     const { rows } = await t.execute<{ article_id: number }>(sql`
       INSERT INTO "app"."magazine_article_credit" ("article_id")
       SELECT "id" FROM "public"."articles"
@@ -128,6 +131,23 @@ async function creditOne(deps: Deps, articleId: number): Promise<boolean> {
     );
     return true;
   });
+  if (credited) await awardMilestone(deps.db, authorId, "magazine_published");
+  return credited;
+}
+
+/** Of `userIds`, authors with at least one credited magazine article. */
+export async function creditedMagazineAuthorIds(
+  db: Deps["db"],
+  userIds: readonly string[],
+): Promise<Set<string>> {
+  if (userIds.length === 0) return new Set();
+  const { rows } = await db.execute<{ author_id: string }>(sql`
+    SELECT DISTINCT a."author_id"
+    FROM "app"."magazine_article_credit" c
+    JOIN "public"."articles" a ON a."id" = c."article_id"
+    WHERE ${inArray(sql`a."author_id"`, [...userIds])}
+  `);
+  return new Set(rows.map((row) => row.author_id));
 }
 
 /**
