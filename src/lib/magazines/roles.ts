@@ -6,6 +6,9 @@ export const MAGAZINE_ROLES = [
 ] as const;
 export type MagazineRole = (typeof MAGAZINE_ROLES)[number];
 
+/** The role community owners/admins hold implicitly in their magazine (Decision 5). */
+export const COMMUNITY_LEADER_ROLE: MagazineRole = "editor_in_chief";
+
 export const MAGAZINE_CAPABILITIES = ["write", "edit", "manage"] as const;
 export type MagazineCapability = (typeof MAGAZINE_CAPABILITIES)[number];
 

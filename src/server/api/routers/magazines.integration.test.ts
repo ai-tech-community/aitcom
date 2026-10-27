@@ -681,7 +681,11 @@ describe.skipIf(!RUN_DB)(
       expect(await write(fx.ownerId)).toBeNull();
 
       const magazine = await saveMagazine();
-      const expected = { magazineId: magazine.id, magazineName: "The Gazette" };
+      const expected = {
+        magazineId: magazine.id,
+        magazineName: "The Gazette",
+        handIn: "mark_ready",
+      };
       expect(await write(fx.ownerId)).toEqual(expected);
       expect(await write(fx.adminId)).toEqual(expected);
       for (const viewerId of [

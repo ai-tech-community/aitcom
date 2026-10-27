@@ -13,8 +13,18 @@ const CONFIRMED = "2026-10-26T10:00:00.000Z";
 type Who = "editor" | "member" | "outsider";
 
 const STANDING: Record<Who, MagazineStanding> = {
-  editor: { isEditor: true, isMember: true },
-  member: { isEditor: false, isMember: true },
+  editor: {
+    role: "editor",
+    isEditor: true,
+    isMember: true,
+    leadsCommunity: false,
+  },
+  member: {
+    role: null,
+    isEditor: false,
+    isMember: true,
+    leadsCommunity: false,
+  },
   outsider: NO_STANDING,
 };
 

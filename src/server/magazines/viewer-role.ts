@@ -18,8 +18,8 @@ export function activeRoleOf(
 /**
  * The user's role in a community while their membership is active; null
  * for anonymous viewers, non-members and pending, invited or banned
- * members. The one membership read behind every magazine role decision
- * (`isMagazineEditorRole`, `resolveMagazineIssueAccess`). It does not look
+ * members. The one membership read behind every magazine standing
+ * (`loadMagazineEditorship`). It does not look
  * at the community itself: callers decide what a missing or soft-deleted
  * community means.
  */

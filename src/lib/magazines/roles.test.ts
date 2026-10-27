@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  COMMUNITY_LEADER_ROLE,
   MAGAZINE_CAPABILITIES,
   MAGAZINE_ROLES,
   handInFor,
@@ -10,6 +11,15 @@ import {
 } from "./roles";
 
 describe("magazine roles", () => {
+  it("gives community leaders editor-in-chief with every capability", () => {
+    expect({
+      role: COMMUNITY_LEADER_ROLE,
+      hasEveryCapability: MAGAZINE_CAPABILITIES.every((capability) =>
+        roleCan(COMMUNITY_LEADER_ROLE, capability),
+      ),
+    }).toEqual({ role: "editor_in_chief", hasEveryCapability: true });
+  });
+
   it("gives each role exactly its capabilities", () => {
     expect(
       MAGAZINE_ROLES.map((role) =>

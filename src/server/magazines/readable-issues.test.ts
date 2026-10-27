@@ -138,7 +138,7 @@ describe("buildIssueReadScope", () => {
   const hub = { id: "c-hub", slug: HUB_SLUG, isListedInDirectory: false };
 
   it("the Hub is content-public although it is unlisted", () => {
-    const s = buildIssueReadScope(editorScopeOf([]), [
+    const s = buildIssueReadScope(editorScopeOf([], []), [
       { ...hub, deletedAt: null },
       { ...unlisted, deletedAt: null },
       { ...listed, deletedAt: null },
@@ -149,10 +149,13 @@ describe("buildIssueReadScope", () => {
 
   it("takes the editor and member ids from the editorship seam", () => {
     const s = buildIssueReadScope(
-      editorScopeOf([
-        { communityId: "a", role: "owner", status: "active" },
-        { communityId: "d", role: "member", status: "active" },
-      ]),
+      editorScopeOf(
+        [
+          { communityId: "a", role: "owner", status: "active" },
+          { communityId: "d", role: "member", status: "active" },
+        ],
+        [],
+      ),
       [],
     );
     expect(s.editorCommunityIds).toEqual(["a"]);
@@ -161,7 +164,7 @@ describe("buildIssueReadScope", () => {
 
   it("a soft-deleted community is listed as deleted, listed or not", () => {
     const when = new Date("2026-01-01T00:00:00Z");
-    const s = buildIssueReadScope(editorScopeOf([]), [
+    const s = buildIssueReadScope(editorScopeOf([], []), [
       { ...listed, deletedAt: when },
       { ...hub, deletedAt: when },
     ]);
