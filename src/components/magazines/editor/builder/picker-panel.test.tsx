@@ -3,6 +3,8 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { useState, type ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { SuggestionReason } from "@/lib/magazines/suggestions";
+
 import { renderWithIntl } from "../../test-intl";
 
 type ArticleInput = { kind: "article"; articleId: number };
@@ -18,6 +20,7 @@ type Candidate = {
     | { type: "date"; label: "updated"; at: string }
   )[];
   openHref: string | null;
+  reason?: SuggestionReason | null;
 };
 
 const trpc = vi.hoisted(() => ({
@@ -92,6 +95,55 @@ afterEach(() => {
 });
 
 describe("PickerPanel", () => {
+  it("shows why a suggestion is offered", async () => {
+    trpc.candidates = [
+      {
+        input: { kind: "article", articleId: 4 },
+        reference: "article:4",
+        title: "Evals",
+        facts: [{ type: "byline", name: "Ada" }],
+        openHref: null,
+        reason: { type: "waitingSince", at: "2026-10-24T10:00:00.000Z" },
+      },
+    ];
+    renderPanel();
+    expect(
+      screen.getByRole("heading", { name: "Suggested for this issue" }),
+    ).toBeVisible();
+    expect(screen.getByText(/Approved and waiting since/)).toHaveTextContent(
+      "Approved and waiting since 24 Oct 2026",
+    );
+    expect(screen.getByText(/Approved and waiting since/)).toHaveClass(
+      "text-muted-foreground",
+      "text-xs",
+    );
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "eval" },
+    });
+    await act(() => vi.advanceTimersByTimeAsync(250));
+    expect(
+      screen.queryByRole("heading", { name: "Suggested for this issue" }),
+    ).toBeNull();
+  });
+
+  it("keeps the usual list when the first result has no reason", () => {
+    trpc.candidates = [
+      {
+        input: { kind: "article", articleId: 4 },
+        reference: "article:4",
+        title: "Evals",
+        facts: [],
+        openHref: null,
+        reason: null,
+      },
+    ];
+    renderPanel();
+    expect(
+      screen.queryByRole("heading", { name: "Suggested for this issue" }),
+    ).toBeNull();
+    expect(screen.getByText("Evals")).toBeVisible();
+  });
+
   it("searches the kind with the typed words after a pause", async () => {
     renderPanel();
     expect(trpc.queries.at(-1)).toEqual({

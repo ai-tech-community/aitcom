@@ -29,6 +29,15 @@ import type {
   MagazinesHomeData,
 } from "@/server/magazines/reading";
 
+/** Editor-only reasons are keyed by the saved block id. */
+export function automaticDraft(
+  reasons: NonNullable<
+    RouterOutputs["magazines"]["getIssueForEditing"]["autoDraft"]
+  >["reasons"] = {},
+) {
+  return { reasons };
+}
+
 export function autoDraftSettings(
   overrides: Partial<
     NonNullable<RouterOutputs["magazines"]["autoDraftSettings"]>

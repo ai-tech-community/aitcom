@@ -6,6 +6,7 @@ import type { MagazineIssue } from "@/payload-types";
 import { localDateTimeToIso } from "@/lib/magazines/schedule";
 
 import {
+  automaticDraft,
   eventView,
   forumThreadView,
   launchpadProjectView,
@@ -19,6 +20,7 @@ const originalTz = process.env.TZ;
 
 type EditingData = {
   issue: MagazineIssue;
+  autoDraft: ReturnType<typeof automaticDraft> | null;
   items: EditorItemView[];
   storedItems: unknown[];
   problems: ItemProblem[];
@@ -183,6 +185,7 @@ function articleView(itemId: string, id: number, title: string) {
 function twoArticles(overrides: Partial<EditingData> = {}): EditingData {
   return {
     issue: issue(),
+    autoDraft: null,
     items: [
       articleView("blk-1", 11, "First story"),
       articleView("blk-2", 12, "Second story"),
@@ -294,6 +297,206 @@ afterEach(() => {
 });
 
 describe("IssueBuilder", () => {
+  it("shows reasons and the notice for an automatic draft", () => {
+    trpc.editing = twoArticles({
+      autoDraft: automaticDraft({
+        "blk-1": { type: "waitingSince", at: "2026-10-24T10:00:00.000Z" },
+        "blk-2": { type: "topic", topic: "agents" },
+      }),
+    });
+    renderBuilder();
+    expect(
+      screen.getByRole("region", { name: "Made automatically" }),
+    ).toHaveTextContent("Check it, change what you like");
+    expect(screen.getByTestId("issue-item-blk-1")).toHaveTextContent(
+      "Picked because: Approved and waiting since 24 Oct 2026",
+    );
+    expect(screen.getByTestId("issue-item-blk-2")).toHaveTextContent(
+      "Picked because: Matches your topic agents",
+    );
+    expect(
+      screen.getByRole("region", { name: "Preview" }),
+    ).not.toHaveTextContent("Picked because");
+  });
+
+  it.each(["details", "items"])(
+    "says that a change stopped the automatic publish (%s)",
+    async (part) => {
+      trpc.editing = twoArticles({
+        issue: issue({
+          status: "scheduled",
+          scheduledVia: "auto",
+          scheduledFor: "2030-01-02T09:30:00.000Z",
+        }),
+        autoDraft: automaticDraft(),
+      });
+      trpc.updateIssue.mockResolvedValue(
+        issue({
+          title: "New title",
+          status: "draft",
+          scheduledVia: null,
+          scheduledFor: null,
+          updatedAt: T1,
+        }),
+      );
+      renderBuilder();
+      const message =
+        "Your change stopped the automatic publish. Publish it yourself when it is ready.";
+      expect(screen.queryByText(message)).toBeNull();
+      if (part === "details")
+        fireEvent.change(screen.getByLabelText("Title"), {
+          target: { value: "New title" },
+        });
+      else act(() => trpc.removeItem!("blk-2"));
+      await settleSaves();
+      const announcement = screen.getByText(message);
+      expect(announcement.closest('[role="status"]')).not.toBeNull();
+      // Later save-status updates must not read this announcement again.
+      expect(announcement.closest('[role="status"]')).toHaveAttribute(
+        "aria-atomic",
+        "false",
+      );
+      expect(screen.getAllByText(message)).toHaveLength(1);
+      expect(
+        screen.queryByRole("button", { name: "Stop the automatic publish" }),
+      ).toBeNull();
+      fireEvent.change(screen.getByLabelText("Title"), {
+        target: { value: "Another title" },
+      });
+      await settleSaves();
+      expect(screen.getAllByText(message)).toHaveLength(1);
+    },
+  );
+
+  it("shows nothing extra for an issue an editor made", async () => {
+    renderBuilder();
+    expect(
+      screen.queryByRole("region", { name: "Made automatically" }),
+    ).toBeNull();
+    expect(screen.queryByText(/Picked because/)).toBeNull();
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "New title" },
+    });
+    await settleSaves();
+    expect(
+      screen.queryByText(/Your change stopped the automatic publish/),
+    ).toBeNull();
+  });
+
+  it("stops the automatic publish through the builder's version queue", async () => {
+    trpc.editing = twoArticles({
+      issue: issue({
+        status: "scheduled",
+        scheduledVia: "auto",
+        scheduledFor: "2030-01-02T09:30:00.000Z",
+      }),
+      autoDraft: automaticDraft(),
+    });
+    let stopped!: (saved: MagazineIssue) => void;
+    trpc.unscheduleIssue.mockImplementation(
+      () =>
+        new Promise<MagazineIssue>((resolve) => {
+          stopped = resolve;
+        }),
+    );
+    renderBuilder();
+    screen.getByRole("button", { name: "Stop the automatic publish" }).focus();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Stop the automatic publish" }),
+      );
+    });
+    expect(
+      screen.getByRole("button", { name: "Stop the automatic publish" }),
+    ).toBeDisabled();
+    expect(trpc.unscheduleIssue).toHaveBeenCalledWith({
+      slug: "night-owls",
+      issueId: 5,
+      expectedUpdatedAt: T0,
+    });
+    await act(async () => {
+      stopped(
+        issue({
+          status: "draft",
+          scheduledVia: null,
+          scheduledFor: null,
+          updatedAt: T1,
+        }),
+      );
+    });
+    expect(
+      screen.queryByRole("button", { name: "Stop the automatic publish" }),
+    ).toBeNull();
+    expect(
+      screen.queryByText(/Your change stopped the automatic publish/),
+    ).toBeNull();
+    expect(
+      screen
+        .getByText("The issue is a draft again.")
+        .closest('[role="status"]'),
+    ).not.toBeNull();
+    expect(
+      screen.getByRole("region", { name: "Made automatically" }),
+    ).toHaveFocus();
+  });
+
+  it("shows a refusal when stopping the automatic publish fails", async () => {
+    trpc.editing = twoArticles({
+      issue: issue({
+        status: "scheduled",
+        scheduledVia: "auto",
+        scheduledFor: "2030-01-02T09:30:00.000Z",
+      }),
+      autoDraft: automaticDraft(),
+    });
+    trpc.unscheduleIssue.mockRejectedValue(refusal("NO_RIGHTS"));
+    renderBuilder();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Stop the automatic publish" }),
+      );
+    });
+    expect(screen.getByRole("alert")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Stop the automatic publish" }),
+    ).toBeEnabled();
+  });
+
+  it("does not cancel again when flushing a change already stopped the automatic publish", async () => {
+    trpc.editing = twoArticles({
+      issue: issue({
+        status: "scheduled",
+        scheduledVia: "auto",
+        scheduledFor: "2030-01-02T09:30:00.000Z",
+      }),
+      autoDraft: automaticDraft(),
+    });
+    trpc.updateIssue.mockResolvedValue(
+      issue({
+        title: "New title",
+        status: "draft",
+        scheduledVia: null,
+        scheduledFor: null,
+        updatedAt: T1,
+      }),
+    );
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "New title" },
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Stop the automatic publish" }),
+      );
+    });
+    expect(trpc.updateIssue).toHaveBeenCalled();
+    expect(trpc.unscheduleIssue).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Stop the automatic publish" }),
+    ).toBeNull();
+  });
+
   it("schedules with the builder's version and shows the time in the top bar", async () => {
     process.env.TZ = "America/Los_Angeles";
     vi.setSystemTime(new Date("2030-01-01T00:00:00.000Z"));

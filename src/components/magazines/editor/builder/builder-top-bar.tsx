@@ -8,7 +8,11 @@ import { SectionLabel } from "@/components/ui/section-label";
 import type { AutosaveStatus } from "@/components/use-autosave";
 import { Link } from "@/i18n/navigation";
 import { communityMagazinePath } from "@/lib/magazines/paths";
-import { canIssue, type IssueStatus } from "@/lib/magazines/values";
+import {
+  canIssue,
+  type IssueStatus,
+  type ScheduleOrigin,
+} from "@/lib/magazines/values";
 
 import { useScheduleTime } from "../use-schedule-time";
 
@@ -18,11 +22,14 @@ export type BuilderTopBarProps = {
   issueNumber: number;
   status: IssueStatus;
   scheduledFor: string | null;
+  scheduledVia: ScheduleOrigin | null;
   /** The title as typed; an untitled issue says so. */
   title: string;
   saveStatus: AutosaveStatus;
   /** Why the last save failed, in friendly words, when no item row shows it. */
   saveError: string | null;
+  /** A successful save that changed how the issue will be published. */
+  saveAnnouncement?: string | null;
   onRetry: () => void;
   /** Conflict recovery: load the issue again from the server. */
   onReload: () => void;
@@ -43,9 +50,11 @@ export function BuilderTopBar({
   issueNumber,
   status,
   scheduledFor,
+  scheduledVia,
   title,
   saveStatus,
   saveError,
+  saveAnnouncement,
   onRetry,
   onReload,
   onPublish,
@@ -80,18 +89,25 @@ export function BuilderTopBar({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <SaveStatusText status={saveStatus} onRetry={onRetry} />
+          <SaveStatusText
+            status={saveStatus}
+            onRetry={onRetry}
+            announcement={saveAnnouncement}
+          />
           {scheduledFor && (
             <time
               dateTime={scheduledFor}
               className="text-muted-foreground text-xs"
             >
-              {t.rich("goesOut", {
-                time: displayTime(scheduledFor),
-                timestamp: (chunks) => (
-                  <span className="font-mono">{chunks}</span>
-                ),
-              })}
+              {t.rich(
+                scheduledVia === "auto" ? "goesOutAutomatically" : "goesOut",
+                {
+                  time: displayTime(scheduledFor),
+                  timestamp: (chunks) => (
+                    <span className="font-mono">{chunks}</span>
+                  ),
+                },
+              )}
             </time>
           )}
           {!canIssue(status, "publish") ? (
@@ -139,9 +155,11 @@ export function BuilderTopBar({
 function SaveStatusText({
   status,
   onRetry,
+  announcement,
 }: {
   status: AutosaveStatus;
   onRetry: () => void;
+  announcement?: string | null;
 }) {
   const t = useTranslations("magazineEditor.builder.save");
 
@@ -163,10 +181,13 @@ function SaveStatusText({
 
   return (
     <div
+      role="status"
       aria-live="polite"
-      className="text-muted-foreground min-h-5 text-xs leading-5"
+      aria-atomic="false"
+      className="text-muted-foreground flex min-h-5 flex-col text-xs leading-5"
     >
       {content}
+      {announcement && <span>{announcement}</span>}
     </div>
   );
 }

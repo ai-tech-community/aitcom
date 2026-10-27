@@ -11,9 +11,48 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
-import { ItemRow } from "./item-row";
+import { ItemRow, type ItemRowView } from "./item-row";
 
 describe("ItemRow", () => {
+  it.each([
+    { reason: { type: "mostReplies" as const, count: 42 } },
+    { reason: null },
+  ])("shows why the magazine picked the item ($reason)", ({ reason }) => {
+    const view: ItemRowView = {
+      key: "thread-1",
+      title: "Community chat",
+      kindLabel: "Forum thread",
+      reason,
+      unavailable: false,
+      membersOnly: false,
+      problem: null,
+      highlighted: false,
+      selected: false,
+    };
+    renderWithIntl(
+      <ul>
+        <ItemRow
+          view={view}
+          position={1}
+          total={1}
+          actions={{
+            canMoveUp: false,
+            canMoveDown: false,
+            onMove: vi.fn(),
+            onRemove: vi.fn(),
+          }}
+        />
+      </ul>,
+    );
+    const line = screen.queryByText(/Picked because:/);
+    if (reason) {
+      expect(line).toHaveTextContent(
+        "Picked because: Most talked about: 42 replies",
+      );
+      expect(line).toHaveClass("text-muted-foreground", "text-xs");
+    } else expect(line).toBeNull();
+  });
+
   it("exposes its edit button so Done can return focus", () => {
     const editButtonRef = vi.fn();
     renderWithIntl(
@@ -23,6 +62,7 @@ describe("ItemRow", () => {
             key: "item-1",
             title: "Community meetup",
             kindLabel: "Event",
+            reason: null,
             unavailable: false,
             membersOnly: false,
             problem: null,
@@ -55,6 +95,7 @@ describe("ItemRow", () => {
             key: "item-1",
             title: "Community meetup",
             kindLabel: "Event",
+            reason: null,
             unavailable: false,
             membersOnly: true,
             problem: null,

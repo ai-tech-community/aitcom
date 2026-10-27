@@ -5166,6 +5166,23 @@
     },
     "builder": {
       "metaTitle": "Edit issue",
+      "reasons": {
+        "waitingSince": "Approved and waiting since <number>{date}</number>",
+        "topic": "Matches your topic {topic}",
+        "eventComingUp": "Coming up on <number>{date}</number>",
+        "eventRecap": "Took place on <number>{date}</number>, <number>{going}</number> going",
+        "mostReplies": "Most talked about: <number>{count}</number> replies",
+        "mostUpvotes": "Most upvoted: <number>{count}</number> upvotes",
+        "newMembers": "<number>{count}</number> new members joined"
+      },
+      "autoDraft": {
+        "label": "Made automatically",
+        "scheduled": "The magazine made this draft. It goes out by itself on <timestamp>{time}</timestamp> unless you stop it. Any change you make stops that too.",
+        "draft": "The magazine made this draft from what happened in your community. Check it, change what you like, and publish it when you are happy.",
+        "stop": "Stop the automatic publish"
+      },
+      "autoPublishStopped": "Your change stopped the automatic publish. Publish it yourself when it is ready.",
+      "goesOutAutomatically": "Goes out by itself <timestamp>{time}</timestamp>",
       "backToMagazine": "Back to {magazine}",
       "kicker": "{magazine} · Issue {number} · {status}",
       "status": {
@@ -5216,6 +5233,7 @@
         "done": "Done"
       },
       "items": {
+        "pickedBecause": "Picked because:",
         "label": "In this issue",
         "empty": "This issue is empty. Add something from Add more.",
         "article": "Article",
@@ -5253,6 +5271,7 @@
       },
       "add": {
         "label": "Add more",
+        "suggested": "Suggested for this issue",
         "kind": "What to add",
         "tabs": {
           "article": "Articles",

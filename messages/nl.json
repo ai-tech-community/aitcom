@@ -5166,6 +5166,23 @@
     },
     "builder": {
       "metaTitle": "Nummer bewerken",
+      "reasons": {
+        "waitingSince": "Goedgekeurd en wacht sinds <number>{date}</number>",
+        "topic": "Past bij je onderwerp {topic}",
+        "eventComingUp": "Binnenkort, op <number>{date}</number>",
+        "eventRecap": "Vond plaats op <number>{date}</number>, <number>{going}</number> deelnemers",
+        "mostReplies": "Meest besproken: <number>{count}</number> reacties",
+        "mostUpvotes": "Meeste stemmen: <number>{count}</number> stemmen",
+        "newMembers": "<number>{count}</number> nieuwe leden erbij"
+      },
+      "autoDraft": {
+        "label": "Automatisch gemaakt",
+        "scheduled": "Het magazine heeft dit concept gemaakt. Het verschijnt vanzelf op <timestamp>{time}</timestamp>, tenzij je dat stopt. Als je iets aanpast, stopt dat ook.",
+        "draft": "Het magazine heeft dit concept gemaakt op basis van wat er in je community is gebeurd. Kijk het na, pas aan wat je wilt en publiceer het als je tevreden bent.",
+        "stop": "Automatisch publiceren stoppen"
+      },
+      "autoPublishStopped": "Je wijziging heeft het automatisch publiceren gestopt. Publiceer het zelf als het klaar is.",
+      "goesOutAutomatically": "Verschijnt vanzelf op <timestamp>{time}</timestamp>",
       "backToMagazine": "Terug naar {magazine}",
       "kicker": "{magazine} · Nummer {number} · {status}",
       "status": {
@@ -5216,6 +5233,7 @@
         "done": "Klaar"
       },
       "items": {
+        "pickedBecause": "Gekozen omdat:",
         "label": "In dit nummer",
         "empty": "Dit nummer is leeg. Voeg iets toe via Meer toevoegen.",
         "article": "Artikel",
@@ -5253,6 +5271,7 @@
       },
       "add": {
         "label": "Meer toevoegen",
+        "suggested": "Voorgesteld voor dit nummer",
         "kind": "Wat wil je toevoegen",
         "tabs": {
           "article": "Artikelen",

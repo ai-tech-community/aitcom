@@ -28,6 +28,7 @@ import { isUnavailableItem } from "../../items/registry";
 import { editorErrorKey, readEditorError } from "../editor-errors";
 import { publicOptInRequired } from "../public-opt-in";
 import { AddItemsPanel } from "./add-items-panel";
+import { AutoDraftNotice } from "./auto-draft-notice";
 import { BuilderTopBar } from "./builder-top-bar";
 import { ISSUE_TITLE_MAX, IssueDetails } from "./issue-details";
 import type { ItemRowView } from "./item-row";
@@ -229,6 +230,12 @@ function IssueWorkspace({
 
   /** The issue as the server last returned it. */
   const [issue, setIssue] = useState<MagazineIssue>(data.issue);
+  // Save callbacks can run back-to-back before React renders the next version.
+  const lastIssue = useRef(data.issue);
+  const [publicationNotice, setPublicationNotice] = useState<
+    "edited" | "stopped" | null
+  >(null);
+  const autoDraftNotice = useRef<HTMLElement>(null);
   const [details, setDetails] = useState<IssueDetailsDraft>(initial.details);
   const [items, setItems] = useState<BuilderItem[]>(initial.items);
   const [savedViews, setSavedViews] = useState(initial.savedViews);
@@ -263,6 +270,8 @@ function IssueWorkspace({
   const pendingAdds = useRef(new Map<string, AddedContent>());
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [stopping, setStopping] = useState(false);
+  const [stopFailed, setStopFailed] = useState(false);
 
   const published = !canIssue(issue.status, "publish");
   const titleValid =
@@ -313,16 +322,32 @@ function IssueWorkspace({
     optInPending ||
     savable.items.length !== items.length;
 
+  const acceptIssue = useCallback((saved: MagazineIssue, edited: boolean) => {
+    const previous = lastIssue.current;
+    if (
+      edited &&
+      previous.status === "scheduled" &&
+      previous.scheduledVia === "auto" &&
+      saved.status === "draft" &&
+      saved.scheduledVia == null
+    ) {
+      setPublicationNotice("edited");
+    } else if (saved.status !== "draft") {
+      setPublicationNotice(null);
+    }
+    lastIssue.current = saved;
+    setIssue(saved);
+  }, []);
   const onDetailsSaved = useCallback(
-    (saved: MagazineIssue) => setIssue(saved),
-    [],
+    (saved: MagazineIssue) => acceptIssue(saved, true),
+    [acceptIssue],
   );
   const onItemsSaved = useCallback(
     (saved: {
       issue: MagazineIssue;
       viewsByKey: Map<string, EditorItemView>;
     }) => {
-      setIssue(saved.issue);
+      acceptIssue(saved.issue, true);
       setSavedViews(saved.viewsByKey);
       // The server checks every item on save: what it accepted is valid.
       setProblems(new Map());
@@ -331,7 +356,7 @@ function IssueWorkspace({
         slug: communitySlug,
       });
     },
-    [utils, communitySlug],
+    [utils, communitySlug, acceptIssue],
   );
 
   const autosave = useIssueSave({
@@ -460,6 +485,7 @@ function IssueWorkspace({
         t: tItems,
       }),
       kindLabel: tItems(builderKindLabelKey(item)),
+      reason: data.autoDraft?.reasons[item.key] ?? null,
       unavailable: view !== undefined && "unavailable" in view,
       membersOnly: view !== undefined && isMembersOnlyView(view),
       problem,
@@ -525,7 +551,7 @@ function IssueWorkspace({
     try {
       await writer.run(async (expectedUpdatedAt) => {
         const out = await write(expectedUpdatedAt);
-        setIssue(out);
+        acceptIssue(out, false);
         return out.updatedAt;
       });
     } catch (error) {
@@ -561,9 +587,39 @@ function IssueWorkspace({
       }),
     );
   const unschedule = () =>
-    changePublication((expectedUpdatedAt) =>
-      unscheduleIssue({ slug: communitySlug, issueId, expectedUpdatedAt }),
-    );
+    changePublication(async (expectedUpdatedAt) => {
+      // Flushing a person's edit may already have stopped an automatic schedule.
+      if (lastIssue.current.status === "draft") return lastIssue.current;
+      return unscheduleIssue({
+        slug: communitySlug,
+        issueId,
+        expectedUpdatedAt,
+      });
+    });
+
+  const stopAutomaticPublish = async () => {
+    const focused = document.activeElement;
+    const hadFocus = autoDraftNotice.current?.contains(focused);
+    setStopping(true);
+    setStopFailed(false);
+    try {
+      await unschedule();
+      setPublicationNotice((current) => current ?? "stopped");
+      // Preserve a deliberate focus move made while the request was pending.
+      if (
+        hadFocus &&
+        (document.activeElement === focused ||
+          document.activeElement === document.body)
+      ) {
+        autoDraftNotice.current?.focus();
+      }
+    } catch {
+      // changePublication already translated the refusal or marked a conflict.
+      setStopFailed(true);
+    } finally {
+      setStopping(false);
+    }
+  };
 
   const displayStatus =
     paused && (autosave.status === "saved" || autosave.status === "idle")
@@ -578,9 +634,17 @@ function IssueWorkspace({
         issueNumber={Number(issue.number)}
         status={issue.status}
         scheduledFor={issue.scheduledFor ?? null}
+        scheduledVia={issue.scheduledVia ?? null}
         title={details.title}
         saveStatus={displayStatus}
         saveError={failure?.itemKey ? null : failureMessage}
+        saveAnnouncement={
+          publicationNotice === "edited"
+            ? t("autoPublishStopped")
+            : publicationNotice === "stopped"
+              ? tPublish("unscheduledLead")
+              : null
+        }
         onRetry={() => void autosave.retry()}
         onReload={onReload}
         onPublish={() => {
@@ -610,6 +674,23 @@ function IssueWorkspace({
             confirmed={confirmed}
             onConfirmedChange={setConfirmed}
           />
+          {data.autoDraft && (
+            <div className="flex flex-col gap-2">
+              <AutoDraftNotice
+                ref={autoDraftNotice}
+                status={issue.status}
+                scheduledVia={issue.scheduledVia ?? null}
+                scheduledFor={issue.scheduledFor ?? null}
+                onStop={() => void stopAutomaticPublish()}
+                stopping={stopping}
+              />
+              {stopFailed && publishError && (
+                <p role="alert" className="text-destructive text-sm">
+                  {publishError}
+                </p>
+              )}
+            </div>
+          )}
           <ItemsList
             rows={rows}
             onMove={(from, to) =>

@@ -15,6 +15,7 @@ import type { CandidateFact, PickableKindId } from "@/lib/magazines/picker";
 import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
+import { SuggestionReasonText } from "../suggestion-reason";
 import type { AddPanelProps } from "./items/types";
 
 /** How long a search waits after the last keystroke. */
@@ -191,6 +192,11 @@ export function PickerPanel({
                   ))}
                 </p>
               )}
+              {candidate.reason && (
+                <p className="text-muted-foreground text-xs break-words">
+                  <SuggestionReasonText reason={candidate.reason} />
+                </p>
+              )}
             </div>
             <Button
               ref={(el: HTMLButtonElement | null) => {
@@ -233,6 +239,9 @@ export function PickerPanel({
           {resultStatus}
         </p>
       </div>
+      {!words && offered[0]?.reason && (
+        <h3 className="text-sm font-medium">{t("suggested")}</h3>
+      )}
       {body}
       {loaded && (
         <p className="text-muted-foreground text-sm">{t(`hint.${kind}`)}</p>
