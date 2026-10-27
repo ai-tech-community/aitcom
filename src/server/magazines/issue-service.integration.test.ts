@@ -912,8 +912,6 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     );
   });
 
-  // ── Publishing ────────────────────────────────────────────────────────
-
   // ── Scheduling and publication ────────────────────────────────────────
 
   async function readyIssue(label: string) {

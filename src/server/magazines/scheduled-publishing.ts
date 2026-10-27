@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import type { MagazineIssue } from "@/payload-types";
+import type { PublishOrigin } from "@/lib/magazines/values";
 import { communities } from "@/server/db/schema";
 
 import type { Deps } from "./deps";
@@ -14,6 +15,7 @@ import {
   isItemProblemCode,
   publishIssue,
   unscheduleIssue,
+  type IssueActor,
 } from "./issue-service";
 import { notifyScheduleFailed, type ScheduleFailure } from "./notifications";
 import { isConcurrencyAbort } from "./payload-writes";
@@ -99,6 +101,29 @@ async function retrySchedule(
   return "retried";
 }
 
+/** The current scheduler must still be allowed to edit this magazine. */
+async function resolveScheduledPublisher(
+  deps: Deps,
+  issue: MagazineIssue,
+  community: IssueActor["community"],
+): Promise<{ actor: IssueActor; origin: PublishOrigin } | ScheduleFailure> {
+  const standing = await loadMagazineEditorship(
+    deps.db,
+    {
+      communityId: issue.communityId,
+      magazineId: requireRelationId(issue.magazine),
+    },
+    issue.scheduledBy ?? null,
+  );
+  if (!issue.scheduledBy || !standingCan(standing, "edit")) {
+    return "no_rights";
+  }
+  return {
+    actor: { userId: issue.scheduledBy, community },
+    origin: "schedule",
+  };
+}
+
 async function publishDueIssue(
   deps: Deps,
   issue: MagazineIssue,
@@ -111,26 +136,16 @@ async function publishDueIssue(
     if (!community || community.deletedAt) {
       return (await failSchedule(deps, issue, null)) ? "failed" : "retried";
     }
-    const standing = await loadMagazineEditorship(
-      deps.db,
-      {
-        communityId: issue.communityId,
-        magazineId: requireRelationId(issue.magazine),
-      },
-      issue.scheduledBy ?? null,
-    );
-    if (!issue.scheduledBy || !standingCan(standing, "edit")) {
-      return (await failSchedule(deps, issue, "no_rights"))
+    const publisher = await resolveScheduledPublisher(deps, issue, community);
+    if (typeof publisher === "string") {
+      return (await failSchedule(deps, issue, publisher))
         ? "failed"
         : "retried";
     }
-    await publishIssue(
-      deps,
-      issue,
-      issue.updatedAt,
-      { userId: issue.scheduledBy, community },
-      { origin: "schedule", now },
-    );
+    await publishIssue(deps, issue, issue.updatedAt, publisher.actor, {
+      origin: publisher.origin,
+      now,
+    });
     return "published";
   } catch (error) {
     const code = magazineErrorCodeOf(error);

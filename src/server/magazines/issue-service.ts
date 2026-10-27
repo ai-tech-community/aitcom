@@ -499,7 +499,7 @@ export async function setIssueItems(
   };
 }
 
-/** Schedules a draft or moves an existing schedule, after publish validation. */
+/** Checks the time before publish validation, then schedules a draft or reschedules. */
 export async function scheduleIssue(
   deps: Deps,
   issue: MagazineIssue,

@@ -23,7 +23,10 @@ export type UnsubscribePayload =
     }
   | { scope: typeof MAGAZINE_UNSUBSCRIBE_SCOPE; subscriptionId: string };
 
-export type DigestUnsubscribePayload = UnsubscribePayload;
+export type DigestUnsubscribePayload = {
+  scope: typeof DIGEST_UNSUBSCRIBE_SCOPE;
+  userId: string;
+};
 
 /** Human inbox listed beside the one-click HTTPS URL (RFC 8058). */
 export const DIGEST_UNSUBSCRIBE_MAILTO = "mailto:info@klevox.com";
