@@ -5264,5 +5264,16 @@
       "membersTitle": "Het team",
       "empty": "Voeg iemand toe om mee te schrijven en nummers te maken."
     }
+  },
+  "magazineMail": {
+    "confirm": {
+      "subject": "Bevestig: nieuwe nummers van {magazine} per e-mail",
+      "heading": "Nieuwe nummers van {magazine} ontvangen?",
+      "body": "Iemand, hopelijk jij, heeft gevraagd om op dit adres een e-mail te krijgen als {magazine} een nieuw nummer heeft. Klik op de knop om ja te zeggen.",
+      "action": "Ja, mail me nieuwe nummers",
+      "expires": "De link werkt 7 dagen.",
+      "ignore": "Heb je hier niet om gevraagd? Negeer deze e-mail dan. We mailen je niet opnieuw."
+    },
+    "footer": "AIT Community"
   }
 }

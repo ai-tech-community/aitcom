@@ -60,6 +60,7 @@ import {
   searchStaffCandidates,
 } from "@/server/magazines/staff-service";
 import { getPayloadClient } from "@/server/payload";
+import { countSubscribers } from "@/server/magazines/subscriptions/service";
 
 /**
  * The magazine editor API (ADR-0042/0043). Every procedure is a community
@@ -195,6 +196,11 @@ const staffUserInput = z.object({
 });
 
 export const magazinesRouter = createTRPCRouter({
+  subscriberCounts: writerProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(({ ctx }) =>
+      ctx.magazine ? countSubscribers(ctx.db, ctx.magazine.id) : null,
+    ),
   getSettings: managerProcedure
     .input(z.object({ slug: z.string() }))
     .query(({ ctx }) => ({

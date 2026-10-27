@@ -17,6 +17,7 @@ describe("message catalogues", () => {
     for (const [english, dutch] of [
       [en.magazineEditor, nl.magazineEditor],
       [en.magazines, nl.magazines],
+      [en.magazineMail, nl.magazineMail],
       [en.articleEditor.magazine, nl.articleEditor.magazine],
       [en.badges, nl.badges],
     ]) {

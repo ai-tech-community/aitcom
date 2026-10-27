@@ -5264,5 +5264,16 @@
       "membersTitle": "The team",
       "empty": "Add someone to help write articles and make issues."
     }
+  },
+  "magazineMail": {
+    "confirm": {
+      "subject": "Confirm: new issues of {magazine} by email",
+      "heading": "Get new issues of {magazine}?",
+      "body": "Someone, hopefully you, asked us to email this address when {magazine} has a new issue. Click the button to say yes.",
+      "action": "Yes, email me new issues",
+      "expires": "The link works for 7 days.",
+      "ignore": "Did not ask for this? Then ignore this email. We will not write again."
+    },
+    "footer": "AIT Community"
   }
 }

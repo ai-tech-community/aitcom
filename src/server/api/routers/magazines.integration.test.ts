@@ -45,6 +45,7 @@ const PROCEDURE_CAPABILITY: Record<string, MagazineCapability | "public"> = {
   availableArticles: "edit",
   reviewQueue: "edit",
   reviewArticle: "edit",
+  subscriberCounts: "write",
   myDraftArticles: "write",
   myMagazineArticles: "write",
 };
@@ -323,6 +324,26 @@ describe.skipIf(!RUN_DB)(
       return { magazine, article, issue: published };
     }
 
+    it("magazine staff see subscriber counts", async () => {
+      const owner = callerAs(fx.ownerId).magazines;
+      expect(await owner.subscriberCounts({ slug: slug() })).toBeNull();
+      const magazine = await saveMagazine();
+      await m.db.insert(m.schema.magazineSubscriptions).values([
+        {
+          magazineId: magazine.id,
+          userId: fx.memberId,
+          confirmedAt: new Date(),
+        },
+        { magazineId: magazine.id, email: `waiting-${fx.sfx}@example.test` },
+      ]);
+      const contributorId = await appointed(magazine.id, "contributor");
+      for (const userId of [fx.ownerId, contributorId]) {
+        expect(
+          await callerAs(userId).magazines.subscriberCounts({ slug: slug() }),
+        ).toEqual({ withAccount: 1, byEmail: 0, waiting: 1 });
+      }
+    });
+
     // ── Tests ─────────────────────────────────────────────────────────────
 
     it("schedules and unschedules through the API", async () => {
@@ -541,6 +562,7 @@ describe.skipIf(!RUN_DB)(
               topics: [],
               defaultVisibility: "members",
             }),
+          subscriberCounts: () => caller.subscriberCounts({ slug: slug() }),
           listStaff: () => caller.listStaff({ slug: slug() }),
           searchStaffCandidates: () =>
             caller.searchStaffCandidates({ slug: slug(), query: "" }),
