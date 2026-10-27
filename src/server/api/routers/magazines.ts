@@ -2,6 +2,11 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { routing } from "@/i18n/routing";
+import {
+  autoDraftSettingsInput,
+  type AutoDraftSettings,
+} from "@/lib/magazines/auto-draft";
+import { nextDraftAt } from "@/lib/magazines/auto-draft-schedule";
 import { REVIEW_DECISIONS, REVIEW_NOTE_MAX } from "@/lib/magazines/review";
 import { MAGAZINE_ROLES, type MagazineCapability } from "@/lib/magazines/roles";
 import {
@@ -24,6 +29,7 @@ import {
 import {
   loadMagazineEditorship,
   requireCapability,
+  standingCan,
 } from "@/server/magazines/editorship";
 import {
   findIssueInCommunity,
@@ -42,7 +48,11 @@ import {
   updateIssueDetails,
 } from "@/server/magazines/issue-service";
 import { issueItemInputSchema } from "@/server/magazines/items/registry";
-import { searchPickerCandidates } from "@/server/magazines/items/pickers";
+import { pickerCandidatesFor } from "@/server/magazines/items/pickers";
+import { suggestContextFor } from "@/server/magazines/items/context";
+import { makeAutoDraft } from "@/server/magazines/auto-draft/drafter";
+import { listIssueHistory } from "@/server/magazines/issue-history";
+import { suggestWindowFor } from "@/server/magazines/auto-draft/window";
 import {
   listAvailableArticles,
   listDraftArticles,
@@ -50,6 +60,8 @@ import {
 } from "@/server/magazines/magazine-articles";
 import {
   getMagazineForCommunity,
+  magazineTopicsOf,
+  normalizeTopics,
   type MagazineCommunity,
   saveMagazineSettings,
 } from "@/server/magazines/magazine-service";
@@ -61,6 +73,11 @@ import {
 } from "@/server/magazines/staff-service";
 import { getPayloadClient } from "@/server/payload";
 import { countSubscribers } from "@/server/magazines/subscriptions/service";
+import {
+  readAutoDraftSettings,
+  saveAutoDraftSettings,
+  type StoredAutoDraftSettings,
+} from "@/server/magazines/auto-draft/settings";
 
 /**
  * The magazine editor API (ADR-0042/0043). Every procedure is a community
@@ -190,12 +207,77 @@ function requireMagazine(magazine: Magazine | null): Magazine {
   return magazine;
 }
 
+function autoDraftSettingsOf({
+  scheduleStartsAt: _scheduleStartsAt,
+  updatedBy: _updatedBy,
+  ...settings
+}: StoredAutoDraftSettings): AutoDraftSettings {
+  return settings;
+}
+
 const staffUserInput = z.object({
   slug: z.string(),
   userId: z.string().min(1).max(255),
 });
 
 export const magazinesRouter = createTRPCRouter({
+  makeAutoDraftNow: editorProcedure
+    .input(z.object({ slug: z.string() }))
+    .mutation(({ ctx }) =>
+      makeAutoDraft(depsOf(ctx), {
+        magazine: requireMagazine(ctx.magazine),
+        community: { ...communityOf(ctx), name: ctx.community.name },
+        periodKey: `manual:${crypto.randomUUID()}`,
+        trigger: "manual",
+        actingUserId: ctx.session.user.id,
+        requestedBy: ctx.session.user.id,
+        now: new Date(),
+      }),
+    ),
+
+  autoDraftHistory: editorProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(({ ctx }) =>
+      ctx.magazine ? listIssueHistory(ctx.db, ctx.magazine.id) : [],
+    ),
+
+  autoDraftSettings: editorProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx }) => {
+      if (!ctx.magazine) return null;
+      const stored = await readAutoDraftSettings(ctx.db, ctx.magazine.id);
+      return {
+        settings: autoDraftSettingsOf(stored),
+        nextDraftAt:
+          nextDraftAt(
+            stored,
+            new Date(),
+            stored.scheduleStartsAt,
+          )?.toISOString() ?? null,
+        canManage: standingCan(ctx.standing, "manage"),
+        magazineDefaultVisibility: ctx.magazine.defaultVisibility,
+        hasTopics: normalizeTopics(magazineTopicsOf(ctx.magazine)).length > 0,
+        communityIsPrivate: !isContentPublic(ctx.community),
+        community: {
+          slug: ctx.community.slug,
+          isListedInDirectory: ctx.community.isListedInDirectory,
+        },
+      };
+    }),
+
+  saveAutoDraftSettings: managerProcedure
+    .input(autoDraftSettingsInput.extend({ slug: z.string() }))
+    .mutation(async ({ ctx, input }) =>
+      autoDraftSettingsOf(
+        await saveAutoDraftSettings(
+          depsOf(ctx),
+          requireMagazine(ctx.magazine),
+          input,
+          { ...actorOf(ctx), leadsCommunity: ctx.standing.leadsCommunity },
+        ),
+      ),
+    ),
+
   subscriberCounts: writerProcedure
     .input(z.object({ slug: z.string() }))
     .query(({ ctx }) =>
@@ -407,22 +489,41 @@ export const magazinesRouter = createTRPCRouter({
           .default([]),
       }),
     )
-    .query(async ({ ctx, input }) =>
-      ctx.magazine
-        ? searchPickerCandidates(
-            input.kind,
-            input.query,
-            {
-              deps: depsOf(ctx),
-              magazineId: ctx.magazine.id,
-              community: communityOf(ctx),
+    .query(async ({ ctx, input }) => {
+      const magazine = ctx.magazine;
+      if (!magazine) return [];
+      const deps = depsOf(ctx);
+      return pickerCandidatesFor(
+        input.kind,
+        input.query,
+        {
+          deps,
+          magazineId: magazine.id,
+          community: communityOf(ctx),
+          viewerId: ctx.session.user.id,
+          locale: routing.defaultLocale,
+        },
+        input.exclude,
+        async () => {
+          const now = new Date();
+          return {
+            ctx: suggestContextFor(deps, {
+              magazine,
+              community: { ...communityOf(ctx), name: ctx.community.name },
               viewerId: ctx.session.user.id,
               locale: routing.defaultLocale,
-            },
-            input.exclude,
-          )
-        : [],
-    ),
+              now,
+            }),
+            window: await suggestWindowFor(
+              deps,
+              magazine.id,
+              (await readAutoDraftSettings(ctx.db, magazine.id)).lookBack,
+              now,
+            ),
+          };
+        },
+      );
+    }),
 
   // Serves the editor desk's ready list; the issue builder uses pickerCandidates.
   availableArticles: editorProcedure

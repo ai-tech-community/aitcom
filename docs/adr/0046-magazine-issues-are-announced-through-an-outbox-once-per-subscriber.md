@@ -121,11 +121,11 @@ It extends [ADR-0042](0042-magazine-issues-are-read-through-one-access-resolver.
    schedule fields and records `publishedVia` (`button` or `schedule`) with
    one injected clock.
 
-   Slice 5's auto-publish will plug into `publishIssue` through a scheduled
-   issue with origin `auto`, added to `PUBLISH_ORIGINS` then. Its rights are
-   checked against the magazine's automatic-publication settings instead of
-   a person; validation, placement, credit and the announcement still use
-   the same publication path.
+   Automatic publication uses `publishIssue` through a scheduled issue with
+   origin `auto`, now included in `PUBLISH_ORIGINS`. Validation, placement,
+   credit and the announcement use the same publication path.
+
+   Amended by ADR-0047: auto-publish needs both the scheduling person's `edit` and `whenReady = "auto_publish"` in the magazine's settings; the origin is stored in `scheduledVia`.
 
 9. **Failures preserve newer edits (plan Decision 9).** Read typed refusal
    codes through `magazineErrorCodeOf`, never message parsing. Empty issues,

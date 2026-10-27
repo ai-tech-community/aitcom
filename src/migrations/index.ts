@@ -1,5 +1,7 @@
+import * as migration_20261027d_magazine_auto_draft_followups from "./20261027d_magazine_auto_draft_followups";
 import * as migration_20261027a_magazine_staff from "./20261027a_magazine_staff";
 import * as migration_20261027b_magazine_subscriptions from "./20261027b_magazine_subscriptions";
+import * as migration_20261027c_magazine_auto_draft from "./20261027c_magazine_auto_draft";
 import * as migration_20261026b_magazine_platform_items from "./20261026b_magazine_platform_items";
 import * as migration_20261026a_magazines from "./20261026a_magazines";
 import * as migration_20261022a_seven_public_events from "./20261022a_seven_public_events";
@@ -1043,5 +1045,15 @@ export const migrations = [
     up: migration_20261027b_magazine_subscriptions.up,
     down: migration_20261027b_magazine_subscriptions.down,
     name: "20261027b_magazine_subscriptions",
+  },
+  {
+    up: migration_20261027c_magazine_auto_draft.up,
+    down: migration_20261027c_magazine_auto_draft.down,
+    name: "20261027c_magazine_auto_draft",
+  },
+  {
+    up: migration_20261027d_magazine_auto_draft_followups.up,
+    down: migration_20261027d_magazine_auto_draft_followups.down,
+    name: "20261027d_magazine_auto_draft_followups",
   },
 ];

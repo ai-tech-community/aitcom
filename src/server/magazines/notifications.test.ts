@@ -1,15 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import * as messages from "@/i18n/messages";
+import type { ScheduleFailure } from "@/lib/magazines/issue-history";
 import { notifications } from "@/server/db/schema";
 
 import type { Deps } from "./deps";
 import {
   insertMagazineNoticesIn,
   issuePublishedNotices,
+  notifyAutoDraftReady,
+  notifyAutoDraftSkipped,
   notifyRoleAssigned,
   notifyScheduleFailed,
-  type ScheduleFailure,
 } from "./notifications";
 
 afterEach(() => vi.restoreAllMocks());
@@ -25,6 +27,8 @@ describe("magazine notices", () => {
         "The person who scheduled it can no longer publish for The Gazette. Open it to publish or schedule it yourself.",
       error:
         "Something went wrong on our side, so it could not be published. It is a draft again. Open it to try again.",
+      auto_off:
+        "Automatic publishing is switched off for The Gazette, so this issue stays a draft. Publish it yourself when it is ready.",
     };
     for (const reason of Object.keys(copy) as ScheduleFailure[]) {
       const values = vi.fn<
@@ -191,4 +195,98 @@ it("insertMagazineNoticesIn throws", async () => {
       ],
     ),
   ).rejects.toThrow("Inbox unavailable");
+});
+
+describe("automatic draft notices", () => {
+  const common = {
+    editorIds: ["owner", "editor"],
+    magazineName: "The Gazette",
+    community: { id: "community", slug: "our-community" },
+  };
+  it.each([null, "2026-11-04T06:00:00Z"])(
+    "tells editors a draft is ready (%s)",
+    async (goesOutAt) => {
+      const values = vi.fn(async () => undefined);
+      const insert = vi.fn(() => ({ values }));
+      await notifyAutoDraftReady({ insert } as unknown as Deps["db"], {
+        ...common,
+        issue: { id: 42, title: "November" },
+        itemCount: 6,
+        goesOutAt,
+      });
+      expect(insert).toHaveBeenCalledExactlyOnceWith(notifications);
+      expect(values).toHaveBeenCalledExactlyOnceWith(
+        common.editorIds.map((userId) => ({
+          userId,
+          type: "magazine_auto_draft_ready",
+          title: "A new draft of The Gazette is ready",
+          content: goesOutAt
+            ? "We picked 6 things for you. It goes out by itself on 4 November 2026 unless you stop it. Any change you make stops that."
+            : "We picked 6 things for you. Check the draft and publish it when you are happy.",
+          communityId: "community",
+          metadata: {
+            reviewPath: "/communities/our-community/magazine/issues/42/edit",
+            linkLabel: "Open the draft",
+            communityId: "community",
+            issueId: 42,
+            itemCount: 6,
+            goesOutAt,
+          },
+        })),
+      );
+    },
+  );
+  it.each([
+    [0, "We found nothing to put in it"],
+    [1, "We found only 1 thing to put in it"],
+    [2, "We found only 2 things to put in it"],
+  ])("says plainly how much was found (%i)", async (found, start) => {
+    const values = vi.fn(async (_rows: { content: string }[]) => undefined);
+    const insert = vi.fn(() => ({ values }));
+    await notifyAutoDraftSkipped({ insert } as unknown as Deps["db"], {
+      ...common,
+      reason: "too_few",
+      found,
+      needed: 3,
+    });
+    expect(values.mock.calls[0]![0][0]!.content).toBe(
+      `${start}, and a draft needs at least 3. Switch on more kinds of content, look back further, or add topics to your magazine.`,
+    );
+  });
+  it.each(["too_few", "no_rights"] as const)(
+    "tells editors why no draft was made (%s)",
+    async (reason) => {
+      const values = vi.fn(async () => undefined);
+      const insert = vi.fn(() => ({ values }));
+      const found = reason === "too_few" ? 1 : null;
+      const needed = reason === "too_few" ? 3 : null;
+      await notifyAutoDraftSkipped({ insert } as unknown as Deps["db"], {
+        ...common,
+        reason,
+        found,
+        needed,
+      });
+      expect(insert).toHaveBeenCalledExactlyOnceWith(notifications);
+      expect(values).toHaveBeenCalledExactlyOnceWith(
+        common.editorIds.map((userId) => ({
+          userId,
+          type: "magazine_auto_draft_skipped",
+          title: "No new draft of The Gazette this time",
+          content:
+            reason === "too_few"
+              ? "We found only 1 thing to put in it, and a draft needs at least 3. Switch on more kinds of content, look back further, or add topics to your magazine."
+              : "The person who set up automatic drafts can no longer edit the magazine. Save the automatic draft settings again to restart them.",
+          communityId: "community",
+          metadata: {
+            reviewPath: "/communities/our-community/magazine/auto-draft",
+            linkLabel: "Open automatic drafts",
+            communityId: "community",
+            reason,
+            found,
+            needed,
+          },
+        })),
+      );
+    },
+  );
 });

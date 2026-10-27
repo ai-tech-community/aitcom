@@ -23,7 +23,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Link } from "@/i18n/navigation";
+import type { SuggestionReason } from "@/lib/magazines/suggestions";
 import { cn } from "@/lib/utils";
+
+import { SuggestionReasonText } from "../suggestion-reason";
 
 /** What one row of the item list shows. */
 export type ItemRowView = {
@@ -32,6 +35,7 @@ export type ItemRowView = {
   title: string;
   /** The item's kind in plain words ("Article", "Text section"). */
   kindLabel: string;
+  reason: SuggestionReason | null;
   /** Editors only: the saved item's content cannot be shown to readers. */
   unavailable: boolean;
   /** Why the item stops a save or a publish, in friendly words; null when nothing does. */
@@ -102,6 +106,11 @@ export function ItemRow({
   const label = (
     <span className="flex min-w-0 flex-1 flex-col">
       <span className="truncate text-sm font-medium">{view.title}</span>
+      {view.reason && (
+        <span className="text-muted-foreground text-xs break-words">
+          {t("pickedBecause")} <SuggestionReasonText reason={view.reason} />
+        </span>
+      )}
       <span className="text-muted-foreground text-xs">
         {view.kindLabel}
         {view.unavailable && <> · {t("unavailable")}</>}

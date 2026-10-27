@@ -64,6 +64,11 @@ export function magazineSettingsPath(communitySlug: string): string {
   return `${communityMagazinePath(communitySlug)}/settings`;
 }
 
+/** Where editors set up automatic drafts. */
+export function magazineAutoDraftPath(communitySlug: string): string {
+  return `${communityMagazinePath(communitySlug)}/auto-draft`;
+}
+
 /** Where magazine managers choose the team. */
 export function magazineTeamPath(communitySlug: string): string {
   return `${communityMagazinePath(communitySlug)}/team`;

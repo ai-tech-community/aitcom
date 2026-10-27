@@ -8,6 +8,7 @@ import {
   ISSUE_VISIBILITIES,
   MAX_MAGAZINE_TOPICS,
   PUBLISH_ORIGINS,
+  SCHEDULE_ORIGINS,
 } from "@/lib/magazines/values";
 
 import { Articles } from "./Articles";
@@ -76,6 +77,11 @@ describe("magazine-issues collection", () => {
       index: true,
     });
     expect(pick(MagazineIssues.fields, "scheduledBy").type).toBe("text");
+    const scheduledVia = pick(MagazineIssues.fields, "scheduledVia");
+    expect(scheduledVia.type).toBe("select");
+    expect(scheduledVia.options!.map((o) => o.value)).toEqual([
+      ...SCHEDULE_ORIGINS,
+    ]);
     const publishedVia = pick(MagazineIssues.fields, "publishedVia");
     expect(publishedVia.type).toBe("select");
     expect(publishedVia.options!.map((o) => o.value)).toEqual([
@@ -213,5 +219,34 @@ describe("magazine subscriptions migration", () => {
     expect(
       index.indexOf('name: "20261027b_magazine_subscriptions"'),
     ).toBeGreaterThan(index.indexOf('name: "20261027a_magazine_staff"'));
+  });
+});
+
+describe("magazine auto-draft migration", () => {
+  it("ships an idempotent migration registered after subscriptions", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/migrations/20261027c_magazine_auto_draft.ts"),
+      "utf8",
+    );
+    for (const needle of [
+      "ADD VALUE IF NOT EXISTS 'auto'",
+      '"scheduled_via"',
+      'CREATE TABLE IF NOT EXISTS "app"."magazine_auto_draft_settings"',
+      'CREATE TABLE IF NOT EXISTS "app"."magazine_auto_draft_run"',
+      'CREATE TABLE IF NOT EXISTS "app"."magazine_auto_pick"',
+      'CREATE TABLE IF NOT EXISTS "app"."magazine_issue_history"',
+    ]) {
+      expect(source).toContain(needle);
+    }
+    const index = readFileSync(
+      join(process.cwd(), "src/migrations/index.ts"),
+      "utf8",
+    );
+    expect(index).toContain('name: "20261027c_magazine_auto_draft"');
+    expect(
+      index.indexOf('name: "20261027c_magazine_auto_draft"'),
+    ).toBeGreaterThan(
+      index.indexOf('name: "20261027b_magazine_subscriptions"'),
+    );
   });
 });

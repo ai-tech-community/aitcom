@@ -9,6 +9,8 @@ import type {
   UnavailableItem,
 } from "@/lib/magazines/item-views";
 import type { CandidateFact } from "@/lib/magazines/picker";
+import type { SuggestWindow } from "@/lib/magazines/auto-draft-schedule";
+import type { SuggestionReason } from "@/lib/magazines/suggestions";
 import type { MagazineIssue } from "@/payload-types";
 
 import type { Deps, PayloadClient } from "../deps";
@@ -44,6 +46,29 @@ export interface ItemPickerSource<Input> {
     ctx: PickerContext,
     exclude: readonly string[],
   ): Promise<PickerSourceCandidate<Input>[]>;
+}
+
+/** viewerId is the acting person; editor links follow that person's rights. */
+export type SuggestContext = PickerContext & {
+  community: ItemCommunity & { name: string };
+  /** The magazine's topics, trimmed and lower-case. */
+  topics: readonly string[];
+  now: Date;
+};
+
+export type SuggestConfig = { limit: number; exclude: readonly string[] };
+
+export type SuggestionSourceCandidate<Input> = PickerSourceCandidate<Input> & {
+  reason: SuggestionReason;
+};
+
+export interface ItemSuggestionSource<Input> {
+  /** Best first, at most config.limit, never a reference in config.exclude. Deterministic. */
+  suggest(
+    ctx: SuggestContext,
+    window: SuggestWindow,
+    config: SuggestConfig,
+  ): Promise<SuggestionSourceCandidate<Input>[]>;
 }
 
 /** What an item strategy knows about the issue it works for. */

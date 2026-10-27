@@ -34,6 +34,8 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-27T14:00:00Z"));
   getPayloadClient.mockResolvedValue(payload);
   runMagazineIssueJobs.mockResolvedValue({
+    drafted: 4,
+    skipped: 2,
     published: 2,
     failed: 1,
     retried: 3,
@@ -62,6 +64,8 @@ describe("magazine issue cron", () => {
     expect(JSON.stringify(body)).not.toContain("@");
     expect(body).toEqual({
       success: true,
+      drafted: 4,
+      skipped: 2,
       published: 2,
       failed: 1,
       retried: 3,

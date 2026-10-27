@@ -8,6 +8,7 @@ import {
   ISSUE_VISIBILITIES,
   ISSUE_VISIBILITY_LABELS,
   PUBLISH_ORIGINS,
+  SCHEDULE_ORIGINS,
 } from "@/lib/magazines/values";
 import { ISSUE_ITEM_BLOCKS } from "@/server/magazines/items/blocks";
 
@@ -119,12 +120,23 @@ export const MagazineIssues: CollectionConfig = {
       },
     },
     {
+      name: "scheduledVia",
+      type: "select",
+      options: SCHEDULE_ORIGINS.map((value) => ({ label: value, value })),
+      admin: {
+        readOnly: true,
+        description:
+          "Who set the schedule: a person, or automatic drafts. A person's change stops an automatic schedule.",
+      },
+    },
+    {
       name: "publishedVia",
       type: "select",
       options: PUBLISH_ORIGINS.map((value) => ({ label: value, value })),
       admin: {
         readOnly: true,
-        description: "How it was published: the Publish button or a schedule.",
+        description:
+          "How it was published: the Publish button, a schedule, or automatically.",
       },
     },
     { name: "items", type: "blocks", blocks: ISSUE_ITEM_BLOCKS },

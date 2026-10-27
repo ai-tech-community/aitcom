@@ -61,6 +61,16 @@ export type ItemKindRegistry = {
 
 export const ITEM_KINDS: ItemKindRegistry = STRATEGIES;
 
+/** A builder input's content identity, shared by search and suggestions. */
+export function referenceOfInput<K extends ItemKindId>(
+  kind: K,
+  input: InputOf<K>,
+): string | null {
+  // toStored omits only the optional block id; references identify content.
+  const stored = ITEM_KINDS[kind].toStored(input) as StoredItem<K>;
+  return ITEM_KINDS[kind].referenceOf(stored);
+}
+
 /** An issue item block as Payload stores it in `magazine-issues.items`. */
 export type StoredBlock = {
   blockType: ItemKindId;
@@ -161,6 +171,14 @@ function referenceOfBlock<K extends ItemKindId>(
   return ITEM_KINDS[kind].referenceOf(asStored<K>(block));
 }
 
+/** Content identities in block order; issue-owned content has none. */
+export function referencesOfBlocks(blocks: StoredBlock[]): string[] {
+  return blocks.flatMap((block) => {
+    const reference = referenceOfBlock(block.blockType, block);
+    return reference === null ? [] : [reference];
+  });
+}
+
 async function openHrefsOfKind<K extends ItemKindId>(
   kind: K,
   group: IndexedBlock[],
@@ -198,11 +216,7 @@ export async function validateIssueItems(
   ctx: ItemContext,
   previous?: readonly StoredBlock[],
 ): Promise<ItemProblem[]> {
-  const previousReferences = new Set<string>();
-  for (const block of previous ?? []) {
-    const reference = referenceOfBlock(block.blockType, block);
-    if (reference !== null) previousReferences.add(reference);
-  }
+  const previousReferences = new Set(referencesOfBlocks([...(previous ?? [])]));
   const perKind = await Promise.all(
     [...groupByKind(blocks)].map(([kind, group]) =>
       validateKind(kind, group, ctx, previousReferences),

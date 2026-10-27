@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { MagazineIssue } from "@/payload-types";
 
 import type { Deps } from "./deps";
+vi.mock("./auto-draft/picks", () => ({
+  loadAutoDraftForIssue: vi.fn(async () => null),
+}));
+
 import { loadIssueEditorView } from "./issue-editing";
 
 describe("issue editor view", () => {
@@ -36,6 +40,7 @@ describe("issue editor view", () => {
       community: { id: "community", slug: "town", isListedInDirectory: true },
     });
 
+    expect(view.autoDraft).toBeNull();
     expect(view).toHaveProperty("openHrefs", {
       "article:11": "/communities/town/magazine/articles/own-story/edit",
     });

@@ -4894,6 +4894,134 @@
     }
   },
   "magazineEditor": {
+    "autoDraft": {
+      "issueTitle": "Nummer van {date}",
+      "welcome": {
+        "heading": "Welkom aan onze nieuwe leden",
+        "body": "Sinds {date} {count, plural, one {is # persoon} other {zijn # mensen}} lid geworden van {community}. Zeg even hallo!"
+      },
+      "metaTitle": "Automatische concepten",
+      "title": "Automatische concepten",
+      "back": "Terug naar het tabblad Magazine",
+      "intro": "Laat het magazine een concept maken van wat er in je community gebeurde. Jij kijkt het na en beslist wat er verschijnt.",
+      "settingsTitle": "Instellingen voor automatische concepten",
+      "readOnly": "Alleen de hoofdredacteur kan dit aanpassen.",
+      "enabled": "Vanzelf concepten maken",
+      "nextDraft": "Volgend concept: <timestamp>{date}</timestamp>",
+      "howOften": "Hoe vaak",
+      "cadences": {
+        "monthly": "Elke maand",
+        "biweekly": "Elke twee weken",
+        "weekly": "Elke week",
+        "after_event": "Na elk evenement van de community",
+        "on_demand": "Alleen als ik erom vraag"
+      },
+      "monthDay": "Dag van de maand",
+      "weekday": "Dag van de week",
+      "weekdays": {
+        "1": "Maandag",
+        "2": "Dinsdag",
+        "3": "Woensdag",
+        "4": "Donderdag",
+        "5": "Vrijdag",
+        "6": "Zaterdag",
+        "7": "Zondag"
+      },
+      "lookBack": "Terugkijken",
+      "lookBacks": {
+        "since_last_issue": "Sinds het vorige nummer",
+        "days_30": "De afgelopen 30 dagen",
+        "days_7": "De afgelopen 7 dagen"
+      },
+      "whatToPick": "Wat nemen we mee",
+      "sources": {
+        "article": "Artikelen van leden die klaarstaan voor het magazine",
+        "storyline": "Verhalen uit AIT Nieuws",
+        "newsItem": "Koppen uit AIT Nieuws",
+        "event": "Evenementen van de community",
+        "forumThread": "Forumgesprekken",
+        "launchpadProject": "Launchpad-projecten",
+        "welcome": "Nieuwe leden welkom heten"
+      },
+      "upTo": "Maximaal<comma>,</comma>",
+      "addTopics": "Voeg onderwerpen toe aan je magazine om AIT Nieuws te krijgen.",
+      "neverReuse": "Neem niets mee dat al in een eerder nummer staat",
+      "draftsLookLike": "Zo zien concepten eruit",
+      "layout": "Indeling",
+      "layouts": {
+        "cover-story": "Omslagverhaal"
+      },
+      "visibility": "Zichtbaarheid",
+      "inheritVisibility": "Hetzelfde als het magazine ({current})",
+      "visibilities": {
+        "members": "Alleen leden",
+        "public": "Iedereen"
+      },
+      "whenReady": "Als een concept klaar is",
+      "whenReadyOptions": {
+        "notify": "Laat het de redactie weten, dan publiceren we zelf",
+        "auto_publish": "Publiceer het vanzelf na {days, plural, one {# dag} other {# dagen}}, tenzij iemand het stopt"
+      },
+      "autoPublishDays": "Dagen tot publicatie",
+      "whenReadyHelp": "De redactie krijgt eerst bericht. Elke wijziging aan het concept stopt de automatische publicatie.",
+      "save": "Opslaan",
+      "saved": "Opgeslagen.",
+      "settingsLoadFailed": "De instellingen voor automatische concepten konden niet worden geladen.",
+      "historyLoadFailed": "De geschiedenis kon niet worden geladen.",
+      "tryAgain": "Probeer opnieuw",
+      "makeNow": {
+        "button": "Maak nu een concept",
+        "made": "Je concept staat klaar.",
+        "open": "Open het concept",
+        "too_few": "Er is nog niet genoeg: we vonden {found, plural, =0 {niets} one {# ding} other {# dingen}} en een concept heeft er {needed} nodig.",
+        "draft_open": "Er staat al een concept open. Maak het eerst af of verwijder het.",
+        "no_rights": "Je kunt geen concepten maken voor dit magazine.",
+        "busy": "Er wordt nu een concept gemaakt. Probeer het over een minuut opnieuw."
+      },
+      "history": {
+        "title": "Geschiedenis",
+        "automatic": "Het magazine",
+        "draftMade": "heeft een concept gemaakt",
+        "draftMadeScheduled": "heeft een concept gemaakt dat op {date} verschijnt",
+        "draftSkipped": "heeft geen concept gemaakt: {reason}",
+        "skipReasons": {
+          "too_few": "er was nog niet genoeg (gevonden: {found, plural, =0 {niets} one {# ding} other {# dingen}}, een concept heeft er {needed} nodig)",
+          "draft_open": "er staat al een concept open",
+          "no_rights": "degene die dit instelde mag het magazine niet meer bewerken"
+        },
+        "itemsChanged": "heeft de inhoud aangepast",
+        "stopped": "heeft de automatische publicatie gestopt",
+        "stoppedByEditing": "heeft de automatische publicatie gestopt door het concept te bewerken",
+        "failed": "kon het niet vanzelf publiceren: {failure}",
+        "failures": {
+          "auto_off": "automatisch publiceren staat uit",
+          "no_rights": "degene die het instelde mag het magazine niet meer bewerken",
+          "empty": "het nummer is leeg",
+          "invalid_item": "een onderdeel kan niet worden gepubliceerd",
+          "error": "er ging iets mis"
+        },
+        "published": {
+          "button": "heeft het gepubliceerd",
+          "schedule": "heeft het op het geplande moment gepubliceerd",
+          "auto": "heeft het vanzelf gepubliceerd"
+        },
+        "deleted": "heeft het verwijderd",
+        "issue": "Nummer {number}: {title}",
+        "empty": "Nog niets. Als het magazine een concept maakt of overslaat, zie je het hier.",
+        "formerMember": "Een oud-lid"
+      },
+      "numberRange": "Gebruik een heel getal van 1 tot en met {max}.",
+      "nextDraftUpdatesOnSave": "De volgende datum wordt bijgewerkt als je opslaat.",
+      "sourceHelp": {
+        "article": "Goedgekeurde artikelen die het langst wachten eerst",
+        "storyline": "Verhalen over je onderwerpen, nieuwste updates eerst",
+        "event": "Komende evenementen eerst op datum, daarna afgelopen evenementen met de meeste deelnemers",
+        "forumThread": "Meeste reacties, daarna meeste weergaven",
+        "launchpadProject": "Meeste stemmen",
+        "newsItem": "Koppen over je onderwerpen, nieuwste eerst",
+        "welcome": "Een welkom als er nieuwe mensen bij komen, met een aantal en zonder namen"
+      }
+    },
     "review": {
       "metaTitle": "Een artikel lezen",
       "back": "Terug naar het tabblad Magazine",
@@ -5049,6 +5177,25 @@
     },
     "builder": {
       "metaTitle": "Nummer bewerken",
+      "reasons": {
+        "waitingSince": "Goedgekeurd en wacht sinds <number>{date}</number>",
+        "topic": "Past bij je onderwerp {topic}",
+        "eventComingUp": "Binnenkort, op <number>{date}</number>",
+        "eventRecap": "Vond plaats op <number>{date}</number>, {going, plural, one {<number>#</number> deelnemer} other {<number>#</number> deelnemers}}",
+        "mostReplies": "Meest besproken: {count, plural, one {<number>#</number> reactie} other {<number>#</number> reacties}}",
+        "mostUpvotes": "Meeste stemmen: {count, plural, one {<number>#</number> stem} other {<number>#</number> stemmen}}",
+        "newMembers": "{count, plural, one {<number>#</number> nieuw lid erbij} other {<number>#</number> nieuwe leden erbij}}"
+      },
+      "autoDraft": {
+        "label": "Automatisch gemaakt",
+        "scheduled": "Het magazine heeft dit concept gemaakt. Het verschijnt vanzelf op <timestamp>{time}</timestamp>, tenzij je dat stopt. Als je iets aanpast, stopt dat ook.",
+        "draft": "Het magazine heeft dit concept gemaakt op basis van wat er in je community is gebeurd. Kijk het na, pas aan wat je wilt en publiceer het als je tevreden bent.",
+        "stop": "Automatisch publiceren stoppen",
+        "changePicks": "Kies wat er wordt meegenomen",
+        "regionLabel": "Over dit concept"
+      },
+      "autoPublishStopped": "Je wijziging heeft het automatisch publiceren gestopt. Publiceer het zelf als het klaar is.",
+      "goesOutAutomatically": "Verschijnt vanzelf op <timestamp>{time}</timestamp>",
       "backToMagazine": "Terug naar {magazine}",
       "kicker": "{magazine} · Nummer {number} · {status}",
       "status": {
@@ -5099,6 +5246,7 @@
         "done": "Klaar"
       },
       "items": {
+        "pickedBecause": "Gekozen omdat:",
         "label": "In dit nummer",
         "empty": "Dit nummer is leeg. Voeg iets toe via Meer toevoegen.",
         "article": "Artikel",
@@ -5136,6 +5284,7 @@
       },
       "add": {
         "label": "Meer toevoegen",
+        "suggested": "Voorgesteld voor dit nummer",
         "kind": "Wat wil je toevoegen",
         "tabs": {
           "article": "Artikelen",
@@ -5255,9 +5404,26 @@
       }
     },
     "notifications": {
+      "autoDraftReady": {
+        "title": "Er staat een nieuw concept van {magazine} klaar",
+        "content": {
+          "notify": "We hebben {count, plural, one {# ding} other {# dingen}} voor je uitgekozen. Bekijk het concept en publiceer het als je tevreden bent.",
+          "auto": "We hebben {count, plural, one {# ding} other {# dingen}} voor je uitgekozen. Het wordt op {date} vanzelf gepubliceerd, tenzij je dat stopt. Elke wijziging die je maakt stopt dat ook."
+        },
+        "linkLabel": "Open het concept"
+      },
+      "autoDraftSkipped": {
+        "title": "Deze keer geen nieuw concept van {magazine}",
+        "content": {
+          "too_few": "We vonden {found, plural, =0 {niets} one {maar # ding} other {maar # dingen}} om erin te zetten. Een concept heeft er minstens {needed} nodig. Zet meer soorten inhoud aan, kijk verder terug of voeg onderwerpen toe aan je magazine.",
+          "no_rights": "Degene die automatische concepten heeft ingesteld, mag het magazine niet meer bewerken. Sla de instellingen voor automatische concepten opnieuw op om ze weer te starten."
+        },
+        "linkLabel": "Open automatische concepten"
+      },
       "scheduleFailed": {
         "title": "‘{title}’ is niet verschenen",
         "content": {
+          "auto_off": "Automatisch publiceren staat uit voor {magazine}, dus dit nummer blijft een concept. Publiceer het zelf als het klaar is.",
           "empty": "Er staat niets in, dus het kon niet worden gepubliceerd. Het is weer een concept.",
           "invalid_item": "Er moet iets in worden aangepast. Open het nummer om te zien wat. Het is weer een concept.",
           "no_rights": "Degene die het nummer inplande, mag niet meer publiceren voor {magazine}. Open het nummer om het zelf te publiceren of in te plannen.",

@@ -2,13 +2,14 @@ import {
   deliverPendingAnnouncements,
   type DeliveryResult,
 } from "./announcements";
+import { runDueAutoDrafts } from "./auto-draft/drafter";
 import type { Deps } from "./deps";
 import { publishDueIssues, type DueRunResult } from "./scheduled-publishing";
 import type { MagazineMailer } from "./subscriptions/mail";
 import { purgeUnconfirmedSubscriptions } from "./subscriptions/service";
 
 export type IssueJobsResult = DueRunResult &
-  DeliveryResult & { purged: number };
+  DeliveryResult & { purged: number; drafted: number; skipped: number };
 
 /** Independent steps keep one failure from skipping the rest of the lifecycle. */
 export async function runMagazineIssueJobs(
@@ -16,6 +17,8 @@ export async function runMagazineIssueJobs(
   opts: { now: Date; mailer: MagazineMailer },
 ): Promise<IssueJobsResult> {
   const result: IssueJobsResult = {
+    drafted: 0,
+    skipped: 0,
     published: 0,
     failed: 0,
     retried: 0,
@@ -24,6 +27,11 @@ export async function runMagazineIssueJobs(
     email: 0,
     completed: 0,
   };
+  try {
+    Object.assign(result, await runDueAutoDrafts(deps, opts.now));
+  } catch (error) {
+    console.error("[magazines] automatic drafts failed", { error });
+  }
   try {
     Object.assign(result, await publishDueIssues(deps, opts.now));
   } catch (error) {

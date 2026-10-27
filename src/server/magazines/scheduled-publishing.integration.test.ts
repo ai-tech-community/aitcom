@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   afterEach,
   beforeAll,
@@ -217,7 +217,11 @@ describe.skipIf(!isLocalDbConfigured())(
     const load = (id: number) =>
       m.payload.findByID({ collection: "magazine-issues", id, depth: 0 });
 
-    async function scheduledIssue(label = "Autumn", minutes = 60) {
+    async function scheduledIssue(
+      label = "Autumn",
+      minutes = 60,
+      via?: "auto",
+    ) {
       const editor = callerAs(fx.editorId);
       const article = await editor.articles.create({
         title: label,
@@ -248,6 +252,7 @@ describe.skipIf(!isLocalDbConfigured())(
           filled.updatedAt,
           actor(),
           baseTime,
+          via ? { via } : undefined,
         ),
         articleId: article.id,
       };
@@ -298,6 +303,104 @@ describe.skipIf(!isLocalDbConfigured())(
       ).toHaveLength(1);
     }
 
+    const history = async () =>
+      (await import("./issue-history")).listIssueHistory(m.db, fx.magazine.id);
+
+    it("publishes an automatic schedule as automatic", async () => {
+      await m.db.insert(m.schema.magazineAutoDraftSettings).values({
+        magazineId: fx.magazine.id,
+        whenReady: "auto_publish",
+      });
+      const { issue } = await scheduledIssue("Automatic", 60, "auto");
+      expect(await run(65)).toEqual({ published: 1, failed: 0, retried: 0 });
+      expect(await load(issue.id)).toMatchObject({
+        status: "published",
+        publishedVia: "auto",
+        scheduledVia: null,
+      });
+      expect((await history())[0]).toMatchObject({
+        detail: { event: "published", origin: "auto" },
+        actorName: null,
+      });
+    });
+
+    it("switching settings off auto-publish fails the automatic schedule", async () => {
+      const { issue } = await scheduledIssue("Automatic", 60, "auto");
+      await m.db.insert(m.schema.magazineAutoDraftSettings).values({
+        magazineId: fx.magazine.id,
+        whenReady: "notify",
+      });
+      expect(await run(65)).toEqual({ published: 0, failed: 1, retried: 0 });
+      expect(await load(issue.id)).toMatchObject({
+        status: "draft",
+        scheduledFor: null,
+        scheduledBy: null,
+        scheduledVia: null,
+      });
+      await expectNotices(issue.id, "auto_off");
+      expect((await history())[0]).toMatchObject({
+        detail: {
+          event: "auto_publish_stopped",
+          why: "failed",
+          failure: "auto_off",
+        },
+        actorName: null,
+      });
+    });
+
+    it("an automatic schedule still needs the person's edit rights", async () => {
+      await m.db.insert(m.schema.magazineAutoDraftSettings).values({
+        magazineId: fx.magazine.id,
+        whenReady: "auto_publish",
+      });
+      const { issue } = await scheduledIssue("Automatic", 60, "auto");
+      await m.db.execute(
+        sql`UPDATE "public"."magazine_issues" SET "scheduled_by" = ${fx.editorId} WHERE "id" = ${issue.id}`,
+      );
+      await m.db
+        .delete(m.schema.magazineStaff)
+        .where(eq(m.schema.magazineStaff.userId, fx.editorId));
+      expect((await run(65)).failed).toBe(1);
+      expect((await load(issue.id)).status).toBe("draft");
+      await expectNotices(issue.id, "no_rights", [fx.ownerId, fx.adminId]);
+      expect((await history())[0]).toMatchObject({
+        detail: {
+          event: "auto_publish_stopped",
+          why: "failed",
+          failure: "no_rights",
+        },
+        actorName: null,
+      });
+      // Losing rights wins even when the settings would also refuse publication.
+      const draft = await load(issue.id);
+      await m.issues.scheduleIssue(
+        m,
+        draft,
+        at(120),
+        draft.updatedAt,
+        actor(),
+        at(65),
+        { via: "auto" },
+      );
+      await m.db
+        .update(m.schema.magazineAutoDraftSettings)
+        .set({ whenReady: "notify" })
+        .where(
+          eq(m.schema.magazineAutoDraftSettings.magazineId, fx.magazine.id),
+        );
+      expect((await run(125)).failed).toBe(1);
+      expect((await history())[0]).toMatchObject({
+        detail: { failure: "no_rights" },
+      });
+    });
+
+    it("an automatic schedule without settings stays a draft", async () => {
+      const { issue } = await scheduledIssue("Automatic", 60, "auto");
+      expect(await run(65)).toEqual({ published: 0, failed: 1, retried: 0 });
+      expect((await load(issue.id)).status).toBe("draft");
+      await expectNotices(issue.id, "auto_off");
+    });
+
     it("publishes a due issue once, as the person who scheduled it", async () => {
       const { issue, articleId } = await scheduledIssue();
       expect(await run(30)).toEqual({ published: 0, failed: 0, retried: 0 });
@@ -318,6 +421,8 @@ describe.skipIf(!isLocalDbConfigured())(
         inbox: 0,
         email: 0,
         completed: 1,
+        drafted: 0,
+        skipped: 0,
         purged: 0,
       });
       expect(await load(issue.id)).toMatchObject({

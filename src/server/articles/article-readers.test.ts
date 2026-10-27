@@ -52,7 +52,10 @@ function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) {
-      return name === "node_modules" ? [] : sourceFiles(path);
+      // src/test holds shared test fixtures, which never ship.
+      return name === "node_modules" || path.endsWith(join("src", "test"))
+        ? []
+        : sourceFiles(path);
     }
     return /\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name)
       ? [path]

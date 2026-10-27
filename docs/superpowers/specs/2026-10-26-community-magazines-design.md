@@ -72,19 +72,19 @@ Why it matters:
 
 ## What exists and must be reused
 
-| Need | Existing piece |
-|------|----------------|
-| Rich editor | `src/components/article-editor/` (Lexical, code + image blocks) |
-| Rich-text rendering | `LexicalRenderer` in `src/lib/lexical.tsx`, plus `extractHeadings`, `estimateReadingTime` |
-| Article model, review flow, XP/badge hooks | `src/collections/Articles.ts` (`reviewStatus`, `beforeChange`/`afterChange`) |
-| Community + roles | Drizzle `communities`, `communityMemberships` (owner/admin/moderator/member); `src/server/communities/role-utils.ts` |
-| Community-scoped Payload content | `Courses.ts` / `HostedMaterials.ts` text `communityId` pattern |
-| Access resolution precedent | `resolveCourseAccess` / `requireReadableCourse` in `src/server/classroom/course-access.ts` (none/visitor/member/manager, NOT_FOUND on none) |
-| Community visibility helpers | `src/server/communities/content-visibility.ts`, `content-visibility-queries.ts` |
-| News | Drizzle `newsItems`, `newsStorylines` (global, public; storylines have `status`) |
-| Inbox notifications | existing inbox (realtime via SSE per ADR-0025) |
-| Email + unsubscribe | `EmailTemplates`, `/[locale]/unsubscribe` |
-| Badges | typed catalog in code (ADR-0039) |
+| Need                                       | Existing piece                                                                                                                              |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rich editor                                | `src/components/article-editor/` (Lexical, code + image blocks)                                                                             |
+| Rich-text rendering                        | `LexicalRenderer` in `src/lib/lexical.tsx`, plus `extractHeadings`, `estimateReadingTime`                                                   |
+| Article model, review flow, XP/badge hooks | `src/collections/Articles.ts` (`reviewStatus`, `beforeChange`/`afterChange`)                                                                |
+| Community + roles                          | Drizzle `communities`, `communityMemberships` (owner/admin/moderator/member); `src/server/communities/role-utils.ts`                        |
+| Community-scoped Payload content           | `Courses.ts` / `HostedMaterials.ts` text `communityId` pattern                                                                              |
+| Access resolution precedent                | `resolveCourseAccess` / `requireReadableCourse` in `src/server/classroom/course-access.ts` (none/visitor/member/manager, NOT_FOUND on none) |
+| Community visibility helpers               | `src/server/communities/content-visibility.ts`, `content-visibility-queries.ts`                                                             |
+| News                                       | Drizzle `newsItems`, `newsStorylines` (global, public; storylines have `status`)                                                            |
+| Inbox notifications                        | existing inbox (realtime via SSE per ADR-0025)                                                                                              |
+| Email + unsubscribe                        | `EmailTemplates`, `/[locale]/unsubscribe`                                                                                                   |
+| Badges                                     | typed catalog in code (ADR-0039)                                                                                                            |
 
 ## Domain model
 
@@ -133,7 +133,7 @@ Why it matters:
 - **Articles stay one collection.** Magazine articles are Articles with a
   `magazine` relation, not a copy collection, so the editor, renderer, review
   flow and XP hooks are reused. `publicArticleWhere` (`src/server/articles/
-  public-articles`) must exclude magazine articles; their readability comes
+public-articles`) must exclude magazine articles; their readability comes
   from the issue they are in via the resolver. An article in a magazine but not
   yet in a published issue is visible only to its author and magazine staff.
 - **References, not copies, for platform content.** Storyline/news/event/etc.
@@ -152,11 +152,11 @@ Why it matters:
 
 ### Visibility rules
 
-| Issue visibility | Community member | Signed-in non-member | Anonymous | Listed in `/magazines` |
-|---|---|---|---|---|
-| `members` | full | none (404) | none (404) | no |
-| `teaser` | full | teaser | teaser | yes |
-| `public` | full | full | full | yes |
+| Issue visibility | Community member | Signed-in non-member | Anonymous  | Listed in `/magazines` |
+| ---------------- | ---------------- | -------------------- | ---------- | ---------------------- |
+| `members`        | full             | none (404)           | none (404) | no                     |
+| `teaser`         | full             | teaser               | teaser     | yes                    |
+| `public`         | full             | full                 | full       | yes                    |
 
 - Draft/scheduled issues: editors only, everywhere.
 - **Unlisted communities may publish teaser/public issues as a deliberate
@@ -179,7 +179,7 @@ Why it matters:
   every surface.
 - No platform-staff approval before a public issue appears in `/magazines`.
   Platform staff can hide a magazine from `/magazines` (moderation switch) and
-  existing post-report flow applies. *(Claude's call — reversible.)*
+  existing post-report flow applies. _(Claude's call — reversible.)_
 
 ### Review, credit and where magazine articles show
 
@@ -189,7 +189,7 @@ Why it matters:
   staff tool.
 - **One review gate.** Magazine articles are reviewed by magazine staff only;
   they never enter the platform staff review queue. Staff keep the after-the-fact
-  hide switch. *(Claude's call.)*
+  hide switch. _(Claude's call.)_
 - **Credit on issue publish, not on approval.** The existing `Articles.ts` hooks
   set `status = "published"` and award `ARTICLE_PUBLISHED` XP + article badges on
   approval. For magazine articles, approval means "ready for an issue" only; the
@@ -197,7 +197,7 @@ Why it matters:
   published. Split the hook through a named seam rather than an inline
   `if (doc.magazine)`. Magazine articles do count toward the existing article
   badges (they are articles), plus a new "Published in a magazine" badge in the
-  ADR-0039 catalog. *(Claude's call.)*
+  ADR-0039 catalog. _(Claude's call.)_
 - **Surfaces.** Magazine articles never appear on `/blog` or in the blog
   `feed.xml`. Articles whose issue is `public` appear on the author's profile,
   in site search, agent/MCP search and the sitemap, linking to the magazine URL.
@@ -205,7 +205,7 @@ Why it matters:
   readers (`sitemap.ts`, `articles`/`agent`/`comments` routers,
   `profile-work.ts`, badge metrics) are migrated to it. Comments on magazine
   articles reuse the existing article comments, readable by whoever can read
-  the article. *(Claude's call.)*
+  the article. _(Claude's call.)_
 
 ## Flows
 
@@ -243,11 +243,15 @@ magazine (mockup screen 5) and reviews each draft in the normal issue builder
 - Layout and visibility for generated drafts (visibility defaults to the
   magazine default; picking teaser/public in an unlisted community requires the
   same recorded confirmation as on an issue).
-- Per source: on/off and a max count. Sources = the item kinds: member
-  articles (approved for the magazine, most-read first), AIT News storylines
-  (filtered by the magazine's topics), news headline digest (same topics),
-  community events (past → recap, next → "coming up"), forum threads (most
-  replies/reactions), launchpad projects (most upvotes), new-member welcome.
+- Per source: on/off and a max count. Each source belongs to an item kind;
+  sources have their own stable ids, so a kind can have several sources.
+  Sources are member articles (approved for the magazine, waiting longest
+  first), AIT News storylines (filtered by the magazine's topics, newest
+  activity first), news headline digest (same topics, newest first), community
+  events (coming up soonest first, then recaps with the most people going),
+  forum threads (most replies, then views), launchpad projects (most upvotes),
+  and new-member welcome (an editorial source). Approved articles have not
+  been published yet and have no reads, so waiting time determines their order.
 - "Never pick something already used in an earlier issue" (default on).
 - What happens when a draft is ready:
   - **Notify only** (default): editors get an inbox message with a link;
@@ -258,8 +262,8 @@ magazine (mockup screen 5) and reviews each draft in the normal issue builder
 
 **Behaviour:**
 
-- Each auto-picked item carries a short human reason ("Most-read member
-  article this month", "Matches your topic Agents") shown to editors in the
+- Each auto-picked item carries a short human reason ("Approved and waiting
+  since 12 October", "Matches your topic Agents") shown to editors in the
   builder, never to readers.
 - If the sources yield too little (builder picks the threshold; e.g. fewer than
   3 items), no draft is made and editors are told why.
@@ -269,15 +273,18 @@ magazine (mockup screen 5) and reviews each draft in the normal issue builder
 
 **Structure:**
 
-- Each item kind module in the registry gains a `suggest(community, window,
-  config)` method returning ranked candidates with a reason. The auto-drafter
-  only orchestrates: it asks each enabled source for candidates, applies
-  counts and de-duplication, and creates a normal draft issue through the same
-  issue service editors use. No kind-specific logic lives in the auto-drafter,
-  and the builder's "Add more" picker can reuse the same `suggest` ranking.
-- Ranking is deterministic from our own data (reads, replies, upvotes,
-  attendance, storyline recency). AI ranking or AI-written editor's notes are
-  out of scope (see "Later").
+- Suggesters live in each kind's folder, registered in the exhaustive,
+  source-keyed `ITEM_SUGGESTERS` registry beside `ITEM_KINDS` (ADR-0047).
+  They implement `suggest(ctx, window, config)` on `ItemSuggestionSource`,
+  returning ranked candidates with a reason; `IssueItemKind` has no `suggest`
+  method. The auto-drafter only orchestrates: it asks each enabled source for
+  candidates, applies counts and de-duplication, and creates a normal draft
+  issue through the same issue service editors use. No kind-specific logic
+  lives in the auto-drafter, and the builder's "Add more" picker reuses the
+  same source ranking.
+- Ranking is deterministic from our own data (article waiting time, replies,
+  views, upvotes, attendance, storyline recency). AI ranking or AI-written
+  editor's notes are out of scope (see "Later").
 - Scheduling runs through the existing cron routes (`src/app/api/cron`); the
   run must be idempotent per (magazine, period). Auto-publish uses the same
   publish path as a human publish (notifications, credit, visibility checks),
@@ -325,8 +332,9 @@ analytics pattern rather than adding a vendor.
    handling.
 3. **Contributors** — staff roles, submission + review, contributor credit.
 4. **Subscriptions** — inbox + email, scheduling.
-5. **Auto-draft** — `suggest` on each item kind, settings screen, cron run,
-   notify-only mode, then auto-publish-after-N-days, history.
+5. **Auto-draft** — source-keyed `ITEM_SUGGESTERS` beside the item kinds,
+   settings screen, cron run, notify-only mode, then
+   auto-publish-after-N-days, history.
 6. **Growth** — `teaser` visibility, share cards/OG, all layouts, stats,
    staff moderation switch on `/magazines`.
 7. **Later** — PDF export, AI editor help, AI ranking for auto-draft.

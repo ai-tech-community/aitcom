@@ -1,6 +1,7 @@
 import { sql } from "@payloadcms/db-postgres";
 
 import { routing } from "@/i18n/routing";
+import type { ScheduleFailure } from "@/lib/magazines/issue-history";
 import {
   ITEM_PROBLEM_CODES,
   type EditorItemView,
@@ -9,9 +10,15 @@ import {
 import { scheduleProblem } from "@/lib/magazines/schedule";
 import {
   canIssue,
+  type IssueLayout,
   type IssueVisibility,
   type PublishOrigin,
+  type ScheduleOrigin,
 } from "@/lib/magazines/values";
+import {
+  planVisibilityChange,
+  type VisibilityRecord,
+} from "@/lib/magazines/visibility";
 import { slugify } from "@/lib/text-utils";
 import type { Magazine, MagazineIssue } from "@/payload-types";
 
@@ -30,6 +37,7 @@ import {
 } from "./article-publication";
 import type { Deps, PayloadClient } from "./deps";
 import { magazineError, type MagazineErrorCode } from "./errors";
+import { recordIssueHistory, type HistoryWrite } from "./issue-history";
 import { itemContextFor } from "./items/context";
 import {
   type IssueItemInput,
@@ -47,10 +55,55 @@ import {
 } from "./payload-writes";
 import type { MagazineCommunity } from "./magazine-service";
 import { requireRelationId } from "./relation-id";
-import { planVisibilityChange } from "@/lib/magazines/visibility";
 
 /** Who is writing, and the community the issue belongs to. */
-export type IssueActor = { userId: string; community: MagazineCommunity };
+export type IssueActor = {
+  userId: string;
+  community: MagazineCommunity;
+  /** The auto-drafter acting with this person's rights. */
+  via?: "auto";
+};
+
+export type IssueWriteOptions = {
+  // Keep caller-owned bookkeeping atomic with the issue write. In particular,
+  // crash recovery must never mistake an unrecorded automatic save for an edit
+  // by a person; the issue service need not know about automatic draft runs.
+  afterWrite?: (
+    tx: PayloadTransaction,
+    written: MagazineIssue,
+  ) => Promise<void>;
+};
+
+const CLEARED_SCHEDULE = {
+  scheduledFor: null,
+  scheduledBy: null,
+  scheduledVia: null,
+} as const;
+
+function historyActorId(actor: IssueActor | null): string | null {
+  return actor === null || actor.via === "auto" ? null : actor.userId;
+}
+
+function stopsAutomaticSchedule(
+  issue: MagazineIssue,
+  actor: IssueActor,
+): boolean {
+  return (
+    actor.via !== "auto" &&
+    issue.status === "scheduled" &&
+    issue.scheduledVia === "auto" &&
+    canIssue(issue.status, "unschedule")
+  );
+}
+
+function historySnapshot(
+  issue: MagazineIssue,
+): Pick<HistoryWrite, "magazineId" | "issue"> {
+  return {
+    magazineId: requireRelationId(issue.magazine),
+    issue: { id: issue.id, number: Number(issue.number), title: issue.title },
+  };
+}
 
 export type IssueDetailsPatch = {
   title?: string;
@@ -109,6 +162,7 @@ async function writeIssue(
   issue: MagazineIssue,
   expectedUpdatedAt: string,
   write: (tx: PayloadTransaction) => Promise<MagazineIssue>,
+  opts?: IssueWriteOptions,
 ): Promise<MagazineIssue> {
   assertFresh(issue, expectedUpdatedAt);
   const expected = new Date(expectedUpdatedAt).toISOString();
@@ -120,7 +174,9 @@ async function writeIssue(
         RETURNING "id"
       `);
       if (claimed.length === 0) throw magazineError("ISSUE_CHANGED");
-      return write(tx);
+      const written = await write(tx);
+      await opts?.afterWrite?.(tx, written);
+      return written;
     });
   } catch (error) {
     throw mapIssueWriteError(error);
@@ -333,7 +389,8 @@ async function freeIssueSlug(
 /**
  * Creates the magazine's next issue as a draft: numbered after the highest
  * existing one, slugged from its title, with the magazine's default
- * visibility and its unlisted-public confirmation copied in. The number and
+ * visibility and its unlisted-public confirmation copied in unless a
+ * previously confirmed visibility record is supplied. The number and
  * the slug are picked here, never typed, so a clash with a concurrent
  * create picks the next free ones instead of refusing.
  */
@@ -341,11 +398,22 @@ export async function createIssue(
   deps: Deps,
   magazine: Magazine,
   input: { title: string },
-  // Part of every issue write's contract; creation copies the magazine's
-  // already-confirmed default, so it needs no actor decision.
+  // Creation copies an already-confirmed visibility record, so it needs
+  // no actor decision.
   _actor: IssueActor,
+  opts?: IssueWriteOptions & {
+    layout?: IssueLayout;
+    visibility?: VisibilityRecord;
+  },
 ): Promise<MagazineIssue> {
   const visibility = magazine.defaultVisibility ?? "members";
+  const visibilityRecord = opts?.visibility ?? {
+    visibility,
+    publicConfirmedBy:
+      visibility === "public" ? (magazine.publicConfirmedBy ?? null) : null,
+    publicConfirmedAt:
+      visibility === "public" ? (magazine.publicConfirmedAt ?? null) : null,
+  };
   for (let attempt = 1; ; attempt++) {
     const number = await nextIssueNumber(deps.payload, magazine.id);
     const slug = await freeIssueSlug(
@@ -355,27 +423,25 @@ export async function createIssue(
       number,
     );
     try {
-      return await deps.payload.create({
-        collection: "magazine-issues",
-        data: {
-          magazine: magazine.id,
-          communityId: magazine.communityId,
-          number,
-          title: input.title,
-          slug,
-          status: "draft",
-          visibility,
-          publicConfirmedBy:
-            visibility === "public"
-              ? (magazine.publicConfirmedBy ?? null)
-              : null,
-          publicConfirmedAt:
-            visibility === "public"
-              ? (magazine.publicConfirmedAt ?? null)
-              : null,
-          items: [],
-        },
-        depth: 0,
+      return await inPayloadTransaction(deps.payload, async (tx) => {
+        const written = await deps.payload.create({
+          collection: "magazine-issues",
+          data: {
+            magazine: magazine.id,
+            communityId: magazine.communityId,
+            number,
+            title: input.title,
+            slug,
+            status: "draft",
+            layout: opts?.layout ?? "cover-story",
+            ...visibilityRecord,
+            items: [],
+          },
+          depth: 0,
+          req: tx.req,
+        });
+        await opts?.afterWrite?.(tx, written);
+        return written;
       });
     } catch (error) {
       // Another editor created an issue between our reads and our insert.
@@ -429,15 +495,26 @@ export async function updateIssueDetails(
     Object.assign(data, plan.record);
   }
 
-  const saved = await writeIssue(deps, issue, expectedUpdatedAt, (tx) =>
-    deps.payload.update({
+  const stopAutomatic = stopsAutomaticSchedule(issue, actor);
+  if (stopAutomatic)
+    Object.assign(data, { status: "draft", ...CLEARED_SCHEDULE });
+  const saved = await writeIssue(deps, issue, expectedUpdatedAt, async (tx) => {
+    const written = await deps.payload.update({
       collection: "magazine-issues",
       id: issue.id,
       data,
       depth: 0,
       req: tx.req,
-    }),
-  );
+    });
+    if (stopAutomatic) {
+      await recordIssueHistory(tx, {
+        ...historySnapshot(written),
+        actorId: historyActorId(actor),
+        detail: { event: "auto_publish_stopped", why: "edited" },
+      });
+    }
+    return written;
+  });
   // Every save of a published issue retries the magazine's pending credits.
   if (saved.status === "published") {
     await creditPendingMagazineArticles(
@@ -462,30 +539,59 @@ export async function setIssueItems(
   items: IssueItemInput[],
   expectedUpdatedAt: string,
   actor: IssueActor,
+  opts?: IssueWriteOptions,
 ): Promise<{ issue: MagazineIssue; items: EditorItemView[] }> {
   assertFresh(issue, expectedUpdatedAt);
   const blocks = toStoredItems(keepOwnBlockIds(items, storedBlocksOf(issue)));
   const ctx = await assertItemsValid(deps, issue, blocks, actor);
+  const stopAutomatic = stopsAutomaticSchedule(issue, actor);
 
-  const saved = await writeIssue(deps, issue, expectedUpdatedAt, async (tx) => {
-    await syncArticlePlacement(
-      deps.payload,
-      tx,
-      issue.id,
-      placedArticlesOf(blocks),
-    );
-    // The claim makes `issue.status` the stored status.
-    if (issue.status === "published") {
-      await publishPlacedArticles(deps, articleIdsOf(blocks), tx);
-    }
-    return deps.payload.update({
-      collection: "magazine-issues",
-      id: issue.id,
-      data: { items: blocks as MagazineIssue["items"] },
-      depth: 0,
-      req: tx.req,
-    });
-  });
+  const saved = await writeIssue(
+    deps,
+    issue,
+    expectedUpdatedAt,
+    async (tx) => {
+      await syncArticlePlacement(
+        deps.payload,
+        tx,
+        issue.id,
+        placedArticlesOf(blocks),
+      );
+      // The claim makes `issue.status` the stored status.
+      if (issue.status === "published") {
+        await publishPlacedArticles(deps, articleIdsOf(blocks), tx);
+      }
+      const written = await deps.payload.update({
+        collection: "magazine-issues",
+        id: issue.id,
+        data: {
+          items: blocks as MagazineIssue["items"],
+          ...(stopAutomatic ? { status: "draft", ...CLEARED_SCHEDULE } : {}),
+        },
+        depth: 0,
+        req: tx.req,
+      });
+      if (actor.via !== "auto") {
+        await recordIssueHistory(tx, {
+          ...historySnapshot(written),
+          actorId: historyActorId(actor),
+          detail: {
+            event: "items_changed",
+            itemCount: written.items?.length ?? 0,
+          },
+        });
+      }
+      if (stopAutomatic) {
+        await recordIssueHistory(tx, {
+          ...historySnapshot(written),
+          actorId: historyActorId(actor),
+          detail: { event: "auto_publish_stopped", why: "edited" },
+        });
+      }
+      return written;
+    },
+    opts,
+  );
 
   if (saved.status === "published") {
     await creditPendingMagazineArticles(
@@ -507,24 +613,31 @@ export async function scheduleIssue(
   expectedUpdatedAt: string,
   actor: IssueActor,
   now: Date = new Date(),
+  opts?: IssueWriteOptions & { via?: ScheduleOrigin },
 ): Promise<MagazineIssue> {
   if (!canIssue(issue.status, "schedule"))
     throw magazineError("ISSUE_NOT_DRAFT");
   const problem = scheduleProblem(publishAt, now);
   if (problem) throw magazineError(problem);
   await assertPublishable(deps, issue, actor);
-  return writeIssue(deps, issue, expectedUpdatedAt, (tx) =>
-    deps.payload.update({
-      collection: "magazine-issues",
-      id: issue.id,
-      data: {
-        status: "scheduled",
-        scheduledFor: publishAt.toISOString(),
-        scheduledBy: actor.userId,
-      },
-      depth: 0,
-      req: tx.req,
-    }),
+  return writeIssue(
+    deps,
+    issue,
+    expectedUpdatedAt,
+    (tx) =>
+      deps.payload.update({
+        collection: "magazine-issues",
+        id: issue.id,
+        data: {
+          status: "scheduled",
+          scheduledFor: publishAt.toISOString(),
+          scheduledBy: actor.userId,
+          scheduledVia: opts?.via ?? "schedule",
+        },
+        depth: 0,
+        req: tx.req,
+      }),
+    opts,
   );
 }
 
@@ -533,19 +646,37 @@ export async function unscheduleIssue(
   deps: Deps,
   issue: MagazineIssue,
   expectedUpdatedAt: string,
-  _actor: IssueActor | null,
+  actor: IssueActor | null,
+  opts?: { failure?: ScheduleFailure },
 ): Promise<MagazineIssue> {
   if (!canIssue(issue.status, "unschedule"))
     throw magazineError("ISSUE_NOT_SCHEDULED");
-  return writeIssue(deps, issue, expectedUpdatedAt, (tx) =>
-    deps.payload.update({
+  return writeIssue(deps, issue, expectedUpdatedAt, async (tx) => {
+    const written = await deps.payload.update({
       collection: "magazine-issues",
       id: issue.id,
-      data: { status: "draft", scheduledFor: null, scheduledBy: null },
+      data: { status: "draft", ...CLEARED_SCHEDULE },
       depth: 0,
       req: tx.req,
-    }),
-  );
+    });
+    if (
+      issue.scheduledVia === "auto" &&
+      (actor?.via !== "auto" || opts?.failure)
+    ) {
+      await recordIssueHistory(tx, {
+        ...historySnapshot(written),
+        actorId: historyActorId(actor),
+        detail: opts?.failure
+          ? {
+              event: "auto_publish_stopped",
+              why: "failed",
+              failure: opts.failure,
+            }
+          : { event: "auto_publish_stopped", why: "stopped" },
+      });
+    }
+    return written;
+  });
 }
 
 /**
@@ -570,6 +701,7 @@ export async function publishIssue(
   await assertPublishable(deps, issue, actor);
   const blocks = storedBlocksOf(issue);
   const publishedAt = (opts.now ?? new Date()).toISOString();
+  const origin = opts.origin ?? "button";
 
   const published = await writeIssue(
     deps,
@@ -584,12 +716,16 @@ export async function publishIssue(
           status: "published",
           publishedAt,
           publishedBy: actor.userId,
-          publishedVia: opts.origin ?? "button",
-          scheduledFor: null,
-          scheduledBy: null,
+          publishedVia: origin,
+          ...CLEARED_SCHEDULE,
         },
         depth: 0,
         req: tx.req,
+      });
+      await recordIssueHistory(tx, {
+        ...historySnapshot(saved),
+        actorId: origin === "auto" ? null : historyActorId(actor),
+        detail: { event: "published", origin },
       });
       await recordIssueAnnouncement(tx, {
         issueId: saved.id,
@@ -612,16 +748,37 @@ export async function publishIssue(
 export async function deleteDraftIssue(
   deps: Deps,
   issue: MagazineIssue,
-  _actor: IssueActor,
+  actor: IssueActor,
+  opts?: { expectedUpdatedAt: string },
 ): Promise<void> {
   if (!canIssue(issue.status, "delete")) throw magazineError("ISSUE_NOT_DRAFT");
   await inPayloadTransaction(deps.payload, async (tx) => {
+    const version = opts
+      ? sql`AND "updated_at" = ${opts.expectedUpdatedAt}::timestamptz`
+      : sql``;
     const claimed = await tx.execute(sql`
       UPDATE "magazine_issues" SET "updated_at" = "updated_at"
-      WHERE "id" = ${issue.id} AND "status" = 'draft'
+      WHERE "id" = ${issue.id} AND "status" = 'draft' ${version}
       RETURNING "id"
     `);
-    if (claimed.length === 0) throw magazineError("ISSUE_NOT_DRAFT");
+    if (claimed.length === 0)
+      throw magazineError(opts ? "ISSUE_CHANGED" : "ISSUE_NOT_DRAFT");
+    if (actor.via !== "auto") {
+      // The claim locks the current draft; Payload reads its localized title
+      // on that same transaction rather than using the caller's older copy.
+      const current = await deps.payload.findByID({
+        collection: "magazine-issues",
+        id: issue.id,
+        depth: 0,
+        locale: routing.defaultLocale,
+        req: tx.req,
+      });
+      await recordIssueHistory(tx, {
+        ...historySnapshot(current),
+        actorId: historyActorId(actor),
+        detail: { event: "deleted" },
+      });
+    }
     await clearArticlePlacement(deps.payload, tx, issue.id);
     await deps.payload.delete({
       collection: "magazine-issues",

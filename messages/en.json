@@ -4894,6 +4894,134 @@
     }
   },
   "magazineEditor": {
+    "autoDraft": {
+      "issueTitle": "Issue of {date}",
+      "welcome": {
+        "heading": "Welcome to our new members",
+        "body": "{count, plural, one {# person joined} other {# people joined}} {community} since {date}. Say hello!"
+      },
+      "metaTitle": "Automatic drafts",
+      "title": "Automatic drafts",
+      "back": "Back to the Magazine tab",
+      "intro": "Let the magazine make a draft from what happened in your community. You check it and decide what goes out.",
+      "settingsTitle": "Settings for automatic drafts",
+      "readOnly": "Only the editor-in-chief can change these.",
+      "enabled": "Make drafts by themselves",
+      "nextDraft": "Next draft: <timestamp>{date}</timestamp>",
+      "howOften": "How often",
+      "cadences": {
+        "monthly": "Every month",
+        "biweekly": "Every two weeks",
+        "weekly": "Every week",
+        "after_event": "After each event of the community",
+        "on_demand": "Only when I ask"
+      },
+      "monthDay": "Day of the month",
+      "weekday": "Day of the week",
+      "weekdays": {
+        "1": "Monday",
+        "2": "Tuesday",
+        "3": "Wednesday",
+        "4": "Thursday",
+        "5": "Friday",
+        "6": "Saturday",
+        "7": "Sunday"
+      },
+      "lookBack": "Look back",
+      "lookBacks": {
+        "since_last_issue": "Since the last issue",
+        "days_30": "The last 30 days",
+        "days_7": "The last 7 days"
+      },
+      "whatToPick": "What to pick",
+      "sources": {
+        "article": "Member articles ready for the magazine",
+        "storyline": "AIT News stories",
+        "newsItem": "AIT News headlines",
+        "event": "Community events",
+        "forumThread": "Forum threads",
+        "launchpadProject": "Launchpad projects",
+        "welcome": "Welcome new members"
+      },
+      "upTo": "Up to<comma>,</comma>",
+      "addTopics": "Add topics to your magazine to get AIT News.",
+      "neverReuse": "Don't pick anything an earlier issue already has",
+      "draftsLookLike": "Drafts look like",
+      "layout": "Layout",
+      "layouts": {
+        "cover-story": "Cover story"
+      },
+      "visibility": "Visibility",
+      "inheritVisibility": "Same as the magazine ({current})",
+      "visibilities": {
+        "members": "Members only",
+        "public": "Everyone"
+      },
+      "whenReady": "When a draft is ready",
+      "whenReadyOptions": {
+        "notify": "Tell the editors, and we publish by hand",
+        "auto_publish": "Publish it by itself after {days, plural, one {# day} other {# days}}, unless someone stops it"
+      },
+      "autoPublishDays": "Days before it goes out",
+      "whenReadyHelp": "Editors are told first. Any change to the draft stops the automatic publish.",
+      "save": "Save",
+      "saved": "Saved.",
+      "settingsLoadFailed": "The settings for automatic drafts could not be loaded.",
+      "historyLoadFailed": "The history could not be loaded.",
+      "tryAgain": "Try again",
+      "makeNow": {
+        "button": "Make a draft now",
+        "made": "Your draft is ready.",
+        "open": "Open the draft",
+        "too_few": "There is not enough yet: we found {found, plural, =0 {nothing} one {# thing} other {# things}} and a draft needs {needed}.",
+        "draft_open": "There is already an open draft. Finish or delete it first.",
+        "no_rights": "You cannot make drafts for this magazine.",
+        "busy": "A draft is being made right now. Try again in a minute."
+      },
+      "history": {
+        "title": "History",
+        "automatic": "The magazine",
+        "draftMade": "made a draft",
+        "draftMadeScheduled": "made a draft that goes out on {date}",
+        "draftSkipped": "made no draft: {reason}",
+        "skipReasons": {
+          "too_few": "there was not enough yet (found {found, plural, =0 {nothing} one {# thing} other {# things}}, a draft needs {needed})",
+          "draft_open": "there is already an open draft",
+          "no_rights": "the person who set this up can no longer edit the magazine"
+        },
+        "itemsChanged": "changed the items",
+        "stopped": "stopped the automatic publish",
+        "stoppedByEditing": "stopped the automatic publish by editing",
+        "failed": "could not publish it by itself: {failure}",
+        "failures": {
+          "auto_off": "automatic publishing is switched off",
+          "no_rights": "the person who set it up can no longer edit the magazine",
+          "empty": "the issue is empty",
+          "invalid_item": "an item cannot be published",
+          "error": "something went wrong"
+        },
+        "published": {
+          "button": "published it",
+          "schedule": "published it on schedule",
+          "auto": "published it by itself"
+        },
+        "deleted": "deleted it",
+        "issue": "Issue {number}: {title}",
+        "empty": "Nothing yet. When the magazine makes or skips a draft, you will see it here.",
+        "formerMember": "A former member"
+      },
+      "numberRange": "Use a whole number from 1 to {max}.",
+      "nextDraftUpdatesOnSave": "The next date updates when you save.",
+      "sourceHelp": {
+        "article": "Approved and waiting longest first",
+        "storyline": "Stories about your topics, newest updates first",
+        "event": "Coming up soonest first, then past events with the most people going",
+        "forumThread": "Most replies, then most views",
+        "launchpadProject": "Most upvotes",
+        "newsItem": "Headlines about your topics, newest first",
+        "welcome": "A welcome when new people join, with a count and no names"
+      }
+    },
     "review": {
       "metaTitle": "Read an article",
       "back": "Back to the Magazine tab",
@@ -5049,6 +5177,25 @@
     },
     "builder": {
       "metaTitle": "Edit issue",
+      "reasons": {
+        "waitingSince": "Approved and waiting since <number>{date}</number>",
+        "topic": "Matches your topic {topic}",
+        "eventComingUp": "Coming up on <number>{date}</number>",
+        "eventRecap": "Took place on <number>{date}</number>, {going, plural, one {<number>#</number> going} other {<number>#</number> going}}",
+        "mostReplies": "Most talked about: {count, plural, one {<number>#</number> reply} other {<number>#</number> replies}}",
+        "mostUpvotes": "Most upvoted: {count, plural, one {<number>#</number> upvote} other {<number>#</number> upvotes}}",
+        "newMembers": "{count, plural, one {<number>#</number> new member joined} other {<number>#</number> new members joined}}"
+      },
+      "autoDraft": {
+        "label": "Made automatically",
+        "scheduled": "The magazine made this draft. It goes out by itself on <timestamp>{time}</timestamp> unless you stop it. Any change you make stops that too.",
+        "draft": "The magazine made this draft from what happened in your community. Check it, change what you like, and publish it when you are happy.",
+        "stop": "Stop the automatic publish",
+        "changePicks": "Change what gets picked",
+        "regionLabel": "Draft details"
+      },
+      "autoPublishStopped": "Your change stopped the automatic publish. Publish it yourself when it is ready.",
+      "goesOutAutomatically": "Goes out by itself <timestamp>{time}</timestamp>",
       "backToMagazine": "Back to {magazine}",
       "kicker": "{magazine} · Issue {number} · {status}",
       "status": {
@@ -5099,6 +5246,7 @@
         "done": "Done"
       },
       "items": {
+        "pickedBecause": "Picked because:",
         "label": "In this issue",
         "empty": "This issue is empty. Add something from Add more.",
         "article": "Article",
@@ -5136,6 +5284,7 @@
       },
       "add": {
         "label": "Add more",
+        "suggested": "Suggested for this issue",
         "kind": "What to add",
         "tabs": {
           "article": "Articles",
@@ -5255,9 +5404,26 @@
       }
     },
     "notifications": {
+      "autoDraftReady": {
+        "title": "A new draft of {magazine} is ready",
+        "content": {
+          "notify": "We picked {count, plural, one {# thing} other {# things}} for you. Check the draft and publish it when you are happy.",
+          "auto": "We picked {count, plural, one {# thing} other {# things}} for you. It goes out by itself on {date} unless you stop it. Any change you make stops that."
+        },
+        "linkLabel": "Open the draft"
+      },
+      "autoDraftSkipped": {
+        "title": "No new draft of {magazine} this time",
+        "content": {
+          "too_few": "We found {found, plural, =0 {nothing} one {only # thing} other {only # things}} to put in it, and a draft needs at least {needed}. Switch on more kinds of content, look back further, or add topics to your magazine.",
+          "no_rights": "The person who set up automatic drafts can no longer edit the magazine. Save the automatic draft settings again to restart them."
+        },
+        "linkLabel": "Open automatic drafts"
+      },
       "scheduleFailed": {
         "title": "“{title}” did not go out",
         "content": {
+          "auto_off": "Automatic publishing is switched off for {magazine}, so this issue stays a draft. Publish it yourself when it is ready.",
           "empty": "It has no items, so it could not be published. It is a draft again.",
           "invalid_item": "Something in it needs fixing. Open it to see what. It is a draft again.",
           "no_rights": "The person who scheduled it can no longer publish for {magazine}. Open it to publish or schedule it yourself.",
