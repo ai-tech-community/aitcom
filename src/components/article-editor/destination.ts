@@ -34,6 +34,8 @@ export type DestinationBehaviour = {
     | "magazine.sendForReview";
   /** Whether a trusted author publishes directly from the editor. */
   showTrustedPublish: boolean;
+  /** Keep the editors' note visible after a draft save clears the review state. */
+  keepReviewNoteWhileWriting: boolean;
   /** The note shown once a non-trusted hand-in went through. */
   submittedKey: "submitted" | "magazine.markedReady" | "magazine.sentForReview";
   prePublishTitleKey:
@@ -58,6 +60,7 @@ const BLOG: DestinationBehaviour = {
   afterSubmitHref: "/blog/my-articles",
   submitLabelKey: "submitForReview",
   showTrustedPublish: true,
+  keepReviewNoteWhileWriting: false,
   submittedKey: "submitted",
   prePublishTitleKey: "prePublishTitle",
   prePublishSubtitleKey: "prePublishSubtitle",
@@ -113,6 +116,7 @@ export function destinationBehaviour(
         afterSubmitHref: communityMagazinePath(destination.communitySlug),
         ...magazineHandInBehaviour(destination.handIn),
         showTrustedPublish: false,
+        keepReviewNoteWhileWriting: true,
         editPath: (articleSlug) =>
           magazineArticleEditPath(destination.communitySlug, articleSlug),
         // The magazine services answer in codes; raw codes never reach a toast.

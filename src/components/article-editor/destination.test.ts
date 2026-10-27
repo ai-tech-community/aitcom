@@ -18,6 +18,7 @@ describe("destinationBehaviour", () => {
       afterSubmitHref: "/blog/my-articles",
       submitLabelKey: "submitForReview",
       showTrustedPublish: true,
+      keepReviewNoteWhileWriting: false,
       submittedKey: "submitted",
       prePublishTitleKey: "prePublishTitle",
       prePublishSubtitleKey: "prePublishSubtitle",
@@ -36,6 +37,7 @@ describe("destinationBehaviour", () => {
       afterSubmitHref: "/communities/night-owls/magazine",
       submitLabelKey: "magazine.markReady",
       showTrustedPublish: false,
+      keepReviewNoteWhileWriting: true,
       submittedKey: "magazine.markedReady",
       prePublishTitleKey: "magazine.prePublishTitle",
       prePublishSubtitleKey: "magazine.prePublishSubtitle",
@@ -56,6 +58,7 @@ describe("destinationBehaviour", () => {
       prePublishTitleKey: "magazine.reviewPrePublishTitle",
       prePublishSubtitleKey: "magazine.reviewPrePublishSubtitle",
       showTrustedPublish: false,
+      keepReviewNoteWhileWriting: true,
     });
   });
 

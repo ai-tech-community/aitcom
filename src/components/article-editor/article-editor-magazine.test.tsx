@@ -79,6 +79,7 @@ vi.mock(
 
 import { ArticleEditor } from "./article-editor";
 import type { ArticleDestination } from "./destination";
+import type { ArticleEditorProps } from "./types";
 
 const destination: ArticleDestination = {
   kind: "magazine",
@@ -124,7 +125,98 @@ async function openReadyDialog(): Promise<HTMLButtonElement> {
   return dialogAction;
 }
 
+const savedArticle: NonNullable<ArticleEditorProps["initialData"]> = {
+  id: 7,
+  slug: "night-owls-1",
+  title: "Night owls",
+  content: WRITTEN as NonNullable<ArticleEditorProps["initialData"]>["content"],
+  type: "article",
+  tags: [],
+};
+
 describe("ArticleEditor writing for a magazine", () => {
+  it("does not hand in an existing article when the final update fails", async () => {
+    calls.update.mockRejectedValue(new Error("SAVE_FAILED"));
+    renderWithIntl(
+      <ArticleEditor
+        isTrustedAuthor
+        destination={destination}
+        initialData={savedArticle}
+      />,
+    );
+    const send = await openReadyDialog();
+    await act(async () => fireEvent.click(send));
+    expect(calls.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 7 }),
+    );
+    expect(calls.submit).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("Something went wrong. Try again."),
+    ).toBeVisible();
+    expect(calls.push).not.toHaveBeenCalled();
+  });
+
+  it("cancels the pending autosave before handing in", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderWithIntl(
+        <ArticleEditor
+          isTrustedAuthor
+          destination={destination}
+          initialData={savedArticle}
+        />,
+      );
+      typeTitle("A revised title");
+      const send = await openReadyDialog();
+      await act(async () => fireEvent.click(send));
+      expect(calls.submit).toHaveBeenCalledWith({ id: 7 });
+      await act(async () => vi.advanceTimersByTime(1300));
+      expect(calls.update).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each(["changes_requested", undefined])(
+    "keeps the editors' note while the writer works (%s)",
+    (reviewStatus) => {
+      renderWithIntl(
+        <ArticleEditor
+          isTrustedAuthor
+          destination={destination}
+          initialData={{
+            ...savedArticle,
+            reviewStatus,
+            reviewNote: "Please explain the example.",
+          }}
+        />,
+      );
+      const note = screen.getByText("Please explain the example.");
+      expect(note).toBeVisible();
+      expect(note.parentElement).toHaveClass(
+        "border-border",
+        "text-foreground",
+      );
+      expect(
+        note.parentElement!.querySelector('[data-slot="section-label"]'),
+      ).toBeInTheDocument();
+      expect(note.parentElement!.className).not.toContain("orange");
+    },
+  );
+
+  it("keeps a saved note hidden on the blog once changes_requested has cleared", () => {
+    renderWithIntl(
+      <ArticleEditor
+        isTrustedAuthor={false}
+        initialData={{
+          ...savedArticle,
+          reviewNote: "Please explain the example.",
+        }}
+      />,
+    );
+    expect(screen.queryByText("Please explain the example.")).toBeNull();
+  });
+
   it("a contributor destination renders SEND TO THE EDITORS", () => {
     renderWithIntl(
       <ArticleEditor
