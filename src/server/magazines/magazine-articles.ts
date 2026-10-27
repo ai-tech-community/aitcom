@@ -43,7 +43,7 @@ export type AvailableMagazineArticle = {
   editableByViewer: boolean;
 };
 
-/** One of the editor's own magazine articles that is not ready yet. */
+/** An unpublished article on the writer's magazine desk. */
 export type DraftMagazineArticle = {
   id: number;
   slug: string;
@@ -310,6 +310,37 @@ export async function listDraftArticles(
         { magazine: { equals: magazineId } },
         { authorId: { equals: authorId } },
         NOT_READY,
+      ],
+    },
+    sort: "-updatedAt",
+    depth: 0,
+    draft: true,
+    limit: EDITOR_LIST_LIMIT,
+    pagination: false,
+  });
+  return docs.map((doc) => ({
+    id: doc.id,
+    slug: doc.slug,
+    title: doc.title,
+    reviewStatus: doc.reviewStatus ?? null,
+    reviewNote: doc.reviewNote ?? null,
+    updatedAt: doc.updatedAt,
+  }));
+}
+
+/** The author's unpublished articles, including those ready for an issue. */
+export async function listWriterArticles(
+  payload: PayloadClient,
+  magazineId: number,
+  authorId: string,
+): Promise<DraftMagazineArticle[]> {
+  const { docs } = await payload.find({
+    collection: "articles",
+    where: {
+      and: [
+        { magazine: { equals: magazineId } },
+        { authorId: { equals: authorId } },
+        { status: { not_equals: "published" } },
       ],
     },
     sort: "-updatedAt",

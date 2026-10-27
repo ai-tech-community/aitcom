@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "@/components/magazines/test-intl";
+import { MagazineArticleWorkspace } from "@/components/magazines/editor/magazine-article-workspace";
 
 const calls = vi.hoisted(() => ({
   create: vi.fn(),
@@ -25,6 +26,11 @@ vi.mock("@/trpc/react", () => ({
 }));
 vi.mock("@/i18n/navigation", () => ({
   useRouter: () => ({ push: calls.push }),
+  Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 /**
@@ -79,6 +85,7 @@ const destination: ArticleDestination = {
   magazineId: 42,
   magazineName: "The Gazette",
   communitySlug: "night-owls",
+  handIn: "mark_ready",
 };
 
 beforeEach(() => {
@@ -118,6 +125,68 @@ async function openReadyDialog(): Promise<HTMLButtonElement> {
 }
 
 describe("ArticleEditor writing for a magazine", () => {
+  it("a contributor destination renders SEND TO THE EDITORS", () => {
+    renderWithIntl(
+      <ArticleEditor
+        isTrustedAuthor
+        destination={{ ...destination, handIn: "send_for_review" }}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "SEND TO THE EDITORS" }),
+    ).toBeInTheDocument();
+  });
+
+  it("the magazine workspace carries the contributor through sending to the editors", async () => {
+    renderWithIntl(
+      <MagazineArticleWorkspace
+        communitySlug="night-owls"
+        writing={{
+          magazineId: 42,
+          magazineName: "The Gazette",
+          handIn: "send_for_review",
+        }}
+      />,
+    );
+    typeTitle("Night owls");
+    fireEvent.click(
+      screen.getByRole("button", { name: "SEND TO THE EDITORS" }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Send to the editors?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Check your article first. You cannot change it while the editors read it. They can approve it, ask for changes or decline it.",
+      ),
+    ).toBeInTheDocument();
+    const actions = screen.getAllByRole<HTMLButtonElement>("button", {
+      name: "SEND TO THE EDITORS",
+    });
+    expect(actions).toHaveLength(2);
+    const send = actions[1]!;
+    await waitFor(() => expect(send).toBeEnabled());
+    expect(screen.queryByRole("button", { name: "PUBLISH" })).toBeNull();
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await act(async () => fireEvent.click(send));
+      expect(calls.submit).toHaveBeenCalledWith({ id: 7 });
+      expect(calls.create.mock.calls[0]![0]).toMatchObject({ magazineId: 42 });
+      expect(
+        await screen.findByText(
+          "Sent. The editors will read it and let you know.",
+        ),
+      ).toBeInTheDocument();
+      await act(async () => vi.advanceTimersByTime(1500));
+      expect(calls.push).toHaveBeenCalledWith(
+        "/communities/night-owls/magazine",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("creates the draft with the magazine id", async () => {
     renderWithIntl(
       <ArticleEditor isTrustedAuthor={false} destination={destination} />,

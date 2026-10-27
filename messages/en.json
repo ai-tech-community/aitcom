@@ -2298,6 +2298,10 @@
     "featuredImagePlaceholder": "No image — add a URL above",
     "articleTitlePlaceholder": "Article title...",
     "magazine": {
+      "sendForReview": "Send to the editors",
+      "sentForReview": "Sent. The editors will read it and let you know.",
+      "reviewPrePublishTitle": "Send to the editors?",
+      "reviewPrePublishSubtitle": "Check your article first. You cannot change it while the editors read it. They can approve it, ask for changes or decline it.",
       "markReady": "Mark ready for an issue",
       "markedReady": "Marked ready. An editor can now place it in an issue.",
       "prePublishTitle": "Ready for an issue?",
@@ -4916,7 +4920,24 @@
       "emptyDescription": "The first issue of {magazine} is on its way.",
       "emptyEditorDescription": "Make the first issue with New issue in the editor's desk below."
     },
+    "contributorDesk": {
+      "label": "Your writing desk",
+      "write": "Write an article",
+      "articles": "Your articles",
+      "articlesEmpty": "You have no articles in progress. Write one and send it to the editors.",
+      "editorNote": "Note from the editors",
+      "status": {
+        "draft": "Not sent yet",
+        "pending_review": "With the editors",
+        "changes_requested": "Changes asked for",
+        "approved": "Ready for an issue",
+        "rejected": "Not accepted"
+      }
+    },
     "desk": {
+      "waiting": "Waiting for you",
+      "waitingEmpty": "No articles are waiting. Articles members send in show up here.",
+      "sentOn": "Sent {date}",
       "label": "Editor's desk",
       "newIssue": "New issue",
       "newIssueTitle": "Issue {number}",
@@ -4934,6 +4955,7 @@
       "drafts": "Your drafts",
       "draftsEmpty": "You have no articles in progress. Write one to fill your next issue.",
       "reviewStatus": {
+        "approved": "Ready for an issue",
         "draft": "Draft",
         "pending_review": "Waiting for review",
         "changes_requested": "Changes requested",

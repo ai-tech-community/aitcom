@@ -44,6 +44,7 @@ const PROCEDURE_CAPABILITY: Record<string, MagazineCapability | "public"> = {
   reviewQueue: "edit",
   reviewArticle: "edit",
   myDraftArticles: "write",
+  myMagazineArticles: "write",
 };
 
 function richText(text: string) {
@@ -521,6 +522,7 @@ describe.skipIf(!RUN_DB)(
               decision: "approve",
             }),
           myDraftArticles: () => caller.myDraftArticles({ slug: slug() }),
+          myMagazineArticles: () => caller.myMagazineArticles({ slug: slug() }),
           deleteDraftIssue: () => caller.deleteDraftIssue(ref),
         };
         expect(Object.keys(calls).sort()).toEqual(
@@ -702,6 +704,91 @@ describe.skipIf(!RUN_DB)(
       expect(after.title).toBe("Ours");
       expect(after.items ?? []).toEqual([]);
       expect(after.updatedAt).toBe(before.updatedAt);
+    });
+
+    it("a contributor's desk lists their unpublished articles, approved ones too", async () => {
+      const owner = callerAs(fx.ownerId);
+      // No magazine yet is an empty desk for a writer.
+      expect(
+        await owner.magazines.myMagazineArticles({ slug: slug() }),
+      ).toEqual([]);
+      const magazine = await saveMagazine();
+      const writerId = await appointed(magazine.id, "contributor");
+      const writer = callerAs(writerId);
+      const draft = await writeArticle(magazine.id, "K draft", writerId);
+      const pending = await writeArticle(magazine.id, "K pending", writerId);
+      await writer.articles.submit({ id: pending.id });
+      const approved = await writeArticle(magazine.id, "K approved", writerId);
+      await writer.articles.submit({ id: approved.id });
+      await owner.magazines.reviewArticle({
+        slug: slug(),
+        articleId: approved.id,
+        decision: "approve",
+      });
+      const changes = await writeArticle(magazine.id, "K changes", writerId);
+      await writer.articles.submit({ id: changes.id });
+      await owner.magazines.reviewArticle({
+        slug: slug(),
+        articleId: changes.id,
+        decision: "request_changes",
+        note: "Explain the example.",
+      });
+      const rejected = await writeArticle(magazine.id, "K rejected", writerId);
+      await writer.articles.submit({ id: rejected.id });
+      await owner.magazines.reviewArticle({
+        slug: slug(),
+        articleId: rejected.id,
+        decision: "reject",
+        note: "Another theme.",
+      });
+      await writeArticle(magazine.id, "Someone else's draft");
+      await writer.articles.create({
+        title: "K blog",
+        slug: `k-blog-${fx.sfx}`,
+        content: richText("Blog"),
+        type: "article",
+      });
+      const published = await writeArticle(
+        magazine.id,
+        "K published",
+        writerId,
+      );
+      await m.payload.update({
+        collection: "articles",
+        id: published.id,
+        data: { status: "published", _status: "published" },
+      });
+      const rows = await writer.magazines.myMagazineArticles({ slug: slug() });
+      expect(rows.map((row) => row.id)).toEqual([
+        rejected.id,
+        changes.id,
+        approved.id,
+        pending.id,
+        draft.id,
+      ]);
+      expect(rows).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: draft.id, reviewStatus: null }),
+          expect.objectContaining({
+            id: pending.id,
+            reviewStatus: "pending_review",
+          }),
+          expect.objectContaining({
+            id: approved.id,
+            reviewStatus: "approved",
+          }),
+          expect.objectContaining({
+            id: changes.id,
+            reviewStatus: "changes_requested",
+            reviewNote: "Explain the example.",
+          }),
+          expect.objectContaining({
+            id: rejected.id,
+            reviewStatus: "rejected",
+            reviewNote: "Another theme.",
+          }),
+        ]),
+      );
     });
 
     it("full editor flow: settings → write → mark ready → add → publish", async () => {

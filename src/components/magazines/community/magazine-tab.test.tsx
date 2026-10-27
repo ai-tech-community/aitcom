@@ -3,6 +3,7 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { roleCan, type MagazineRole } from "@/lib/magazines/roles";
 import type { CommunityMagazineTabData } from "@/server/magazines/reading";
 
 vi.mock("@/i18n/navigation", () => ({
@@ -15,8 +16,18 @@ vi.mock("@/i18n/navigation", () => ({
 
 // The desk is a client island with its own data; here only who gets it.
 vi.mock("../editor/editor-desk", () => ({
-  EditorDesk: ({ slug }: { slug: string }) => (
-    <section aria-label="Editor desk stub" data-slug={slug} />
+  EditorDesk: ({ slug, canManage }: { slug: string; canManage: boolean }) => (
+    <section
+      aria-label="Editor desk stub"
+      data-slug={slug}
+      data-manage={canManage}
+    />
+  ),
+}));
+
+vi.mock("../editor/contributor-desk", () => ({
+  ContributorDesk: ({ slug }: { slug: string }) => (
+    <section aria-label="Writing desk stub" data-slug={slug} />
   ),
 }));
 
@@ -50,11 +61,56 @@ function tabData(
     latest,
     issues: [latest, older],
     viewerIsEditor: false,
+    viewerRole: null,
     ...overrides,
   };
 }
 
 describe("MagazineTab", () => {
+  it.each(["contributor", "editor", "editor_in_chief", null] as const)(
+    "shows the writing desk to contributors and the editor's desk to editors (%s)",
+    (viewerRole: MagazineRole | null) => {
+      renderWithIntl(
+        <MagazineTab
+          communitySlug="amsterdam-ai"
+          data={tabData({
+            viewerRole,
+            viewerIsEditor: roleCan(viewerRole, "edit"),
+          })}
+        />,
+      );
+      const editor = screen.queryByRole("region", { name: "Editor desk stub" });
+      const writer = screen.queryByRole("region", {
+        name: "Writing desk stub",
+      });
+      if (viewerRole === "contributor") {
+        expect(writer).toHaveAttribute("data-slug", "amsterdam-ai");
+        expect(editor).toBeNull();
+      } else if (viewerRole !== null) {
+        expect(editor).toHaveAttribute(
+          "data-manage",
+          String(viewerRole === "editor_in_chief"),
+        );
+        expect(writer).toBeNull();
+      } else {
+        expect(editor).toBeNull();
+        expect(writer).toBeNull();
+      }
+    },
+  );
+
+  it("reuses the reader's empty description for contributors", () => {
+    renderWithIntl(
+      <MagazineTab
+        communitySlug="amsterdam-ai"
+        data={tabData({ latest: null, issues: [], viewerRole: "contributor" })}
+      />,
+    );
+    expect(
+      screen.getByText("The first issue of Agents Weekly is on its way."),
+    ).toBeInTheDocument();
+  });
+
   it("leads with the latest issue and shelves the older ones", () => {
     renderWithIntl(
       <MagazineTab data={tabData()} communitySlug="amsterdam-ai" />,
@@ -93,7 +149,7 @@ describe("MagazineTab", () => {
 
     renderWithIntl(
       <MagazineTab
-        data={tabData({ viewerIsEditor: true })}
+        data={tabData({ viewerIsEditor: true, viewerRole: "editor_in_chief" })}
         communitySlug="amsterdam-ai"
       />,
     );
@@ -110,6 +166,7 @@ describe("MagazineTab", () => {
           latest: null,
           issues: [],
           viewerIsEditor: true,
+          viewerRole: "editor_in_chief",
         })}
         communitySlug="amsterdam-ai"
       />,

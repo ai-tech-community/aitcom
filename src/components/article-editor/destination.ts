@@ -4,6 +4,7 @@ import {
   communityMagazinePath,
   magazineArticleEditPath,
 } from "@/lib/magazines/paths";
+import type { MagazineHandIn } from "@/lib/magazines/roles";
 
 /**
  * Where an article is written for (ADR-0043 channels, seen from the
@@ -17,6 +18,7 @@ export type ArticleDestination =
       magazineId: number;
       magazineName: string;
       communitySlug: string;
+      handIn: MagazineHandIn;
     };
 
 /** Message keys are under the editor's `articleEditor` namespace. */
@@ -26,13 +28,22 @@ export type DestinationBehaviour = {
   /** Where the writer goes once the article is handed in. */
   afterSubmitHref: string;
   /** The hand-in action, when it is not a trusted author's direct publish. */
-  submitLabelKey: "submitForReview" | "magazine.markReady";
+  submitLabelKey:
+    | "submitForReview"
+    | "magazine.markReady"
+    | "magazine.sendForReview";
   /** Whether a trusted author publishes directly from the editor. */
   showTrustedPublish: boolean;
   /** The note shown once a non-trusted hand-in went through. */
-  submittedKey: "submitted" | "magazine.markedReady";
-  prePublishTitleKey: "prePublishTitle" | "magazine.prePublishTitle";
-  prePublishSubtitleKey: "prePublishSubtitle" | "magazine.prePublishSubtitle";
+  submittedKey: "submitted" | "magazine.markedReady" | "magazine.sentForReview";
+  prePublishTitleKey:
+    | "prePublishTitle"
+    | "magazine.prePublishTitle"
+    | "magazine.reviewPrePublishTitle";
+  prePublishSubtitleKey:
+    | "prePublishSubtitle"
+    | "magazine.prePublishSubtitle"
+    | "magazine.reviewPrePublishSubtitle";
   /** The locale-free address of a saved article in this editor. */
   editPath: (articleSlug: string) => string;
   /**
@@ -54,6 +65,38 @@ const BLOG: DestinationBehaviour = {
   errorKey: () => null,
 };
 
+/** The magazine decides how this writer hands in an article. */
+function magazineHandInBehaviour(
+  handIn: MagazineHandIn,
+): Pick<
+  DestinationBehaviour,
+  | "submitLabelKey"
+  | "submittedKey"
+  | "prePublishTitleKey"
+  | "prePublishSubtitleKey"
+> {
+  switch (handIn) {
+    case "mark_ready":
+      return {
+        submitLabelKey: "magazine.markReady",
+        submittedKey: "magazine.markedReady",
+        prePublishTitleKey: "magazine.prePublishTitle",
+        prePublishSubtitleKey: "magazine.prePublishSubtitle",
+      };
+    case "send_for_review":
+      return {
+        submitLabelKey: "magazine.sendForReview",
+        submittedKey: "magazine.sentForReview",
+        prePublishTitleKey: "magazine.reviewPrePublishTitle",
+        prePublishSubtitleKey: "magazine.reviewPrePublishSubtitle",
+      };
+    default: {
+      const unreachable: never = handIn;
+      return unreachable;
+    }
+  }
+}
+
 /**
  * Everything the editor does differently per destination, in one place:
  * the editor itself never branches on `destination.kind`.
@@ -65,20 +108,19 @@ export function destinationBehaviour(
     case "blog":
       return BLOG;
     case "magazine":
-      // Slice 1: editors write magazine articles, so marking one ready is
-      // the approval; it goes live with the issue that holds it.
       return {
         createExtras: { magazineId: destination.magazineId },
         afterSubmitHref: communityMagazinePath(destination.communitySlug),
-        submitLabelKey: "magazine.markReady",
+        ...magazineHandInBehaviour(destination.handIn),
         showTrustedPublish: false,
-        submittedKey: "magazine.markedReady",
-        prePublishTitleKey: "magazine.prePublishTitle",
-        prePublishSubtitleKey: "magazine.prePublishSubtitle",
         editPath: (articleSlug) =>
           magazineArticleEditPath(destination.communitySlug, articleSlug),
         // The magazine services answer in codes; raw codes never reach a toast.
         errorKey: (error) => readEditorError(error).key,
       };
+    default: {
+      const unreachable: never = destination;
+      return unreachable;
+    }
   }
 }

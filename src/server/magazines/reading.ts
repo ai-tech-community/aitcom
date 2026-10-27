@@ -10,6 +10,7 @@ import type {
   ArticleItemView,
   EditorItemView,
 } from "@/lib/magazines/item-views";
+import type { MagazineRole } from "@/lib/magazines/roles";
 import {
   ISSUE_LAYOUTS,
   type IssueLayout,
@@ -446,21 +447,23 @@ export async function loadCommunityMagazineTab(
   latest: IssueCard | null;
   issues: IssueCard[];
   viewerIsEditor: boolean;
+  viewerRole: MagazineRole | null;
 }> {
   const community = await liveCommunityBySlug(deps.db, opts.communitySlug);
   if (!community) return null;
   const magazine = await getMagazineForCommunity(deps.payload, community.id);
+  const standing = await loadMagazineEditorship(
+    deps.db,
+    { communityId: community.id, magazineId: magazine?.id ?? null },
+    opts.viewerId,
+  );
   if (!magazine) {
-    const standing = await loadMagazineEditorship(
-      deps.db,
-      { communityId: community.id, magazineId: null },
-      opts.viewerId,
-    );
     return {
       magazine: null,
       latest: null,
       issues: [],
       viewerIsEditor: standing.isEditor,
+      viewerRole: standing.role,
     };
   }
   const shelf = await loadShelf(
@@ -475,6 +478,8 @@ export async function loadCommunityMagazineTab(
     magazine: toMagazineSummary(magazine),
     latest: shelf.issues[0] ?? null,
     ...shelf,
+    viewerIsEditor: standing.isEditor,
+    viewerRole: standing.role,
   };
 }
 

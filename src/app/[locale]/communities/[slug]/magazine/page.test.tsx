@@ -49,6 +49,7 @@ const noMagazine = (viewerIsEditor: boolean): CommunityMagazineTabData => ({
   latest: null,
   issues: [],
   viewerIsEditor,
+  viewerRole: viewerIsEditor ? "editor_in_chief" : null,
 });
 
 beforeEach(() => {

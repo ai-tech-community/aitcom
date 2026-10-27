@@ -2298,6 +2298,10 @@
     "featuredImagePlaceholder": "Geen afbeelding — voeg een URL toe",
     "articleTitlePlaceholder": "Artikel titel...",
     "magazine": {
+      "sendForReview": "Stuur naar de redactie",
+      "sentForReview": "Verstuurd. De redactie leest je artikel en laat je iets weten.",
+      "reviewPrePublishTitle": "Naar de redactie sturen?",
+      "reviewPrePublishSubtitle": "Controleer eerst je artikel. Je kunt het niet aanpassen terwijl de redactie het leest. De redactie kan het goedkeuren, om aanpassingen vragen of afwijzen.",
       "markReady": "Klaarzetten voor een nummer",
       "markedReady": "Klaargezet. Een redacteur kan het nu in een nummer plaatsen.",
       "prePublishTitle": "Klaar voor een nummer?",
@@ -4916,7 +4920,24 @@
       "emptyDescription": "Het eerste nummer van {magazine} komt eraan.",
       "emptyEditorDescription": "Maak het eerste nummer met Nieuw nummer in de redactietafel hieronder."
     },
+    "contributorDesk": {
+      "label": "Je schrijftafel",
+      "write": "Schrijf een artikel",
+      "articles": "Je artikelen",
+      "articlesEmpty": "Je hebt nog geen artikelen in de maak. Schrijf er een en stuur het naar de redactie.",
+      "editorNote": "Opmerking van de redactie",
+      "status": {
+        "draft": "Nog niet verstuurd",
+        "pending_review": "Bij de redactie",
+        "changes_requested": "Aanpassingen gevraagd",
+        "approved": "Klaar voor een nummer",
+        "rejected": "Niet geaccepteerd"
+      }
+    },
     "desk": {
+      "waiting": "Wacht op jou",
+      "waitingEmpty": "Er wachten geen artikelen. Artikelen die leden insturen verschijnen hier.",
+      "sentOn": "Verstuurd op {date}",
       "label": "Redactietafel",
       "newIssue": "Nieuw nummer",
       "newIssueTitle": "Nummer {number}",
@@ -4934,6 +4955,7 @@
       "drafts": "Jouw concepten",
       "draftsEmpty": "Je hebt geen artikelen in bewerking. Schrijf er een voor je volgende nummer.",
       "reviewStatus": {
+        "approved": "Klaar voor een nummer",
         "draft": "Concept",
         "pending_review": "Wacht op beoordeling",
         "changes_requested": "Wijzigingen gevraagd",

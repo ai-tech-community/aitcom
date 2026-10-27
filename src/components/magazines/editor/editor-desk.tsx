@@ -1,91 +1,29 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ErrorState } from "@/components/ui/error-state";
-import { SectionLabel } from "@/components/ui/section-label";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
   issueBuilderPath,
   magazineArticleEditPath,
+  magazineReviewPath,
   magazineSettingsPath,
   magazineWritePath,
 } from "@/lib/magazines/paths";
+import { writerStatusOf } from "@/lib/magazines/review";
 import type { IssueListRow } from "@/server/magazines/issue-editing";
 import { api } from "@/trpc/react";
 
 import { useIssueDateline } from "../reading/issue-dateline";
+import { DeskList, UpdatedAt } from "./desk-list";
 import { readEditorError } from "./editor-errors";
-
-/** Review states of an article that is not ready yet, as the desk names them. */
-const REVIEW_STATUSES = [
-  "pending_review",
-  "changes_requested",
-  "rejected",
-] as const;
-type DraftReviewStatus = (typeof REVIEW_STATUSES)[number] | "draft";
-
-function draftStatusOf(reviewStatus: string | null): DraftReviewStatus {
-  return (REVIEW_STATUSES as readonly string[]).includes(reviewStatus ?? "")
-    ? (reviewStatus as DraftReviewStatus)
-    : "draft";
-}
 
 /** The number the next issue will most likely get, for its working title. */
 function nextIssueNumber(issues: IssueListRow[]): number {
   return issues.reduce((max, issue) => Math.max(max, issue.number), 0) + 1;
-}
-
-type ListQuery = {
-  isLoading: boolean;
-  isError: boolean;
-  refetch: () => unknown;
-};
-
-/** One desk list: its label, then rows, a skeleton, an error or a hint. */
-function DeskList({
-  label,
-  query,
-  empty,
-  children,
-}: {
-  label: string;
-  query: ListQuery;
-  /** The teaching line when the list is empty; null when it has rows. */
-  empty: string | null;
-  children: ReactNode;
-}) {
-  const t = useTranslations("magazineEditor.desk");
-  const labelId = useId();
-  return (
-    <section aria-labelledby={labelId} className="flex min-w-0 flex-col gap-3">
-      <SectionLabel as="h3" id={labelId}>
-        {label}
-      </SectionLabel>
-      {query.isLoading ? (
-        <div className="flex flex-col gap-2" aria-hidden="true">
-          <Skeleton className="h-12" />
-          <Skeleton className="h-12" />
-        </div>
-      ) : query.isError ? (
-        <ErrorState
-          className="items-start px-0 py-4 text-left"
-          title={t("loadFailed")}
-          description=""
-          retryLabel={t("tryAgain")}
-          onRetry={() => void query.refetch()}
-        />
-      ) : empty !== null ? (
-        <p className="text-muted-foreground text-sm">{empty}</p>
-      ) : (
-        <ul className="flex flex-col divide-y rounded-lg border">{children}</ul>
-      )}
-    </section>
-  );
 }
 
 function IssueRow({ issue, slug }: { issue: IssueListRow; slug: string }) {
@@ -117,33 +55,28 @@ function IssueRow({ issue, slug }: { issue: IssueListRow; slug: string }) {
   );
 }
 
-/** Mono date of the last change to a row. */
-function UpdatedAt({ value }: { value: string }) {
-  const format = useFormatter();
-  return (
-    <time
-      dateTime={value}
-      className="text-muted-foreground shrink-0 font-mono text-xs"
-    >
-      {format.dateTime(new Date(value), { day: "numeric", month: "short" })}
-    </time>
-  );
-}
-
 /**
  * The editor desk on the community Magazine tab (editors only): start a new
  * issue (it opens in the issue builder), write an article, open the
- * settings; then the magazine's issues with their status, the articles
- * ready for an issue, and the editor's own drafts. "New issue" is not
- * orange: the tab's one orange action is "Read the issue".
+ * settings (with manage); then articles waiting for review, the magazine's
+ * issues, articles ready for an issue, and the editor's own drafts.
+ * Desk actions use ink, outline or ghost to preserve the tab's accent.
  */
-export function EditorDesk({ slug }: { slug: string }) {
+export function EditorDesk({
+  slug,
+  canManage,
+}: {
+  slug: string;
+  canManage: boolean;
+}) {
   const t = useTranslations("magazineEditor.desk");
+  const format = useFormatter();
   const tErrors = useTranslations("magazineEditor.errors");
   const router = useRouter();
   const labelId = useId();
   const [createError, setCreateError] = useState<string | null>(null);
 
+  const waiting = api.magazines.reviewQueue.useQuery({ slug });
   const issues = api.magazines.listIssues.useQuery({ slug });
   const ready = api.magazines.availableArticles.useQuery({ slug });
   const drafts = api.magazines.myDraftArticles.useQuery({ slug });
@@ -162,6 +95,7 @@ export function EditorDesk({ slug }: { slug: string }) {
     });
   };
 
+  const waitingRows = waiting.data ?? [];
   const issueRows = issues.data ?? [];
   const readyRows = ready.data ?? [];
   const draftRows = drafts.data ?? [];
@@ -187,9 +121,11 @@ export function EditorDesk({ slug }: { slug: string }) {
           <Button variant="outline" size="sm" asChild>
             <Link href={magazineWritePath(slug)}>{t("write")}</Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={magazineSettingsPath(slug)}>{t("settings")}</Link>
-          </Button>
+          {canManage && (
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={magazineSettingsPath(slug)}>{t("settings")}</Link>
+            </Button>
+          )}
         </div>
       </div>
       {createError && (
@@ -198,7 +134,41 @@ export function EditorDesk({ slug }: { slug: string }) {
         </p>
       )}
 
-      <div className="grid gap-8 @3xl:grid-cols-3">
+      <div className="grid gap-8 @3xl:grid-cols-2">
+        <DeskList
+          label={t("waiting")}
+          query={waiting}
+          empty={waitingRows.length === 0 ? t("waitingEmpty") : null}
+        >
+          {waitingRows.map((article) => (
+            <li key={article.id}>
+              <Link
+                href={magazineReviewPath(slug, article.slug)}
+                className="hover:bg-secondary/50 flex min-w-0 flex-col gap-1 px-3 py-2.5 transition-colors"
+              >
+                <span className="text-sm font-medium break-words">
+                  {article.title}
+                </span>
+                {article.authorName && (
+                  <span className="text-muted-foreground text-xs">
+                    {t("byAuthor", { name: article.authorName })}
+                  </span>
+                )}
+                <time
+                  dateTime={article.sentAt}
+                  className="text-muted-foreground font-mono text-xs"
+                >
+                  {t("sentOn", {
+                    date: format.dateTime(new Date(article.sentAt), {
+                      day: "numeric",
+                      month: "short",
+                    }),
+                  })}
+                </time>
+              </Link>
+            </li>
+          ))}
+        </DeskList>
         <DeskList
           label={t("issues")}
           query={issues}
@@ -267,7 +237,7 @@ export function EditorDesk({ slug }: { slug: string }) {
                     {article.title}
                   </span>
                   <span className="text-muted-foreground text-xs">
-                    {t(`reviewStatus.${draftStatusOf(article.reviewStatus)}`)}
+                    {t(`reviewStatus.${writerStatusOf(article.reviewStatus)}`)}
                   </span>
                 </span>
                 <UpdatedAt value={article.updatedAt} />

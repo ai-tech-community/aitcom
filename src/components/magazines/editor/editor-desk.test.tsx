@@ -81,6 +81,18 @@ vi.mock("@/trpc/react", () => ({
             },
           ]),
       },
+      reviewQueue: {
+        useQuery: () =>
+          query([
+            {
+              id: 10,
+              slug: "waiting-story",
+              title: "Waiting story",
+              authorName: "Kim",
+              sentAt: "2026-10-21T00:00:00.000Z",
+            },
+          ]),
+      },
       myDraftArticles: {
         useQuery: () =>
           query([
@@ -117,8 +129,45 @@ beforeEach(() => {
 });
 
 describe("EditorDesk", () => {
+  it("lists articles waiting for review, linking to the review page", () => {
+    renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage={false} />);
+    const waiting = screen.getByRole("region", { name: /Waiting for you/ });
+    const link = within(waiting).getByRole("link", { name: /Waiting story/ });
+    expect(link).toHaveAttribute(
+      "href",
+      "/communities/amsterdam-ai/magazine/review/waiting-story",
+    );
+    expect(link).toHaveTextContent("By Kim");
+    const stamp = within(link).getByText("Sent Oct 21");
+    expect(stamp).toHaveClass("font-mono");
+    expect(stamp).toHaveAttribute("datetime", "2026-10-21T00:00:00.000Z");
+    const lists = screen.getAllByRole("region").slice(1);
+    expect(
+      lists.map((list) => within(list).getByRole("heading").textContent),
+    ).toEqual([
+      "/ Waiting for you",
+      "/ Issues",
+      "/ Ready for an issue",
+      "/ Your drafts",
+    ]);
+  });
+
+  it("shows Settings only to those who manage the magazine", () => {
+    const { unmount } = renderWithIntl(
+      <EditorDesk slug="amsterdam-ai" canManage />,
+    );
+    expect(
+      screen.getByRole("link", { name: "Magazine settings" }),
+    ).toBeInTheDocument();
+    unmount();
+    renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage={false} />);
+    expect(
+      screen.queryByRole("link", { name: "Magazine settings" }),
+    ).toBeNull();
+  });
+
   it("creates the next issue and opens it in the builder", () => {
-    renderWithIntl(<EditorDesk slug="amsterdam-ai" />);
+    renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage />);
     fireEvent.click(screen.getByRole("button", { name: "New issue" }));
     expect(trpc.createCalls).toEqual([
       { slug: "amsterdam-ai", title: "Issue 5" },
@@ -130,7 +179,7 @@ describe("EditorDesk", () => {
 
   it("shows a friendly message when the issue cannot be created", () => {
     trpc.createOutcome = { message: "SOMETHING_RAW" };
-    renderWithIntl(<EditorDesk slug="amsterdam-ai" />);
+    renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage />);
     fireEvent.click(screen.getByRole("button", { name: "New issue" }));
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Something went wrong. Try again.",
@@ -139,7 +188,7 @@ describe("EditorDesk", () => {
   });
 
   it("lists issues with their status, ready articles and the editor's drafts", () => {
-    renderWithIntl(<EditorDesk slug="amsterdam-ai" />);
+    renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage />);
 
     const issues = screen.getByRole("region", { name: /Issues/ });
     const draft = within(issues).getByRole("link", { name: /The tools issue/ });

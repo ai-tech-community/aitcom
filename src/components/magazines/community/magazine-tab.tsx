@@ -7,14 +7,45 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
 import { magazinePath, magazineSettingsPath } from "@/lib/magazines/paths";
+import { roleCan, type MagazineRole } from "@/lib/magazines/roles";
 import type {
   CommunityMagazineTabData,
   IssueCard,
 } from "@/server/magazines/reading";
 
+import { ContributorDesk } from "../editor/contributor-desk";
 import { EditorDesk } from "../editor/editor-desk";
 import { FeaturedIssue } from "../reading/featured-issue";
 import { IssueCoverCard } from "../reading/issue-cover-card";
+
+/** Desk choice follows capabilities, so role changes stay in roles.ts. */
+function deskFor(role: MagazineRole | null): "editor" | "contributor" | null {
+  if (roleCan(role, "edit")) return "editor";
+  if (roleCan(role, "write")) return "contributor";
+  return null;
+}
+
+function MagazineDesk({
+  slug,
+  role,
+}: {
+  slug: string;
+  role: MagazineRole | null;
+}) {
+  const desk = deskFor(role);
+  switch (desk) {
+    case "editor":
+      return <EditorDesk slug={slug} canManage={roleCan(role, "manage")} />;
+    case "contributor":
+      return <ContributorDesk slug={slug} />;
+    case null:
+      return null;
+    default: {
+      const unreachable: never = desk;
+      return unreachable;
+    }
+  }
+}
 
 /** A community without a magazine, as its editors see it (preflight F8). */
 function StartMagazine({ communitySlug }: { communitySlug: string }) {
@@ -65,7 +96,7 @@ function PastIssues({ issues }: { issues: IssueCard[] }) {
  * The community's Magazine tab (spec flow 5): the latest issue large with
  * "Read the issue" in ink (the community frame's Join is this page's one
  * orange action, One Voice Rule), then the archive shelf
- * of older covers. Editors also get the editor desk. Server-rendered from
+ * of older covers. Writers get their desk, chosen by capability. Server-rendered from
  * `loadCommunityMagazineTab`; a community without a magazine reaches this
  * only for editors (the page answers 404 for everyone else).
  *
@@ -81,7 +112,7 @@ export function MagazineTab({
 }) {
   const t = useTranslations("magazineEditor.tab");
   const latestId = useId();
-  const { magazine, latest, issues, viewerIsEditor } = data;
+  const { magazine, latest, issues, viewerIsEditor, viewerRole } = data;
 
   if (!magazine) {
     return viewerIsEditor ? (
@@ -133,7 +164,7 @@ export function MagazineTab({
         />
       )}
 
-      {viewerIsEditor && <EditorDesk slug={communitySlug} />}
+      <MagazineDesk slug={communitySlug} role={viewerRole} />
 
       {past.length > 0 && <PastIssues issues={past} />}
     </div>

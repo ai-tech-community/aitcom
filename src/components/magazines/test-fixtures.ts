@@ -13,6 +13,7 @@ import type {
   UnavailableItem,
 } from "@/lib/magazines/item-views";
 import type { Article } from "@/payload-types";
+import type { DraftMagazineArticle } from "@/server/magazines/magazine-articles";
 import type {
   IssueCard,
   IssuePageData,
@@ -377,6 +378,22 @@ export function shelfData(
       issueCard(),
     ],
     viewerIsEditor: false,
+    ...overrides,
+  };
+}
+
+/** One unpublished article on a writer's desk. */
+export function writerArticle(
+  id: number,
+  overrides: Partial<DraftMagazineArticle> = {},
+): DraftMagazineArticle {
+  return {
+    id,
+    slug: `story-${id}`,
+    title: `Story ${id}`,
+    reviewStatus: null,
+    reviewNote: null,
+    updatedAt: "2026-10-20T00:00:00.000Z",
     ...overrides,
   };
 }

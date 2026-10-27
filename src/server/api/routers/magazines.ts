@@ -46,6 +46,7 @@ import { searchPickerCandidates } from "@/server/magazines/items/pickers";
 import {
   listAvailableArticles,
   listDraftArticles,
+  listWriterArticles,
 } from "@/server/magazines/magazine-articles";
 import {
   getMagazineForCommunity,
@@ -432,6 +433,14 @@ export const magazinesRouter = createTRPCRouter({
         input,
         actorOf(ctx),
       ),
+    ),
+
+  myMagazineArticles: writerProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(({ ctx }) =>
+      ctx.magazine
+        ? listWriterArticles(ctx.payload, ctx.magazine.id, ctx.session.user.id)
+        : [],
     ),
 
   myDraftArticles: writerProcedure
