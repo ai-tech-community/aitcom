@@ -1,6 +1,11 @@
 export const SCHEDULE_MAX_DAYS = 365;
 export type ScheduleProblem = "SCHEDULE_IN_PAST" | "SCHEDULE_TOO_FAR";
 
+/** The editor's zone, shared by the local input and every schedule display. */
+export function browserTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
 /** In the past (publishAt <= now) or more than SCHEDULE_MAX_DAYS ahead; null when fine. */
 export function scheduleProblem(
   publishAt: Date,

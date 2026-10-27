@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
 import type { MagazineIssue } from "@/payload-types";
+import { localDateTimeToIso } from "@/lib/magazines/schedule";
 
 import {
   eventView,
@@ -14,6 +15,7 @@ import { renderWithIntl } from "../../test-intl";
 const T0 = "2026-10-20T10:00:00.000Z";
 const T1 = "2026-10-20T10:00:05.000Z";
 const T2 = "2026-10-20T10:00:09.000Z";
+const originalTz = process.env.TZ;
 
 type EditingData = {
   issue: MagazineIssue;
@@ -33,6 +35,8 @@ const trpc = vi.hoisted(() => ({
   updateIssue: vi.fn(),
   setIssueItems: vi.fn(),
   publishIssue: vi.fn(),
+  scheduleIssue: vi.fn(),
+  unscheduleIssue: vi.fn(),
   invalidate: vi.fn(),
   removeItem: null as ((key: string) => void) | null,
 }));
@@ -108,6 +112,12 @@ vi.mock("@/trpc/react", () => ({
       },
       publishIssue: {
         useMutation: () => ({ mutateAsync: trpc.publishIssue }),
+      },
+      scheduleIssue: {
+        useMutation: () => ({ mutateAsync: trpc.scheduleIssue }),
+      },
+      unscheduleIssue: {
+        useMutation: () => ({ mutateAsync: trpc.unscheduleIssue }),
       },
     },
   },
@@ -258,6 +268,8 @@ beforeEach(() => {
   trpc.updateIssue.mockReset();
   trpc.setIssueItems.mockReset();
   trpc.publishIssue.mockReset();
+  trpc.scheduleIssue.mockReset();
+  trpc.unscheduleIssue.mockReset();
   trpc.updateIssue.mockImplementation(async (input: { title?: string }) =>
     issue({ ...input, updatedAt: T1 } as Partial<MagazineIssue>),
   );
@@ -277,9 +289,113 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  if (originalTz === undefined) delete process.env.TZ;
+  else process.env.TZ = originalTz;
 });
 
 describe("IssueBuilder", () => {
+  it("schedules with the builder's version and shows the time in the top bar", async () => {
+    process.env.TZ = "America/Los_Angeles";
+    vi.setSystemTime(new Date("2030-01-01T00:00:00.000Z"));
+    const publishAt = localDateTimeToIso("2030-01-02T09:30")!;
+    trpc.scheduleIssue.mockResolvedValue(
+      issue({ status: "scheduled", scheduledFor: publishAt, updatedAt: T2 }),
+    );
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "A new title" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.click(
+      dialog.getByRole("radio", { name: "Later, at a time I choose" }),
+    );
+    fireEvent.change(dialog.getByLabelText("Date and time"), {
+      target: { value: "2030-01-02T09:30" },
+    });
+    await act(async () => {
+      fireEvent.click(dialog.getByRole("button", { name: "Schedule it" }));
+    });
+    expect(trpc.updateIssue).toHaveBeenCalled(); // Scheduling flushed the pending title.
+    expect(trpc.scheduleIssue).toHaveBeenCalledWith({
+      slug: "night-owls",
+      issueId: 5,
+      expectedUpdatedAt: T1,
+      publishAt,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    const bar = within(
+      screen
+        .getByRole("link", { name: "Back to The Gazette" })
+        .closest("header")!,
+    );
+    const goesOut = bar.getByText(/^Goes out\b/);
+    expect(goesOut).toHaveTextContent("9:30 AM");
+    expect(goesOut).not.toHaveClass("font-mono");
+    expect(within(goesOut).getByText(/9:30 AM/)).toHaveClass("font-mono");
+    expect(bar.getByText(/Issue 2 · Scheduled/)).toBeVisible();
+    expect(bar.getByRole("button", { name: "Publish" })).toBeEnabled();
+    expect(screen.getByLabelText("Address")).not.toHaveAttribute("readonly");
+  });
+
+  it("a schedule conflict shows the reload banner", async () => {
+    vi.setSystemTime(new Date("2030-01-01T00:00:00.000Z"));
+    trpc.scheduleIssue.mockRejectedValue(refusal("ISSUE_CHANGED"));
+    renderBuilder();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    fireEvent.click(
+      screen.getByRole("radio", { name: "Later, at a time I choose" }),
+    );
+    fireEvent.change(screen.getByLabelText("Date and time"), {
+      target: { value: "2030-01-02T09:30" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Schedule it" }));
+    });
+    expect(trpc.scheduleIssue).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "This issue changed somewhere else",
+    );
+    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+  });
+
+  it("cancels with the builder's version after saving pending edits", async () => {
+    const scheduled = issue({
+      status: "scheduled",
+      scheduledFor: "2030-01-02T09:30:00.000Z",
+    });
+    trpc.editing = twoArticles({ issue: scheduled });
+    trpc.updateIssue.mockResolvedValue({ ...scheduled, updatedAt: T1 });
+    trpc.unscheduleIssue.mockResolvedValue(
+      issue({ scheduledFor: null, updatedAt: T2 }),
+    );
+    renderBuilder();
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Revised title" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    });
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "Cancel the schedule" }),
+      );
+    });
+    expect(trpc.unscheduleIssue).toHaveBeenCalledWith({
+      slug: "night-owls",
+      issueId: 5,
+      expectedUpdatedAt: T1,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(screen.queryByText(/^Goes out\b/)).toBeNull();
+    expect(screen.getByText(/Issue 2 · Draft/)).toBeVisible();
+  });
+
   it("reorders by the menu and saves the new order with expectedUpdatedAt", async () => {
     renderBuilder();
     await openRowMenu("First story");

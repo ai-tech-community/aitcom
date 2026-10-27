@@ -8,13 +8,16 @@ import { SectionLabel } from "@/components/ui/section-label";
 import type { AutosaveStatus } from "@/components/use-autosave";
 import { Link } from "@/i18n/navigation";
 import { communityMagazinePath } from "@/lib/magazines/paths";
-import type { IssueStatus } from "@/lib/magazines/values";
+import { canIssue, type IssueStatus } from "@/lib/magazines/values";
+
+import { useScheduleTime } from "../use-schedule-time";
 
 export type BuilderTopBarProps = {
   communitySlug: string;
   magazineName: string;
   issueNumber: number;
   status: IssueStatus;
+  scheduledFor: string | null;
   /** The title as typed; an untitled issue says so. */
   title: string;
   saveStatus: AutosaveStatus;
@@ -39,6 +42,7 @@ export function BuilderTopBar({
   magazineName,
   issueNumber,
   status,
+  scheduledFor,
   title,
   saveStatus,
   saveError,
@@ -48,6 +52,7 @@ export function BuilderTopBar({
   publishDisabled,
 }: BuilderTopBarProps) {
   const t = useTranslations("magazineEditor.builder");
+  const displayTime = useScheduleTime();
 
   return (
     <header className="bg-background border-border sticky top-12 z-40 border-b">
@@ -74,9 +79,22 @@ export function BuilderTopBar({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <SaveStatusText status={saveStatus} onRetry={onRetry} />
-          {status === "published" ? (
+          {scheduledFor && (
+            <time
+              dateTime={scheduledFor}
+              className="text-muted-foreground text-xs"
+            >
+              {t.rich("goesOut", {
+                time: displayTime(scheduledFor),
+                timestamp: (chunks) => (
+                  <span className="font-mono">{chunks}</span>
+                ),
+              })}
+            </time>
+          )}
+          {!canIssue(status, "publish") ? (
             <Button type="button" variant="outline" size="sm" disabled>
               {t("published")}
             </Button>

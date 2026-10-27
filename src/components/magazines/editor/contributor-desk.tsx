@@ -13,6 +13,7 @@ import { mayWriterChange, writerStatusOf } from "@/lib/magazines/review";
 import { api } from "@/trpc/react";
 
 import { DeskList, UpdatedAt } from "./desk-list";
+import { SubscriberCountLine } from "./subscriber-count-line";
 
 /** The writer's unpublished articles stay here until their issue comes out. */
 export function ContributorDesk({ slug }: { slug: string }) {
@@ -34,6 +35,7 @@ export function ContributorDesk({ slug }: { slug: string }) {
           <Link href={magazineWritePath(slug)}>{t("write")}</Link>
         </Button>
       </div>
+      <SubscriberCountLine slug={slug} />
       <DeskList
         label={t("articles")}
         query={articles}

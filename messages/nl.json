@@ -4834,7 +4834,8 @@
       "noItems": "Dit nummer heeft nog geen artikelen.",
       "published": "Verschenen op {date}",
       "signature": "— {name}, redacteur",
-      "contentsCount": "{count, plural, one {# onderdeel} other {# onderdelen}}"
+      "contentsCount": "{count, plural, one {# onderdeel} other {# onderdelen}}",
+      "scheduledNotice": "Ingepland. Lezers kunnen dit nummer nog niet zien."
     },
     "item": {
       "readArticle": "Lees artikel",
@@ -5039,7 +5040,12 @@
       },
       "loadFailed": "Deze lijst kon niet worden geladen.",
       "tryAgain": "Opnieuw proberen",
-      "team": "Team"
+      "team": "Team",
+      "goesOut": "Verschijnt op {time}",
+      "subscribers": "{count, plural, =0 {Nog geen abonnees} one {<number>#</number> abonnee} other {<number>#</number> abonnees}}",
+      "subscribersWithAccount": "<number>{count}</number> met een account",
+      "subscribersByEmail": "<number>{count}</number> via e-mail",
+      "subscribersWaiting": "<number>{count}</number> nog niet bevestigd"
     },
     "builder": {
       "metaTitle": "Nummer bewerken",
@@ -5216,8 +5222,23 @@
         "successTitle": "Je nummer is gepubliceerd",
         "successLead": "Lezers kunnen het nu openen.",
         "read": "Lees het nummer",
-        "keepEditing": "Verder bewerken"
-      }
+        "keepEditing": "Verder bewerken",
+        "when": "Wanneer moet het nummer verschijnen?",
+        "now": "Nu",
+        "later": "Later, op een tijdstip dat ik kies",
+        "timeLabel": "Datum en tijd",
+        "timeHelp": "Je tijdzone: {zone}. Het nummer verschijnt binnen een paar minuten na dit tijdstip.",
+        "timeInvalid": "Vul een datum en tijd in.",
+        "scheduleConfirm": "Inplannen",
+        "scheduling": "Inplannen…",
+        "currentSchedule": "Ingepland voor {time}.",
+        "unschedule": "Planning annuleren",
+        "scheduledTitle": "Je nummer is ingepland",
+        "scheduledLead": "Het verschijnt op {time}. Tot die tijd kun je het nog aanpassen.",
+        "unscheduledTitle": "De planning is geannuleerd",
+        "unscheduledLead": "Het nummer is weer een concept."
+      },
+      "goesOut": "Verschijnt op <timestamp>{time}</timestamp>"
     },
     "roles": {
       "editor_in_chief": {

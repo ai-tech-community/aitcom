@@ -32,6 +32,24 @@ import { IssueReader } from "./issue-reader";
 import { itemAnchorId } from "./anchors";
 
 describe("IssueReader", () => {
+  it("tells an editor a scheduled issue is not public yet", () => {
+    renderWithIntl(
+      <IssueReader
+        data={issuePage({
+          access: "editor",
+          issue: { status: "scheduled", publishedAt: null },
+        })}
+        locale="en"
+      />,
+    );
+    expect(
+      screen.getByText("Scheduled. Readers cannot see it yet."),
+    ).toBeVisible();
+    expect(screen.queryByText("Draft — only editors can see this")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Edit issue" }),
+    ).toBeInTheDocument();
+  });
   it("offers to subscribe in the rail", () => {
     renderWithIntl(<IssueReader data={issuePage()} locale="en" />);
     const subscribe = screen.getByTestId("subscribe");

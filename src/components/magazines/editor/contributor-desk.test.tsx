@@ -39,6 +39,12 @@ vi.mock("@/trpc/react", () => ({
   },
 }));
 
+vi.mock("./subscriber-count-line", () => ({
+  SubscriberCountLine: ({ slug }: { slug: string }) => (
+    <div data-testid="subscriber-count" data-slug={slug} />
+  ),
+}));
+
 import { ContributorDesk } from "./contributor-desk";
 
 beforeEach(() => {
@@ -49,6 +55,13 @@ beforeEach(() => {
 });
 
 describe("ContributorDesk", () => {
+  it("shows contributors how many people subscribe", () => {
+    renderWithIntl(<ContributorDesk slug="amsterdam-ai" />);
+    expect(screen.getByTestId("subscriber-count")).toHaveAttribute(
+      "data-slug",
+      "amsterdam-ai",
+    );
+  });
   it("shows the writer their articles with the editors' note", () => {
     state.rows = [
       writerArticle(1, {
