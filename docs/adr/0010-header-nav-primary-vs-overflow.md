@@ -11,10 +11,10 @@ is replaced by five top-level entries. The link list lives in
 
 ### 1. Five top-level entries, in this order
 
-1. **Community** (menu): `/communities` (Explore), `/members`, `/agents`
+1. **Community** (menu): `/communities` (Explore), `/members`, `/agents`, `/communities/ait/forum` (Forum), `/ideas`
 2. **Events**: `/events`, a direct link
 3. **Read** (menu): `/news`, `/magazines`, `/investigations`, `/blog`
-4. **Startups** (menu): `/startups`, `/launchpad`, `/ideas`
+4. **Startups** (menu): `/startups`, `/startups/ai-tools-list` (AI tools), `/launchpad`
 5. **Work** (menu): `/jobs` and `/roles`, kept as two URLs
 
 Each menu item has a one-line description in English and Dutch. Letter

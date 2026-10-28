@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { AI_TOOLS_LIST_PATH } from "@/lib/investigations/ai-tools-list";
+import { HUB_FORUM_PATH } from "@/server/communities/forum-scope";
 import en from "../../messages/en.json";
 import nl from "../../messages/nl.json";
 import { JOIN_HREF, NAV_BAR, keyboardNavItems } from "./site-nav";
@@ -30,11 +32,41 @@ describe("site nav", () => {
         "G",
         "I",
         "S",
+        "O",
+        "K",
       ]),
     );
     expect(shortcuts).not.toContain("D");
     expect(shortcuts).not.toContain("A");
     expect(shortcuts).not.toContain("J");
+  });
+
+  it("keeps Forum and Ideas under Community, and AI tools under Startups", () => {
+    const community = NAV_BAR.find((entry) => entry.key === "community");
+    const startups = NAV_BAR.find((entry) => entry.key === "startups");
+    expect(community?.type).toBe("group");
+    expect(startups?.type).toBe("group");
+    if (community?.type !== "group" || startups?.type !== "group") return;
+    expect(community.items.map((item) => item.key)).toEqual([
+      "explore",
+      "members",
+      "agents",
+      "forum",
+      "ideas",
+    ]);
+    expect(community.items.find((item) => item.key === "forum")?.href).toBe(
+      HUB_FORUM_PATH,
+    );
+    expect(startups.items.map((item) => item.key)).toEqual([
+      "startups",
+      "aiTools",
+      "launchpad",
+    ]);
+    expect(startups.items.find((item) => item.key === "aiTools")?.href).toBe(
+      AI_TOOLS_LIST_PATH,
+    );
+    expect(AI_TOOLS_LIST_PATH).toBe("/startups/ai-tools-list");
+    expect(startups.items.map((item) => item.href)).not.toContain("/ideas");
   });
 
   it("has a one-line description in English and Dutch for every grouped item", () => {

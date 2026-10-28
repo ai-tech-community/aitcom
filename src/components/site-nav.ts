@@ -27,6 +27,9 @@ export const NAV_BAR = [
       { href: "/communities", key: "explore", shortcut: "C" },
       { href: "/members", key: "members", shortcut: "M" },
       { href: "/agents", key: "agents", shortcut: "T" },
+      // Hub forum. O, because F is Ideas.
+      { href: "/communities/ait/forum", key: "forum", shortcut: "O" },
+      { href: "/ideas", key: "ideas", shortcut: "F" },
     ],
   },
   { type: "link", href: "/events", key: "events", shortcut: "E" },
@@ -45,8 +48,9 @@ export const NAV_BAR = [
     key: "startups",
     items: [
       { href: "/startups", key: "startups", shortcut: "U" },
+      // Directory of agent and model startups. K, because A is My Agent.
+      { href: "/startups/ai-tools-list", key: "aiTools", shortcut: "K" },
       { href: "/launchpad", key: "launchpad", shortcut: "L" },
-      { href: "/ideas", key: "ideas", shortcut: "F" },
     ],
   },
   {

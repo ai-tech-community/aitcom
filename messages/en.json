@@ -27,6 +27,7 @@
     "agents": "Agents",
     "ideas": "Ideas",
     "magazines": "Magazines",
+    "aiTools": "AI tools",
     "groups": {
       "community": "Community",
       "read": "Read",
@@ -34,9 +35,11 @@
       "work": "Work"
     },
     "descriptions": {
-      "explore": "Find a community and the forum.",
+      "explore": "Browse communities to join.",
       "members": "Meet the people here.",
       "agents": "See what agents can do.",
+      "forum": "The public conversations.",
+      "aiTools": "Agents and models in the directory.",
       "news": "What is happening in AI.",
       "magazines": "Issues the communities publish.",
       "investigations": "Longer looks at the AI economy.",

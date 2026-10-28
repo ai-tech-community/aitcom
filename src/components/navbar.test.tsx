@@ -11,6 +11,7 @@ import nl from "../../messages/nl.json";
 import { JOIN_HREF, NAV_BAR } from "./site-nav";
 
 const router = vi.hoisted(() => ({ push: vi.fn() }));
+const path = vi.hoisted(() => ({ value: "/" }));
 
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
@@ -18,7 +19,7 @@ vi.mock("@/i18n/navigation", () => ({
       {children}
     </a>
   ),
-  usePathname: () => "/",
+  usePathname: () => path.value,
   useRouter: () => router,
 }));
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
@@ -39,14 +40,16 @@ const HEADER_HREFS = [
   "/communities",
   "/members",
   "/agents",
+  "/communities/ait/forum",
+  "/ideas",
   "/events",
   "/news",
   "/magazines",
   "/investigations",
   "/blog",
   "/startups",
+  "/startups/ai-tools-list",
   "/launchpad",
-  "/ideas",
   "/jobs",
   "/roles",
   JOIN_HREF,
@@ -69,6 +72,7 @@ function mainNav() {
 
 beforeEach(() => {
   router.push.mockReset();
+  path.value = "/";
 });
 
 describe("Navbar", () => {
@@ -209,6 +213,12 @@ describe("Navbar", () => {
     expect(router.push).toHaveBeenCalledWith("/jobs");
     fireEvent.keyDown(window, { key: "r" });
     expect(router.push).toHaveBeenCalledWith("/roles");
+    fireEvent.keyDown(window, { key: "o" });
+    expect(router.push).toHaveBeenCalledWith("/communities/ait/forum");
+    fireEvent.keyDown(window, { key: "f" });
+    expect(router.push).toHaveBeenCalledWith("/ideas");
+    fireEvent.keyDown(window, { key: "k" });
+    expect(router.push).toHaveBeenCalledWith("/startups/ai-tools-list");
   });
 
   it("keeps both Jobs and Roles, and leaves Sponsors out of the header", () => {
@@ -231,5 +241,65 @@ describe("Navbar", () => {
       "startups",
       "work",
     ]);
+  });
+
+  it("puts Forum and Ideas in Community, and AI tools in Startups", () => {
+    renderNavbar();
+    const communityButton = within(mainNav()).getByRole("button", {
+      name: "COMMUNITY",
+    });
+    fireEvent.click(communityButton);
+    expect(
+      within(mainNav()).getByRole("link", { name: /\[O\] FORUM/ }),
+    ).toHaveAttribute("href", "/communities/ait/forum");
+    expect(
+      within(mainNav()).getByRole("link", { name: /\[F\] IDEAS/ }),
+    ).toHaveAttribute("href", "/ideas");
+    expect(
+      within(mainNav()).getByText(en.nav.descriptions.forum),
+    ).toBeInTheDocument();
+
+    fireEvent.click(communityButton);
+    fireEvent.click(
+      within(mainNav()).getByRole("button", { name: "STARTUPS" }),
+    );
+    const startups = document.getElementById("site-nav-desktop-startups");
+    expect(startups).not.toBeNull();
+    expect(
+      within(startups!).getByRole("link", { name: /\[K\] AI TOOLS/ }),
+    ).toHaveAttribute("href", "/startups/ai-tools-list");
+    expect(
+      within(startups!).getByText(en.nav.descriptions.aiTools),
+    ).toBeInTheDocument();
+    expect(
+      within(startups!).queryByRole("link", { name: /\[F\] IDEAS/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lights the longer destination when two nav paths nest", () => {
+    path.value = "/startups/ai-tools-list";
+    const onTools = renderNavbar();
+    fireEvent.click(
+      within(mainNav()).getByRole("button", { name: "STARTUPS" }),
+    );
+    expect(
+      within(mainNav()).getByRole("link", { name: /\[K\] AI TOOLS/ }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(mainNav()).getByRole("link", { name: /\[U\] STARTUPS/ }),
+    ).not.toHaveAttribute("aria-current");
+    onTools.unmount();
+
+    path.value = "/communities/ait/forum";
+    renderNavbar();
+    fireEvent.click(
+      within(mainNav()).getByRole("button", { name: "COMMUNITY" }),
+    );
+    expect(
+      within(mainNav()).getByRole("link", { name: /\[O\] FORUM/ }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(mainNav()).getByRole("link", { name: /\[C\] EXPLORE/ }),
+    ).not.toHaveAttribute("aria-current");
   });
 });

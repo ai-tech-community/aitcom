@@ -42,7 +42,16 @@ const MessagesNavLink = dynamic(() =>
 );
 
 function isNavHrefActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const matches = pathname === href || pathname.startsWith(`${href}/`);
+  if (!matches) return false;
+  // A longer destination wins, so /startups does not also light up on
+  // /startups/ai-tools-list, and Explore does not light up on the forum.
+  return !keyboardNavItems().some(
+    (other) =>
+      other.href !== href &&
+      other.href.startsWith(`${href}/`) &&
+      (pathname === other.href || pathname.startsWith(`${other.href}/`)),
+  );
 }
 
 function initialsFrom(name?: string | null, email?: string | null) {
