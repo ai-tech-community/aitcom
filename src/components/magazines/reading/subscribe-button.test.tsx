@@ -180,8 +180,12 @@ describe("SubscribeButton", () => {
       "outline",
     );
     expect(screen.queryByRole("button", { name: "Subscribed" })).toBeNull();
-    expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: "Unsubscribe" }),
+    // The badge can paint while the mutation is still pending. Focus moves
+    // only after that pending flag clears, same as unsubscribe.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Unsubscribe" }),
+      ),
     );
     expect(screen.getByRole("status")).toHaveTextContent(
       "You are subscribed to Monthly.",
