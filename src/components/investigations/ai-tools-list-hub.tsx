@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import { JsonLd } from "@/components/json-ld";
 import { StartupLogo } from "@/components/investigations/startups-logo";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -38,11 +39,13 @@ export function AiToolsListHub({
   totalPages: number;
 }) {
   const copy = aiToolsListCopy(locale);
-  const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: StartupLocale = resolveLocale(locale);
   const pager =
-    copyLocale === "nl"
-      ? { prev: "Vorige", next: "Volgende", label: "Pagina's" }
-      : { prev: "Previous", next: "Next", label: "Pages" };
+    copyLocale === "fr"
+      ? { prev: "Précédent", next: "Suivant", label: "Pages" }
+      : copyLocale === "nl"
+        ? { prev: "Vorige", next: "Volgende", label: "Pagina's" }
+        : { prev: "Previous", next: "Next", label: "Pages" };
   const entries = cards.flatMap((card) => {
     const url = aiToolsHubProfileUrl(locale, card.slug);
     const [listed] = aiToolsOnPage([{ name: card.name, url }]);

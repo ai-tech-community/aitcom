@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import { Link } from "@/i18n/navigation";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
@@ -87,7 +88,7 @@ export function AwesomeAiOssPage({
   tab?: "directory" | "insights";
   insights?: AwesomeInsightsStats;
 }) {
-  const copyLocale: AwesomeLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: AwesomeLocale = resolveLocale(locale);
   const isInsights = tab === "insights";
   const insightStats =
     insights ??

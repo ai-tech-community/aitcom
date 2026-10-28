@@ -1,8 +1,12 @@
+import { createRequire } from "node:module";
 import { createTranslator } from "next-intl";
 import { describe, expect, it } from "vitest";
 
 import en from "../../messages/en.json";
 import nl from "../../messages/nl.json";
+import fr from "../../messages/fr.json";
+import { routing } from "./routing";
+import { loadMessages, resolveLocale } from "./messages";
 
 function flattenedKeys(value: object, prefix = ""): string[] {
   return Object.entries(value).flatMap(([key, child]: [string, unknown]) => {
@@ -148,5 +152,112 @@ describe("message catalogues", () => {
         flattenedKeys(english!).sort(),
       );
     }
+  });
+});
+
+function flattenedMessages(value: object, prefix = ""): [string, string][] {
+  return Object.entries(value).flatMap(([key, child]: [string, unknown]) => {
+    const path = prefix ? `${prefix}.${key}` : key;
+    return typeof child === "object" && child !== null
+      ? flattenedMessages(child, path)
+      : [[path, String(child)]];
+  });
+}
+
+// Resolve the parser used by next-intl itself, avoiding a second parser version.
+const nextIntlRequire = createRequire(
+  createRequire(import.meta.url).resolve("next-intl"),
+);
+const useIntlRequire = createRequire(nextIntlRequire.resolve("use-intl"));
+const messageFormatRequire = createRequire(
+  useIntlRequire.resolve("intl-messageformat"),
+);
+type MessageNode = {
+  type: number;
+  value?: string;
+  offset?: number;
+  children?: MessageNode[];
+  options?: Record<string, { value: MessageNode[] }>;
+};
+const { parse } = messageFormatRequire(
+  "@formatjs/icu-messageformat-parser",
+) as {
+  parse(this: void, message: string): MessageNode[];
+};
+
+function messageShape(nodes: MessageNode[]): string[] {
+  return nodes
+    .flatMap((node) => {
+      if (node.type === 0 || node.type === 7) return [];
+      const shape = [`${node.type}:${node.value}:${node.offset ?? ""}`];
+      if (node.children) shape.push(...messageShape(node.children));
+      for (const [option, branch] of Object.entries(node.options ?? {})) {
+        shape.push(
+          `option:${node.value}:${option}`,
+          ...messageShape(branch.value),
+        );
+      }
+      return shape;
+    })
+    .sort();
+}
+
+function messageValues(
+  nodes: MessageNode[],
+): Record<string, number | ((chunks: unknown) => string)> {
+  const values: Record<string, number | ((chunks: unknown) => string)> = {};
+  for (const node of nodes) {
+    if (node.type !== 0 && node.type !== 7 && node.value) {
+      values[node.value] = node.type === 8 ? (chunks) => String(chunks) : 2;
+    }
+    Object.assign(values, messageValues(node.children ?? []));
+    for (const branch of Object.values(node.options ?? {})) {
+      Object.assign(values, messageValues(branch.value));
+    }
+  }
+  return values;
+}
+
+describe("complete French catalogue", () => {
+  it("has the complete English key structure in every configured locale", async () => {
+    const keys = flattenedKeys(en).sort();
+    for (const locale of routing.locales) {
+      expect(flattenedKeys(await loadMessages(locale)).sort(), locale).toEqual(
+        keys,
+      );
+    }
+    expect(resolveLocale("fr")).toBe("fr");
+  });
+
+  it("preserves message arguments and tags and formats every French message", async () => {
+    const translated = new Map(flattenedMessages(fr));
+    const errors: string[] = [];
+    for (const [key, english] of flattenedMessages(en)) {
+      const french = translated.get(key)!;
+      const englishAst = parse(english);
+      expect(messageShape(parse(french)), key).toEqual(
+        messageShape(englishAst),
+      );
+      const values = messageValues(englishAst);
+      const t = createTranslator({
+        locale: "fr",
+        messages: { message: french },
+        onError: (error) => errors.push(`${key}: ${error.message}`),
+      });
+      await t.rich("message", values);
+    }
+    expect(errors).toEqual([]);
+  });
+
+  it("formats French welcome plurals including zero", () => {
+    const t = createTranslator({
+      locale: "fr",
+      messages: fr,
+      namespace: "magazineEditor.autoDraft.welcome",
+    });
+    const values = { community: "Paris", date: "28 octobre 2026" };
+    expect(t("body", { ...values, count: 1 })).toContain("1");
+    expect(t("body", { ...values, count: 2 })).toContain("2");
+    expect(t("body", { ...values, count: 0 })).toContain("0");
   });
 });

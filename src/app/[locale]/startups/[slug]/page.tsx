@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -38,7 +39,7 @@ export async function generateMetadata({
     return { title: "Startup not found" };
   }
   const locale = await getLocale();
-  const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: StartupLocale = resolveLocale(locale);
   const description = startupProfileMetaDescription(card, copyLocale);
   return {
     title: card.name,

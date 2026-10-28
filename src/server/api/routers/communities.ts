@@ -1,3 +1,4 @@
+import { routing } from "@/i18n/routing";
 // src/server/api/routers/communities.ts
 import { z } from "zod";
 import { and, eq, isNull, sql, desc, count, inArray } from "drizzle-orm";
@@ -180,7 +181,7 @@ export const communitiesRouter = createTRPCRouter({
           .optional(),
         limit: z.number().int().min(1).max(48).default(24),
         cursor: z.number().int().min(0).nullish(),
-        locale: z.enum(["en", "nl"]).default("en"),
+        locale: z.enum(routing.locales).default("en"),
       }),
     )
     .query(async ({ ctx, input }) => {

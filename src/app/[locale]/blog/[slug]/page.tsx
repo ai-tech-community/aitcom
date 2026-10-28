@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { cache } from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -40,7 +41,7 @@ const getArticleBySlug = cache(async (slug: string, locale: string) => {
     where: {
       and: [{ slug: { equals: slug } }, publicArticleWhere()],
     },
-    locale: locale as "en" | "nl",
+    locale: locale as AppLocale,
     limit: 1,
     draft: false,
   });
@@ -120,7 +121,7 @@ export default async function ArticleDetailPage({
         ],
       },
       sort: "-publishedAt",
-      locale: locale as "en" | "nl",
+      locale: locale as AppLocale,
       draft: false,
       limit: 10,
     });
@@ -158,7 +159,7 @@ export default async function ArticleDetailPage({
         ],
       },
       sort: "-publishedAt",
-      locale: locale as "en" | "nl",
+      locale: locale as AppLocale,
       draft: false,
       limit: 3 - relatedArticles.length,
     });

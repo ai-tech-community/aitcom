@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/messages";
+
 import { useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -26,7 +28,7 @@ export function StartupsRoleMemberDesk({
   className?: string;
 }) {
   const t = useTranslations("investigationsStartups");
-  const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: StartupLocale = resolveLocale(locale);
   const fileRef = useRef<HTMLInputElement>(null);
   const [copied, setCopied] = useState(false);
   const utils = api.useUtils();

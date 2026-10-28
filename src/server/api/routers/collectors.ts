@@ -1,3 +1,4 @@
+import { routing } from "@/i18n/routing";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -34,7 +35,7 @@ async function isFirstTime(
 
 export const collectorsRouter = createTRPCRouter({
   overview: protectedProcedure
-    .input(z.object({ locale: z.enum(["en", "nl"]) }))
+    .input(z.object({ locale: z.enum(routing.locales) }))
     .query(async ({ ctx, input }) => {
       const runs = facade();
       const userId = ctx.session.user.id;

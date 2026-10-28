@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { buttonVariants } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
@@ -24,7 +25,7 @@ export function UnsubscribeConfirm({
 }: {
   status: "ready" | "done" | "invalid";
   token?: string;
-  locale: "en" | "nl";
+  locale: AppLocale;
   copy: UnsubscribeCopy;
 }) {
   const title =

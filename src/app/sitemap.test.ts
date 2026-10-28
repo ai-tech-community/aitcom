@@ -58,6 +58,7 @@ function localeFor(path: string) {
     languages: {
       en: `https://www.aitcommunity.org/en${suffix}`,
       nl: `https://www.aitcommunity.org/nl${suffix}`,
+      fr: `https://www.aitcommunity.org/fr${suffix}`,
     },
   };
 }
@@ -147,6 +148,7 @@ describe("buildSitemapEntries", () => {
     ).toEqual({
       en: "https://www.aitcommunity.org/en/events/ai-night",
       nl: "https://www.aitcommunity.org/nl/events/ai-night",
+      fr: "https://www.aitcommunity.org/fr/events/ai-night",
     });
 
     const eventQuery = find.mock.calls.find(
@@ -380,6 +382,7 @@ describe("buildSitemapEntries", () => {
     ).toEqual({
       en: "https://www.aitcommunity.org/en/startups",
       nl: "https://www.aitcommunity.org/nl/startups",
+      fr: "https://www.aitcommunity.org/fr/startups",
     });
   });
   it("asks Payload only for threads of publicly readable communities", async () => {

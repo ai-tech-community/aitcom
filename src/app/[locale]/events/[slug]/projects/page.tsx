@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -27,7 +28,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const locale = await getLocale();
   const [event, t] = await Promise.all([
-    findPublicEvent(slug, locale as "en" | "nl"),
+    findPublicEvent(slug, locale as AppLocale),
     getTranslations("hackathon"),
   ]);
   if (!event?.challengeId) return {};
@@ -52,10 +53,7 @@ export default async function HackathonGalleryPage({
   const t = await getTranslations("hackathon");
 
   // Not a hackathon (no public event / no bound challenge) → no gallery.
-  const resolved = await resolvePublicHackathonPage(
-    slug,
-    locale as "en" | "nl",
-  );
+  const resolved = await resolvePublicHackathonPage(slug, locale as AppLocale);
   if (!resolved.found) notFound();
   const { challengeId, phase } = resolved;
 

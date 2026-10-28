@@ -160,10 +160,10 @@ export interface Config {
   db: {
     defaultIDType: number;
   };
-  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'nl') | ('en' | 'nl')[];
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'nl' | 'fr') | ('en' | 'nl' | 'fr')[];
   globals: {};
   globalsSelect: {};
-  locale: 'en' | 'nl';
+  locale: 'en' | 'nl' | 'fr';
   user: User;
   jobs: {
     tasks: unknown;

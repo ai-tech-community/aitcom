@@ -62,7 +62,8 @@ export function AwesomeAiOssCard({
   onVote?: (projectId: string) => void;
   onSave?: (projectId: string) => void;
 }) {
-  const blurb = card.blurb[locale] || card.blurb.en;
+  const localizedBlurb = card.blurb[locale] ?? "";
+  const blurb = localizedBlurb.length > 0 ? localizedBlurb : card.blurb.en;
   const showCounts = signedIn && typeof session?.voteCount === "number";
   const starLine = visibleAwesomeStarLine(card);
   const sources = displayAwesomeSources(card.sources);

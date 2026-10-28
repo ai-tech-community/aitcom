@@ -39,9 +39,15 @@ export type RoleHelpRequest = {
   path: string;
 };
 
-type HelpLocale = "en" | "nl";
+type HelpLocale = "en" | "nl" | "fr";
 
 const LABELS = {
+  fr: {
+    title: (role: string) => `Aide pour postuler : ${role}`,
+    posting: "Offre d’origine",
+    listed: "Offre sur AIT",
+    classroom: "Formation associée",
+  },
   en: {
     title: (roleTitle: string) => `Help with ${roleTitle}`,
     posting: "Original posting",
@@ -81,7 +87,7 @@ export function buildRoleHelpPost(input: {
   classroomTitle?: string | null;
   classroomPath?: string | null;
 }): RoleHelpPost {
-  const labels = input.locale === "nl" ? LABELS.nl : LABELS.en;
+  const labels = LABELS[input.locale];
   const blocks = [
     input.note.trim(),
     input.roleTitle,

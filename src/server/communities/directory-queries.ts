@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 /** Loads the public community directory. Thin DB glue over `directory.ts`. */
 
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -32,7 +33,7 @@ function isOnline(e: { format?: string | null; location?: unknown }): boolean {
 async function loadUpcomingEvents(
   payload: Payload,
   communityIds: readonly string[],
-  locale: "en" | "nl",
+  locale: AppLocale,
   now: Date,
 ): Promise<DirectoryEventRow[]> {
   if (communityIds.length === 0) return [];
@@ -154,7 +155,7 @@ async function loadOfferings(
 async function loadDirectory(
   db: DB,
   payload: Payload,
-  opts: { now: Date; locale: "en" | "nl" },
+  opts: { now: Date; locale: AppLocale },
 ): Promise<DirectoryCommunity[]> {
   const candidates = await loadDiscoveryCandidates(db, opts.now);
   const ids = candidates.map((c) => c.communityId);
@@ -198,7 +199,7 @@ async function loadDirectory(
   });
 }
 
-const snapshots = createTtlMemo<"en" | "nl", DirectoryCommunity[]>(
+const snapshots = createTtlMemo<AppLocale, DirectoryCommunity[]>(
   SNAPSHOT_TTL_MS,
 );
 
@@ -211,7 +212,7 @@ const snapshots = createTtlMemo<"en" | "nl", DirectoryCommunity[]>(
 export function loadDirectorySnapshot(
   db: DB,
   payload: Payload,
-  locale: "en" | "nl",
+  locale: AppLocale,
 ): Promise<DirectoryCommunity[]> {
   return snapshots.get(locale, () =>
     loadDirectory(db, payload, { now: new Date(), locale }),

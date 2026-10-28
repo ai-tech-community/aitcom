@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 /**
  * The Explore page's filters as URL search params, so a search, place or
  * sort survives Back, refresh and a shared link. Shared by the server page
@@ -74,7 +75,7 @@ export function writeDirectoryParams(
  */
 export function gridQueryInput(
   params: DirectoryParams,
-  locale: "en" | "nl",
+  locale: AppLocale,
   near?: GeoPoint | null,
 ) {
   return {
@@ -92,7 +93,7 @@ export function gridQueryInput(
  * The `communities.directory` input for the square: the most active
  * communities, unfiltered, one per house the street can show.
  */
-export function squareQueryInput(locale: "en" | "nl") {
+export function squareQueryInput(locale: AppLocale) {
   return {
     sort: "active" as const,
     limit: MAX_STREET_HOUSES,

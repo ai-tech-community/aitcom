@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { HeroTitle } from "@/components/hero-title";
@@ -101,7 +102,7 @@ export default async function Home() {
       // completeUpcomingCandidates(), which drops the last fetched days of a
       // full page so ranking by start instant cannot skip an unfetched event.
       limit: UPCOMING_EVENT_CANDIDATES,
-      locale: locale as "en" | "nl",
+      locale: locale as AppLocale,
       draft: false,
     }),
     // Proof for "Recently on the square": the latest gatherings that took
@@ -118,7 +119,7 @@ export default async function Home() {
       },
       sort: "-date",
       limit: RECENT_EVENT_CANDIDATES,
-      locale: locale as "en" | "nl",
+      locale: locale as AppLocale,
       draft: false,
     }),
     payload.find({

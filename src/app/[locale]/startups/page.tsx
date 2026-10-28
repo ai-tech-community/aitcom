@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
@@ -15,7 +16,6 @@ import {
   startupDirectoryFilteredRobots,
   startupDirectoryHasFilters,
   startupsPublicRobots,
-  type StartupLocale,
 } from "@/lib/investigations/startups";
 import { isStartupInsightsTab } from "@/lib/investigations/startups-insights";
 import { redirect } from "@/i18n/navigation";
@@ -70,7 +70,7 @@ export async function generateMetadata({
   const filtered = applyStartupDirectoryQuery(
     companies,
     query,
-    (locale === "nl" ? "nl" : "en") as StartupLocale,
+    resolveLocale(locale),
   );
   const pagination = paginateStartupCards(filtered, query.page);
   const canonicalPath = startupDirectoryCanonicalPath({

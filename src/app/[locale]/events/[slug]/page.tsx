@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import type { Where } from "payload";
@@ -121,7 +122,7 @@ export async function generateMetadata({
         { status: { in: [...PUBLICLY_LISTED_EVENT_STATUSES] } },
       ],
     },
-    locale: locale as "en" | "nl",
+    locale: locale as AppLocale,
     limit: 1,
     depth: 1,
   });
@@ -178,7 +179,7 @@ export default async function EventDetailPage({
       ],
     },
     depth: 2,
-    locale: locale as "en" | "nl",
+    locale: locale as AppLocale,
     limit: 1,
   });
 
@@ -335,7 +336,7 @@ export default async function EventDetailPage({
       ],
     },
     sort: "date",
-    locale: locale as "en" | "nl",
+    locale: locale as AppLocale,
     depth: 1,
     limit: RELATED_EVENT_CANDIDATES,
   });

@@ -1,3 +1,4 @@
+import { routing } from "@/i18n/routing";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import {
@@ -604,7 +605,7 @@ export const feedRouter = createTRPCRouter({
         query: z.string().max(50).default(""),
         /** The offset of the page, for infinite loading. */
         cursor: z.number().int().min(0).max(4999).nullish(),
-        lang: z.enum(["en", "nl"]).default("en"),
+        lang: z.enum(routing.locales).default("en"),
       }),
     )
     .query(async ({ ctx, input }) => {

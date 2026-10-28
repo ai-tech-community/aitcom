@@ -23,7 +23,7 @@ import {
   pgEnum,
 } from "@payloadcms/db-postgres/drizzle/pg-core";
 import { sql, relations } from "@payloadcms/db-postgres/drizzle";
-export const enum__locales = pgEnum("enum__locales", ["en", "nl"]);
+export const enum__locales = pgEnum("enum__locales", ["en", "nl", "fr"]);
 export const enum_audiences_preferred_slots_weekdays = pgEnum(
   "enum_audiences_preferred_slots_weekdays",
   ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
@@ -93,7 +93,7 @@ export const enum__events_v_version_status = pgEnum(
 );
 export const enum__events_v_published_locale = pgEnum(
   "enum__events_v_published_locale",
-  ["en", "nl"],
+  ["en", "nl", "fr"],
 );
 export const enum_articles_type = pgEnum("enum_articles_type", [
   "article",
@@ -130,7 +130,7 @@ export const enum__articles_v_version_status = pgEnum(
 );
 export const enum__articles_v_published_locale = pgEnum(
   "enum__articles_v_published_locale",
-  ["en", "nl"],
+  ["en", "nl", "fr"],
 );
 export const enum_forum_threads_category = pgEnum(
   "enum_forum_threads_category",
@@ -229,7 +229,7 @@ export const enum__pages_v_version_status = pgEnum(
 );
 export const enum__pages_v_published_locale = pgEnum(
   "enum__pages_v_published_locale",
-  ["en", "nl"],
+  ["en", "nl", "fr"],
 );
 export const enum_sponsors_tier = pgEnum("enum_sponsors_tier", [
   "gold",

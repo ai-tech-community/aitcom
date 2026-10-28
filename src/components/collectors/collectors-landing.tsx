@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/messages";
+
 import { useLocale, useTranslations } from "next-intl";
 
 import { RunStatusBadge } from "@/components/collectors/run-status-badge";
@@ -22,7 +24,7 @@ import { api } from "@/trpc/react";
  */
 export function CollectorsLanding() {
   const t = useTranslations("collectors");
-  const locale = useLocale() === "nl" ? "nl" : "en";
+  const locale = resolveLocale(useLocale());
   const overview = api.collectors.overview.useQuery(
     { locale },
     {

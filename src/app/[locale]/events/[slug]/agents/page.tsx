@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -29,7 +30,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const locale = await getLocale();
   const [event, t] = await Promise.all([
-    findPublicEvent(slug, locale as "en" | "nl"),
+    findPublicEvent(slug, locale as AppLocale),
     getTranslations("hackathon"),
   ]);
   if (!event?.challengeId) return {};
@@ -47,7 +48,7 @@ export async function generateMetadata({
 export default async function AgentsTabPage({
   params,
 }: {
-  params: Promise<{ locale: "en" | "nl"; slug: string }>;
+  params: Promise<{ locale: AppLocale; slug: string }>;
 }) {
   const { locale, slug } = await params;
   const t = await getTranslations("hackathon");
