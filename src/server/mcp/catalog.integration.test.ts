@@ -18,6 +18,7 @@ describe("tool catalog drift", () => {
     const { getToolCatalog } = await import("./catalog");
     const names = new Set((await getToolCatalog()).map((tool) => tool.name));
     for (const name of [
+      "mark-article-ready",
       "create-magazine",
       "assign-magazine-agent",
       "browse-classrooms",

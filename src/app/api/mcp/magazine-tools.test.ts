@@ -24,6 +24,10 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
     agent: {
       browseMagazines: vi.fn().mockResolvedValue({ magazines: [] }),
       saveMagazineArticle: vi.fn().mockResolvedValue({ status: "draft" }),
+      markArticleReady: vi.fn().mockResolvedValue({
+        ready: false,
+        failures: ["Add at least one H2 heading"],
+      }),
       uploadImage: vi
         .fn()
         .mockResolvedValue({ url: "https://cdn.example.test/a.png" }),
@@ -39,6 +43,7 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
   expect([...tools.keys()]).toEqual([
     "browse-magazines",
     "save-magazine-article",
+    "mark-article-ready",
     "upload-image",
     "save-magazine-issue",
     "submit-issue-for-review",

@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   },
   browse: vi.fn(),
   saveArticle: vi.fn(),
+  markReady: vi.fn(),
   saveIssue: vi.fn(),
   submit: vi.fn(),
   upload: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock("@/server/payload", () => ({
 vi.mock("@/server/magazines/agent-magazine", () => ({
   browseMagazines: state.browse,
   saveMagazineArticle: state.saveArticle,
+  markArticleReady: state.markReady,
   saveMagazineIssue: state.saveIssue,
   submitAgentIssue: state.submit,
 }));
@@ -76,6 +78,7 @@ it("exposes no procedure that publishes an issue", () => {
     "assignMagazineAgent",
     "browseMagazines",
     "createMagazine",
+    "markArticleReady",
     "saveMagazineArticle",
     "saveMagazineIssue",
     "submitIssueForReview",
@@ -125,12 +128,16 @@ it("requires contribute scope and a claimed owner to draft, upload, or submit", 
   await expect(
     caller().submitIssueForReview({ issueId: 4 }),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  await expect(
+    caller().markArticleReady({ articleId: 53 }),
+  ).rejects.toMatchObject({ code: "FORBIDDEN" });
   state.agent.scopes = ["read", "contribute"];
   state.agent.ownerId = null;
   await expect(
     caller().submitIssueForReview({ issueId: 4 }),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
   expect(state.submit).not.toHaveBeenCalled();
+  expect(state.markReady).not.toHaveBeenCalled();
   expect(state.saveArticle).not.toHaveBeenCalled();
   expect(state.saveIssue).not.toHaveBeenCalled();
   expect(state.upload).not.toHaveBeenCalled();

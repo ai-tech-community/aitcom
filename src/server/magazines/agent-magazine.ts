@@ -12,6 +12,12 @@ import {
   memberNamesByUserId,
   withAuthorBylines,
 } from "@/server/members/display-name";
+import {
+  ARTICLE_BLOCKING_MESSAGE,
+  ARTICLE_WARNING_MESSAGE,
+  articleReadiness,
+  articleReadyStep,
+} from "@/lib/articles/readiness";
 import { magazineAgentIssueReviewPath } from "@/lib/magazines/paths";
 import type { Article, Magazine, MagazineIssue } from "@/payload-types";
 
@@ -36,6 +42,7 @@ import {
   loadMagazineEditorship,
   standingCan,
 } from "./editorship";
+import { submitMagazineArticle } from "./article-submission";
 import { createIssue, publishIssue } from "./issue-service";
 import { placedArticlesOf, syncArticlePlacement } from "./article-placement";
 import { uniqueMagazineArticleSlug } from "./magazine-articles";
@@ -644,6 +651,91 @@ export async function saveMagazineArticle(
     input.body ?? null,
     input.articleId,
   );
+}
+
+/**
+ * The article dialog's hand-in. Failing checks change nothing. A contributor
+ * is sent to an editor (`pending_review`); someone who can edit is marked
+ * ready. Neither path publishes the article.
+ */
+export async function markArticleReady(
+  deps: Deps,
+  identity: MagazineAgent,
+  articleId: number,
+) {
+  const owned = await findOwnedDraft(
+    deps,
+    identity.agentId,
+    MAGAZINE_ARTICLE_DRAFT_TYPE,
+    String(articleId),
+  );
+  if (!owned) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You can only mark your own article draft ready.",
+    });
+  }
+  const existing = await deps.payload.findByID({
+    collection: "articles",
+    id: articleId,
+    draft: true,
+    depth: 0,
+  });
+  if (existing.authorId !== identity.ownerId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You can only mark your own article draft ready.",
+    });
+  }
+  if (await articleHeldForReview(deps, identity.agentId, articleId)) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "This article is in an issue waiting for review.",
+    });
+  }
+  const report = articleReadiness({
+    title: existing.title,
+    content: existing.content,
+    type: existing.type,
+  });
+  const failures = report.blocking.map(
+    (code) => ARTICLE_BLOCKING_MESSAGE[code],
+  );
+  const warnings = report.warnings.map((code) => ARTICLE_WARNING_MESSAGE[code]);
+  const step = articleReadyStep({
+    blocking: report.blocking,
+    reviewStatus: existing.reviewStatus,
+    status: existing.status,
+  });
+  if (step === "forbidden") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This article can no longer be marked ready by the agent.",
+    });
+  }
+  if (step !== "submit") {
+    return {
+      articleId,
+      ready: step === "ready",
+      reviewStatus: existing.reviewStatus ?? null,
+      awaitingApproval: step === "awaiting_editor",
+      failures,
+      warnings,
+      outline: report.outline,
+    };
+  }
+  const updated = await submitMagazineArticle(deps, existing, identity.ownerId);
+  const ready = updated.reviewStatus === "approved";
+  return {
+    articleId: articleDocumentId(updated.id) ?? articleId,
+    ready,
+    reviewStatus: updated.reviewStatus ?? null,
+    awaitingApproval: updated.reviewStatus === "pending_review",
+    handIn: ready ? ("mark_ready" as const) : ("send_for_review" as const),
+    failures: [],
+    warnings,
+    outline: report.outline,
+  };
 }
 
 async function mainArticleIdsBySlug(

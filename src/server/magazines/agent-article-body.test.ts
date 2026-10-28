@@ -1,4 +1,7 @@
 import { expect, it } from "vitest";
+
+import { articleReadiness } from "@/lib/articles/readiness";
+
 import {
   agentArticleAuthorName,
   articleBodyText,
@@ -18,6 +21,39 @@ it("keeps the agent's words and does not store blank lines as empty paragraphs",
   expect(articleBodyText(lexical)).toBe(
     "First line\nThird line stays\n[!INFO] Good to know\n- one\n- two",
   );
+});
+
+it("stores markdown headings as H2 and H3 nodes and keeps the intro", () => {
+  const lexical = articleBodyToLexical(
+    "You don't need a course to start.\n\n## Days 1-7: Sounds\n\nWork through the playlist.\n\n### A finer point",
+  );
+  expect(lexical.root.children.map((node) => node.type)).toEqual([
+    "paragraph",
+    "heading",
+    "paragraph",
+    "heading",
+  ]);
+  expect(lexical.root.children[1]).toMatchObject({
+    type: "heading",
+    tag: "h2",
+    children: [{ text: "Days 1-7: Sounds" }],
+  });
+  expect(lexical.root.children[3]).toMatchObject({
+    type: "heading",
+    tag: "h3",
+    children: [{ text: "A finer point" }],
+  });
+  const readiness = articleReadiness({
+    title: "Your first 30 days of Dutch",
+    content: lexical,
+    type: "article",
+  });
+  expect(readiness.blocking).not.toContain("missing_h2");
+  expect(readiness.blocking).not.toContain("missing_intro");
+  expect(readiness.outline).toEqual([
+    { tag: "h2", text: "Days 1-7: Sounds" },
+    { tag: "h3", text: "A finer point" },
+  ]);
 });
 
 it("creates a draft article and does not approve or publish it", () => {

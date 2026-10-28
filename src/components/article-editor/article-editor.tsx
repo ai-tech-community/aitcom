@@ -9,6 +9,11 @@ import {
   useReducer,
 } from "react";
 import { useTranslations } from "next-intl";
+import {
+  articleReadiness,
+  type ArticleBlockingCode,
+  type ArticleWarningCode,
+} from "@/lib/articles/readiness";
 import { SectionLabel } from "@/components/ui/section-label";
 import { api } from "@/trpc/react";
 import { useRouter } from "@/i18n/navigation";
@@ -69,8 +74,6 @@ import type {
 import { editorReducer, slashMenuReducer } from "./reducers";
 import {
   extractPlainText,
-  hasCodeNode,
-  getHeadingOutline,
   filterSlashCommands,
   generateSlug,
   preprocessEditorState,
@@ -83,6 +86,30 @@ import { PrePublishDialog } from "./pre-publish-dialog";
 import { destinationBehaviour, type ArticleDestination } from "./destination";
 
 const BLOG_DESTINATION: ArticleDestination = { kind: "blog" };
+
+function blockingMessageKey(code: ArticleBlockingCode) {
+  switch (code) {
+    case "missing_title":
+      return "checkMissingTitle" as const;
+    case "missing_content":
+      return "checkMissingContent" as const;
+    case "missing_h2":
+      return "checkMissingH2" as const;
+    case "missing_intro":
+      return "checkMissingIntro" as const;
+  }
+}
+
+function warningMessageKey(code: ArticleWarningCode) {
+  switch (code) {
+    case "tutorial_no_code":
+      return "checkTutorialNoCode" as const;
+    case "mermaid":
+      return "checkMermaidLikelyInvalid" as const;
+    case "too_short":
+      return "checkTooShort" as const;
+  }
+}
 
 function EditorBridge({
   onReady,
@@ -366,68 +393,17 @@ export function ArticleEditor({
     return Math.max(1, Math.ceil(wordCount / 220));
   }, [wordCount]);
 
-  const contentNodes = useMemo(() => {
-    return (
-      (editorState as { root?: { children?: unknown[] } } | null)?.root
-        ?.children ?? []
-    );
-  }, [editorState]);
-
-  const outline = useMemo(
-    () => getHeadingOutline(contentNodes),
-    [contentNodes],
+  const readiness = useMemo(
+    () => articleReadiness({ title, content: editorState, type }),
+    [editorState, title, type],
   );
-
-  const blockingChecks = useMemo(() => {
-    const results: string[] = [];
-    if (!title.trim()) results.push(t("checkMissingTitle"));
-    if (!plainText.trim()) results.push(t("checkMissingContent"));
-
-    const hasH2 = Array.isArray(contentNodes)
-      ? contentNodes.some((node) => {
-          if (!node || typeof node !== "object") return false;
-          const n = node as Record<string, unknown>;
-          return n.type === "heading" && n.tag === "h2";
-        })
-      : false;
-    if (!hasH2) results.push(t("checkMissingH2"));
-
-    let introBeforeHeading = false;
-    if (Array.isArray(contentNodes)) {
-      const firstHeadingIndex = contentNodes.findIndex((node) => {
-        if (!node || typeof node !== "object") return false;
-        const n = node as Record<string, unknown>;
-        return n.type === "heading";
-      });
-
-      if (firstHeadingIndex > 0) {
-        introBeforeHeading = contentNodes
-          .slice(0, firstHeadingIndex)
-          .some((node) => {
-            if (!node || typeof node !== "object") return false;
-            const n = node as Record<string, unknown>;
-            return (
-              n.type === "paragraph" &&
-              extractPlainText(n.children).trim().length > 0
-            );
-          });
-      }
-    }
-
-    if (!introBeforeHeading) results.push(t("checkMissingIntro"));
-    return results;
-  }, [contentNodes, plainText, t, title]);
-
-  const warningChecks = useMemo(() => {
-    const results: string[] = [];
-    const containsCode = hasCodeNode(contentNodes) || plainText.includes("```");
-    if (type === "tutorial" && !containsCode)
-      results.push(t("checkTutorialNoCode"));
-    if (plainText.includes("[MERMAID]") && !/graph\s+[A-Z]{2}/.test(plainText))
-      results.push(t("checkMermaidLikelyInvalid"));
-    if (wordCount > 0 && wordCount < 120) results.push(t("checkTooShort"));
-    return results;
-  }, [contentNodes, plainText, t, type, wordCount]);
+  const outline = readiness.outline;
+  const blockingChecks = readiness.blocking.map((code) =>
+    t(blockingMessageKey(code)),
+  );
+  const warningChecks = readiness.warnings.map((code) =>
+    t(warningMessageKey(code)),
+  );
 
   // --- Handlers ---
 

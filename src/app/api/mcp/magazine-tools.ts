@@ -113,7 +113,7 @@ export function registerMagazineTools(
     "save-magazine-article",
     {
       description:
-        "Create or edit your magazine article draft: title, body and an optional cover image URL from upload-image. Requires contribute scope and a claimed owner. The article stays a draft. This tool cannot publish it or approve it. Omit articleId to create; send articleId to edit your own open draft. articleId is the stable document id returned by this tool and by browse-magazines, not a draft version id. Do not invent facts the owner did not supply.",
+        "Create or edit your magazine article draft: title, markdown body and an optional cover image URL from upload-image. A heading line (# or ##) is stored as an H2, and ### as an H3, so the article dialog can see the outline. Requires contribute scope and a claimed owner. The article stays a draft. This tool cannot publish it or approve it. Omit articleId to create; send articleId to edit your own open draft. articleId is the stable document id returned by this tool and by browse-magazines, not a draft version id. Do not invent facts the owner did not supply.",
       inputSchema: {
         magazineSlug: z.string().min(1).max(80),
         articleId: z.number().int().positive().optional(),
@@ -129,6 +129,19 @@ export function registerMagazineTools(
       annotations: DRAFT_FOR_REVIEW,
     },
     async (input) => textResult(await caller.agent.saveMagazineArticle(input)),
+  );
+
+  server.registerTool(
+    "mark-article-ready",
+    {
+      description:
+        "Run the same readiness checks as the article dialog and, when they pass, hand the article in. Requires contribute scope and a claimed owner. Failures such as a missing H2 or a missing intro are returned and nothing is saved. A writer who can edit the magazine is marked ready, the same as Mark ready for an issue. A contributor is sent to an editor for approval and is not marked ready. An article already waiting on an editor stays there. This tool cannot publish the article or place it in an issue.",
+      inputSchema: {
+        articleId: z.number().int().positive(),
+      },
+      annotations: DRAFT_FOR_REVIEW,
+    },
+    async (input) => textResult(await caller.agent.markArticleReady(input)),
   );
 
   server.registerTool(
