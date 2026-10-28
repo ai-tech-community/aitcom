@@ -34,7 +34,12 @@ export function ForumThreadItem({
       );
     case "lead":
     case "card":
+    case "related":
       break;
+    default: {
+      const exhaustive: never = size;
+      return exhaustive;
+    }
   }
   const isLead = size === "lead";
 

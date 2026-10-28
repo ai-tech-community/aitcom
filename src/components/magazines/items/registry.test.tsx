@@ -37,7 +37,7 @@ describe("issue item registry", () => {
       "Article",
       "4 min read",
     ],
-    [editorialView(2), "Editorial 2", "A note from the editors", null],
+    [editorialView(2), "Editorial 2", "Editorial", null],
     [storylineView(), "Story 1", "From AIT News", "14 sources"],
     [newsItemView(), "Headline 1", "From AIT News", "01 Nov 2026"],
     [eventView(), "Event 1", "Event", "24 Oct 2026"],
@@ -84,6 +84,29 @@ describe("issue item registry", () => {
       ).toBeNull();
     },
   );
+
+  it.each([
+    articleView(1),
+    editorialView(2),
+    storylineView(),
+    newsItemView(),
+    eventView(),
+    forumThreadView(),
+    launchpadProjectView(),
+  ])("renders the related size for $kind", (view) => {
+    const { container } = renderWithIntl(
+      <IssueItem view={view} size="related" href={href} teaser={null} />,
+    );
+    expect(
+      container.querySelector(`[data-item-kind="${view.kind}"]`),
+    ).not.toBeNull();
+    expect(screen.getByRole("heading")).toBeVisible();
+    if (view.kind === "article") {
+      expect(screen.getByText("Excerpt of article 1.")).toBeVisible();
+      expect(container.querySelector("img")).toBeNull();
+      expect(screen.queryByRole("link", { name: "Read article" })).toBeNull();
+    }
+  });
 
   it("rows keep headlines without a URL as plain text and allow notes without a title", () => {
     renderWithIntl(

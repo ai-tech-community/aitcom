@@ -135,6 +135,6 @@ for subscriptions.
 - The served sitemap can lag a visibility change by up to an hour
   (`revalidate = 3600`). Pages, share images, the home and the sitemap data
   function re-check on the next request; a stale URL grants no access.
-- Item renderers now accept `size: "lead" | "card" | "row"` and `teaser`
-  instead of `lead`. Every future kind must implement all three sizes and
+- Item renderers now accept `size: "lead" | "card" | "row" | "related"` and `teaser`
+  instead of `lead`. Every future kind must implement all four sizes and
   keep preview content within the same server-enforced limits.

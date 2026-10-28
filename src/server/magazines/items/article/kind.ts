@@ -33,18 +33,21 @@ export type ArticleItemStored = StoredItem<"article">;
  * level is a compile error here until this kind decides what it shows.
  * - full:   the published document; an unpublished article is a marker
  *           (readers never see it, preflight F2)
- * - editor: the latest draft text, published or not
+ * - editor: the latest draft text, published or not, with an opening for
+ *           the builder's visitor preview
  */
 function articleReadingFor(access: IssueReaderAccess): {
   draft: boolean;
   showsUnpublished: boolean;
+  showsOpening: boolean;
 } {
   switch (access) {
     case "teaser":
+      return { draft: false, showsUnpublished: false, showsOpening: true };
     case "full":
-      return { draft: false, showsUnpublished: false };
+      return { draft: false, showsUnpublished: false, showsOpening: false };
     case "editor":
-      return { draft: true, showsUnpublished: true };
+      return { draft: true, showsUnpublished: true, showsOpening: true };
   }
 }
 
@@ -193,7 +196,7 @@ export const articleItemKind: IssueItemKind<
             title: article.title,
             authorName: article.authorName ?? null,
             excerpt: openingOf(article.content, 40),
-            opening: openingOf(article.content),
+            opening: reading.showsOpening ? openingOf(article.content) : "",
             readingMinutes: estimateReadingTime(article.content),
             imageUrl: article.mediaUrl ?? null,
           },

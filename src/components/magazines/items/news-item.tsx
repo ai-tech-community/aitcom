@@ -42,7 +42,12 @@ export function NewsItemCard({ view, size }: ItemRendererProps<"newsItem">) {
       );
     case "lead":
     case "card":
+    case "related":
       break;
+    default: {
+      const exhaustive: never = size;
+      return exhaustive;
+    }
   }
   const isLead = size === "lead";
 

@@ -36,7 +36,12 @@ export function EventItem({ view, size }: ItemRendererProps<"event">) {
       );
     case "lead":
     case "card":
+    case "related":
       break;
+    default: {
+      const exhaustive: never = size;
+      return exhaustive;
+    }
   }
   const isLead = size === "lead";
 

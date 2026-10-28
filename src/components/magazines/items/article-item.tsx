@@ -14,11 +14,7 @@ export function ArticleItem({
   size,
   href,
   teaser,
-  showExcerpt = size === "lead",
-}: ItemRendererProps<"article"> & {
-  /** Next-in-issue cards also show the excerpt, without the lead treatment. */
-  showExcerpt?: boolean;
-}) {
+}: ItemRendererProps<"article">) {
   const t = useTranslations("magazines.item");
   const { article } = view;
   const url = href(article.slug);
@@ -50,7 +46,12 @@ export function ArticleItem({
       );
     case "lead":
     case "card":
+    case "related":
       break;
+    default: {
+      const exhaustive: never = size;
+      return exhaustive;
+    }
   }
   const isLead = size === "lead";
 
@@ -101,7 +102,7 @@ export function ArticleItem({
             {t("readingTime", { minutes: article.readingMinutes })}
           </span>
         </p>
-        {!teaser && showExcerpt && article.excerpt && (
+        {!teaser && (isLead || size === "related") && article.excerpt && (
           <p className="text-muted-foreground leading-relaxed">
             {article.excerpt}
           </p>

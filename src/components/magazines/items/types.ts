@@ -13,7 +13,7 @@ export type ItemViewOfKind<K extends ItemKindId> = Extract<
 
 export type ItemTeaser = { inlinePrompt: ReactNode };
 
-export type ItemSize = "lead" | "card" | "row";
+export type ItemSize = "lead" | "card" | "row" | "related";
 
 /** What every item renderer gets (ADR-0043: one renderer per kind). */
 export type ItemRendererProps<K extends ItemKindId> = {

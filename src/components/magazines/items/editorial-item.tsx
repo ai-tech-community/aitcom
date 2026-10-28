@@ -19,14 +19,19 @@ export function EditorialItem({
       return (
         <ItemRow
           kind="editorial"
-          title={view.heading}
-          label={t("untitledEditorial")}
+          title={view.heading ?? t("untitledEditorial")}
+          label={t("editorialKind")}
           intro={view.intro}
         />
       );
     case "lead":
     case "card":
+    case "related":
       break;
+    default: {
+      const exhaustive: never = size;
+      return exhaustive;
+    }
   }
   const isLead = size === "lead";
 
