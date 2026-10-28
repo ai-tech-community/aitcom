@@ -1,3 +1,4 @@
+import * as migration_20261028d_community_banner from "./20261028d_community_banner";
 import * as migration_20261028a_magazine_growth from "./20261028a_magazine_growth";
 import * as migration_20261027d_magazine_auto_draft_followups from "./20261027d_magazine_auto_draft_followups";
 import * as migration_20261027a_magazine_staff from "./20261027a_magazine_staff";
@@ -1061,5 +1062,10 @@ export const migrations = [
     up: migration_20261028a_magazine_growth.up,
     down: migration_20261028a_magazine_growth.down,
     name: "20261028a_magazine_growth",
+  },
+  {
+    up: migration_20261028d_community_banner.up,
+    down: migration_20261028d_community_banner.down,
+    name: "20261028d_community_banner",
   },
 ];

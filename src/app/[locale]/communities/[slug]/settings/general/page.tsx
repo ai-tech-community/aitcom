@@ -50,6 +50,7 @@ export default function GeneralSettingsPage({
           name: community.name,
           description: community.description,
           logoUrl: community.logoUrl,
+          bannerUrl: community.bannerUrl,
           joinPolicy: community.joinPolicy,
           isListedInDirectory: community.isListedInDirectory,
           feedPostPolicy: community.feedPostPolicy ?? "all_members",

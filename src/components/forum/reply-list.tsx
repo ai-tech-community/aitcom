@@ -8,6 +8,7 @@ import type { ForumReply } from "@/payload-types";
 import { LexicalRenderer } from "@/lib/lexical";
 import { RoleBadge } from "@/components/forum/role-badge";
 import { RelativeTime } from "@/components/ui/relative-time";
+import { roleCanModerateThreads } from "@/lib/communities/thread-moderation";
 import { api } from "@/trpc/react";
 import { useConfirm } from "@/components/confirm-dialog";
 import {
@@ -37,10 +38,7 @@ export function ReplyList({
   const t = useTranslations("forum");
   const confirm = useConfirm();
   const utils = api.useUtils();
-  const canModerate =
-    memberRole === "owner" ||
-    memberRole === "admin" ||
-    memberRole === "moderator";
+  const canModerate = roleCanModerateThreads(memberRole);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState("");
 
