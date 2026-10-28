@@ -23,14 +23,26 @@ export type ForumThreadDraft = {
   communitySlug?: string;
 };
 
-/** Slug the forum form stores: a short title stem plus the create time. */
-export function forumThreadSlug(title: string, now = Date.now()): string {
-  const baseSlug = title
+const THREAD_SLUG_MAX = 80;
+
+/** Title stem for a thread address. A short number is added only on collision. */
+export function forumThreadSlug(
+  title: string,
+  taken: ReadonlySet<string> = new Set(),
+): string {
+  const stem = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-  return `${baseSlug}-${now}`;
+    .slice(0, 70);
+  const base = stem.length >= 3 ? stem : "thread";
+  if (!taken.has(base)) return base;
+  for (let n = 2; n < 1000; n += 1) {
+    const suffix = `-${n}`;
+    const candidate = `${base.slice(0, THREAD_SLUG_MAX - suffix.length).replace(/-+$/, "")}${suffix}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `${base.slice(0, THREAD_SLUG_MAX - 5)}-${taken.size + 2}`;
 }
 
 /**

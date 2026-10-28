@@ -9,10 +9,12 @@ import {
 } from "./forum-thread-draft";
 
 describe("forum thread create", () => {
-  it("builds the same slug stem the forum form stores", () => {
-    expect(forumThreadSlug("Hello, World!", 1_700_000_000_000)).toBe(
-      "hello-world-1700000000000",
+  it("builds a title slug and adds a short number only on collision", () => {
+    expect(forumThreadSlug("Hello, World!")).toBe("hello-world");
+    expect(forumThreadSlug("Hello, World!", new Set(["hello-world"]))).toBe(
+      "hello-world-2",
     );
+    expect(forumThreadSlug("Hello, World!")).not.toMatch(/\d{13}/);
   });
 
   it("keeps a missing community slug as a hub thread", () => {

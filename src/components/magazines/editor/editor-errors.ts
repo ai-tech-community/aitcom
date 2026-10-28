@@ -10,6 +10,7 @@ import type { MagazineErrorCode } from "@/server/magazines/errors";
 const KEYS = {
   CONFIRM_UNLISTED_PUBLIC: "confirmUnlistedPublic",
   MAGAZINE_EXISTS: "magazineExists",
+  MAGAZINE_PUBLISHED: "magazinePublished",
   MAGAZINE_SLUG_TAKEN: "magazineSlugTaken",
   SPACE_SLUG_TAKEN: "spaceSlugTaken",
   ISSUE_CHANGED: "issueChanged",

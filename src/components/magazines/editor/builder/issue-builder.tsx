@@ -12,7 +12,8 @@ import {
   type EditorItemView,
   type ItemProblem,
 } from "@/lib/magazines/item-views";
-import { issuePath } from "@/lib/magazines/paths";
+import { communityMagazinePath, issuePath } from "@/lib/magazines/paths";
+import { useRouter } from "@/i18n/navigation";
 import {
   canIssue,
   type IssueVisibility,
@@ -28,6 +29,7 @@ import type { IssueItemInput } from "@/server/magazines/items/registry";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 import { isUnavailableItem } from "../../items/registry";
+import { ConfirmDeleteButton } from "../confirm-delete-button";
 import { editorErrorKey, readEditorError } from "../editor-errors";
 import { publicOptInRequired } from "../public-opt-in";
 import { AddItemsPanel } from "./add-items-panel";
@@ -232,6 +234,7 @@ function IssueWorkspace({
   const tPublish = useTranslations("magazineEditor.builder.publishDialog");
   const tErrors = useTranslations("magazineEditor.errors");
 
+  const router = useRouter();
   const utils = api.useUtils();
   const [initial] = useState(() => initialStateOf(data));
   // Every write to this issue (details, items, publish) shares one version.
@@ -259,6 +262,12 @@ function IssueWorkspace({
     () => new Map(Object.entries(data.openHrefs)),
   );
   const [failure, setFailure] = useState<IssueSaveFailure | null>(null);
+  const deleteIssue = api.magazines.deleteDraftIssue.useMutation({
+    onSuccess: () => {
+      router.push(communityMagazinePath(communitySlug));
+    },
+    onError: (error) => setFailure({ error, itemKey: null }),
+  });
   const [confirmed, setConfirmed] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   /**
@@ -668,6 +677,21 @@ function IssueWorkspace({
           setPublishOpen(true);
         }}
         publishDisabled={optInPending || autosave.status === "conflict"}
+        trailing={
+          canIssue(issue.status, "delete") ? (
+            <ConfirmDeleteButton
+              label={t("deleteDraft")}
+              title={t("deleteDraftTitle")}
+              description={t("deleteDraftBody")}
+              confirmLabel={t("deleteDraftConfirm")}
+              cancelLabel={t("cancel")}
+              pending={deleteIssue.isPending}
+              onConfirm={() =>
+                deleteIssue.mutate({ slug: communitySlug, issueId })
+              }
+            />
+          ) : null
+        }
       />
 
       {/* Not <main>: the root layout already provides the main landmark. */}

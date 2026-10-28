@@ -4,9 +4,9 @@ import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
 import type { db as Database } from "@/server/db";
 import { communities } from "@/server/db/schema";
-import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import { getPayloadClient } from "@/server/payload";
 
+import { forumBodyToLexical } from "./forum-body";
 import {
   type ForumThreadDraft,
   forumThreadSlug,
@@ -40,14 +40,14 @@ export async function createForumThread(
   }
   await requireRulesAcceptance(author.id, communityId);
   const payload = await getPayloadClient();
-  const slug = forumThreadSlug(input.title);
+  const slug = await uniqueForumThreadSlug(payload, input.title);
 
   const thread = await payload.create({
     collection: "forum-threads",
     data: {
       title: input.title,
       slug,
-      content: plainTextToLexical(input.content),
+      content: forumBodyToLexical(input.content),
       category: input.category,
       authorId: author.id,
       authorName: author.name,
@@ -78,4 +78,34 @@ export async function createForumThread(
   await awardXp(db, author.id, XP_AMOUNTS.FORUM_THREAD_CREATE);
 
   return thread;
+}
+
+/** `title-slug`, or `title-slug-2` when that address is already used. */
+async function uniqueForumThreadSlug(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  title: string,
+): Promise<string> {
+  const base = forumThreadSlug(title);
+  const { docs } = await payload.find({
+    collection: "forum-threads",
+    where: {
+      or: [{ slug: { equals: base } }, { slug: { like: base } }],
+    },
+    depth: 0,
+    limit: 100,
+    pagination: false,
+  });
+  const prefix = `${base}-`;
+  const taken = new Set<string>();
+  for (const doc of docs) {
+    const slug = doc.slug;
+    if (!slug) continue;
+    if (
+      slug === base ||
+      (slug.startsWith(prefix) && /^\d+$/.test(slug.slice(prefix.length)))
+    ) {
+      taken.add(slug);
+    }
+  }
+  return forumThreadSlug(title, taken);
 }

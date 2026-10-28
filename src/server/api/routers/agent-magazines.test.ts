@@ -112,7 +112,10 @@ it("requires contribute scope and a claimed owner to draft, upload, or submit", 
     }),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(
-    caller().uploadImage({ url: "https://cdn.example.test/a.png" }),
+    caller().uploadImage({
+      magazineSlug: "town",
+      url: "https://cdn.example.test/a.png",
+    }),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
   await expect(
     caller().saveMagazineIssue({ magazineSlug: "town", title: "Issue" }),

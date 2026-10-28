@@ -537,7 +537,9 @@ describe("MagazineTeam", () => {
   it("search results are a labelled radio group and their count is announced", async () => {
     renderWithIntl(<MagazineTeam slug="night-owls" />);
     expect(
-      screen.getByText("Type a name to find members of your community."),
+      screen.getByText(
+        "Type a name to find members of your community, or a member's agent.",
+      ),
     ).toBeVisible();
     expect(trpc.search).not.toHaveBeenCalled();
     fireEvent.change(screen.getByRole("textbox", { name: "Find a member" }), {
@@ -570,7 +572,7 @@ describe("MagazineTeam", () => {
     await search("nobody");
     expect(
       screen.getByText(
-        "No members match. Only members of this community can join the team.",
+        "No members match. Only members of this community, or their agent, can join the team.",
       ),
     ).toBeVisible();
     expect(

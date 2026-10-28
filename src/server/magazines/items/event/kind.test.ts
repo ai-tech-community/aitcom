@@ -233,13 +233,9 @@ describe("event item kind", () => {
 });
 
 describe("event picker", () => {
-  it("offers listed community events with date and status facts", async () => {
+  it("offers published and completed events, not cancelled ones", async () => {
     find.mockResolvedValue({
-      docs: [
-        event(1, { status: "cancelled" }),
-        event(2, { status: "completed" }),
-        event(3),
-      ],
+      docs: [event(2, { status: "completed" }), event(3)],
     });
     const ctx = context();
     const pickerCtx: PickerContext = {
@@ -254,7 +250,7 @@ describe("event picker", () => {
       collection: "events",
       where: {
         and: [
-          { status: { in: ["published", "cancelled", "completed"] } },
+          { status: { in: ["published", "completed"] } },
           { communityId: { equals: "community" } },
         ],
       },
@@ -264,21 +260,22 @@ describe("event picker", () => {
       locale: "nl",
       limit: PICKER_LIMIT,
     });
-    expect(candidates[0]).toEqual({
-      input: { kind: "event", eventId: 1 },
-      reference: "event:1",
-      title: "Event 1",
-      facts: [
-        { type: "date", label: "starts", at: "2026-10-24T00:00:00.000Z" },
-        { type: "eventStatus", status: "cancelled" },
-      ],
-      openHref: null,
-    });
-    expect(candidates[1]!.facts[1]).toEqual({
+    expect(candidates.map((candidate) => candidate.input)).toEqual([
+      { kind: "event", eventId: 2 },
+      { kind: "event", eventId: 3 },
+    ]);
+    expect(candidates[0]!.facts[1]).toEqual({
       type: "eventStatus",
       status: "completed",
     });
-    expect(candidates[2]!.facts).toHaveLength(1);
+    expect(candidates[1]!.facts).toHaveLength(1);
+    expect(
+      candidates.some((candidate) =>
+        candidate.facts.some(
+          (fact) => fact.type === "eventStatus" && fact.status === "cancelled",
+        ),
+      ),
+    ).toBe(false);
     await searchPickerCandidates("event", "models", pickerCtx);
     expect(find.mock.lastCall![0].where.and).toContainEqual({
       title: { like: "models" },

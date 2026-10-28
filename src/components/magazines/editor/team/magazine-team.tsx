@@ -223,12 +223,17 @@ export function MagazineTeam({ slug }: { slug: string }) {
     onError: refused,
   });
   const busy = assign.isPending || remove.isPending;
-  const assignJob = (userId: string, next: MagazineRole) => {
+  const assignJob = (userId: string, next: MagazineRole, agentId?: string) => {
     if (busy || inFlight.current) return;
     inFlight.current = true;
     setError(null);
     setAnnouncement("");
-    assign.mutate({ slug, userId, role: next });
+    assign.mutate({
+      slug,
+      userId,
+      role: next,
+      ...(agentId ? { agentId } : {}),
+    });
   };
   const changeJob = (
     member: StaffMember,
@@ -246,14 +251,18 @@ export function MagazineTeam({ slug }: { slug: string }) {
       setChangingSelf({ member, role: next });
       return;
     }
-    assignJob(member.userId, next);
+    assignJob(member.userId, next, member.agentId);
   };
   const confirmRemove = () => {
     if (!removing || busy || inFlight.current) return;
     inFlight.current = true;
     setError(null);
     setAnnouncement("");
-    remove.mutate({ slug, userId: removing.userId });
+    remove.mutate({
+      slug,
+      userId: removing.userId,
+      ...(removing.agentId ? { agentId: removing.agentId } : {}),
+    });
   };
   const refusal = error && (
     <p role="alert" className="text-destructive text-sm">
@@ -283,7 +292,8 @@ export function MagazineTeam({ slug }: { slug: string }) {
           className="flex min-w-0 flex-col items-start gap-4"
           onSubmit={(event) => {
             event.preventDefault();
-            if (person && role && resultsReady) assignJob(person.userId, role);
+            if (person && role && resultsReady)
+              assignJob(person.userId, role, person.agentId);
           }}
         >
           <div className="flex w-full min-w-0 flex-col gap-2">
@@ -319,7 +329,11 @@ export function MagazineTeam({ slug }: { slug: string }) {
                     </legend>
                     {candidates.data.map((candidate, index) => (
                       <label
-                        key={candidate.userId}
+                        key={
+                          candidate.agentId
+                            ? `agent-${candidate.agentId}`
+                            : candidate.userId
+                        }
                         htmlFor={`${id}-candidate-${index}`}
                         className="hover:bg-secondary/50 flex min-w-0 cursor-pointer items-center gap-3 rounded-md border px-3 py-2 text-sm"
                       >
@@ -327,8 +341,12 @@ export function MagazineTeam({ slug }: { slug: string }) {
                           id={`${id}-candidate-${index}`}
                           type="radio"
                           name={`${id}-candidate`}
-                          value={candidate.userId}
-                          checked={person?.userId === candidate.userId}
+                          value={candidate.agentId ?? candidate.userId}
+                          checked={
+                            person?.userId === candidate.userId &&
+                            (person.agentId ?? null) ===
+                              (candidate.agentId ?? null)
+                          }
                           aria-disabled={busy}
                           onClick={(event) => {
                             if (busy || inFlight.current)
@@ -342,6 +360,11 @@ export function MagazineTeam({ slug }: { slug: string }) {
                         />
                         <span className="min-w-0 break-words">
                           {candidate.name}
+                          {candidate.agentId && candidate.ownerName ? (
+                            <span className="text-muted-foreground block text-xs">
+                              {t("agentOf", { name: candidate.ownerName })}
+                            </span>
+                          ) : null}
                         </span>
                       </label>
                     ))}
@@ -392,7 +415,7 @@ export function MagazineTeam({ slug }: { slug: string }) {
           <ul className="min-w-0 divide-y border-y">
             {staff.data.map((member, index) => (
               <li
-                key={member.userId}
+                key={member.agentId ? `agent-${member.agentId}` : member.userId}
                 aria-labelledby={`${id}-member-${index}`}
                 className="flex min-w-0 flex-wrap items-start gap-3 py-4"
               >
@@ -415,6 +438,11 @@ export function MagazineTeam({ slug }: { slug: string }) {
                       ? roles(`${member.role}.name`)
                       : t(member.source)}
                   </p>
+                  {member.agentOf && (
+                    <p className="text-muted-foreground text-sm">
+                      {t("agentOf", { name: member.agentOf })}
+                    </p>
+                  )}
                   {!member.isActiveMember && (
                     <p className="text-muted-foreground text-sm">
                       {t("notMember")}

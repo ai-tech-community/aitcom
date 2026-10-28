@@ -23,6 +23,7 @@ describe("destinationBehaviour", () => {
       prePublishTitleKey: "prePublishTitle",
       prePublishSubtitleKey: "prePublishSubtitle",
       editPath: expect.any(Function),
+      communitySlug: null,
       errorKey: expect.any(Function),
     });
     expect(behaviour.editPath("my-story-1")).toBe("/blog/edit/my-story-1");
@@ -42,6 +43,7 @@ describe("destinationBehaviour", () => {
       prePublishTitleKey: "magazine.prePublishTitle",
       prePublishSubtitleKey: "magazine.prePublishSubtitle",
       editPath: expect.any(Function),
+      communitySlug: "night-owls",
       errorKey: expect.any(Function),
     });
     expect(behaviour.editPath("my-story-1")).toBe(

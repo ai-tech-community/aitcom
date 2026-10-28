@@ -36,6 +36,7 @@ import {
   creditPendingMagazineArticles,
   publishPlacedArticles,
 } from "./article-publication";
+import { deleteUnpublishedMagazineArticles } from "./article-submission";
 import type { Deps, PayloadClient } from "./deps";
 import { magazineError, type MagazineErrorCode } from "./errors";
 import { recordIssueHistory, type HistoryWrite } from "./issue-history";
@@ -792,4 +793,31 @@ export async function deleteDraftIssue(
       req: tx.req,
     });
   });
+}
+
+/**
+ * Removes a magazine, its draft issues and its unpublished articles.
+ * A published issue or article refuses the delete. The Magazine tab stays,
+ * so the community can start again.
+ */
+export async function deleteCommunityMagazine(
+  deps: Deps,
+  magazine: { id: number },
+  actor: IssueActor,
+): Promise<void> {
+  const { docs: issues } = await deps.payload.find({
+    collection: "magazine-issues",
+    where: { magazine: { equals: magazine.id } },
+    depth: 0,
+    limit: 200,
+    pagination: false,
+  });
+  if (issues.some((issue) => issue.status !== "draft")) {
+    throw magazineError("MAGAZINE_PUBLISHED");
+  }
+  for (const issue of issues) {
+    await deleteDraftIssue(deps, issue, actor);
+  }
+  await deleteUnpublishedMagazineArticles(deps, magazine.id);
+  await deps.payload.delete({ collection: "magazines", id: magazine.id });
 }

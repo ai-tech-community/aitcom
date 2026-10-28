@@ -141,6 +141,10 @@ export default buildConfig({
     s3Storage({
       collections: {
         media: {
+          // Enables the prefix column. Magazine uploads set their own
+          // `magazines/<id>` prefix; every other upload leaves it empty and
+          // stays at the bucket root.
+          prefix: "",
           disablePayloadAccessControl: true,
           generateFileURL: ({ filename, prefix }) => {
             const bucket = process.env.S3_BUCKET;

@@ -24,7 +24,7 @@ export const ForumThreads: CollectionConfig = {
       unique: true,
       admin: {
         description:
-          "Auto-generated from title + timestamp. Do not edit manually.",
+          "Generated from the title. A short number is added only when that address is taken.",
       },
     },
     {

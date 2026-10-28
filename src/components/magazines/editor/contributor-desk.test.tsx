@@ -23,6 +23,12 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 vi.mock("@/trpc/react", () => ({
   api: {
+    useUtils: () => ({
+      magazines: { myMagazineArticles: { invalidate: vi.fn() } },
+    }),
+    articles: {
+      delete: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+    },
     magazines: {
       myMagazineArticles: {
         useQuery: (input: unknown) => {

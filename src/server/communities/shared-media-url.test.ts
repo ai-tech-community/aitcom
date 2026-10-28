@@ -1,12 +1,36 @@
 import { describe, expect, it } from "vitest";
 
-import { sharedMediaUrl } from "./shared-media-url";
+import { mediaIdsForUrls, sharedMediaUrl } from "./shared-media-url";
 
 function payload(media: Record<string, unknown> | null) {
   return {
     findByID: async () => media,
   };
 }
+
+describe("mediaIdsForUrls", () => {
+  it("returns the media id stored for each URL and null when it is missing", () => {
+    const ids = new Map([
+      ["https://cdn.example.test/logo.png", 4],
+      ["https://cdn.example.test/banner.png", 9],
+    ]);
+    expect(
+      mediaIdsForUrls(
+        {
+          logoUrl: "https://cdn.example.test/logo.png",
+          bannerUrl: "https://cdn.example.test/banner.png",
+        },
+        ids,
+      ),
+    ).toEqual({ logoMediaId: 4, bannerMediaId: 9 });
+    expect(
+      mediaIdsForUrls(
+        { logoUrl: "https://elsewhere.test/a.png", bannerUrl: null },
+        ids,
+      ),
+    ).toEqual({ logoMediaId: null, bannerMediaId: null });
+  });
+});
 
 describe("sharedMediaUrl", () => {
   it("returns the stored URL for the owner's shared upload", async () => {

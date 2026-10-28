@@ -2,6 +2,7 @@
 
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -36,6 +37,7 @@ export type BuilderTopBarProps = {
   onPublish: () => void;
   /** Publish waits (e.g. for the public opt-in or after a conflict). */
   publishDisabled: boolean;
+  trailing?: ReactNode;
 };
 
 /**
@@ -59,6 +61,7 @@ export function BuilderTopBar({
   onReload,
   onPublish,
   publishDisabled,
+  trailing,
 }: BuilderTopBarProps) {
   const t = useTranslations("magazineEditor.builder");
   const displayTime = useScheduleTime();
@@ -110,6 +113,7 @@ export function BuilderTopBar({
               )}
             </time>
           )}
+          {trailing}
           {!canIssue(status, "publish") ? (
             <Button type="button" variant="outline" size="sm" disabled>
               {t("published")}

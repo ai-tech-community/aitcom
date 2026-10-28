@@ -80,7 +80,11 @@ export function PickerPanel({
       query: words,
       exclude: [...referencesInIssue],
     },
-    { placeholderData: keepPreviousData },
+    {
+      placeholderData: keepPreviousData,
+      // A article marked ready in the editor must show up without a reload.
+      refetchOnMount: "always",
+    },
   );
   const addButtons = useRef(new Map<string, HTMLButtonElement>());
   const emptyRef = useRef<HTMLParagraphElement>(null);

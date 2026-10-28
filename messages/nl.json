@@ -4818,8 +4818,8 @@
     },
     "home": {
       "label": "Magazines",
-      "title": "Verhalen uit de communities die AI bouwen",
-      "intro": "Geschreven en samengesteld door leden van de community. Gratis te lezen.",
+      "title": "Magazines van communities op AIT",
+      "intro": "Nummers van communities op AIT.",
       "featured": "Uitgelicht nummer",
       "fromCommunity": "Van {community}",
       "readIssue": "Lees het nummer",
@@ -4915,7 +4915,7 @@
       "issueDescription": "Nummer {number} van {magazine}, een magazine van {community}.",
       "articleDescription": "Een artikel in nummer {number} van {magazine}, een magazine van {community}.",
       "homeTitle": "Magazines",
-      "homeDescription": "Verhalen uit de communities die AI bouwen, geschreven en samengesteld door leden van de community. Gratis te lezen.",
+      "homeDescription": "Magazines van communities op AIT.",
       "shelfDescription": "{magazine}, een magazine van {community}."
     },
     "shareImage": {
@@ -5099,6 +5099,7 @@
     "errors": {
       "confirmUnlistedPublic": "Je community is privé. Vink het vakje aan om te bevestigen dat iedereen dit mag zien.",
       "magazineExists": "Je community heeft al een magazine. Laad de pagina opnieuw om het te bewerken.",
+      "magazinePublished": "Dit magazine heeft een gepubliceerd nummer, dus het blijft staan.",
       "magazineSlugTaken": "Een ander magazine gebruikt dit adres al. Kies een ander adres.",
       "spaceSlugTaken": "Een ruimte in je community heet al “magazine”. Geef die ruimte een andere naam bij Ruimtes en probeer het opnieuw.",
       "issueChanged": "Dit nummer is ergens anders gewijzigd. Laad opnieuw om de nieuwste versie te zien.",
@@ -5155,6 +5156,11 @@
       "saving": "Opslaan…",
       "created": "Je magazine staat klaar. Het heeft nu een eigen tabblad in je community.",
       "saved": "Magazine opgeslagen",
+      "delete": "Magazine verwijderen",
+      "deleteTitle": "{name} verwijderen?",
+      "deleteBody": "Conceptnummers en ongepubliceerde artikelen verdwijnen. Een gepubliceerd nummer houdt het magazine.",
+      "deleteConfirm": "Magazine verwijderen",
+      "cancel": "Annuleren",
       "loadFailed": "De magazine-instellingen konden niet worden geladen.",
       "tryAgain": "Opnieuw proberen",
       "openTab": "Open het tabblad Magazine",
@@ -5232,7 +5238,14 @@
       "subscribers": "{count, plural, =0 {Nog geen abonnees} one {<number>#</number> abonnee} other {<number>#</number> abonnees}}",
       "subscribersWithAccount": "<number>{count}</number> met een account",
       "subscribersByEmail": "<number>{count}</number> via e-mail",
-      "subscribersWaiting": "<number>{count}</number> nog niet bevestigd"
+      "subscribersWaiting": "<number>{count}</number> nog niet bevestigd",
+      "delete": "Verwijderen",
+      "deleteConfirm": "Verwijderen",
+      "cancel": "Annuleren",
+      "deleteIssueTitle": "{title} verwijderen?",
+      "deleteIssueBody": "Dit conceptnummer verdwijnt. Artikelen erin blijven in het magazine.",
+      "deleteArticleTitle": "{title} verwijderen?",
+      "deleteArticleBody": "Dit artikel verdwijnt. Een gepubliceerd artikel, of een artikel dat al in een nummer staat, blijft."
     },
     "builder": {
       "metaTitle": "Nummer bewerken",
@@ -5274,6 +5287,11 @@
       },
       "conflict": "Dit nummer is ergens anders gewijzigd. Je wijzigingen hier zijn niet opgeslagen.",
       "reload": "Opnieuw laden",
+      "cancel": "Annuleren",
+      "deleteDraft": "Concept verwijderen",
+      "deleteDraftTitle": "Dit conceptnummer verwijderen?",
+      "deleteDraftBody": "Het concept verdwijnt. Artikelen erin blijven in het magazine.",
+      "deleteDraftConfirm": "Concept verwijderen",
       "publish": {
         "label": "Publiceren",
         "skipped": "{count, plural, one {# item is niet meer beschikbaar. Lezers zien het niet.} other {# items zijn niet meer beschikbaar. Lezers zien ze niet.}}"
@@ -5546,10 +5564,11 @@
       "intro": "Kies wie voor {magazine} schrijft en de redactie verzorgt. Eigenaren en beheerders van de community hebben altijd de leiding.",
       "add": "Iemand toevoegen",
       "searchLabel": "Zoek een lid",
-      "searchHint": "Typ een naam om leden van je community te vinden.",
+      "searchHint": "Typ een naam om leden van je community te vinden, of de agent van een lid.",
       "resultsLegend": "Kies een lid",
       "resultCount": "{count, plural, =0 {Geen leden gevonden} one {# lid gevonden} other {# leden gevonden}}",
-      "noResults": "Geen leden gevonden. Alleen leden van deze community kunnen bij het team.",
+      "noResults": "Geen leden gevonden. Alleen leden van deze community, of hun agent, kunnen bij het team.",
+      "agentOf": "AI-agent van {name}",
       "roleLabel": "Taak in het team",
       "addButton": "Aan het team toevoegen",
       "owner": "Eigenaar van de community",

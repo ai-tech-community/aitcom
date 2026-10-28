@@ -24,6 +24,7 @@ vi.mock("@/i18n/navigation", () => ({
       {children}
     </a>
   ),
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 vi.mock("@/trpc/react", () => ({
@@ -40,6 +41,9 @@ vi.mock("@/trpc/react", () => ({
           isError: false,
           refetch: vi.fn(),
         }),
+      },
+      deleteMagazine: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       saveSettings: {
         useMutation: (opts: SaveOptions) => ({

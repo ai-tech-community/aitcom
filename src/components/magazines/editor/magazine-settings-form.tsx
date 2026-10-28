@@ -12,7 +12,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { communityMagazinePath, magazinePath } from "@/lib/magazines/paths";
 import {
   type IssueVisibility,
@@ -29,6 +29,7 @@ import {
 } from "@/lib/magazines/visibility";
 import { api } from "@/trpc/react";
 
+import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { readEditorError } from "./editor-errors";
 import { ImageUploadField } from "./image-upload-field";
 import { PublicOptIn, publicOptInRequired } from "./public-opt-in";
@@ -164,6 +165,7 @@ function SettingsEditor({
 }) {
   const t = useTranslations("magazineEditor.settings");
   const tErrors = useTranslations("magazineEditor.errors");
+  const router = useRouter();
   const utils = api.useUtils();
 
   const [draft, setDraft] = useState<Draft>(() => draftOf(magazine));
@@ -187,6 +189,12 @@ function SettingsEditor({
   const topicsHintId = useId();
   const visibilityHintId = useId();
 
+  const remove = api.magazines.deleteMagazine.useMutation({
+    onSuccess: () => {
+      router.push(communityMagazinePath(slug));
+    },
+    onError: (error) => setSaveError(tErrors(readEditorError(error).key)),
+  });
   const save = api.magazines.saveSettings.useMutation({
     onSuccess: () => {
       toast.success(magazine ? t("saved") : t("created"));
@@ -467,6 +475,17 @@ function SettingsEditor({
         <Button type="submit" disabled={!canSave}>
           {save.isPending ? t("saving") : magazine ? t("save") : t("create")}
         </Button>
+        {magazine && (
+          <ConfirmDeleteButton
+            label={t("delete")}
+            title={t("deleteTitle", { name: magazine.name })}
+            description={t("deleteBody")}
+            confirmLabel={t("deleteConfirm")}
+            cancelLabel={t("cancel")}
+            pending={remove.isPending}
+            onConfirm={() => remove.mutate({ slug })}
+          />
+        )}
       </div>
     </form>
   );

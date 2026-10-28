@@ -1,6 +1,7 @@
 import type { Where } from "payload";
 
-import { PUBLICLY_LISTED_EVENT_STATUSES } from "@/lib/events/event-status";
+/** Listed events an issue may offer. Cancelled events stay on the public events list, not here. */
+const PICKABLE_EVENT_STATUSES = ["published", "completed"] as const;
 import { PICKER_LIMIT, type CandidateFact } from "@/lib/magazines/picker";
 import type { Event } from "@/payload-types";
 import { communityContentWhere } from "@/server/communities/forum-scope";
@@ -30,7 +31,7 @@ export const eventPicker: ItemPickerSource<InputOf<"event">> = {
     const excludedIds = excludedNumericReferenceIds("event", exclude);
     const and: Where[] = [
       ...(excludedIds.length ? [{ id: { not_in: excludedIds } }] : []),
-      { status: { in: [...PUBLICLY_LISTED_EVENT_STATUSES] } },
+      { status: { in: [...PICKABLE_EVENT_STATUSES] } },
       communityContentWhere(ctx.community),
       ...(query ? [{ title: { like: query } }] : []),
     ];

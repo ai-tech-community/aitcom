@@ -381,6 +381,11 @@ export interface Media {
    * What it was uploaded for. A feed post image belongs to one post and is deleted when the post stops using it. Empty for shared images (covers, logos).
    */
   purpose?: 'feed-post' | null;
+  /**
+   * S3 key prefix. Magazine uploads use `magazines/<id>`; empty keeps the
+   * object at the bucket root.
+   */
+  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -2492,6 +2497,7 @@ export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   uploadedBy?: T;
   purpose?: T;
+  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;

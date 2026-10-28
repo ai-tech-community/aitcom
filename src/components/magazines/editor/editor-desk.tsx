@@ -17,11 +17,12 @@ import {
   magazineWritePath,
 } from "@/lib/magazines/paths";
 import { writerStatusOf } from "@/lib/magazines/review";
-import type { IssueStatus } from "@/lib/magazines/values";
+import { canIssue, type IssueStatus } from "@/lib/magazines/values";
 import type { IssueListRow } from "@/server/magazines/issue-editing";
 import { api } from "@/trpc/react";
 
 import { useIssueDateline } from "../reading/issue-dateline";
+import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { DeskList, UpdatedAt } from "./desk-list";
 import { readEditorError } from "./editor-errors";
 import { SubscriberCountLine } from "./subscriber-count-line";
@@ -38,7 +39,15 @@ function nextIssueNumber(issues: IssueListRow[]): number {
   return issues.reduce((max, issue) => Math.max(max, issue.number), 0) + 1;
 }
 
-function IssueRow({ issue, slug }: { issue: IssueListRow; slug: string }) {
+function IssueRow({
+  issue,
+  slug,
+  onDelete,
+}: {
+  issue: IssueListRow;
+  slug: string;
+  onDelete: ((issue: IssueListRow) => void) | null;
+}) {
   const t = useTranslations("magazineEditor.desk");
   const tStats = useTranslations("magazineEditor.stats");
   const displayTime = useScheduleTime();
@@ -75,6 +84,18 @@ function IssueRow({ issue, slug }: { issue: IssueListRow; slug: string }) {
           </time>
         )}
       </Link>
+      {onDelete && (
+        <div className="px-3 pb-2">
+          <ConfirmDeleteButton
+            label={t("delete")}
+            title={t("deleteIssueTitle", { title: issue.title })}
+            description={t("deleteIssueBody")}
+            confirmLabel={t("deleteConfirm")}
+            cancelLabel={t("cancel")}
+            onConfirm={() => onDelete(issue)}
+          />
+        </div>
+      )}
       {issue.status === "published" && (
         <Button variant="ghost" size="sm" className="mb-2 ml-3" asChild>
           <Link href={issueStatsPath(slug, issue.id)}>
@@ -116,6 +137,21 @@ export function EditorDesk({
   const ready = api.magazines.availableArticles.useQuery({ slug });
   const drafts = api.magazines.myDraftArticles.useQuery({ slug });
 
+  const utils = api.useUtils();
+  const deleteIssue = api.magazines.deleteDraftIssue.useMutation({
+    onSuccess: () => {
+      void utils.magazines.listIssues.invalidate({ slug });
+    },
+    onError: (error) => setCreateError(tErrors(readEditorError(error).key)),
+  });
+  const deleteArticle = api.articles.delete.useMutation({
+    onSuccess: () => {
+      void utils.magazines.availableArticles.invalidate({ slug });
+      void utils.magazines.myDraftArticles.invalidate({ slug });
+      void utils.magazines.pickerCandidates.invalidate({ slug });
+    },
+    onError: (error) => setCreateError(tErrors(readEditorError(error).key)),
+  });
   const createIssue = api.magazines.createIssue.useMutation({
     onSuccess: ({ id }) => router.push(issueBuilderPath(slug, id)),
     onError: (error) => setCreateError(tErrors(readEditorError(error).key)),
@@ -221,7 +257,16 @@ export function EditorDesk({
           empty={issueRows.length === 0 ? t("issuesEmpty") : null}
         >
           {issueRows.map((issue) => (
-            <IssueRow key={issue.id} issue={issue} slug={slug} />
+            <IssueRow
+              key={issue.id}
+              issue={issue}
+              slug={slug}
+              onDelete={
+                canIssue(issue.status, "delete")
+                  ? (row) => deleteIssue.mutate({ slug, issueId: row.id })
+                  : null
+              }
+            />
           ))}
         </DeskList>
 
@@ -262,6 +307,17 @@ export function EditorDesk({
                     {content}
                   </div>
                 )}
+                <div className="px-3 pb-2">
+                  <ConfirmDeleteButton
+                    label={t("delete")}
+                    title={t("deleteArticleTitle", { title: article.title })}
+                    description={t("deleteArticleBody")}
+                    confirmLabel={t("deleteConfirm")}
+                    cancelLabel={t("cancel")}
+                    pending={deleteArticle.isPending}
+                    onConfirm={() => deleteArticle.mutate({ id: article.id })}
+                  />
+                </div>
               </li>
             );
           })}
@@ -288,6 +344,17 @@ export function EditorDesk({
                 </span>
                 <UpdatedAt value={article.updatedAt} />
               </Link>
+              <div className="px-3 pb-2">
+                <ConfirmDeleteButton
+                  label={t("delete")}
+                  title={t("deleteArticleTitle", { title: article.title })}
+                  description={t("deleteArticleBody")}
+                  confirmLabel={t("deleteConfirm")}
+                  cancelLabel={t("cancel")}
+                  pending={deleteArticle.isPending}
+                  onConfirm={() => deleteArticle.mutate({ id: article.id })}
+                />
+              </div>
             </li>
           ))}
         </DeskList>
