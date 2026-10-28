@@ -150,6 +150,23 @@ describe("editorScopeOf", () => {
     });
   });
 
+  it("uses the stronger staff role for a community no matter the row order", () => {
+    const memberships = [
+      { communityId: "b", role: "member" as const, status: "active" },
+    ];
+    const editorThenContributor = [
+      { communityId: "b", role: "editor" as const },
+      { communityId: "b", role: "contributor" as const },
+    ];
+    const contributorThenEditor = [...editorThenContributor].reverse();
+    expect(editorScopeOf(memberships, editorThenContributor)).toEqual(
+      editorScopeOf(memberships, contributorThenEditor),
+    );
+    expect(
+      editorScopeOf(memberships, contributorThenEditor).editorCommunityIds,
+    ).toEqual(["b"]);
+  });
+
   it("adds communities where a staff role gives edit, never for inactive members", () => {
     expect(
       editorScopeOf(

@@ -2,11 +2,12 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 
 import type { db as Database } from "@/server/db";
-import { communityMemberships } from "@/server/db/schema";
+import { communities, communityMemberships } from "@/server/db/schema";
 import type { CommunityRole } from "@/server/communities/role-utils";
 import { getPayloadClient } from "@/server/payload";
 
 import {
+  forumThreadIsLive,
   pinThreadDenial,
   pinThreadDenialMessage,
 } from "@/lib/communities/thread-moderation";
@@ -35,7 +36,13 @@ export async function pinForumThread(
     })
     .catch(() => null);
 
-  if (!thread || thread.isDeleted) {
+  const community = thread?.communityId
+    ? ((await db.query.communities.findFirst({
+        where: eq(communities.id, thread.communityId),
+        columns: { deletedAt: true },
+      })) ?? null)
+    : null;
+  if (!thread || !forumThreadIsLive(thread, community)) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
   }
 

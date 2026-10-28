@@ -3,8 +3,8 @@ import { expect, it, vi } from "vitest";
 import { COMMUNITY_DESCRIPTION_MAX } from "@/lib/communities/description";
 import { TOOL_META } from "@/server/mcp/catalog-meta";
 import {
-  ADDITIVE_WRITE,
   DESTRUCTIVE_WRITE,
+  DRAFT_FOR_REVIEW,
   READ_ONLY,
 } from "@/server/mcp/tool-annotations";
 
@@ -41,7 +41,10 @@ it("registers community thread tools and image settings on the existing procedur
         description: "stay f",
         descriptionTruncated: false,
       }),
-      createThread: vi.fn().mockResolvedValue({ id: 4, slug: "hello-1" }),
+      createThread: vi.fn().mockResolvedValue({
+        mode: "draft",
+        draftId: "draft-1",
+      }),
       pinThread: vi.fn().mockResolvedValue({ ok: true, isPinned: false }),
       updateCommunitySettings: vi.fn().mockResolvedValue({
         bannerUrl: "https://cdn.example.test/banner.png",
@@ -64,8 +67,15 @@ it("registers community thread tools and image settings on the existing procedur
     gate: "contribute",
   });
   expect(tools.get("create-thread")!.config.annotations).toEqual(
-    ADDITIVE_WRITE,
+    DRAFT_FOR_REVIEW,
   );
+  expect(tools.get("create-thread")!.config.description).toContain(
+    "saved as a draft",
+  );
+  expect(tools.get("create-thread")!.config.description).not.toContain(
+    "posted immediately",
+  );
+  expect(tools.get("pin-thread")!.config.description).toContain("live");
   expect(tools.get("pin-thread")!.config.annotations).toEqual(
     DESTRUCTIVE_WRITE,
   );
@@ -112,14 +122,20 @@ it("registers community thread tools and image settings on the existing procedur
 
   await tools.get("update-community-settings")!.run({
     slug: "makers",
+    logoMediaId: 8,
     bannerMediaId: 3,
     magazineLogoMediaId: 4,
   } as never);
   expect(caller.agent.updateCommunitySettings).toHaveBeenCalledWith({
     slug: "makers",
+    logoMediaId: 8,
     bannerMediaId: 3,
     magazineLogoMediaId: 4,
   });
+  const logoMediaId = tools.get("update-community-settings")!.config.inputSchema
+    ?.logoMediaId;
+  expect(logoMediaId?.safeParse(8).success).toBe(true);
+  expect(logoMediaId?.safeParse(null).success).toBe(true);
 
   const description = tools.get("update-community-settings")!.config.inputSchema
     ?.description;

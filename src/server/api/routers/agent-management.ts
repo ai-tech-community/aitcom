@@ -28,6 +28,11 @@ import { syncForumThreadCounters } from "@/server/communities/forum-thread-count
 import { importFeedImage } from "@/server/communities/feed-images";
 import { syncFeedPostCounters } from "@/server/communities/feed-post-counters";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import { createForumThread } from "@/server/communities/create-forum-thread";
+import {
+  FORUM_THREAD_DRAFT_TYPE,
+  forumThreadFromDraft,
+} from "@/server/communities/forum-thread-draft";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 import {
   isBlockedAddress,
@@ -983,6 +988,12 @@ export const agentManagementRouter = createTRPCRouter({
         }
       }
 
+      // Parse before the status flip so a damaged draft stays pending.
+      const threadToPublish =
+        existing.type === FORUM_THREAD_DRAFT_TYPE && input.action === "approved"
+          ? forumThreadFromDraft(existing)
+          : undefined;
+
       // A feed post draft's picture is fetched before the draft is claimed,
       // so a picture that cannot be loaded leaves the draft pending instead
       // of approved-but-unpublished. Agents attach pictures by address; it is
@@ -1017,6 +1028,21 @@ export const agentManagementRouter = createTRPCRouter({
           code: "CONFLICT",
           message: "Already reviewed",
         });
+      }
+
+      // Approving a thread draft publishes it in the reviewer's name, the
+      // same path as the forum form. The agent never writes the live row.
+      if (
+        input.action === "approved" &&
+        draft.type === FORUM_THREAD_DRAFT_TYPE &&
+        threadToPublish
+      ) {
+        await createForumThread(
+          ctx.db,
+          { id: userId, type: "member" },
+          { id: userId, name: ctx.session.user.name ?? "member" },
+          threadToPublish,
+        );
       }
 
       // If approved and it's a thread reply, publish it via Payload.

@@ -229,7 +229,7 @@ export function registerCommunityTools(
     "update-community-settings",
     {
       description:
-        "Update community settings. Name, description, logo URL, banner, join policy, and directory listing require the owner's admin or owner role, the same as the general settings page. bannerMediaId is a media id from upload-image (null removes the banner). magazineLogoMediaId is a media id from upload-image (null removes the logo) and requires the same manage permission as the magazine settings page. The description limit matches the settings form.",
+        "Update community settings. Name, description, logo, banner, join policy, and directory listing require the owner's admin or owner role, the same as the general settings page. logoUrl is a logo URL (null removes it) and remains for compatibility. logoMediaId is a media id from upload-image (null removes the logo); send logoUrl or logoMediaId, not both. bannerMediaId is a media id from upload-image (null removes the banner). magazineLogoMediaId is a media id from upload-image (null removes the logo) and requires the same manage permission as the magazine settings page. The description limit matches the settings form.",
       inputSchema: {
         slug: z.string().describe("The community slug to update."),
         name: z
@@ -250,7 +250,18 @@ export function registerCommunityTools(
           .url()
           .optional()
           .nullable()
-          .describe("New community logo URL, or null to remove."),
+          .describe(
+            "New community logo URL, or null to remove. Omit this when you send logoMediaId.",
+          ),
+        logoMediaId: z
+          .number()
+          .int()
+          .positive()
+          .nullable()
+          .optional()
+          .describe(
+            "Media id from upload-image for the community logo. Null removes it. Requires admin or owner. Omit this when you send logoUrl.",
+          ),
         bannerMediaId: z
           .number()
           .int()
@@ -285,6 +296,7 @@ export function registerCommunityTools(
       name,
       description,
       logoUrl,
+      logoMediaId,
       bannerMediaId,
       magazineLogoMediaId,
       joinPolicy,
@@ -295,6 +307,7 @@ export function registerCommunityTools(
         name,
         description,
         logoUrl,
+        logoMediaId,
         bannerMediaId,
         magazineLogoMediaId,
         joinPolicy,
@@ -312,7 +325,7 @@ export function registerCommunityTools(
     "create-thread",
     {
       description:
-        "Create a forum thread as the owner. Same rules as the forum form: title 3–255 characters, body up to 10000 characters, category general, question, showcase, or job. Pass communitySlug to post in that community (it must exist). The owner must have accepted that community's rules. Requires contribute scope. The thread is posted immediately in the owner's name.",
+        "Create a forum thread. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015). Same rules as the forum form: title 3–255 characters, body up to 10000 characters, category general, question, showcase, or job. Pass communitySlug to post in that community (it must exist). The owner must have accepted that community's rules. Requires contribute scope. Nothing is public until the owner approves the draft.",
       inputSchema: {
         title: z
           .string()
@@ -336,7 +349,7 @@ export function registerCommunityTools(
             "Community to post in. Omit for a hub-wide thread, as the form does without a community.",
           ),
       },
-      annotations: ADDITIVE_WRITE,
+      annotations: DRAFT_FOR_REVIEW,
     },
     async ({ title, content, category, communitySlug }) => {
       const result = await caller.agent.createThread({
@@ -357,7 +370,7 @@ export function registerCommunityTools(
     "pin-thread",
     {
       description:
-        "Pin or unpin a community forum thread. Requires contribute scope. The owner must be an active owner, admin, or moderator of that thread's community — the same roles that see Pin in the forum. isPinned false unpins. Threads that are not in a community cannot be pinned with this tool.",
+        "Pin or unpin a live community forum thread. Requires contribute scope. A deleted thread, a thread whose community has been removed, or a thread that exists only as an agent draft is not live and is not found. The owner must be an active owner, admin, or moderator of that thread's community — the same roles that see Pin in the forum. isPinned false unpins. Threads that are not in a community cannot be pinned with this tool.",
       inputSchema: {
         threadId: z.number().int().positive().describe("The thread id."),
         isPinned: z

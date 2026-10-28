@@ -140,6 +140,22 @@ export type EditorScope = {
 
 export type StaffRoleRow = { communityId: string; role: MagazineRole };
 
+/**
+ * Two staff rows for one community must not depend on query order. The
+ * stronger role wins, so an editor row is not dropped because a contributor
+ * row happened to come back last. That order used to change who browses a
+ * magazine as an editor between identical calls.
+ */
+function preferStaffRole(
+  current: MagazineRole | undefined,
+  next: MagazineRole,
+): MagazineRole {
+  if (!current) return next;
+  const rank = (role: MagazineRole) =>
+    roleCan(role, "manage") ? 2 : roleCan(role, "edit") ? 1 : 0;
+  return rank(next) > rank(current) ? next : current;
+}
+
 /** The pure half of `loadEditorScope`, over memberships and staff rows. */
 export function editorScopeOf(
   memberships: readonly {
@@ -149,9 +165,13 @@ export function editorScopeOf(
   }[],
   staff: readonly StaffRoleRow[] = [],
 ): EditorScope {
-  const rolesByCommunity = new Map(
-    staff.map((row) => [row.communityId, row.role]),
-  );
+  const rolesByCommunity = new Map<string, MagazineRole>();
+  for (const row of staff) {
+    rolesByCommunity.set(
+      row.communityId,
+      preferStaffRole(rolesByCommunity.get(row.communityId), row.role),
+    );
+  }
   const scope: EditorScope = { editorCommunityIds: [], memberCommunityIds: [] };
   for (const membership of memberships) {
     const standing = standingOf(

@@ -1,5 +1,8 @@
 import { TRPCError } from "@trpc/server";
 
+/** Agent drafts use this type. Approval publishes the thread. */
+export const FORUM_THREAD_DRAFT_TYPE = "thread_create";
+
 export const FORUM_THREAD_TITLE_MIN = 3;
 export const FORUM_THREAD_TITLE_MAX = 255;
 export const FORUM_THREAD_CONTENT_MAX = 10_000;
@@ -46,4 +49,79 @@ export function threadCommunityId(
     });
   }
   return community.id;
+}
+
+export function forumThreadDraftMeta(
+  input: ForumThreadDraft & { communityName?: string },
+) {
+  const communitySlug = input.communitySlug;
+  const destinationLabel = communitySlug
+    ? `${input.communityName ?? communitySlug} forum`
+    : "Forum";
+  const destinationPath = communitySlug
+    ? `/communities/${communitySlug}/forum`
+    : "/forum";
+  return {
+    title: input.title,
+    threadTitle: input.title,
+    category: input.category,
+    ...(communitySlug ? { communitySlug } : {}),
+    destinationLabel,
+    destinationPath,
+  };
+}
+
+function isForumThreadCategory(value: string): value is ForumThreadCategory {
+  return (FORUM_THREAD_CATEGORIES as readonly string[]).includes(value);
+}
+
+/** The thread an approved agent draft publishes. Rejects a damaged draft. */
+export function forumThreadFromDraft(draft: {
+  content: string | null;
+  metadata: unknown;
+}): ForumThreadDraft {
+  const meta =
+    draft.metadata && typeof draft.metadata === "object"
+      ? (draft.metadata as Record<string, unknown>)
+      : null;
+  const title = meta?.title;
+  const category = meta?.category;
+  const communitySlug = meta?.communitySlug;
+  const content = draft.content ?? "";
+  if (
+    typeof title !== "string" ||
+    title.length < FORUM_THREAD_TITLE_MIN ||
+    title.length > FORUM_THREAD_TITLE_MAX
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This thread draft has no usable title.",
+    });
+  }
+  if (content.length < 1 || content.length > FORUM_THREAD_CONTENT_MAX) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This thread draft has no usable body.",
+    });
+  }
+  if (typeof category !== "string" || !isForumThreadCategory(category)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This thread draft has no usable category.",
+    });
+  }
+  if (communitySlug !== undefined && typeof communitySlug !== "string") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This thread draft has no usable community.",
+    });
+  }
+  return {
+    title,
+    content,
+    category,
+    ...(typeof communitySlug === "string" && communitySlug.length > 0
+      ? { communitySlug }
+      : {}),
+  };
 }

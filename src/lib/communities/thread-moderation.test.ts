@@ -1,6 +1,40 @@
 import { describe, expect, it } from "vitest";
 
-import { pinThreadDenial, roleCanModerateThreads } from "./thread-moderation";
+import {
+  forumThreadIsLive,
+  pinThreadDenial,
+  roleCanModerateThreads,
+} from "./thread-moderation";
+
+describe("live threads", () => {
+  it("pins a community thread only while the thread and its community are live", () => {
+    expect(
+      forumThreadIsLive(
+        { isDeleted: false, communityId: "c1" },
+        { deletedAt: null },
+      ),
+    ).toBe(true);
+    expect(
+      forumThreadIsLive({ isDeleted: false, communityId: null }, null),
+    ).toBe(true);
+    expect(
+      forumThreadIsLive(
+        { isDeleted: true, communityId: "c1" },
+        { deletedAt: null },
+      ),
+    ).toBe(false);
+    expect(
+      forumThreadIsLive({ isDeleted: false, communityId: "c1" }, null),
+    ).toBe(false);
+    expect(
+      forumThreadIsLive(
+        { isDeleted: false, communityId: "c1" },
+        { deletedAt: new Date() },
+      ),
+    ).toBe(false);
+    expect(forumThreadIsLive(null, null)).toBe(false);
+  });
+});
 
 describe("thread pin roles", () => {
   it("matches the forum pin control: owner, admin, and moderator", () => {
