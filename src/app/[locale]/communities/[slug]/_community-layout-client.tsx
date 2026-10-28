@@ -38,15 +38,19 @@ export function CommunityLayoutClient({
   const { data: session } = authClient.useSession();
   const user = documentAuthUser(null, initialUser, session?.user);
 
-  const { data: community, isLoading: communityLoading } =
-    api.communities.getBySlug.useQuery({ slug });
+  const communityQuery = api.communities.getBySlug.useQuery({ slug });
 
   const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
     undefined,
     { enabled: !!user },
   );
 
-  if (communityLoading) {
+  // `isLoading` is false while a query is pending but not yet fetching.
+  // That is the first paint of a cold visit: the server took the missing
+  // community as notFound() and the client took it as a spinner. The
+  // mismatch blanks workspace pages such as the issue editor. Wait until
+  // the query has actually settled.
+  if (communityQuery.isPending) {
     return (
       <PageDocumentAuthProvider user={initialUser}>
         <div className="flex min-h-[50vh] items-center justify-center">
@@ -56,9 +60,10 @@ export function CommunityLayoutClient({
     );
   }
 
-  if (!community) {
+  if (communityQuery.isError || !communityQuery.data) {
     notFound();
   }
+  const community = communityQuery.data;
 
   const memberships = myCommunities ?? initialMemberships;
   const membershipStatus = membershipStatusForSlug(memberships, slug);

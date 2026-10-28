@@ -1,12 +1,14 @@
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
 import { magazinePath, magazineSettingsPath } from "@/lib/magazines/paths";
 import { roleCan, type MagazineRole } from "@/lib/magazines/roles";
+import type { IssueStatus } from "@/lib/magazines/values";
 import type {
   CommunityMagazineTabData,
   IssueCard,
@@ -65,6 +67,52 @@ function StartMagazine({ communitySlug }: { communitySlug: string }) {
   );
 }
 
+function unpublishedStatus(status: IssueStatus): "draft" | "scheduled" | null {
+  switch (status) {
+    case "draft":
+    case "scheduled":
+      return status;
+    case "published":
+      return null;
+  }
+}
+
+/**
+ * Unpublished issues for an editor, labelled by status. Readers never get
+ * this list. Covers still open the issue (editors can read a draft); the
+ * desk below is where they edit it.
+ */
+function DraftIssues({ issues }: { issues: IssueCard[] }) {
+  const t = useTranslations("magazineEditor.tab");
+  const labelId = useId();
+  return (
+    <section aria-labelledby={labelId} className="flex flex-col gap-5">
+      <SectionLabel id={labelId}>{t("drafts")}</SectionLabel>
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-8 @xl:grid-cols-3 @3xl:grid-cols-4 @5xl:grid-cols-6">
+        {issues.map((issue) => {
+          const status = unpublishedStatus(issue.status);
+          return (
+            <li key={issue.id} className="min-w-0">
+              <IssueCoverCard
+                issue={issue}
+                badge={
+                  status ? (
+                    <Badge variant="secondary" className="font-normal">
+                      {status === "draft"
+                        ? t("status.draft")
+                        : t("status.scheduled")}
+                    </Badge>
+                  ) : null
+                }
+              />
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 /** Older published issues as a shelf of covers, newest first. */
 function PastIssues({ issues }: { issues: IssueCard[] }) {
   const t = useTranslations("magazineEditor.tab");
@@ -108,7 +156,8 @@ export function MagazineTab({
 }) {
   const t = useTranslations("magazineEditor.tab");
   const latestId = useId();
-  const { magazine, latest, issues, viewerIsEditor, viewerRole } = data;
+  const { magazine, latest, issues, viewerIsEditor, viewerRole, draftIssues } =
+    data;
 
   if (!magazine) {
     return viewerIsEditor ? (
@@ -154,7 +203,7 @@ export function MagazineTab({
             emphasis="ink"
           />
         </section>
-      ) : (
+      ) : viewerIsEditor && draftIssues.length > 0 ? null : (
         <EmptyState
           className="rounded-lg border"
           title={t("emptyTitle")}
@@ -164,6 +213,10 @@ export function MagazineTab({
               : t("emptyDescription", { magazine: magazine.name })
           }
         />
+      )}
+
+      {viewerIsEditor && draftIssues.length > 0 && (
+        <DraftIssues issues={draftIssues} />
       )}
 
       <MagazineDesk slug={communitySlug} role={viewerRole} />

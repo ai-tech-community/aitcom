@@ -469,6 +469,7 @@ export function shelfData(
       issueCard(),
     ],
     viewerIsEditor: false,
+    unpublishedForEditor: false,
     ...overrides,
   };
 }

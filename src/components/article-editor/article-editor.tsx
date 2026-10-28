@@ -57,6 +57,8 @@ import { LinkPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalLi
 
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
+import { $insertTopLevel } from "./insert-top-level";
+import { renderLexicalDocument } from "@/lib/lexical-view";
 import type {
   ArticleEditorProps,
   SaveState,
@@ -153,6 +155,7 @@ export function ArticleEditor({
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [editorRef, setEditorRef] = useState<LexicalEditor | null>(null);
   const [editorAnchor, setEditorAnchor] = useState<HTMLDivElement | null>(null);
+  const [previewing, setPreviewing] = useState(false);
 
   const autosaveTimer = useRef<NodeJS.Timeout | null>(null);
   const serializeTimer = useRef<NodeJS.Timeout | null>(null);
@@ -506,13 +509,13 @@ export function ArticleEditor({
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) return;
 
-        const lines = text.split("\n");
-        const nodes = lines.map((line) => {
-          const p = $createParagraphNode();
-          p.append($createTextNode(line));
-          return p;
-        });
-        selection.insertNodes(nodes);
+        $insertTopLevel(
+          text.split("\n").map((line) => {
+            const p = $createParagraphNode();
+            if (line.length > 0) p.append($createTextNode(line));
+            return p;
+          }),
+        );
       });
     },
     [],
@@ -565,24 +568,14 @@ export function ArticleEditor({
       }
       if (id === "code") {
         editorRef.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            const codeBlock = $createCodeBlockNode("", "typescript");
-            const trailingParagraph = $createParagraphNode();
-            selection.insertNodes([codeBlock, trailingParagraph]);
-          }
+          $insertTopLevel([$createCodeBlockNode("", "typescript")]);
         });
         slashDispatch({ type: "CLOSE" });
         return;
       }
       if (id === "image") {
         editorRef.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            const imageNode = $createImageNode("", "");
-            const trailingParagraph = $createParagraphNode();
-            selection.insertNodes([imageNode, trailingParagraph]);
-          }
+          $insertTopLevel([$createImageNode("", "")]);
         });
         slashDispatch({ type: "CLOSE" });
         return;
@@ -748,10 +741,16 @@ export function ArticleEditor({
       )}
 
       {/* Sticky top bar */}
-      <div className="bg-background/70 border-border/50 sticky top-14 z-10 -mx-6 border-b px-6 py-2.5 backdrop-blur sm:-mx-12 sm:px-12">
-        <div className="flex items-center justify-between">
+      <div className="bg-background/95 border-border/50 sticky top-28 z-30 -mx-6 border-b px-6 py-2.5 backdrop-blur sm:-mx-12 sm:px-12 lg:top-14">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3 text-xs">
-            <span className="font-mono">{saveStateLabel}</span>
+            <span
+              role="status"
+              aria-live="polite"
+              className="border-border text-foreground bg-background inline-flex h-6 items-center rounded-full border px-2 font-mono"
+            >
+              {saveStateLabel}
+            </span>
             <span className="text-muted-foreground">
               {t("wordsCount", { count: wordCount })}
             </span>
@@ -762,42 +761,62 @@ export function ArticleEditor({
               {t("slashHint")}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setPublishDialogOpen(true)}
-            className="bg-foreground text-background hover:bg-foreground/90 rounded px-4 py-1.5 font-mono text-xs tracking-wider transition-colors"
-          >
-            {submitLabel.toUpperCase()}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-pressed={previewing}
+              onClick={() => setPreviewing((on) => !on)}
+              className="border-border hover:bg-accent rounded border px-3 py-1.5 font-mono text-xs tracking-wider transition-colors"
+            >
+              {previewing ? t("backToEditing") : t("preview")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPublishDialogOpen(true)}
+              className="bg-foreground text-background hover:bg-foreground/90 rounded px-4 py-1.5 font-mono text-xs tracking-wider transition-colors"
+            >
+              {submitLabel.toUpperCase()}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Borderless title */}
-      <input
-        type="text"
-        value={title}
-        onChange={(e) =>
-          dispatch({
-            type: "SET_FIELD",
-            field: "title",
-            payload: e.target.value,
-          })
-        }
-        placeholder={t("articleTitlePlaceholder")}
-        className="placeholder:text-muted-foreground/40 mt-8 w-full bg-transparent text-3xl leading-tight font-semibold tracking-tight focus:outline-none"
-      />
+      {previewing ? (
+        <h1 className="mt-8 text-3xl leading-tight font-semibold tracking-tight">
+          {title.trim() || t("previewUntitled")}
+        </h1>
+      ) : (
+        <input
+          type="text"
+          value={title}
+          onChange={(e) =>
+            dispatch({
+              type: "SET_FIELD",
+              field: "title",
+              payload: e.target.value,
+            })
+          }
+          placeholder={t("articleTitlePlaceholder")}
+          className="placeholder:text-muted-foreground/40 mt-8 w-full bg-transparent text-3xl leading-tight font-semibold tracking-tight focus:outline-none"
+        />
+      )}
 
       {/* Subtle separator */}
       <div className="border-border my-4 border-b" />
 
       {/* Borderless content editor */}
-      <div className="editor-anchor relative" ref={setEditorAnchor}>
+      <div
+        className="editor-anchor relative"
+        ref={setEditorAnchor}
+        hidden={previewing}
+      >
         <LexicalComposer initialConfig={initialConfig}>
           <EditorBridge onReady={setEditorRef} />
           <RichTextPlugin
             contentEditable={
               <ContentEditable
-                className="min-h-[60vh] pl-4 text-sm leading-relaxed focus:outline-none sm:pl-14"
+                className="min-h-[60vh] pl-14 text-sm leading-relaxed focus:outline-none"
                 onKeyDown={handleEditorKeyDown}
               />
             }
@@ -822,6 +841,16 @@ export function ArticleEditor({
           onExecute={executeSlashCommand}
         />
       </div>
+
+      {previewing && (
+        <article aria-label={t("previewLabel")} className="mt-4">
+          {editorState ? (
+            renderLexicalDocument(editorState)
+          ) : (
+            <p className="text-muted-foreground text-sm">{t("previewEmpty")}</p>
+          )}
+        </article>
+      )}
 
       <PrePublishDialog
         open={publishDialogOpen}

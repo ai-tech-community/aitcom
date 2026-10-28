@@ -2,7 +2,17 @@ import { Suspense } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 
-const m = vi.hoisted(() => ({ segments: [] as string[] }));
+const m = vi.hoisted(() => ({
+  segments: [] as string[],
+  community: {
+    data: { slug: "mlops", name: "MLOps" } as
+      | { slug: string; name: string }
+      | undefined,
+    isPending: false,
+    isLoading: false,
+    isError: false,
+  },
+}));
 
 vi.mock("next/navigation", () => ({
   notFound: () => {
@@ -17,10 +27,7 @@ vi.mock("@/trpc/react", () => ({
   api: {
     communities: {
       getBySlug: {
-        useQuery: () => ({
-          data: { slug: "mlops", name: "MLOps" },
-          isLoading: false,
-        }),
+        useQuery: () => m.community,
       },
       getMyCommunities: { useQuery: () => ({ data: undefined }) },
     },
@@ -67,6 +74,12 @@ async function renderLayout() {
 
 beforeEach(() => {
   m.segments = [];
+  m.community = {
+    data: { slug: "mlops", name: "MLOps" },
+    isPending: false,
+    isLoading: false,
+    isError: false,
+  };
 });
 
 describe("CommunityLayoutClient frame", () => {
@@ -90,6 +103,19 @@ describe("CommunityLayoutClient frame", () => {
   it("is full width: no centred max-width column", async () => {
     const { container } = await renderLayout();
     expect(container.innerHTML).not.toMatch(/max-w-5xl/);
+  });
+
+  it("waits for the community query before deciding the page is missing", async () => {
+    m.segments = ["magazine", "issues", "5", "edit"];
+    m.community = {
+      data: undefined,
+      isPending: true,
+      isLoading: false,
+      isError: false,
+    };
+    await renderLayout();
+    expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument();
+    expect(screen.queryByTestId("page")).toBeNull();
   });
 
   it("draws no frame around a workspace route", async () => {

@@ -2294,6 +2294,10 @@
     "prePublishSubtitle": "Review your article before publishing",
     "readinessLabel": "Readiness",
     "backToEditing": "Back to editing",
+    "preview": "Preview",
+    "previewLabel": "Article preview",
+    "previewUntitled": "Untitled",
+    "previewEmpty": "Nothing to preview yet.",
     "featuredImagePreview": "Preview",
     "featuredImagePlaceholder": "No image — add a URL above",
     "articleTitlePlaceholder": "Article title...",
@@ -4831,6 +4835,8 @@
       "emptyTitle": "No issues yet",
       "emptyDescription": "The first issue of {magazine} is on its way. Visit the community to see what its members are writing.",
       "emptyEditorDescription": "Make the first issue from your community's Magazine tab.",
+      "emptyEditorWithDraftsTitle": "Nothing published yet",
+      "emptyEditorWithDraftsDescription": "Drafts are on your community's Magazine tab. This page lists an issue only after it is published.",
       "visitCommunity": "Visit {community}"
     },
     "issue": {
@@ -5161,7 +5167,12 @@
       "magazinePage": "Magazine page",
       "emptyTitle": "No issues yet",
       "emptyDescription": "The first issue of {magazine} is on its way.",
-      "emptyEditorDescription": "Make the first issue with New issue in the editor's desk below."
+      "emptyEditorDescription": "Make the first issue with New issue in the editor's desk below.",
+      "drafts": "Drafts",
+      "status": {
+        "draft": "Draft",
+        "scheduled": "Scheduled"
+      }
     },
     "contributorDesk": {
       "label": "Your writing desk",

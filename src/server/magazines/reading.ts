@@ -483,7 +483,18 @@ export type MagazinesHomeData = Awaited<ReturnType<typeof loadMagazinesHome>>;
 
 // ── Shelf and community tab ──────────────────────────────────────────────
 
-type Shelf = { issues: IssueCard[]; viewerIsEditor: boolean };
+type Shelf = {
+  issues: IssueCard[];
+  viewerIsEditor: boolean;
+  /**
+   * True only for an editor when this magazine has a draft or scheduled
+   * issue. The public shelf never lists those issues. The flag exists so
+   * the empty state does not tell an editor "No issues yet" when their
+   * drafts are on the Magazine tab. Everyone else gets false, so a draft's
+   * existence is not revealed.
+   */
+  unpublishedForEditor: boolean;
+};
 
 /**
  * The published issues of a magazine the viewer may read, or null (404)
@@ -498,7 +509,11 @@ async function loadShelf(
   scope: IssueReadScope,
   locale: AppLocale,
 ): Promise<Shelf | null> {
-  const issues = await readableMagazineIssues(deps, scope, magazine.id, locale);
+  const viewerIsEditor = scope.editorCommunityIds.includes(community.id);
+  const [issues, unpublishedForEditor] = await Promise.all([
+    readableMagazineIssues(deps, scope, magazine.id, locale),
+    editorHasUnpublishedIssue(deps, magazine.id, locale, viewerIsEditor),
+  ]);
   const isMember = scope.memberCommunityIds.includes(community.id);
   if (
     !mayKnowMagazine({
@@ -510,8 +525,61 @@ async function loadShelf(
     return null;
   return {
     issues: issues.map((issue) => toIssueCard(issue, magazine, community)),
-    viewerIsEditor: scope.editorCommunityIds.includes(community.id),
+    viewerIsEditor,
+    unpublishedForEditor,
   };
+}
+
+/**
+ * Draft and scheduled issues are the editor's working copies. They stay off
+ * the public shelf and off a reader's Magazine tab. On the tab, editors
+ * (owners and appointed editors) see them labelled by status. A contributor
+ * does not: write access is not edit access.
+ */
+async function editorUnpublishedIssues(
+  deps: Deps,
+  magazineId: number,
+  locale: AppLocale,
+  viewerIsEditor: boolean,
+): Promise<MagazineIssue[]> {
+  if (!viewerIsEditor) return [];
+  const { docs } = await deps.payload.find({
+    collection: "magazine-issues",
+    where: {
+      and: [
+        { magazine: { equals: magazineId } },
+        { status: { not_equals: "published" } },
+      ],
+    },
+    sort: "-number",
+    depth: 0,
+    pagination: false,
+    locale,
+  });
+  return docs;
+}
+
+async function editorHasUnpublishedIssue(
+  deps: Deps,
+  magazineId: number,
+  locale: AppLocale,
+  viewerIsEditor: boolean,
+): Promise<boolean> {
+  if (!viewerIsEditor) return false;
+  const { docs } = await deps.payload.find({
+    collection: "magazine-issues",
+    where: {
+      and: [
+        { magazine: { equals: magazineId } },
+        { status: { not_equals: "published" } },
+      ],
+    },
+    depth: 0,
+    limit: 1,
+    locale,
+    select: { communityId: true },
+  });
+  return docs.length > 0;
 }
 
 /** `/magazines/[magazine]`: the magazine and the issues the viewer may read. */
@@ -523,6 +591,8 @@ export async function loadMagazineShelf(
   community: ReadingCommunity;
   issues: IssueCard[];
   viewerIsEditor: boolean;
+  /** See `Shelf.unpublishedForEditor`. False for anyone who is not an editor. */
+  unpublishedForEditor: boolean;
 }> {
   const magazine = await findMagazineBySlug(deps.payload, opts.magazineSlug);
   if (!magazine) return null;
@@ -565,6 +635,12 @@ export async function loadCommunityMagazineTab(
   issues: IssueCard[];
   viewerIsEditor: boolean;
   viewerRole: MagazineRole | null;
+  /**
+   * Unpublished issues, newest number first, and only for an editor.
+   * Empty for everyone else. The public shelf uses `unpublishedForEditor`
+   * instead of this list.
+   */
+  draftIssues: IssueCard[];
 }> {
   const community = await liveCommunityBySlug(deps.db, opts.communitySlug);
   if (!community) return null;
@@ -581,6 +657,7 @@ export async function loadCommunityMagazineTab(
       issues: [],
       viewerIsEditor: standing.isEditor,
       viewerRole: standing.role,
+      draftIssues: [],
     };
   }
   const shelf = await loadShelf(
@@ -591,11 +668,18 @@ export async function loadCommunityMagazineTab(
     opts.locale,
   );
   if (!shelf) return null;
+  const drafts = await editorUnpublishedIssues(
+    deps,
+    magazine.id,
+    opts.locale,
+    shelf.viewerIsEditor,
+  );
   return {
     magazine: toMagazineSummary(magazine),
     latest: shelf.issues[0] ?? null,
     ...shelf,
     viewerRole: standing.role,
+    draftIssues: drafts.map((issue) => toIssueCard(issue, magazine, community)),
   };
 }
 

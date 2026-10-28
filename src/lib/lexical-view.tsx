@@ -1,0 +1,384 @@
+import React from "react";
+import { slugify } from "@/lib/text-utils";
+
+import { extractPlainText } from "./lexical-text";
+import {
+  splitAdmonition,
+  stripStrayEmptyParagraphs,
+  type LexicalLikeNode,
+} from "./lexical-blocks";
+
+type LexicalNode = LexicalLikeNode & {
+  format?: number;
+  tag?: string;
+  listType?: string;
+  url?: string;
+  language?: string;
+  src?: string;
+  alt?: string;
+  children?: LexicalNode[];
+  fields?: {
+    url?: string;
+    newTab?: boolean;
+    blockType?: string;
+    code?: string;
+    language?: string;
+    src?: string;
+    alt?: string;
+    [key: string]: unknown;
+  };
+};
+
+type LexicalRoot = {
+  root?: { children?: LexicalNode[] };
+};
+
+function renderText(node: LexicalNode): React.ReactNode {
+  const fmt = node.format ?? 0;
+  let el: React.ReactNode = node.text ?? "";
+  if (fmt & 16)
+    el = (
+      <code className="bg-muted rounded px-1 py-0.5 font-mono text-sm">
+        {el}
+      </code>
+    );
+  if (fmt & 1) el = <strong>{el}</strong>;
+  if (fmt & 2) el = <em>{el}</em>;
+  if (fmt & 4) el = <s>{el}</s>;
+  if (fmt & 8) el = <u>{el}</u>;
+  return el;
+}
+
+/** Renderers for Payload blocks this renderer doesn't know (keyed by blockType). */
+export type BlockRenderers = Record<
+  string,
+  (fields: Record<string, unknown>) => React.ReactNode
+>;
+
+/**
+ * Callout body copy is `text-foreground` on a faint status tint. The hue is
+ * only the border (a second cue beside the variant word), so the words stay
+ * at the same contrast as the article in light and dark. Light status-100
+ * text on a 10% tint failed WCAG AA in light mode.
+ */
+const ADMONITION_BORDER: Record<string, string> = {
+  INFO: "border-info/60 bg-info/10",
+  WARNING: "border-warning/60 bg-warning/10",
+  SUCCESS: "border-success/60 bg-success/10",
+  NOTE: "border-border bg-muted",
+};
+
+type RenderContext = {
+  slugMap: Map<string, number>;
+  blockRenderers?: BlockRenderers;
+  renderCode?: (code: string, language: string | undefined) => React.ReactNode;
+};
+
+function isHttpUrl(src: string): boolean {
+  try {
+    const parsed = new URL(src);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function renderNode(
+  node: LexicalNode,
+  idx: number,
+  ctx: RenderContext,
+): React.ReactNode {
+  switch (node.type) {
+    case "text":
+      return <React.Fragment key={idx}>{renderText(node)}</React.Fragment>;
+
+    case "linebreak":
+      return <br key={idx} />;
+
+    case "paragraph": {
+      const plain = extractPlainText(node.children ?? []).trim();
+
+      if (plain === "---") {
+        return <hr key={idx} className="border-border my-6" />;
+      }
+
+      const admonition = splitAdmonition(node.children ?? []);
+      if (admonition && plain.startsWith("[!")) {
+        const border =
+          ADMONITION_BORDER[admonition.variant] ?? ADMONITION_BORDER.NOTE;
+        return (
+          <aside
+            key={idx}
+            role="note"
+            data-admonition={admonition.variant}
+            className={`text-foreground my-4 rounded border px-4 py-3 ${border}`}
+          >
+            <p className="font-mono text-xs tracking-wider">
+              {admonition.variant}
+            </p>
+            {admonition.body.length > 0 ? (
+              <div className="mt-1 text-sm leading-relaxed">
+                {admonition.body.map((child, i) =>
+                  renderNode(child as LexicalNode, i, ctx),
+                )}
+              </div>
+            ) : null}
+          </aside>
+        );
+      }
+
+      if (plain.startsWith("[MERMAID]")) {
+        const source = plain.replace("[MERMAID]", "").trim();
+        return (
+          <div
+            key={idx}
+            className="border-border bg-muted/30 my-4 rounded border p-4"
+          >
+            <p className="text-muted-foreground mb-2 font-mono text-xs tracking-wider">
+              MERMAID
+            </p>
+            <pre className="overflow-x-auto font-mono text-xs leading-relaxed">
+              <code>{source || "graph TD; A[Start] --> B[End]"}</code>
+            </pre>
+          </div>
+        );
+      }
+
+      if (plain === "[TABS]") {
+        return (
+          <div
+            key={idx}
+            className="border-border bg-muted/20 my-4 rounded border px-3 py-2 font-mono text-xs"
+          >
+            Tabs/Snippets Block
+          </div>
+        );
+      }
+
+      return (
+        <p key={idx} className="mb-4 leading-relaxed">
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
+        </p>
+      );
+    }
+
+    case "heading": {
+      const Tag = (node.tag ?? "h2") as "h2" | "h3" | "h4" | "h5" | "h6";
+      const headingClass: Record<string, string> = {
+        h1: "mt-8 mb-4 text-3xl font-semibold tracking-tight",
+        h2: "mt-8 mb-3 text-2xl font-semibold tracking-tight",
+        h3: "mt-6 mb-2 text-xl font-semibold",
+        h4: "mt-4 mb-2 text-lg font-semibold",
+        h5: "mt-4 mb-2 font-semibold",
+        h6: "mt-4 mb-2 text-muted-foreground font-medium",
+      };
+      const text = extractPlainText(node.children ?? []);
+      const baseSlug = slugify(text);
+      const count = ctx.slugMap.get(baseSlug) ?? 0;
+      const slug = count === 0 ? baseSlug : `${baseSlug}-${count}`;
+      ctx.slugMap.set(baseSlug, count + 1);
+
+      return (
+        <Tag
+          key={idx}
+          id={slug}
+          className={`group ${headingClass[node.tag ?? "h2"]}`}
+        >
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
+          <a
+            href={`#${slug}`}
+            aria-label="Link to this section"
+            className="text-muted-foreground ml-2 opacity-0 transition-opacity group-hover:opacity-100"
+          >
+            #
+          </a>
+        </Tag>
+      );
+    }
+
+    case "list": {
+      const Tag = node.listType === "number" ? "ol" : "ul";
+      const listClass =
+        node.listType === "number"
+          ? "list-decimal"
+          : node.listType === "check"
+            ? "list-none"
+            : "list-disc";
+      return (
+        <Tag key={idx} className={`mb-4 pl-6 ${listClass}`}>
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
+        </Tag>
+      );
+    }
+
+    case "listitem":
+      return (
+        <li key={idx} className="mb-1">
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
+        </li>
+      );
+
+    case "quote":
+      return (
+        <blockquote
+          key={idx}
+          className="border-primary/40 text-muted-foreground my-4 border-l-4 pl-4 italic"
+        >
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
+        </blockquote>
+      );
+
+    case "code": {
+      const code = extractPlainText(node.children ?? []);
+      if (ctx.renderCode) {
+        return (
+          <React.Fragment key={idx}>
+            {ctx.renderCode(code, node.language)}
+          </React.Fragment>
+        );
+      }
+      return (
+        <pre
+          key={idx}
+          className="my-4 overflow-x-auto rounded p-4 font-mono text-sm leading-relaxed"
+        >
+          <code>{code}</code>
+        </pre>
+      );
+    }
+
+    case "block": {
+      if (node.fields?.blockType === "Code" && node.fields.code !== undefined) {
+        const code = node.fields.code;
+        if (ctx.renderCode) {
+          return (
+            <React.Fragment key={idx}>
+              {ctx.renderCode(code, node.fields.language)}
+            </React.Fragment>
+          );
+        }
+        return (
+          <pre
+            key={idx}
+            className="my-4 overflow-x-auto rounded p-4 font-mono text-sm leading-relaxed"
+          >
+            <code>{code}</code>
+          </pre>
+        );
+      }
+      if (node.fields?.blockType === "Image" && node.fields.src) {
+        const imgSrc = node.fields.src;
+        const imgAlt = node.fields.alt ?? "";
+        if (!isHttpUrl(imgSrc)) return null;
+        return (
+          <figure key={idx} className="my-6">
+            {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs */}
+            <img src={imgSrc} alt={imgAlt} className="w-full rounded" />
+            {imgAlt && (
+              <figcaption className="text-muted-foreground mt-2 text-center text-sm">
+                {imgAlt}
+              </figcaption>
+            )}
+          </figure>
+        );
+      }
+      const blockType = node.fields?.blockType;
+      const custom = blockType ? ctx.blockRenderers?.[blockType] : undefined;
+      if (!custom || !node.fields) return null;
+      return (
+        <React.Fragment key={idx}>
+          {custom(node.fields as Record<string, unknown>)}
+        </React.Fragment>
+      );
+    }
+
+    case "autolink":
+    case "link": {
+      const href = node.fields?.url ?? node.url ?? "#";
+      const newTab = node.fields?.newTab ?? false;
+      return (
+        <a
+          key={idx}
+          href={href}
+          target={newTab ? "_blank" : undefined}
+          rel={newTab ? "noopener noreferrer" : undefined}
+          className="text-primary underline underline-offset-4 hover:opacity-80"
+        >
+          {node.children?.map((c, i) => renderNode(c, i, ctx))}
+        </a>
+      );
+    }
+
+    case "horizontalrule":
+      return <hr key={idx} className="border-border my-6" />;
+
+    case "image": {
+      const src = node.src ?? "";
+      const alt = node.alt ?? "";
+      if (!src || !isHttpUrl(src)) return null;
+      return (
+        <figure key={idx} className="my-6">
+          {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs, next/image requires configured remotePatterns */}
+          <img src={src} alt={alt} className="w-full rounded" />
+          {alt && (
+            <figcaption className="text-muted-foreground mt-2 text-center text-sm">
+              {alt}
+            </figcaption>
+          )}
+        </figure>
+      );
+    }
+
+    default:
+      if (node.children?.length) {
+        return (
+          <React.Fragment key={idx}>
+            {node.children.map((c, i) => renderNode(c, i, ctx))}
+          </React.Fragment>
+        );
+      }
+      return null;
+  }
+}
+
+export type LexicalViewOptions = {
+  blockRenderers?: BlockRenderers;
+  /**
+   * Server pages pass the highlighted-code component. The editor preview
+   * leaves this out and gets a plain `<pre>`.
+   */
+  renderCode?: (code: string, language: string | undefined) => React.ReactNode;
+};
+
+/**
+ * Payload Lexical JSON as React. Empty paragraphs that only pad a block are
+ * omitted, including ones saved before the editor stopped creating them.
+ */
+export function renderLexicalDocument(
+  content: unknown,
+  options: LexicalViewOptions = {},
+): React.ReactNode {
+  let data = content as LexicalRoot;
+
+  if (typeof content === "string") {
+    try {
+      data = JSON.parse(content) as LexicalRoot;
+    } catch {
+      return null;
+    }
+  }
+
+  if (!data?.root?.children) return null;
+
+  const children = stripStrayEmptyParagraphs(data.root.children);
+  const ctx: RenderContext = {
+    slugMap: new Map<string, number>(),
+    blockRenderers: options.blockRenderers,
+    renderCode: options.renderCode,
+  };
+  return (
+    <div className="text-foreground leading-7">
+      {children.map((node, i) => renderNode(node, i, ctx))}
+    </div>
+  );
+}

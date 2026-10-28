@@ -76,11 +76,13 @@ function matches(where: Where, row: Record<string, unknown>): boolean {
       return (condition as Where[]).some((part) => matches(part, row));
     const operator = condition as {
       equals?: unknown;
+      not_equals?: unknown;
       exists?: boolean;
       in?: unknown[];
       not_in?: unknown[];
     };
     if ("equals" in operator) return row[field] === operator.equals;
+    if ("not_equals" in operator) return row[field] !== operator.not_equals;
     if ("exists" in operator) return (row[field] != null) === operator.exists;
     if (operator.in) return operator.in.includes(row[field]);
     if (operator.not_in) return !operator.not_in.includes(row[field]);
@@ -153,6 +155,9 @@ describe("magazine reading standing", () => {
         latest: { id: 3 },
       });
       expect(result!.issues.map((row) => row.id)).toEqual([3, 2, 1]);
+      expect(result!.draftIssues.map((row) => row.id)).toEqual(
+        role === "editor" ? [4] : [],
+      );
       expect(loadMagazineEditorship).toHaveBeenCalledExactlyOnceWith(
         fx.deps.db,
         { communityId: community.id, magazineId: magazine.id },
@@ -183,6 +188,7 @@ describe("magazine reading standing", () => {
         latest: { id: 1 },
       });
       expect(result!.issues.map((row) => row.id)).toEqual([1]);
+      expect(result!.draftIssues).toEqual([]);
       expect(loadMagazineEditorship).toHaveBeenCalledTimes(1);
       expect(fx.membership).toHaveBeenCalledTimes(expectedReads);
       expect(fx.staff).toHaveBeenCalledTimes(expectedReads);
@@ -198,6 +204,7 @@ describe("magazine reading standing", () => {
       issues: [],
       viewerRole: "editor_in_chief",
       viewerIsEditor: true,
+      draftIssues: [],
     });
     expect(loadMagazineEditorship).toHaveBeenCalledExactlyOnceWith(
       fx.deps.db,
@@ -227,10 +234,32 @@ describe("magazine reading standing", () => {
       magazine: { id: 42 },
     });
     expect(result!.issues.map((row) => row.id)).toEqual([1]);
+    expect(result!.unpublishedForEditor).toBe(false);
     expect(loadIssueReadScope).toHaveBeenCalledExactlyOnceWith(
       fx.deps.db,
       null,
     );
     expect(loadMagazineEditorship).not.toHaveBeenCalled();
+  });
+
+  it("keeps drafts off the public shelf and tells an editor they exist", async () => {
+    const fx = fixture();
+    vi.mocked(loadIssueReadScope).mockResolvedValue(
+      buildIssueReadScope(
+        {
+          editorCommunityIds: [community.id],
+          memberCommunityIds: [community.id],
+        },
+        [{ ...community, deletedAt: null }],
+      ),
+    );
+    const result = await loadMagazineShelf(fx.deps, {
+      magazineSlug: magazine.slug,
+      viewerId: "editor-1",
+      locale: "en",
+    });
+    expect(result!.viewerIsEditor).toBe(true);
+    expect(result!.issues.map((row) => row.id)).toEqual([3, 2, 1]);
+    expect(result!.unpublishedForEditor).toBe(true);
   });
 });
