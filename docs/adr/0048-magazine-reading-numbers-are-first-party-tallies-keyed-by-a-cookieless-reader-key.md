@@ -87,8 +87,14 @@ for subscriptions.
 
 ## Consequences
 
-- The existing growth migration supplies the table and subscription column;
-  this recording path needs no further migration or Payload schema change.
+- The growth slice shipped preview issues across the access resolver and its
+  query twin, join prompts with verified sources, share cards, three issue
+  layouts, staff hiding and reading numbers. Editors and editors-in-chief
+  see issue views, unique readers, per-article readers and read-to-end counts,
+  confirmed subscriptions and joins on the Numbers page. Contributors do not.
+- The existing growth migration supplies the read table, subscription source
+  column and staff fields; this recording path needs no further migration or
+  Payload schema change.
 - A signed-in reader has one key across days and devices. Signed-out readers
   count once per UTC day for the same IP and user agent. Shared devices may
   share a key; changing either input makes a different reader.
@@ -103,3 +109,32 @@ for subscriptions.
 - Joins count only when they start with the issue's join prompt, including
   sign-in carried through that prompt. Subscriptions keep their first stored
   source rather than the most recently pressed Subscribe button.
+- Preview issues reach signed-in subscribers through the inbox, including
+  non-members who receive only the preview. Email remains public-only. An
+  email subscriber to a preview-only magazine receives nothing until a public
+  issue is published.
+- In unlisted communities a leader's public confirmation also covers a later
+  preview. Widening a confirmed preview to public needs a fresh leader
+  confirmation; switching to members clears it.
+- Preview issue and article pages are indexable unless staff hide the magazine.
+  Crawlers and signed-out visitors receive the same limited opening, with no
+  full article or editorial body. Preview article structured data marks
+  `isAccessibleForFree: false`; preview URLs are absent from the sitemap.
+- Staff-hidden magazines leave the Magazines home and sitemap and become
+  noindex. Readable links still open. Public articles remain on author
+  profiles and in agent search: hiding removes promotion, while the existing
+  report flow handles takedowns. Owner settings saves preserve the staff flag.
+- Share images use anonymous access and `Cache-Control: no-store`, so a switch
+  to members-only takes effect on the next request. Social sites may retain
+  their own cached images. Editor-entered covers pass through `safeFetch`
+  with a three-second budget, a 2 MB cap and image-only content types; each
+  image route allows 30 requests per minute per IP. Origin rendering remains
+  a cost under heavy legitimate sharing. The existing generic and badge
+  share images keep their inline frames; moving them to `BlackCard` is a
+  follow-up on the magazines ticket.
+- The served sitemap can lag a visibility change by up to an hour
+  (`revalidate = 3600`). Pages, share images, the home and the sitemap data
+  function re-check on the next request; a stale URL grants no access.
+- Item renderers now accept `size: "lead" | "card" | "row"` and `teaser`
+  instead of `lead`. Every future kind must implement all three sizes and
+  keep preview content within the same server-enforced limits.
