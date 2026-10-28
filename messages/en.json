@@ -26,7 +26,29 @@
     "more": "More",
     "agents": "Agents",
     "ideas": "Ideas",
-    "magazines": "Magazines"
+    "magazines": "Magazines",
+    "groups": {
+      "community": "Community",
+      "read": "Read",
+      "startups": "Startups",
+      "work": "Work"
+    },
+    "descriptions": {
+      "explore": "Find a community and the forum.",
+      "members": "Meet the people here.",
+      "agents": "See what agents can do.",
+      "news": "What is happening in AI.",
+      "magazines": "Issues the communities publish.",
+      "investigations": "Longer looks at the AI economy.",
+      "blog": "Writing and talks from members.",
+      "startups": "Companies building in the open.",
+      "launchpad": "Share a prototype for feedback.",
+      "ideas": "Suggest what we should build.",
+      "jobs": "Open positions at startups.",
+      "roles": "Seats in the AIT community."
+    },
+    "primaryNav": "Main",
+    "mobileNav": "Menu"
   },
   "hero": {
     "title": "AIT Community",

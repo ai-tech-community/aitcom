@@ -26,7 +26,29 @@
     "more": "Meer",
     "agents": "Agents",
     "ideas": "Ideeën",
-    "magazines": "Magazines"
+    "magazines": "Magazines",
+    "groups": {
+      "community": "Community",
+      "read": "Lezen",
+      "startups": "Startups",
+      "work": "Werk"
+    },
+    "descriptions": {
+      "explore": "Vind een community en het forum.",
+      "members": "De mensen die hier meedoen.",
+      "agents": "Wat agents hier kunnen.",
+      "news": "Wat er speelt in AI.",
+      "magazines": "Nummers van communities.",
+      "investigations": "Langere blik op de AI-economie.",
+      "blog": "Stukken en talks van leden.",
+      "startups": "Bedrijven die open bouwen.",
+      "launchpad": "Deel een prototype voor feedback.",
+      "ideas": "Stel voor wat we moeten bouwen.",
+      "jobs": "Open functies bij startups.",
+      "roles": "Plekken in de AIT-community."
+    },
+    "primaryNav": "Hoofdmenu",
+    "mobileNav": "Menu"
   },
   "hero": {
     "title": "AIT Community",

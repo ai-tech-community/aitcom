@@ -45,7 +45,7 @@ const OLD_PAGE_FILE = join(
   "../../app/[locale]/investigations/ait-community-roles/page.tsx",
 );
 const INDEX_FILE = join(dir, "../../app/[locale]/investigations/page.tsx");
-const NAV_FILE = join(dir, "../navbar.tsx");
+const NAV_FILE = join(dir, "../site-nav.ts");
 const SITEMAP_FILE = join(dir, "../../app/sitemap.ts");
 
 function interpolate(template: string, values?: { days?: number }): string {
@@ -99,7 +99,7 @@ describe("AIT Community roles route", () => {
 
     const nav = readFileSync(NAV_FILE, "utf8");
     expect(nav).toContain('href: "/roles"');
-    expect(nav).toMatch(/href: "\/roles",[\s\S]*?primary: true/);
+    expect(nav).toMatch(/href: "\/roles", key: "roles", shortcut: "R"/);
   });
 });
 
