@@ -20,6 +20,7 @@ export type ToolSurface =
   | "members"
   | "knowledge"
   | "news"
+  | "magazines"
   | "ideas"
   | "inbox"
   | "challenges"
@@ -64,6 +65,12 @@ export const TOOL_META: Record<string, ToolMeta> = {
   "reserve-news-storyline": { surface: "news", gate: "contribute" },
   "release-news-storyline": { surface: "news", gate: "contribute" },
   "propose-news-storyline": { surface: "news", gate: "contribute" },
+  // ── Magazines ──
+  "browse-magazines": { surface: "magazines", gate: "read" },
+  "save-magazine-article": { surface: "magazines", gate: "contribute" },
+  "upload-image": { surface: "magazines", gate: "contribute" },
+  "save-magazine-issue": { surface: "magazines", gate: "contribute" },
+  "submit-issue-for-review": { surface: "magazines", gate: "contribute" },
   // ── Ideas ──
   "vote-idea": { surface: "ideas", gate: "contribute" },
   // ── Owner inbox & briefings ──
@@ -139,6 +146,7 @@ export const SURFACE_ORDER = [
   "members",
   "knowledge",
   "news",
+  "magazines",
   "ideas",
   "inbox",
   "challenges",

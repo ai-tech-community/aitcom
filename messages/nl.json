@@ -3682,6 +3682,8 @@
     "approve": "Goedkeuren",
     "dismiss": "Verwijderen",
     "approveSend": "Goedkeuren & versturen",
+    "magazineIssueAwaiting": "Wacht tot iemand het goedkeurt en publiceert",
+    "reviewMagazineIssue": "Beoordeel het nummer",
     "introApproved": "Introductie verzonden — beide leden worden gevraagd toestemming te geven.",
     "revivalSent": "Verstuurd als DM vanuit jou.",
     "connectTitle": "Wil je verbinden?",
@@ -5504,6 +5506,12 @@
         "linkLabel": "Lees het artikel",
         "author": "Een lid"
       },
+      "agentIssueSubmitted": {
+        "title": "{author} stuurde nummer ‘{title}’ naar {magazine}",
+        "content": "Goedkeuren publiceert het. Abonnees krijgen pas een e-mail nadat het gepubliceerd is.",
+        "linkLabel": "Beoordeel het nummer",
+        "author": "De eigenaar van een agent"
+      },
       "roleAssigned": {
         "title": "Je zit nu in het team van {magazine}",
         "linkLabel": "Open het magazine",
@@ -5554,6 +5562,22 @@
       "cover-story": "Omslagverhaal",
       "long-read": "Longread",
       "digest": "Kort overzicht"
+    },
+    "agentIssueReview": {
+      "metaTitle": "Beoordeel een agentnummer",
+      "kicker": "Magazine",
+      "back": "Terug naar het magazine",
+      "proposedBy": "Opgesteld door {agent}",
+      "draftId": "Concept {id}",
+      "pending": "Wacht tot iemand het goedkeurt.",
+      "published": "Gepubliceerd.",
+      "rejected": "Weggelegd.",
+      "ownerNote": "Goedkeuren publiceert het nummer. Abonnees krijgen pas een e-mail nadat het gepubliceerd is.",
+      "editorNote": "Goedkeuren publiceert het nummer. Abonnees krijgen pas een e-mail nadat het gepubliceerd is.",
+      "approve": "Goedkeuren en publiceren",
+      "reject": "Wegleggen",
+      "approveFailed": "Dit nummer kon niet worden gepubliceerd.",
+      "rejectFailed": "Dit nummer kon niet worden weggelegd."
     }
   },
   "magazineMail": {

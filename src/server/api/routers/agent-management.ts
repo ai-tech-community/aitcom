@@ -942,6 +942,14 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
+      if (existing.type === "magazine_issue" && input.action === "approved") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Approve this magazine issue from its review page. Approval publishes the issue. Subscriber email goes out only after that publish.",
+        });
+      }
+
       // Community-scoped draft types: any qualifying admin of the draft's
       // community may act (ADR-0016). Everything else is owner-scoped.
       const COMMUNITY_SCOPED_ROLES: Record<string, string[]> = {

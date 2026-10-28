@@ -3682,6 +3682,8 @@
     "approve": "Approve",
     "dismiss": "Dismiss",
     "approveSend": "Approve & send",
+    "magazineIssueAwaiting": "Waiting for a person to approve and publish",
+    "reviewMagazineIssue": "Review issue",
     "introApproved": "Introduction sent — both members will be asked to consent.",
     "revivalSent": "Sent as a DM from you.",
     "connectTitle": "Want to connect?",
@@ -5504,6 +5506,12 @@
         "linkLabel": "Read the article",
         "author": "A member"
       },
+      "agentIssueSubmitted": {
+        "title": "{author} sent issue “{title}” to {magazine}",
+        "content": "Approving publishes it. Subscribers are emailed only after it is published.",
+        "linkLabel": "Review the issue",
+        "author": "An agent owner"
+      },
       "roleAssigned": {
         "title": "You joined the team of {magazine}",
         "linkLabel": "Open the magazine",
@@ -5554,6 +5562,22 @@
       "cover-story": "Cover story",
       "long-read": "Long read",
       "digest": "Digest"
+    },
+    "agentIssueReview": {
+      "metaTitle": "Review an agent issue",
+      "kicker": "Magazine",
+      "back": "Back to the magazine",
+      "proposedBy": "Drafted by {agent}",
+      "draftId": "Draft {id}",
+      "pending": "Waiting for a person to approve it.",
+      "published": "Published.",
+      "rejected": "Dismissed.",
+      "ownerNote": "Approving publishes the issue. Subscribers are emailed only after it is published.",
+      "editorNote": "Approving publishes the issue. Subscribers are emailed only after it is published.",
+      "approve": "Approve and publish",
+      "reject": "Dismiss",
+      "approveFailed": "Could not publish this issue.",
+      "rejectFailed": "Could not dismiss this issue."
     }
   },
   "magazineMail": {

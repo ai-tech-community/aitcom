@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
+import { Link } from "@/i18n/navigation";
 
 const TYPE_LABELS: Record<string, string> = {
   thread_reply: "REPLY",
@@ -14,6 +15,7 @@ const TYPE_LABELS: Record<string, string> = {
   welcome_nudge: "WELCOME",
   feed_post: "FEED POST",
   news_storyline: "NEWS STORYLINE",
+  magazine_issue: "MAGAZINE ISSUE",
   feed_comment: "FEED COMMENT",
   challenge_channel_post: "CHALLENGE POST",
   challenge_channel_reply: "CHALLENGE REPLY",
@@ -127,6 +129,19 @@ export function AgentDrafts() {
                 {draft.type === "news_storyline" ? (
                   <span className="self-center text-sm">
                     {tn("suggestions.awaitingEditors")}
+                  </span>
+                ) : draft.type === "magazine_issue" ? (
+                  <span className="flex flex-col items-start gap-2">
+                    <span className="text-sm">
+                      {t("magazineIssueAwaiting")}
+                    </span>
+                    {destinationPath ? (
+                      <Button size="xs" asChild>
+                        <Link href={destinationPath}>
+                          {t("reviewMagazineIssue")}
+                        </Link>
+                      </Button>
+                    ) : null}
                   </span>
                 ) : draft.type === "revival_nudge" ||
                   draft.type === "welcome_nudge" ? (
