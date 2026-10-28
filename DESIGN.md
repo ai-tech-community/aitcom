@@ -125,7 +125,7 @@ components:
 
 # Design System: AIT Community
 
-## 1. Overview
+## Overview
 
 **Creative North Star: "The Town Square"**
 
@@ -143,7 +143,7 @@ This system explicitly **rejects** four things. It is not a **generic SaaS templ
 - Border-defined, flat-by-default surfaces with subtle lift on interaction.
 - WCAG 2.2 AA, bilingual-tolerant (EN/NL), color-blind-safe, reduced-motion-aware.
 
-## 2. Colors
+## Colors
 
 A near-monochrome canvas of true white through ink, lit by a single warm orange. The discipline of the neutral field is what makes the one accent carry meaning.
 
@@ -195,7 +195,7 @@ A fixed four-color vocabulary. Each is WCAG AA verified both as colored text on 
 
 **The Chart-Containment Rule.** The five chart hues live inside data viz and nowhere else. UI chrome is neutral + Signal Orange, full stop. (Documented exceptions with their own tokens: the heat ramp and the emblem hues above.)
 
-## 3. Typography
+## Typography
 
 **Display / Body Font:** Geist Sans (with `ui-sans-serif, system-ui, sans-serif` fallback)
 **Label / Mono Font:** Geist Mono (with `ui-monospace, monospace` fallback)
@@ -210,20 +210,53 @@ A fixed four-color vocabulary. Each is WCAG AA verified both as colored text on 
 - **Body** (400, 0.875–1rem, line-height 1.5): Default reading text. Cap measure at 65–75ch. On dense app surfaces, 0.875rem (`text-sm`); on reading surfaces (blog, descriptions), step up.
 - **Label** (500, 0.75rem, letter-spacing 0.05em, Geist Mono): The signature `/ SECTION_NAME` marker, stat tickers, timestamps, and metadata. Often uppercase, always monospace, always `text-muted`.
 
+### Decorative ASCII
+
+Town-square and community scenes use a measured 10px monospace cell with 12px line-height on compact layouts, stepping to 12px/14px where the scene specifies it. The artwork is `aria-hidden`; names, descriptions, event details and controls remain accessible text. This is an intentional illustration size, not a body-text size. Scene minimum-row thresholds must fit the rendered height: the 64px mobile community strip uses `minRows={4}` and fits five 12px rows. Shared motion pauses off-screen and respects reduced motion.
+
 ### Named Rules
 
 **The House Kicker Rule.** The monospace `/ LABEL` (e.g. `/ COMMUNITIES`, `/ MEMBERS`) is the one sanctioned eyebrow and it is a _system_, not decoration. Use it as a consistent section marker. Do not also sprinkle uppercase tracked eyebrows or `01 · 02 · 03` numbered markers on top of it — that's the AI-grammar tell. Numbers earn their place only when the section truly is an ordered sequence.
 
 **The Mono-Is-Machine Rule.** Geist Mono is reserved for the machine voice: labels, code, stats, IDs, timestamps. Member bios, community descriptions, and any warm human copy are Geist Sans. Monospace everywhere is how the town square turns cold.
 
-## 4. Elevation
+## Layout
+
+### Page frame
+
+- **Default:** pages sit in a centred `max-w-6xl` column with `px-6 sm:px-12` gutters, so every surface reads as one product.
+- **Named exception — the Explore page (`/communities`):** the town-square street runs edge to edge, with the headline standing on its left, and the directory below it uses a wider `max-w-[1600px]` frame (`BODY_FRAME` in `communities/discover/explore-layout.ts`) with a sticky rooms side panel from `xl`. It is a showroom, not a tool page. Text never runs edge to edge: only the street does. Do not copy this frame to other pages without recording a new exception here.
+- **Named exception — the member dashboard (`/dashboard` and its tabs):** the frame (`MemberDashboardFrame`: greeting and tabs, used by `dashboard/(member)/layout.tsx` with the side panel) runs full width on the top nav's `px-4 sm:px-8` gutters, so the main column and the 20rem side panel line up with the nav's edges. The panel sits beside the main column from `lg` (`grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]`, sticky, scrolling on its own when taller than the viewport) and stacks below it on smaller screens. The agent workspace (`/dashboard/agent`) and onboarding (`/dashboard/onboarding`) keep the default frame.
+- **Named exception — the data collectors workspace (`/dashboard/collectors` and below):** the same `MemberDashboardFrame` without the side panel (`dashboard/(member-wide)/layout.tsx`), so the collector pages use the full width. Inside, one persistent left rail (`grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]`, sticky from `lg` and scrolling on its own when taller than the viewport, like the member side panel: `lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain`): the paste box, presets by group, "Custom page" last, "My runs". Below `lg` the rail's list becomes a compact disclosure picker above the content. The right side has one heading and no breadcrumbs or section kickers; the rail's active entry is ink, never orange (the Start run button keeps the one orange).
+- **Named exception — the member profile (`/members/[id]` and its tabs):** the frame (`members/[id]/layout.tsx`) uses the dashboard's full-width `px-4 sm:px-8` gutters with the panel on the left: the identity panel (the page's one `h1`) beside the route tabs from `lg` (`grid gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]`, sticky, scrolling on its own when taller than the viewport) and stacked above the tabs as a compact header on smaller screens. Tabs: Overview, Badges, Activity, Work, and Agent when the viewer may see the agent page.
+- **Named exception — a community's pages (`/communities/[slug]` and its tabs):** the frame (`communities/[slug]/_community-layout-client.tsx`) uses the same full-width `px-4 sm:px-8` gutters with a community rail on the left from `lg` (`grid gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]`, sticky, scrolling on its own when taller than the viewport). The rail holds the identity (`CommunityIdentity`: logo, the community name as `h1`, tagline, members, the join control) and every tab as a vertical list (`CommunityNav`); the active tab is ink on the secondary fill, never orange. Below `lg` the rail's wrapper drops out (`display: contents`), so the same identity and tab list render as a header row and a sticky, edge-to-edge tab bar above the page — each is rendered once, never twice for two screen sizes. On the Overview, the feed's side panel sits beside the feed from `xl` (`xl:grid-cols-[minmax(0,1fr)_20rem]`, sticky) and below it on narrower screens. Because the rail takes 20rem from `lg`, tab content that splits into columns does so on its own width with container queries (`@container` on the component's root, `@xl:`/`@3xl:`/`@4xl:` on the grid), never on the screen width — the course view, classroom and launchpad listings, past events, insights and the settings menu all follow this. Workspace routes (`lib/communities/layout-variant.ts`) keep no frame at all. The issue builder (`/communities/[slug]/magazine/issues/[issueId]/edit`) is the magazine's only workspace route; article review (`/communities/[slug]/magazine/review/[articleSlug]`), team (`/communities/[slug]/magazine/team`), moved settings (`/communities/[slug]/magazine/settings`) and automatic drafts (`/communities/[slug]/magazine/auto-draft`) render inside the community frame, each opening with a back link to the Magazine tab. Review keeps the article at `max-w-[72ch]` with Approve as its one orange action; the team page gives that emphasis to Add to the team. The old `/communities/[slug]/settings/magazine` route redirects to the moved settings page.
+- **Named exception — the magazines home and shelf (`/magazines` and `/magazines/[magazine]`):** a wide `max-w-[1600px]` frame on the nav's `px-4 sm:px-8` gutters, a showroom like the Explore page: the featured issue beside the "Just published" list, then the shelf of magazines or issues. Text never runs edge to edge. "Read the issue" on the featured issue is the home's one orange action; the same card on a community's Magazine tab is ink, because there the community frame's Join is the orange action.
+- **Named exception — the issue reading view (`/magazines/[magazine]/[issue]` and its articles):** the same `max-w-[1600px]` frame on `px-4 sm:px-8` gutters. From `xl` it has three columns (`xl:grid-cols-[14rem_minmax(0,1fr)_18rem]`): a sticky table of contents, the issue's item mosaic, and a sticky rail (about the magazine, past issues, share). The middle column opens on the issue hero (`IssueHero`): one card with the large cover beside the masthead (a link to the magazine's shelf), the title, community, publish date and the signed editor's note; side by side from the card's own `@3xl` width, and a typeset cover (issue number, masthead, title) when there is no cover image. The builder's live preview draws the same hero, `inert`. From `lg` it has two columns (contents and mosaic) and the rail drops below the mosaic; on phones it is one column. The article long-read sits in the same frame but keeps a reading measure (`max-w-[72ch]`) for its text.
+- **Named exception — magazine subscription confirmation (`/[locale]/magazine-subscriptions/confirm`):** a narrow reading page (`max-w-lg px-4 py-16`) with one House Kicker, a heading and a border-defined panel. The ready state offers the confirmation button; subscribed, expired and invalid states explain the next step.
+- **Automatic drafts editor screen:** groups use labelled fieldsets in the community frame; Save is the one orange action and "Make a draft now" uses `ink`. Appointed editors see read-only settings and can still make a draft. Results use `role="status"`; history uses Sans for people and Mono for dates and times. In the builder, Publish keeps the accent and "Stop the automatic publish" uses `outline`.
+- **Auto-pick reasons are editor-only, Sans, one muted line.** Show them beneath picked items in the builder and suggestions in an empty "Add more" search. They never appear in reader payloads or reading views.
+- **Magazine subscription controls:** Subscribe is never the accent on the shelf, issue reading view or community Magazine tab. It uses `ink`, then `outline` when subscribed; the page keeps its existing orange action.
+- **Preview issue and article pages:** the sticky join panel's button is the page's one orange action. Inline prompts beneath article openings use `outline`. The panel follows the community's join policy: join, ask to join, pending request, or an invitation explanation. Preview issues keep the cover, editor's note, contents and item cards; article openings contain at most 80 words of text, never code or images, and editorial bodies are withheld. Preview article pages keep the reading measure, opening and join panel, with no full body, article contents or comments. After joining or requesting membership, focus moves to the page heading before the page refreshes. The builder's inert visitor preview uses the same prompt presentation.
+- **Issue layouts and item sizes:** `cover-story` keeps a full-width `lead` followed by the responsive grid of `card` items. `long-read` gives every item `lead` size in one column (`max-w-3xl`). `digest` is an ordered list of compact `row` items separated by hairlines. `related` is a compact recommendation after an article, with an excerpt for article items. Every item kind owns all four sizes; layouts only arrange them. Contents anchors follow item order in every layout. A preview article row shows its title and a muted "Members read the whole article" line; the join action stays in the panel. The builder layout picker and automatic-drafts settings offer all three layouts.
+- **Magazine share controls:** Copy link, the device share sheet and social links are secondary controls, never orange. Members-only issues offer Copy link only. `ShareActions` takes a required absolute `url` from the server for every share action. X and LinkedIn links announce the new tab and use `rel="noopener noreferrer"`; email uses a normal `mailto:` link without a new tab or that announcement. Copy and share feedback uses only the `role="status"` line, with no toast.
+- **Issue numbers page:** opens inside the community frame with a back link, one `<SectionLabel>` and a heading. Four flat stat groups use Sans labels and Mono numbers with tabular figures. The article table uses Sans titles and column labels, Mono counts, real column and row headers, wrapping text and hairline separators. The empty state explains when numbers appear; the muted note explains daily signed-out counts and excluded editor visits. The editor desk links published issues to Numbers; contributors cannot open the page.
+
+### Homepage discovery (`/[locale]`)
+
+The homepage uses the full available width with `px-6 sm:px-12` gutters. From `lg`, the discovery area is a twelve-column grid: communities take eight columns and news four, with the events agenda spanning the next row. If either communities or news is absent, the remaining discovery section spans all twelve columns.
+
+The DOM and mobile reading order is communities, upcoming events, news, magazines, recent gatherings, sponsors, then the organizer prompt. Communities form a two-column gallery; with more than four cards, it becomes three columns at `xl`. The gallery stops at six communities, the news rail at four headlines and the magazine shelf at four magazines. Empty magazine, gathering and sponsor sections are omitted. These are homepage choices, not defaults for other surfaces.
+
+The homepage hero retains the interactive ASCII town square in a shorter frame (`sm:min-h-[26rem] lg:min-h-[28rem]`). The detailed content, visibility and empty-state contract lives in `docs/superpowers/specs/2026-10-28-home-discovery-design.md`.
+
+## Elevation & Depth
 
 Flat by default. Surfaces are defined by hairline borders (`oklch(0.922 0 0)`) and tonal layering (surface → surface-raised → surface-muted), not by drop shadows. Shadows are present but minimal and almost entirely _functional_: they signal that something is interactive or floating, never decorate a resting surface.
 
 ### Shadow Vocabulary
 
 - **Hairline lift** (`shadow-xs`): Buttons (outline variant) and inputs at rest — barely-there separation from the canvas.
-- **Resting card** (`shadow-sm`): Cards. Paired always with a full border; the border does the real work, the shadow just softens.
+- **Shared card** (`shadow-sm`): The shared `Card` primitive retains its subtle resting shadow and full border. Compact homepage community cards and magazine covers are border-defined without a resting shadow.
 - **Floating** (default popover/dropdown/dialog shadow): Reserved for genuinely floating layers (popovers, dropdown menus, dialogs, toasts) that escape the document flow.
 
 ### Named Rules
@@ -232,7 +265,11 @@ Flat by default. Surfaces are defined by hairline borders (`oklch(0.922 0 0)`) a
 
 **The Border-Carries-Depth Rule.** Depth is communicated by borders and tonal steps first, shadow second. Removing every shadow should still leave the hierarchy legible.
 
-## 5. Components
+## Shapes
+
+The root radius is 10px (`--radius: 0.625rem`): `rounded-sm` resolves to 6px, `rounded-md` to 8px, `rounded-lg` to 10px and `rounded-xl` to 14px. Buttons and fields use the 8px step; shared cards use 14px. Pills belong to badges and compact controls. Full hairline borders define card and input surfaces; rounded clipping keeps decorative artwork within its own container.
+
+## Components
 
 The feel across all components is **precise and quietly warm**: clean, grid-aligned, confident, with warmth coming through clarity and restraint rather than ornament. All interactive components share one focus treatment — a 3px Signal-Orange ring at 50% (`focus-visible:ring-ring/50 ring-[3px]`) plus a border shift — and one invalid treatment (destructive ring + border).
 
@@ -252,7 +289,7 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 - **Corner Style:** `rounded-xl` (14px) — slightly softer than buttons, the warm-communal touch.
 - **Background:** Surface (white) on Ink-foreground.
 - **Border:** Always a full hairline border. **Never** a colored side-stripe (`border-left`/`border-right` accent) — that's a banned pattern.
-- **Shadow:** `shadow-sm` only (see Elevation). Nested cards are forbidden.
+- **Shadow:** The shared `Card` primitive uses `shadow-sm`; compact homepage discovery cards omit it. See Elevation & Depth. Nested cards are forbidden.
 - **Internal Padding:** 24px (`py-6`/`px-6`), 24px gap between sections (`gap-6`). Header uses a `@container` grid with an optional right-aligned action slot.
 
 ### Inputs / Fields
@@ -279,30 +316,17 @@ The feel across all components is **precise and quietly warm**: clean, grid-alig
 - **Accessible name:** "Writer, tier II, earned March 3, 2026" / "Writer, tier III, locked, 3 of 15" / "Writer, tier I, being added" when the metric already meets a tier the engine has not recorded yet (progress never reads "12 of 1"). EN and NL, locale dates, built by `useEmblemLabel()` and passed as `label`; leave `label` out only where adjacent text already says all of it.
 - **Server-rendered:** `BadgeEmblem` has no client hooks, so lists like the `/members` roster hydrate nothing; only the limited-edition sheen (`EmblemSheen`, needs `useId`) is a client child.
 
+### Homepage discovery cards and magazine covers
+
+Community cards have full borders, 14px corners, 12px padding on phones and 16px from `sm`, real logos or initials, a two-line name/description and a real member count. Decorative strips are 64px on phones and 96px from `sm`. Hover changes border/background; keyboard focus has a visible ring.
+
+Magazine tiles link directly to the newest discoverable issue for each magazine. Uploaded covers keep a 3:4 shape; missing covers are typeset from the real magazine name, issue number and issue title. The issue date, title and community remain visible outside decorative cover art. Preserve reading access through the shared server read model.
+
 ### Navigation
 
 - **Style:** Quiet by default — Geist Sans or the mono `/ LABEL` for context nav, `text-muted` at rest, Ink/Signal-Orange on active. Hover is a subtle `bg-secondary/50` bed, never an aggressive fill.
 - **Active state:** Carried by Signal Orange + weight, plus a non-color cue (underline or marker) so it's color-blind-safe.
 - **Overflow:** Dropdowns/menus must use native `<dialog>`/popover or a portal — never `position:absolute` inside an `overflow:hidden`/`auto` container, or they clip.
-
-### Page frame
-
-- **Default:** pages sit in a centred `max-w-6xl` column with `px-6 sm:px-12` gutters, so every surface reads as one product.
-- **Named exception — the Explore page (`/communities`):** the town-square street runs edge to edge, with the headline standing on its left, and the directory below it uses a wider `max-w-[1600px]` frame (`BODY_FRAME` in `communities/discover/explore-layout.ts`) with a sticky rooms side panel from `xl`. It is a showroom, not a tool page. Text never runs edge to edge: only the street does. Do not copy this frame to other pages without recording a new exception here.
-- **Named exception — the member dashboard (`/dashboard` and its tabs):** the frame (`MemberDashboardFrame`: greeting and tabs, used by `dashboard/(member)/layout.tsx` with the side panel) runs full width on the top nav's `px-4 sm:px-8` gutters, so the main column and the 20rem side panel line up with the nav's edges. The panel sits beside the main column from `lg` (`grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]`, sticky, scrolling on its own when taller than the viewport) and stacks below it on smaller screens. The agent workspace (`/dashboard/agent`) and onboarding (`/dashboard/onboarding`) keep the default frame.
-- **Named exception — the data collectors workspace (`/dashboard/collectors` and below):** the same `MemberDashboardFrame` without the side panel (`dashboard/(member-wide)/layout.tsx`), so the collector pages use the full width. Inside, one persistent left rail (`grid gap-8 lg:grid-cols-[16rem_minmax(0,1fr)]`, sticky from `lg` and scrolling on its own when taller than the viewport, like the member side panel: `lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain`): the paste box, presets by group, "Custom page" last, "My runs". Below `lg` the rail's list becomes a compact disclosure picker above the content. The right side has one heading and no breadcrumbs or section kickers; the rail's active entry is ink, never orange (the Start run button keeps the one orange).
-- **Named exception — the member profile (`/members/[id]` and its tabs):** the frame (`members/[id]/layout.tsx`) uses the dashboard's full-width `px-4 sm:px-8` gutters with the panel on the left: the identity panel (the page's one `h1`) beside the route tabs from `lg` (`grid gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]`, sticky, scrolling on its own when taller than the viewport) and stacked above the tabs as a compact header on smaller screens. Tabs: Overview, Badges, Activity, Work, and Agent when the viewer may see the agent page.
-- **Named exception — a community's pages (`/communities/[slug]` and its tabs):** the frame (`communities/[slug]/_community-layout-client.tsx`) uses the same full-width `px-4 sm:px-8` gutters with a community rail on the left from `lg` (`grid gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]`, sticky, scrolling on its own when taller than the viewport). The rail holds the identity (`CommunityIdentity`: logo, the community name as `h1`, tagline, members, the join control) and every tab as a vertical list (`CommunityNav`); the active tab is ink on the secondary fill, never orange. Below `lg` the rail's wrapper drops out (`display: contents`), so the same identity and tab list render as a header row and a sticky, edge-to-edge tab bar above the page — each is rendered once, never twice for two screen sizes. On the Overview, the feed's side panel sits beside the feed from `xl` (`xl:grid-cols-[minmax(0,1fr)_20rem]`, sticky) and below it on narrower screens. Because the rail takes 20rem from `lg`, tab content that splits into columns does so on its own width with container queries (`@container` on the component's root, `@xl:`/`@3xl:`/`@4xl:` on the grid), never on the screen width — the course view, classroom and launchpad listings, past events, insights and the settings menu all follow this. Workspace routes (`lib/communities/layout-variant.ts`) keep no frame at all. The issue builder (`/communities/[slug]/magazine/issues/[issueId]/edit`) is the magazine's only workspace route; article review (`/communities/[slug]/magazine/review/[articleSlug]`), team (`/communities/[slug]/magazine/team`), moved settings (`/communities/[slug]/magazine/settings`) and automatic drafts (`/communities/[slug]/magazine/auto-draft`) render inside the community frame, each opening with a back link to the Magazine tab. Review keeps the article at `max-w-[72ch]` with Approve as its one orange action; the team page gives that emphasis to Add to the team. The old `/communities/[slug]/settings/magazine` route redirects to the moved settings page.
-- **Named exception — the magazines home and shelf (`/magazines` and `/magazines/[magazine]`):** a wide `max-w-[1600px]` frame on the nav's `px-4 sm:px-8` gutters, a showroom like the Explore page: the featured issue beside the "Just published" list, then the shelf of magazines or issues. Text never runs edge to edge. "Read the issue" on the featured issue is the home's one orange action; the same card on a community's Magazine tab is ink, because there the community frame's Join is the orange action.
-- **Named exception — the issue reading view (`/magazines/[magazine]/[issue]` and its articles):** the same `max-w-[1600px]` frame on `px-4 sm:px-8` gutters. From `xl` it has three columns (`xl:grid-cols-[14rem_minmax(0,1fr)_18rem]`): a sticky table of contents, the issue's item mosaic, and a sticky rail (about the magazine, past issues, share). The middle column opens on the issue hero (`IssueHero`): one card with the large cover beside the masthead (a link to the magazine's shelf), the title, community, publish date and the signed editor's note; side by side from the card's own `@3xl` width, and a typeset cover (issue number, masthead, title) when there is no cover image. The builder's live preview draws the same hero, `inert`. From `lg` it has two columns (contents and mosaic) and the rail drops below the mosaic; on phones it is one column. The article long-read sits in the same frame but keeps a reading measure (`max-w-[72ch]`) for its text.
-- **Named exception — magazine subscription confirmation (`/[locale]/magazine-subscriptions/confirm`):** a narrow reading page (`max-w-lg px-4 py-16`) with one House Kicker, a heading and a border-defined panel. The ready state offers the confirmation button; subscribed, expired and invalid states explain the next step.
-- **Automatic drafts editor screen:** groups use labelled fieldsets in the community frame; Save is the one orange action and "Make a draft now" uses `ink`. Appointed editors see read-only settings and can still make a draft. Results use `role="status"`; history uses Sans for people and Mono for dates and times. In the builder, Publish keeps the accent and "Stop the automatic publish" uses `outline`.
-- **Auto-pick reasons are editor-only, Sans, one muted line.** Show them beneath picked items in the builder and suggestions in an empty "Add more" search. They never appear in reader payloads or reading views.
-- **Magazine subscription controls:** Subscribe is never the accent on the shelf, issue reading view or community Magazine tab. It uses `ink`, then `outline` when subscribed; the page keeps its existing orange action.
-- **Preview issue and article pages:** the sticky join panel's button is the page's one orange action. Inline prompts beneath article openings use `outline`. The panel follows the community's join policy: join, ask to join, pending request, or an invitation explanation. Preview issues keep the cover, editor's note, contents and item cards; article openings contain at most 80 words of text, never code or images, and editorial bodies are withheld. Preview article pages keep the reading measure, opening and join panel, with no full body, article contents or comments. After joining or requesting membership, focus moves to the page heading before the page refreshes. The builder's inert visitor preview uses the same prompt presentation.
-- **Issue layouts and item sizes:** `cover-story` keeps a full-width `lead` followed by the responsive grid of `card` items. `long-read` gives every item `lead` size in one column (`max-w-3xl`). `digest` is an ordered list of compact `row` items separated by hairlines. `related` is a compact recommendation after an article, with an excerpt for article items. Every item kind owns all four sizes; layouts only arrange them. Contents anchors follow item order in every layout. A preview article row shows its title and a muted "Members read the whole article" line; the join action stays in the panel. The builder layout picker and automatic-drafts settings offer all three layouts.
-- **Magazine share controls:** Copy link, the device share sheet and social links are secondary controls, never orange. Members-only issues offer Copy link only. `ShareActions` takes a required absolute `url` from the server for every share action. X and LinkedIn links announce the new tab and use `rel="noopener noreferrer"`; email uses a normal `mailto:` link without a new tab or that announcement. Copy and share feedback uses only the `role="status"` line, with no toast.
-- **Issue numbers page:** opens inside the community frame with a back link, one `<SectionLabel>` and a heading. Four flat stat groups use Sans labels and Mono numbers with tabular figures. The article table uses Sans titles and column labels, Mono counts, real column and row headers, wrapping text and hairline separators. The empty state explains when numbers appear; the muted note explains daily signed-out counts and excluded editor visits. The editor desk links published issues to Numbers; contributors cannot open the page.
 
 ### Section Label (signature)
 
@@ -343,7 +367,7 @@ The consistency debt was largely hand-rolled re-implementations. Reach for these
 
 **The No-Silent-Failure Rule.** Every data fetch handles three states explicitly: loading → `<Skeleton>`; error → `<ErrorState onRetry>` (or hide, for purely supplementary widgets); empty → `<EmptyState>` (or hide). **Never** `if (!data) return null` as the only branch — a failed load must be distinguishable from "nothing here." Errored core sections show the error + retry; only optional/supplementary widgets may stay quietly absent.
 
-## 6. Do's and Don'ts
+## Do's and Don'ts
 
 ### Do:
 

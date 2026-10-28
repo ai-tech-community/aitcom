@@ -13,7 +13,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { SpaceAvatar } from "@/components/communities/rooms/space-avatar";
 import { getInitials } from "@/lib/avatar";
 import {
-  pickFeaturedCommunities,
+  pickHomeCommunities,
   type FeaturedCommunityCard,
 } from "@/server/communities/featured";
 import {
@@ -35,47 +35,33 @@ const LAYERS: readonly AsciiSceneLayer<CommunityLayer>[] = [
   },
 ];
 
-/**
- * Column plan by how many communities are featured: one card lies wide
- * (art beside text), two share a row, three share a row from `md`.
- */
-const GRID_BY_COUNT: Record<number, string> = {
-  1: "",
-  2: "sm:grid-cols-2",
-  3: "md:grid-cols-3",
-};
-
-/**
- * Homepage "Featured communities": each community is a house on the square
- * — its own seeded building with a row of people and agents in front,
- * scaled from the real member count — above its name, purpose and count.
- */
+/** Compact community gallery, with real membership and a small town-square scene. */
 export function FeaturedCommunities({
   communities,
+  embedded = false,
 }: {
   communities: FeaturedCommunityCard[];
+  embedded?: boolean;
 }) {
   const t = useTranslations("featuredCommunities");
-  const items = pickFeaturedCommunities(communities);
+  const items = pickHomeCommunities(communities);
   if (items.length === 0) return null;
-  const wide = items.length === 1;
 
   return (
     <section
       aria-labelledby="featured-communities-title"
-      className="px-6 py-12 sm:px-12"
+      className={embedded ? "min-w-0" : "px-6 py-10 sm:px-12"}
     >
       <SectionLabel id="featured-communities-title" className="pb-4">
         {t("title")}
       </SectionLabel>
       <ul
-        className={`mt-8 grid gap-6 ${GRID_BY_COUNT[items.length] ?? GRID_BY_COUNT[3]}`}
+        className={`mt-5 grid grid-cols-2 gap-3 sm:gap-4 ${items.length > 4 ? "xl:grid-cols-3" : ""}`}
       >
         {items.map((community) => (
           <li key={community.slug} className="min-w-0">
             <CommunityCard
               community={community}
-              wide={wide}
               members={t("membersCount", { count: community.memberCount })}
             />
           </li>
@@ -90,11 +76,9 @@ export function FeaturedCommunities({
 
 function CommunityCard({
   community,
-  wide,
   members,
 }: {
   community: FeaturedCommunityCard;
-  wide: boolean;
   members: string;
 }) {
   const { slug, memberCount } = community;
@@ -110,23 +94,19 @@ function CommunityCard({
       href={`/communities/${slug}`}
       aria-labelledby={`${id}-name`}
       aria-describedby={`${id}-about`}
-      className={`group border-border hover:border-foreground/30 hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-ring/50 flex h-full flex-col overflow-hidden rounded-xl border shadow-sm transition-colors outline-none focus-visible:ring-[3px] ${
-        wide ? "md:flex-row" : ""
-      }`}
+      className="group border-border hover:border-foreground/30 hover:bg-muted/40 focus-visible:ring-ring/50 flex h-full flex-col overflow-hidden rounded-xl border transition-colors outline-none focus-visible:ring-[3px]"
     >
       <AsciiScene
         layers={LAYERS}
         frame={frame}
         frameMs={FRAME_MS}
         staticTick={COMMUNITY_STILL_TICK}
-        minRows={6}
+        minRows={4}
         data-testid={`community-art-${slug}`}
-        className={`border-border h-48 shrink-0 border-b font-mono text-[10px] leading-3 sm:h-56 sm:text-xs sm:leading-[14px] ${
-          wide ? "md:h-auto md:min-h-56 md:w-3/5 md:border-r md:border-b-0" : ""
-        }`}
+        className="border-border bg-muted/30 h-16 shrink-0 border-b font-mono text-[10px] leading-3 sm:h-24"
       />
-      <div className="flex min-w-0 flex-1 flex-col gap-3 p-6">
-        <div className="flex items-center gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-3 sm:p-4">
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-3">
           {community.logoUrl ? (
             <Avatar size="default" className="size-9 shrink-0 rounded-md">
               <AvatarImage src={community.logoUrl} alt="" />
@@ -144,7 +124,7 @@ function CommunityCard({
         </div>
         <div id={`${id}-about`} className="flex flex-1 flex-col gap-3">
           {community.description ? (
-            <p className="text-muted-foreground line-clamp-3 text-sm leading-relaxed break-words">
+            <p className="text-muted-foreground line-clamp-2 text-sm leading-relaxed break-words">
               {community.description}
             </p>
           ) : null}

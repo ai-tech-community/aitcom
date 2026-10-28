@@ -190,7 +190,18 @@ export async function findMagazineBySlug(
   return docs[0] ?? null;
 }
 
-function toMagazineSummary(magazine: Magazine): MagazineSummary {
+function toMagazineSummary(
+  magazine: Pick<
+    Magazine,
+    | "id"
+    | "name"
+    | "slug"
+    | "logoUrl"
+    | "description"
+    | "topics"
+    | "listingHidden"
+  >,
+): MagazineSummary {
   return {
     id: magazine.id,
     name: magazine.name,
@@ -207,8 +218,19 @@ function toReadingCommunity(community: MagazineCommunityRow): ReadingCommunity {
 }
 
 function toIssueCard(
-  issue: MagazineIssue,
-  magazine: Magazine,
+  issue: Pick<
+    MagazineIssue,
+    | "id"
+    | "number"
+    | "title"
+    | "slug"
+    | "coverImageUrl"
+    | "publishedAt"
+    | "status"
+    | "visibility"
+    | "publicConfirmedAt"
+  >,
+  magazine: Pick<Magazine, "name" | "slug" | "logoUrl">,
   community: MagazineCommunityRow,
 ): IssueCard {
   const facts = issueAccessFacts(issue);
@@ -288,6 +310,98 @@ async function readableMagazineIssues(
 }
 
 // ── /magazines home ──────────────────────────────────────────────────────
+
+/**
+ * A small supplementary shelf for the site homepage. Inspect only the forty
+ * newest discoverable issues and keep the newest of up to four magazines.
+ * Unlike the directory loader, this never fetches issue bodies or every
+ * magazine's latest issue. A magazine outage must not hide communities/events.
+ */
+export async function loadHomepageMagazines(
+  deps: Deps,
+  locale: AppLocale,
+): Promise<MagazineCard[]> {
+  try {
+    const [scope, hidden] = await Promise.all([
+      loadIssueReadScope(deps.db, null),
+      hiddenMagazineIds(deps.payload),
+    ]);
+    const { docs: issues } = await deps.payload.find({
+      collection: "magazine-issues",
+      where: {
+        and: [
+          readableIssueWhere(scope, "teaser"),
+          PUBLISHED,
+          ...(hidden.length ? [{ magazine: { not_in: hidden } }] : []),
+        ],
+      },
+      sort: ["-publishedAt", "-id"],
+      locale,
+      depth: 0,
+      limit: 40,
+      pagination: false,
+      select: {
+        magazine: true,
+        number: true,
+        title: true,
+        slug: true,
+        coverImageUrl: true,
+        publishedAt: true,
+        status: true,
+        visibility: true,
+        publicConfirmedAt: true,
+      },
+    });
+    const latestByMagazine = new Map<number, (typeof issues)[number]>();
+    for (const issue of issues) {
+      const id = relationIdOrNull(issue.magazine);
+      if (id !== null && !latestByMagazine.has(id))
+        latestByMagazine.set(id, issue);
+      if (latestByMagazine.size === 4) break;
+    }
+    if (!latestByMagazine.size) return [];
+    const { docs: magazines } = await deps.payload.find({
+      collection: "magazines",
+      where: { id: { in: [...latestByMagazine.keys()] } },
+      depth: 0,
+      limit: 4,
+      pagination: false,
+      select: {
+        communityId: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        description: true,
+        topics: true,
+        listingHidden: true,
+      },
+    });
+    const communitiesById = await liveCommunitiesById(
+      deps.db,
+      magazines.map((m) => m.communityId),
+    );
+    const byId = new Map(magazines.map((m) => [m.id, m]));
+    return [...latestByMagazine].flatMap(([id, issue]) => {
+      const magazine = byId.get(id);
+      const community = magazine
+        ? communitiesById.get(magazine.communityId)
+        : undefined;
+      if (!magazine || !community || isHiddenByStaff(magazine)) return [];
+      const latest = toIssueCard(issue, magazine, community);
+      if (latest.outsiderReach === "none") return [];
+      return [
+        {
+          ...toMagazineSummary(magazine),
+          community: toReadingCommunity(community),
+          latest,
+        },
+      ];
+    });
+  } catch (error: unknown) {
+    console.error("home: could not load magazines", error);
+    return [];
+  }
+}
 
 /** The most common topics across magazines, ties alphabetical. */
 function commonTopics(magazines: Magazine[], count: number): string[] {

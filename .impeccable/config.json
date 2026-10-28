@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font-size",
+        "value": "10px",
+        "createdAt": "2026-10-28T16:05:21.576Z",
+        "reason": "Agent review: incumbent decorative ASCII glyph grid uses 10px text with a measured 12px line height; community and town-square scenes are aria-hidden, and body copy stays on the documented type scale."
+      }
+    ]
+  }
+}
