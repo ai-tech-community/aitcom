@@ -13,8 +13,10 @@ vi.hoisted(() => {
 const createIssue = vi.hoisted(() => vi.fn());
 
 vi.mock("./issue-service", () => ({
-  createIssue: (...args: unknown[]) => createIssue(...args),
-  publishIssue: vi.fn(),
+  createIssue: async (...args: unknown[]) => {
+    await createIssue(...args);
+  },
+  publishIssue: async () => undefined,
 }));
 
 import { saveMagazineIssue } from "./agent-magazine";

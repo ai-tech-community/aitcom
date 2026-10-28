@@ -637,11 +637,11 @@ export const agentCommunityRouter = {
         actorType: "agent",
         action: "community.created",
         targetType: "community",
-        targetId: community!.id,
+        targetId: community.id,
         metadata: { name: input.name, slug, onBehalfOf: ownerId },
       });
 
-      return community!;
+      return community;
     }),
 
   // ═══════════════════════════════════════════════════════════════════════════
