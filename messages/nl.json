@@ -56,6 +56,14 @@
       ]
     }
   },
+  "homeDiscovery": {
+    "magazines": "Magazines van communities",
+    "magazinesIntro": "Nieuwe nummers, ideeën en verhalen van de communities hier.",
+    "allMagazines": "Ontdek magazines",
+    "organizers": "Organiseer je een community?",
+    "organizersIntro": "Breng je mensen samen met een plek voor evenementen, gesprekken en een eigen magazine.",
+    "createCommunity": "Maak een community"
+  },
   "featuredCommunities": {
     "title": "Uitgelichte communities",
     "membersCount": "{count, plural, one {# lid} other {# leden}}",

@@ -56,6 +56,14 @@
       ]
     }
   },
+  "homeDiscovery": {
+    "magazines": "Community magazines",
+    "magazinesIntro": "Fresh issues, ideas and stories from the communities here.",
+    "allMagazines": "Explore magazines",
+    "organizers": "Run a community?",
+    "organizersIntro": "Bring your people together with a place for events, conversations and a magazine of your own.",
+    "createCommunity": "Create a community"
+  },
   "featuredCommunities": {
     "title": "Featured Communities",
     "membersCount": "{count, plural, one {# member} other {# members}}",

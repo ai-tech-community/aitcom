@@ -21,7 +21,6 @@ import { publicRosterVisibility } from "@/server/members/public-roster";
 import type { Metadata } from "next";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
-import { getSession } from "@/server/better-auth/server";
 import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
 import { toEventRowInput } from "@/components/events/rows/to-event-row-input";
 import { loadEventHostNames } from "@/server/events/event-hosts-queries";
@@ -29,7 +28,12 @@ import { RECENT_GATHERINGS_SHOWN } from "@/components/home/recent-gatherings/rec
 import { HomeStats } from "@/components/home/home-stats";
 import { loadHomeNews } from "@/server/news/home";
 import { HomeSections } from "@/components/home/home-sections";
+import { loadHomepageMagazines } from "@/server/magazines/reading";
+import { resolveLocale } from "@/i18n/messages";
 import { toHomeSponsor } from "@/components/home/sponsors/home-sponsor";
+
+// Community listing and magazine visibility changes apply on the next request.
+export const dynamic = "force-dynamic";
 
 /**
  * Rows fetched for the upcoming-events block. The block shows 5; the rest
@@ -62,11 +66,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [locale, t, session] = await Promise.all([
-    getLocale(),
-    getTranslations(),
-    getSession(),
-  ]);
+  const [locale, t] = await Promise.all([getLocale(), getTranslations()]);
 
   const payload = await getPayloadClient();
   const now = new Date();
@@ -77,6 +77,7 @@ export default async function Home() {
     { docs: recentCandidates },
     { docs: featuredSponsors },
     latestNews,
+    magazines,
   ] = await Promise.all([
     payload.find({
       collection: "events",
@@ -125,6 +126,7 @@ export default async function Home() {
       depth: 1,
     }),
     loadHomeNews(db, locale),
+    loadHomepageMagazines({ db, payload }, resolveLocale(locale)),
   ]);
   const recentEvents = pastEvents(recentCandidates, now).slice(
     0,
@@ -243,10 +245,10 @@ export default async function Home() {
       {/* Hero: the town square */}
       <HomeHeroPlaza board={noticeBoard} boardLink={boardLink}>
         <HeroTitle title={t("hero.title")} tagline={t("hero.subtitle")} />
-        <p className="text-muted-foreground mt-5 max-w-xl text-base leading-relaxed text-pretty sm:text-lg">
+        <p className="text-muted-foreground mt-4 max-w-xl text-base leading-relaxed text-pretty sm:text-lg">
           {t("hero.description")}
         </p>
-        <div className="mt-8 grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
           <Button asChild variant="ink" size="lg">
             <Link href="/communities">{t("hero.cta")}</Link>
           </Button>
@@ -273,7 +275,7 @@ export default async function Home() {
         recentEvents={recentEventRows}
         latestNews={latestNews}
         sponsors={featuredSponsors.map(toHomeSponsor)}
-        signedIn={!!session?.user}
+        magazines={magazines}
         now={now}
       />
     </>

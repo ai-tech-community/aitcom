@@ -1,28 +1,31 @@
-import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { FeaturedCommunities } from "@/components/home/featured-communities/featured-communities";
 import { LatestNews } from "@/components/home/latest-news/latest-news";
 import type { HomeNewsItem } from "@/server/news/home";
 import { UpcomingEvents } from "@/components/home/upcoming-events/upcoming-events";
-import { HomeCrawlDoors } from "@/components/home/home-crawl-doors";
-import { WhatWeDo } from "@/components/home/what-we-do/what-we-do";
 import { RecentGatherings } from "@/components/home/recent-gatherings/recent-gatherings";
 import { HomeSponsors } from "@/components/home/sponsors/home-sponsors";
-import { HomeClosingSquare } from "@/components/home/closing-square/home-closing-square";
+import { HomeMagazines } from "@/components/home/home-magazines";
+import { CREATE_COMMUNITY_HREF } from "@/components/communities/create-community-link";
+import { Button } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 import type { EventRowInput } from "@/components/events/rows/event-rows";
 import type { HomeSponsor } from "@/components/home/sponsors/home-sponsor";
-import type { FeaturedCommunityCard } from "@/server/communities/featured";
+import {
+  pickHomeCommunities,
+  type FeaturedCommunityCard,
+} from "@/server/communities/featured";
+import type { MagazineCard } from "@/server/magazines/reading";
 
-/** Every section below the hero and stats, in page order. */
+/** DOM and keyboard order match the single-column mobile layout. */
 export const HOME_SECTION_ORDER = [
   "featured-communities",
   "upcoming-events",
   "latest-news",
-  "start-here",
-  "what-we-do",
+  "magazines",
   "recent-gatherings",
   "sponsors",
-  "closing-square",
+  "organizers",
 ] as const;
 
 export type HomeSectionId = (typeof HOME_SECTION_ORDER)[number];
@@ -32,50 +35,85 @@ export interface HomeSectionsProps {
   upcomingEvents: readonly EventRowInput[];
   recentEvents: readonly EventRowInput[];
   latestNews?: readonly HomeNewsItem[];
+  magazines?: readonly MagazineCard[];
   sponsors: readonly HomeSponsor[];
-  signedIn: boolean;
   now?: Date;
 }
 
-/**
- * The homepage below the hero, as already-loaded data in and sections out.
- * The page (an async server component that reads Payload and the database)
- * only fetches; this component owns which sections appear and in what
- * order, so the order can be tested by rendering it. Each section sits in a
- * `display: contents` wrapper tagged `data-section`, so the tag adds no box
- * and a section that renders nothing (no featured communities, no past
- * gatherings, a signed-in member's "start here") leaves no gap.
- */
+/** Already-loaded content in; responsive discovery sections out. */
 export function HomeSections({
   featuredCommunities,
   upcomingEvents,
   latestNews = [],
+  magazines = [],
   recentEvents,
   sponsors,
-  signedIn,
   now,
 }: HomeSectionsProps) {
-  const doors = useTranslations("hubDoors");
-  const sections: Record<HomeSectionId, ReactNode> = {
-    "featured-communities":
-      featuredCommunities.length > 0 ? (
-        <FeaturedCommunities communities={featuredCommunities} />
-      ) : null,
-    "upcoming-events": <UpcomingEvents events={upcomingEvents} now={now} />,
-    "latest-news": <LatestNews items={latestNews} />,
-    "start-here": <HomeCrawlDoors t={doors} signedIn={signedIn} />,
-    "what-we-do": <WhatWeDo />,
-    "recent-gatherings": <RecentGatherings events={recentEvents} now={now} />,
-    sponsors: <HomeSponsors sponsors={sponsors} />,
-    "closing-square": <HomeClosingSquare />,
-  };
+  const t = useTranslations("homeDiscovery");
+  const communities = pickHomeCommunities(featuredCommunities);
+  const paired = communities.length > 0 && latestNews.length > 0;
   return (
     <>
-      {HOME_SECTION_ORDER.map((id) => (
-        <div key={id} data-section={id} className="contents">
-          {sections[id]}
+      <div className="grid gap-y-10 px-6 py-10 sm:px-12 lg:grid-cols-12 lg:gap-x-10 lg:gap-y-12">
+        {communities.length > 0 && (
+          <div
+            data-section="featured-communities"
+            className={`min-w-0 lg:row-start-1 ${paired ? "lg:col-span-8" : "lg:col-span-12"}`}
+          >
+            <FeaturedCommunities communities={communities} embedded />
+          </div>
+        )}
+        <div
+          data-section="upcoming-events"
+          className={`min-w-0 lg:col-span-12 ${communities.length || latestNews.length ? "lg:row-start-2" : ""}`}
+        >
+          <UpcomingEvents events={upcomingEvents} now={now} embedded />
         </div>
-      ))}
+        {latestNews.length > 0 && (
+          <div
+            data-section="latest-news"
+            className={`min-w-0 lg:row-start-1 ${paired ? "lg:col-span-4 lg:col-start-9" : "lg:col-span-12"}`}
+          >
+            <LatestNews items={latestNews.slice(0, 4)} embedded />
+          </div>
+        )}
+      </div>
+      {magazines.length > 0 && (
+        <div data-section="magazines" className="contents">
+          <HomeMagazines magazines={magazines} />
+        </div>
+      )}
+      {recentEvents.length > 0 && (
+        <div data-section="recent-gatherings" className="contents">
+          <RecentGatherings events={recentEvents} now={now} />
+        </div>
+      )}
+      {sponsors.length > 0 && (
+        <div data-section="sponsors" className="contents">
+          <HomeSponsors sponsors={sponsors} />
+        </div>
+      )}
+      <section
+        data-section="organizers"
+        aria-labelledby="home-organizers-title"
+        className="border-border mx-6 my-10 flex flex-col items-start gap-5 border-t pt-8 sm:mx-12 md:flex-row md:items-center md:justify-between"
+      >
+        <div>
+          <h2
+            id="home-organizers-title"
+            className="text-2xl font-semibold tracking-tight"
+          >
+            {t("organizers")}
+          </h2>
+          <p className="text-muted-foreground mt-2 max-w-prose text-sm">
+            {t("organizersIntro")}
+          </p>
+        </div>
+        <Button asChild variant="ink" className="shrink-0">
+          <Link href={CREATE_COMMUNITY_HREF}>{t("createCommunity")}</Link>
+        </Button>
+      </section>
     </>
   );
 }

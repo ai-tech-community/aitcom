@@ -11,6 +11,7 @@ import {
   NEVER_FEATURE_SLUGS,
   asMemberCount,
   pickFeaturedCommunities,
+  pickHomeCommunities,
 } from "./featured";
 
 const HOME_PAGE = join(
@@ -105,5 +106,46 @@ describe("homepage wiring", () => {
     );
     expect(src).toContain("isListedInDirectory");
     expect(src).toContain("HUB_SLUG");
+  });
+});
+
+describe("pickHomeCommunities", () => {
+  const card = (slug: string, listed = true, members = 2) => ({
+    id: slug,
+    slug,
+    name: slug,
+    description: null,
+    logoUrl: null,
+    memberCount: members,
+    isListedInDirectory: listed,
+  });
+  it("keeps curated ordering, fills from listed communities and caps the gallery", () => {
+    const result = pickHomeCommunities([
+      card("public-small", true, 1),
+      card("ait", false),
+      card("ait-community-netherlands"),
+      card("xxx-ai"),
+      ...Array.from({ length: 7 }, (_, i) => card(`public-${i}`, true, 10 + i)),
+    ]);
+    expect(result.map((row) => row.slug)).toEqual([
+      "ait-community-netherlands",
+      "xxx-ai",
+      "ait",
+      "public-6",
+      "public-5",
+      "public-4",
+    ]);
+  });
+  it("does not fill the gallery with private, unknown-visibility or excluded communities", () => {
+    expect(
+      pickHomeCommunities([
+        card("private", false),
+        card("demo"),
+        card("tester"),
+        card("mlops-amsterdam"),
+        { ...card("unknown"), isListedInDirectory: undefined },
+        card("public"),
+      ]).map((row) => row.slug),
+    ).toEqual(["public"]);
   });
 });
