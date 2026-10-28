@@ -157,12 +157,27 @@ describe("magazine article page", () => {
     await expect(MagazineArticlePage({ params })).resolves.toBeTruthy();
   });
 
-  it("uses the article image as the share image when there is one", async () => {
+  it("a public or preview article points at its own share image", async () => {
+    for (const data of [articlePage(), previewArticlePage()]) {
+      state.data = data;
+      const meta = await generateMetadata({ params });
+      expect(meta.openGraph?.images).toEqual([
+        "/en/og/magazine/agents-weekly/issue-4/agents-that-know-when-to-stop",
+      ]);
+      expect(meta.twitter?.images).toEqual([
+        "/en/og/magazine/agents-weekly/issue-4/agents-that-know-when-to-stop",
+      ]);
+    }
+  });
+
+  it("a members-only article keeps its existing image fallback", async () => {
     state.data = articlePage({
+      issue: { outsiderReach: "none" },
       article: magazineArticle({ mediaUrl: "https://cdn.example.com/a.jpg" }),
     });
-    const meta = await generateMetadata({ params });
-    expect(meta.openGraph?.images).toEqual(["https://cdn.example.com/a.jpg"]);
+    expect((await generateMetadata({ params })).openGraph?.images).toEqual([
+      "https://cdn.example.com/a.jpg",
+    ]);
   });
 
   it("hands the article, its comments and the viewer to the long-read", async () => {

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { ShareActions } from "@/components/share/share-actions";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
@@ -13,7 +14,6 @@ import type {
   ReadingCommunity,
 } from "@/server/magazines/reading";
 
-import { CopyLinkButton } from "./copy-link-button";
 import { IssueCoverCard } from "./issue-cover-card";
 import { SubscribeButton } from "./subscribe-button";
 
@@ -25,14 +25,17 @@ export function IssueRail({
   magazine,
   community,
   pastIssues,
+  issue,
   joinPanel,
 }: {
   magazine: MagazineSummary;
   community: ReadingCommunity;
   pastIssues: IssueCard[];
+  issue: IssueCard;
   joinPanel: ReactNode;
 }) {
   const t = useTranslations("magazines.rail");
+  const share = useTranslations("share");
   return (
     <div className="flex flex-col gap-8">
       {joinPanel}
@@ -73,8 +76,11 @@ export function IssueRail({
       )}
 
       <section className="flex flex-col items-start gap-3">
-        <SectionLabel className="self-stretch">{t("share")}</SectionLabel>
-        <CopyLinkButton />
+        <SectionLabel className="self-stretch">{share("label")}</SectionLabel>
+        <ShareActions
+          title={issue.title}
+          social={issue.outsiderReach !== "none"}
+        />
       </section>
     </div>
   );

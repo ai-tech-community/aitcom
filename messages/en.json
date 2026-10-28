@@ -4882,11 +4882,7 @@
     "rail": {
       "visitCommunity": "Visit {community}",
       "pastIssues": "Past issues",
-      "allIssues": "See all issues",
-      "share": "Share",
-      "copyLink": "Copy link",
-      "linkCopied": "Link copied",
-      "linkCopyFailed": "Could not copy the link"
+      "allIssues": "See all issues"
     },
     "article": {
       "teaserNote": "This is the start of the article.",
@@ -4905,6 +4901,11 @@
       "homeTitle": "Magazines",
       "homeDescription": "Stories from the communities building AI, written and edited by community members. Free to read.",
       "shelfDescription": "{magazine}, a magazine by {community}."
+    },
+    "shareImage": {
+      "issueLine": "{magazine} · Issue {number}",
+      "byCommunity": "A magazine by {community}",
+      "byAuthor": "By {author}"
     }
   },
   "magazineEditor": {
@@ -5560,5 +5561,17 @@
       "ignore": "Did not ask for this? Then ignore this email. We will not write again."
     },
     "footer": "AIT Community"
+  },
+  "share": {
+    "label": "Share",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied",
+    "linkCopyFailed": "Could not copy the link",
+    "nativeShare": "Share…",
+    "x": "Share on X",
+    "linkedIn": "Share on LinkedIn",
+    "email": "Send by email",
+    "opensInNewTab": "(opens in a new tab)",
+    "shareFailed": "Could not share the link. Try copying it."
   }
 }

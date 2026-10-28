@@ -33,6 +33,13 @@ const config = {
   // Keep this path equal to HTML_EXTRACT_BUNDLE (a test checks it).
   outputFileTracingIncludes: {
     "/api/cron/collector-worker": ["./workers/dist/html-extract.bundle.cjs"],
+    // Next 15.4 matches app entry names (including /app, without /route).
+    // Keep the folder equal to SHARE_IMAGE_FONT_FOLDER (a test checks it).
+    "/app/\\[locale\\]/og/magazine/\\[magazineSlug\\]/\\[issueSlug\\]": [
+      "./src/lib/og/fonts/**/*",
+    ],
+    "/app/\\[locale\\]/og/magazine/\\[magazineSlug\\]/\\[issueSlug\\]/\\[articleSlug\\]":
+      ["./src/lib/og/fonts/**/*"],
   },
   async redirects() {
     return [

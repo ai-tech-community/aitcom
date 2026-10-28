@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  articleShareImagePath,
+  issueShareImagePath,
   communityMagazinePath,
   issueBuilderPath,
   issuePath,
@@ -20,6 +22,14 @@ const issue = { slug: "the-tools-issue-3" };
 const article = { slug: "why-evals-matter" };
 
 describe("magazine paths", () => {
+  it("share images live outside the reading path and include the locale", () => {
+    expect(issueShareImagePath("nl", magazine, issue)).toBe(
+      "/nl/og/magazine/agents-weekly/the-tools-issue-3",
+    );
+    expect(articleShareImagePath("en", magazine, issue, article)).toBe(
+      "/en/og/magazine/agents-weekly/the-tools-issue-3/why-evals-matter",
+    );
+  });
   it("magazinesTopicPath filters the home by an encoded topic", () => {
     expect(magazinesTopicPath(null)).toBe("/magazines");
     expect(magazinesTopicPath("agents")).toBe("/magazines?topic=agents");

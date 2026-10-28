@@ -617,7 +617,7 @@ type ReadableIssue = {
  * magazine, the issue or its live community is missing, or the viewer's
  * access is `none`.
  */
-async function loadReadableIssue(
+export async function loadReadableIssue(
   deps: Deps,
   opts: {
     magazineSlug: string;

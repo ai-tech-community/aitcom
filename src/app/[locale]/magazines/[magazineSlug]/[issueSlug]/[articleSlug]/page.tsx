@@ -9,7 +9,10 @@ import {
   isMagazineArticleIndexable,
   isMagazineArticleOut,
 } from "@/lib/magazines/indexing";
-import { magazineArticlePath } from "@/lib/magazines/paths";
+import {
+  magazineArticlePath,
+  articleShareImagePath,
+} from "@/lib/magazines/paths";
 import {
   buildOgImageMeta,
   buildOgMeta,
@@ -80,9 +83,15 @@ export async function generateMetadata({
   return {
     title,
     description,
-    ...(article.mediaUrl
-      ? buildOgImageMeta(title, description, article.mediaUrl)
-      : buildOgMeta(article.title, description, magazine.name)),
+    ...(issue.outsiderReach !== "none"
+      ? buildOgImageMeta(
+          title,
+          description,
+          articleShareImagePath(locale, magazine, issue, article),
+        )
+      : article.mediaUrl
+        ? buildOgImageMeta(title, description, article.mediaUrl)
+        : buildOgMeta(article.title, description, magazine.name)),
     alternates: await localeAlternates(
       magazineArticlePath(magazine, issue, article),
     ),

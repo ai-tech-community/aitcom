@@ -38,6 +38,24 @@ export function magazineArticlePath(
   return `${issuePath(magazine, issue)}/${article.slug}`;
 }
 
+/** Share images include their locale and cannot shadow an article slug. */
+export function issueShareImagePath(
+  locale: string,
+  magazine: Slugged,
+  issue: Slugged,
+): string {
+  return `/${locale}/og/magazine/${magazine.slug}/${issue.slug}`;
+}
+
+export function articleShareImagePath(
+  locale: string,
+  magazine: Slugged,
+  issue: Slugged,
+  article: Slugged,
+): string {
+  return `${issueShareImagePath(locale, magazine, issue)}/${article.slug}`;
+}
+
 /** The community's Magazine tab (reader shelf and editor desk). */
 export function communityMagazinePath(communitySlug: string): string {
   return `/communities/${communitySlug}/magazine`;

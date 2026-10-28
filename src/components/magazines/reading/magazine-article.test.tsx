@@ -90,6 +90,20 @@ function jsonLd(container: HTMLElement): Record<string, unknown>[] {
 }
 
 describe("MagazineArticle", () => {
+  it.each(["none", "teaser", "full"] as const)(
+    "sharing after the article follows outsider reach %s",
+    (outsiderReach) => {
+      const data =
+        outsiderReach === "teaser"
+          ? previewArticlePage()
+          : articlePage({ issue: { outsiderReach } });
+      renderWithIntl(<MagazineArticle data={data} comments={[]} />);
+      expect(screen.getByRole("button", { name: "Copy link" })).toBeVisible();
+      expect(screen.queryByRole("link", { name: /Share on X/ }) !== null).toBe(
+        outsiderReach !== "none",
+      );
+    },
+  );
   it("a preview article shows the start, the join panel and no comments", () => {
     const { container } = renderWithIntl(
       <MagazineArticle data={previewArticlePage()} comments={comments} />,

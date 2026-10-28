@@ -11,6 +11,8 @@ const ROOT = join(__dirname, "..", "..", "..");
 
 /** Each reviewed reader, with the rule it applies to what it reads. */
 const READERS: Record<string, string> = {
+  "src/server/magazines/share-cards.ts":
+    "anonymous scope via loadReadableIssue (viewerId null); article must be published and placed in this issue",
   "src/app/sitemap.ts":
     "publicArticleWhere; magazine URLs come from sitemap-paths",
   "src/app/feed.xml/route.ts": "publicArticleWhere (the blog feed only)",

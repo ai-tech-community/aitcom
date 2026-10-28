@@ -141,13 +141,39 @@ describe("issue page", () => {
     await expect(IssuePage({ params })).resolves.toBeTruthy();
   });
 
-  it("uses the cover as the share image when there is one", async () => {
+  it("a public or preview issue points its share card at its own image", async () => {
+    for (const outsiderReach of ["full", "teaser"] as const) {
+      state.data = issuePage({
+        issue: {
+          outsiderReach,
+          coverImageUrl: "https://cdn.example.com/cover.jpg",
+        },
+      });
+      const meta = await generateMetadata({ params });
+      expect(meta.openGraph?.images).toEqual([
+        "/en/og/magazine/agents-weekly/issue-4",
+      ]);
+      expect(meta.twitter?.images).toEqual([
+        "/en/og/magazine/agents-weekly/issue-4",
+      ]);
+    }
+  });
+
+  it("a members-only issue never points at a share image", async () => {
     state.data = issuePage({
-      issue: { coverImageUrl: "https://cdn.example.com/cover.jpg" },
+      issue: {
+        outsiderReach: "none",
+        coverImageUrl: "https://cdn.example.com/cover.jpg",
+      },
     });
-    const meta = await generateMetadata({ params });
-    expect(meta.openGraph?.images).toEqual([
+    expect((await generateMetadata({ params })).openGraph?.images).toEqual([
       "https://cdn.example.com/cover.jpg",
     ]);
+    state.data = issuePage({
+      issue: { outsiderReach: "none", coverImageUrl: null },
+    });
+    expect(
+      JSON.stringify((await generateMetadata({ params })).openGraph?.images),
+    ).not.toContain("/og/magazine/");
   });
 });

@@ -3,6 +3,7 @@ import { useId, type ComponentProps, type ReactNode } from "react";
 
 import { ArticleComments } from "@/components/blog/article-comments";
 import { BlogToc } from "@/components/blog/blog-toc";
+import { ShareActions } from "@/components/share/share-actions";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
@@ -300,6 +301,10 @@ export function MagazineArticle({
             />
           )}
           <div className="min-w-0 border-t pt-8">{body}</div>
+          <ShareActions
+            title={article.title}
+            social={issue.outsiderReach !== "none"}
+          />
           <NextInIssue data={data} />
           {showComments && (
             <ArticleComments

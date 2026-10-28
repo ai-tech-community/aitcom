@@ -62,6 +62,25 @@ import { IssueReader } from "./issue-reader";
 import { itemAnchorId } from "./anchors";
 
 describe("IssueReader", () => {
+  it.each(["none", "teaser", "full"] as const)(
+    "sharing in the rail follows outsider reach %s",
+    (outsiderReach) => {
+      renderWithIntl(
+        <IssueReader
+          data={issuePage({ issue: { outsiderReach } })}
+          locale="en"
+        />,
+      );
+      expect(screen.getByRole("button", { name: "Copy link" })).toBeVisible();
+      expect(screen.getByRole("heading", { name: "Share" })).toHaveAttribute(
+        "data-slot",
+        "section-label",
+      );
+      expect(screen.queryByRole("link", { name: /Share on X/ }) !== null).toBe(
+        outsiderReach !== "none",
+      );
+    },
+  );
   it("a preview shows openings and join prompts instead of Read article", () => {
     renderWithIntl(
       <IssueReader

@@ -6,7 +6,7 @@ import { cache } from "react";
 import { IssueReader } from "@/components/magazines/reading/issue-reader";
 import { resolveLocale, type AppLocale } from "@/i18n/messages";
 import { isIssueIndexable } from "@/lib/magazines/indexing";
-import { issuePath } from "@/lib/magazines/paths";
+import { issuePath, issueShareImagePath } from "@/lib/magazines/paths";
 import {
   buildOgImageMeta,
   buildOgMeta,
@@ -73,9 +73,15 @@ export async function generateMetadata({
   return {
     title,
     description,
-    ...(issue.coverImageUrl
-      ? buildOgImageMeta(title, description, issue.coverImageUrl)
-      : buildOgMeta(issue.title, description, magazine.name)),
+    ...(issue.outsiderReach !== "none"
+      ? buildOgImageMeta(
+          title,
+          description,
+          issueShareImagePath(locale, magazine, issue),
+        )
+      : issue.coverImageUrl
+        ? buildOgImageMeta(title, description, issue.coverImageUrl)
+        : buildOgMeta(issue.title, description, magazine.name)),
     alternates: await localeAlternates(issuePath(magazine, issue)),
     ...(indexable ? {} : { robots: { index: false } }),
   };

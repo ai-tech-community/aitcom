@@ -136,6 +136,7 @@ export function IssueReader({
 
         <aside className="min-w-0 lg:col-start-2 xl:sticky xl:top-24 xl:col-start-auto xl:max-h-[calc(100dvh-7rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain">
           <IssueRail
+            issue={issue}
             magazine={magazine}
             community={community}
             pastIssues={pastIssues}

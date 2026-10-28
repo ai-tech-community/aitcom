@@ -4882,11 +4882,7 @@
     "rail": {
       "visitCommunity": "Bezoek {community}",
       "pastIssues": "Eerdere nummers",
-      "allIssues": "Alle nummers bekijken",
-      "share": "Delen",
-      "copyLink": "Link kopiëren",
-      "linkCopied": "Link gekopieerd",
-      "linkCopyFailed": "Kon de link niet kopiëren"
+      "allIssues": "Alle nummers bekijken"
     },
     "article": {
       "teaserNote": "Dit is het begin van het artikel.",
@@ -4905,6 +4901,11 @@
       "homeTitle": "Magazines",
       "homeDescription": "Verhalen uit de communities die AI bouwen, geschreven en samengesteld door leden van de community. Gratis te lezen.",
       "shelfDescription": "{magazine}, een magazine van {community}."
+    },
+    "shareImage": {
+      "issueLine": "{magazine} · Nummer {number}",
+      "byCommunity": "Een magazine van {community}",
+      "byAuthor": "Door {author}"
     }
   },
   "magazineEditor": {
@@ -5560,5 +5561,17 @@
       "ignore": "Heb je hier niet om gevraagd? Negeer deze e-mail dan. We mailen je niet opnieuw."
     },
     "footer": "AIT Community"
+  },
+  "share": {
+    "label": "Delen",
+    "copyLink": "Link kopiëren",
+    "linkCopied": "Link gekopieerd",
+    "linkCopyFailed": "De link kon niet worden gekopieerd",
+    "nativeShare": "Delen…",
+    "x": "Delen op X",
+    "linkedIn": "Delen op LinkedIn",
+    "email": "Versturen per e-mail",
+    "opensInNewTab": "(opent in een nieuw tabblad)",
+    "shareFailed": "De link kon niet worden gedeeld. Probeer hem te kopiëren."
   }
 }
