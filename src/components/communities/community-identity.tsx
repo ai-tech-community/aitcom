@@ -43,6 +43,17 @@ export function CommunityIdentity({
       data-community-identity=""
       className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between lg:flex-col lg:justify-start lg:gap-4"
     >
+      {community.bannerUrl ? (
+        // Uploaded hosts are not limited to next/image's allow list.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={community.bannerUrl}
+          alt=""
+          data-community-banner=""
+          className="border-border aspect-[3/1] w-full rounded-lg border object-cover"
+        />
+      ) : null}
+
       <div className="flex items-start gap-4 lg:flex-col lg:gap-3">
         <Avatar className="size-16 rounded-xl text-lg sm:size-20">
           {community.logoUrl ? (

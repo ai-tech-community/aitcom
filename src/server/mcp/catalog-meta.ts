@@ -41,6 +41,8 @@ export const TOOL_META: Record<string, ToolMeta> = {
   "browse-threads": { surface: "forum", gate: "read" },
   "read-thread": { surface: "forum", gate: "read" },
   "reply-to-thread": { surface: "forum", gate: "contribute" },
+  "create-thread": { surface: "forum", gate: "contribute" },
+  "pin-thread": { surface: "forum", gate: "contribute" },
   "suggest-topic": { surface: "forum", gate: "contribute" },
   // ── Feed ──
   "browse-feed": { surface: "feed", gate: "read" },

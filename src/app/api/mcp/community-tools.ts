@@ -1,10 +1,16 @@
 // src/app/api/mcp/community-tools.ts
 //
-// Registers 16 community MCP tools on the McpServer instance.
+// Registers community MCP tools on the McpServer instance.
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 import type { createCaller } from "@/server/api/root";
+import { COMMUNITY_DESCRIPTION_MAX } from "@/lib/communities/description";
+import {
+  FORUM_THREAD_CONTENT_MAX,
+  FORUM_THREAD_TITLE_MAX,
+  FORUM_THREAD_TITLE_MIN,
+} from "@/server/communities/forum-thread-draft";
 import {
   ADDITIVE_WRITE,
   DESTRUCTIVE_WRITE,
@@ -54,7 +60,7 @@ export function registerCommunityTools(
     "get-community-info",
     {
       description:
-        "Get detailed information about a specific community by slug. Returns settings, member count, and the owner's membership status/role.",
+        "Get detailed information about a specific community by slug. Returns settings, member count, the owner's membership status/role, and the full stored description. descriptionTruncated is false: this tool does not shorten the text. A row saved under an older 500-character limit is returned as stored.",
       inputSchema: {
         slug: z.string().describe("The community slug."),
       },
@@ -186,9 +192,11 @@ export function registerCommunityTools(
           .describe("Community name (2-100 characters)."),
         description: z
           .string()
-          .max(500)
+          .max(COMMUNITY_DESCRIPTION_MAX)
           .optional()
-          .describe("Community description (max 500 characters)."),
+          .describe(
+            `Community description (max ${COMMUNITY_DESCRIPTION_MAX} characters, same as the create form).`,
+          ),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
           .default("open")
@@ -221,7 +229,7 @@ export function registerCommunityTools(
     "update-community-settings",
     {
       description:
-        "Update community settings such as name, description, logo, join policy, and directory listing. Requires admin or owner role.",
+        "Update community settings. Name, description, logo URL, banner, join policy, and directory listing require the owner's admin or owner role, the same as the general settings page. bannerMediaId is a media id from upload-image (null removes the banner). magazineLogoMediaId is a media id from upload-image (null removes the logo) and requires the same manage permission as the magazine settings page. The description limit matches the settings form.",
       inputSchema: {
         slug: z.string().describe("The community slug to update."),
         name: z
@@ -232,15 +240,35 @@ export function registerCommunityTools(
           .describe("New community name."),
         description: z
           .string()
-          .max(500)
+          .max(COMMUNITY_DESCRIPTION_MAX)
           .optional()
-          .describe("New community description."),
+          .describe(
+            `New community description (max ${COMMUNITY_DESCRIPTION_MAX} characters).`,
+          ),
         logoUrl: z
           .string()
           .url()
           .optional()
           .nullable()
-          .describe("New logo URL, or null to remove."),
+          .describe("New community logo URL, or null to remove."),
+        bannerMediaId: z
+          .number()
+          .int()
+          .positive()
+          .nullable()
+          .optional()
+          .describe(
+            "Media id from upload-image for the community banner. Null removes it. Requires admin or owner.",
+          ),
+        magazineLogoMediaId: z
+          .number()
+          .int()
+          .positive()
+          .nullable()
+          .optional()
+          .describe(
+            "Media id from upload-image for the magazine logo. Null removes it. Requires magazine manage permission.",
+          ),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
           .optional()
@@ -257,6 +285,8 @@ export function registerCommunityTools(
       name,
       description,
       logoUrl,
+      bannerMediaId,
+      magazineLogoMediaId,
       joinPolicy,
       isListedInDirectory,
     }) => {
@@ -265,9 +295,79 @@ export function registerCommunityTools(
         name,
         description,
         logoUrl,
+        bannerMediaId,
+        magazineLogoMediaId,
         joinPolicy,
         isListedInDirectory,
       });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "create-thread",
+    {
+      description:
+        "Create a forum thread as the owner. Same rules as the forum form: title 3–255 characters, body up to 10000 characters, category general, question, showcase, or job. Pass communitySlug to post in that community (it must exist). The owner must have accepted that community's rules. Requires contribute scope. The thread is posted immediately in the owner's name.",
+      inputSchema: {
+        title: z
+          .string()
+          .min(FORUM_THREAD_TITLE_MIN)
+          .max(FORUM_THREAD_TITLE_MAX)
+          .describe("Thread title."),
+        content: z
+          .string()
+          .min(1)
+          .max(FORUM_THREAD_CONTENT_MAX)
+          .describe("Thread body, plain text."),
+        category: z
+          .enum(["general", "question", "showcase", "job"])
+          .default("general")
+          .describe("Thread category."),
+        communitySlug: z
+          .string()
+          .min(1)
+          .optional()
+          .describe(
+            "Community to post in. Omit for a hub-wide thread, as the form does without a community.",
+          ),
+      },
+      annotations: ADDITIVE_WRITE,
+    },
+    async ({ title, content, category, communitySlug }) => {
+      const result = await caller.agent.createThread({
+        title,
+        content,
+        category,
+        communitySlug,
+      });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "pin-thread",
+    {
+      description:
+        "Pin or unpin a community forum thread. Requires contribute scope. The owner must be an active owner, admin, or moderator of that thread's community — the same roles that see Pin in the forum. isPinned false unpins. Threads that are not in a community cannot be pinned with this tool.",
+      inputSchema: {
+        threadId: z.number().int().positive().describe("The thread id."),
+        isPinned: z
+          .boolean()
+          .describe("True pins the thread. False unpins it."),
+      },
+      annotations: DESTRUCTIVE_WRITE,
+    },
+    async ({ threadId, isPinned }) => {
+      const result = await caller.agent.pinThread({ threadId, isPinned });
       return {
         content: [
           { type: "text" as const, text: JSON.stringify(result, null, 2) },

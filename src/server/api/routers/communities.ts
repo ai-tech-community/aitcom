@@ -49,6 +49,7 @@ import {
 } from "@/server/communities/directory";
 import { getPayloadClient } from "@/server/payload";
 import { ipOriginFromHeaders } from "@/lib/visitor-headers";
+import { communityDescriptionSchema } from "@/lib/communities/description";
 
 /** Two decimals of a degree: about a kilometre. */
 function roundToKm(degrees: number): number {
@@ -388,7 +389,7 @@ export const communitiesRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(2).max(100),
-        description: z.string().max(500).optional(),
+        description: communityDescriptionSchema.optional(),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
           .default("open"),
@@ -915,8 +916,9 @@ export const communitiesRouter = createTRPCRouter({
       z.object({
         slug: z.string(),
         name: z.string().min(2).max(100).optional(),
-        description: z.string().max(500).optional(),
+        description: communityDescriptionSchema.optional(),
         logoUrl: z.string().url().optional().nullable(),
+        bannerUrl: z.string().url().nullable().optional(),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
           .optional(),
@@ -944,6 +946,7 @@ export const communitiesRouter = createTRPCRouter({
       if (input.description !== undefined)
         updates.description = input.description;
       if (input.logoUrl !== undefined) updates.logoUrl = input.logoUrl;
+      if (input.bannerUrl !== undefined) updates.bannerUrl = input.bannerUrl;
       if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
       if (input.isListedInDirectory !== undefined)
         updates.isListedInDirectory = input.isListedInDirectory;

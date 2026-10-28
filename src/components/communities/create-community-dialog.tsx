@@ -27,6 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { BuildingModal } from "@/components/community/building-modal";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Loader2, Plus } from "lucide-react";
+import { COMMUNITY_DESCRIPTION_MAX } from "@/lib/communities/description";
 import { useCreateCommunityDeepLink } from "./use-create-community-deep-link";
 
 const SIGN_IN_INTENT = "Sign in to create a community";
@@ -126,7 +127,7 @@ export function CreateCommunityProvider({ children }: { children: ReactNode }) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is your community about?"
-              maxLength={500}
+              maxLength={COMMUNITY_DESCRIPTION_MAX}
               rows={3}
               className="mt-1 font-mono text-sm"
             />

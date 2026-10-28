@@ -42,6 +42,31 @@ function renderIdentity(
 }
 
 describe("CommunityIdentity", () => {
+  it("shows a banner when the community has one", () => {
+    const { unmount } = renderIdentity();
+    expect(document.querySelector("[data-community-banner]")).toBeNull();
+    unmount();
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <CommunityIdentity
+          community={
+            {
+              ...community,
+              bannerUrl: "https://cdn.example.test/banner.png",
+            } as typeof community
+          }
+          membershipStatus={null}
+        />
+      </NextIntlClientProvider>,
+    );
+    const banner = document.querySelector("[data-community-banner]");
+    expect(banner).toHaveAttribute(
+      "src",
+      "https://cdn.example.test/banner.png",
+    );
+    expect(banner).toHaveAttribute("alt", "");
+  });
+
   it("renders the page's one h1, tagline, and member count", () => {
     renderIdentity();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);

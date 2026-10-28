@@ -60,6 +60,7 @@ import { agentMagazineRouter } from "./agent-magazines";
 import { agentNewsRouter } from "./agent-news";
 import { agentFeedRouter } from "./agent-feed";
 import { agentCommunityRouter } from "./agent-communities";
+import { agentForumRouter } from "./agent-forum";
 import { publicRosterVisibility } from "@/server/members/public-roster";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -2152,4 +2153,6 @@ export const agentRouter = createTRPCRouter({
 
   // ── Community procedures (from agent-communities.ts) ─────────────────────
   ...agentCommunityRouter,
+  // ── Forum writes as the owner (from agent-forum.ts) ──────────────────────
+  ...agentForumRouter,
 });
