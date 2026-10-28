@@ -47,9 +47,7 @@ function store(
       return state.approved;
     },
     loadIssueDraft: async (agentId, issueId) =>
-      state.row &&
-      state.row.agentId === agentId &&
-      state.row.issueId === issueId
+      state.row?.agentId === agentId && state.row?.issueId === issueId
         ? state.row
         : null,
     loadByDraftId: async (draftId) =>
