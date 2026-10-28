@@ -14,7 +14,6 @@ import {
   buildAwesomeDirectoryPath,
   paginateAwesomeCards,
   parseAwesomeDirectoryQuery,
-  type AwesomeLocale,
 } from "@/lib/investigations/awesome-ai-oss";
 import { isAwesomeInsightsTab } from "@/lib/investigations/awesome-ai-oss-insights";
 import { redirect } from "@/i18n/navigation";
@@ -59,7 +58,7 @@ export async function generateMetadata({
   const filtered = applyAwesomeDirectoryQuery(
     await listApprovedPublicCards(),
     query,
-    resolveLocale(locale) as AwesomeLocale,
+    resolveLocale(locale),
   );
   const pagination = paginateAwesomeCards(filtered, query.page);
   const canonicalPath = awesomeDirectoryCanonicalPath({

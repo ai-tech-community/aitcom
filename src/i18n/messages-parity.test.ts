@@ -182,7 +182,7 @@ type MessageNode = {
 const { parse } = messageFormatRequire(
   "@formatjs/icu-messageformat-parser",
 ) as {
-  parse(message: string): MessageNode[];
+  parse(this: void, message: string): MessageNode[];
 };
 
 function messageShape(nodes: MessageNode[]): string[] {
@@ -229,7 +229,7 @@ describe("complete French catalogue", () => {
     expect(resolveLocale("fr")).toBe("fr");
   });
 
-  it("preserves message arguments and tags and formats every French message", () => {
+  it("preserves message arguments and tags and formats every French message", async () => {
     const translated = new Map(flattenedMessages(fr));
     const errors: string[] = [];
     for (const [key, english] of flattenedMessages(en)) {
@@ -244,7 +244,7 @@ describe("complete French catalogue", () => {
         messages: { message: french },
         onError: (error) => errors.push(`${key}: ${error.message}`),
       });
-      t.rich("message", values);
+      await t.rich("message", values);
     }
     expect(errors).toEqual([]);
   });

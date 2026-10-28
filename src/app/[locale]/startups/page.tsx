@@ -16,7 +16,6 @@ import {
   startupDirectoryFilteredRobots,
   startupDirectoryHasFilters,
   startupsPublicRobots,
-  type StartupLocale,
 } from "@/lib/investigations/startups";
 import { isStartupInsightsTab } from "@/lib/investigations/startups-insights";
 import { redirect } from "@/i18n/navigation";
@@ -71,7 +70,7 @@ export async function generateMetadata({
   const filtered = applyStartupDirectoryQuery(
     companies,
     query,
-    resolveLocale(locale) as StartupLocale,
+    resolveLocale(locale),
   );
   const pagination = paginateStartupCards(filtered, query.page);
   const canonicalPath = startupDirectoryCanonicalPath({

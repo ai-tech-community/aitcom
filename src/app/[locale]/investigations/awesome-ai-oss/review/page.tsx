@@ -9,7 +9,6 @@ import { SectionLabel } from "@/components/ui/section-label";
 import {
   AWESOME_AI_OSS_PATH,
   AWESOME_AI_OSS_REVIEW_PATH,
-  type AwesomeLocale,
 } from "@/lib/investigations/awesome-ai-oss";
 import { getSession } from "@/server/better-auth/server";
 import { userIsHubOperator } from "@/server/awesome-ai-oss/operator";
@@ -50,9 +49,7 @@ export default async function AwesomeAiOssReviewPage() {
         {t("queueTitle")}
       </h1>
       <div className="mt-10">
-        <AwesomeAiOssReviewQueue
-          locale={resolveLocale(locale) as AwesomeLocale}
-        />
+        <AwesomeAiOssReviewQueue locale={resolveLocale(locale)} />
       </div>
     </main>
   );
