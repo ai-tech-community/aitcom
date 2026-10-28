@@ -4771,6 +4771,16 @@
     }
   },
   "magazines": {
+    "join": {
+      "heading": "Read the whole issue",
+      "panel": "{community} members read every article in full.",
+      "inline": "Members of {community} read the whole article.",
+      "join": "Join {community}",
+      "request": "Ask to join {community}",
+      "pending": "You asked to join {community}. You can read everything once you are let in.",
+      "inviteOnly": "{community} is invite only. Ask a member for an invite.",
+      "visit": "Visit {community}"
+    },
     "subscribe": {
       "subscribe": "Subscribe",
       "subscribed": "Subscribed",

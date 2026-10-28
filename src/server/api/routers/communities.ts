@@ -64,6 +64,14 @@ import { countPendingJoinRequests } from "@/server/communities/pending-join-requ
 import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
 import { activateMembership } from "@/server/communities/activate-membership";
 import {
+  joinSourceSchema,
+  type JoinSource,
+} from "@/lib/communities/join-source";
+import {
+  joinSourceMetadata,
+  verifyJoinSource,
+} from "@/server/communities/join-sources";
+import {
   notifyCommunityInvite,
   resolveCommunityInviteNotices,
 } from "@/server/communities/invite-notification";
@@ -75,6 +83,26 @@ import {
   recordInviteDeclined,
 } from "@/server/communities/invite-limits";
 import type { db as Database } from "@/server/db";
+
+/** Source lookup is supplementary, including when Payload cannot start. */
+async function verifiedJoinMetadata(
+  db: typeof Database,
+  communityId: string,
+  source?: JoinSource,
+) {
+  if (!source) return undefined;
+  try {
+    const verified = await verifyJoinSource(
+      { db, payload: await getPayloadClient() },
+      communityId,
+      source,
+    );
+    return verified ? joinSourceMetadata(verified) : undefined;
+  } catch (error) {
+    console.error("[communities] join source lookup failed", { error });
+    return undefined;
+  }
+}
 
 /** The membership changed between reading and writing it (e.g. a ban). */
 function membershipChanged(): TRPCError {
@@ -434,7 +462,7 @@ export const communitiesRouter = createTRPCRouter({
 
   /** Join an open community */
   join: protectedProcedure
-    .input(z.object({ slug: z.string() }))
+    .input(z.object({ slug: z.string(), source: joinSourceSchema.optional() }))
     .mutation(async ({ ctx, input }) => {
       const community = await ctx.db.query.communities.findFirst({
         where: and(
@@ -477,11 +505,18 @@ export const communitiesRouter = createTRPCRouter({
         }
       }
 
+      const metadata = await verifiedJoinMetadata(
+        ctx.db,
+        community.id,
+        input.source,
+      );
+
       // An existing invited/pending_approval row is activated, never duplicated.
       const activated = await activateMembership(ctx.db, {
         communityId: community.id,
         userId: ctx.session.user.id,
         existing: existing ?? null,
+        ...(metadata ? { metadata } : {}),
       });
       if (!activated) throw membershipChanged();
 
@@ -490,7 +525,7 @@ export const communitiesRouter = createTRPCRouter({
 
   /** Request to join an approval-required community */
   requestToJoin: protectedProcedure
-    .input(z.object({ slug: z.string() }))
+    .input(z.object({ slug: z.string(), source: joinSourceSchema.optional() }))
     .mutation(async ({ ctx, input }) => {
       const community = await ctx.db.query.communities.findFirst({
         where: and(
@@ -536,26 +571,31 @@ export const communitiesRouter = createTRPCRouter({
             message: "Request already pending",
           });
         }
-        if (existing.status === "invited") {
-          // Already invited — update to pending_approval since they're requesting via the approval flow
-          await ctx.db
-            .update(communityMemberships)
-            .set({ status: "pending_approval" })
-            .where(eq(communityMemberships.id, existing.id));
-          return { success: true };
-        }
       }
 
-      await ctx.db.insert(communityMemberships).values({
-        communityId: community.id,
-        userId: ctx.session.user.id,
-        role: "member",
-        status: "pending_approval",
-      });
+      const metadata = await verifiedJoinMetadata(
+        ctx.db,
+        community.id,
+        input.source,
+      );
+      if (existing?.status === "invited") {
+        await ctx.db
+          .update(communityMemberships)
+          .set({ status: "pending_approval" })
+          .where(eq(communityMemberships.id, existing.id));
+      } else {
+        await ctx.db.insert(communityMemberships).values({
+          communityId: community.id,
+          userId: ctx.session.user.id,
+          role: "member",
+          status: "pending_approval",
+        });
+      }
 
       await logActivity(ctx.db, {
         actorId: ctx.session.user.id,
         actorType: "member",
+        ...(metadata ? { metadata } : {}),
         action: "community.join_requested",
         targetType: "community",
         targetId: community.id,

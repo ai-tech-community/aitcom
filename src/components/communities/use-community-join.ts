@@ -10,6 +10,7 @@ import {
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
+import type { JoinSource } from "@/lib/communities/join-source";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useInitialAuthUser } from "@/components/auth/session-provider";
@@ -125,12 +126,20 @@ function useMembershipRunner() {
     verb: Verb,
     slug: string,
     name: string | undefined,
+    source?: JoinSource,
   ): Promise<boolean> => {
     const said = (key: string) =>
       name ? t(key, { community: name }) : t(`${key}Generic`);
     const mutation = { join, request, leave, accept, decline }[verb];
     try {
-      await mutation.mutateAsync({ slug });
+      if (verb === "join" || verb === "request") {
+        await (verb === "join" ? join : request).mutateAsync({
+          slug,
+          ...(source ? { source } : {}),
+        });
+      } else {
+        await mutation.mutateAsync({ slug });
+      }
       toast.success(said(SAID[verb].done));
       void utils.communities.getMyCommunities.invalidate();
       void utils.communities.getBySlug.invalidate({ slug });
@@ -166,6 +175,7 @@ export function useCommunityJoin({
   name,
   joinPolicy,
   membership,
+  source,
   onChange,
 }: {
   slug: string;
@@ -173,6 +183,7 @@ export function useCommunityJoin({
   name?: string;
   joinPolicy: JoinPolicy;
   membership?: Membership | null;
+  source?: JoinSource;
   /** After a successful join, request or leave (e.g. refresh server data). */
   onChange?: () => void;
 }): CommunityJoin {
@@ -195,7 +206,7 @@ export function useCommunityJoin({
 
   const perform = async (verb: Verb) => {
     setBusy(true);
-    const ok = await runMembership(verb, slug, name);
+    const ok = await runMembership(verb, slug, name, source);
     setBusy(false);
     if (ok) onChange?.();
   };
@@ -204,7 +215,7 @@ export function useCommunityJoin({
     if (!signedIn) {
       const here = `${window.location.pathname}${window.location.search}`;
       // Only a join this browser asked for may finish after sign-in.
-      rememberJoinIntent(slug);
+      rememberJoinIntent(slug, undefined, source);
       promptAuth(
         name
           ? t("signInToJoin", { community: name })
@@ -320,7 +331,8 @@ export function useJoinDeepLink(onDone?: () => void): void {
       "",
       `${url.pathname}${url.search}${url.hash}`,
     );
-    if (!takeJoinIntent(slug)) return;
+    const intent = takeJoinIntent(slug);
+    if (!intent) return;
 
     void (async () => {
       setFinishingSlug(slug);
@@ -351,6 +363,7 @@ export function useJoinDeepLink(onDone?: () => void): void {
             verb,
             slug,
             community.name,
+            intent.source ?? undefined,
           );
           if (ok) latest.current.onDone?.();
         }

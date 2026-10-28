@@ -4771,6 +4771,16 @@
     }
   },
   "magazines": {
+    "join": {
+      "heading": "Lees het hele nummer",
+      "panel": "Leden van {community} lezen elk artikel helemaal.",
+      "inline": "Leden van {community} lezen het hele artikel.",
+      "join": "Word lid van {community}",
+      "request": "Vraag om lid te worden van {community}",
+      "pending": "Je hebt gevraagd om lid te worden van {community}. Zodra je bent toegelaten, kun je alles lezen.",
+      "inviteOnly": "Je kunt alleen op uitnodiging lid worden van {community}. Vraag een lid om een uitnodiging.",
+      "visit": "Ga naar {community}"
+    },
     "subscribe": {
       "subscribe": "Abonneren",
       "subscribed": "Geabonneerd",
