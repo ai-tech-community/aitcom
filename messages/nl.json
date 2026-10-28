@@ -4877,7 +4877,8 @@
       "replies": "{count, plural, one {# reactie} other {# reacties}}",
       "projectKind": "Launchpad-project",
       "upvotes": "{count, plural, one {# stem} other {# stemmen}}",
-      "articleKind": "Artikel"
+      "articleKind": "Artikel",
+      "editorialKind": "Van de redactie"
     },
     "rail": {
       "visitCommunity": "Bezoek {community}",
@@ -4921,7 +4922,9 @@
       "readToEnd": "Tot het einde gelezen",
       "note": "Mensen die niet zijn ingelogd tellen één keer per dag mee. Je eigen bezoeken als redacteur tellen niet mee.",
       "empty": "Nog niet gelezen. Hier verschijnen cijfers zodra mensen dit nummer openen.",
-      "back": "Terug naar het nummer"
+      "back": "Terug naar het nummer",
+      "linkFor": "Cijfers <sr>voor nummer {number}</sr>",
+      "noArticles": "Dit nummer heeft geen artikelen."
     },
     "autoDraft": {
       "issueTitle": "Nummer van {date}",
@@ -4977,11 +4980,6 @@
       "neverReuse": "Neem niets mee dat al in een eerder nummer staat",
       "draftsLookLike": "Zo zien concepten eruit",
       "layout": "Indeling",
-      "layouts": {
-        "cover-story": "Omslagverhaal",
-        "long-read": "Longread",
-        "digest": "Kort overzicht"
-      },
       "visibility": "Zichtbaarheid",
       "inheritVisibility": "Hetzelfde als het magazine ({current})",
       "visibilities": {
@@ -5292,11 +5290,6 @@
         },
         "visibilityTeaser": "Voorproefje voor iedereen",
         "layout": "Indeling",
-        "layouts": {
-          "cover-story": "Omslagverhaal",
-          "long-read": "Longread",
-          "digest": "Kort overzicht"
-        },
         "layoutHints": {
           "cover-story": "Eén groot verhaal voorop, daarna een raster.",
           "long-read": "Eén kolom, om van boven naar beneden te lezen.",
@@ -5444,7 +5437,7 @@
         "scheduledLead": "Het verschijnt op {time}. Tot die tijd kun je het nog aanpassen.",
         "unscheduledTitle": "De planning is geannuleerd",
         "unscheduledLead": "Het nummer is weer een concept.",
-        "audienceTeaser": "Iedereen kan de omslag, de inhoudsopgave en het begin van elk artikel zien. Alleen leden van je community lezen alles. Het nummer verschijnt op de tijdschriftenpagina."
+        "audienceTeaser": "Iedereen kan de omslag, de inhoudsopgave en het begin van elk artikel zien. Alleen leden van je community lezen alles. Het verschijnt op de pagina Magazines."
       },
       "goesOut": "Verschijnt op <timestamp>{time}</timestamp>"
     },
@@ -5556,6 +5549,11 @@
       "back": "Terug naar het tabblad Magazine",
       "membersTitle": "Het team",
       "empty": "Voeg iemand toe om mee te schrijven en nummers te maken."
+    },
+    "layouts": {
+      "cover-story": "Omslagverhaal",
+      "long-read": "Longread",
+      "digest": "Kort overzicht"
     }
   },
   "magazineMail": {

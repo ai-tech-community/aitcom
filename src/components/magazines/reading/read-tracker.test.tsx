@@ -98,14 +98,31 @@ describe("ReadTracker", () => {
   });
 
   it("keeps observing when the mutation result object changes", () => {
+    const firstResult = { mutate, isPending: false };
+    const nextResult = { mutate, isPending: true };
+    useMutation.mockReturnValue(firstResult);
     const { rerender } = render(
       <ReadTracker issueId={7} articleId={11} enabled trackEnd />,
     );
+    useMutation.mockReturnValue(nextResult);
     rerender(<ReadTracker issueId={7} articleId={11} enabled trackEnd />);
     expect(useMutation).toHaveBeenCalledTimes(2);
+    expect(useMutation.mock.results[0]?.value).toBe(firstResult);
+    expect(useMutation.mock.results[1]?.value).toBe(nextResult);
+    expect(firstResult).not.toBe(nextResult);
     expect(mutate).toHaveBeenCalledTimes(1);
     expect(observe).toHaveBeenCalledTimes(1);
     expect(disconnect).not.toHaveBeenCalled();
+    act(() =>
+      intersect(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      ),
+    );
+    expect(mutate).toHaveBeenLastCalledWith(
+      { issueId: 7, articleId: 11, event: "read_end" },
+      { onError: expect.any(Function) },
+    );
   });
 
   it("ignores mutation failures without throwing or showing UI", () => {

@@ -4877,7 +4877,8 @@
       "replies": "{count, plural, one {# reply} other {# replies}}",
       "projectKind": "Launchpad project",
       "upvotes": "{count, plural, one {# upvote} other {# upvotes}}",
-      "articleKind": "Article"
+      "articleKind": "Article",
+      "editorialKind": "Editorial"
     },
     "rail": {
       "visitCommunity": "Visit {community}",
@@ -4921,7 +4922,9 @@
       "readToEnd": "Read to the end",
       "note": "People who are not signed in count once a day. Your own visits as an editor are not counted.",
       "empty": "No reads yet. Numbers show up here when people open the issue.",
-      "back": "Back to the issue"
+      "back": "Back to the issue",
+      "linkFor": "Numbers <sr>for issue {number}</sr>",
+      "noArticles": "This issue has no articles."
     },
     "autoDraft": {
       "issueTitle": "Issue of {date}",
@@ -4977,11 +4980,6 @@
       "neverReuse": "Don't pick anything an earlier issue already has",
       "draftsLookLike": "Drafts look like",
       "layout": "Layout",
-      "layouts": {
-        "cover-story": "Cover story",
-        "long-read": "Long read",
-        "digest": "Digest"
-      },
       "visibility": "Visibility",
       "inheritVisibility": "Same as the magazine ({current})",
       "visibilities": {
@@ -5292,11 +5290,6 @@
         },
         "visibilityTeaser": "Preview for everyone",
         "layout": "Layout",
-        "layouts": {
-          "cover-story": "Cover story",
-          "long-read": "Long read",
-          "digest": "Digest"
-        },
         "layoutHints": {
           "cover-story": "One big lead, then a grid.",
           "long-read": "One column, read from top to bottom.",
@@ -5556,6 +5549,11 @@
       "back": "Back to the Magazine tab",
       "membersTitle": "The team",
       "empty": "Add someone to help write articles and make issues."
+    },
+    "layouts": {
+      "cover-story": "Cover story",
+      "long-read": "Long read",
+      "digest": "Digest"
     }
   },
   "magazineMail": {

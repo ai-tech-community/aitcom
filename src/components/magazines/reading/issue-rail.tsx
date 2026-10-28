@@ -27,15 +27,16 @@ export function IssueRail({
   pastIssues,
   issue,
   joinPanel,
+  url,
 }: {
   magazine: MagazineSummary;
   community: ReadingCommunity;
   pastIssues: IssueCard[];
   issue: IssueCard;
   joinPanel: ReactNode;
+  url: string;
 }) {
   const t = useTranslations("magazines.rail");
-  const share = useTranslations("share");
   return (
     <div className="flex flex-col gap-8">
       {joinPanel}
@@ -77,8 +78,8 @@ export function IssueRail({
       )}
 
       <section className="flex flex-col items-start gap-3">
-        <SectionLabel className="self-stretch">{share("label")}</SectionLabel>
         <ShareActions
+          url={url}
           title={issue.title}
           social={issue.outsiderReach !== "none"}
         />

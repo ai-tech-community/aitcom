@@ -8,6 +8,7 @@ import { resolveLocale, type AppLocale } from "@/i18n/messages";
 import { isIssueIndexable } from "@/lib/magazines/indexing";
 import { issuePath, issueShareImagePath } from "@/lib/magazines/paths";
 import {
+  absoluteLocaleUrl,
   buildOgImageMeta,
   buildOgMeta,
   localeAlternates,
@@ -92,5 +93,11 @@ export default async function IssuePage({ params }: { params: Params }) {
   const locale = resolveLocale(rawLocale);
   const data = await loadPage(magazineSlug, issueSlug, locale);
   if (!data) notFound();
-  return <IssueReader data={data} locale={locale} />;
+  return (
+    <IssueReader
+      data={data}
+      locale={locale}
+      url={absoluteLocaleUrl(locale, issuePath(data.magazine, data.issue))}
+    />
+  );
 }

@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 
 import { IssueStatsView } from "@/components/magazines/editor/stats/issue-stats-view";
 import { resolveLocale } from "@/i18n/messages";
+import { parseIssueId } from "@/lib/magazines/parse-issue-id";
 import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
 import { communities } from "@/server/db/schema";
@@ -38,9 +39,8 @@ export default async function IssueStatsPage({ params }: { params: Params }) {
       `/${locale}/auth/signin?redirect=/${locale}/communities/${slug}/magazine/issues/${rawIssueId}/stats`,
     );
   }
-  const issueId = Number(rawIssueId);
-  if (!/^[1-9]\d*$/.test(rawIssueId) || !Number.isSafeInteger(issueId))
-    notFound();
+  const issueId = parseIssueId(rawIssueId);
+  if (issueId === null) notFound();
   const deps = { db, payload: await getPayloadClient() };
   if (
     !(await canEditIssueAt(deps, {

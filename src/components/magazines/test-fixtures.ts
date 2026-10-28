@@ -239,12 +239,12 @@ export function unavailableView(n: number): UnavailableItem {
 export function issueCard(overrides: Partial<IssueCard> = {}): IssueCard {
   return {
     id: 7,
-    status: "published",
     number: 4,
     title: "The month agents learned to say no",
     slug: "issue-4",
     coverImageUrl: null,
     publishedAt: "2026-11-02T09:00:00.000Z",
+    status: "published",
     visibility: "public",
     effectiveVisibility: "public",
     outsiderReach: "full",
@@ -263,13 +263,13 @@ export function issuePage(
   return {
     access: "full",
     magazine: {
-      staffHidden: false,
       id: 3,
       name: "Agents Weekly",
       slug: "agents-weekly",
       logoUrl: null,
       description: "A monthly magazine about agents that work.",
       topics: ["agents"],
+      staffHidden: false,
     },
     community: {
       name: "Amsterdam AI Builders",
@@ -406,13 +406,13 @@ export function magazineCard(
 ): MagazineCard {
   const slug = `magazine-${n}`;
   return {
-    staffHidden: false,
     id: n,
     name: `Magazine ${n}`,
     slug,
     logoUrl: null,
     description: `About magazine ${n}.`,
     topics: ["agents"],
+    staffHidden: false,
     community: { name: `Community ${n}`, slug: `community-${n}` },
     latest: issueCard({
       id: 100 + n,

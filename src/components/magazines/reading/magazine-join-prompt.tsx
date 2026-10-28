@@ -1,12 +1,13 @@
 "use client";
 
-import type { JSX, ReactNode } from "react";
+import { createContext, useContext, type JSX, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
-import { InviteResponse } from "@/components/communities/invite-response";
+import { InviteResponseView } from "@/components/communities/invite-response";
 import {
   useCommunityJoin,
   useJoinDeepLink,
+  useInviteResponse,
   type CommunityJoin,
 } from "@/components/communities/use-community-join";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ export function MagazineJoinPromptView({
   onRun,
   busy,
   invite,
+  tone = "live",
 }: {
   community: JoinPromptCommunity;
   variant: Variant;
@@ -57,6 +59,7 @@ export function MagazineJoinPromptView({
   onRun: () => void;
   busy: boolean;
   invite?: ReactNode;
+  tone?: "live" | "preview";
 }): JSX.Element | null {
   const copy = (message: CopyKey) => (
     <JoinCopy message={message} community={community.name} />
@@ -92,7 +95,9 @@ export function MagazineJoinPromptView({
       return frame(
         <Button
           type="button"
-          variant={variant === "panel" ? "default" : "outline"}
+          variant={
+            variant === "panel" && tone === "live" ? "default" : "outline"
+          }
           className="h-auto min-h-11 max-w-full whitespace-normal"
           disabled={busy}
           aria-busy={busy || undefined}
@@ -130,18 +135,26 @@ function FinishJoin({ onDone }: { onDone: () => void }) {
   return null;
 }
 
-/** Wires the shared join flow to the view and preserves focus on refresh. */
-export function MagazineJoinPrompt({
-  community,
-  source,
-  variant,
-  focusTargetId,
-}: {
+type PromptScope = {
   community: JoinPromptCommunity;
   source: JoinSource;
-  variant: Variant;
   focusTargetId: string;
-}): JSX.Element | null {
+};
+
+type PromptState = Pick<CommunityJoin, "action" | "run" | "busy"> & {
+  invite: ReturnType<typeof useInviteResponse>;
+};
+
+const JoinPromptContext = createContext<PromptState | null>(null);
+
+/** One join state and sign-in completion for every prompt on an issue page. */
+export function MagazineJoinPromptProvider({
+  community,
+  source,
+  focusTargetId,
+  children,
+  finishJoin = true,
+}: PromptScope & { children: ReactNode; finishJoin?: boolean }) {
   const router = useRouter();
   const onChange = () => {
     document.getElementById(focusTargetId)?.focus();
@@ -152,24 +165,62 @@ export function MagazineJoinPrompt({
     source,
     onChange,
   });
+  const invite = useInviteResponse({ ...community, onChange });
   return (
-    <>
-      {variant === "panel" && <FinishJoin onDone={onChange} />}
-      <MagazineJoinPromptView
-        community={community}
-        variant={variant}
-        action={action}
-        onRun={() => void run()}
-        busy={busy}
-        invite={
-          <InviteResponse
-            slug={community.slug}
-            name={community.name}
-            variant={variant === "panel" ? "page" : "row"}
-            onAnswered={onChange}
-          />
-        }
+    <JoinPromptContext.Provider value={{ action, run, busy, invite }}>
+      {finishJoin && <FinishJoin onDone={onChange} />}
+      {children}
+    </JoinPromptContext.Provider>
+  );
+}
+
+function ConnectedJoinPrompt({
+  community,
+  variant,
+  state,
+}: {
+  community: JoinPromptCommunity;
+  variant: Variant;
+  state: PromptState;
+}) {
+  const { action, run, busy, invite } = state;
+  return (
+    <MagazineJoinPromptView
+      community={community}
+      variant={variant}
+      action={action}
+      onRun={() => void run()}
+      busy={busy}
+      invite={
+        <InviteResponseView
+          name={community.name}
+          variant={variant === "panel" ? "page" : "row"}
+          response={invite}
+        />
+      }
+    />
+  );
+}
+
+/** Shares the page's join state, or supplies it for a standalone article. */
+export function MagazineJoinPrompt(
+  props: PromptScope & { variant: Variant },
+): JSX.Element | null {
+  const state = useContext(JoinPromptContext);
+  if (state)
+    return (
+      <ConnectedJoinPrompt
+        community={props.community}
+        variant={props.variant}
+        state={state}
       />
-    </>
+    );
+  return (
+    <MagazineJoinPromptProvider
+      {...props}
+      finishJoin={props.variant === "panel"}
+    >
+      <MagazineJoinPrompt {...props} />
+    </MagazineJoinPromptProvider>
   );
 }

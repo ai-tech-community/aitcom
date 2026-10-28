@@ -101,9 +101,8 @@ describe("issue numbers", () => {
         "No reads yet. Numbers show up here when people open the issue.",
       ),
     ).toBeVisible();
-    expect(
-      screen.getByRole("rowheader", { name: "Small steps" }),
-    ).toBeVisible();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByText("Small steps")).toBeNull();
   });
 
   it("keeps numbers when an issue has subscribers but no reads", () => {
@@ -114,5 +113,9 @@ describe("issue numbers", () => {
       />,
     );
     expect(screen.queryByText(/No reads yet/)).toBeNull();
+    expect(screen.getByText("This issue has no articles.")).toHaveClass(
+      "text-muted-foreground",
+    );
+    expect(screen.queryByRole("table")).toBeNull();
   });
 });

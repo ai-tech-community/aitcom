@@ -66,7 +66,7 @@ const params = Promise.resolve({
 /** The props the page hands the long-read. */
 async function renderedProps() {
   const element = (await MagazineArticlePage({ params })) as {
-    props: { comments: unknown[] };
+    props: { comments: unknown[]; url: string };
   };
   return element.props;
 }
@@ -78,6 +78,16 @@ beforeEach(() => {
 });
 
 describe("magazine article page", () => {
+  it("hands the server's absolute canonical URL to sharing", async () => {
+    state.data = articlePage();
+    const props = await renderedProps();
+    const metadata = await generateMetadata({ params });
+    expect(props.url).toBe(metadata.alternates?.canonical);
+    expect(props.url).toMatch(
+      /^https:\/\/.*\/en\/magazines\/agents-weekly\/issue-4\/agents-that-know-when-to-stop$/,
+    );
+  });
+
   it("never fetches comments for a preview article", async () => {
     state.data = previewArticlePage();
     expect((await renderedProps()).comments).toEqual([]);
@@ -186,6 +196,7 @@ describe("magazine article page", () => {
     expect(state.commentReads).toEqual([1]);
     expect(props).toEqual({
       data: state.data,
+      url: "https://www.aitcommunity.org/en/magazines/agents-weekly/issue-4/agents-that-know-when-to-stop",
       comments: [{ id: 1, content: "Hi", parentId: null }],
       currentUserId: "viewer-1",
     });

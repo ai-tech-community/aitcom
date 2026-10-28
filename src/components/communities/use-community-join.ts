@@ -130,7 +130,6 @@ function useMembershipRunner() {
   ): Promise<boolean> => {
     const said = (key: string) =>
       name ? t(key, { community: name }) : t(`${key}Generic`);
-    const mutation = { join, request, leave, accept, decline }[verb];
     try {
       if (verb === "join" || verb === "request") {
         await (verb === "join" ? join : request).mutateAsync({
@@ -138,6 +137,7 @@ function useMembershipRunner() {
           ...(source ? { source } : {}),
         });
       } else {
+        const mutation = { leave, accept, decline }[verb];
         await mutation.mutateAsync({ slug });
       }
       toast.success(said(SAID[verb].done));

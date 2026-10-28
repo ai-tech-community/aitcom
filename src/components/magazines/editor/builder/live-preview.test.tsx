@@ -1,8 +1,6 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { NextIntlClientProvider } from "next-intl";
-import en from "../../../../../messages/en.json";
 import type { IssueLayout } from "@/lib/magazines/values";
 
 import type { EditorItemView } from "@/lib/magazines/item-views";
@@ -51,9 +49,7 @@ describe("LivePreview", () => {
       audience: "teaser" as const,
     };
     const picture = (layout: IssueLayout) => (
-      <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
-        <LivePreview {...props} details={{ ...props.details, layout }} />
-      </NextIntlClientProvider>
+      <LivePreview {...props} details={{ ...props.details, layout }} />
     );
     const { rerender } = renderWithIntl(picture("cover-story"));
     expect(screen.getByTestId("issue-lead")).toHaveTextContent(
@@ -118,8 +114,14 @@ describe("LivePreview", () => {
     expect(preview).not.toHaveTextContent("Excerpt of article 1.");
     const prompts = within(preview).getAllByText("Join Night Owls");
     expect(prompts).toHaveLength(2);
-    for (const prompt of prompts)
+    for (const prompt of prompts) {
       expect(prompt.closest("[inert]")).not.toBeNull();
+      expect(prompt.closest("button")).toHaveAttribute(
+        "data-variant",
+        "outline",
+      );
+      expect(prompt.closest("button")).not.toHaveClass("bg-primary");
+    }
     expect(
       within(preview).getByText("Read the whole issue").closest("[inert]"),
     ).not.toBeNull();

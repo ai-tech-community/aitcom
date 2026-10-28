@@ -89,6 +89,7 @@ export function AutoDraftSettingsForm({ slug }: { slug: string }) {
 function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
   const t = useTranslations("magazineEditor.autoDraft");
   const tErrors = useTranslations("magazineEditor.errors");
+  const tLayouts = useTranslations("magazineEditor.layouts");
   const displayTime = useScheduleTime();
   const utils = api.useUtils();
   const id = useId();
@@ -458,7 +459,7 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
               >
                 {ISSUE_LAYOUTS.map((layout) => (
                   <option key={layout} value={layout}>
-                    {t(`layouts.${layout}`)}
+                    {tLayouts(layout)}
                   </option>
                 ))}
               </select>

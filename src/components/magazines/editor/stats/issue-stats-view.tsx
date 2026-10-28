@@ -75,42 +75,46 @@ export function IssueStatsView({
         ))}
       </dl>
       {empty && <p className="text-muted-foreground text-sm">{t("empty")}</p>}
-      <Table className="table-fixed">
-        <TableCaption className="text-foreground mt-0 mb-3 caption-top text-left font-medium">
-          {t("articles")}
-        </TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead scope="col" className="w-1/2 whitespace-normal">
-              {t("article")}
-            </TableHead>
-            <TableHead scope="col" className="text-right whitespace-normal">
-              {t("readers")}
-            </TableHead>
-            <TableHead scope="col" className="text-right whitespace-normal">
-              {t("readToEnd")}
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {stats.articles.map((article) => (
-            <TableRow key={article.articleId}>
-              <TableHead
-                scope="row"
-                className="py-3 [overflow-wrap:anywhere] whitespace-normal"
-              >
-                {article.title}
+      {stats.articles.length === 0 ? (
+        <p className="text-muted-foreground text-sm">{t("noArticles")}</p>
+      ) : !empty ? (
+        <Table className="table-fixed">
+          <TableCaption className="text-foreground mt-0 mb-3 caption-top text-left font-medium">
+            {t("articles")}
+          </TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead scope="col" className="w-1/2 whitespace-normal">
+                {t("article")}
               </TableHead>
-              <TableCell className="text-right font-mono tabular-nums">
-                {format.number(article.readers)}
-              </TableCell>
-              <TableCell className="text-right font-mono tabular-nums">
-                {format.number(article.readToEnd)}
-              </TableCell>
+              <TableHead scope="col" className="text-right whitespace-normal">
+                {t("readers")}
+              </TableHead>
+              <TableHead scope="col" className="text-right whitespace-normal">
+                {t("readToEnd")}
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {stats.articles.map((article) => (
+              <TableRow key={article.articleId}>
+                <TableHead
+                  scope="row"
+                  className="py-3 [overflow-wrap:anywhere] whitespace-normal"
+                >
+                  {article.title}
+                </TableHead>
+                <TableCell className="text-right font-mono tabular-nums">
+                  {format.number(article.readers)}
+                </TableCell>
+                <TableCell className="text-right font-mono tabular-nums">
+                  {format.number(article.readToEnd)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : null}
       <p className="text-muted-foreground max-w-prose text-sm">{t("note")}</p>
     </div>
   );

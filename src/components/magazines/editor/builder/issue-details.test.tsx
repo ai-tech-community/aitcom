@@ -46,10 +46,14 @@ function DetailsEditor() {
 }
 
 describe("IssueDetails", () => {
-  it("the layout choice changes the preview", () => {
+  it("picks a layout and shows its hint", () => {
     renderWithIntl(<DetailsEditor />);
     const control = screen.getByRole("radiogroup", { name: "Layout" });
     expect(control).toHaveAccessibleDescription("One big lead, then a grid.");
+    expect(screen.getByText("One big lead, then a grid.")).not.toHaveAttribute(
+      "role",
+      "status",
+    );
     for (const [name, hint] of [
       ["Long read", "One column, read from top to bottom."],
       ["Digest", "A short list. Good for lots of news."],
@@ -67,7 +71,10 @@ describe("IssueDetails", () => {
   });
   it("offers preview with a hint and asks an unlisted community to confirm it", () => {
     renderWithIntl(<DetailsEditor />);
-    expect(screen.getByText("Only members can read it.")).toBeVisible();
+    const visibility = screen.getByRole("radiogroup", {
+      name: "Who can read this issue",
+    });
+    expect(visibility).toHaveAccessibleDescription("Only members can read it.");
     fireEvent.click(
       screen.getByRole("radio", { name: "Preview for everyone" }),
     );
@@ -76,6 +83,9 @@ describe("IssueDetails", () => {
         "Everyone sees the cover, the contents and the start of each article. Members read everything.",
       ),
     ).toHaveClass("text-muted-foreground", "text-sm");
+    expect(visibility).toHaveAccessibleDescription(
+      "Everyone sees the cover, the contents and the start of each article. Members read everything.",
+    );
     expect(
       screen.getByRole("checkbox", { name: /I understand/ }),
     ).not.toBeChecked();

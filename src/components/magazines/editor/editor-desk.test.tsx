@@ -330,11 +330,15 @@ describe("EditorDesk", () => {
     ];
     renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage />);
     const issues = screen.getByRole("region", { name: /Issues/ });
-    const links = within(issues).getAllByRole("link", { name: "Numbers" });
+    const links = within(issues).getAllByRole("link", {
+      name: /^Numbers for issue/,
+    });
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/communities/amsterdam-ai/magazine/issues/7/stats",
       "/communities/amsterdam-ai/magazine/issues/8/stats",
     ]);
+    expect(links[0]).toHaveAccessibleName("Numbers for issue 2");
+    expect(links[1]).toHaveAccessibleName("Numbers for issue 3");
     for (const link of links) {
       expect(link.closest("li")?.querySelectorAll("a")).toHaveLength(2);
       expect(link.closest("a a")).toBeNull();

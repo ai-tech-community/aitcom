@@ -53,7 +53,7 @@ export function previewViews(
 
 /**
  * The live preview: the issue's hero and its real layout
- * (`LAYOUTS[layout]`), as a member sees it, in a phone-sized frame, or as a
+ * (`LAYOUTS[details.layout]`), as a member sees it, in a phone-sized frame, or as a
  * visitor from outside the community sees it (nothing for a members-only
  * issue, openings and a join prompt for preview, the full issue for public).
  *
@@ -103,6 +103,7 @@ export function LivePreview({
       ? {
           inlinePrompt: (
             <MagazineJoinPromptView
+              tone="preview"
               community={{ ...community, joinPolicy: "open" }}
               variant="inline"
               action={{ kind: "join" }}
@@ -165,6 +166,7 @@ export function LivePreview({
               <Layout items={views} href={href} teaser={teaser} />
               {teaser && (
                 <MagazineJoinPromptView
+                  tone="preview"
                   community={{ ...community, joinPolicy: "open" }}
                   variant="panel"
                   action={{ kind: "join" }}

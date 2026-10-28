@@ -1,3 +1,5 @@
+// The issue reading view (mockup screen 2): contents, cover, editor's note,
+// the layout and the rail.
 vi.mock("./read-tracker", () => ({
   ReadTracker: (props: {
     issueId: number;
@@ -6,8 +8,6 @@ vi.mock("./read-tracker", () => ({
     trackEnd: boolean;
   }) => <div data-testid="read-tracker" data-props={JSON.stringify(props)} />,
 }));
-// The issue reading view (mockup screen 2): contents, cover, editor's note,
-// the layout and the rail.
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -32,6 +32,8 @@ import type * as JoinPrompt from "./magazine-join-prompt";
 vi.mock("./magazine-join-prompt", async (original) => {
   const { MagazineJoinPromptView } = await original<typeof JoinPrompt>();
   return {
+    MagazineJoinPromptProvider: ({ children }: { children: React.ReactNode }) =>
+      children,
     MagazineJoinPrompt: (
       props: React.ComponentProps<typeof JoinPrompt.MagazineJoinPrompt>,
     ) => (
@@ -75,7 +77,13 @@ describe("IssueReader", () => {
   it.each(["teaser", "full", "editor"] as const)(
     "tracks issue views for %s readers and passes the subscription source",
     (access) => {
-      renderWithIntl(<IssueReader data={issuePage({ access })} locale="en" />);
+      renderWithIntl(
+        <IssueReader
+          url="https://example.test/en/magazines/agents-weekly/issue-4"
+          data={issuePage({ access })}
+          locale="en"
+        />,
+      );
       expect(
         JSON.parse(screen.getByTestId("read-tracker").dataset.props!),
       ).toEqual({ issueId: 7, enabled: access !== "editor", trackEnd: false });
@@ -91,15 +99,13 @@ describe("IssueReader", () => {
     (outsiderReach) => {
       renderWithIntl(
         <IssueReader
+          url="https://example.test/en/magazines/agents-weekly/issue-4"
           data={issuePage({ issue: { outsiderReach } })}
           locale="en"
         />,
       );
       expect(screen.getByRole("button", { name: "Copy link" })).toBeVisible();
-      expect(screen.getByRole("heading", { name: "Share" })).toHaveAttribute(
-        "data-slot",
-        "section-label",
-      );
+      expect(screen.getByRole("group", { name: "Share" })).toBeInTheDocument();
       expect(screen.queryByRole("link", { name: /Share on X/ }) !== null).toBe(
         outsiderReach !== "none",
       );
@@ -108,6 +114,7 @@ describe("IssueReader", () => {
   it("a preview shows openings and join prompts instead of Read article", () => {
     renderWithIntl(
       <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
         data={issuePage({
           access: "teaser",
           items: [articleView(1), articleView(2)],
@@ -124,7 +131,7 @@ describe("IssueReader", () => {
     expect(title.id).not.toBe("");
     for (const prompt of [
       ...screen.getAllByTestId("join-inline"),
-      screen.getByTestId("join-panel"),
+      ...screen.getAllByTestId("join-panel"),
     ]) {
       expect(prompt).toHaveAttribute("data-focus-target", title.id);
       expect(JSON.parse(prompt.dataset.source!)).toEqual({
@@ -133,32 +140,51 @@ describe("IssueReader", () => {
         issueId: 7,
       });
     }
-    const rail = screen.getByTestId("join-panel").parentElement!;
-    expect(rail.firstElementChild).toBe(screen.getByTestId("join-panel"));
   });
 
-  it("a preview keeps one orange button: the join panel", () => {
+  it("places complementary responsive join panels after the hero and before the layout", () => {
     const { container } = renderWithIntl(
-      <IssueReader data={issuePage({ access: "teaser" })} locale="en" />,
+      <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
+        data={issuePage({ access: "teaser" })}
+        locale="en"
+      />,
     );
-    expect(container.querySelectorAll('[data-variant="default"]')).toHaveLength(
-      1,
-    );
-    expect(container.querySelectorAll(".bg-primary")).toHaveLength(1);
+    const panels = screen.getAllByTestId("join-panel");
+    expect(panels).toHaveLength(2);
+    const [mobile, rail] = panels.map((panel) => panel.parentElement!);
+    expect(mobile).toHaveClass("xl:hidden");
+    expect(mobile).not.toHaveClass("hidden");
+    expect(rail).toHaveClass("hidden", "xl:block");
+    expect(rail).not.toHaveClass("xl:hidden");
+    const hero = screen.getByRole("heading", { level: 1 }).closest("header")!;
+    expect(hero.nextElementSibling).toBe(mobile);
     expect(
-      within(screen.getByTestId("join-panel")).getByRole("button"),
-    ).toHaveAttribute("data-variant", "default");
+      mobile!.compareDocumentPosition(screen.getByTestId("issue-lead")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    for (const panel of panels) {
+      expect(within(panel).getByRole("button")).toHaveAttribute(
+        "data-variant",
+        "default",
+      );
+    }
     for (const prompt of screen.getAllByTestId("join-inline")) {
       expect(within(prompt).getByRole("button")).toHaveAttribute(
         "data-variant",
         "outline",
       );
     }
+    const ids = [...container.querySelectorAll("[id]")].map(
+      (element) => element.id,
+    );
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("a preview editorial shows its heading and intro, not its body", () => {
     const { container } = renderWithIntl(
       <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
         data={issuePage({
           access: "teaser",
           items: [
@@ -182,6 +208,7 @@ describe("IssueReader", () => {
   it("tells an editor a scheduled issue is not public yet", () => {
     renderWithIntl(
       <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
         data={issuePage({
           access: "editor",
           issue: { status: "scheduled", publishedAt: null },
@@ -198,7 +225,13 @@ describe("IssueReader", () => {
     ).toBeInTheDocument();
   });
   it("offers to subscribe in the rail", () => {
-    renderWithIntl(<IssueReader data={issuePage()} locale="en" />);
+    renderWithIntl(
+      <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
+        data={issuePage()}
+        locale="en"
+      />,
+    );
     const subscribe = screen.getByTestId("subscribe");
     expect(subscribe).toHaveAttribute("data-slug", "agents-weekly");
     expect(subscribe).toHaveTextContent("Agents Weekly");
@@ -219,7 +252,11 @@ describe("IssueReader", () => {
   it("contents list links to every item anchor in order", () => {
     const data = issuePage();
     const { container } = renderWithIntl(
-      <IssueReader data={data} locale="en" />,
+      <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
+        data={data}
+        locale="en"
+      />,
     );
 
     const contents = screen.getByRole("navigation", { name: "Contents" });
@@ -248,6 +285,7 @@ describe("IssueReader", () => {
   it("leaves 'From the editor' out when the issue has no note", () => {
     renderWithIntl(
       <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
         data={issuePage({ issue: { editorNote: null } })}
         locale="en"
       />,
@@ -266,6 +304,7 @@ describe("IssueReader", () => {
     };
     renderWithIntl(
       <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
         data={issuePage({ issue: { editorNote: cleared } })}
         locale="en"
       />,
@@ -277,7 +316,11 @@ describe("IssueReader", () => {
 
   it("only one primary (orange) button on the page", () => {
     const { container } = renderWithIntl(
-      <IssueReader data={issuePage({ access: "editor" })} locale="en" />,
+      <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
+        data={issuePage({ access: "editor" })}
+        locale="en"
+      />,
     );
     expect(
       container.querySelectorAll('[data-variant="default"]').length,
@@ -288,7 +331,13 @@ describe("IssueReader", () => {
   });
 
   it("shows the cover, the rail and a link to the community", () => {
-    renderWithIntl(<IssueReader data={issuePage()} locale="en" />);
+    renderWithIntl(
+      <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
+        data={issuePage()}
+        locale="en"
+      />,
+    );
 
     expect(
       screen.getByRole("heading", {
@@ -312,6 +361,7 @@ describe("IssueReader", () => {
   it("opens on the hero: cover beside the title, community, date and the signed note", () => {
     const { container } = renderWithIntl(
       <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
         data={issuePage({
           issue: {
             coverImageUrl: "https://example.test/cover.png",
@@ -346,6 +396,7 @@ describe("IssueReader", () => {
   it("typesets the cover when the issue has no cover image", () => {
     renderWithIntl(
       <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
         data={issuePage({ issue: { coverImageUrl: null } })}
         locale="en"
       />,
@@ -360,7 +411,11 @@ describe("IssueReader", () => {
 
   it("links to the magazine's shelf from every issue, the first one included", () => {
     renderWithIntl(
-      <IssueReader data={issuePage({ pastIssues: [] })} locale="en" />,
+      <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
+        data={issuePage({ pastIssues: [] })}
+        locale="en"
+      />,
     );
     expect(screen.getByRole("link", { name: "Agents Weekly" })).toHaveAttribute(
       "href",
@@ -373,6 +428,7 @@ describe("IssueReader", () => {
 
     renderWithIntl(
       <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
         data={issuePage({
           access: "editor",
           issue: draft,
@@ -400,14 +456,24 @@ describe("IssueReader", () => {
   });
 
   it("readers get neither the draft notice nor the Edit link", () => {
-    renderWithIntl(<IssueReader data={issuePage()} locale="en" />);
+    renderWithIntl(
+      <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
+        data={issuePage()}
+        locale="en"
+      />,
+    );
     expect(screen.queryByText("Draft — only editors can see this")).toBeNull();
     expect(screen.queryByRole("link", { name: "Edit issue" })).toBeNull();
   });
 
   it("editors of a published issue get the Edit link without the draft notice", () => {
     renderWithIntl(
-      <IssueReader data={issuePage({ access: "editor" })} locale="en" />,
+      <IssueReader
+        url="https://example.test/en/magazines/agents-weekly/issue-4"
+        data={issuePage({ access: "editor" })}
+        locale="en"
+      />,
     );
     expect(
       screen.getByRole("link", { name: "Edit issue" }),

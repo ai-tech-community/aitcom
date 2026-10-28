@@ -1,3 +1,5 @@
+// The magazine article long-read: context line, title, byline, body with a
+// contents list, "Next in this issue", comments and JSON-LD.
 vi.mock("./read-tracker", () => ({
   ReadTracker: (props: {
     issueId: number;
@@ -14,8 +16,6 @@ vi.mock("./subscribe-button", () => ({
     magazineName: string;
   }) => <div data-testid="subscribe" data-props={JSON.stringify(props)} />,
 }));
-// The magazine article long-read: context line, title, byline, body with a
-// contents list, "Next in this issue", comments and JSON-LD.
 import { screen, within } from "@testing-library/react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -111,7 +111,13 @@ describe("MagazineArticle", () => {
     (access) => {
       const data =
         access === "teaser" ? previewArticlePage() : articlePage({ access });
-      renderWithIntl(<MagazineArticle data={data} comments={[]} />);
+      renderWithIntl(
+        <MagazineArticle
+          url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
+          data={data}
+          comments={[]}
+        />,
+      );
       expect(
         JSON.parse(screen.getByTestId("read-tracker").dataset.props!),
       ).toEqual({
@@ -137,7 +143,13 @@ describe("MagazineArticle", () => {
         outsiderReach === "teaser"
           ? previewArticlePage()
           : articlePage({ issue: { outsiderReach } });
-      renderWithIntl(<MagazineArticle data={data} comments={[]} />);
+      renderWithIntl(
+        <MagazineArticle
+          url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
+          data={data}
+          comments={[]}
+        />,
+      );
       expect(screen.getByRole("button", { name: "Copy link" })).toBeVisible();
       expect(screen.queryByRole("link", { name: /Share on X/ }) !== null).toBe(
         outsiderReach !== "none",
@@ -146,7 +158,11 @@ describe("MagazineArticle", () => {
   );
   it("a preview article shows the start, the join panel and no comments", () => {
     const { container } = renderWithIntl(
-      <MagazineArticle data={previewArticlePage()} comments={comments} />,
+      <MagazineArticle
+        url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
+        data={previewArticlePage()}
+        comments={comments}
+      />,
     );
     expect(
       screen.getByText("Every agent needs a way to say no."),
@@ -192,7 +208,11 @@ describe("MagazineArticle", () => {
 
   it("marks a preview article as not free in structured data", () => {
     const { container } = renderWithIntl(
-      <MagazineArticle data={previewArticlePage()} comments={[]} />,
+      <MagazineArticle
+        url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
+        data={previewArticlePage()}
+        comments={[]}
+      />,
     );
     expect(jsonLd(container)[0]).toMatchObject({
       "@type": "Article",
@@ -203,6 +223,7 @@ describe("MagazineArticle", () => {
   it("renders the body with the shared Lexical renderer and a contents list from its headings", () => {
     renderWithIntl(
       <MagazineArticle
+        url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
         data={articlePage()}
         comments={comments}
         currentUserId="user-1"
@@ -240,6 +261,7 @@ describe("MagazineArticle", () => {
   it("has no contents list for an article with fewer than two headings", () => {
     renderWithIntl(
       <MagazineArticle
+        url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
         data={articlePage({
           article: magazineArticle({
             content: lexicalWithHeadings("A short note.", ["Only heading"]),
@@ -255,7 +277,11 @@ describe("MagazineArticle", () => {
 
   it("links back to the issue and to the next article in the issue", () => {
     renderWithIntl(
-      <MagazineArticle data={articlePage()} comments={comments} />,
+      <MagazineArticle
+        url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
+        data={articlePage()}
+        comments={comments}
+      />,
     );
 
     const context = screen.getByRole("navigation", {
@@ -278,6 +304,7 @@ describe("MagazineArticle", () => {
   it("the last article in an issue offers the way back to the issue", () => {
     renderWithIntl(
       <MagazineArticle
+        url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
         data={articlePage({ nextInIssue: null })}
         comments={comments}
       />,
@@ -290,7 +317,11 @@ describe("MagazineArticle", () => {
 
   it("marks preview articles as not fully accessible for free in JSON-LD", () => {
     const { container } = renderWithIntl(
-      <MagazineArticle data={previewArticlePage()} comments={[]} />,
+      <MagazineArticle
+        url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
+        data={previewArticlePage()}
+        comments={[]}
+      />,
     );
     expect(jsonLd(container)[0]).toMatchObject({
       "@type": "Article",
@@ -300,7 +331,11 @@ describe("MagazineArticle", () => {
 
   it("emits JSON-LD only when the issue reaches outsiders", () => {
     const { container, unmount } = renderWithIntl(
-      <MagazineArticle data={articlePage()} comments={comments} />,
+      <MagazineArticle
+        url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
+        data={articlePage()}
+        comments={comments}
+      />,
     );
     const [data] = jsonLd(container);
     expect(data).toMatchObject({
@@ -349,7 +384,11 @@ describe("MagazineArticle", () => {
       }),
     ]) {
       const { container: other, unmount: done } = renderWithIntl(
-        <MagazineArticle data={data} comments={comments} />,
+        <MagazineArticle
+          url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
+          data={data}
+          comments={comments}
+        />,
       );
       expect(jsonLd(other)).toEqual([]);
       done();
@@ -359,6 +398,7 @@ describe("MagazineArticle", () => {
   it("hands the comments to the shared thread, and shows editors a quiet note on a draft instead", () => {
     renderWithIntl(
       <MagazineArticle
+        url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
         data={articlePage()}
         comments={comments}
         currentUserId="user-1"
@@ -378,6 +418,7 @@ describe("MagazineArticle", () => {
   it("an unpublished article (editors only) has the draft note and no comment thread", () => {
     renderWithIntl(
       <MagazineArticle
+        url="https://example.test/en/magazines/agents-weekly/issue-4/article-1"
         data={articlePage({
           access: "editor",
           issue: { status: "draft", publishedAt: null, outsiderReach: "none" },

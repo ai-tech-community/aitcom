@@ -22,12 +22,6 @@ import type { IssueDetailsDraft } from "./use-issue-save";
 export const ISSUE_TITLE_MAX = 200;
 const SLUG_MAX = 60;
 
-const LAYOUT_LABELS = {
-  "cover-story": "layouts.cover-story",
-  "long-read": "layouts.long-read",
-  digest: "layouts.digest",
-} as const satisfies Record<IssueLayout, string>;
-
 const LAYOUT_HINTS = {
   "cover-story": "layoutHints.cover-story",
   "long-read": "layoutHints.long-read",
@@ -74,6 +68,8 @@ export function IssueDetails({
 }) {
   const t = useTranslations("magazineEditor.builder.details");
 
+  const tLayouts = useTranslations("magazineEditor.layouts");
+
   const titleId = useId();
   const titleErrorId = useId();
   const slugId = useId();
@@ -81,6 +77,7 @@ export function IssueDetails({
   const noteLabelId = useId();
   const noteHintId = useId();
   const layoutHintId = useId();
+  const visibilityHintId = useId();
 
   const showSlugError = !published && !slugValid;
 
@@ -195,14 +192,10 @@ export function IssueDetails({
           className="h-auto flex-wrap self-start"
           options={ISSUE_LAYOUTS.map((value) => ({
             value,
-            label: t(LAYOUT_LABELS[value]),
+            label: tLayouts(value),
           }))}
         />
-        <p
-          id={layoutHintId}
-          role="status"
-          className="text-muted-foreground text-sm"
-        >
+        <p id={layoutHintId} className="text-muted-foreground text-sm">
           {t(LAYOUT_HINTS[details.layout])}
         </p>
       </div>
@@ -211,6 +204,7 @@ export function IssueDetails({
         <p className="text-sm leading-none font-medium">{t("visibility")}</p>
         <SegmentedControl<IssueVisibility>
           aria-label={t("visibility")}
+          aria-describedby={visibilityHintId}
           value={details.visibility}
           onValueChange={handleVisibility}
           className="h-auto flex-wrap self-start"
@@ -220,7 +214,7 @@ export function IssueDetails({
             { value: "public", label: t("visibilityPublic") },
           ]}
         />
-        <p role="status" className="text-muted-foreground text-sm">
+        <p id={visibilityHintId} className="text-muted-foreground text-sm">
           {t(VISIBILITY_HINTS[details.visibility])}
         </p>
         {optInRequired && (

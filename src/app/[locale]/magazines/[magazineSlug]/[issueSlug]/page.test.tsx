@@ -58,6 +58,16 @@ beforeEach(() => {
 });
 
 describe("issue page", () => {
+  it("hands the server's absolute canonical URL to sharing", async () => {
+    state.data = issuePage();
+    const page = await IssuePage({ params });
+    const metadata = await generateMetadata({ params });
+    expect(page.props.url).toBe(metadata.alternates?.canonical);
+    expect(page.props.url).toMatch(
+      /^https:\/\/.*\/en\/magazines\/agents-weekly\/issue-4$/,
+    );
+  });
+
   it("is rendered per request", () => {
     expect(dynamic).toBe("force-dynamic");
   });

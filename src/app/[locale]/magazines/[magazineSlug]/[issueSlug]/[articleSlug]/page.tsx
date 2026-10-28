@@ -14,6 +14,7 @@ import {
   articleShareImagePath,
 } from "@/lib/magazines/paths";
 import {
+  absoluteLocaleUrl,
   buildOgImageMeta,
   buildOgMeta,
   localeAlternates,
@@ -134,6 +135,10 @@ export default async function MagazineArticlePage({
   return (
     <MagazineArticle
       data={data}
+      url={absoluteLocaleUrl(
+        locale,
+        magazineArticlePath(data.magazine, data.issue, data.article),
+      )}
       comments={comments}
       currentUserId={viewerId ?? undefined}
     />

@@ -185,6 +185,7 @@ function SettingsEditor({
   const descriptionHintId = useId();
   const topicsId = useId();
   const topicsHintId = useId();
+  const visibilityHintId = useId();
 
   const save = api.magazines.saveSettings.useMutation({
     onSuccess: () => {
@@ -425,6 +426,7 @@ function SettingsEditor({
         </p>
         <SegmentedControl<IssueVisibility>
           aria-label={t("visibilityLabel")}
+          aria-describedby={visibilityHintId}
           value={draft.defaultVisibility}
           onValueChange={handleVisibility}
           className="h-auto flex-wrap self-start"
@@ -434,7 +436,7 @@ function SettingsEditor({
             { value: "public", label: t("visibilityPublic") },
           ]}
         />
-        <p role="status" className="text-muted-foreground text-sm">
+        <p id={visibilityHintId} className="text-muted-foreground text-sm">
           {t(VISIBILITY_HINTS[draft.defaultVisibility])}
         </p>
         {optInRequired && (

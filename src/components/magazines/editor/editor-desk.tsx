@@ -77,7 +77,12 @@ function IssueRow({ issue, slug }: { issue: IssueListRow; slug: string }) {
       </Link>
       {issue.status === "published" && (
         <Button variant="ghost" size="sm" className="mb-2 ml-3" asChild>
-          <Link href={issueStatsPath(slug, issue.id)}>{tStats("label")}</Link>
+          <Link href={issueStatsPath(slug, issue.id)}>
+            {tStats.rich("linkFor", {
+              number: issue.number,
+              sr: (chunks) => <span className="sr-only">{chunks}</span>,
+            })}
+          </Link>
         </Button>
       )}
     </li>

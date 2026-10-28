@@ -99,7 +99,10 @@ describe("MagazineSettingsForm", () => {
       community: UNLISTED,
     };
     renderWithIntl(<MagazineSettingsForm slug="night-owls" />);
-    expect(screen.getByText("Only members can read it.")).toBeVisible();
+    const visibility = screen.getByRole("radiogroup", {
+      name: "Who can read new issues",
+    });
+    expect(visibility).toHaveAccessibleDescription("Only members can read it.");
     fireEvent.click(
       screen.getByRole("radio", { name: "Preview for everyone" }),
     );
@@ -108,6 +111,9 @@ describe("MagazineSettingsForm", () => {
         "Everyone sees the cover, the contents and the start of each article. Members read everything.",
       ),
     ).toHaveClass("text-muted-foreground", "text-sm");
+    expect(visibility).toHaveAccessibleDescription(
+      "Everyone sees the cover, the contents and the start of each article. Members read everything.",
+    );
     const save = screen.getByRole("button", { name: "Save changes" });
     expect(save).toBeDisabled();
     fireEvent.click(screen.getByRole("checkbox", { name: CONFIRM }));

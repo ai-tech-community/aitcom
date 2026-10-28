@@ -3,7 +3,6 @@
 import { Check, Link2, Share2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { shareTargets } from "@/lib/share";
@@ -11,21 +10,20 @@ import { shareTargets } from "@/lib/share";
 /** Page sharing, with a first render that matches the server's HTML. */
 export function ShareActions({
   title,
+  url,
   social,
 }: {
   title: string;
+  url: string;
   social: boolean;
 }) {
   const t = useTranslations("share");
-  const [url, setUrl] = useState("");
   const [nativeShare, setNativeShare] = useState(false);
   const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Reading location during render causes a server/client hydration mismatch.
-    setUrl(window.location.href);
     setNativeShare(typeof navigator.share === "function");
     return () => {
       if (timer.current) clearTimeout(timer.current);
@@ -34,10 +32,9 @@ export function ShareActions({
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setStatus(t("linkCopied"));
-      toast.success(t("linkCopied"));
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => {
         setCopied(false);
@@ -45,7 +42,6 @@ export function ShareActions({
       }, 2000);
     } catch {
       setStatus(t("linkCopyFailed"));
-      toast.error(t("linkCopyFailed"));
     }
   }
 
@@ -55,11 +51,15 @@ export function ShareActions({
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       setStatus(t("shareFailed"));
-      toast.error(t("shareFailed"));
     }
   }
 
-  const targets = shareTargets(url, title);
+  const destinations = shareTargets(url, title);
+  const targets = [
+    { name: "x", href: destinations.x, opensInNewTab: true },
+    { name: "linkedIn", href: destinations.linkedIn, opensInNewTab: true },
+    { name: "email", href: destinations.email, opensInNewTab: false },
+  ] as const;
   return (
     <div
       role="group"
@@ -78,15 +78,20 @@ export function ShareActions({
               {t("nativeShare")}
             </Button>
           )}
-          {(["x", "linkedIn", "email"] as const).map((target) => (
-            <Button key={target} variant="ghost" size="sm" asChild>
+          {targets.map(({ name, href, opensInNewTab }) => (
+            <Button key={name} variant="ghost" size="sm" asChild>
               <a
-                href={targets[target]}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={href}
+                target={opensInNewTab ? "_blank" : undefined}
+                rel={opensInNewTab ? "noopener noreferrer" : undefined}
               >
-                {t(target)}{" "}
-                <span className="sr-only">{t("opensInNewTab")}</span>
+                {t(name)}
+                {opensInNewTab && (
+                  <>
+                    {" "}
+                    <span className="sr-only">{t("opensInNewTab")}</span>
+                  </>
+                )}
               </a>
             </Button>
           ))}

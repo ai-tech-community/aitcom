@@ -11,6 +11,7 @@ const s = vi.hoisted(() => ({
   mine: [] as { slug: string; status: string; role: string }[],
   join: vi.fn(),
   request: vi.fn(),
+  accept: vi.fn(),
   promptAuth: vi.fn(),
   refresh: vi.fn(),
 }));
@@ -58,7 +59,7 @@ vi.mock("@/trpc/react", () => {
         join: { useMutation: () => ({ mutateAsync: s.join }) },
         requestToJoin: { useMutation: () => ({ mutateAsync: s.request }) },
         leave: { useMutation: () => ({ mutateAsync: vi.fn() }) },
-        acceptInvite: { useMutation: () => ({ mutateAsync: vi.fn() }) },
+        acceptInvite: { useMutation: () => ({ mutateAsync: s.accept }) },
         declineInvite: { useMutation: () => ({ mutateAsync: vi.fn() }) },
       },
     },
@@ -68,6 +69,7 @@ vi.mock("@/trpc/react", () => {
 import {
   MagazineJoinPrompt,
   MagazineJoinPromptView,
+  MagazineJoinPromptProvider,
 } from "./magazine-join-prompt";
 
 const community = { slug: "acme", name: "ACME", joinPolicy: "open" } as const;
@@ -80,6 +82,7 @@ beforeEach(() => {
   s.mine = [];
   s.join.mockResolvedValue({ success: true });
   s.request.mockResolvedValue({ success: true });
+  s.accept.mockResolvedValue({ success: true });
   window.sessionStorage.clear();
   window.history.replaceState(null, "", "/");
 });
@@ -181,6 +184,88 @@ describe("MagazineJoinPromptView", () => {
 });
 
 describe("MagazineJoinPrompt", () => {
+  it("responsive copies finish a remembered sign-in once and share the busy state", async () => {
+    rememberJoinIntent("acme", undefined, source);
+    window.history.replaceState(null, "", "/en/magazines/m/i?join=acme");
+    let finish: () => void = () => undefined;
+    s.join.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderWithIntl(
+      <MagazineJoinPromptProvider
+        community={community}
+        source={source}
+        focusTargetId="t"
+      >
+        <MagazineJoinPrompt
+          community={community}
+          source={source}
+          variant="panel"
+          focusTargetId="t"
+        />
+        <MagazineJoinPrompt
+          community={community}
+          source={source}
+          variant="panel"
+          focusTargetId="t"
+        />
+      </MagazineJoinPromptProvider>,
+    );
+    await waitFor(() =>
+      expect(s.join).toHaveBeenCalledExactlyOnceWith({ slug: "acme", source }),
+    );
+    for (const button of screen.getAllByRole("button", { name: "Join ACME" }))
+      expect(button).toBeDisabled();
+    finish();
+    await waitFor(() => expect(s.refresh).toHaveBeenCalledOnce());
+  });
+
+  it("shares a pending invitation response between responsive panel copies", async () => {
+    s.mine = [{ slug: "acme", status: "invited", role: "member" }];
+    let finish: () => void = () => undefined;
+    s.accept.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { container } = renderWithIntl(
+      <MagazineJoinPromptProvider
+        community={community}
+        source={source}
+        focusTargetId="t"
+      >
+        <MagazineJoinPrompt
+          community={community}
+          source={source}
+          variant="panel"
+          focusTargetId="t"
+        />
+        <MagazineJoinPrompt
+          community={community}
+          source={source}
+          variant="panel"
+          focusTargetId="t"
+        />
+      </MagazineJoinPromptProvider>,
+    );
+    fireEvent.click(screen.getAllByRole("button", { name: "Accept" })[0]!);
+    await waitFor(() => {
+      for (const button of screen.getAllByRole("button"))
+        expect(button).toBeDisabled();
+    });
+    expect(s.accept).toHaveBeenCalledExactlyOnceWith({ slug: "acme" });
+    const ids = [...container.querySelectorAll("[id]")].map(
+      (element) => element.id,
+    );
+    expect(new Set(ids).size).toBe(ids.length);
+    finish();
+    await waitFor(() => expect(s.refresh).toHaveBeenCalledOnce());
+  });
+
   it("a guest is asked to sign in and the source is remembered", () => {
     s.authStatus = "guest";
     renderWithIntl(

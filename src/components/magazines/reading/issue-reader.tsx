@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 
 import { useTranslations } from "next-intl";
 
@@ -11,12 +11,15 @@ import type { IssueStatus } from "@/lib/magazines/values";
 import type { IssuePageData } from "@/server/magazines/reading";
 
 import type { ItemTeaser } from "../items/types";
-import { MagazineJoinPrompt } from "./magazine-join-prompt";
 import { LAYOUTS } from "../layouts/registry";
 import { READING_FRAME } from "./frame";
 import { IssueContents } from "./issue-contents";
 import { hasEditorNote, IssueHero } from "./issue-hero";
 import { IssueRail } from "./issue-rail";
+import {
+  MagazineJoinPrompt,
+  MagazineJoinPromptProvider,
+} from "./magazine-join-prompt";
 import { ReadTracker } from "./read-tracker";
 
 function NoItems() {
@@ -65,8 +68,10 @@ function EditorBar({
  */
 export function IssueReader({
   data,
+  url,
 }: {
   data: IssuePageData;
+  url: string;
   /** Kept for parity with the other reading views; formatting follows the intl provider. */
   locale: AppLocale;
 }) {
@@ -79,7 +84,7 @@ export function IssueReader({
     issueId: issue.id,
   } as const;
   let teaser: ItemTeaser | null;
-  let joinPanel;
+  let joinPanel: ReactNode;
   switch (mode) {
     case "full":
       teaser = null;
@@ -111,7 +116,7 @@ export function IssueReader({
     magazineArticlePath(magazine, issue, { slug: articleSlug });
   const showNote = hasEditorNote(issue.editorNote);
 
-  return (
+  const reading = (
     <div className={READING_FRAME}>
       <ReadTracker
         key={issue.id}
@@ -137,6 +142,7 @@ export function IssueReader({
             />
           )}
           <IssueHero issue={issue} titleId={titleId} />
+          {joinPanel && <div className="xl:hidden">{joinPanel}</div>}
           <Layout items={items} href={href} teaser={teaser} />
           {items.length === 0 && <NoItems />}
         </article>
@@ -147,10 +153,24 @@ export function IssueReader({
             magazine={magazine}
             community={community}
             pastIssues={pastIssues}
-            joinPanel={joinPanel}
+            joinPanel={
+              joinPanel && <div className="hidden xl:block">{joinPanel}</div>
+            }
+            url={url}
           />
         </aside>
       </div>
     </div>
+  );
+  return mode === "teaser" ? (
+    <MagazineJoinPromptProvider
+      community={community}
+      source={source}
+      focusTargetId={titleId}
+    >
+      {reading}
+    </MagazineJoinPromptProvider>
+  ) : (
+    reading
   );
 }

@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 
 import { IssueBuilder } from "@/components/magazines/editor/builder/issue-builder";
 import { resolveLocale } from "@/i18n/messages";
+import { parseIssueId } from "@/lib/magazines/parse-issue-id";
 import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
 import { canEditIssueAt } from "@/server/magazines/issue-editing";
@@ -13,13 +14,6 @@ import { getPayloadClient } from "@/server/payload";
 export const dynamic = "force-dynamic";
 
 type Params = Promise<{ locale: string; slug: string; issueId: string }>;
-
-/** A positive whole number from the URL, or null. */
-function parseIssueId(raw: string): number | null {
-  if (!/^[1-9]\d*$/.test(raw)) return null;
-  const id = Number(raw);
-  return Number.isSafeInteger(id) ? id : null;
-}
 
 export async function generateMetadata({
   params,

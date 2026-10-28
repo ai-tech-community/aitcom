@@ -16,13 +16,15 @@ import { ShareActions } from "./share-actions";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+const pageUrl = "https://www.aitcommunity.org/en/magazines/weekly/issue-4";
+
 function actions(social = true, locale = "en") {
   return (
     <NextIntlClientProvider
       locale={locale}
       messages={locale === "nl" ? nl : en}
     >
-      <ShareActions title="AI & wij?" social={social} />
+      <ShareActions title="AI & wij?" url={pageUrl} social={social} />
     </NextIntlClientProvider>
   );
 }
@@ -42,7 +44,11 @@ beforeEach(() => {
     value: undefined,
   });
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  expect(toast.success).not.toHaveBeenCalled();
+  expect(toast.error).not.toHaveBeenCalled();
+  vi.useRealTimers();
+});
 
 describe("ShareActions", () => {
   it("members-only keeps copy link only", () => {
@@ -56,9 +62,9 @@ describe("ShareActions", () => {
     expect(screen.queryAllByRole("link")).toHaveLength(0);
   });
 
-  it("public shows X, LinkedIn and email links that open in a new tab", () => {
+  it("only X and LinkedIn open in a new tab; email opens the mail handler", () => {
     render(actions());
-    const url = encodeURIComponent(window.location.href);
+    const url = encodeURIComponent(pageUrl);
     const links = [
       [
         "Share on X",
@@ -68,7 +74,6 @@ describe("ShareActions", () => {
         "Share on LinkedIn",
         `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
       ],
-      ["Send by email", `mailto:?subject=AI%20%26%20wij%3F&body=${url}`],
     ];
     for (const [name, href] of links) {
       const link = screen.getByRole("link", {
@@ -82,15 +87,24 @@ describe("ShareActions", () => {
       );
       expect(["outline", "ghost"]).toContain(link.dataset.variant);
     }
+    const email = screen.getByRole("link", { name: "Send by email" });
+    expect(email).toHaveAttribute(
+      "href",
+      `mailto:?subject=AI%20%26%20wij%3F&body=${url}`,
+    );
+    expect(email).not.toHaveAttribute("target");
+    expect(email).not.toHaveAttribute("rel");
+    expect(email.querySelector(".sr-only")).toBeNull();
     expect(screen.queryByRole("button", { name: "Share…" })).toBeNull();
   });
 
-  it("does not read the page URL or native share support during server render", () => {
+  it("server render contains the supplied absolute URL before hydration", () => {
     Object.defineProperty(navigator, "share", {
       configurable: true,
       value: vi.fn(),
     });
     const html = renderToString(actions());
+    expect(html).toContain(encodeURIComponent(pageUrl));
     expect(html).not.toContain(encodeURIComponent(window.location.href));
     expect(html).not.toContain("Share…");
   });
@@ -108,22 +122,22 @@ describe("ShareActions", () => {
     await waitFor(() =>
       expect(share).toHaveBeenCalledWith({
         title: "AI & wij?",
-        url: window.location.href,
+        url: pageUrl,
       }),
     );
     expect(toast.error).not.toHaveBeenCalled();
   });
 
-  it("copies the current link, announces success and resets its state", async () => {
+  it("copies the supplied link, announces success once and resets its state", async () => {
     vi.useFakeTimers();
     const { unmount } = render(actions(false));
     await act(async () =>
       fireEvent.click(screen.getByRole("button", { name: "Copy link" })),
     );
-    expect(writeText).toHaveBeenCalledWith(window.location.href);
+    expect(writeText).toHaveBeenCalledWith(pageUrl);
     expect(screen.getByRole("status")).toHaveTextContent("Link copied");
-    expect(toast.success).toHaveBeenCalledWith("Link copied");
     await act(() => vi.advanceTimersByTime(2000));
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
     expect(screen.getByRole("button", { name: "Copy link" })).toBeVisible();
     unmount();
     expect(vi.getTimerCount()).toBe(0);
@@ -151,9 +165,6 @@ describe("ShareActions", () => {
       expect(screen.getByRole("status")).toHaveTextContent(
         "De link kon niet worden gekopieerd",
       ),
-    );
-    expect(toast.error).toHaveBeenCalledWith(
-      "De link kon niet worden gekopieerd",
     );
   });
 });

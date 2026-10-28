@@ -25,7 +25,7 @@ import {
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import type { MagazineArticlePageData } from "@/server/magazines/reading";
 
-import { ArticleItem } from "../items/article-item";
+import { IssueItem } from "../items/registry";
 import { READING_FRAME } from "./frame";
 import { MagazineJoinPrompt } from "./magazine-join-prompt";
 import { ReadTracker } from "./read-tracker";
@@ -184,11 +184,10 @@ function NextInIssue({ data }: { data: MagazineArticlePageData }) {
     >
       <SectionLabel id={NEXT_IN_ISSUE_LABEL}>{t("nextInIssue")}</SectionLabel>
       {nextInIssue ? (
-        <ArticleItem
+        <IssueItem
           view={nextInIssue}
-          size="card"
+          size="related"
           teaser={null}
-          showExcerpt
           href={(slug) => magazineArticlePath(magazine, issue, { slug })}
         />
       ) : (
@@ -217,10 +216,12 @@ export function MagazineArticle({
   data,
   comments,
   currentUserId,
+  url,
 }: {
   data: MagazineArticlePageData;
   comments: MagazineArticleComments;
   currentUserId?: string;
+  url: string;
 }) {
   const t = useTranslations("magazines.article");
   const locale = useLocale();
@@ -311,6 +312,7 @@ export function MagazineArticle({
             trackEnd={data.mode === "full"}
           />
           <ShareActions
+            url={url}
             title={article.title}
             social={issue.outsiderReach !== "none"}
           />
