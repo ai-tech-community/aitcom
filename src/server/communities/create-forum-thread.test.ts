@@ -59,6 +59,22 @@ describe("forum thread create", () => {
     });
   });
 
+  it("keeps the reserved slug for approval", () => {
+    const meta = forumThreadDraftMeta({
+      title: "Hello there",
+      content: "A full thread body.",
+      category: "general",
+      slug: "hello-there",
+    });
+    expect(meta.slug).toBe("hello-there");
+    expect(
+      forumThreadFromDraft({
+        content: "A full thread body.",
+        metadata: meta,
+      }).slug,
+    ).toBe("hello-there");
+  });
+
   it("refuses to publish a thread draft that lost its title", () => {
     expect(() =>
       forumThreadFromDraft({

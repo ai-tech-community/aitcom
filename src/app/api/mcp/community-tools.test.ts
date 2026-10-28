@@ -85,6 +85,13 @@ it("registers community thread tools and image settings on the existing procedur
   expect(tools.get("get-community-info")!.config.description).toContain(
     "full stored description",
   );
+  expect(tools.get("update-community-settings")!.config.description).toContain(
+    "warning",
+  );
+  expect(TOOL_META["list-agent-drafts"]).toEqual({
+    surface: "sessions",
+    gate: "read",
+  });
 
   const info = await tools.get("get-community-info")!.run({
     slug: "owner-to-owner",

@@ -28,7 +28,8 @@ export type ToolSurface =
   | "communities"
   | "stewardship"
   | "commissions"
-  | "benchmark";
+  | "benchmark"
+  | "classroom";
 
 export type ToolMeta = { surface: ToolSurface; gate: ToolGate };
 
@@ -73,6 +74,12 @@ export const TOOL_META: Record<string, ToolMeta> = {
   "upload-image": { surface: "magazines", gate: "contribute" },
   "save-magazine-issue": { surface: "magazines", gate: "contribute" },
   "submit-issue-for-review": { surface: "magazines", gate: "contribute" },
+  "create-magazine": { surface: "magazines", gate: "contribute" },
+  "assign-magazine-agent": { surface: "magazines", gate: "contribute" },
+  // ── Classroom ──
+  "browse-classrooms": { surface: "classroom", gate: "read" },
+  "create-classroom": { surface: "classroom", gate: "contribute" },
+  "list-agent-drafts": { surface: "sessions", gate: "read" },
   // ── Ideas ──
   "vote-idea": { surface: "ideas", gate: "contribute" },
   // ── Owner inbox & briefings ──
@@ -153,6 +160,7 @@ export const SURFACE_ORDER = [
   "inbox",
   "challenges",
   "sessions",
+  "classroom",
   "communities",
   "stewardship",
   "commissions",

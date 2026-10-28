@@ -5,12 +5,8 @@ import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { routing } from "@/i18n/routing";
 import { HUB_SLUG } from "@/server/communities/hub";
 import { isContentPublic } from "@/server/communities/content-visibility";
-import {
-  agentDrafts,
-  agentProfiles,
-  communities,
-  user as users,
-} from "@/server/db/schema";
+import { agentDrafts, agentProfiles, communities } from "@/server/db/schema";
+import { memberDisplayName } from "@/server/members/display-name";
 import { magazineAgentIssueReviewPath } from "@/lib/magazines/paths";
 import type { Article, Magazine, MagazineIssue } from "@/payload-types";
 
@@ -80,6 +76,7 @@ type DraftMeta = {
   articleIds?: number[];
   destinationLabel?: string;
   destinationPath?: string;
+  slug?: string;
 };
 
 type LiveCommunity = {
@@ -115,14 +112,7 @@ function articleIdsOf(issue: MagazineIssue): number[] {
 }
 
 async function ownerName(deps: Deps, ownerId: string): Promise<string> {
-  const [row] = await deps.db
-    .select({ name: users.name })
-    .from(users)
-    .where(eq(users.id, ownerId))
-    .limit(1);
-  const name = row?.name?.trim();
-  if (!name) return "member";
-  return name;
+  return (await memberDisplayName(deps.db, ownerId)) ?? "member";
 }
 
 async function liveCommunity(
@@ -578,9 +568,10 @@ export async function saveMagazineArticle(
       content: created.title,
       metadata: magazineMeta(magazine, community, {
         title: created.title,
+        slug: created.slug,
       }),
     });
-    return articleResult(deps, created, null);
+    return articleResult(deps, created, null, input.body ?? null);
   }
 
   const owned = await findOwnedDraft(
@@ -635,13 +626,17 @@ export async function saveMagazineArticle(
     .update(agentDrafts)
     .set({
       content: updated.title,
-      metadata: magazineMeta(magazine, community, { title: updated.title }),
+      metadata: magazineMeta(magazine, community, {
+        title: updated.title,
+        slug: updated.slug,
+      }),
     })
     .where(eq(agentDrafts.id, owned.id));
   return articleResult(
     deps,
     updated,
     existing.reviewStatus ?? null,
+    input.body ?? null,
     input.articleId,
   );
 }
@@ -675,6 +670,7 @@ async function articleResult(
   deps: Deps,
   article: Article,
   reviewStatus: string | null,
+  body: string | null,
   fallbackId?: number,
 ) {
   const bySlug = await mainArticleIdsBySlug(deps, [article.slug]);
@@ -694,6 +690,7 @@ async function articleResult(
     reviewStatus,
     mediaUrl: article.mediaUrl ?? null,
     updatedAt: article.updatedAt,
+    body,
   };
 }
 
@@ -944,6 +941,7 @@ export async function saveMagazineIssue(
       metadata: magazineMeta(magazine, community, {
         issueId: issue.id,
         title: issue.title,
+        slug: issue.slug,
         articleIds: [],
         destinationPath: magazineAgentIssueReviewPath(community.slug, draftId),
       }),
@@ -1035,6 +1033,7 @@ export async function saveMagazineIssue(
         metadata: magazineMeta(magazine, community, {
           issueId: written.id,
           title: written.title,
+          slug: written.slug,
           articleIds,
           destinationPath: magazineAgentIssueReviewPath(
             community.slug,
@@ -1055,6 +1054,7 @@ export async function saveMagazineIssue(
     articleIds,
     items: toItemInputs((written.items ?? []) as StoredBlock[]),
     updatedAt: written.updatedAt,
+    body: written.title,
     review: "draft" as const,
   };
 }
@@ -1291,24 +1291,37 @@ async function listIssues(
       .map((draft) => [draft.id, draft.status]),
   );
   return docs
-    .map((issue) => ({
-      id: issue.id,
-      number: Number(issue.number),
-      title: issue.title,
-      slug: issue.slug,
-      status: issue.status,
-      visibility: issue.visibility,
-      coverImageUrl: issue.coverImageUrl ?? null,
-      publishedAt: issue.publishedAt ?? null,
-      articleIds: articleIdsOf(issue),
-      agentReview:
+    .map((issue) =>
+      presentBrowsedIssue(
+        issue,
         reviewByIssue.get(issue.id) === "pending"
-          ? ("pending" as const)
+          ? "pending"
           : reviewByIssue.get(issue.id) === "draft"
-            ? ("draft" as const)
+            ? "draft"
             : null,
-    }))
+      ),
+    )
     .sort((a, b) => b.number - a.number || a.id - b.id);
+}
+
+/** One issue in browse-magazines. `updatedAt` is what save-magazine-issue sends back. */
+export function presentBrowsedIssue(
+  issue: MagazineIssue,
+  agentReview: "pending" | "draft" | null,
+) {
+  return {
+    id: issue.id,
+    number: Number(issue.number),
+    title: issue.title,
+    slug: issue.slug,
+    status: issue.status,
+    visibility: issue.visibility,
+    coverImageUrl: issue.coverImageUrl ?? null,
+    publishedAt: issue.publishedAt ?? null,
+    articleIds: articleIdsOf(issue),
+    updatedAt: issue.updatedAt,
+    agentReview,
+  };
 }
 
 async function listArticles(

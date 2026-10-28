@@ -1,7 +1,15 @@
+import { TRPCError } from "@trpc/server";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
+import { MAGAZINE_ROLES } from "@/lib/magazines/roles";
+import {
+  ISSUE_VISIBILITIES,
+  MAGAZINE_SLUG_PATTERN,
+  MAX_MAGAZINE_TOPICS,
+} from "@/lib/magazines/values";
 import { agentProcedure, requireOwner, requireScope } from "@/server/api/trpc";
-import { issueItemInputSchema } from "@/server/magazines/items/registry";
+import { communities } from "@/server/db/schema";
 import { uploadMagazineImage } from "@/server/magazines/agent-image";
 import {
   browseMagazines,
@@ -9,7 +17,24 @@ import {
   saveMagazineIssue,
   submitAgentIssue,
 } from "@/server/magazines/agent-magazine";
+import {
+  loadMagazineEditorship,
+  requireCapability,
+} from "@/server/magazines/editorship";
+import { magazineError } from "@/server/magazines/errors";
+import { issueItemInputSchema } from "@/server/magazines/items/registry";
+import {
+  getMagazineForCommunity,
+  saveMagazineSettings,
+} from "@/server/magazines/magazine-service";
+import { assignMagazineRole } from "@/server/magazines/staff-service";
 import { getPayloadClient } from "@/server/payload";
+
+const magazineSlugSchema = z
+  .string()
+  .min(3)
+  .max(60)
+  .regex(MAGAZINE_SLUG_PATTERN);
 
 const httpUrl = z
   .string()
@@ -113,6 +138,139 @@ export const agentMagazineRouter = {
         await depsOf(ctx),
         { agentId: ctx.agent.agentId, ownerId },
         input,
+      );
+    }),
+
+  createMagazine: agentProcedure
+    .input(
+      z.object({
+        communitySlug: z.string().min(1).max(80),
+        name: z.string().trim().min(1).max(120),
+        magazineSlug: magazineSlugSchema,
+        description: z.string().max(500).optional(),
+        logoUrl: httpUrl.nullable().optional(),
+        topics: z
+          .array(z.string().max(40))
+          .max(MAX_MAGAZINE_TOPICS * 4)
+          .default([]),
+        defaultVisibility: z.enum(ISSUE_VISIBILITIES).default("members"),
+        confirmUnlistedPublic: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+        columns: {
+          id: true,
+          slug: true,
+          name: true,
+          isListedInDirectory: true,
+        },
+      });
+      if (!community) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
+      }
+      const deps = await depsOf(ctx);
+      const existing = await getMagazineForCommunity(
+        deps.payload,
+        community.id,
+      );
+      if (existing) throw magazineError("MAGAZINE_EXISTS");
+      const standing = await loadMagazineEditorship(
+        ctx.db,
+        { communityId: community.id, magazineId: null },
+        ownerId,
+      );
+      requireCapability(standing, "manage");
+      const magazine = await saveMagazineSettings(
+        deps,
+        {
+          id: community.id,
+          slug: community.slug,
+          isListedInDirectory: community.isListedInDirectory,
+        },
+        {
+          name: input.name,
+          slug: input.magazineSlug,
+          description: input.description,
+          logoUrl: input.logoUrl,
+          topics: input.topics,
+          defaultVisibility: input.defaultVisibility,
+          confirmUnlistedPublic: input.confirmUnlistedPublic,
+        },
+        ownerId,
+        standing.leadsCommunity,
+      );
+      return {
+        id: magazine.id,
+        slug: magazine.slug,
+        name: magazine.name,
+        communityId: magazine.communityId,
+      };
+    }),
+
+  assignMagazineAgent: agentProcedure
+    .input(
+      z.object({
+        communitySlug: z.string().min(1).max(80),
+        userId: z.string().min(1).max(255),
+        agentId: z.string().min(1).max(255),
+        role: z.enum(MAGAZINE_ROLES),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+        columns: { id: true, slug: true, name: true },
+      });
+      if (!community) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
+      }
+      const deps = await depsOf(ctx);
+      const magazine = await getMagazineForCommunity(
+        deps.payload,
+        community.id,
+      );
+      if (!magazine) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "This community has no magazine yet.",
+        });
+      }
+      const standing = await loadMagazineEditorship(
+        ctx.db,
+        { communityId: community.id, magazineId: magazine.id },
+        ownerId,
+      );
+      requireCapability(standing, "manage");
+      return assignMagazineRole(
+        ctx.db,
+        {
+          id: magazine.id,
+          name: magazine.name,
+          communityId: community.id,
+        },
+        { userId: input.userId, agentId: input.agentId, role: input.role },
+        {
+          userId: ownerId,
+          community: { id: community.id, slug: community.slug },
+        },
       );
     }),
 

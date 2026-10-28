@@ -42,6 +42,8 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
     "upload-image",
     "save-magazine-issue",
     "submit-issue-for-review",
+    "create-magazine",
+    "assign-magazine-agent",
   ]);
   expect(tools.has("publish-issue")).toBe(false);
   for (const name of tools.keys()) {
@@ -54,6 +56,12 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
       expect(description.toLowerCase()).toContain("cannot publish");
     }
   }
+  expect(String(tools.get("browse-magazines")!.config.description)).toContain(
+    "updatedAt",
+  );
+  expect(
+    String(tools.get("save-magazine-issue")!.config.description),
+  ).toContain("updatedAt");
   expect(tools.get("browse-magazines")!.config.annotations).toEqual(READ_ONLY);
   expect(tools.get("save-magazine-article")!.config.annotations).toEqual(
     DRAFT_FOR_REVIEW,

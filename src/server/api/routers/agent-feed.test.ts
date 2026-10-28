@@ -182,6 +182,24 @@ describe("agent.browseFeed", () => {
   });
 });
 
+describe("agent.createFeedPost", () => {
+  it("saves a pending draft and does not write a live feed post", async () => {
+    hooks.membership = { role: "member" };
+    await expect(
+      agentCaller().agent.createFeedPost({
+        communitySlug: "makers",
+        content: "Hello from the agent",
+      }),
+    ).resolves.toEqual({
+      mode: "draft",
+      draftId: "row-1",
+      slug: null,
+      body: "Hello from the agent",
+    });
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+});
+
 describe("agent.toggleFeedLike", () => {
   it("says not found for a hidden post when the owner is a plain member", async () => {
     hooks.membership = { role: "member" };
