@@ -5,6 +5,7 @@ import {
   issueShareImagePath,
   communityMagazinePath,
   issueBuilderPath,
+  issueStatsPath,
   issuePath,
   magazineArticleEditPath,
   magazineArticlePath,
@@ -63,6 +64,12 @@ describe("magazine paths", () => {
   it("issueBuilderPath is the issue builder in the community", () => {
     expect(issueBuilderPath("builders", 42)).toBe(
       "/communities/builders/magazine/issues/42/edit",
+    );
+  });
+
+  it("issueStatsPath opens the issue's numbers", () => {
+    expect(issueStatsPath("builders", 42)).toBe(
+      "/communities/builders/magazine/issues/42/stats",
     );
   });
 

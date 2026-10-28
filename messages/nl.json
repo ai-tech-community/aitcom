@@ -4909,6 +4909,20 @@
     }
   },
   "magazineEditor": {
+    "stats": {
+      "label": "Cijfers",
+      "heading": "Hoe het gaat met nummer {number}",
+      "views": "Weergaven",
+      "readers": "Lezers",
+      "newSubscribers": "Nieuwe abonnees",
+      "joins": "Lid geworden van {community}",
+      "articles": "Artikelen",
+      "article": "Artikel",
+      "readToEnd": "Tot het einde gelezen",
+      "note": "Mensen die niet zijn ingelogd tellen één keer per dag mee. Je eigen bezoeken als redacteur tellen niet mee.",
+      "empty": "Nog niet gelezen. Hier verschijnen cijfers zodra mensen dit nummer openen.",
+      "back": "Terug naar het nummer"
+    },
     "autoDraft": {
       "issueTitle": "Nummer van {date}",
       "welcome": {

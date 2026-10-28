@@ -11,6 +11,8 @@ const ROOT = join(__dirname, "..", "..", "..");
 
 /** Each reviewed reader, with the rule it applies to what it reads. */
 const READERS: Record<string, string> = {
+  "src/server/magazines/stats/issue-stats.ts":
+    "titles only, of articles placed in the issue; callers gate with canEditIssueAt",
   "src/server/magazines/share-cards.ts":
     "anonymous scope via loadReadableIssue (viewerId null); article must be published and placed in this issue",
   "src/app/sitemap.ts":
@@ -71,7 +73,10 @@ describe("articles readers", () => {
   it("every module that queries the articles collection is a reviewed reader", () => {
     const readers = sourceFiles(join(ROOT, "src"))
       .filter((path) =>
-        /collection:\s*"articles"/.test(readFileSync(path, "utf8")),
+        // Populated article relationships are reads, too.
+        /collection:\s*"articles"|populate:\s*\{[^}]*\barticles:/.test(
+          readFileSync(path, "utf8"),
+        ),
       )
       .map((path) => relative(ROOT, path))
       .sort();

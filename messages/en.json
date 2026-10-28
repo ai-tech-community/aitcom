@@ -4909,6 +4909,20 @@
     }
   },
   "magazineEditor": {
+    "stats": {
+      "label": "Numbers",
+      "heading": "How issue {number} is doing",
+      "views": "Views",
+      "readers": "Readers",
+      "newSubscribers": "New subscribers",
+      "joins": "Joined {community}",
+      "articles": "Articles",
+      "article": "Article",
+      "readToEnd": "Read to the end",
+      "note": "People who are not signed in count once a day. Your own visits as an editor are not counted.",
+      "empty": "No reads yet. Numbers show up here when people open the issue.",
+      "back": "Back to the issue"
+    },
     "autoDraft": {
       "issueTitle": "Issue of {date}",
       "welcome": {

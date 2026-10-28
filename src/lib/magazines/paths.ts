@@ -77,6 +77,11 @@ export function issueBuilderPath(
   return `${communityMagazinePath(communitySlug)}/issues/${issueId}/edit`;
 }
 
+/** The editor's numbers for one issue. */
+export function issueStatsPath(communitySlug: string, issueId: number): string {
+  return `${communityMagazinePath(communitySlug)}/issues/${issueId}/stats`;
+}
+
 /** The magazine's settings (create or edit) in the magazine area. */
 export function magazineSettingsPath(communitySlug: string): string {
   return `${communityMagazinePath(communitySlug)}/settings`;
