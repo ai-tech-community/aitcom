@@ -61,6 +61,12 @@ it("registers scoped read and draft-only news tools that delegate to authenticat
   const query = { q: "local", page: 2 };
   await tools.get("browse-news")!.run(query as never);
   expect(caller.agent.browseNews).toHaveBeenCalledWith(query);
+  const storylines = { query: "local ai", q: "alias", page: 1 };
+  await tools.get("browse-news-storylines")!.run(storylines as never);
+  expect(caller.agent.browseNewsStorylines).toHaveBeenCalledWith(storylines);
+  const research = { q: "local" };
+  await tools.get("browse-news-research")!.run(research as never);
+  expect(caller.agent.browseNewsResearch).toHaveBeenCalledWith(research);
   const proposal = {
     reservationId: "r1",
     slug: "local-ai",

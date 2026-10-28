@@ -8,6 +8,10 @@ import { storylineProposalSchema } from "@/lib/news/storyline-suggestions";
 import { submitAgentStoryline } from "@/server/news/agent-storylines";
 import { newsSourceFromUrl } from "@/lib/news/table";
 import {
+  matchesNewsBrowseQuery,
+  newsBrowseQuery,
+} from "@/lib/news/browse-query";
+import {
   listStorylineResearch,
   reserveStoryline,
   releaseStorylineReservation,
@@ -15,10 +19,25 @@ import {
 } from "@/server/news/storyline-reservations";
 
 export const agentNewsRouter = {
-  browseNewsResearch: agentProcedure.query(async ({ ctx }) => {
-    requireScope(ctx.agent.scopes, "read");
-    return { items: await listStorylineResearch() };
-  }),
+  browseNewsResearch: agentProcedure
+    .input(
+      z
+        .object({
+          query: z.string().max(200).optional(),
+          q: z.string().max(200).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+      const query = newsBrowseQuery(input ?? {});
+      const items = await listStorylineResearch();
+      return {
+        items: items.filter((item) =>
+          matchesNewsBrowseQuery([item.title, item.topicKey, item.slug], query),
+        ),
+      };
+    }),
   reserveNewsStoryline: agentProcedure
     .input(reserveStorylineSchema)
     .mutation(({ ctx, input }) => {
@@ -64,13 +83,17 @@ export const agentNewsRouter = {
   browseNewsStorylines: agentProcedure
     .input(
       z.object({
+        query: z.string().max(200).optional(),
         q: z.string().max(200).default(""),
         page: z.number().int().min(1).default(1),
       }),
     )
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
-      const result = await listStorylines(input);
+      const result = await listStorylines({
+        q: newsBrowseQuery(input),
+        page: input.page,
+      });
       return {
         ...result,
         items: result.items.map(
