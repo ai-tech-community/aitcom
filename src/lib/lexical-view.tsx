@@ -3,6 +3,7 @@ import { slugify } from "@/lib/text-utils";
 
 import { extractPlainText } from "./lexical-text";
 import {
+  admonitionBorderClass,
   splitAdmonition,
   stripStrayEmptyParagraphs,
   type LexicalLikeNode,
@@ -55,24 +56,29 @@ export type BlockRenderers = Record<
   (fields: Record<string, unknown>) => React.ReactNode
 >;
 
-/**
- * Callout body copy is `text-foreground` on a faint status tint. The hue is
- * only the border (a second cue beside the variant word), so the words stay
- * at the same contrast as the article in light and dark. Light status-100
- * text on a 10% tint failed WCAG AA in light mode.
- */
-const ADMONITION_BORDER: Record<string, string> = {
-  INFO: "border-info/60 bg-info/10",
-  WARNING: "border-warning/60 bg-warning/10",
-  SUCCESS: "border-success/60 bg-success/10",
-  NOTE: "border-border bg-muted",
-};
-
 type RenderContext = {
   slugMap: Map<string, number>;
   blockRenderers?: BlockRenderers;
   renderCode?: (code: string, language: string | undefined) => React.ReactNode;
 };
+
+function renderAdmonition(
+  idx: number,
+  variant: string,
+  body: React.ReactNode,
+): React.ReactNode {
+  return (
+    <aside
+      key={idx}
+      role="note"
+      data-admonition={variant}
+      className={`text-foreground my-4 rounded border px-4 py-3 ${admonitionBorderClass(variant)}`}
+    >
+      <p className="font-mono text-xs tracking-wider">{variant}</p>
+      {body ? <div className="mt-1 text-sm leading-relaxed">{body}</div> : null}
+    </aside>
+  );
+}
 
 function isHttpUrl(src: string): boolean {
   try {
@@ -104,26 +110,12 @@ function renderNode(
 
       const admonition = splitAdmonition(node.children ?? []);
       if (admonition && plain.startsWith("[!")) {
-        const border =
-          ADMONITION_BORDER[admonition.variant] ?? ADMONITION_BORDER.NOTE;
-        return (
-          <aside
-            key={idx}
-            role="note"
-            data-admonition={admonition.variant}
-            className={`text-foreground my-4 rounded border px-4 py-3 ${border}`}
-          >
-            <p className="font-mono text-xs tracking-wider">
-              {admonition.variant}
-            </p>
-            {admonition.body.length > 0 ? (
-              <div className="mt-1 text-sm leading-relaxed">
-                {admonition.body.map((child, i) =>
-                  renderNode(child as LexicalNode, i, ctx),
-                )}
-              </div>
-            ) : null}
-          </aside>
+        return renderAdmonition(
+          idx,
+          admonition.variant,
+          admonition.body.map((child, i) =>
+            renderNode(child as LexicalNode, i, ctx),
+          ),
         );
       }
 
@@ -306,6 +298,18 @@ function renderNode(
         >
           {node.children?.map((c, i) => renderNode(c, i, ctx))}
         </a>
+      );
+    }
+
+    case "admonition": {
+      const variant = typeof node.variant === "string" ? node.variant : "INFO";
+      const inner = (node.children ?? []).flatMap(
+        (child) => child.children ?? [child],
+      );
+      return renderAdmonition(
+        idx,
+        variant,
+        inner.map((child, i) => renderNode(child as LexicalNode, i, ctx)),
       );
     }
 

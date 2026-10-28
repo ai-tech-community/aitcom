@@ -77,6 +77,7 @@ import { LinkPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalLi
 import { cn } from "@/lib/utils";
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
+import { $createAdmonitionNode, AdmonitionNode } from "./nodes/admonition-node";
 import { $insertTopLevel } from "./insert-top-level";
 import type { SlashGroup, SlashCommand } from "./types";
 import { slashMenuReducer } from "./reducers";
@@ -377,6 +378,7 @@ export function RichTextEditor({
         HorizontalRuleNode,
         CodeBlockNode,
         ImageNode,
+        AdmonitionNode,
         ...extensions.map((e) => e.node),
       ],
       editorState: initialValue
@@ -505,21 +507,35 @@ export function RichTextEditor({
         slashDispatch({ type: "CLOSE" });
         return;
       }
-      if (id === "admonition-info")
-        insertParagraphText(
-          editorRef,
-          "[!INFO] Short info title\nExplain the context and expected behavior.",
-        );
-      if (id === "admonition-warning")
-        insertParagraphText(
-          editorRef,
-          "[!WARNING] Important warning\nDescribe risk, impact, and mitigation steps.",
-        );
-      if (id === "admonition-success")
-        insertParagraphText(
-          editorRef,
-          "[!SUCCESS] Good practice\nExplain what success looks like and why it works.",
-        );
+      if (id === "admonition-info") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode("Explain the context and expected behavior."),
+          );
+          $insertTopLevel([$createAdmonitionNode("INFO"), body]);
+        });
+      }
+      if (id === "admonition-warning") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode("Describe risk, impact, and mitigation steps."),
+          );
+          $insertTopLevel([$createAdmonitionNode("WARNING"), body]);
+        });
+      }
+      if (id === "admonition-success") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode(
+              "Explain what success looks like and why it works.",
+            ),
+          );
+          $insertTopLevel([$createAdmonitionNode("SUCCESS"), body]);
+        });
+      }
       if (id === "mermaid")
         insertParagraphText(
           editorRef,

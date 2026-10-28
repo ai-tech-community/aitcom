@@ -71,7 +71,7 @@ describe("LexicalRenderer admonitions, links and empty paragraphs", () => {
     );
   });
 
-  it("omits empty paragraphs that only pad a block and keeps a blank line in the prose", () => {
+  it("omits empty paragraphs, including runs around a list and a callout", () => {
     const { container } = render(
       <LexicalRenderer
         content={{
@@ -87,6 +87,28 @@ describe("LexicalRenderer admonitions, links and empty paragraphs", () => {
                 children: [{ type: "text", text: "Still before" }],
               },
               { type: "paragraph", children: [{ type: "text", text: " " }] },
+              {
+                type: "list",
+                listType: "bullet",
+                children: [
+                  {
+                    type: "listitem",
+                    children: [
+                      {
+                        type: "paragraph",
+                        children: [{ type: "text", text: "One thing" }],
+                      },
+                    ],
+                  },
+                ],
+              },
+              { type: "paragraph", children: [] },
+              { type: "paragraph", children: [] },
+              {
+                type: "paragraph",
+                children: [{ type: "text", text: "[!INFO] Good to know" }],
+              },
+              { type: "paragraph", children: [] },
               {
                 type: "image",
                 src: "https://img.example.test/a.png",
@@ -105,7 +127,16 @@ describe("LexicalRenderer admonitions, links and empty paragraphs", () => {
     const paragraphs = [...container.querySelectorAll("p")].map(
       (p) => p.textContent,
     );
-    expect(paragraphs).toEqual(["Before", "", "Still before", "After"]);
+    expect(paragraphs).toEqual([
+      "Before",
+      "Still before",
+      "One thing",
+      "INFO",
+      "After",
+    ]);
+    expect(
+      container.querySelector("[data-admonition='INFO']"),
+    ).toHaveTextContent("Good to know");
     expect(container.querySelector("img")).toHaveAttribute(
       "src",
       "https://img.example.test/a.png",

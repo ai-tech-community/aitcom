@@ -57,6 +57,7 @@ import { LinkPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalLi
 
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
+import { $createAdmonitionNode, AdmonitionNode } from "./nodes/admonition-node";
 import { $insertTopLevel } from "./insert-top-level";
 import { renderLexicalDocument } from "@/lib/lexical-view";
 import type {
@@ -161,6 +162,12 @@ export function ArticleEditor({
   const serializeTimer = useRef<NodeJS.Timeout | null>(null);
   const messageTimer = useRef<NodeJS.Timeout | null>(null);
   const initialized = useRef(false);
+  // Lexical reports the loaded document once. That echo is not an edit, so
+  // opening an article does not write the normalized body back.
+  const skipLoadEcho = useRef(initialData?.id != null);
+  const bodyTouched = useRef(false);
+  const initialDataRef = useRef(initialData);
+  initialDataRef.current = initialData;
   const savingRef = useRef(false);
   const submittingRef = useRef(false);
   savingRef.current = saving;
@@ -205,6 +212,7 @@ export function ArticleEditor({
         HorizontalRuleNode,
         CodeBlockNode,
         ImageNode,
+        AdmonitionNode,
       ],
       editorState: initialData?.content
         ? preprocessEditorState(initialData.content)
@@ -471,6 +479,13 @@ export function ArticleEditor({
       savingRef.current
     )
       return;
+    const loaded = initialDataRef.current;
+    const metaDirty =
+      title !== (loaded?.title ?? "") ||
+      mediaUrl !== (loaded?.mediaUrl ?? "") ||
+      type !== (loaded?.type ?? "article") ||
+      tags.join("\0") !== (loaded?.tags ?? []).map((tag) => tag.tag).join("\0");
+    if (!bodyTouched.current && !metaDirty) return;
     dispatch({ type: "MARK_UNSAVED" });
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
 
@@ -494,6 +509,8 @@ export function ArticleEditor({
   }, [tagInput, tags]);
 
   const handleEditorChange = useCallback((edState: EditorState) => {
+    if (skipLoadEcho.current) skipLoadEcho.current = false;
+    else bodyTouched.current = true;
     if (serializeTimer.current) clearTimeout(serializeTimer.current);
     serializeTimer.current = setTimeout(() => {
       dispatch({
@@ -580,21 +597,35 @@ export function ArticleEditor({
         slashDispatch({ type: "CLOSE" });
         return;
       }
-      if (id === "admonition-info")
-        insertParagraphText(
-          editorRef,
-          "[!INFO] Short info title\nExplain the context and expected behavior.",
-        );
-      if (id === "admonition-warning")
-        insertParagraphText(
-          editorRef,
-          "[!WARNING] Important warning\nDescribe risk, impact, and mitigation steps.",
-        );
-      if (id === "admonition-success")
-        insertParagraphText(
-          editorRef,
-          "[!SUCCESS] Good practice\nExplain what success looks like and why it works.",
-        );
+      if (id === "admonition-info") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode("Explain the context and expected behavior."),
+          );
+          $insertTopLevel([$createAdmonitionNode("INFO"), body]);
+        });
+      }
+      if (id === "admonition-warning") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode("Describe risk, impact, and mitigation steps."),
+          );
+          $insertTopLevel([$createAdmonitionNode("WARNING"), body]);
+        });
+      }
+      if (id === "admonition-success") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode(
+              "Explain what success looks like and why it works.",
+            ),
+          );
+          $insertTopLevel([$createAdmonitionNode("SUCCESS"), body]);
+        });
+      }
       if (id === "mermaid")
         insertParagraphText(
           editorRef,
