@@ -6,7 +6,6 @@ import { ImageResponse } from "next/og";
 import sharp from "sharp";
 
 import { BlackCard } from "@/lib/og/black-card";
-import { SHARE_IMAGE_FONT_FOLDER } from "@/lib/og/font-paths";
 import { readBodyCapped, safeFetch } from "@/server/net/safe-fetch";
 
 import type { ShareCard } from "./share-cards";
@@ -16,16 +15,33 @@ export type ShareImageLabels = { issueLine: string; byline: string };
 // Source: https://github.com/vercel/geist-font/tree/b5d164a0c066c2c9bfcd5ab65dd8244551f0ac06
 // Local Geist assets (SIL OFL in the same folder) keep rendering offline;
 // a CSS family name alone falls back to ImageResponse's proportional font.
+// Each path is a literal: the file tracer cannot follow a computed path and
+// would then ship the whole project with the route (it hit 3.75 GB on
+// Vercel). Keep the folder equal to SHARE_IMAGE_FONT_FOLDER (a test checks).
 function loadFonts() {
   return [
-    { name: "Geist Sans", weight: 400 as const, file: "Geist-Regular.ttf" },
-    { name: "Geist Sans", weight: 600 as const, file: "Geist-SemiBold.ttf" },
-    { name: "Geist Mono", weight: 400 as const, file: "GeistMono-Regular.ttf" },
-  ].map(({ name, weight, file }) => ({
-    name,
-    weight,
-    data: readFileSync(join(process.cwd(), SHARE_IMAGE_FONT_FOLDER, file)),
-  }));
+    {
+      name: "Geist Sans",
+      weight: 400 as const,
+      data: readFileSync(
+        join(process.cwd(), "src/lib/og/fonts/Geist-Regular.ttf"),
+      ),
+    },
+    {
+      name: "Geist Sans",
+      weight: 600 as const,
+      data: readFileSync(
+        join(process.cwd(), "src/lib/og/fonts/Geist-SemiBold.ttf"),
+      ),
+    },
+    {
+      name: "Geist Mono",
+      weight: 400 as const,
+      data: readFileSync(
+        join(process.cwd(), "src/lib/og/fonts/GeistMono-Regular.ttf"),
+      ),
+    },
+  ];
 }
 let fonts: ReturnType<typeof loadFonts> | undefined;
 

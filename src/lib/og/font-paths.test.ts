@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { normalizeAppPath } from "next/dist/shared/lib/router/utils/app-paths";
 import { describe, expect, it } from "vitest";
@@ -27,5 +28,19 @@ describe("share image font tracing", () => {
     expect(
       entry && picomatch(pattern, { dot: true, contains: true })(route),
     ).toBe(true);
+  });
+
+  it("reads every font from a literal path the tracer can follow", () => {
+    // A computed path makes Next trace the whole project into the route.
+    const source = readFileSync("src/server/magazines/share-image.tsx", "utf8");
+    const reads = [...source.matchAll(/readFileSync\(([\s\S]*?)\)\s*,?\s*\}/g)];
+    expect(reads).toHaveLength(3);
+    for (const [, args] of reads) {
+      expect(args).toMatch(
+        new RegExp(
+          `join\\(process\\.cwd\\(\\),\\s*"${SHARE_IMAGE_FONT_FOLDER}/[\\w-]+\\.ttf"\\s*\\)`,
+        ),
+      );
+    }
   });
 });
