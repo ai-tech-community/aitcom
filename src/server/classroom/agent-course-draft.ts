@@ -51,6 +51,15 @@ export function classroomCourseSlug(
  * A draft course can be written immediately. Publishing, or editing a course
  * members can already see, waits for a person to approve the draft.
  */
+/** A write that is not yet member-visible stays a draft. */
+export function classroomContentStatus(
+  courseStatus: string,
+  heldForApproval: boolean,
+): "draft" | "published" {
+  if (heldForApproval || courseStatus !== "published") return "draft";
+  return "published";
+}
+
 export function classroomWriteNeedsApproval(
   courseStatus: string,
   nextStatus?: "draft" | "published",
@@ -146,6 +155,7 @@ export type ClassroomCourseUpdateDraft = {
   summary?: string | null;
   coverImageUrl?: string | null;
   status?: "draft" | "published";
+  slug?: string;
 };
 
 export function classroomCourseUpdateFromDraft(draft: {
@@ -176,6 +186,7 @@ export function classroomCourseUpdateFromDraft(draft: {
       ? { coverImageUrl: draftString(meta.coverImageUrl) }
       : {}),
     ...(status === "draft" || status === "published" ? { status } : {}),
+    ...(typeof meta?.slug === "string" ? { slug: meta.slug } : {}),
   };
 }
 

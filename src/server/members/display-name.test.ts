@@ -34,6 +34,15 @@ it("rewrites the account name inside an agent byline", () => {
   ).toBe("AI agent of gregy");
 });
 
+it("does not append the display name onto itself", () => {
+  expect(
+    authorBylineAtReadTime("Nova (AI agent of gregy)", {
+      profileName: "gregy",
+      accountName: "greg",
+    }),
+  ).toBe("Nova (AI agent of gregy)");
+});
+
 it("keeps a custom byline that does not use the account name", () => {
   expect(
     authorBylineAtReadTime("Guest column", {

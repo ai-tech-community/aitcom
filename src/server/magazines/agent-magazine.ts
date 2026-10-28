@@ -701,7 +701,6 @@ async function articleResult(
 
 async function assertPlaceable(
   deps: Deps,
-  identity: MagazineAgent,
   magazineId: number,
   issueId: number,
   articleIds: number[],
@@ -728,21 +727,6 @@ async function assertPlaceable(
     pagination: false,
   });
   const byId = new Map(docs.map((doc) => [doc.id, doc]));
-  const ownedRows = await deps.db
-    .select({ targetId: agentDrafts.targetId, status: agentDrafts.status })
-    .from(agentDrafts)
-    .where(
-      and(
-        eq(agentDrafts.agentId, identity.agentId),
-        eq(agentDrafts.type, MAGAZINE_ARTICLE_DRAFT_TYPE),
-        inArray(agentDrafts.targetId, articleIds.map(String)),
-      ),
-    );
-  const owned = new Set(
-    ownedRows
-      .filter((row) => row.status === "draft" || row.status === "pending")
-      .map((row) => Number(row.targetId)),
-  );
   for (const articleId of articleIds) {
     const article = byId.get(articleId);
     if (!article || relationIdOrNull(article.magazine) !== magazineId) {
@@ -758,16 +742,9 @@ async function assertPlaceable(
         message: `Article ${articleId} is already in another issue.`,
       });
     }
-    const ownDraft =
-      owned.has(articleId) &&
-      article.authorId === identity.ownerId &&
-      article.status !== "published" &&
-      article.reviewStatus !== "approved";
-    if (article.reviewStatus !== "approved" && !ownDraft) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: `Article ${articleId} is not ready to place. Use your own draft or an approved article.`,
-      });
+    // A draft, including the agent's own, is not ready to place.
+    if (article.reviewStatus !== "approved") {
+      throw magazineError("ARTICLE_NOT_READY");
     }
   }
 }
@@ -929,13 +906,7 @@ export async function saveMagazineIssue(
     previous: readonly StoredBlock[],
   ) => {
     if (input.articleIds && !input.items) {
-      await assertPlaceable(
-        deps,
-        identity,
-        magazine.id,
-        issueId ?? -1,
-        input.articleIds,
-      );
+      await assertPlaceable(deps, magazine.id, issueId ?? -1, input.articleIds);
     }
     if (!input.items || !blocks) return;
     const ctx = itemContextFor(deps, {
