@@ -122,4 +122,18 @@ describe("Footer", () => {
       screen.getByRole("navigation", { name: nl.footer.legal }),
     ).toBeInTheDocument();
   });
+
+  it("links to sponsors from the footer", () => {
+    const english = renderIn();
+    expect(screen.getByRole("link", { name: en.nav.sponsors })).toHaveAttribute(
+      "href",
+      "/sponsors",
+    );
+    english.unmount();
+    renderIn("nl");
+    expect(screen.getByRole("link", { name: nl.nav.sponsors })).toHaveAttribute(
+      "href",
+      "/sponsors",
+    );
+  });
 });

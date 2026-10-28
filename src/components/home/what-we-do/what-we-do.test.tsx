@@ -150,7 +150,7 @@ describe("WhatWeDo — translations", () => {
 
   it("leads only to pages the navigation also offers", () => {
     const navbar = readFileSync(
-      join(process.cwd(), "src/components/navbar.tsx"),
+      join(process.cwd(), "src/components/site-nav.ts"),
       "utf8",
     );
     for (const group of WHAT_WE_DO_GROUPS) {
@@ -160,7 +160,7 @@ describe("WhatWeDo — translations", () => {
 
   it("keeps every page it no longer lists reachable from the navigation", () => {
     const navbar = readFileSync(
-      join(process.cwd(), "src/components/navbar.tsx"),
+      join(process.cwd(), "src/components/site-nav.ts"),
       "utf8",
     );
     for (const href of FORMER_LINKS) {

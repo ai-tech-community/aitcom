@@ -1,120 +1,57 @@
-# Header nav: primary five + overflow menu
+# Header nav: grouped menus
 
 **Status:** accepted
 
 The global `Navbar` ([src/components/navbar.tsx](../../src/components/navbar.tsx))
-renders 11 equally-weighted top-level destinations inline above `md`
-(768px). With the right-hand cluster (LanguageSwitcher, Dashboard,
-My Agent, NotificationBell, Sign Out) competing for the same row,
-the bar overflows or wraps across the entire `md`–`xl` range. There
-is also no IA signal — every surface, from `/benchmark` (flagship)
-to `/sponsors` (about-the-org page), shouts at the same volume.
-
-This ADR pins the structural choice. It does not specify visual
-detail, animation, or copy — only the decisions that are hard to
-reverse and surprising without context.
+used to put six destinations inline and the rest behind More. That split
+is replaced by five top-level entries. The link list lives in
+[src/components/site-nav.ts](../../src/components/site-nav.ts).
 
 ## Decisions
 
-### 1. Primary nav items plus an overflow menu
+### 1. Five top-level entries, in this order
 
-Primary, rendered inline:
+1. **Community** (menu): `/communities` (Explore), `/members`, `/agents`, `/forum` (Forum; next-intl renders `/en/forum` and `/nl/forum`), `/ideas`
+2. **Events**: `/events`, a direct link
+3. **Read** (menu): `/news`, `/magazines`, `/investigations`, `/blog`
+4. **Startups** (menu): `/startups`, `/startups/ai-tools-list` (AI tools), `/launchpad`
+5. **Work** (menu): `/jobs` and `/roles`, kept as two URLs
 
-- `/communities`, `/events`, `/roles` — the recurring action
-  surfaces a returning member visits in a typical session.
-- `/jobs`, `/startups` — the public openings surface and the
-  listed-company directory. These stay inline so they are visible
-  without opening More. Do not collide Jobs with Hub `/roles`.
-- `/news` — the public AI news page. It takes the inline slot
-  `/challenges` used to hold.
+Each menu item has a one-line description in English and Dutch. Letter
+shortcuts are unchanged (`C` still opens Explore, `W` still opens Jobs,
+`R` still opens Roles, and so on).
 
-Overflow, behind a "More ▾" DropdownMenu:
+**Sponsors** is not in the header. The footer links to `/sponsors`. The
+`S` shortcut still opens that page.
 
-- `/challenges`, `/launchpad`, `/benchmark`, `/agents`, `/ideas`,
-  `/members`, `/blog`, `/investigations`, `/impact`, `/sponsors`.
+Guests get a Join control on the right of the bar, in both the desktop
+cluster and the mobile cluster. It uses the locale-aware link to `/join`,
+which renders as `/en/join` or `/nl/join`. `J` follows that same path.
 
-**Why:** eleven equally-weighted top-level destinations is a
-symptom of unmade IA decisions, not a constraint. Picking five
-winners is the actual fix; the overflow menu is the layout
-mechanism that lets the rest stay one click away without
-re-creating the crowding problem the next time a page is added.
+### 2. Every destination is in the server HTML
 
-**How to apply:** new destinations default to overflow unless they
-clear the bar that `/communities`, `/events`, `/roles`, `/jobs`,
-`/startups`, `/news` cleared — recurring action surfaces, or
-flagship products. Editorial and about-the-org pages go into
-overflow.
+Menu panels stay in the document when closed (`hidden`, not unmounted),
+so a server render of the header contains every `href` without waiting
+for a click. The mobile drawer repeats the same groups and is portaled
+out of the bar (the bar's backdrop blur would trap a fixed child).
 
-### 2. Hamburger Sheet stays until `lg` (1024px)
+Group triggers are `<button>` elements with `aria-expanded` and
+`aria-controls`. Arrow keys move through the open menu. Escape closes
+it and returns focus to the trigger.
 
-Below `lg`: the existing right-side `Sheet` is the only nav. The
-inline `md`–`lg` middle state is removed.
+### 3. The hamburger stays until `lg`
 
-The Sheet's contents mirror the desktop hierarchy: primary items,
-divider, overflow items, then the auth-gated tail (Dashboard, My
-Agent, Sign Out / Join).
+Below `lg`, the inline bar is hidden and the drawer is the nav. The
+drawer uses the same groups, the same descriptions, and the same
+`aria-expanded` buttons.
 
-**Why:** even with primary trimmed to five, the right-hand cluster
-still consumed the `md`–`lg` band. Moving the breakpoint to `lg`
-removes that dead zone; the inline nav appears only where it has
-room to breathe.
+### 4. Signed-in actions stay in the avatar menu
 
-### 3. Right-hand auth-gated links collapse into an avatar menu
-
-For signed-in users, `[D] DASHBOARD`, `[A] MY AGENT`, and Sign Out
-move from inline buttons into a single avatar DropdownMenu.
-`LanguageSwitcher` and `NotificationBell` stay inline. Anonymous
-users keep the inline `[J] JOIN` button unchanged.
-
-**Why:** the right-hand cluster was the other half of the
-overflow problem. Solving the left side (primary + More) without
-collapsing the right side leaves the header fragile at 1024–1100px.
-The avatar menu is also the conventional home for per-user actions
-(profile, settings) we will likely add later.
-
-**How to apply:** global keyboard shortcuts (`D` → dashboard, `A` →
-agent) keep working regardless of whether the link is rendered
-inline — the `keydown` handler in `Navbar` is independent of
-visibility. New per-user actions belong in the avatar menu, not
-inline.
-
-### 4. Overflow trigger reflects active route
-
-When `pathname` matches any link inside "More ▾", the trigger
-renders in the active text style. The overflow items themselves
-omit the `[X]` shortcut prefix in the closed state and show it
-inside the open menu.
-
-**Why:** without the active-trigger style, a member on `/blog`
-sees no active marker anywhere in the header and loses orientation.
-The shortcut prefix is an aesthetic signature of the primary nav;
-inside the dropdown it adds noise without information.
-
-## Alternatives considered
-
-- **Raise the hamburger breakpoint to `xl` (1280px) and keep all
-  11 links inline above it.** Rejected: 1024–1279px is the most
-  common laptop band; dropping back to a hamburger there feels
-  like a regression and does not address the IA problem.
-- **Container-driven progressive collapse with ResizeObserver,
-  hiding items right-to-left.** Rejected: the most polished option
-  but solves the symptom (overflow) without picking winners. The
-  next page added re-creates the problem.
-- **Reduce primary nav without an overflow menu** (move the six
-  into footer / `/explore` hub only). Rejected: kills
-  discoverability for `/jobs` and `/members` which are high-intent
-  surfaces — overflow keeps them one click away.
+Dashboard (`D`), My Agent (`A`), and Sign Out stay in the avatar menu.
+Language and the notification bell stay inline. This part is unchanged.
 
 ## Consequences
 
-- Adding a new top-level destination is now a real IA decision,
-  not a copy-paste of `navLinks`. Default placement is overflow.
-- The `navLinks` array gains a `primary: boolean` field (or
-  splits into two arrays) — the source of truth for the split
-  lives in code, not in component logic.
-- The global keyboard shortcut handler is unaffected; shortcuts
-  remain visible-state-independent.
-- Reversing this decision means re-inflating eleven destinations
-  back to equal volume and reintroducing the `md`–`lg` dead zone.
-  Possible, but disruptive once members have internalised the new
-  IA.
+- A new top-level destination is an IA decision: it joins an existing
+  group or earns a new one. It does not grow a More menu.
+- Reversing this means putting destinations back at equal volume.
