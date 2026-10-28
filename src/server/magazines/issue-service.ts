@@ -107,6 +107,7 @@ function historySnapshot(
 }
 
 export type IssueDetailsPatch = {
+  layout?: IssueLayout;
   title?: string;
   slug?: string;
   coverImageUrl?: string | null;
@@ -470,6 +471,7 @@ export async function updateIssueDetails(
 
   const data: Partial<MagazineIssue> = {};
   if (patch.title !== undefined) data.title = patch.title;
+  if (patch.layout !== undefined) data.layout = patch.layout;
   if (patch.slug !== undefined && patch.slug !== issue.slug) {
     if (issue.status === "published") throw magazineError("ISSUE_SLUG_LOCKED");
     data.slug = patch.slug;

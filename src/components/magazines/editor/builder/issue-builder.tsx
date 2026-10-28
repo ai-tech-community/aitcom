@@ -76,6 +76,7 @@ function detailsOf(issue: MagazineIssue): IssueDetailsDraft {
   return {
     title: issue.title,
     slug: issue.slug,
+    layout: issue.layout ?? "cover-story",
     coverImageUrl: issue.coverImageUrl ?? null,
     editorNote: issue.editorNote ?? null,
     visibility: issue.visibility,
@@ -300,6 +301,7 @@ function IssueWorkspace({
       details: {
         title: titleValid ? details.title.trim() : issue.title,
         slug: slugValid ? details.slug : issue.slug,
+        layout: details.layout,
         coverImageUrl: details.coverImageUrl,
         editorNote: details.editorNote,
         visibility,
@@ -730,7 +732,6 @@ function IssueWorkspace({
               publishedAt: issue.publishedAt ?? null,
             }}
             details={details}
-            layout={issue.layout ?? "cover-story"}
             items={items}
             savedViews={savedViews}
             audience={audience}

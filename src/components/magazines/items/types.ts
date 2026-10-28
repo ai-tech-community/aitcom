@@ -13,11 +13,12 @@ export type ItemViewOfKind<K extends ItemKindId> = Extract<
 
 export type ItemTeaser = { inlinePrompt: ReactNode };
 
+export type ItemSize = "lead" | "card" | "row";
+
 /** What every item renderer gets (ADR-0043: one renderer per kind). */
 export type ItemRendererProps<K extends ItemKindId> = {
   view: ItemViewOfKind<K>;
-  /** The issue's lead item: a wider card with a larger heading. */
-  lead: boolean;
+  size: ItemSize;
   href: ArticleHref;
   teaser: ItemTeaser | null;
 };

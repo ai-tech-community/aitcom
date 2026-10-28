@@ -51,11 +51,13 @@ export const SCHEDULE_ORIGINS = [
 export type ScheduleOrigin = (typeof SCHEDULE_ORIGINS)[number];
 
 /** How an issue's items are laid out on its reading page. */
-export const ISSUE_LAYOUTS = ["cover-story"] as const;
+export const ISSUE_LAYOUTS = ["cover-story", "long-read", "digest"] as const;
 export type IssueLayout = (typeof ISSUE_LAYOUTS)[number];
-export const ISSUE_LAYOUT_LABELS: Record<IssueLayout, string> = {
+export const ISSUE_LAYOUT_LABELS = {
   "cover-story": "Cover story",
-};
+  "long-read": "Long read",
+  digest: "Digest",
+} as const satisfies Record<IssueLayout, string>;
 
 /** Lower-case words joined by single hyphens; 3–60 characters. */
 export const MAGAZINE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/; // 3–60 chars

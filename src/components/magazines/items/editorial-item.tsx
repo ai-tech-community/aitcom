@@ -1,27 +1,48 @@
+import { useTranslations } from "next-intl";
+
 import { LexicalRenderer } from "@/lib/lexical";
 import { cn } from "@/lib/utils";
 
+import { ItemRow } from "./item-row";
 import type { ItemRendererProps, ItemTitle } from "./types";
 
 /** Free-form text owned by the issue, rendered in full. */
 export function EditorialItem({
   view,
-  lead,
+  size,
   teaser,
 }: ItemRendererProps<"editorial">) {
+  const t = useTranslations("magazines.item");
+
+  switch (size) {
+    case "row":
+      return (
+        <ItemRow
+          kind="editorial"
+          title={view.heading}
+          label={t("untitledEditorial")}
+          intro={view.intro}
+        />
+      );
+    case "lead":
+    case "card":
+      break;
+  }
+  const isLead = size === "lead";
+
   return (
     <section
       data-item-kind="editorial"
       className={cn(
         "bg-card text-card-foreground flex h-full flex-col gap-2 rounded-xl border p-5",
-        lead && "gap-3 @xl:p-8",
+        isLead && "gap-3 @xl:p-8",
       )}
     >
       {view.heading && (
         <h2
           className={cn(
             "font-semibold tracking-tight text-balance",
-            lead
+            isLead
               ? "text-2xl leading-tight @xl:text-3xl"
               : "text-lg leading-snug",
           )}

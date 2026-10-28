@@ -183,7 +183,7 @@ function NextInIssue({ data }: { data: MagazineArticlePageData }) {
       {nextInIssue ? (
         <ArticleItem
           view={nextInIssue}
-          lead={false}
+          size="card"
           teaser={null}
           showExcerpt
           href={(slug) => magazineArticlePath(magazine, issue, { slug })}

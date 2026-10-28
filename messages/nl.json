@@ -4876,7 +4876,8 @@
       "forumKind": "Uit het forum",
       "replies": "{count, plural, one {# reactie} other {# reacties}}",
       "projectKind": "Launchpad-project",
-      "upvotes": "{count, plural, one {# stem} other {# stemmen}}"
+      "upvotes": "{count, plural, one {# stem} other {# stemmen}}",
+      "articleKind": "Artikel"
     },
     "rail": {
       "visitCommunity": "Bezoek {community}",
@@ -4962,7 +4963,9 @@
       "draftsLookLike": "Zo zien concepten eruit",
       "layout": "Indeling",
       "layouts": {
-        "cover-story": "Omslagverhaal"
+        "cover-story": "Omslagverhaal",
+        "long-read": "Longread",
+        "digest": "Kort overzicht"
       },
       "visibility": "Zichtbaarheid",
       "inheritVisibility": "Hetzelfde als het magazine ({current})",
@@ -5272,7 +5275,18 @@
           "teaser": "Iedereen ziet de omslag, de inhoudsopgave en het begin van elk artikel. Leden lezen alles.",
           "public": "Iedereen kan alles lezen."
         },
-        "visibilityTeaser": "Voorproefje voor iedereen"
+        "visibilityTeaser": "Voorproefje voor iedereen",
+        "layout": "Indeling",
+        "layouts": {
+          "cover-story": "Omslagverhaal",
+          "long-read": "Longread",
+          "digest": "Kort overzicht"
+        },
+        "layoutHints": {
+          "cover-story": "Eén groot verhaal voorop, daarna een raster.",
+          "long-read": "Eén kolom, om van boven naar beneden te lezen.",
+          "digest": "Een korte lijst. Handig als je veel nieuws hebt."
+        }
       },
       "items": {
         "pickedBecause": "Gekozen omdat:",

@@ -6,14 +6,39 @@ import { formatEventDayRange } from "@/lib/event-time";
 import { cn } from "@/lib/utils";
 
 import { FactSeparator } from "./fact-separator";
+import { ItemRow } from "./item-row";
 import type { ItemRendererProps, ItemTitle } from "./types";
 
 /** The current event details, within the reader's community audience. */
-export function EventItem({ view, lead }: ItemRendererProps<"event">) {
+export function EventItem({ view, size }: ItemRendererProps<"event">) {
   const t = useTranslations("magazines.item");
   const locale = useLocale();
   const { event } = view;
   const place = event.online ? t("online") : event.city;
+
+  switch (size) {
+    case "row":
+      return (
+        <ItemRow
+          kind="event"
+          title={
+            <Link
+              href={`/events/${event.slug}`}
+              className="underline-offset-4 hover:underline focus-visible:underline"
+            >
+              {event.title}
+            </Link>
+          }
+          label={t("eventKind")}
+          intro={view.intro}
+          fact={formatEventDayRange(event.date, event.endDate, locale)}
+        />
+      );
+    case "lead":
+    case "card":
+      break;
+  }
+  const isLead = size === "lead";
 
   return (
     <article
@@ -23,14 +48,14 @@ export function EventItem({ view, lead }: ItemRendererProps<"event">) {
       <div
         className={cn(
           "flex flex-1 flex-col gap-2 p-5",
-          lead && "gap-3 @xl:p-8",
+          isLead && "gap-3 @xl:p-8",
         )}
       >
         <p className="text-muted-foreground text-sm">{t("eventKind")}</p>
         <h2
           className={cn(
             "font-semibold tracking-tight text-balance",
-            lead
+            isLead
               ? "text-2xl leading-tight @xl:text-3xl"
               : "text-lg leading-snug",
           )}

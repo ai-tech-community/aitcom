@@ -76,6 +76,18 @@ const renderForm = () =>
 const save = () => screen.getByRole("button", { name: "Save" });
 
 describe("AutoDraftSettingsForm", () => {
+  it("offers and saves all three layout choices", () => {
+    renderForm();
+    const layout = screen.getByRole("combobox", { name: "Layout" });
+    expect(
+      within(layout)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Cover story", "Long read", "Digest"]);
+    fireEvent.change(layout, { target: { value: "digest" } });
+    fireEvent.click(save());
+    expect(trpc.calls.at(-1)).toMatchObject({ layout: "digest" });
+  });
   it("offers preview for drafts and asks for the opt-in in an unlisted community", () => {
     trpc.data = autoDraftSettings({
       communityIsPrivate: true,

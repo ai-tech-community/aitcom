@@ -298,6 +298,31 @@ afterEach(() => {
 });
 
 describe("IssueBuilder", () => {
+  it("previews a layout immediately and saves only its changed value", async () => {
+    renderWithIntl(<IssueBuilder communitySlug="night-owls" issueId={5} />);
+    const preview = screen.getByTestId("issue-preview");
+    fireEvent.click(screen.getByRole("radio", { name: "Digest" }));
+    expect(within(preview).getByRole("list", { hidden: true }).tagName).toBe(
+      "OL",
+    );
+    expect(trpc.updateIssue).not.toHaveBeenCalled();
+    await settleSaves();
+    expect(trpc.updateIssue).toHaveBeenCalledExactlyOnceWith({
+      slug: "night-owls",
+      issueId: 5,
+      expectedUpdatedAt: T0,
+      layout: "digest",
+    });
+    fireEvent.click(screen.getByRole("radio", { name: "Long read" }));
+    expect(within(preview).queryByRole("list", { hidden: true })).toBeNull();
+    await settleSaves();
+    expect(trpc.updateIssue).toHaveBeenLastCalledWith({
+      slug: "night-owls",
+      issueId: 5,
+      expectedUpdatedAt: T1,
+      layout: "long-read",
+    });
+  });
   it("does not invent a fresh tick when returning to Everyone during a preview save", async () => {
     const savedPublic = issue({
       visibility: "public",

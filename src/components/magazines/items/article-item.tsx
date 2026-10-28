@@ -5,15 +5,16 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 import { FactSeparator } from "./fact-separator";
+import { ItemRow } from "./item-row";
 import type { ItemRendererProps, ItemTitle } from "./types";
 
 /** An original magazine article: title, byline and, as the lead, its opening. */
 export function ArticleItem({
   view,
-  lead,
+  size,
   href,
   teaser,
-  showExcerpt = lead,
+  showExcerpt = size === "lead",
 }: ItemRendererProps<"article"> & {
   /** Next-in-issue cards also show the excerpt, without the lead treatment. */
   showExcerpt?: boolean;
@@ -22,12 +23,43 @@ export function ArticleItem({
   const { article } = view;
   const url = href(article.slug);
 
+  switch (size) {
+    case "row":
+      return (
+        <ItemRow
+          kind="article"
+          title={
+            <Link
+              href={url}
+              className="underline-offset-4 hover:underline focus-visible:underline"
+            >
+              {article.title}
+            </Link>
+          }
+          label={t("articleKind")}
+          intro={view.intro}
+          fact={t("readingTime", { minutes: article.readingMinutes })}
+          note={
+            teaser ? (
+              <p className="text-muted-foreground text-sm">
+                {t("membersReadAll")}
+              </p>
+            ) : null
+          }
+        />
+      );
+    case "lead":
+    case "card":
+      break;
+  }
+  const isLead = size === "lead";
+
   return (
     <article
       data-item-kind="article"
       className="bg-card text-card-foreground flex h-full flex-col overflow-hidden rounded-xl border"
     >
-      {lead && article.imageUrl && (
+      {isLead && article.imageUrl && (
         // Any host an editor links to: next/image only serves listed hosts.
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -39,13 +71,13 @@ export function ArticleItem({
       <div
         className={cn(
           "flex flex-1 flex-col gap-2 p-5",
-          lead && "gap-3 @xl:p-8",
+          isLead && "gap-3 @xl:p-8",
         )}
       >
         <h2
           className={cn(
             "font-semibold tracking-tight text-balance",
-            lead
+            isLead
               ? "text-2xl leading-tight @xl:text-3xl"
               : "text-lg leading-snug",
           )}
@@ -82,7 +114,7 @@ export function ArticleItem({
             {teaser.inlinePrompt}
           </>
         ) : (
-          lead && (
+          isLead && (
             <Link
               href={url}
               className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-medium underline-offset-4 hover:underline"

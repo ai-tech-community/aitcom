@@ -4,13 +4,47 @@ import { formatEventDay } from "@/lib/event-time";
 import { cn } from "@/lib/utils";
 
 import { FactSeparator } from "./fact-separator";
+import { ItemRow } from "./item-row";
 import type { ItemRendererProps, ItemTitle } from "./types";
 
 /** A compact headline linking to its original source. */
-export function NewsItemCard({ view, lead }: ItemRendererProps<"newsItem">) {
+export function NewsItemCard({ view, size }: ItemRendererProps<"newsItem">) {
   const t = useTranslations("magazines.item");
   const locale = useLocale();
   const { news } = view;
+
+  switch (size) {
+    case "row":
+      return (
+        <ItemRow
+          kind="newsItem"
+          title={
+            news.url ? (
+              <a
+                href={news.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline-offset-4 hover:underline focus-visible:underline"
+              >
+                {news.title}{" "}
+                <span className="sr-only">{t("opensInNewTab")}</span>
+              </a>
+            ) : (
+              news.title
+            )
+          }
+          label={t("newsKind")}
+          intro={view.intro}
+          fact={
+            news.publishedAt ? formatEventDay(news.publishedAt, locale) : null
+          }
+        />
+      );
+    case "lead":
+    case "card":
+      break;
+  }
+  const isLead = size === "lead";
 
   return (
     <article
@@ -20,14 +54,14 @@ export function NewsItemCard({ view, lead }: ItemRendererProps<"newsItem">) {
       <div
         className={cn(
           "flex flex-1 flex-col gap-2 p-5",
-          lead && "gap-3 @xl:p-8",
+          isLead && "gap-3 @xl:p-8",
         )}
       >
         <p className="text-muted-foreground text-sm">{t("newsKind")}</p>
         <h2
           className={cn(
             "font-semibold tracking-tight text-balance",
-            lead
+            isLead
               ? "text-2xl leading-tight @xl:text-3xl"
               : "text-lg leading-snug",
           )}
@@ -57,7 +91,7 @@ export function NewsItemCard({ view, lead }: ItemRendererProps<"newsItem">) {
             )}
           </p>
         )}
-        {lead && news.summary && (
+        {isLead && news.summary && (
           <p className="text-muted-foreground leading-relaxed">
             {news.summary}
           </p>

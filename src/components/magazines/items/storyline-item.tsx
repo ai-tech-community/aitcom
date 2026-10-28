@@ -6,14 +6,39 @@ import { formatEventDay } from "@/lib/event-time";
 import { cn } from "@/lib/utils";
 
 import { FactSeparator } from "./fact-separator";
+import { ItemRow } from "./item-row";
 import type { ItemRendererProps, ItemTitle } from "./types";
 
 /** An AIT News story that keeps following its live source. */
-export function StorylineItem({ view, lead }: ItemRendererProps<"storyline">) {
+export function StorylineItem({ view, size }: ItemRendererProps<"storyline">) {
   const t = useTranslations("magazines.item");
   const locale = useLocale();
   const { storyline } = view;
   const url = `/news/stories/${storyline.slug}`;
+
+  switch (size) {
+    case "row":
+      return (
+        <ItemRow
+          kind="storyline"
+          title={
+            <Link
+              href={url}
+              className="underline-offset-4 hover:underline focus-visible:underline"
+            >
+              {storyline.title}
+            </Link>
+          }
+          label={t("storylineKind")}
+          intro={view.intro}
+          fact={t("sources", { count: storyline.sourceCount })}
+        />
+      );
+    case "lead":
+    case "card":
+      break;
+  }
+  const isLead = size === "lead";
 
   return (
     <article
@@ -23,14 +48,14 @@ export function StorylineItem({ view, lead }: ItemRendererProps<"storyline">) {
       <div
         className={cn(
           "flex flex-1 flex-col gap-2 p-5",
-          lead && "gap-3 @xl:p-8",
+          isLead && "gap-3 @xl:p-8",
         )}
       >
         <p className="text-muted-foreground text-sm">{t("storylineKind")}</p>
         <h2
           className={cn(
             "font-semibold tracking-tight text-balance",
-            lead
+            isLead
               ? "text-2xl leading-tight @xl:text-3xl"
               : "text-lg leading-snug",
           )}
@@ -46,7 +71,7 @@ export function StorylineItem({ view, lead }: ItemRendererProps<"storyline">) {
         <p
           className={cn(
             "text-muted-foreground leading-relaxed",
-            !lead && "line-clamp-3",
+            !isLead && "line-clamp-3",
           )}
         >
           {storyline.overview}
@@ -64,7 +89,7 @@ export function StorylineItem({ view, lead }: ItemRendererProps<"storyline">) {
             </>
           )}
         </p>
-        {lead && (
+        {isLead && (
           <Link
             href={url}
             className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-medium underline-offset-4 hover:underline focus-visible:underline"

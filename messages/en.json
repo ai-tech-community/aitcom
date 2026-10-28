@@ -4876,7 +4876,8 @@
       "forumKind": "From the forum",
       "replies": "{count, plural, one {# reply} other {# replies}}",
       "projectKind": "Launchpad project",
-      "upvotes": "{count, plural, one {# upvote} other {# upvotes}}"
+      "upvotes": "{count, plural, one {# upvote} other {# upvotes}}",
+      "articleKind": "Article"
     },
     "rail": {
       "visitCommunity": "Visit {community}",
@@ -4962,7 +4963,9 @@
       "draftsLookLike": "Drafts look like",
       "layout": "Layout",
       "layouts": {
-        "cover-story": "Cover story"
+        "cover-story": "Cover story",
+        "long-read": "Long read",
+        "digest": "Digest"
       },
       "visibility": "Visibility",
       "inheritVisibility": "Same as the magazine ({current})",
@@ -5272,7 +5275,18 @@
           "teaser": "Everyone sees the cover, the contents and the start of each article. Members read everything.",
           "public": "Everyone can read all of it."
         },
-        "visibilityTeaser": "Preview for everyone"
+        "visibilityTeaser": "Preview for everyone",
+        "layout": "Layout",
+        "layouts": {
+          "cover-story": "Cover story",
+          "long-read": "Long read",
+          "digest": "Digest"
+        },
+        "layoutHints": {
+          "cover-story": "One big lead, then a grid.",
+          "long-read": "One column, read from top to bottom.",
+          "digest": "A short list. Good for lots of news."
+        }
       },
       "items": {
         "pickedBecause": "Picked because:",

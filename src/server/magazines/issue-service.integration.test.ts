@@ -867,7 +867,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     });
 
     it("creates a draft with the given layout and visibility", async () => {
-      // There is currently one supported layout; exercise its explicit override.
+      // Exercise the explicit layout override.
       const configuredLayout: IssueLayout = ISSUE_LAYOUTS[0];
       const c = await community("overrides");
       const mag = await magazineIn(c);
@@ -2090,6 +2090,63 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       depth: 0,
     });
     expect(doc.status).toBe("draft");
+  });
+
+  it("an editor can change the layout, also after publishing", async () => {
+    const c = await community("layout");
+    const mag = await magazineIn(c);
+    await m.db
+      .insert(m.schema.communityMemberships)
+      .values({ communityId: c.id, userId: fx.userId, role: "owner" });
+    const { createCaller } = await import("@/server/api/root");
+    const editor = createCaller({
+      db: m.db,
+      headers: new Headers(),
+      session: {
+        user: { id: fx.userId, name: "Editor" },
+        session: {},
+      } as never,
+    }).magazines;
+    let issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Layouts" },
+      actor(c),
+    );
+    issue = await editor.updateIssue({
+      slug: c.slug,
+      issueId: Number(issue.id),
+      expectedUpdatedAt: issue.updatedAt,
+      layout: "long-read",
+    });
+    expect(issue.layout).toBe("long-read");
+    issue = await setItems(c, issue, [editorialItem("Hello")]);
+    issue = await m.issues.publishIssue(m, issue, issue.updatedAt, actor(c));
+    const publishedSlug = issue.slug;
+    issue = await editor.updateIssue({
+      slug: c.slug,
+      issueId: Number(issue.id),
+      expectedUpdatedAt: issue.updatedAt,
+      layout: "digest",
+    });
+    expect(issue).toMatchObject({
+      layout: "digest",
+      status: "published",
+      slug: publishedSlug,
+    });
+    const loaded = await editor.getIssueForEditing({
+      slug: c.slug,
+      issueId: Number(issue.id),
+    });
+    expect(loaded.issue.layout).toBe("digest");
+    await expect(
+      editor.updateIssue({
+        slug: c.slug,
+        issueId: Number(issue.id),
+        expectedUpdatedAt: issue.updatedAt,
+        layout: "unknown" as IssueLayout,
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
   it("locks the slug once published", async () => {

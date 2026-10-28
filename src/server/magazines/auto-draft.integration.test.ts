@@ -183,6 +183,12 @@ describe.skipIf(!isLocalDbConfigured())(
       if (!fx) return;
       const { db, payload, schema: s } = m;
       if (fx.magazine) {
+        await db
+          .delete(s.magazineReads)
+          .where(eq(s.magazineReads.magazineId, fx.magazine.id));
+        await db
+          .delete(s.magazineSubscriptions)
+          .where(eq(s.magazineSubscriptions.magazineId, fx.magazine.id));
         await payload.delete({
           collection: "magazine-issues",
           where: { magazine: { equals: fx.magazine.id } },
@@ -298,6 +304,35 @@ describe.skipIf(!isLocalDbConfigured())(
         });
       return Number(doc.id);
     }
+
+    it.each(["cover-story", "long-read", "digest"] as const)(
+      "automatic drafts accept and use every layout (%s)",
+      async (layout) => {
+        const owner = callerAs(fx.ownerId).magazines;
+        expect(
+          await owner.saveAutoDraftSettings({
+            ...DEFAULT_AUTO_DRAFT_SETTINGS,
+            slug: fx.slug,
+            enabled: true,
+            layout,
+          }),
+        ).toMatchObject({ layout });
+        await article("one");
+        await article("two");
+        await article("three");
+        const made = await callerAs(fx.editorId).magazines.makeAutoDraftNow({
+          slug: fx.slug,
+        });
+        expect(made.status).toBe("made");
+        if (made.status !== "made")
+          throw new Error("Expected an automatic draft");
+        const loaded = await owner.getIssueForEditing({
+          slug: fx.slug,
+          issueId: made.issueId,
+        });
+        expect(loaded.issue.layout).toBe(layout);
+      },
+    );
 
     it("from settings to an automatic issue, with people in control", async () => {
       const slug = fx.slug;

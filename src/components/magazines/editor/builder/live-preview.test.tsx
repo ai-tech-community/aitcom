@@ -1,6 +1,10 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { NextIntlClientProvider } from "next-intl";
+import en from "../../../../../messages/en.json";
+import type { IssueLayout } from "@/lib/magazines/values";
+
 import type { EditorItemView } from "@/lib/magazines/item-views";
 
 import {
@@ -28,6 +32,46 @@ import { LivePreview, visibleToVisitors } from "./live-preview";
 import type { BuilderItem } from "./items-model";
 
 describe("LivePreview", () => {
+  it("the layout choice changes the preview", () => {
+    const article = articleView(1);
+    const props = {
+      magazine: { name: "Gazette", slug: "gazette" },
+      community: { name: "Night Owls", slug: "night-owls" },
+      issue: { number: 1, publishedAt: null },
+      details: {
+        title: "Picks",
+        slug: "picks",
+        coverImageUrl: null,
+        editorNote: null,
+        visibility: "teaser" as const,
+        layout: "cover-story" as const,
+      },
+      items: [{ kind: "article" as const, articleId: 1, key: article.itemId }],
+      savedViews: new Map([[article.itemId, article]]),
+      audience: "teaser" as const,
+    };
+    const picture = (layout: IssueLayout) => (
+      <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
+        <LivePreview {...props} details={{ ...props.details, layout }} />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = renderWithIntl(picture("cover-story"));
+    expect(screen.getByTestId("issue-lead")).toHaveTextContent(
+      "Excerpt of article 1.",
+    );
+    rerender(picture("digest"));
+    const preview = screen.getByTestId("issue-preview");
+    expect(within(preview).getByRole("list", { hidden: true }).tagName).toBe(
+      "OL",
+    );
+    expect(preview).not.toHaveTextContent("Excerpt of article 1.");
+    fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));
+    expect(preview).toHaveTextContent("Members read the whole article");
+    expect(within(preview).getAllByText("Join Night Owls")).toHaveLength(1);
+    rerender(picture("long-read"));
+    expect(preview).toHaveTextContent("Opening of article 1.");
+    expect(within(preview).getAllByText("Join Night Owls")).toHaveLength(2);
+  });
   it("Visitor shows a preview issue with openings and a join picture", () => {
     const article = articleView(1);
     const editorial = editorialView(1, { intro: "Editorial intro." });
@@ -41,9 +85,9 @@ describe("LivePreview", () => {
           slug: "picks",
           coverImageUrl: null,
           editorNote: null,
+          layout: "cover-story",
           visibility: "teaser",
         }}
-        layout="cover-story"
         items={[
           { kind: "article", articleId: 1, key: article.itemId },
           {
@@ -98,9 +142,9 @@ describe("LivePreview", () => {
             slug: "picks",
             coverImageUrl: null,
             editorNote: null,
+            layout: "cover-story",
             visibility: "public",
           }}
-          layout="cover-story"
           items={[
             { kind: "event", eventId: 1, key: hidden.itemId },
             ...(waiting
@@ -155,9 +199,9 @@ describe("LivePreview", () => {
           slug: "picks",
           coverImageUrl: null,
           editorNote: null,
+          layout: "cover-story",
           visibility: "public",
         }}
-        layout="cover-story"
         items={items}
         savedViews={new Map(views.map((view) => [view.itemId, view]))}
         audience="public"

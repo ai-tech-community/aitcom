@@ -11,7 +11,7 @@ import {
   type EditorItemView,
 } from "@/lib/magazines/item-views";
 import { magazineArticlePath } from "@/lib/magazines/paths";
-import type { IssueLayout, IssueVisibility } from "@/lib/magazines/values";
+import type { IssueVisibility } from "@/lib/magazines/values";
 import { cn } from "@/lib/utils";
 
 import { isUnavailableItem } from "../../items/registry";
@@ -69,7 +69,6 @@ export function LivePreview({
   community,
   issue,
   details,
-  layout,
   items,
   savedViews,
   audience,
@@ -79,7 +78,6 @@ export function LivePreview({
   /** The saved issue's number and publish date (null for a draft). */
   issue: { number: number; publishedAt: string | null };
   details: IssueDetailsDraft;
-  layout: IssueLayout;
   items: BuilderItem[];
   savedViews: ReadonlyMap<string, EditorItemView>;
   /** Who will be able to read the issue (its effective visibility). */
@@ -89,7 +87,7 @@ export function LivePreview({
   const labelId = useId();
   const [mode, setMode] = useState<PreviewMode>("member");
 
-  const Layout = LAYOUTS[layout];
+  const Layout = LAYOUTS[details.layout];
   const { views: loadedViews, waiting } = previewViews(items, savedViews);
   const views =
     mode === "visitor" ? loadedViews.filter(visibleToVisitors) : loadedViews;

@@ -18,7 +18,7 @@ export function CoverStoryLayout({ items, href, teaser }: LayoutProps) {
           data-testid="issue-lead"
           className="scroll-mt-24"
         >
-          <IssueItem view={lead} lead href={href} teaser={teaser} />
+          <IssueItem view={lead} size="lead" href={href} teaser={teaser} />
         </div>
       )}
       {rest.length > 0 && (
@@ -32,7 +32,7 @@ export function CoverStoryLayout({ items, href, teaser }: LayoutProps) {
               id={itemAnchorId(view.itemId)}
               className="min-w-0 scroll-mt-24"
             >
-              <IssueItem view={view} lead={false} href={href} teaser={teaser} />
+              <IssueItem view={view} size="card" href={href} teaser={teaser} />
             </div>
           ))}
         </div>

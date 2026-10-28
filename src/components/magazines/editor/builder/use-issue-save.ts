@@ -9,7 +9,7 @@ import {
 } from "@/components/use-autosave";
 import type { VersionedWriter } from "@/components/versioned-writer";
 import type { EditorItemView } from "@/lib/magazines/item-views";
-import type { IssueVisibility } from "@/lib/magazines/values";
+import type { IssueLayout, IssueVisibility } from "@/lib/magazines/values";
 import { shouldWithdrawVisibilityConfirmation } from "@/lib/magazines/visibility";
 import type { MagazineIssue } from "@/payload-types";
 import { api } from "@/trpc/react";
@@ -18,6 +18,7 @@ import { type BuilderItem, toItemInputs } from "./items-model";
 
 /** The issue's own fields as the builder edits them. */
 export type IssueDetailsDraft = {
+  layout: IssueLayout;
   title: string;
   slug: string;
   coverImageUrl: string | null;
@@ -78,6 +79,7 @@ function detailsPatch(next: IssueDetailsSave, saved: IssueDetailsSave) {
     (!saved.publicConfirmed ||
       shouldWithdrawVisibilityConfirmation(saved.visibility, next.visibility));
   return {
+    ...(next.layout !== saved.layout ? { layout: next.layout } : {}),
     ...(next.title !== saved.title ? { title: next.title } : {}),
     ...(next.slug !== saved.slug ? { issueSlug: next.slug } : {}),
     ...(next.coverImageUrl !== saved.coverImageUrl

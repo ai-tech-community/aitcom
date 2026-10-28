@@ -20,12 +20,13 @@ import { EditorialItem, editorialItemTitle } from "./editorial-item";
 import type {
   ArticleHref,
   ItemRendererProps,
+  ItemSize,
   ItemTitle,
   ItemTeaser,
   ItemViewOfKind,
 } from "./types";
 
-export type { ArticleHref, ItemRendererProps } from "./types";
+export type { ArticleHref, ItemRendererProps, ItemSize } from "./types";
 
 /**
  * One renderer per item kind (ADR-0043), the client twin of the server's
@@ -63,13 +64,13 @@ export function isUnavailableItem(
 
 function renderKind<K extends ItemKindId>(
   view: ItemViewOfKind<K>,
-  lead: boolean,
+  size: ItemSize,
   href: ArticleHref,
   teaser: ItemTeaser | null,
 ) {
   const Renderer: ComponentType<ItemRendererProps<K>> =
     ITEM_RENDERERS[view.kind];
-  return <Renderer view={view} lead={lead} href={href} teaser={teaser} />;
+  return <Renderer view={view} size={size} href={href} teaser={teaser} />;
 }
 
 /**
@@ -109,16 +110,16 @@ function UnavailableMarker({ reason }: { reason: UnavailableItem["reason"] }) {
  */
 export function IssueItem({
   view,
-  lead,
+  size,
   href,
   teaser,
 }: {
   view: EditorItemView;
-  lead: boolean;
+  size: ItemSize;
   href: ArticleHref;
   teaser: ItemTeaser | null;
 }) {
   if (isUnavailableItem(view))
     return <UnavailableMarker reason={view.reason} />;
-  return renderKind(view, lead, href, teaser);
+  return renderKind(view, size, href, teaser);
 }

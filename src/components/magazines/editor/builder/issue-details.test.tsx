@@ -18,6 +18,7 @@ function DetailsEditor() {
     coverImageUrl: null,
     editorNote: null,
     visibility: "members",
+    layout: "cover-story",
   });
   const [confirmed, setConfirmed] = useState(false);
   return (
@@ -45,6 +46,25 @@ function DetailsEditor() {
 }
 
 describe("IssueDetails", () => {
+  it("the layout choice changes the preview", () => {
+    renderWithIntl(<DetailsEditor />);
+    const control = screen.getByRole("radiogroup", { name: "Layout" });
+    expect(control).toHaveAccessibleDescription("One big lead, then a grid.");
+    for (const [name, hint] of [
+      ["Long read", "One column, read from top to bottom."],
+      ["Digest", "A short list. Good for lots of news."],
+      ["Cover story", "One big lead, then a grid."],
+    ]) {
+      fireEvent.click(screen.getByRole("radio", { name }));
+      expect(screen.getByRole("radio", { name })).toBeChecked();
+      expect(control).toHaveAccessibleDescription(hint);
+      expect(screen.getByText(hint!)).toHaveClass(
+        "text-muted-foreground",
+        "text-sm",
+      );
+      expect(screen.getByText(hint!)).not.toHaveClass("font-mono");
+    }
+  });
   it("offers preview with a hint and asks an unlisted community to confirm it", () => {
     renderWithIntl(<DetailsEditor />);
     expect(screen.getByText("Only members can read it.")).toBeVisible();

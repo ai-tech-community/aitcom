@@ -32,6 +32,7 @@ type SegmentedControlProps<T extends string> = {
   onValueChange: (value: T) => void;
   /** Accessible group name. */
   "aria-label": string;
+  "aria-describedby"?: string;
   className?: string;
 } & VariantProps<typeof segmentedControlVariants>;
 
@@ -47,12 +48,14 @@ function SegmentedControl<T extends string>({
   size,
   className,
   "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
 }: SegmentedControlProps<T>) {
   const name = React.useId();
   return (
     <div
       role="radiogroup"
       aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
       className={cn(segmentedControlVariants({ size }), className)}
     >
       {options.map((opt) => {

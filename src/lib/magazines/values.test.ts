@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   canIssue,
+  ISSUE_LAYOUTS,
+  ISSUE_LAYOUT_LABELS,
   ISSUE_STATUSES,
   ISSUE_TRANSITIONS,
   ISSUE_VISIBILITIES,
@@ -11,6 +13,14 @@ import {
 } from "./values";
 
 describe("issue lifecycle", () => {
+  it("offers all three layouts with everyday labels", () => {
+    expect(ISSUE_LAYOUTS).toEqual(["cover-story", "long-read", "digest"]);
+    expect(ISSUE_LAYOUT_LABELS).toEqual({
+      "cover-story": "Cover story",
+      "long-read": "Long read",
+      digest: "Digest",
+    });
+  });
   it("offers preview between members and public", () => {
     expect(ISSUE_VISIBILITIES).toEqual(["members", "teaser", "public"]);
     expect(ISSUE_VISIBILITY_LABELS.teaser).toBe("Preview for everyone");

@@ -561,7 +561,7 @@ export interface MagazineIssue {
     };
     [k: string]: unknown;
   } | null;
-  layout?: 'cover-story' | null;
+  layout?: ('cover-story' | 'long-read' | 'digest') | null;
   visibility: 'members' | 'teaser' | 'public';
   /**
    * Who confirmed showing it outside an unlisted community (preview or public).
