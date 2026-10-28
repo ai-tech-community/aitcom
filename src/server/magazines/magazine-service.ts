@@ -218,6 +218,11 @@ export async function saveMagazineSettings(
   return magazine;
 }
 
+/** Logo write plus a new settings timestamp. The settings form remounts on it. */
+export function magazineLogoData(logoUrl: string | null, now = new Date()) {
+  return { logoUrl, updatedAt: now.toISOString() };
+}
+
 /** Sets the magazine logo only. Other settings stay as they were saved. */
 export async function setMagazineLogoUrl(
   payload: PayloadClient,
@@ -227,7 +232,7 @@ export async function setMagazineLogoUrl(
   return payload.update({
     collection: "magazines",
     id: magazineId,
-    data: { logoUrl },
+    data: magazineLogoData(logoUrl),
     depth: 0,
   });
 }

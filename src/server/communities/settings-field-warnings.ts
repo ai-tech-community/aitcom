@@ -14,3 +14,12 @@ export function missingMagazineLogoWarning(): SettingsFieldWarning {
       "This community has no magazine yet. Create the magazine before setting its logo. Other settings were saved.",
   };
 }
+
+/** An unknown magazine logo id does not reject the rest of the settings save. */
+export function unknownMagazineLogoWarning(): SettingsFieldWarning {
+  return {
+    field: "magazineLogoMediaId",
+    message:
+      "Unknown image. Upload it with upload-image first. Other settings were saved.",
+  };
+}

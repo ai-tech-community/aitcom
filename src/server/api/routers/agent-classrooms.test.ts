@@ -4,17 +4,28 @@ import {
   classroomCourseFromDraft,
   classroomCourseSlug,
   classroomWriteIsMemberVisible,
+  classroomWriteNeedsApproval,
 } from "@/server/classroom/agent-course-draft";
 
-it("builds the same course address as the classroom form", () => {
-  expect(classroomCourseSlug("Price a job", 1_700_000_000_000)).toBe(
-    "price-a-job-1700000000000",
-  );
+it("builds a title slug and adds a short number only on collision", () => {
+  expect(classroomCourseSlug("Dutch from zero")).toBe("dutch-from-zero");
+  expect(
+    classroomCourseSlug("Dutch from zero", new Set(["dutch-from-zero"])),
+  ).toBe("dutch-from-zero-2");
+  expect(classroomCourseSlug("Dutch from zero")).not.toMatch(/\d{13}/);
 });
 
 it("treats only a published classroom as member-visible", () => {
   expect(classroomWriteIsMemberVisible("draft")).toBe(false);
   expect(classroomWriteIsMemberVisible("published")).toBe(true);
+});
+
+it("saves a draft course immediately and holds a member-visible write", () => {
+  expect(classroomWriteNeedsApproval("draft", "draft")).toBe(false);
+  expect(classroomWriteNeedsApproval("draft")).toBe(false);
+  expect(classroomWriteNeedsApproval("draft", "published")).toBe(true);
+  expect(classroomWriteNeedsApproval("published", "draft")).toBe(true);
+  expect(classroomWriteNeedsApproval("published")).toBe(true);
 });
 
 it("reads the title, address and summary stored on a classroom draft", () => {

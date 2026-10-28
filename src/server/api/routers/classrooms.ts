@@ -8,6 +8,8 @@ import {
   protectedProcedure,
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
+import { uniqueClassroomCourseSlug } from "@/server/classroom/course-slug";
+import { createCourseModule } from "@/server/classroom/course-writes";
 import {
   assertCourseEditable,
   isCourseManagerRole,
@@ -493,12 +495,7 @@ export const classroomsRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
 
-      const base = input.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 80);
-      const slug = `${base}-${Date.now()}`;
+      const slug = await uniqueClassroomCourseSlug(payload, input.title);
 
       const course = await payload.create({
         collection: "courses",
@@ -854,50 +851,10 @@ export const classroomsRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       assertCourseEditable(course);
-
-      const { totalDocs: moduleCount } = await payload.find({
-        collection: "modules",
-        where: { course: { equals: input.courseId } },
-        limit: 0,
-        depth: 0,
+      return createCourseModule(payload, input.courseId, {
+        title: input.title,
+        summary: input.summary,
       });
-
-      // Create + wrap must land together: a module without the lesson wrap
-      // would leave the course mixed (moduled with module-null lessons), which
-      // groupLessonsByModule hides from learners.
-      const transactionID = await payload.db.beginTransaction();
-      const req = transactionID ? { transactionID } : undefined;
-      try {
-        const moduleDoc = await payload.create({
-          collection: "modules",
-          data: {
-            course: input.courseId,
-            title: input.title,
-            order: moduleCount,
-            summary: input.summary ?? undefined,
-          },
-          req,
-        });
-
-        // First module on a flat course: wrap all existing lessons into it,
-        // preserving their order.
-        let wrapped: LessonVersion[] = [];
-        if (moduleCount === 0) {
-          const { docs } = await payload.update({
-            collection: "lessons",
-            where: { course: { equals: input.courseId } },
-            data: { module: moduleDoc.id },
-            req,
-          });
-          wrapped = lessonVersions(docs);
-        }
-
-        if (transactionID) await payload.db.commitTransaction(transactionID);
-        return { id: moduleDoc.id, lessons: wrapped };
-      } catch (error) {
-        if (transactionID) await payload.db.rollbackTransaction(transactionID);
-        throw error;
-      }
     }),
 
   /** Rename / re-summarise a module on own course. */

@@ -3,6 +3,7 @@ import { FeaturedCommunities } from "@/components/home/featured-communities/feat
 import { LatestNews } from "@/components/home/latest-news/latest-news";
 import type { HomeNewsItem } from "@/server/news/home";
 import { UpcomingEvents } from "@/components/home/upcoming-events/upcoming-events";
+import { HomeCrawlDoors } from "@/components/home/home-crawl-doors";
 import { RecentGatherings } from "@/components/home/recent-gatherings/recent-gatherings";
 import { HomeSponsors } from "@/components/home/sponsors/home-sponsors";
 import { HomeMagazines } from "@/components/home/home-magazines";
@@ -37,6 +38,8 @@ export interface HomeSectionsProps {
   latestNews?: readonly HomeNewsItem[];
   magazines?: readonly MagazineCard[];
   sponsors: readonly HomeSponsor[];
+  /** Guests and crawlers keep the hard links. Members already have a way in. */
+  signedIn?: boolean;
   now?: Date;
 }
 
@@ -48,9 +51,11 @@ export function HomeSections({
   magazines = [],
   recentEvents,
   sponsors,
+  signedIn = false,
   now,
 }: HomeSectionsProps) {
   const t = useTranslations("homeDiscovery");
+  const doors = useTranslations("hubDoors");
   const communities = pickHomeCommunities(featuredCommunities);
   const paired = communities.length > 0 && latestNews.length > 0;
   return (
@@ -79,6 +84,7 @@ export function HomeSections({
           </div>
         )}
       </div>
+      <HomeCrawlDoors t={doors} signedIn={signedIn} />
       {magazines.length > 0 && (
         <div data-section="magazines" className="contents">
           <HomeMagazines magazines={magazines} />

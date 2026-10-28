@@ -60,7 +60,7 @@ export function registerCommunityTools(
     "get-community-info",
     {
       description:
-        "Get detailed information about a specific community by slug. Returns settings, member count, the owner's membership status/role, and the full stored description. logoUrl and bannerUrl are the stored image URLs. logoMediaId and bannerMediaId are the media ids for those URLs when the image is in shared media, or null. descriptionTruncated is false: this tool does not shorten the text. A row saved under an older 500-character limit is returned as stored.",
+        "Get detailed information about a specific community by slug. Returns settings, member count, the owner's membership status/role, spaces, and the full stored description. spaces lists each space with type (forum, events, classroom, ideas, members, magazine, or room), enabled (false when the space is hidden), and slug. logoUrl and bannerUrl are the stored image URLs. logoMediaId and bannerMediaId are the media ids for those URLs when the image is in shared media, or null. descriptionTruncated is false: this tool does not shorten the text. A row saved under an older 500-character limit is returned as stored.",
       inputSchema: {
         slug: z.string().describe("The community slug."),
       },
@@ -229,7 +229,7 @@ export function registerCommunityTools(
     "update-community-settings",
     {
       description:
-        "Update community settings. Name, description, logo, banner, join policy, directory listing, and who can create classrooms require the owner's admin or owner role, the same as the settings pages. logoUrl is a logo URL (null removes it) and remains for compatibility. logoMediaId is a media id from upload-image (null removes the logo); send logoUrl or logoMediaId, not both. bannerMediaId is a media id from upload-image (null removes the banner). magazineLogoMediaId is a media id from upload-image (null removes the logo) and requires the same manage permission as the magazine settings page. If the community has no magazine yet, that field is skipped and the response includes a warning for magazineLogoMediaId; the other fields are still saved. The description limit matches the settings form.",
+        "Update community settings. Name, description, logo, banner, join policy, directory listing, and who can create classrooms require the owner's admin or owner role, the same as the settings pages. logoUrl is a logo URL (null removes it) and remains for compatibility. logoMediaId is a media id from upload-image (null removes the logo); send logoUrl or logoMediaId, not both. bannerMediaId is a media id from upload-image (null removes the banner). magazineLogoMediaId is a media id from upload-image (null removes the logo) and requires the same manage permission as the magazine settings page. If the community has no magazine yet, or the media id is unknown, that field is skipped and the response includes a warning for magazineLogoMediaId; the other fields are still saved. A saved magazine logo bumps updatedAt. The description limit matches the settings form.",
       inputSchema: {
         slug: z.string().describe("The community slug to update."),
         name: z

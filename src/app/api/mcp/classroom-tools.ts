@@ -30,7 +30,7 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
     "create-classroom",
     {
       description:
-        "Create a classroom course. Requires contribute scope and a claimed owner who may create courses under the community's classroomCreatePolicy, the same rule as the new-course form. Title is 3–200 characters. status defaults to draft. A draft course is not member-visible and is created immediately. status published is member-visible, so it is saved as a draft until the owner approves it. This tool cannot update a course or add a module.",
+        "Create a classroom course. Requires contribute scope and a claimed owner who may create courses under the community's classroomCreatePolicy, the same rule as the new-course form. Title is 3–200 characters. The address is the title slug, with a short number only when that slug is already used. status defaults to draft. A draft course is not member-visible and is created immediately. status published is member-visible, so it is saved as a draft until the owner approves it. Use update-classroom to change a course, and create-module or create-lesson to add content.",
       inputSchema: {
         communitySlug: z.string().min(1),
         title: z.string().min(COURSE_TITLE_MIN).max(200),
@@ -41,5 +41,88 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
       annotations: DRAFT_FOR_REVIEW,
     },
     async (input) => textResult(await caller.agent.createClassroom(input)),
+  );
+
+  server.registerTool(
+    "update-classroom",
+    {
+      description:
+        "Update a classroom the owner authored. Requires contribute scope. Title, summary, cover image URL, and status. A change that keeps an unpublished course unpublished is saved immediately. Setting status to published, or editing a course members can already see, is saved as a draft until the owner approves it. This tool cannot archive a course.",
+      inputSchema: {
+        communitySlug: z.string().min(1),
+        courseId: z.number().int().positive(),
+        title: z.string().min(COURSE_TITLE_MIN).max(200).optional(),
+        summary: z.string().max(500).nullable().optional(),
+        status: z.enum(["draft", "published"]).optional(),
+        coverImageUrl: z.string().url().max(1000).nullable().optional(),
+      },
+      annotations: DRAFT_FOR_REVIEW,
+    },
+    async (input) => textResult(await caller.agent.updateClassroom(input)),
+  );
+
+  server.registerTool(
+    "create-module",
+    {
+      description:
+        "Add a module to a classroom the owner authored. Requires contribute scope. The first module on a course wraps its existing lessons, the same as the classroom builder. On an unpublished course the module is created immediately. On a published course it is saved as a draft until the owner approves it, so members do not see it first.",
+      inputSchema: {
+        communitySlug: z.string().min(1),
+        courseId: z.number().int().positive(),
+        title: z.string().min(1).max(200),
+        summary: z.string().max(500).optional(),
+      },
+      annotations: DRAFT_FOR_REVIEW,
+    },
+    async (input) => textResult(await caller.agent.createModule(input)),
+  );
+
+  server.registerTool(
+    "update-module",
+    {
+      description:
+        "Update a module title or summary on a classroom the owner authored. Requires contribute scope. On an unpublished course the change is saved immediately. On a published course it is saved as a draft until the owner approves it.",
+      inputSchema: {
+        communitySlug: z.string().min(1),
+        moduleId: z.number().int().positive(),
+        title: z.string().min(1).max(200).optional(),
+        summary: z.string().max(500).nullable().optional(),
+      },
+      annotations: DRAFT_FOR_REVIEW,
+    },
+    async (input) => textResult(await caller.agent.updateModule(input)),
+  );
+
+  server.registerTool(
+    "create-lesson",
+    {
+      description:
+        "Add a lesson to a classroom the owner authored. Requires contribute scope. Optional moduleId places it in that module. body is plain text stored as paragraphs. On an unpublished course the lesson is created immediately. On a published course it is saved as a draft until the owner approves it. This tool does not add an exam.",
+      inputSchema: {
+        communitySlug: z.string().min(1),
+        courseId: z.number().int().positive(),
+        moduleId: z.number().int().positive().optional(),
+        title: z.string().min(1).max(200),
+        body: z.string().max(50_000).optional(),
+      },
+      annotations: DRAFT_FOR_REVIEW,
+    },
+    async (input) => textResult(await caller.agent.createLesson(input)),
+  );
+
+  server.registerTool(
+    "update-lesson",
+    {
+      description:
+        "Update a lesson title or body on a classroom the owner authored. Requires contribute scope. body is plain text stored as paragraphs. On an unpublished course the change is saved immediately. On a published course it is saved as a draft until the owner approves it.",
+      inputSchema: {
+        communitySlug: z.string().min(1),
+        lessonId: z.number().int().positive(),
+        title: z.string().min(1).max(200).optional(),
+        body: z.string().max(50_000).optional(),
+      },
+      annotations: DRAFT_FOR_REVIEW,
+    },
+    async (input) => textResult(await caller.agent.updateLesson(input)),
   );
 }

@@ -79,6 +79,11 @@ export const TOOL_META: Record<string, ToolMeta> = {
   // ── Classroom ──
   "browse-classrooms": { surface: "classroom", gate: "read" },
   "create-classroom": { surface: "classroom", gate: "contribute" },
+  "update-classroom": { surface: "classroom", gate: "contribute" },
+  "create-module": { surface: "classroom", gate: "contribute" },
+  "update-module": { surface: "classroom", gate: "contribute" },
+  "create-lesson": { surface: "classroom", gate: "contribute" },
+  "update-lesson": { surface: "classroom", gate: "contribute" },
   "list-agent-drafts": { surface: "sessions", gate: "read" },
   // ── Ideas ──
   "vote-idea": { surface: "ideas", gate: "contribute" },

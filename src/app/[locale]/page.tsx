@@ -21,6 +21,7 @@ import { publicRosterVisibility } from "@/server/members/public-roster";
 import type { Metadata } from "next";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
+import { getSession } from "@/server/better-auth/server";
 import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
 import { toEventRowInput } from "@/components/events/rows/to-event-row-input";
 import { loadEventHostNames } from "@/server/events/event-hosts-queries";
@@ -66,7 +67,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [locale, t] = await Promise.all([getLocale(), getTranslations()]);
+  const [locale, t, session] = await Promise.all([
+    getLocale(),
+    getTranslations(),
+    getSession(),
+  ]);
 
   const payload = await getPayloadClient();
   const now = new Date();
@@ -276,6 +281,7 @@ export default async function Home() {
         latestNews={latestNews}
         sponsors={featuredSponsors.map(toHomeSponsor)}
         magazines={magazines}
+        signedIn={!!session?.user}
         now={now}
       />
     </>

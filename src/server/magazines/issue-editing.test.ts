@@ -24,7 +24,16 @@ describe("issue editor view", () => {
       content: null,
     }));
     const find = vi.fn(async () => ({ docs: articles }));
-    const deps = { db: {}, payload: { find } } as unknown as Deps;
+    const db = {
+      select: () => ({
+        from: () => ({
+          leftJoin: () => ({
+            where: async () => [],
+          }),
+        }),
+      }),
+    };
+    const deps = { db, payload: { find } } as unknown as Deps;
     const issue = {
       id: 1,
       magazine: 7,
