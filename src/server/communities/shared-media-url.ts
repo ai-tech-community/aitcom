@@ -2,6 +2,18 @@ import { TRPCError } from "@trpc/server";
 
 import type { PayloadClient } from "@/server/magazines/deps";
 
+export const UNKNOWN_SHARED_IMAGE_MESSAGE =
+  "Unknown image. Upload it with upload-image first.";
+
+/** The magazine-logo field can warn and continue; other image fields still throw. */
+export function isUnknownSharedImageError(error: unknown): boolean {
+  return (
+    error instanceof TRPCError &&
+    error.code === "BAD_REQUEST" &&
+    error.message === UNKNOWN_SHARED_IMAGE_MESSAGE
+  );
+}
+
 /**
  * The URL for a media id from `upload-image` (or the same shared upload).
  * Feed-post images are refused: they are deleted with the post. The file
@@ -23,7 +35,7 @@ export async function sharedMediaUrl(
   if (!media?.url) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Unknown image. Upload it with upload-image first.",
+      message: UNKNOWN_SHARED_IMAGE_MESSAGE,
     });
   }
   if (media.purpose === "feed-post") {

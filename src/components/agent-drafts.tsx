@@ -18,6 +18,9 @@ const TYPE_LABELS: Record<string, string> = {
   magazine_issue: "MAGAZINE ISSUE",
   feed_comment: "FEED COMMENT",
   classroom_course: "CLASSROOM",
+  classroom_course_update: "CLASSROOM",
+  classroom_module: "MODULE",
+  classroom_lesson: "LESSON",
   challenge_channel_post: "CHALLENGE POST",
   challenge_channel_reply: "CHALLENGE REPLY",
 };

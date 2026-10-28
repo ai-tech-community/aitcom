@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { escapeLike } from "@/server/db/escape-like";
-import { and, eq, isNull, ilike, sql, desc, count } from "drizzle-orm";
+import { and, asc, eq, isNull, ilike, sql, desc, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { agentProcedure, requireScope, requireOwner } from "@/server/api/trpc";
@@ -14,9 +14,11 @@ import {
   communityMemberships,
   communityInvites,
   agentSuggestions,
+  spaces,
   user,
 } from "@/server/db/schema";
 import { generateSlug } from "@/server/communities/slug-utils";
+import { seedDefaultSpaces } from "@/server/communities/seed-default-spaces";
 import {
   canManageRole,
   type CommunityRole,
@@ -34,6 +36,7 @@ import { communityLogoChoice } from "@/server/communities/logo-choice";
 import {
   findMediaIdsByUrl,
   mediaIdsForUrls,
+  isUnknownSharedImageError,
   sharedMediaUrl,
 } from "@/server/communities/shared-media-url";
 import {
@@ -46,6 +49,7 @@ import {
 } from "@/server/magazines/magazine-service";
 import {
   missingMagazineLogoWarning,
+  unknownMagazineLogoWarning,
   type SettingsFieldWarning,
 } from "@/server/communities/settings-field-warnings";
 import { getPayloadClient } from "@/server/payload";
@@ -219,6 +223,16 @@ export const agentCommunityRouter = {
           community.bannerUrl,
         ]),
       );
+      const spaceRows = await ctx.db
+        .select({
+          kind: spaces.kind,
+          builtinSurface: spaces.builtinSurface,
+          slug: spaces.slug,
+          archivedAt: spaces.archivedAt,
+        })
+        .from(spaces)
+        .where(eq(spaces.communityId, community.id))
+        .orderBy(asc(spaces.position));
       return {
         ...community,
         ...imageIds,
@@ -232,6 +246,11 @@ export const agentCommunityRouter = {
               joinedAt: ownerMembership.joinedAt,
             }
           : null,
+        spaces: spaceRows.map((row) => ({
+          type: row.kind === "room" ? "room" : (row.builtinSurface ?? row.kind),
+          enabled: row.archivedAt === null,
+          slug: row.slug,
+        })),
       };
     }),
 
@@ -589,24 +608,28 @@ export const agentCommunityRouter = {
         });
       }
 
-      const [community] = await ctx.db
-        .insert(communities)
-        .values({
-          name: input.name,
-          slug,
-          description: input.description,
-          joinPolicy: input.joinPolicy,
-          isListedInDirectory: input.isListedInDirectory,
-          createdBy: ownerId,
-        })
-        .returning();
+      const community = await ctx.db.transaction(async (tx) => {
+        const [created] = await tx
+          .insert(communities)
+          .values({
+            name: input.name,
+            slug,
+            description: input.description,
+            joinPolicy: input.joinPolicy,
+            isListedInDirectory: input.isListedInDirectory,
+            createdBy: ownerId,
+          })
+          .returning();
 
-      // Owner becomes community owner
-      await ctx.db.insert(communityMemberships).values({
-        communityId: community!.id,
-        userId: ownerId,
-        role: "owner",
-        status: "active",
+        // Owner becomes community owner. Same default spaces as the UI form.
+        await tx.insert(communityMemberships).values({
+          communityId: created!.id,
+          userId: ownerId,
+          role: "owner",
+          status: "active",
+        });
+        await seedDefaultSpaces(tx, created!.id);
+        return created!;
       });
 
       await logActivity(ctx.db, {
@@ -683,6 +706,8 @@ export const agentCommunityRouter = {
         updates.isListedInDirectory = input.isListedInDirectory;
       if (input.classroomCreatePolicy !== undefined)
         updates.classroomCreatePolicy = input.classroomCreatePolicy;
+      // A magazine logo lives on the magazine row. Touch the community too
+      // so settings updatedAt moves when that logo is the only change.
 
       // The magazine logo is the magazine settings form: manage capability
       // (community owner/admin, or a magazine editor-in-chief). A community
@@ -719,17 +744,31 @@ export const agentCommunityRouter = {
               ownerId,
             );
             requireCapability(standing, "manage");
-            magazineLogoUrl =
-              magazineLogoMediaId === null
-                ? null
-                : await sharedMediaUrl(payload, magazineLogoMediaId, ownerId);
-            const logoUrl = magazineLogoUrl;
-            saveMagazineLogo = async () => {
-              await setMagazineLogoUrl(payload, magazine.id, logoUrl);
-            };
+            if (magazineLogoMediaId === null) {
+              magazineLogoUrl = null;
+            } else {
+              try {
+                magazineLogoUrl = await sharedMediaUrl(
+                  payload,
+                  magazineLogoMediaId,
+                  ownerId,
+                );
+              } catch (error) {
+                if (!isUnknownSharedImageError(error)) throw error;
+                warnings.push(unknownMagazineLogoWarning());
+              }
+            }
+            if (magazineLogoUrl !== undefined) {
+              const logoUrl = magazineLogoUrl;
+              saveMagazineLogo = async () => {
+                await setMagazineLogoUrl(payload, magazine.id, logoUrl);
+              };
+            }
           }
         }
       }
+
+      if (magazineLogoUrl !== undefined) updates.updatedAt = new Date();
 
       const [updated] =
         Object.keys(updates).length > 0

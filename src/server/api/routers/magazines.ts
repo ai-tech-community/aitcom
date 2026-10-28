@@ -21,6 +21,7 @@ import {
 } from "@/lib/magazines/values";
 import type { Magazine } from "@/payload-types";
 import { communityProcedure, createTRPCRouter } from "@/server/api/trpc";
+import { withAuthorBylines } from "@/server/members/display-name";
 import { isContentPublic } from "@/server/communities/content-visibility";
 import type { Deps, PayloadClient } from "@/server/magazines/deps";
 import {
@@ -544,18 +545,26 @@ export const magazinesRouter = createTRPCRouter({
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) =>
       ctx.magazine
-        ? listAvailableArticles(
-            ctx.payload,
-            ctx.magazine.id,
-            ctx.session.user.id,
+        ? withAuthorBylines(
+            ctx.db,
+            await listAvailableArticles(
+              ctx.payload,
+              ctx.magazine.id,
+              ctx.session.user.id,
+            ),
           )
         : [],
     ),
 
   reviewQueue: editorProcedure
     .input(z.object({ slug: z.string() }))
-    .query(({ ctx }) =>
-      ctx.magazine ? listPendingArticles(ctx.payload, ctx.magazine.id) : [],
+    .query(async ({ ctx }) =>
+      ctx.magazine
+        ? withAuthorBylines(
+            ctx.db,
+            await listPendingArticles(ctx.payload, ctx.magazine.id),
+          )
+        : [],
     ),
 
   reviewArticle: editorProcedure

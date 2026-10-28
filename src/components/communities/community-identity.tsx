@@ -31,6 +31,7 @@ export function CommunityIdentity({
   memberRole,
 }: CommunityIdentityProps) {
   const t = useTranslations("communities.profile");
+  const tRoles = useTranslations("communities.roles");
 
   const initials = getInitials(community.name);
   const active = community.liveness?.activeContributors ?? 0;
@@ -73,8 +74,8 @@ export function CommunityIdentity({
             >
               {community.name}
             </h1>
-            {membershipStatus === "active" ? (
-              <Badge variant="outline">{t("memberBadge")}</Badge>
+            {membershipStatus === "active" && memberRole ? (
+              <Badge variant="outline">{tRoles(memberRole)}</Badge>
             ) : null}
           </div>
 

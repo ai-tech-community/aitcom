@@ -4,6 +4,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { reviewStatusFor, type ReviewDecision } from "@/lib/magazines/review";
 import type { Magazine } from "@/payload-types";
 import { logActivity } from "@/server/agent/activity";
+import { withAuthorBylines } from "@/server/members/display-name";
 import { communities } from "@/server/db/schema";
 
 import type { Deps, PayloadClient } from "./deps";
@@ -19,6 +20,7 @@ export type PendingMagazineArticle = {
   id: number;
   slug: string;
   title: string;
+  authorId: string | null;
   authorName: string | null;
   sentAt: string;
 };
@@ -46,6 +48,7 @@ export async function listPendingArticles(
     id: doc.id,
     slug: doc.slug,
     title: doc.title,
+    authorId: doc.authorId ?? null,
     authorName: doc.authorName ?? null,
     sentAt: doc.updatedAt,
   }));
@@ -96,6 +99,12 @@ export async function loadArticleForReview(
   });
   const article = docs[0];
   if (!article) return null;
+  const [shown] = await withAuthorBylines(deps.db, [
+    {
+      authorId: article.authorId ?? null,
+      authorName: article.authorName ?? null,
+    },
+  ]);
   return {
     magazine: { id: desk.magazine.id, name: desk.magazine.name },
     article: {
@@ -103,7 +112,7 @@ export async function loadArticleForReview(
       slug: article.slug,
       title: article.title,
       type: article.type ?? null,
-      authorName: article.authorName ?? null,
+      authorName: shown?.authorName ?? null,
       content: article.content,
       reviewStatus: article.reviewStatus ?? null,
       reviewNote: article.reviewNote ?? null,

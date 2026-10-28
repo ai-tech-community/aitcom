@@ -14,9 +14,8 @@ import {
   communityInvites,
   memberProfiles,
   user,
-  spaces,
 } from "@/server/db/schema";
-import { buildDefaultSpaceRows } from "@/server/communities/space-defaults";
+import { seedDefaultSpaces } from "@/server/communities/seed-default-spaces";
 import { generateSlug } from "@/server/communities/slug-utils";
 import {
   canManageRole,
@@ -432,7 +431,7 @@ export const communitiesRouter = createTRPCRouter({
         });
 
         // Seed the default builtin spaces so the new community's nav is populated.
-        await tx.insert(spaces).values(buildDefaultSpaceRows(c!.id));
+        await seedDefaultSpaces(tx, c!.id);
 
         try {
           await writeCommunityNewsSector(tx, c!.id, "ai");

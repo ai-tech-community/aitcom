@@ -32,8 +32,17 @@ import { createForumThread } from "@/server/communities/create-forum-thread";
 import { memberDisplayName } from "@/server/members/display-name";
 import {
   CLASSROOM_COURSE_DRAFT_TYPE,
+  CLASSROOM_COURSE_UPDATE_DRAFT_TYPE,
+  CLASSROOM_LESSON_DRAFT_TYPE,
+  CLASSROOM_MODULE_DRAFT_TYPE,
   assertClassroomDraftPublishable,
+  classroomCourseUpdateFromDraft,
+  classroomLessonFromDraft,
+  classroomModuleFromDraft,
   publishClassroomCourseDraft,
+  publishClassroomCourseUpdate,
+  publishClassroomLesson,
+  publishClassroomModule,
 } from "./agent-classrooms";
 import {
   FORUM_THREAD_DRAFT_TYPE,
@@ -1007,6 +1016,21 @@ export const agentManagementRouter = createTRPCRouter({
               existing,
             )
           : undefined;
+      const classroomUpdate =
+        existing.type === CLASSROOM_COURSE_UPDATE_DRAFT_TYPE &&
+        input.action === "approved"
+          ? classroomCourseUpdateFromDraft(existing)
+          : undefined;
+      const classroomModule =
+        existing.type === CLASSROOM_MODULE_DRAFT_TYPE &&
+        input.action === "approved"
+          ? classroomModuleFromDraft(existing)
+          : undefined;
+      const classroomLesson =
+        existing.type === CLASSROOM_LESSON_DRAFT_TYPE &&
+        input.action === "approved"
+          ? classroomLessonFromDraft(existing)
+          : undefined;
       const authorName =
         (await memberDisplayName(ctx.db, userId)) ?? "Community member";
 
@@ -1169,6 +1193,35 @@ export const agentManagementRouter = createTRPCRouter({
           authorName,
           classroomToPublish,
         );
+      }
+
+      if (
+        input.action === "approved" &&
+        draft.type === CLASSROOM_COURSE_UPDATE_DRAFT_TYPE &&
+        classroomUpdate
+      ) {
+        await publishClassroomCourseUpdate(
+          ctx.db,
+          await getPayloadClient(),
+          userId,
+          classroomUpdate,
+        );
+      }
+
+      if (
+        input.action === "approved" &&
+        draft.type === CLASSROOM_MODULE_DRAFT_TYPE &&
+        classroomModule
+      ) {
+        await publishClassroomModule(await getPayloadClient(), classroomModule);
+      }
+
+      if (
+        input.action === "approved" &&
+        draft.type === CLASSROOM_LESSON_DRAFT_TYPE &&
+        classroomLesson
+      ) {
+        await publishClassroomLesson(await getPayloadClient(), classroomLesson);
       }
 
       // Revival/welcome nudge: approving opens/sends a DM from the organizer to the member.

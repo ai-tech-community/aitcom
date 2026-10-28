@@ -7,30 +7,56 @@ import { canCreateCourse, type CommunityRole } from "@/lib/classroom";
 import { COURSE_TITLE_MIN } from "@/lib/classroom/course-title";
 import {
   CLASSROOM_COURSE_DRAFT_TYPE,
+  CLASSROOM_COURSE_UPDATE_DRAFT_TYPE,
+  CLASSROOM_LESSON_DRAFT_TYPE,
+  CLASSROOM_MODULE_DRAFT_TYPE,
   classroomCourseFromDraft,
   classroomCourseSlug,
+  classroomCourseUpdateFromDraft,
+  classroomLessonFromDraft,
+  classroomModuleFromDraft,
   classroomWriteIsMemberVisible,
+  classroomWriteNeedsApproval,
   type ClassroomCourseDraft,
+  type ClassroomCourseUpdateDraft,
+  type ClassroomLessonDraft,
+  type ClassroomModuleDraft,
 } from "@/server/classroom/agent-course-draft";
 import { agentDraftResponse } from "@/server/agent/draft-result";
 import { logActivity } from "@/server/agent/activity";
 import { agentProcedure, requireOwner, requireScope } from "@/server/api/trpc";
 import {
+  assertCourseEditable,
   isCourseManagerRole,
   resolveCourseAccess,
 } from "@/server/classroom/course-access";
+import {
+  createCourseLesson,
+  createCourseModule,
+  updateCourseFields,
+  updateCourseLesson,
+  updateCourseModule,
+} from "@/server/classroom/course-writes";
+import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import {
   agentDrafts,
   communities,
   communityMemberships,
 } from "@/server/db/schema";
+import { uniqueClassroomCourseSlug } from "@/server/classroom/course-slug";
 import { memberDisplayName } from "@/server/members/display-name";
 import { getPayloadClient } from "@/server/payload";
 
 export {
   CLASSROOM_COURSE_DRAFT_TYPE,
+  CLASSROOM_COURSE_UPDATE_DRAFT_TYPE,
+  CLASSROOM_LESSON_DRAFT_TYPE,
+  CLASSROOM_MODULE_DRAFT_TYPE,
   classroomCourseFromDraft,
   classroomCourseSlug,
+  classroomCourseUpdateFromDraft,
+  classroomLessonFromDraft,
+  classroomModuleFromDraft,
   classroomWriteIsMemberVisible,
 };
 export type { ClassroomCourseDraft };
@@ -91,6 +117,68 @@ export async function publishClassroomCourseDraft(
   return { id: course.id, slug: course.slug };
 }
 
+export async function publishClassroomCourseUpdate(
+  db: Parameters<typeof logActivity>[0],
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  userId: string,
+  draft: ClassroomCourseUpdateDraft,
+) {
+  await updateCourseFields(payload, draft.courseId, draft);
+  if (draft.status !== "published") return;
+  const course = await payload.findByID({
+    collection: "courses",
+    id: draft.courseId,
+    depth: 0,
+  });
+  await logActivity(db, {
+    actorId: userId,
+    actorType: "member",
+    action: "course.published",
+    targetType: "courses",
+    targetId: String(course.id),
+    communityId: course.communityId,
+    metadata: { title: course.title },
+  });
+}
+
+export async function publishClassroomModule(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  draft: ClassroomModuleDraft,
+) {
+  if (draft.action === "create") {
+    return createCourseModule(payload, draft.courseId, {
+      title: draft.title,
+      summary: draft.summary,
+    });
+  }
+  await updateCourseModule(payload, draft.moduleId!, {
+    title: draft.title,
+    ...(draft.summary !== undefined ? { summary: draft.summary } : {}),
+  });
+  return { id: draft.moduleId! };
+}
+
+export async function publishClassroomLesson(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  draft: ClassroomLessonDraft,
+) {
+  const body =
+    draft.body === undefined ? undefined : plainTextToLexical(draft.body ?? "");
+  if (draft.action === "create") {
+    return createCourseLesson(payload, {
+      courseId: draft.courseId,
+      moduleId: draft.moduleId,
+      title: draft.title,
+      ...(body !== undefined ? { body } : {}),
+    });
+  }
+  await updateCourseLesson(payload, draft.lessonId!, {
+    title: draft.title,
+    ...(body !== undefined ? { body } : {}),
+  });
+  return { id: draft.lessonId! };
+}
+
 async function communityForOwner(
   db: Parameters<typeof logActivity>[0],
   slug: string,
@@ -125,6 +213,74 @@ async function ownerRole(
     columns: { role: true },
   });
   return (membership?.role as CommunityRole | undefined) ?? null;
+}
+
+async function ownedCourse(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  courseId: number,
+  ownerId: string,
+) {
+  const course = await payload.findByID({
+    collection: "courses",
+    id: courseId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!course) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+  }
+  if (course.authorId !== ownerId) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  assertCourseEditable(course);
+  return course;
+}
+
+async function assertCourseCommunity(
+  db: Parameters<typeof logActivity>[0],
+  slug: string,
+  communityId: string,
+) {
+  const community = await communityForOwner(db, slug);
+  if (community.id !== communityId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+  }
+  return community;
+}
+
+async function holdClassroomDraft(
+  ctx: {
+    db: Parameters<typeof logActivity>[0];
+    agent: { agentId: string };
+  },
+  input: {
+    ownerId: string;
+    type: string;
+    targetId: string;
+    content: string;
+    slug: string;
+    body: string;
+    metadata: Record<string, unknown>;
+  },
+) {
+  const [draft] = await ctx.db
+    .insert(agentDrafts)
+    .values({
+      agentId: ctx.agent.agentId,
+      ownerId: input.ownerId,
+      type: input.type,
+      targetType: "courses",
+      targetId: input.targetId,
+      content: input.content,
+      status: "pending",
+      metadata: input.metadata,
+    })
+    .returning({ id: agentDrafts.id });
+  return agentDraftResponse({
+    draftId: draft!.id,
+    slug: input.slug,
+    body: input.body,
+  });
 }
 
 export const agentClassroomRouter = {
@@ -233,7 +389,8 @@ export const agentClassroomRouter = {
           message: "CANNOT_CREATE_COURSE",
         });
       }
-      const slug = classroomCourseSlug(input.title);
+      const payloadForSlug = await getPayloadClient();
+      const slug = await uniqueClassroomCourseSlug(payloadForSlug, input.title);
       const body = input.summary ?? "";
       if (classroomWriteIsMemberVisible(input.status)) {
         const [draft] = await ctx.db
@@ -286,6 +443,317 @@ export const agentClassroomRouter = {
         slug: course.slug,
         status: "draft" as const,
         body,
+      };
+    }),
+
+  updateClassroom: agentProcedure
+    .input(
+      z.object({
+        communitySlug: z.string().min(1),
+        courseId: z.number().int().positive(),
+        title: z.string().min(COURSE_TITLE_MIN).max(200).optional(),
+        summary: z.string().max(500).nullable().optional(),
+        status: z.enum(["draft", "published"]).optional(),
+        coverImageUrl: z.string().url().max(1000).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      if (
+        input.title === undefined &&
+        input.summary === undefined &&
+        input.status === undefined &&
+        input.coverImageUrl === undefined
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No classroom fields to update",
+        });
+      }
+      const payload = await getPayloadClient();
+      const course = await ownedCourse(payload, input.courseId, ownerId);
+      await assertCourseCommunity(
+        ctx.db,
+        input.communitySlug,
+        course.communityId,
+      );
+      const patch = {
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.summary !== undefined ? { summary: input.summary } : {}),
+        ...(input.coverImageUrl !== undefined
+          ? { coverImageUrl: input.coverImageUrl }
+          : {}),
+        ...(input.status !== undefined ? { status: input.status } : {}),
+      };
+      if (!classroomWriteNeedsApproval(course.status, input.status)) {
+        await updateCourseFields(payload, course.id, patch);
+        return {
+          mode: "updated" as const,
+          courseId: course.id,
+          status: course.status,
+        };
+      }
+      const [draft] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: ctx.agent.agentId,
+          ownerId,
+          type: CLASSROOM_COURSE_UPDATE_DRAFT_TYPE,
+          targetType: "courses",
+          targetId: String(course.id),
+          content: input.title ?? course.title,
+          status: "pending",
+          metadata: {
+            courseId: course.id,
+            ...patch,
+            destinationLabel: course.title,
+            destinationPath: `/communities/${input.communitySlug}/classroom/${course.slug}`,
+          },
+        })
+        .returning({ id: agentDrafts.id });
+      return agentDraftResponse({
+        draftId: draft!.id,
+        slug: course.slug,
+        body: input.summary ?? course.summary ?? "",
+      });
+    }),
+
+  createModule: agentProcedure
+    .input(
+      z.object({
+        communitySlug: z.string().min(1),
+        courseId: z.number().int().positive(),
+        title: z.string().min(1).max(200),
+        summary: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const payload = await getPayloadClient();
+      const course = await ownedCourse(payload, input.courseId, ownerId);
+      await assertCourseCommunity(
+        ctx.db,
+        input.communitySlug,
+        course.communityId,
+      );
+      if (classroomWriteNeedsApproval(course.status)) {
+        return holdClassroomDraft(ctx, {
+          ownerId,
+          type: CLASSROOM_MODULE_DRAFT_TYPE,
+          targetId: String(course.id),
+          content: input.title,
+          slug: course.slug,
+          body: input.summary ?? "",
+          metadata: {
+            action: "create",
+            courseId: course.id,
+            title: input.title,
+            ...(input.summary !== undefined ? { summary: input.summary } : {}),
+            destinationLabel: course.title,
+            destinationPath: `/communities/${input.communitySlug}/classroom/${course.slug}`,
+          },
+        });
+      }
+      const created = await createCourseModule(payload, course.id, input);
+      return {
+        mode: "created" as const,
+        moduleId: created.id,
+        courseId: course.id,
+      };
+    }),
+
+  updateModule: agentProcedure
+    .input(
+      z.object({
+        communitySlug: z.string().min(1),
+        moduleId: z.number().int().positive(),
+        title: z.string().min(1).max(200).optional(),
+        summary: z.string().max(500).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      if (input.title === undefined && input.summary === undefined) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No module fields to update",
+        });
+      }
+      const payload = await getPayloadClient();
+      const moduleDoc = await payload.findByID({
+        collection: "modules",
+        id: input.moduleId,
+        depth: 0,
+      });
+      const course = await ownedCourse(payload, moduleDoc.course, ownerId);
+      await assertCourseCommunity(
+        ctx.db,
+        input.communitySlug,
+        course.communityId,
+      );
+      const title = input.title ?? moduleDoc.title;
+      if (classroomWriteNeedsApproval(course.status)) {
+        return holdClassroomDraft(ctx, {
+          ownerId,
+          type: CLASSROOM_MODULE_DRAFT_TYPE,
+          targetId: String(moduleDoc.id),
+          content: title,
+          slug: course.slug,
+          body: input.summary ?? moduleDoc.summary ?? "",
+          metadata: {
+            action: "update",
+            courseId: course.id,
+            moduleId: moduleDoc.id,
+            ...(input.title !== undefined ? { title: input.title } : {}),
+            ...(input.summary !== undefined ? { summary: input.summary } : {}),
+            destinationLabel: course.title,
+            destinationPath: `/communities/${input.communitySlug}/classroom/${course.slug}`,
+          },
+        });
+      }
+      await updateCourseModule(payload, moduleDoc.id, {
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.summary !== undefined ? { summary: input.summary } : {}),
+      });
+      return {
+        mode: "updated" as const,
+        moduleId: moduleDoc.id,
+        courseId: course.id,
+      };
+    }),
+
+  createLesson: agentProcedure
+    .input(
+      z.object({
+        communitySlug: z.string().min(1),
+        courseId: z.number().int().positive(),
+        moduleId: z.number().int().positive().optional(),
+        title: z.string().min(1).max(200),
+        body: z.string().max(50_000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const payload = await getPayloadClient();
+      const course = await ownedCourse(payload, input.courseId, ownerId);
+      await assertCourseCommunity(
+        ctx.db,
+        input.communitySlug,
+        course.communityId,
+      );
+      if (input.moduleId !== undefined) {
+        const moduleDoc = await payload.findByID({
+          collection: "modules",
+          id: input.moduleId,
+          depth: 0,
+        });
+        if (moduleDoc.course !== course.id) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "That module is not in this classroom",
+          });
+        }
+      }
+      if (classroomWriteNeedsApproval(course.status)) {
+        return holdClassroomDraft(ctx, {
+          ownerId,
+          type: CLASSROOM_LESSON_DRAFT_TYPE,
+          targetId: String(course.id),
+          content: input.title,
+          slug: course.slug,
+          body: input.body ?? "",
+          metadata: {
+            action: "create",
+            courseId: course.id,
+            title: input.title,
+            ...(input.moduleId !== undefined
+              ? { moduleId: input.moduleId }
+              : {}),
+            ...(input.body !== undefined ? { body: input.body } : {}),
+            destinationLabel: course.title,
+            destinationPath: `/communities/${input.communitySlug}/classroom/${course.slug}`,
+          },
+        });
+      }
+      const created = await createCourseLesson(payload, {
+        courseId: course.id,
+        moduleId: input.moduleId,
+        title: input.title,
+        ...(input.body !== undefined
+          ? { body: plainTextToLexical(input.body) }
+          : {}),
+      });
+      return {
+        mode: "created" as const,
+        lessonId: created.id,
+        courseId: course.id,
+      };
+    }),
+
+  updateLesson: agentProcedure
+    .input(
+      z.object({
+        communitySlug: z.string().min(1),
+        lessonId: z.number().int().positive(),
+        title: z.string().min(1).max(200).optional(),
+        body: z.string().max(50_000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      if (input.title === undefined && input.body === undefined) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No lesson fields to update",
+        });
+      }
+      const payload = await getPayloadClient();
+      const lesson = await payload.findByID({
+        collection: "lessons",
+        id: input.lessonId,
+        depth: 0,
+      });
+      const course = await ownedCourse(payload, lesson.course, ownerId);
+      await assertCourseCommunity(
+        ctx.db,
+        input.communitySlug,
+        course.communityId,
+      );
+      const title = input.title ?? lesson.title;
+      if (classroomWriteNeedsApproval(course.status)) {
+        return holdClassroomDraft(ctx, {
+          ownerId,
+          type: CLASSROOM_LESSON_DRAFT_TYPE,
+          targetId: String(lesson.id),
+          content: title,
+          slug: course.slug,
+          body: input.body ?? "",
+          metadata: {
+            action: "update",
+            courseId: course.id,
+            lessonId: lesson.id,
+            title,
+            ...(input.body !== undefined ? { body: input.body } : {}),
+            destinationLabel: course.title,
+            destinationPath: `/communities/${input.communitySlug}/classroom/${course.slug}`,
+          },
+        });
+      }
+      await updateCourseLesson(payload, lesson.id, {
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.body !== undefined
+          ? { body: plainTextToLexical(input.body) }
+          : {}),
+      });
+      return {
+        mode: "updated" as const,
+        lessonId: lesson.id,
+        courseId: course.id,
       };
     }),
 };

@@ -29,7 +29,11 @@ import {
   type CommunityVisibility,
 } from "@/server/communities/content-visibility";
 import { communities } from "@/server/db/schema";
-import { memberDisplayName } from "@/server/members/display-name";
+import {
+  authorBylineAtReadTime,
+  memberDisplayName,
+  memberNamesByUserId,
+} from "@/server/members/display-name";
 
 import type { Deps } from "./deps";
 import { loadMagazineEditorship, NO_STANDING } from "./editorship";
@@ -926,6 +930,14 @@ export async function loadMagazineArticlePage(
   const article = docs[0];
   if (!article) return null;
   if (textMode === "published" && article.status !== "published") return null;
+  const names = article.authorId
+    ? await memberNamesByUserId(deps.db, [article.authorId])
+    : new Map();
+  const authorName = authorBylineAtReadTime(
+    article.authorName,
+    article.authorId ? (names.get(article.authorId) ?? null) : null,
+  );
+  const shown = { ...article, authorName };
 
   const articles = (
     await loadIssueItemViewsOfKinds(
@@ -945,16 +957,16 @@ export async function loadMagazineArticlePage(
   let reading: ArticleReading;
   switch (readingModeOf(access)) {
     case "full":
-      reading = { mode: "full", article };
+      reading = { mode: "full", article: shown };
       break;
     case "teaser":
       reading = {
         mode: "teaser",
         article: {
-          id: article.id,
-          slug: article.slug,
-          title: article.title,
-          authorName: article.authorName,
+          id: shown.id,
+          slug: shown.slug,
+          title: shown.title,
+          authorName: shown.authorName,
           mediaUrl: article.mediaUrl,
           publishedAt: article.publishedAt,
           updatedAt: article.updatedAt,

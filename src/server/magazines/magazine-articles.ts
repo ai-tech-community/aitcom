@@ -37,6 +37,7 @@ export type AvailableMagazineArticle = {
   id: number;
   slug: string;
   title: string;
+  authorId: string | null;
   authorName: string | null;
   updatedAt: string;
   /**
@@ -268,6 +269,7 @@ async function approvedUnplacedArticles(
     id: Number(doc.id),
     slug: doc.slug,
     title: doc.title,
+    authorId: doc.authorId ?? null,
     authorName: doc.authorName ?? null,
     updatedAt: doc.updatedAt,
     editableByViewer: isEditableBy(doc, viewerId),
