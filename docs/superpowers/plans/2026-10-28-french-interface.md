@@ -75,8 +75,12 @@ Published material continues to use existing content fallback.
 
 ## Validation result
 
-- All 53 tests in the 9 added/changed test files pass.
+- All 65 tests in the 11 added/changed test files pass.
 - `pnpm typecheck` and `git diff --check` pass.
 - Catalogue parity: 4,932 keys per catalogue; all French ICU messages parse and retain their argument/tag/option structure.
 - Fresh code review found a production locale enum naming difference; the migration now handles both existing names. No outstanding material findings.
 - Migration files prepared only; no database writes, outbound emails, or push.
+
+### PR validation follow-up
+
+CI identified strict lint violations introduced by widened locale types and catalogue test typing. Removed redundant assertions, preserved empty-string editorial fallback explicitly, and made parser/async contracts explicit. Focused ESLint and the catalogue tests pass. Updated existing redirect and attendee CSV tests to recognize French; the CSV now has explicit French coverage and still verifies unsupported-locale fallback. Workspace type-check passes.
