@@ -17,6 +17,7 @@ const TYPE_LABELS: Record<string, string> = {
   news_storyline: "NEWS STORYLINE",
   magazine_issue: "MAGAZINE ISSUE",
   feed_comment: "FEED COMMENT",
+  classroom_course: "CLASSROOM",
   challenge_channel_post: "CHALLENGE POST",
   challenge_channel_reply: "CHALLENGE REPLY",
 };

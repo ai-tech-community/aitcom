@@ -40,7 +40,7 @@ export async function createForumThread(
   }
   await requireRulesAcceptance(author.id, communityId);
   const payload = await getPayloadClient();
-  const slug = await uniqueForumThreadSlug(payload, input.title);
+  const slug = await forumThreadSlugToPublish(payload, input.title, input.slug);
 
   const thread = await payload.create({
     collection: "forum-threads",
@@ -78,6 +78,38 @@ export async function createForumThread(
   await awardXp(db, author.id, XP_AMOUNTS.FORUM_THREAD_CREATE);
 
   return thread;
+}
+
+/**
+ * The address this title would publish at right now, including a short
+ * number when that stem is already used.
+ */
+export async function previewForumThreadSlug(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  title: string,
+): Promise<string> {
+  return uniqueForumThreadSlug(payload, title);
+}
+
+/**
+ * Keep the address reserved on the draft when it is still free. Otherwise
+ * take the next free address for the title.
+ */
+export async function forumThreadSlugToPublish(
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  title: string,
+  preferred?: string,
+): Promise<string> {
+  if (preferred) {
+    const { docs } = await payload.find({
+      collection: "forum-threads",
+      where: { slug: { equals: preferred } },
+      depth: 0,
+      limit: 1,
+    });
+    if (docs.length === 0) return preferred;
+  }
+  return uniqueForumThreadSlug(payload, title);
 }
 
 /** `title-slug`, or `title-slug-2` when that address is already used. */

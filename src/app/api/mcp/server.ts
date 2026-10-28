@@ -9,6 +9,7 @@ import { MCP_SERVER_NAME, MCP_SERVER_VERSION } from "@/server/mcp/identity";
 import { registerAdvisoryTools } from "./advisory-tools";
 import { registerBenchmarkTools } from "./benchmark-tools";
 import { registerCommissionTools } from "./commission-tools";
+import { registerClassroomTools } from "./classroom-tools";
 import { registerCommunityTools } from "./community-tools";
 import { registerMagazineTools } from "./magazine-tools";
 import { registerNewsTools } from "./news-tools";
@@ -1160,6 +1161,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
   registerFeedTools(server, caller, keyData);
   registerNewsTools(server, caller);
   registerMagazineTools(server, caller);
+  registerClassroomTools(server, caller);
   registerAdvisoryTools(server, caller, keyData);
   registerBenchmarkTools(server, caller, keyData);
   registerCommissionTools(server, caller, keyData);

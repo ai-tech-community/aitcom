@@ -44,6 +44,10 @@ import {
   getMagazineForCommunity,
   setMagazineLogoUrl,
 } from "@/server/magazines/magazine-service";
+import {
+  missingMagazineLogoWarning,
+  type SettingsFieldWarning,
+} from "@/server/communities/settings-field-warnings";
 import { getPayloadClient } from "@/server/payload";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -636,6 +640,9 @@ export const agentCommunityRouter = {
           .enum(["open", "invite_only", "approval_required"])
           .optional(),
         isListedInDirectory: z.boolean().optional(),
+        classroomCreatePolicy: z
+          .enum(["all_members", "admins_only"])
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -652,6 +659,7 @@ export const agentCommunityRouter = {
         logo.kind !== "skip" ||
         input.joinPolicy !== undefined ||
         input.isListedInDirectory !== undefined ||
+        input.classroomCreatePolicy !== undefined ||
         bannerMediaId !== undefined;
       const touchesMagazineLogo = magazineLogoMediaId !== undefined;
       if (!touchesCommunity && !touchesMagazineLogo) {
@@ -673,11 +681,15 @@ export const agentCommunityRouter = {
       if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
       if (input.isListedInDirectory !== undefined)
         updates.isListedInDirectory = input.isListedInDirectory;
+      if (input.classroomCreatePolicy !== undefined)
+        updates.classroomCreatePolicy = input.classroomCreatePolicy;
 
       // The magazine logo is the magazine settings form: manage capability
-      // (community owner/admin, or a magazine editor-in-chief).
+      // (community owner/admin, or a magazine editor-in-chief). A community
+      // with no magazine yet does not fail the rest of the save.
       let magazineLogoUrl: string | null | undefined;
       let saveMagazineLogo: (() => Promise<void>) | undefined;
+      const warnings: SettingsFieldWarning[] = [];
       if (
         bannerMediaId !== undefined ||
         magazineLogoMediaId !== undefined ||
@@ -699,26 +711,23 @@ export const agentCommunityRouter = {
         if (magazineLogoMediaId !== undefined) {
           const magazine = await getMagazineForCommunity(payload, community.id);
           if (!magazine) {
-            throw new TRPCError({
-              code: "NOT_FOUND",
-              message:
-                "This community has no magazine yet. Create it in magazine settings first.",
-            });
+            warnings.push(missingMagazineLogoWarning());
+          } else {
+            const standing = await loadMagazineEditorship(
+              ctx.db,
+              { communityId: community.id, magazineId: magazine.id },
+              ownerId,
+            );
+            requireCapability(standing, "manage");
+            magazineLogoUrl =
+              magazineLogoMediaId === null
+                ? null
+                : await sharedMediaUrl(payload, magazineLogoMediaId, ownerId);
+            const logoUrl = magazineLogoUrl;
+            saveMagazineLogo = async () => {
+              await setMagazineLogoUrl(payload, magazine.id, logoUrl);
+            };
           }
-          const standing = await loadMagazineEditorship(
-            ctx.db,
-            { communityId: community.id, magazineId: magazine.id },
-            ownerId,
-          );
-          requireCapability(standing, "manage");
-          magazineLogoUrl =
-            magazineLogoMediaId === null
-              ? null
-              : await sharedMediaUrl(payload, magazineLogoMediaId, ownerId);
-          const logoUrl = magazineLogoUrl;
-          saveMagazineLogo = async () => {
-            await setMagazineLogoUrl(payload, magazine.id, logoUrl);
-          };
         }
       }
 
@@ -733,21 +742,25 @@ export const agentCommunityRouter = {
 
       if (saveMagazineLogo) await saveMagazineLogo();
 
-      await logActivity(ctx.db, {
-        actorId: ctx.agent.agentId,
-        actorType: "agent",
-        action: "community.settings_updated",
-        targetType: "community",
-        targetId: community.id,
-        metadata:
-          magazineLogoUrl !== undefined
-            ? { ...updates, magazineLogoUrl }
-            : updates,
-      });
+      if (Object.keys(updates).length > 0 || magazineLogoUrl !== undefined) {
+        await logActivity(ctx.db, {
+          actorId: ctx.agent.agentId,
+          actorType: "agent",
+          action: "community.settings_updated",
+          targetType: "community",
+          targetId: community.id,
+          metadata:
+            magazineLogoUrl !== undefined
+              ? { ...updates, magazineLogoUrl }
+              : updates,
+        });
+      }
 
-      return magazineLogoUrl !== undefined
-        ? { ...updated!, magazineLogoUrl }
-        : updated!;
+      return {
+        ...updated!,
+        ...(magazineLogoUrl !== undefined ? { magazineLogoUrl } : {}),
+        warnings,
+      };
     }),
 
   /** Create an invite link (admin+ only). */

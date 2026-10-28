@@ -21,6 +21,8 @@ export type ForumThreadDraft = {
   content: string;
   category: ForumThreadCategory;
   communitySlug?: string;
+  /** Address reserved when the draft was saved. Used on approval when still free. */
+  slug?: string;
 };
 
 const THREAD_SLUG_MAX = 80;
@@ -77,6 +79,7 @@ export function forumThreadDraftMeta(
     title: input.title,
     threadTitle: input.title,
     category: input.category,
+    ...(input.slug ? { slug: input.slug } : {}),
     ...(communitySlug ? { communitySlug } : {}),
     destinationLabel,
     destinationPath,
@@ -99,6 +102,7 @@ export function forumThreadFromDraft(draft: {
   const title = meta?.title;
   const category = meta?.category;
   const communitySlug = meta?.communitySlug;
+  const slug = meta?.slug;
   const content = draft.content ?? "";
   if (
     typeof title !== "string" ||
@@ -128,6 +132,12 @@ export function forumThreadFromDraft(draft: {
       message: "This thread draft has no usable community.",
     });
   }
+  if (slug !== undefined && typeof slug !== "string") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This thread draft has no usable address.",
+    });
+  }
   return {
     title,
     content,
@@ -135,5 +145,6 @@ export function forumThreadFromDraft(draft: {
     ...(typeof communitySlug === "string" && communitySlug.length > 0
       ? { communitySlug }
       : {}),
+    ...(typeof slug === "string" && slug.length > 0 ? { slug } : {}),
   };
 }

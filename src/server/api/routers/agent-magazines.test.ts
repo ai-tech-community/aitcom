@@ -73,7 +73,9 @@ beforeEach(() => {
 
 it("exposes no procedure that publishes an issue", () => {
   expect(Object.keys(agentMagazineRouter).sort()).toEqual([
+    "assignMagazineAgent",
     "browseMagazines",
+    "createMagazine",
     "saveMagazineArticle",
     "saveMagazineIssue",
     "submitIssueForReview",

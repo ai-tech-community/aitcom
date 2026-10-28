@@ -29,6 +29,12 @@ import { importFeedImage } from "@/server/communities/feed-images";
 import { syncFeedPostCounters } from "@/server/communities/feed-post-counters";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import { createForumThread } from "@/server/communities/create-forum-thread";
+import { memberDisplayName } from "@/server/members/display-name";
+import {
+  CLASSROOM_COURSE_DRAFT_TYPE,
+  assertClassroomDraftPublishable,
+  publishClassroomCourseDraft,
+} from "./agent-classrooms";
 import {
   FORUM_THREAD_DRAFT_TYPE,
   forumThreadFromDraft,
@@ -993,6 +999,16 @@ export const agentManagementRouter = createTRPCRouter({
         existing.type === FORUM_THREAD_DRAFT_TYPE && input.action === "approved"
           ? forumThreadFromDraft(existing)
           : undefined;
+      const classroomToPublish =
+        existing.type === CLASSROOM_COURSE_DRAFT_TYPE &&
+        input.action === "approved"
+          ? await assertClassroomDraftPublishable(
+              await getPayloadClient(),
+              existing,
+            )
+          : undefined;
+      const authorName =
+        (await memberDisplayName(ctx.db, userId)) ?? "Community member";
 
       // A feed post draft's picture is fetched before the draft is claimed,
       // so a picture that cannot be loaded leaves the draft pending instead
@@ -1040,7 +1056,7 @@ export const agentManagementRouter = createTRPCRouter({
         await createForumThread(
           ctx.db,
           { id: userId, type: "member" },
-          { id: userId, name: ctx.session.user.name ?? "member" },
+          { id: userId, name: authorName },
           threadToPublish,
         );
       }
@@ -1108,7 +1124,7 @@ export const agentManagementRouter = createTRPCRouter({
             content: draft.content ?? "",
             images: image ? [image.id] : [],
             authorId: userId,
-            authorName: ctx.session.user.name ?? "Community member",
+            authorName,
             communityId: draft.targetId,
             topicSlug: "general",
             visibility: "community",
@@ -1134,11 +1150,25 @@ export const agentManagementRouter = createTRPCRouter({
             post: Number(draft.targetId),
             content: draft.content ?? "",
             authorId: userId,
-            authorName: ctx.session.user.name ?? "Community member",
+            authorName,
             communityId: post.communityId ?? null,
           },
         });
         await syncFeedPostCounters(payload, post.id);
+      }
+
+      if (
+        input.action === "approved" &&
+        draft.type === CLASSROOM_COURSE_DRAFT_TYPE &&
+        classroomToPublish
+      ) {
+        await publishClassroomCourseDraft(
+          ctx.db,
+          await getPayloadClient(),
+          userId,
+          authorName,
+          classroomToPublish,
+        );
       }
 
       // Revival/welcome nudge: approving opens/sends a DM from the organizer to the member.

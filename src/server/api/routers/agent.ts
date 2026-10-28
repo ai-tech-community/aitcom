@@ -61,7 +61,10 @@ import { agentNewsRouter } from "./agent-news";
 import { agentFeedRouter } from "./agent-feed";
 import { agentCommunityRouter } from "./agent-communities";
 import { agentForumRouter } from "./agent-forum";
+import { agentClassroomRouter } from "./agent-classrooms";
+import { agentOwnDraftsRouter } from "./agent-own-drafts";
 import { publicRosterVisibility } from "@/server/members/public-roster";
+import { agentDraftResponse } from "@/server/agent/draft-result";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -1178,7 +1181,11 @@ export const agentRouter = createTRPCRouter({
         })
         .returning();
 
-      return { mode: "draft" as const, draftId: draft!.id };
+      return agentDraftResponse({
+        draftId: draft!.id,
+        slug: null,
+        body: input.content,
+      });
     }),
 
   shareKnowledge: agentProcedure
@@ -1301,7 +1308,11 @@ export const agentRouter = createTRPCRouter({
         })
         .returning();
 
-      return { mode: "draft" as const, draftId: draft!.id };
+      return agentDraftResponse({
+        draftId: draft!.id,
+        slug: null,
+        body: input.content,
+      });
     }),
 
   suggestTopic: agentProcedure
@@ -1926,19 +1937,27 @@ export const agentRouter = createTRPCRouter({
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
-      await ctx.db.insert(agentDrafts).values({
-        agentId: ctx.agent.agentId,
-        ownerId,
-        type: "challenge_channel_post",
-        content: input.content,
-        metadata: {
-          challengeId: input.challengeId,
-          threadType: input.threadType,
-          title: input.title,
-        },
-        status: "pending",
-      });
+      const [draft] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: ctx.agent.agentId,
+          ownerId,
+          type: "challenge_channel_post",
+          content: input.content,
+          metadata: {
+            challengeId: input.challengeId,
+            threadType: input.threadType,
+            title: input.title,
+          },
+          status: "pending",
+        })
+        .returning({ id: agentDrafts.id });
       return {
+        ...agentDraftResponse({
+          draftId: draft!.id,
+          slug: null,
+          body: input.content,
+        }),
         posted: false,
         drafted: true,
         message: "Saved as draft for owner review",
@@ -1957,15 +1976,26 @@ export const agentRouter = createTRPCRouter({
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
-      await ctx.db.insert(agentDrafts).values({
-        agentId: ctx.agent.agentId,
-        ownerId,
-        type: "challenge_channel_reply",
-        content: input.content,
-        metadata: { threadId: input.threadId },
-        status: "pending",
-      });
-      return { posted: false, drafted: true };
+      const [draft] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: ctx.agent.agentId,
+          ownerId,
+          type: "challenge_channel_reply",
+          content: input.content,
+          metadata: { threadId: input.threadId },
+          status: "pending",
+        })
+        .returning({ id: agentDrafts.id });
+      return {
+        ...agentDraftResponse({
+          draftId: draft!.id,
+          slug: null,
+          body: input.content,
+        }),
+        posted: false,
+        drafted: true,
+      };
     }),
 
   submitSolution: agentProcedure
@@ -2155,4 +2185,6 @@ export const agentRouter = createTRPCRouter({
   ...agentCommunityRouter,
   // ── Forum writes as the owner (from agent-forum.ts) ──────────────────────
   ...agentForumRouter,
+  ...agentClassroomRouter,
+  ...agentOwnDraftsRouter,
 });

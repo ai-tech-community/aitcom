@@ -229,7 +229,7 @@ export function registerCommunityTools(
     "update-community-settings",
     {
       description:
-        "Update community settings. Name, description, logo, banner, join policy, and directory listing require the owner's admin or owner role, the same as the general settings page. logoUrl is a logo URL (null removes it) and remains for compatibility. logoMediaId is a media id from upload-image (null removes the logo); send logoUrl or logoMediaId, not both. bannerMediaId is a media id from upload-image (null removes the banner). magazineLogoMediaId is a media id from upload-image (null removes the logo) and requires the same manage permission as the magazine settings page. The description limit matches the settings form.",
+        "Update community settings. Name, description, logo, banner, join policy, directory listing, and who can create classrooms require the owner's admin or owner role, the same as the settings pages. logoUrl is a logo URL (null removes it) and remains for compatibility. logoMediaId is a media id from upload-image (null removes the logo); send logoUrl or logoMediaId, not both. bannerMediaId is a media id from upload-image (null removes the banner). magazineLogoMediaId is a media id from upload-image (null removes the logo) and requires the same manage permission as the magazine settings page. If the community has no magazine yet, that field is skipped and the response includes a warning for magazineLogoMediaId; the other fields are still saved. The description limit matches the settings form.",
       inputSchema: {
         slug: z.string().describe("The community slug to update."),
         name: z
@@ -288,6 +288,12 @@ export function registerCommunityTools(
           .boolean()
           .optional()
           .describe("Whether to list in the public directory."),
+        classroomCreatePolicy: z
+          .enum(["all_members", "admins_only"])
+          .optional()
+          .describe(
+            "Who may create a classroom. Same setting as the classroom settings page. all_members is the default and matches current communities.",
+          ),
       },
       annotations: DESTRUCTIVE_WRITE,
     },
@@ -301,6 +307,7 @@ export function registerCommunityTools(
       magazineLogoMediaId,
       joinPolicy,
       isListedInDirectory,
+      classroomCreatePolicy,
     }) => {
       const result = await caller.agent.updateCommunitySettings({
         slug,
@@ -312,6 +319,7 @@ export function registerCommunityTools(
         magazineLogoMediaId,
         joinPolicy,
         isListedInDirectory,
+        classroomCreatePolicy,
       });
       return {
         content: [
@@ -325,7 +333,7 @@ export function registerCommunityTools(
     "create-thread",
     {
       description:
-        "Create a forum thread. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015). Same rules as the forum form: title 3–255 characters, body up to 10000 characters, category general, question, showcase, or job. Pass communitySlug to post in that community (it must exist). The owner must have accepted that community's rules. Requires contribute scope. Nothing is public until the owner approves the draft.",
+        "Create a forum thread. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015). Same rules as the forum form: title 3–255 characters, body up to 10000 characters, category general, question, showcase, or job. Pass communitySlug to post in that community (it must exist). The owner must have accepted that community's rules. Requires contribute scope. Nothing is public until the owner approves the draft. The response includes the stored body and the slug the thread would publish at.",
       inputSchema: {
         title: z
           .string()
@@ -586,6 +594,30 @@ export function registerCommunityTools(
         role,
         reason,
       });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "list-agent-drafts",
+    {
+      description:
+        "List drafts this API key created. Each row has id, kind, status, slug, and body. Slug is the address the draft would publish at, or null when that kind has no address. Requires read scope. Drafts created by another key are omitted, including another key that belongs to the same owner.",
+      inputSchema: {
+        status: z
+          .enum(["pending", "approved", "rejected", "draft", "published"])
+          .optional()
+          .describe("Limit to one status. Omit to return every status."),
+        limit: z.number().int().min(1).max(50).default(20),
+      },
+      annotations: READ_ONLY,
+    },
+    async (input) => {
+      const result = await caller.agent.listAgentDrafts(input);
       return {
         content: [
           { type: "text" as const, text: JSON.stringify(result, null, 2) },

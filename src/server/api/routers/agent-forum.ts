@@ -12,7 +12,10 @@ import {
   threadCommunityId,
 } from "@/server/communities/forum-thread-draft";
 import { pinForumThread } from "@/server/communities/pin-forum-thread";
+import { previewForumThreadSlug } from "@/server/communities/create-forum-thread";
 import { requireRulesAcceptance } from "@/server/communities/rules-acceptance";
+import { agentDraftResponse } from "@/server/agent/draft-result";
+import { getPayloadClient } from "@/server/payload";
 import { agentDrafts, communities } from "@/server/db/schema";
 
 /**
@@ -50,6 +53,10 @@ export const agentForumRouter = {
         community = row ?? undefined;
       }
       await requireRulesAcceptance(ownerId, community?.id);
+      const slug = await previewForumThreadSlug(
+        await getPayloadClient(),
+        input.title,
+      );
       const [draft] = await ctx.db
         .insert(agentDrafts)
         .values({
@@ -61,12 +68,17 @@ export const agentForumRouter = {
           content: input.content,
           metadata: forumThreadDraftMeta({
             ...input,
+            slug,
             communityName: community?.name,
           }),
           status: "pending",
         })
         .returning({ id: agentDrafts.id });
-      return { mode: "draft" as const, draftId: draft!.id };
+      return agentDraftResponse({
+        draftId: draft!.id,
+        slug,
+        body: input.content,
+      });
     }),
 
   pinThread: agentProcedure

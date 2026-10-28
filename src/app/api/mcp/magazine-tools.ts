@@ -1,9 +1,16 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 
+import { MAGAZINE_ROLES } from "@/lib/magazines/roles";
+import {
+  ISSUE_VISIBILITIES,
+  MAGAZINE_SLUG_PATTERN,
+  MAX_MAGAZINE_TOPICS,
+} from "@/lib/magazines/values";
 import type { createCaller } from "@/server/api/root";
 import {
   ADDITIVE_WRITE,
+  DESTRUCTIVE_WRITE,
   DRAFT_FOR_REVIEW,
   READ_ONLY,
 } from "@/server/mcp/tool-annotations";
@@ -74,7 +81,7 @@ export function registerMagazineTools(
     "browse-magazines",
     {
       description:
-        "List magazines, their issues and articles, and member submissions the caller may see. Requires read scope. Pass communitySlug alone to list that community's magazines and their issues, articles and submissions. Article id is the stable document id, an integer. Pass that value back as articleId. It is not a draft version id and does not change between reads. submissionsVisible is true when this response includes a submission list: you edit the magazine, or you are a claimed owner seeing your own pending submissions. The flag follows that standing, so identical calls return the same value. Drafts and the submission queue of a magazine you do not edit are omitted. Pending member submissions are included for a magazine editor, otherwise only the owner's own submissions.",
+        "List magazines, their issues and articles, and member submissions the caller may see. Requires read scope. Pass communitySlug alone to list that community's magazines and their issues, articles and submissions. Each issue includes updatedAt. save-magazine-issue requires that value as expectedUpdatedAt when you edit. Article id is the stable document id, an integer. Pass that value back as articleId. It is not a draft version id and does not change between reads. submissionsVisible is true when this response includes a submission list: you edit the magazine, or you are a claimed owner seeing your own pending submissions. The flag follows that standing, so identical calls return the same value. Drafts and the submission queue of a magazine you do not edit are omitted. Pending member submissions are included for a magazine editor, otherwise only the owner's own submissions.",
       inputSchema: {
         magazineSlug: z
           .string()
@@ -145,7 +152,7 @@ export function registerMagazineTools(
     "save-magazine-issue",
     {
       description:
-        "Create or edit your issue draft. Set the title, cover image URL, editor's note, and ordered sections: articles, text sections, events, projects, storylines, news and forum threads — the same shapes the issue editor saves. articleIds is the short form for article sections only. Requires contribute scope and a claimed owner. The issue stays a draft. This tool cannot publish, schedule or email subscribers. Omit issueId to create. When editing, send the updatedAt from the last response.",
+        "Create or edit your issue draft. Set the title, cover image URL, editor's note, and ordered sections: articles, text sections, events, projects, storylines, news and forum threads — the same shapes the issue editor saves. articleIds is the short form for article sections only. Requires contribute scope and a claimed owner. The issue stays a draft. This tool cannot publish, schedule or email subscribers. Omit issueId to create. The response includes updatedAt, and browse-magazines returns updatedAt on each issue. When editing, send that value as expectedUpdatedAt.",
       inputSchema: {
         magazineSlug: z.string().min(1).max(80),
         issueId: z.number().int().positive().optional(),
@@ -189,5 +196,48 @@ export function registerMagazineTools(
       annotations: DRAFT_FOR_REVIEW,
     },
     async (input) => textResult(await caller.agent.submitIssueForReview(input)),
+  );
+
+  server.registerTool(
+    "create-magazine",
+    {
+      description:
+        "Create the community magazine. Requires contribute scope and a claimed owner with the same manage permission as the magazine settings page (a community owner or admin, or an editor-in-chief). Same fields and validation as that form: name, slug, optional description, logo URL, topics, and default visibility. Public visibility in an unlisted community needs confirmUnlistedPublic. Refuses when the community already has a magazine. This cannot publish an issue.",
+      inputSchema: {
+        communitySlug: z.string().min(1).max(80),
+        name: z.string().trim().min(1).max(120),
+        magazineSlug: z.string().min(3).max(60).regex(MAGAZINE_SLUG_PATTERN),
+        description: z.string().max(500).optional(),
+        logoUrl: httpUrl.nullable().optional(),
+        topics: z
+          .array(z.string().max(40))
+          .max(MAX_MAGAZINE_TOPICS * 4)
+          .default([]),
+        defaultVisibility: z.enum(ISSUE_VISIBILITIES).default("members"),
+        confirmUnlistedPublic: z.boolean().optional(),
+      },
+      annotations: ADDITIVE_WRITE,
+    },
+    async (input) => textResult(await caller.agent.createMagazine(input)),
+  );
+
+  server.registerTool(
+    "assign-magazine-agent",
+    {
+      description:
+        "Add a member's agent to the magazine team, or change that agent's role. Requires contribute scope and the same manage permission as the team page. The agent must be active and belong to userId, and that person must be an active community member who is not already a community owner or admin. This cannot publish an issue.",
+      inputSchema: {
+        communitySlug: z.string().min(1).max(80),
+        userId: z
+          .string()
+          .min(1)
+          .max(255)
+          .describe("The human who owns the agent."),
+        agentId: z.string().min(1).max(255),
+        role: z.enum(MAGAZINE_ROLES),
+      },
+      annotations: DESTRUCTIVE_WRITE,
+    },
+    async (input) => textResult(await caller.agent.assignMagazineAgent(input)),
   );
 }

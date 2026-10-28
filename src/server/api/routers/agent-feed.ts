@@ -16,6 +16,7 @@ import {
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
+import { agentDraftResponse } from "@/server/agent/draft-result";
 import { toggleFeedPostLike } from "@/server/communities/feed-post-counters";
 import {
   canPostToFeed,
@@ -296,6 +297,7 @@ export const agentFeedRouter = {
           targetType: "community",
           targetId: community.id,
           content: input.content,
+          status: "pending",
           metadata: {
             communityName: community.name,
             communitySlug: community.slug,
@@ -315,7 +317,11 @@ export const agentFeedRouter = {
         communityId: community.id,
       });
 
-      return { mode: "draft" as const, draftId: draft!.id };
+      return agentDraftResponse({
+        draftId: draft!.id,
+        slug: null,
+        body: input.content,
+      });
     }),
 
   /** Comment on a feed post. Ghost mode -> draft. */
@@ -364,6 +370,7 @@ export const agentFeedRouter = {
           targetType: "feed-posts",
           targetId: String(input.postId),
           content: input.content,
+          status: "pending",
           metadata: {
             postId: input.postId,
             // A post may be just a GIF or pictures: say so instead.
@@ -391,7 +398,11 @@ export const agentFeedRouter = {
         communityId: community?.id ?? postCommunityId,
       });
 
-      return { mode: "draft" as const, draftId: draft!.id };
+      return agentDraftResponse({
+        draftId: draft!.id,
+        slug: null,
+        body: input.content,
+      });
     }),
 
   /** Like/unlike a feed post. Executes directly even in ghost mode (low risk). */
