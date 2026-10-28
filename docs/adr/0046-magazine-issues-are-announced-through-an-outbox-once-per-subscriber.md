@@ -100,11 +100,14 @@ It extends [ADR-0042](0042-magazine-issues-are-read-through-one-access-resolver.
 7. **The resolver decides recipients (plan Decision 7).** `issueAudience`
    calls ADR-0042's resolver for anonymous and member standing and switches
    exhaustively over its access union. `everyone` includes active account
-   and email subscriptions; `members` includes only active community members
-   with account subscriptions; `nobody` completes without delivery. Recheck
+   and email subscriptions; `preview` includes every signed-in subscriber
+   through the inbox and nobody by email; `members` includes only active
+   community members with account subscriptions; `nobody` completes without delivery. Recheck
    every batch. `activeMembershipCondition()` is shared with editor
    recipient queries; a parity test pins SQL eligibility to the resolver.
-   Slice 6 must decide `teaser` here; teaser issues are intended to reach email.
+   The growth slice shipped the `preview` audience (plan 2026-10-28,
+   Decision 8). Email remains public-only. Email subscription stays available
+   on a preview-only magazine, but that subscriber waits for a public issue.
 
 8. **Scheduling uses the existing publication path (plan Decision 8).**
    Statuses are `draft`, `scheduled`, `published`; `scheduledFor` and

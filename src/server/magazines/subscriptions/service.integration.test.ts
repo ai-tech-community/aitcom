@@ -157,6 +157,9 @@ describe.skipIf(!isLocalDbConfigured())(
         const magazineIds = docs.map((mag) => Number(mag.id));
         if (magazineIds.length) {
           await db
+            .delete(schema.magazineReads)
+            .where(inArray(schema.magazineReads.magazineId, magazineIds));
+          await db
             .delete(schema.magazineSubscriptions)
             .where(
               inArray(schema.magazineSubscriptions.magazineId, magazineIds),
@@ -288,6 +291,95 @@ describe.skipIf(!isLocalDbConfigured())(
         )![0];
       return new URL(url).searchParams.get("t")!;
     }
+
+    it("keeps the issue a subscriber came from, on new subscriptions only", async () => {
+      const mag = await magazine();
+      const { docs } = await m.payload.find({
+        collection: "magazine-issues",
+        where: { magazine: { equals: mag.id } },
+        depth: 0,
+      });
+      const sourceIssueId = Number(docs[0]!.id);
+      const other = await m.issues.createIssue(
+        m,
+        mag,
+        { title: "Another issue" },
+        { userId: fx.ownerId, community: mag.community },
+      );
+      await m.service.subscribeAccount(m.db, mag.id, fx.memberId, "en", now, {
+        sourceIssueId,
+      });
+      await m.service.subscribeAccount(
+        m.db,
+        mag.id,
+        fx.memberId,
+        "en",
+        later(1),
+        { sourceIssueId: Number(other.id) },
+      );
+      expect(
+        (await rows(mag.id)).find((row) => row.userId === fx.memberId),
+      ).toMatchObject({ sourceIssueId });
+      const emailInput = {
+        magazine: mag,
+        email: address(),
+        locale: "en" as const,
+        sourceIssueId,
+      };
+      await m.service.subscribeByEmail(m, emailInput, mailer, now);
+      await m.service.subscribeByEmail(
+        m,
+        { ...emailInput, sourceIssueId: Number(other.id) },
+        mailer,
+        later(11),
+      );
+      expect(
+        (await rows(mag.id)).find((row) => row.email === address()),
+      ).toMatchObject({ sourceIssueId, confirmedAt: null });
+      await m.service.confirmEmailSubscription(m, sentToken(1), later(12));
+      expect(
+        (await rows(mag.id)).find((row) => row.email === address()),
+      ).toMatchObject({ sourceIssueId, confirmedAt: later(12) });
+      // Taking over an email row preserves its original source, including null.
+      await m.service.subscribeByEmail(
+        m,
+        {
+          ...emailInput,
+          email: `${fx.outsiderId}@example.test`,
+          sourceIssueId: null,
+        },
+        mailer,
+        now,
+      );
+      await m.service.subscribeAccount(
+        m.db,
+        mag.id,
+        fx.outsiderId,
+        "en",
+        later(1),
+        { sourceIssueId },
+      );
+      expect(
+        (await rows(mag.id)).find((row) => row.userId === fx.outsiderId),
+      ).toMatchObject({ sourceIssueId: null });
+      // Merging two existing rows keeps the surviving email row's source.
+      await m.db.insert(m.schema.magazineSubscriptions).values({
+        magazineId: mag.id,
+        email: `${fx.memberId}@example.test`,
+        sourceIssueId: Number(other.id),
+      });
+      await m.service.subscribeAccount(
+        m.db,
+        mag.id,
+        fx.memberId,
+        "en",
+        later(2),
+        { sourceIssueId },
+      );
+      expect(
+        (await rows(mag.id)).find((row) => row.userId === fx.memberId),
+      ).toMatchObject({ sourceIssueId: Number(other.id) });
+    });
 
     it("a signed-in reader subscribes once and can leave", async () => {
       const mag = await magazine();

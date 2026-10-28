@@ -109,6 +109,7 @@ export const eventItemKind: IssueItemKind<"event", EventInput, EventStored> = {
   },
   isReadable: (_view, ctx) => {
     switch (ctx.access) {
+      case "teaser":
       case "full":
       case "editor":
         return true;

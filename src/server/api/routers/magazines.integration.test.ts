@@ -1204,6 +1204,18 @@ describe.skipIf(!RUN_DB)(
       const { canEditIssueAt } =
         await import("@/server/magazines/issue-editing");
       await saveMagazine();
+      await callerAs(fx.ownerId).magazines.assignStaffRole({
+        slug: slug(),
+        userId: fx.memberId,
+        role: "contributor",
+      });
+      await callerAs(fx.outsiderId).magazines.saveSettings({
+        slug: fx.other.slug,
+        name: "Other Gazette",
+        magazineSlug: `other-gazette-${fx.sfx}`,
+        topics: ["AI"],
+        defaultVisibility: "members",
+      });
       const { id: issueId } = await callerAs(fx.ownerId).magazines.createIssue({
         slug: slug(),
         title: "Gate",
@@ -1218,7 +1230,15 @@ describe.skipIf(!RUN_DB)(
       expect(await at(fx.ownerId)).toBe(true);
       expect(await at(fx.adminId)).toBe(true);
       expect(await at(fx.moderatorId)).toBe(false);
+      // A contributor can write, but cannot see editor numbers.
       expect(await at(fx.memberId)).toBe(false);
+      await callerAs(fx.ownerId).magazines.removeStaffRole({
+        slug: slug(),
+        userId: fx.memberId,
+      });
+      // A plain member has neither editor capability nor access to numbers.
+      expect(await at(fx.memberId)).toBe(false);
+      // Owning the other community's magazine grants no edit capability here.
       expect(await at(fx.outsiderId)).toBe(false);
       expect(await at(null)).toBe(false);
       // The issue must belong to the community in the URL.

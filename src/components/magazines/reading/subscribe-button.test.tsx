@@ -125,6 +125,32 @@ function sendEmail() {
 }
 
 describe("SubscribeButton", () => {
+  it("sends the issue it was pressed on", async () => {
+    const fromIssue = (
+      <SubscribeButton magazineSlug="m" magazineName="Monthly" issueId={7} />
+    );
+    const { unmount } = renderWithIntl(fromIssue);
+    fireEvent.click(screen.getByRole("button", { name: "Subscribe" }));
+    expect(trpc.subscribe).toHaveBeenCalledExactlyOnceWith({
+      magazineSlug: "m",
+      locale: "en",
+      sourceIssueId: 7,
+    });
+    await act(async () => undefined);
+    unmount();
+    trpc.status = { signedIn: false, subscribed: false };
+    renderWithIntl(fromIssue);
+    fireEvent.click(screen.getByRole("button", { name: "Subscribe" }));
+    sendEmail();
+    expect(trpc.subscribeByEmail).toHaveBeenCalledExactlyOnceWith({
+      magazineSlug: "m",
+      email: "ann@example.com",
+      locale: "en",
+      sourceIssueId: 7,
+    });
+    await act(async () => undefined);
+  });
+
   it("a signed-in reader subscribes and the change is announced", async () => {
     trpc.nextStatus = { signedIn: true, subscribed: true };
     renderWithIntl(button);
@@ -182,8 +208,10 @@ describe("SubscribeButton", () => {
     expect(trpc.unsubscribe).toHaveBeenCalledExactlyOnceWith({
       magazineSlug: "m",
     });
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "You are no longer subscribed to Monthly.",
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "You are no longer subscribed to Monthly.",
+      ),
     );
     expect(screen.getByRole("button", { name: "Subscribe" })).toBeEnabled();
     await waitFor(() =>
@@ -218,8 +246,12 @@ describe("SubscribeButton", () => {
       email: "ann@example.com",
       locale: "en",
     });
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "Check your email and click the link in it to start getting new issues.",
+    // The live region is always present (empty at first), so wait for its
+    // text rather than for the element.
+    await waitFor(() =>
+      expect(status).toHaveTextContent(
+        "Check your email and click the link in it to start getting new issues.",
+      ),
     );
     expect(screen.getByRole("status")).toBe(status);
     expect(status).toHaveAttribute("tabindex", "-1");

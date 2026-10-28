@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   articleTextModeFor,
   type IssueReaderAccess,
+  readingModeOf,
   seesEditorLayer,
 } from "./access";
 
@@ -12,10 +13,15 @@ import {
  */
 const EXPECTED: Record<
   IssueReaderAccess,
-  { text: ReturnType<typeof articleTextModeFor>; editorLayer: boolean }
+  {
+    text: ReturnType<typeof articleTextModeFor>;
+    editorLayer: boolean;
+    mode: ReturnType<typeof readingModeOf>;
+  }
 > = {
-  full: { text: "published", editorLayer: false },
-  editor: { text: "latest_draft", editorLayer: true },
+  teaser: { text: "published", editorLayer: false, mode: "teaser" },
+  full: { text: "published", editorLayer: false, mode: "full" },
+  editor: { text: "latest_draft", editorLayer: true, mode: "full" },
 };
 
 describe("reader access levels", () => {
@@ -27,5 +33,6 @@ describe("reader access levels", () => {
   )("%s", (access, expected) => {
     expect(articleTextModeFor(access)).toBe(expected.text);
     expect(seesEditorLayer(access)).toBe(expected.editorLayer);
+    expect(readingModeOf(access)).toBe(expected.mode);
   });
 });

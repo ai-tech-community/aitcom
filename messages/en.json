@@ -4771,6 +4771,16 @@
     }
   },
   "magazines": {
+    "join": {
+      "heading": "Read the whole issue",
+      "panel": "{community} members read every article in full.",
+      "inline": "Members of {community} read the whole article.",
+      "join": "Join {community}",
+      "request": "Ask to join {community}",
+      "pending": "You asked to join {community}. You can read everything once you are let in.",
+      "inviteOnly": "{community} is invite only. Ask a member for an invite.",
+      "visit": "Visit {community}"
+    },
     "subscribe": {
       "subscribe": "Subscribe",
       "subscribed": "Subscribed",
@@ -4812,6 +4822,7 @@
       "showAll": "Show all magazines"
     },
     "shelf": {
+      "teaser": "Members read in full",
       "byCommunity": "A magazine by <link>{community}</link>",
       "topics": "Topics",
       "issues": "Issues",
@@ -4838,6 +4849,7 @@
       "scheduledNotice": "Scheduled. Readers cannot see it yet."
     },
     "item": {
+      "membersReadAll": "Members read the whole article",
       "readArticle": "Read article",
       "byAuthor": "By {name}",
       "readingTime": "{minutes} min read",
@@ -4864,18 +4876,17 @@
       "forumKind": "From the forum",
       "replies": "{count, plural, one {# reply} other {# replies}}",
       "projectKind": "Launchpad project",
-      "upvotes": "{count, plural, one {# upvote} other {# upvotes}}"
+      "upvotes": "{count, plural, one {# upvote} other {# upvotes}}",
+      "articleKind": "Article",
+      "editorialKind": "Editorial"
     },
     "rail": {
       "visitCommunity": "Visit {community}",
       "pastIssues": "Past issues",
-      "allIssues": "See all issues",
-      "share": "Share",
-      "copyLink": "Copy link",
-      "linkCopied": "Link copied",
-      "linkCopyFailed": "Could not copy the link"
+      "allIssues": "See all issues"
     },
     "article": {
+      "teaserNote": "This is the start of the article.",
       "context": "Where this article appears",
       "byAuthor": "By {name}",
       "readingTime": "{minutes} min read",
@@ -4891,9 +4902,30 @@
       "homeTitle": "Magazines",
       "homeDescription": "Stories from the communities building AI, written and edited by community members. Free to read.",
       "shelfDescription": "{magazine}, a magazine by {community}."
+    },
+    "shareImage": {
+      "issueLine": "{magazine} · Issue {number}",
+      "byCommunity": "A magazine by {community}",
+      "byAuthor": "By {author}"
     }
   },
   "magazineEditor": {
+    "stats": {
+      "label": "Numbers",
+      "heading": "How issue {number} is doing",
+      "views": "Views",
+      "readers": "Readers",
+      "newSubscribers": "New subscribers",
+      "joins": "Joined {community}",
+      "articles": "Articles",
+      "article": "Article",
+      "readToEnd": "Read to the end",
+      "note": "People who are not signed in count once a day. Your own visits as an editor are not counted.",
+      "empty": "No reads yet. Numbers show up here when people open the issue.",
+      "back": "Back to the issue",
+      "linkFor": "Numbers <sr>for issue {number}</sr>",
+      "noArticles": "This issue has no articles."
+    },
     "autoDraft": {
       "issueTitle": "Issue of {date}",
       "welcome": {
@@ -4948,13 +4980,11 @@
       "neverReuse": "Don't pick anything an earlier issue already has",
       "draftsLookLike": "Drafts look like",
       "layout": "Layout",
-      "layouts": {
-        "cover-story": "Cover story"
-      },
       "visibility": "Visibility",
       "inheritVisibility": "Same as the magazine ({current})",
       "visibilities": {
         "members": "Members only",
+        "teaser": "Preview for everyone",
         "public": "Everyone"
       },
       "whenReady": "When a draft is ready",
@@ -5020,6 +5050,11 @@
         "launchpadProject": "Most upvotes",
         "newsItem": "Headlines about your topics, newest first",
         "welcome": "A welcome when new people join, with a count and no names"
+      },
+      "visibilityHints": {
+        "members": "Only members can read it.",
+        "teaser": "Everyone sees the cover, the contents and the start of each article. Members read everything.",
+        "public": "Everyone can read all of it."
       }
     },
     "review": {
@@ -5099,8 +5134,7 @@
       "visibilityLabel": "Who can read new issues",
       "visibilityMembers": "Members only",
       "visibilityPublic": "Everyone",
-      "visibilityHint": "Applies to new issues only. You can still change each issue on its own.",
-      "alreadyConfirmed": "You already confirmed that everyone may read new issues, even though your community is private.",
+      "alreadyConfirmed": "You already confirmed that new issues may be shown outside your private community.",
       "create": "Create magazine",
       "save": "Save changes",
       "saving": "Saving…",
@@ -5109,7 +5143,13 @@
       "loadFailed": "The magazine settings could not be loaded.",
       "tryAgain": "Try again",
       "openTab": "Open the Magazine tab",
-      "back": "Back to the Magazine tab"
+      "back": "Back to the Magazine tab",
+      "visibilityHints": {
+        "members": "Only members can read it.",
+        "teaser": "Everyone sees the cover, the contents and the start of each article. Members read everything.",
+        "public": "Everyone can read all of it."
+      },
+      "visibilityTeaser": "Preview for everyone"
     },
     "tab": {
       "metaTitle": "Magazine",
@@ -5118,7 +5158,6 @@
       "start": "Start a magazine",
       "latest": "Latest issue",
       "pastIssues": "Past issues",
-      "membersOnly": "Members only",
       "magazinePage": "Magazine page",
       "emptyTitle": "No issues yet",
       "emptyDescription": "The first issue of {magazine} is on its way.",
@@ -5243,7 +5282,19 @@
         "optInPending": "Tick the box to save this choice.",
         "intro": "Intro line (optional)",
         "introHelp": "One line shown above this item in the issue.",
-        "done": "Done"
+        "done": "Done",
+        "visibilityHints": {
+          "members": "Only members can read it.",
+          "teaser": "Everyone sees the cover, the contents and the start of each article. Members read everything.",
+          "public": "Everyone can read all of it."
+        },
+        "visibilityTeaser": "Preview for everyone",
+        "layout": "Layout",
+        "layoutHints": {
+          "cover-story": "One big lead, then a grid.",
+          "long-read": "One column, read from top to bottom.",
+          "digest": "A short list. Good for lots of news."
+        }
       },
       "items": {
         "pickedBecause": "Picked because:",
@@ -5385,7 +5436,8 @@
         "scheduledTitle": "Your issue is scheduled",
         "scheduledLead": "It goes out on {time}. You can still change it until then.",
         "unscheduledTitle": "The schedule is cancelled",
-        "unscheduledLead": "The issue is a draft again."
+        "unscheduledLead": "The issue is a draft again.",
+        "audienceTeaser": "Everyone can see the cover, the contents and the start of each article. Only members of your community read all of it. It will show on the Magazines page."
       },
       "goesOut": "Goes out <timestamp>{time}</timestamp>"
     },
@@ -5497,6 +5549,11 @@
       "back": "Back to the Magazine tab",
       "membersTitle": "The team",
       "empty": "Add someone to help write articles and make issues."
+    },
+    "layouts": {
+      "cover-story": "Cover story",
+      "long-read": "Long read",
+      "digest": "Digest"
     }
   },
   "magazineMail": {
@@ -5516,5 +5573,17 @@
       "ignore": "Did not ask for this? Then ignore this email. We will not write again."
     },
     "footer": "AIT Community"
+  },
+  "share": {
+    "label": "Share",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied",
+    "linkCopyFailed": "Could not copy the link",
+    "nativeShare": "Share…",
+    "x": "Share on X",
+    "linkedIn": "Share on LinkedIn",
+    "email": "Send by email",
+    "opensInNewTab": "(opens in a new tab)",
+    "shareFailed": "Could not share the link. Try copying it."
   }
 }

@@ -1,5 +1,5 @@
 // A magazine's shelf answers 404 when the read model does, and is indexed
-// only when it holds an issue anyone may read (effective visibility, F10).
+// only when it holds an issue anyone may read (resolver outsider reach, Decision 9).
 import { createTranslator } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -80,13 +80,38 @@ describe("magazine shelf page", () => {
     );
   });
 
+  it("indexes a shelf with a preview issue", async () => {
+    state.data = shelfData({
+      issues: [
+        issueCard({
+          visibility: "teaser",
+          effectiveVisibility: "teaser",
+          outsiderReach: "teaser",
+        }),
+      ],
+    });
+    expect((await generateMetadata({ params })).robots).toBeUndefined();
+  });
+
   it("keeps a shelf of members-only issues out of search", async () => {
     state.data = shelfData({
       issues: [
-        issueCard({ visibility: "public", effectiveVisibility: "members" }),
+        issueCard({
+          visibility: "public",
+          effectiveVisibility: "members",
+          outsiderReach: "none",
+        }),
       ],
     });
     const meta = await generateMetadata({ params });
     expect(meta.robots).toEqual({ index: false });
+  });
+  it("keeps a staff-hidden magazine out of search while the page still opens", async () => {
+    state.data = shelfData();
+    state.data.magazine.staffHidden = true;
+    expect((await generateMetadata({ params })).robots).toEqual({
+      index: false,
+    });
+    await expect(MagazineShelfPage({ params })).resolves.toBeTruthy();
   });
 });

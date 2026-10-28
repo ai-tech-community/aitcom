@@ -22,7 +22,11 @@ import {
 import { slugify } from "@/lib/text-utils";
 import type { Magazine } from "@/payload-types";
 import type { CommunityVisibility } from "@/server/communities/content-visibility";
-import type { VisibilityRecord } from "@/lib/magazines/visibility";
+import {
+  opensToOutsiders,
+  shouldWithdrawVisibilityConfirmation,
+  type VisibilityRecord,
+} from "@/lib/magazines/visibility";
 import { api } from "@/trpc/react";
 
 import { readEditorError } from "./editor-errors";
@@ -34,6 +38,12 @@ const SLUG_MIN = 3;
 const SLUG_MAX = 60;
 const DESCRIPTION_MAX = 500;
 const TOPIC_MAX = 40;
+
+const VISIBILITY_HINTS = {
+  members: "visibilityHints.members",
+  teaser: "visibilityHints.teaser",
+  public: "visibilityHints.public",
+} as const satisfies Record<IssueVisibility, string>;
 
 /** The form's working copy of the magazine. */
 type Draft = {
@@ -100,7 +110,7 @@ function SettingsSkeleton() {
 /**
  * The magazine settings in the community settings (create or edit). The
  * default visibility runs through the same rule as the save
- * (`planVisibilityChange`, via `publicOptInRequired`): `public` in a private
+ * (`planVisibilityChange`, via `publicOptInRequired`): outsider choices in a private
  * community that has not confirmed it shows `PublicOptIn`, blocks Save until
  * ticked, and only then sends `confirmUnlistedPublic`. Refusals show as
  * friendly text through `editorErrorKey`.
@@ -175,6 +185,7 @@ function SettingsEditor({
   const descriptionHintId = useId();
   const topicsId = useId();
   const topicsHintId = useId();
+  const visibilityHintId = useId();
 
   const save = api.magazines.saveSettings.useMutation({
     onSuccess: () => {
@@ -198,7 +209,7 @@ function SettingsEditor({
   });
   const alreadyConfirmed =
     communityIsPrivate &&
-    draft.defaultVisibility === "public" &&
+    opensToOutsiders(draft.defaultVisibility) &&
     !optInRequired;
 
   const slugValid = isValidSlug(draft.magazineSlug);
@@ -239,9 +250,9 @@ function SettingsEditor({
   };
 
   const handleVisibility = (next: IssueVisibility) => {
+    if (shouldWithdrawVisibilityConfirmation(draft.defaultVisibility, next))
+      setConfirmed(false);
     update({ defaultVisibility: next });
-    // Leaving `public` withdraws the tick: coming back asks again.
-    if (next !== "public") setConfirmed(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -415,15 +426,19 @@ function SettingsEditor({
         </p>
         <SegmentedControl<IssueVisibility>
           aria-label={t("visibilityLabel")}
+          aria-describedby={visibilityHintId}
           value={draft.defaultVisibility}
           onValueChange={handleVisibility}
-          className="self-start"
+          className="h-auto flex-wrap self-start"
           options={[
             { value: "members", label: t("visibilityMembers") },
+            { value: "teaser", label: t("visibilityTeaser") },
             { value: "public", label: t("visibilityPublic") },
           ]}
         />
-        <p className="text-muted-foreground text-sm">{t("visibilityHint")}</p>
+        <p id={visibilityHintId} className="text-muted-foreground text-sm">
+          {t(VISIBILITY_HINTS[draft.defaultVisibility])}
+        </p>
         {optInRequired && (
           <PublicOptIn
             communityIsPrivate={communityIsPrivate}

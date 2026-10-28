@@ -1,5 +1,5 @@
 // The issue page answers 404 when the read model does, and only an issue
-// anyone may read (its effective visibility, preflight F10) is indexed.
+// anyone may read (its resolver outsider reach, Decision 9) is indexed.
 import { createTranslator } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -58,6 +58,16 @@ beforeEach(() => {
 });
 
 describe("issue page", () => {
+  it("hands the server's absolute canonical URL to sharing", async () => {
+    state.data = issuePage();
+    const page = await IssuePage({ params });
+    const metadata = await generateMetadata({ params });
+    expect(page.props.url).toBe(metadata.alternates?.canonical);
+    expect(page.props.url).toMatch(
+      /^https:\/\/.*\/en\/magazines\/agents-weekly\/issue-4$/,
+    );
+  });
+
   it("is rendered per request", () => {
     expect(dynamic).toBe("force-dynamic");
   });
@@ -86,9 +96,25 @@ describe("issue page", () => {
     );
   });
 
+  it("indexes a preview issue using the resolver's outsider reach", async () => {
+    state.data = issuePage({
+      access: "teaser",
+      issue: {
+        visibility: "teaser",
+        effectiveVisibility: "teaser",
+        outsiderReach: "teaser",
+      },
+    });
+    expect((await generateMetadata({ params })).robots).toBeUndefined();
+  });
+
   it("keeps an unconfirmed public issue in an unlisted community out of search", async () => {
     state.data = issuePage({
-      issue: { visibility: "public", effectiveVisibility: "members" },
+      issue: {
+        visibility: "public",
+        effectiveVisibility: "members",
+        outsiderReach: "none",
+      },
     });
     expect((await generateMetadata({ params })).robots).toEqual({
       index: false,
@@ -97,7 +123,11 @@ describe("issue page", () => {
 
   it("keeps members-only issues and drafts out of search", async () => {
     state.data = issuePage({
-      issue: { visibility: "members", effectiveVisibility: "members" },
+      issue: {
+        visibility: "members",
+        effectiveVisibility: "members",
+        outsiderReach: "none",
+      },
     });
     expect((await generateMetadata({ params })).robots).toEqual({
       index: false,
@@ -105,20 +135,55 @@ describe("issue page", () => {
 
     state.data = issuePage({
       access: "editor",
-      issue: { status: "draft", publishedAt: null },
+      issue: { status: "draft", publishedAt: null, outsiderReach: "none" },
     });
     expect((await generateMetadata({ params })).robots).toEqual({
       index: false,
     });
   });
 
-  it("uses the cover as the share image when there is one", async () => {
-    state.data = issuePage({
-      issue: { coverImageUrl: "https://cdn.example.com/cover.jpg" },
+  it("keeps a staff-hidden magazine out of search while the page still opens", async () => {
+    state.data = issuePage();
+    state.data.magazine.staffHidden = true;
+    expect((await generateMetadata({ params })).robots).toEqual({
+      index: false,
     });
-    const meta = await generateMetadata({ params });
-    expect(meta.openGraph?.images).toEqual([
+    await expect(IssuePage({ params })).resolves.toBeTruthy();
+  });
+
+  it("a public or preview issue points its share card at its own image", async () => {
+    for (const outsiderReach of ["full", "teaser"] as const) {
+      state.data = issuePage({
+        issue: {
+          outsiderReach,
+          coverImageUrl: "https://cdn.example.com/cover.jpg",
+        },
+      });
+      const meta = await generateMetadata({ params });
+      expect(meta.openGraph?.images).toEqual([
+        "/en/og/magazine/agents-weekly/issue-4",
+      ]);
+      expect(meta.twitter?.images).toEqual([
+        "/en/og/magazine/agents-weekly/issue-4",
+      ]);
+    }
+  });
+
+  it("a members-only issue never points at a share image", async () => {
+    state.data = issuePage({
+      issue: {
+        outsiderReach: "none",
+        coverImageUrl: "https://cdn.example.com/cover.jpg",
+      },
+    });
+    expect((await generateMetadata({ params })).openGraph?.images).toEqual([
       "https://cdn.example.com/cover.jpg",
     ]);
+    state.data = issuePage({
+      issue: { outsiderReach: "none", coverImageUrl: null },
+    });
+    expect(
+      JSON.stringify((await generateMetadata({ params })).openGraph?.images),
+    ).not.toContain("/og/magazine/");
   });
 });

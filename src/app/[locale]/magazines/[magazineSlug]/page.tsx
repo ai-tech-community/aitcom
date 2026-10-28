@@ -5,6 +5,7 @@ import { cache } from "react";
 
 import { MagazineShelf } from "@/components/magazines/reading/magazine-shelf";
 import { resolveLocale, type AppLocale } from "@/i18n/messages";
+import { isShelfIndexable } from "@/lib/magazines/indexing";
 import { magazinePath } from "@/lib/magazines/paths";
 import { buildOgMeta, localeAlternates } from "@/lib/metadata";
 import { getSession } from "@/server/better-auth/server";
@@ -50,9 +51,7 @@ export async function generateMetadata({
     });
   // Indexed once anyone may read an issue on it (the effective value,
   // preflight F10): a shelf of members-only issues stays out of search.
-  const indexable = issues.some(
-    (issue) => issue.effectiveVisibility === "public",
-  );
+  const indexable = isShelfIndexable(magazine, issues);
 
   return {
     title: magazine.name,

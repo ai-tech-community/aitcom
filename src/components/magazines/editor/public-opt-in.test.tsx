@@ -3,6 +3,7 @@ import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
 import type { IssueVisibility } from "@/lib/magazines/values";
+import { opensToOutsiders } from "@/lib/magazines/visibility";
 
 import { renderWithIntl } from "../test-intl";
 
@@ -22,7 +23,7 @@ function Harness({
 }) {
   const [value, setValue] = useState<IssueVisibility>(initial);
   const [confirmed, setConfirmed] = useState(false);
-  const blocked = communityIsPrivate && value === "public" && !confirmed;
+  const blocked = communityIsPrivate && opensToOutsiders(value) && !confirmed;
   return (
     <div>
       <button type="button" onClick={() => setValue("public")}>

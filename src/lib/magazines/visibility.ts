@@ -15,8 +15,8 @@ import {
 /**
  * The visibility a non-member effectively gets (ADR-0042, Decision 5). In a
  * content-public community (the Hub or a listed community) it is the stored
- * value. In a content-private community, `public` counts only when a
- * confirmation is recorded; an unconfirmed public issue counts as members.
+ * value. In a content-private community, `teaser` and `public` count only
+ * when a confirmation is recorded; unconfirmed issues count as members.
  * Every surface that shows a visibility uses this (preflight F10).
  */
 export function effectiveVisibility(
@@ -26,11 +26,31 @@ export function effectiveVisibility(
   switch (issue.visibility) {
     case "members":
       return "members";
+    case "teaser":
     case "public":
       return isContentPublic(community) || issue.publicConfirmedAt
-        ? "public"
+        ? issue.visibility
         : "members";
   }
+}
+
+/** `teaser` and `public` show the community to everyone (Decision 2). */
+export function opensToOutsiders(visibility: IssueVisibility): boolean {
+  switch (visibility) {
+    case "members":
+      return false;
+    case "teaser":
+    case "public":
+      return true;
+  }
+}
+
+/** Withdraw an editor's tick when closing to outsiders or widening preview. */
+export function shouldWithdrawVisibilityConfirmation(
+  current: IssueVisibility,
+  next: IssueVisibility,
+): boolean {
+  return !opensToOutsiders(next) || (current === "teaser" && next === "public");
 }
 
 /**
@@ -46,16 +66,18 @@ export type VisibilityRecord = {
 /**
  * The one place that writes a visibility record (ADR-0042, Decision 6).
  *
- * - `members` clears any confirmation, so going back to `public` asks again.
- * - `public` in a content-public community (the Hub or a listed community)
- *   needs no confirmation and records none.
- * - `public` in a content-private community keeps an existing confirmation;
- *   otherwise it needs `confirmUnlistedPublic`, and records who and when.
+ * - `members` clears any confirmation, so opening to outsiders asks again.
+ * - `teaser` and `public` in a content-public community need no confirmation
+ *   and record none.
+ * - In a content-private community, narrowing or holding outsider access
+ *   keeps confirmation; widening preview to public needs a leader again.
+ * - `confirmUnlistedPublic` and the refusal codes cover both outsider levels.
  */
 export function planVisibilityChange(input: {
   next: IssueVisibility;
   current: VisibilityRecord;
   community: CommunityVisibility;
+  /** A leader confirms showing preview or public outside an unlisted community. */
   confirmUnlistedPublic: boolean;
   actorId: string;
   actorLeadsCommunity: boolean;
@@ -81,19 +103,24 @@ export function planVisibilityChange(input: {
           publicConfirmedAt: null,
         },
       };
+    case "teaser":
     case "public": {
       if (isContentPublic(community)) {
         return {
           ok: true,
           record: {
-            visibility: "public",
+            visibility: next,
             publicConfirmedBy: null,
             publicConfirmedAt: null,
           },
         };
       }
-      if (current.visibility === "public" && current.publicConfirmedAt) {
-        return { ok: true, record: current };
+      if (
+        current.publicConfirmedAt &&
+        (current.visibility === "public" ||
+          (current.visibility === "teaser" && next === "teaser"))
+      ) {
+        return { ok: true, record: { ...current, visibility: next } };
       }
       if (!input.confirmUnlistedPublic) {
         return { ok: false, code: "CONFIRM_UNLISTED_PUBLIC" };
@@ -101,7 +128,7 @@ export function planVisibilityChange(input: {
       return {
         ok: true,
         record: {
-          visibility: "public",
+          visibility: next,
           publicConfirmedBy: input.actorId,
           publicConfirmedAt: input.now.toISOString(),
         },

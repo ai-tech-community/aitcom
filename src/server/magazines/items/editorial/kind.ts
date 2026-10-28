@@ -62,24 +62,35 @@ export const editorialItemKind: IssueItemKind<
     return problems;
   },
 
-  async load(items) {
+  async load(items, ctx) {
     const views = new Map<string, ItemViewOf<"editorial">>();
     for (const stored of items) {
       const itemId = itemIdOf(stored);
+      let body: EditorialItemStored["body"] | null;
+      switch (ctx.access) {
+        case "teaser":
+          body = null;
+          break;
+        case "full":
+        case "editor":
+          body = stored.body;
+          break;
+      }
       views.set(itemId, {
         kind: "editorial",
         itemId,
         intro: stored.intro ?? null,
         heading: stored.heading ?? null,
-        body: stored.body,
+        body,
       });
     }
     return views;
   },
 
-  // The issue's own text: every level that may read the issue reads it.
+  // Every reader gets the card; preview readers never receive its body.
   isReadable: (_view, ctx) => {
     switch (ctx.access) {
+      case "teaser":
       case "full":
       case "editor":
         return true;

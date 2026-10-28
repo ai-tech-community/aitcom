@@ -51,6 +51,7 @@ export async function subscribeAccount(
   userId: string,
   locale: AppLocale,
   now: Date,
+  opts?: { sourceIssueId?: number | null },
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const [account] = await tx
@@ -129,7 +130,13 @@ export async function subscribeAccount(
     }
     await tx
       .insert(subscriptions)
-      .values({ magazineId, userId, locale, confirmedAt })
+      .values({
+        magazineId,
+        userId,
+        locale,
+        confirmedAt,
+        sourceIssueId: opts?.sourceIssueId ?? null,
+      })
       .onConflictDoUpdate({
         target: [subscriptions.magazineId, subscriptions.userId],
         targetWhere: isNotNull(subscriptions.userId),
@@ -173,12 +180,14 @@ export async function isAccountSubscribed(
   return Boolean(row);
 }
 
+/** Preview-only magazines accept subscribers for their next public issue (Decision 8). */
 export async function subscribeByEmail(
   deps: Deps,
   input: {
     magazine: { id: number; name: string };
     email: string;
     locale: AppLocale;
+    sourceIssueId?: number | null;
   },
   mailer: MagazineMailer,
   now: Date,
@@ -240,6 +249,7 @@ export async function subscribeByEmail(
         magazineId: input.magazine.id,
         email,
         locale: input.locale,
+        sourceIssueId: input.sourceIssueId ?? null,
         confirmTokenHash: hash,
         confirmSentAt: now,
         confirmSendCount: 1,

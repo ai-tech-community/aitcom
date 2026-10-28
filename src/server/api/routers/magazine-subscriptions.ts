@@ -10,6 +10,7 @@ import {
   publicProcedure,
 } from "@/server/api/trpc";
 import type { Deps } from "@/server/magazines/deps";
+import { issueOrigin } from "@/server/magazines/issue-origin";
 import {
   findMagazineBySlug,
   findMagazineForViewer,
@@ -27,6 +28,22 @@ import { createPerUserLimit } from "@/server/rate-limit/per-user-window";
 
 const magazineRef = z.object({ magazineSlug: z.string() });
 const localeInput = magazineRef.extend({ locale: z.enum(routing.locales) });
+const subscriptionInput = localeInput.extend({
+  sourceIssueId: z.number().int().positive().optional(),
+});
+
+async function verifiedSourceIssueId(
+  deps: Deps,
+  magazineId: number,
+  sourceIssueId: number | undefined,
+): Promise<number | null> {
+  if (sourceIssueId === undefined) return null;
+  const origin = await issueOrigin(deps, sourceIssueId);
+  return origin?.published && origin.magazineId === magazineId
+    ? origin.issueId
+    : null;
+}
+
 const emailLimit = createPerUserLimit({ windowMs: 3_600_000, max: 10 });
 
 async function requireMagazineForViewer(
@@ -56,7 +73,7 @@ export const magazineSubscriptionsRouter = createTRPCRouter({
     };
   }),
   subscribe: protectedProcedure
-    .input(localeInput)
+    .input(subscriptionInput)
     .mutation(async ({ ctx, input }) => {
       const deps = { db: ctx.db, payload: await getPayloadClient() };
       const magazine = await requireMagazineForViewer(
@@ -70,6 +87,13 @@ export const magazineSubscriptionsRouter = createTRPCRouter({
         ctx.session.user.id,
         input.locale,
         new Date(),
+        {
+          sourceIssueId: await verifiedSourceIssueId(
+            deps,
+            magazine.id,
+            input.sourceIssueId,
+          ),
+        },
       );
       return { subscribed: true };
     }),
@@ -86,7 +110,7 @@ export const magazineSubscriptionsRouter = createTRPCRouter({
     }),
   subscribeByEmail: publicProcedure
     .input(
-      localeInput.extend({
+      subscriptionInput.extend({
         email: z.string().trim().max(SUBSCRIBER_EMAIL_MAX),
       }),
     )
@@ -99,11 +123,21 @@ export const magazineSubscriptionsRouter = createTRPCRouter({
         input.magazineSlug,
         null,
       );
+      const sourceIssueId = await verifiedSourceIssueId(
+        deps,
+        magazine.id,
+        input.sourceIssueId,
+      );
       (ctx.afterResponse ?? after)(async () => {
         try {
           await subscribeByEmail(
             deps,
-            { magazine, email: input.email, locale: input.locale },
+            {
+              magazine,
+              email: input.email,
+              locale: input.locale,
+              sourceIssueId,
+            },
             defaultMagazineMailer(),
             new Date(),
           );

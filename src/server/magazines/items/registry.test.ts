@@ -317,6 +317,7 @@ describe("issue item registry", () => {
         title: "Article 1",
         authorName: "Author 1",
         excerpt: `${Array.from({ length: 40 }, (_, i) => `w${i + 1}`).join(" ")}…`,
+        opening: "",
         readingMinutes: 1,
         imageUrl: null,
       },

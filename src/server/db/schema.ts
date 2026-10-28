@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import type { UiProducerTrust, UiResource } from "@/lib/chat/types";
 import type { MagazineRole } from "@/lib/magazines/roles";
 import type {
   AutoDraftCadence,
@@ -1342,6 +1343,7 @@ export const magazineSubscriptions = appSchema.table(
       .references(() => user.id, { onDelete: "cascade" }),
     email: d.varchar({ length: 255 }),
     locale: d.varchar({ length: 5 }).$type<AppLocale>().notNull().default("en"),
+    sourceIssueId: d.integer(),
     confirmTokenHash: d.varchar({ length: 64 }),
     confirmSentAt: d.timestamp({ withTimezone: true }),
     confirmSendCount: d.integer().notNull().default(0),
@@ -1352,6 +1354,7 @@ export const magazineSubscriptions = appSchema.table(
       .notNull(),
   }),
   (t) => [
+    index("magazine_subscription_source_issue_idx").on(t.sourceIssueId),
     index("magazine_subscription_user_idx").on(t.userId),
     index("magazine_subscription_magazine_idx").on(t.magazineId),
     uniqueIndex("magazine_subscription_magazine_user_idx")
@@ -1374,6 +1377,34 @@ export const magazineSubscriptions = appSchema.table(
       "magazine_subscription_locale_check",
       sql`${t.locale} IN ('en', 'nl')`,
     ),
+  ],
+);
+
+/** Reading counts (ADR-0048); Payload foreign keys live in the migration. */
+export const magazineReads = appSchema.table(
+  "magazine_read",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    magazineId: d.integer().notNull(),
+    issueId: d.integer().notNull(),
+    articleId: d.integer(),
+    readerKey: d.varchar({ length: 64 }).notNull(),
+    views: d.integer().notNull().default(0),
+    readToEndAt: d.timestamp({ withTimezone: true }),
+    firstSeenAt: d.timestamp({ withTimezone: true }).notNull(),
+    lastSeenAt: d.timestamp({ withTimezone: true }).notNull(),
+  }),
+  (t) => [
+    uniqueIndex("magazine_read_issue_reader_idx")
+      .on(t.issueId, t.readerKey)
+      .where(sql`${t.articleId} IS NULL`),
+    uniqueIndex("magazine_read_article_reader_idx")
+      .on(t.issueId, t.articleId, t.readerKey)
+      .where(sql`${t.articleId} IS NOT NULL`),
+    index("magazine_read_magazine_idx").on(t.magazineId),
   ],
 );
 
@@ -1493,11 +1524,11 @@ export const magazineAutoDraftSettings = appSchema.table(
     ),
     check(
       "magazine_auto_draft_settings_layout_check",
-      sql`${t.layout} IN ('cover-story')`,
+      sql`${t.layout} IN ('cover-story', 'long-read', 'digest')`,
     ),
     check(
       "magazine_auto_draft_settings_visibility_check",
-      sql`${t.visibility} IS NULL OR ${t.visibility} IN ('members', 'public')`,
+      sql`${t.visibility} IS NULL OR ${t.visibility} IN ('members', 'teaser', 'public')`,
     ),
     check(
       "magazine_auto_draft_settings_when_ready_check",
@@ -2789,12 +2820,10 @@ export const messages = appSchema.table(
     senderType: d.varchar({ length: 10 }).notNull().default("human"), // "human" | "agent"
     content: d.text().notNull(),
     metadata: d.json().$type<Record<string, unknown>>(),
-    uiResource: d
-      .jsonb("ui_resource")
-      .$type<import("@/lib/chat/types").UiResource>(),
+    uiResource: d.jsonb("ui_resource").$type<UiResource>(),
     uiProducerTrust: d
       .varchar("ui_producer_trust", { length: 20 })
-      .$type<import("@/lib/chat/types").UiProducerTrust>(),
+      .$type<UiProducerTrust>(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

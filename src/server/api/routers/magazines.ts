@@ -14,6 +14,7 @@ import {
   PICKER_EXCLUDE_LIMIT,
 } from "@/lib/magazines/picker";
 import {
+  ISSUE_LAYOUTS,
   ISSUE_VISIBILITIES,
   MAGAZINE_SLUG_PATTERN,
   MAX_MAGAZINE_TOPICS,
@@ -122,6 +123,7 @@ const issueWrite = issueRef.extend({
 });
 
 const issueDetailsInput = issueWrite.extend({
+  layout: z.enum(ISSUE_LAYOUTS).optional(),
   title: z.string().trim().min(1).max(200).optional(),
   // Preflight F1: `slug` names the community, so the issue slug is
   // `issueSlug` here and `slug` in the service patch.
@@ -403,6 +405,7 @@ export const magazinesRouter = createTRPCRouter({
     .input(issueDetailsInput)
     .mutation(async ({ ctx, input }) => {
       const patch: IssueDetailsPatch = {
+        layout: input.layout,
         title: input.title,
         slug: input.issueSlug,
         coverImageUrl: input.coverImageUrl,

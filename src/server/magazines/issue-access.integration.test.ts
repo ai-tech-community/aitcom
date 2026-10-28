@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import type { IssueVisibility } from "@/lib/magazines/values";
 import type { db as Db } from "@/server/db";
 import type * as Schema from "@/server/db/schema";
 
@@ -208,7 +209,7 @@ describe.skipIf(!RUN_DB)(
         label: keyof Fixture["communities"],
         combos: Array<{
           status: "draft" | "scheduled" | "published";
-          visibility: "members" | "public";
+          visibility: IssueVisibility;
           confirmed: boolean;
         }>,
       ) {
@@ -249,9 +250,14 @@ describe.skipIf(!RUN_DB)(
           [false, true].map((confirmed) => ({ status, visibility, confirmed })),
         ),
       );
-      await issues("listed", every);
+      await issues("listed", [
+        ...every,
+        { status: "published", visibility: "teaser", confirmed: false },
+      ]);
       await issues("unlisted", [
         ...every,
+        { status: "published", visibility: "teaser", confirmed: true },
+        { status: "published", visibility: "teaser", confirmed: false },
         { status: "scheduled", visibility: "public", confirmed: true },
       ]);
       await issues("deleted", [
@@ -266,6 +272,12 @@ describe.skipIf(!RUN_DB)(
       await db
         .delete(schema.magazineStaff)
         .where(inArray(schema.magazineStaff.userId, userIds));
+      await db
+        .delete(schema.activityEvents)
+        .where(inArray(schema.activityEvents.actorId, userIds));
+      await db
+        .delete(schema.magazineReads)
+        .where(inArray(schema.magazineReads.magazineId, fx.magazineIds));
       await db
         .delete(schema.magazineSubscriptions)
         .where(
@@ -302,9 +314,12 @@ describe.skipIf(!RUN_DB)(
         .where(inArray(schema.user.id, Object.values(fx.users)));
     });
 
-    async function readableByQuery(viewerId: string | null): Promise<string[]> {
+    async function readableByQuery(
+      viewerId: string | null,
+      reach: Readable.IssueReach,
+    ): Promise<string[]> {
       const scope = await m.readable.loadIssueReadScope(m.db, viewerId);
-      const ids = await m.readable.readableIssueIds(m.payload, scope, {
+      const ids = await m.readable.readableIssueIds(m.payload, scope, reach, {
         id: { in: fx.issues.map((i) => i.id) },
       });
       const byId = new Map(fx.issues.map((i) => [i.id, i.label]));
@@ -313,6 +328,7 @@ describe.skipIf(!RUN_DB)(
 
     async function readableByResolver(
       viewerId: string | null,
+      reach: Readable.IssueReach,
     ): Promise<string[]> {
       const labels: string[] = [];
       for (const issue of fx.issues) {
@@ -321,81 +337,105 @@ describe.skipIf(!RUN_DB)(
           issue,
           viewerId,
         );
-        if (access !== "none") labels.push(issue.label);
+        switch (access) {
+          case "teaser":
+            if (reach === "teaser") labels.push(issue.label);
+            break;
+          case "full":
+          case "editor":
+            labels.push(issue.label);
+            break;
+          case "none":
+            break;
+        }
       }
       return labels.sort();
     }
 
-    it("readableIssueWhere returns exactly the issues the resolver lets each viewer read", async () => {
-      const u = fx.users;
-      const publicOnly = [
-        "listed-published-public-confirmed",
-        "listed-published-public-unconfirmed",
-        "unlisted-published-public-confirmed",
-      ];
-      // The resolver's own rules are unit-tested; these counts pin the
-      // matrix so both forms cannot agree on a wrong answer.
-      const expected: Array<[string, string | null, string[]]> = [
-        ["anonymous", null, publicOnly],
-        ["outsider", u.outsider, publicOnly],
-        ["pending member (outsider)", u.unlistedPending, publicOnly],
-        ["banned admin (outsider)", u.unlistedBanned, publicOnly],
-        ["admin of a soft-deleted community", u.deletedAdmin, publicOnly],
-        [
-          "member of the unlisted community",
-          u.unlistedMember,
-          [
-            "listed-published-public-confirmed",
-            "listed-published-public-unconfirmed",
-            "unlisted-published-members-confirmed",
-            "unlisted-published-members-unconfirmed",
-            "unlisted-published-public-confirmed",
-            "unlisted-published-public-unconfirmed",
-          ],
-        ],
-        [
-          "contributor in the unlisted community",
-          u.unlistedContributor,
-          [
-            "listed-published-public-confirmed",
-            "listed-published-public-unconfirmed",
-            "unlisted-published-members-confirmed",
-            "unlisted-published-members-unconfirmed",
-            "unlisted-published-public-confirmed",
-            "unlisted-published-public-unconfirmed",
-          ],
-        ],
-        [
-          "staff editor of the unlisted community",
-          u.unlistedEditor,
-          [
-            "listed-published-public-confirmed",
-            "listed-published-public-unconfirmed",
-            ...fx.issues
-              .filter((i) => i.communityId === fx.communities.unlisted)
-              .map((i) => i.label),
-          ],
-        ],
-        [
-          "admin of the unlisted community",
-          u.unlistedAdmin,
-          [
-            "listed-published-public-confirmed",
-            "listed-published-public-unconfirmed",
-            ...fx.issues
-              .filter((i) => i.communityId === fx.communities.unlisted)
-              .map((i) => i.label),
-          ],
-        ],
-      ];
+    it("loads an issue's access facts by id and returns null for a missing issue", async () => {
+      expect(
+        await m.access.loadIssueAccessById(m, 2_147_483_647, null),
+      ).toBeNull();
+      const issue = fx.issues.find(
+        (i) => i.label === "listed-published-teaser-unconfirmed",
+      )!;
+      expect(
+        await m.access.loadIssueAccessById(m, issue.id, fx.users.outsider),
+      ).toEqual({
+        issue: {
+          id: Number(issue.id),
+          communityId: issue.communityId,
+          magazineId: Number(issue.magazine),
+          status: "published",
+          visibility: "teaser",
+          publicConfirmedAt: null,
+        },
+        access: "teaser",
+      });
+    });
 
-      for (const [who, viewerId, labels] of expected) {
-        const byResolver = await readableByResolver(viewerId);
-        const byQuery = await readableByQuery(viewerId);
-        expect(byQuery, `${who}: query vs resolver`).toEqual(byResolver);
-        expect(byResolver, `${who}: expected set`).toEqual([...labels].sort());
-      }
-    }, 60_000);
+    it.each(["teaser", "full"] as const)(
+      "readableIssueWhere matches the resolver for every viewer at %s reach",
+      async (reach) => {
+        const u = fx.users;
+        const publicOnly = [
+          "listed-published-public-confirmed",
+          "listed-published-public-unconfirmed",
+          "unlisted-published-public-confirmed",
+        ];
+        const T = "listed-published-teaser-unconfirmed";
+        const UTC = "unlisted-published-teaser-confirmed";
+        const UTU = "unlisted-published-teaser-unconfirmed";
+        const memberSet = [
+          "listed-published-public-confirmed",
+          "listed-published-public-unconfirmed",
+          "unlisted-published-members-confirmed",
+          "unlisted-published-members-unconfirmed",
+          "unlisted-published-public-confirmed",
+          "unlisted-published-public-unconfirmed",
+        ];
+        const outsiders =
+          reach === "teaser" ? [...publicOnly, T, UTC] : publicOnly;
+        const members = [
+          ...memberSet,
+          UTC,
+          UTU,
+          ...(reach === "teaser" ? [T] : []),
+        ];
+        const editors = [
+          "listed-published-public-confirmed",
+          "listed-published-public-unconfirmed",
+          ...(reach === "teaser" ? [T] : []),
+          ...fx.issues
+            .filter((i) => i.communityId === fx.communities.unlisted)
+            .map((i) => i.label),
+        ];
+        const expected: Array<[string, string | null, string[]]> = [
+          ["anonymous", null, outsiders],
+          ["outsider", u.outsider, outsiders],
+          ["pending member", u.unlistedPending, outsiders],
+          ["banned admin", u.unlistedBanned, outsiders],
+          ["admin of a soft-deleted community", u.deletedAdmin, outsiders],
+          ["member of the unlisted community", u.unlistedMember, members],
+          [
+            "contributor in the unlisted community",
+            u.unlistedContributor,
+            members,
+          ],
+          ["staff editor of the unlisted community", u.unlistedEditor, editors],
+          ["admin of the unlisted community", u.unlistedAdmin, editors],
+        ];
+        for (const [who, viewerId, labels] of expected) {
+          const byResolver = await readableByResolver(viewerId, reach);
+          const byQuery = await readableByQuery(viewerId, reach);
+          expect(byQuery, `${who}: query vs resolver`).toEqual(byResolver);
+          expect(byResolver, `${who}: expected set`).toEqual(
+            [...labels].sort(),
+          );
+        }
+      },
+      60_000,
+    );
 
     it("listed→unlisted: an unconfirmed public issue disappears for outsiders in both forms", async () => {
       const { eq } = await import("drizzle-orm");
@@ -407,7 +447,9 @@ describe.skipIf(!RUN_DB)(
       )!;
 
       for (const viewerId of [null, fx.users.outsider]) {
-        expect(await readableByQuery(viewerId)).toContain(unconfirmed.label);
+        expect(await readableByQuery(viewerId, "full")).toContain(
+          unconfirmed.label,
+        );
       }
 
       await m.db
@@ -416,7 +458,7 @@ describe.skipIf(!RUN_DB)(
         .where(eq(m.schema.communities.id, fx.communities.listed));
 
       for (const viewerId of [null, fx.users.outsider]) {
-        const byQuery = await readableByQuery(viewerId);
+        const byQuery = await readableByQuery(viewerId, "full");
         expect(byQuery).not.toContain(unconfirmed.label);
         expect(byQuery).toContain(confirmed.label);
         expect(
@@ -425,7 +467,7 @@ describe.skipIf(!RUN_DB)(
         expect(
           await m.access.loadMagazineIssueAccess(m.db, confirmed, viewerId),
         ).toBe("full");
-        expect(byQuery).toEqual(await readableByResolver(viewerId));
+        expect(byQuery).toEqual(await readableByResolver(viewerId, "full"));
       }
     }, 60_000);
   },

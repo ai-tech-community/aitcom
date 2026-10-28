@@ -14,6 +14,8 @@ import type * as PlatformItems from "./20261026b_magazine_platform_items";
 import type * as Staff from "./20261027a_magazine_staff";
 import * as subscriptions from "./20261027b_magazine_subscriptions";
 import * as autoDraft from "./20261027c_magazine_auto_draft";
+import * as followups from "./20261027d_magazine_auto_draft_followups";
+import * as growth from "./20261028a_magazine_growth";
 
 function looksLikeCloudNeon(url: string): boolean {
   return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
@@ -173,6 +175,7 @@ describe.skipIf(!isLocalDbConfigured())(
       const rollback = new Error("rollback migration exercise");
       await expect(
         db.transaction(async (tx) => {
+          await growth.down({ db: tx } as never);
           await autoDraft.down({ db: tx } as never);
           await subscriptions.down({ db: tx } as never);
           await staff.down({ db: tx } as never);
@@ -190,6 +193,8 @@ describe.skipIf(!isLocalDbConfigured())(
           await staff.up({ db: tx } as never);
           await subscriptions.up({ db: tx } as never);
           await autoDraft.up({ db: tx } as never);
+          await followups.up({ db: tx } as never);
+          await growth.up({ db: tx } as never);
           throw rollback;
         }),
       ).rejects.toBe(rollback);

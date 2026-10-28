@@ -1,3 +1,4 @@
+import * as migration_20261028a_magazine_growth from "./20261028a_magazine_growth";
 import * as migration_20261027d_magazine_auto_draft_followups from "./20261027d_magazine_auto_draft_followups";
 import * as migration_20261027a_magazine_staff from "./20261027a_magazine_staff";
 import * as migration_20261027b_magazine_subscriptions from "./20261027b_magazine_subscriptions";
@@ -1055,5 +1056,10 @@ export const migrations = [
     up: migration_20261027d_magazine_auto_draft_followups.up,
     down: migration_20261027d_magazine_auto_draft_followups.down,
     name: "20261027d_magazine_auto_draft_followups",
+  },
+  {
+    up: migration_20261028a_magazine_growth.up,
+    down: migration_20261028a_magazine_growth.down,
+    name: "20261028a_magazine_growth",
   },
 ];

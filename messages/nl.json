@@ -4771,6 +4771,16 @@
     }
   },
   "magazines": {
+    "join": {
+      "heading": "Lees het hele nummer",
+      "panel": "Leden van {community} lezen elk artikel helemaal.",
+      "inline": "Leden van {community} lezen het hele artikel.",
+      "join": "Word lid van {community}",
+      "request": "Vraag om lid te worden van {community}",
+      "pending": "Je hebt gevraagd om lid te worden van {community}. Zodra je bent toegelaten, kun je alles lezen.",
+      "inviteOnly": "Je kunt alleen op uitnodiging lid worden van {community}. Vraag een lid om een uitnodiging.",
+      "visit": "Ga naar {community}"
+    },
     "subscribe": {
       "subscribe": "Abonneren",
       "subscribed": "Geabonneerd",
@@ -4812,6 +4822,7 @@
       "showAll": "Alle magazines tonen"
     },
     "shelf": {
+      "teaser": "Leden lezen alles",
       "byCommunity": "Een magazine van <link>{community}</link>",
       "topics": "Onderwerpen",
       "issues": "Nummers",
@@ -4838,6 +4849,7 @@
       "scheduledNotice": "Ingepland. Lezers kunnen dit nummer nog niet zien."
     },
     "item": {
+      "membersReadAll": "Leden lezen het hele artikel",
       "readArticle": "Lees artikel",
       "byAuthor": "Door {name}",
       "readingTime": "{minutes} min lezen",
@@ -4864,18 +4876,17 @@
       "forumKind": "Uit het forum",
       "replies": "{count, plural, one {# reactie} other {# reacties}}",
       "projectKind": "Launchpad-project",
-      "upvotes": "{count, plural, one {# stem} other {# stemmen}}"
+      "upvotes": "{count, plural, one {# stem} other {# stemmen}}",
+      "articleKind": "Artikel",
+      "editorialKind": "Van de redactie"
     },
     "rail": {
       "visitCommunity": "Bezoek {community}",
       "pastIssues": "Eerdere nummers",
-      "allIssues": "Alle nummers bekijken",
-      "share": "Delen",
-      "copyLink": "Link kopiëren",
-      "linkCopied": "Link gekopieerd",
-      "linkCopyFailed": "Kon de link niet kopiëren"
+      "allIssues": "Alle nummers bekijken"
     },
     "article": {
+      "teaserNote": "Dit is het begin van het artikel.",
       "context": "Waar dit artikel verschijnt",
       "byAuthor": "Door {name}",
       "readingTime": "{minutes} min lezen",
@@ -4891,9 +4902,30 @@
       "homeTitle": "Magazines",
       "homeDescription": "Verhalen uit de communities die AI bouwen, geschreven en samengesteld door leden van de community. Gratis te lezen.",
       "shelfDescription": "{magazine}, een magazine van {community}."
+    },
+    "shareImage": {
+      "issueLine": "{magazine} · Nummer {number}",
+      "byCommunity": "Een magazine van {community}",
+      "byAuthor": "Door {author}"
     }
   },
   "magazineEditor": {
+    "stats": {
+      "label": "Cijfers",
+      "heading": "Hoe het gaat met nummer {number}",
+      "views": "Weergaven",
+      "readers": "Lezers",
+      "newSubscribers": "Nieuwe abonnees",
+      "joins": "Lid geworden van {community}",
+      "articles": "Artikelen",
+      "article": "Artikel",
+      "readToEnd": "Tot het einde gelezen",
+      "note": "Mensen die niet zijn ingelogd tellen één keer per dag mee. Je eigen bezoeken als redacteur tellen niet mee.",
+      "empty": "Nog niet gelezen. Hier verschijnen cijfers zodra mensen dit nummer openen.",
+      "back": "Terug naar het nummer",
+      "linkFor": "Cijfers <sr>voor nummer {number}</sr>",
+      "noArticles": "Dit nummer heeft geen artikelen."
+    },
     "autoDraft": {
       "issueTitle": "Nummer van {date}",
       "welcome": {
@@ -4948,13 +4980,11 @@
       "neverReuse": "Neem niets mee dat al in een eerder nummer staat",
       "draftsLookLike": "Zo zien concepten eruit",
       "layout": "Indeling",
-      "layouts": {
-        "cover-story": "Omslagverhaal"
-      },
       "visibility": "Zichtbaarheid",
       "inheritVisibility": "Hetzelfde als het magazine ({current})",
       "visibilities": {
         "members": "Alleen leden",
+        "teaser": "Voorproefje voor iedereen",
         "public": "Iedereen"
       },
       "whenReady": "Als een concept klaar is",
@@ -5020,6 +5050,11 @@
         "launchpadProject": "Meeste stemmen",
         "newsItem": "Koppen over je onderwerpen, nieuwste eerst",
         "welcome": "Een welkom als er nieuwe mensen bij komen, met een aantal en zonder namen"
+      },
+      "visibilityHints": {
+        "members": "Alleen leden kunnen het lezen.",
+        "teaser": "Iedereen ziet de omslag, de inhoudsopgave en het begin van elk artikel. Leden lezen alles.",
+        "public": "Iedereen kan alles lezen."
       }
     },
     "review": {
@@ -5099,8 +5134,7 @@
       "visibilityLabel": "Wie kan nieuwe nummers lezen",
       "visibilityMembers": "Alleen leden",
       "visibilityPublic": "Iedereen",
-      "visibilityHint": "Geldt alleen voor nieuwe nummers. Je kunt elk nummer nog apart aanpassen.",
-      "alreadyConfirmed": "Je hebt al bevestigd dat iedereen nieuwe nummers mag lezen, ook al is je community privé.",
+      "alreadyConfirmed": "Je hebt al bevestigd dat nieuwe nummers buiten je privécommunity getoond mogen worden.",
       "create": "Magazine maken",
       "save": "Wijzigingen opslaan",
       "saving": "Opslaan…",
@@ -5109,7 +5143,13 @@
       "loadFailed": "De magazine-instellingen konden niet worden geladen.",
       "tryAgain": "Opnieuw proberen",
       "openTab": "Open het tabblad Magazine",
-      "back": "Terug naar het tabblad Magazine"
+      "back": "Terug naar het tabblad Magazine",
+      "visibilityHints": {
+        "members": "Alleen leden kunnen het lezen.",
+        "teaser": "Iedereen ziet de omslag, de inhoudsopgave en het begin van elk artikel. Leden lezen alles.",
+        "public": "Iedereen kan alles lezen."
+      },
+      "visibilityTeaser": "Voorproefje voor iedereen"
     },
     "tab": {
       "metaTitle": "Magazine",
@@ -5118,7 +5158,6 @@
       "start": "Een magazine starten",
       "latest": "Nieuwste nummer",
       "pastIssues": "Eerdere nummers",
-      "membersOnly": "Alleen voor leden",
       "magazinePage": "Magazinepagina",
       "emptyTitle": "Nog geen nummers",
       "emptyDescription": "Het eerste nummer van {magazine} komt eraan.",
@@ -5243,7 +5282,19 @@
         "optInPending": "Vink het vakje aan om deze keuze op te slaan.",
         "intro": "Introregel (optioneel)",
         "introHelp": "Eén regel die boven dit onderdeel in het nummer staat.",
-        "done": "Klaar"
+        "done": "Klaar",
+        "visibilityHints": {
+          "members": "Alleen leden kunnen het lezen.",
+          "teaser": "Iedereen ziet de omslag, de inhoudsopgave en het begin van elk artikel. Leden lezen alles.",
+          "public": "Iedereen kan alles lezen."
+        },
+        "visibilityTeaser": "Voorproefje voor iedereen",
+        "layout": "Indeling",
+        "layoutHints": {
+          "cover-story": "Eén groot verhaal voorop, daarna een raster.",
+          "long-read": "Eén kolom, om van boven naar beneden te lezen.",
+          "digest": "Een korte lijst. Handig als je veel nieuws hebt."
+        }
       },
       "items": {
         "pickedBecause": "Gekozen omdat:",
@@ -5385,7 +5436,8 @@
         "scheduledTitle": "Je nummer is ingepland",
         "scheduledLead": "Het verschijnt op {time}. Tot die tijd kun je het nog aanpassen.",
         "unscheduledTitle": "De planning is geannuleerd",
-        "unscheduledLead": "Het nummer is weer een concept."
+        "unscheduledLead": "Het nummer is weer een concept.",
+        "audienceTeaser": "Iedereen kan de omslag, de inhoudsopgave en het begin van elk artikel zien. Alleen leden van je community lezen alles. Het verschijnt op de pagina Magazines."
       },
       "goesOut": "Verschijnt op <timestamp>{time}</timestamp>"
     },
@@ -5497,6 +5549,11 @@
       "back": "Terug naar het tabblad Magazine",
       "membersTitle": "Het team",
       "empty": "Voeg iemand toe om mee te schrijven en nummers te maken."
+    },
+    "layouts": {
+      "cover-story": "Omslagverhaal",
+      "long-read": "Longread",
+      "digest": "Kort overzicht"
     }
   },
   "magazineMail": {
@@ -5516,5 +5573,17 @@
       "ignore": "Heb je hier niet om gevraagd? Negeer deze e-mail dan. We mailen je niet opnieuw."
     },
     "footer": "AIT Community"
+  },
+  "share": {
+    "label": "Delen",
+    "copyLink": "Link kopiëren",
+    "linkCopied": "Link gekopieerd",
+    "linkCopyFailed": "De link kon niet worden gekopieerd",
+    "nativeShare": "Delen…",
+    "x": "Delen op X",
+    "linkedIn": "Delen op LinkedIn",
+    "email": "Versturen per e-mail",
+    "opensInNewTab": "(opent in een nieuw tabblad)",
+    "shareFailed": "De link kon niet worden gedeeld. Probeer hem te kopiëren."
   }
 }

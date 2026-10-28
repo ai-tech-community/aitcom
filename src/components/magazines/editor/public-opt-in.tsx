@@ -7,14 +7,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { IssueVisibility } from "@/lib/magazines/values";
 import type { CommunityVisibility } from "@/server/communities/content-visibility";
 import {
+  opensToOutsiders,
   planVisibilityChange,
   type VisibilityRecord,
 } from "@/lib/magazines/visibility";
 
 /**
  * Whether saving `next` needs the editor's opt-in, by the same rule the
- * server applies (`planVisibilityChange`): only `public` in a
- * content-private community whose saved record holds no confirmation yet.
+ * server applies (`planVisibilityChange`): `preview` or `public` in a
+ * content-private community needs confirmation. Widening a confirmed preview
+ * to public asks again; holding or narrowing a confirmed choice keeps it.
  *
  * A dry run without confirmation: such a run either refuses or returns a
  * record that never names the actor, so the actor and clock it is given
@@ -40,10 +42,11 @@ export function publicOptInRequired(input: {
 /**
  * The unlisted-community opt-in (ADR-0042): before a private community shows
  * an issue (or its magazine default) to everyone, the editor reads in plain
- * words what becomes visible and ticks a box. Renders nothing unless
- * `value` is `public` and the community is private. The parent blocks its
- * save until `confirmed` and sends `confirmUnlistedPublic` only then. Used by
- * the magazine settings (default visibility) and the issue builder.
+ * words what becomes visible and ticks a box. Renders for preview or public
+ * choices in a content-private community, including when a confirmed preview
+ * is widened to public. The parent decides whether confirmation is needed,
+ * blocks saving until `confirmed` and sends `confirmUnlistedPublic` only then.
+ * Used by the magazine settings (default visibility) and the issue builder.
  */
 export function PublicOptIn({
   communityIsPrivate,
@@ -60,7 +63,7 @@ export function PublicOptIn({
   const warningId = useId();
   const checkboxId = useId();
 
-  if (value !== "public" || !communityIsPrivate) return null;
+  if (!opensToOutsiders(value) || !communityIsPrivate) return null;
 
   return (
     <div className="bg-secondary/50 flex flex-col gap-3 rounded-lg border p-4">

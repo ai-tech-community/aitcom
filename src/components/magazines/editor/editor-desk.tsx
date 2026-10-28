@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
   issueBuilderPath,
+  issueStatsPath,
   magazineAutoDraftPath,
   magazineArticleEditPath,
   magazineReviewPath,
@@ -39,6 +40,7 @@ function nextIssueNumber(issues: IssueListRow[]): number {
 
 function IssueRow({ issue, slug }: { issue: IssueListRow; slug: string }) {
   const t = useTranslations("magazineEditor.desk");
+  const tStats = useTranslations("magazineEditor.stats");
   const displayTime = useScheduleTime();
   const dateline = useIssueDateline({
     number: issue.number,
@@ -73,6 +75,16 @@ function IssueRow({ issue, slug }: { issue: IssueListRow; slug: string }) {
           </time>
         )}
       </Link>
+      {issue.status === "published" && (
+        <Button variant="ghost" size="sm" className="mb-2 ml-3" asChild>
+          <Link href={issueStatsPath(slug, issue.id)}>
+            {tStats.rich("linkFor", {
+              number: issue.number,
+              sr: (chunks) => <span className="sr-only">{chunks}</span>,
+            })}
+          </Link>
+        </Button>
+      )}
     </li>
   );
 }

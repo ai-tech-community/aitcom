@@ -1,6 +1,6 @@
 // The article page answers 404 when the read model does, loads comments
 // only for an article readers can reach, and is indexed only when its
-// issue is effectively public (preflight F10).
+// issue reaches outsiders (Decision 9).
 import { createTranslator } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +8,7 @@ import en from "../../../../../../../messages/en.json";
 import {
   articlePage,
   magazineArticle,
+  previewArticlePage,
 } from "@/components/magazines/test-fixtures";
 import type { MagazineArticlePageData } from "@/server/magazines/reading";
 
@@ -65,7 +66,7 @@ const params = Promise.resolve({
 /** The props the page hands the long-read. */
 async function renderedProps() {
   const element = (await MagazineArticlePage({ params })) as {
-    props: { comments: unknown[] };
+    props: { comments: unknown[]; url: string };
   };
   return element.props;
 }
@@ -77,6 +78,22 @@ beforeEach(() => {
 });
 
 describe("magazine article page", () => {
+  it("hands the server's absolute canonical URL to sharing", async () => {
+    state.data = articlePage();
+    const props = await renderedProps();
+    const metadata = await generateMetadata({ params });
+    expect(props.url).toBe(metadata.alternates?.canonical);
+    expect(props.url).toMatch(
+      /^https:\/\/.*\/en\/magazines\/agents-weekly\/issue-4\/agents-that-know-when-to-stop$/,
+    );
+  });
+
+  it("never fetches comments for a preview article", async () => {
+    state.data = previewArticlePage();
+    expect((await renderedProps()).comments).toEqual([]);
+    expect(state.commentReads).toEqual([]);
+  });
+
   it("is rendered per request", () => {
     expect(dynamic).toBe("force-dynamic");
   });
@@ -108,15 +125,31 @@ describe("magazine article page", () => {
     );
   });
 
-  it("keeps it out of search when the issue is members-only in effect, or a preview", async () => {
+  it("indexes a preview article using the resolver's outsider reach", async () => {
+    state.data = previewArticlePage();
+    expect((await generateMetadata({ params })).robots).toBeUndefined();
+  });
+
+  it("keeps it out of search when the issue is members-only in effect, or an editor's draft", async () => {
     for (const data of [
       articlePage({
-        issue: { visibility: "public", effectiveVisibility: "members" },
+        issue: {
+          visibility: "public",
+          effectiveVisibility: "members",
+          outsiderReach: "none",
+        },
       }),
       articlePage({
-        issue: { visibility: "members", effectiveVisibility: "members" },
+        issue: {
+          visibility: "members",
+          effectiveVisibility: "members",
+          outsiderReach: "none",
+        },
       }),
-      articlePage({ access: "editor", issue: { status: "draft" } }),
+      articlePage({
+        access: "editor",
+        issue: { status: "draft", outsiderReach: "none" },
+      }),
     ]) {
       state.data = data;
       expect((await generateMetadata({ params })).robots).toEqual({
@@ -125,12 +158,36 @@ describe("magazine article page", () => {
     }
   });
 
-  it("uses the article image as the share image when there is one", async () => {
+  it("keeps a staff-hidden magazine out of search while the page still opens", async () => {
+    state.data = articlePage();
+    state.data.magazine.staffHidden = true;
+    expect((await generateMetadata({ params })).robots).toEqual({
+      index: false,
+    });
+    await expect(MagazineArticlePage({ params })).resolves.toBeTruthy();
+  });
+
+  it("a public or preview article points at its own share image", async () => {
+    for (const data of [articlePage(), previewArticlePage()]) {
+      state.data = data;
+      const meta = await generateMetadata({ params });
+      expect(meta.openGraph?.images).toEqual([
+        "/en/og/magazine/agents-weekly/issue-4/agents-that-know-when-to-stop",
+      ]);
+      expect(meta.twitter?.images).toEqual([
+        "/en/og/magazine/agents-weekly/issue-4/agents-that-know-when-to-stop",
+      ]);
+    }
+  });
+
+  it("a members-only article keeps its existing image fallback", async () => {
     state.data = articlePage({
+      issue: { outsiderReach: "none" },
       article: magazineArticle({ mediaUrl: "https://cdn.example.com/a.jpg" }),
     });
-    const meta = await generateMetadata({ params });
-    expect(meta.openGraph?.images).toEqual(["https://cdn.example.com/a.jpg"]);
+    expect((await generateMetadata({ params })).openGraph?.images).toEqual([
+      "https://cdn.example.com/a.jpg",
+    ]);
   });
 
   it("hands the article, its comments and the viewer to the long-read", async () => {
@@ -139,6 +196,7 @@ describe("magazine article page", () => {
     expect(state.commentReads).toEqual([1]);
     expect(props).toEqual({
       data: state.data,
+      url: "https://www.aitcommunity.org/en/magazines/agents-weekly/issue-4/agents-that-know-when-to-stop",
       comments: [{ id: 1, content: "Hi", parentId: null }],
       currentUserId: "viewer-1",
     });

@@ -1,44 +1,11 @@
 // @vitest-environment node
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { roleCan } from "@/lib/magazines/roles";
-import type { MagazineIssue } from "@/payload-types";
-import type { db as Db } from "@/server/db";
-import type * as Schema from "@/server/db/schema";
+import { isLocalDbConfigured } from "@/test/magazine-auto-draft-fixture";
+import { readingFixture } from "@/test/magazine-reading-fixture";
 
-import type { PayloadClient } from "./deps";
-import type * as IssueService from "./issue-service";
-import type * as Registry from "./items/registry";
-import type * as MagazineService from "./magazine-service";
-import type * as Reading from "./reading";
-
-function looksLikeCloudNeon(url: string): boolean {
-  return /neon\.tech|neon\.build|pooler\.[^/]*\.neon/i.test(url);
-}
-function isLocalDbConfigured(): boolean {
-  if (process.env.RUN_DB_TESTS !== "1") return false;
-  const dbUrl = process.env.DATABASE_URL?.trim() ?? "";
-  if (dbUrl && looksLikeCloudNeon(dbUrl)) return false;
-  return /(@|\/\/)(localhost|127\.0\.0\.1|0\.0\.0\.0|db|postgres|host\.docker\.internal)(:|\/)/i.test(
-    dbUrl,
-  );
-}
 const RUN_DB = isLocalDbConfigured();
-
-function richText(text: string) {
-  return {
-    root: {
-      type: "root",
-      direction: "ltr" as const,
-      format: "" as const,
-      indent: 0,
-      version: 1,
-      children: [
-        { type: "paragraph", version: 1, children: [{ type: "text", text }] },
-      ],
-    },
-  };
-}
 
 /**
  * The reading-page read models (ADR-0042) against real Payload documents:
@@ -46,268 +13,22 @@ function richText(text: string) {
  * community Magazine tab show to editors, members, outsiders and guests.
  */
 describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
-  type Mods = {
-    db: typeof Db;
-    schema: typeof Schema;
-    magazines: typeof MagazineService;
-    issues: typeof IssueService;
-    reading: typeof Reading;
-    payload: PayloadClient;
-  };
-  let m: Mods;
-
-  type Fixture = {
-    sfx: string;
-    editorId: string;
-    memberId: string;
-    outsiderId: string;
-    contributorId: string;
-    staffEditorId: string;
-    communityIds: string[];
-    articleIds: number[];
-  };
-  let fx: Fixture;
-
+  const fixture = readingFixture();
+  let m: typeof fixture.m;
+  let fx: typeof fixture.fx;
+  const {
+    community,
+    magazineIn,
+    draftIssue,
+    publishedIssue,
+    approvedArticle,
+    richText,
+  } = fixture;
   const LOCALE = "en" as const;
-
-  beforeAll(async () => {
-    const [{ db }, schema, magazines, issues, reading, { getPayloadClient }] =
-      await Promise.all([
-        import("@/server/db"),
-        import("@/server/db/schema"),
-        import("./magazine-service"),
-        import("./issue-service"),
-        import("./reading"),
-        import("@/server/payload"),
-      ]);
-    m = {
-      db,
-      schema,
-      magazines,
-      issues,
-      reading,
-      payload: await getPayloadClient(),
-    };
-  }, 120_000);
-
-  beforeEach(async () => {
-    const { db, schema } = m;
-    const sfx = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-    fx = {
-      sfx,
-      editorId: `rd-editor-${sfx}`,
-      memberId: `rd-member-${sfx}`,
-      outsiderId: `rd-outsider-${sfx}`,
-      contributorId: `rd-contributor-${sfx}`,
-      staffEditorId: `rd-staff-editor-${sfx}`,
-      communityIds: [],
-      articleIds: [],
-    };
-    const userIds = [
-      fx.editorId,
-      fx.memberId,
-      fx.outsiderId,
-      fx.contributorId,
-      fx.staffEditorId,
-    ];
-    await db
-      .insert(schema.user)
-      .values(
-        userIds.map((id) => ({ id, email: `${id}@example.test`, name: id })),
-      );
-    await db
-      .insert(schema.memberProfiles)
-      .values(userIds.map((userId) => ({ userId, displayName: userId })));
-  }, 60_000);
-
-  afterEach(async () => {
-    const { db, schema, payload } = m;
-    const { inArray } = await import("drizzle-orm");
-    await db
-      .delete(schema.magazineStaff)
-      .where(
-        inArray(schema.magazineStaff.userId, [
-          fx.editorId,
-          fx.memberId,
-          fx.outsiderId,
-          fx.contributorId,
-          fx.staffEditorId,
-        ]),
-      );
-    if (fx.communityIds.length > 0) {
-      const { docs: mags } = await payload.find({
-        collection: "magazines",
-        where: { communityId: { in: fx.communityIds } },
-        depth: 0,
-        pagination: false,
-      });
-      const magazineIds = mags.map((mag) => mag.id);
-      if (magazineIds.length > 0) {
-        // Deleting the issues clears their articles' placement (the
-        // foreign key is ON DELETE set null).
-        await payload.delete({
-          collection: "magazine-issues",
-          where: { magazine: { in: magazineIds } },
-        });
-      }
-      if (fx.articleIds.length > 0) {
-        await payload.delete({
-          collection: "articles",
-          where: { id: { in: fx.articleIds } },
-        });
-      }
-      if (magazineIds.length > 0) {
-        await payload.delete({
-          collection: "magazines",
-          where: { id: { in: magazineIds } },
-        });
-      }
-      await db
-        .delete(schema.spaces)
-        .where(inArray(schema.spaces.communityId, fx.communityIds));
-      await db
-        .delete(schema.communityMemberships)
-        .where(
-          inArray(schema.communityMemberships.communityId, fx.communityIds),
-        );
-      await db
-        .delete(schema.communities)
-        .where(inArray(schema.communities.id, fx.communityIds));
-    }
-    const userIds = [
-      fx.editorId,
-      fx.memberId,
-      fx.outsiderId,
-      fx.contributorId,
-      fx.staffEditorId,
-    ];
-    await db
-      .delete(schema.pointsEvents)
-      .where(inArray(schema.pointsEvents.userId, userIds));
-    await db
-      .delete(schema.activityEvents)
-      .where(inArray(schema.activityEvents.actorId, userIds));
-    await db
-      .delete(schema.notifications)
-      .where(inArray(schema.notifications.userId, userIds));
-    await db
-      .delete(schema.memberBadges)
-      .where(inArray(schema.memberBadges.userId, userIds));
-    await db
-      .delete(schema.memberProfiles)
-      .where(inArray(schema.memberProfiles.userId, userIds));
-    await db
-      .delete(schema.communityMemberships)
-      .where(inArray(schema.communityMemberships.userId, userIds));
-    await db.delete(schema.user).where(inArray(schema.user.id, userIds));
-  }, 60_000);
-
-  // ── Fixtures ──────────────────────────────────────────────────────────
-
-  type Community = { id: string; slug: string; isListedInDirectory: boolean };
-
-  /** A community where the editor is owner and the member is a member. */
-  async function community(
-    label: string,
-    opts: { listed?: boolean } = {},
-  ): Promise<Community> {
-    const { db, schema } = m;
-    const [row] = await db
-      .insert(schema.communities)
-      .values({
-        name: `Reading ${label} ${fx.sfx}`,
-        slug: `rd-${label}-${fx.sfx}`,
-        createdBy: fx.editorId,
-        isListedInDirectory: opts.listed ?? true,
-      })
-      .returning();
-    fx.communityIds.push(row!.id);
-    await db.insert(schema.communityMemberships).values([
-      { communityId: row!.id, userId: fx.editorId, role: "owner" },
-      { communityId: row!.id, userId: fx.memberId, role: "member" },
-    ]);
-    return {
-      id: row!.id,
-      slug: row!.slug,
-      isListedInDirectory: row!.isListedInDirectory,
-    };
-  }
-
-  async function magazineIn(
-    c: Community,
-    label: string,
-    extra: Partial<MagazineService.MagazineSettingsInput> = {},
-  ) {
-    return m.magazines.saveMagazineSettings(
-      m,
-      c,
-      {
-        name: `Magazine ${label} ${fx.sfx}`,
-        slug: `rd-${label}-${fx.sfx}`,
-        topics: [],
-        defaultVisibility: "public",
-        ...extra,
-      },
-      fx.editorId,
-      true,
-    );
-  }
-
-  function actor(c: Community): IssueService.IssueActor {
-    return { userId: fx.editorId, community: c };
-  }
-
-  function editorialItem(text: string): Registry.IssueItemInput {
-    return { kind: "editorial", heading: text, body: richText(text) };
-  }
-
-  type Magazine = Awaited<ReturnType<typeof magazineIn>>;
-
-  /** A draft issue with the given items, details and visibility. */
-  async function draftIssue(
-    c: Community,
-    magazine: Magazine,
-    title: string,
-    opts: {
-      visibility?: "members" | "public";
-      coverImageUrl?: string;
-      items?: Registry.IssueItemInput[];
-    } = {},
-  ): Promise<MagazineIssue> {
-    let issue = await m.issues.createIssue(m, magazine, { title }, actor(c));
-    if (opts.visibility || opts.coverImageUrl) {
-      issue = await m.issues.updateIssueDetails(
-        m,
-        issue,
-        {
-          ...(opts.visibility ? { visibility: opts.visibility } : {}),
-          ...(opts.coverImageUrl ? { coverImageUrl: opts.coverImageUrl } : {}),
-        },
-        issue.updatedAt,
-        actor(c),
-        true,
-      );
-    }
-    return (
-      await m.issues.setIssueItems(
-        m,
-        issue,
-        opts.items ?? [editorialItem(`${title} note`)],
-        issue.updatedAt,
-        actor(c),
-      )
-    ).issue;
-  }
-
-  async function publishedIssue(
-    c: Community,
-    magazine: Magazine,
-    title: string,
-    opts: Parameters<typeof draftIssue>[3] = {},
-  ): Promise<MagazineIssue> {
-    const draft = await draftIssue(c, magazine, title, opts);
-    return m.issues.publishIssue(m, draft, draft.updatedAt, actor(c));
-  }
+  beforeEach(() => {
+    m = fixture.m;
+    fx = fixture.fx;
+  });
 
   it("the subscription lookup and shelf agree on who may know a magazine", async () => {
     const { loadIssueReadScope } = await import("./readable-issues");
@@ -384,35 +105,59 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     ).toBeNull();
   }, 30_000);
 
-  async function approvedArticle(
-    label: string,
-    magazineId: number,
-  ): Promise<{ id: number; slug: string }> {
-    const slug = `rd-${label}-${fx.sfx}`;
-    const doc = await m.payload.create({
-      collection: "articles",
-      data: {
-        title: `${label} title`,
-        slug,
-        content: richText(`${label} text`),
-        type: "article",
-        authorId: fx.editorId,
-        authorName: "Editor",
-        authorType: "member",
-        reviewStatus: "approved",
-        status: "draft",
-        magazine: magazineId,
-      } as never,
-    });
-    fx.articleIds.push(doc.id);
-    return { id: doc.id, slug };
-  }
-
   const ids = (cards: { id: number }[]) => cards.map((c) => c.id);
 
   // ── Home ──────────────────────────────────────────────────────────────
 
-  it("home lists only public issues, newest first, featured = newest with a cover", async () => {
+  it("each card carries the resolver's outsider reach", async () => {
+    const listed = await community("reach-listed");
+    const mag = await magazineIn(listed, "reach-listed");
+    const full = await publishedIssue(listed, mag, "Public");
+    const preview = await publishedIssue(listed, mag, "Preview", {
+      visibility: "teaser",
+    });
+    const home = await m.reading.loadMagazinesHome(m, { locale: LOCALE });
+    const cards = [
+      ...home.justPublished,
+      ...home.magazines.map((m) => m.latest),
+      ...(home.featured ? [home.featured] : []),
+    ];
+    expect(cards).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: full.id, outsiderReach: "full" }),
+        expect.objectContaining({ id: preview.id, outsiderReach: "teaser" }),
+      ]),
+    );
+    const unlisted = await community("reach-unlisted", { listed: false });
+    const privateMag = await magazineIn(unlisted, "reach-unlisted", {
+      defaultVisibility: "members",
+    });
+    // A listed community becoming unlisted leaves its preview unconfirmed.
+    const unconfirmed = await m.payload.create({
+      collection: "magazine-issues",
+      data: {
+        magazine: privateMag.id,
+        communityId: unlisted.id,
+        number: 1,
+        title: "Unconfirmed preview",
+        slug: "unconfirmed-preview",
+        status: "published",
+        visibility: "teaser",
+      },
+    });
+    const tab = await m.reading.loadCommunityMagazineTab(m, {
+      communitySlug: unlisted.slug,
+      viewerId: fx.memberId,
+      locale: LOCALE,
+    });
+    expect(tab?.latest).toMatchObject({
+      id: unconfirmed.id,
+      effectiveVisibility: "members",
+      outsiderReach: "none",
+    });
+  }, 60_000);
+
+  it("home lists only issues outsiders may see, newest first, featured = newest with a cover", async () => {
     const c = await community("home");
     const mag = await magazineIn(c, "home");
     const covered = await publishedIssue(c, mag, "Covered", {
@@ -449,9 +194,9 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
       ...home.justPublished,
       ...home.magazines.map((mc) => mc.latest),
     ];
-    expect(
-      everyListedIssue.every((i) => i.effectiveVisibility === "public"),
-    ).toBe(true);
+    // Outsiders may see public issues and previews; members-only never.
+    for (const issue of everyListedIssue)
+      expect(["public", "teaser"]).toContain(issue.effectiveVisibility);
     expect(ids(everyListedIssue)).not.toContain(membersOnly.id);
   });
 
@@ -538,6 +283,128 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     expect(await shelf(fx.outsiderId)).toBeNull();
     expect(await shelf(null)).toBeNull();
     expect(ids((await shelf(fx.memberId))!.issues)).toEqual([issue.id]);
+  });
+
+  async function previewFixture(codeFirst = false) {
+    const c = await community("preview");
+    const mag = await magazineIn(c, "preview");
+    const opening = "This opening is safe to read.";
+    const late = "PRIVATE_LATE_SENTENCE must never reach a preview reader.";
+    const content = richText(`${opening} ${"word ".repeat(120)} ${late}`);
+    if (codeFirst) {
+      content.root.children.unshift({
+        type: "code",
+        version: 1,
+        children: [{ type: "text", text: "PRIVATE_CODE_MARKER ".repeat(50) }],
+      });
+    }
+    const first = await approvedArticle("preview-first", mag.id, content);
+    const second = await approvedArticle("preview-next", mag.id, content);
+    const issue = await publishedIssue(c, mag, "Preview", {
+      visibility: "teaser",
+      items: [
+        { kind: "article", articleId: first.id },
+        { kind: "article", articleId: second.id },
+        {
+          kind: "editorial",
+          heading: "A public heading",
+          intro: "A public intro",
+          body: richText("PRIVATE_EDITORIAL_BODY"),
+        },
+      ],
+    });
+    const opts = {
+      magazineSlug: mag.slug,
+      issueSlug: issue.slug,
+      locale: LOCALE,
+    };
+    return { c, mag, first, opts, opening, late };
+  }
+
+  it("a teaser reader gets openings only", async () => {
+    const { opts, opening, late } = await previewFixture();
+    for (const viewerId of [null, fx.outsiderId]) {
+      const page = await m.reading.loadIssuePage(m, { ...opts, viewerId });
+      expect(page?.access).toBe("teaser");
+      expect(JSON.stringify(page)).toContain(opening);
+      expect(JSON.stringify(page)).not.toContain(late);
+      expect(JSON.stringify(page)).not.toContain("PRIVATE_EDITORIAL_BODY");
+      expect(
+        page?.items.find((item) => item.kind === "editorial"),
+      ).toMatchObject({ body: null });
+      const article = page?.items.find((item) => item.kind === "article");
+      expect(article).toMatchObject({
+        article: { opening: expect.stringContaining(opening) },
+      });
+      if (article?.kind === "article" && !("unavailable" in article)) {
+        expect(article.article.opening.split(/\s+/)).toHaveLength(80);
+      }
+    }
+  });
+
+  it("the teaser article page carries no body", async () => {
+    const { opts, first, opening, late } = await previewFixture();
+    for (const viewerId of [null, fx.outsiderId]) {
+      const page = await m.reading.loadMagazineArticlePage(m, {
+        ...opts,
+        articleSlug: first.slug,
+        viewerId,
+      });
+      expect(page?.mode).toBe("teaser");
+      expect("content" in page!.article).toBe(false);
+      expect(JSON.stringify(page)).toContain(opening);
+      expect(JSON.stringify(page)).not.toContain(late);
+      expect(JSON.stringify(page)).not.toContain("PRIVATE_EDITORIAL_BODY");
+    }
+    const memberPage = await m.reading.loadMagazineArticlePage(m, {
+      ...opts,
+      articleSlug: first.slug,
+      viewerId: fx.memberId,
+    });
+    expect(memberPage?.mode).toBe("full");
+    expect(memberPage?.article).toHaveProperty("content");
+    expect(JSON.stringify(memberPage)).toContain(late);
+  });
+
+  it("a preview reader never gets code text", async () => {
+    const { opts, first } = await previewFixture(true);
+    for (const viewerId of [null, fx.outsiderId]) {
+      const page = await m.reading.loadIssuePage(m, { ...opts, viewerId });
+      const articlePage = await m.reading.loadMagazineArticlePage(m, {
+        ...opts,
+        viewerId,
+        articleSlug: first.slug,
+      });
+      expect(page).not.toBeNull();
+      expect(articlePage?.nextInIssue).not.toBeNull();
+      expect(JSON.stringify(page)).not.toContain("PRIVATE_CODE_MARKER");
+      expect(JSON.stringify(articlePage)).not.toContain("PRIVATE_CODE_MARKER");
+    }
+  });
+
+  it("only the issue and article pages carry the join rule", async () => {
+    const { opts, first, mag } = await previewFixture();
+    const page = await m.reading.loadIssuePage(m, { ...opts, viewerId: null });
+    const article = await m.reading.loadMagazineArticlePage(m, {
+      ...opts,
+      viewerId: null,
+      articleSlug: first.slug,
+    });
+    expect(page?.community).toHaveProperty("joinPolicy", "open");
+    expect(article?.community).toHaveProperty("joinPolicy", "open");
+    const home = await m.reading.loadMagazinesHome(m, { locale: LOCALE });
+    const card = home.magazines.find(
+      (card) => Number(card.id) === Number(mag.id),
+    );
+    expect(card).toBeDefined();
+    expect(card!.community).not.toHaveProperty("joinPolicy");
+    expect(card!.latest.community).not.toHaveProperty("joinPolicy");
+    const shelf = await m.reading.loadMagazineShelf(m, {
+      ...opts,
+      viewerId: null,
+    });
+    expect(shelf!.community).not.toHaveProperty("joinPolicy");
+    expect(page!.issue.community).not.toHaveProperty("joinPolicy");
   });
 
   // ── Issue page ────────────────────────────────────────────────────────
@@ -664,6 +531,98 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     const asEditor = await page(fx.editorId);
     expect(asEditor!.access).toBe("editor");
     expect(asEditor!.issue.status).toBe("draft");
+  });
+
+  it("a hidden magazine leaves the home and the sitemap but its pages still open", async () => {
+    const { magazineSitemapPaths } = await import("./sitemap-paths");
+    const c = await community("hidden");
+    const mag = await magazineIn(c, "hidden");
+    const art = await approvedArticle("hidden", mag.id);
+    const issue = await publishedIssue(c, mag, "Hidden issue", {
+      coverImageUrl: "https://example.test/hidden-cover.png",
+      items: [{ kind: "article", articleId: art.id }],
+    });
+    const homeBefore = await m.reading.loadMagazinesHome(m, { locale: LOCALE });
+    expect(ids(homeBefore.magazines)).toContain(Number(mag.id));
+    const prefix = `/magazines/${mag.slug}`;
+    const beforePaths = await magazineSitemapPaths(m);
+    expect(beforePaths).toContain(prefix);
+    expect(beforePaths).toContain(`${prefix}/${issue.slug}`);
+    expect(beforePaths).toContain(`${prefix}/${issue.slug}/${art.slug}`);
+    await m.payload.update({
+      collection: "magazines",
+      id: mag.id,
+      data: { listingHidden: true },
+    });
+    const home = await m.reading.loadMagazinesHome(m, { locale: LOCALE });
+    expect(ids(home.magazines)).not.toContain(Number(mag.id));
+    expect(home.featured?.id).not.toBe(Number(issue.id));
+    expect(ids(home.justPublished)).not.toContain(Number(issue.id));
+    expect(
+      (await magazineSitemapPaths(m)).some((path) => path.startsWith(prefix)),
+    ).toBe(false);
+    const opts = {
+      magazineSlug: mag.slug,
+      viewerId: fx.outsiderId,
+      locale: LOCALE,
+    };
+    expect(
+      (await m.reading.loadIssuePage(m, { ...opts, issueSlug: issue.slug }))
+        ?.magazine.staffHidden,
+    ).toBe(true);
+    expect(
+      (await m.reading.loadMagazineShelf(m, opts))?.magazine.staffHidden,
+    ).toBe(true);
+    expect(
+      (
+        await m.reading.loadMagazineArticlePage(m, {
+          ...opts,
+          issueSlug: issue.slug,
+          articleSlug: art.slug,
+        })
+      )?.magazine.staffHidden,
+    ).toBe(true);
+    expect(
+      (
+        await m.reading.loadCommunityMagazineTab(m, {
+          communitySlug: c.slug,
+          viewerId: fx.outsiderId,
+          locale: LOCALE,
+        })
+      )?.latest?.id,
+    ).toBe(Number(issue.id));
+  });
+
+  it("saving the settings never shows a hidden magazine again", async () => {
+    const c = await community("hidden-settings");
+    const mag = await magazineIn(c, "hidden-settings");
+    await m.payload.update({
+      collection: "magazines",
+      id: mag.id,
+      data: { listingHidden: true },
+    });
+    const hidden = await m.payload.findByID({
+      collection: "magazines",
+      id: mag.id,
+      depth: 0,
+    });
+    const saved = await m.magazines.saveMagazineSettings(
+      m,
+      c,
+      {
+        name: "Changed name",
+        slug: mag.slug,
+        topics: [],
+        defaultVisibility: "public",
+      },
+      fx.editorId,
+      true,
+    );
+    expect(saved).toMatchObject({
+      listingHidden: true,
+      listingHiddenAt: hidden.listingHiddenAt,
+      listingHiddenBy: hidden.listingHiddenBy,
+    });
   });
 
   // ── Community tab ─────────────────────────────────────────────────────

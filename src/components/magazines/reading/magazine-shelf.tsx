@@ -1,7 +1,6 @@
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -15,6 +14,7 @@ import type { MagazineShelfData } from "@/server/magazines/reading";
 
 import { IssueCoverCard } from "./issue-cover-card";
 import { READING_FRAME } from "./frame";
+import { IssueVisibilityBadge } from "./issue-visibility-badge";
 import { SubscribeButton } from "./subscribe-button";
 
 function communityPath(slug: string): string {
@@ -122,11 +122,9 @@ export function MagazineShelf({ data }: { data: MagazineShelfData }) {
                 <IssueCoverCard
                   issue={issue}
                   badge={
-                    issue.effectiveVisibility === "members" ? (
-                      <Badge variant="outline" className="font-normal">
-                        {t("membersOnly")}
-                      </Badge>
-                    ) : null
+                    <IssueVisibilityBadge
+                      visibility={issue.effectiveVisibility}
+                    />
                   }
                 />
               </li>

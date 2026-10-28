@@ -4,7 +4,9 @@ import type { IssueVisibility } from "./values";
 
 import {
   effectiveVisibility,
+  opensToOutsiders,
   planVisibilityChange,
+  shouldWithdrawVisibilityConfirmation,
   type VisibilityRecord,
 } from "./visibility";
 
@@ -18,7 +20,140 @@ const membersRecord: VisibilityRecord = {
   publicConfirmedAt: null,
 };
 
+describe("shouldWithdrawVisibilityConfirmation", () => {
+  it.each([
+    ["members", "members", true],
+    ["members", "teaser", false],
+    ["members", "public", false],
+    ["teaser", "members", true],
+    ["teaser", "teaser", false],
+    ["teaser", "public", true],
+    ["public", "members", true],
+    ["public", "teaser", false],
+    ["public", "public", false],
+  ] as const)("%s → %s withdraws the tick: %s", (current, next, withdraw) => {
+    expect(shouldWithdrawVisibilityConfirmation(current, next)).toBe(withdraw);
+  });
+});
+
 describe("planVisibilityChange", () => {
+  it("narrowing keeps the confirmation and saves the new visibility", () => {
+    for (const visibility of ["public", "teaser"] as const) {
+      const current: VisibilityRecord = {
+        visibility,
+        publicConfirmedBy: "editor-0",
+        publicConfirmedAt: "2026-10-01T09:00:00.000Z",
+      };
+      expect(
+        planVisibilityChange({
+          next: "teaser",
+          current,
+          community: unlisted,
+          confirmUnlistedPublic: false,
+          actorId: ACTOR,
+          actorLeadsCommunity: false,
+          now: NOW,
+        }),
+      ).toEqual({ ok: true, record: { ...current, visibility: "teaser" } });
+      expect(
+        planVisibilityChange({
+          next: "members",
+          current,
+          community: unlisted,
+          confirmUnlistedPublic: false,
+          actorId: ACTOR,
+          actorLeadsCommunity: true,
+          now: NOW,
+        }),
+      ).toEqual({ ok: true, record: membersRecord });
+    }
+  });
+
+  it("widening preview to everyone needs a leader again", () => {
+    const input = {
+      next: "public" as const,
+      current: {
+        visibility: "teaser" as const,
+        publicConfirmedBy: "editor-0",
+        publicConfirmedAt: "2026-10-01T09:00:00.000Z",
+      },
+      community: unlisted,
+      confirmUnlistedPublic: false,
+      actorId: ACTOR,
+      actorLeadsCommunity: true,
+      now: NOW,
+    };
+    expect(planVisibilityChange(input)).toEqual({
+      ok: false,
+      code: "CONFIRM_UNLISTED_PUBLIC",
+    });
+    expect(
+      planVisibilityChange({
+        ...input,
+        confirmUnlistedPublic: true,
+        actorLeadsCommunity: false,
+      }),
+    ).toEqual({ ok: false, code: "UNLISTED_PUBLIC_LEADERS_ONLY" });
+    expect(
+      planVisibilityChange({ ...input, confirmUnlistedPublic: true }),
+    ).toEqual({
+      ok: true,
+      record: {
+        visibility: "public",
+        publicConfirmedBy: ACTOR,
+        publicConfirmedAt: NOW.toISOString(),
+      },
+    });
+  });
+
+  it("preview in a private community needs confirmation", () => {
+    const input = {
+      next: "teaser" as const,
+      current: membersRecord,
+      community: unlisted,
+      confirmUnlistedPublic: false,
+      actorId: ACTOR,
+      actorLeadsCommunity: true,
+      now: NOW,
+    };
+    expect(planVisibilityChange(input)).toEqual({
+      ok: false,
+      code: "CONFIRM_UNLISTED_PUBLIC",
+    });
+    expect(
+      planVisibilityChange({ ...input, confirmUnlistedPublic: true }),
+    ).toEqual({
+      ok: true,
+      record: {
+        visibility: "teaser",
+        publicConfirmedBy: ACTOR,
+        publicConfirmedAt: NOW.toISOString(),
+      },
+    });
+  });
+
+  it("preview in a content-public community stores no confirmation", () => {
+    for (const community of [
+      listed,
+      { slug: "ait", isListedInDirectory: false },
+    ]) {
+      expect(
+        planVisibilityChange({
+          next: "teaser",
+          current: membersRecord,
+          community,
+          confirmUnlistedPublic: false,
+          actorId: ACTOR,
+          actorLeadsCommunity: true,
+          now: NOW,
+        }),
+      ).toEqual({
+        ok: true,
+        record: { ...membersRecord, visibility: "teaser" },
+      });
+    }
+  });
+
   it("public in an unlisted community without confirmation is refused", () => {
     expect(
       planVisibilityChange({
@@ -113,7 +248,7 @@ describe("planVisibilityChange", () => {
 
   it("only a community leader may pass a public confirmation", () => {
     for (const community of [unlisted, listed]) {
-      for (const next of ["public", "members"] as const) {
+      for (const next of ["public", "teaser", "members"] as const) {
         expect(
           planVisibilityChange({
             next,
@@ -154,8 +289,27 @@ describe("effectiveVisibility", () => {
   const unlisted = { slug: "garden-club", isListedInDirectory: false };
 
   it("is the stored value in a content-public community", () => {
+    expect(effectiveVisibility(issue("teaser", null), listed)).toBe("teaser");
+    expect(
+      effectiveVisibility(issue("teaser", null), {
+        slug: "ait",
+        isListedInDirectory: false,
+      }),
+    ).toBe("teaser");
     expect(effectiveVisibility(issue("public", null), listed)).toBe("public");
     expect(effectiveVisibility(issue("members", null), listed)).toBe("members");
+  });
+
+  it("preview counts as members in an unlisted community until confirmed", () => {
+    expect(effectiveVisibility(issue("teaser", null), unlisted)).toBe(
+      "members",
+    );
+    expect(
+      effectiveVisibility(
+        issue("teaser", "2026-10-20T09:00:00.000Z"),
+        unlisted,
+      ),
+    ).toBe("teaser");
   });
 
   it("counts an unconfirmed public issue as members in a content-private community", () => {
@@ -174,5 +328,15 @@ describe("effectiveVisibility", () => {
         unlisted,
       ),
     ).toBe("members");
+  });
+});
+
+describe("opensToOutsiders", () => {
+  it.each([
+    ["members", false],
+    ["teaser", true],
+    ["public", true],
+  ] as const)("%s → %s", (visibility, opens) => {
+    expect(opensToOutsiders(visibility)).toBe(opens);
   });
 });

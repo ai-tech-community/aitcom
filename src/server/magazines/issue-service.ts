@@ -16,6 +16,7 @@ import {
   type ScheduleOrigin,
 } from "@/lib/magazines/values";
 import {
+  opensToOutsiders,
   planVisibilityChange,
   type VisibilityRecord,
 } from "@/lib/magazines/visibility";
@@ -106,6 +107,7 @@ function historySnapshot(
 }
 
 export type IssueDetailsPatch = {
+  layout?: IssueLayout;
   title?: string;
   slug?: string;
   coverImageUrl?: string | null;
@@ -409,10 +411,12 @@ export async function createIssue(
   const visibility = magazine.defaultVisibility ?? "members";
   const visibilityRecord = opts?.visibility ?? {
     visibility,
-    publicConfirmedBy:
-      visibility === "public" ? (magazine.publicConfirmedBy ?? null) : null,
-    publicConfirmedAt:
-      visibility === "public" ? (magazine.publicConfirmedAt ?? null) : null,
+    publicConfirmedBy: opensToOutsiders(visibility)
+      ? (magazine.publicConfirmedBy ?? null)
+      : null,
+    publicConfirmedAt: opensToOutsiders(visibility)
+      ? (magazine.publicConfirmedAt ?? null)
+      : null,
   };
   for (let attempt = 1; ; attempt++) {
     const number = await nextIssueNumber(deps.payload, magazine.id);
@@ -467,6 +471,7 @@ export async function updateIssueDetails(
 
   const data: Partial<MagazineIssue> = {};
   if (patch.title !== undefined) data.title = patch.title;
+  if (patch.layout !== undefined) data.layout = patch.layout;
   if (patch.slug !== undefined && patch.slug !== issue.slug) {
     if (issue.status === "published") throw magazineError("ISSUE_SLUG_LOCKED");
     data.slug = patch.slug;

@@ -11,12 +11,13 @@ import {
   type EditorItemView,
 } from "@/lib/magazines/item-views";
 import { magazineArticlePath } from "@/lib/magazines/paths";
-import type { IssueLayout, IssueVisibility } from "@/lib/magazines/values";
+import type { IssueVisibility } from "@/lib/magazines/values";
 import { cn } from "@/lib/utils";
 
 import { isUnavailableItem } from "../../items/registry";
 import { LAYOUTS } from "../../layouts/registry";
 import { IssueHero } from "../../reading/issue-hero";
+import { MagazineJoinPromptView } from "../../reading/magazine-join-prompt";
 import { builderPreviewView } from "./items/registry";
 import type { BuilderItem } from "./items-model";
 import type { IssueDetailsDraft } from "./use-issue-save";
@@ -52,9 +53,9 @@ export function previewViews(
 
 /**
  * The live preview: the issue's hero and its real layout
- * (`LAYOUTS[layout]`), as a member sees it, in a phone-sized frame, or as a
+ * (`LAYOUTS[details.layout]`), as a member sees it, in a phone-sized frame, or as a
  * visitor from outside the community sees it (nothing for a members-only
- * issue, the full issue for a public one).
+ * issue, openings and a join prompt for preview, the full issue for public).
  *
  * The preview is a picture of the page, not the page: it is `inert`, so its
  * links and any control an item kind renders can be neither clicked nor
@@ -68,17 +69,15 @@ export function LivePreview({
   community,
   issue,
   details,
-  layout,
   items,
   savedViews,
   audience,
 }: {
   magazine: { name: string; slug: string };
-  community: { name: string };
+  community: { name: string; slug: string };
   /** The saved issue's number and publish date (null for a draft). */
   issue: { number: number; publishedAt: string | null };
   details: IssueDetailsDraft;
-  layout: IssueLayout;
   items: BuilderItem[];
   savedViews: ReadonlyMap<string, EditorItemView>;
   /** Who will be able to read the issue (its effective visibility). */
@@ -88,7 +87,7 @@ export function LivePreview({
   const labelId = useId();
   const [mode, setMode] = useState<PreviewMode>("member");
 
-  const Layout = LAYOUTS[layout];
+  const Layout = LAYOUTS[details.layout];
   const { views: loadedViews, waiting } = previewViews(items, savedViews);
   const views =
     mode === "visitor" ? loadedViews.filter(visibleToVisitors) : loadedViews;
@@ -99,6 +98,21 @@ export function LivePreview({
       { slug: articleSlug },
     );
   const hiddenFromVisitors = mode === "visitor" && audience === "members";
+  const teaser =
+    mode === "visitor" && audience === "teaser"
+      ? {
+          inlinePrompt: (
+            <MagazineJoinPromptView
+              tone="preview"
+              community={{ ...community, joinPolicy: "open" }}
+              variant="inline"
+              action={{ kind: "join" }}
+              onRun={() => undefined}
+              busy={false}
+            />
+          ),
+        }
+      : null;
   const visitorNoneVisible =
     mode === "visitor" && loadedViews.length > 0 && views.length === 0;
 
@@ -149,7 +163,17 @@ export function LivePreview({
                   signedBy: null,
                 }}
               />
-              <Layout items={views} href={href} />
+              <Layout items={views} href={href} teaser={teaser} />
+              {teaser && (
+                <MagazineJoinPromptView
+                  tone="preview"
+                  community={{ ...community, joinPolicy: "open" }}
+                  variant="panel"
+                  action={{ kind: "join" }}
+                  onRun={() => undefined}
+                  busy={false}
+                />
+              )}
             </div>
             {/* Outside the inert picture: these say what the preview is waiting for. */}
             {visitorNoneVisible && (

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { IssueItemView, ItemKindId } from "@/lib/magazines/item-views";
 
 /** The URL of a magazine article in the issue being read, by its slug. */
@@ -9,12 +11,16 @@ export type ItemViewOfKind<K extends ItemKindId> = Extract<
   { kind: K }
 >;
 
+export type ItemTeaser = { inlinePrompt: ReactNode };
+
+export type ItemSize = "lead" | "card" | "row" | "related";
+
 /** What every item renderer gets (ADR-0043: one renderer per kind). */
 export type ItemRendererProps<K extends ItemKindId> = {
   view: ItemViewOfKind<K>;
-  /** The issue's lead item: a wider card with a larger heading. */
-  lead: boolean;
+  size: ItemSize;
   href: ArticleHref;
+  teaser: ItemTeaser | null;
 };
 
 /** The item's title in the issue's contents list, or null when it has none. */

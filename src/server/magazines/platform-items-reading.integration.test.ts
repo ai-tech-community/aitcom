@@ -168,6 +168,14 @@ describe.skipIf(!isLocalDbConfigured())(
           pagination: false,
         });
         const ids = docs.map((doc) => doc.id);
+        if (ids.length) {
+          await db
+            .delete(schema.magazineReads)
+            .where(inArray(schema.magazineReads.magazineId, ids));
+          await db
+            .delete(schema.magazineSubscriptions)
+            .where(inArray(schema.magazineSubscriptions.magazineId, ids));
+        }
         if (ids.length)
           await payload.delete({
             collection: "magazine-issues",
@@ -445,6 +453,59 @@ describe.skipIf(!isLocalDbConfigured())(
         { membersOnly: true },
         { membersOnly: true },
       ]);
+    });
+
+    it("a preview reader gets the cards but never an editorial body", async () => {
+      const { toItemInputs } = await import("./items/registry");
+      const filled = (
+        await m.issues.setIssueItems(
+          m,
+          fixture.issue,
+          [
+            ...toItemInputs(fixture.issue.items ?? []),
+            {
+              kind: "editorial",
+              heading: "From the editor",
+              intro: "This month's picks",
+              body: richText("Members read this editorial body"),
+            },
+          ],
+          fixture.issue.updatedAt,
+          fixture.actor,
+        )
+      ).issue;
+      fixture.issue = await m.issues.updateIssueDetails(
+        m,
+        filled,
+        { visibility: "teaser" },
+        filled.updatedAt,
+        fixture.actor,
+        true,
+      );
+      for (const viewerId of [null, fx.outsiderId]) {
+        const page = await readAs(viewerId);
+        expect(page?.access).toBe("teaser");
+        expect(page?.items.map((v) => v.kind)).toEqual([
+          "storyline",
+          "newsItem",
+          "editorial",
+        ]);
+        expect(page?.items[2]).toMatchObject({
+          heading: "From the editor",
+          intro: "This month's picks",
+          body: null,
+        });
+        expect(JSON.stringify(page)).not.toContain(
+          "Members read this editorial body",
+        );
+        expect(JSON.stringify(page)).not.toContain(fixture.thread.title);
+      }
+      const member = await readAs(fx.memberId);
+      expect(member?.access).toBe("full");
+      expect(member?.items.map((v) => v.kind)).toContain("forumThread");
+      expect(JSON.stringify(member)).toContain(
+        "Members read this editorial body",
+      );
     });
 
     it("content that goes away becomes a marker and never blocks the editor", async () => {

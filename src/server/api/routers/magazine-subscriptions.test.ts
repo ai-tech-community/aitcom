@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   after: vi.fn(),
   findMagazineForViewer: vi.fn(),
+  issueOrigin: vi.fn(),
   subscribeByEmail: vi.fn(),
   mailer: { recipient: (to: string) => to, send: vi.fn() },
 }));
@@ -21,6 +22,9 @@ vi.mock("@/server/api/trpc", async () => {
 vi.mock("@/server/magazines/reading", () => ({
   findMagazineForViewer: mocks.findMagazineForViewer,
   findMagazineBySlug: vi.fn(),
+}));
+vi.mock("@/server/magazines/issue-origin", () => ({
+  issueOrigin: mocks.issueOrigin,
 }));
 vi.mock("@/server/magazines/subscriptions/service", () => ({
   subscribeByEmail: mocks.subscribeByEmail,
@@ -60,6 +64,7 @@ beforeEach(() => {
   mocks.findMagazineForViewer.mockResolvedValue({
     magazine: { id: 7, name: "Garden news" },
   });
+  mocks.issueOrigin.mockResolvedValue(null);
   mocks.subscribeByEmail.mockResolvedValue(undefined);
 });
 
@@ -85,12 +90,57 @@ describe("magazineSubscriptions.subscribeByEmail", () => {
         magazine: { id: 7, name: "Garden news" },
         email: input.email,
         locale: input.locale,
+        sourceIssueId: null,
       },
       mocks.mailer,
       expect.any(Date),
     );
     finish();
     await work;
+  });
+
+  it("keeps only a published issue of the same magazine as the source", async () => {
+    const origin = {
+      issueId: 19,
+      magazineId: 7,
+      communityId: "community-1",
+      published: true,
+    };
+    const cases = [
+      [origin, origin.issueId],
+      [{ ...origin, published: false }, null],
+      [{ ...origin, magazineId: 8 }, null],
+      [null, null],
+    ] as const;
+
+    for (const [verifiedOrigin, sourceIssueId] of cases) {
+      const scheduled: Array<() => Promise<void>> = [];
+      mocks.issueOrigin.mockResolvedValueOnce(verifiedOrigin);
+
+      await expect(
+        caller((task) => scheduled.push(task)).subscribeByEmail({
+          ...input,
+          sourceIssueId: origin.issueId,
+        }),
+      ).resolves.toEqual({ ok: true });
+      expect(mocks.issueOrigin).toHaveBeenLastCalledWith(
+        expect.anything(),
+        origin.issueId,
+      );
+      expect(scheduled).toHaveLength(1);
+      await scheduled[0]!();
+      expect(mocks.subscribeByEmail).toHaveBeenLastCalledWith(
+        expect.anything(),
+        {
+          magazine: { id: 7, name: "Garden news" },
+          email: input.email,
+          locale: input.locale,
+          sourceIssueId,
+        },
+        mocks.mailer,
+        expect.any(Date),
+      );
+    }
   });
 
   it("uses Next after by default", async () => {

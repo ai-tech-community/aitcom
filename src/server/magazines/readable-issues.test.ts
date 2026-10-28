@@ -66,9 +66,28 @@ describe("issueReadScopeForCommunity", () => {
 });
 
 describe("readableIssueWhere", () => {
+  it("preview reach includes preview and public issues, guarded by confirmation", () => {
+    expect(
+      readableIssueWhere(scope({ privateCommunityIds: ["private"] }), "teaser"),
+    ).toEqual({
+      and: [
+        PUBLISHED,
+        { visibility: { in: ["teaser", "public"] } },
+        {
+          or: [
+            { communityId: { not_in: ["private"] } },
+            { publicConfirmedAt: { exists: true } },
+          ],
+        },
+      ],
+    });
+    expect(readableIssueWhere(scope({}), "teaser")).toEqual({
+      and: [PUBLISHED, { visibility: { in: ["teaser", "public"] } }],
+    });
+  });
   it("anonymous scope: published, public, and listed or confirmed", () => {
     expect(
-      readableIssueWhere(scope({ privateCommunityIds: ["c-priv"] })),
+      readableIssueWhere(scope({ privateCommunityIds: ["c-priv"] }), "full"),
     ).toEqual({
       and: [
         PUBLISHED,
@@ -84,7 +103,7 @@ describe("readableIssueWhere", () => {
   });
 
   it("with no private communities, every published public issue", () => {
-    expect(readableIssueWhere(scope({}))).toEqual({
+    expect(readableIssueWhere(scope({}), "full")).toEqual({
       and: [PUBLISHED, PUBLIC],
     });
   });
@@ -98,7 +117,7 @@ describe("readableIssueWhere", () => {
       scope({ deletedCommunityIds: ["d"] }),
     ];
     for (const s of shapes) {
-      const json = JSON.stringify(readableIssueWhere(s));
+      const json = JSON.stringify(readableIssueWhere(s, "full"));
       expect(json).not.toContain('"in":[]');
       expect(json).not.toContain('"not_in":[]');
     }
@@ -111,6 +130,7 @@ describe("readableIssueWhere", () => {
           memberCommunityIds: ["c-mem"],
           privateCommunityIds: ["c-mem"],
         }),
+        "full",
       ),
     ).toEqual({
       and: [
@@ -142,6 +162,7 @@ describe("readableIssueWhere", () => {
           editorCommunityIds: ["c-ed"],
           memberCommunityIds: ["c-ed"],
         }),
+        "full",
       ),
     ).toEqual({
       or: [
@@ -160,6 +181,7 @@ describe("readableIssueWhere", () => {
           editorCommunityIds: ["c-gone"],
           deletedCommunityIds: ["c-gone"],
         }),
+        "full",
       ),
     ).toEqual({
       and: [

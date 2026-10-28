@@ -8,7 +8,7 @@ import type { LayoutProps } from "./types";
  * (full width, larger heading, its opening and "Read article"), then the
  * rest in a grid that splits on its own width, in issue order.
  */
-export function CoverStoryLayout({ items, href }: LayoutProps) {
+export function CoverStoryLayout({ items, href, teaser }: LayoutProps) {
   const [lead, ...rest] = items;
   return (
     <div className="@container flex flex-col gap-6">
@@ -18,7 +18,7 @@ export function CoverStoryLayout({ items, href }: LayoutProps) {
           data-testid="issue-lead"
           className="scroll-mt-24"
         >
-          <IssueItem view={lead} lead href={href} />
+          <IssueItem view={lead} size="lead" href={href} teaser={teaser} />
         </div>
       )}
       {rest.length > 0 && (
@@ -32,7 +32,7 @@ export function CoverStoryLayout({ items, href }: LayoutProps) {
               id={itemAnchorId(view.itemId)}
               className="min-w-0 scroll-mt-24"
             >
-              <IssueItem view={view} lead={false} href={href} />
+              <IssueItem view={view} size="card" href={href} teaser={teaser} />
             </div>
           ))}
         </div>

@@ -9,8 +9,12 @@ import {
   isMagazineArticleIndexable,
   isMagazineArticleOut,
 } from "@/lib/magazines/indexing";
-import { magazineArticlePath } from "@/lib/magazines/paths";
 import {
+  magazineArticlePath,
+  articleShareImagePath,
+} from "@/lib/magazines/paths";
+import {
+  absoluteLocaleUrl,
   buildOgImageMeta,
   buildOgMeta,
   localeAlternates,
@@ -80,15 +84,21 @@ export async function generateMetadata({
   return {
     title,
     description,
-    ...(article.mediaUrl
-      ? buildOgImageMeta(title, description, article.mediaUrl)
-      : buildOgMeta(article.title, description, magazine.name)),
+    ...(issue.outsiderReach !== "none"
+      ? buildOgImageMeta(
+          title,
+          description,
+          articleShareImagePath(locale, magazine, issue, article),
+        )
+      : article.mediaUrl
+        ? buildOgImageMeta(title, description, article.mediaUrl)
+        : buildOgMeta(article.title, description, magazine.name)),
     alternates: await localeAlternates(
       magazineArticlePath(magazine, issue, article),
     ),
     // The effective visibility, so an unconfirmed public issue in an
     // unlisted community stays out of search (F10).
-    ...(isMagazineArticleIndexable(issue, article)
+    ...(isMagazineArticleIndexable(issue, article, magazine)
       ? {}
       : { robots: { index: false } }),
   };
@@ -110,14 +120,25 @@ export default async function MagazineArticlePage({
   if (!loaded) notFound();
 
   const { data, payload, viewerId } = loaded;
-  // The read model has already decided the viewer may read this article,
-  // and so its comments. An editor's preview has no comment thread.
-  const comments = isMagazineArticleOut(data.issue, data.article)
-    ? await listArticleComments(payload, data.article.id)
-    : [];
+  // Preview readers never fetch comments, even on a published issue.
+  let comments: Awaited<ReturnType<typeof listArticleComments>>;
+  switch (data.mode) {
+    case "teaser":
+      comments = [];
+      break;
+    case "full":
+      comments = isMagazineArticleOut(data.issue, data.article)
+        ? await listArticleComments(payload, data.article.id)
+        : [];
+      break;
+  }
   return (
     <MagazineArticle
       data={data}
+      url={absoluteLocaleUrl(
+        locale,
+        magazineArticlePath(data.magazine, data.issue, data.article),
+      )}
       comments={comments}
       currentUserId={viewerId ?? undefined}
     />

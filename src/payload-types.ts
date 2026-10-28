@@ -512,9 +512,9 @@ export interface Magazine {
   /**
    * Copied to each new issue.
    */
-  defaultVisibility?: ('members' | 'public') | null;
+  defaultVisibility?: ('members' | 'teaser' | 'public') | null;
   /**
-   * Who confirmed a public default for an unlisted community (Better Auth user ID).
+   * Who confirmed showing it outside an unlisted community (preview or public).
    */
   publicConfirmedBy?: string | null;
   publicConfirmedAt?: string | null;
@@ -522,6 +522,15 @@ export interface Magazine {
    * Better Auth user ID.
    */
   createdBy: string;
+  /**
+   * Hide this magazine from the Magazines page and from search engines. Its pages still open by link.
+   */
+  listingHidden?: boolean | null;
+  listingHiddenAt?: string | null;
+  /**
+   * Payload admin user who hid it
+   */
+  listingHiddenBy?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -552,10 +561,10 @@ export interface MagazineIssue {
     };
     [k: string]: unknown;
   } | null;
-  layout?: 'cover-story' | null;
-  visibility: 'members' | 'public';
+  layout?: ('cover-story' | 'long-read' | 'digest') | null;
+  visibility: 'members' | 'teaser' | 'public';
   /**
-   * Who confirmed public visibility for an unlisted community (Better Auth user ID).
+   * Who confirmed showing it outside an unlisted community (preview or public).
    */
   publicConfirmedBy?: string | null;
   publicConfirmedAt?: string | null;
@@ -2814,6 +2823,9 @@ export interface MagazinesSelect<T extends boolean = true> {
   publicConfirmedBy?: T;
   publicConfirmedAt?: T;
   createdBy?: T;
+  listingHidden?: T;
+  listingHiddenAt?: T;
+  listingHiddenBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -11,6 +11,10 @@ const ROOT = join(__dirname, "..", "..", "..");
 
 /** Each reviewed reader, with the rule it applies to what it reads. */
 const READERS: Record<string, string> = {
+  "src/server/magazines/stats/issue-stats.ts":
+    "titles only, of articles placed in the issue; callers gate with canEditIssueAt",
+  "src/server/magazines/share-cards.ts":
+    "anonymous scope via loadReadableIssue (viewerId null); article must be published and placed in this issue",
   "src/app/sitemap.ts":
     "publicArticleWhere; magazine URLs come from sitemap-paths",
   "src/app/feed.xml/route.ts": "publicArticleWhere (the blog feed only)",
@@ -28,6 +32,8 @@ const READERS: Record<string, string> = {
     "readableArticleWhere, anonymous issue scope",
   "src/server/badges/metrics.ts":
     "a count of the member's own published articles; shows no article",
+  "src/server/magazines/stats/record.ts":
+    "access re-checked by loadIssueAccessById; article must be published and placed in this issue; reads ids only",
   "src/server/magazines/reading.ts":
     "resolveMagazineIssueAccess for the issue that holds the article",
   "src/server/magazines/sitemap-paths.ts":
@@ -67,7 +73,10 @@ describe("articles readers", () => {
   it("every module that queries the articles collection is a reviewed reader", () => {
     const readers = sourceFiles(join(ROOT, "src"))
       .filter((path) =>
-        /collection:\s*"articles"/.test(readFileSync(path, "utf8")),
+        // Populated article relationships are reads, too.
+        /collection:\s*"articles"|populate:\s*\{[^}]*\barticles:/.test(
+          readFileSync(path, "utf8"),
+        ),
       )
       .map((path) => relative(ROOT, path))
       .sort();

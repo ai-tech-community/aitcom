@@ -1,9 +1,13 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import type { IssueLayout } from "@/lib/magazines/values";
+
 import type { EditorItemView } from "@/lib/magazines/item-views";
 
 import {
+  articleView,
+  editorialView,
   eventView,
   forumThreadView,
   launchpadProjectView,
@@ -26,6 +30,106 @@ import { LivePreview, visibleToVisitors } from "./live-preview";
 import type { BuilderItem } from "./items-model";
 
 describe("LivePreview", () => {
+  it("the layout choice changes the preview", () => {
+    const article = articleView(1);
+    const props = {
+      magazine: { name: "Gazette", slug: "gazette" },
+      community: { name: "Night Owls", slug: "night-owls" },
+      issue: { number: 1, publishedAt: null },
+      details: {
+        title: "Picks",
+        slug: "picks",
+        coverImageUrl: null,
+        editorNote: null,
+        visibility: "teaser" as const,
+        layout: "cover-story" as const,
+      },
+      items: [{ kind: "article" as const, articleId: 1, key: article.itemId }],
+      savedViews: new Map([[article.itemId, article]]),
+      audience: "teaser" as const,
+    };
+    const picture = (layout: IssueLayout) => (
+      <LivePreview {...props} details={{ ...props.details, layout }} />
+    );
+    const { rerender } = renderWithIntl(picture("cover-story"));
+    expect(screen.getByTestId("issue-lead")).toHaveTextContent(
+      "Excerpt of article 1.",
+    );
+    rerender(picture("digest"));
+    const preview = screen.getByTestId("issue-preview");
+    expect(within(preview).getByRole("list", { hidden: true }).tagName).toBe(
+      "OL",
+    );
+    expect(preview).not.toHaveTextContent("Excerpt of article 1.");
+    fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));
+    expect(preview).toHaveTextContent("Members read the whole article");
+    expect(within(preview).getAllByText("Join Night Owls")).toHaveLength(1);
+    rerender(picture("long-read"));
+    expect(preview).toHaveTextContent("Opening of article 1.");
+    expect(within(preview).getAllByText("Join Night Owls")).toHaveLength(2);
+  });
+  it("Visitor shows a preview issue with openings and a join picture", () => {
+    const article = articleView(1);
+    const editorial = editorialView(1, { intro: "Editorial intro." });
+    renderWithIntl(
+      <LivePreview
+        magazine={{ name: "Gazette", slug: "gazette" }}
+        community={{ name: "Night Owls", slug: "night-owls" }}
+        issue={{ number: 1, publishedAt: null }}
+        details={{
+          title: "Community picks",
+          slug: "picks",
+          coverImageUrl: null,
+          editorNote: null,
+          layout: "cover-story",
+          visibility: "teaser",
+        }}
+        items={[
+          { kind: "article", articleId: 1, key: article.itemId },
+          {
+            kind: "editorial",
+            heading: editorial.heading ?? undefined,
+            intro: editorial.intro ?? undefined,
+            body: editorial.body,
+            key: editorial.itemId,
+          },
+        ]}
+        savedViews={
+          new Map<string, EditorItemView>([
+            [article.itemId, article],
+            [editorial.itemId, editorial],
+          ])
+        }
+        audience="teaser"
+      />,
+    );
+    const preview = screen.getByTestId("issue-preview");
+    expect(preview).toHaveTextContent("Body of editorial 1.");
+    expect(preview).toHaveTextContent("Excerpt of article 1.");
+    fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));
+    expect(preview).toHaveTextContent("Opening of article 1.");
+    expect(preview).toHaveTextContent("Editorial 1");
+    expect(preview).toHaveTextContent("Editorial intro.");
+    expect(preview).not.toHaveTextContent("Body of editorial 1.");
+    expect(preview).not.toHaveTextContent("Excerpt of article 1.");
+    const prompts = within(preview).getAllByText("Join Night Owls");
+    expect(prompts).toHaveLength(2);
+    for (const prompt of prompts) {
+      expect(prompt.closest("[inert]")).not.toBeNull();
+      expect(prompt.closest("button")).toHaveAttribute(
+        "data-variant",
+        "outline",
+      );
+      expect(prompt.closest("button")).not.toHaveClass("bg-primary");
+    }
+    expect(
+      within(preview).getByText("Read the whole issue").closest("[inert]"),
+    ).not.toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Member" }));
+    expect(preview).toHaveTextContent("Body of editorial 1.");
+    expect(within(preview).queryByText("Join Night Owls")).toBeNull();
+  });
+
   it.each([false, true])(
     "explains when no loaded items are visible to visitors, including while another item waits for save (%s)",
     (waiting) => {
@@ -33,16 +137,16 @@ describe("LivePreview", () => {
       renderWithIntl(
         <LivePreview
           magazine={{ name: "Gazette", slug: "gazette" }}
-          community={{ name: "Night Owls" }}
+          community={{ name: "Night Owls", slug: "night-owls" }}
           issue={{ number: 1, publishedAt: null }}
           details={{
             title: "Community picks",
             slug: "picks",
             coverImageUrl: null,
             editorNote: null,
+            layout: "cover-story",
             visibility: "public",
           }}
-          layout="cover-story"
           items={[
             { kind: "event", eventId: 1, key: hidden.itemId },
             ...(waiting
@@ -90,16 +194,16 @@ describe("LivePreview", () => {
     renderWithIntl(
       <LivePreview
         magazine={{ name: "Gazette", slug: "gazette" }}
-        community={{ name: "Night Owls" }}
+        community={{ name: "Night Owls", slug: "night-owls" }}
         issue={{ number: 1, publishedAt: null }}
         details={{
           title: "Community picks",
           slug: "picks",
           coverImageUrl: null,
           editorNote: null,
+          layout: "cover-story",
           visibility: "public",
         }}
-        layout="cover-story"
         items={items}
         savedViews={new Map(views.map((view) => [view.itemId, view]))}
         audience="public"

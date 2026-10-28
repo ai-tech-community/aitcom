@@ -1,6 +1,6 @@
 import type { EditorItemView } from "@/lib/magazines/item-views";
 
-import type { ArticleHref } from "../items/types";
+import type { ArticleHref, ItemTeaser } from "../items/types";
 
 /**
  * What every issue layout gets: the items in issue order. The editor's note
@@ -9,4 +9,5 @@ import type { ArticleHref } from "../items/types";
 export type LayoutProps = {
   items: EditorItemView[];
   href: ArticleHref;
+  teaser: ItemTeaser | null;
 };

@@ -313,6 +313,43 @@ describe("EditorDesk", () => {
     expect(trpc.push).not.toHaveBeenCalled();
   });
 
+  it("links each published issue to its numbers", () => {
+    trpc.extraIssues = [
+      {
+        id: 7,
+        number: 2,
+        title: "Earlier issue",
+        slug: "issue-2",
+        status: "published",
+        visibility: "members",
+        publishedAt: "2026-09-01T00:00:00.000Z",
+        scheduledFor: null,
+        coverImageUrl: null,
+        updatedAt: "2026-09-01T00:00:00.000Z",
+      },
+    ];
+    renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage />);
+    const issues = screen.getByRole("region", { name: /Issues/ });
+    const links = within(issues).getAllByRole("link", {
+      name: /^Numbers for issue/,
+    });
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/communities/amsterdam-ai/magazine/issues/7/stats",
+      "/communities/amsterdam-ai/magazine/issues/8/stats",
+    ]);
+    expect(links[0]).toHaveAccessibleName("Numbers for issue 2");
+    expect(links[1]).toHaveAccessibleName("Numbers for issue 3");
+    for (const link of links) {
+      expect(link.closest("li")?.querySelectorAll("a")).toHaveLength(2);
+      expect(link.closest("a a")).toBeNull();
+    }
+    expect(
+      within(issues)
+        .getByRole("link", { name: /The tools issue/ })
+        .closest("li"),
+    ).not.toHaveTextContent("Numbers");
+  });
+
   it("lists issues with their status, ready articles and the editor's drafts", () => {
     renderWithIntl(<EditorDesk slug="amsterdam-ai" canManage />);
 

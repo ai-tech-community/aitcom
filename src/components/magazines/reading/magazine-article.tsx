@@ -1,8 +1,9 @@
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import type { ComponentProps } from "react";
+import { useId, type ComponentProps, type ReactNode } from "react";
 
 import { ArticleComments } from "@/components/blog/article-comments";
 import { BlogToc } from "@/components/blog/blog-toc";
+import { ShareActions } from "@/components/share/share-actions";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
@@ -24,8 +25,11 @@ import {
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import type { MagazineArticlePageData } from "@/server/magazines/reading";
 
-import { ArticleItem } from "../items/article-item";
+import { IssueItem } from "../items/registry";
 import { READING_FRAME } from "./frame";
+import { MagazineJoinPrompt } from "./magazine-join-prompt";
+import { ReadTracker } from "./read-tracker";
+import { SubscribeButton } from "./subscribe-button";
 import { issueNumberText } from "./issue-dateline";
 
 /** The comments a page hands the shared thread, as the blog does. */
@@ -40,7 +44,7 @@ const NEXT_IN_ISSUE_LABEL = "next-in-issue-label";
 
 /**
  * `Article` structured data, part of its issue and magazine. Only for an
- * article search engines may index (effective visibility, preflight F10).
+ * article search engines may index (resolver outsider reach, Decision 9).
  */
 function ArticleJsonLd({
   data,
@@ -50,11 +54,21 @@ function ArticleJsonLd({
   locale: string;
 }) {
   const { magazine, issue, article } = data;
+  let isAccessibleForFree: boolean;
+  switch (data.mode) {
+    case "full":
+      isAccessibleForFree = issue.outsiderReach === "full";
+      break;
+    case "teaser":
+      isAccessibleForFree = false;
+      break;
+  }
   return (
     <JsonLd
       data={{
         "@type": "Article",
         headline: article.title,
+        isAccessibleForFree,
         url: absoluteLocaleUrl(
           locale,
           magazineArticlePath(magazine, issue, article),
@@ -111,7 +125,13 @@ function ContextLine({ data }: { data: MagazineArticlePageData }) {
 }
 
 /** Author in words; reading time and date in mono (Mono-Is-Machine). */
-function Byline({ data }: { data: MagazineArticlePageData }) {
+function Byline({
+  data,
+  readingMinutes,
+}: {
+  data: MagazineArticlePageData;
+  readingMinutes: number;
+}) {
   const t = useTranslations("magazines.article");
   const format = useFormatter();
   const { article } = data;
@@ -120,7 +140,7 @@ function Byline({ data }: { data: MagazineArticlePageData }) {
       <span key="author">{t("byAuthor", { name: article.authorName })}</span>
     ) : null,
     <span key="time" className="font-mono text-xs">
-      {t("readingTime", { minutes: estimateReadingTime(article.content) })}
+      {t("readingTime", { minutes: readingMinutes })}
     </span>,
     article.publishedAt ? (
       <time
@@ -164,9 +184,10 @@ function NextInIssue({ data }: { data: MagazineArticlePageData }) {
     >
       <SectionLabel id={NEXT_IN_ISSUE_LABEL}>{t("nextInIssue")}</SectionLabel>
       {nextInIssue ? (
-        <ArticleItem
+        <IssueItem
           view={nextInIssue}
-          lead={false}
+          size="related"
+          teaser={null}
           href={(slug) => magazineArticlePath(magazine, issue, { slug })}
         />
       ) : (
@@ -195,21 +216,64 @@ export function MagazineArticle({
   data,
   comments,
   currentUserId,
+  url,
 }: {
   data: MagazineArticlePageData;
   comments: MagazineArticleComments;
   currentUserId?: string;
+  url: string;
 }) {
   const t = useTranslations("magazines.article");
   const locale = useLocale();
   const { access, issue, article } = data;
-  const headings = extractHeadings(article.content);
-  const showToc = headings.length >= MIN_TOC_HEADINGS;
+  const titleId = useId();
   const readersSeeIt = isMagazineArticleOut(issue, article);
+  let headings: ReturnType<typeof extractHeadings>;
+  let readingMinutes: number;
+  let body: ReactNode;
+  let showComments: boolean;
+  switch (data.mode) {
+    case "full":
+      headings = extractHeadings(data.article.content);
+      readingMinutes = estimateReadingTime(data.article.content);
+      body = <LexicalRenderer content={data.article.content} />;
+      showComments = readersSeeIt;
+      break;
+    case "teaser":
+      headings = [];
+      readingMinutes = data.article.readingMinutes;
+      body = (
+        <div className="flex flex-col gap-6">
+          {data.article.opening && (
+            <p className="leading-relaxed">{data.article.opening}</p>
+          )}
+          <p className="text-muted-foreground text-sm">{t("teaserNote")}</p>
+          <MagazineJoinPrompt
+            variant="panel"
+            community={data.community}
+            source={{
+              via: "magazine",
+              magazineId: data.magazine.id,
+              issueId: issue.id,
+            }}
+            focusTargetId={titleId}
+          />
+          <Link
+            href={issuePath(data.magazine, issue)}
+            className="self-start text-sm font-medium underline-offset-4 hover:underline"
+          >
+            {t("backToIssue")}
+          </Link>
+        </div>
+      );
+      showComments = false;
+      break;
+  }
+  const showToc = headings.length >= MIN_TOC_HEADINGS;
 
   return (
     <div className={READING_FRAME}>
-      {isMagazineArticleIndexable(issue, article) && (
+      {isMagazineArticleIndexable(issue, article, data.magazine) && (
         <ArticleJsonLd data={data} locale={locale} />
       )}
       <div className="flex justify-center gap-12">
@@ -221,10 +285,14 @@ export function MagazineArticle({
           )}
           <header className="flex flex-col gap-3">
             <ContextLine data={data} />
-            <h1 className="text-3xl leading-tight font-semibold tracking-tight text-balance break-words sm:text-4xl">
+            <h1
+              id={titleId}
+              tabIndex={-1}
+              className="text-3xl leading-tight font-semibold tracking-tight text-balance break-words sm:text-4xl"
+            >
               {article.title}
             </h1>
-            <Byline data={data} />
+            <Byline data={data} readingMinutes={readingMinutes} />
           </header>
           {article.mediaUrl && (
             // Any host an editor links to: next/image only serves listed hosts.
@@ -235,11 +303,26 @@ export function MagazineArticle({
               className="aspect-[2/1] w-full rounded-xl border object-cover"
             />
           )}
-          <div className="min-w-0 border-t pt-8">
-            <LexicalRenderer content={article.content} />
-          </div>
+          <div className="min-w-0 border-t pt-8">{body}</div>
+          <ReadTracker
+            key={article.id}
+            issueId={issue.id}
+            articleId={article.id}
+            enabled={!seesEditorLayer(access)}
+            trackEnd={data.mode === "full"}
+          />
+          <ShareActions
+            url={url}
+            title={article.title}
+            social={issue.outsiderReach !== "none"}
+          />
+          <SubscribeButton
+            magazineSlug={data.magazine.slug}
+            magazineName={data.magazine.name}
+            issueId={issue.id}
+          />
           <NextInIssue data={data} />
-          {readersSeeIt && (
+          {showComments && (
             <ArticleComments
               articleId={article.id}
               initialComments={comments}

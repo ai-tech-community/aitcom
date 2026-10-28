@@ -14,7 +14,9 @@ export type ArticleItemView = {
     slug: string;
     title: string;
     authorName: string | null;
+    /** `openingOf(content, 40)`: never code. */
     excerpt: string;
+    opening: string;
     readingMinutes: number;
     imageUrl: string | null;
   };
@@ -26,7 +28,7 @@ export type EditorialItemView = {
   itemId: string;
   intro: string | null;
   heading: string | null;
-  /** Lexical editor state, rendered like article content. */
+  /** Lexical editor state; null for a preview reader. */
   body: unknown;
 };
 

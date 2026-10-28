@@ -9,7 +9,8 @@ import {
 } from "@/components/use-autosave";
 import type { VersionedWriter } from "@/components/versioned-writer";
 import type { EditorItemView } from "@/lib/magazines/item-views";
-import type { IssueVisibility } from "@/lib/magazines/values";
+import type { IssueLayout, IssueVisibility } from "@/lib/magazines/values";
+import { shouldWithdrawVisibilityConfirmation } from "@/lib/magazines/visibility";
 import type { MagazineIssue } from "@/payload-types";
 import { api } from "@/trpc/react";
 
@@ -17,6 +18,7 @@ import { type BuilderItem, toItemInputs } from "./items-model";
 
 /** The issue's own fields as the builder edits them. */
 export type IssueDetailsDraft = {
+  layout: IssueLayout;
   title: string;
   slug: string;
   coverImageUrl: string | null;
@@ -26,15 +28,15 @@ export type IssueDetailsDraft = {
 
 /**
  * The issue's details as they are saved. Besides the edited fields, a save
- * carries whether the issue's `public` visibility holds the editor's
+ * carries whether the issue's outsider visibility holds the editor's
  * unlisted-community opt-in (ADR-0042). It is part of the value, not a side
  * flag, because ticking the box must save even when the visibility itself
- * does not change: an issue already saved `public` without a confirmation
+ * does not change: an issue already open to outsiders without a confirmation
  * (its community became unlisted later) is confirmed by the tick alone.
  */
 export type IssueDetailsSave = IssueDetailsDraft & {
   /**
-   * `public` in a private community, with the opt-in recorded on the
+   * An outsider choice in a private community, with the opt-in recorded on the
    * server or given by the editor. Always false in a public community.
    */
   publicConfirmed: boolean;
@@ -67,13 +69,17 @@ const jsonEqual = (a: unknown, b: unknown) =>
 
 /**
  * `updateIssue`'s patch: only the fields that changed since the last save.
- * A new opt-in sends `visibility: "public"` with `confirmUnlistedPublic`,
- * also when the issue was `public` already: the server records the
+ * A new opt-in sends the visibility with `confirmUnlistedPublic`, including
+ * when widening a confirmed preview to everyone. The server records the
  * confirmation only as part of a visibility write.
  */
 function detailsPatch(next: IssueDetailsSave, saved: IssueDetailsSave) {
-  const confirming = next.publicConfirmed && !saved.publicConfirmed;
+  const confirming =
+    next.publicConfirmed &&
+    (!saved.publicConfirmed ||
+      shouldWithdrawVisibilityConfirmation(saved.visibility, next.visibility));
   return {
+    ...(next.layout !== saved.layout ? { layout: next.layout } : {}),
     ...(next.title !== saved.title ? { title: next.title } : {}),
     ...(next.slug !== saved.slug ? { issueSlug: next.slug } : {}),
     ...(next.coverImageUrl !== saved.coverImageUrl

@@ -179,6 +179,9 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       // Issues first: their article blocks hold a required reference.
       if (magazineIds.length > 0) {
         await db
+          .delete(schema.magazineReads)
+          .where(inArray(schema.magazineReads.magazineId, magazineIds));
+        await db
           .delete(schema.magazineSubscriptions)
           .where(inArray(schema.magazineSubscriptions.magazineId, magazineIds));
         // Deleting the issues clears their articles' placement (the
@@ -864,7 +867,7 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     });
 
     it("creates a draft with the given layout and visibility", async () => {
-      // There is currently one supported layout; exercise its explicit override.
+      // Exercise the explicit layout override.
       const configuredLayout: IssueLayout = ISSUE_LAYOUTS[0];
       const c = await community("overrides");
       const mag = await magazineIn(c);
@@ -1156,6 +1159,75 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     expect(Number(otherFirst.number)).toBe(1);
     expect(otherFirst.visibility).toBe("members");
     expect(otherFirst.publicConfirmedBy ?? null).toBeNull();
+  });
+
+  it("a confirmed public issue changed to preview is a preview for outsiders", async () => {
+    const c = await community("preview-confirmed", { listed: false });
+    const mag = await m.magazines.saveMagazineSettings(
+      m,
+      c,
+      settings("preview-confirmed", {
+        defaultVisibility: "public",
+        confirmUnlistedPublic: true,
+      }),
+      fx.userId,
+      true,
+    );
+    let issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Preview" },
+      actor(c),
+    );
+    issue = await setItems(c, issue, [editorialItem("An editor's column")]);
+    issue = await m.issues.publishIssue(m, issue, issue.updatedAt, actor(c));
+    const confirmedAt = issue.publicConfirmedAt;
+    issue = await m.issues.updateIssueDetails(
+      m,
+      issue,
+      { visibility: "teaser" },
+      issue.updatedAt,
+      actor(c),
+      true,
+    );
+    expect(issue.visibility).toBe("teaser");
+    expect(issue.publicConfirmedAt).toBe(confirmedAt);
+    const { loadIssuePage } = await import("./reading");
+    expect(
+      (
+        await loadIssuePage(m, {
+          magazineSlug: mag.slug,
+          issueSlug: issue.slug,
+          viewerId: null,
+          locale: "en",
+        })
+      )?.access,
+    ).toBe("teaser");
+  }, 60_000);
+
+  it("a preview default copies the magazine's confirmation to a new issue", async () => {
+    const c = await community("preview-default", { listed: false });
+    const mag = await m.magazines.saveMagazineSettings(
+      m,
+      c,
+      settings("preview-default", {
+        defaultVisibility: "teaser",
+        confirmUnlistedPublic: true,
+      }),
+      fx.userId,
+      true,
+    );
+    const issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Preview default" },
+      actor(c),
+    );
+    expect(issue).toMatchObject({
+      visibility: "teaser",
+      publicConfirmedBy: fx.userId,
+      publicConfirmedAt: mag.publicConfirmedAt,
+    });
   });
 
   it("public on an unlisted community needs confirmation, records who and when", async () => {
@@ -2018,6 +2090,64 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
       depth: 0,
     });
     expect(doc.status).toBe("draft");
+  });
+
+  async function callerAs(userId: string) {
+    const { createCaller } = await import("@/server/api/root");
+    return createCaller({
+      db: m.db,
+      headers: new Headers(),
+      session: { user: { id: userId }, session: {} } as never,
+    });
+  }
+
+  it("an editor can change the layout, also after publishing", async () => {
+    const c = await community("layout");
+    const mag = await magazineIn(c);
+    await m.db
+      .insert(m.schema.communityMemberships)
+      .values({ communityId: c.id, userId: fx.userId, role: "owner" });
+    const editor = (await callerAs(fx.userId)).magazines;
+    let issue = await m.issues.createIssue(
+      m,
+      mag,
+      { title: "Layouts" },
+      actor(c),
+    );
+    issue = await editor.updateIssue({
+      slug: c.slug,
+      issueId: Number(issue.id),
+      expectedUpdatedAt: issue.updatedAt,
+      layout: "long-read",
+    });
+    expect(issue.layout).toBe("long-read");
+    issue = await setItems(c, issue, [editorialItem("Hello")]);
+    issue = await m.issues.publishIssue(m, issue, issue.updatedAt, actor(c));
+    const publishedSlug = issue.slug;
+    issue = await editor.updateIssue({
+      slug: c.slug,
+      issueId: Number(issue.id),
+      expectedUpdatedAt: issue.updatedAt,
+      layout: "digest",
+    });
+    expect(issue).toMatchObject({
+      layout: "digest",
+      status: "published",
+      slug: publishedSlug,
+    });
+    const loaded = await editor.getIssueForEditing({
+      slug: c.slug,
+      issueId: Number(issue.id),
+    });
+    expect(loaded.issue.layout).toBe("digest");
+    await expect(
+      editor.updateIssue({
+        slug: c.slug,
+        issueId: Number(issue.id),
+        expectedUpdatedAt: issue.updatedAt,
+        layout: "unknown" as IssueLayout,
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
   it("locks the slug once published", async () => {

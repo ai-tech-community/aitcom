@@ -60,6 +60,11 @@ structure"; "Review, credit and where magazine articles show").
    compile error. Server strategies and client renderers share only the
    serializable item views in `src/lib/magazines/item-views.ts`; the issue page
    asks the render registry and never branches on the kind.
+   Renderers handle every `ItemSize` exhaustively: `lead`, `card`, `row`,
+   and `related`. The related size is the compact recommendation at the end
+   of an article; article recommendations include their opening excerpt.
+   Recommendations go through `IssueItem`, just like layout items, without
+   renderer-specific props.
 
    The issue builder has its own twin, `BUILDER_ITEM_KINDS` in
    `src/components/magazines/editor/builder/items/registry.tsx`, with one

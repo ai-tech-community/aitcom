@@ -92,6 +92,80 @@ beforeEach(() => {
 });
 
 describe("MagazineSettingsForm", () => {
+  it("offers preview and asks an unlisted community to confirm it", () => {
+    trpc.settings = {
+      magazine: existingMagazine(),
+      communityIsPrivate: true,
+      community: UNLISTED,
+    };
+    renderWithIntl(<MagazineSettingsForm slug="night-owls" />);
+    const visibility = screen.getByRole("radiogroup", {
+      name: "Who can read new issues",
+    });
+    expect(visibility).toHaveAccessibleDescription("Only members can read it.");
+    fireEvent.click(
+      screen.getByRole("radio", { name: "Preview for everyone" }),
+    );
+    expect(
+      screen.getByText(
+        "Everyone sees the cover, the contents and the start of each article. Members read everything.",
+      ),
+    ).toHaveClass("text-muted-foreground", "text-sm");
+    expect(visibility).toHaveAccessibleDescription(
+      "Everyone sees the cover, the contents and the start of each article. Members read everything.",
+    );
+    const save = screen.getByRole("button", { name: "Save changes" });
+    expect(save).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: CONFIRM }));
+    fireEvent.click(save);
+    expect(trpc.saveCalls[0]).toMatchObject({
+      defaultVisibility: "teaser",
+      confirmUnlistedPublic: true,
+    });
+  });
+
+  it("moving from public to preview keeps the tick; moving to members clears it; moving from preview to everyone asks again", () => {
+    trpc.settings = {
+      magazine: existingMagazine(),
+      communityIsPrivate: true,
+      community: UNLISTED,
+    };
+    renderWithIntl(<MagazineSettingsForm slug="night-owls" />);
+    const choose = (name: string) =>
+      fireEvent.click(screen.getByRole("radio", { name }));
+    const tick = () => screen.getByRole("checkbox", { name: CONFIRM });
+    choose("Everyone");
+    expect(screen.getByText("Everyone can read all of it.")).toBeVisible();
+    fireEvent.click(tick());
+    choose("Preview for everyone");
+    expect(tick()).toBeChecked();
+    choose("Members only");
+    choose("Preview for everyone");
+    expect(tick()).not.toBeChecked();
+    fireEvent.click(tick());
+    choose("Everyone");
+    expect(tick()).not.toBeChecked();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
+
+  it("a confirmed preview default shows as already confirmed", () => {
+    trpc.settings = {
+      magazine: existingMagazine({
+        defaultVisibility: "teaser",
+        publicConfirmedBy: "u1",
+        publicConfirmedAt: "2026-10-01T00:00:00.000Z",
+      }),
+      communityIsPrivate: true,
+      community: UNLISTED,
+    };
+    renderWithIntl(<MagazineSettingsForm slug="night-owls" />);
+    expect(screen.getByText(/You already confirmed/)).toBeVisible();
+    expect(screen.queryByRole("checkbox", { name: CONFIRM })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(trpc.saveCalls[0]).toMatchObject({ defaultVisibility: "teaser" });
+    expect(trpc.saveCalls[0]).not.toHaveProperty("confirmUnlistedPublic");
+  });
+
   it("can hide its Magazine tab link while retaining it by default", () => {
     trpc.settings = {
       magazine: existingMagazine(),

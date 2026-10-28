@@ -962,21 +962,54 @@ One numbered edition of a [[magazine]]: a title, a slug, a cover, an editor's
 note and an ordered list of [[issue-item]]s. An issue is `draft`, `scheduled`
 (editors only) or `published`; a published issue does not go back to draft,
 and its slug is locked so links do not break. Each issue stores its **own visibility**
-— `members` or `public` — copied from the magazine's default when it is
-created; changing the default never changes existing issues. A `public` issue
-in an unlisted [[community]] counts as public only when an active community
-owner or admin confirmed it (who and when are recorded); an appointed editor
-cannot confirm it. Without confirmation it is members-only for outsiders.
+— `members`, `teaser` or `public` — copied from the magazine's default when it
+is created; changing the default never changes existing issues. An issue
+shown outside an unlisted [[community]] needs confirmation from an active
+community owner or admin (who and when are recorded); an appointed editor
+cannot confirm it. A public confirmation survives narrowing to preview;
+widening a preview to public needs a fresh confirmation. Choosing `members`
+clears it. Without confirmation either outsider visibility is members-only.
 Who may read an issue is one **issue access** decision: `none` (answered as
-not-found), `full` or `editor`. Every page, list, search and sitemap asks the
-same resolver. See [[adr-0042-magazine-issues-are-read-through-one-access-resolver]].
+not-found), `teaser`, `full` or `editor`. Listings use the resolver's query
+twin with an explicit reach; article surfaces require full reading access.
+See [[adr-0042-magazine-issues-are-read-through-one-access-resolver]].
+
+### Preview issue (teaser)
+
+A published [[issue]] with `teaser` visibility: members read it in full and
+outsiders get its cover, editor's note, contents and item cards. Article cards
+and their own pages expose only the first 80 words from text blocks, skipping
+code, images and embeds; editorial blocks expose their heading and intro,
+never their body. The join prompt follows the community's join policy.
+Preview issue and article pages are indexable unless staff hide the magazine,
+but preview articles are absent from profile work, agent search, the sitemap
+and the blog feed, and cannot be read or commented on through article APIs.
+The same preview mode works in all three issue layouts. Signed-in subscribers
+hear about previews through the inbox; email subscribers wait for a public
+issue. Switching back to members-only removes outsider pages and share images
+on the next request. See [[adr-0042-magazine-issues-are-read-through-one-access-resolver]].
+
+### Reader key
+
+A cookieless HMAC identifier used only for an [[issue]]'s reading numbers in
+`app.magazine_read`. A signed-in reader's key is stable across days; a
+signed-out reader's key combines the UTC day, IP address and user agent and
+changes daily. The stored tally contains none of those raw identifiers.
+Views and article read-to-end counts are checked against current access;
+editors' own visits are excluded and preview readers record views only.
+Numbers require JavaScript and start at release, with no backfill. Editors
+see them on the issue's Numbers page. See
+[[adr-0048-magazine-reading-numbers-are-first-party-tallies-keyed-by-a-cookieless-reader-key]].
 
 ### Magazine subscriber
 
 An account or a confirmed email address following a [[magazine]], stored in
 `app.magazine_subscription`. An account hears about new issues in the inbox,
-including a signed-in non-member; an email address hears by email in its saved
-language after confirming ownership. A subscription never grants reading
+including a signed-in non-member for public and preview issues; members-only
+issues reach active members. A confirmed email address hears about public
+issues only, in its saved language. Email subscription stays open on a
+preview-only magazine but sends nothing until a public issue appears.
+A subscription never grants reading
 rights. Every staff role can see subscriber counts, never names or addresses.
 See [[adr-0046-magazine-issues-are-announced-through-an-outbox-once-per-subscriber]].
 
@@ -1023,7 +1056,8 @@ transaction that publishes an [[issue]]. Delivery tells each eligible
 [[magazine-subscriber]] once, with a claim per issue and subscription in
 `app.magazine_issue_delivery`. The issue access resolver decides the audience
 again for each batch: members-only issues reach active members in the inbox,
-and public issues may also reach email addresses. Only current subscriptions
+preview issues reach every signed-in subscriber in the inbox and nobody by
+email, and public issues may also reach email addresses. Only current subscriptions
 confirmed by publication time count. Inbox delivery starts after publication;
 the scheduled run finishes it and sends email. See
 [[adr-0046-magazine-issues-are-announced-through-an-outbox-once-per-subscriber]].

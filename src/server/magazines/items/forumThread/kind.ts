@@ -124,6 +124,7 @@ export const forumThreadItemKind: IssueItemKind<
   },
   isReadable: (_view, ctx) => {
     switch (ctx.access) {
+      case "teaser":
       case "full":
       case "editor":
         return true;

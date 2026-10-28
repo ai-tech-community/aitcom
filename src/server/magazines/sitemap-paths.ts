@@ -1,5 +1,6 @@
 import {
   articleHref,
+  readableArticleIssueIds,
   readableMagazineArticleWhere,
 } from "@/server/articles/article-access";
 import {
@@ -10,7 +11,8 @@ import {
 
 import type { Deps, PayloadClient } from "./deps";
 import { loadIssuePlaces } from "./issue-places";
-import { loadIssueReadScope, readableIssueIds } from "./readable-issues";
+import { hiddenMagazineIds } from "./listing";
+import { loadIssueReadScope } from "./readable-issues";
 
 /**
  * Every magazine URL a signed-out visitor may open, for the sitemap
@@ -24,9 +26,12 @@ export async function magazineSitemapPaths(
   deps: Pick<Deps, "db"> & { payload: Pick<PayloadClient, "find"> },
 ): Promise<string[]> {
   const { db, payload } = deps;
-  const issueIds = await readableIssueIds(
+  const scope = await loadIssueReadScope(db, null);
+  const hidden = await hiddenMagazineIds(payload);
+  const issueIds = await readableArticleIssueIds(
     payload,
-    await loadIssueReadScope(db, null),
+    scope,
+    hidden.length > 0 ? { magazine: { not_in: hidden } } : undefined,
   );
   const articleWhere = readableMagazineArticleWhere(issueIds);
   if (articleWhere === null) return [MAGAZINES_HOME_PATH];

@@ -150,6 +150,9 @@ describe.skipIf(!isLocalDbConfigured())(
         const magazineIds = docs.map((mag) => Number(mag.id));
         if (magazineIds.length) {
           await db
+            .delete(schema.magazineReads)
+            .where(inArray(schema.magazineReads.magazineId, magazineIds));
+          await db
             .delete(schema.magazineSubscriptions)
             .where(
               inArray(schema.magazineSubscriptions.magazineId, magazineIds),
@@ -294,6 +297,61 @@ describe.skipIf(!isLocalDbConfigured())(
     async function runScheduled() {
       for (const task of scheduled.splice(0)) await task();
     }
+
+    it("keeps only a published source issue of the same magazine", async () => {
+      const mag = await magazine("source");
+      const other = await magazine("other-source");
+      const issueFor = async (magazineId: number) => {
+        const { docs } = await m.payload.find({
+          collection: "magazine-issues",
+          where: { magazine: { equals: magazineId } },
+          depth: 0,
+        });
+        return Number(docs[0]!.id);
+      };
+      const valid = await issueFor(mag.id);
+      const forged = await issueFor(other.id);
+      const draft = await m.issues.createIssue(
+        m,
+        mag,
+        { title: "Draft source" },
+        { userId: fx.ownerId, community: mag.community },
+      );
+      const input = { magazineSlug: mag.slug, locale: "en" as const };
+      for (const sourceIssueId of [forged, Number(draft.id), 2_147_483_647]) {
+        await expect(
+          callerAs(fx.memberId).subscribe({ ...input, sourceIssueId }),
+        ).resolves.toEqual({ subscribed: true });
+        expect(
+          (await rows(mag.id)).find((row) => row.userId === fx.memberId),
+        ).toMatchObject({ sourceIssueId: null });
+        await callerAs(fx.memberId).unsubscribe(input);
+        await callerAs(null).subscribeByEmail({
+          ...input,
+          email: `source-${sourceIssueId}-${fx.sfx}@example.test`,
+          sourceIssueId,
+        });
+        await runScheduled();
+        expect(
+          (await rows(mag.id)).find((row) =>
+            row.email?.startsWith(`source-${sourceIssueId}-`),
+          ),
+        ).toMatchObject({ sourceIssueId: null });
+      }
+      await callerAs(fx.memberId).subscribe({ ...input, sourceIssueId: valid });
+      expect(
+        (await rows(mag.id)).find((row) => row.userId === fx.memberId),
+      ).toMatchObject({ sourceIssueId: valid });
+      await callerAs(null).subscribeByEmail({
+        ...input,
+        email: address(),
+        sourceIssueId: valid,
+      });
+      await runScheduled();
+      expect(
+        (await rows(mag.id)).find((row) => row.email === address()),
+      ).toMatchObject({ sourceIssueId: valid });
+    });
 
     it("only people who may see the magazine can subscribe", async () => {
       const hidden = await magazine("hidden", {

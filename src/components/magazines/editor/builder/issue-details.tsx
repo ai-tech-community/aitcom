@@ -8,7 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import type { IssueVisibility } from "@/lib/magazines/values";
+import {
+  ISSUE_LAYOUTS,
+  type IssueLayout,
+  type IssueVisibility,
+} from "@/lib/magazines/values";
+import { shouldWithdrawVisibilityConfirmation } from "@/lib/magazines/visibility";
 
 import { ImageUploadField } from "../image-upload-field";
 import { PublicOptIn } from "../public-opt-in";
@@ -16,6 +21,18 @@ import type { IssueDetailsDraft } from "./use-issue-save";
 
 export const ISSUE_TITLE_MAX = 200;
 const SLUG_MAX = 60;
+
+const LAYOUT_HINTS = {
+  "cover-story": "layoutHints.cover-story",
+  "long-read": "layoutHints.long-read",
+  digest: "layoutHints.digest",
+} as const satisfies Record<IssueLayout, string>;
+
+const VISIBILITY_HINTS = {
+  members: "visibilityHints.members",
+  teaser: "visibilityHints.teaser",
+  public: "visibilityHints.public",
+} as const satisfies Record<IssueVisibility, string>;
 
 /**
  * The issue's own fields: title, address (read-only once published), cover,
@@ -51,19 +68,23 @@ export function IssueDetails({
 }) {
   const t = useTranslations("magazineEditor.builder.details");
 
+  const tLayouts = useTranslations("magazineEditor.layouts");
+
   const titleId = useId();
   const titleErrorId = useId();
   const slugId = useId();
   const slugHintId = useId();
   const noteLabelId = useId();
   const noteHintId = useId();
+  const layoutHintId = useId();
+  const visibilityHintId = useId();
 
   const showSlugError = !published && !slugValid;
 
   const handleVisibility = (next: IssueVisibility) => {
+    if (shouldWithdrawVisibilityConfirmation(details.visibility, next))
+      onConfirmedChange(false);
     onChange({ visibility: next });
-    // Leaving `public` withdraws the tick: coming back asks again.
-    if (next !== "public") onConfirmedChange(false);
   };
 
   return (
@@ -162,17 +183,40 @@ export function IssueDetails({
       </div>
 
       <div className="flex flex-col gap-2">
+        <p className="text-sm leading-none font-medium">{t("layout")}</p>
+        <SegmentedControl<IssueLayout>
+          aria-label={t("layout")}
+          aria-describedby={layoutHintId}
+          value={details.layout}
+          onValueChange={(layout) => onChange({ layout })}
+          className="h-auto flex-wrap self-start"
+          options={ISSUE_LAYOUTS.map((value) => ({
+            value,
+            label: tLayouts(value),
+          }))}
+        />
+        <p id={layoutHintId} className="text-muted-foreground text-sm">
+          {t(LAYOUT_HINTS[details.layout])}
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-2">
         <p className="text-sm leading-none font-medium">{t("visibility")}</p>
         <SegmentedControl<IssueVisibility>
           aria-label={t("visibility")}
+          aria-describedby={visibilityHintId}
           value={details.visibility}
           onValueChange={handleVisibility}
-          className="self-start"
+          className="h-auto flex-wrap self-start"
           options={[
             { value: "members", label: t("visibilityMembers") },
+            { value: "teaser", label: t("visibilityTeaser") },
             { value: "public", label: t("visibilityPublic") },
           ]}
         />
+        <p id={visibilityHintId} className="text-muted-foreground text-sm">
+          {t(VISIBILITY_HINTS[details.visibility])}
+        </p>
         {optInRequired && (
           <>
             <PublicOptIn

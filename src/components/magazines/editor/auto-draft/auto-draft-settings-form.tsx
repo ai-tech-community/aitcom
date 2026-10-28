@@ -24,7 +24,12 @@ import {
   type AutoDraftSettingsInput,
 } from "@/lib/magazines/auto-draft";
 import { magazineSettingsPath } from "@/lib/magazines/paths";
-import { ISSUE_LAYOUTS, ISSUE_VISIBILITIES } from "@/lib/magazines/values";
+import {
+  ISSUE_LAYOUTS,
+  ISSUE_VISIBILITIES,
+  type IssueVisibility,
+} from "@/lib/magazines/values";
+import { shouldWithdrawVisibilityConfirmation } from "@/lib/magazines/visibility";
 import { api, type RouterOutputs } from "@/trpc/react";
 
 import { readEditorError } from "../editor-errors";
@@ -35,6 +40,12 @@ type SettingsData = NonNullable<
   RouterOutputs["magazines"]["autoDraftSettings"]
 >;
 type Draft = Omit<AutoDraftSettingsInput, "confirmUnlistedPublic">;
+
+const VISIBILITY_HINTS = {
+  members: "visibilityHints.members",
+  teaser: "visibilityHints.teaser",
+  public: "visibilityHints.public",
+} as const satisfies Record<IssueVisibility, string>;
 
 function draftOf({
   publicConfirmedBy: _by,
@@ -78,6 +89,7 @@ export function AutoDraftSettingsForm({ slug }: { slug: string }) {
 function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
   const t = useTranslations("magazineEditor.autoDraft");
   const tErrors = useTranslations("magazineEditor.errors");
+  const tLayouts = useTranslations("magazineEditor.layouts");
   const displayTime = useScheduleTime();
   const utils = api.useUtils();
   const id = useId();
@@ -447,7 +459,7 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
               >
                 {ISSUE_LAYOUTS.map((layout) => (
                   <option key={layout} value={layout}>
-                    {t(`layouts.${layout}`)}
+                    {tLayouts(layout)}
                   </option>
                 ))}
               </select>
@@ -458,14 +470,23 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
                 id={`${id}-visibility`}
                 className={selectClass}
                 value={draft.visibility ?? "inherit"}
+                aria-describedby={`${id}-visibility-hint`}
                 onChange={(event) => {
-                  setConfirmed(false);
-                  update({
-                    visibility:
-                      event.target.value === "inherit"
-                        ? null
-                        : (event.target.value as Draft["visibility"]),
-                  });
+                  const next =
+                    event.target.value === "inherit"
+                      ? null
+                      : (event.target.value as IssueVisibility);
+                  if (
+                    next === null ||
+                    shouldWithdrawVisibilityConfirmation(
+                      draft.visibility ??
+                        data.magazineDefaultVisibility ??
+                        "members",
+                      next,
+                    )
+                  )
+                    setConfirmed(false);
+                  update({ visibility: next });
                 }}
               >
                 <option value="inherit">
@@ -481,6 +502,19 @@ function SettingsEditor({ slug, data }: { slug: string; data: SettingsData }) {
                   </option>
                 ))}
               </select>
+              <p
+                id={`${id}-visibility-hint`}
+                role="status"
+                className="text-muted-foreground text-sm"
+              >
+                {t(
+                  VISIBILITY_HINTS[
+                    draft.visibility ??
+                      data.magazineDefaultVisibility ??
+                      "members"
+                  ],
+                )}
+              </p>
             </div>
           </div>
           {optInRequired && (

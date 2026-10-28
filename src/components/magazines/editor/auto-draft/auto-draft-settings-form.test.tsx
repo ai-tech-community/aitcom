@@ -76,6 +76,54 @@ const renderForm = () =>
 const save = () => screen.getByRole("button", { name: "Save" });
 
 describe("AutoDraftSettingsForm", () => {
+  it("offers and saves all three layout choices", () => {
+    renderForm();
+    const layout = screen.getByRole("combobox", { name: "Layout" });
+    expect(
+      within(layout)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Cover story", "Long read", "Digest"]);
+    fireEvent.change(layout, { target: { value: "digest" } });
+    fireEvent.click(save());
+    expect(trpc.calls.at(-1)).toMatchObject({ layout: "digest" });
+  });
+  it("offers preview for drafts and asks for the opt-in in an unlisted community", () => {
+    trpc.data = autoDraftSettings({
+      communityIsPrivate: true,
+      community: { slug: "night-owls", isListedInDirectory: false },
+      magazineDefaultVisibility: "teaser",
+    });
+    renderForm();
+    const visibility = screen.getByLabelText("Visibility");
+    expect(visibility).toHaveAccessibleDescription(
+      "Everyone sees the cover, the contents and the start of each article. Members read everything.",
+    );
+    expect(
+      screen.getByRole("option", { name: "Preview for everyone" }),
+    ).toBeInTheDocument();
+    fireEvent.change(visibility, { target: { value: "teaser" } });
+    expect(save()).toBeDisabled();
+    const tick = () => screen.getByRole("checkbox", { name: /I understand/ });
+    fireEvent.click(tick());
+    fireEvent.change(visibility, { target: { value: "public" } });
+    expect(tick()).not.toBeChecked();
+    expect(save()).toBeDisabled();
+    fireEvent.click(tick());
+    fireEvent.change(visibility, { target: { value: "teaser" } });
+    expect(tick()).toBeChecked();
+    fireEvent.change(visibility, { target: { value: "members" } });
+    expect(visibility).toHaveAccessibleDescription("Only members can read it.");
+    fireEvent.change(visibility, { target: { value: "teaser" } });
+    expect(tick()).not.toBeChecked();
+    fireEvent.click(tick());
+    fireEvent.click(save());
+    expect(trpc.calls[0]).toMatchObject({
+      visibility: "teaser",
+      confirmUnlistedPublic: true,
+    });
+  });
+
   it("shows the saved settings and saves what changed", () => {
     trpc.data!.settings = {
       ...trpc.data!.settings,
@@ -302,13 +350,14 @@ describe("AutoDraftSettingsForm", () => {
   });
   it("announces Saved", () => {
     renderForm();
-    const status = screen.getByRole("status");
+    const status = screen
+      .getAllByRole("status")
+      .find((element) => !element.textContent)!;
     expect(status).toBeEmptyDOMElement();
     fireEvent.click(save());
-    expect(screen.getByRole("status")).toBe(status);
-    expect(screen.getByRole("status")).toHaveTextContent("Saved.");
+    expect(screen.getByText("Saved.")).toBe(status);
     fireEvent.click(screen.getByRole("switch"));
-    expect(screen.getByRole("status")).toBe(status);
+    expect(screen.getAllByRole("status")).toContain(status);
     expect(status).toBeEmptyDOMElement();
     expect(trpc.invalidate).toHaveBeenCalledWith({ slug: "night-owls" });
   });

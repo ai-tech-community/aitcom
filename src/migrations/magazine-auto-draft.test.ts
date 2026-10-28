@@ -22,6 +22,7 @@ import {
 
 import { up as originalUp } from "./20261027c_magazine_auto_draft";
 import { up as followupUp } from "./20261027d_magazine_auto_draft_followups";
+import { up as growthUp } from "./20261028a_magazine_growth";
 
 const checks = [
   ["magazine_auto_draft_settings_cadence_check", AUTO_DRAFT_CADENCES],
@@ -49,10 +50,17 @@ describe("automatic draft migration value lists", () => {
       };
       await originalUp({ db } as never);
       await followupUp({ db } as never);
-      const constraint = new RegExp(
-        `CONSTRAINT "${name}"\\s+CHECK \\(([^;]+?)\\)\\)`,
-      ).exec(statements.join("\n"));
-      expect(constraint, `missing ${name}`).not.toBeNull();
+      await growthUp({ db } as never);
+      // Later migrations may widen a check; compare its final definition.
+      const constraints = [
+        ...statements
+          .join("\n")
+          .matchAll(
+            new RegExp(`CONSTRAINT "${name}"\\s+CHECK \\(([^;]+?)\\)\\)`, "g"),
+          ),
+      ];
+      const constraint = constraints.at(-1);
+      expect(constraint, `missing ${name}`).toBeDefined();
       const listed = [...constraint![1]!.matchAll(/'([^']+)'/g)].map(
         (match) => match[1],
       );

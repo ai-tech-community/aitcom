@@ -31,6 +31,106 @@ const href = (slug: string) => `/magazines/agents-weekly/issue-4/${slug}`;
 
 describe("issue item registry", () => {
   it.each([
+    [
+      articleView(1, { imageUrl: "https://example.test/cover.png" }),
+      "Article 1",
+      "Article",
+      "4 min read",
+    ],
+    [editorialView(2), "Editorial 2", "Editorial", null],
+    [storylineView(), "Story 1", "From AIT News", "14 sources"],
+    [newsItemView(), "Headline 1", "From AIT News", "01 Nov 2026"],
+    [eventView(), "Event 1", "Event", "24 Oct 2026"],
+    [forumThreadView(), "Thread 1", "From the forum", "42 replies"],
+    [launchpadProjectView(), "Project 1", "Launchpad project", "120 upvotes"],
+  ] as const)(
+    "every kind renders a row (%#)",
+    (view, title, kindLine, fact) => {
+      const { container } = renderWithIntl(
+        <IssueItem
+          view={{ ...view, intro: "Editor's introduction" }}
+          size="row"
+          href={href}
+          teaser={null}
+        />,
+      );
+      expect(screen.getByRole("heading")).toHaveTextContent(title);
+      expect(screen.getByText(kindLine, { exact: true })).toBeVisible();
+      expect(screen.getByText("Editor's introduction")).toHaveClass(
+        "text-muted-foreground",
+        "line-clamp-1",
+      );
+      if (fact) expect(screen.getByText(fact)).toHaveClass("font-mono");
+      expect(container.querySelectorAll(".font-mono")).toHaveLength(
+        fact ? 1 : 0,
+      );
+      expect(container.querySelector("img")).toBeNull();
+      for (const text of [
+        "Excerpt of article 1.",
+        "Opening of article 1.",
+        "Body of editorial 2.",
+        "Overview of story 1.",
+        "Summary of headline 1.",
+        "Build together.",
+        "By Sanne",
+        "By Author 1",
+        "Amsterdam",
+        "example.com",
+        "Prototype",
+      ])
+        expect(screen.queryByText(text)).toBeNull();
+      expect(
+        screen.queryByRole("link", { name: /Read article|Read the story/ }),
+      ).toBeNull();
+    },
+  );
+
+  it.each([
+    articleView(1),
+    editorialView(2),
+    storylineView(),
+    newsItemView(),
+    eventView(),
+    forumThreadView(),
+    launchpadProjectView(),
+  ])("renders the related size for $kind", (view) => {
+    const { container } = renderWithIntl(
+      <IssueItem view={view} size="related" href={href} teaser={null} />,
+    );
+    expect(
+      container.querySelector(`[data-item-kind="${view.kind}"]`),
+    ).not.toBeNull();
+    expect(screen.getByRole("heading")).toBeVisible();
+    if (view.kind === "article") {
+      expect(screen.getByText("Excerpt of article 1.")).toBeVisible();
+      expect(container.querySelector("img")).toBeNull();
+      expect(screen.queryByRole("link", { name: "Read article" })).toBeNull();
+    }
+  });
+
+  it("rows keep headlines without a URL as plain text and allow notes without a title", () => {
+    renderWithIntl(
+      <>
+        <IssueItem
+          view={newsItemView(1, { url: null })}
+          size="row"
+          href={href}
+          teaser={null}
+        />
+        <IssueItem
+          view={editorialView(1, { heading: null })}
+          size="row"
+          href={href}
+          teaser={null}
+        />
+      </>,
+    );
+    expect(screen.getByRole("heading", { name: "Headline 1" })).toBeVisible();
+    expect(screen.getByText("A note from the editors")).toBeVisible();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it.each([
     newsItemView(),
     eventView(),
     forumThreadView(),
@@ -39,8 +139,9 @@ describe("issue item registry", () => {
   ])("places the $kind intro immediately after its heading", (view) => {
     renderWithIntl(
       <IssueItem
+        teaser={null}
         view={{ ...view, intro: "Editor's introduction" }}
-        lead={false}
+        size="card"
         href={href}
       />,
     );
@@ -53,7 +154,7 @@ describe("issue item registry", () => {
     "separates adjacent $kind facts visually and with a spoken comma",
     (view) => {
       const { container } = renderWithIntl(
-        <IssueItem view={view} lead={false} href={href} />,
+        <IssueItem teaser={null} view={view} size="card" href={href} />,
       );
       const separator = [
         ...container.querySelectorAll('span[aria-hidden="true"]'),
@@ -77,8 +178,18 @@ describe("issue item registry", () => {
 
     const { container } = renderWithIntl(
       <>
-        <IssueItem view={articleView(1)} lead={false} href={href} />
-        <IssueItem view={editorialView(2)} lead={false} href={href} />
+        <IssueItem
+          teaser={null}
+          view={articleView(1)}
+          size="card"
+          href={href}
+        />
+        <IssueItem
+          teaser={null}
+          view={editorialView(2)}
+          size="card"
+          href={href}
+        />
       </>,
     );
 
@@ -103,7 +214,7 @@ describe("issue item registry", () => {
   it("renders a story card that links to the story", () => {
     const view = { ...storylineView(), intro: "Our take" };
     const { container } = renderWithIntl(
-      <IssueItem view={view} lead={true} href={href} />,
+      <IssueItem teaser={null} view={view} size="lead" href={href} />,
     );
     expect(screen.getByText("From AIT News")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Story 1" })).toHaveAttribute(
@@ -130,8 +241,9 @@ describe("issue item registry", () => {
   it("clamps other story cards and leaves out an absent update date", () => {
     renderWithIntl(
       <IssueItem
+        teaser={null}
         view={storylineView(2, { sourceCount: 1, updatedAt: null })}
-        lead={false}
+        size="card"
         href={href}
       />,
     );
@@ -146,7 +258,12 @@ describe("issue item registry", () => {
   it("shows the story facts and reading link in everyday Dutch", () => {
     render(
       <NextIntlClientProvider locale="nl" messages={nl} timeZone="UTC">
-        <IssueItem view={storylineView()} lead={true} href={href} />
+        <IssueItem
+          teaser={null}
+          view={storylineView()}
+          size="lead"
+          href={href}
+        />
       </NextIntlClientProvider>,
     );
     expect(screen.getByText("Uit AIT News")).toBeInTheDocument();
@@ -160,8 +277,9 @@ describe("issue item registry", () => {
   it("renders a headline with its source, date and accessible external link", () => {
     const { container } = renderWithIntl(
       <IssueItem
+        teaser={null}
         view={{ ...newsItemView(), intro: "Our take" }}
-        lead={true}
+        size="lead"
         href={href}
       />,
     );
@@ -185,8 +303,9 @@ describe("issue item registry", () => {
   it("shows a plain headline without a web URL and leaves summaries out of compact cards", () => {
     renderWithIntl(
       <IssueItem
+        teaser={null}
         view={newsItemView(1, { url: null, source: null, publishedAt: null })}
-        lead={false}
+        size="card"
         href={href}
       />,
     );
@@ -201,8 +320,9 @@ describe("issue item registry", () => {
   it("renders a single news fact without a stray separator", () => {
     renderWithIntl(
       <IssueItem
+        teaser={null}
         view={newsItemView(1, { publishedAt: null })}
-        lead={false}
+        size="card"
         href={href}
       />,
     );
@@ -215,7 +335,12 @@ describe("issue item registry", () => {
   it("announces the news link in everyday Dutch", () => {
     render(
       <NextIntlClientProvider locale="nl" messages={nl} timeZone="UTC">
-        <IssueItem view={newsItemView()} lead={false} href={href} />
+        <IssueItem
+          teaser={null}
+          view={newsItemView()}
+          size="card"
+          href={href}
+        />
       </NextIntlClientProvider>,
     );
     expect(screen.getByText("Uit AIT News")).toBeInTheDocument();
@@ -230,7 +355,12 @@ describe("issue item registry", () => {
 
   it("shows editors a 'No longer available' marker and renders nothing else for it", () => {
     const { container } = renderWithIntl(
-      <IssueItem view={unavailableView(1)} lead={false} href={href} />,
+      <IssueItem
+        teaser={null}
+        view={unavailableView(1)}
+        size="card"
+        href={href}
+      />,
     );
 
     expect(screen.getByText("No longer available")).toBeInTheDocument();
@@ -244,6 +374,7 @@ describe("event cards", () => {
   it("links an event with its date range, city, cancelled badge and intro", () => {
     renderWithIntl(
       <IssueItem
+        teaser={null}
         view={{
           ...eventView(1, {
             status: "cancelled",
@@ -251,7 +382,7 @@ describe("event cards", () => {
           }),
           intro: "Meet our neighbours",
         }}
-        lead={true}
+        size="lead"
         href={href}
       />,
     );
@@ -273,8 +404,9 @@ describe("event cards", () => {
     render(
       <NextIntlClientProvider locale="nl" messages={nl} timeZone="UTC">
         <IssueItem
+          teaser={null}
           view={eventView(1, { online: true, status: "completed" })}
-          lead={false}
+          size="card"
           href={href}
         />
       </NextIntlClientProvider>,
@@ -289,8 +421,9 @@ describe("event cards", () => {
   it("leaves out an absent city and the status badge for a published event", () => {
     const { container } = renderWithIntl(
       <IssueItem
+        teaser={null}
         view={eventView(1, { city: null })}
-        lead={false}
+        size="card"
         href={href}
       />,
     );
@@ -303,13 +436,14 @@ describe("forum thread cards", () => {
   it("uses the server-built path, with a byline, reply count and intro", () => {
     renderWithIntl(
       <IssueItem
+        teaser={null}
         view={{
           ...forumThreadView(1, {
             path: "/communities/custom/forum/server-built",
           }),
           intro: "Join the conversation",
         }}
-        lead={true}
+        size="lead"
         href={href}
       />,
     );
@@ -326,8 +460,9 @@ describe("forum thread cards", () => {
   it("shows a single reply and no absent author", () => {
     renderWithIntl(
       <IssueItem
+        teaser={null}
         view={forumThreadView(1, { replyCount: 1, authorName: null })}
-        lead={false}
+        size="card"
         href={href}
       />,
     );
@@ -338,7 +473,12 @@ describe("forum thread cards", () => {
   it("shows forum copy and reply plurals in everyday Dutch", () => {
     render(
       <NextIntlClientProvider locale="nl" messages={nl} timeZone="UTC">
-        <IssueItem view={forumThreadView()} lead={false} href={href} />
+        <IssueItem
+          teaser={null}
+          view={forumThreadView()}
+          size="card"
+          href={href}
+        />
       </NextIntlClientProvider>,
     );
     expect(screen.getByText("Uit het forum")).toBeInTheDocument();
@@ -350,8 +490,9 @@ describe("forum thread cards", () => {
 it("renders a project with its existing stage label, pitch, votes, byline and intro", () => {
   renderWithIntl(
     <IssueItem
+      teaser={null}
       view={{ ...launchpadProjectView(), intro: "Our pick" }}
-      lead={false}
+      size="card"
       href={href}
     />,
   );
@@ -371,12 +512,13 @@ it("renders Dutch project copy and an unclamped lead pitch without an absent aut
   render(
     <NextIntlClientProvider locale="nl" messages={nl}>
       <IssueItem
+        teaser={null}
         view={launchpadProjectView(2, {
           voteCount: 1,
           authorName: null,
           stage: "idea",
         })}
-        lead={true}
+        size="lead"
         href={href}
       />
     </NextIntlClientProvider>,

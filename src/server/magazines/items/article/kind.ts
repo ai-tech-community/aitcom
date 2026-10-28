@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { estimateReadingTime } from "@/lib/lexical";
-import { lexicalPlainText } from "@/lib/lexical-text";
+import { openingOf } from "@/lib/magazines/teaser";
 import type { IssueReaderAccess } from "@/lib/magazines/access";
 import type { ItemProblem, UnavailableItem } from "@/lib/magazines/item-views";
 import { magazineArticleEditPath } from "@/lib/magazines/paths";
@@ -10,12 +10,7 @@ import type { Article } from "@/payload-types";
 
 import { listEditableArticles } from "../../magazine-articles";
 import { relationIdOrNull, requireRelationId } from "../../relation-id";
-import {
-  cutWords,
-  introInput,
-  itemBaseInput,
-  storedIntro,
-} from "../base-input";
+import { introInput, itemBaseInput, storedIntro } from "../base-input";
 import { itemIdOf } from "../item-id";
 import type {
   IssueItemKind,
@@ -38,17 +33,21 @@ export type ArticleItemStored = StoredItem<"article">;
  * level is a compile error here until this kind decides what it shows.
  * - full:   the published document; an unpublished article is a marker
  *           (readers never see it, preflight F2)
- * - editor: the latest draft text, published or not
+ * - editor: the latest draft text, published or not, with an opening for
+ *           the builder's visitor preview
  */
 function articleReadingFor(access: IssueReaderAccess): {
   draft: boolean;
   showsUnpublished: boolean;
+  showsOpening: boolean;
 } {
   switch (access) {
+    case "teaser":
+      return { draft: false, showsUnpublished: false, showsOpening: true };
     case "full":
-      return { draft: false, showsUnpublished: false };
+      return { draft: false, showsUnpublished: false, showsOpening: false };
     case "editor":
-      return { draft: true, showsUnpublished: true };
+      return { draft: true, showsUnpublished: true, showsOpening: true };
   }
 }
 
@@ -196,7 +195,8 @@ export const articleItemKind: IssueItemKind<
             slug: article.slug,
             title: article.title,
             authorName: article.authorName ?? null,
-            excerpt: cutWords(lexicalPlainText(article.content), 40),
+            excerpt: openingOf(article.content, 40),
+            opening: reading.showsOpening ? openingOf(article.content) : "",
             readingMinutes: estimateReadingTime(article.content),
             imageUrl: article.mediaUrl ?? null,
           },
@@ -210,6 +210,7 @@ export const articleItemKind: IssueItemKind<
   // (`articleReadingFor`), so every loaded article view is readable.
   isReadable: (_view, ctx) => {
     switch (ctx.access) {
+      case "teaser":
       case "full":
       case "editor":
         return true;
