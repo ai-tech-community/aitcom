@@ -175,6 +175,7 @@ function articleView(itemId: string, id: number, title: string) {
       title,
       authorName: "Ada",
       excerpt: `${title} excerpt`,
+      opening: `${title} opening`,
       readingMinutes: 3,
       imageUrl: null,
     },

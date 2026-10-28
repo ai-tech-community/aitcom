@@ -20,6 +20,26 @@ import { LAYOUTS } from "./registry";
 const href = (slug: string) => `/magazines/agents-weekly/issue-4/${slug}`;
 
 describe("cover-story layout", () => {
+  it("the lead and grid pass teaser to each item", () => {
+    renderWithIntl(
+      <CoverStoryLayout
+        items={[articleView(1), articleView(2)]}
+        href={href}
+        teaser={{ inlinePrompt: <p>Join to read the rest.</p> }}
+      />,
+    );
+    for (const region of [
+      screen.getByTestId("issue-lead"),
+      screen.getByTestId("issue-grid"),
+    ]) {
+      expect(
+        within(region).getByText("Join to read the rest."),
+      ).toBeInTheDocument();
+    }
+    expect(screen.getByText("Opening of article 2.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Read article/ })).toBeNull();
+  });
+
   it("is the layout registered for cover-story", () => {
     expect(LAYOUTS["cover-story"]).toBe(CoverStoryLayout);
   });
@@ -27,6 +47,7 @@ describe("cover-story layout", () => {
   it("renders the first item as the lead and the rest in the grid, in order", () => {
     renderWithIntl(
       <CoverStoryLayout
+        teaser={null}
         items={[articleView(1), editorialView(2), articleView(3)]}
         href={href}
       />,
@@ -53,6 +74,7 @@ describe("cover-story layout", () => {
   it("an issue of only editorial blocks still renders", () => {
     renderWithIntl(
       <CoverStoryLayout
+        teaser={null}
         items={[editorialView(1), editorialView(2)]}
         href={href}
       />,
@@ -71,7 +93,7 @@ describe("cover-story layout", () => {
   });
 
   it("an issue without items renders neither a lead nor a grid", () => {
-    renderWithIntl(<CoverStoryLayout items={[]} href={href} />);
+    renderWithIntl(<CoverStoryLayout teaser={null} items={[]} href={href} />);
     expect(screen.queryByTestId("issue-lead")).toBeNull();
     expect(screen.queryByTestId("issue-grid")).toBeNull();
   });

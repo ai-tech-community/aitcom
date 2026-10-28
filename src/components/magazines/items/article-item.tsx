@@ -12,7 +12,12 @@ export function ArticleItem({
   view,
   lead,
   href,
-}: ItemRendererProps<"article">) {
+  teaser,
+  showExcerpt = lead,
+}: ItemRendererProps<"article"> & {
+  /** Next-in-issue cards also show the excerpt, without the lead treatment. */
+  showExcerpt?: boolean;
+}) {
   const t = useTranslations("magazines.item");
   const { article } = view;
   const url = href(article.slug);
@@ -64,19 +69,28 @@ export function ArticleItem({
             {t("readingTime", { minutes: article.readingMinutes })}
           </span>
         </p>
-        {lead && article.excerpt && (
+        {!teaser && showExcerpt && article.excerpt && (
           <p className="text-muted-foreground leading-relaxed">
             {article.excerpt}
           </p>
         )}
-        {lead && (
-          <Link
-            href={url}
-            className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-medium underline-offset-4 hover:underline"
-          >
-            {t("readArticle")}
-            <ArrowRight aria-hidden="true" className="size-4" />
-          </Link>
+        {teaser ? (
+          <>
+            {article.opening && (
+              <p className="leading-relaxed">{article.opening}</p>
+            )}
+            {teaser.inlinePrompt}
+          </>
+        ) : (
+          lead && (
+            <Link
+              href={url}
+              className="mt-auto inline-flex items-center gap-1.5 pt-2 text-sm font-medium underline-offset-4 hover:underline"
+            >
+              {t("readArticle")}
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </Link>
+          )
         )}
       </div>
     </article>

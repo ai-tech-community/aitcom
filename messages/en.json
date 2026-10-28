@@ -4822,6 +4822,7 @@
       "showAll": "Show all magazines"
     },
     "shelf": {
+      "teaser": "Members read in full",
       "byCommunity": "A magazine by <link>{community}</link>",
       "topics": "Topics",
       "issues": "Issues",
@@ -4848,6 +4849,7 @@
       "scheduledNotice": "Scheduled. Readers cannot see it yet."
     },
     "item": {
+      "membersReadAll": "Members read the whole article",
       "readArticle": "Read article",
       "byAuthor": "By {name}",
       "readingTime": "{minutes} min read",
@@ -4886,6 +4888,7 @@
       "linkCopyFailed": "Could not copy the link"
     },
     "article": {
+      "teaserNote": "This is the start of the article.",
       "context": "Where this article appears",
       "byAuthor": "By {name}",
       "readingTime": "{minutes} min read",
@@ -5129,7 +5132,6 @@
       "start": "Start a magazine",
       "latest": "Latest issue",
       "pastIssues": "Past issues",
-      "membersOnly": "Members only",
       "magazinePage": "Magazine page",
       "emptyTitle": "No issues yet",
       "emptyDescription": "The first issue of {magazine} is on its way.",

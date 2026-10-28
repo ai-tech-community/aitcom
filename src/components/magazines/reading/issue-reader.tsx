@@ -1,13 +1,17 @@
+import { useId } from "react";
+
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import type { AppLocale } from "@/i18n/messages";
 import { Link } from "@/i18n/navigation";
-import { seesEditorLayer } from "@/lib/magazines/access";
+import { readingModeOf, seesEditorLayer } from "@/lib/magazines/access";
 import { issueBuilderPath, magazineArticlePath } from "@/lib/magazines/paths";
 import type { IssueStatus } from "@/lib/magazines/values";
 import type { IssuePageData } from "@/server/magazines/reading";
 
+import type { ItemTeaser } from "../items/types";
+import { MagazineJoinPrompt } from "./magazine-join-prompt";
 import { LAYOUTS } from "../layouts/registry";
 import { READING_FRAME } from "./frame";
 import { IssueContents } from "./issue-contents";
@@ -66,6 +70,41 @@ export function IssueReader({
   locale: AppLocale;
 }) {
   const { access, magazine, community, issue, items, pastIssues } = data;
+  const titleId = useId();
+  const mode = readingModeOf(access);
+  const source = {
+    via: "magazine",
+    magazineId: magazine.id,
+    issueId: issue.id,
+  } as const;
+  let teaser: ItemTeaser | null;
+  let joinPanel;
+  switch (mode) {
+    case "full":
+      teaser = null;
+      joinPanel = null;
+      break;
+    case "teaser":
+      teaser = {
+        inlinePrompt: (
+          <MagazineJoinPrompt
+            variant="inline"
+            community={community}
+            source={source}
+            focusTargetId={titleId}
+          />
+        ),
+      };
+      joinPanel = (
+        <MagazineJoinPrompt
+          variant="panel"
+          community={community}
+          source={source}
+          focusTargetId={titleId}
+        />
+      );
+      break;
+  }
   const Layout = LAYOUTS[issue.layout];
   const href = (articleSlug: string) =>
     magazineArticlePath(magazine, issue, { slug: articleSlug });
@@ -90,8 +129,8 @@ export function IssueReader({
               issueId={issue.id}
             />
           )}
-          <IssueHero issue={issue} />
-          <Layout items={items} href={href} />
+          <IssueHero issue={issue} titleId={titleId} />
+          <Layout items={items} href={href} teaser={teaser} />
           {items.length === 0 && <NoItems />}
         </article>
 
@@ -100,6 +139,7 @@ export function IssueReader({
             magazine={magazine}
             community={community}
             pastIssues={pastIssues}
+            joinPanel={joinPanel}
           />
         </aside>
       </div>

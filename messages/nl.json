@@ -4822,6 +4822,7 @@
       "showAll": "Alle magazines tonen"
     },
     "shelf": {
+      "teaser": "Leden lezen alles",
       "byCommunity": "Een magazine van <link>{community}</link>",
       "topics": "Onderwerpen",
       "issues": "Nummers",
@@ -4848,6 +4849,7 @@
       "scheduledNotice": "Ingepland. Lezers kunnen dit nummer nog niet zien."
     },
     "item": {
+      "membersReadAll": "Leden lezen het hele artikel",
       "readArticle": "Lees artikel",
       "byAuthor": "Door {name}",
       "readingTime": "{minutes} min lezen",
@@ -4886,6 +4888,7 @@
       "linkCopyFailed": "Kon de link niet kopiëren"
     },
     "article": {
+      "teaserNote": "Dit is het begin van het artikel.",
       "context": "Waar dit artikel verschijnt",
       "byAuthor": "Door {name}",
       "readingTime": "{minutes} min lezen",
@@ -5129,7 +5132,6 @@
       "start": "Een magazine starten",
       "latest": "Nieuwste nummer",
       "pastIssues": "Eerdere nummers",
-      "membersOnly": "Alleen voor leden",
       "magazinePage": "Magazinepagina",
       "emptyTitle": "Nog geen nummers",
       "emptyDescription": "Het eerste nummer van {magazine} komt eraan.",

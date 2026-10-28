@@ -5,6 +5,31 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const commentProps = vi.hoisted(() => ({ last: null as unknown }));
 
+import type * as JoinPrompt from "./magazine-join-prompt";
+
+vi.mock("./magazine-join-prompt", async (original) => {
+  const { MagazineJoinPromptView } = await original<typeof JoinPrompt>();
+  return {
+    MagazineJoinPrompt: (
+      props: React.ComponentProps<typeof JoinPrompt.MagazineJoinPrompt>,
+    ) => (
+      <div
+        data-testid={`join-${props.variant}`}
+        data-focus-target={props.focusTargetId}
+        data-source={JSON.stringify(props.source)}
+      >
+        <MagazineJoinPromptView
+          community={props.community}
+          variant={props.variant}
+          action={{ kind: "join" }}
+          onRun={() => undefined}
+          busy={false}
+        />
+      </div>
+    ),
+  };
+});
+
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
     <a href={href} {...props}>
@@ -24,6 +49,7 @@ import {
   articlePage,
   lexicalWithHeadings,
   magazineArticle,
+  previewArticlePage,
 } from "../test-fixtures";
 import { renderWithIntl } from "../test-intl";
 
@@ -64,6 +90,62 @@ function jsonLd(container: HTMLElement): Record<string, unknown>[] {
 }
 
 describe("MagazineArticle", () => {
+  it("a preview article shows the start, the join panel and no comments", () => {
+    const { container } = renderWithIntl(
+      <MagazineArticle data={previewArticlePage()} comments={comments} />,
+    );
+    expect(
+      screen.getByText("Every agent needs a way to say no."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("This is the start of the article."),
+    ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("heading", { level: 1 }).closest("header")!,
+      ).getByText("4 min read"),
+    ).toHaveClass("font-mono");
+    expect(
+      screen.queryByRole("navigation", { name: "In this article" }),
+    ).toBeNull();
+    expect(screen.queryByTestId("article-comments")).toBeNull();
+    const title = screen.getByRole("heading", { level: 1 });
+    expect(title).toHaveAttribute("tabindex", "-1");
+    expect(screen.getByTestId("join-panel")).toHaveAttribute(
+      "data-focus-target",
+      title.id,
+    );
+    expect(
+      JSON.parse(screen.getByTestId("join-panel").dataset.source!),
+    ).toEqual({ via: "magazine", magazineId: 3, issueId: 7 });
+    expect(container.querySelectorAll('[data-variant="default"]')).toHaveLength(
+      1,
+    );
+    expect(
+      screen.getByRole("link", { name: "Back to the issue" }),
+    ).toHaveAttribute("href", "/magazines/agents-weekly/issue-4");
+    expect(screen.getByRole("link", { name: "Article 2" })).toHaveAttribute(
+      "href",
+      "/magazines/agents-weekly/issue-4/article-2",
+    );
+    expect(screen.queryByTestId("join-inline")).toBeNull();
+    expect(
+      within(
+        screen.getByRole("region", { name: "Next in this issue" }),
+      ).getByText("Excerpt of article 2."),
+    ).toBeInTheDocument();
+  });
+
+  it("marks a preview article as not free in structured data", () => {
+    const { container } = renderWithIntl(
+      <MagazineArticle data={previewArticlePage()} comments={[]} />,
+    );
+    expect(jsonLd(container)[0]).toMatchObject({
+      "@type": "Article",
+      isAccessibleForFree: false,
+    });
+  });
+
   it("renders the body with the shared Lexical renderer and a contents list from its headings", () => {
     renderWithIntl(
       <MagazineArticle
@@ -133,6 +215,7 @@ describe("MagazineArticle", () => {
     ).toHaveAttribute("href", "/magazines/agents-weekly/issue-4");
 
     const next = screen.getByRole("region", { name: "Next in this issue" });
+    expect(within(next).getByText("Excerpt of article 2.")).toBeInTheDocument();
     expect(
       within(next).getByRole("link", { name: "Article 2" }),
     ).toHaveAttribute("href", "/magazines/agents-weekly/issue-4/article-2");
@@ -153,17 +236,7 @@ describe("MagazineArticle", () => {
 
   it("marks preview articles as not fully accessible for free in JSON-LD", () => {
     const { container } = renderWithIntl(
-      <MagazineArticle
-        data={articlePage({
-          access: "teaser",
-          issue: {
-            visibility: "teaser",
-            effectiveVisibility: "teaser",
-            outsiderReach: "teaser",
-          },
-        })}
-        comments={[]}
-      />,
+      <MagazineArticle data={previewArticlePage()} comments={[]} />,
     );
     expect(jsonLd(container)[0]).toMatchObject({
       "@type": "Article",

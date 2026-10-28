@@ -8,6 +8,7 @@ import en from "../../../../../../../messages/en.json";
 import {
   articlePage,
   magazineArticle,
+  previewArticlePage,
 } from "@/components/magazines/test-fixtures";
 import type { MagazineArticlePageData } from "@/server/magazines/reading";
 
@@ -77,6 +78,12 @@ beforeEach(() => {
 });
 
 describe("magazine article page", () => {
+  it("never fetches comments for a preview article", async () => {
+    state.data = previewArticlePage();
+    expect((await renderedProps()).comments).toEqual([]);
+    expect(state.commentReads).toEqual([]);
+  });
+
   it("is rendered per request", () => {
     expect(dynamic).toBe("force-dynamic");
   });
@@ -109,14 +116,7 @@ describe("magazine article page", () => {
   });
 
   it("indexes a preview article using the resolver's outsider reach", async () => {
-    state.data = articlePage({
-      access: "teaser",
-      issue: {
-        visibility: "teaser",
-        effectiveVisibility: "teaser",
-        outsiderReach: "teaser",
-      },
-    });
+    state.data = previewArticlePage();
     expect((await generateMetadata({ params })).robots).toBeUndefined();
   });
 

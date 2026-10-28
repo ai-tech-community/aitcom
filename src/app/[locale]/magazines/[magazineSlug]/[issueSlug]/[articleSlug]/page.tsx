@@ -110,11 +110,18 @@ export default async function MagazineArticlePage({
   if (!loaded) notFound();
 
   const { data, payload, viewerId } = loaded;
-  // The read model has already decided the viewer may read this article,
-  // and so its comments. An editor's preview has no comment thread.
-  const comments = isMagazineArticleOut(data.issue, data.article)
-    ? await listArticleComments(payload, data.article.id)
-    : [];
+  // Preview readers never fetch comments, even on a published issue.
+  let comments: Awaited<ReturnType<typeof listArticleComments>>;
+  switch (data.mode) {
+    case "teaser":
+      comments = [];
+      break;
+    case "full":
+      comments = isMagazineArticleOut(data.issue, data.article)
+        ? await listArticleComments(payload, data.article.id)
+        : [];
+      break;
+  }
   return (
     <MagazineArticle
       data={data}

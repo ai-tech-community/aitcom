@@ -84,6 +84,7 @@ export function articleView(
       title: `Article ${n}`,
       authorName: `Author ${n}`,
       excerpt: `Excerpt of article ${n}.`,
+      opening: `Opening of article ${n}.`,
       readingMinutes: 4,
       imageUrl: null,
       ...overrides,
@@ -270,7 +271,11 @@ export function issuePage(
       description: "A monthly magazine about agents that work.",
       topics: ["agents"],
     },
-    community: { name: "Amsterdam AI Builders", slug: "amsterdam-ai" },
+    community: {
+      name: "Amsterdam AI Builders",
+      slug: "amsterdam-ai",
+      joinPolicy: "open",
+    },
     issue: {
       ...issueCard(),
       status: "published",
@@ -344,19 +349,53 @@ export function magazineArticle(overrides: Partial<Article> = {}): Article {
 }
 
 export function articlePage(
-  overrides: Partial<Omit<MagazineArticlePageData, "issue">> & {
+  overrides: Partial<
+    Omit<Extract<MagazineArticlePageData, { mode: "full" }>, "issue">
+  > & {
     issue?: Partial<MagazineArticlePageData["issue"]>;
   } = {},
-): MagazineArticlePageData {
+): Extract<MagazineArticlePageData, { mode: "full" }> {
   const { issue, ...rest } = overrides;
   const page = issuePage();
   return {
     access: "full",
+    mode: "full",
+    community: page.community,
     magazine: page.magazine,
     issue: { ...issueCard(), status: "published", ...issue },
     article: magazineArticle(),
     nextInIssue: articleView(2),
     ...rest,
+  };
+}
+
+/** The server-safe shape a preview article page receives. */
+export function previewArticlePage(): MagazineArticlePageData {
+  const full = articlePage();
+  return {
+    access: "teaser",
+    mode: "teaser",
+    community: full.community,
+    magazine: full.magazine,
+    issue: {
+      ...full.issue,
+      visibility: "teaser",
+      effectiveVisibility: "teaser",
+      outsiderReach: "teaser",
+    },
+    article: {
+      id: 1,
+      slug: "agents-that-know-when-to-stop",
+      title: "Agents that know when to stop",
+      authorName: "Sanne de Vries",
+      mediaUrl: "https://example.test/cover.png",
+      publishedAt: "2026-11-02T09:00:00.000Z",
+      updatedAt: "2026-11-02T09:00:00.000Z",
+      status: "published",
+      opening: "Every agent needs a way to say no.",
+      readingMinutes: 4,
+    },
+    nextInIssue: articleView(2),
   };
 }
 

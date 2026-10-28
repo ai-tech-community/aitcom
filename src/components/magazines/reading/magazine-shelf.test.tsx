@@ -36,6 +36,26 @@ function issueList() {
 }
 
 describe("MagazineShelf", () => {
+  it("labels a preview issue 'Members read in full'", () => {
+    renderWithIntl(
+      <MagazineShelf
+        data={shelfData({
+          issues: [
+            issueCard({
+              visibility: "public",
+              effectiveVisibility: "teaser",
+              outsiderReach: "teaser",
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(
+      within(issueList()[0]!).getByText("Members read in full"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Members only")).toBeNull();
+  });
+
   it("offers to subscribe beside the topics", () => {
     renderWithIntl(
       <MagazineShelf data={shelfData({ viewerIsEditor: true })} />,

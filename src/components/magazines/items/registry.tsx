@@ -21,6 +21,7 @@ import type {
   ArticleHref,
   ItemRendererProps,
   ItemTitle,
+  ItemTeaser,
   ItemViewOfKind,
 } from "./types";
 
@@ -64,10 +65,11 @@ function renderKind<K extends ItemKindId>(
   view: ItemViewOfKind<K>,
   lead: boolean,
   href: ArticleHref,
+  teaser: ItemTeaser | null,
 ) {
   const Renderer: ComponentType<ItemRendererProps<K>> =
     ITEM_RENDERERS[view.kind];
-  return <Renderer view={view} lead={lead} href={href} />;
+  return <Renderer view={view} lead={lead} href={href} teaser={teaser} />;
 }
 
 /**
@@ -109,12 +111,14 @@ export function IssueItem({
   view,
   lead,
   href,
+  teaser,
 }: {
   view: EditorItemView;
   lead: boolean;
   href: ArticleHref;
+  teaser: ItemTeaser | null;
 }) {
   if (isUnavailableItem(view))
     return <UnavailableMarker reason={view.reason} />;
-  return renderKind(view, lead, href);
+  return renderKind(view, lead, href, teaser);
 }

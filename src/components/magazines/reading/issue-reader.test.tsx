@@ -17,6 +17,31 @@ vi.mock("./subscribe-button", () => ({
   ),
 }));
 
+import type * as JoinPrompt from "./magazine-join-prompt";
+
+vi.mock("./magazine-join-prompt", async (original) => {
+  const { MagazineJoinPromptView } = await original<typeof JoinPrompt>();
+  return {
+    MagazineJoinPrompt: (
+      props: React.ComponentProps<typeof JoinPrompt.MagazineJoinPrompt>,
+    ) => (
+      <div
+        data-testid={`join-${props.variant}`}
+        data-focus-target={props.focusTargetId}
+        data-source={JSON.stringify(props.source)}
+      >
+        <MagazineJoinPromptView
+          community={props.community}
+          variant={props.variant}
+          action={{ kind: "join" }}
+          onRun={() => undefined}
+          busy={false}
+        />
+      </div>
+    ),
+  };
+});
+
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children, ...props }: React.ComponentProps<"a">) => (
     <a href={href} {...props}>
@@ -25,13 +50,92 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
-import { issuePage, unavailableView } from "../test-fixtures";
+import {
+  articleView,
+  editorialView,
+  issuePage,
+  unavailableView,
+} from "../test-fixtures";
 import { renderWithIntl } from "../test-intl";
 
 import { IssueReader } from "./issue-reader";
 import { itemAnchorId } from "./anchors";
 
 describe("IssueReader", () => {
+  it("a preview shows openings and join prompts instead of Read article", () => {
+    renderWithIntl(
+      <IssueReader
+        data={issuePage({
+          access: "teaser",
+          items: [articleView(1), articleView(2)],
+        })}
+        locale="en"
+      />,
+    );
+    expect(screen.getByText("Opening of article 1.")).toBeInTheDocument();
+    expect(screen.getByText("Opening of article 2.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Read article/ })).toBeNull();
+    expect(screen.getAllByTestId("join-inline")).toHaveLength(2);
+    const title = screen.getByRole("heading", { level: 1 });
+    expect(title).toHaveAttribute("tabindex", "-1");
+    expect(title.id).not.toBe("");
+    for (const prompt of [
+      ...screen.getAllByTestId("join-inline"),
+      screen.getByTestId("join-panel"),
+    ]) {
+      expect(prompt).toHaveAttribute("data-focus-target", title.id);
+      expect(JSON.parse(prompt.dataset.source!)).toEqual({
+        via: "magazine",
+        magazineId: 3,
+        issueId: 7,
+      });
+    }
+    const rail = screen.getByTestId("join-panel").parentElement!;
+    expect(rail.firstElementChild).toBe(screen.getByTestId("join-panel"));
+  });
+
+  it("a preview keeps one orange button: the join panel", () => {
+    const { container } = renderWithIntl(
+      <IssueReader data={issuePage({ access: "teaser" })} locale="en" />,
+    );
+    expect(container.querySelectorAll('[data-variant="default"]')).toHaveLength(
+      1,
+    );
+    expect(container.querySelectorAll(".bg-primary")).toHaveLength(1);
+    expect(
+      within(screen.getByTestId("join-panel")).getByRole("button"),
+    ).toHaveAttribute("data-variant", "default");
+    for (const prompt of screen.getAllByTestId("join-inline")) {
+      expect(within(prompt).getByRole("button")).toHaveAttribute(
+        "data-variant",
+        "outline",
+      );
+    }
+  });
+
+  it("a preview editorial shows its heading and intro, not its body", () => {
+    const { container } = renderWithIntl(
+      <IssueReader
+        data={issuePage({
+          access: "teaser",
+          items: [
+            editorialView(2, { intro: "An editorial intro.", body: null }),
+          ],
+        })}
+        locale="en"
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Editorial 2" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("An editorial intro.")).toBeInTheDocument();
+    expect(screen.queryByText("Body of editorial 2.")).toBeNull();
+    expect(
+      container.querySelector('[data-item-kind="editorial"] > div'),
+    ).toBeNull();
+    expect(screen.queryByTestId("join-inline")).toBeNull();
+  });
+
   it("tells an editor a scheduled issue is not public yet", () => {
     renderWithIntl(
       <IssueReader

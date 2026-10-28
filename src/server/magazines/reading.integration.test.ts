@@ -394,6 +394,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
   async function approvedArticle(
     label: string,
     magazineId: number,
+    content = richText(`${label} text`),
   ): Promise<{ id: number; slug: string }> {
     const slug = `rd-${label}-${fx.sfx}`;
     const doc = await m.payload.create({
@@ -401,7 +402,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
       data: {
         title: `${label} title`,
         slug,
-        content: richText(`${label} text`),
+        content,
         type: "article",
         authorId: fx.editorId,
         authorName: "Editor",
@@ -593,6 +594,128 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     expect(await shelf(fx.outsiderId)).toBeNull();
     expect(await shelf(null)).toBeNull();
     expect(ids((await shelf(fx.memberId))!.issues)).toEqual([issue.id]);
+  });
+
+  async function previewFixture(codeFirst = false) {
+    const c = await community("preview");
+    const mag = await magazineIn(c, "preview");
+    const opening = "This opening is safe to read.";
+    const late = "PRIVATE_LATE_SENTENCE must never reach a preview reader.";
+    const content = richText(`${opening} ${"word ".repeat(120)} ${late}`);
+    if (codeFirst) {
+      content.root.children.unshift({
+        type: "code",
+        version: 1,
+        children: [{ type: "text", text: "PRIVATE_CODE_MARKER ".repeat(50) }],
+      });
+    }
+    const first = await approvedArticle("preview-first", mag.id, content);
+    const second = await approvedArticle("preview-next", mag.id, content);
+    const issue = await publishedIssue(c, mag, "Preview", {
+      visibility: "teaser",
+      items: [
+        { kind: "article", articleId: first.id },
+        { kind: "article", articleId: second.id },
+        {
+          kind: "editorial",
+          heading: "A public heading",
+          intro: "A public intro",
+          body: richText("PRIVATE_EDITORIAL_BODY"),
+        },
+      ],
+    });
+    const opts = {
+      magazineSlug: mag.slug,
+      issueSlug: issue.slug,
+      locale: LOCALE,
+    };
+    return { c, mag, first, opts, opening, late };
+  }
+
+  it("a teaser reader gets openings only", async () => {
+    const { opts, opening, late } = await previewFixture();
+    for (const viewerId of [null, fx.outsiderId]) {
+      const page = await m.reading.loadIssuePage(m, { ...opts, viewerId });
+      expect(page?.access).toBe("teaser");
+      expect(JSON.stringify(page)).toContain(opening);
+      expect(JSON.stringify(page)).not.toContain(late);
+      expect(JSON.stringify(page)).not.toContain("PRIVATE_EDITORIAL_BODY");
+      expect(
+        page?.items.find((item) => item.kind === "editorial"),
+      ).toMatchObject({ body: null });
+      const article = page?.items.find((item) => item.kind === "article");
+      expect(article).toMatchObject({
+        article: { opening: expect.stringContaining(opening) },
+      });
+      if (article?.kind === "article" && !("unavailable" in article)) {
+        expect(article.article.opening.split(/\s+/)).toHaveLength(80);
+      }
+    }
+  });
+
+  it("the teaser article page carries no body", async () => {
+    const { opts, first, opening, late } = await previewFixture();
+    for (const viewerId of [null, fx.outsiderId]) {
+      const page = await m.reading.loadMagazineArticlePage(m, {
+        ...opts,
+        articleSlug: first.slug,
+        viewerId,
+      });
+      expect(page?.mode).toBe("teaser");
+      expect("content" in page!.article).toBe(false);
+      expect(JSON.stringify(page)).toContain(opening);
+      expect(JSON.stringify(page)).not.toContain(late);
+      expect(JSON.stringify(page)).not.toContain("PRIVATE_EDITORIAL_BODY");
+    }
+    const memberPage = await m.reading.loadMagazineArticlePage(m, {
+      ...opts,
+      articleSlug: first.slug,
+      viewerId: fx.memberId,
+    });
+    expect(memberPage?.mode).toBe("full");
+    expect(memberPage?.article).toHaveProperty("content");
+    expect(JSON.stringify(memberPage)).toContain(late);
+  });
+
+  it("a preview reader never gets code text", async () => {
+    const { opts, first } = await previewFixture(true);
+    for (const viewerId of [null, fx.outsiderId]) {
+      const page = await m.reading.loadIssuePage(m, { ...opts, viewerId });
+      const articlePage = await m.reading.loadMagazineArticlePage(m, {
+        ...opts,
+        viewerId,
+        articleSlug: first.slug,
+      });
+      expect(page).not.toBeNull();
+      expect(articlePage?.nextInIssue).not.toBeNull();
+      expect(JSON.stringify(page)).not.toContain("PRIVATE_CODE_MARKER");
+      expect(JSON.stringify(articlePage)).not.toContain("PRIVATE_CODE_MARKER");
+    }
+  });
+
+  it("only the issue and article pages carry the join rule", async () => {
+    const { opts, first, mag } = await previewFixture();
+    const page = await m.reading.loadIssuePage(m, { ...opts, viewerId: null });
+    const article = await m.reading.loadMagazineArticlePage(m, {
+      ...opts,
+      viewerId: null,
+      articleSlug: first.slug,
+    });
+    expect(page?.community).toHaveProperty("joinPolicy", "open");
+    expect(article?.community).toHaveProperty("joinPolicy", "open");
+    const home = await m.reading.loadMagazinesHome(m, { locale: LOCALE });
+    const card = home.magazines.find(
+      (card) => Number(card.id) === Number(mag.id),
+    );
+    expect(card).toBeDefined();
+    expect(card!.community).not.toHaveProperty("joinPolicy");
+    expect(card!.latest.community).not.toHaveProperty("joinPolicy");
+    const shelf = await m.reading.loadMagazineShelf(m, {
+      ...opts,
+      viewerId: null,
+    });
+    expect(shelf!.community).not.toHaveProperty("joinPolicy");
+    expect(page!.issue.community).not.toHaveProperty("joinPolicy");
   });
 
   // ── Issue page ────────────────────────────────────────────────────────

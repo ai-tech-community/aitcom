@@ -4,8 +4,12 @@ import type { Where } from "payload";
 import type { AppLocale } from "@/i18n/messages";
 import {
   articleTextModeFor,
+  readingModeOf,
   type IssueReaderAccess,
 } from "@/lib/magazines/access";
+import { estimateReadingTime } from "@/lib/lexical";
+import { openingOf } from "@/lib/magazines/teaser";
+import type { JoinPolicy } from "@/server/communities/invite-policy";
 import type { OutsiderReach } from "@/lib/magazines/indexing";
 import type {
   ArticleItemView,
@@ -142,6 +146,18 @@ async function liveCommunitiesById(
     columns: COMMUNITY_COLUMNS,
   });
   return new Map(rows.map((row) => [row.id, row]));
+}
+
+/** Only issue and article pages need the community's join rule. */
+async function liveReadingCommunityById(
+  database: Deps["db"],
+  id: string,
+): Promise<(MagazineCommunityRow & { joinPolicy: JoinPolicy }) | null> {
+  const row = await database.query.communities.findFirst({
+    where: and(eq(communities.id, id), isNull(communities.deletedAt)),
+    columns: { ...COMMUNITY_COLUMNS, joinPolicy: true },
+  });
+  return row ?? null;
 }
 
 async function liveCommunityBySlug(
@@ -592,7 +608,7 @@ export type CommunityMagazineTabData = NonNullable<
 type ReadableIssue = {
   access: IssueReaderAccess;
   magazine: Magazine;
-  community: MagazineCommunityRow;
+  community: MagazineCommunityRow & { joinPolicy: JoinPolicy };
   issue: MagazineIssue;
 };
 
@@ -612,7 +628,7 @@ async function loadReadableIssue(
 ): Promise<ReadableIssue | null> {
   const magazine = await findMagazineBySlug(deps.payload, opts.magazineSlug);
   if (!magazine) return null;
-  const [{ docs }, communitiesById, viewer] = await Promise.all([
+  const [{ docs }, community, viewer] = await Promise.all([
     deps.payload.find({
       collection: "magazine-issues",
       where: {
@@ -626,7 +642,7 @@ async function loadReadableIssue(
       pagination: false,
       locale: opts.locale,
     }),
-    liveCommunitiesById(deps.db, [magazine.communityId]),
+    liveReadingCommunityById(deps.db, magazine.communityId),
     loadMagazineEditorship(
       deps.db,
       { communityId: magazine.communityId, magazineId: magazine.id },
@@ -634,7 +650,6 @@ async function loadReadableIssue(
     ),
   ]);
   const issue = docs[0];
-  const community = communitiesById.get(magazine.communityId);
   if (!issue || !community) return null;
   const facts = issueAccessFacts(issue);
   if (!facts) return null;
@@ -695,7 +710,7 @@ export async function loadIssuePage(
 ): Promise<null | {
   access: IssueReaderAccess;
   magazine: MagazineSummary;
-  community: ReadingCommunity;
+  community: ReadingCommunity & { joinPolicy: JoinPolicy };
   issue: IssueCard & {
     /** Readers only ever get `published`; editors also open drafts. */
     status: IssueStatus;
@@ -729,7 +744,10 @@ export async function loadIssuePage(
   return {
     access,
     magazine: toMagazineSummary(magazine),
-    community: toReadingCommunity(community),
+    community: {
+      ...toReadingCommunity(community),
+      joinPolicy: community.joinPolicy,
+    },
     issue: {
       ...toIssueCard(issue, magazine, community),
       status: issue.status,
@@ -750,6 +768,26 @@ export type IssuePageData = NonNullable<
   Awaited<ReturnType<typeof loadIssuePage>>
 >;
 
+/** Explicit allowlist: preview responses never carry article content or internal fields. */
+export type ArticleTeaser = Pick<
+  Article,
+  | "id"
+  | "slug"
+  | "title"
+  | "authorName"
+  | "mediaUrl"
+  | "publishedAt"
+  | "updatedAt"
+  | "status"
+> & {
+  opening: string;
+  readingMinutes: number;
+};
+
+export type ArticleReading =
+  | { mode: "full"; article: Article }
+  | { mode: "teaser"; article: ArticleTeaser };
+
 /**
  * `/magazines/[magazine]/[issue]/[article]`: a magazine article read
  * through the issue that holds it. Null unless the article is placed in
@@ -767,16 +805,19 @@ export async function loadMagazineArticlePage(
     viewerId: string | null;
     locale: AppLocale;
   },
-): Promise<null | {
-  access: IssueReaderAccess;
-  magazine: MagazineSummary;
-  issue: IssueCard & {
-    /** Readers only ever get `published`; editors also open drafts. */
-    status: IssueStatus;
-  };
-  article: Article;
-  nextInIssue: ArticleItemView | null;
-}> {
+): Promise<
+  | null
+  | ({
+      access: IssueReaderAccess;
+      magazine: MagazineSummary;
+      community: ReadingCommunity & { joinPolicy: JoinPolicy };
+      issue: IssueCard & {
+        /** Readers only ever get `published`; editors also open drafts. */
+        status: IssueStatus;
+      };
+      nextInIssue: ArticleItemView | null;
+    } & ArticleReading)
+> {
   const found = await loadReadableIssue(deps, opts);
   if (!found) return null;
   const { access, magazine, community, issue } = found;
@@ -816,12 +857,39 @@ export async function loadMagazineArticlePage(
     )
   ).filter(isArticleView);
   const position = articles.findIndex((view) => view.article.id === article.id);
+  let reading: ArticleReading;
+  switch (readingModeOf(access)) {
+    case "full":
+      reading = { mode: "full", article };
+      break;
+    case "teaser":
+      reading = {
+        mode: "teaser",
+        article: {
+          id: article.id,
+          slug: article.slug,
+          title: article.title,
+          authorName: article.authorName,
+          mediaUrl: article.mediaUrl,
+          publishedAt: article.publishedAt,
+          updatedAt: article.updatedAt,
+          status: article.status,
+          opening: openingOf(article.content),
+          readingMinutes: estimateReadingTime(article.content),
+        },
+      };
+      break;
+  }
 
   return {
     access,
     magazine: toMagazineSummary(magazine),
+    community: {
+      ...toReadingCommunity(community),
+      joinPolicy: community.joinPolicy,
+    },
     issue: { ...toIssueCard(issue, magazine, community), status: issue.status },
-    article,
+    ...reading,
     nextInIssue: position === -1 ? null : (articles[position + 1] ?? null),
   };
 }

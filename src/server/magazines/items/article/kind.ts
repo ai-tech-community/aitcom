@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { estimateReadingTime } from "@/lib/lexical";
-import { lexicalPlainText } from "@/lib/lexical-text";
+import { openingOf } from "@/lib/magazines/teaser";
 import type { IssueReaderAccess } from "@/lib/magazines/access";
 import type { ItemProblem, UnavailableItem } from "@/lib/magazines/item-views";
 import { magazineArticleEditPath } from "@/lib/magazines/paths";
@@ -10,12 +10,7 @@ import type { Article } from "@/payload-types";
 
 import { listEditableArticles } from "../../magazine-articles";
 import { relationIdOrNull, requireRelationId } from "../../relation-id";
-import {
-  cutWords,
-  introInput,
-  itemBaseInput,
-  storedIntro,
-} from "../base-input";
+import { introInput, itemBaseInput, storedIntro } from "../base-input";
 import { itemIdOf } from "../item-id";
 import type {
   IssueItemKind,
@@ -197,7 +192,8 @@ export const articleItemKind: IssueItemKind<
             slug: article.slug,
             title: article.title,
             authorName: article.authorName ?? null,
-            excerpt: cutWords(lexicalPlainText(article.content), 40),
+            excerpt: openingOf(article.content, 40),
+            opening: openingOf(article.content),
             readingMinutes: estimateReadingTime(article.content),
             imageUrl: article.mediaUrl ?? null,
           },

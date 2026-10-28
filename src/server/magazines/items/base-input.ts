@@ -17,10 +17,4 @@ export function introInput(stored: string | null | undefined): {
   return stored ? { intro: stored } : {};
 }
 
-/** Plain-text excerpt, with an ellipsis only when words were left out. */
-export function cutWords(text: string, words: number): string {
-  const parts = text.trim().split(/\s+/).filter(Boolean);
-  return parts.length > words
-    ? `${parts.slice(0, words).join(" ")}…`
-    : parts.join(" ");
-}
+export { cutWords } from "@/lib/magazines/teaser";

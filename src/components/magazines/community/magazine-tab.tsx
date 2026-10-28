@@ -1,7 +1,6 @@
 import { useTranslations } from "next-intl";
 import { useId } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -17,6 +16,7 @@ import { ContributorDesk } from "../editor/contributor-desk";
 import { EditorDesk } from "../editor/editor-desk";
 import { FeaturedIssue } from "../reading/featured-issue";
 import { IssueCoverCard } from "../reading/issue-cover-card";
+import { IssueVisibilityBadge } from "../reading/issue-visibility-badge";
 import { SubscribeButton } from "../reading/subscribe-button";
 
 /** Desk choice follows capabilities, so role changes stay in roles.ts. */
@@ -78,12 +78,7 @@ function PastIssues({ issues }: { issues: IssueCard[] }) {
             <IssueCoverCard
               issue={issue}
               badge={
-                // The effective value (preflight F10), as on the shelf.
-                issue.effectiveVisibility === "members" ? (
-                  <Badge variant="outline" className="font-normal">
-                    {t("membersOnly")}
-                  </Badge>
-                ) : null
+                <IssueVisibilityBadge visibility={issue.effectiveVisibility} />
               }
             />
           </li>

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -23,14 +25,17 @@ export function IssueRail({
   magazine,
   community,
   pastIssues,
+  joinPanel,
 }: {
   magazine: MagazineSummary;
   community: ReadingCommunity;
   pastIssues: IssueCard[];
+  joinPanel: ReactNode;
 }) {
   const t = useTranslations("magazines.rail");
   return (
     <div className="flex flex-col gap-8">
+      {joinPanel}
       <section className="flex flex-col gap-3">
         <SectionLabel>{magazine.name}</SectionLabel>
         {magazine.description && (

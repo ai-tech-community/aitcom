@@ -149,7 +149,7 @@ export function LivePreview({
                   signedBy: null,
                 }}
               />
-              <Layout items={views} href={href} />
+              <Layout items={views} href={href} teaser={null} />
             </div>
             {/* Outside the inert picture: these say what the preview is waiting for. */}
             {visitorNoneVisible && (

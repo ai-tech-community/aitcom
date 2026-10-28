@@ -4,7 +4,11 @@ import { cn } from "@/lib/utils";
 import type { ItemRendererProps, ItemTitle } from "./types";
 
 /** Free-form text owned by the issue, rendered in full. */
-export function EditorialItem({ view, lead }: ItemRendererProps<"editorial">) {
+export function EditorialItem({
+  view,
+  lead,
+  teaser,
+}: ItemRendererProps<"editorial">) {
   return (
     <section
       data-item-kind="editorial"
@@ -28,9 +32,11 @@ export function EditorialItem({ view, lead }: ItemRendererProps<"editorial">) {
       {view.intro && (
         <p className="text-muted-foreground text-sm">{view.intro}</p>
       )}
-      <div className="min-w-0 [&>*:first-child]:mt-0">
-        <LexicalRenderer content={view.body} />
-      </div>
+      {!teaser && (
+        <div className="min-w-0 [&>*:first-child]:mt-0">
+          <LexicalRenderer content={view.body} />
+        </div>
+      )}
     </section>
   );
 }

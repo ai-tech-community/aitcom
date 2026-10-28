@@ -43,10 +43,12 @@ export type IssueHeroIssue = CoverArtIssue & {
 export function IssueHero({
   issue,
   titleAs: Title = "h1",
+  titleId,
 }: {
   issue: IssueHeroIssue;
   /** `h1` on the reading page; the builder preview sits under the builder's own `h1`. */
   titleAs?: "h1" | "h2";
+  titleId?: string;
 }) {
   const t = useTranslations("magazines.issue");
   const format = useFormatter();
@@ -75,7 +77,11 @@ export function IssueHero({
             <p className="text-muted-foreground font-mono text-xs">
               {t("number", { number: issueNumberText(issue.number) })}
             </p>
-            <Title className="text-3xl leading-tight font-semibold tracking-tight text-balance break-words @3xl:text-4xl">
+            <Title
+              id={titleId}
+              tabIndex={titleId ? -1 : undefined}
+              className="text-3xl leading-tight font-semibold tracking-tight text-balance break-words @3xl:text-4xl"
+            >
               {issue.title}
             </Title>
             <p className="text-muted-foreground text-sm">
