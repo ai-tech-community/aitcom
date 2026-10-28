@@ -157,7 +157,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     });
   }, 60_000);
 
-  it("home lists only public issues, newest first, featured = newest with a cover", async () => {
+  it("home lists only issues outsiders may see, newest first, featured = newest with a cover", async () => {
     const c = await community("home");
     const mag = await magazineIn(c, "home");
     const covered = await publishedIssue(c, mag, "Covered", {
@@ -194,8 +194,9 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
       ...home.justPublished,
       ...home.magazines.map((mc) => mc.latest),
     ];
+    // Outsiders may see public issues and previews; members-only never.
     for (const issue of everyListedIssue)
-      expect(issue.effectiveVisibility).toBe("public");
+      expect(["public", "teaser"]).toContain(issue.effectiveVisibility);
     expect(ids(everyListedIssue)).not.toContain(membersOnly.id);
   });
 
