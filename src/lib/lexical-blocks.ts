@@ -7,11 +7,19 @@
 export type LexicalLikeNode = {
   type?: string;
   text?: string;
+  version?: number;
+  detail?: number;
+  format?: number;
+  mode?: string;
+  style?: string;
+  variant?: string;
+  spacing?: string;
   children?: LexicalLikeNode[];
   fields?: { blockType?: string };
 };
 
-const ADMONITION_MARKER = /^\[!([A-Z]+)\]\s*/;
+/** `[!INFO]` plus the exact whitespace that followed it, so a save can put it back. */
+const ADMONITION_MARKER = /^\[!([A-Z]+)\](\s*)/;
 
 function plainText(nodes: readonly LexicalLikeNode[] | undefined): string {
   if (!nodes || nodes.length === 0) return "";
@@ -31,53 +39,28 @@ export function isEmptyParagraph(node: LexicalLikeNode): boolean {
 }
 
 /**
- * A block the editor inserts as its own unit (image, code, divider, or a
- * Payload block). Empty paragraphs pressed against these are leftovers from
- * insertion, not a blank line the writer asked for.
- */
-export function isDecoratorBlock(node: LexicalLikeNode): boolean {
-  return (
-    node.type === "block" ||
-    node.type === "image" ||
-    node.type === "code" ||
-    node.type === "code-block" ||
-    node.type === "horizontalrule"
-  );
-}
-
-function neighborContent<T extends LexicalLikeNode>(
-  nodes: readonly T[],
-  index: number,
-  direction: 1 | -1,
-): T | undefined {
-  for (
-    let cursor = index + direction;
-    cursor >= 0 && cursor < nodes.length;
-    cursor += direction
-  ) {
-    const node = nodes[cursor];
-    if (node && !isEmptyParagraph(node)) return node;
-  }
-  return undefined;
-}
-
-/**
- * Drop empty paragraphs that sit against a block (or against only other
- * empties that themselves sit against a block). A blank line between two
- * pieces of writing stays. A document of only empty paragraphs stays, so a
- * not-yet-written article is still a valid editor state.
+ * Drop empty paragraphs.
+ *
+ * They are not content. `articleBodyToLexical` used to store each blank line
+ * of an agent's markdown as its own paragraph, so a draft with a blank line
+ * between blocks (and two around a list or a `[!INFO]` line) loaded as a run
+ * of empty `<p>`s. Paragraph margin already separates blocks, including
+ * lists and callouts. A document that is only empty paragraphs keeps one, so
+ * an untouched editor still has a place to type.
  */
 export function stripStrayEmptyParagraphs<T extends LexicalLikeNode>(
   nodes: readonly T[],
 ): T[] {
-  return nodes.filter((node, index) => {
-    if (!isEmptyParagraph(node)) return true;
-    const before = neighborContent(nodes, index, -1);
-    const after = neighborContent(nodes, index, 1);
-    const beforeBlock = before !== undefined && isDecoratorBlock(before);
-    const afterBlock = after !== undefined && isDecoratorBlock(after);
-    return !beforeBlock && !afterBlock;
-  });
+  const kept = nodes.filter((node) => !isEmptyParagraph(node));
+  if (kept.length > 0) return kept;
+  const empty = nodes.find((node) => isEmptyParagraph(node));
+  return empty ? [empty] : [];
+}
+
+export function countEmptyParagraphs(
+  nodes: readonly LexicalLikeNode[],
+): number {
+  return nodes.filter((node) => isEmptyParagraph(node)).length;
 }
 
 /**
@@ -87,7 +70,7 @@ export function stripStrayEmptyParagraphs<T extends LexicalLikeNode>(
  */
 export function splitAdmonition<T extends LexicalLikeNode>(
   children: readonly T[],
-): { variant: string; body: T[] } | null {
+): { variant: string; spacing: string; body: T[] } | null {
   const start = children.findIndex(
     (child) => child.type === "text" && (child.text ?? "").trim().length > 0,
   );
@@ -105,9 +88,111 @@ export function splitAdmonition<T extends LexicalLikeNode>(
   const match = ADMONITION_MARKER.exec(trimmed);
   const variant = match?.[1];
   if (!match || !variant) return null;
+  const spacing = match[2] ?? "";
   const rest = trimmed.slice(match[0].length);
   const body: T[] = [];
   if (rest.length > 0) body.push({ ...first, text: rest });
   body.push(...children.slice(start + 1));
-  return { variant, body };
+  return { variant, spacing, body };
+}
+
+/** Border classes shared by the public callout and the editor callout. */
+export function admonitionBorderClass(variant: string): string {
+  switch (variant) {
+    case "INFO":
+      return "border-info/60 bg-info/10";
+    case "WARNING":
+      return "border-warning/60 bg-warning/10";
+    case "SUCCESS":
+      return "border-success/60 bg-success/10";
+    default:
+      return "border-border bg-muted";
+  }
+}
+
+/**
+ * A stored `[!INFO] …` paragraph becomes an editor callout. The marker is
+ * kept as `variant` + `spacing` so saving can restore the same paragraph.
+ */
+export function liftAdmonitionParagraph<T extends LexicalLikeNode>(node: T): T {
+  if (node.type !== "paragraph") return node;
+  const split = splitAdmonition(node.children ?? []);
+  if (!split) return node;
+  return {
+    ...node,
+    type: "admonition",
+    version: 1,
+    variant: split.variant,
+    spacing: split.spacing,
+    children: [
+      {
+        ...node,
+        type: "paragraph",
+        children: split.body,
+      },
+    ],
+  } as unknown as T;
+}
+
+function prependMarker<T extends LexicalLikeNode>(
+  paragraph: T,
+  prefix: string,
+): T {
+  const children = Array.isArray(paragraph.children)
+    ? [...paragraph.children]
+    : [];
+  const first = children[0];
+  if (first?.type === "text" && typeof first.text === "string") {
+    children[0] = { ...first, text: prefix + first.text };
+  } else {
+    children.unshift({
+      type: "text",
+      text: prefix,
+      version: 1,
+      detail: 0,
+      format: 0,
+      mode: "normal",
+      style: "",
+    });
+  }
+  return { ...paragraph, type: "paragraph", children };
+}
+
+/**
+ * An editor callout becomes the stored paragraph again: `[!INFO]` plus the
+ * original spacing, then the callout's text and links.
+ */
+export function flattenAdmonition<T extends LexicalLikeNode>(node: T): T[] {
+  if (node.type !== "admonition") return [node];
+  const variant = typeof node.variant === "string" ? node.variant : "INFO";
+  const spacing = typeof node.spacing === "string" ? node.spacing : " ";
+  const prefix = `[!${variant}]${spacing}`;
+  const kids = node.children ?? [];
+  if (kids.length === 0) {
+    return [
+      {
+        type: "paragraph",
+        children: [{ type: "text", text: prefix.trimEnd() }],
+      } as T,
+    ];
+  }
+  return kids.map((child, index) => {
+    if (index !== 0) return child as T;
+    if (child.type === "paragraph") return prependMarker(child as T, prefix);
+    return prependMarker({ type: "paragraph", children: [child] } as T, prefix);
+  });
+}
+
+/** Stored article JSON with empty paragraphs removed. Callouts stay paragraphs. */
+export function normalizeStoredContent(content: unknown): unknown {
+  if (!content || typeof content !== "object") return content;
+  const root = (content as { root?: { children?: LexicalLikeNode[] } }).root;
+  if (!root?.children) return content;
+  return {
+    ...content,
+    root: {
+      ...root,
+      children: stripStrayEmptyParagraphs(root.children),
+    },
+  };
 }

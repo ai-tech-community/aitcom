@@ -154,6 +154,111 @@ describe("ArticleEditor writing for a magazine", () => {
     );
   });
 
+  it("loads a stored [!INFO] paragraph as a callout and drops empty paragraphs", () => {
+    renderWithIntl(
+      <ArticleEditor
+        isTrustedAuthor={false}
+        destination={destination}
+        initialData={{
+          ...savedArticle,
+          content: {
+            root: {
+              type: "root",
+              version: 1,
+              children: [
+                { type: "paragraph", version: 1, children: [] },
+                {
+                  type: "paragraph",
+                  version: 1,
+                  children: [
+                    {
+                      type: "text",
+                      version: 1,
+                      text: "[!INFO] Good to know",
+                    },
+                  ],
+                },
+                { type: "paragraph", version: 1, children: [] },
+                { type: "paragraph", version: 1, children: [] },
+                {
+                  type: "list",
+                  version: 1,
+                  listType: "bullet",
+                  tag: "ul",
+                  start: 1,
+                  format: "",
+                  indent: 0,
+                  direction: "ltr",
+                  children: [
+                    {
+                      type: "listitem",
+                      version: 1,
+                      value: 1,
+                      indent: 0,
+                      format: "",
+                      direction: "ltr",
+                      children: [
+                        {
+                          type: "paragraph",
+                          version: 1,
+                          direction: "ltr",
+                          format: "",
+                          indent: 0,
+                          children: [
+                            {
+                              type: "text",
+                              version: 1,
+                              detail: 0,
+                              format: 0,
+                              mode: "normal",
+                              style: "",
+                              text: "Bring a question",
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+                { type: "paragraph", version: 1, children: [] },
+              ],
+            },
+          } as unknown as NonNullable<
+            ArticleEditorProps["initialData"]
+          >["content"],
+        }}
+      />,
+    );
+    const callout = document.querySelector("[data-admonition='INFO']");
+    expect(callout).not.toBeNull();
+    expect(callout).toHaveTextContent("Good to know");
+    expect(callout?.textContent).not.toContain("[!INFO]");
+    const empty = [
+      ...(document.querySelector(".editor-anchor")?.querySelectorAll("p") ??
+        []),
+    ].filter((paragraph) => !paragraph.textContent?.trim());
+    expect(empty).toHaveLength(0);
+    expect(screen.getByText("Bring a question")).toBeInTheDocument();
+  });
+
+  it("does not save a loaded article just to normalize its paragraphs", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderWithIntl(
+        <ArticleEditor
+          isTrustedAuthor={false}
+          destination={destination}
+          initialData={savedArticle}
+        />,
+      );
+      await act(() => vi.advanceTimersByTimeAsync(2000));
+      expect(calls.update).not.toHaveBeenCalled();
+      expect(calls.create).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does not hand in an existing article when the final update fails", async () => {
     calls.update.mockRejectedValue(new Error("SAVE_FAILED"));
     renderWithIntl(

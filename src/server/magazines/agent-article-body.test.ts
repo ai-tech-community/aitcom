@@ -6,9 +6,17 @@ import {
   magazineArticlePatch,
 } from "./agent-article-body";
 
-it("keeps the agent's words and line breaks without adding copy", () => {
-  const body = "First line\n\nThird line stays";
-  expect(articleBodyText(articleBodyToLexical(body))).toBe(body);
+it("keeps the agent's words and does not store blank lines as empty paragraphs", () => {
+  const lexical = articleBodyToLexical(
+    "First line\n\n\nThird line stays\n\n[!INFO] Good to know\n\n- one\n- two",
+  );
+  expect(lexical.root.children).toHaveLength(5);
+  expect(
+    lexical.root.children.every((paragraph) => paragraph.children.length > 0),
+  ).toBe(true);
+  expect(articleBodyText(lexical)).toBe(
+    "First line\nThird line stays\n[!INFO] Good to know\n- one\n- two",
+  );
 });
 
 it("creates a draft article and does not approve or publish it", () => {

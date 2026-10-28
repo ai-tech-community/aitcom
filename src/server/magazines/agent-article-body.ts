@@ -1,9 +1,45 @@
 /**
  * The agent's article body, stored as Lexical paragraphs without adding or
- * joining words. One line is one paragraph. Empty lines stay empty paragraphs
- * so a blank line in the draft is still a blank line.
+ * joining words. One non-empty line is one paragraph.
+ *
+ * A blank line in markdown only separates blocks. Storing it as an empty
+ * paragraph is what filled the editor with empty `<p>`s around lists and
+ * `[!INFO]` callouts. Paragraph margin already separates those blocks.
+ * A body that is only whitespace still gets one empty paragraph, so the
+ * rich-text field has a root child.
  */
 export function articleBodyToLexical(body: string) {
+  const lines = body.split("\n").filter((line) => line.trim().length > 0);
+  const children =
+    lines.length > 0
+      ? lines.map((line) => ({
+          type: "paragraph" as const,
+          version: 1,
+          direction: "ltr" as const,
+          format: "" as const,
+          indent: 0,
+          children: [
+            {
+              type: "text" as const,
+              text: line,
+              version: 1,
+              detail: 0,
+              format: 0,
+              mode: "normal" as const,
+              style: "",
+            },
+          ],
+        }))
+      : [
+          {
+            type: "paragraph" as const,
+            version: 1,
+            direction: "ltr" as const,
+            format: "" as const,
+            indent: 0,
+            children: [],
+          },
+        ];
   return {
     root: {
       type: "root" as const,
@@ -11,26 +47,7 @@ export function articleBodyToLexical(body: string) {
       format: "" as const,
       indent: 0,
       version: 1,
-      children: body.split("\n").map((line) => ({
-        type: "paragraph" as const,
-        version: 1,
-        direction: "ltr" as const,
-        format: "" as const,
-        indent: 0,
-        children: line
-          ? [
-              {
-                type: "text" as const,
-                text: line,
-                version: 1,
-                detail: 0,
-                format: 0,
-                mode: "normal" as const,
-                style: "",
-              },
-            ]
-          : [],
-      })),
+      children,
     },
   };
 }

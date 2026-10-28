@@ -1,7 +1,12 @@
 import type { SlashCommand } from "./types";
 import { SLASH_COMMANDS } from "./types";
 import type { SerializedEditorState } from "@payloadcms/richtext-lexical/lexical";
-import { stripStrayEmptyParagraphs } from "@/lib/lexical-blocks";
+import {
+  flattenAdmonition,
+  liftAdmonitionParagraph,
+  stripStrayEmptyParagraphs,
+  type LexicalLikeNode,
+} from "@/lib/lexical-blocks";
 import { slugify } from "@/lib/text-utils";
 
 /** A Payload block stored as `{type:"block", fields.blockType}` that the editor handles as its own node type. */
@@ -177,7 +182,15 @@ export function preprocessEditorState(
     }
   }
 
-  if (Array.isArray(json.root?.children)) walkNodes(json.root.children);
+  const loadedRoot = json.root;
+  if (loadedRoot && Array.isArray(loadedRoot.children)) {
+    walkNodes(loadedRoot.children);
+    loadedRoot.children = stripStrayEmptyParagraphs(
+      loadedRoot.children.map((node) =>
+        liftAdmonitionParagraph(node as LexicalLikeNode),
+      ),
+    ) as NonNullable<typeof loadedRoot.children>;
+  }
   return JSON.stringify(json);
 }
 
@@ -234,11 +247,14 @@ export function postprocessEditorState(
     }
   }
 
-  if (Array.isArray(json.root?.children)) {
-    walkNodes(json.root.children);
-    // Empty paragraphs beside an image or code block are insertion leftovers.
-    // A blank line between two paragraphs is kept.
-    json.root.children = stripStrayEmptyParagraphs(json.root.children);
+  const savedRoot = json.root;
+  if (savedRoot && Array.isArray(savedRoot.children)) {
+    walkNodes(savedRoot.children);
+    savedRoot.children = stripStrayEmptyParagraphs(
+      savedRoot.children.flatMap((node) =>
+        flattenAdmonition(node as LexicalLikeNode),
+      ),
+    ) as NonNullable<typeof savedRoot.children>;
   }
   return json as SerializedEditorState;
 }
