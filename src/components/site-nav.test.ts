@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { AI_TOOLS_LIST_PATH } from "@/lib/investigations/ai-tools-list";
-import { HUB_FORUM_PATH } from "@/server/communities/forum-scope";
 import en from "../../messages/en.json";
 import nl from "../../messages/nl.json";
 import { JOIN_HREF, NAV_BAR, keyboardNavItems } from "./site-nav";
@@ -55,7 +54,7 @@ describe("site nav", () => {
       "ideas",
     ]);
     expect(community.items.find((item) => item.key === "forum")?.href).toBe(
-      HUB_FORUM_PATH,
+      "/forum",
     );
     expect(startups.items.map((item) => item.key)).toEqual([
       "startups",

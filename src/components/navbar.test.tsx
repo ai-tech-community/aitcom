@@ -40,7 +40,7 @@ const HEADER_HREFS = [
   "/communities",
   "/members",
   "/agents",
-  "/communities/ait/forum",
+  "/forum",
   "/ideas",
   "/events",
   "/news",
@@ -87,6 +87,8 @@ describe("Navbar", () => {
     for (const href of HEADER_HREFS) {
       expect(html).toContain(`href="${href}"`);
     }
+    expect(html).toContain('href="/forum"');
+    expect(html).not.toContain('href="/communities/ait/forum"');
     expect(html).not.toContain('href="/sponsors"');
     expect(html).not.toContain(">MORE<");
     expect(html).toContain(en.nav.descriptions.explore);
@@ -102,6 +104,8 @@ describe("Navbar", () => {
     expect(html).toContain(nl.nav.groups.read.toUpperCase());
     expect(html).toContain(nl.nav.descriptions.explore);
     expect(html).toContain(nl.nav.descriptions.jobs);
+    expect(html).toContain('href="/forum"');
+    expect(html).not.toContain('href="/communities/ait/forum"');
     expect(html).toContain('href="/join"');
   });
 
@@ -214,7 +218,7 @@ describe("Navbar", () => {
     fireEvent.keyDown(window, { key: "r" });
     expect(router.push).toHaveBeenCalledWith("/roles");
     fireEvent.keyDown(window, { key: "o" });
-    expect(router.push).toHaveBeenCalledWith("/communities/ait/forum");
+    expect(router.push).toHaveBeenCalledWith("/forum");
     fireEvent.keyDown(window, { key: "f" });
     expect(router.push).toHaveBeenCalledWith("/ideas");
     fireEvent.keyDown(window, { key: "k" });
@@ -251,7 +255,7 @@ describe("Navbar", () => {
     fireEvent.click(communityButton);
     expect(
       within(mainNav()).getByRole("link", { name: /\[O\] FORUM/ }),
-    ).toHaveAttribute("href", "/communities/ait/forum");
+    ).toHaveAttribute("href", "/forum");
     expect(
       within(mainNav()).getByRole("link", { name: /\[F\] IDEAS/ }),
     ).toHaveAttribute("href", "/ideas");
@@ -290,7 +294,7 @@ describe("Navbar", () => {
     ).not.toHaveAttribute("aria-current");
     onTools.unmount();
 
-    path.value = "/communities/ait/forum";
+    path.value = "/forum";
     renderNavbar();
     fireEvent.click(
       within(mainNav()).getByRole("button", { name: "COMMUNITY" }),

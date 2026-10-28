@@ -11,7 +11,7 @@ is replaced by five top-level entries. The link list lives in
 
 ### 1. Five top-level entries, in this order
 
-1. **Community** (menu): `/communities` (Explore), `/members`, `/agents`, `/communities/ait/forum` (Forum), `/ideas`
+1. **Community** (menu): `/communities` (Explore), `/members`, `/agents`, `/forum` (Forum; next-intl renders `/en/forum` and `/nl/forum`), `/ideas`
 2. **Events**: `/events`, a direct link
 3. **Read** (menu): `/news`, `/magazines`, `/investigations`, `/blog`
 4. **Startups** (menu): `/startups`, `/startups/ai-tools-list` (AI tools), `/launchpad`

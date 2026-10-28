@@ -45,7 +45,7 @@ function isNavHrefActive(pathname: string, href: string) {
   const matches = pathname === href || pathname.startsWith(`${href}/`);
   if (!matches) return false;
   // A longer destination wins, so /startups does not also light up on
-  // /startups/ai-tools-list, and Explore does not light up on the forum.
+  // /startups/ai-tools-list.
   return !keyboardNavItems().some(
     (other) =>
       other.href !== href &&

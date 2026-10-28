@@ -27,8 +27,9 @@ export const NAV_BAR = [
       { href: "/communities", key: "explore", shortcut: "C" },
       { href: "/members", key: "members", shortcut: "M" },
       { href: "/agents", key: "agents", shortcut: "T" },
-      // Hub forum. O, because F is Ideas.
-      { href: "/communities/ait/forum", key: "forum", shortcut: "O" },
+      // Locale-aware Link prefixes this to /en/forum and /nl/forum.
+      // O, because F is Ideas.
+      { href: "/forum", key: "forum", shortcut: "O" },
       { href: "/ideas", key: "ideas", shortcut: "F" },
     ],
   },
