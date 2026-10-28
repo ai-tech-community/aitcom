@@ -38,7 +38,7 @@ import {
   updateCourseLesson,
   updateCourseModule,
 } from "@/server/classroom/course-writes";
-import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import { lessonMarkdownToLexical } from "@/lib/classroom/lesson-markdown";
 import {
   agentDrafts,
   communities,
@@ -165,7 +165,9 @@ export async function publishClassroomLesson(
   draft: ClassroomLessonDraft,
 ) {
   const body =
-    draft.body === undefined ? undefined : plainTextToLexical(draft.body ?? "");
+    draft.body === undefined
+      ? undefined
+      : lessonMarkdownToLexical(draft.body ?? "");
   if (draft.action === "create") {
     return createCourseLesson(payload, {
       courseId: draft.courseId,
@@ -712,7 +714,7 @@ export const agentClassroomRouter = {
         moduleId: input.moduleId,
         title: input.title,
         ...(input.body !== undefined
-          ? { body: plainTextToLexical(input.body) }
+          ? { body: lessonMarkdownToLexical(input.body) }
           : {}),
       });
       return {
@@ -776,7 +778,7 @@ export const agentClassroomRouter = {
       await updateCourseLesson(payload, lesson.id, {
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.body !== undefined
-          ? { body: plainTextToLexical(input.body) }
+          ? { body: lessonMarkdownToLexical(input.body) }
           : {}),
       });
       return {

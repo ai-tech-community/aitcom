@@ -98,7 +98,7 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
     "create-lesson",
     {
       description:
-        "Add a lesson to a classroom the owner authored. Requires contribute scope. Optional moduleId places it in that module. body is plain text stored as paragraphs. On an unpublished course the lesson is created immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it. The response status is draft until that approval. This tool does not add an exam.",
+        "Add a lesson to a classroom the owner authored. Requires contribute scope. Optional moduleId places it in that module. body is markdown: headings, lists, GFM tables, fenced code, and links. Newlines are kept. On an unpublished course the lesson is created immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it. The response status is draft until that approval. This tool does not add an exam.",
       inputSchema: {
         communitySlug: z.string().min(1),
         courseId: z.number().int().positive(),
@@ -115,7 +115,7 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
     "update-lesson",
     {
       description:
-        "Update a lesson title or body on a classroom the owner authored. Requires contribute scope. body is plain text stored as paragraphs. On an unpublished course the change is saved immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it. The response status is draft until that approval.",
+        "Update a lesson title or body on a classroom the owner authored. Requires contribute scope. body is markdown: headings, lists, GFM tables, fenced code, and links. Newlines are kept. On an unpublished course the change is saved immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it. The response status is draft until that approval.",
       inputSchema: {
         communitySlug: z.string().min(1),
         lessonId: z.number().int().positive(),
