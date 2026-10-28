@@ -1,28 +1,25 @@
-import type { IssueStatus, IssueVisibility } from "./values";
+import type { IssueStatus } from "./values";
 
 /**
  * What search engines may see of a magazine (ADR-0042). Robots tags and
- * structured data on the reading pages key off these, never off the stored
- * visibility: an unconfirmed public issue in an unlisted community is
- * members-only for everyone outside it (preflight F10).
+ * structured data on the reading pages use the resolver's outsider reach;
+ * nothing here derives access from visibility (Decision 9).
  */
+
+export type OutsiderReach = "none" | "teaser" | "full";
 
 type IndexFacts = {
   status: IssueStatus;
-  /** `IssueCard.effectiveVisibility`, not the stored value. */
-  effectiveVisibility: IssueVisibility;
+  /** `IssueCard.outsiderReach`, computed by the resolver. */
+  outsiderReach: OutsiderReach;
 };
 
-/** A published issue anyone may read. */
+/** An issue the resolver lets outsiders reach, unless staff hid its magazine. */
 export function isIssueIndexable(
   issue: IndexFacts,
   magazine: { staffHidden: boolean },
 ): boolean {
-  return (
-    !magazine.staffHidden &&
-    issue.status === "published" &&
-    issue.effectiveVisibility === "public"
-  );
+  return !magazine.staffHidden && issue.outsiderReach !== "none";
 }
 
 type ArticleFacts = { status: "draft" | "published" };

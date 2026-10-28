@@ -13,6 +13,7 @@ import type * as Reading from "@/server/magazines/reading";
 import type * as SitemapPaths from "@/server/magazines/sitemap-paths";
 import type * as ProfileWork from "@/server/members/profile-work";
 
+import type { IssueVisibility } from "@/lib/magazines/values";
 import type * as PublicArticles from "./public-articles";
 
 function looksLikeCloudNeon(url: string): boolean {
@@ -181,6 +182,12 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
       });
       const magazineIds = mags.map((mag) => mag.id);
       if (magazineIds.length > 0) {
+        await db
+          .delete(schema.magazineReads)
+          .where(inArray(schema.magazineReads.magazineId, magazineIds));
+        await db
+          .delete(schema.magazineSubscriptions)
+          .where(inArray(schema.magazineSubscriptions.magazineId, magazineIds));
         // Deleting the issues clears their articles' placement (the
         // foreign key is ON DELETE set null).
         await payload.delete({
@@ -298,7 +305,9 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
   }
 
   /** One magazine article in a published public issue of a listed community. */
-  async function publishedMagazineArticle() {
+  async function publishedMagazineArticle(
+    visibility: IssueVisibility = "public",
+  ) {
     const c = await community("home");
     const magazine = await m.magazines.saveMagazineSettings(
       m,
@@ -307,7 +316,7 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
         name: `Surfaces ${fx.sfx}`,
         slug: `as-mag-${fx.sfx}`,
         topics: [],
-        defaultVisibility: "public",
+        defaultVisibility: visibility,
       },
       fx.editorId,
       true,
@@ -471,6 +480,32 @@ describe.skipIf(!RUN_DB)("article surfaces [DB integration]", () => {
     await expect(
       callerAs(fx.outsiderId).comments.list({ articleId: article.id }),
     ).resolves.toEqual([]);
+  }, 60_000);
+
+  it("a teaser article is unreadable on every other surface", async () => {
+    const { c, magazine, issue, article, articlePath } =
+      await publishedMagazineArticle("teaser");
+    const { canReadArticle, articleCommentAccess } =
+      await import("./article-access");
+    const live = await m.payload.findByID({
+      collection: "articles",
+      id: article.id,
+      depth: 0,
+    });
+    for (const viewerId of [null, fx.outsiderId]) {
+      expect(await canReadArticle(m, live, viewerId)).toBe(false);
+      expect(await articleCommentAccess(m, live, viewerId)).toBe("not_found");
+    }
+    expect(await canReadArticle(m, live, fx.memberId)).toBe(true);
+    expect((await profileArticles()).map((a) => Number(a.id))).not.toContain(
+      Number(article.id),
+    );
+    expect(await agentArticleIds()).not.toContain(article.id);
+    expect(await agentArticleIds(c.slug)).not.toContain(article.id);
+    const paths = await m.magazineSitemapPaths(m);
+    expect(paths).not.toContain(articlePath);
+    expect(paths).not.toContain(`/magazines/${magazine.slug}/${issue.slug}`);
+    expect(await homeIssueIds()).toContain(issue.id);
   }, 60_000);
 
   it("never on /blog, the blog feed query or My articles", async () => {

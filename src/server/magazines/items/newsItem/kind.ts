@@ -35,6 +35,7 @@ function newsFor(
   ctx: ItemContext,
 ): Promise<Map<string, NewsListItem>> {
   switch (ctx.access) {
+    case "teaser":
     case "full":
     case "editor":
       return findNewsItemsByIds(
@@ -107,6 +108,7 @@ export const newsItemKind: IssueItemKind<
   },
   isReadable: (_view, ctx) => {
     switch (ctx.access) {
+      case "teaser":
       case "full":
       case "editor":
         return true;

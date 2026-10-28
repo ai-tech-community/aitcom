@@ -4955,6 +4955,7 @@
       "inheritVisibility": "Hetzelfde als het magazine ({current})",
       "visibilities": {
         "members": "Alleen leden",
+        "teaser": "Voorproefje voor iedereen",
         "public": "Iedereen"
       },
       "whenReady": "Als een concept klaar is",

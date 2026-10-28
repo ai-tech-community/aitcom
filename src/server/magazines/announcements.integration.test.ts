@@ -10,6 +10,7 @@ import {
   vi,
 } from "vitest";
 
+import type { IssueVisibility } from "@/lib/magazines/values";
 import { issuePath } from "@/lib/magazines/paths";
 import { gatedMailRecipient } from "@/lib/email/recipient-gate";
 import type { Magazine } from "@/payload-types";
@@ -194,6 +195,9 @@ describe.skipIf(!isLocalDbConfigured())(
       if (!fx) return;
       const { db, s, payload } = m;
       await db
+        .delete(s.magazineReads)
+        .where(eq(s.magazineReads.magazineId, fx.magazine.id));
+      await db
         .delete(s.magazineSubscriptions)
         .where(eq(s.magazineSubscriptions.magazineId, fx.magazine.id));
       await payload.delete({
@@ -231,7 +235,7 @@ describe.skipIf(!isLocalDbConfigured())(
       await db.delete(s.user).where(inArray(s.user.id, fx.ids));
     });
     const actor = () => ({ userId: fx.owner, community: fx.community });
-    async function draft(visibility: "public" | "members" = "public") {
+    async function draft(visibility: IssueVisibility = "public") {
       const issue = await m.issues.createIssue(
         m,
         fx.magazine,
@@ -265,7 +269,7 @@ describe.skipIf(!isLocalDbConfigured())(
         depth: 0,
       });
     }
-    async function publish(visibility: "public" | "members" = "public") {
+    async function publish(visibility: IssueVisibility = "public") {
       const issue = await draft(visibility);
       return m.issues.publishIssue(m, issue, issue.updatedAt, actor(), { now });
     }
@@ -318,6 +322,16 @@ describe.skipIf(!isLocalDbConfigured())(
       expect((await announcement(issue.id))!.completedAt).not.toBeNull();
       expect(await run()).toEqual({ inbox: 0, email: 0, completed: 0 });
       expect(send).not.toHaveBeenCalled();
+    });
+    it("a preview issue reaches every signed-in subscriber by inbox and nobody by email", async () => {
+      const issue = await publish("teaser");
+      expect((await notices()).map((r) => r.userId).sort()).toEqual(
+        [fx.member, fx.outsider, fx.pending].sort(),
+      );
+      expect(await run()).toMatchObject({ email: 0, completed: 1 });
+      expect(send).not.toHaveBeenCalled();
+      expect((await announcement(issue.id))!.completedAt).not.toBeNull();
+      expect(await run()).toEqual({ inbox: 0, email: 0, completed: 0 });
     });
     it("a public issue reaches every subscriber once", async () => {
       const issue = await publish();
@@ -486,8 +500,19 @@ describe.skipIf(!isLocalDbConfigured())(
         await import("./issue-access");
       const { loadMagazineEditorship, NO_STANDING } =
         await import("./editorship");
-      for (const kind of ["listed", "members", "unconfirmed"] as const) {
-        const issue = await publish(kind === "members" ? "members" : "public");
+      for (const kind of [
+        "listed",
+        "preview",
+        "members",
+        "unconfirmed",
+      ] as const) {
+        const issue = await publish(
+          kind === "members"
+            ? "members"
+            : kind === "preview"
+              ? "teaser"
+              : "public",
+        );
         if (kind === "unconfirmed")
           await m.db
             .update(m.s.communities)

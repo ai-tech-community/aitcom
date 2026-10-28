@@ -12,6 +12,7 @@ import {
 } from "@/server/db/schema";
 import {
   articleHrefs,
+  readableArticleIssueIds,
   readableArticleWhere,
 } from "@/server/articles/article-access";
 import {
@@ -20,10 +21,7 @@ import {
 } from "@/server/classroom/course-access";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
 import { hiddenContentCommunityIds } from "@/server/communities/content-visibility-queries";
-import {
-  loadIssueReadScope,
-  readableIssueIds,
-} from "@/server/magazines/readable-issues";
+import { loadIssueReadScope } from "@/server/magazines/readable-issues";
 
 type Db = typeof appDb;
 type Locale = "en" | "nl";
@@ -318,7 +316,7 @@ export async function loadProfileWork(
     await Promise.all([
       hiddenContentCommunityIds(database, viewerId),
       loadIssueReadScope(database, null).then((scope) =>
-        readableIssueIds(payload, scope),
+        readableArticleIssueIds(payload, scope),
       ),
       database
         .select({

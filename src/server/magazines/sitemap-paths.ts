@@ -1,5 +1,6 @@
 import {
   articleHref,
+  readableArticleIssueIds,
   readableMagazineArticleWhere,
 } from "@/server/articles/article-access";
 import {
@@ -11,7 +12,7 @@ import {
 import type { Deps, PayloadClient } from "./deps";
 import { loadIssuePlaces } from "./issue-places";
 import { hiddenMagazineIds } from "./listing";
-import { loadIssueReadScope, readableIssueIds } from "./readable-issues";
+import { loadIssueReadScope } from "./readable-issues";
 
 /**
  * Every magazine URL a signed-out visitor may open, for the sitemap
@@ -27,7 +28,7 @@ export async function magazineSitemapPaths(
   const { db, payload } = deps;
   const scope = await loadIssueReadScope(db, null);
   const hidden = await hiddenMagazineIds(payload);
-  const issueIds = await readableIssueIds(
+  const issueIds = await readableArticleIssueIds(
     payload,
     scope,
     hidden.length > 0 ? { magazine: { not_in: hidden } } : undefined,

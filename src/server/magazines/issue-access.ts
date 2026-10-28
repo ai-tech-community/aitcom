@@ -12,6 +12,7 @@ import type { CommunityVisibility } from "@/server/communities/content-visibilit
 import type { db } from "@/server/db";
 import { communities } from "@/server/db/schema";
 
+import type { Deps } from "./deps";
 import {
   loadMagazineEditorship,
   type MagazineStanding,
@@ -47,7 +48,14 @@ export function resolveMagazineIssueAccess(
   if (viewer.isEditor) return "editor";
   if (issue.status !== "published") return "none";
   if (viewer.isMember) return "full";
-  return effectiveVisibility(issue, community) === "public" ? "full" : "none";
+  switch (effectiveVisibility(issue, community)) {
+    case "members":
+      return "none";
+    case "teaser":
+      return "teaser";
+    case "public":
+      return "full";
+  }
 }
 
 export type LoadableIssue = {
@@ -127,10 +135,52 @@ export async function loadMagazineIssueAccess(
   });
 }
 
-export type IssueAudience = "nobody" | "members" | "everyone";
+export type IssueAccessRow = {
+  id: number;
+  communityId: string;
+  magazineId: number | null;
+  status: IssueStatus;
+  visibility: IssueVisibility;
+  publicConfirmedAt: string | null;
+};
 
-/** Who may be told about a published issue (Decision 7).
- * Slice 6 decides `teaser` here: teaser issues are meant to reach email subscribers.
+/** One by-id read of an issue's access facts; null when it is missing. */
+export async function loadIssueAccessById(
+  deps: Pick<Deps, "db" | "payload">,
+  issueId: number,
+  viewerId: string | null,
+): Promise<{ issue: IssueAccessRow; access: MagazineIssueAccess } | null> {
+  const issue = await deps.payload.findByID({
+    collection: "magazine-issues",
+    id: issueId,
+    depth: 0,
+    disableErrors: true,
+    select: {
+      communityId: true,
+      magazine: true,
+      status: true,
+      visibility: true,
+      publicConfirmedAt: true,
+    },
+  });
+  if (!issue) return null;
+  const facts = issueAccessFacts(issue);
+  if (!facts) return null;
+  return {
+    issue: {
+      id: Number(issue.id),
+      communityId: issue.communityId,
+      magazineId: relationIdOrNull(issue.magazine),
+      ...facts,
+    },
+    access: await loadMagazineIssueAccess(deps.db, issue, viewerId),
+  };
+}
+
+export type IssueAudience = "nobody" | "members" | "preview" | "everyone";
+
+/** Who may be told about a published issue (Decision 8).
+ * Preview reaches signed-in subscribers by inbox; email stays public-only.
  */
 export function issueAudience(
   community: (CommunityVisibility & { deleted: boolean }) | null,
@@ -142,6 +192,8 @@ export function issueAudience(
     issue,
   });
   switch (access) {
+    case "teaser":
+      return "preview";
     case "full":
       return "everyone";
     case "editor":
@@ -156,6 +208,7 @@ export function issueAudience(
         case "full":
           return "members";
         case "none":
+        case "teaser":
         case "editor":
           return "nobody";
       }

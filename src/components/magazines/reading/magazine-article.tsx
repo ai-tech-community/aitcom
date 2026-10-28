@@ -40,7 +40,7 @@ const NEXT_IN_ISSUE_LABEL = "next-in-issue-label";
 
 /**
  * `Article` structured data, part of its issue and magazine. Only for an
- * article search engines may index (effective visibility, preflight F10).
+ * article search engines may index (resolver outsider reach, Decision 9).
  */
 function ArticleJsonLd({
   data,
@@ -55,6 +55,7 @@ function ArticleJsonLd({
       data={{
         "@type": "Article",
         headline: article.title,
+        isAccessibleForFree: issue.outsiderReach === "full",
         url: absoluteLocaleUrl(
           locale,
           magazineArticlePath(magazine, issue, article),

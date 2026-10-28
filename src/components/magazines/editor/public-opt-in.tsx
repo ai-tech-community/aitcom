@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { IssueVisibility } from "@/lib/magazines/values";
 import type { CommunityVisibility } from "@/server/communities/content-visibility";
 import {
+  opensToOutsiders,
   planVisibilityChange,
   type VisibilityRecord,
 } from "@/lib/magazines/visibility";
@@ -60,7 +61,7 @@ export function PublicOptIn({
   const warningId = useId();
   const checkboxId = useId();
 
-  if (value !== "public" || !communityIsPrivate) return null;
+  if (!opensToOutsiders(value) || !communityIsPrivate) return null;
 
   return (
     <div className="bg-secondary/50 flex flex-col gap-3 rounded-lg border p-4">

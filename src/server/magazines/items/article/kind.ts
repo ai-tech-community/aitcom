@@ -45,6 +45,7 @@ function articleReadingFor(access: IssueReaderAccess): {
   showsUnpublished: boolean;
 } {
   switch (access) {
+    case "teaser":
     case "full":
       return { draft: false, showsUnpublished: false };
     case "editor":
@@ -210,6 +211,7 @@ export const articleItemKind: IssueItemKind<
   // (`articleReadingFor`), so every loaded article view is readable.
   isReadable: (_view, ctx) => {
     switch (ctx.access) {
+      case "teaser":
       case "full":
       case "editor":
         return true;

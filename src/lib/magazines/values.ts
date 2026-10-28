@@ -4,12 +4,13 @@
  * exactly one place.
  */
 
-/** Who may read an issue: community members only, or anyone. */
-export const ISSUE_VISIBILITIES = ["members", "public"] as const;
+/** Who may read an issue: members, a preview for everyone, or public. */
+export const ISSUE_VISIBILITIES = ["members", "teaser", "public"] as const;
 export type IssueVisibility = (typeof ISSUE_VISIBILITIES)[number];
 /** Payload admin labels. Site copy goes through next-intl instead. */
 export const ISSUE_VISIBILITY_LABELS: Record<IssueVisibility, string> = {
   members: "Members only",
+  teaser: "Preview for everyone",
   public: "Public",
 };
 

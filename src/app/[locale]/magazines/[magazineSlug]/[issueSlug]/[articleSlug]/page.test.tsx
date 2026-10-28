@@ -1,6 +1,6 @@
 // The article page answers 404 when the read model does, loads comments
 // only for an article readers can reach, and is indexed only when its
-// issue is effectively public (preflight F10).
+// issue reaches outsiders (Decision 9).
 import { createTranslator } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -108,15 +108,38 @@ describe("magazine article page", () => {
     );
   });
 
-  it("keeps it out of search when the issue is members-only in effect, or a preview", async () => {
+  it("indexes a preview article using the resolver's outsider reach", async () => {
+    state.data = articlePage({
+      access: "teaser",
+      issue: {
+        visibility: "teaser",
+        effectiveVisibility: "teaser",
+        outsiderReach: "teaser",
+      },
+    });
+    expect((await generateMetadata({ params })).robots).toBeUndefined();
+  });
+
+  it("keeps it out of search when the issue is members-only in effect, or an editor's draft", async () => {
     for (const data of [
       articlePage({
-        issue: { visibility: "public", effectiveVisibility: "members" },
+        issue: {
+          visibility: "public",
+          effectiveVisibility: "members",
+          outsiderReach: "none",
+        },
       }),
       articlePage({
-        issue: { visibility: "members", effectiveVisibility: "members" },
+        issue: {
+          visibility: "members",
+          effectiveVisibility: "members",
+          outsiderReach: "none",
+        },
       }),
-      articlePage({ access: "editor", issue: { status: "draft" } }),
+      articlePage({
+        access: "editor",
+        issue: { status: "draft", outsiderReach: "none" },
+      }),
     ]) {
       state.data = data;
       expect((await generateMetadata({ params })).robots).toEqual({

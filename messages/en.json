@@ -4955,6 +4955,7 @@
       "inheritVisibility": "Same as the magazine ({current})",
       "visibilities": {
         "members": "Members only",
+        "teaser": "Preview for everyone",
         "public": "Everyone"
       },
       "whenReady": "When a draft is ready",

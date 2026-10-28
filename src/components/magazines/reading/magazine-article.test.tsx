@@ -151,7 +151,27 @@ describe("MagazineArticle", () => {
     ).toHaveAttribute("href", "/magazines/agents-weekly/issue-4");
   });
 
-  it("emits JSON-LD only for a public issue", () => {
+  it("marks preview articles as not fully accessible for free in JSON-LD", () => {
+    const { container } = renderWithIntl(
+      <MagazineArticle
+        data={articlePage({
+          access: "teaser",
+          issue: {
+            visibility: "teaser",
+            effectiveVisibility: "teaser",
+            outsiderReach: "teaser",
+          },
+        })}
+        comments={[]}
+      />,
+    );
+    expect(jsonLd(container)[0]).toMatchObject({
+      "@type": "Article",
+      isAccessibleForFree: false,
+    });
+  });
+
+  it("emits JSON-LD only when the issue reaches outsiders", () => {
     const { container, unmount } = renderWithIntl(
       <MagazineArticle data={articlePage()} comments={comments} />,
     );
@@ -183,12 +203,23 @@ describe("MagazineArticle", () => {
         magazine: { ...articlePage().magazine, staffHidden: true },
       }),
       articlePage({
-        issue: { visibility: "public", effectiveVisibility: "members" },
+        issue: {
+          visibility: "public",
+          effectiveVisibility: "members",
+          outsiderReach: "none",
+        },
       }),
       articlePage({
-        issue: { visibility: "members", effectiveVisibility: "members" },
+        issue: {
+          visibility: "members",
+          effectiveVisibility: "members",
+          outsiderReach: "none",
+        },
       }),
-      articlePage({ access: "editor", issue: { status: "draft" } }),
+      articlePage({
+        access: "editor",
+        issue: { status: "draft", outsiderReach: "none" },
+      }),
     ]) {
       const { container: other, unmount: done } = renderWithIntl(
         <MagazineArticle data={data} comments={comments} />,
@@ -222,7 +253,7 @@ describe("MagazineArticle", () => {
       <MagazineArticle
         data={articlePage({
           access: "editor",
-          issue: { status: "draft", publishedAt: null },
+          issue: { status: "draft", publishedAt: null, outsiderReach: "none" },
           article: magazineArticle({ status: "draft", publishedAt: null }),
         })}
         comments={[]}

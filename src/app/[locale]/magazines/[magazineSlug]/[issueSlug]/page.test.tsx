@@ -1,5 +1,5 @@
 // The issue page answers 404 when the read model does, and only an issue
-// anyone may read (its effective visibility, preflight F10) is indexed.
+// anyone may read (its resolver outsider reach, Decision 9) is indexed.
 import { createTranslator } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -86,9 +86,25 @@ describe("issue page", () => {
     );
   });
 
+  it("indexes a preview issue using the resolver's outsider reach", async () => {
+    state.data = issuePage({
+      access: "teaser",
+      issue: {
+        visibility: "teaser",
+        effectiveVisibility: "teaser",
+        outsiderReach: "teaser",
+      },
+    });
+    expect((await generateMetadata({ params })).robots).toBeUndefined();
+  });
+
   it("keeps an unconfirmed public issue in an unlisted community out of search", async () => {
     state.data = issuePage({
-      issue: { visibility: "public", effectiveVisibility: "members" },
+      issue: {
+        visibility: "public",
+        effectiveVisibility: "members",
+        outsiderReach: "none",
+      },
     });
     expect((await generateMetadata({ params })).robots).toEqual({
       index: false,
@@ -97,7 +113,11 @@ describe("issue page", () => {
 
   it("keeps members-only issues and drafts out of search", async () => {
     state.data = issuePage({
-      issue: { visibility: "members", effectiveVisibility: "members" },
+      issue: {
+        visibility: "members",
+        effectiveVisibility: "members",
+        outsiderReach: "none",
+      },
     });
     expect((await generateMetadata({ params })).robots).toEqual({
       index: false,
@@ -105,7 +125,7 @@ describe("issue page", () => {
 
     state.data = issuePage({
       access: "editor",
-      issue: { status: "draft", publishedAt: null },
+      issue: { status: "draft", publishedAt: null, outsiderReach: "none" },
     });
     expect((await generateMetadata({ params })).robots).toEqual({
       index: false,

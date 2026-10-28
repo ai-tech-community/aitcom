@@ -173,6 +173,7 @@ export async function isAccountSubscribed(
   return Boolean(row);
 }
 
+/** Preview-only magazines accept subscribers for their next public issue (Decision 8). */
 export async function subscribeByEmail(
   deps: Deps,
   input: {

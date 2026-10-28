@@ -6,6 +6,7 @@ import {
   articleTextModeFor,
   type IssueReaderAccess,
 } from "@/lib/magazines/access";
+import type { OutsiderReach } from "@/lib/magazines/indexing";
 import type {
   ArticleItemView,
   EditorItemView,
@@ -27,7 +28,7 @@ import { communities } from "@/server/db/schema";
 import { memberDisplayName } from "@/server/members/display-name";
 
 import type { Deps } from "./deps";
-import { loadMagazineEditorship } from "./editorship";
+import { loadMagazineEditorship, NO_STANDING } from "./editorship";
 import { issueAccessFacts, resolveMagazineIssueAccess } from "./issue-access";
 import { hiddenMagazineIds, isHiddenByStaff } from "./listing";
 import { itemContextFor } from "./items/context";
@@ -82,14 +83,15 @@ export type IssueCard = {
   slug: string;
   coverImageUrl: string | null;
   publishedAt: string | null;
-  /** The stored value. Surfaces use `effectiveVisibility` (preflight F10). */
+  /** The stored value. Badges use `effectiveVisibility` (preflight F10). */
   visibility: IssueVisibility;
   /**
    * What non-members actually get: an unconfirmed public issue in an
-   * unlisted community is members-only. Badges, robots and JSON-LD key off
-   * this value.
+   * unlisted community is members-only. Used for badges only.
    */
   effectiveVisibility: IssueVisibility;
+  /** The resolver's anonymous access, for indexing and sharing (Decision 9). */
+  outsiderReach: OutsiderReach;
   magazine: { name: string; slug: string; logoUrl: string | null };
   community: ReadingCommunity;
 };
@@ -188,6 +190,27 @@ function toIssueCard(
   magazine: Magazine,
   community: MagazineCommunityRow,
 ): IssueCard {
+  const facts = issueAccessFacts(issue);
+  const access = facts
+    ? resolveMagazineIssueAccess({
+        viewer: NO_STANDING,
+        community: { ...community, deleted: false },
+        issue: facts,
+      })
+    : "none";
+  let outsiderReach: OutsiderReach;
+  switch (access) {
+    case "teaser":
+      outsiderReach = "teaser";
+      break;
+    case "full":
+      outsiderReach = "full";
+      break;
+    case "none":
+    case "editor":
+      outsiderReach = "none";
+      break;
+  }
   return {
     id: issue.id,
     status: issue.status,
@@ -197,6 +220,7 @@ function toIssueCard(
     coverImageUrl: issue.coverImageUrl ?? null,
     publishedAt: issue.publishedAt ?? null,
     visibility: issue.visibility,
+    outsiderReach,
     effectiveVisibility: effectiveVisibility(
       {
         visibility: issue.visibility,
@@ -222,7 +246,7 @@ async function readableMagazineIssues(
   opts: { excludeId?: number; limit?: number } = {},
 ): Promise<MagazineIssue[]> {
   const where: Where[] = [
-    readableIssueWhere(scope),
+    readableIssueWhere(scope, "teaser"),
     PUBLISHED,
     { magazine: { equals: magazineId } },
   ];
@@ -282,7 +306,7 @@ export async function loadMagazinesHome(
     collection: "magazine-issues",
     where: {
       and: [
-        readableIssueWhere(scope),
+        readableIssueWhere(scope, "teaser"),
         PUBLISHED,
         ...(hidden.length > 0 ? [{ magazine: { not_in: hidden } }] : []),
       ],
@@ -402,7 +426,7 @@ export async function readableIssueExists(
     collection: "magazine-issues",
     where: {
       and: [
-        readableIssueWhere(scope),
+        readableIssueWhere(scope, "teaser"),
         PUBLISHED,
         { magazine: { equals: magazineId } },
       ],

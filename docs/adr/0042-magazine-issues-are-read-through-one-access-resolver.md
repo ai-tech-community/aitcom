@@ -129,6 +129,8 @@ manager`, not-found on `none`). We follow its shape.
    community shows the community's name and a link to it; the confirmation
    step says so in plain words.
 
+   Amended in slice 6 (plan 2026-10-28, Decisions 1–3): `teaser` is an access level; one confirmation covers preview and public; the query twin takes a required reach; a recorded confirmation survives narrowing, widening preview to everyone needs a leader again.
+
 6. **The confirmation is recorded per value and cleared on `members`.** The
    magazine (for its default) and the issue (for its visibility) each store
    `publicConfirmedBy` and `publicConfirmedAt`. Choosing `public` in a

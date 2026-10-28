@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  type OutsiderReach,
   isIssueIndexable,
   isShelfIndexable,
   isMagazineArticleIndexable,
@@ -8,31 +9,38 @@ import {
 } from "./indexing";
 
 describe("magazine indexing", () => {
-  it("indexes only a published issue that is effectively public", () => {
-    expect(
-      isIssueIndexable(
-        { status: "published", effectiveVisibility: "public" },
-        { staffHidden: false },
-      ),
-    ).toBe(true);
-    expect(
-      isIssueIndexable(
-        { status: "published", effectiveVisibility: "members" },
-        { staffHidden: false },
-      ),
-    ).toBe(false);
-    expect(
-      isIssueIndexable(
-        { status: "draft", effectiveVisibility: "public" },
-        { staffHidden: false },
-      ),
-    ).toBe(false);
-  });
+  it.each<[OutsiderReach, boolean]>([
+    ["none", false],
+    ["teaser", true],
+    ["full", true],
+  ])(
+    "indexes resolver reach %s iff it reaches outsiders and staff did not hide it",
+    (outsiderReach, expected) => {
+      const issue = { status: "published" as const, outsiderReach };
+      expect(isIssueIndexable(issue, { staffHidden: false })).toBe(expected);
+      expect(isIssueIndexable(issue, { staffHidden: true })).toBe(false);
+      expect(isShelfIndexable({ staffHidden: false }, [issue])).toBe(expected);
+      expect(
+        isMagazineArticleIndexable(
+          issue,
+          { status: "published" },
+          { staffHidden: false },
+        ),
+      ).toBe(expected);
+      expect(
+        isMagazineArticleIndexable(
+          issue,
+          { status: "draft" },
+          { staffHidden: false },
+        ),
+      ).toBe(false);
+    },
+  );
 
   it("indexes an article only when it and its issue are out and public", () => {
     const publicIssue = {
       status: "published",
-      effectiveVisibility: "public",
+      outsiderReach: "full",
     } as const;
     expect(
       isMagazineArticleIndexable(
@@ -50,7 +58,7 @@ describe("magazine indexing", () => {
     ).toBe(false);
     expect(
       isMagazineArticleIndexable(
-        { status: "published", effectiveVisibility: "members" },
+        { status: "published", outsiderReach: "none" },
         { status: "published" },
         { staffHidden: false },
       ),
@@ -60,7 +68,7 @@ describe("magazine indexing", () => {
   it("a hidden magazine is never indexable", () => {
     const issue = {
       status: "published",
-      effectiveVisibility: "public",
+      outsiderReach: "full",
     } as const;
     const hidden = { staffHidden: true };
     expect(isIssueIndexable(issue, hidden)).toBe(false);
@@ -71,11 +79,13 @@ describe("magazine indexing", () => {
     expect(isShelfIndexable({ staffHidden: false }, [issue])).toBe(true);
     expect(isShelfIndexable({ staffHidden: false }, [])).toBe(false);
     expect(
-      isShelfIndexable({ staffHidden: false }, [{ ...issue, status: "draft" }]),
+      isShelfIndexable({ staffHidden: false }, [
+        { ...issue, status: "draft", outsiderReach: "none" },
+      ]),
     ).toBe(false);
     expect(
       isShelfIndexable({ staffHidden: false }, [
-        { ...issue, effectiveVisibility: "members" },
+        { ...issue, outsiderReach: "none" },
       ]),
     ).toBe(false);
   });

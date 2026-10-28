@@ -16,6 +16,7 @@ import {
   type ScheduleOrigin,
 } from "@/lib/magazines/values";
 import {
+  opensToOutsiders,
   planVisibilityChange,
   type VisibilityRecord,
 } from "@/lib/magazines/visibility";
@@ -409,10 +410,12 @@ export async function createIssue(
   const visibility = magazine.defaultVisibility ?? "members";
   const visibilityRecord = opts?.visibility ?? {
     visibility,
-    publicConfirmedBy:
-      visibility === "public" ? (magazine.publicConfirmedBy ?? null) : null,
-    publicConfirmedAt:
-      visibility === "public" ? (magazine.publicConfirmedAt ?? null) : null,
+    publicConfirmedBy: opensToOutsiders(visibility)
+      ? (magazine.publicConfirmedBy ?? null)
+      : null,
+    publicConfirmedAt: opensToOutsiders(visibility)
+      ? (magazine.publicConfirmedAt ?? null)
+      : null,
   };
   for (let attempt = 1; ; attempt++) {
     const number = await nextIssueNumber(deps.payload, magazine.id);

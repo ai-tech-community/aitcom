@@ -104,7 +104,7 @@ It extends [ADR-0042](0042-magazine-issues-are-read-through-one-access-resolver.
    with account subscriptions; `nobody` completes without delivery. Recheck
    every batch. `activeMembershipCondition()` is shared with editor
    recipient queries; a parity test pins SQL eligibility to the resolver.
-   Slice 6 must decide `teaser` here; teaser issues are intended to reach email.
+   Amended in slice 6 (plan 2026-10-28, Decision 8): email stays public-only; a preview issue (`preview` audience) reaches signed-in subscribers through the inbox and nobody by email.
 
 8. **Scheduling uses the existing publication path (plan Decision 8).**
    Statuses are `draft`, `scheduled`, `published`; `scheduledFor` and

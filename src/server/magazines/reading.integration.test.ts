@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import type { IssueVisibility } from "@/lib/magazines/values";
 import { roleCan } from "@/lib/magazines/roles";
 import type { MagazineIssue } from "@/payload-types";
 import type { db as Db } from "@/server/db";
@@ -275,7 +276,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     magazine: Magazine,
     title: string,
     opts: {
-      visibility?: "members" | "public";
+      visibility?: IssueVisibility;
       coverImageUrl?: string;
       items?: Registry.IssueItemInput[];
     } = {},
@@ -417,6 +418,54 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
   const ids = (cards: { id: number }[]) => cards.map((c) => c.id);
 
   // ── Home ──────────────────────────────────────────────────────────────
+
+  it("each card carries the resolver's outsider reach", async () => {
+    const listed = await community("reach-listed");
+    const mag = await magazineIn(listed, "reach-listed");
+    const full = await publishedIssue(listed, mag, "Public");
+    const preview = await publishedIssue(listed, mag, "Preview", {
+      visibility: "teaser",
+    });
+    const home = await m.reading.loadMagazinesHome(m, { locale: LOCALE });
+    const cards = [
+      ...home.justPublished,
+      ...home.magazines.map((m) => m.latest),
+      ...(home.featured ? [home.featured] : []),
+    ];
+    expect(cards).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: full.id, outsiderReach: "full" }),
+        expect.objectContaining({ id: preview.id, outsiderReach: "teaser" }),
+      ]),
+    );
+    const unlisted = await community("reach-unlisted", { listed: false });
+    const privateMag = await magazineIn(unlisted, "reach-unlisted", {
+      defaultVisibility: "members",
+    });
+    // A listed community becoming unlisted leaves its preview unconfirmed.
+    const unconfirmed = await m.payload.create({
+      collection: "magazine-issues",
+      data: {
+        magazine: privateMag.id,
+        communityId: unlisted.id,
+        number: 1,
+        title: "Unconfirmed preview",
+        slug: "unconfirmed-preview",
+        status: "published",
+        visibility: "teaser",
+      },
+    });
+    const tab = await m.reading.loadCommunityMagazineTab(m, {
+      communitySlug: unlisted.slug,
+      viewerId: fx.memberId,
+      locale: LOCALE,
+    });
+    expect(tab?.latest).toMatchObject({
+      id: unconfirmed.id,
+      effectiveVisibility: "members",
+      outsiderReach: "none",
+    });
+  }, 60_000);
 
   it("home lists only public issues, newest first, featured = newest with a cover", async () => {
     const c = await community("home");

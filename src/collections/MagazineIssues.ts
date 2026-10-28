@@ -84,7 +84,7 @@ export const MagazineIssues: CollectionConfig = {
       type: "text",
       admin: {
         description:
-          "Who confirmed public visibility for an unlisted community (Better Auth user ID).",
+          "Who confirmed showing it outside an unlisted community (preview or public).",
       },
     },
     { name: "publicConfirmedAt", type: "date" },

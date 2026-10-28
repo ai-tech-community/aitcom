@@ -83,6 +83,7 @@ function inboxAudienceCondition(
 ) {
   switch (input.audience) {
     case "everyone":
+    case "preview":
       return sql`true`;
     case "members":
       return exists(
@@ -106,6 +107,8 @@ function inboxAudienceCondition(
 
 function emailAudienceCondition(audience: IssueAudience) {
   switch (audience) {
+    case "preview":
+      return sql`false`;
     case "everyone":
       return sql`true`;
     case "members":

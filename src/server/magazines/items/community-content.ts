@@ -23,6 +23,7 @@ export async function loadCommunityContentRule(
         membersOnly: (id) => id != null && membersOnly.has(id),
       };
     }
+    case "teaser":
     case "full": {
       const hidden = await reader.hiddenCommunityIds();
       return {

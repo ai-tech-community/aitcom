@@ -512,9 +512,9 @@ export interface Magazine {
   /**
    * Copied to each new issue.
    */
-  defaultVisibility?: ('members' | 'public') | null;
+  defaultVisibility?: ('members' | 'teaser' | 'public') | null;
   /**
-   * Who confirmed a public default for an unlisted community (Better Auth user ID).
+   * Who confirmed showing it outside an unlisted community (preview or public).
    */
   publicConfirmedBy?: string | null;
   publicConfirmedAt?: string | null;
@@ -562,9 +562,9 @@ export interface MagazineIssue {
     [k: string]: unknown;
   } | null;
   layout?: 'cover-story' | null;
-  visibility: 'members' | 'public';
+  visibility: 'members' | 'teaser' | 'public';
   /**
-   * Who confirmed public visibility for an unlisted community (Better Auth user ID).
+   * Who confirmed showing it outside an unlisted community (preview or public).
    */
   publicConfirmedBy?: string | null;
   publicConfirmedAt?: string | null;

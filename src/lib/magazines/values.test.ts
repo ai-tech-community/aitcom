@@ -4,11 +4,17 @@ import {
   canIssue,
   ISSUE_STATUSES,
   ISSUE_TRANSITIONS,
+  ISSUE_VISIBILITIES,
+  ISSUE_VISIBILITY_LABELS,
   PUBLISH_ORIGINS,
   SCHEDULE_ORIGINS,
 } from "./values";
 
 describe("issue lifecycle", () => {
+  it("offers preview between members and public", () => {
+    expect(ISSUE_VISIBILITIES).toEqual(["members", "teaser", "public"]);
+    expect(ISSUE_VISIBILITY_LABELS.teaser).toBe("Preview for everyone");
+  });
   it("automatic schedules are a kind of publish origin", () => {
     expect(PUBLISH_ORIGINS).toEqual(["button", "schedule", "auto"]);
     for (const origin of SCHEDULE_ORIGINS) {

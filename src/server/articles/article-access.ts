@@ -3,7 +3,11 @@ import type { Where } from "payload";
 import { magazineArticlePath } from "@/lib/magazines/paths";
 import type { Article } from "@/payload-types";
 import type { Deps, PayloadClient } from "@/server/magazines/deps";
-import { loadMagazineIssueAccess } from "@/server/magazines/issue-access";
+import { loadIssueAccessById } from "@/server/magazines/issue-access";
+import {
+  type IssueReadScope,
+  readableIssueIds,
+} from "@/server/magazines/readable-issues";
 import {
   type IssuePlace,
   loadIssuePlaces,
@@ -21,6 +25,15 @@ import { isPublicArticle, publicArticleWhere } from "./public-articles";
  * must be published and placed in an issue the viewer may read. The issue
  * rule itself lives in `issue-access.ts`; this module never restates it.
  */
+
+/** The one seam for article surfaces: issues whose articles the scope may read (Decision 3). */
+export function readableArticleIssueIds(
+  payload: Pick<PayloadClient, "find">,
+  scope: IssueReadScope,
+  narrow?: Where,
+): Promise<number[]> {
+  return readableIssueIds(payload, scope, "full", narrow);
+}
 
 /**
  * Magazine articles placed in one of these readable issues and published.
@@ -116,32 +129,20 @@ async function magazineArticleReach(
   viewerId: string | null,
 ): Promise<MagazineArticleReach> {
   const issueId = relationIdOrNull(article.magazineIssue);
-  const issue =
+  const found =
     issueId === null
       ? null
-      : await deps.payload.findByID({
-          collection: "magazine-issues",
-          id: issueId,
-          depth: 0,
-          disableErrors: true,
-          select: {
-            communityId: true,
-            magazine: true,
-            status: true,
-            visibility: true,
-            publicConfirmedAt: true,
-          },
-        });
+      : await loadIssueAccessById(deps, issueId, viewerId);
   // Not placed (or its issue is gone): only the magazine's editors read it.
-  if (!issue) {
+  if (!found) {
     return {
       readable: await isEditorOfMagazine(deps, article.magazine, viewerId),
       inPublishedIssue: false,
     };
   }
 
+  const { issue, access } = found;
   const inPublishedIssue = issue.status === "published";
-  const access = await loadMagazineIssueAccess(deps.db, issue, viewerId);
   switch (access) {
     case "editor":
       return { readable: true, inPublishedIssue };
@@ -151,6 +152,7 @@ async function magazineArticleReach(
         inPublishedIssue,
       };
     case "none":
+    case "teaser":
       return { readable: false, inPublishedIssue };
   }
 }

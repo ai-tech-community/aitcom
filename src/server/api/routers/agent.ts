@@ -37,13 +37,11 @@ import {
 import { getPayloadClient } from "@/server/payload";
 import {
   readableArticleWhere,
+  readableArticleIssueIds,
   readableMagazineArticleWhere,
 } from "@/server/articles/article-access";
 import type { Deps, PayloadClient } from "@/server/magazines/deps";
-import {
-  loadIssueReadScope,
-  readableIssueIds,
-} from "@/server/magazines/readable-issues";
+import { loadIssueReadScope } from "@/server/magazines/readable-issues";
 import {
   upcomingEventsQueryFloor,
   upcomingFromCandidates,
@@ -79,10 +77,10 @@ async function searchableArticleWhere(
 ): Promise<Where | null> {
   const scope = await loadIssueReadScope(database, null);
   if (communityId === undefined) {
-    return readableArticleWhere(await readableIssueIds(payload, scope));
+    return readableArticleWhere(await readableArticleIssueIds(payload, scope));
   }
   return readableMagazineArticleWhere(
-    await readableIssueIds(payload, scope, {
+    await readableArticleIssueIds(payload, scope, {
       communityId: { equals: communityId },
     }),
   );

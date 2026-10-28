@@ -31,12 +31,13 @@ const storylineItemInput = z.object({
 type StorylineItemInput = z.infer<typeof storylineItemInput>;
 type StorylineItemStored = StoredItem<"storyline">;
 
-/** Both current access levels read live stories, under the same public rule. */
+/** All access levels read live stories, under the same public rule. */
 function cardsFor(
   items: StorylineItemStored[],
   ctx: ItemContext,
 ): Promise<Map<string, StorylineCard>> {
   switch (ctx.access) {
+    case "teaser":
     case "full":
     case "editor":
       return loadStorylineCards(
@@ -116,6 +117,7 @@ export const storylineItemKind: IssueItemKind<
   },
   isReadable: (_view, ctx) => {
     switch (ctx.access) {
+      case "teaser":
       case "full":
       case "editor":
         return true;

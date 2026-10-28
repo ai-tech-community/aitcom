@@ -64,6 +64,78 @@ describe("resolveMagazineIssueAccess", () => {
     [string, Who, boolean, IssueStatus, IssueVisibility, string | null, string]
   >([
     // [label, who, listed, status, visibility, confirmedAt, expected]
+    [
+      "outsider previews listed issue",
+      "outsider",
+      true,
+      "published",
+      "teaser",
+      null,
+      "teaser",
+    ],
+    [
+      "unconfirmed unlisted preview stays hidden",
+      "outsider",
+      false,
+      "published",
+      "teaser",
+      null,
+      "none",
+    ],
+    [
+      "confirmed unlisted preview",
+      "outsider",
+      false,
+      "published",
+      "teaser",
+      CONFIRMED,
+      "teaser",
+    ],
+    [
+      "member reads preview in full",
+      "member",
+      false,
+      "published",
+      "teaser",
+      null,
+      "full",
+    ],
+    [
+      "editor previews a draft",
+      "editor",
+      true,
+      "draft",
+      "teaser",
+      null,
+      "editor",
+    ],
+    [
+      "member cannot see a preview draft",
+      "member",
+      true,
+      "draft",
+      "teaser",
+      null,
+      "none",
+    ],
+    [
+      "outsider cannot see a preview draft",
+      "outsider",
+      true,
+      "draft",
+      "teaser",
+      null,
+      "none",
+    ],
+    [
+      "outsider cannot see a scheduled preview",
+      "outsider",
+      true,
+      "scheduled",
+      "teaser",
+      null,
+      "none",
+    ],
     ["editor sees a draft", "editor", true, "draft", "members", null, "editor"],
     [
       "editor of an unlisted community",
@@ -163,6 +235,12 @@ describe("issueAudience", () => {
   it("an issue's audience follows the resolver", () => {
     const cases: [Parameters<typeof input>[0], IssueAudience][] = [
       [{}, "everyone"],
+      [{ visibility: "teaser" }, "preview"],
+      [{ visibility: "teaser", listed: false }, "members"],
+      [
+        { visibility: "teaser", listed: false, confirmedAt: CONFIRMED },
+        "preview",
+      ],
       [{ listed: false }, "members"],
       [{ listed: false, confirmedAt: CONFIRMED }, "everyone"],
       [{ visibility: "members" }, "members"],
@@ -183,11 +261,13 @@ describe("issueAudience", () => {
       IssueAudience | "via-member"
     > = {
       none: "via-member",
+      teaser: "preview",
       full: "everyone",
       editor: "nobody",
     };
     const fixtures: Record<MagazineIssueAccess, IssueAccessInput> = {
       none: input({ visibility: "members" }),
+      teaser: input({ visibility: "teaser" }),
       full: input({}),
       editor: input({ who: "editor", status: "draft" }),
     };
