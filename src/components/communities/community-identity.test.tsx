@@ -28,7 +28,7 @@ const community = {
 
 function renderIdentity(
   membershipStatus: "active" | null = null,
-  memberRole: "member" | null = null,
+  memberRole: "owner" | "admin" | "moderator" | "member" | null = null,
 ) {
   return render(
     <NextIntlClientProvider locale="en" messages={en}>
@@ -130,11 +130,15 @@ describe("CommunityIdentity", () => {
 
   it("shows the Member badge to an active member only", () => {
     const { unmount } = renderIdentity();
-    expect(screen.queryByText(en.communities.profile.memberBadge)).toBeNull();
+    expect(screen.queryByText(en.communities.roles.member)).toBeNull();
     unmount();
     renderIdentity("active", "member");
-    expect(
-      screen.getByText(en.communities.profile.memberBadge),
-    ).toBeInTheDocument();
+    expect(screen.getByText(en.communities.roles.member)).toBeInTheDocument();
+  });
+
+  it("shows the same role the Members tab uses", () => {
+    renderIdentity("active", "owner");
+    expect(screen.getByText(en.communities.roles.owner)).toBeInTheDocument();
+    expect(screen.queryByText(en.communities.roles.member)).toBeNull();
   });
 });

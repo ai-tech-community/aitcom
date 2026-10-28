@@ -24,10 +24,23 @@ it("registers classroom browse and create with the browser's draft rule", async 
     agent: {
       browseClassrooms: vi.fn().mockResolvedValue({ courses: [] }),
       createClassroom: vi.fn().mockResolvedValue({ mode: "draft" }),
+      updateClassroom: vi.fn().mockResolvedValue({ mode: "updated" }),
+      createModule: vi.fn().mockResolvedValue({ mode: "created" }),
+      updateModule: vi.fn().mockResolvedValue({ mode: "updated" }),
+      createLesson: vi.fn().mockResolvedValue({ mode: "created" }),
+      updateLesson: vi.fn().mockResolvedValue({ mode: "updated" }),
     },
   };
   registerClassroomTools(server as never, caller as never);
-  expect([...tools.keys()]).toEqual(["browse-classrooms", "create-classroom"]);
+  expect([...tools.keys()]).toEqual([
+    "browse-classrooms",
+    "create-classroom",
+    "update-classroom",
+    "create-module",
+    "update-module",
+    "create-lesson",
+    "update-lesson",
+  ]);
   expect(TOOL_META["browse-classrooms"]).toEqual({
     surface: "classroom",
     gate: "read",

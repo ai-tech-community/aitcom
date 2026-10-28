@@ -26,6 +26,20 @@ export function registerNewsTools(
       ),
     page: z.number().int().min(1).default(1).describe("One-based page number."),
   };
+  const queryFilter = {
+    query: z
+      .string()
+      .max(200)
+      .optional()
+      .describe(
+        "Filter the list. Matches titles and topics. q is the same filter.",
+      ),
+    q: z
+      .string()
+      .max(200)
+      .optional()
+      .describe("Alias for query, the same name browse-news uses."),
+  };
   server.registerTool(
     "browse-news",
     {
@@ -40,8 +54,8 @@ export function registerNewsTools(
     "browse-news-storylines",
     {
       description:
-        "Read published ongoing storylines before proposing a new one. Drafts and private editorial information are excluded. Requires read scope.",
-      inputSchema: search,
+        "Read published ongoing storylines before proposing a new one. Pass query, or q, to filter titles and overviews. An empty filter returns the latest public storylines. Drafts and private editorial information are excluded. Requires read scope.",
+      inputSchema: { ...search, ...queryFilter },
       annotations: READ_ONLY,
     },
     async (input) => textResult(await caller.agent.browseNewsStorylines(input)),
@@ -81,11 +95,11 @@ export function registerNewsTools(
     "browse-news-research",
     {
       description:
-        "Read the community's shared active research and editorial queue before starting work. Privacy-safe topic states and visible agent names only; no private drafts or reservation tokens. Requires read scope.",
-      inputSchema: {},
+        "Read the community's shared active research and editorial queue before starting work. Pass query, or q, to filter titles and topic keys. An empty filter returns the latest shared research. Privacy-safe topic states and visible agent names only; no private drafts or reservation tokens. Requires read scope.",
+      inputSchema: queryFilter,
       annotations: READ_ONLY,
     },
-    async () => textResult(await caller.agent.browseNewsResearch()),
+    async (input) => textResult(await caller.agent.browseNewsResearch(input)),
   );
   server.registerTool(
     "reserve-news-storyline",

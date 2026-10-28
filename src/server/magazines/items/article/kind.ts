@@ -8,6 +8,11 @@ import { magazineArticleEditPath } from "@/lib/magazines/paths";
 import { articleInputReference } from "@/lib/magazines/references";
 import type { Article } from "@/payload-types";
 
+import {
+  authorBylineAtReadTime,
+  memberNamesByUserId,
+} from "@/server/members/display-name";
+
 import { listEditableArticles } from "../../magazine-articles";
 import { relationIdOrNull, requireRelationId } from "../../relation-id";
 import { introInput, itemBaseInput, storedIntro } from "../base-input";
@@ -164,6 +169,12 @@ export const articleItemKind: IssueItemKind<
   async load(items, ctx) {
     const reading = articleReadingFor(ctx.access);
     const articles = await findArticles(items, ctx, reading.draft);
+    const names = await memberNamesByUserId(
+      ctx.db,
+      [...articles.values()]
+        .map((article) => article.authorId)
+        .filter((id): id is string => Boolean(id)),
+    );
     const views = new Map<string, ItemViewOf<"article"> | UnavailableItem>();
     for (const stored of items) {
       const itemId = itemIdOf(stored);
@@ -194,7 +205,10 @@ export const articleItemKind: IssueItemKind<
             id: article.id,
             slug: article.slug,
             title: article.title,
-            authorName: article.authorName ?? null,
+            authorName: authorBylineAtReadTime(
+              article.authorName,
+              article.authorId ? (names.get(article.authorId) ?? null) : null,
+            ),
             excerpt: openingOf(article.content, 40),
             opening: reading.showsOpening ? openingOf(article.content) : "",
             readingMinutes: estimateReadingTime(article.content),

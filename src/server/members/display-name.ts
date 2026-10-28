@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import type { db as _db } from "@/server/db";
 import { memberProfiles, user } from "@/server/db/schema";
@@ -36,4 +36,75 @@ export async function memberDisplayName(
     .where(eq(user.id, userId))
     .limit(1);
   return shownMemberName(row?.profileName, row?.accountName);
+}
+
+export type MemberNames = {
+  profileName: string | null;
+  accountName: string | null;
+};
+
+/** Profile and account names for a set of members, one query. */
+export async function memberNamesByUserId(
+  db: DB | Tx,
+  userIds: readonly string[],
+): Promise<Map<string, MemberNames>> {
+  const ids = [...new Set(userIds.filter((id) => id.length > 0))];
+  const names = new Map<string, MemberNames>();
+  if (ids.length === 0) return names;
+  const rows = await db
+    .select({
+      userId: user.id,
+      profileName: memberProfiles.displayName,
+      accountName: user.name,
+    })
+    .from(user)
+    .leftJoin(memberProfiles, eq(memberProfiles.userId, user.id))
+    .where(inArray(user.id, ids));
+  for (const row of rows) {
+    names.set(row.userId, {
+      profileName: row.profileName,
+      accountName: row.accountName,
+    });
+  }
+  return names;
+}
+
+/**
+ * The byline to show without rewriting the stored author name. A stored
+ * account name (`greg`) becomes the profile display name (`gregy`). A
+ * composed byline that contains the account name is updated in place.
+ * A custom byline that does not mention the account name is left as stored.
+ */
+export function authorBylineAtReadTime(
+  stored: string | null | undefined,
+  names: MemberNames | null | undefined,
+): string | null {
+  const saved = oneLine(stored ?? "") || null;
+  if (!names) return saved;
+  const live = shownMemberName(names.profileName, names.accountName);
+  const account = oneLine(names.accountName ?? "") || null;
+  if (!live || !account || live === account) return saved ?? live;
+  if (!saved) return live;
+  if (saved === account) return live;
+  if (saved.includes(account)) return saved.replaceAll(account, live);
+  return saved;
+}
+
+/** Replace stored bylines with the live display name. Does not write. */
+export async function withAuthorBylines<
+  T extends { authorId?: string | null; authorName: string | null },
+>(db: DB | Tx, items: readonly T[]): Promise<T[]> {
+  const names = await memberNamesByUserId(
+    db,
+    items
+      .map((item) => item.authorId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  return items.map((item) => ({
+    ...item,
+    authorName: authorBylineAtReadTime(
+      item.authorName,
+      item.authorId ? (names.get(item.authorId) ?? null) : null,
+    ),
+  }));
 }
