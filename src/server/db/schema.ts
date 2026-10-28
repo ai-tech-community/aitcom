@@ -3726,6 +3726,8 @@ export const communities = appSchema.table(
     slug: d.text().notNull().unique(),
     description: d.text(),
     logoUrl: d.text(),
+    /** Wide image on the community page. Null until an admin sets one. */
+    bannerUrl: d.text(),
     joinPolicy: d
       .varchar({ length: 30 })
       .notNull()

@@ -56,6 +56,11 @@ import {
 import type { StoredBlock } from "./items/registry";
 import { notifyAgentIssueSubmitted } from "./notifications";
 import { inPayloadTransaction } from "./payload-writes";
+import {
+  mergeCommunityMagazineBrowse,
+  submissionsAreVisible,
+} from "./agent-magazine-browse";
+import { articleDocumentId, articleIdForTool } from "./article-document-id";
 import { relationIdOrNull, requireRelationId } from "./relation-id";
 
 export const MAGAZINE_ARTICLE_DRAFT_TYPE = "magazine_article";
@@ -575,7 +580,7 @@ export async function saveMagazineArticle(
         title: created.title,
       }),
     });
-    return articleResult(created, null);
+    return articleResult(deps, created, null);
   }
 
   const owned = await findOwnedDraft(
@@ -633,12 +638,56 @@ export async function saveMagazineArticle(
       metadata: magazineMeta(magazine, community, { title: updated.title }),
     })
     .where(eq(agentDrafts.id, owned.id));
-  return articleResult(updated, existing.reviewStatus ?? null);
+  return articleResult(
+    deps,
+    updated,
+    existing.reviewStatus ?? null,
+    input.articleId,
+  );
 }
 
-function articleResult(article: Article, reviewStatus: string | null) {
+async function mainArticleIdsBySlug(
+  deps: Deps,
+  slugs: string[],
+): Promise<Map<string, number>> {
+  const unique = [...new Set(slugs.filter((slug) => slug.length > 0))];
+  const ids = new Map<string, number>();
+  if (unique.length === 0) return ids;
+  const { docs } = await deps.payload.find({
+    collection: "articles",
+    where: { slug: { in: unique } },
+    // The collection table, not `_articles_v`. This id is the integer agents
+    // pass back as articleId.
+    draft: false,
+    depth: 0,
+    pagination: false,
+    limit: unique.length,
+    select: { slug: true },
+  });
+  for (const doc of docs) {
+    const id = articleDocumentId(doc.id);
+    if (id !== null) ids.set(doc.slug, id);
+  }
+  return ids;
+}
+
+async function articleResult(
+  deps: Deps,
+  article: Article,
+  reviewStatus: string | null,
+  fallbackId?: number,
+) {
+  const bySlug = await mainArticleIdsBySlug(deps, [article.slug]);
+  const articleId =
+    articleIdForTool(article, bySlug) ?? articleDocumentId(fallbackId);
+  if (articleId === null) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "The article was saved but its id could not be read back.",
+    });
+  }
   return {
-    articleId: article.id,
+    articleId,
     slug: article.slug,
     title: article.title,
     status: "draft" as const,
@@ -1025,20 +1074,63 @@ export async function browseMagazines(
       input.communitySlug,
       page,
     );
-    return {
+    // A directory of many communities has no single submission queue.
+    // Naming a community loads that community's magazines, including issues.
+    if (!input.communitySlug || magazines.length === 0) {
+      return {
+        magazines,
+        page,
+        issues: [],
+        articles: [],
+        submissions: [],
+        submissionsVisible: false,
+        yourDrafts,
+      };
+    }
+    const editor = magazines.some((magazine) =>
+      scope.editorCommunityIds.includes(magazine.communityId),
+    );
+    const submissionsVisible = submissionsAreVisible(editor, viewer.ownerId);
+    const details = [];
+    for (const magazine of [...magazines].sort((a, b) => a.id - b.id)) {
+      details.push(
+        await browseOneMagazine(
+          deps,
+          scope,
+          viewer,
+          yourDrafts,
+          magazine.slug,
+          page,
+        ),
+      );
+    }
+    return mergeCommunityMagazineBrowse({
       magazines,
+      details,
       page,
-      issues: [],
-      articles: [],
-      submissions: [],
-      submissionsVisible: false,
       yourDrafts,
-    };
+      submissionsVisible,
+    });
   }
-  const { magazine, community } = await requireMagazine(
+  return browseOneMagazine(
     deps,
+    scope,
+    viewer,
+    yourDrafts,
     input.magazineSlug,
+    page,
   );
+}
+
+async function browseOneMagazine(
+  deps: Deps,
+  scope: IssueReadScope,
+  viewer: { agentId: string; ownerId: string | null },
+  yourDrafts: Awaited<ReturnType<typeof listAgentDrafts>>,
+  magazineSlug: string,
+  page: number,
+) {
+  const { magazine, community } = await requireMagazine(deps, magazineSlug);
   const visible =
     maySeeCommunity(community, scope) ||
     (await agentTouchesMagazine(deps, viewer.agentId, magazine.id));
@@ -1046,18 +1138,19 @@ export async function browseMagazines(
     throw new TRPCError({ code: "NOT_FOUND", message: "Magazine not found" });
   }
   const editor = scope.editorCommunityIds.includes(community.id);
+  const submissionsVisible = submissionsAreVisible(editor, viewer.ownerId);
   const [issues, articles, submissions] = await Promise.all([
     listIssues(deps, scope, magazine, yourDrafts),
     listArticles(deps, scope, magazine, viewer),
-    listSubmissions(deps, magazine, viewer.ownerId, editor),
+    listSubmissionItems(deps, magazine, viewer.ownerId, editor),
   ]);
   return {
     magazines: [magazineSummary(magazine)],
     page,
     issues,
     articles,
-    submissions: submissions.items,
-    submissionsVisible: submissions.visible,
+    submissions,
+    submissionsVisible,
     yourDrafts: yourDrafts.filter(
       (draft) => draft.magazineSlug === magazine.slug,
     ),
@@ -1197,23 +1290,25 @@ async function listIssues(
       .filter((draft) => draft.kind === "issue")
       .map((draft) => [draft.id, draft.status]),
   );
-  return docs.map((issue) => ({
-    id: issue.id,
-    number: Number(issue.number),
-    title: issue.title,
-    slug: issue.slug,
-    status: issue.status,
-    visibility: issue.visibility,
-    coverImageUrl: issue.coverImageUrl ?? null,
-    publishedAt: issue.publishedAt ?? null,
-    articleIds: articleIdsOf(issue),
-    agentReview:
-      reviewByIssue.get(issue.id) === "pending"
-        ? ("pending" as const)
-        : reviewByIssue.get(issue.id) === "draft"
-          ? ("draft" as const)
-          : null,
-  }));
+  return docs
+    .map((issue) => ({
+      id: issue.id,
+      number: Number(issue.number),
+      title: issue.title,
+      slug: issue.slug,
+      status: issue.status,
+      visibility: issue.visibility,
+      coverImageUrl: issue.coverImageUrl ?? null,
+      publishedAt: issue.publishedAt ?? null,
+      articleIds: articleIdsOf(issue),
+      agentReview:
+        reviewByIssue.get(issue.id) === "pending"
+          ? ("pending" as const)
+          : reviewByIssue.get(issue.id) === "draft"
+            ? ("draft" as const)
+            : null,
+    }))
+    .sort((a, b) => b.number - a.number || a.id - b.id);
 }
 
 async function listArticles(
@@ -1238,6 +1333,7 @@ async function listArticles(
                 { magazineIssue: { in: issueIds } },
               ],
             },
+            sort: "id",
             depth: 0,
             limit: MAX_ITEMS,
             pagination: false,
@@ -1271,12 +1367,37 @@ async function listArticles(
               ],
             },
             draft: true,
+            sort: "slug",
             depth: 0,
             limit: ownIds.length,
             pagination: false,
           })
         ).docs;
-  return [...drafts, ...published].map(articleSummary);
+  const presentedDrafts = await presentArticles(deps, drafts);
+  const presentedPublished = published.flatMap((doc) => {
+    const id = articleDocumentId(doc.id);
+    if (id === null) return [];
+    return [articleSummary({ ...doc, id })];
+  });
+  const seen = new Set(presentedPublished.map((article) => article.id));
+  return [
+    ...presentedPublished,
+    ...presentedDrafts.filter((article) => !seen.has(article.id)),
+  ].sort((a, b) => a.id - b.id);
+}
+
+async function presentArticles(deps: Deps, docs: Article[]) {
+  const bySlug = await mainArticleIdsBySlug(
+    deps,
+    docs.map((doc) => doc.slug),
+  );
+  const presented = [];
+  for (const doc of docs) {
+    const id = articleIdForTool(doc, bySlug);
+    if (id === null) continue;
+    presented.push(articleSummary({ ...doc, id }));
+  }
+  return presented;
 }
 
 function articleSummary(article: Article) {
@@ -1291,19 +1412,19 @@ function articleSummary(article: Article) {
   };
 }
 
-async function listSubmissions(
+async function listSubmissionItems(
   deps: Deps,
   magazine: Magazine,
   ownerId: string | null,
   editor: boolean,
 ) {
+  if (!submissionsAreVisible(editor, ownerId)) return [];
   if (editor) {
-    return {
-      visible: true,
-      items: await listPendingArticles(deps.payload, magazine.id),
-    };
+    return presentSubmissionItems(
+      deps,
+      await listPendingArticles(deps.payload, magazine.id),
+    );
   }
-  if (!ownerId) return { visible: false, items: [] };
   const { docs } = await deps.payload.find({
     collection: "articles",
     where: {
@@ -1315,18 +1436,38 @@ async function listSubmissions(
       ],
     },
     draft: true,
+    sort: "slug",
     depth: 0,
     limit: MAX_ITEMS,
     pagination: false,
   });
-  return {
-    visible: true,
-    items: docs.map((doc) => ({
+  return presentSubmissionItems(
+    deps,
+    docs.map((doc) => ({
       id: doc.id,
       slug: doc.slug,
       title: doc.title,
       authorName: doc.authorName ?? null,
       sentAt: doc.updatedAt,
     })),
-  };
+  );
+}
+
+async function presentSubmissionItems<T extends { id: unknown; slug: string }>(
+  deps: Deps,
+  items: T[],
+) {
+  const bySlug = await mainArticleIdsBySlug(
+    deps,
+    items.map((item) => item.slug),
+  );
+  const presented = [];
+  const seen = new Set<number>();
+  for (const item of items) {
+    const id = articleIdForTool(item, bySlug);
+    if (id === null || seen.has(id)) continue;
+    seen.add(id);
+    presented.push({ ...item, id });
+  }
+  return presented.sort((a, b) => a.id - b.id || a.slug.localeCompare(b.slug));
 }

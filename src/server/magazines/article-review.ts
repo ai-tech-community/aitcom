@@ -36,7 +36,7 @@ export async function listPendingArticles(
         { reviewStatus: { equals: "pending_review" } },
       ],
     },
-    sort: "updatedAt",
+    sort: ["updatedAt", "id"],
     depth: 0,
     draft: true,
     limit: 100,

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowLeft, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { roleCanModerateThreads } from "@/lib/communities/thread-moderation";
 import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
 import { LexicalRenderer } from "@/lib/lexical";
@@ -45,10 +46,7 @@ export function ThreadDetail({
   const confirm = useConfirm();
   const viewCountedRef = useRef(false);
   const utils = api.useUtils();
-  const canModerate =
-    memberRole === "owner" ||
-    memberRole === "admin" ||
-    memberRole === "moderator";
+  const canModerate = roleCanModerateThreads(memberRole);
 
   const { data: session } = authClient.useSession();
 

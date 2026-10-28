@@ -26,6 +26,21 @@ import { activateMembership } from "@/server/communities/activate-membership";
 import { consumeInviteUse } from "@/server/communities/invite-uses";
 import { canRedeemInvite } from "@/server/communities/invite-policy";
 import { canAdvise } from "@/server/agents/advisory";
+import {
+  communityDescriptionSchema,
+  presentCommunityDescription,
+} from "@/lib/communities/description";
+import { communityLogoChoice } from "@/server/communities/logo-choice";
+import { sharedMediaUrl } from "@/server/communities/shared-media-url";
+import {
+  loadMagazineEditorship,
+  requireCapability,
+} from "@/server/magazines/editorship";
+import {
+  getMagazineForCommunity,
+  setMagazineLogoUrl,
+} from "@/server/magazines/magazine-service";
+import { getPayloadClient } from "@/server/payload";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -187,8 +202,11 @@ export const agentCommunityRouter = {
         },
       );
 
+      const description = presentCommunityDescription(community.description);
       return {
         ...community,
+        description: description.description,
+        descriptionTruncated: description.descriptionTruncated,
         memberCount: memberCountResult?.count ?? 0,
         ownerMembership: ownerMembership
           ? {
@@ -531,7 +549,7 @@ export const agentCommunityRouter = {
     .input(
       z.object({
         name: z.string().min(2).max(100),
-        description: z.string().max(500).optional(),
+        description: communityDescriptionSchema.optional(),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
           .default("open"),
@@ -596,8 +614,11 @@ export const agentCommunityRouter = {
       z.object({
         slug: z.string(),
         name: z.string().min(2).max(100).optional(),
-        description: z.string().max(500).optional(),
+        description: communityDescriptionSchema.optional(),
         logoUrl: z.string().url().optional().nullable(),
+        logoMediaId: z.number().int().positive().nullable().optional(),
+        bannerMediaId: z.number().int().positive().nullable().optional(),
+        magazineLogoMediaId: z.number().int().positive().nullable().optional(),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
           .optional(),
@@ -609,29 +630,95 @@ export const agentCommunityRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      await requireAdmin(ctx.db, community.id, ownerId);
-
-      const updates: Record<string, unknown> = {};
-      if (input.name !== undefined) updates.name = input.name;
-      if (input.description !== undefined)
-        updates.description = input.description;
-      if (input.logoUrl !== undefined) updates.logoUrl = input.logoUrl;
-      if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
-      if (input.isListedInDirectory !== undefined)
-        updates.isListedInDirectory = input.isListedInDirectory;
-
-      if (Object.keys(updates).length === 0) {
+      const bannerMediaId = input.bannerMediaId;
+      const magazineLogoMediaId = input.magazineLogoMediaId;
+      const logo = communityLogoChoice(input);
+      const touchesCommunity =
+        input.name !== undefined ||
+        input.description !== undefined ||
+        logo.kind !== "skip" ||
+        input.joinPolicy !== undefined ||
+        input.isListedInDirectory !== undefined ||
+        bannerMediaId !== undefined;
+      const touchesMagazineLogo = magazineLogoMediaId !== undefined;
+      if (!touchesCommunity && !touchesMagazineLogo) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "No settings to update",
         });
       }
 
-      const [updated] = await ctx.db
-        .update(communities)
-        .set(updates)
-        .where(eq(communities.id, community.id))
-        .returning();
+      // Community settings, including the banner, are the general settings
+      // page: owner or admin.
+      if (touchesCommunity) await requireAdmin(ctx.db, community.id, ownerId);
+
+      const updates: Record<string, unknown> = {};
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.description !== undefined)
+        updates.description = input.description;
+      if (logo.kind === "url") updates.logoUrl = logo.logoUrl;
+      if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
+      if (input.isListedInDirectory !== undefined)
+        updates.isListedInDirectory = input.isListedInDirectory;
+
+      // The magazine logo is the magazine settings form: manage capability
+      // (community owner/admin, or a magazine editor-in-chief).
+      let magazineLogoUrl: string | null | undefined;
+      let saveMagazineLogo: (() => Promise<void>) | undefined;
+      if (
+        bannerMediaId !== undefined ||
+        magazineLogoMediaId !== undefined ||
+        logo.kind === "media"
+      ) {
+        const payload = await getPayloadClient();
+        if (logo.kind === "media") {
+          updates.logoUrl =
+            logo.mediaId === null
+              ? null
+              : await sharedMediaUrl(payload, logo.mediaId, ownerId);
+        }
+        if (bannerMediaId !== undefined) {
+          updates.bannerUrl =
+            bannerMediaId === null
+              ? null
+              : await sharedMediaUrl(payload, bannerMediaId, ownerId);
+        }
+        if (magazineLogoMediaId !== undefined) {
+          const magazine = await getMagazineForCommunity(payload, community.id);
+          if (!magazine) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message:
+                "This community has no magazine yet. Create it in magazine settings first.",
+            });
+          }
+          const standing = await loadMagazineEditorship(
+            ctx.db,
+            { communityId: community.id, magazineId: magazine.id },
+            ownerId,
+          );
+          requireCapability(standing, "manage");
+          magazineLogoUrl =
+            magazineLogoMediaId === null
+              ? null
+              : await sharedMediaUrl(payload, magazineLogoMediaId, ownerId);
+          const logoUrl = magazineLogoUrl;
+          saveMagazineLogo = async () => {
+            await setMagazineLogoUrl(payload, magazine.id, logoUrl);
+          };
+        }
+      }
+
+      const [updated] =
+        Object.keys(updates).length > 0
+          ? await ctx.db
+              .update(communities)
+              .set(updates)
+              .where(eq(communities.id, community.id))
+              .returning()
+          : [community];
+
+      if (saveMagazineLogo) await saveMagazineLogo();
 
       await logActivity(ctx.db, {
         actorId: ctx.agent.agentId,
@@ -639,10 +726,15 @@ export const agentCommunityRouter = {
         action: "community.settings_updated",
         targetType: "community",
         targetId: community.id,
-        metadata: updates,
+        metadata:
+          magazineLogoUrl !== undefined
+            ? { ...updates, magazineLogoUrl }
+            : updates,
       });
 
-      return updated!;
+      return magazineLogoUrl !== undefined
+        ? { ...updated!, magazineLogoUrl }
+        : updated!;
     }),
 
   /** Create an invite link (admin+ only). */

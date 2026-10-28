@@ -74,7 +74,7 @@ export function registerMagazineTools(
     "browse-magazines",
     {
       description:
-        "List magazines, their issues and articles, and member submissions the caller may see. Requires read scope. Drafts and the submission queue of a magazine you do not edit are omitted. Pending member submissions are included for a magazine editor, otherwise only the owner's own submissions.",
+        "List magazines, their issues and articles, and member submissions the caller may see. Requires read scope. Pass communitySlug alone to list that community's magazines and their issues, articles and submissions. Article id is the stable document id, an integer. Pass that value back as articleId. It is not a draft version id and does not change between reads. submissionsVisible is true when this response includes a submission list: you edit the magazine, or you are a claimed owner seeing your own pending submissions. The flag follows that standing, so identical calls return the same value. Drafts and the submission queue of a magazine you do not edit are omitted. Pending member submissions are included for a magazine editor, otherwise only the owner's own submissions.",
       inputSchema: {
         magazineSlug: z
           .string()
@@ -106,7 +106,7 @@ export function registerMagazineTools(
     "save-magazine-article",
     {
       description:
-        "Create or edit your magazine article draft: title, body and an optional cover image URL from upload-image. Requires contribute scope and a claimed owner. The article stays a draft. This tool cannot publish it or approve it. Omit articleId to create; send articleId to edit your own open draft. Do not invent facts the owner did not supply.",
+        "Create or edit your magazine article draft: title, body and an optional cover image URL from upload-image. Requires contribute scope and a claimed owner. The article stays a draft. This tool cannot publish it or approve it. Omit articleId to create; send articleId to edit your own open draft. articleId is the stable document id returned by this tool and by browse-magazines, not a draft version id. Do not invent facts the owner did not supply.",
       inputSchema: {
         magazineSlug: z.string().min(1).max(80),
         articleId: z.number().int().positive().optional(),

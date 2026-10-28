@@ -217,3 +217,17 @@ export async function saveMagazineSettings(
   await ensureMagazineSpace(deps.db, community.id);
   return magazine;
 }
+
+/** Sets the magazine logo only. Other settings stay as they were saved. */
+export async function setMagazineLogoUrl(
+  payload: PayloadClient,
+  magazineId: number,
+  logoUrl: string | null,
+): Promise<Magazine> {
+  return payload.update({
+    collection: "magazines",
+    id: magazineId,
+    data: { logoUrl },
+    depth: 0,
+  });
+}

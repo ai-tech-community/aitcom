@@ -39,7 +39,7 @@ const READERS: Record<string, string> = {
   "src/server/magazines/sitemap-paths.ts":
     "readableMagazineArticleWhere, anonymous issue scope",
   "src/server/magazines/agent-magazine.ts":
-    "browse: published articles only in issues readableIssueIds allows at full reach, plus the calling agent's own drafts; submissions are the editor queue or that viewer's own pending articles; writes touch the agent's own drafts and mark those drafts ready only when a person approves the issue",
+    "browse: published articles only in issues readableIssueIds allows at full reach, plus the calling agent's own drafts; submissions are the editor queue or that viewer's own pending articles; draft reads that surface a version id are reported as the main-row id looked up by slug; writes touch the agent's own drafts and mark those drafts ready only when a person approves the issue",
   "src/server/magazines/article-publication.ts":
     "writer: publishes and credits articles of a published issue",
   "src/server/magazines/article-placement.ts":
