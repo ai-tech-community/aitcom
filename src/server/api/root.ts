@@ -46,6 +46,7 @@ import { teamWorkspaceRouter } from "@/server/api/routers/team-workspace";
 import { topicsRouter } from "@/server/api/routers/topics";
 import { linksRouter } from "@/server/api/routers/links";
 import { magazinesRouter } from "@/server/api/routers/magazines";
+import { magazineStatsRouter } from "@/server/api/routers/magazine-stats";
 import { magazineSubscriptionsRouter } from "@/server/api/routers/magazine-subscriptions";
 import { classroomsRouter } from "@/server/api/routers/classrooms";
 import { classroomMaterialsRouter } from "@/server/api/routers/classroom-materials";
@@ -72,6 +73,7 @@ export const appRouter = createTRPCRouter({
   articles: articlesRouter,
   magazines: magazinesRouter,
   magazineSubscriptions: magazineSubscriptionsRouter,
+  magazineStats: magazineStatsRouter,
   agentManagement: agentManagementRouter,
   agent: agentRouter,
   activity: activityRouter,

@@ -1,3 +1,19 @@
+vi.mock("./read-tracker", () => ({
+  ReadTracker: (props: {
+    issueId: number;
+    articleId?: number;
+    enabled: boolean;
+    trackEnd: boolean;
+  }) => <div data-testid="read-tracker" data-props={JSON.stringify(props)} />,
+}));
+
+vi.mock("./subscribe-button", () => ({
+  SubscribeButton: (props: {
+    issueId?: number;
+    magazineSlug: string;
+    magazineName: string;
+  }) => <div data-testid="subscribe" data-props={JSON.stringify(props)} />,
+}));
 // The magazine article long-read: context line, title, byline, body with a
 // contents list, "Next in this issue", comments and JSON-LD.
 import { screen, within } from "@testing-library/react";
@@ -90,6 +106,30 @@ function jsonLd(container: HTMLElement): Record<string, unknown>[] {
 }
 
 describe("MagazineArticle", () => {
+  it.each(["teaser", "full", "editor"] as const)(
+    "tracks article reads for %s readers and passes the subscription source",
+    (access) => {
+      const data =
+        access === "teaser" ? previewArticlePage() : articlePage({ access });
+      renderWithIntl(<MagazineArticle data={data} comments={[]} />);
+      expect(
+        JSON.parse(screen.getByTestId("read-tracker").dataset.props!),
+      ).toEqual({
+        issueId: data.issue.id,
+        articleId: data.article.id,
+        enabled: access !== "editor",
+        trackEnd: data.mode === "full",
+      });
+      expect(
+        JSON.parse(screen.getByTestId("subscribe").dataset.props!),
+      ).toEqual({
+        magazineSlug: data.magazine.slug,
+        magazineName: data.magazine.name,
+        issueId: data.issue.id,
+      });
+    },
+  );
+
   it.each(["none", "teaser", "full"] as const)(
     "sharing after the article follows outsider reach %s",
     (outsiderReach) => {

@@ -1,3 +1,11 @@
+vi.mock("./read-tracker", () => ({
+  ReadTracker: (props: {
+    issueId: number;
+    articleId?: number;
+    enabled: boolean;
+    trackEnd: boolean;
+  }) => <div data-testid="read-tracker" data-props={JSON.stringify(props)} />,
+}));
 // The issue reading view (mockup screen 2): contents, cover, editor's note,
 // the layout and the rail.
 import { screen, within } from "@testing-library/react";
@@ -7,11 +15,13 @@ vi.mock("./subscribe-button", () => ({
   SubscribeButton: ({
     magazineSlug,
     magazineName,
+    issueId,
   }: {
     magazineSlug: string;
     magazineName: string;
+    issueId?: number;
   }) => (
-    <div data-testid="subscribe" data-slug={magazineSlug}>
+    <div data-testid="subscribe" data-slug={magazineSlug} data-issue={issueId}>
       {magazineName}
     </div>
   ),
@@ -62,6 +72,20 @@ import { IssueReader } from "./issue-reader";
 import { itemAnchorId } from "./anchors";
 
 describe("IssueReader", () => {
+  it.each(["teaser", "full", "editor"] as const)(
+    "tracks issue views for %s readers and passes the subscription source",
+    (access) => {
+      renderWithIntl(<IssueReader data={issuePage({ access })} locale="en" />);
+      expect(
+        JSON.parse(screen.getByTestId("read-tracker").dataset.props!),
+      ).toEqual({ issueId: 7, enabled: access !== "editor", trackEnd: false });
+      expect(screen.getByTestId("subscribe")).toHaveAttribute(
+        "data-issue",
+        "7",
+      );
+    },
+  );
+
   it.each(["none", "teaser", "full"] as const)(
     "sharing in the rail follows outsider reach %s",
     (outsiderReach) => {

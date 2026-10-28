@@ -19,10 +19,12 @@ import { api } from "@/trpc/react";
 export function SubscribeButton({
   magazineSlug,
   magazineName,
+  issueId,
   className,
 }: {
   magazineSlug: string;
   magazineName: string;
+  issueId?: number;
   className?: string;
 }) {
   const t = useTranslations("magazines.subscribe");
@@ -144,7 +146,11 @@ export function SubscribeButton({
               onClick={() => {
                 setError(null);
                 setAnnouncement("");
-                subscribe.mutate({ magazineSlug, locale });
+                subscribe.mutate({
+                  magazineSlug,
+                  locale,
+                  ...(issueId === undefined ? {} : { sourceIssueId: issueId }),
+                });
               }}
             >
               {t("subscribe")}
@@ -188,7 +194,12 @@ export function SubscribeButton({
                 event.preventDefault();
                 if (subscribeByEmail.isPending) return;
                 setError(null);
-                subscribeByEmail.mutate({ magazineSlug, email, locale });
+                subscribeByEmail.mutate({
+                  magazineSlug,
+                  email,
+                  locale,
+                  ...(issueId === undefined ? {} : { sourceIssueId: issueId }),
+                });
               }}
             >
               <Label htmlFor={emailId}>{t("emailLabel")}</Label>

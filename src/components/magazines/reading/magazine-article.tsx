@@ -28,6 +28,8 @@ import type { MagazineArticlePageData } from "@/server/magazines/reading";
 import { ArticleItem } from "../items/article-item";
 import { READING_FRAME } from "./frame";
 import { MagazineJoinPrompt } from "./magazine-join-prompt";
+import { ReadTracker } from "./read-tracker";
+import { SubscribeButton } from "./subscribe-button";
 import { issueNumberText } from "./issue-dateline";
 
 /** The comments a page hands the shared thread, as the blog does. */
@@ -301,9 +303,21 @@ export function MagazineArticle({
             />
           )}
           <div className="min-w-0 border-t pt-8">{body}</div>
+          <ReadTracker
+            key={article.id}
+            issueId={issue.id}
+            articleId={article.id}
+            enabled={!seesEditorLayer(access)}
+            trackEnd={data.mode === "full"}
+          />
           <ShareActions
             title={article.title}
             social={issue.outsiderReach !== "none"}
+          />
+          <SubscribeButton
+            magazineSlug={data.magazine.slug}
+            magazineName={data.magazine.name}
+            issueId={issue.id}
           />
           <NextInIssue data={data} />
           {showComments && (

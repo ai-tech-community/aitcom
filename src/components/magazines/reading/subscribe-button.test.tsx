@@ -125,6 +125,32 @@ function sendEmail() {
 }
 
 describe("SubscribeButton", () => {
+  it("sends the issue it was pressed on", async () => {
+    const fromIssue = (
+      <SubscribeButton magazineSlug="m" magazineName="Monthly" issueId={7} />
+    );
+    const { unmount } = renderWithIntl(fromIssue);
+    fireEvent.click(screen.getByRole("button", { name: "Subscribe" }));
+    expect(trpc.subscribe).toHaveBeenCalledExactlyOnceWith({
+      magazineSlug: "m",
+      locale: "en",
+      sourceIssueId: 7,
+    });
+    await act(async () => undefined);
+    unmount();
+    trpc.status = { signedIn: false, subscribed: false };
+    renderWithIntl(fromIssue);
+    fireEvent.click(screen.getByRole("button", { name: "Subscribe" }));
+    sendEmail();
+    expect(trpc.subscribeByEmail).toHaveBeenCalledExactlyOnceWith({
+      magazineSlug: "m",
+      email: "ann@example.com",
+      locale: "en",
+      sourceIssueId: 7,
+    });
+    await act(async () => undefined);
+  });
+
   it("a signed-in reader subscribes and the change is announced", async () => {
     trpc.nextStatus = { signedIn: true, subscribed: true };
     renderWithIntl(button);

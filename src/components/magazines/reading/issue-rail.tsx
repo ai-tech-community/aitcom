@@ -47,6 +47,7 @@ export function IssueRail({
         <SubscribeButton
           magazineSlug={magazine.slug}
           magazineName={magazine.name}
+          issueId={issue.id}
         />
         <Button variant="outline" size="sm" asChild className="self-start">
           <Link href={`/communities/${community.slug}`}>

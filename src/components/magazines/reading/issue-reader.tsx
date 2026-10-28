@@ -17,6 +17,7 @@ import { READING_FRAME } from "./frame";
 import { IssueContents } from "./issue-contents";
 import { hasEditorNote, IssueHero } from "./issue-hero";
 import { IssueRail } from "./issue-rail";
+import { ReadTracker } from "./read-tracker";
 
 function NoItems() {
   const t = useTranslations("magazines.issue");
@@ -112,6 +113,12 @@ export function IssueReader({
 
   return (
     <div className={READING_FRAME}>
+      <ReadTracker
+        key={issue.id}
+        issueId={issue.id}
+        enabled={!seesEditorLayer(access)}
+        trackEnd={false}
+      />
       <div className="grid gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[14rem_minmax(0,1fr)_18rem]">
         <aside className="lg:sticky lg:top-24 lg:row-span-2 lg:max-h-[calc(100dvh-7rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain xl:row-span-1">
           <IssueContents

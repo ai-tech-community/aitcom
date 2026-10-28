@@ -30,6 +30,8 @@ const READERS: Record<string, string> = {
     "readableArticleWhere, anonymous issue scope",
   "src/server/badges/metrics.ts":
     "a count of the member's own published articles; shows no article",
+  "src/server/magazines/stats/record.ts":
+    "access re-checked by loadIssueAccessById; article must be published and placed in this issue; reads ids only",
   "src/server/magazines/reading.ts":
     "resolveMagazineIssueAccess for the issue that holds the article",
   "src/server/magazines/sitemap-paths.ts":
