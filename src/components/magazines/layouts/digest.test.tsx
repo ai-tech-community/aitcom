@@ -38,6 +38,11 @@ describe("digest layout", () => {
       itemAnchorId("article-1"),
       itemAnchorId("editorial-2"),
     ]);
+    expect(rows.map((row) => row.firstElementChild?.textContent)).toEqual([
+      "01",
+      "02",
+    ]);
+    expect(rows[0]?.firstElementChild).toHaveAttribute("aria-hidden", "true");
     expect(
       within(rows[0]!).getByRole("link", { name: "Article 1" }),
     ).toHaveAttribute("href", "/magazines/gazette/issue-1/article-1");
