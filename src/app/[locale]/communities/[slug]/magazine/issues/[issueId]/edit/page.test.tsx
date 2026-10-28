@@ -42,6 +42,14 @@ vi.mock("@/server/magazines/issue-editing", () => ({
 vi.mock("@/components/magazines/editor/builder/issue-builder", () => ({
   IssueBuilder: () => null,
 }));
+vi.mock("@/trpc/server", () => ({
+  api: {
+    magazines: {
+      getIssueForEditing: { prefetch: async () => undefined },
+    },
+  },
+  HydrateClient: ({ children }: { children: React.ReactNode }) => children,
+}));
 
 import IssueBuilderPage, { dynamic, generateMetadata } from "./page";
 
@@ -94,6 +102,10 @@ describe("issue builder page", () => {
 
   it("renders the builder for an editor", async () => {
     const page = await IssueBuilderPage({ params: params() });
-    expect(page.props).toEqual({ communitySlug: "night-owls", issueId: 5 });
+    // HydrateClient passes the prefetched issue through to the builder.
+    expect(page.props.children.props).toEqual({
+      communitySlug: "night-owls",
+      issueId: 5,
+    });
   });
 });

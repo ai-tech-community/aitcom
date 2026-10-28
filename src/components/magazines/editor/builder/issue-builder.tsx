@@ -166,7 +166,12 @@ export function IssueBuilder({
     },
   );
 
-  if (query.isLoading) return <BuilderSkeleton />;
+  // `isLoading` is pending AND fetching. On a full page load the query is
+  // pending but not yet fetching (fetchStatus idle), so `isLoading` is false
+  // and `data` is missing. Treating that as failure painted an error on the
+  // server and a skeleton on the client; the hydration mismatch left the
+  // issue editor blank until a later visit. `isPending` covers both.
+  if (query.isPending) return <BuilderSkeleton />;
   if (query.isError || !query.data) {
     return (
       <div className="p-6">

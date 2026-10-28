@@ -135,6 +135,25 @@ const savedArticle: NonNullable<ArticleEditorProps["initialData"]> = {
 };
 
 describe("ArticleEditor writing for a magazine", () => {
+  it("shows a save state and a preview of the article", async () => {
+    renderWithIntl(
+      <ArticleEditor isTrustedAuthor={false} destination={destination} />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Draft");
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(
+      screen.getByRole("article", { name: "Article preview" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Back to editing" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Back to editing" }));
+    expect(screen.getByRole("button", { name: "Preview" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
   it("does not hand in an existing article when the final update fails", async () => {
     calls.update.mockRejectedValue(new Error("SAVE_FAILED"));
     renderWithIntl(

@@ -4,6 +4,7 @@ import { type ReactNode, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { uploadSharedImage } from "@/lib/upload-shared-image";
 
 /** The words an image field shows; each surface names its own image. */
 export type ImageUploadFieldText = {
@@ -59,16 +60,7 @@ export function ImageUploadField({
     if (!file) return;
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("alt", uploadAlt);
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Upload failed");
-      const json = (await res.json()) as { url: string };
-      onChange(json.url);
+      onChange(await uploadSharedImage(file, uploadAlt));
     } catch {
       toast.error(text.failed);
     } finally {

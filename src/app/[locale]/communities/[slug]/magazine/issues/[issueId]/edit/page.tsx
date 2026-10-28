@@ -9,6 +9,7 @@ import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
 import { canEditIssueAt } from "@/server/magazines/issue-editing";
 import { getPayloadClient } from "@/server/payload";
+import { api, HydrateClient } from "@/trpc/server";
 
 // Who may edit is decided per request.
 export const dynamic = "force-dynamic";
@@ -52,5 +53,14 @@ export default async function IssueBuilderPage({ params }: { params: Params }) {
   );
   if (!allowed) notFound();
 
-  return <IssueBuilder communitySlug={slug} issueId={issueId} />;
+  // The builder's first paint must already hold the issue. A client query
+  // that starts empty renders a different tree on the server than after
+  // hydration, which blanks the page on a cold visit.
+  await api.magazines.getIssueForEditing.prefetch({ slug, issueId });
+
+  return (
+    <HydrateClient>
+      <IssueBuilder communitySlug={slug} issueId={issueId} />
+    </HydrateClient>
+  );
 }

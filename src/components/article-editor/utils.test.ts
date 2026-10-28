@@ -37,6 +37,49 @@ const stored = {
   },
 } as unknown as SerializedEditorState;
 
+describe("stray empty paragraphs", () => {
+  it("drops empties beside a block and keeps a blank line between paragraphs", () => {
+    const saved = postprocessEditorState({
+      root: {
+        children: [
+          {
+            type: "paragraph",
+            children: [{ type: "text", text: "Before" }],
+          },
+          { type: "paragraph", children: [] },
+          {
+            type: "paragraph",
+            children: [{ type: "text", text: "Still before" }],
+          },
+          { type: "paragraph", children: [{ type: "text", text: "  " }] },
+          {
+            type: "image",
+            fields: {
+              blockType: "Image",
+              src: "https://example.com/a.png",
+              alt: "",
+            },
+          },
+          { type: "paragraph", children: [] },
+          {
+            type: "paragraph",
+            children: [{ type: "text", text: "After" }],
+          },
+        ],
+      },
+    } as unknown as SerializedEditorState) as unknown as {
+      root: { children: { type: string; children?: { text?: string }[] }[] };
+    };
+    expect(
+      saved.root.children.map((node) =>
+        node.type === "paragraph"
+          ? (node.children?.[0]?.text ?? "")
+          : node.type,
+      ),
+    ).toEqual(["Before", "", "Still before", "block", "After"]);
+  });
+});
+
 describe("block ↔ node remapping", () => {
   it("keeps today's behaviour without extensions", () => {
     const pre = JSON.parse(preprocessEditorState(stored)!);

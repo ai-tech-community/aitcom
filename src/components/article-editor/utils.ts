@@ -1,6 +1,7 @@
 import type { SlashCommand } from "./types";
 import { SLASH_COMMANDS } from "./types";
 import type { SerializedEditorState } from "@payloadcms/richtext-lexical/lexical";
+import { stripStrayEmptyParagraphs } from "@/lib/lexical-blocks";
 import { slugify } from "@/lib/text-utils";
 
 /** A Payload block stored as `{type:"block", fields.blockType}` that the editor handles as its own node type. */
@@ -233,6 +234,11 @@ export function postprocessEditorState(
     }
   }
 
-  if (Array.isArray(json.root?.children)) walkNodes(json.root.children);
+  if (Array.isArray(json.root?.children)) {
+    walkNodes(json.root.children);
+    // Empty paragraphs beside an image or code block are insertion leftovers.
+    // A blank line between two paragraphs is kept.
+    json.root.children = stripStrayEmptyParagraphs(json.root.children);
+  }
   return json as SerializedEditorState;
 }

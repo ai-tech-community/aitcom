@@ -77,6 +77,7 @@ function tabData(
     issues: [latest, older],
     viewerIsEditor: false,
     viewerRole: null,
+    draftIssues: [],
     ...overrides,
   };
 }
@@ -249,5 +250,49 @@ describe("MagazineTab", () => {
     );
     expect(screen.getByText("No issues yet")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Read the issue" })).toBeNull();
+  });
+
+  it("shows an editor their drafts instead of saying there are no issues", () => {
+    const draft = issueCard({
+      id: 8,
+      status: "draft",
+      title: "Week one draft",
+      slug: "week-one",
+      publishedAt: null,
+    });
+    renderWithIntl(
+      <MagazineTab
+        data={tabData({
+          latest: null,
+          issues: [],
+          viewerIsEditor: true,
+          viewerRole: "editor_in_chief",
+          draftIssues: [draft],
+        })}
+        communitySlug="amsterdam-ai"
+      />,
+    );
+    expect(screen.queryByText("No issues yet")).toBeNull();
+    expect(screen.getByRole("region", { name: "Drafts" })).toBeInTheDocument();
+    expect(screen.getByText("Draft")).toBeInTheDocument();
+    expect(screen.getByText("Week one draft")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Week one draft/ }),
+    ).toHaveAttribute("href", "/magazines/agents-weekly/week-one");
+  });
+
+  it("does not show drafts to a reader", () => {
+    renderWithIntl(
+      <MagazineTab
+        data={tabData({
+          draftIssues: [
+            issueCard({ id: 8, status: "draft", title: "Secret draft" }),
+          ],
+        })}
+        communitySlug="amsterdam-ai"
+      />,
+    );
+    expect(screen.queryByText("Secret draft")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Drafts" })).toBeNull();
   });
 });

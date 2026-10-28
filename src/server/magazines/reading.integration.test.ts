@@ -251,11 +251,15 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
     const asGuest = await shelf(null);
     expect(ids(asGuest!.issues)).toEqual([pub.id]);
 
-    // Editors manage drafts on the editor desk; the shelf is what is out.
+    // The public shelf stays published-only. Editors are told drafts exist
+    // so the page does not claim there are no issues; the drafts themselves
+    // are listed on the Magazine tab.
     const asEditor = await shelf(fx.editorId);
     expect(asEditor!.viewerIsEditor).toBe(true);
     expect(ids(asEditor!.issues)).toEqual([members.id, pub.id]);
     expect(ids(asEditor!.issues)).not.toContain(draft.id);
+    expect(asEditor!.unpublishedForEditor).toBe(true);
+    expect(asMember!.unpublishedForEditor).toBe(false);
 
     expect(
       await m.reading.loadMagazineShelf(m, {
@@ -697,6 +701,7 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
       issues: [],
       viewerIsEditor: true,
       viewerRole: "editor_in_chief",
+      draftIssues: [],
     });
     expect((await tab(c.slug, fx.memberId))!.viewerIsEditor).toBe(false);
     expect(await tab(`rd-nowhere-${fx.sfx}`, fx.editorId)).toBeNull();

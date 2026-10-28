@@ -32,6 +32,7 @@ type EditingData = {
 
 const trpc = vi.hoisted(() => ({
   editing: null as unknown,
+  pending: false,
   refetch: vi.fn(),
   candidates: [] as unknown[],
   updateIssue: vi.fn(),
@@ -93,9 +94,10 @@ vi.mock("@/trpc/react", () => ({
     magazines: {
       getIssueForEditing: {
         useQuery: () => ({
-          data: trpc.editing,
+          data: trpc.pending ? undefined : trpc.editing,
           dataUpdatedAt: 1,
           isLoading: false,
+          isPending: trpc.pending,
           isError: false,
           refetch: trpc.refetch,
         }),
@@ -265,6 +267,7 @@ async function openRowMenu(title: string) {
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
+  trpc.pending = false;
   trpc.editing = twoArticles();
   trpc.candidates = [];
   trpc.refetch.mockReset();
@@ -298,6 +301,13 @@ afterEach(() => {
 });
 
 describe("IssueBuilder", () => {
+  it("shows a skeleton while the issue query has not settled", () => {
+    trpc.pending = true;
+    renderBuilder();
+    expect(screen.queryByText("This issue could not be loaded.")).toBeNull();
+    expect(document.querySelector("[data-slot=skeleton]")).toBeTruthy();
+  });
+
   it("previews a layout immediately and saves only its changed value", async () => {
     renderWithIntl(<IssueBuilder communitySlug="night-owls" issueId={5} />);
     const preview = screen.getByTestId("issue-preview");

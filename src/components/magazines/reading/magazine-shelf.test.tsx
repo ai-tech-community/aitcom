@@ -148,4 +148,24 @@ describe("MagazineShelf", () => {
       screen.getAllByRole("link", { name: "Manage magazine" })[0],
     ).toHaveAttribute("href", "/communities/amsterdam-ai/magazine");
   });
+
+  it("does not tell an editor there are no issues when drafts exist", () => {
+    renderWithIntl(
+      <MagazineShelf
+        data={shelfData({
+          issues: [],
+          viewerIsEditor: true,
+          unpublishedForEditor: true,
+        })}
+      />,
+    );
+    expect(screen.queryByText("No issues yet")).toBeNull();
+    expect(screen.getByText("Nothing published yet")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Drafts are on your community's Magazine tab/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "Manage magazine" })[0],
+    ).toHaveAttribute("href", "/communities/amsterdam-ai/magazine");
+  });
 });

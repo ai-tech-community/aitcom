@@ -77,6 +77,7 @@ import { LinkPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalLi
 import { cn } from "@/lib/utils";
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
+import { $insertTopLevel } from "./insert-top-level";
 import type { SlashGroup, SlashCommand } from "./types";
 import { slashMenuReducer } from "./reducers";
 import {
@@ -424,13 +425,13 @@ export function RichTextEditor({
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) return;
 
-        const lines = text.split("\n");
-        const nodes = lines.map((line) => {
-          const p = $createParagraphNode();
-          p.append($createTextNode(line));
-          return p;
-        });
-        selection.insertNodes(nodes);
+        $insertTopLevel(
+          text.split("\n").map((line) => {
+            const p = $createParagraphNode();
+            if (line.length > 0) p.append($createTextNode(line));
+            return p;
+          }),
+        );
       });
     },
     [],
@@ -443,10 +444,7 @@ export function RichTextEditor({
       const extension = extensions.find((e) => e.command?.id === id);
       if (extension) {
         editorRef.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            selection.insertNodes([extension.create(), $createParagraphNode()]);
-          }
+          $insertTopLevel([extension.create()]);
         });
         slashDispatch({ type: "CLOSE" });
         return;
@@ -495,24 +493,14 @@ export function RichTextEditor({
       }
       if (id === "code") {
         editorRef.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            const codeBlock = $createCodeBlockNode("", "typescript");
-            const trailingParagraph = $createParagraphNode();
-            selection.insertNodes([codeBlock, trailingParagraph]);
-          }
+          $insertTopLevel([$createCodeBlockNode("", "typescript")]);
         });
         slashDispatch({ type: "CLOSE" });
         return;
       }
       if (id === "image") {
         editorRef.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            const imageNode = $createImageNode("", "");
-            const trailingParagraph = $createParagraphNode();
-            selection.insertNodes([imageNode, trailingParagraph]);
-          }
+          $insertTopLevel([$createImageNode("", "")]);
         });
         slashDispatch({ type: "CLOSE" });
         return;
@@ -665,7 +653,7 @@ export function RichTextEditor({
         <LexicalComposer initialConfig={initialConfig}>
           <EditorBridge onReady={setEditorRef} />
           {placeholder && isEmpty ? (
-            <div className="text-muted-foreground/40 pointer-events-none absolute top-3 left-4 text-sm sm:left-14">
+            <div className="text-muted-foreground/40 pointer-events-none absolute top-3 left-14 text-sm">
               {placeholder}
             </div>
           ) : null}
@@ -673,7 +661,7 @@ export function RichTextEditor({
             contentEditable={
               <ContentEditable
                 className={cn(
-                  "min-h-48 px-4 py-3 text-sm leading-relaxed focus:outline-none sm:px-14",
+                  "min-h-48 py-3 pr-4 pl-14 text-sm leading-relaxed focus:outline-none sm:pr-14",
                   contentClassName,
                 )}
                 ariaLabelledBy={ariaLabelledBy}

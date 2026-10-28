@@ -2294,6 +2294,10 @@
     "prePublishSubtitle": "Controleer je artikel voor publicatie",
     "readinessLabel": "Gereedheid",
     "backToEditing": "Terug naar bewerken",
+    "preview": "Voorbeeld",
+    "previewLabel": "Voorbeeld van het artikel",
+    "previewUntitled": "Zonder titel",
+    "previewEmpty": "Nog niets om te bekijken.",
     "featuredImagePreview": "Voorbeeld",
     "featuredImagePlaceholder": "Geen afbeelding — voeg een URL toe",
     "articleTitlePlaceholder": "Artikel titel...",
@@ -4833,6 +4837,8 @@
       "emptyTitle": "Nog geen nummers",
       "emptyDescription": "Het eerste nummer van {magazine} komt eraan. Bezoek de community om te zien waar de leden over schrijven.",
       "emptyEditorDescription": "Maak het eerste nummer via het tabblad Magazine van je community.",
+      "emptyEditorWithDraftsTitle": "Nog niets gepubliceerd",
+      "emptyEditorWithDraftsDescription": "Concepten staan op het tabblad Magazine van je community. Deze pagina toont een nummer pas nadat het is gepubliceerd.",
       "visitCommunity": "Bezoek {community}"
     },
     "issue": {
@@ -5163,7 +5169,12 @@
       "magazinePage": "Magazinepagina",
       "emptyTitle": "Nog geen nummers",
       "emptyDescription": "Het eerste nummer van {magazine} komt eraan.",
-      "emptyEditorDescription": "Maak het eerste nummer met Nieuw nummer in de redactietafel hieronder."
+      "emptyEditorDescription": "Maak het eerste nummer met Nieuw nummer in de redactietafel hieronder.",
+      "drafts": "Concepten",
+      "status": {
+        "draft": "Concept",
+        "scheduled": "Ingepland"
+      }
     },
     "contributorDesk": {
       "label": "Je schrijftafel",

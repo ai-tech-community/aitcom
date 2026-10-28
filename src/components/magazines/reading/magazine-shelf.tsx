@@ -103,11 +103,17 @@ function MagazineIdentity({ data }: { data: MagazineShelfData }) {
  * viewer may read, newest first. Members-only issues (by their effective
  * visibility, preflight F10) carry a neutral "Members only" badge, so a
  * member knows which issues they cannot share with outsiders.
+ *
+ * Drafts stay off this page. When the viewer edits the magazine and the
+ * only issues are drafts, the empty state says so and points at the
+ * Magazine tab instead of claiming there are no issues.
  */
 export function MagazineShelf({ data }: { data: MagazineShelfData }) {
   const t = useTranslations("magazines.shelf");
   const issuesId = useId();
-  const { magazine, community, issues, viewerIsEditor } = data;
+  const { magazine, community, issues, viewerIsEditor, unpublishedForEditor } =
+    data;
+  const editorWithDrafts = viewerIsEditor && unpublishedForEditor;
 
   return (
     <div className={cn(READING_FRAME, "flex flex-col gap-10")}>
@@ -132,11 +138,17 @@ export function MagazineShelf({ data }: { data: MagazineShelfData }) {
           </ul>
         ) : (
           <EmptyState
-            title={t("emptyTitle")}
+            title={
+              editorWithDrafts
+                ? t("emptyEditorWithDraftsTitle")
+                : t("emptyTitle")
+            }
             description={
-              viewerIsEditor
-                ? t("emptyEditorDescription")
-                : t("emptyDescription", { magazine: magazine.name })
+              editorWithDrafts
+                ? t("emptyEditorWithDraftsDescription")
+                : viewerIsEditor
+                  ? t("emptyEditorDescription")
+                  : t("emptyDescription", { magazine: magazine.name })
             }
             action={
               viewerIsEditor ? (
