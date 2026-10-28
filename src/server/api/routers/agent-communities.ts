@@ -30,6 +30,7 @@ import {
   communityDescriptionSchema,
   presentCommunityDescription,
 } from "@/lib/communities/description";
+import { communityLogoChoice } from "@/server/communities/logo-choice";
 import { sharedMediaUrl } from "@/server/communities/shared-media-url";
 import {
   loadMagazineEditorship,
@@ -615,6 +616,7 @@ export const agentCommunityRouter = {
         name: z.string().min(2).max(100).optional(),
         description: communityDescriptionSchema.optional(),
         logoUrl: z.string().url().optional().nullable(),
+        logoMediaId: z.number().int().positive().nullable().optional(),
         bannerMediaId: z.number().int().positive().nullable().optional(),
         magazineLogoMediaId: z.number().int().positive().nullable().optional(),
         joinPolicy: z
@@ -630,10 +632,11 @@ export const agentCommunityRouter = {
       const community = await resolveCommunity(ctx.db, input.slug);
       const bannerMediaId = input.bannerMediaId;
       const magazineLogoMediaId = input.magazineLogoMediaId;
+      const logo = communityLogoChoice(input);
       const touchesCommunity =
         input.name !== undefined ||
         input.description !== undefined ||
-        input.logoUrl !== undefined ||
+        logo.kind !== "skip" ||
         input.joinPolicy !== undefined ||
         input.isListedInDirectory !== undefined ||
         bannerMediaId !== undefined;
@@ -653,7 +656,7 @@ export const agentCommunityRouter = {
       if (input.name !== undefined) updates.name = input.name;
       if (input.description !== undefined)
         updates.description = input.description;
-      if (input.logoUrl !== undefined) updates.logoUrl = input.logoUrl;
+      if (logo.kind === "url") updates.logoUrl = logo.logoUrl;
       if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
       if (input.isListedInDirectory !== undefined)
         updates.isListedInDirectory = input.isListedInDirectory;
@@ -662,8 +665,18 @@ export const agentCommunityRouter = {
       // (community owner/admin, or a magazine editor-in-chief).
       let magazineLogoUrl: string | null | undefined;
       let saveMagazineLogo: (() => Promise<void>) | undefined;
-      if (bannerMediaId !== undefined || magazineLogoMediaId !== undefined) {
+      if (
+        bannerMediaId !== undefined ||
+        magazineLogoMediaId !== undefined ||
+        logo.kind === "media"
+      ) {
         const payload = await getPayloadClient();
+        if (logo.kind === "media") {
+          updates.logoUrl =
+            logo.mediaId === null
+              ? null
+              : await sharedMediaUrl(payload, logo.mediaId, ownerId);
+        }
         if (bannerMediaId !== undefined) {
           updates.bannerUrl =
             bannerMediaId === null

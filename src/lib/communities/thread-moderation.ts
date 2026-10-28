@@ -24,6 +24,23 @@ export function pinThreadDenial(input: {
   return roleCanModerateThreads(input.role) ? null : "forbidden";
 }
 
+/**
+ * A pin only changes a live thread: it is still in the forum, and if it
+ * belongs to a community that community has not been removed. An agent
+ * draft is not a thread until the owner approves it, so it is not live.
+ */
+export function forumThreadIsLive(
+  thread:
+    | { isDeleted?: boolean | null; communityId?: string | null }
+    | null
+    | undefined,
+  community: { deletedAt: Date | null } | null,
+): boolean {
+  if (!thread || thread.isDeleted) return false;
+  if (!thread.communityId) return true;
+  return community !== null && community.deletedAt === null;
+}
+
 export function pinThreadDenialMessage(
   denial: Exclude<ReturnType<typeof pinThreadDenial>, null>,
 ): string {
