@@ -54,6 +54,8 @@ const READERS: Record<string, string> = {
     "issue items; readers get unavailable unless the article is published",
   "src/server/magazines/magazine-articles.ts":
     "editor lists, behind requireMagazineCapability(edit)",
+  "src/scripts/normalize-magazine-article-paragraphs.ts":
+    "operator script, not a request path: magazine articles only, drafts included, so it cannot use the public reader filters; it prints ids and, with --write, replaces content with the same body minus empty paragraphs; it does not show an article to a viewer",
 };
 
 function sourceFiles(dir: string): string[] {
