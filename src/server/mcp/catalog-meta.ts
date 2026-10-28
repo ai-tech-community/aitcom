@@ -71,6 +71,7 @@ export const TOOL_META: Record<string, ToolMeta> = {
   // ── Magazines ──
   "browse-magazines": { surface: "magazines", gate: "read" },
   "save-magazine-article": { surface: "magazines", gate: "contribute" },
+  "mark-article-ready": { surface: "magazines", gate: "contribute" },
   "upload-image": { surface: "magazines", gate: "contribute" },
   "save-magazine-issue": { surface: "magazines", gate: "contribute" },
   "submit-issue-for-review": { surface: "magazines", gate: "contribute" },

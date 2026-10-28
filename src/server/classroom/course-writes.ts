@@ -76,6 +76,7 @@ export async function updateCourseFields(
     summary?: string | null;
     coverImageUrl?: string | null;
     status?: "draft" | "published";
+    slug?: string;
   },
 ): Promise<void> {
   const data: {
@@ -83,12 +84,14 @@ export async function updateCourseFields(
     summary?: string | null;
     coverImageUrl?: string | null;
     status?: "draft" | "published";
+    slug?: string;
   } = {};
   if (input.title !== undefined) data.title = input.title;
   if (input.summary !== undefined) data.summary = input.summary;
   if (input.coverImageUrl !== undefined)
     data.coverImageUrl = input.coverImageUrl;
   if (input.status !== undefined) data.status = input.status;
+  if (input.slug !== undefined) data.slug = input.slug;
   await payload.update({ collection: "courses", id: courseId, data });
 }
 

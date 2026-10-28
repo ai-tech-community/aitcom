@@ -15,6 +15,7 @@ import {
   classroomCourseUpdateFromDraft,
   classroomLessonFromDraft,
   classroomModuleFromDraft,
+  classroomContentStatus,
   classroomWriteIsMemberVisible,
   classroomWriteNeedsApproval,
   type ClassroomCourseDraft,
@@ -37,13 +38,14 @@ import {
   updateCourseLesson,
   updateCourseModule,
 } from "@/server/classroom/course-writes";
-import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import { lessonMarkdownToLexical } from "@/lib/classroom/lesson-markdown";
 import {
   agentDrafts,
   communities,
   communityMemberships,
 } from "@/server/db/schema";
 import { uniqueClassroomCourseSlug } from "@/server/classroom/course-slug";
+import { presentClassroomCourse } from "@/server/classroom/course-outline";
 import { memberDisplayName } from "@/server/members/display-name";
 import { getPayloadClient } from "@/server/payload";
 
@@ -163,7 +165,9 @@ export async function publishClassroomLesson(
   draft: ClassroomLessonDraft,
 ) {
   const body =
-    draft.body === undefined ? undefined : plainTextToLexical(draft.body ?? "");
+    draft.body === undefined
+      ? undefined
+      : lessonMarkdownToLexical(draft.body ?? "");
   if (draft.action === "create") {
     return createCourseLesson(payload, {
       courseId: draft.courseId,
@@ -276,11 +280,14 @@ async function holdClassroomDraft(
       metadata: input.metadata,
     })
     .returning({ id: agentDrafts.id });
-  return agentDraftResponse({
-    draftId: draft!.id,
-    slug: input.slug,
-    body: input.body,
-  });
+  return {
+    ...agentDraftResponse({
+      draftId: draft!.id,
+      slug: input.slug,
+      body: input.body,
+    }),
+    status: "draft" as const,
+  };
 }
 
 export const agentClassroomRouter = {
@@ -343,26 +350,34 @@ export const agentClassroomRouter = {
               depth: 0,
               pagination: false,
             });
+      const { docs: lessons } =
+        courseIds.length === 0
+          ? { docs: [] }
+          : await payload.find({
+              collection: "lessons",
+              where: { course: { in: courseIds } },
+              sort: "order",
+              limit: 1000,
+              depth: 0,
+              pagination: false,
+            });
       return {
         classroomCreatePolicy: community.classroomCreatePolicy ?? "all_members",
-        courses: courses.map((course) => ({
-          id: course.id,
-          title: course.title,
-          slug: course.slug,
-          summary: course.summary ?? null,
-          status: course.status,
-          authorId: course.authorId,
-          authorName: course.authorName ?? null,
-          isPublic: course.isPublic === true,
-          modules: modules
-            .filter((mod) => mod.course === course.id)
-            .map((mod) => ({
-              id: mod.id,
-              title: mod.title,
-              order: mod.order ?? 0,
-              summary: mod.summary ?? null,
-            })),
-        })),
+        courses: courses.map((course) => {
+          const outline = presentClassroomCourse(course, modules, lessons);
+          return {
+            id: course.id,
+            title: course.title,
+            slug: course.slug,
+            summary: course.summary ?? null,
+            status: course.status,
+            authorId: course.authorId,
+            authorName: course.authorName ?? null,
+            isPublic: course.isPublic === true,
+            modules: outline.modules,
+            lessons: outline.lessons,
+          };
+        }),
       };
     }),
 
@@ -452,6 +467,7 @@ export const agentClassroomRouter = {
         communitySlug: z.string().min(1),
         courseId: z.number().int().positive(),
         title: z.string().min(COURSE_TITLE_MIN).max(200).optional(),
+        slug: z.string().min(1).max(80).optional(),
         summary: z.string().max(500).nullable().optional(),
         status: z.enum(["draft", "published"]).optional(),
         coverImageUrl: z.string().url().max(1000).nullable().optional(),
@@ -462,6 +478,7 @@ export const agentClassroomRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
       if (
         input.title === undefined &&
+        input.slug === undefined &&
         input.summary === undefined &&
         input.status === undefined &&
         input.coverImageUrl === undefined
@@ -478,20 +495,28 @@ export const agentClassroomRouter = {
         input.communitySlug,
         course.communityId,
       );
+      const slugSource = input.slug ?? input.title;
+      const slug =
+        slugSource === undefined
+          ? undefined
+          : await uniqueClassroomCourseSlug(payload, slugSource, course.slug);
       const patch = {
         ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(slug !== undefined ? { slug } : {}),
         ...(input.summary !== undefined ? { summary: input.summary } : {}),
         ...(input.coverImageUrl !== undefined
           ? { coverImageUrl: input.coverImageUrl }
           : {}),
         ...(input.status !== undefined ? { status: input.status } : {}),
       };
-      if (!classroomWriteNeedsApproval(course.status, input.status)) {
+      const held = classroomWriteNeedsApproval(course.status, input.status);
+      if (!held) {
         await updateCourseFields(payload, course.id, patch);
         return {
           mode: "updated" as const,
           courseId: course.id,
-          status: course.status,
+          slug: slug ?? course.slug,
+          status: classroomContentStatus(course.status, false),
         };
       }
       const [draft] = await ctx.db
@@ -512,11 +537,14 @@ export const agentClassroomRouter = {
           },
         })
         .returning({ id: agentDrafts.id });
-      return agentDraftResponse({
-        draftId: draft!.id,
-        slug: course.slug,
-        body: input.summary ?? course.summary ?? "",
-      });
+      return {
+        ...agentDraftResponse({
+          draftId: draft!.id,
+          slug: slug ?? course.slug,
+          body: input.summary ?? course.summary ?? "",
+        }),
+        status: classroomContentStatus(course.status, true),
+      };
     }),
 
   createModule: agentProcedure
@@ -561,6 +589,7 @@ export const agentClassroomRouter = {
         mode: "created" as const,
         moduleId: created.id,
         courseId: course.id,
+        status: classroomContentStatus(course.status, false),
       };
     }),
 
@@ -622,6 +651,7 @@ export const agentClassroomRouter = {
         mode: "updated" as const,
         moduleId: moduleDoc.id,
         courseId: course.id,
+        status: classroomContentStatus(course.status, false),
       };
     }),
 
@@ -684,13 +714,14 @@ export const agentClassroomRouter = {
         moduleId: input.moduleId,
         title: input.title,
         ...(input.body !== undefined
-          ? { body: plainTextToLexical(input.body) }
+          ? { body: lessonMarkdownToLexical(input.body) }
           : {}),
       });
       return {
         mode: "created" as const,
         lessonId: created.id,
         courseId: course.id,
+        status: classroomContentStatus(course.status, false),
       };
     }),
 
@@ -747,13 +778,14 @@ export const agentClassroomRouter = {
       await updateCourseLesson(payload, lesson.id, {
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.body !== undefined
-          ? { body: plainTextToLexical(input.body) }
+          ? { body: lessonMarkdownToLexical(input.body) }
           : {}),
       });
       return {
         mode: "updated" as const,
         lessonId: lesson.id,
         courseId: course.id,
+        status: classroomContentStatus(course.status, false),
       };
     }),
 };

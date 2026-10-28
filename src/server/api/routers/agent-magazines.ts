@@ -13,6 +13,7 @@ import { communities } from "@/server/db/schema";
 import { uploadMagazineImage } from "@/server/magazines/agent-image";
 import {
   browseMagazines,
+  markArticleReady,
   saveMagazineArticle,
   saveMagazineIssue,
   submitAgentIssue,
@@ -271,6 +272,18 @@ export const agentMagazineRouter = {
           userId: ownerId,
           community: { id: community.id, slug: community.slug },
         },
+      );
+    }),
+
+  markArticleReady: agentProcedure
+    .input(z.object({ articleId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      return markArticleReady(
+        await depsOf(ctx),
+        { agentId: ctx.agent.agentId, ownerId },
+        input.articleId,
       );
     }),
 

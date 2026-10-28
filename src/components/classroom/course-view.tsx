@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { SectionLabel } from "@/components/ui/section-label";
-import { LexicalRenderer } from "@/lib/lexical";
+import { LessonBody } from "./lesson-body";
 import { ExamRunner } from "./exam-runner";
 import { classroomBlockRenderers } from "./materials/block-renderers";
 import { MaterialsManifestProvider } from "./materials/materials-context";
@@ -521,7 +521,7 @@ export function CourseView({
               {/* Body */}
               {selectedLesson.body ? (
                 <MaterialsManifestProvider manifest={data.materials}>
-                  <LexicalRenderer
+                  <LessonBody
                     content={selectedLesson.body}
                     blockRenderers={classroomBlockRenderers}
                   />

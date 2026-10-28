@@ -16,7 +16,7 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
     "browse-classrooms",
     {
       description:
-        "List classrooms and their modules in a community, as the key's owner would see them. Requires read scope. Draft courses are included for the author and for community managers. Pass courseSlug to read one classroom. The response includes classroomCreatePolicy, the same setting as the classroom settings page (all_members or admins_only). Modules are id, title, order and summary. Lesson bodies and exam answers are not included.",
+        "List classrooms and their modules and lessons in a community, as the key's owner would see them. Requires read scope. Draft courses are included for the author and for community managers. Pass courseSlug to read one classroom. The response includes classroomCreatePolicy, the same setting as the classroom settings page (all_members or admins_only). Each course lists its modules, the lessons in each module, and lessons that are not in a module. Lesson bodies and exam answers are not included.",
       inputSchema: {
         communitySlug: z.string().min(1),
         courseSlug: z.string().min(1).optional(),
@@ -47,11 +47,12 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
     "update-classroom",
     {
       description:
-        "Update a classroom the owner authored. Requires contribute scope. Title, summary, cover image URL, and status. A change that keeps an unpublished course unpublished is saved immediately. Setting status to published, or editing a course members can already see, is saved as a draft until the owner approves it. This tool cannot archive a course.",
+        "Update a classroom the owner authored. Requires contribute scope. Title, summary, cover image URL, status, and an optional slug. Changing the title, or sending slug, replaces a timestamp address with a clean slug. A short number is added only when that address is already used. A change that keeps an unpublished course unpublished is saved immediately. Setting status to published, or editing a course members can already see, is saved as a draft until the owner approves it. This tool cannot archive a course.",
       inputSchema: {
         communitySlug: z.string().min(1),
         courseId: z.number().int().positive(),
         title: z.string().min(COURSE_TITLE_MIN).max(200).optional(),
+        slug: z.string().min(1).max(80).optional(),
         summary: z.string().max(500).nullable().optional(),
         status: z.enum(["draft", "published"]).optional(),
         coverImageUrl: z.string().url().max(1000).nullable().optional(),
@@ -65,7 +66,7 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
     "create-module",
     {
       description:
-        "Add a module to a classroom the owner authored. Requires contribute scope. The first module on a course wraps its existing lessons, the same as the classroom builder. On an unpublished course the module is created immediately. On a published course it is saved as a draft until the owner approves it, so members do not see it first.",
+        "Add a module to a classroom the owner authored. Requires contribute scope. The first module on a course wraps its existing lessons, the same as the classroom builder. On an unpublished course the module is created immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it, so members do not see it first. The response status is draft until that approval.",
       inputSchema: {
         communitySlug: z.string().min(1),
         courseId: z.number().int().positive(),
@@ -81,7 +82,7 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
     "update-module",
     {
       description:
-        "Update a module title or summary on a classroom the owner authored. Requires contribute scope. On an unpublished course the change is saved immediately. On a published course it is saved as a draft until the owner approves it.",
+        "Update a module title or summary on a classroom the owner authored. Requires contribute scope. On an unpublished course the change is saved immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it. The response status is draft until that approval.",
       inputSchema: {
         communitySlug: z.string().min(1),
         moduleId: z.number().int().positive(),
@@ -97,7 +98,7 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
     "create-lesson",
     {
       description:
-        "Add a lesson to a classroom the owner authored. Requires contribute scope. Optional moduleId places it in that module. body is plain text stored as paragraphs. On an unpublished course the lesson is created immediately. On a published course it is saved as a draft until the owner approves it. This tool does not add an exam.",
+        "Add a lesson to a classroom the owner authored. Requires contribute scope. Optional moduleId places it in that module. body is markdown: headings, lists, GFM tables, fenced code, and links. Newlines are kept. On an unpublished course the lesson is created immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it. The response status is draft until that approval. This tool does not add an exam.",
       inputSchema: {
         communitySlug: z.string().min(1),
         courseId: z.number().int().positive(),
@@ -114,7 +115,7 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
     "update-lesson",
     {
       description:
-        "Update a lesson title or body on a classroom the owner authored. Requires contribute scope. body is plain text stored as paragraphs. On an unpublished course the change is saved immediately. On a published course it is saved as a draft until the owner approves it.",
+        "Update a lesson title or body on a classroom the owner authored. Requires contribute scope. body is markdown: headings, lists, GFM tables, fenced code, and links. Newlines are kept. On an unpublished course the change is saved immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it. The response status is draft until that approval.",
       inputSchema: {
         communitySlug: z.string().min(1),
         lessonId: z.number().int().positive(),

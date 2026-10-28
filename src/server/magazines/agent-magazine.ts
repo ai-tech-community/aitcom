@@ -12,6 +12,12 @@ import {
   memberNamesByUserId,
   withAuthorBylines,
 } from "@/server/members/display-name";
+import {
+  ARTICLE_BLOCKING_MESSAGE,
+  ARTICLE_WARNING_MESSAGE,
+  articleReadiness,
+  articleReadyStep,
+} from "@/lib/articles/readiness";
 import { magazineAgentIssueReviewPath } from "@/lib/magazines/paths";
 import type { Article, Magazine, MagazineIssue } from "@/payload-types";
 
@@ -36,6 +42,7 @@ import {
   loadMagazineEditorship,
   standingCan,
 } from "./editorship";
+import { submitMagazineArticle } from "./article-submission";
 import { createIssue, publishIssue } from "./issue-service";
 import { placedArticlesOf, syncArticlePlacement } from "./article-placement";
 import { uniqueMagazineArticleSlug } from "./magazine-articles";
@@ -646,6 +653,91 @@ export async function saveMagazineArticle(
   );
 }
 
+/**
+ * The article dialog's hand-in. Failing checks change nothing. A contributor
+ * is sent to an editor (`pending_review`); someone who can edit is marked
+ * ready. Neither path publishes the article.
+ */
+export async function markArticleReady(
+  deps: Deps,
+  identity: MagazineAgent,
+  articleId: number,
+) {
+  const owned = await findOwnedDraft(
+    deps,
+    identity.agentId,
+    MAGAZINE_ARTICLE_DRAFT_TYPE,
+    String(articleId),
+  );
+  if (!owned) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You can only mark your own article draft ready.",
+    });
+  }
+  const existing = await deps.payload.findByID({
+    collection: "articles",
+    id: articleId,
+    draft: true,
+    depth: 0,
+  });
+  if (existing.authorId !== identity.ownerId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You can only mark your own article draft ready.",
+    });
+  }
+  if (await articleHeldForReview(deps, identity.agentId, articleId)) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "This article is in an issue waiting for review.",
+    });
+  }
+  const report = articleReadiness({
+    title: existing.title,
+    content: existing.content,
+    type: existing.type,
+  });
+  const failures = report.blocking.map(
+    (code) => ARTICLE_BLOCKING_MESSAGE[code],
+  );
+  const warnings = report.warnings.map((code) => ARTICLE_WARNING_MESSAGE[code]);
+  const step = articleReadyStep({
+    blocking: report.blocking,
+    reviewStatus: existing.reviewStatus,
+    status: existing.status,
+  });
+  if (step === "forbidden") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This article can no longer be marked ready by the agent.",
+    });
+  }
+  if (step !== "submit") {
+    return {
+      articleId,
+      ready: step === "ready",
+      reviewStatus: existing.reviewStatus ?? null,
+      awaitingApproval: step === "awaiting_editor",
+      failures,
+      warnings,
+      outline: report.outline,
+    };
+  }
+  const updated = await submitMagazineArticle(deps, existing, identity.ownerId);
+  const ready = updated.reviewStatus === "approved";
+  return {
+    articleId: articleDocumentId(updated.id) ?? articleId,
+    ready,
+    reviewStatus: updated.reviewStatus ?? null,
+    awaitingApproval: updated.reviewStatus === "pending_review",
+    handIn: ready ? ("mark_ready" as const) : ("send_for_review" as const),
+    failures: [],
+    warnings,
+    outline: report.outline,
+  };
+}
+
 async function mainArticleIdsBySlug(
   deps: Deps,
   slugs: string[],
@@ -701,7 +793,6 @@ async function articleResult(
 
 async function assertPlaceable(
   deps: Deps,
-  identity: MagazineAgent,
   magazineId: number,
   issueId: number,
   articleIds: number[],
@@ -728,21 +819,6 @@ async function assertPlaceable(
     pagination: false,
   });
   const byId = new Map(docs.map((doc) => [doc.id, doc]));
-  const ownedRows = await deps.db
-    .select({ targetId: agentDrafts.targetId, status: agentDrafts.status })
-    .from(agentDrafts)
-    .where(
-      and(
-        eq(agentDrafts.agentId, identity.agentId),
-        eq(agentDrafts.type, MAGAZINE_ARTICLE_DRAFT_TYPE),
-        inArray(agentDrafts.targetId, articleIds.map(String)),
-      ),
-    );
-  const owned = new Set(
-    ownedRows
-      .filter((row) => row.status === "draft" || row.status === "pending")
-      .map((row) => Number(row.targetId)),
-  );
   for (const articleId of articleIds) {
     const article = byId.get(articleId);
     if (!article || relationIdOrNull(article.magazine) !== magazineId) {
@@ -758,16 +834,9 @@ async function assertPlaceable(
         message: `Article ${articleId} is already in another issue.`,
       });
     }
-    const ownDraft =
-      owned.has(articleId) &&
-      article.authorId === identity.ownerId &&
-      article.status !== "published" &&
-      article.reviewStatus !== "approved";
-    if (article.reviewStatus !== "approved" && !ownDraft) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: `Article ${articleId} is not ready to place. Use your own draft or an approved article.`,
-      });
+    // A draft, including the agent's own, is not ready to place.
+    if (article.reviewStatus !== "approved") {
+      throw magazineError("ARTICLE_NOT_READY");
     }
   }
 }
@@ -929,13 +998,7 @@ export async function saveMagazineIssue(
     previous: readonly StoredBlock[],
   ) => {
     if (input.articleIds && !input.items) {
-      await assertPlaceable(
-        deps,
-        identity,
-        magazine.id,
-        issueId ?? -1,
-        input.articleIds,
-      );
+      await assertPlaceable(deps, magazine.id, issueId ?? -1, input.articleIds);
     }
     if (!input.items || !blocks) return;
     const ctx = itemContextFor(deps, {

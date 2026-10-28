@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 
 import {
+  classroomContentStatus,
   classroomCourseFromDraft,
   classroomCourseSlug,
   classroomWriteIsMemberVisible,
@@ -18,6 +19,12 @@ it("builds a title slug and adds a short number only on collision", () => {
 it("treats only a published classroom as member-visible", () => {
   expect(classroomWriteIsMemberVisible("draft")).toBe(false);
   expect(classroomWriteIsMemberVisible("published")).toBe(true);
+});
+
+it("reports draft until a write is on a published course", () => {
+  expect(classroomContentStatus("draft", false)).toBe("draft");
+  expect(classroomContentStatus("published", true)).toBe("draft");
+  expect(classroomContentStatus("published", false)).toBe("published");
 });
 
 it("saves a draft course immediately and holds a member-visible write", () => {

@@ -86,8 +86,23 @@ export function authorBylineAtReadTime(
   if (!live || !account || live === account) return saved ?? live;
   if (!saved) return live;
   if (saved === account) return live;
-  if (saved.includes(account)) return saved.replaceAll(account, live);
-  return saved;
+  return replaceWholeName(saved, account, live);
+}
+
+/**
+ * Swap the account name for the display name only as a whole token.
+ * `greg` inside the already-correct `gregy` must stay `gregy`, not `gregyy`.
+ */
+function replaceWholeName(
+  saved: string,
+  account: string,
+  live: string,
+): string {
+  const escaped = account.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return saved.replace(
+    new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "gu"),
+    live,
+  );
 }
 
 /** Replace stored bylines with the live display name. Does not write. */

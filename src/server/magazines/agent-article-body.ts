@@ -1,6 +1,10 @@
 /**
- * The agent's article body, stored as Lexical paragraphs without adding or
- * joining words. One non-empty line is one paragraph.
+ * The agent's article body, stored as the editor's document.
+ *
+ * A markdown heading line (`#`, `##`, or `###`) becomes a real heading node.
+ * One or two hashes are an H2, which is the editor's section heading. Three
+ * or more are an H3. Every other non-empty line stays a paragraph, so an
+ * intro before the first heading remains a paragraph.
  *
  * A blank line in markdown only separates blocks. Storing it as an empty
  * paragraph is what filled the editor with empty `<p>`s around lists and
@@ -8,38 +12,54 @@
  * A body that is only whitespace still gets one empty paragraph, so the
  * rich-text field has a root child.
  */
+const ATX_HEADING = /^(#{1,6})[ \t]+(\S.*)$/;
+
+function textNode(text: string) {
+  return {
+    type: "text" as const,
+    text,
+    version: 1,
+    detail: 0,
+    format: 0,
+    mode: "normal" as const,
+    style: "",
+  };
+}
+
+function paragraphNode(text: string) {
+  return {
+    type: "paragraph" as const,
+    version: 1,
+    direction: "ltr" as const,
+    format: "" as const,
+    indent: 0,
+    children: text ? [textNode(text)] : [],
+  };
+}
+
+function headingNode(marks: string, text: string) {
+  return {
+    type: "heading" as const,
+    tag: marks.length >= 3 ? ("h3" as const) : ("h2" as const),
+    version: 1,
+    direction: "ltr" as const,
+    format: "" as const,
+    indent: 0,
+    children: [textNode(text.trim())],
+  };
+}
+
 export function articleBodyToLexical(body: string) {
   const lines = body.split("\n").filter((line) => line.trim().length > 0);
   const children =
     lines.length > 0
-      ? lines.map((line) => ({
-          type: "paragraph" as const,
-          version: 1,
-          direction: "ltr" as const,
-          format: "" as const,
-          indent: 0,
-          children: [
-            {
-              type: "text" as const,
-              text: line,
-              version: 1,
-              detail: 0,
-              format: 0,
-              mode: "normal" as const,
-              style: "",
-            },
-          ],
-        }))
-      : [
-          {
-            type: "paragraph" as const,
-            version: 1,
-            direction: "ltr" as const,
-            format: "" as const,
-            indent: 0,
-            children: [],
-          },
-        ];
+      ? lines.map((line) => {
+          const heading = ATX_HEADING.exec(line.trim());
+          return heading
+            ? headingNode(heading[1]!, heading[2]!)
+            : paragraphNode(line);
+        })
+      : [paragraphNode("")];
   return {
     root: {
       type: "root" as const,

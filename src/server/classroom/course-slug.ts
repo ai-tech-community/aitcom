@@ -10,6 +10,7 @@ type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 export async function uniqueClassroomCourseSlug(
   payload: Payload,
   title: string,
+  ignoreSlug?: string,
 ): Promise<string> {
   const base = classroomCourseSlug(title);
   const { docs } = await payload.find({
@@ -25,7 +26,7 @@ export async function uniqueClassroomCourseSlug(
   const taken = new Set<string>();
   for (const doc of docs) {
     const slug = doc.slug;
-    if (!slug) continue;
+    if (!slug || slug === ignoreSlug) continue;
     if (
       slug === base ||
       (slug.startsWith(prefix) && /^\d+$/.test(slug.slice(prefix.length)))
