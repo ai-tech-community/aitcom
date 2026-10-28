@@ -35,6 +35,14 @@ function renderDialog(overrides: Partial<PublishDialogProps> = {}) {
 }
 
 describe("PublishDialog", () => {
+  it("names a preview audience in plain words", () => {
+    renderDialog({ audience: "teaser" });
+    expect(
+      screen.getByText(
+        "Everyone can see the cover, the contents and the start of each article. Only members of your community read all of it. It will show on the Magazines page.",
+      ),
+    ).toBeVisible();
+  });
   const originalTz = process.env.TZ;
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

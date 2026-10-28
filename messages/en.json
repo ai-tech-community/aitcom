@@ -5034,6 +5034,11 @@
         "launchpadProject": "Most upvotes",
         "newsItem": "Headlines about your topics, newest first",
         "welcome": "A welcome when new people join, with a count and no names"
+      },
+      "visibilityHints": {
+        "members": "Only members can read it.",
+        "teaser": "Everyone sees the cover, the contents and the start of each article. Members read everything.",
+        "public": "Everyone can read all of it."
       }
     },
     "review": {
@@ -5113,8 +5118,7 @@
       "visibilityLabel": "Who can read new issues",
       "visibilityMembers": "Members only",
       "visibilityPublic": "Everyone",
-      "visibilityHint": "Applies to new issues only. You can still change each issue on its own.",
-      "alreadyConfirmed": "You already confirmed that everyone may read new issues, even though your community is private.",
+      "alreadyConfirmed": "You already confirmed that new issues may be shown outside your private community.",
       "create": "Create magazine",
       "save": "Save changes",
       "saving": "Saving…",
@@ -5123,7 +5127,13 @@
       "loadFailed": "The magazine settings could not be loaded.",
       "tryAgain": "Try again",
       "openTab": "Open the Magazine tab",
-      "back": "Back to the Magazine tab"
+      "back": "Back to the Magazine tab",
+      "visibilityHints": {
+        "members": "Only members can read it.",
+        "teaser": "Everyone sees the cover, the contents and the start of each article. Members read everything.",
+        "public": "Everyone can read all of it."
+      },
+      "visibilityTeaser": "Preview for everyone"
     },
     "tab": {
       "metaTitle": "Magazine",
@@ -5256,7 +5266,13 @@
         "optInPending": "Tick the box to save this choice.",
         "intro": "Intro line (optional)",
         "introHelp": "One line shown above this item in the issue.",
-        "done": "Done"
+        "done": "Done",
+        "visibilityHints": {
+          "members": "Only members can read it.",
+          "teaser": "Everyone sees the cover, the contents and the start of each article. Members read everything.",
+          "public": "Everyone can read all of it."
+        },
+        "visibilityTeaser": "Preview for everyone"
       },
       "items": {
         "pickedBecause": "Picked because:",
@@ -5398,7 +5414,8 @@
         "scheduledTitle": "Your issue is scheduled",
         "scheduledLead": "It goes out on {time}. You can still change it until then.",
         "unscheduledTitle": "The schedule is cancelled",
-        "unscheduledLead": "The issue is a draft again."
+        "unscheduledLead": "The issue is a draft again.",
+        "audienceTeaser": "Everyone can see the cover, the contents and the start of each article. Only members of your community read all of it. It will show on the Magazines page."
       },
       "goesOut": "Goes out <timestamp>{time}</timestamp>"
     },

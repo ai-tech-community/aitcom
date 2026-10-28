@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { EditorItemView } from "@/lib/magazines/item-views";
 
 import {
+  articleView,
+  editorialView,
   eventView,
   forumThreadView,
   launchpadProjectView,
@@ -26,6 +28,62 @@ import { LivePreview, visibleToVisitors } from "./live-preview";
 import type { BuilderItem } from "./items-model";
 
 describe("LivePreview", () => {
+  it("Visitor shows a preview issue with openings and a join picture", () => {
+    const article = articleView(1);
+    const editorial = editorialView(1, { intro: "Editorial intro." });
+    renderWithIntl(
+      <LivePreview
+        magazine={{ name: "Gazette", slug: "gazette" }}
+        community={{ name: "Night Owls", slug: "night-owls" }}
+        issue={{ number: 1, publishedAt: null }}
+        details={{
+          title: "Community picks",
+          slug: "picks",
+          coverImageUrl: null,
+          editorNote: null,
+          visibility: "teaser",
+        }}
+        layout="cover-story"
+        items={[
+          { kind: "article", articleId: 1, key: article.itemId },
+          {
+            kind: "editorial",
+            heading: editorial.heading ?? undefined,
+            intro: editorial.intro ?? undefined,
+            body: editorial.body,
+            key: editorial.itemId,
+          },
+        ]}
+        savedViews={
+          new Map<string, EditorItemView>([
+            [article.itemId, article],
+            [editorial.itemId, editorial],
+          ])
+        }
+        audience="teaser"
+      />,
+    );
+    const preview = screen.getByTestId("issue-preview");
+    expect(preview).toHaveTextContent("Body of editorial 1.");
+    expect(preview).toHaveTextContent("Excerpt of article 1.");
+    fireEvent.click(screen.getByRole("radio", { name: "Visitor" }));
+    expect(preview).toHaveTextContent("Opening of article 1.");
+    expect(preview).toHaveTextContent("Editorial 1");
+    expect(preview).toHaveTextContent("Editorial intro.");
+    expect(preview).not.toHaveTextContent("Body of editorial 1.");
+    expect(preview).not.toHaveTextContent("Excerpt of article 1.");
+    const prompts = within(preview).getAllByText("Join Night Owls");
+    expect(prompts).toHaveLength(2);
+    for (const prompt of prompts)
+      expect(prompt.closest("[inert]")).not.toBeNull();
+    expect(
+      within(preview).getByText("Read the whole issue").closest("[inert]"),
+    ).not.toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Member" }));
+    expect(preview).toHaveTextContent("Body of editorial 1.");
+    expect(within(preview).queryByText("Join Night Owls")).toBeNull();
+  });
+
   it.each([false, true])(
     "explains when no loaded items are visible to visitors, including while another item waits for save (%s)",
     (waiting) => {
@@ -33,7 +91,7 @@ describe("LivePreview", () => {
       renderWithIntl(
         <LivePreview
           magazine={{ name: "Gazette", slug: "gazette" }}
-          community={{ name: "Night Owls" }}
+          community={{ name: "Night Owls", slug: "night-owls" }}
           issue={{ number: 1, publishedAt: null }}
           details={{
             title: "Community picks",
@@ -90,7 +148,7 @@ describe("LivePreview", () => {
     renderWithIntl(
       <LivePreview
         magazine={{ name: "Gazette", slug: "gazette" }}
-        community={{ name: "Night Owls" }}
+        community={{ name: "Night Owls", slug: "night-owls" }}
         issue={{ number: 1, publishedAt: null }}
         details={{
           title: "Community picks",

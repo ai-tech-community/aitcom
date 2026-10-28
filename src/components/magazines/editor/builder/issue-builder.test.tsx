@@ -298,6 +298,124 @@ afterEach(() => {
 });
 
 describe("IssueBuilder", () => {
+  it("does not invent a fresh tick when returning to Everyone during a preview save", async () => {
+    const savedPublic = issue({
+      visibility: "public",
+      publicConfirmedBy: "leader",
+      publicConfirmedAt: T0,
+    });
+    trpc.editing = twoArticles({
+      issue: savedPublic,
+      communityIsPrivate: true,
+      community: {
+        name: "Night Owls",
+        slug: "night-owls",
+        isListedInDirectory: false,
+      },
+    });
+    let finishPreview!: (saved: MagazineIssue) => void;
+    trpc.updateIssue.mockImplementation(async (input: object) =>
+      issue({ ...savedPublic, ...input, updatedAt: T2 }),
+    );
+    trpc.updateIssue.mockImplementationOnce(
+      () =>
+        new Promise<MagazineIssue>((resolve) => {
+          finishPreview = resolve;
+        }),
+    );
+    renderBuilder();
+    fireEvent.click(
+      screen.getByRole("radio", { name: "Preview for everyone" }),
+    );
+    await settleSaves();
+    expect(trpc.updateIssue).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("radio", { name: "Everyone" }));
+    await act(async () =>
+      finishPreview({ ...savedPublic, visibility: "teaser", updatedAt: T1 }),
+    );
+    await settleSaves();
+    expect(trpc.updateIssue).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("checkbox", { name: /I understand/ }),
+    ).not.toBeChecked();
+    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+  });
+
+  it.each([true, false])(
+    "sends a fresh confirmation when widening a saved preview, ticking before debounce: %s",
+    async (tickBeforeDebounce) => {
+      trpc.editing = twoArticles({
+        issue: issue({
+          visibility: "teaser",
+          publicConfirmedBy: "leader",
+          publicConfirmedAt: T0,
+        }),
+        communityIsPrivate: true,
+        community: {
+          name: "Night Owls",
+          slug: "night-owls",
+          isListedInDirectory: false,
+        },
+      });
+      trpc.updateIssue.mockImplementation(async (input: object) =>
+        issue({
+          ...input,
+          publicConfirmedBy: "leader",
+          publicConfirmedAt: T1,
+          updatedAt: T1,
+        }),
+      );
+      renderBuilder();
+      fireEvent.click(screen.getByRole("radio", { name: "Everyone" }));
+      expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+      if (!tickBeforeDebounce) {
+        await settleSaves();
+        expect(trpc.updateIssue).not.toHaveBeenCalled();
+      }
+      fireEvent.click(screen.getByRole("checkbox", { name: /I understand/ }));
+      await settleSaves();
+      expect(trpc.updateIssue).toHaveBeenCalledExactlyOnceWith({
+        slug: "night-owls",
+        issueId: 5,
+        expectedUpdatedAt: T0,
+        visibility: "public",
+        confirmUnlistedPublic: true,
+      });
+      expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+      fireEvent.change(screen.getByLabelText("Title"), {
+        target: { value: "Summer special" },
+      });
+      await settleSaves();
+      expect(trpc.updateIssue).toHaveBeenLastCalledWith({
+        slug: "night-owls",
+        issueId: 5,
+        expectedUpdatedAt: T1,
+        title: "Summer special",
+      });
+    },
+  );
+
+  it("does not autosave a confirmed preview just by opening the builder", async () => {
+    trpc.editing = twoArticles({
+      issue: issue({
+        visibility: "teaser",
+        publicConfirmedBy: "leader",
+        publicConfirmedAt: T0,
+      }),
+      communityIsPrivate: true,
+      community: {
+        name: "Night Owls",
+        slug: "night-owls",
+        isListedInDirectory: false,
+      },
+    });
+    renderBuilder();
+    await settleSaves();
+    expect(trpc.updateIssue).not.toHaveBeenCalled();
+    expect(screen.queryByRole("checkbox", { name: /I understand/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+  });
+
   it("shows reasons and the notice for an automatic draft", () => {
     trpc.editing = twoArticles({
       autoDraft: automaticDraft({
@@ -713,93 +831,103 @@ describe("IssueBuilder", () => {
     expect(trpc.refetch).toHaveBeenCalled();
   });
 
-  it("blocks Publish when visibility is public in a private community until the box is checked", async () => {
-    trpc.editing = twoArticles({
-      communityIsPrivate: true,
-      community: {
-        name: "Night Owls",
+  it.each(["public", "teaser"] as const)(
+    "blocks Publish for unconfirmed %s in a private community until the box is checked",
+    async (visibility) => {
+      trpc.editing = twoArticles({
+        communityIsPrivate: true,
+        community: {
+          name: "Night Owls",
+          slug: "night-owls",
+          isListedInDirectory: false,
+        },
+      });
+      renderBuilder();
+      expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+
+      fireEvent.click(
+        screen.getByRole("radio", {
+          name: visibility === "teaser" ? "Preview for everyone" : "Everyone",
+        }),
+      );
+      expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+      await settleSaves();
+      expect(trpc.updateIssue).not.toHaveBeenCalled();
+
+      fireEvent.click(
+        screen.getByRole("checkbox", {
+          name: "I understand, show this outside the community",
+        }),
+      );
+      expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+      await settleSaves();
+      expect(trpc.updateIssue).toHaveBeenCalledWith({
         slug: "night-owls",
-        isListedInDirectory: false,
-      },
-    });
-    renderBuilder();
-    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+        issueId: 5,
+        expectedUpdatedAt: T0,
+        visibility,
+        confirmUnlistedPublic: true,
+      });
+    },
+  );
 
-    fireEvent.click(screen.getByRole("radio", { name: "Everyone" }));
-    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
-    await settleSaves();
-    expect(trpc.updateIssue).not.toHaveBeenCalled();
+  it.each(["public", "teaser"] as const)(
+    "records the opt-in for an issue already %s but unconfirmed in a private community",
+    async (visibility) => {
+      // Saved `public` before the community became unlisted: no confirmation.
+      trpc.editing = twoArticles({
+        issue: issue({ visibility }),
+        communityIsPrivate: true,
+        community: {
+          name: "Night Owls",
+          slug: "night-owls",
+          isListedInDirectory: false,
+        },
+      });
+      trpc.updateIssue.mockImplementation(async (input: object) =>
+        issue({
+          ...input,
+          publicConfirmedBy: "u1",
+          publicConfirmedAt: T1,
+          updatedAt: T1,
+        } as Partial<MagazineIssue>),
+      );
+      renderBuilder();
+      expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+      await settleSaves();
+      expect(trpc.updateIssue).not.toHaveBeenCalled();
 
-    fireEvent.click(
-      screen.getByRole("checkbox", {
-        name: "I understand, show this outside the community",
-      }),
-    );
-    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
-    await settleSaves();
-    expect(trpc.updateIssue).toHaveBeenCalledWith({
-      slug: "night-owls",
-      issueId: 5,
-      expectedUpdatedAt: T0,
-      visibility: "public",
-      confirmUnlistedPublic: true,
-    });
-  });
-
-  it("records the opt-in for an issue already public but unconfirmed in a private community", async () => {
-    // Saved `public` before the community became unlisted: no confirmation.
-    trpc.editing = twoArticles({
-      issue: issue({ visibility: "public" }),
-      communityIsPrivate: true,
-      community: {
-        name: "Night Owls",
+      fireEvent.click(
+        screen.getByRole("checkbox", {
+          name: "I understand, show this outside the community",
+        }),
+      );
+      await settleSaves();
+      // The tick alone is the change: the visibility is sent again with it.
+      expect(trpc.updateIssue).toHaveBeenCalledTimes(1);
+      expect(trpc.updateIssue).toHaveBeenCalledWith({
         slug: "night-owls",
-        isListedInDirectory: false,
-      },
-    });
-    trpc.updateIssue.mockImplementation(async (input: object) =>
-      issue({
-        ...input,
-        publicConfirmedBy: "u1",
-        publicConfirmedAt: T1,
-        updatedAt: T1,
-      } as Partial<MagazineIssue>),
-    );
-    renderBuilder();
-    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
-    await settleSaves();
-    expect(trpc.updateIssue).not.toHaveBeenCalled();
+        issueId: 5,
+        expectedUpdatedAt: T0,
+        visibility,
+        confirmUnlistedPublic: true,
+      });
+      expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
 
-    fireEvent.click(
-      screen.getByRole("checkbox", {
-        name: "I understand, show this outside the community",
-      }),
-    );
-    await settleSaves();
-    // The tick alone is the change: the visibility is sent again with it.
-    expect(trpc.updateIssue).toHaveBeenCalledTimes(1);
-    expect(trpc.updateIssue).toHaveBeenCalledWith({
-      slug: "night-owls",
-      issueId: 5,
-      expectedUpdatedAt: T0,
-      visibility: "public",
-      confirmUnlistedPublic: true,
-    });
-    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
-
-    // Once the server holds the confirmation, nothing more is sent.
-    fireEvent.change(screen.getByLabelText("Title"), {
-      target: { value: "Summer special" },
-    });
-    await settleSaves();
-    expect(trpc.updateIssue).toHaveBeenCalledTimes(2);
-    expect(trpc.updateIssue).toHaveBeenLastCalledWith({
-      slug: "night-owls",
-      issueId: 5,
-      expectedUpdatedAt: T1,
-      title: "Summer special",
-    });
-  });
+      // Once the server holds the confirmation, nothing more is sent.
+      fireEvent.change(screen.getByLabelText("Title"), {
+        target: { value: "Summer special" },
+      });
+      await settleSaves();
+      expect(trpc.updateIssue).toHaveBeenCalledTimes(2);
+      expect(trpc.updateIssue).toHaveBeenLastCalledWith({
+        slug: "night-owls",
+        issueId: 5,
+        expectedUpdatedAt: T1,
+        title: "Summer special",
+      });
+    },
+  );
 
   it("points at the item a refused save names", async () => {
     trpc.setIssueItems.mockRejectedValue(refusal("ARTICLE_PLACED", 0));

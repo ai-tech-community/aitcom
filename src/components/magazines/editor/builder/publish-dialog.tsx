@@ -55,6 +55,12 @@ export type PublishDialogProps = {
 
 type Phase = "review" | "working" | "published" | "scheduled" | "unscheduled";
 
+const AUDIENCE_COPY = {
+  members: "audienceMembers",
+  teaser: "audienceTeaser",
+  public: "audiencePublic",
+} as const satisfies Record<IssueVisibility, string>;
+
 /**
  * Publishing an issue is a checked moment: the editor sees what still blocks
  * it, reads in plain words who will be able to read it, confirms, and gets a
@@ -201,9 +207,7 @@ export function PublishDialog({
             <DialogHeader>
               <DialogTitle>{t("title")}</DialogTitle>
               <DialogDescription>
-                {audience === "public"
-                  ? t("audiencePublic")
-                  : t("audienceMembers")}
+                {t(AUDIENCE_COPY[audience])}
               </DialogDescription>
             </DialogHeader>
 

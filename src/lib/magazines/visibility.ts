@@ -45,6 +45,14 @@ export function opensToOutsiders(visibility: IssueVisibility): boolean {
   }
 }
 
+/** Withdraw an editor's tick when closing to outsiders or widening preview. */
+export function shouldWithdrawVisibilityConfirmation(
+  current: IssueVisibility,
+  next: IssueVisibility,
+): boolean {
+  return !opensToOutsiders(next) || (current === "teaser" && next === "public");
+}
+
 /**
  * A visibility value and its unlisted-community opt-in, as stored on a
  * magazine (for its default) and on an issue (for its own visibility).

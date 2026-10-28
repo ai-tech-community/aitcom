@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { isUnavailableItem } from "../../items/registry";
 import { LAYOUTS } from "../../layouts/registry";
 import { IssueHero } from "../../reading/issue-hero";
+import { MagazineJoinPromptView } from "../../reading/magazine-join-prompt";
 import { builderPreviewView } from "./items/registry";
 import type { BuilderItem } from "./items-model";
 import type { IssueDetailsDraft } from "./use-issue-save";
@@ -54,7 +55,7 @@ export function previewViews(
  * The live preview: the issue's hero and its real layout
  * (`LAYOUTS[layout]`), as a member sees it, in a phone-sized frame, or as a
  * visitor from outside the community sees it (nothing for a members-only
- * issue, the full issue for a public one).
+ * issue, openings and a join prompt for preview, the full issue for public).
  *
  * The preview is a picture of the page, not the page: it is `inert`, so its
  * links and any control an item kind renders can be neither clicked nor
@@ -74,7 +75,7 @@ export function LivePreview({
   audience,
 }: {
   magazine: { name: string; slug: string };
-  community: { name: string };
+  community: { name: string; slug: string };
   /** The saved issue's number and publish date (null for a draft). */
   issue: { number: number; publishedAt: string | null };
   details: IssueDetailsDraft;
@@ -99,6 +100,20 @@ export function LivePreview({
       { slug: articleSlug },
     );
   const hiddenFromVisitors = mode === "visitor" && audience === "members";
+  const teaser =
+    mode === "visitor" && audience === "teaser"
+      ? {
+          inlinePrompt: (
+            <MagazineJoinPromptView
+              community={{ ...community, joinPolicy: "open" }}
+              variant="inline"
+              action={{ kind: "join" }}
+              onRun={() => undefined}
+              busy={false}
+            />
+          ),
+        }
+      : null;
   const visitorNoneVisible =
     mode === "visitor" && loadedViews.length > 0 && views.length === 0;
 
@@ -149,7 +164,16 @@ export function LivePreview({
                   signedBy: null,
                 }}
               />
-              <Layout items={views} href={href} teaser={null} />
+              <Layout items={views} href={href} teaser={teaser} />
+              {teaser && (
+                <MagazineJoinPromptView
+                  community={{ ...community, joinPolicy: "open" }}
+                  variant="panel"
+                  action={{ kind: "join" }}
+                  onRun={() => undefined}
+                  busy={false}
+                />
+              )}
             </div>
             {/* Outside the inert picture: these say what the preview is waiting for. */}
             {visitorNoneVisible && (

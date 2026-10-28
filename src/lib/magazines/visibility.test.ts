@@ -6,6 +6,7 @@ import {
   effectiveVisibility,
   opensToOutsiders,
   planVisibilityChange,
+  shouldWithdrawVisibilityConfirmation,
   type VisibilityRecord,
 } from "./visibility";
 
@@ -18,6 +19,22 @@ const membersRecord: VisibilityRecord = {
   publicConfirmedBy: null,
   publicConfirmedAt: null,
 };
+
+describe("shouldWithdrawVisibilityConfirmation", () => {
+  it.each([
+    ["members", "members", true],
+    ["members", "teaser", false],
+    ["members", "public", false],
+    ["teaser", "members", true],
+    ["teaser", "teaser", false],
+    ["teaser", "public", true],
+    ["public", "members", true],
+    ["public", "teaser", false],
+    ["public", "public", false],
+  ] as const)("%s → %s withdraws the tick: %s", (current, next, withdraw) => {
+    expect(shouldWithdrawVisibilityConfirmation(current, next)).toBe(withdraw);
+  });
+});
 
 describe("planVisibilityChange", () => {
   it("narrowing keeps the confirmation and saves the new visibility", () => {

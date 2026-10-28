@@ -5034,6 +5034,11 @@
         "launchpadProject": "Meeste stemmen",
         "newsItem": "Koppen over je onderwerpen, nieuwste eerst",
         "welcome": "Een welkom als er nieuwe mensen bij komen, met een aantal en zonder namen"
+      },
+      "visibilityHints": {
+        "members": "Alleen leden kunnen het lezen.",
+        "teaser": "Iedereen ziet de omslag, de inhoudsopgave en het begin van elk artikel. Leden lezen alles.",
+        "public": "Iedereen kan alles lezen."
       }
     },
     "review": {
@@ -5113,8 +5118,7 @@
       "visibilityLabel": "Wie kan nieuwe nummers lezen",
       "visibilityMembers": "Alleen leden",
       "visibilityPublic": "Iedereen",
-      "visibilityHint": "Geldt alleen voor nieuwe nummers. Je kunt elk nummer nog apart aanpassen.",
-      "alreadyConfirmed": "Je hebt al bevestigd dat iedereen nieuwe nummers mag lezen, ook al is je community privé.",
+      "alreadyConfirmed": "Je hebt al bevestigd dat nieuwe nummers buiten je privécommunity getoond mogen worden.",
       "create": "Magazine maken",
       "save": "Wijzigingen opslaan",
       "saving": "Opslaan…",
@@ -5123,7 +5127,13 @@
       "loadFailed": "De magazine-instellingen konden niet worden geladen.",
       "tryAgain": "Opnieuw proberen",
       "openTab": "Open het tabblad Magazine",
-      "back": "Terug naar het tabblad Magazine"
+      "back": "Terug naar het tabblad Magazine",
+      "visibilityHints": {
+        "members": "Alleen leden kunnen het lezen.",
+        "teaser": "Iedereen ziet de omslag, de inhoudsopgave en het begin van elk artikel. Leden lezen alles.",
+        "public": "Iedereen kan alles lezen."
+      },
+      "visibilityTeaser": "Voorproefje voor iedereen"
     },
     "tab": {
       "metaTitle": "Magazine",
@@ -5256,7 +5266,13 @@
         "optInPending": "Vink het vakje aan om deze keuze op te slaan.",
         "intro": "Introregel (optioneel)",
         "introHelp": "Eén regel die boven dit onderdeel in het nummer staat.",
-        "done": "Klaar"
+        "done": "Klaar",
+        "visibilityHints": {
+          "members": "Alleen leden kunnen het lezen.",
+          "teaser": "Iedereen ziet de omslag, de inhoudsopgave en het begin van elk artikel. Leden lezen alles.",
+          "public": "Iedereen kan alles lezen."
+        },
+        "visibilityTeaser": "Voorproefje voor iedereen"
       },
       "items": {
         "pickedBecause": "Gekozen omdat:",
@@ -5398,7 +5414,8 @@
         "scheduledTitle": "Je nummer is ingepland",
         "scheduledLead": "Het verschijnt op {time}. Tot die tijd kun je het nog aanpassen.",
         "unscheduledTitle": "De planning is geannuleerd",
-        "unscheduledLead": "Het nummer is weer een concept."
+        "unscheduledLead": "Het nummer is weer een concept.",
+        "audienceTeaser": "Iedereen kan de omslag, de inhoudsopgave en het begin van elk artikel zien. Alleen leden van je community lezen alles. Het nummer verschijnt op de tijdschriftenpagina."
       },
       "goesOut": "Verschijnt op <timestamp>{time}</timestamp>"
     },

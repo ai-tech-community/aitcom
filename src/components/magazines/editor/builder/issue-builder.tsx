@@ -18,7 +18,10 @@ import {
   type IssueVisibility,
   MAGAZINE_SLUG_PATTERN,
 } from "@/lib/magazines/values";
-import { effectiveVisibility } from "@/lib/magazines/visibility";
+import {
+  effectiveVisibility,
+  opensToOutsiders,
+} from "@/lib/magazines/visibility";
 import type { MagazineIssue } from "@/payload-types";
 import type { CommunityVisibility } from "@/server/communities/content-visibility";
 import type { IssueItemInput } from "@/server/magazines/items/registry";
@@ -91,7 +94,7 @@ function savedDetailsOf(
     ...detailsOf(issue),
     publicConfirmed:
       communityIsPrivate &&
-      issue.visibility === "public" &&
+      opensToOutsiders(issue.visibility) &&
       Boolean(issue.publicConfirmedAt),
   };
 }
@@ -301,9 +304,13 @@ function IssueWorkspace({
         editorNote: details.editorNote,
         visibility,
         // Ticking the box is a change of its own: it saves even when the
-        // issue was `public` already, so the server records the opt-in.
+        // issue already opened to outsiders, so the server records the opt-in.
+        // While a wider choice waits for a tick, keep the saved confirmation
+        // with the saved visibility; waiting alone must not trigger a write.
         publicConfirmed:
-          communityIsPrivate && visibility === "public" && !optInPending,
+          communityIsPrivate &&
+          opensToOutsiders(visibility) &&
+          (!optInPending || Boolean(issue.publicConfirmedAt)),
       },
       items: items.filter(isSavableItem),
     };

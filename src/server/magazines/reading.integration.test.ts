@@ -505,9 +505,8 @@ describe.skipIf(!RUN_DB)("magazine read models [DB integration]", () => {
       ...home.justPublished,
       ...home.magazines.map((mc) => mc.latest),
     ];
-    expect(
-      everyListedIssue.every((i) => i.effectiveVisibility === "public"),
-    ).toBe(true);
+    for (const issue of everyListedIssue)
+      expect(issue.effectiveVisibility).toBe("public");
     expect(ids(everyListedIssue)).not.toContain(membersOnly.id);
   });
 

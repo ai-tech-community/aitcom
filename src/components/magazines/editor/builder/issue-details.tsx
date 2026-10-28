@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { IssueVisibility } from "@/lib/magazines/values";
+import { shouldWithdrawVisibilityConfirmation } from "@/lib/magazines/visibility";
 
 import { ImageUploadField } from "../image-upload-field";
 import { PublicOptIn } from "../public-opt-in";
@@ -16,6 +17,12 @@ import type { IssueDetailsDraft } from "./use-issue-save";
 
 export const ISSUE_TITLE_MAX = 200;
 const SLUG_MAX = 60;
+
+const VISIBILITY_HINTS = {
+  members: "visibilityHints.members",
+  teaser: "visibilityHints.teaser",
+  public: "visibilityHints.public",
+} as const satisfies Record<IssueVisibility, string>;
 
 /**
  * The issue's own fields: title, address (read-only once published), cover,
@@ -61,9 +68,9 @@ export function IssueDetails({
   const showSlugError = !published && !slugValid;
 
   const handleVisibility = (next: IssueVisibility) => {
+    if (shouldWithdrawVisibilityConfirmation(details.visibility, next))
+      onConfirmedChange(false);
     onChange({ visibility: next });
-    // Leaving `public` withdraws the tick: coming back asks again.
-    if (next !== "public") onConfirmedChange(false);
   };
 
   return (
@@ -167,12 +174,16 @@ export function IssueDetails({
           aria-label={t("visibility")}
           value={details.visibility}
           onValueChange={handleVisibility}
-          className="self-start"
+          className="h-auto flex-wrap self-start"
           options={[
             { value: "members", label: t("visibilityMembers") },
+            { value: "teaser", label: t("visibilityTeaser") },
             { value: "public", label: t("visibilityPublic") },
           ]}
         />
+        <p role="status" className="text-muted-foreground text-sm">
+          {t(VISIBILITY_HINTS[details.visibility])}
+        </p>
         {optInRequired && (
           <>
             <PublicOptIn
