@@ -11,6 +11,45 @@ const words = (count: number) =>
   Array.from({ length: count }, (_, i) => `word${i + 1}`).join(" ");
 
 describe("article openings", () => {
+  it("joins adjacent inline text without adding spaces between formats", () => {
+    expect(
+      openingOf(
+        state({
+          type: "paragraph",
+          children: [
+            { type: "text", text: "foo" },
+            { type: "text", text: "bar", format: 1 },
+            { type: "link", children: [{ type: "text", text: "link" }] },
+            { type: "text", text: "." },
+          ],
+        }),
+      ),
+    ).toBe("foobarlink.");
+    expect(
+      openingOf(
+        state({
+          type: "paragraph",
+          children: [
+            { type: "text", text: "foo" },
+            { type: "link", children: [{ type: "text", text: " bar " }] },
+            { type: "text", text: "baz" },
+          ],
+        }),
+      ),
+    ).toBe("foo bar baz");
+    expect(
+      openingOf(state(text("paragraph", "foo"), text("paragraph", "bar"))),
+    ).toBe("foo bar");
+    expect(
+      openingOf(
+        state({
+          type: "list",
+          children: [text("listitem", "foo"), text("listitem", "bar")],
+        }),
+      ),
+    ).toBe("foo bar");
+  });
+
   it("takes text blocks in order and stops at 80 words", () => {
     expect(TEASER_OPENING_WORDS).toBe(80);
     expect(

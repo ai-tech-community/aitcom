@@ -1,38 +1,37 @@
-import { sql, type SQL } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 
 import type { JoinSource } from "@/lib/communities/join-source";
-import type { db } from "@/server/db";
-import { activityEvents } from "@/server/db/schema";
-import { verifyMagazineJoinSource } from "@/server/magazines/issue-origin";
-import type { getPayloadClient } from "@/server/payload";
+import type { Deps } from "@/server/magazines/deps";
+import { magazineJoinSource } from "@/server/magazines/issue-origin";
 
-type Deps = {
-  db: typeof db;
-  payload: Awaited<ReturnType<typeof getPayloadClient>>;
+/** A source owns verification and the matching activity metadata writer/reader. */
+export type JoinSourceEntry<S extends JoinSource> = {
+  verify: (deps: Deps, communityId: string, source: S) => Promise<S | null>;
+  metadata: (source: S) => Record<string, string | number>;
+  condition: (source: S) => SQL;
 };
-type JoinSourceVerifier<S extends JoinSource> = (
-  deps: Deps,
-  communityId: string,
-  source: S,
-) => Promise<S | null>;
 
-export const JOIN_SOURCE_VERIFIERS: {
-  [V in JoinSource["via"]]: JoinSourceVerifier<Extract<JoinSource, { via: V }>>;
-} = { magazine: verifyMagazineJoinSource };
+export const JOIN_SOURCES: {
+  [V in JoinSource["via"]]: JoinSourceEntry<Extract<JoinSource, { via: V }>>;
+} = { magazine: magazineJoinSource };
 
-/** Verification is supplementary: a failure never prevents joining. */
+function entryFor<V extends JoinSource["via"]>(
+  source: Extract<JoinSource, { via: V }>,
+) {
+  return JOIN_SOURCES[source.via] as JoinSourceEntry<
+    Extract<JoinSource, { via: V }>
+  >;
+}
+
+/** Verification, including dependency loading, never prevents joining. */
 export async function verifyJoinSource(
-  deps: Deps,
+  deps: Deps | (() => Promise<Deps>),
   communityId: string,
   source: JoinSource,
 ): Promise<JoinSource | null> {
   try {
-    switch (source.via) {
-      case "magazine":
-        return await JOIN_SOURCE_VERIFIERS.magazine(deps, communityId, source);
-    }
-    const exhaustive: never = source.via;
-    return exhaustive;
+    const loaded = typeof deps === "function" ? await deps() : deps;
+    return await entryFor(source).verify(loaded, communityId, source);
   } catch (error) {
     console.error("[communities] join source verification failed", {
       via: source.via,
@@ -42,28 +41,14 @@ export async function verifyJoinSource(
   }
 }
 
-/** Activity metadata writer; keep its matching reader alongside it. */
+/** Activity metadata writer; each source owns its matching reader. */
 export function joinSourceMetadata(
   source: JoinSource,
 ): Record<string, string | number> {
-  switch (source.via) {
-    case "magazine":
-      return {
-        via: "magazine",
-        magazineId: source.magazineId,
-        issueId: source.issueId,
-      };
-  }
-  const exhaustive: never = source.via;
-  return exhaustive;
+  return entryFor(source).metadata(source);
 }
 
 /** The only SQL reader of join-source metadata. Values are parameters. */
 export function joinSourceCondition(source: JoinSource): SQL {
-  switch (source.via) {
-    case "magazine":
-      return sql`${activityEvents.metadata}->>'via' = ${source.via} AND ${activityEvents.metadata}->>'issueId' = ${String(source.issueId)}`;
-  }
-  const exhaustive: never = source.via;
-  return exhaustive;
+  return entryFor(source).condition(source);
 }

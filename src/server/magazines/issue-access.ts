@@ -145,11 +145,10 @@ export type IssueAccessRow = {
 };
 
 /** One by-id read of an issue's access facts; null when it is missing. */
-export async function loadIssueAccessById(
-  deps: Pick<Deps, "db" | "payload">,
+export async function loadIssueFactsById(
+  deps: Pick<Deps, "payload">,
   issueId: number,
-  viewerId: string | null,
-): Promise<{ issue: IssueAccessRow; access: MagazineIssueAccess } | null> {
+): Promise<IssueAccessRow | null> {
   const issue = await deps.payload.findByID({
     collection: "magazine-issues",
     id: issueId,
@@ -167,13 +166,28 @@ export async function loadIssueAccessById(
   const facts = issueAccessFacts(issue);
   if (!facts) return null;
   return {
-    issue: {
-      id: Number(issue.id),
-      communityId: issue.communityId,
-      magazineId: relationIdOrNull(issue.magazine),
-      ...facts,
-    },
-    access: await loadMagazineIssueAccess(deps.db, issue, viewerId),
+    id: Number(issue.id),
+    communityId: issue.communityId,
+    magazineId: relationIdOrNull(issue.magazine),
+    ...facts,
+  };
+}
+
+/** Read an issue's facts once, then resolve access for the current viewer. */
+export async function loadIssueAccessById(
+  deps: Pick<Deps, "db" | "payload">,
+  issueId: number,
+  viewerId: string | null,
+): Promise<{ issue: IssueAccessRow; access: MagazineIssueAccess } | null> {
+  const issue = await loadIssueFactsById(deps, issueId);
+  if (!issue) return null;
+  return {
+    issue,
+    access: await loadMagazineIssueAccess(
+      deps.db,
+      { ...issue, magazine: issue.magazineId },
+      viewerId,
+    ),
   };
 }
 

@@ -311,6 +311,66 @@ describe.skipIf(!isLocalDbConfigured())(
         articles: [{ articleId: Number(article.id), readers: 1, readToEnd: 1 }],
       });
 
+      // Exercise visibility while the magazine is still shown. Staff hiding
+      // below must not be what makes the issue disappear from these surfaces.
+      async function expectHomeIssue(present: boolean) {
+        const current = await m.reading.loadMagazinesHome(m, { locale: "en" });
+        expect(
+          current.magazines.some(
+            (card) =>
+              Number(card.id) === Number(magazine.id) &&
+              Number(card.latest.id) === Number(issue.id),
+          ),
+        ).toBe(present);
+        const latest = [current.featured, ...current.justPublished];
+        expect(
+          latest.some((card) => Number(card?.id) === Number(issue.id)),
+        ).toBe(present);
+      }
+
+      await expectHomeIssue(true);
+      // Previews are deliberately absent from the full-reading sitemap.
+      expect(await magazineSitemapPaths(m)).not.toContain(issuePath);
+      issue = await owner.magazines.updateIssue({
+        slug,
+        issueId,
+        expectedUpdatedAt: issue.updatedAt,
+        visibility: "members",
+      });
+      await expectHomeIssue(false);
+      expect(await magazineSitemapPaths(m)).not.toContain(issuePath);
+      expect(await magazineSitemapPaths(m)).not.toContain(articlePath);
+
+      // A public issue supplies the positive sitemap control for the same
+      // transition, then disappears immediately when returned to members.
+      issue = await owner.magazines.updateIssue({
+        slug,
+        issueId,
+        expectedUpdatedAt: issue.updatedAt,
+        visibility: "public",
+        confirmUnlistedPublic: true,
+      });
+      await expectHomeIssue(true);
+      expect(await magazineSitemapPaths(m)).toContain(issuePath);
+      expect(await magazineSitemapPaths(m)).toContain(articlePath);
+      issue = await owner.magazines.updateIssue({
+        slug,
+        issueId,
+        expectedUpdatedAt: issue.updatedAt,
+        visibility: "members",
+      });
+      await expectHomeIssue(false);
+      expect(await magazineSitemapPaths(m)).not.toContain(issuePath);
+      expect(await magazineSitemapPaths(m)).not.toContain(articlePath);
+
+      issue = await owner.magazines.updateIssue({
+        slug,
+        issueId,
+        expectedUpdatedAt: issue.updatedAt,
+        visibility: "teaser",
+        confirmUnlistedPublic: true,
+      });
+
       const hidden = await m.payload.update({
         collection: "magazines",
         id: magazine.id,

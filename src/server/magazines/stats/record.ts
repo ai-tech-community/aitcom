@@ -31,10 +31,10 @@ export async function recordReadFor(
     now: Date;
   },
 ): Promise<boolean> {
+  if (input.event === "read_end" && input.articleId === null) return false;
   const loaded = await loadIssueAccessById(deps, input.issueId, input.viewerId);
   if (!loaded?.issue.magazineId || !mayRecord(loaded.access, input.event))
     return false;
-  if (input.event === "read_end" && input.articleId === null) return false;
   if (input.articleId !== null) {
     const { docs } = await deps.payload.find({
       collection: "articles",

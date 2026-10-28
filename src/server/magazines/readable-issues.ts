@@ -136,10 +136,11 @@ export function readableIssueWhere(
   scope: IssueReadScope,
   reach: IssueReach,
 ): Where {
-  const outsiderVisibility: Where =
-    reach === "teaser"
-      ? { visibility: { in: ["teaser", "public"] } }
-      : { visibility: { equals: "public" } };
+  const outsiderVisibilities: Record<IssueReach, Where> = {
+    teaser: { visibility: { in: ["teaser", "public"] } },
+    full: { visibility: { equals: "public" } },
+  };
+  const outsiderVisibility = outsiderVisibilities[reach];
   const outsiderBranch =
     scope.privateCommunityIds.length > 0
       ? allOf(

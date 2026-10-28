@@ -11,7 +11,7 @@ export async function hiddenMagazineIds(
     where: { listingHidden: { equals: true } },
     pagination: false,
     depth: 0,
-    select: { listingHidden: true },
+    select: {},
   });
   return docs.map((magazine) => Number(magazine.id));
 }

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
   afterEach,
   beforeAll,
@@ -13,11 +13,10 @@ import {
 import type { Magazine, MagazineIssue } from "@/payload-types";
 import type * as Env from "@/env";
 import type { createCaller as CreateCaller } from "@/server/api/root";
-import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import type * as Schema from "@/server/db/schema";
 import type { Deps } from "@/server/magazines/deps";
-import type * as Issues from "@/server/magazines/issue-service";
 import { isLocalDbConfigured } from "@/test/magazine-auto-draft-fixture";
+import { readingFixture } from "@/test/magazine-reading-fixture";
 
 import type * as Record from "./record";
 import type * as Reads from "./reads";
@@ -39,11 +38,11 @@ describe.skipIf(!isLocalDbConfigured())(
   "magazine reads [DB integration]",
   { timeout: 60_000 },
   () => {
+    const fixture = readingFixture();
     let m: Deps & {
       schema: typeof Schema;
       record: typeof Record;
       reads: typeof Reads;
-      issues: typeof Issues;
       createCaller: typeof CreateCaller;
     };
     let fx: {
@@ -51,210 +50,69 @@ describe.skipIf(!isLocalDbConfigured())(
       ownerId: string;
       memberId: string;
       outsiderId: string;
-      userIds: string[];
-      communityIds: string[];
-      magazineIds: number[];
-      articleIds: number[];
-      issueNumber: number;
     };
+    type Community = Awaited<ReturnType<typeof fixture.community>>;
+    const communities = new Map<string, Community>();
     const now = new Date("2026-10-28T12:00:00Z");
     const later = new Date("2026-10-28T12:01:00Z");
 
     beforeAll(async () => {
-      const [
-        { db },
-        schema,
-        { getPayloadClient },
-        record,
-        reads,
-        issues,
-        { createCaller },
-      ] = await Promise.all([
-        import("@/server/db"),
-        import("@/server/db/schema"),
-        import("@/server/payload"),
+      const [record, reads, { createCaller }] = await Promise.all([
         import("./record"),
         import("./reads"),
-        import("@/server/magazines/issue-service"),
         import("@/server/api/root"),
       ]);
-      const { rows } = await db.execute<{ name: string }>(
-        sql`select current_database() as name`,
-      );
-      if (rows[0]?.name !== "aitcom_test")
-        throw new Error("Read tests require aitcom_test");
-      m = {
-        db,
-        schema,
-        payload: await getPayloadClient(),
-        record,
-        reads,
-        issues,
-        createCaller,
-      };
+      m = { ...fixture.m, record, reads, createCaller };
     }, 120_000);
 
-    beforeEach(async () => {
-      const suffix = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-      const ownerId = `reads-owner-${suffix}`;
-      const memberId = `reads-member-${suffix}`;
-      const outsiderId = `reads-outsider-${suffix}`;
+    beforeEach(() => {
+      const shared = fixture.fx;
       fx = {
-        suffix,
-        ownerId,
-        memberId,
-        outsiderId,
-        userIds: [ownerId, memberId, outsiderId],
-        communityIds: [],
-        magazineIds: [],
-        articleIds: [],
-        issueNumber: 0,
+        suffix: shared.sfx,
+        ownerId: shared.editorId,
+        memberId: shared.memberId,
+        outsiderId: shared.outsiderId,
       };
+      communities.clear();
       vi.stubEnv("BETTER_AUTH_SECRET", "magazine-reads-test-secret");
-      await m.db.insert(m.schema.user).values(
-        fx.userIds.map((id) => ({
-          id,
-          name: id,
-          email: `${id}@example.test`,
-        })),
-      );
-      await m.db
-        .insert(m.schema.memberProfiles)
-        .values(fx.userIds.map((userId) => ({ userId, displayName: userId })));
     });
 
-    afterEach(async () => {
-      vi.unstubAllEnvs();
-      if (!fx || !m) return;
-      const { db, payload, schema: s } = m;
-      if (fx.magazineIds.length) {
-        await db
-          .delete(s.magazineReads)
-          .where(inArray(s.magazineReads.magazineId, fx.magazineIds));
-        await db
-          .delete(s.magazineSubscriptions)
-          .where(inArray(s.magazineSubscriptions.magazineId, fx.magazineIds));
-        await payload.delete({
-          collection: "magazine-issues",
-          where: { magazine: { in: fx.magazineIds } },
-        });
-      }
-      if (fx.articleIds.length)
-        await payload.delete({
-          collection: "articles",
-          where: { id: { in: fx.articleIds } },
-        });
-      if (fx.magazineIds.length)
-        await payload.delete({
-          collection: "magazines",
-          where: { id: { in: fx.magazineIds } },
-        });
-      await db
-        .delete(s.activityEvents)
-        .where(inArray(s.activityEvents.actorId, fx.userIds));
-      await db
-        .delete(s.magazineStaff)
-        .where(inArray(s.magazineStaff.userId, fx.userIds));
-      if (fx.communityIds.length) {
-        await db
-          .delete(s.spaces)
-          .where(inArray(s.spaces.communityId, fx.communityIds));
-        await db
-          .delete(s.communityMemberships)
-          .where(inArray(s.communityMemberships.communityId, fx.communityIds));
-        await db
-          .delete(s.communities)
-          .where(inArray(s.communities.id, fx.communityIds));
-      }
-      await db
-        .delete(s.pointsEvents)
-        .where(inArray(s.pointsEvents.userId, fx.userIds));
-      await db
-        .delete(s.notifications)
-        .where(inArray(s.notifications.userId, fx.userIds));
-      await db
-        .delete(s.memberBadges)
-        .where(inArray(s.memberBadges.userId, fx.userIds));
-      await db
-        .delete(s.memberProfiles)
-        .where(inArray(s.memberProfiles.userId, fx.userIds));
-      await db.delete(s.user).where(inArray(s.user.id, fx.userIds));
-    }, 60_000);
+    afterEach(() => vi.unstubAllEnvs());
 
-    async function community(label: string, { listed = true } = {}) {
-      const [row] = await m.db
-        .insert(m.schema.communities)
-        .values({
-          name: label,
-          slug: `reads-${label}-${fx.suffix}`,
-          createdBy: fx.ownerId,
-          isListedInDirectory: listed,
-        })
-        .returning();
-      fx.communityIds.push(row!.id);
-      await m.db.insert(m.schema.communityMemberships).values([
-        { communityId: row!.id, userId: fx.ownerId, role: "owner" },
-        { communityId: row!.id, userId: fx.memberId, role: "member" },
-      ]);
-      const magazine = await m.payload.create({
-        collection: "magazines",
-        data: {
-          name: label,
-          slug: `reads-${label}-${fx.suffix}`,
-          communityId: row!.id,
-          createdBy: fx.ownerId,
-        },
-      });
-      fx.magazineIds.push(Number(magazine.id));
-      return { community: row!, magazine };
+    async function community(label: string, options = {}) {
+      const row = await fixture.community(label, options);
+      communities.set(row.id, row);
+      return { community: row, magazine: await fixture.magazineIn(row, label) };
     }
 
-    async function issueIn(
+    function issueIn(
       magazine: Magazine,
       visibility: MagazineIssue["visibility"],
       status: MagazineIssue["status"] = "published",
     ) {
-      return m.payload.create({
-        collection: "magazine-issues",
-        data: {
-          magazine: magazine.id,
-          communityId: magazine.communityId,
-          number: ++fx.issueNumber,
-          title: "Reading issue",
-          slug: `reads-${crypto.randomUUID()}`,
-          status,
-          visibility,
-          publishedAt: status === "published" ? now.toISOString() : null,
-        },
+      const row = communities.get(magazine.communityId)!;
+      const create =
+        status === "published" ? fixture.publishedIssue : fixture.draftIssue;
+      return create(row, magazine, `Reading ${crypto.randomUUID()}`, {
+        visibility,
       });
     }
 
     async function articlesIn(
       magazine: Magazine,
       issue: MagazineIssue,
-      communityRow: Awaited<ReturnType<typeof community>>["community"],
+      communityRow: Community,
     ) {
       const ids: number[] = [];
       for (const label of ["one", "two"]) {
-        const article = await m.payload.create({
-          collection: "articles",
-          draft: true,
-          data: {
-            title: label,
-            slug: `reads-${label}-${crypto.randomUUID()}`,
-            type: "article",
-            content: plainTextToLexical("Read together"),
-            authorId: fx.ownerId,
-            authorName: "Ada",
-            magazine: magazine.id,
-            reviewStatus: "approved",
-            status: "draft",
-          },
-        });
+        const article = await fixture.approvedArticle(
+          `${label}-${issue.id}`,
+          Number(magazine.id),
+          fixture.richText("Read together"),
+        );
         ids.push(Number(article.id));
-        fx.articleIds.push(Number(article.id));
       }
-      await m.issues.setIssueItems(
+      await fixture.m.issues.setIssueItems(
         m,
         issue,
         ids.map((articleId) => ({ kind: "article" as const, articleId })),

@@ -69,24 +69,24 @@ export type ReadingCommunity = { name: string; slug: string };
 
 /** A magazine's identity on its reading pages. */
 export type MagazineSummary = {
-  staffHidden: boolean;
   id: number;
   name: string;
   slug: string;
   logoUrl: string | null;
   description: string | null;
   topics: string[];
+  staffHidden: boolean;
 };
 
 /** One issue as a cover card on any listing. */
 export type IssueCard = {
-  status: IssueStatus;
   id: number;
   number: number;
   title: string;
   slug: string;
   coverImageUrl: string | null;
   publishedAt: string | null;
+  status: IssueStatus;
   /** The stored value. Badges use `effectiveVisibility` (preflight F10). */
   visibility: IssueVisibility;
   /**
@@ -132,6 +132,10 @@ const COMMUNITY_COLUMNS = {
   isListedInDirectory: true,
 } as const;
 
+function liveCommunityWhere(ids: readonly string[]) {
+  return and(inArray(communities.id, [...ids]), isNull(communities.deletedAt));
+}
+
 /** Live (not soft-deleted) communities by id. */
 async function liveCommunitiesById(
   database: Deps["db"],
@@ -139,10 +143,7 @@ async function liveCommunitiesById(
 ): Promise<Map<string, MagazineCommunityRow>> {
   if (ids.length === 0) return new Map();
   const rows = await database.query.communities.findMany({
-    where: and(
-      inArray(communities.id, [...ids]),
-      isNull(communities.deletedAt),
-    ),
+    where: liveCommunityWhere(ids),
     columns: COMMUNITY_COLUMNS,
   });
   return new Map(rows.map((row) => [row.id, row]));
@@ -154,7 +155,7 @@ async function liveReadingCommunityById(
   id: string,
 ): Promise<(MagazineCommunityRow & { joinPolicy: JoinPolicy }) | null> {
   const row = await database.query.communities.findFirst({
-    where: and(eq(communities.id, id), isNull(communities.deletedAt)),
+    where: liveCommunityWhere([id]),
     columns: { ...COMMUNITY_COLUMNS, joinPolicy: true },
   });
   return row ?? null;
@@ -187,13 +188,13 @@ export async function findMagazineBySlug(
 
 function toMagazineSummary(magazine: Magazine): MagazineSummary {
   return {
-    staffHidden: isHiddenByStaff(magazine),
     id: magazine.id,
     name: magazine.name,
     slug: magazine.slug,
     logoUrl: magazine.logoUrl ?? null,
     description: magazine.description ?? null,
     topics: magazineTopicsOf(magazine),
+    staffHidden: isHiddenByStaff(magazine),
   };
 }
 
@@ -229,12 +230,12 @@ function toIssueCard(
   }
   return {
     id: issue.id,
-    status: issue.status,
     number: Number(issue.number),
     title: issue.title,
     slug: issue.slug,
     coverImageUrl: issue.coverImageUrl ?? null,
     publishedAt: issue.publishedAt ?? null,
+    status: issue.status,
     visibility: issue.visibility,
     outsiderReach,
     effectiveVisibility: effectiveVisibility(

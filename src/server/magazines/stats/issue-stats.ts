@@ -65,7 +65,6 @@ export async function loadIssueStats(
     },
     populate: {
       articles: { title: true },
-      magazines: { communityId: true },
     },
   });
   if (!issue) return null;

@@ -1232,6 +1232,12 @@ describe.skipIf(!RUN_DB)(
       expect(await at(fx.moderatorId)).toBe(false);
       // A contributor can write, but cannot see editor numbers.
       expect(await at(fx.memberId)).toBe(false);
+      await callerAs(fx.ownerId).magazines.removeStaffRole({
+        slug: slug(),
+        userId: fx.memberId,
+      });
+      // A plain member has neither editor capability nor access to numbers.
+      expect(await at(fx.memberId)).toBe(false);
       // Owning the other community's magazine grants no edit capability here.
       expect(await at(fx.outsiderId)).toBe(false);
       expect(await at(null)).toBe(false);

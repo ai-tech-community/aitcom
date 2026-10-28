@@ -22,6 +22,7 @@ const TEXT_CONTAINERS = new Set([
   "link",
   "autolink",
 ]);
+const BLOCK_CHILDREN = new Set([...TEXT_BLOCKS, "listitem"]);
 
 function textOf(value: unknown): string {
   const node = nodeOf(value);
@@ -34,7 +35,15 @@ function textOf(value: unknown): string {
     !Array.isArray(node.children)
   )
     return "";
-  return node.children.map(textOf).filter(Boolean).join(" ");
+  return node.children
+    .map((child: unknown) => {
+      const text = textOf(child);
+      const type = nodeOf(child)?.type;
+      return text && typeof type === "string" && BLOCK_CHILDREN.has(type)
+        ? ` ${text} `
+        : text;
+    })
+    .join("");
 }
 
 /** Decision 4: top-level paragraph/heading/quote/list text, in order; never code or media. */

@@ -2092,21 +2092,22 @@ describe.skipIf(!RUN_DB)("magazine and issue services [DB integration]", () => {
     expect(doc.status).toBe("draft");
   });
 
+  async function callerAs(userId: string) {
+    const { createCaller } = await import("@/server/api/root");
+    return createCaller({
+      db: m.db,
+      headers: new Headers(),
+      session: { user: { id: userId }, session: {} } as never,
+    });
+  }
+
   it("an editor can change the layout, also after publishing", async () => {
     const c = await community("layout");
     const mag = await magazineIn(c);
     await m.db
       .insert(m.schema.communityMemberships)
       .values({ communityId: c.id, userId: fx.userId, role: "owner" });
-    const { createCaller } = await import("@/server/api/root");
-    const editor = createCaller({
-      db: m.db,
-      headers: new Headers(),
-      session: {
-        user: { id: fx.userId, name: "Editor" },
-        session: {},
-      } as never,
-    }).magazines;
+    const editor = (await callerAs(fx.userId)).magazines;
     let issue = await m.issues.createIssue(
       m,
       mag,

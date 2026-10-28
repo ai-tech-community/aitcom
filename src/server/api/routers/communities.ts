@@ -91,17 +91,12 @@ async function verifiedJoinMetadata(
   source?: JoinSource,
 ) {
   if (!source) return undefined;
-  try {
-    const verified = await verifyJoinSource(
-      { db, payload: await getPayloadClient() },
-      communityId,
-      source,
-    );
-    return verified ? joinSourceMetadata(verified) : undefined;
-  } catch (error) {
-    console.error("[communities] join source lookup failed", { error });
-    return undefined;
-  }
+  const verified = await verifyJoinSource(
+    async () => ({ db, payload: await getPayloadClient() }),
+    communityId,
+    source,
+  );
+  return verified ? joinSourceMetadata(verified) : undefined;
 }
 
 /** The membership changed between reading and writing it (e.g. a ban). */

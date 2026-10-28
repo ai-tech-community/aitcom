@@ -370,9 +370,9 @@ describe.skipIf(!RUN_DB)("joins from magazine issues [DB integration]", () => {
       expect(
         await callerAs().communities.join({ slug: c.slug, source: forged }),
       ).toEqual({ success: true });
-      expect((await event(c, "community.joined"))?.metadata).not.toHaveProperty(
-        "via",
-      );
+      const joined = await event(c, "community.joined");
+      expect(joined).toBeDefined();
+      expect(joined!.metadata).not.toHaveProperty("via");
     }
   });
 
