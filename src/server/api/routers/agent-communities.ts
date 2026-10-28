@@ -31,7 +31,11 @@ import {
   presentCommunityDescription,
 } from "@/lib/communities/description";
 import { communityLogoChoice } from "@/server/communities/logo-choice";
-import { sharedMediaUrl } from "@/server/communities/shared-media-url";
+import {
+  findMediaIdsByUrl,
+  mediaIdsForUrls,
+  sharedMediaUrl,
+} from "@/server/communities/shared-media-url";
 import {
   loadMagazineEditorship,
   requireCapability,
@@ -203,8 +207,17 @@ export const agentCommunityRouter = {
       );
 
       const description = presentCommunityDescription(community.description);
+      const payload = await getPayloadClient();
+      const imageIds = mediaIdsForUrls(
+        community,
+        await findMediaIdsByUrl(payload, [
+          community.logoUrl,
+          community.bannerUrl,
+        ]),
+      );
       return {
         ...community,
+        ...imageIds,
         description: description.description,
         descriptionTruncated: description.descriptionTruncated,
         memberCount: memberCountResult?.count ?? 0,

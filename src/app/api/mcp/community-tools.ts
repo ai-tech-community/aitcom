@@ -60,7 +60,7 @@ export function registerCommunityTools(
     "get-community-info",
     {
       description:
-        "Get detailed information about a specific community by slug. Returns settings, member count, the owner's membership status/role, and the full stored description. descriptionTruncated is false: this tool does not shorten the text. A row saved under an older 500-character limit is returned as stored.",
+        "Get detailed information about a specific community by slug. Returns settings, member count, the owner's membership status/role, and the full stored description. logoUrl and bannerUrl are the stored image URLs. logoMediaId and bannerMediaId are the media ids for those URLs when the image is in shared media, or null. descriptionTruncated is false: this tool does not shorten the text. A row saved under an older 500-character limit is returned as stored.",
       inputSchema: {
         slug: z.string().describe("The community slug."),
       },
@@ -336,7 +336,9 @@ export function registerCommunityTools(
           .string()
           .min(1)
           .max(FORUM_THREAD_CONTENT_MAX)
-          .describe("Thread body, plain text."),
+          .describe(
+            "Thread body. The same markdown as the forum form: links, **bold**, _italic_, and lists.",
+          ),
         category: z
           .enum(["general", "question", "showcase", "job"])
           .default("general")

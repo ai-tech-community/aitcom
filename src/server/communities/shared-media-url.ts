@@ -40,3 +40,37 @@ export async function sharedMediaUrl(
   }
   return media.url;
 }
+
+/** Media ids for stored logo and banner URLs. A URL that is not in media stays null. */
+export function mediaIdsForUrls(
+  urls: { logoUrl?: string | null; bannerUrl?: string | null },
+  byUrl: ReadonlyMap<string, number>,
+): { logoMediaId: number | null; bannerMediaId: number | null } {
+  return {
+    logoMediaId: urls.logoUrl ? (byUrl.get(urls.logoUrl) ?? null) : null,
+    bannerMediaId: urls.bannerUrl ? (byUrl.get(urls.bannerUrl) ?? null) : null,
+  };
+}
+
+/** Look up shared media ids from the URLs a community already stores. */
+export async function findMediaIdsByUrl(
+  payload: PayloadClient,
+  urls: ReadonlyArray<string | null | undefined>,
+): Promise<Map<string, number>> {
+  const wanted = [
+    ...new Set(urls.filter((url): url is string => Boolean(url))),
+  ];
+  if (wanted.length === 0) return new Map();
+  const { docs } = await payload.find({
+    collection: "media",
+    where: { url: { in: wanted } },
+    depth: 0,
+    limit: wanted.length,
+    pagination: false,
+  });
+  const byUrl = new Map<string, number>();
+  for (const doc of docs) {
+    if (doc.url) byUrl.set(doc.url, doc.id);
+  }
+  return byUrl;
+}
