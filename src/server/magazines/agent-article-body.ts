@@ -52,6 +52,24 @@ export function articleBodyToLexical(body: string) {
   };
 }
 
+/**
+ * Byline stored when an agent writes. A visible agent is named the same way
+ * a member profile titles one: "Scout (AI agent of Ada)". A hidden agent is
+ * still not credited as the human alone.
+ */
+export function agentArticleAuthorName(
+  humanName: string,
+  agent: { name: string | null; visibilityMode: string | null } | null,
+): string {
+  const human = humanName.trim() || "member";
+  if (!agent) return human;
+  const name = agent.name?.trim() ?? "";
+  if (agent.visibilityMode === "visible" && name.length > 0) {
+    return `${name} (AI agent of ${human})`;
+  }
+  return `AI agent of ${human}`;
+}
+
 /** Fields an agent may create. Status stays a draft; review waits for a person. */
 export function magazineArticleCreateData(input: {
   title: string;

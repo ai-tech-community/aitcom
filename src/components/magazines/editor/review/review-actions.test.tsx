@@ -31,6 +31,12 @@ vi.mock("@/i18n/navigation", () => ({
 vi.mock("sonner", () => ({ toast: { success: trpc.toast } }));
 vi.mock("@/trpc/react", () => ({
   api: {
+    useUtils: () => ({
+      magazines: {
+        pickerCandidates: { invalidate: vi.fn() },
+        availableArticles: { invalidate: vi.fn() },
+      },
+    }),
     magazines: {
       reviewArticle: {
         useMutation: (opts: MutationOptions) => ({

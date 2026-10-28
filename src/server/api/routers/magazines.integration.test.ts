@@ -39,6 +39,7 @@ const at = (minutes: number) => new Date(baseTime.getTime() + minutes * 60_000);
 const PROCEDURE_CAPABILITY: Record<string, MagazineCapability | "public"> = {
   getSettings: "manage",
   saveSettings: "manage",
+  deleteMagazine: "manage",
   autoDraftSettings: "edit",
   makeAutoDraftNow: "edit",
   autoDraftHistory: "edit",
@@ -762,6 +763,7 @@ describe.skipIf(!RUN_DB)(
           myDraftArticles: () => caller.myDraftArticles({ slug: slug() }),
           myMagazineArticles: () => caller.myMagazineArticles({ slug: slug() }),
           deleteDraftIssue: () => caller.deleteDraftIssue(ref),
+          deleteMagazine: () => caller.deleteMagazine({ slug: slug() }),
         };
         expect(Object.keys(calls).sort()).toEqual(
           Object.keys(PROCEDURE_CAPABILITY).sort(),

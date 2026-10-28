@@ -48,6 +48,8 @@ export type DestinationBehaviour = {
     | "magazine.reviewPrePublishSubtitle";
   /** The locale-free address of a saved article in this editor. */
   editPath: (articleSlug: string) => string;
+  /** Community whose issue picker should refresh after a magazine hand-in. */
+  communitySlug: string | null;
   /**
    * A failed call as a key under `magazineEditor.errors`, or null to show
    * the server's own text (the blog router answers in words).
@@ -65,6 +67,7 @@ const BLOG: DestinationBehaviour = {
   prePublishTitleKey: "prePublishTitle",
   prePublishSubtitleKey: "prePublishSubtitle",
   editPath: (articleSlug) => `/blog/edit/${articleSlug}`,
+  communitySlug: null,
   errorKey: () => null,
 };
 
@@ -119,6 +122,7 @@ export function destinationBehaviour(
         keepReviewNoteWhileWriting: true,
         editPath: (articleSlug) =>
           magazineArticleEditPath(destination.communitySlug, articleSlug),
+        communitySlug: destination.communitySlug,
         // The magazine services answer in codes; raw codes never reach a toast.
         errorKey: (error) => readEditorError(error).key,
       };

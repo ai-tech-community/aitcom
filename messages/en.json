@@ -4811,8 +4811,8 @@
     },
     "home": {
       "label": "Magazines",
-      "title": "Stories from the communities building AI",
-      "intro": "Written and edited by community members. Free to read.",
+      "title": "Magazines from communities on AIT",
+      "intro": "Issues from communities on AIT.",
       "featured": "Featured issue",
       "fromCommunity": "From {community}",
       "readIssue": "Read the issue",
@@ -4908,7 +4908,7 @@
       "issueDescription": "Issue {number} of {magazine}, a magazine by {community}.",
       "articleDescription": "An article in issue {number} of {magazine}, a magazine by {community}.",
       "homeTitle": "Magazines",
-      "homeDescription": "Stories from the communities building AI, written and edited by community members. Free to read.",
+      "homeDescription": "Magazines from communities on AIT.",
       "shelfDescription": "{magazine}, a magazine by {community}."
     },
     "shareImage": {
@@ -5092,6 +5092,7 @@
     "errors": {
       "confirmUnlistedPublic": "Your community is private. Tick the box to confirm that everyone may see this.",
       "magazineExists": "Your community already has a magazine. Reload the page to edit it.",
+      "magazinePublished": "This magazine has a published issue, so it stays.",
       "magazineSlugTaken": "Another magazine already uses this address. Pick a different one.",
       "spaceSlugTaken": "A space in your community is already called “magazine”. Rename that space in Spaces settings, then try again.",
       "issueChanged": "This issue changed somewhere else. Reload to see the latest version.",
@@ -5148,6 +5149,11 @@
       "saving": "Saving…",
       "created": "Your magazine is ready. It now has its own tab in your community.",
       "saved": "Magazine saved",
+      "delete": "Delete magazine",
+      "deleteTitle": "Delete {name}?",
+      "deleteBody": "Draft issues and unpublished articles are removed. A published issue keeps the magazine.",
+      "deleteConfirm": "Delete magazine",
+      "cancel": "Cancel",
       "loadFailed": "The magazine settings could not be loaded.",
       "tryAgain": "Try again",
       "openTab": "Open the Magazine tab",
@@ -5225,7 +5231,14 @@
       "subscribers": "{count, plural, =0 {No subscribers yet} one {<number>#</number> subscriber} other {<number>#</number> subscribers}}",
       "subscribersWithAccount": "<number>{count}</number> with an account",
       "subscribersByEmail": "<number>{count}</number> by email",
-      "subscribersWaiting": "<number>{count}</number> waiting to confirm"
+      "subscribersWaiting": "<number>{count}</number> waiting to confirm",
+      "delete": "Delete",
+      "deleteConfirm": "Delete",
+      "cancel": "Cancel",
+      "deleteIssueTitle": "Delete {title}?",
+      "deleteIssueBody": "This draft issue is removed. Articles in it stay in the magazine.",
+      "deleteArticleTitle": "Delete {title}?",
+      "deleteArticleBody": "This article is removed. A published article, or one already in an issue, stays."
     },
     "builder": {
       "metaTitle": "Edit issue",
@@ -5267,6 +5280,11 @@
       },
       "conflict": "This issue changed somewhere else. Your changes here are not saved.",
       "reload": "Reload",
+      "cancel": "Cancel",
+      "deleteDraft": "Delete draft",
+      "deleteDraftTitle": "Delete this draft issue?",
+      "deleteDraftBody": "The draft is removed. Articles in it stay in the magazine.",
+      "deleteDraftConfirm": "Delete draft",
       "publish": {
         "label": "Publish",
         "skipped": "{count, plural, one {# item is no longer available. Readers will not see it.} other {# items are no longer available. Readers will not see them.}}"
@@ -5539,10 +5557,11 @@
       "intro": "Choose who writes for and edits {magazine}. Owners and admins of the community always run it.",
       "add": "Add someone",
       "searchLabel": "Find a member",
-      "searchHint": "Type a name to find members of your community.",
+      "searchHint": "Type a name to find members of your community, or a member's agent.",
       "resultsLegend": "Choose a member",
       "resultCount": "{count, plural, =0 {No members match} one {# member found} other {# members found}}",
-      "noResults": "No members match. Only members of this community can join the team.",
+      "noResults": "No members match. Only members of this community, or their agent, can join the team.",
+      "agentOf": "AI agent of {name}",
       "roleLabel": "Job on the team",
       "addButton": "Add to the team",
       "owner": "Community owner",

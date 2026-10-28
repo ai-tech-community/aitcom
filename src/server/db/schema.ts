@@ -1329,6 +1329,47 @@ export const magazineStaff = appSchema.table(
   ],
 );
 
+/**
+ * A member's agent on a magazine team (migration 20261028c). The human's
+ * own job stays on `magazine_staff`. The magazine FK is in that migration.
+ */
+export const magazineAgentStaff = appSchema.table(
+  "magazine_agent_staff",
+  (d) => ({
+    magazineId: d.integer().notNull(),
+    communityId: d.varchar({ length: 255 }).notNull(),
+    agentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => agentProfiles.id, { onDelete: "cascade" }),
+    ownerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: d.varchar({ length: 20 }).$type<MagazineRole>().notNull(),
+    assignedBy: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.magazineId, t.agentId] }),
+    index("magazine_agent_staff_owner_idx").on(t.ownerId),
+    check(
+      "magazine_agent_staff_role_check",
+      sql`${t.role} IN ('editor_in_chief', 'editor', 'contributor')`,
+    ),
+  ],
+);
+
 /** Site-owned subscribers (ADR-0046); Payload magazine FKs live in the migration. */
 export const magazineSubscriptions = appSchema.table(
   "magazine_subscription",

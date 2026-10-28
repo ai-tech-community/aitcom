@@ -8,6 +8,51 @@ import {
   READ_ONLY,
 } from "@/server/mcp/tool-annotations";
 
+const itemBase = {
+  id: z.string().optional(),
+  intro: z.string().max(280).optional(),
+};
+
+/** The same item kinds the issue editor saves, as the MCP SDK's zod. */
+const issueItem = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("article"),
+    articleId: z.number().int().positive(),
+    ...itemBase,
+  }),
+  z.object({
+    kind: z.literal("editorial"),
+    heading: z.string().max(160).optional(),
+    body: z.unknown(),
+    ...itemBase,
+  }),
+  z.object({
+    kind: z.literal("storyline"),
+    storylineId: z.string().min(1).max(255),
+    ...itemBase,
+  }),
+  z.object({
+    kind: z.literal("newsItem"),
+    newsItemId: z.string().min(1).max(255),
+    ...itemBase,
+  }),
+  z.object({
+    kind: z.literal("event"),
+    eventId: z.number().int().positive(),
+    ...itemBase,
+  }),
+  z.object({
+    kind: z.literal("forumThread"),
+    threadId: z.number().int().positive(),
+    ...itemBase,
+  }),
+  z.object({
+    kind: z.literal("launchpadProject"),
+    projectId: z.number().int().positive(),
+    ...itemBase,
+  }),
+]);
+
 const httpUrl = z
   .string()
   .url()
@@ -83,8 +128,9 @@ export function registerMagazineTools(
     "upload-image",
     {
       description:
-        "Upload an image into the magazine's media storage and return a URL you can set as an article or issue cover. Requires contribute scope and a claimed owner. Same rule as the magazine uploader: an image file, at most 2MB. Send either a public http(s) URL or base64 bytes with a content type. This does not publish anything.",
+        "Upload an image into the magazine's media storage and return a URL you can set as an article or issue cover. Requires contribute scope and a claimed owner. The file is stored at magazines/<magazineId>/<uuid>-<name>.ext and is never overwritten. Same rule as the magazine uploader: an image file, at most 2MB. Send either a public http(s) URL or base64 bytes with a content type. This does not publish anything.",
       inputSchema: {
+        magazineSlug: z.string().min(1).max(80),
         alt: z.string().max(200).optional(),
         url: httpUrl.optional(),
         dataBase64: z.string().min(1).max(4_000_000).optional(),
@@ -99,17 +145,32 @@ export function registerMagazineTools(
     "save-magazine-issue",
     {
       description:
-        "Create or edit your issue draft. Set the title, cover image URL and the ordered article ids (your drafts or already approved articles). Requires contribute scope and a claimed owner. The issue stays a draft. This tool cannot publish, schedule or email subscribers. Omit issueId to create. When editing, send the updatedAt from the last response.",
+        "Create or edit your issue draft. Set the title, cover image URL, editor's note, and ordered sections: articles, text sections, events, projects, storylines, news and forum threads — the same shapes the issue editor saves. articleIds is the short form for article sections only. Requires contribute scope and a claimed owner. The issue stays a draft. This tool cannot publish, schedule or email subscribers. Omit issueId to create. When editing, send the updatedAt from the last response.",
       inputSchema: {
         magazineSlug: z.string().min(1).max(80),
         issueId: z.number().int().positive().optional(),
         title: z.string().trim().min(1).max(200).optional(),
         coverImageUrl: httpUrl.nullable().optional(),
+        editorNote: z
+          .string()
+          .max(20_000)
+          .nullable()
+          .optional()
+          .describe(
+            "Editor's note. Plain text is stored as paragraphs. Null clears it.",
+          ),
         articleIds: z
           .array(z.number().int().positive())
           .max(50)
           .optional()
-          .describe("Article ids in reading order."),
+          .describe("Article ids in reading order. Omit when sending items."),
+        items: z
+          .array(issueItem)
+          .max(50)
+          .optional()
+          .describe(
+            "Sections in reading order, same kinds as the issue editor.",
+          ),
         expectedUpdatedAt: z.string().min(1).optional(),
       },
       annotations: DRAFT_FOR_REVIEW,

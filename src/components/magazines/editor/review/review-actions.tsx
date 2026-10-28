@@ -56,8 +56,17 @@ export function ReviewActions({
     if (error) refusalRef.current?.focus();
   }, [error]);
 
+  const utils = api.useUtils();
   const review = api.magazines.reviewArticle.useMutation({
     onSuccess: ({ reviewStatus }) => {
+      if (reviewStatus === "approved") {
+        void utils.magazines.pickerCandidates.invalidate({
+          slug: communitySlug,
+        });
+        void utils.magazines.availableArticles.invalidate({
+          slug: communitySlug,
+        });
+      }
       const message = t(`done.${reviewStatus}`);
       setSuccess(message);
       setDeclineOpen(false);

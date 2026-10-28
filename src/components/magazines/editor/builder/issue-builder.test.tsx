@@ -51,6 +51,7 @@ vi.mock("@/i18n/navigation", () => ({
       {children}
     </a>
   ),
+  useRouter: () => ({ push: vi.fn() }),
 }));
 // Lexical does not need to run here: rich text is a plain textarea that
 // takes its name the way the real writing surface does.
@@ -122,6 +123,9 @@ vi.mock("@/trpc/react", () => ({
       },
       unscheduleIssue: {
         useMutation: () => ({ mutateAsync: trpc.unscheduleIssue }),
+      },
+      deleteDraftIssue: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
     },
   },

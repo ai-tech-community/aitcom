@@ -172,7 +172,12 @@ export async function deleteMagazineArticle(
       userId,
       "write",
     );
-    assertWriterMayChange(locked, userId, standing);
+    // Authors delete their own open drafts. Someone who can edit the
+    // magazine may delete any unpublished, unplaced article. Published
+    // work and placed articles stay under the same guards as before.
+    if (!standingCan(standing, "edit")) {
+      assertWriterMayChange(locked, userId, standing);
+    }
     if (locked.status === "published") {
       throw new TRPCError({
         code: "FORBIDDEN",
@@ -186,4 +191,25 @@ export async function deleteMagazineArticle(
       req: tx.req,
     });
   });
+}
+
+/** Deletes a magazine's unpublished articles. A published one refuses the whole call. */
+export async function deleteUnpublishedMagazineArticles(
+  deps: Deps,
+  magazineId: number,
+): Promise<void> {
+  const { docs } = await deps.payload.find({
+    collection: "articles",
+    where: { magazine: { equals: magazineId } },
+    draft: true,
+    depth: 0,
+    limit: 500,
+    pagination: false,
+  });
+  if (docs.some((article) => article.status === "published")) {
+    throw magazineError("MAGAZINE_PUBLISHED");
+  }
+  for (const article of docs) {
+    await deps.payload.delete({ collection: "articles", id: article.id });
+  }
 }

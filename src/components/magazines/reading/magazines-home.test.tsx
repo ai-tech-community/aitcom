@@ -43,7 +43,7 @@ describe("MagazinesHome", () => {
     expect(
       screen.getByRole("heading", {
         level: 1,
-        name: "Stories from the communities building AI",
+        name: "Magazines from communities on AIT",
       }),
     ).toBeInTheDocument();
 

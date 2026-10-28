@@ -44,6 +44,17 @@ vi.mock("@/i18n/navigation", () => ({
 
 vi.mock("@/trpc/react", () => ({
   api: {
+    useUtils: () => ({
+      magazines: {
+        listIssues: { invalidate: vi.fn() },
+        availableArticles: { invalidate: vi.fn() },
+        myDraftArticles: { invalidate: vi.fn() },
+        pickerCandidates: { invalidate: vi.fn() },
+      },
+    }),
+    articles: {
+      delete: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+    },
     magazines: {
       subscriberCounts: {
         useQuery: (input: unknown) => {
@@ -127,6 +138,9 @@ vi.mock("@/trpc/react", () => ({
               updatedAt: "2026-10-19T00:00:00.000Z",
             },
           ]),
+      },
+      deleteDraftIssue: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       createIssue: {
         useMutation: (opts: CreateOptions) => ({

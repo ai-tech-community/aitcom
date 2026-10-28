@@ -15,7 +15,10 @@ import {
 import type { Deps, PayloadClient } from "@/server/magazines/deps";
 import { assertArticleNotPlaced } from "@/server/magazines/article-placement";
 import { magazineError } from "@/server/magazines/errors";
-import { requireMagazineCapability } from "@/server/magazines/magazine-articles";
+import {
+  requireMagazineCapability,
+  uniqueMagazineArticleSlug,
+} from "@/server/magazines/magazine-articles";
 import {
   deleteMagazineArticle,
   saveMagazineArticle,
@@ -220,13 +223,17 @@ export const articlesRouter = createTRPCRouter({
               )
             ).magazine;
 
-      // Generate unique slug
+      // Magazine articles use a clean title slug. A short number is added
+      // only when that magazine already has it. Blog drafts keep a timestamp
+      // so two posts with the same title never collide on the global slug.
       const baseSlug = input.slug
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "")
         .slice(0, 80);
-      const slug = `${baseSlug}-${Date.now()}`;
+      const slug = magazine
+        ? await uniqueMagazineArticleSlug(payload, magazine.id, input.title)
+        : `${baseSlug}-${Date.now()}`;
 
       const article = await payload.create({
         collection: "articles",
@@ -395,10 +402,6 @@ export const articlesRouter = createTRPCRouter({
         draft: true,
       });
 
-      if (article.authorId !== ctx.session.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Not your article" });
-      }
-
       const policy = channelFor(article).editPolicy;
       switch (policy) {
         case "magazine":
@@ -411,6 +414,12 @@ export const articlesRouter = createTRPCRouter({
           );
           return { success: true };
         case "trusted_author": {
+          if (article.authorId !== ctx.session.user.id) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Not your article",
+            });
+          }
           if (article.status === "published") {
             throw new TRPCError({
               code: "FORBIDDEN",

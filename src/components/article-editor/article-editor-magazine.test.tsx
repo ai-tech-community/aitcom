@@ -17,6 +17,14 @@ const calls = vi.hoisted(() => ({
 
 vi.mock("@/trpc/react", () => ({
   api: {
+    useUtils: () => ({
+      magazines: {
+        pickerCandidates: { invalidate: vi.fn() },
+        availableArticles: { invalidate: vi.fn() },
+        myDraftArticles: { invalidate: vi.fn() },
+        myMagazineArticles: { invalidate: vi.fn() },
+      },
+    }),
     articles: {
       create: { useMutation: () => ({ mutateAsync: calls.create }) },
       update: { useMutation: () => ({ mutateAsync: calls.update }) },

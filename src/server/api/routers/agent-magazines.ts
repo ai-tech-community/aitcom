@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { agentProcedure, requireOwner, requireScope } from "@/server/api/trpc";
+import { issueItemInputSchema } from "@/server/magazines/items/registry";
 import { uploadMagazineImage } from "@/server/magazines/agent-image";
 import {
   browseMagazines,
@@ -69,6 +70,7 @@ export const agentMagazineRouter = {
     .input(
       z
         .object({
+          magazineSlug: z.string().min(1).max(80),
           alt: z.string().max(200).optional(),
           url: httpUrl.optional(),
           dataBase64: z.string().min(1).max(4_000_000).optional(),
@@ -99,6 +101,8 @@ export const agentMagazineRouter = {
         title: z.string().trim().min(1).max(200).optional(),
         coverImageUrl: httpUrl.nullable().optional(),
         articleIds: z.array(z.number().int().positive()).max(50).optional(),
+        items: z.array(issueItemInputSchema).max(50).optional(),
+        editorNote: z.unknown().nullable().optional(),
         expectedUpdatedAt: z.string().min(1).optional(),
       }),
     )

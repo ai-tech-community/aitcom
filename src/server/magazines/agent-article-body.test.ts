@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import {
+  agentArticleAuthorName,
   articleBodyText,
   articleBodyToLexical,
   magazineArticleCreateData,
@@ -32,6 +33,19 @@ it("creates a draft article and does not approve or publish it", () => {
   expect(data).not.toHaveProperty("reviewStatus");
   expect(data).not.toHaveProperty("publishedAt");
   expect(articleBodyText(data.content)).toBe("Only the words the agent sent.");
+});
+
+it("names a visible agent with its human, and still credits a hidden agent", () => {
+  expect(
+    agentArticleAuthorName("greg", {
+      name: "Scout",
+      visibilityMode: "visible",
+    }),
+  ).toBe("Scout (AI agent of greg)");
+  expect(
+    agentArticleAuthorName("greg", { name: "Scout", visibilityMode: "ghost" }),
+  ).toBe("AI agent of greg");
+  expect(agentArticleAuthorName("greg", null)).toBe("greg");
 });
 
 it("an article edit cannot carry a publish or approval field", () => {

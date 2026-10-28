@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useId } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
@@ -12,14 +12,26 @@ import {
 import { mayWriterChange, writerStatusOf } from "@/lib/magazines/review";
 import { api } from "@/trpc/react";
 
+import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { DeskList, UpdatedAt } from "./desk-list";
+import { readEditorError } from "./editor-errors";
 import { SubscriberCountLine } from "./subscriber-count-line";
 
 /** The writer's unpublished articles stay here until their issue comes out. */
 export function ContributorDesk({ slug }: { slug: string }) {
   const t = useTranslations("magazineEditor.contributorDesk");
+  const tDesk = useTranslations("magazineEditor.desk");
+  const tErrors = useTranslations("magazineEditor.errors");
   const labelId = useId();
+  const [error, setError] = useState<string | null>(null);
+  const utils = api.useUtils();
   const articles = api.magazines.myMagazineArticles.useQuery({ slug });
+  const remove = api.articles.delete.useMutation({
+    onSuccess: () => {
+      void utils.magazines.myMagazineArticles.invalidate({ slug });
+    },
+    onError: (cause) => setError(tErrors(readEditorError(cause).key)),
+  });
   const rows = articles.data ?? [];
 
   return (
@@ -36,6 +48,11 @@ export function ContributorDesk({ slug }: { slug: string }) {
         </Button>
       </div>
       <SubscriberCountLine slug={slug} />
+      {error && (
+        <p role="alert" className="text-destructive text-sm">
+          {error}
+        </p>
+      )}
       <DeskList
         label={t("articles")}
         query={articles}
@@ -65,6 +82,21 @@ export function ContributorDesk({ slug }: { slug: string }) {
               ) : (
                 <div className="flex min-w-0 flex-col gap-1 px-3 py-2.5">
                   {content}
+                </div>
+              )}
+              {mayWriterChange(false, article) && (
+                <div className="px-3 pb-2">
+                  <ConfirmDeleteButton
+                    label={tDesk("delete")}
+                    title={tDesk("deleteArticleTitle", {
+                      title: article.title,
+                    })}
+                    description={tDesk("deleteArticleBody")}
+                    confirmLabel={tDesk("deleteConfirm")}
+                    cancelLabel={tDesk("cancel")}
+                    pending={remove.isPending}
+                    onConfirm={() => remove.mutate({ id: article.id })}
+                  />
                 </div>
               )}
               {article.reviewNote && (

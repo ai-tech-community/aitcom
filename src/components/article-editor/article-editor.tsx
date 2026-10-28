@@ -175,6 +175,7 @@ export function ArticleEditor({
 
   const createMutation = api.articles.create.useMutation();
   const updateMutation = api.articles.update.useMutation();
+  const utils = api.useUtils();
   const submitMutation = api.articles.submit.useMutation();
 
   const initialConfig = useMemo(
@@ -443,6 +444,21 @@ export function ArticleEditor({
       if (id === null) return;
 
       await submitMutation.mutateAsync({ id });
+      if (behaviour.communitySlug) {
+        const magazineSlug = behaviour.communitySlug;
+        void utils.magazines.pickerCandidates.invalidate({
+          slug: magazineSlug,
+        });
+        void utils.magazines.availableArticles.invalidate({
+          slug: magazineSlug,
+        });
+        void utils.magazines.myDraftArticles.invalidate({
+          slug: magazineSlug,
+        });
+        void utils.magazines.myMagazineArticles.invalidate({
+          slug: magazineSlug,
+        });
+      }
       setPublishDialogOpen(false);
       showMessage(
         publishesDirectly ? t("publishedSuccess") : t(behaviour.submittedKey),
@@ -464,6 +480,7 @@ export function ArticleEditor({
     showMessage,
     submitMutation,
     t,
+    utils,
   ]);
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { sql } from "@payloadcms/db-postgres";
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
 
+import { routing } from "@/i18n/routing";
 import { HUB_SLUG } from "@/server/communities/hub";
 import { isContentPublic } from "@/server/communities/content-visibility";
 import {
@@ -10,11 +11,12 @@ import {
   communities,
   user as users,
 } from "@/server/db/schema";
-import { slugify } from "@/lib/text-utils";
 import { magazineAgentIssueReviewPath } from "@/lib/magazines/paths";
 import type { Article, Magazine, MagazineIssue } from "@/payload-types";
 
 import {
+  agentArticleAuthorName,
+  articleBodyToLexical,
   magazineArticleCreateData,
   magazineArticlePatch,
 } from "./agent-article-body";
@@ -35,6 +37,15 @@ import {
 } from "./editorship";
 import { createIssue, publishIssue } from "./issue-service";
 import { placedArticlesOf, syncArticlePlacement } from "./article-placement";
+import { uniqueMagazineArticleSlug } from "./magazine-articles";
+import { magazineError } from "./errors";
+import { itemContextFor } from "./items/context";
+import {
+  toItemInputs,
+  toStoredItems,
+  validateIssueItems,
+  type IssueItemInput,
+} from "./items/registry";
 import { listPendingArticles } from "./article-review";
 import { findMagazineBySlug } from "./reading";
 import {
@@ -42,7 +53,7 @@ import {
   readableIssueIds,
   type IssueReadScope,
 } from "./readable-issues";
-import { toStoredItems, type StoredBlock } from "./items/registry";
+import type { StoredBlock } from "./items/registry";
 import { notifyAgentIssueSubmitted } from "./notifications";
 import { inPayloadTransaction } from "./payload-writes";
 import { relationIdOrNull, requireRelationId } from "./relation-id";
@@ -440,9 +451,20 @@ export async function readAgentIssueReview(
   };
 }
 
-function articleSlugFor(title: string): string {
-  const base = slugify(title).replace(/-+$/, "").slice(0, 70);
-  return `${base.length >= 3 ? base : "article"}-${Date.now()}`;
+async function articleAuthorName(
+  deps: Deps,
+  identity: MagazineAgent,
+): Promise<string> {
+  const human = await ownerName(deps, identity.ownerId);
+  const [agent] = await deps.db
+    .select({
+      name: agentProfiles.name,
+      visibilityMode: agentProfiles.visibilityMode,
+    })
+    .from(agentProfiles)
+    .where(eq(agentProfiles.id, identity.agentId))
+    .limit(1);
+  return agentArticleAuthorName(human, agent ?? null);
 }
 
 async function findOwnedDraft(
@@ -527,11 +549,15 @@ export async function saveMagazineArticle(
       draft: true,
       data: magazineArticleCreateData({
         title: input.title.trim(),
-        slug: articleSlugFor(input.title),
+        slug: await uniqueMagazineArticleSlug(
+          deps.payload,
+          magazine.id,
+          input.title,
+        ),
         body: input.body,
         mediaUrl: input.coverImageUrl,
         authorId: identity.ownerId,
-        authorName: await ownerName(deps, identity.ownerId),
+        authorName: await articleAuthorName(deps, identity),
         magazineId: magazine.id,
       }),
     });
@@ -695,6 +721,25 @@ async function assertPlaceable(
   }
 }
 
+function editorNoteOf(note: unknown): MagazineIssue["editorNote"] | null {
+  if (note == null) return null;
+  if (typeof note === "string") {
+    const trimmed = note.trim();
+    if (!trimmed) return null;
+    return articleBodyToLexical(trimmed) as MagazineIssue["editorNote"];
+  }
+  return note as MagazineIssue["editorNote"];
+}
+
+/** Text sections may be sent as plain text; the issue stores the editor's Lexical shape. */
+function agentIssueItems(items: IssueItemInput[]): IssueItemInput[] {
+  return items.map((item) =>
+    item.kind === "editorial" && typeof item.body === "string"
+      ? { ...item, body: articleBodyToLexical(item.body) }
+      : item,
+  );
+}
+
 async function writeDraftIssue(
   deps: Deps,
   issue: MagazineIssue,
@@ -703,6 +748,8 @@ async function writeDraftIssue(
     title?: string;
     coverImageUrl?: string | null;
     articleIds?: number[];
+    blocks?: StoredBlock[];
+    editorNote?: MagazineIssue["editorNote"] | null;
   },
 ) {
   if (issue.status !== "draft") {
@@ -715,12 +762,17 @@ async function writeDraftIssue(
     title?: string;
     coverImageUrl?: string | null;
     items?: MagazineIssue["items"];
+    editorNote?: MagazineIssue["editorNote"];
   } = {};
   if (patch.title !== undefined) data.title = patch.title;
   if (patch.coverImageUrl !== undefined)
     data.coverImageUrl = patch.coverImageUrl;
+  if (patch.editorNote !== undefined) data.editorNote = patch.editorNote;
   let blocks: StoredBlock[] | null = null;
-  if (patch.articleIds !== undefined) {
+  if (patch.blocks !== undefined) {
+    blocks = patch.blocks;
+    data.items = blocks as MagazineIssue["items"];
+  } else if (patch.articleIds !== undefined) {
     const current = (issue.items ?? []) as StoredBlock[];
     const idByArticle = new Map<number, string>();
     for (const block of current) {
@@ -791,6 +843,8 @@ export async function saveMagazineIssue(
     title?: string;
     coverImageUrl?: string | null;
     articleIds?: number[];
+    items?: IssueItemInput[];
+    editorNote?: unknown;
     expectedUpdatedAt?: string;
   },
 ) {
@@ -874,7 +928,32 @@ export async function saveMagazineIssue(
     }
     issue = loaded;
   }
-  if (input.articleIds) {
+  if (input.items && input.articleIds) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Send items or articleIds, not both.",
+    });
+  }
+  let blocks: StoredBlock[] | undefined;
+  if (input.items) {
+    const items = agentIssueItems(input.items);
+    blocks = toStoredItems(items);
+    const ctx = itemContextFor(deps, {
+      magazineId: magazine.id,
+      community: actor.community,
+      issueId: issue.id,
+      locale: routing.defaultLocale,
+      access: "editor",
+      viewerId: identity.ownerId,
+    });
+    const [problem] = await validateIssueItems(
+      blocks,
+      ctx,
+      (issue.items ?? []) as StoredBlock[],
+    );
+    if (problem)
+      throw magazineError(problem.code, { itemIndex: problem.itemIndex });
+  } else if (input.articleIds) {
     await assertPlaceable(
       deps,
       identity,
@@ -891,6 +970,11 @@ export async function saveMagazineIssue(
       title: input.issueId === undefined ? undefined : input.title?.trim(),
       coverImageUrl: input.coverImageUrl,
       articleIds: input.articleIds,
+      blocks,
+      editorNote:
+        input.editorNote === undefined
+          ? undefined
+          : editorNoteOf(input.editorNote),
     },
   );
   const articleIds = articleIdsOf(written);
@@ -918,7 +1002,9 @@ export async function saveMagazineIssue(
     title: written.title,
     status: "draft" as const,
     coverImageUrl: written.coverImageUrl ?? null,
+    editorNote: written.editorNote ?? null,
     articleIds,
+    items: toItemInputs((written.items ?? []) as StoredBlock[]),
     updatedAt: written.updatedAt,
     review: "draft" as const,
   };

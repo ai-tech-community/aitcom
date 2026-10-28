@@ -1819,6 +1819,7 @@ export const media = pgTable(
       .notNull(),
     url: varchar("url"),
     thumbnailURL: varchar("thumbnail_u_r_l"),
+    prefix: varchar("prefix"),
     filename: varchar("filename"),
     mimeType: varchar("mime_type"),
     filesize: numeric("filesize", { mode: "number" }),

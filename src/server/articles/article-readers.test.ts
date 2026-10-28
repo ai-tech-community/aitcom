@@ -45,7 +45,7 @@ const READERS: Record<string, string> = {
   "src/server/magazines/article-placement.ts":
     "writer: an article's placement in an issue",
   "src/server/magazines/article-submission.ts":
-    "writer: router checks authorship; live magazine write capability and locked latest draft gate every change",
+    "writer: router checks authorship; live magazine write capability and locked latest draft gate every change; deleting a magazine reads its articles only to remove unpublished ones",
   "src/server/magazines/article-review.ts":
     "editor queue behind edit capability; review page checks live magazine editorship and member authorship; decisions check magazine and locked latest draft",
   "src/server/magazines/payload-writes.ts":
@@ -53,7 +53,7 @@ const READERS: Record<string, string> = {
   "src/server/magazines/items/article/kind.ts":
     "issue items; readers get unavailable unless the article is published",
   "src/server/magazines/magazine-articles.ts":
-    "editor lists, behind requireMagazineCapability(edit)",
+    "editor lists, behind requireMagazineCapability(edit); slug allocation reads draft slugs of one magazine and does not return article text",
   "src/scripts/normalize-magazine-article-paragraphs.ts":
     "operator script, not a request path: magazine articles only, drafts included, so it cannot use the public reader filters; it prints ids and, with --write, replaces content with the same body minus empty paragraphs; it does not show an article to a viewer",
 };

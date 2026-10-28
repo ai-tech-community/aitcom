@@ -7,11 +7,44 @@ import {
 } from "@/server/communities/feed-images";
 import type { PayloadClient } from "./deps";
 
+/** Object key `magazines/<magazineId>/<uuid>-<sanitized>.ext`. The uuid makes a second upload a new object. */
+export function magazineImageStorageKey(input: {
+  magazineId: number;
+  contentType: string;
+  originalName?: string;
+  id: string;
+}): { prefix: string; name: string; mimetype: string } {
+  const mimetype = input.contentType.split(";")[0]!.trim().toLowerCase();
+  const ext =
+    (mimetype.slice("image/".length) || "img")
+      .replace("jpeg", "jpg")
+      .replace(/[^a-z0-9]+/g, "") || "img";
+  const raw = (input.originalName ?? "image").split(/[/\\]/).pop() ?? "image";
+  const stem = raw
+    .replace(/\.[^.]+$/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  const id = input.id
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "");
+  return {
+    prefix: `magazines/${input.magazineId}`,
+    name: `${id || "image"}-${stem || "image"}.${ext}`,
+    mimetype,
+  };
+}
+
 /** Same ceiling and image-type gate as `POST /api/upload`, which magazine covers use. */
 export function assertMagazineImage(input: {
   data: Buffer;
   contentType: string;
-}): { data: Buffer; mimetype: string; name: string } {
+  magazineId: number;
+  originalName?: string;
+  id: string;
+}): { data: Buffer; mimetype: string; name: string; prefix: string } {
   const mimetype = input.contentType.split(";")[0]!.trim().toLowerCase();
   if (!mimetype.startsWith("image/")) {
     throw new TRPCError({
@@ -28,8 +61,8 @@ export function assertMagazineImage(input: {
       message: "File too large (max 2MB)",
     });
   }
-  const ext = (mimetype.slice("image/".length) || "img").replace("jpeg", "jpg");
-  return { data: input.data, mimetype, name: `magazine-image.${ext}` };
+  const key = magazineImageStorageKey(input);
+  return { data: input.data, ...key };
 }
 
 export function decodeImageBase64(value: string): Buffer {
@@ -46,18 +79,36 @@ export async function uploadMagazineImage(
   payload: PayloadClient,
   ownerId: string,
   input: {
+    magazineSlug: string;
     alt?: string;
     url?: string;
     dataBase64?: string;
     contentType?: string;
   },
   fetcher: ImageFetcher = fetchImage,
-): Promise<{ id: number; url: string }> {
+): Promise<{ id: number; url: string; key: string }> {
+  const { docs } = await payload.find({
+    collection: "magazines",
+    where: { slug: { equals: input.magazineSlug } },
+    depth: 0,
+    limit: 1,
+    pagination: false,
+  });
+  const magazine = docs[0];
+  if (!magazine) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Magazine not found" });
+  }
+  const named = {
+    magazineId: magazine.id,
+    originalName: input.alt,
+    id: crypto.randomUUID(),
+  };
   const file = input.url
-    ? await fileFromUrl(input.url, fetcher)
+    ? await fileFromUrl(input.url, fetcher, named)
     : assertMagazineImage({
         data: decodeImageBase64(input.dataBase64 ?? ""),
         contentType: input.contentType ?? "",
+        ...named,
       });
   const alt = input.alt?.trim();
   const media = await payload.create({
@@ -65,6 +116,9 @@ export async function uploadMagazineImage(
     data: {
       alt: alt && alt.length > 0 ? alt : "upload",
       uploadedBy: ownerId,
+      // Stored beside the file so the S3 key is magazines/<id>/<uuid>-<name>.ext
+      // and a later read builds the same URL. Empty for every other upload.
+      prefix: file.prefix,
     },
     file: {
       data: file.data,
@@ -79,15 +133,24 @@ export async function uploadMagazineImage(
       message: "Stored image has no URL",
     });
   }
-  return { id: media.id, url: media.url };
+  return {
+    id: media.id,
+    url: media.url,
+    key: `${file.prefix}/${file.name}`,
+  };
 }
 
-async function fileFromUrl(url: string, fetcher: ImageFetcher) {
+async function fileFromUrl(
+  url: string,
+  fetcher: ImageFetcher,
+  named: { magazineId: number; originalName?: string; id: string },
+) {
   try {
     const image = await fetcher(url);
     return assertMagazineImage({
       data: image.data,
       contentType: image.mimetype,
+      ...named,
     });
   } catch (error) {
     if (error instanceof TRPCError) throw error;

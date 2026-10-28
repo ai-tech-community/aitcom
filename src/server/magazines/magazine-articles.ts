@@ -20,6 +20,10 @@ import {
   requireCapability,
   standingCan,
 } from "./editorship";
+import {
+  magazineArticleSlugBase,
+  nextMagazineArticleSlug,
+} from "./article-slug";
 import { relationIdOrNull } from "./relation-id";
 
 /**
@@ -364,6 +368,39 @@ export async function listDraftArticles(
   authorId: string,
 ): Promise<DraftMagazineArticle[]> {
   return listAuthorArticles(payload, magazineId, authorId, NOT_READY);
+}
+
+/**
+ * A clean slug from the title. A short numeric suffix is added only when
+ * this magazine, or the global article address, already uses it.
+ */
+export async function uniqueMagazineArticleSlug(
+  payload: PayloadClient,
+  magazineId: number,
+  title: string,
+): Promise<string> {
+  const base = magazineArticleSlugBase(title);
+  const { docs } = await payload.find({
+    collection: "articles",
+    where: {
+      or: [{ magazine: { equals: magazineId } }, { slug: { equals: base } }],
+    },
+    draft: true,
+    depth: 0,
+    limit: 500,
+    pagination: false,
+  });
+  const prefix = `${base}-`;
+  const taken = new Set<string>();
+  for (const doc of docs) {
+    const slug = doc.slug;
+    if (!slug) continue;
+    const inMagazine = relationIdOrNull(doc.magazine) === magazineId;
+    const numericSuffix =
+      slug.startsWith(prefix) && /^\d+$/.test(slug.slice(prefix.length));
+    if (slug === base || (inMagazine && numericSuffix)) taken.add(slug);
+  }
+  return nextMagazineArticleSlug(title, taken);
 }
 
 /** The author's unpublished articles, including those ready for an issue. */

@@ -39,6 +39,7 @@ import {
 } from "@/server/magazines/issue-editing";
 import {
   createIssue,
+  deleteCommunityMagazine,
   deleteDraftIssue,
   type IssueActor,
   type IssueDetailsPatch,
@@ -220,6 +221,7 @@ function autoDraftSettingsOf({
 const staffUserInput = z.object({
   slug: z.string(),
   userId: z.string().min(1).max(255),
+  agentId: z.string().min(1).max(255).optional(),
 });
 
 export const magazinesRouter = createTRPCRouter({
@@ -298,6 +300,14 @@ export const magazinesRouter = createTRPCRouter({
       },
     })),
 
+  deleteMagazine: managerProcedure
+    .input(z.object({ slug: z.string() }))
+    .mutation(async ({ ctx }) => {
+      const magazine = requireMagazine(ctx.magazine);
+      await deleteCommunityMagazine(depsOf(ctx), magazine, actorOf(ctx));
+      return { ok: true as const };
+    }),
+
   saveSettings: managerProcedure
     .input(settingsInput)
     .mutation(async ({ ctx, input }) => {
@@ -352,6 +362,7 @@ export const magazinesRouter = createTRPCRouter({
         ctx.db,
         requireMagazine(ctx.magazine),
         input.userId,
+        input.agentId,
       );
       return { ok: true as const };
     }),
