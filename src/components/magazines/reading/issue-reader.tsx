@@ -162,15 +162,17 @@ export function IssueReader({
       </div>
     </div>
   );
-  return mode === "teaser" ? (
+  // The provider stays mounted in both modes: a join refreshes the page from
+  // preview to full, and swapping the wrapper would remount the whole view,
+  // dropping keyboard focus from the heading the join just moved it to.
+  return (
     <MagazineJoinPromptProvider
       community={community}
       source={source}
       focusTargetId={titleId}
+      finishJoin={mode === "teaser"}
     >
       {reading}
     </MagazineJoinPromptProvider>
-  ) : (
-    reading
   );
 }

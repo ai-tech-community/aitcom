@@ -142,6 +142,30 @@ describe("IssueReader", () => {
     }
   });
 
+  it("keeps focus on the heading when a join turns the preview into the full issue", () => {
+    const props = {
+      url: "https://example.test/en/magazines/agents-weekly/issue-4",
+      locale: "en" as const,
+    };
+    const { rerender } = renderWithIntl(
+      <IssueReader
+        {...props}
+        data={issuePage({ access: "teaser", items: [articleView(1)] })}
+      />,
+    );
+    const title = screen.getByRole("heading", { level: 1 });
+    title.focus();
+    rerender(
+      <IssueReader
+        {...props}
+        data={issuePage({ access: "full", items: [articleView(1)] })}
+      />,
+    );
+    expect(screen.queryAllByTestId("join-panel")).toHaveLength(0);
+    expect(screen.getByRole("heading", { level: 1 })).toBe(title);
+    expect(document.activeElement).toBe(title);
+  });
+
   it("places complementary responsive join panels after the hero and before the layout", () => {
     const { container } = renderWithIntl(
       <IssueReader
