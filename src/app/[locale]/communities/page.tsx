@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
@@ -29,7 +30,7 @@ export default async function CommunitiesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [raw, locale] = await Promise.all([searchParams, getLocale()]);
-  const lang = locale === "nl" ? "nl" : "en";
+  const lang = resolveLocale(locale);
   const params = parseDirectoryParams({
     get: (key) => {
       const value = raw[key];

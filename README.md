@@ -23,22 +23,22 @@ When engineers and AI agents collaborate, they unlock capabilities neither has a
 - **Jobs** — Sponsor-powered job listings with filtering
 - **Blog** — Articles, tutorials, and talk recordings
 - **Gamification** — XP, levels, and badges to reward community participation
-- **Internationalization** — Full English and Dutch language support
+- **Internationalization** — English, Dutch, and French interfaces
 - **Authentication** — Email/password and GitHub OAuth signin
 
 ## Tech Stack
 
-| Category | Technology |
-| --- | --- |
-| Framework | [Next.js 15](https://nextjs.org/), [React 19](https://react.dev/), TypeScript |
-| Styling | [Tailwind CSS 4](https://tailwindcss.com/), [Radix UI](https://www.radix-ui.com/), [shadcn/ui](https://ui.shadcn.com/) |
-| API | [tRPC 11](https://trpc.io/) |
-| Database | PostgreSQL ([Neon Serverless](https://neon.tech/)), [Drizzle ORM](https://orm.drizzle.team/) |
-| CMS | [Payload CMS 3](https://payloadcms.com/) |
-| Auth | [Better Auth](https://www.better-auth.com/) |
-| Email | [Resend](https://resend.com/) |
-| i18n | [next-intl](https://next-intl-docs.vercel.app/) |
-| Animation | [Framer Motion](https://www.framer.com/motion/) |
+| Category  | Technology                                                                                                             |
+| --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Framework | [Next.js 15](https://nextjs.org/), [React 19](https://react.dev/), TypeScript                                          |
+| Styling   | [Tailwind CSS 4](https://tailwindcss.com/), [Radix UI](https://www.radix-ui.com/), [shadcn/ui](https://ui.shadcn.com/) |
+| API       | [tRPC 11](https://trpc.io/)                                                                                            |
+| Database  | PostgreSQL ([Neon Serverless](https://neon.tech/)), [Drizzle ORM](https://orm.drizzle.team/)                           |
+| CMS       | [Payload CMS 3](https://payloadcms.com/)                                                                               |
+| Auth      | [Better Auth](https://www.better-auth.com/)                                                                            |
+| Email     | [Resend](https://resend.com/)                                                                                          |
+| i18n      | [next-intl](https://next-intl-docs.vercel.app/)                                                                        |
+| Animation | [Framer Motion](https://www.framer.com/motion/)                                                                        |
 
 ## Getting Started
 
@@ -67,19 +67,19 @@ first boot. Once the dev server is up:
 
 Sign in with the seeded development account:
 
-| Email | Password |
-| --- | --- |
+| Email                    | Password         |
+| ------------------------ | ---------------- |
 | `dev@aitcommunity.local` | `devpassword123` |
 
 Common commands:
 
-| Command | What it does |
-| --- | --- |
-| `docker compose up` | Build + run everything (seeds on first boot) |
-| `docker compose up -d` | Same, detached |
-| `docker compose down` | Stop containers (keeps the database) |
-| `docker compose down -v` | Stop and **wipe** the database volume |
-| `SEED_ON_START=false docker compose up` | Start without seeding |
+| Command                                 | What it does                                 |
+| --------------------------------------- | -------------------------------------------- |
+| `docker compose up`                     | Build + run everything (seeds on first boot) |
+| `docker compose up -d`                  | Same, detached                               |
+| `docker compose down`                   | Stop containers (keeps the database)         |
+| `docker compose down -v`                | Stop and **wipe** the database volume        |
+| `SEED_ON_START=false docker compose up` | Start without seeding                        |
 
 Local defaults live in [.env.docker](.env.docker) (safe, non-secret). To enable
 optional services (Resend, S3, real GitHub OAuth), add their keys there.
@@ -155,26 +155,26 @@ cp .env.example .env
 
 At minimum, you need:
 
-| Variable | Description |
-| --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string |
+| Variable             | Description                        |
+| -------------------- | ---------------------------------- |
+| `DATABASE_URL`       | PostgreSQL connection string       |
 | `BETTER_AUTH_SECRET` | Auth session secret (min 32 chars) |
-| `PAYLOAD_SECRET` | Payload CMS secret (min 32 chars) |
+| `PAYLOAD_SECRET`     | Payload CMS secret (min 32 chars)  |
 
 Optional services:
 
-| Variable | Description |
-| --- | --- |
-| `BETTER_AUTH_GITHUB_CLIENT_ID` | GitHub OAuth — [create an app](https://github.com/settings/developers) |
-| `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth secret |
-| `BETTER_AUTH_LINKEDIN_CLIENT_ID` | LinkedIn OAuth (optional) — [create an app](https://www.linkedin.com/developers/apps) with Sign In with LinkedIn using OpenID Connect. Redirect: `{BETTER_AUTH_URL}/api/auth/callback/linkedin` |
-| `BETTER_AUTH_LINKEDIN_CLIENT_SECRET` | LinkedIn OAuth secret (optional; both LinkedIn vars required to enable connect) |
-| `RESEND_API_KEY` | Email delivery via [Resend](https://resend.com/) |
-| `S3_ACCESS_KEY_ID` | S3-compatible storage for file uploads |
-| `S3_SECRET_ACCESS_KEY` | S3 secret key |
-| `S3_BUCKET` | S3 bucket name |
-| `S3_REGION` | S3 region (default: `eu-central-1`) |
-| `CRON_SECRET` | Authorization token for cron endpoints |
+| Variable                             | Description                                                                                                                                                                                     |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_GITHUB_CLIENT_ID`       | GitHub OAuth — [create an app](https://github.com/settings/developers)                                                                                                                          |
+| `BETTER_AUTH_GITHUB_CLIENT_SECRET`   | GitHub OAuth secret                                                                                                                                                                             |
+| `BETTER_AUTH_LINKEDIN_CLIENT_ID`     | LinkedIn OAuth (optional) — [create an app](https://www.linkedin.com/developers/apps) with Sign In with LinkedIn using OpenID Connect. Redirect: `{BETTER_AUTH_URL}/api/auth/callback/linkedin` |
+| `BETTER_AUTH_LINKEDIN_CLIENT_SECRET` | LinkedIn OAuth secret (optional; both LinkedIn vars required to enable connect)                                                                                                                 |
+| `RESEND_API_KEY`                     | Email delivery via [Resend](https://resend.com/)                                                                                                                                                |
+| `S3_ACCESS_KEY_ID`                   | S3-compatible storage for file uploads                                                                                                                                                          |
+| `S3_SECRET_ACCESS_KEY`               | S3 secret key                                                                                                                                                                                   |
+| `S3_BUCKET`                          | S3 bucket name                                                                                                                                                                                  |
+| `S3_REGION`                          | S3 region (default: `eu-central-1`)                                                                                                                                                             |
+| `CRON_SECRET`                        | Authorization token for cron endpoints                                                                                                                                                          |
 
 See [.env.example](.env.example) for the full list. Verified GitHub / LinkedIn
 identity (connect from Settings, shown on profiles and the leaderboard) is
@@ -206,7 +206,7 @@ The app will be available at [http://localhost:3000](http://localhost:3000). The
 src/
 ├── app/
 │   ├── (payload)/          # Payload CMS admin panel
-│   ├── [locale]/           # Locale-based routing (en/nl)
+│   ├── [locale]/           # Locale-based routing (en/nl/fr)
 │   │   ├── events/         # Event pages
 │   │   ├── blog/           # Blog articles
 │   │   ├── community/      # Community board
@@ -233,23 +233,23 @@ docs/adr/                   # Architecture Decision Records
 
 ## Available Scripts
 
-| Command | Description |
-| --- | --- |
-| `pnpm dev` | Start development server with Turbo |
-| `pnpm build` | Build for production |
-| `pnpm start` | Start production server |
-| `pnpm preview` | Build and start production server |
-| `pnpm check` | Run linting and TypeScript checks |
-| `pnpm lint` | Run ESLint |
-| `pnpm lint:fix` | Fix linting issues |
-| `pnpm format:check` | Check code formatting |
-| `pnpm format:write` | Format code with Prettier |
-| `pnpm db:generate` | Generate Drizzle migrations |
-| `pnpm db:apply` | Apply pending Payload/app migrations (`src/migrations`) |
-| `pnpm db:migrate` | Run vestigial Drizzle-kit migrations (do not use for new schema) |
-| `pnpm db:push` | Push schema to database |
-| `pnpm db:seed` | Seed a local database (dev user, root Hub, demo content) |
-| `pnpm db:studio` | Open Drizzle Studio |
+| Command             | Description                                                      |
+| ------------------- | ---------------------------------------------------------------- |
+| `pnpm dev`          | Start development server with Turbo                              |
+| `pnpm build`        | Build for production                                             |
+| `pnpm start`        | Start production server                                          |
+| `pnpm preview`      | Build and start production server                                |
+| `pnpm check`        | Run linting and TypeScript checks                                |
+| `pnpm lint`         | Run ESLint                                                       |
+| `pnpm lint:fix`     | Fix linting issues                                               |
+| `pnpm format:check` | Check code formatting                                            |
+| `pnpm format:write` | Format code with Prettier                                        |
+| `pnpm db:generate`  | Generate Drizzle migrations                                      |
+| `pnpm db:apply`     | Apply pending Payload/app migrations (`src/migrations`)          |
+| `pnpm db:migrate`   | Run vestigial Drizzle-kit migrations (do not use for new schema) |
+| `pnpm db:push`      | Push schema to database                                          |
+| `pnpm db:seed`      | Seed a local database (dev user, root Hub, demo content)         |
+| `pnpm db:studio`    | Open Drizzle Studio                                              |
 
 ## Deployment
 

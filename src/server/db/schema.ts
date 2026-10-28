@@ -1416,7 +1416,7 @@ export const magazineSubscriptions = appSchema.table(
     ),
     check(
       "magazine_subscription_locale_check",
-      sql`${t.locale} IN ('en', 'nl')`,
+      sql`${t.locale} IN ('en', 'nl', 'fr')`,
     ),
   ],
 );

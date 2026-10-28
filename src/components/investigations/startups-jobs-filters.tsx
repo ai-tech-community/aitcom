@@ -1,5 +1,7 @@
 "use client";
 
+import type { AppLocale } from "@/i18n/messages";
+
 import {
   useEffect,
   useRef,
@@ -82,7 +84,7 @@ export function StartupsJobsFilters({
   aside,
 }: {
   query: StartupJobsQuery;
-  locale: "en" | "nl";
+  locale: AppLocale;
   companies: { slug: string; name: string }[];
   locations: string[];
   workTypes: StartupWorkType[];

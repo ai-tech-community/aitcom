@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
@@ -28,7 +29,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
-  const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: StartupLocale = resolveLocale(locale);
   const t = await getTranslations("investigationsStartups");
   const companies = await listApprovedPublicStartups();
   const insights = buildStartupInsights(companies, copyLocale);
@@ -57,7 +58,7 @@ export default async function StartupsInsightsPage() {
   const t = await getTranslations("investigationsStartups");
   const session = await getSession();
   const companies = await listApprovedPublicStartups();
-  const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: StartupLocale = resolveLocale(locale);
   const insights = buildStartupInsights(companies, copyLocale);
   const isModerator = session?.user
     ? await userIsHubOperator(session.user.id)

@@ -112,10 +112,12 @@ function localeEntries(
     url: absoluteLocaleUrl("en", path),
     ...(lastModified ? { lastModified } : {}),
     alternates: {
-      languages: {
-        en: absoluteLocaleUrl("en", path),
-        nl: absoluteLocaleUrl("nl", path),
-      },
+      languages: Object.fromEntries(
+        routing.locales.map((locale) => [
+          locale,
+          absoluteLocaleUrl(locale, path),
+        ]),
+      ),
     },
   };
 }

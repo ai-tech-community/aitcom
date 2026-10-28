@@ -1,3 +1,4 @@
+import { routing } from "@/i18n/routing";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { Where } from "payload";
@@ -45,7 +46,7 @@ export const forumRouter = createTRPCRouter({
     .input(
       z.object({
         communitySlug: z.string(),
-        locale: z.enum(["en", "nl"]).optional(),
+        locale: z.enum(routing.locales).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {

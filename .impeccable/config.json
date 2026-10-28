@@ -8,6 +8,41 @@
         "value": "10px",
         "createdAt": "2026-10-28T16:05:21.576Z",
         "reason": "Agent review: incumbent decorative ASCII glyph grid uses 10px text with a measured 12px line height; community and town-square scenes are aria-hidden, and body copy stays on the documented type scale."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#000",
+        "files": ["src/server/notifications/hub-dm-mail-copy.ts"],
+        "createdAt": "2026-10-28T22:44:47.851Z",
+        "reason": "Agent review: existing inline email CSS predates the French translation; preserving email rendering in this locale-only change."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#999",
+        "files": ["src/server/notifications/hub-dm-mail-copy.ts"],
+        "createdAt": "2026-10-28T22:44:47.907Z",
+        "reason": "Agent review: existing inline email CSS predates the French translation; preserving email rendering in this locale-only change."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "15px",
+        "files": ["src/server/notifications/post-mention-mail-copy.ts"],
+        "createdAt": "2026-10-28T22:44:47.961Z",
+        "reason": "Agent review: existing inline email typography predates the French translation and is unchanged."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#ddd",
+        "files": ["src/server/notifications/post-mention-mail-copy.ts"],
+        "createdAt": "2026-10-28T22:44:48.016Z",
+        "reason": "Agent review: existing inline email divider predates the French translation and is unchanged."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "13px",
+        "files": ["src/server/notifications/post-mention-mail-copy.ts"],
+        "createdAt": "2026-10-28T22:44:48.074Z",
+        "reason": "Agent review: existing inline email typography predates the French translation and is unchanged."
       }
     ]
   }

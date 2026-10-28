@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
@@ -58,7 +59,7 @@ export async function generateMetadata({
   const filtered = applyAwesomeDirectoryQuery(
     await listApprovedPublicCards(),
     query,
-    (locale === "nl" ? "nl" : "en") as AwesomeLocale,
+    resolveLocale(locale) as AwesomeLocale,
   );
   const pagination = paginateAwesomeCards(filtered, query.page);
   const canonicalPath = awesomeDirectoryCanonicalPath({

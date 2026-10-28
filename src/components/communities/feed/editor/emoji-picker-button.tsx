@@ -52,7 +52,7 @@ export function EmojiPickerButton({
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <EmojiPicker.Root
-          locale={locale === "nl" ? "nl" : "en"}
+          locale={locale}
           emojibaseUrl={EMOJIBASE_URL}
           columns={8}
           onEmojiSelect={({ emoji }) => {

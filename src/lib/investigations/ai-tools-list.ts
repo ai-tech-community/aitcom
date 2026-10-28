@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import {
   isThinStartupProfile,
   startupProfileIndexInput,
@@ -6,7 +7,7 @@ import { buildStartupProfilePath } from "@/lib/investigations/startups";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 
 /**
- * English and Dutch hub for the AI tools directory.
+ * Localized hub for the AI tools directory.
  *
  * The page is its own directory. It does not render the startup row that
  * shares this slug, and it does not invent a tool count.
@@ -48,12 +49,21 @@ export const AI_TOOLS_LIST_COPY = {
     heading: "AI-tools",
     kicker: "Lijst",
   },
+  fr: {
+    title: "Outils IA",
+    description:
+      "Startups approuvées dont la catégorie enregistrée est agents ou models. Ouvrez un nom pour consulter le profil de cette startup sur ce site.",
+    intro:
+      "Ces startups sont classées dans les catégories agents ou models. Sélectionnez un nom pour ouvrir son profil.",
+    heading: "Outils IA",
+    kicker: "Annuaire",
+  },
 } as const;
 
 export type AiToolsListLocale = keyof typeof AI_TOOLS_LIST_COPY;
 
 export function aiToolsListCopy(locale: string) {
-  return locale === "nl" ? AI_TOOLS_LIST_COPY.nl : AI_TOOLS_LIST_COPY.en;
+  return AI_TOOLS_LIST_COPY[resolveLocale(locale)];
 }
 
 export function isAiToolsListCategory(
@@ -82,8 +92,8 @@ export function isAiToolsHubStartup(card: {
   );
 }
 
-export function aiToolsHubLocale(locale: string): "en" | "nl" {
-  return locale === "nl" ? "nl" : "en";
+export function aiToolsHubLocale(locale: string) {
+  return resolveLocale(locale);
 }
 
 /** Profile path with the locale prefix, for example `/en/startups/acme`. */
@@ -138,7 +148,7 @@ export function aiToolsListJsonLd(
   page = 1,
 ): Record<string, unknown> {
   const copy = aiToolsListCopy(locale);
-  const resolved = locale === "nl" ? "nl" : "en";
+  const resolved = resolveLocale(locale);
   const items = aiToolsOnPage(tools).map((tool, index) => ({
     "@type": "ListItem",
     position: index + 1,

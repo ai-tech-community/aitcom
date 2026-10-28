@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import type { Where } from "payload";
 import Image from "next/image";
@@ -211,7 +212,7 @@ export default async function EventsPage({
     collection: "events",
     where: { and: conditions },
     sort: sortParam,
-    locale: locale as "en" | "nl",
+    locale: locale as AppLocale,
     draft: false,
     depth: 1,
     limit: perPage,
@@ -320,7 +321,7 @@ export default async function EventsPage({
     return qs ? `/events?${qs}` : "/events";
   };
 
-  const listingLocale = locale === "nl" ? "nl" : "en";
+  const listingLocale = locale as AppLocale;
   const eventJsonLd = eventListingEmitsJsonLd(aiFilter)
     ? listingEventsJsonLd(
         events.map((event) => ({

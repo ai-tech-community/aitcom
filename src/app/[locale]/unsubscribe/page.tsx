@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
@@ -60,7 +61,7 @@ export default async function UnsubscribePage({
   searchParams: Promise<UnsubscribeQuery>;
 }) {
   const { locale: rawLocale } = await params;
-  const locale = rawLocale === "nl" ? "nl" : "en";
+  const locale = resolveLocale(rawLocale);
   const query = await searchParams;
   const done = query.done === "1" || query.done?.[0] === "1";
   const rawToken = Array.isArray(query.t) ? query.t[0] : query.t;

@@ -52,7 +52,7 @@ function splitPath(path: string): { pathname: string; search: string } {
 /** True when this URL is a news board, contribution badge, claim, or week. */
 export function isUnlistedNewsGamePath(path: string): boolean {
   const { pathname, search } = splitPath(path);
-  const bare = pathname.replace(/^\/(?:en|nl)(?=\/)/, "") || "/";
+  const bare = pathname.replace(/^\/(?:en|nl|fr)(?=\/)/, "") || "/";
   if (bare === "/news" || bare.startsWith("/news/")) return true;
   if (
     /\/badges\/news_(?:first_scoop|five_stories|region_(?:eu|il|asia))(?:\/|$)/.test(

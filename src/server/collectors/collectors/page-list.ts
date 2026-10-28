@@ -137,76 +137,109 @@ export const pageList: Collector<PageListInput, PageRow> = {
   version: 1,
   author: "platform",
   kind: "page",
-  title: { en: "List on a web page", nl: "Lijst op een webpagina" },
+  title: {
+    en: "List on a web page",
+    nl: "Lijst op een webpagina",
+    fr: "Liste sur une page web",
+  },
   description: {
     en: "The items of a list on a web page, such as job openings or events, with the columns you choose. Can follow a next-page link.",
     nl: "De items van een lijst op een webpagina, zoals vacatures of evenementen, met de kolommen die jij kiest. Kan een link naar de volgende pagina volgen.",
+    fr: "Les éléments d’une liste sur une page web, par exemple des offres d’emploi ou des événements, avec les colonnes de votre choix. Peut suivre un lien vers la page suivante.",
   },
   inputSchema,
   itemSchema,
   fieldHints: {
     url: {
-      label: { en: "Page address", nl: "Adres van de pagina" },
+      label: {
+        en: "Page address",
+        nl: "Adres van de pagina",
+        fr: "Adresse de la page",
+      },
       help: {
         en: "The web address of the page with the list.",
         nl: "Het webadres van de pagina met de lijst.",
+        fr: "L’adresse web de la page contenant la liste.",
       },
       placeholder: "https://example.com/jobs",
     },
     itemSelector: {
-      label: { en: "Item selector", nl: "Selector voor een item" },
+      label: {
+        en: "Item selector",
+        nl: "Selector voor een item",
+        fr: "Sélecteur d’élément",
+      },
       help: {
         en: "A CSS selector that matches one item of the list. Each match becomes one row.",
         nl: "Een CSS-selector die één item van de lijst vindt. Elk gevonden item wordt één rij.",
+        fr: "Un sélecteur CSS qui correspond à un élément de la liste. Chaque correspondance devient une ligne.",
       },
       placeholder: "li.job",
     },
     fields: {
-      label: { en: "Columns", nl: "Kolommen" },
+      label: { en: "Columns", nl: "Kolommen", fr: "Colonnes" },
       help: {
         en: "What to read from each item. Each column has a name and a CSS selector inside the item.",
         nl: "Wat je uit elk item wilt halen. Elke kolom heeft een naam en een CSS-selector binnen het item.",
+        fr: "Les données à lire dans chaque élément. Chaque colonne possède un nom et un sélecteur CSS à l’intérieur de l’élément.",
       },
       columns: {
         name: {
-          label: { en: "Column name", nl: "Naam van de kolom" },
+          label: {
+            en: "Column name",
+            nl: "Naam van de kolom",
+            fr: "Nom de la colonne",
+          },
           help: {
             en: "Letters, digits and _; start with a letter.",
             nl: "Letters, cijfers en _; begin met een letter.",
+            fr: "Lettres, chiffres et _ ; commencez par une lettre.",
           },
           placeholder: "title",
         },
         selector: {
-          label: { en: "Selector", nl: "Selector" },
+          label: { en: "Selector", nl: "Selector", fr: "Sélecteur" },
           help: {
             en: "Where the value sits inside the item. Leave empty to read the item itself — for example its link.",
             nl: "Waar de waarde in het item staat. Laat leeg om het item zelf te lezen, bijvoorbeeld de link als het item een link is.",
+            fr: "L’emplacement de la valeur dans l’élément. Laissez vide pour lire l’élément lui-même, par exemple son lien.",
           },
           placeholder: "h3 a",
         },
         attribute: {
-          label: { en: "Attribute", nl: "Attribuut" },
+          label: { en: "Attribute", nl: "Attribuut", fr: "Attribut" },
           help: {
             en: "Leave empty to read the text. Use href for a link's address.",
             nl: "Laat leeg om de tekst te lezen. Gebruik href voor het adres van een link.",
+            fr: "Laissez vide pour lire le texte. Utilisez href pour l’adresse d’un lien.",
           },
           placeholder: "href",
         },
       },
     },
     nextPageSelector: {
-      label: { en: "Next-page link", nl: "Link naar de volgende pagina" },
+      label: {
+        en: "Next-page link",
+        nl: "Link naar de volgende pagina",
+        fr: "Lien vers la page suivante",
+      },
       help: {
         en: "Optional. A CSS selector for the link to the next page of the list.",
         nl: "Niet verplicht. Een CSS-selector voor de link naar de volgende pagina van de lijst.",
+        fr: "Facultatif. Un sélecteur CSS pour le lien vers la page suivante de la liste.",
       },
       placeholder: "a.next",
     },
     maxPages: {
-      label: { en: "Pages to read", nl: "Aantal pagina's" },
+      label: {
+        en: "Pages to read",
+        nl: "Aantal pagina's",
+        fr: "Pages à lire",
+      },
       help: {
         en: "How many pages to read at most, from 1 to 20.",
         nl: "Hoeveel pagina's we hooguit lezen, van 1 tot 20.",
+        fr: "Le nombre maximal de pages à lire, de 1 à 20.",
       },
       placeholder: "5",
     },

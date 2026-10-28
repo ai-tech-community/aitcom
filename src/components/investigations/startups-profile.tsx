@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import { ArrowLeft } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
@@ -66,7 +67,7 @@ export function StartupsProfilePage({
   mentions?: readonly StartupNewsMention[];
   promoteJoin?: boolean;
 }) {
-  const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: StartupLocale = resolveLocale(locale);
   const baseSections = startupProfileSections(card);
   const sections =
     mentions.length > 0 && !baseSections.includes("news")

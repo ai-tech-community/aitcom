@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { Payload, Where } from "payload";
 
@@ -24,7 +25,7 @@ import { hiddenContentCommunityIds } from "@/server/communities/content-visibili
 import { loadIssueReadScope } from "@/server/magazines/readable-issues";
 
 type Db = typeof appDb;
-type Locale = "en" | "nl";
+type Locale = AppLocale;
 
 /** How many items each Work list shows. */
 export const WORK_LIST_LIMIT = 6;

@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import { NextResponse } from "next/server";
 
 import { db } from "@/server/db";
@@ -11,10 +12,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function localeFrom(value: string | null): "en" | "nl" {
-  return value === "nl" ? "nl" : "en";
-}
 
 /** RFC 8058 one-click, and the confirm-page form. GET must not opt anyone out. */
 export async function POST(req: Request) {
@@ -65,7 +62,7 @@ export async function POST(req: Request) {
   }
 
   if (confirmed && !oneClick) {
-    const locale = localeFrom(body.get("locale"));
+    const locale = resolveLocale(body.get("locale"));
     const kind = payload.scope === "digest" ? "" : `&kind=${payload.scope}`;
     return NextResponse.redirect(
       new URL(`/${locale}/unsubscribe?done=1${kind}`, req.url),

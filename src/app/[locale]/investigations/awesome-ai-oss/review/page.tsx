@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
@@ -50,7 +51,7 @@ export default async function AwesomeAiOssReviewPage() {
       </h1>
       <div className="mt-10">
         <AwesomeAiOssReviewQueue
-          locale={(locale === "nl" ? "nl" : "en") as AwesomeLocale}
+          locale={resolveLocale(locale) as AwesomeLocale}
         />
       </div>
     </main>

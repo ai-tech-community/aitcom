@@ -1,3 +1,5 @@
+import frData from "emojibase-data/fr/data.json";
+import frMessages from "emojibase-data/fr/messages.json";
 import enData from "emojibase-data/en/data.json";
 import enMessages from "emojibase-data/en/messages.json";
 import nlData from "emojibase-data/nl/data.json";
@@ -6,12 +8,13 @@ import nlMessages from "emojibase-data/nl/messages.json";
 /**
  * The emoji picker's data (Emojibase), served from our own origin so that
  * opening the picker sends nothing to an outside CDN. Built once at build
- * time for the app's two languages; the picker asks for
+ * time for the app's supported languages; the picker asks for
  * `/api/emojibase/<locale>/<file>.json`.
  */
 const FILES: Record<string, Record<string, unknown>> = {
   en: { "data.json": enData, "messages.json": enMessages },
   nl: { "data.json": nlData, "messages.json": nlMessages },
+  fr: { "data.json": frData, "messages.json": frMessages },
 };
 
 export const dynamic = "force-static";

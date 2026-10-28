@@ -1,5 +1,7 @@
 "use client";
 
+import type { AppLocale } from "@/i18n/messages";
+
 import {
   useEffect,
   useLayoutEffect,
@@ -218,7 +220,7 @@ export function SquareHero({
   className?: string;
 }) {
   const t = useTranslations("communities.discover");
-  const locale = useLocale() as "en" | "nl";
+  const locale = useLocale() as AppLocale;
   const startCreate = useStartCreateCommunity();
   const wide = useMediaQuery("(min-width: 1024px)", false);
   const streetRef = useRef<HTMLDivElement>(null);
