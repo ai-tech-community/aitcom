@@ -434,7 +434,7 @@ export async function readAgentIssueReview(
     agentName: agent?.name ?? "Agent",
     magazineName: magazine?.name ?? "",
     communitySlug: issue.communitySlug,
-    role: viewerId === issue.ownerId ? ("owner" as const) : ("editor" as const),
+    isEditor: editor,
     canApprove:
       issue.status === "pending" && (editor || viewerId === issue.ownerId),
   };

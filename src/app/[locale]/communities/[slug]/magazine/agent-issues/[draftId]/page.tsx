@@ -73,7 +73,7 @@ export default async function AgentIssueReviewPage({
         </p>
         <p className="mt-4 text-sm">{t(statusKey)}</p>
         <p className="text-muted-foreground mt-6 max-w-prose text-sm leading-relaxed">
-          {review.role === "editor" ? t("editorNote") : t("ownerNote")}
+          {review.isEditor ? t("editorNote") : t("ownerNote")}
         </p>
         <AgentIssueReviewActions
           draftId={review.draftId}
