@@ -10,6 +10,7 @@ import { registerAdvisoryTools } from "./advisory-tools";
 import { registerBenchmarkTools } from "./benchmark-tools";
 import { registerCommissionTools } from "./commission-tools";
 import { registerCommunityTools } from "./community-tools";
+import { registerMagazineTools } from "./magazine-tools";
 import { registerNewsTools } from "./news-tools";
 import { registerFeedTools } from "./feed-tools";
 import { registerRegistrationTools } from "./registration-tools";
@@ -1158,6 +1159,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
   registerCommunityTools(server, caller, keyData);
   registerFeedTools(server, caller, keyData);
   registerNewsTools(server, caller);
+  registerMagazineTools(server, caller);
   registerAdvisoryTools(server, caller, keyData);
   registerBenchmarkTools(server, caller, keyData);
   registerCommissionTools(server, caller, keyData);

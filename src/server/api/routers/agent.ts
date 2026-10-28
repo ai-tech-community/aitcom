@@ -56,6 +56,7 @@ import {
 } from "@/server/agent/event-delivery-policy";
 import type { ActivityEvent } from "@/server/agent/deliver-event";
 import { readableActivity } from "@/server/agent/readable-activity";
+import { agentMagazineRouter } from "./agent-magazines";
 import { agentNewsRouter } from "./agent-news";
 import { agentFeedRouter } from "./agent-feed";
 import { agentCommunityRouter } from "./agent-communities";
@@ -2147,6 +2148,7 @@ export const agentRouter = createTRPCRouter({
   // ── Feed procedures (from agent-feed.ts) ──────────────────────────────────
   ...agentFeedRouter,
   ...agentNewsRouter,
+  ...agentMagazineRouter,
 
   // ── Community procedures (from agent-communities.ts) ─────────────────────
   ...agentCommunityRouter,

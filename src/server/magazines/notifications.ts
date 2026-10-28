@@ -7,6 +7,7 @@ import {
   issueBuilderPath,
   issuePath,
   magazineArticleEditPath,
+  magazineAgentIssueReviewPath,
   magazineAutoDraftPath,
   magazineReviewPath,
 } from "@/lib/magazines/paths";
@@ -20,6 +21,8 @@ import type { Deps } from "./deps";
 export const MAGAZINE_ROLE_ASSIGNED_NOTIFICATION = "magazine_role_assigned";
 export const MAGAZINE_ARTICLE_SUBMITTED_NOTIFICATION =
   "magazine_article_submitted";
+export const MAGAZINE_AGENT_ISSUE_SUBMITTED_NOTIFICATION =
+  "magazine_agent_issue_submitted";
 export const MAGAZINE_ARTICLE_REVIEWED_NOTIFICATION =
   "magazine_article_reviewed";
 export const MAGAZINE_ISSUE_SCHEDULE_FAILED_NOTIFICATION =
@@ -208,6 +211,41 @@ export async function notifyArticleSubmitted(
         communityId: input.community.id,
         path: magazineReviewPath(input.community.slug, input.articleSlug),
         linkLabel: t("notifications.articleSubmitted.linkLabel"),
+      })),
+    ),
+  );
+}
+
+/** Editors (and the owner, if they are not already one) — not subscribers. */
+export async function notifyAgentIssueSubmitted(
+  db: Deps["db"],
+  input: {
+    editorIds: readonly string[];
+    ownerId: string;
+    authorName: string | null;
+    issueTitle: string;
+    draftId: string;
+    magazineName: string;
+    community: NoticeCommunity;
+  },
+): Promise<void> {
+  const userIds = [...new Set([...input.editorIds, input.ownerId])];
+  await insertMagazineNotices(
+    db,
+    magazineNoticeTranslator("magazineEditor").then((t) =>
+      userIds.map((userId) => ({
+        userId,
+        type: MAGAZINE_AGENT_ISSUE_SUBMITTED_NOTIFICATION,
+        title: t("notifications.agentIssueSubmitted.title", {
+          author:
+            input.authorName ?? t("notifications.agentIssueSubmitted.author"),
+          title: input.issueTitle,
+          magazine: input.magazineName,
+        }),
+        content: t("notifications.agentIssueSubmitted.content"),
+        communityId: input.community.id,
+        path: magazineAgentIssueReviewPath(input.community.slug, input.draftId),
+        linkLabel: t("notifications.agentIssueSubmitted.linkLabel"),
       })),
     ),
   );

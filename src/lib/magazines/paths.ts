@@ -92,6 +92,14 @@ export function magazineAutoDraftPath(communitySlug: string): string {
   return `${communityMagazinePath(communitySlug)}/auto-draft`;
 }
 
+/** Where the agent owner or a magazine editor approves an agent issue. */
+export function magazineAgentIssueReviewPath(
+  communitySlug: string,
+  draftId: string,
+): string {
+  return `${communityMagazinePath(communitySlug)}/agent-issues/${draftId}`;
+}
+
 /** Where magazine managers choose the team. */
 export function magazineTeamPath(communitySlug: string): string {
   return `${communityMagazinePath(communitySlug)}/team`;
