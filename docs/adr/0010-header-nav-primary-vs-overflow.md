@@ -39,6 +39,11 @@ Group triggers are `<button>` elements with `aria-expanded` and
 `aria-controls`. Arrow keys move through the open menu. Escape closes
 it and returns focus to the trigger.
 
+Desktop groups also open on mouse hover without moving focus. A 150 ms
+closing delay lets the pointer cross into the panel; keyboard focus inside
+the group keeps it open. Hovered menus can be dismissed with Escape or an
+outside click. Touch input and the mobile drawer keep click-to-toggle controls.
+
 ### 3. The hamburger stays until `lg`
 
 Below `lg`, the inline bar is hidden and the drawer is the nav. The
