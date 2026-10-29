@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ITEM_PROBLEM_CODES } from "@/lib/magazines/item-views";
+import { newItemImage } from "@/lib/magazines/item-image";
 import type { MagazineIssue } from "@/payload-types";
 import { hiddenContentCommunityIds } from "@/server/communities/content-visibility-queries";
 
 import type { Deps } from "./deps";
 import { isItemProblemCode, setIssueItems } from "./issue-service";
+vi.mock("@/server/db", () => ({ db: {} }));
 
 vi.mock("@/server/communities/content-visibility-queries", () => ({
   hiddenContentCommunityIds: vi.fn(async () => []),
@@ -39,6 +41,93 @@ describe("isItemProblemCode", () => {
 });
 
 describe("saving issue items", () => {
+  it.each(["omitted", "removed", "replaced"] as const)(
+    "handles an %s item image when saving the same block",
+    async (change) => {
+      const previousImage = newItemImage("https://example.test/previous.jpg");
+      const nextImage =
+        change === "replaced"
+          ? newItemImage("https://example.test/new.jpg")
+          : change === "removed"
+            ? null
+            : undefined;
+      const issue: MagazineIssue = {
+        id: 1,
+        magazine: 7,
+        communityId: "community",
+        number: 1,
+        title: "Community picks",
+        slug: "community-picks",
+        visibility: "members",
+        createdAt: "2026-10-27T10:00:00.000Z",
+        status: "draft",
+        updatedAt: "2026-10-27T10:00:00.000Z",
+        items: [
+          {
+            blockType: "event",
+            id: "block",
+            eventId: 42,
+            image: previousImage,
+          },
+        ],
+      };
+      const update = vi.fn(
+        async ({ data }: { data: Partial<MagazineIssue> }) => ({
+          ...issue,
+          ...data,
+        }),
+      );
+      const deps = {
+        db: {},
+        payload: {
+          find: vi.fn(async () => ({
+            docs: [
+              {
+                id: 42,
+                slug: "gathering",
+                title: "Gathering",
+                status: "published",
+                communityId: "community",
+                date: "2026-10-28T10:00:00.000Z",
+              },
+            ],
+          })),
+          update,
+        },
+      } as unknown as Deps;
+      const result = await setIssueItems(
+        deps,
+        issue,
+        [
+          {
+            kind: "event",
+            id: "block",
+            eventId: 42,
+            ...(nextImage !== undefined ? { image: nextImage } : {}),
+          },
+        ],
+        issue.updatedAt,
+        {
+          userId: "editor",
+          community: {
+            id: "community",
+            slug: "community",
+            isListedInDirectory: true,
+          },
+        },
+      );
+      const expected = change === "omitted" ? previousImage : nextImage;
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            items: [expect.objectContaining({ id: "block", image: expected })],
+          }),
+        }),
+      );
+      if (expected) expect(result.items[0]).toMatchObject({ image: expected });
+      else expect(result.items[0]).not.toHaveProperty("image");
+    },
+  );
   it("shares community sets between validation and the returned editor views", async () => {
     const issue = {
       id: 1,

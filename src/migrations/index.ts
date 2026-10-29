@@ -1,3 +1,4 @@
+import * as migration_20261029b_magazine_item_images from "./20261029b_magazine_item_images";
 import * as migration_20261029a_magazine_font from "./20261029a_magazine_font";
 import * as migration_20261028e_french_locale from "./20261028e_french_locale";
 import * as migration_20261028d_community_banner from "./20261028d_community_banner";
@@ -1091,5 +1092,10 @@ export const migrations = [
     up: migration_20261029a_magazine_font.up,
     down: migration_20261029a_magazine_font.down,
     name: "20261029a_magazine_font",
+  },
+  {
+    up: migration_20261029b_magazine_item_images.up,
+    down: migration_20261029b_magazine_item_images.down,
+    name: "20261029b_magazine_item_images",
   },
 ];

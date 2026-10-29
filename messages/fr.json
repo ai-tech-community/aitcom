@@ -5568,7 +5568,28 @@
         "unscheduledLead": "Le numéro est de nouveau un brouillon.",
         "audienceTeaser": "Tout le monde peut voir la couverture, le sommaire et le début de chaque article. Seuls les membres de votre communauté peuvent tout lire. Il apparaîtra sur la page Magazines."
       },
-      "goesOut": "Publication prévue <timestamp>{time}</timestamp>"
+      "goesOut": "Publication prévue <timestamp>{time}</timestamp>",
+      "image": {
+        "label": "Image de l’élément",
+        "hint": "Facultatif. L’image et son cadrage appartiennent à cet élément dans ce numéro. Supprimer l’image personnalisée rétablit la présentation d’origine.",
+        "upload": "Importer une image",
+        "replace": "Remplacer l’image",
+        "remove": "Supprimer l’image personnalisée",
+        "uploading": "Importation…",
+        "failed": "Impossible d’importer l’image. Réessayez.",
+        "useSource": "Utiliser l’image de l’article",
+        "shape": "Format de l’image",
+        "landscape": "Paysage",
+        "portrait": "Portrait",
+        "square": "Carré",
+        "horizontal": "Point focal horizontal",
+        "vertical": "Point focal vertical",
+        "focalHint": "Déplacez le point focal vers la partie de l’image à conserver dans le cadrage.",
+        "caption": "Légende (facultatif)",
+        "credit": "Crédit de l’image (facultatif)",
+        "alt": "Texte alternatif",
+        "altHint": "Décrivez ce que l’image apporte au récit. Laissez vide si elle est décorative."
+      }
     },
     "roles": {
       "editor_in_chief": {

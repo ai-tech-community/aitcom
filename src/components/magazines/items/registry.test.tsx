@@ -26,10 +26,80 @@ import {
 import { renderWithIntl } from "../test-intl";
 
 import { IssueItem, ITEM_RENDERERS } from "./registry";
+import { newItemImage } from "@/lib/magazines/item-image";
 
 const href = (slug: string) => `/magazines/agents-weekly/issue-4/${slug}`;
 
 describe("issue item registry", () => {
+  it.each([
+    articleView(1),
+    editorialView(2),
+    storylineView(),
+    newsItemView(),
+    eventView(),
+    forumThreadView(),
+    launchpadProjectView(),
+  ])("renders an editorial image and caption for $kind", (view) => {
+    const image = {
+      ...newItemImage("https://example.test/item.jpg"),
+      alt: "People at the workshop",
+      caption: "Building together",
+      credit: "Photo: Jo",
+      shape: "square" as const,
+      focalX: 20,
+      focalY: 80,
+    };
+    renderWithIntl(
+      <IssueItem
+        view={{ ...view, image }}
+        size="card"
+        href={href}
+        teaser={null}
+      />,
+    );
+    expect(screen.getByRole("img", { name: image.alt })).toHaveStyle({
+      objectPosition: "20% 80%",
+    });
+    expect(screen.getByText(image.caption)).toBeVisible();
+    expect(screen.getByText(image.credit)).toBeVisible();
+  });
+
+  it("a custom lead image replaces the source image", () => {
+    const view = articleView(1, {
+      imageUrl: "https://example.test/original.jpg",
+    });
+    const { container } = renderWithIntl(
+      <IssueItem
+        view={{
+          ...view,
+          image: newItemImage("https://example.test/custom.jpg"),
+        }}
+        size="lead"
+        href={href}
+        teaser={null}
+      />,
+    );
+    expect(container.querySelectorAll("img")).toHaveLength(1);
+    expect(container.querySelector("img")).toHaveAttribute(
+      "src",
+      "https://example.test/custom.jpg",
+    );
+  });
+
+  it("does not show an unavailable item's image", () => {
+    const { container } = renderWithIntl(
+      <IssueItem
+        view={{
+          ...unavailableView(1),
+          image: newItemImage("https://example.test/hidden.jpg"),
+        }}
+        size="card"
+        href={href}
+        teaser={null}
+      />,
+    );
+    expect(container.querySelector("img")).toBeNull();
+  });
   it.each([
     [
       articleView(1, { imageUrl: "https://example.test/cover.png" }),

@@ -270,6 +270,10 @@ function IssueWorkspace({
   });
   const [confirmed, setConfirmed] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [uploadingItems, setUploadingItems] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const imageUploading = uploadingItems.size > 0;
   /**
    * Text sections added here that have never had text yet. While one is
    * open in its editor its row stays quiet: "write something" is not an
@@ -340,6 +344,7 @@ function IssueWorkspace({
     communityIsPrivate,
   ]);
   const paused =
+    imageUploading ||
     !titleValid ||
     !slugValid ||
     optInPending ||
@@ -391,7 +396,7 @@ function IssueWorkspace({
       items: initial.items,
     },
     value: savable,
-    enabled: true,
+    enabled: !imageUploading,
     onDetailsSaved,
     onItemsSaved,
     onFailed: setFailure,
@@ -527,6 +532,11 @@ function IssueWorkspace({
   });
 
   const editing = items.find((item) => item.key === editingKey);
+  const editingView = editing ? savedViews.get(editing.key) : undefined;
+  const sourceImageUrl =
+    editingView?.kind === "article" && !("unavailable" in editingView)
+      ? editingView.article.imageUrl
+      : null;
 
   /** What the issue already references, so "Add more" does not offer it. */
   const referencesInIssue = useMemo(
@@ -676,7 +686,9 @@ function IssueWorkspace({
           setUntouched(new Set());
           setPublishOpen(true);
         }}
-        publishDisabled={optInPending || autosave.status === "conflict"}
+        publishDisabled={
+          imageUploading || optInPending || autosave.status === "conflict"
+        }
         trailing={
           canIssue(issue.status, "delete") ? (
             <ConfirmDeleteButton
@@ -741,6 +753,16 @@ function IssueWorkspace({
             <div ref={editorPanel}>
               <ItemDetailsPanel
                 item={editing}
+                imageUploading={uploadingItems.has(editing.key)}
+                sourceImageUrl={sourceImageUrl}
+                onUploadingChange={(uploading) =>
+                  setUploadingItems((current) => {
+                    const next = new Set(current);
+                    if (uploading) next.add(editing.key);
+                    else next.delete(editing.key);
+                    return next;
+                  })
+                }
                 kindLabel={tItems(builderKindLabelKey(editing))}
                 onChange={(patch) => updateItem(editing.key, patch)}
                 onDone={() => {

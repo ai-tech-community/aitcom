@@ -184,6 +184,7 @@ describe("magazine-issues collection", () => {
     ]);
     for (const block of items.blocks!) {
       expect(block.fields[0]?.name).toBe("intro");
+      expect(pick(block.fields, "image").type).toBe("json");
     }
   });
 });

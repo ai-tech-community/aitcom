@@ -4,8 +4,12 @@
  * server imports here: client code imports this module.
  */
 
+import type { ItemImage } from "./item-image";
+
+export type ItemImageMetadata = { image?: ItemImage };
+
 /** An original magazine article in an issue. */
-export type ArticleItemView = {
+export type ArticleItemView = ItemImageMetadata & {
   kind: "article";
   itemId: string;
   intro: string | null;
@@ -23,7 +27,7 @@ export type ArticleItemView = {
 };
 
 /** Free-form text owned by the issue. */
-export type EditorialItemView = {
+export type EditorialItemView = ItemImageMetadata & {
   kind: "editorial";
   itemId: string;
   intro: string | null;
@@ -33,7 +37,7 @@ export type EditorialItemView = {
 };
 
 /** An AIT News story, read live from its source. */
-export type StorylineItemView = {
+export type StorylineItemView = ItemImageMetadata & {
   kind: "storyline";
   itemId: string;
   intro: string | null;
@@ -47,7 +51,7 @@ export type StorylineItemView = {
 };
 
 /** An AIT News headline, read live from its source. */
-export type NewsItemView = {
+export type NewsItemView = ItemImageMetadata & {
   kind: "newsItem";
   itemId: string;
   intro: string | null;
@@ -61,7 +65,7 @@ export type NewsItemView = {
 };
 
 /** A community event, read live for the current viewer. */
-export type EventItemView = {
+export type EventItemView = ItemImageMetadata & {
   kind: "event";
   itemId: string;
   intro: string | null;
@@ -78,7 +82,7 @@ export type EventItemView = {
 };
 
 /** A live forum thread, linked through its community's forum. */
-export type ForumThreadItemView = {
+export type ForumThreadItemView = ItemImageMetadata & {
   kind: "forumThread";
   itemId: string;
   intro: string | null;
@@ -93,7 +97,7 @@ export type ForumThreadItemView = {
 };
 
 /** A launchpad project, read live for the current viewer. */
-export type LaunchpadProjectItemView = {
+export type LaunchpadProjectItemView = ItemImageMetadata & {
   kind: "launchpadProject";
   itemId: string;
   intro: string | null;
