@@ -64,6 +64,12 @@ import {
 import type { StoredBlock } from "./items/registry";
 import { notifyAgentIssueSubmitted } from "./notifications";
 import { inPayloadTransaction } from "./payload-writes";
+import { planIssueEdit } from "./issue-edit-plan";
+import {
+  proposePublishedIssueEdit,
+  resolveContentImage,
+} from "./magazine-issue-update";
+import type { ContentImageColumns } from "@/server/content/content-image";
 import {
   mergeCommunityMagazineBrowse,
   submissionsAreVisible,
@@ -864,6 +870,19 @@ function agentIssueItems(items: IssueItemInput[]): IssueItemInput[] {
   );
 }
 
+function issueCoverData(columns: ContentImageColumns | undefined): {
+  coverImageUrl?: string | null;
+  coverMediaId?: number | null;
+  coverAlt?: string | null;
+} {
+  if (!columns) return {};
+  return {
+    ...(columns.url !== undefined ? { coverImageUrl: columns.url } : {}),
+    ...(columns.mediaId !== undefined ? { coverMediaId: columns.mediaId } : {}),
+    ...(columns.alt !== undefined ? { coverAlt: columns.alt } : {}),
+  };
+}
+
 async function writeDraftIssue(
   deps: Deps,
   issue: MagazineIssue,
@@ -871,6 +890,8 @@ async function writeDraftIssue(
   patch: {
     title?: string;
     coverImageUrl?: string | null;
+    coverMediaId?: number | null;
+    coverAlt?: string | null;
     articleIds?: number[];
     blocks?: StoredBlock[];
     editorNote?: MagazineIssue["editorNote"] | null;
@@ -885,12 +906,16 @@ async function writeDraftIssue(
   const data: {
     title?: string;
     coverImageUrl?: string | null;
+    coverMediaId?: number | null;
+    coverAlt?: string | null;
     items?: MagazineIssue["items"];
     editorNote?: MagazineIssue["editorNote"];
   } = {};
   if (patch.title !== undefined) data.title = patch.title;
   if (patch.coverImageUrl !== undefined)
     data.coverImageUrl = patch.coverImageUrl;
+  if (patch.coverMediaId !== undefined) data.coverMediaId = patch.coverMediaId;
+  if (patch.coverAlt !== undefined) data.coverAlt = patch.coverAlt;
   if (patch.editorNote !== undefined) data.editorNote = patch.editorNote;
   let blocks: StoredBlock[] | null = null;
   if (patch.blocks !== undefined) {
@@ -966,12 +991,21 @@ export async function saveMagazineIssue(
     issueId?: number;
     title?: string;
     coverImageUrl?: string | null;
+    coverMediaId?: number | null;
+    coverAlt?: string | null;
     articleIds?: number[];
     items?: IssueItemInput[];
     editorNote?: unknown;
     expectedUpdatedAt?: string;
   },
 ) {
+  const cover = issueCoverData(
+    await resolveContentImage(deps.payload, identity.ownerId, {
+      mediaId: input.coverMediaId,
+      url: input.coverImageUrl,
+      alt: input.coverAlt,
+    }),
+  );
   const { magazine, community } = await requireMagazine(
     deps,
     input.magazineSlug,
@@ -1047,6 +1081,8 @@ export async function saveMagazineIssue(
           const data: {
             items?: MagazineIssue["items"];
             coverImageUrl?: string | null;
+            coverMediaId?: number | null;
+            coverAlt?: string | null;
             editorNote?: MagazineIssue["editorNote"];
           } = {};
           const stored =
@@ -1068,9 +1104,11 @@ export async function saveMagazineIssue(
             );
             data.items = stored as MagazineIssue["items"];
           }
-          if (input.coverImageUrl !== undefined) {
-            data.coverImageUrl = input.coverImageUrl;
-          }
+          if (cover.coverImageUrl !== undefined)
+            data.coverImageUrl = cover.coverImageUrl;
+          if (cover.coverMediaId !== undefined)
+            data.coverMediaId = cover.coverMediaId;
+          if (cover.coverAlt !== undefined) data.coverAlt = cover.coverAlt;
           if (editorNote !== undefined) data.editorNote = editorNote;
           if (Object.keys(data).length === 0) return;
           const updated = await deps.payload.update({
@@ -1109,18 +1147,6 @@ export async function saveMagazineIssue(
       String(issue.id),
     );
   } else {
-    if (draft?.status !== "draft") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "You can only edit your own open issue draft.",
-      });
-    }
-    if (!input.expectedUpdatedAt) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Send the issue's updatedAt when you edit it.",
-      });
-    }
     const loaded = await deps.payload.findByID({
       collection: "magazine-issues",
       id: input.issueId,
@@ -1128,6 +1154,73 @@ export async function saveMagazineIssue(
     });
     if (requireRelationId(loaded.magazine) !== magazine.id) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Issue not found" });
+    }
+    if (draft?.status !== "draft") {
+      const standing = await loadMagazineEditorship(
+        deps.db,
+        { communityId: community.id, magazineId: magazine.id },
+        identity.ownerId,
+      );
+      const plan = planIssueEdit({
+        ownDraftStatus: draft?.status ?? null,
+        issueStatus: loaded.status,
+        canEdit: standingCan(standing, "edit"),
+        changesItems:
+          input.items !== undefined || input.articleIds !== undefined,
+        changesCoverOrMetadata:
+          input.title !== undefined ||
+          input.coverImageUrl !== undefined ||
+          input.coverMediaId !== undefined ||
+          input.coverAlt !== undefined ||
+          input.editorNote !== undefined,
+      });
+      if (!plan.ok) {
+        throw new TRPCError({ code: plan.code, message: plan.message });
+      }
+      const proposed = await proposePublishedIssueEdit(
+        deps,
+        identity,
+        magazine,
+        community,
+        loaded,
+        {
+          issueId: loaded.id,
+          ...(input.title !== undefined ? { title: input.title.trim() } : {}),
+          ...cover,
+          ...(input.editorNote === undefined
+            ? {}
+            : {
+                editorNote:
+                  typeof input.editorNote === "string" ||
+                  input.editorNote === null
+                    ? input.editorNote
+                    : undefined,
+              }),
+        },
+      );
+      return {
+        issueId: loaded.id,
+        slug: loaded.slug,
+        number: Number(loaded.number),
+        title: input.title?.trim() ? input.title.trim() : loaded.title,
+        status: loaded.status,
+        coverImageUrl: cover.coverImageUrl ?? loaded.coverImageUrl ?? null,
+        coverMediaId: cover.coverMediaId ?? loaded.coverMediaId ?? null,
+        coverAlt: cover.coverAlt ?? loaded.coverAlt ?? null,
+        editorNote: loaded.editorNote ?? null,
+        articleIds: articleIdsOf(loaded),
+        items: toItemInputs((loaded.items ?? []) as StoredBlock[]),
+        updatedAt: loaded.updatedAt,
+        body: input.title?.trim() ? input.title.trim() : loaded.title,
+        review: "pending" as const,
+        draftId: proposed.draftId,
+      };
+    }
+    if (!input.expectedUpdatedAt) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Send the issue's updatedAt when you edit it.",
+      });
     }
     issue = loaded;
     await validateBlocks(issue.id, (issue.items ?? []) as StoredBlock[]);
@@ -1144,7 +1237,7 @@ export async function saveMagazineIssue(
           {
             title:
               input.issueId === undefined ? undefined : input.title?.trim(),
-            coverImageUrl: input.coverImageUrl,
+            ...cover,
             articleIds: input.articleIds,
             blocks,
             editorNote:
@@ -1179,6 +1272,8 @@ export async function saveMagazineIssue(
     title: written.title,
     status: "draft" as const,
     coverImageUrl: written.coverImageUrl ?? null,
+    coverMediaId: written.coverMediaId ?? null,
+    coverAlt: written.coverAlt ?? null,
     editorNote: written.editorNote ?? null,
     articleIds,
     items: toItemInputs((written.items ?? []) as StoredBlock[]),
@@ -1293,6 +1388,12 @@ function magazineSummary(magazine: Magazine) {
     name: magazine.name,
     communityId: magazine.communityId,
     description: magazine.description ?? null,
+    logoMediaId: magazine.logoMediaId ?? null,
+    logoUrl: magazine.logoUrl ?? null,
+    logoAlt: magazine.logoAlt ?? null,
+    coverMediaId: magazine.coverMediaId ?? null,
+    coverImageUrl: magazine.coverImageUrl ?? null,
+    coverAlt: magazine.coverAlt ?? null,
   };
 }
 
@@ -1446,6 +1547,8 @@ export function presentBrowsedIssue(
     status: issue.status,
     visibility: issue.visibility,
     coverImageUrl: issue.coverImageUrl ?? null,
+    coverMediaId: issue.coverMediaId ?? null,
+    coverAlt: issue.coverAlt ?? null,
     publishedAt: issue.publishedAt ?? null,
     articleIds: articleIdsOf(issue),
     updatedAt: issue.updatedAt,

@@ -47,6 +47,7 @@ import {
   getMagazineForCommunity,
   setMagazineLogoUrl,
 } from "@/server/magazines/magazine-service";
+import { resolveContentImage } from "@/server/magazines/magazine-issue-update";
 import {
   missingMagazineLogoWarning,
   unknownMagazineLogoWarning,
@@ -233,9 +234,24 @@ export const agentCommunityRouter = {
         .from(spaces)
         .where(eq(spaces.communityId, community.id))
         .orderBy(asc(spaces.position));
+      const magazine = await getMagazineForCommunity(payload, community.id);
       return {
         ...community,
         ...imageIds,
+        bannerMediaId: community.bannerMediaId ?? imageIds.bannerMediaId,
+        bannerAlt: community.bannerAlt ?? null,
+        magazine: magazine
+          ? {
+              id: magazine.id,
+              slug: magazine.slug,
+              logoMediaId: magazine.logoMediaId ?? null,
+              logoUrl: magazine.logoUrl ?? null,
+              logoAlt: magazine.logoAlt ?? null,
+              coverMediaId: magazine.coverMediaId ?? null,
+              coverImageUrl: magazine.coverImageUrl ?? null,
+              coverAlt: magazine.coverAlt ?? null,
+            }
+          : null,
         description: description.description,
         descriptionTruncated: description.descriptionTruncated,
         memberCount: memberCountResult?.count ?? 0,
@@ -657,7 +673,9 @@ export const agentCommunityRouter = {
         description: communityDescriptionSchema.optional(),
         logoUrl: z.string().url().optional().nullable(),
         logoMediaId: z.number().int().positive().nullable().optional(),
+        bannerUrl: z.string().max(2000).nullable().optional(),
         bannerMediaId: z.number().int().positive().nullable().optional(),
+        bannerAlt: z.string().max(200).nullable().optional(),
         magazineLogoMediaId: z.number().int().positive().nullable().optional(),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
@@ -674,6 +692,8 @@ export const agentCommunityRouter = {
 
       const community = await resolveCommunity(ctx.db, input.slug);
       const bannerMediaId = input.bannerMediaId;
+      const bannerUrl = input.bannerUrl;
+      const bannerAlt = input.bannerAlt;
       const magazineLogoMediaId = input.magazineLogoMediaId;
       const logo = communityLogoChoice(input);
       const touchesCommunity =
@@ -683,7 +703,9 @@ export const agentCommunityRouter = {
         input.joinPolicy !== undefined ||
         input.isListedInDirectory !== undefined ||
         input.classroomCreatePolicy !== undefined ||
-        bannerMediaId !== undefined;
+        bannerMediaId !== undefined ||
+        bannerUrl !== undefined ||
+        bannerAlt !== undefined;
       const touchesMagazineLogo = magazineLogoMediaId !== undefined;
       if (!touchesCommunity && !touchesMagazineLogo) {
         throw new TRPCError({
@@ -717,21 +739,31 @@ export const agentCommunityRouter = {
       const warnings: SettingsFieldWarning[] = [];
       if (
         bannerMediaId !== undefined ||
-        magazineLogoMediaId !== undefined ||
-        logo.kind === "media"
+        bannerUrl !== undefined ||
+        bannerAlt !== undefined
       ) {
+        const banner = await resolveContentImage(
+          await getPayloadClient(),
+          ownerId,
+          {
+            mediaId: bannerMediaId,
+            url: bannerUrl,
+            alt: bannerAlt,
+          },
+        );
+        if (banner?.mediaId !== undefined)
+          updates.bannerMediaId = banner.mediaId;
+        if (banner?.url !== undefined) updates.bannerUrl = banner.url;
+        if (banner?.alt !== undefined) updates.bannerAlt = banner.alt;
+      }
+
+      if (magazineLogoMediaId !== undefined || logo.kind === "media") {
         const payload = await getPayloadClient();
         if (logo.kind === "media") {
           updates.logoUrl =
             logo.mediaId === null
               ? null
               : await sharedMediaUrl(payload, logo.mediaId, ownerId);
-        }
-        if (bannerMediaId !== undefined) {
-          updates.bannerUrl =
-            bannerMediaId === null
-              ? null
-              : await sharedMediaUrl(payload, bannerMediaId, ownerId);
         }
         if (magazineLogoMediaId !== undefined) {
           const magazine = await getMagazineForCommunity(payload, community.id);

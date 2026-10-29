@@ -77,6 +77,9 @@ export type MagazineSummary = {
   name: string;
   slug: string;
   logoUrl: string | null;
+  logoAlt?: string | null;
+  coverImageUrl?: string | null;
+  coverAlt?: string | null;
   description: string | null;
   topics: string[];
   staffHidden: boolean;
@@ -89,6 +92,7 @@ export type IssueCard = {
   title: string;
   slug: string;
   coverImageUrl: string | null;
+  coverAlt?: string | null;
   publishedAt: string | null;
   status: IssueStatus;
   /** The stored value. Badges use `effectiveVisibility` (preflight F10). */
@@ -197,6 +201,9 @@ function toMagazineSummary(
     | "name"
     | "slug"
     | "logoUrl"
+    | "logoAlt"
+    | "coverImageUrl"
+    | "coverAlt"
     | "description"
     | "topics"
     | "listingHidden"
@@ -207,6 +214,9 @@ function toMagazineSummary(
     name: magazine.name,
     slug: magazine.slug,
     logoUrl: magazine.logoUrl ?? null,
+    logoAlt: magazine.logoAlt ?? null,
+    coverImageUrl: magazine.coverImageUrl ?? null,
+    coverAlt: magazine.coverAlt ?? null,
     description: magazine.description ?? null,
     topics: magazineTopicsOf(magazine),
     staffHidden: isHiddenByStaff(magazine),
@@ -225,6 +235,7 @@ function toIssueCard(
     | "title"
     | "slug"
     | "coverImageUrl"
+    | "coverAlt"
     | "publishedAt"
     | "status"
     | "visibility"
@@ -260,6 +271,7 @@ function toIssueCard(
     title: issue.title,
     slug: issue.slug,
     coverImageUrl: issue.coverImageUrl ?? null,
+    coverAlt: issue.coverAlt ?? null,
     publishedAt: issue.publishedAt ?? null,
     status: issue.status,
     visibility: issue.visibility,
@@ -346,6 +358,7 @@ export async function loadHomepageMagazines(
         title: true,
         slug: true,
         coverImageUrl: true,
+        coverAlt: true,
         publishedAt: true,
         status: true,
         visibility: true,
@@ -371,6 +384,9 @@ export async function loadHomepageMagazines(
         name: true,
         slug: true,
         logoUrl: true,
+        logoAlt: true,
+        coverImageUrl: true,
+        coverAlt: true,
         description: true,
         topics: true,
         listingHidden: true,
@@ -447,7 +463,12 @@ export async function loadMagazinesHome(
       ],
     },
     sort: ["-publishedAt", "-id"],
-    select: { magazine: true, publishedAt: true, coverImageUrl: true },
+    select: {
+      magazine: true,
+      publishedAt: true,
+      coverImageUrl: true,
+      coverAlt: true,
+    },
     depth: 0,
     pagination: false,
   });

@@ -15,15 +15,15 @@ export function isUnknownSharedImageError(error: unknown): boolean {
 }
 
 /**
- * The URL for a media id from `upload-image` (or the same shared upload).
- * Feed-post images are refused: they are deleted with the post. The file
- * must belong to the owner the agent acts for.
+ * The URL and alt for a media id from `upload-image` (or the same shared
+ * upload). Feed-post images are refused: they are deleted with the post.
+ * The file must belong to the owner the agent acts for.
  */
-export async function sharedMediaUrl(
+export async function sharedMediaImage(
   payload: PayloadClient,
   mediaId: number,
   ownerId: string,
-): Promise<string> {
+): Promise<{ url: string; alt: string | null }> {
   const media = await payload
     .findByID({
       collection: "media",
@@ -50,7 +50,16 @@ export async function sharedMediaUrl(
       message: "That image was uploaded by someone else",
     });
   }
-  return media.url;
+  return { url: media.url, alt: media.alt ?? null };
+}
+
+/** The URL for a media id from `upload-image`. */
+export async function sharedMediaUrl(
+  payload: PayloadClient,
+  mediaId: number,
+  ownerId: string,
+): Promise<string> {
+  return (await sharedMediaImage(payload, mediaId, ownerId)).url;
 }
 
 /** Media ids for stored logo and banner URLs. A URL that is not in media stays null. */

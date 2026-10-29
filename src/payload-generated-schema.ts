@@ -1080,6 +1080,9 @@ export const forum_threads = pgTable(
       precision: 3,
     }),
     communityId: varchar("community_id"),
+    imageMediaId: numeric("image_media_id", { mode: "number" }),
+    imageUrl: varchar("image_url"),
+    imageAlt: varchar("image_alt"),
     isDeleted: boolean("is_deleted").default(false),
     isEdited: boolean("is_edited").default(false),
     editedAt: timestamp("edited_at", {
@@ -1347,6 +1350,8 @@ export const feed_posts = pgTable(
     id: serial("id").primaryKey(),
     content: varchar("content").notNull(),
     imageUrl: varchar("image_url"),
+    imageMediaId: numeric("image_media_id", { mode: "number" }),
+    imageAlt: varchar("image_alt"),
     authorId: varchar("author_id").notNull(),
     authorName: varchar("author_name"),
     communityId: varchar("community_id"),
@@ -2534,6 +2539,9 @@ export const modules = pgTable(
     title: varchar("title").notNull(),
     order: numeric("order", { mode: "number" }).default(0),
     summary: varchar("summary"),
+    imageMediaId: numeric("image_media_id", { mode: "number" }),
+    imageUrl: varchar("image_url"),
+    imageAlt: varchar("image_alt"),
     updatedAt: timestamp("updated_at", {
       mode: "string",
       withTimezone: true,

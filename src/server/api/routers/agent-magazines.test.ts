@@ -78,10 +78,13 @@ it("exposes no procedure that publishes an issue", () => {
     "assignMagazineAgent",
     "browseMagazines",
     "createMagazine",
+    "deleteMagazineArticle",
+    "deleteMagazineIssue",
     "markArticleReady",
     "saveMagazineArticle",
     "saveMagazineIssue",
     "submitIssueForReview",
+    "updateMagazine",
     "uploadImage",
   ]);
   expect(agentMagazineRouter).not.toHaveProperty("publishIssue");

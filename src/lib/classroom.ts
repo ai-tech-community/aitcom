@@ -98,6 +98,8 @@ export type ModuleRef = {
   title: string;
   order: number;
   summary?: string | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
 };
 
 /** Minimal lesson shape these helpers need: which module (or none) and intra-order. */

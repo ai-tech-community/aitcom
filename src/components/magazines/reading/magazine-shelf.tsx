@@ -22,14 +22,21 @@ function communityPath(slug: string): string {
 }
 
 /** The magazine's logo, or nothing: the name carries the identity. */
-function MagazineLogo({ url }: { url: string | null }) {
+function MagazineLogo({
+  url,
+  alt,
+}: {
+  url: string | null;
+  alt: string | null;
+}) {
   if (!url) return null;
   return (
     // Any host an editor links to: next/image only serves listed hosts.
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={url}
-      alt=""
+      alt={alt ?? ""}
+      data-magazine-logo=""
       className="bg-secondary size-16 shrink-0 rounded-lg border object-cover"
     />
   );
@@ -41,7 +48,7 @@ function MagazineIdentity({ data }: { data: MagazineShelfData }) {
   return (
     <header className="flex flex-col gap-4">
       <div className="flex items-start gap-4">
-        <MagazineLogo url={magazine.logoUrl} />
+        <MagazineLogo url={magazine.logoUrl} alt={magazine.logoAlt ?? null} />
         <div className="flex min-w-0 flex-col gap-2">
           <h1 className="text-3xl font-semibold tracking-tight text-balance break-words sm:text-4xl">
             {magazine.name}
@@ -61,6 +68,16 @@ function MagazineIdentity({ data }: { data: MagazineShelfData }) {
           </p>
         </div>
       </div>
+      {magazine.coverImageUrl ? (
+        // Any host an editor links to: next/image only serves listed hosts.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={magazine.coverImageUrl}
+          alt={magazine.coverAlt ?? ""}
+          data-magazine-cover=""
+          className="border-border aspect-[3/1] w-full rounded-lg border object-cover"
+        />
+      ) : null}
       {magazine.description && (
         <p className="max-w-[72ch] text-base leading-relaxed">
           {magazine.description}

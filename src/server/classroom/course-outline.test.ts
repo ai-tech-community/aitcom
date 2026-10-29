@@ -26,6 +26,9 @@ it("lists each course's modules and the lessons inside them", () => {
       title: "Sounds",
       order: 0,
       summary: "First sounds",
+      imageMediaId: null,
+      imageUrl: null,
+      imageAlt: null,
       lessons: [{ id: 21, title: "The g", order: 0 }],
     },
   ]);

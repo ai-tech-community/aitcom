@@ -15,6 +15,7 @@ import { pinForumThread } from "@/server/communities/pin-forum-thread";
 import { previewForumThreadSlug } from "@/server/communities/create-forum-thread";
 import { requireRulesAcceptance } from "@/server/communities/rules-acceptance";
 import { agentDraftResponse } from "@/server/agent/draft-result";
+import { resolveContentImage } from "@/server/magazines/magazine-issue-update";
 import { getPayloadClient } from "@/server/payload";
 import { agentDrafts, communities } from "@/server/db/schema";
 
@@ -35,6 +36,9 @@ export const agentForumRouter = {
         content: z.string().min(1).max(FORUM_THREAD_CONTENT_MAX),
         category: z.enum(FORUM_THREAD_CATEGORIES).default("general"),
         communitySlug: z.string().min(1).optional(),
+        imageMediaId: z.number().int().positive().nullable().optional(),
+        imageUrl: z.string().max(2000).nullable().optional(),
+        imageAlt: z.string().max(200).nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -53,10 +57,13 @@ export const agentForumRouter = {
         community = row ?? undefined;
       }
       await requireRulesAcceptance(ownerId, community?.id);
-      const slug = await previewForumThreadSlug(
-        await getPayloadClient(),
-        input.title,
-      );
+      const payload = await getPayloadClient();
+      const image = await resolveContentImage(payload, ownerId, {
+        mediaId: input.imageMediaId,
+        url: input.imageUrl,
+        alt: input.imageAlt,
+      });
+      const slug = await previewForumThreadSlug(payload, input.title);
       const [draft] = await ctx.db
         .insert(agentDrafts)
         .values({
@@ -70,6 +77,13 @@ export const agentForumRouter = {
             ...input,
             slug,
             communityName: community?.name,
+            ...(image
+              ? {
+                  imageMediaId: image.mediaId ?? null,
+                  imageUrl: image.url ?? null,
+                  imageAlt: image.alt ?? null,
+                }
+              : {}),
           }),
           status: "pending",
         })

@@ -4,6 +4,9 @@ export type OutlineModule = {
   title: string;
   order?: number | null;
   summary?: string | null;
+  imageMediaId?: number | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
 };
 
 export type OutlineLesson = {
@@ -37,6 +40,9 @@ export function presentClassroomCourse<T extends { id: number }>(
         title: mod.title,
         order: mod.order ?? 0,
         summary: mod.summary ?? null,
+        imageMediaId: mod.imageMediaId ?? null,
+        imageUrl: mod.imageUrl ?? null,
+        imageAlt: mod.imageAlt ?? null,
         lessons: courseLessons
           .filter((lesson) => lesson.module === mod.id)
           .map(lessonCard),

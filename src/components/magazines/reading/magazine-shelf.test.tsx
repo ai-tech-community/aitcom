@@ -36,6 +36,39 @@ function issueList() {
 }
 
 describe("MagazineShelf", () => {
+  it("shows the magazine cover and logo alt text", () => {
+    renderWithIntl(
+      <MagazineShelf
+        data={shelfData({
+          magazine: {
+            ...shelfData().magazine,
+            logoUrl: "https://cdn.example.test/logo.png",
+            logoAlt: "Town press",
+            coverImageUrl: "https://cdn.example.test/masthead.png",
+            coverAlt: "October masthead",
+          },
+          issues: [
+            issueCard({
+              coverImageUrl: "https://cdn.example.test/issue.png",
+              coverAlt: "Issue breakfast",
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(document.querySelector("[data-magazine-logo]")).toHaveAttribute(
+      "alt",
+      "Town press",
+    );
+    expect(document.querySelector("[data-magazine-cover]")).toHaveAttribute(
+      "alt",
+      "October masthead",
+    );
+    expect(
+      screen.getByRole("img", { name: "Issue breakfast" }),
+    ).toHaveAttribute("src", "https://cdn.example.test/issue.png");
+  });
+
   it("labels a preview issue 'Members read in full'", () => {
     renderWithIntl(
       <MagazineShelf

@@ -23,6 +23,8 @@ const READERS: Record<string, string> = {
     "isPublicArticle on the page; publicArticleWhere for related articles",
   "src/app/[locale]/blog/edit/[slug]/page.tsx":
     "the author's own blog article; a magazine article is not found",
+  "src/server/api/routers/agent-magazines.ts":
+    "delete draft: an editor reads one article's title to queue a delete the community owner approves; the article is not returned to a reader",
   "src/server/api/routers/articles.ts":
     "the author's own articles (editing); My articles leaves out magazine articles",
   "src/server/api/routers/comments.ts": "canReadArticle",

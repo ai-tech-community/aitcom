@@ -166,7 +166,7 @@ export const fetchImage: ImageFetcher = async (url) => {
  */
 export async function importFeedImage(
   payload: Payload,
-  input: { url: string; userId: string },
+  input: { url: string; userId: string; alt?: string | null },
   fetcher: ImageFetcher = fetchImage,
 ): Promise<FeedImage> {
   let image: Awaited<ReturnType<ImageFetcher>>;
@@ -183,7 +183,7 @@ export async function importFeedImage(
   const media = await payload.create({
     collection: "media",
     data: {
-      alt: "",
+      alt: input.alt?.trim() ?? "",
       uploadedBy: input.userId,
       purpose: "feed-post",
     },

@@ -48,6 +48,9 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
     "save-magazine-issue",
     "submit-issue-for-review",
     "create-magazine",
+    "update-magazine",
+    "delete-magazine-issue",
+    "delete-magazine-article",
     "assign-magazine-agent",
   ]);
   expect(tools.has("publish-issue")).toBe(false);

@@ -297,6 +297,9 @@ export const agentRouter = createTRPCRouter({
         isLocked: t.isLocked ?? false,
         lastActivityAt: t.lastActivityAt ?? null,
         createdAt: t.createdAt,
+        imageMediaId: t.imageMediaId ?? null,
+        imageUrl: t.imageUrl ?? null,
+        imageAlt: t.imageAlt ?? null,
       }));
     }),
 
@@ -358,6 +361,9 @@ export const agentRouter = createTRPCRouter({
           isPinned: thread.isPinned ?? false,
           isLocked: thread.isLocked ?? false,
           createdAt: thread.createdAt,
+          imageMediaId: thread.imageMediaId ?? null,
+          imageUrl: thread.imageUrl ?? null,
+          imageAlt: thread.imageAlt ?? null,
         },
         replies: replies.map((r) => ({
           id: r.id,

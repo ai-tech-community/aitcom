@@ -60,6 +60,9 @@ export const LEADING_COMMUNITY_ROLES = [
   "admin",
 ] as const satisfies readonly CommunityRole[];
 
+/** The community role that approves agent deletes. */
+export const COMMUNITY_OWNER_ROLE: CommunityRole = "owner";
+
 export function leadsCommunity(
   communityRole: CommunityRole | null,
 ): communityRole is (typeof LEADING_COMMUNITY_ROLES)[number] {

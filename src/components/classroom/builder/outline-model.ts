@@ -11,11 +11,15 @@ export type OutlineModule = {
   title: string;
   order: number;
   summary?: string | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
 };
 export type OutlineGroup = {
   moduleId: number | null;
   title: string | null;
   summary: string | null;
+  imageUrl: string | null;
+  imageAlt: string | null;
   lessonIds: number[];
 };
 /** Exactly the reorderLessons input, minus courseId. */
@@ -30,10 +34,18 @@ export function buildOutline(
   const summaries = new Map(
     modules.map((mod) => [mod.id, mod.summary ?? null]),
   );
+  const images = new Map(
+    modules.map((mod) => [
+      mod.id,
+      { imageUrl: mod.imageUrl ?? null, imageAlt: mod.imageAlt ?? null },
+    ]),
+  );
   return groupLessonsByModule(lessons, modules).map((g) => ({
     moduleId: g.module?.id ?? null,
     title: g.module?.title ?? null,
     summary: g.module ? (summaries.get(g.module.id) ?? null) : null,
+    imageUrl: g.module ? (images.get(g.module.id)?.imageUrl ?? null) : null,
+    imageAlt: g.module ? (images.get(g.module.id)?.imageAlt ?? null) : null,
     lessonIds: g.lessons.map((l) => l.id),
   }));
 }

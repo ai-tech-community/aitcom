@@ -113,6 +113,21 @@ export const ForumThreads: CollectionConfig = {
       admin: { position: "sidebar" },
     },
     {
+      name: "imageMediaId",
+      type: "number",
+      admin: {
+        description: "Shared media id. Leave empty when using imageUrl.",
+      },
+    },
+    {
+      name: "imageUrl",
+      type: "text",
+      admin: {
+        description: "http(s) image, or the URL resolved from imageMediaId.",
+      },
+    },
+    { name: "imageAlt", type: "text", maxLength: 200 },
+    {
       name: "isDeleted",
       type: "checkbox",
       defaultValue: false,

@@ -54,6 +54,12 @@ export const MagazineIssues: CollectionConfig = {
     { name: "slug", type: "text", required: true },
     { name: "coverImageUrl", type: "text" },
     {
+      name: "coverMediaId",
+      type: "number",
+      admin: { description: "Shared media id for the cover." },
+    },
+    { name: "coverAlt", type: "text", maxLength: 200 },
+    {
       name: "editorNote",
       type: "richText",
       localized: true,

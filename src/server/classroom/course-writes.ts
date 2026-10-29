@@ -14,7 +14,13 @@ export type LessonVersion = { id: number; updatedAt: string };
 export async function createCourseModule(
   payload: Payload,
   courseId: number,
-  input: { title: string; summary?: string | null },
+  input: {
+    title: string;
+    summary?: string | null;
+    imageMediaId?: number | null;
+    imageUrl?: string | null;
+    imageAlt?: string | null;
+  },
 ): Promise<{ id: number; lessons: LessonVersion[] }> {
   const { totalDocs: moduleCount } = await payload.find({
     collection: "modules",
@@ -32,6 +38,11 @@ export async function createCourseModule(
         title: input.title,
         order: moduleCount,
         summary: input.summary ?? undefined,
+        ...(input.imageMediaId !== undefined
+          ? { imageMediaId: input.imageMediaId }
+          : {}),
+        ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
+        ...(input.imageAlt !== undefined ? { imageAlt: input.imageAlt } : {}),
       },
       req,
     });
@@ -56,11 +67,26 @@ export async function createCourseModule(
 export async function updateCourseModule(
   payload: Payload,
   moduleId: number,
-  input: { title?: string; summary?: string | null },
+  input: {
+    title?: string;
+    summary?: string | null;
+    imageMediaId?: number | null;
+    imageUrl?: string | null;
+    imageAlt?: string | null;
+  },
 ): Promise<void> {
-  const data: { title?: string; summary?: string | null } = {};
+  const data: {
+    title?: string;
+    summary?: string | null;
+    imageMediaId?: number | null;
+    imageUrl?: string | null;
+    imageAlt?: string | null;
+  } = {};
   if (input.title !== undefined) data.title = input.title;
   if (input.summary !== undefined) data.summary = input.summary;
+  if (input.imageMediaId !== undefined) data.imageMediaId = input.imageMediaId;
+  if (input.imageUrl !== undefined) data.imageUrl = input.imageUrl;
+  if (input.imageAlt !== undefined) data.imageAlt = input.imageAlt;
   await payload.update({
     collection: "modules",
     id: moduleId,

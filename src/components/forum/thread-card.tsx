@@ -56,6 +56,16 @@ export function ThreadCard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: index * 0.03 }}
         >
+          {thread.imageUrl ? (
+            // Uploaded hosts are not limited to next/image's allow list.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={thread.imageUrl}
+              alt={thread.imageAlt ?? ""}
+              data-thread-image=""
+              className="border-border mb-2 aspect-[2/1] w-full rounded-md border object-cover"
+            />
+          ) : null}
           <div className="flex items-start justify-between gap-2">
             <p className="text-foreground text-sm leading-snug font-medium">
               {thread.isPinned && (

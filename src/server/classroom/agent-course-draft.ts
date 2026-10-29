@@ -196,6 +196,9 @@ export type ClassroomModuleDraft = {
   moduleId: number | null;
   title: string;
   summary?: string | null;
+  imageMediaId?: number | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
 };
 
 export function classroomModuleFromDraft(draft: {
@@ -238,6 +241,20 @@ export function classroomModuleFromDraft(draft: {
     title,
     ...(meta && "summary" in meta
       ? { summary: draftString(meta.summary) }
+      : {}),
+    ...(meta && "imageMediaId" in meta
+      ? {
+          imageMediaId:
+            typeof meta.imageMediaId === "number" || meta.imageMediaId === null
+              ? meta.imageMediaId
+              : null,
+        }
+      : {}),
+    ...(meta && "imageUrl" in meta
+      ? { imageUrl: draftString(meta.imageUrl) }
+      : {}),
+    ...(meta && "imageAlt" in meta
+      ? { imageAlt: draftString(meta.imageAlt) }
       : {}),
   };
 }
