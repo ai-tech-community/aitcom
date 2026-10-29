@@ -24,7 +24,8 @@ describe("content image migration", () => {
     );
     expect(source).not.toMatch(/\b(UPDATE|INSERT|DELETE)\b/);
     expect(source).not.toMatch(/"image" jsonb/);
-    const modules = source.split('ALTER TABLE "modules"')[1]?.split("ALTER TABLE")[0] ?? "";
+    const modules =
+      source.split('ALTER TABLE "modules"')[1]?.split("ALTER TABLE")[0] ?? "";
     expect(modules).toContain("image_url");
     expect(modules).not.toContain("cover_image_url");
     const index = readFileSync(
@@ -32,8 +33,8 @@ describe("content image migration", () => {
       "utf8",
     );
     expect(index).toContain('name: "20261029d_content_images"');
-    expect(index.indexOf('name: "20261029b_magazine_item_images"')).toBeLessThan(
-      index.indexOf('name: "20261029d_content_images"'),
-    );
+    expect(
+      index.indexOf('name: "20261029b_magazine_item_images"'),
+    ).toBeLessThan(index.indexOf('name: "20261029d_content_images"'));
   });
 });
