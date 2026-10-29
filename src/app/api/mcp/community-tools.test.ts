@@ -45,6 +45,7 @@ it("registers community thread tools and image settings on the existing procedur
         mode: "draft",
         draftId: "draft-1",
       }),
+      createCommunity: vi.fn().mockResolvedValue({ slug: "makers" }),
       pinThread: vi.fn().mockResolvedValue({ ok: true, isPinned: false }),
       updateCommunitySettings: vi.fn().mockResolvedValue({
         bannerUrl: "https://cdn.example.test/banner.png",
@@ -117,6 +118,28 @@ it("registers community thread tools and image settings on the existing procedur
     category: "question",
     communitySlug: "makers",
   });
+  await tools.get("create-thread")!.run({
+    title: "Hello there",
+    content: "A full thread body.",
+    category: "question",
+    communityId: "community-1",
+  } as never);
+  expect(caller.agent.createThread).toHaveBeenCalledWith({
+    title: "Hello there",
+    content: "A full thread body.",
+    category: "question",
+    communityId: "community-1",
+  });
+  await tools.get("create-community")!.run({
+    name: "Makers",
+    logoUrl: "https://cdn.example/logo.png",
+  } as never);
+  expect(caller.agent.createCommunity).toHaveBeenCalledWith(
+    expect.objectContaining({
+      name: "Makers",
+      logoUrl: "https://cdn.example/logo.png",
+    }),
+  );
 
   await tools.get("pin-thread")!.run({
     threadId: 9,

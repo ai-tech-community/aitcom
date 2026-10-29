@@ -14,6 +14,7 @@ import { uploadMagazineImage } from "@/server/magazines/agent-image";
 import {
   browseMagazines,
   markArticleReady,
+  readMagazineArticle,
   saveMagazineArticle,
   saveMagazineIssue,
   submitAgentIssue,
@@ -69,6 +70,17 @@ export const agentMagazineRouter = {
         await depsOf(ctx),
         { agentId: ctx.agent.agentId, ownerId: ctx.agent.ownerId },
         input,
+      );
+    }),
+
+  readMagazineArticle: agentProcedure
+    .input(z.object({ articleId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+      return readMagazineArticle(
+        await depsOf(ctx),
+        { agentId: ctx.agent.agentId, ownerId: ctx.agent.ownerId },
+        input.articleId,
       );
     }),
 

@@ -196,6 +196,7 @@ export type ClassroomModuleDraft = {
   moduleId: number | null;
   title: string;
   summary?: string | null;
+  coverImageUrl?: string | null;
 };
 
 export function classroomModuleFromDraft(draft: {
@@ -238,6 +239,9 @@ export function classroomModuleFromDraft(draft: {
     title,
     ...(meta && "summary" in meta
       ? { summary: draftString(meta.summary) }
+      : {}),
+    ...(meta && "coverImageUrl" in meta
+      ? { coverImageUrl: draftString(meta.coverImageUrl) }
       : {}),
   };
 }

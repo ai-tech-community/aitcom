@@ -65,4 +65,16 @@ it("registers classroom browse and create with the browser's draft rule", async 
   expect(caller.agent.browseClassrooms).toHaveBeenCalledWith({
     communitySlug: "owner-to-owner",
   });
+  await tools.get("create-module")!.run({
+    communitySlug: "owner-to-owner",
+    courseId: 14,
+    title: "Sounds",
+    coverImageUrl: "https://cdn.example/cover.png",
+  } as never);
+  expect(caller.agent.createModule).toHaveBeenCalledWith({
+    communitySlug: "owner-to-owner",
+    courseId: 14,
+    title: "Sounds",
+    coverImageUrl: "https://cdn.example/cover.png",
+  });
 });
