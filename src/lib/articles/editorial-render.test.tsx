@@ -9,7 +9,7 @@ vi.mock("next/image", () => ({
   }: {
     src: string;
     alt: string;
-    loading?: string;
+    loading?: "lazy" | "eager";
   }) => (
     // The mock stands in for next/image.
     // eslint-disable-next-line @next/next/no-img-element
