@@ -17,7 +17,7 @@ import {
   type EventFormat,
   type EventType,
 } from "@/lib/event-metadata";
-import { EventsFilterBar } from "@/components/events-filter-bar";
+import { EventsListingToolbar } from "@/components/events-listing-toolbar";
 import { EventHubLinks } from "@/components/events/event-hub-links";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
@@ -25,7 +25,6 @@ import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
 import { EventsMap } from "@/components/events-map";
 import { toMapEvents } from "@/lib/events/map-events";
-import { UseMyLocationButton } from "@/components/use-my-location-button";
 import {
   PUBLIC_EVENTS_H1,
   PUBLIC_EVENTS_JOIN_HREF,
@@ -368,66 +367,25 @@ export default async function EventsPage({
 
       <EventHubLinks />
 
-      <div className="mt-6 flex gap-1 font-mono text-xs tracking-wider">
-        <Link
-          href={buildTabHref(false)}
-          className={`rounded border px-4 py-2 transition-colors ${
-            !isPast
-              ? "border-foreground bg-foreground text-background"
-              : "border-border text-muted-foreground hover:bg-secondary/40"
-          }`}
-        >
-          UPCOMING
-        </Link>
-        <Link
-          href={buildTabHref(true)}
-          className={`rounded border px-4 py-2 transition-colors ${
-            isPast
-              ? "border-foreground bg-foreground text-background"
-              : "border-border text-muted-foreground hover:bg-secondary/40"
-          }`}
-        >
-          PAST
-        </Link>
-      </div>
-
-      <EventsFilterBar
+      <EventsListingToolbar
+        upcomingHref={buildTabHref(false)}
+        pastHref={buildTabHref(true)}
+        gridHref={buildViewHref("grid")}
+        mapHref={buildViewHref("map")}
+        isPast={isPast}
+        isMapView={isMapView}
         visitorCountryCode={visitor?.countryCode ?? null}
         visitorCountryName={visitor?.countryName ?? null}
       />
-
-      <div className="mt-4 flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">
-        <UseMyLocationButton />
-        <Link
-          href={buildViewHref("grid")}
-          className={`rounded border px-3 py-1.5 transition-colors ${
-            !isMapView
-              ? "border-foreground bg-foreground text-background"
-              : "border-border text-muted-foreground hover:bg-secondary/40"
-          }`}
-        >
-          GRID
-        </Link>
-        <Link
-          href={buildViewHref("map")}
-          className={`rounded border px-3 py-1.5 transition-colors ${
-            isMapView
-              ? "border-foreground bg-foreground text-background"
-              : "border-border text-muted-foreground hover:bg-secondary/40"
-          }`}
-        >
-          MAP
-        </Link>
-      </div>
 
       {isMapView ? (
         <EventsMap events={toMapEvents(events)} userCoords={userCoords} />
       ) : events.length === 0 ? (
         <p className="text-muted-foreground mt-12 text-center">
           {hasFilters
-            ? "No events match these filters."
+            ? t("filters.noMatch")
             : isPast
-              ? "No past events yet."
+              ? t("filters.noPast")
               : t("noEvents")}
         </p>
       ) : (

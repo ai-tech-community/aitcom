@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { MapPin } from "lucide-react";
@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 
 export function UseMyLocationButton() {
   const t = useTranslations("events");
+  const locale = useLocale();
+  const upper = (value: string) => value.toLocaleUpperCase(locale);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -40,8 +42,8 @@ export function UseMyLocationButton() {
         setRequesting(false);
         toast.error(
           err.code === err.PERMISSION_DENIED
-            ? "Permission denied."
-            : "Could not get your location.",
+            ? t("location.permissionDenied")
+            : t("location.locationFailed"),
         );
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 },
@@ -74,7 +76,7 @@ export function UseMyLocationButton() {
         )}
       >
         <MapPin className="h-3 w-3" />
-        USING YOUR LOCATION ✕
+        {upper(t("filters.usingLocation"))} ✕
       </button>
     );
   }
@@ -87,7 +89,9 @@ export function UseMyLocationButton() {
       className={cn(baseClass, "border-border hover:bg-secondary/40")}
     >
       <MapPin className="h-3 w-3" />
-      {requesting ? "LOCATING…" : "USE MY LOCATION"}
+      {requesting
+        ? upper(t("filters.locating"))
+        : upper(t("filters.useMyLocation"))}
     </button>
   );
 }
