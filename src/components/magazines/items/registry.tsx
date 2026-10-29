@@ -17,6 +17,7 @@ import { EventItem, eventItemTitle } from "./event-item";
 import { NewsItemCard, newsItemTitle } from "./news-item";
 import { ArticleItem, articleItemTitle } from "./article-item";
 import { EditorialItem, editorialItemTitle } from "./editorial-item";
+import { ItemImageFigure } from "./item-image";
 import type {
   ArticleHref,
   ItemRendererProps,
@@ -67,10 +68,19 @@ function renderKind<K extends ItemKindId>(
   size: ItemSize,
   href: ArticleHref,
   teaser: ItemTeaser | null,
+  suppressSourceImage = false,
 ) {
   const Renderer: ComponentType<ItemRendererProps<K>> =
     ITEM_RENDERERS[view.kind];
-  return <Renderer view={view} size={size} href={href} teaser={teaser} />;
+  return (
+    <Renderer
+      view={view}
+      size={size}
+      href={href}
+      teaser={teaser}
+      suppressSourceImage={suppressSourceImage}
+    />
+  );
 }
 
 /**
@@ -121,5 +131,25 @@ export function IssueItem({
 }) {
   if (isUnavailableItem(view))
     return <UnavailableMarker reason={view.reason} />;
-  return renderKind(view, size, href, teaser);
+  if (!view.image) return renderKind(view, size, href, teaser);
+  return (
+    <div
+      className={
+        size === "row"
+          ? "issue-item-image flex min-w-0 items-start gap-4 py-4"
+          : "issue-item-image flex h-full min-w-0 flex-col"
+      }
+    >
+      <ItemImageFigure image={view.image} compact={size === "row"} />
+      <div
+        className={
+          size === "row"
+            ? "min-w-0 flex-1 [&>[data-item-kind]]:py-0"
+            : "min-w-0 flex-1"
+        }
+      >
+        {renderKind(view, size, href, teaser, true)}
+      </div>
+    </div>
+  );
 }

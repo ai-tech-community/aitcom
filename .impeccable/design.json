@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-29T17:03:41.247Z",
+  "generatedAt": "2026-10-29T19:26:54.475Z",
   "title": "Design System: AIT Community",
   "extensions": {
     "colorMeta": {
@@ -542,6 +542,11 @@
         "name": "Magazine Publication Exception",
         "body": "Approved editorial shell for issue/article reading and the inert builder preview. Dedicated community return, shelf and contents navigation; large selected display type, a cover readability scrim, flowing stories, and publication information below. Font setting stays magazine-wide; global site UI retains Geist.",
         "section": "typography"
+      },
+      {
+        "name": "Issue Item Imagery",
+        "body": "Optional issue-owned image figures on all item kinds; landscape, portrait or square crops with shared focal-point positioning, alt text, caption and credit. Custom lead images replace source images. Compact rows keep a thumbnail. Upload state persists across editor remounts and blocks publication.",
+        "section": "components"
       }
     ],
     "dos": [

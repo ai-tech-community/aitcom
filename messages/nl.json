@@ -5568,7 +5568,28 @@
         "unscheduledLead": "Het nummer is weer een concept.",
         "audienceTeaser": "Iedereen kan de omslag, de inhoudsopgave en het begin van elk artikel zien. Alleen leden van je community lezen alles. Het verschijnt op de pagina Magazines."
       },
-      "goesOut": "Verschijnt op <timestamp>{time}</timestamp>"
+      "goesOut": "Verschijnt op <timestamp>{time}</timestamp>",
+      "image": {
+        "label": "Afbeelding bij item",
+        "hint": "Optioneel. De afbeelding en uitsnede horen bij dit item in deze editie. Verwijder de aangepaste afbeelding om de oorspronkelijke weergave te herstellen.",
+        "upload": "Afbeelding uploaden",
+        "replace": "Afbeelding vervangen",
+        "remove": "Aangepaste afbeelding verwijderen",
+        "uploading": "Uploaden…",
+        "failed": "De afbeelding kon niet worden geüpload. Probeer opnieuw.",
+        "useSource": "Artikelafbeelding gebruiken",
+        "shape": "Vorm van de afbeelding",
+        "landscape": "Liggend",
+        "portrait": "Staand",
+        "square": "Vierkant",
+        "horizontal": "Horizontaal focuspunt",
+        "vertical": "Verticaal focuspunt",
+        "focalHint": "Verplaats het focuspunt naar het deel van de afbeelding dat je in de uitsnede wilt behouden.",
+        "caption": "Bijschrift (optioneel)",
+        "credit": "Fotocredit (optioneel)",
+        "alt": "Alternatieve tekst",
+        "altHint": "Beschrijf wat de afbeelding aan het verhaal toevoegt. Laat leeg als de afbeelding decoratief is."
+      }
     },
     "roles": {
       "editor_in_chief": {

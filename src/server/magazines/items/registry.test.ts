@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { IssueReaderAccess } from "@/lib/magazines/access";
+import { newItemImage } from "@/lib/magazines/item-image";
+vi.mock("@/server/db", () => ({ db: {} }));
 
 import type { Deps, PayloadClient } from "../deps";
 import { ISSUE_ITEM_BLOCKS } from "./blocks";
@@ -103,6 +105,62 @@ afterEach(() => {
 });
 
 describe("issue item registry", () => {
+  it.each([
+    { kind: "article", articleId: 3 },
+    { kind: "editorial", body: richText("Hello") },
+    { kind: "storyline", storylineId: "story" },
+    { kind: "newsItem", newsItemId: "news" },
+    { kind: "event", eventId: 3 },
+    { kind: "forumThread", threadId: 3 },
+    { kind: "launchpadProject", projectId: 3 },
+  ])(
+    "keeps issue image metadata through a $kind storage round trip",
+    (input) => {
+      const image = {
+        ...newItemImage("https://example.test/item.jpg"),
+        caption: "Our workshop",
+        shape: "portrait" as const,
+        focalX: 25,
+      };
+      const parsed = issueItemInputSchema.parse({ ...input, image });
+      const stored = toStoredItems([parsed]);
+      expect(stored[0]).toMatchObject({ image });
+      expect(toItemInputs(stored)[0]).toMatchObject({ ...input, image });
+      expect(toStoredItems([{ ...parsed, image: null }])[0]).toMatchObject({
+        image: null,
+      });
+    },
+  );
+
+  it.each(["teaser", "full", "editor"] as const)(
+    "shows issue-owned image metadata only on readable items for %s",
+    async (access) => {
+      const image = newItemImage("https://example.test/item.jpg");
+      const { payload } = fakePayload([{ id: 1, status: "published" }]);
+      const views = await loadIssueItemViews(
+        [
+          { ...articleBlock("a1", 1), image },
+          { ...articleBlock("gone", 2), image },
+        ],
+        ctx(payload, access),
+      );
+      expect(views[0]).toMatchObject({ itemId: "a1", image });
+      if (access === "editor") {
+        expect(views[1]).toMatchObject({ unavailable: true });
+        expect(views[1]).not.toHaveProperty("image");
+      } else expect(views).toHaveLength(1);
+    },
+  );
+
+  it("ignores invalid stored image JSON without hiding the story", async () => {
+    const { payload } = fakePayload([{ id: 1, status: "published" }]);
+    const views = await loadIssueItemViews(
+      [{ ...articleBlock("a1", 1), image: { url: "javascript:alert(1)" } }],
+      ctx(payload, "full"),
+    );
+    expect(views).toHaveLength(1);
+    expect(views[0]).not.toHaveProperty("image");
+  });
   it("has exactly one kind module per block and the same slugs as the Payload blocks", () => {
     expect(Object.keys(ITEM_KINDS)).toEqual(
       ISSUE_ITEM_BLOCKS.map((block) => block.slug),

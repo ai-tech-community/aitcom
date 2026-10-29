@@ -21,6 +21,8 @@ export type ItemRendererProps<K extends ItemKindId> = {
   size: ItemSize;
   href: ArticleHref;
   teaser: ItemTeaser | null;
+  /** A common issue image replaces any image the source renderer would show. */
+  suppressSourceImage?: boolean;
 };
 
 /** The item's title in the issue's contents list, or null when it has none. */

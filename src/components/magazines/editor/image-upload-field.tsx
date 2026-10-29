@@ -33,6 +33,7 @@ export function ImageUploadField({
   uploadAlt,
   renderPreview,
   onUploadingChange,
+  disabled = false,
 }: {
   value: string | null;
   onChange: (url: string | null) => void;
@@ -43,8 +44,11 @@ export function ImageUploadField({
   renderPreview: (url: string) => ReactNode;
   /** Lets a form wait for an upload in progress before it saves. */
   onUploadingChange?: (uploading: boolean) => void;
+  /** An upload may still be active after its original editor was closed. */
+  disabled?: boolean;
 }) {
   const [isUploading, setIsUploading] = useState(false);
+  const busy = disabled || isUploading;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const labelId = useId();
   const buttonId = useId();
@@ -56,6 +60,7 @@ export function ImageUploadField({
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (busy) return;
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
@@ -84,25 +89,26 @@ export function ImageUploadField({
           aria-hidden="true"
           className="sr-only"
           onChange={(e) => void handleFile(e)}
-          disabled={isUploading}
+          disabled={busy}
         />
         <Button
           id={buttonId}
           type="button"
           variant="outline"
           size="sm"
-          disabled={isUploading}
+          disabled={busy}
           aria-labelledby={`${labelId} ${buttonId}`}
           aria-describedby={hintId}
           onClick={() => fileInputRef.current?.click()}
         >
-          {isUploading ? text.uploading : value ? text.replace : text.upload}
+          {busy ? text.uploading : value ? text.replace : text.upload}
         </Button>
         {value && !isUploading && (
           <Button
             type="button"
             variant="ghost"
             size="sm"
+            disabled={disabled}
             onClick={() => onChange(null)}
           >
             {text.remove}
