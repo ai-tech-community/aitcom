@@ -42,3 +42,7 @@ The unused `src/payload-generated-schema.ts` predates magazine support. Leave it
 - The design detector reported eight distinct type-size/scrim values outside the global app tokens. These are documented, value-specific exceptions restricted to the publication CSS. No rule-wide or file-wide suppression was added.
 - Browser visual verification could not run because the browser access host was unavailable. No visual pass is claimed.
 - Migration `20261029a_magazine_font` is prepared and registered, but was not applied. No database writes, integration tiers, full test lanes or pushes were performed.
+
+## PR validation follow-up
+
+CI's full suite exposed two route test imports that lacked mocks for Next's compile-time font loaders. The settings page test now checks that the generated font classes wrap the form; the builder page test renders its tree rather than assuming the builder is a direct child of the hydration provider. Both route files now mock only the font loader boundary. Their 12 focused tests pass, in addition to the 95 component/service tests above. The initial CI build, lint/type-check, formatting and Vercel preview all passed; the two route test imports were the only failing suites.

@@ -12,6 +12,13 @@ const state = vi.hoisted(() => ({
   desk: null as MagazineDesk | null,
   gateCalls: [] as unknown[],
 }));
+// Next compiles font loaders; route unit tests provide their generated classes.
+vi.mock("next/font/google", () => {
+  const font = ({ variable }: { variable: string }) => ({
+    variable: variable.replace(/^--/, ""),
+  });
+  return { Italiana: font, Bodoni_Moda: font, Cormorant_Garamond: font };
+});
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({
   notFound: () => {
@@ -134,6 +141,11 @@ describe("magazine settings page", () => {
       expect(screen.getByTestId("settings")).toHaveAttribute(
         "data-slug",
         "night-owls",
+      );
+      expect(screen.getByTestId("settings").parentElement).toHaveClass(
+        "font-magazine-italiana",
+        "font-magazine-bodoni",
+        "font-magazine-cormorant",
       );
       expect(
         screen.getByRole("link", { name: "Back to the Magazine tab" }),

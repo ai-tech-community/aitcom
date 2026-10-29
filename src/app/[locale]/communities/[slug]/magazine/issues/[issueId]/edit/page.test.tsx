@@ -2,6 +2,8 @@
 // go to sign-in, everyone but an editor of the issue's community gets 404.
 import { createTranslator } from "next-intl";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
+import { renderWithIntl } from "@/components/magazines/test-intl";
 
 import en from "../../../../../../../../../messages/en.json";
 
@@ -11,6 +13,13 @@ const state = vi.hoisted(() => ({
   gateCalls: [] as unknown[],
 }));
 
+// Next compiles font loaders; route unit tests provide their generated classes.
+vi.mock("next/font/google", () => {
+  const font = ({ variable }: { variable: string }) => ({
+    variable: variable.replace(/^--/, ""),
+  });
+  return { Italiana: font, Bodoni_Moda: font, Cormorant_Garamond: font };
+});
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({
   notFound: () => {
@@ -40,7 +49,19 @@ vi.mock("@/server/magazines/issue-editing", () => ({
   },
 }));
 vi.mock("@/components/magazines/editor/builder/issue-builder", () => ({
-  IssueBuilder: () => null,
+  IssueBuilder: ({
+    communitySlug,
+    issueId,
+  }: {
+    communitySlug: string;
+    issueId: number;
+  }) => (
+    <div
+      data-testid="builder"
+      data-community={communitySlug}
+      data-issue={issueId}
+    />
+  ),
 }));
 vi.mock("@/trpc/server", () => ({
   api: {
@@ -102,10 +123,14 @@ describe("issue builder page", () => {
 
   it("renders the builder for an editor", async () => {
     const page = await IssueBuilderPage({ params: params() });
-    // HydrateClient passes the prefetched issue through to the builder.
-    expect(page.props.children.props).toEqual({
-      communitySlug: "night-owls",
-      issueId: 5,
-    });
+    renderWithIntl(page);
+    const builder = screen.getByTestId("builder");
+    expect(builder).toHaveAttribute("data-community", "night-owls");
+    expect(builder).toHaveAttribute("data-issue", "5");
+    expect(builder.parentElement).toHaveClass(
+      "font-magazine-italiana",
+      "font-magazine-bodoni",
+      "font-magazine-cormorant",
+    );
   });
 });
