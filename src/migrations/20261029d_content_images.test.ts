@@ -33,8 +33,8 @@ describe("content image migration", () => {
       "utf8",
     );
     expect(index).toContain('name: "20261029d_content_images"');
-    expect(
-      index.indexOf('name: "20261029b_magazine_item_images"'),
-    ).toBeLessThan(index.indexOf('name: "20261029d_content_images"'));
+    expect(index.indexOf('name: "20261029c_module_cover"')).toBeLessThan(
+      index.indexOf('name: "20261029d_content_images"'),
+    );
   });
 });

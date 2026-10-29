@@ -1,6 +1,14 @@
 import { parseInlineMarkdown } from "@/lib/articles/inline-markdown";
 import { splitMarkdownImages } from "@/lib/articles/markdown-image";
-import { resolveArticleVideo } from "@/lib/articles/video-embed";
+import {
+  resolveArticleVideo,
+  type ArticleVideo,
+} from "@/lib/articles/video-embed";
+import {
+  authorBylineAtReadTime,
+  shownMemberName,
+  type MemberNames,
+} from "@/server/members/display-name";
 
 /**
  * The agent's article body, stored as the editor's document.
@@ -253,6 +261,108 @@ export function agentArticleAuthorName(
     return `${name} (AI agent of ${human})`;
   }
   return `AI agent of ${human}`;
+}
+
+/**
+ * The byline to show. An article an agent wrote is composed from that agent's
+ * current name and the owner's current display name. The stored author name
+ * is not rewritten and is not trusted when the agent is known, so "greg" and
+ * "gregy" cannot diverge across articles by the same agent.
+ */
+export function magazineAgentByline(input: {
+  stored: string | null | undefined;
+  owner: MemberNames | null | undefined;
+  agent: { name: string | null; visibilityMode: string | null } | null;
+}): string | null {
+  if (input.agent) {
+    const human = input.owner
+      ? shownMemberName(input.owner.profileName, input.owner.accountName)
+      : null;
+    return agentArticleAuthorName(human ?? "member", input.agent);
+  }
+  return authorBylineAtReadTime(input.stored, input.owner ?? null);
+}
+
+export type ArticleVideoField = {
+  url: string;
+  provider: ArticleVideo["provider"];
+  kind: ArticleVideo["kind"];
+};
+
+export type ArticleBlockView =
+  | { type: "heading"; level: "h2" | "h3"; text: string }
+  | { type: "paragraph"; text: string }
+  | (ArticleVideoField & { type: "video" });
+
+const BODY_PREVIEW_MAX = 500;
+
+type LexicalNode = {
+  type?: string;
+  tag?: string;
+  text?: string;
+  children?: LexicalNode[];
+  fields?: { url?: unknown; blockType?: unknown };
+};
+
+function lexicalChildren(content: unknown): LexicalNode[] {
+  const children = (content as { root?: { children?: unknown } } | null)?.root
+    ?.children;
+  return Array.isArray(children) ? (children as LexicalNode[]) : [];
+}
+
+function nodeText(node: LexicalNode): string {
+  if (typeof node.text === "string") return node.text;
+  if (!Array.isArray(node.children)) return "";
+  return node.children.map((child) => nodeText(child)).join("");
+}
+
+function videoField(url: string): ArticleVideoField {
+  const video = resolveArticleVideo(url);
+  return {
+    url,
+    provider: video?.provider ?? "link",
+    kind: video?.kind ?? "card",
+  };
+}
+
+/** Video blocks stored on the article, in document order. */
+export function articleVideosOf(content: unknown): ArticleVideoField[] {
+  return articleBlocksOf(content).flatMap((block) =>
+    block.type === "video" ? [block] : [],
+  );
+}
+
+/** Headings, paragraphs, and video blocks. Video is not dropped from the text. */
+export function articleBlocksOf(content: unknown): ArticleBlockView[] {
+  const blocks: ArticleBlockView[] = [];
+  for (const node of lexicalChildren(content)) {
+    if (node.type === "block" && typeof node.fields?.url === "string") {
+      blocks.push({ type: "video", ...videoField(node.fields.url) });
+      continue;
+    }
+    const text = nodeText(node).trim();
+    if (!text) continue;
+    if (node.type === "heading") {
+      blocks.push({
+        type: "heading",
+        level: node.tag === "h3" ? "h3" : "h2",
+        text,
+      });
+      continue;
+    }
+    blocks.push({ type: "paragraph", text });
+  }
+  return blocks;
+}
+
+/** Plain words from the article, shortened for a list. */
+export function articleBodyPreview(content: unknown): string {
+  const text = articleBlocksOf(content)
+    .filter((block) => block.type !== "video")
+    .map((block) => block.text)
+    .join("\n");
+  if (text.length <= BODY_PREVIEW_MAX) return text;
+  return `${text.slice(0, BODY_PREVIEW_MAX).trimEnd()}…`;
 }
 
 /** Fields an agent may create. Status stays a draft; review waits for a person. */

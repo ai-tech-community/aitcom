@@ -34,3 +34,31 @@ it("lists each course's modules and the lessons inside them", () => {
   ]);
   expect(outline.lessons).toEqual([{ id: 22, title: "Welcome", order: 1 }]);
 });
+
+it("groups lessons when course and module ids arrive as numeric strings", () => {
+  const outline = presentClassroomCourse(
+    { id: 14 },
+    [
+      {
+        id: 5,
+        course: "14" as unknown as number,
+        title: "Sounds",
+        order: 0,
+        summary: null,
+      },
+    ],
+    [
+      {
+        id: 26,
+        course: "14" as unknown as number,
+        module: "5" as unknown as number,
+        title: "A0.1 Sounds and spelling",
+        order: 0,
+      },
+    ],
+  );
+  expect(outline.modules[0]?.lessons).toEqual([
+    { id: 26, title: "A0.1 Sounds and spelling", order: 0 },
+  ]);
+  expect(outline.lessons).toEqual([]);
+});

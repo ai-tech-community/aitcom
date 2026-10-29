@@ -23,6 +23,11 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
   const caller = {
     agent: {
       browseMagazines: vi.fn().mockResolvedValue({ magazines: [] }),
+      readMagazineArticle: vi.fn().mockResolvedValue({
+        articleId: 58,
+        status: "published",
+        blocks: [],
+      }),
       saveMagazineArticle: vi.fn().mockResolvedValue({ status: "draft" }),
       markArticleReady: vi.fn().mockResolvedValue({
         ready: false,
@@ -42,6 +47,7 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
   registerMagazineTools(server as never, caller as never);
   expect([...tools.keys()]).toEqual([
     "browse-magazines",
+    "read-magazine-article",
     "save-magazine-article",
     "mark-article-ready",
     "upload-image",
@@ -57,10 +63,17 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
   for (const name of tools.keys()) {
     expect(TOOL_META[name], name).toEqual({
       surface: "magazines",
-      gate: name.startsWith("browse-") ? "read" : "contribute",
+      gate:
+        name.startsWith("browse-") || name.startsWith("read-")
+          ? "read"
+          : "contribute",
     });
     const description = String(tools.get(name)!.config.description);
-    if (name !== "browse-magazines" && name !== "upload-image") {
+    if (
+      !name.startsWith("browse-") &&
+      !name.startsWith("read-") &&
+      name !== "upload-image"
+    ) {
       expect(description.toLowerCase()).toContain("cannot publish");
     }
   }
@@ -70,7 +83,23 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
   expect(
     String(tools.get("save-magazine-issue")!.config.description),
   ).toContain("updatedAt");
+  const issueFields = tools.get("save-magazine-issue")!.config.inputSchema as {
+    expectedUpdatedAt?: { description?: string };
+  };
+  expect(issueFields.expectedUpdatedAt?.description).toMatch(
+    /optimistic concurrency/i,
+  );
+  expect(issueFields.expectedUpdatedAt?.description).toContain(
+    "browse-magazines",
+  );
   expect(tools.get("browse-magazines")!.config.annotations).toEqual(READ_ONLY);
+  expect(tools.get("read-magazine-article")!.config.annotations).toEqual(
+    READ_ONLY,
+  );
+  await tools.get("read-magazine-article")!.run({ articleId: 58 } as never);
+  expect(caller.agent.readMagazineArticle).toHaveBeenCalledWith({
+    articleId: 58,
+  });
   expect(tools.get("save-magazine-article")!.config.annotations).toEqual(
     DRAFT_FOR_REVIEW,
   );

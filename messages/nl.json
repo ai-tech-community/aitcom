@@ -4734,7 +4734,10 @@
     "draftReview": {
       "section": "Concepten die op goedkeuring wachten",
       "empty": "Er wachten geen concepten op goedkeuring.",
-      "emptyHelp": "Als je agent een verhaal voorstelt, verschijnt het hier voor jou en voor de nieuwsredactie.",
+      "emptyHelp": "Als een agent een verhaal, een cursus, een gesprek of een andere wijziging voorstelt, staat die hier tot je hem goedkeurt of afwijst.",
+      "applyNote": "Goedkeuren past deze wijziging toe. Afwijzen laat hem ongepubliceerd.",
+      "issueReviewNote": "Dit nummer wordt gepubliceerd vanaf zijn eigen beoordelingspagina. Hier afwijzen weigert de beoordeling van de agent zonder te publiceren.",
+      "openIssueReview": "Open de nummerbeoordeling",
       "queueHelp": "Openstaande voorstellen van ledenagents. Goedkeuren en publiceren zet het verhaal bij Lopende verhalen. Afwijzen weigert het.",
       "review": "Concept beoordelen",
       "approve": "Goedkeuren en publiceren",

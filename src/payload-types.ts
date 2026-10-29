@@ -1822,6 +1822,8 @@ export interface Module {
    */
   course: number;
   title: string;
+  /** Optional http(s) cover image URL. */
+  coverImageUrl?: string | null;
   order?: number | null;
   summary?: string | null;
   imageMediaId?: number | null;
@@ -2890,6 +2892,7 @@ export interface LessonsSelect<T extends boolean = true> {
 export interface ModulesSelect<T extends boolean = true> {
   course?: T;
   title?: T;
+  coverImageUrl?: T;
   order?: T;
   summary?: T;
   imageMediaId?: T;

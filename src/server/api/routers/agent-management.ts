@@ -60,7 +60,17 @@ import {
   FORUM_THREAD_DRAFT_TYPE,
   forumThreadFromDraft,
 } from "@/server/communities/forum-thread-draft";
+import {
+  applyMagazineArticleUpdate,
+  MAGAZINE_ARTICLE_UPDATE_DRAFT_TYPE,
+  magazineArticleUpdateFromDraft,
+} from "@/server/magazines/magazine-article-update";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
+import {
+  communityOwnerMayReview,
+  listApprovalQueue,
+} from "@/server/agent/approval-queue";
+import { isNewsStaff } from "@/server/news/staff";
 import {
   isBlockedAddress,
   pinnedFetch,
@@ -909,6 +919,13 @@ export const agentManagementRouter = createTRPCRouter({
   // ── Drafts ────────────────────────────────────────────────────────────────
 
   /** Get drafts for the current user, filtered by status. */
+  listApprovalQueue: protectedProcedure.query(async ({ ctx }) => {
+    return listApprovalQueue(ctx.db, {
+      id: ctx.session.user.id,
+      newsStaff: await isNewsStaff(ctx.session.user.email),
+    });
+  }),
+
   getDrafts: protectedProcedure
     .input(
       z.object({
@@ -1011,7 +1028,12 @@ export const agentManagementRouter = createTRPCRouter({
         // Owner-scoped (thread_reply, revival_nudge, feed_post, feed_comment,
         // knowledge_share, challenge_channel_*, and any future owner draft).
         if (existing.ownerId !== userId) {
-          throw new TRPCError({ code: "FORBIDDEN" });
+          const allowed = await communityOwnerMayReview(
+            ctx.db,
+            userId,
+            existing,
+          );
+          if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
         }
       }
 
@@ -1042,6 +1064,11 @@ export const agentManagementRouter = createTRPCRouter({
         existing.type === CLASSROOM_LESSON_DRAFT_TYPE &&
         input.action === "approved"
           ? classroomLessonFromDraft(existing)
+          : undefined;
+      const articleUpdate =
+        existing.type === MAGAZINE_ARTICLE_UPDATE_DRAFT_TYPE &&
+        input.action === "approved"
+          ? magazineArticleUpdateFromDraft(existing)
           : undefined;
       const authorName =
         (await memberDisplayName(ctx.db, userId)) ?? "Community member";
@@ -1297,6 +1324,21 @@ export const agentManagementRouter = createTRPCRouter({
       if (input.action === "approved" && deletion) {
         try {
           await applyApprovedMagazineDelete(await getPayloadClient(), deletion);
+        } catch (error) {
+          await revertDraft();
+          throw error;
+        }
+      }
+      if (
+        input.action === "approved" &&
+        draft.type === MAGAZINE_ARTICLE_UPDATE_DRAFT_TYPE &&
+        articleUpdate
+      ) {
+        try {
+          await applyMagazineArticleUpdate(
+            await getPayloadClient(),
+            articleUpdate,
+          );
         } catch (error) {
           await revertDraft();
           throw error;

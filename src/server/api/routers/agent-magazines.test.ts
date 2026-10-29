@@ -34,6 +34,7 @@ vi.mock("@/server/payload", () => ({
 }));
 vi.mock("@/server/magazines/agent-magazine", () => ({
   browseMagazines: state.browse,
+  readMagazineArticle: vi.fn(),
   saveMagazineArticle: state.saveArticle,
   markArticleReady: state.markReady,
   saveMagazineIssue: state.saveIssue,
@@ -81,6 +82,7 @@ it("exposes no procedure that publishes an issue", () => {
     "deleteMagazineArticle",
     "deleteMagazineIssue",
     "markArticleReady",
+    "readMagazineArticle",
     "saveMagazineArticle",
     "saveMagazineIssue",
     "submitIssueForReview",

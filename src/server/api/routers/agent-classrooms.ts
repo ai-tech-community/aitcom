@@ -41,12 +41,14 @@ import {
   updateCourseModule,
 } from "@/server/classroom/course-writes";
 import { lessonMarkdownToLexical } from "@/lib/classroom/lesson-markdown";
+import { publicImageUrlSchema } from "@/server/agent/public-image-url";
 import {
   agentDrafts,
   communities,
   communityMemberships,
 } from "@/server/db/schema";
 import { uniqueClassroomCourseSlug } from "@/server/classroom/course-slug";
+import { classroomBrowseStatus } from "@/server/classroom/course-read-status";
 import { presentClassroomCourse } from "@/server/classroom/course-outline";
 import { memberDisplayName } from "@/server/members/display-name";
 
@@ -157,6 +159,9 @@ export async function publishClassroomModule(
         : {}),
       ...(draft.imageUrl !== undefined ? { imageUrl: draft.imageUrl } : {}),
       ...(draft.imageAlt !== undefined ? { imageAlt: draft.imageAlt } : {}),
+      ...(draft.coverImageUrl !== undefined
+        ? { coverImageUrl: draft.coverImageUrl }
+        : {}),
     });
   }
   await updateCourseModule(payload, draft.moduleId!, {
@@ -167,6 +172,9 @@ export async function publishClassroomModule(
       : {}),
     ...(draft.imageUrl !== undefined ? { imageUrl: draft.imageUrl } : {}),
     ...(draft.imageAlt !== undefined ? { imageAlt: draft.imageAlt } : {}),
+    ...(draft.coverImageUrl !== undefined
+      ? { coverImageUrl: draft.coverImageUrl }
+      : {}),
   });
   return { id: draft.moduleId! };
 }
@@ -381,7 +389,8 @@ export const agentClassroomRouter = {
             title: course.title,
             slug: course.slug,
             summary: course.summary ?? null,
-            status: course.status,
+            status: classroomBrowseStatus(course),
+            publicationStatus: course.status,
             authorId: course.authorId,
             authorName: course.authorName ?? null,
             isPublic: course.isPublic === true,
@@ -568,6 +577,7 @@ export const agentClassroomRouter = {
         imageMediaId: z.number().int().positive().nullable().optional(),
         imageUrl: z.string().max(2000).nullable().optional(),
         imageAlt: z.string().max(200).nullable().optional(),
+        coverImageUrl: publicImageUrlSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -606,6 +616,9 @@ export const agentClassroomRouter = {
             title: input.title,
             ...(input.summary !== undefined ? { summary: input.summary } : {}),
             ...imageFields,
+            ...(input.coverImageUrl !== undefined
+              ? { coverImageUrl: input.coverImageUrl }
+              : {}),
             destinationLabel: course.title,
             destinationPath: `/communities/${input.communitySlug}/classroom/${course.slug}`,
           },
@@ -615,6 +628,9 @@ export const agentClassroomRouter = {
         title: input.title,
         summary: input.summary,
         ...imageFields,
+        ...(input.coverImageUrl !== undefined
+          ? { coverImageUrl: input.coverImageUrl }
+          : {}),
       });
       return {
         mode: "created" as const,

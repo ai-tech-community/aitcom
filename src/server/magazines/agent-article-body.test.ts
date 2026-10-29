@@ -4,8 +4,12 @@ import { articleReadiness } from "@/lib/articles/readiness";
 
 import {
   agentArticleAuthorName,
+  articleBlocksOf,
+  articleBodyPreview,
   articleBodyText,
   articleBodyToLexical,
+  articleVideosOf,
+  magazineAgentByline,
   magazineArticleCreateData,
   magazineArticlePatch,
 } from "./agent-article-body";
@@ -160,6 +164,50 @@ it("names a visible agent with its human, and still credits a hidden agent", () 
     agentArticleAuthorName("greg", { name: "Scout", visibilityMode: "ghost" }),
   ).toBe("AI agent of greg");
   expect(agentArticleAuthorName("greg", null)).toBe("greg");
+});
+
+it("derives every agent byline from the live agent and the owner's display name", () => {
+  const nova = { name: "Nova", visibilityMode: "visible" };
+  const owner = { profileName: "gregy", accountName: "greg" };
+  expect(
+    magazineAgentByline({
+      stored: "Nova (AI agent of greg)",
+      owner,
+      agent: nova,
+    }),
+  ).toBe("Nova (AI agent of gregy)");
+  expect(
+    magazineAgentByline({
+      stored: "Nova (AI agent of gregy)",
+      owner,
+      agent: nova,
+    }),
+  ).toBe("Nova (AI agent of gregy)");
+  expect(
+    magazineAgentByline({
+      stored: "greg",
+      owner,
+      agent: null,
+    }),
+  ).toBe("gregy");
+});
+
+it("lists video blocks and a plain preview without dropping the video", () => {
+  const content = articleBodyToLexical(
+    "Sam eats breakfast.\n\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  );
+  expect(articleVideosOf(content)).toEqual([
+    expect.objectContaining({
+      type: "video",
+      provider: "youtube",
+      kind: "embed",
+    }),
+  ]);
+  expect(articleBlocksOf(content).map((block) => block.type)).toEqual([
+    "paragraph",
+    "video",
+  ]);
+  expect(articleBodyPreview(content)).toBe("Sam eats breakfast.");
 });
 
 it("an article edit cannot carry a publish or approval field", () => {

@@ -21,6 +21,7 @@ export type ForumThreadDraft = {
   content: string;
   category: ForumThreadCategory;
   communitySlug?: string;
+  communityId?: string;
   /** Address reserved when the draft was saved. Used on approval when still free. */
   slug?: string;
   imageMediaId?: number | null;
@@ -68,6 +69,36 @@ export function threadCommunityId(
   return community.id;
 }
 
+/**
+ * A thread names its community by id, by slug, or by neither (a hub thread).
+ * When both are sent they must name the same community.
+ */
+export function assertThreadCommunity(
+  input: { communityId?: string; communitySlug?: string },
+  community: { id: string; slug: string; name: string } | null,
+): { id: string; slug: string; name: string } | undefined {
+  if (!input.communityId && !input.communitySlug) return undefined;
+  if (!community) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Community not found",
+    });
+  }
+  if (input.communityId && community.id !== input.communityId) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Community not found",
+    });
+  }
+  if (input.communitySlug && community.slug !== input.communitySlug) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "That community id does not match the slug.",
+    });
+  }
+  return community;
+}
+
 export function forumThreadDraftMeta(
   input: ForumThreadDraft & { communityName?: string },
 ) {
@@ -83,6 +114,7 @@ export function forumThreadDraftMeta(
     threadTitle: input.title,
     category: input.category,
     ...(input.slug ? { slug: input.slug } : {}),
+    ...(input.communityId ? { communityId: input.communityId } : {}),
     ...(communitySlug ? { communitySlug } : {}),
     ...(input.imageMediaId !== undefined
       ? { imageMediaId: input.imageMediaId }

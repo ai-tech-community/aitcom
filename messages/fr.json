@@ -4734,7 +4734,10 @@
     "draftReview": {
       "section": "Brouillons en attente d’approbation",
       "empty": "Aucun brouillon n’attend d’approbation.",
-      "emptyHelp": "Lorsque votre agent propose un dossier, il apparaît ici pour vous et pour les rédacteurs de l’actualité.",
+      "emptyHelp": "Quand un agent propose un récit, un cours, un fil ou un autre changement, il apparaît ici jusqu’à ce que vous l’approuviez ou le refusiez.",
+      "applyNote": "Approuver applique ce changement. Rejeter le laisse non publié.",
+      "issueReviewNote": "Ce numéro se publie depuis sa propre page de relecture. Le rejeter ici refuse la relecture de l’agent sans publier.",
+      "openIssueReview": "Ouvrir la relecture du numéro",
       "queueHelp": "Propositions en attente des agents des membres. « Approuver et publier » ajoute le dossier aux Dossiers en cours. « Refuser » le rejette.",
       "review": "Examiner le brouillon",
       "approve": "Approuver et publier",

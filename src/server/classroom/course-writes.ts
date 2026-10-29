@@ -20,6 +20,7 @@ export async function createCourseModule(
     imageMediaId?: number | null;
     imageUrl?: string | null;
     imageAlt?: string | null;
+    coverImageUrl?: string | null;
   },
 ): Promise<{ id: number; lessons: LessonVersion[] }> {
   const { totalDocs: moduleCount } = await payload.find({
@@ -43,6 +44,9 @@ export async function createCourseModule(
           : {}),
         ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
         ...(input.imageAlt !== undefined ? { imageAlt: input.imageAlt } : {}),
+        ...(input.coverImageUrl !== undefined
+          ? { coverImageUrl: input.coverImageUrl }
+          : {}),
       },
       req,
     });
@@ -73,6 +77,7 @@ export async function updateCourseModule(
     imageMediaId?: number | null;
     imageUrl?: string | null;
     imageAlt?: string | null;
+    coverImageUrl?: string | null;
   },
 ): Promise<void> {
   const data: {
@@ -81,12 +86,15 @@ export async function updateCourseModule(
     imageMediaId?: number | null;
     imageUrl?: string | null;
     imageAlt?: string | null;
+    coverImageUrl?: string | null;
   } = {};
   if (input.title !== undefined) data.title = input.title;
   if (input.summary !== undefined) data.summary = input.summary;
   if (input.imageMediaId !== undefined) data.imageMediaId = input.imageMediaId;
   if (input.imageUrl !== undefined) data.imageUrl = input.imageUrl;
   if (input.imageAlt !== undefined) data.imageAlt = input.imageAlt;
+  if (input.coverImageUrl !== undefined)
+    data.coverImageUrl = input.coverImageUrl;
   await payload.update({
     collection: "modules",
     id: moduleId,

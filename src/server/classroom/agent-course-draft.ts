@@ -199,6 +199,7 @@ export type ClassroomModuleDraft = {
   imageMediaId?: number | null;
   imageUrl?: string | null;
   imageAlt?: string | null;
+  coverImageUrl?: string | null;
 };
 
 export function classroomModuleFromDraft(draft: {
@@ -255,6 +256,9 @@ export function classroomModuleFromDraft(draft: {
       : {}),
     ...(meta && "imageAlt" in meta
       ? { imageAlt: draftString(meta.imageAlt) }
+      : {}),
+    ...(meta && "coverImageUrl" in meta
+      ? { coverImageUrl: draftString(meta.coverImageUrl) }
       : {}),
   };
 }
