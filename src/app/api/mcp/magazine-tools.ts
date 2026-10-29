@@ -113,7 +113,7 @@ export function registerMagazineTools(
     "save-magazine-article",
     {
       description:
-        "Create or edit your magazine article draft: title, markdown body and an optional cover image URL from upload-image. A heading line (# or ##) is stored as an H2, and ### as an H3, so the article dialog can see the outline. Requires contribute scope and a claimed owner. The article stays a draft. This tool cannot publish it or approve it. Omit articleId to create; send articleId to edit your own open draft. articleId is the stable document id returned by this tool and by browse-magazines, not a draft version id. Do not invent facts the owner did not supply.",
+        "Create or edit your magazine article draft: title, markdown body and an optional cover image URL from upload-image. A heading line (# or ##) is stored as an H2, and ### as an H3, so the article dialog can see the outline. Requires contribute scope and a claimed owner. The article stays a draft. This tool cannot publish it or approve it. Omit articleId to create; send articleId to edit your own open draft. A published article of yours is saved as a draft until you or the community owner approves it. An article in an issue that is still waiting for review cannot change until that review is approved or rejected. articleId is the stable document id returned by this tool and by browse-magazines, not a draft version id. Do not invent facts the owner did not supply.",
       inputSchema: {
         magazineSlug: z.string().min(1).max(80),
         articleId: z.number().int().positive().optional(),

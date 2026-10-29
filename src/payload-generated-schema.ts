@@ -2532,6 +2532,7 @@ export const modules = pgTable(
     id: serial("id").primaryKey(),
     course: numeric("course", { mode: "number" }).notNull(),
     title: varchar("title").notNull(),
+    coverImageUrl: varchar("cover_image_url"),
     order: numeric("order", { mode: "number" }).default(0),
     summary: varchar("summary"),
     updatedAt: timestamp("updated_at", {

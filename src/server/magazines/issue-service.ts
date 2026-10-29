@@ -37,6 +37,7 @@ import {
   publishPlacedArticles,
 } from "./article-publication";
 import { deleteUnpublishedMagazineArticles } from "./article-submission";
+import { closePendingIssueDrafts } from "./close-issue-drafts";
 import type { Deps, PayloadClient } from "./deps";
 import { magazineError, type MagazineErrorCode } from "./errors";
 import { recordIssueHistory, type HistoryWrite } from "./issue-history";
@@ -743,6 +744,11 @@ export async function publishIssue(
   );
 
   await afterIssuePublished(deps, published);
+  try {
+    await closePendingIssueDrafts(deps.db, published.id);
+  } catch (error) {
+    console.error("[magazines] closing agent issue draft failed", error);
+  }
   return published;
 }
 

@@ -39,12 +39,14 @@ import {
   updateCourseModule,
 } from "@/server/classroom/course-writes";
 import { lessonMarkdownToLexical } from "@/lib/classroom/lesson-markdown";
+import { publicImageUrlSchema } from "@/server/agent/public-image-url";
 import {
   agentDrafts,
   communities,
   communityMemberships,
 } from "@/server/db/schema";
 import { uniqueClassroomCourseSlug } from "@/server/classroom/course-slug";
+import { classroomBrowseStatus } from "@/server/classroom/course-read-status";
 import { presentClassroomCourse } from "@/server/classroom/course-outline";
 import { memberDisplayName } from "@/server/members/display-name";
 import { getPayloadClient } from "@/server/payload";
@@ -151,11 +153,17 @@ export async function publishClassroomModule(
     return createCourseModule(payload, draft.courseId, {
       title: draft.title,
       summary: draft.summary,
+      ...(draft.coverImageUrl !== undefined
+        ? { coverImageUrl: draft.coverImageUrl }
+        : {}),
     });
   }
   await updateCourseModule(payload, draft.moduleId!, {
     title: draft.title,
     ...(draft.summary !== undefined ? { summary: draft.summary } : {}),
+    ...(draft.coverImageUrl !== undefined
+      ? { coverImageUrl: draft.coverImageUrl }
+      : {}),
   });
   return { id: draft.moduleId! };
 }
@@ -370,7 +378,8 @@ export const agentClassroomRouter = {
             title: course.title,
             slug: course.slug,
             summary: course.summary ?? null,
-            status: course.status,
+            status: classroomBrowseStatus(course),
+            publicationStatus: course.status,
             authorId: course.authorId,
             authorName: course.authorName ?? null,
             isPublic: course.isPublic === true,
@@ -554,6 +563,7 @@ export const agentClassroomRouter = {
         courseId: z.number().int().positive(),
         title: z.string().min(1).max(200),
         summary: z.string().max(500).optional(),
+        coverImageUrl: publicImageUrlSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -579,12 +589,19 @@ export const agentClassroomRouter = {
             courseId: course.id,
             title: input.title,
             ...(input.summary !== undefined ? { summary: input.summary } : {}),
+            ...(input.coverImageUrl !== undefined
+              ? { coverImageUrl: input.coverImageUrl }
+              : {}),
             destinationLabel: course.title,
             destinationPath: `/communities/${input.communitySlug}/classroom/${course.slug}`,
           },
         });
       }
-      const created = await createCourseModule(payload, course.id, input);
+      const created = await createCourseModule(payload, course.id, {
+        title: input.title,
+        summary: input.summary,
+        coverImageUrl: input.coverImageUrl,
+      });
       return {
         mode: "created" as const,
         moduleId: created.id,

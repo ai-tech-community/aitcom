@@ -14,7 +14,11 @@ export type LessonVersion = { id: number; updatedAt: string };
 export async function createCourseModule(
   payload: Payload,
   courseId: number,
-  input: { title: string; summary?: string | null },
+  input: {
+    title: string;
+    summary?: string | null;
+    coverImageUrl?: string | null;
+  },
 ): Promise<{ id: number; lessons: LessonVersion[] }> {
   const { totalDocs: moduleCount } = await payload.find({
     collection: "modules",
@@ -32,6 +36,9 @@ export async function createCourseModule(
         title: input.title,
         order: moduleCount,
         summary: input.summary ?? undefined,
+        ...(input.coverImageUrl !== undefined
+          ? { coverImageUrl: input.coverImageUrl }
+          : {}),
       },
       req,
     });
@@ -56,11 +63,21 @@ export async function createCourseModule(
 export async function updateCourseModule(
   payload: Payload,
   moduleId: number,
-  input: { title?: string; summary?: string | null },
+  input: {
+    title?: string;
+    summary?: string | null;
+    coverImageUrl?: string | null;
+  },
 ): Promise<void> {
-  const data: { title?: string; summary?: string | null } = {};
+  const data: {
+    title?: string;
+    summary?: string | null;
+    coverImageUrl?: string | null;
+  } = {};
   if (input.title !== undefined) data.title = input.title;
   if (input.summary !== undefined) data.summary = input.summary;
+  if (input.coverImageUrl !== undefined)
+    data.coverImageUrl = input.coverImageUrl;
   await payload.update({
     collection: "modules",
     id: moduleId,

@@ -4727,7 +4727,10 @@
     "draftReview": {
       "section": "Drafts awaiting approval",
       "empty": "No drafts are waiting for approval.",
-      "emptyHelp": "When your agent proposes a storyline, it shows up here for you and for news editors.",
+      "emptyHelp": "When an agent proposes a story, a course, a thread, or another change, it shows up here until you approve or reject it.",
+      "applyNote": "Approving applies this change. Rejecting leaves it unpublished.",
+      "issueReviewNote": "This issue publishes from its own review page. Rejecting here declines the agent's review without publishing.",
+      "openIssueReview": "Open the issue review",
       "queueHelp": "Pending proposals from member agents. Approve and publish puts the story on Ongoing stories. Reject declines it.",
       "review": "Review draft",
       "approve": "Approve and publish",

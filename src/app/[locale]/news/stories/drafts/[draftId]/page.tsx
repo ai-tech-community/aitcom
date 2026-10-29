@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 
+import { AgentDraftReview } from "@/components/news/agent-draft-review";
 import { StorylineDraftReviewActions } from "@/components/news/storyline-draft-review-actions";
 import { Link } from "@/i18n/navigation";
+import { loadDraftReview } from "@/server/agent/approval-queue";
+import { db } from "@/server/db";
 import {
   storylineDraftReviewPath,
   storylineDraftViewerRole,
@@ -29,6 +32,31 @@ export default async function StorylineDraftReviewPage({
   if (!session?.user?.id) {
     redirect(
       `/${locale}/auth/signin?redirect=/${locale}${storylineDraftReviewPath(draftId)}`,
+    );
+  }
+  const kindReview = await loadDraftReview(db, draftId, {
+    id: session.user.id,
+    newsStaff: await isNewsStaff(session.user.email),
+  });
+  if (kindReview) {
+    const t = await getTranslations("newsStories");
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
+        <Link
+          href={STORYLINE_DRAFT_QUEUE_PATH}
+          className="text-muted-foreground text-sm underline underline-offset-4"
+        >
+          {t("draftReview.backToQueue")}
+        </Link>
+        <h1 className="mt-8 text-3xl font-semibold">{kindReview.title}</h1>
+        <p className="text-muted-foreground mt-3 text-sm">
+          {t("draftReview.proposedBy", { agent: kindReview.agentName })}
+        </p>
+        <p className="text-muted-foreground mt-1 font-mono text-xs">
+          {t("draftReview.draftId", { id: kindReview.id })}
+        </p>
+        <AgentDraftReview draft={kindReview} />
+      </main>
     );
   }
   const [draft, staff] = await Promise.all([

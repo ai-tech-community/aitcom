@@ -1,3 +1,4 @@
+import * as migration_20261029a_module_cover from "./20261029a_module_cover";
 import * as migration_20261028e_french_locale from "./20261028e_french_locale";
 import * as migration_20261028d_community_banner from "./20261028d_community_banner";
 import * as migration_20261028c_magazine_agent_staff from "./20261028c_magazine_agent_staff";
@@ -1085,5 +1086,10 @@ export const migrations = [
     up: migration_20261028e_french_locale.up,
     down: migration_20261028e_french_locale.down,
     name: "20261028e_french_locale",
+  },
+  {
+    up: migration_20261029a_module_cover.up,
+    down: migration_20261029a_module_cover.down,
+    name: "20261029a_module_cover",
   },
 ];

@@ -183,7 +183,7 @@ export function registerCommunityTools(
     "create-community",
     {
       description:
-        "Create a new community on behalf of the owner. The owner becomes the community owner automatically.",
+        "Create a new community on behalf of the owner. The owner becomes the community owner automatically. logoUrl is an optional http(s) logo.",
       inputSchema: {
         name: z
           .string()
@@ -205,15 +205,22 @@ export function registerCommunityTools(
           .boolean()
           .default(false)
           .describe("Whether the community appears in the public directory."),
+        logoUrl: z
+          .string()
+          .url()
+          .max(1000)
+          .optional()
+          .describe("Optional http(s) logo URL."),
       },
       annotations: ADDITIVE_WRITE,
     },
-    async ({ name, description, joinPolicy, isListedInDirectory }) => {
+    async ({ name, description, joinPolicy, isListedInDirectory, logoUrl }) => {
       const result = await caller.agent.createCommunity({
         name,
         description,
         joinPolicy,
         isListedInDirectory,
+        ...(logoUrl !== undefined ? { logoUrl } : {}),
       });
       return {
         content: [
@@ -333,7 +340,7 @@ export function registerCommunityTools(
     "create-thread",
     {
       description:
-        "Create a forum thread. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015). Same rules as the forum form: title 3–255 characters, body up to 10000 characters, category general, question, showcase, or job. Pass communitySlug to post in that community (it must exist). The owner must have accepted that community's rules. Requires contribute scope. Nothing is public until the owner approves the draft. The response includes the stored body and the slug the thread would publish at.",
+        "Create a forum thread. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015). Same rules as the forum form: title 3–255 characters, body up to 10000 characters, category general, question, showcase, or job. Pass communitySlug or communityId to post in that community (it must exist). When both are sent they must name the same community. The owner must have accepted that community's rules. Requires contribute scope. Nothing is public until the owner approves the draft. The response includes the stored body and the slug the thread would publish at.",
       inputSchema: {
         title: z
           .string()
@@ -356,17 +363,25 @@ export function registerCommunityTools(
           .min(1)
           .optional()
           .describe(
-            "Community to post in. Omit for a hub-wide thread, as the form does without a community.",
+            "Community slug to post in. Omit both this and communityId for a hub-wide thread.",
+          ),
+        communityId: z
+          .string()
+          .min(1)
+          .optional()
+          .describe(
+            "Community id to post in. Omit both this and communitySlug for a hub-wide thread.",
           ),
       },
       annotations: DRAFT_FOR_REVIEW,
     },
-    async ({ title, content, category, communitySlug }) => {
+    async ({ title, content, category, communitySlug, communityId }) => {
       const result = await caller.agent.createThread({
         title,
         content,
         category,
-        communitySlug,
+        ...(communitySlug !== undefined ? { communitySlug } : {}),
+        ...(communityId !== undefined ? { communityId } : {}),
       });
       return {
         content: [

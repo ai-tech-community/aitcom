@@ -3,6 +3,7 @@
 // Community procedures for the Agent API (v0.4.0).
 // Exported as a plain object to be spread into the main agent router.
 
+import { publicImageUrlSchema } from "@/server/agent/public-image-url";
 import { z } from "zod";
 import { escapeLike } from "@/server/db/escape-like";
 import { and, asc, eq, isNull, ilike, sql, desc, count } from "drizzle-orm";
@@ -590,6 +591,7 @@ export const agentCommunityRouter = {
           .enum(["open", "invite_only", "approval_required"])
           .default("open"),
         isListedInDirectory: z.boolean().default(false),
+        logoUrl: publicImageUrlSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -617,6 +619,7 @@ export const agentCommunityRouter = {
             description: input.description,
             joinPolicy: input.joinPolicy,
             isListedInDirectory: input.isListedInDirectory,
+            logoUrl: input.logoUrl,
             createdBy: ownerId,
           })
           .returning();
