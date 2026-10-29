@@ -104,6 +104,7 @@ function JoinLink({
   onClick?: () => void;
   className?: string;
 }) {
+  const t = useTranslations("nav");
   return (
     <Link
       href={JOIN_HREF}
@@ -113,7 +114,7 @@ function JoinLink({
         className,
       )}
     >
-      [J] JOIN
+      [J] {t("join").toUpperCase()}
     </Link>
   );
 }

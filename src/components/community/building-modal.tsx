@@ -7,6 +7,7 @@ import {
   useRef,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { useTranslations } from "next-intl";
 import {
   LazyMotion,
   domMax,
@@ -64,6 +65,7 @@ export function BuildingModal({
   onExitComplete,
   children,
 }: BuildingModalProps) {
+  const tCommon = useTranslations("common");
   const isMobile = useIsMobile();
   const [windowState, setWindowState] = useState<WindowState>("normal");
   const [size, setSize] = useState({ w: DEFAULT_WIDTH, h: DEFAULT_HEIGHT });
@@ -254,8 +256,8 @@ export function BuildingModal({
                 <button
                   onClick={onClose}
                   className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors"
-                  aria-label="Close"
-                  title="Close"
+                  aria-label={tCommon("close")}
+                  title={tCommon("close")}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>

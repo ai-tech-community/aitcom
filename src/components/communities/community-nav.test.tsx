@@ -3,17 +3,22 @@ import { render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../messages/en.json";
+import fr from "../../../messages/fr.json";
 
 const m = vi.hoisted(() => ({
   pathname: "/communities/mlops",
   rooms: [] as unknown[],
+  spaces: undefined as unknown[] | undefined,
+  spacesError: true,
 }));
 
 vi.mock("@/trpc/react", () => ({
   api: {
     spaces: {
       // The built-in fallback list: no space rows needed.
-      list: { useQuery: () => ({ data: undefined, isError: true }) },
+      list: {
+        useQuery: () => ({ data: m.spaces, isError: m.spacesError }),
+      },
       listRooms: {
         useQuery: () => ({ data: m.rooms }),
       },
@@ -57,6 +62,8 @@ const LAB = {
 beforeEach(() => {
   m.pathname = "/communities/mlops";
   m.rooms = [LAB];
+  m.spaces = undefined;
+  m.spacesError = true;
 });
 
 describe("CommunityNav", () => {
@@ -113,6 +120,52 @@ describe("CommunityNav", () => {
       .filter((l) => l.getAttribute("aria-current") === "page");
     expect(current).toHaveLength(1);
     expect(current[0]).toHaveTextContent("Lab 2");
+  });
+
+  it("localizes a stored default Events label", () => {
+    m.spacesError = false;
+    m.spaces = [
+      {
+        id: "events",
+        kind: "builtin",
+        builtinSurface: "events",
+        name: "Events",
+        slug: "events",
+      },
+    ];
+    m.rooms = [];
+    render(
+      <NextIntlClientProvider locale="fr" messages={fr}>
+        <CommunityNav slug="ait-demo-studio" memberRole={null} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByRole("link", { name: "Événements" })).toHaveAttribute(
+      "href",
+      "/communities/ait-demo-studio/events",
+    );
+    expect(screen.queryByRole("link", { name: "Events" })).toBeNull();
+  });
+
+  it("keeps a renamed builtin tab in the name the community chose", () => {
+    m.spacesError = false;
+    m.spaces = [
+      {
+        id: "events",
+        kind: "builtin",
+        builtinSurface: "events",
+        name: "Gatherings",
+        slug: "events",
+      },
+    ];
+    m.rooms = [];
+    render(
+      <NextIntlClientProvider locale="fr" messages={fr}>
+        <CommunityNav slug="mlops" memberRole={null} />
+      </NextIntlClientProvider>,
+    );
+    expect(
+      screen.getByRole("link", { name: "Gatherings" }),
+    ).toBeInTheDocument();
   });
 
   it("shows Settings to an owner only", () => {

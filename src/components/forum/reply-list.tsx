@@ -61,7 +61,7 @@ export function ReplyList({
   if (replies.length === 0) {
     return (
       <p className="text-muted-foreground py-6 text-center font-mono text-xs">
-        No replies yet. Be the first to respond.
+        {t("noRepliesYet")}
       </p>
     );
   }

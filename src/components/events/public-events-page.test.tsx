@@ -50,7 +50,10 @@ describe("public events route", () => {
 
   it("restores the fat CMS listing (filters / map / cards), not the thin bar", () => {
     const src = readFileSync(PAGE_FILE, "utf8");
-    expect(src).toContain("EventsFilterBar");
+    expect(src).toContain("EventsListingToolbar");
+    expect(
+      readFileSync(join(dir, "../events-listing-toolbar.tsx"), "utf8"),
+    ).toContain("EventsFilterBar");
     expect(src).toContain("EventsMap");
     expect(src).toContain('collection: "events"');
     expect(src).toContain("discoverySource");

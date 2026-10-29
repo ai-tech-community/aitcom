@@ -81,10 +81,8 @@ export function FeedPage({
                 {t("signInDescription")}
               </p>
             </div>
-            <Button
-              onClick={() => promptAuth("Sign in to see the community feed")}
-            >
-              <LogIn className="h-4 w-4" /> Sign in
+            <Button onClick={() => promptAuth(t("signInTitle"))}>
+              <LogIn className="h-4 w-4" /> {t("signIn")}
             </Button>
           </div>
         ) : !isMember ? (
