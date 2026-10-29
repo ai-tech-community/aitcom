@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { MagazineSettingsForm } from "@/components/magazines/editor/magazine-settings-form";
+import { MagazineFonts } from "@/components/magazines/magazine-fonts";
 import { Link } from "@/i18n/navigation";
 import { resolveLocale } from "@/i18n/messages";
 import {
@@ -65,7 +66,9 @@ export default async function MagazineSettingsPage({
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
       </header>
-      <MagazineSettingsForm slug={slug} showOpenTabLink={false} />
+      <MagazineFonts>
+        <MagazineSettingsForm slug={slug} showOpenTabLink={false} />
+      </MagazineFonts>
     </div>
   );
 }

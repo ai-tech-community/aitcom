@@ -1,9 +1,11 @@
 import { z } from "zod";
+import { itemImageSchema } from "@/lib/magazines/item-image";
 
 /** Builder fields shared by every item kind. */
 export const itemBaseInput = {
   id: z.string().optional(),
   intro: z.string().max(280).optional(),
+  image: itemImageSchema.nullable().optional(),
 };
 
 export function storedIntro(intro: string | undefined): string | null {

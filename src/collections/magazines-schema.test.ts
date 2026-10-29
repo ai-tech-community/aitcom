@@ -44,6 +44,7 @@ describe("magazines collection", () => {
       "communityId",
       "description",
       "logoUrl",
+      "font",
       "topics",
       "defaultVisibility",
       "publicConfirmedBy",
@@ -61,6 +62,16 @@ describe("magazines collection", () => {
       ...ISSUE_VISIBILITIES,
     ]);
     expect(visibility.defaultValue).toBe("members");
+    expect(pick(Magazines.fields, "font")).toMatchObject({
+      type: "select",
+      defaultValue: "italiana",
+      options: [
+        { value: "italiana", label: "Italiana" },
+        { value: "bodoni", label: "Bodoni Moda" },
+        { value: "cormorant", label: "Cormorant Garamond" },
+        { value: "geist", label: "Geist Sans" },
+      ],
+    });
   });
   it("has the staff switch fields", () => {
     expect(pick(Magazines.fields, "listingHidden")).toMatchObject({
@@ -173,6 +184,7 @@ describe("magazine-issues collection", () => {
     ]);
     for (const block of items.blocks!) {
       expect(block.fields[0]?.name).toBe("intro");
+      expect(pick(block.fields, "image").type).toBe("json");
     }
   });
 });

@@ -144,6 +144,25 @@ const UPDATES: FieldUpdate[] = [
       },
     ],
   },
+  {
+    slug: "google-dublin-grange-castle",
+    reason:
+      "The Irish Times reported on 2026-09-28 that An Coimisiún Pleanála granted permission for a 72,400 sq m third-phase extension, overturning South Dublin County Council's August 2024 refusal. The campus row still said operational. No new megawatt figure was stated, so capacity is left as it is.",
+    set: {
+      status: "expanding",
+      description:
+        "Google Cloud europe-west1 region datacenter campus in Profile Park / Grange Castle. On 28 September 2026 The Irish Times reported that An Coimisiún Pleanála granted permission for a 72,400 square metre third-phase extension on the 50-acre site, overturning South Dublin County Council's August 2024 refusal. Conditions include evidence of power-purchase-agreement engagement before development starts, and renewable fuel for the backup generators. The report says a judicial review is still possible. No new megawatt figure was stated, so the existing 72 MW figure is unchanged.",
+    },
+    addSources: [
+      {
+        url: "https://www.irishtimes.com/business/2026/09/28/google-wins-planning-permission-for-dublin-data-centre-extension/",
+        title:
+          "Google wins planning permission for Dublin data centre extension",
+        type: "news",
+        publishedAt: "2026-09-28",
+      },
+    ],
+  },
 ];
 
 // Each pair below is one physical site that was seeded twice under two different

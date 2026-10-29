@@ -3,6 +3,7 @@ import { eventItemKind } from "./event/kind";
 import { z } from "zod";
 
 import { seesEditorLayer } from "@/lib/magazines/access";
+import { readItemImage } from "@/lib/magazines/item-image";
 import type {
   EditorItemView,
   ItemKindId,
@@ -99,6 +100,7 @@ function storeOne<K extends ItemKindId>(
   return {
     blockType: kind,
     ...ITEM_KINDS[kind].toStored(input),
+    ...(input.image !== undefined ? { image: input.image } : {}),
     // Keep a saved item's block id: reading-page anchors and builder keys
     // must survive a save (preflight F5).
     ...(input.id ? { id: input.id } : {}),
@@ -123,7 +125,9 @@ function inputOne<K extends ItemKindId>(
   kind: K,
   block: StoredBlock,
 ): InputOf<K> {
-  return ITEM_KINDS[kind].toInput(asStored<K>(block));
+  const input = ITEM_KINDS[kind].toInput(asStored<K>(block));
+  const image = readItemImage(block.image);
+  return image ? { ...input, image } : input;
 }
 
 /** Payload `items` blocks → builder inputs, in order, block ids kept. */
@@ -245,11 +249,16 @@ async function loadKind<K extends ItemKindId>(
       ctx,
     );
   const shown = new Map<string, EditorItemView>();
+  const blocks = new Map(group.map(({ block }) => [itemIdOf(block), block]));
   for (const [itemId, view] of views) {
+    const image = !isUnavailable(view)
+      ? readItemImage(blocks.get(itemId)?.image)
+      : null;
+    const decorated = image ? { ...view, image } : view;
     if (seesEditorLayer(ctx.access)) {
-      shown.set(itemId, view);
+      shown.set(itemId, decorated);
     } else if (!isUnavailable(view) && strategy.isReadable(view, ctx)) {
-      shown.set(itemId, view);
+      shown.set(itemId, decorated);
     }
   }
   return shown;

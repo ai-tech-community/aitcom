@@ -15,6 +15,7 @@ import { Toaster } from "sonner";
 import { InboxProvider } from "@/components/inbox/inbox-provider";
 import { SpaceWindowProvider } from "@/components/communities/explore/space-window-provider";
 import { SessionChrome } from "@/components/session-chrome";
+import { SiteChromeGate } from "@/components/site-chrome-gate";
 import { RulesProvider } from "@/components/community/rules-provider";
 import { AuthRequiredProvider } from "@/components/auth/auth-required-dialog";
 import { SessionProvider } from "@/components/auth/session-provider";
@@ -92,14 +93,20 @@ export default async function LocaleLayout({
               <AuthRequiredProvider>
                 <ConfirmProvider>
                   <SessionProvider initialUser={initialUser}>
-                    <Navbar initialUser={initialUser} />
+                    <SiteChromeGate>
+                      <Navbar initialUser={initialUser} />
+                    </SiteChromeGate>
                     <InboxProvider>
                       <SpaceWindowProvider>
                         <main className="flex-1">{children}</main>
-                        <FooterGate>
-                          <Footer />
-                        </FooterGate>
-                        <SessionChrome initialUser={initialUser} />
+                        <SiteChromeGate>
+                          <FooterGate>
+                            <Footer />
+                          </FooterGate>
+                        </SiteChromeGate>
+                        <SiteChromeGate>
+                          <SessionChrome initialUser={initialUser} />
+                        </SiteChromeGate>
                       </SpaceWindowProvider>
                     </InboxProvider>
                     <Toaster position="bottom-right" offset={60} />

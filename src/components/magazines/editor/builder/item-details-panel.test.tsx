@@ -13,6 +13,7 @@ vi.mock("@/components/article-editor/rich-text-editor", () => ({
 
 import type { BuilderItem } from "./items-model";
 import { ItemDetailsPanel } from "./item-details-panel";
+import { newItemImage } from "@/lib/magazines/item-image";
 
 const article: BuilderItem = { kind: "article", key: "a", articleId: 7 };
 const editorial: BuilderItem = {
@@ -47,6 +48,22 @@ function IntroHost({
 }
 
 describe("ItemDetailsPanel", () => {
+  it("adds an issue image from the linked article without editing its intro", () => {
+    const onChange = vi.fn();
+    renderWithIntl(
+      <ItemDetailsPanel
+        item={article}
+        kindLabel="Article"
+        sourceImageUrl="https://example.test/source.jpg"
+        onChange={onChange}
+        onDone={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Use article image" }));
+    expect(onChange).toHaveBeenCalledWith({
+      image: newItemImage("https://example.test/source.jpg"),
+    });
+  });
   it("edits the intro line of any item", () => {
     const onChange = vi.fn();
     renderWithIntl(<IntroHost onChange={onChange} />);

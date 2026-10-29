@@ -508,6 +508,10 @@ export interface Magazine {
   communityId: string;
   description?: string | null;
   logoUrl?: string | null;
+  /**
+   * Display font for the magazine masthead and story headings.
+   */
+  font?: ('italiana' | 'bodoni' | 'cormorant' | 'geist') | null;
   topics?:
     | {
         topic?: string | null;
@@ -599,6 +603,18 @@ export interface MagazineIssue {
              * Optional line shown above the item in the issue.
              */
             intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
             article: number | Article;
             id?: string | null;
             blockName?: string | null;
@@ -609,6 +625,18 @@ export interface MagazineIssue {
              * Optional line shown above the item in the issue.
              */
             intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
             heading?: string | null;
             body: {
               root: {
@@ -634,6 +662,18 @@ export interface MagazineIssue {
              * Optional line shown above the item in the issue.
              */
             intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
             storylineId: string;
             id?: string | null;
             blockName?: string | null;
@@ -644,6 +684,18 @@ export interface MagazineIssue {
              * Optional line shown above the item in the issue.
              */
             intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
             newsItemId: string;
             id?: string | null;
             blockName?: string | null;
@@ -654,6 +706,18 @@ export interface MagazineIssue {
              * Optional line shown above the item in the issue.
              */
             intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
             eventId: number;
             id?: string | null;
             blockName?: string | null;
@@ -664,6 +728,18 @@ export interface MagazineIssue {
              * Optional line shown above the item in the issue.
              */
             intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
             threadId: number;
             id?: string | null;
             blockName?: string | null;
@@ -674,6 +750,18 @@ export interface MagazineIssue {
              * Optional line shown above the item in the issue.
              */
             intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
             projectId: number;
             id?: string | null;
             blockName?: string | null;
@@ -2822,6 +2910,7 @@ export interface MagazinesSelect<T extends boolean = true> {
   communityId?: T;
   description?: T;
   logoUrl?: T;
+  font?: T;
   topics?:
     | T
     | {
@@ -2868,6 +2957,7 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
           | T
           | {
               intro?: T;
+              image?: T;
               article?: T;
               id?: T;
               blockName?: T;
@@ -2876,6 +2966,7 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
           | T
           | {
               intro?: T;
+              image?: T;
               heading?: T;
               body?: T;
               id?: T;
@@ -2885,6 +2976,7 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
           | T
           | {
               intro?: T;
+              image?: T;
               storylineId?: T;
               id?: T;
               blockName?: T;
@@ -2893,6 +2985,7 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
           | T
           | {
               intro?: T;
+              image?: T;
               newsItemId?: T;
               id?: T;
               blockName?: T;
@@ -2901,6 +2994,7 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
           | T
           | {
               intro?: T;
+              image?: T;
               eventId?: T;
               id?: T;
               blockName?: T;
@@ -2909,6 +3003,7 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
           | T
           | {
               intro?: T;
+              image?: T;
               threadId?: T;
               id?: T;
               blockName?: T;
@@ -2917,6 +3012,7 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
           | T
           | {
               intro?: T;
+              image?: T;
               projectId?: T;
               id?: T;
               blockName?: T;
