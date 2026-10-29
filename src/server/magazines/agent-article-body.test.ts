@@ -16,7 +16,9 @@ it("keeps the agent's words and does not store blank lines as empty paragraphs",
   );
   expect(lexical.root.children).toHaveLength(5);
   expect(
-    lexical.root.children.every((paragraph) => paragraph.children.length > 0),
+    lexical.root.children.every(
+      (node) => node.type !== "paragraph" || node.children.length > 0,
+    ),
   ).toBe(true);
   expect(articleBodyText(lexical)).toBe(
     "First line\nThird line stays\n[!INFO] Good to know\n- one\n- two",
@@ -54,6 +56,65 @@ it("stores markdown headings as H2 and H3 nodes and keeps the intro", () => {
     { tag: "h2", text: "Days 1-7: Sounds" },
     { tag: "h3", text: "A finer point" },
   ]);
+});
+
+it("stores markdown links and emphasis as links and marks", () => {
+  const lexical = articleBodyToLexical(
+    "Watch [Sam](https://schooltv.nl/video-item/sam) eat *ontbijt* and **brood**.",
+  );
+  const first = lexical.root.children[0];
+  expect(first?.type).toBe("paragraph");
+  if (first?.type !== "paragraph") return;
+  expect(first.children).toEqual([
+    expect.objectContaining({ type: "text", text: "Watch ", format: 0 }),
+    expect.objectContaining({
+      type: "link",
+      fields: {
+        url: "https://schooltv.nl/video-item/sam",
+        newTab: true,
+        linkType: "custom",
+      },
+      children: [expect.objectContaining({ text: "Sam" })],
+    }),
+    expect.objectContaining({ type: "text", text: " eat ", format: 0 }),
+    expect.objectContaining({ type: "text", text: "ontbijt", format: 2 }),
+    expect.objectContaining({ type: "text", text: " and ", format: 0 }),
+    expect.objectContaining({ type: "text", text: "brood", format: 1 }),
+    expect.objectContaining({ type: "text", text: ".", format: 0 }),
+  ]);
+  expect(articleBodyText(lexical)).toBe("Watch Sam eat ontbijt and brood.");
+});
+
+it("stores a YouTube line and videoUrl as one embed block", () => {
+  const lexical = articleBodyToLexical(
+    "Sam eats breakfast.\n\nhttps://youtu.be/dQw4w9WgXcQ",
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  );
+  const videos = lexical.root.children.filter((node) => node.type === "block");
+  expect(videos).toHaveLength(1);
+  expect(videos[0]).toMatchObject({
+    type: "block",
+    fields: { blockType: "Video", url: "https://youtu.be/dQw4w9WgXcQ" },
+  });
+  expect(articleBodyText(lexical)).toBe("Sam eats breakfast.");
+});
+
+it("appends a Schooltv video on edit and cannot publish", () => {
+  const existing = articleBodyToLexical("Hello\n\n## Sounds");
+  const patch = magazineArticlePatch({
+    videoUrl: "https://schooltv.nl/video-item/sam",
+    existingContent: existing,
+  });
+  expect(patch).not.toHaveProperty("status");
+  expect(patch).not.toHaveProperty("reviewStatus");
+  expect(patch.content?.root.children.map((node) => node.type)).toEqual([
+    "paragraph",
+    "heading",
+    "block",
+  ]);
+  expect(patch.content?.root.children.at(-1)).toMatchObject({
+    fields: { blockType: "Video", url: "https://schooltv.nl/video-item/sam" },
+  });
 });
 
 it("creates a draft article and does not approve or publish it", () => {

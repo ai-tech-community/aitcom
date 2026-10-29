@@ -60,8 +60,11 @@ import { HorizontalRulePlugin } from "@payloadcms/richtext-lexical/lexical/react
 import { CheckListPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalCheckListPlugin";
 import { LinkPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalLinkPlugin";
 
+import { $insertVideoBlock } from "./article-paste";
+import { ArticlePastePlugin } from "./article-paste-plugin";
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
+import { VideoNode } from "./nodes/video-node";
 import { $createAdmonitionNode, AdmonitionNode } from "./nodes/admonition-node";
 import { $insertTopLevel } from "./insert-top-level";
 import { renderLexicalDocument } from "@/lib/lexical-view";
@@ -240,6 +243,7 @@ export function ArticleEditor({
         HorizontalRuleNode,
         CodeBlockNode,
         ImageNode,
+        VideoNode,
         AdmonitionNode,
       ],
       editorState: initialData?.content
@@ -590,6 +594,14 @@ export function ArticleEditor({
         slashDispatch({ type: "CLOSE" });
         return;
       }
+      if (id === "video") {
+        editorRef.focus();
+        editorRef.update(() => {
+          $insertVideoBlock("");
+        });
+        slashDispatch({ type: "CLOSE" });
+        return;
+      }
       if (id === "admonition-info") {
         editorRef.update(() => {
           const body = $createParagraphNode();
@@ -788,6 +800,15 @@ export function ArticleEditor({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => executeSlashCommand("video")}
+              disabled={!editorRef || previewing}
+              className="border-border hover:bg-accent rounded border px-3 py-1.5 font-mono text-xs tracking-wider transition-colors disabled:opacity-40"
+            >
+              {t("insertVideo")}
+            </button>
+            <button
+              type="button"
               aria-pressed={previewing}
               onClick={() => setPreviewing((on) => !on)}
               className="border-border hover:bg-accent rounded border px-3 py-1.5 font-mono text-xs tracking-wider transition-colors"
@@ -851,6 +872,7 @@ export function ArticleEditor({
           <HorizontalRulePlugin />
           <CheckListPlugin />
           <LinkPlugin />
+          <ArticlePastePlugin />
           <OnChangePlugin onChange={handleEditorChange} />
           <BlockHandles editor={editorRef} anchorElem={editorAnchor} />
         </LexicalComposer>

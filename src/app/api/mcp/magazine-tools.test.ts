@@ -71,6 +71,9 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
   expect(tools.get("save-magazine-article")!.config.annotations).toEqual(
     DRAFT_FOR_REVIEW,
   );
+  expect(
+    String(tools.get("save-magazine-article")!.config.description),
+  ).toContain("videoUrl");
   expect(tools.get("upload-image")!.config.annotations).toEqual(ADDITIVE_WRITE);
   expect(tools.get("save-magazine-issue")!.config.annotations).toEqual(
     DRAFT_FOR_REVIEW,

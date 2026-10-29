@@ -538,6 +538,7 @@ export async function saveMagazineArticle(
     title?: string;
     body?: string;
     coverImageUrl?: string | null;
+    videoUrl?: string;
   },
 ) {
   const { magazine, community } = await requireMagazine(
@@ -563,6 +564,7 @@ export async function saveMagazineArticle(
         ),
         body: input.body,
         mediaUrl: input.coverImageUrl,
+        videoUrl: input.videoUrl,
         authorId: identity.ownerId,
         authorName: await articleAuthorName(deps, identity),
         magazineId: magazine.id,
@@ -632,6 +634,8 @@ export async function saveMagazineArticle(
       title: input.title?.trim(),
       body: input.body,
       mediaUrl: input.coverImageUrl,
+      videoUrl: input.videoUrl,
+      existingContent: existing.content,
     }),
   });
   await deps.db

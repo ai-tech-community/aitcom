@@ -80,6 +80,19 @@ export const agentMagazineRouter = {
         title: z.string().trim().min(1).max(200).optional(),
         body: z.string().min(1).max(50_000).optional(),
         coverImageUrl: httpUrl.nullable().optional(),
+        videoUrl: z
+          .string()
+          .url()
+          .max(2000)
+          .refine(
+            (value) =>
+              value.startsWith("https://") || value.startsWith("http://"),
+            { message: "Use an http(s) video URL" },
+          )
+          .optional()
+          .describe(
+            "Page URL stored as a video block. YouTube and Vimeo play inline. Schooltv and other pages become a link card.",
+          ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
