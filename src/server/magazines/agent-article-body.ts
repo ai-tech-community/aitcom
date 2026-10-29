@@ -1,4 +1,5 @@
 import { parseInlineMarkdown } from "@/lib/articles/inline-markdown";
+import { splitMarkdownImages } from "@/lib/articles/markdown-image";
 import { resolveArticleVideo } from "@/lib/articles/video-embed";
 
 /**
@@ -92,6 +93,20 @@ function videoBlockId(): string {
   return crypto.randomUUID().replace(/-/g, "").slice(0, 12);
 }
 
+function imageBlockNode(url: string, alt: string) {
+  return {
+    type: "block" as const,
+    version: 1,
+    fields: {
+      id: videoBlockId(),
+      blockType: "Image" as const,
+      blockName: "",
+      src: url,
+      alt,
+    },
+  };
+}
+
 function videoBlockNode(url: string) {
   return {
     type: "block" as const,
@@ -108,7 +123,8 @@ function videoBlockNode(url: string) {
 type ArticleChild =
   | ReturnType<typeof paragraphNode>
   | ReturnType<typeof headingNode>
-  | ReturnType<typeof videoBlockNode>;
+  | ReturnType<typeof videoBlockNode>
+  | ReturnType<typeof imageBlockNode>;
 
 function videoIdentity(url: string): string {
   const resolved = resolveArticleVideo(url);
@@ -118,7 +134,7 @@ function videoIdentity(url: string): string {
 
 function blockUrl(node: {
   type?: string;
-  fields?: { url?: unknown };
+  fields?: Record<string, unknown>;
 }): string | null {
   if (node.type !== "block" || typeof node.fields?.url !== "string")
     return null;
@@ -132,6 +148,27 @@ function standaloneVideoLine(trimmed: string): string | null {
   if (!video) return null;
   if (video.kind === "embed" || video.provider === "schooltv") return trimmed;
   return null;
+}
+
+/** A line of text, with `![alt](https://...)` stored as image blocks. */
+function nodesForLine(line: string): ArticleChild[] {
+  const segments = splitMarkdownImages(line);
+  const nodes: ArticleChild[] = [];
+  let text = "";
+  const flush = () => {
+    if (text.trim().length > 0) nodes.push(paragraphNode(text));
+    text = "";
+  };
+  for (const segment of segments) {
+    if (segment.kind === "text") {
+      text += segment.text;
+      continue;
+    }
+    flush();
+    nodes.push(imageBlockNode(segment.url, segment.alt));
+  }
+  flush();
+  return nodes.length > 0 ? nodes : [paragraphNode(line)];
 }
 
 function pushVideo(children: ArticleChild[], url: string) {
@@ -160,7 +197,7 @@ export function articleBodyToLexical(body: string, videoUrl?: string) {
       pushVideo(children, video);
       continue;
     }
-    children.push(paragraphNode(line));
+    children.push(...nodesForLine(line));
   }
   if (videoUrl) pushVideo(children, videoUrl);
   if (children.length === 0) children.push(paragraphNode(""));

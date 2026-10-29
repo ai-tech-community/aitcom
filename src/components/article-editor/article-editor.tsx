@@ -67,6 +67,7 @@ import { ImageNode, $createImageNode } from "./nodes/image-node";
 import { VideoNode } from "./nodes/video-node";
 import { $createAdmonitionNode, AdmonitionNode } from "./nodes/admonition-node";
 import { $insertTopLevel } from "./insert-top-level";
+import { httpsImageUrl } from "@/lib/articles/markdown-image";
 import { renderLexicalDocument } from "@/lib/lexical-view";
 import type {
   ArticleEditorProps,
@@ -187,6 +188,10 @@ export function ArticleEditor({
   const [editorRef, setEditorRef] = useState<LexicalEditor | null>(null);
   const [editorAnchor, setEditorAnchor] = useState<HTMLDivElement | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  const [imageFormOpen, setImageFormOpen] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [imageAltInput, setImageAltInput] = useState("");
+  const [imageUrlError, setImageUrlError] = useState(false);
 
   const autosaveTimer = useRef<NodeJS.Timeout | null>(null);
   const serializeTimer = useRef<NodeJS.Timeout | null>(null);
@@ -648,6 +653,22 @@ export function ArticleEditor({
     [editorRef, insertParagraphText],
   );
 
+  const insertImage = useCallback(() => {
+    const url = httpsImageUrl(imageUrlInput);
+    if (!url || !editorRef) {
+      setImageUrlError(true);
+      return;
+    }
+    editorRef.focus();
+    editorRef.update(() => {
+      $insertTopLevel([$createImageNode(url, imageAltInput.trim())]);
+    });
+    setImageFormOpen(false);
+    setImageUrlInput("");
+    setImageAltInput("");
+    setImageUrlError(false);
+  }, [editorRef, imageAltInput, imageUrlInput]);
+
   const filteredSlashCommands = useMemo(
     () => filterSlashCommands(slash.query),
     [slash.query],
@@ -801,6 +822,19 @@ export function ArticleEditor({
             <button
               type="button"
               onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                setImageFormOpen((open) => !open);
+                setImageUrlError(false);
+              }}
+              disabled={!editorRef || previewing}
+              aria-expanded={imageFormOpen}
+              className="border-border hover:bg-accent rounded border px-3 py-1.5 font-mono text-xs tracking-wider transition-colors disabled:opacity-40"
+            >
+              {t("insertImage")}
+            </button>
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => executeSlashCommand("video")}
               disabled={!editorRef || previewing}
               className="border-border hover:bg-accent rounded border px-3 py-1.5 font-mono text-xs tracking-wider transition-colors disabled:opacity-40"
@@ -826,6 +860,54 @@ export function ArticleEditor({
         </div>
       </div>
 
+      {imageFormOpen && !previewing && (
+        <form
+          className="border-border mt-3 flex flex-wrap items-end gap-2 border-b pb-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            insertImage();
+          }}
+        >
+          <label className="flex min-w-48 flex-1 flex-col gap-1">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
+              {t("imageUrl")}
+            </span>
+            <input
+              aria-label={t("imageUrl")}
+              value={imageUrlInput}
+              onChange={(event) => {
+                setImageUrlInput(event.target.value);
+                setImageUrlError(false);
+              }}
+              placeholder="https://..."
+              className="border-border rounded border bg-transparent px-2 py-1.5 text-sm focus:outline-none"
+            />
+          </label>
+          <label className="flex w-48 flex-col gap-1">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
+              {t("imageAlt")}
+            </span>
+            <input
+              aria-label={t("imageAlt")}
+              value={imageAltInput}
+              onChange={(event) => setImageAltInput(event.target.value)}
+              className="border-border rounded border bg-transparent px-2 py-1.5 text-sm focus:outline-none"
+            />
+          </label>
+          <button
+            type="submit"
+            className="border-border hover:bg-accent rounded border px-3 py-1.5 font-mono text-xs tracking-wider"
+          >
+            {t("insertImageConfirm")}
+          </button>
+          {imageUrlError && (
+            <p className="w-full text-xs text-red-400">
+              {t("imageUrlInvalid")}
+            </p>
+          )}
+        </form>
+      )}
+
       {/* Borderless title */}
       {previewing ? (
         <h1 className="mt-8 text-3xl leading-tight font-semibold tracking-tight">
@@ -844,6 +926,37 @@ export function ArticleEditor({
           }
           placeholder={t("articleTitlePlaceholder")}
           className="placeholder:text-muted-foreground/40 mt-8 w-full bg-transparent text-3xl leading-tight font-semibold tracking-tight focus:outline-none"
+        />
+      )}
+
+      {!previewing && (
+        <label className="mt-4 flex flex-col gap-1">
+          <span className="text-muted-foreground font-mono text-xs tracking-wider">
+            {t("coverImage")}
+          </span>
+          <input
+            aria-label={t("coverImage")}
+            value={mediaUrl}
+            onChange={(event) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "mediaUrl",
+                payload: event.target.value,
+              })
+            }
+            placeholder="https://..."
+            className="border-border rounded border bg-transparent px-2 py-1.5 text-sm focus:outline-none"
+          />
+        </label>
+      )}
+      {previewing && httpsImageUrl(mediaUrl) && (
+        // eslint-disable-next-line @next/next/no-img-element -- arbitrary cover hosts
+        <img
+          src={httpsImageUrl(mediaUrl) ?? ""}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="mt-8 h-auto w-full rounded"
         />
       )}
 

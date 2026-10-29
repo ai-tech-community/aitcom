@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 describe("content image migration", () => {
   const source = readFileSync(
-    join(process.cwd(), "src/migrations/20261029b_content_images.ts"),
+    join(process.cwd(), "src/migrations/20261029c_content_images.ts"),
     "utf8",
   );
 
@@ -27,6 +27,6 @@ describe("content image migration", () => {
       join(process.cwd(), "src/migrations/index.ts"),
       "utf8",
     );
-    expect(index).toContain('name: "20261029b_content_images"');
+    expect(index).toContain('name: "20261029c_content_images"');
   });
 });
