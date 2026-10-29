@@ -12,6 +12,7 @@ export type MagazineArticleUpdate = {
   title?: string;
   body?: string;
   coverImageUrl?: string | null;
+  videoUrl?: string;
 };
 
 export function magazineArticleUpdateFromDraft(draft: {
@@ -31,6 +32,7 @@ export function magazineArticleUpdateFromDraft(draft: {
   const title = meta?.title;
   const body = meta?.body;
   const coverImageUrl = meta?.coverImageUrl;
+  const videoUrl = meta?.videoUrl;
   if (title !== undefined && typeof title !== "string") {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -53,6 +55,12 @@ export function magazineArticleUpdateFromDraft(draft: {
       message: "This article draft has no usable cover.",
     });
   }
+  if (videoUrl !== undefined && typeof videoUrl !== "string") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This article draft has no usable video.",
+    });
+  }
   return {
     articleId,
     ...(typeof title === "string" ? { title } : {}),
@@ -60,6 +68,7 @@ export function magazineArticleUpdateFromDraft(draft: {
     ...(coverImageUrl === null || typeof coverImageUrl === "string"
       ? { coverImageUrl }
       : {}),
+    ...(typeof videoUrl === "string" ? { videoUrl } : {}),
   };
 }
 
@@ -82,6 +91,8 @@ export async function applyMagazineArticleUpdate(
       title: update.title,
       body: update.body,
       mediaUrl: update.coverImageUrl,
+      videoUrl: update.videoUrl,
+      existingContent: article.content,
     }),
   });
 }

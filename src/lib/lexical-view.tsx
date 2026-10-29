@@ -1,6 +1,12 @@
 import React from "react";
 import { slugify } from "@/lib/text-utils";
 
+import { VideoFrame } from "@/components/article-editor/nodes/video-frame";
+import {
+  hasInlineMarkdown,
+  parseInlineMarkdown,
+} from "@/lib/articles/inline-markdown";
+
 import { extractPlainText } from "./lexical-text";
 import {
   admonitionBorderClass,
@@ -34,9 +40,8 @@ type LexicalRoot = {
   root?: { children?: LexicalNode[] };
 };
 
-function renderText(node: LexicalNode): React.ReactNode {
-  const fmt = node.format ?? 0;
-  let el: React.ReactNode = node.text ?? "";
+function applyFormat(text: string, fmt: number): React.ReactNode {
+  let el: React.ReactNode = text;
   if (fmt & 16)
     el = (
       <code className="bg-muted rounded px-1 py-0.5 font-mono text-sm">
@@ -48,6 +53,38 @@ function renderText(node: LexicalNode): React.ReactNode {
   if (fmt & 4) el = <s>{el}</s>;
   if (fmt & 8) el = <u>{el}</u>;
   return el;
+}
+
+/**
+ * Stored agent markdown (`[text](url)`, `*italic*`) renders as a link or
+ * mark. The document is not rewritten.
+ */
+function renderText(node: LexicalNode): React.ReactNode {
+  const fmt = node.format ?? 0;
+  const raw = node.text ?? "";
+  if ((fmt & 16) === 0 && raw && hasInlineMarkdown(raw)) {
+    return parseInlineMarkdown(raw).map((piece, index) => {
+      if (piece.kind === "link") {
+        return (
+          <a
+            key={index}
+            href={piece.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline underline-offset-4 hover:opacity-80"
+          >
+            {applyFormat(piece.text, fmt)}
+          </a>
+        );
+      }
+      return (
+        <React.Fragment key={index}>
+          {applyFormat(piece.text, fmt | piece.format)}
+        </React.Fragment>
+      );
+    });
+  }
+  return applyFormat(raw, fmt);
 }
 
 /** Renderers for Payload blocks this renderer doesn't know (keyed by blockType). */
@@ -257,6 +294,14 @@ function renderNode(
             <code>{code}</code>
           </pre>
         );
+      }
+      if (
+        node.fields?.blockType === "Video" &&
+        typeof node.fields.url === "string"
+      ) {
+        const videoUrl = node.fields.url;
+        if (!videoUrl.trim()) return null;
+        return <VideoFrame key={idx} url={videoUrl} />;
       }
       if (node.fields?.blockType === "Image" && node.fields.src) {
         const imgSrc = node.fields.src;

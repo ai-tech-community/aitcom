@@ -150,11 +150,13 @@ export function preprocessEditorState(
       id?: string;
       src?: string;
       alt?: string;
+      url?: string;
       blockName?: string;
     };
     children?: MutableSerializedNode[];
     src?: string;
     alt?: string;
+    url?: string;
   };
   type MutableSerializedState = {
     root?: {
@@ -171,6 +173,9 @@ export function preprocessEditorState(
       }
       if (node.type === "block" && node.fields?.blockType === "Image") {
         node.type = "image"; // remap for our ImageNode
+      }
+      if (node.type === "block" && node.fields?.blockType === "Video") {
+        node.type = "video";
       }
       const mapped =
         node.type === "block"
@@ -205,11 +210,13 @@ export function postprocessEditorState(
       id?: string;
       src?: string;
       alt?: string;
+      url?: string;
       blockName?: string;
     };
     children?: MutableSerializedNode[];
     src?: string;
     alt?: string;
+    url?: string;
   };
   type MutableSerializedState = {
     root?: {
@@ -239,6 +246,20 @@ export function postprocessEditorState(
           };
           delete node.src;
           delete node.alt;
+        }
+      }
+      if (node.type === "video") {
+        node.type = "block";
+        if (!node.fields?.blockType) {
+          node.fields = {
+            id:
+              node.fields?.id ??
+              crypto.randomUUID().replace(/-/g, "").substring(0, 12),
+            blockType: "Video",
+            url: node.fields?.url ?? node.url ?? "",
+            blockName: "",
+          };
+          delete node.url;
         }
       }
       if (extra.some((e) => e.nodeType === node.type)) node.type = "block";

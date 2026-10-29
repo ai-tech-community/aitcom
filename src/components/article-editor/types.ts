@@ -151,6 +151,12 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     keywords: ["image", "picture", "photo", "img"],
   },
   {
+    id: "video",
+    label: "Video",
+    group: "Basic",
+    keywords: ["video", "youtube", "vimeo", "embed", "schooltv"],
+  },
+  {
     id: "code",
     label: "Code Block",
     group: "Technical",

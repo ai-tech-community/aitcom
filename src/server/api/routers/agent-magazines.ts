@@ -14,6 +14,7 @@ import { uploadMagazineImage } from "@/server/magazines/agent-image";
 import {
   browseMagazines,
   markArticleReady,
+  readMagazineArticle,
   saveMagazineArticle,
   saveMagazineIssue,
   submitAgentIssue,
@@ -72,6 +73,17 @@ export const agentMagazineRouter = {
       );
     }),
 
+  readMagazineArticle: agentProcedure
+    .input(z.object({ articleId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+      return readMagazineArticle(
+        await depsOf(ctx),
+        { agentId: ctx.agent.agentId, ownerId: ctx.agent.ownerId },
+        input.articleId,
+      );
+    }),
+
   saveMagazineArticle: agentProcedure
     .input(
       z.object({
@@ -80,6 +92,19 @@ export const agentMagazineRouter = {
         title: z.string().trim().min(1).max(200).optional(),
         body: z.string().min(1).max(50_000).optional(),
         coverImageUrl: httpUrl.nullable().optional(),
+        videoUrl: z
+          .string()
+          .url()
+          .max(2000)
+          .refine(
+            (value) =>
+              value.startsWith("https://") || value.startsWith("http://"),
+            { message: "Use an http(s) video URL" },
+          )
+          .optional()
+          .describe(
+            "Page URL stored as a video block. YouTube and Vimeo play inline. Schooltv and other pages become a link card.",
+          ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
