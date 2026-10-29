@@ -164,6 +164,7 @@ function NavGroupMenu({
   surface,
   pathname,
   open,
+  onOpen,
   onToggle,
   onOpenAt,
   onClose,
@@ -174,6 +175,7 @@ function NavGroupMenu({
   surface: "desktop" | "mobile";
   pathname: string;
   open: boolean;
+  onOpen: () => void;
   onToggle: () => void;
   onOpenAt: (index: number) => void;
   onClose: () => void;
@@ -186,6 +188,35 @@ function NavGroupMenu({
   const active = group.items.some((item) =>
     isNavHrefActive(pathname, item.href),
   );
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function cancelHoverClose() {
+    if (closeTimer.current !== null) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }
+
+  useEffect(() => cancelHoverClose, [open]);
+
+  function onPointerEnter(event: React.PointerEvent<HTMLDivElement>) {
+    if (surface !== "desktop" || event.pointerType !== "mouse") return;
+    cancelHoverClose();
+    onOpen();
+  }
+
+  function onPointerLeave(event: React.PointerEvent<HTMLDivElement>) {
+    if (surface !== "desktop" || event.pointerType !== "mouse" || !open) return;
+    cancelHoverClose();
+    const wrapper = event.currentTarget;
+    // Leave a little time to cross the gap into the panel. Keyboard focus
+    // keeps the menu open even when the pointer moves elsewhere.
+    closeTimer.current = setTimeout(() => {
+      closeTimer.current = null;
+      if (!wrapper.contains(document.activeElement)) onClose();
+    }, 150);
+  }
+
   function onTriggerKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -229,6 +260,18 @@ function NavGroupMenu({
   return (
     <div
       data-nav-popover={panelId}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      onBlur={(event) => {
+        if (
+          surface === "desktop" &&
+          open &&
+          !event.currentTarget.contains(event.relatedTarget)
+        ) {
+          cancelHoverClose();
+          onClose();
+        }
+      }}
       className={cn(
         "relative flex items-center",
         surface === "desktop" ? "h-12" : "w-full flex-col items-stretch",
@@ -355,6 +398,7 @@ function SiteNavSections({
             surface={surface}
             pathname={pathname}
             open={openMenu === id}
+            onOpen={() => setOpenMenu(id)}
             onToggle={() => setOpenMenu(openMenu === id ? null : id)}
             onOpenAt={(index) => focusItem(id, index)}
             onClose={() => setOpenMenu(null)}
@@ -444,8 +488,15 @@ export function Navbar({
       }
       setOpenMenu(null);
     }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpenMenu(null);
+    }
     document.addEventListener("mousedown", onMouseDown);
-    return () => document.removeEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [openMenu]);
 
   useEffect(() => {

@@ -1,10 +1,10 @@
 // The top navigation: every destination is a link in the menu, and each
 // one-letter shortcut opens its page. Group menus keep those links in the
 // server HTML even while they are closed.
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import en from "../../messages/en.json";
 import nl from "../../messages/nl.json";
@@ -70,12 +70,154 @@ function mainNav() {
   return screen.getByRole("navigation", { name: en.nav.primaryNav });
 }
 
+function pointerEvent(
+  target: Element,
+  type: "pointerover" | "pointerout",
+  pointerType = "mouse",
+  relatedTarget: EventTarget | null = null,
+) {
+  const event = new MouseEvent(type, { bubbles: true, relatedTarget });
+  Object.defineProperty(event, "pointerType", { value: pointerType });
+  fireEvent(target, event);
+}
+
 beforeEach(() => {
   router.push.mockReset();
   path.value = "/";
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("Navbar", () => {
+  it.each(["COMMUNITY", "READ", "STARTUPS", "WORK"])(
+    "opens %s on mouse hover without moving focus",
+    (name) => {
+      renderNavbar();
+      const trigger = within(mainNav()).getByRole("button", { name });
+      const focused = document.activeElement;
+      pointerEvent(trigger, "pointerover");
+      expect(trigger).toHaveAttribute("aria-expanded", "true");
+      expect(document.activeElement).toBe(focused);
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(trigger).toHaveAttribute("aria-expanded", "false");
+    },
+  );
+
+  it("stays open while crossing into the panel, then closes on leaving", () => {
+    vi.useFakeTimers();
+    renderNavbar();
+    const trigger = within(mainNav()).getByRole("button", { name: "READ" });
+    pointerEvent(trigger, "pointerover");
+    const panel = within(mainNav()).getByRole("group", { name: "READ" });
+
+    pointerEvent(trigger, "pointerout");
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    pointerEvent(panel, "pointerover");
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    const news = within(panel).getByRole("link", { name: /\[N\] NEWS/ });
+    pointerEvent(panel, "pointerout", "mouse", news);
+    pointerEvent(news, "pointerover", "mouse", panel);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    pointerEvent(panel, "pointerout");
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("switches groups without a pending close dismissing the new group", () => {
+    vi.useFakeTimers();
+    renderNavbar();
+    const community = within(mainNav()).getByRole("button", {
+      name: "COMMUNITY",
+    });
+    const read = within(mainNav()).getByRole("button", { name: "READ" });
+    pointerEvent(community, "pointerover");
+    pointerEvent(community, "pointerout");
+    pointerEvent(read, "pointerover");
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(community).toHaveAttribute("aria-expanded", "false");
+    expect(read).toHaveAttribute("aria-expanded", "true");
+    fireEvent.mouseDown(document.body);
+    expect(read).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("preserves keyboard focus when the pointer leaves and closes on focus leaving", () => {
+    vi.useFakeTimers();
+    renderNavbar();
+    const read = within(mainNav()).getByRole("button", { name: "READ" });
+    fireEvent.keyDown(read, { key: "ArrowDown" });
+    const news = within(mainNav()).getByRole("link", { name: /\[N\] NEWS/ });
+    pointerEvent(news, "pointerout");
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(read).toHaveAttribute("aria-expanded", "true");
+    expect(news).toHaveFocus();
+    act(() =>
+      within(mainNav())
+        .getByRole("link", { name: /EVENTS/ })
+        .focus(),
+    );
+    expect(read).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("keeps a hovered menu open when focus moves from another group's trigger", () => {
+    renderNavbar();
+    const community = within(mainNav()).getByRole("button", {
+      name: "COMMUNITY",
+    });
+    const read = within(mainNav()).getByRole("button", { name: "READ" });
+    act(() => community.focus());
+    pointerEvent(community, "pointerover");
+    pointerEvent(community, "pointerout");
+    pointerEvent(read, "pointerover");
+    expect(community).toHaveFocus();
+    const news = within(mainNav()).getByRole("link", { name: /\[N\] NEWS/ });
+    act(() => news.focus());
+    expect(read).toHaveAttribute("aria-expanded", "true");
+    expect(news).toHaveFocus();
+    fireEvent.click(news);
+    expect(read).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("keeps touch and mobile navigation click-operated", () => {
+    renderNavbar();
+    const read = within(mainNav()).getByRole("button", { name: "READ" });
+    pointerEvent(read, "pointerover", "touch");
+    expect(read).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(read);
+    expect(read).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(read);
+    expect(read).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open navigation menu" }),
+    );
+    const mobileRead = within(screen.getByRole("dialog")).getByRole("button", {
+      name: "READ",
+    });
+    pointerEvent(mobileRead, "pointerover");
+    expect(mobileRead).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(mobileRead);
+    expect(mobileRead).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("server-renders every header link in the HTML while menus are closed", () => {
     const html = renderToString(
       <NextIntlClientProvider locale="en" messages={en}>
