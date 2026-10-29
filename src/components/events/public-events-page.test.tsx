@@ -85,7 +85,9 @@ describe("Join chrome", () => {
     expect(src).toContain('t("listingMemberLead")');
     expect(src).toContain("eventAiRobots(aiFilter)");
     expect(src).toContain("eventListingEmitsJsonLd(aiFilter)");
-    expect(src).toContain("title: PUBLIC_EVENTS_H1");
+    expect(src).toContain('getTranslations("publicEvents")');
+    expect(src).toContain('tPublic("title")');
+    expect(src).toContain('tEvents("listingMemberLead")');
     expect(src).toContain("localeAlternates(PUBLIC_EVENTS_PATH)");
     const filter = readFileSync(join(dir, "../events-filter-bar.tsx"), "utf8");
     expect(filter).toContain('t("filterAi")');
@@ -156,6 +158,8 @@ describe("public events site integration", () => {
   it("locks page metadata to the fat listing without invented counts", () => {
     expect(PUBLIC_EVENTS_PATH).toBe("/events");
     expect(PUBLIC_EVENTS_H1.length).toBeGreaterThan(0);
+    expect(en.publicEvents.title).toBe(PUBLIC_EVENTS_H1);
+    expect(en.events.listingMemberLead).toBe(PUBLIC_EVENTS_META);
     expect(PUBLIC_EVENTS_META).not.toMatch(COUNT_COPY);
     expect(en.events.listingLead).not.toMatch(COUNT_COPY);
     expect(nl.events.listingLead).not.toMatch(COUNT_COPY);

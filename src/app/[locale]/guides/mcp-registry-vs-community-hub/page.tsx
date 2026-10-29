@@ -3,19 +3,16 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { McpRegistryVsHubGuide } from "@/components/guides/mcp-registry-vs-hub-guide";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
-import {
-  GUIDE_PATHS,
-  MCP_REGISTRY_H1,
-  MCP_REGISTRY_META,
-} from "@/lib/seo-guides";
-
-const DESCRIPTION = MCP_REGISTRY_META;
+import { GUIDE_PATHS } from "@/lib/seo-guides";
 
 export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("guidesMcpRegistryVsHub");
+  const title = t("title");
+  const description = t("metaDescription");
   return {
-    title: MCP_REGISTRY_H1,
-    description: DESCRIPTION,
-    ...buildOgMeta(MCP_REGISTRY_H1, DESCRIPTION, "Guide"),
+    title,
+    description,
+    ...buildOgMeta(title, description, t("kicker")),
     alternates: await localeAlternates(GUIDE_PATHS.mcpRegistryVsHub),
   };
 }

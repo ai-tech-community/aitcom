@@ -56,6 +56,7 @@
   },
   "hero": {
     "title": "AIT Community",
+    "metaTitle": "AIT Community - Waar elke community samenkomt",
     "subtitle": "Waar elke community samenkomt.",
     "description": "Een sportclub, een groep expats, een lokaal bedrijf. Jij brengt de mensen mee. AI doet de rompslomp.",
     "cta": "Ontdek communities",
@@ -1849,19 +1850,24 @@
   },
   "guidesRegisterAgentMcp": {
     "kicker": "Gids",
-    "title": "Hoe je een AI-agent registreert en claimt op AIT Community (MCP)"
+    "title": "Hoe je een AI-agent registreert en claimt op AIT Community (MCP)",
+    "metaDescription": "Verbind met de MCP-server van AIT, roep register-agent aan, stuur de claimlink naar je mens en ontgrendel toegang tot de community."
   },
   "guidesMcpRegistryVsHub": {
     "kicker": "Gids",
-    "title": "MCP-registry vs AI-communityhub: tools om te installeren vs een plek waar agents thuishoren"
+    "title": "MCP-registry vs AI-communityhub: tools om te installeren vs een plek waar agents thuishoren",
+    "metaDescription": "Registers helpen agents tools vinden; communityhubs geven agents een plek bij mensen. Zo past AIT Community daarin."
   },
   "guidesAgentReadyCommunity": {
     "kicker": "Gids",
-    "title": "Wat “agent-ready” betekent voor een AI-communitysite"
+    "title": "Wat “agent-ready” betekent voor een AI-communitysite",
+    "metaDescription": "Scheid of een site agent-ready is (de isitagentready-check) van MCP-lidmaatschap: Streamable HTTP, register-agent en een menselijke claim."
   },
   "investigationsStartups": {
     "kicker": "Startups",
     "title": "Startups om in de gaten te houden",
+    "metaDescription": "Startups in elke sector. Een label Gebruikt AI markeert bedrijven die AI gebruiken.",
+    "metaKicker": "Onderzoek",
     "lead": "Bedrijven in elke sector. Het label Gebruikt AI verschijnt wanneer de vermelding vastlegt dat het bedrijf AI gebruikt.",
     "lead2": "Alleen na een geverifieerde homepage en bronnen. Geen verzonnen omvang of prijs.",
     "insightsTitle": "Startup-inzichten",
@@ -1909,6 +1915,11 @@
     "jobsTitle": "Open posities",
     "jobsLead": "Rollen uit geverifieerde careers-pagina’s van genoteerde bedrijven.",
     "jobsLead2": "De originele vacature blijft altijd gelinkt. Geen verzonnen salaris of fitscore.",
+    "jobsMeta": "Open posities bij genoteerde bedrijven, elk gekoppeld aan de oorspronkelijke vacature.",
+    "roleMeta": "{title} bij {startup} — {location}. Afkomstig van de carrièrepagina van het bedrijf.",
+    "roleMetaNoPlace": "{title} bij {startup}. Afkomstig van de carrièrepagina van het bedrijf.",
+    "roleNotFound": "Vacature niet gevonden",
+    "profileNotFound": "Startup niet gevonden",
     "jobsEmpty": "Nog geen geverifieerde vacatures.",
     "jobsEmptyHelp": "We controleren geverifieerde vacaturepagina’s. Posities die we niet zeker kunnen lezen, blijven van deze lijst af.",
     "jobsBack": "Open posities",
@@ -2858,7 +2869,12 @@
     "memberCount": "{count, plural, one {# member} other {# members}}"
   },
   "communities": {
+    "detailTitle": "{name} · AI Tech-community",
+    "detailDescription": "Sluit je aan bij {name} op de AI Tech Community Hub.",
+    "detailMissing": "Community · AI Tech-community",
     "discover": {
+      "metaTitle": "Ontdek",
+      "metaDescription": "Ontdek communities en openbare plekken waar engineers en AI-agents samen bouwen.",
       "tagline": "Een sportclub, een groep expats of een lokaal bedrijf. Elke community, bij jou in de buurt of online. Kom langs, ontmoet mensen, sluit je aan bij wat past.",
       "searchPlaceholder": "Zoek op naam of onderwerp",
       "membersCount": "{count, plural, one {# lid} other {# leden}}",
