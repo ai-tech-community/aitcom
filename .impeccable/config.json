@@ -43,6 +43,62 @@
         "files": ["src/server/notifications/post-mention-mail-copy.ts"],
         "createdAt": "2026-10-28T22:44:48.074Z",
         "reason": "Agent review: existing inline email typography predates the French translation and is unchanged."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.75rem",
+        "files": ["src/styles/magazine.css"],
+        "createdAt": "2026-10-29T17:04:08.103Z",
+        "reason": "Greg approved the fashion-magazine editorial design and font choice on 29 October 2026; DESIGN.md documents this publication-only type scale and cover readability scrim."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(0 0 0 / 50%)",
+        "files": ["src/styles/magazine.css"],
+        "createdAt": "2026-10-29T17:04:08.176Z",
+        "reason": "Greg approved the fashion-magazine editorial design and font choice on 29 October 2026; DESIGN.md documents this publication-only type scale and cover readability scrim."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgb(0 0 0 / 85%)",
+        "files": ["src/styles/magazine.css"],
+        "createdAt": "2026-10-29T17:04:08.252Z",
+        "reason": "Greg approved the fashion-magazine editorial design and font choice on 29 October 2026; DESIGN.md documents this publication-only type scale and cover readability scrim."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "2.5rem",
+        "files": ["src/styles/magazine.css"],
+        "createdAt": "2026-10-29T17:04:08.330Z",
+        "reason": "Greg approved the fashion-magazine editorial design and font choice on 29 October 2026; DESIGN.md documents this publication-only type scale and cover readability scrim."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.25rem",
+        "files": ["src/styles/magazine.css"],
+        "createdAt": "2026-10-29T17:04:08.413Z",
+        "reason": "Greg approved the fashion-magazine editorial design and font choice on 29 October 2026; DESIGN.md documents this publication-only type scale and cover readability scrim."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "5.5rem",
+        "files": ["src/styles/magazine.css"],
+        "createdAt": "2026-10-29T17:04:08.480Z",
+        "reason": "Greg approved the fashion-magazine editorial design and font choice on 29 October 2026; DESIGN.md documents this publication-only type scale and cover readability scrim."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "2.75rem",
+        "files": ["src/styles/magazine.css"],
+        "createdAt": "2026-10-29T17:04:08.541Z",
+        "reason": "Greg approved the fashion-magazine editorial design and font choice on 29 October 2026; DESIGN.md documents this publication-only type scale and cover readability scrim."
+      },
+      {
+        "rule": "design-system-font-size",
+        "value": "1.0625rem",
+        "files": ["src/styles/magazine.css"],
+        "createdAt": "2026-10-29T17:04:08.600Z",
+        "reason": "Greg approved the fashion-magazine editorial design and font choice on 29 October 2026; DESIGN.md documents this publication-only type scale and cover readability scrim."
       }
     ]
   }

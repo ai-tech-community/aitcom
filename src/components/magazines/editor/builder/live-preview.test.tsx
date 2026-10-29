@@ -33,7 +33,7 @@ describe("LivePreview", () => {
   it("the layout choice changes the preview", () => {
     const article = articleView(1);
     const props = {
-      magazine: { name: "Gazette", slug: "gazette" },
+      magazine: { name: "Gazette", slug: "gazette", font: "bodoni" as const },
       community: { name: "Night Owls", slug: "night-owls" },
       issue: { number: 1, publishedAt: null },
       details: {
@@ -52,6 +52,14 @@ describe("LivePreview", () => {
       <LivePreview {...props} details={{ ...props.details, layout }} />
     );
     const { rerender } = renderWithIntl(picture("cover-story"));
+    expect(
+      screen.getByTestId("issue-preview").querySelector("[inert]"),
+    ).toHaveAttribute("data-font", "bodoni");
+    expect(
+      screen
+        .getByTestId("issue-preview")
+        .querySelector(".magazine-cover-typeset"),
+    ).toHaveTextContent("Picks");
     expect(screen.getByTestId("issue-lead")).toHaveTextContent(
       "Excerpt of article 1.",
     );

@@ -26,7 +26,7 @@ import { absoluteLocaleUrl } from "@/lib/metadata";
 import type { MagazineArticlePageData } from "@/server/magazines/reading";
 
 import { IssueItem } from "../items/registry";
-import { READING_FRAME } from "./frame";
+import { MagazineShell } from "./magazine-shell";
 import { MagazineJoinPrompt } from "./magazine-join-prompt";
 import { ReadTracker } from "./read-tracker";
 import { SubscribeButton } from "./subscribe-button";
@@ -272,23 +272,27 @@ export function MagazineArticle({
   const showToc = headings.length >= MIN_TOC_HEADINGS;
 
   return (
-    <div className={READING_FRAME}>
-      {isMagazineArticleIndexable(issue, article, data.magazine) && (
-        <ArticleJsonLd data={data} locale={locale} />
-      )}
-      <div className="flex justify-center gap-12">
-        <article className="flex w-full max-w-[72ch] min-w-0 flex-col gap-8">
+    <MagazineShell
+      magazine={data.magazine}
+      community={data.community}
+      issue={issue}
+    >
+      <div className="magazine-page magazine-longread">
+        {isMagazineArticleIndexable(issue, article, data.magazine) && (
+          <ArticleJsonLd data={data} locale={locale} />
+        )}
+        <article className="min-w-0">
           {seesEditorLayer(access) && !readersSeeIt && (
             <p className="bg-secondary/60 text-muted-foreground rounded-lg border px-4 py-2.5 text-sm">
               {t("draftNotice")}
             </p>
           )}
-          <header className="flex flex-col gap-3">
+          <header className="magazine-article-header">
             <ContextLine data={data} />
             <h1
               id={titleId}
               tabIndex={-1}
-              className="text-3xl leading-tight font-semibold tracking-tight text-balance break-words sm:text-4xl"
+              className="magazine-article-title magazine-display"
             >
               {article.title}
             </h1>
@@ -300,38 +304,42 @@ export function MagazineArticle({
             <img
               src={article.mediaUrl}
               alt=""
-              className="aspect-[2/1] w-full rounded-xl border object-cover"
+              className="magazine-article-media"
             />
           )}
-          <div className="min-w-0 border-t pt-8">{body}</div>
-          <ReadTracker
-            key={article.id}
-            issueId={issue.id}
-            articleId={article.id}
-            enabled={!seesEditorLayer(access)}
-            trackEnd={data.mode === "full"}
-          />
-          <ShareActions
-            url={url}
-            title={article.title}
-            social={issue.outsiderReach !== "none"}
-          />
-          <SubscribeButton
-            magazineSlug={data.magazine.slug}
-            magazineName={data.magazine.name}
-            issueId={issue.id}
-          />
-          <NextInIssue data={data} />
-          {showComments && (
-            <ArticleComments
-              articleId={article.id}
-              initialComments={comments}
-              currentUserId={currentUserId}
-            />
-          )}
+          <div className="magazine-article-columns">
+            <div className="magazine-article-copy">
+              <div className="magazine-article-body">{body}</div>
+              <ReadTracker
+                key={article.id}
+                issueId={issue.id}
+                articleId={article.id}
+                enabled={!seesEditorLayer(access)}
+                trackEnd={data.mode === "full"}
+              />
+              <ShareActions
+                url={url}
+                title={article.title}
+                social={issue.outsiderReach !== "none"}
+              />
+              <SubscribeButton
+                magazineSlug={data.magazine.slug}
+                magazineName={data.magazine.name}
+                issueId={issue.id}
+              />
+              <NextInIssue data={data} />
+              {showComments && (
+                <ArticleComments
+                  articleId={article.id}
+                  initialComments={comments}
+                  currentUserId={currentUserId}
+                />
+              )}
+            </div>
+            {showToc && <BlogToc headings={headings} label={t("contents")} />}
+          </div>
         </article>
-        {showToc && <BlogToc headings={headings} label={t("contents")} />}
       </div>
-    </div>
+    </MagazineShell>
   );
 }

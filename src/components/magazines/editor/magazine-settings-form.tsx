@@ -28,6 +28,11 @@ import {
   type VisibilityRecord,
 } from "@/lib/magazines/visibility";
 import { api } from "@/trpc/react";
+import {
+  resolveMagazineFont,
+  type MagazineFont,
+} from "@/lib/magazines/typography";
+import { MagazineFontPicker } from "./magazine-font-picker";
 
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { readEditorError } from "./editor-errors";
@@ -54,6 +59,7 @@ type Draft = {
   logoUrl: string | null;
   topics: string[];
   defaultVisibility: IssueVisibility;
+  font: MagazineFont;
 };
 
 function draftOf(magazine: Magazine | null): Draft {
@@ -66,6 +72,7 @@ function draftOf(magazine: Magazine | null): Draft {
       row.topic ? [row.topic] : [],
     ),
     defaultVisibility: magazine?.defaultVisibility ?? "members",
+    font: resolveMagazineFont(magazine?.font),
   };
 }
 
@@ -276,6 +283,7 @@ function SettingsEditor({
       logoUrl: draft.logoUrl,
       topics: draft.topics,
       defaultVisibility: draft.defaultVisibility,
+      font: draft.font,
       // Sent only when the editor ticked the opt-in this save asks for.
       ...(optInRequired && confirmed ? { confirmUnlistedPublic: true } : {}),
     });
@@ -427,6 +435,12 @@ function SettingsEditor({
           {topicsFull ? t("topicsFull") : t("topicsHint")}
         </p>
       </div>
+
+      <MagazineFontPicker
+        value={draft.font}
+        name={draft.name}
+        onChange={(font) => update({ font })}
+      />
 
       <div className="flex flex-col gap-2">
         <p className="text-sm leading-none font-medium">

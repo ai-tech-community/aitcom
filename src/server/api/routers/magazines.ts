@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { routing } from "@/i18n/routing";
+import { MAGAZINE_FONTS } from "@/lib/magazines/typography";
 import {
   autoDraftSettingsInput,
   type AutoDraftSettings,
@@ -109,6 +110,7 @@ const settingsInput = z.object({
   magazineSlug: magazineSlugSchema,
   description: z.string().max(500).optional(),
   logoUrl: z.string().url().nullable().optional(),
+  font: z.enum(MAGAZINE_FONTS).optional(),
   // Normalized (trimmed, de-duplicated, cut to the maximum) by the service.
   topics: z
     .array(z.string().max(40))
@@ -320,6 +322,7 @@ export const magazinesRouter = createTRPCRouter({
           slug: input.magazineSlug,
           description: input.description,
           logoUrl: input.logoUrl,
+          font: input.font,
           topics: input.topics,
           defaultVisibility: input.defaultVisibility,
           confirmUnlistedPublic: input.confirmUnlistedPublic,
@@ -400,7 +403,11 @@ export const magazinesRouter = createTRPCRouter({
     );
     return {
       ...view,
-      magazine: { name: magazine.name, slug: magazine.slug },
+      magazine: {
+        name: magazine.name,
+        slug: magazine.slug,
+        ...(magazine.font ? { font: magazine.font } : {}),
+      },
       communityIsPrivate: !isContentPublic(ctx.community),
       // What the builder runs `planVisibilityChange` against, so it asks
       // for the opt-in exactly when the save would. The name heads the

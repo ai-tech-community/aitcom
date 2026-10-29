@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { IssueBuilder } from "@/components/magazines/editor/builder/issue-builder";
+import { MagazineFonts } from "@/components/magazines/magazine-fonts";
 import { resolveLocale } from "@/i18n/messages";
 import { parseIssueId } from "@/lib/magazines/parse-issue-id";
 import { getSession } from "@/server/better-auth/server";
@@ -60,7 +61,9 @@ export default async function IssueBuilderPage({ params }: { params: Params }) {
 
   return (
     <HydrateClient>
-      <IssueBuilder communitySlug={slug} issueId={issueId} />
+      <MagazineFonts>
+        <IssueBuilder communitySlug={slug} issueId={issueId} />
+      </MagazineFonts>
     </HydrateClient>
   );
 }

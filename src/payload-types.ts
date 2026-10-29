@@ -508,6 +508,10 @@ export interface Magazine {
   communityId: string;
   description?: string | null;
   logoUrl?: string | null;
+  /**
+   * Display font for the magazine masthead and story headings.
+   */
+  font?: ('italiana' | 'bodoni' | 'cormorant' | 'geist') | null;
   topics?:
     | {
         topic?: string | null;
@@ -2819,6 +2823,7 @@ export interface MagazinesSelect<T extends boolean = true> {
   communityId?: T;
   description?: T;
   logoUrl?: T;
+  font?: T;
   topics?:
     | T
     | {

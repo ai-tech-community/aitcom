@@ -12,9 +12,10 @@ import type { IssuePageData } from "@/server/magazines/reading";
 
 import type { ItemTeaser } from "../items/types";
 import { LAYOUTS } from "../layouts/registry";
-import { READING_FRAME } from "./frame";
 import { IssueContents } from "./issue-contents";
-import { hasEditorNote, IssueHero } from "./issue-hero";
+import { hasEditorNote } from "./issue-hero";
+import { IssueEditorialHero } from "./issue-editorial-hero";
+import { MagazineShell } from "./magazine-shell";
 import { IssueRail } from "./issue-rail";
 import {
   MagazineJoinPrompt,
@@ -60,11 +61,8 @@ function EditorBar({
 }
 
 /**
- * The issue reading view (mockup screen 2, DESIGN.md frame exception for
- * the issue reading view): sticky contents, the hero (cover beside the
- * editor's note) above the issue's layout, and the rail. Phones get one column with
- * the contents first; from `lg` the contents sit beside the issue and the
- * rail drops below it; from `xl` all three columns show.
+ * The editorial issue: its own publication shell, cover-led opening,
+ * contents and existing item layout, followed by publication information.
  */
 export function IssueReader({
   data,
@@ -117,50 +115,50 @@ export function IssueReader({
   const showNote = hasEditorNote(issue.editorNote);
 
   const reading = (
-    <div className={READING_FRAME}>
-      <ReadTracker
-        key={issue.id}
-        issueId={issue.id}
-        enabled={!seesEditorLayer(access)}
-        trackEnd={false}
-      />
-      <div className="grid gap-8 lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[14rem_minmax(0,1fr)_18rem]">
-        <aside className="lg:sticky lg:top-24 lg:row-span-2 lg:max-h-[calc(100dvh-7rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain xl:row-span-1">
-          <IssueContents
-            items={items}
-            hasEditorNote={showNote}
-            readingMinutes={data.readingMinutes}
-          />
-        </aside>
-
-        <article className="@container flex min-w-0 flex-col gap-8">
+    <MagazineShell magazine={magazine} community={community} issue={issue}>
+      <div className="magazine-page">
+        <ReadTracker
+          key={issue.id}
+          issueId={issue.id}
+          enabled={!seesEditorLayer(access)}
+          trackEnd={false}
+        />
+        <article className="@container min-w-0">
           {seesEditorLayer(access) && (
-            <EditorBar
-              status={issue.status}
-              communitySlug={community.slug}
-              issueId={issue.id}
-            />
+            <div className="magazine-editor-actions">
+              <EditorBar
+                status={issue.status}
+                communitySlug={community.slug}
+                issueId={issue.id}
+              />
+            </div>
           )}
-          <IssueHero issue={issue} titleId={titleId} />
-          {joinPanel && <div className="xl:hidden">{joinPanel}</div>}
-          <Layout items={items} href={href} teaser={teaser} />
+          <IssueEditorialHero issue={issue} titleId={titleId} />
+          {joinPanel && <div className="magazine-join-panel">{joinPanel}</div>}
+          <section id="issue-contents" className="magazine-issue-contents">
+            <IssueContents
+              items={items}
+              hasEditorNote={showNote}
+              readingMinutes={data.readingMinutes}
+            />
+          </section>
+          <div className="magazine-stories">
+            <Layout items={items} href={href} teaser={teaser} />
+          </div>
           {items.length === 0 && <NoItems />}
         </article>
-
-        <aside className="min-w-0 lg:col-start-2 xl:sticky xl:top-24 xl:col-start-auto xl:max-h-[calc(100dvh-7rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain">
+        <aside className="magazine-about">
           <IssueRail
             issue={issue}
             magazine={magazine}
             community={community}
             pastIssues={pastIssues}
-            joinPanel={
-              joinPanel && <div className="hidden xl:block">{joinPanel}</div>
-            }
+            joinPanel={null}
             url={url}
           />
         </aside>
       </div>
-    </div>
+    </MagazineShell>
   );
   // The provider stays mounted in both modes: a join refreshes the page from
   // preview to full, and swapping the wrapper would remount the whole view,

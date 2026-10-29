@@ -6,6 +6,11 @@ import {
   MAX_MAGAZINE_TOPICS,
 } from "@/lib/magazines/values";
 import type { Magazine } from "@/payload-types";
+import {
+  DEFAULT_MAGAZINE_FONT,
+  MAGAZINE_FONTS,
+  MAGAZINE_FONT_OPTIONS,
+} from "@/lib/magazines/typography";
 
 /** Stamp staff moderation changes without rewriting the record on other saves. */
 export const stampListingHidden: CollectionBeforeChangeHook<Magazine> = ({
@@ -56,6 +61,19 @@ export const Magazines: CollectionConfig = {
     },
     { name: "description", type: "textarea", maxLength: 500 },
     { name: "logoUrl", type: "text" },
+    {
+      name: "font",
+      type: "select",
+      defaultValue: DEFAULT_MAGAZINE_FONT,
+      options: MAGAZINE_FONTS.map((value) => ({
+        value,
+        label: MAGAZINE_FONT_OPTIONS[value].label,
+      })),
+      admin: {
+        description:
+          "Display font for the magazine masthead and story headings.",
+      },
+    },
     {
       name: "topics",
       type: "array",

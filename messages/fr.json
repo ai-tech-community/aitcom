@@ -5002,6 +5002,12 @@
       "issueLine": "{magazine} · Numéro {number}",
       "byCommunity": "Un magazine de {community}",
       "byAuthor": "Par {author}"
+    },
+    "shell": {
+      "backToCommunity": "Retour à la communauté",
+      "contents": "Sommaire",
+      "byCommunity": "Par {community}",
+      "allIssues": "Tous les numéros"
     }
   },
   "magazineEditor": {
@@ -5250,7 +5256,12 @@
         "teaser": "Tout le monde voit la couverture, le sommaire et le début de chaque article. Les membres peuvent tout lire.",
         "public": "Tout le monde peut tout lire."
       },
-      "visibilityTeaser": "Aperçu pour tous"
+      "visibilityTeaser": "Aperçu pour tous",
+      "fontLabel": "Police du magazine",
+      "fontHint": "Utilisée pour le nom du magazine et les titres de chaque numéro. Le texte des articles reste facile à lire.",
+      "fontPreview": "Aperçu de la police",
+      "fontPreviewName": "Votre magazine",
+      "fontPreviewHeadline": "Une autre perspective."
     },
     "tab": {
       "metaTitle": "Magazine",
