@@ -42,7 +42,7 @@ describe("long-read layout", () => {
       expect(screen.getByText(`Excerpt of article ${n}.`)).toBeVisible();
       expect(
         screen.getByRole("link", { name: "Article " + n }).closest("h2"),
-      ).toHaveClass("text-2xl");
+      ).toHaveClass("font-magazine-serif");
     }
     expect(screen.getAllByRole("link", { name: /Read article/ })).toHaveLength(
       2,

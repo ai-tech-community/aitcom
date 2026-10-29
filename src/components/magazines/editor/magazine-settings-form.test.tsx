@@ -243,6 +243,8 @@ describe("MagazineSettingsForm", () => {
       topics: [],
       defaultVisibility: "public",
       confirmUnlistedPublic: true,
+      themeFontPair: "journal",
+      themeAccent: "#9A3412",
     });
 
     fireEvent.click(screen.getByRole("radio", { name: "Members only" }));

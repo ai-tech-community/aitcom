@@ -12,6 +12,27 @@ import { slugify } from "@/lib/text-utils";
 /** A Payload block stored as `{type:"block", fields.blockType}` that the editor handles as its own node type. */
 export type BlockNodeMapping = { blockType: string; nodeType: string };
 
+const EDITORIAL_NODE_TYPE: Record<string, string> = {
+  PullQuote: "pull-quote",
+  CaptionedImage: "captioned-image",
+  Gallery: "gallery",
+  Spread: "spread",
+};
+
+function editorialNodeType(blockType: string | undefined): string | null {
+  if (!blockType) return null;
+  return EDITORIAL_NODE_TYPE[blockType] ?? null;
+}
+
+function isEditorialNodeType(type: string | undefined): boolean {
+  return (
+    type === "pull-quote" ||
+    type === "captioned-image" ||
+    type === "gallery" ||
+    type === "spread"
+  );
+}
+
 export function extractPlainText(nodes: unknown): string {
   if (!Array.isArray(nodes)) return "";
 
@@ -177,6 +198,11 @@ export function preprocessEditorState(
       if (node.type === "block" && node.fields?.blockType === "Video") {
         node.type = "video";
       }
+      const editorialType =
+        node.type === "block"
+          ? editorialNodeType(node.fields?.blockType)
+          : null;
+      if (editorialType) node.type = editorialType;
       const mapped =
         node.type === "block"
           ? extra.find((e) => e.blockType === node.fields?.blockType)
@@ -247,6 +273,9 @@ export function postprocessEditorState(
           delete node.src;
           delete node.alt;
         }
+      }
+      if (isEditorialNodeType(node.type)) {
+        node.type = "block";
       }
       if (node.type === "video") {
         node.type = "block";

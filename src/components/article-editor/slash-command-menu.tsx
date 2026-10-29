@@ -1,9 +1,10 @@
 import { useTranslations } from "next-intl";
-import type {
-  SlashGroup,
-  SlashCommand,
-  SlashMenuState,
-  SlashMenuAction,
+import {
+  SLASH_GROUPS,
+  type SlashCommand,
+  type SlashGroup,
+  type SlashMenuAction,
+  type SlashMenuState,
 } from "./types";
 
 interface SlashCommandMenuProps {
@@ -35,7 +36,7 @@ export function SlashCommandMenu({
           {t("noCommandsFound")}
         </div>
       ) : (
-        (["Basic", "Technical", "Structure"] as const).map((groupName) => {
+        SLASH_GROUPS.map((groupName) => {
           const items = groupedCommands[groupName];
           if (items.length === 0) return null;
 

@@ -2346,6 +2346,7 @@
     "checkMissingH2": "Ajoutez au moins un titre H2",
     "allBlockingClear": "Toutes les vérifications bloquantes ont réussi",
     "checkMissingIntro": "Ajoutez un paragraphe d’introduction avant le premier titre",
+    "checkMissingImageAlt": "Ajoutez un texte alternatif à chaque photo",
     "saveStateError": "Échec de l’enregistrement",
     "saveStateIdle": "Brouillon",
     "checkTooShort": "L’article est très court",
@@ -5215,7 +5216,8 @@
       "articleLocked": "Cet article est maintenant entre les mains de la rédaction et ne peut plus être modifié.",
       "articleNotPending": "Une décision a déjà été prise pour cet article. Rechargez pour voir ce qui a changé.",
       "reviewNoteRequired": "Indiquez à l’auteur les modifications à apporter.",
-      "unlistedPublicLeadersOnly": "Cette communauté n’est pas répertoriée. Seuls ses propriétaires et administrateurs peuvent rendre ce contenu public."
+      "unlistedPublicLeadersOnly": "Cette communauté n’est pas répertoriée. Seuls ses propriétaires et administrateurs peuvent rendre ce contenu public.",
+      "themeInvalid": "Choisissez une paire de caractères dans la liste et une couleur d’accent avec assez de contraste."
     },
     "publicOptIn": {
       "warning": "Votre communauté est privée. Si vous montrez ce contenu à tous, toute personne sur Internet verra le nom de votre communauté et un lien vers celle-ci. Vos membres, publications et autres pages resteront privés.",
@@ -5270,7 +5272,20 @@
       "fontHint": "Utilisée pour le nom du magazine et les titres de chaque numéro. Le texte des articles reste facile à lire.",
       "fontPreview": "Aperçu de la police",
       "fontPreviewName": "Votre magazine",
-      "fontPreviewHeadline": "Une autre perspective."
+      "fontPreviewHeadline": "Une autre perspective.",
+      "themeLabel": "Allure",
+      "themeHint": "Le caractère et l’accent sur les pages publiques du magazine, du numéro et de l’article.",
+      "fontPairLabel": "Caractère",
+      "accentLabel": "Couleur d’accent",
+      "accentSwatch": "Pastille d’accent",
+      "accentHint": "Une couleur hexadécimale, comme #9A3412. Elle doit rester lisible sur blanc ou sur la page sombre.",
+      "accentInvalid": "Utilisez une couleur hexadécimale avec assez de contraste sur blanc ou sur la page sombre.",
+      "fontPairs": {
+        "journal": "Journal — Newsreader et Geist",
+        "broadsheet": "Broadsheet — Libre Baskerville et Source Sans 3",
+        "fashion": "Fashion — Fraunces et Outfit",
+        "literary": "Literary — Source Serif 4 et DM Sans"
+      }
     },
     "tab": {
       "metaTitle": "Magazine",

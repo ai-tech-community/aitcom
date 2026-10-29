@@ -81,9 +81,18 @@ import { ArticlePastePlugin } from "./article-paste-plugin";
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
 import { VideoNode } from "./nodes/video-node";
+import {
+  $createEditorialBlock,
+  CaptionedImageNode,
+  GalleryNode,
+  isEditorialSlash,
+  PullQuoteNode,
+  SpreadNode,
+} from "./nodes/editorial-nodes";
 import { $createAdmonitionNode, AdmonitionNode } from "./nodes/admonition-node";
 import { $insertTopLevel } from "./insert-top-level";
 import type { SlashGroup, SlashCommand } from "./types";
+import { emptySlashGroups } from "./types";
 import { slashMenuReducer } from "./reducers";
 import {
   filterSlashCommands,
@@ -390,6 +399,10 @@ export function RichTextEditor({
         ImageNode,
         VideoNode,
         AdmonitionNode,
+        PullQuoteNode,
+        CaptionedImageNode,
+        GalleryNode,
+        SpreadNode,
         ...extensions.map((e) => e.node),
       ],
       editorState: initialValue
@@ -453,6 +466,15 @@ export function RichTextEditor({
   const executeSlashCommand = useCallback(
     (id: string) => {
       if (!editorRef) return;
+
+      if (isEditorialSlash(id)) {
+        editorRef.update(() => {
+          const block = $createEditorialBlock(id);
+          if (block) $insertTopLevel([block]);
+        });
+        slashDispatch({ type: "CLOSE" });
+        return;
+      }
 
       const extension = extensions.find((e) => e.command?.id === id);
       if (extension) {
@@ -662,7 +684,7 @@ export function RichTextEditor({
         acc[command.group].push(command);
         return acc;
       },
-      { Basic: [], Technical: [], Structure: [] },
+      emptySlashGroups(),
     );
   }, [filteredSlashCommands]);
 

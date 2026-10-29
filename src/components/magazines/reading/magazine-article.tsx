@@ -26,6 +26,7 @@ import { absoluteLocaleUrl } from "@/lib/metadata";
 import type { MagazineArticlePageData } from "@/server/magazines/reading";
 
 import { IssueItem } from "../items/registry";
+import { EditorialImage } from "./editorial-image";
 import { MagazineShell } from "./magazine-shell";
 import { MagazineJoinPrompt } from "./magazine-join-prompt";
 import { ReadTracker } from "./read-tracker";
@@ -236,7 +237,7 @@ export function MagazineArticle({
     case "full":
       headings = extractHeadings(data.article.content);
       readingMinutes = estimateReadingTime(data.article.content);
-      body = <LexicalRenderer content={data.article.content} />;
+      body = <LexicalRenderer content={data.article.content} editorial />;
       showComments = readersSeeIt;
       break;
     case "teaser":
@@ -292,20 +293,23 @@ export function MagazineArticle({
             <h1
               id={titleId}
               tabIndex={-1}
-              className="magazine-article-title magazine-display"
+              className="magazine-article-title magazine-display font-magazine-serif text-4xl leading-[1.05] font-medium tracking-tight text-balance break-words sm:text-6xl"
             >
               {article.title}
             </h1>
             <Byline data={data} readingMinutes={readingMinutes} />
           </header>
           {article.mediaUrl && (
-            // Any host an editor links to: next/image only serves listed hosts.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={article.mediaUrl}
-              alt=""
-              className="magazine-article-media"
-            />
+            <div className="bg-secondary relative aspect-[3/2] w-full overflow-hidden sm:aspect-[2/1]">
+              <EditorialImage
+                src={article.mediaUrl}
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                className="magazine-article-media object-cover"
+              />
+            </div>
           )}
           <div className="magazine-article-columns">
             <div className="magazine-article-copy">

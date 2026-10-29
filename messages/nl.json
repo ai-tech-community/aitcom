@@ -2353,6 +2353,7 @@
     "outlineLabel": "Structuur",
     "wordsCount": "{count} woorden",
     "checkMissingIntro": "Voeg een intro alinea toe voor de eerste kop",
+    "checkMissingImageAlt": "Voeg alt-tekst toe aan elke foto",
     "checkTutorialNoCode": "Tutorial moet minimaal één codevoorbeeld bevatten",
     "warningsLabel": "Waarschuwingen",
     "blockingLabel": "Blokkerende issues",
@@ -5215,7 +5216,8 @@
       "articleLocked": "Dit artikel ligt nu bij de redactie en kan daarom niet worden gewijzigd.",
       "articleNotPending": "Er is al een besluit over dit artikel genomen. Laad de pagina opnieuw om te zien wat er is veranderd.",
       "reviewNoteRequired": "Vertel de schrijver wat er moet veranderen.",
-      "unlistedPublicLeadersOnly": "Deze community staat niet in de lijst. Alleen de eigenaren en beheerders kunnen dit openbaar maken."
+      "unlistedPublicLeadersOnly": "Deze community staat niet in de lijst. Alleen de eigenaren en beheerders kunnen dit openbaar maken.",
+      "themeInvalid": "Kies een letterpaar uit de lijst en een accentkleur met genoeg contrast."
     },
     "publicOptIn": {
       "warning": "Je community is privé. Als je dit aan iedereen laat zien, ziet iedereen op internet de naam van je community en een link ernaartoe. Je leden, berichten en andere pagina's blijven privé.",
@@ -5270,7 +5272,20 @@
       "fontHint": "Voor de titel van het magazine en de koppen in elke editie. Artikeltekst blijft goed leesbaar.",
       "fontPreview": "Lettertypevoorbeeld",
       "fontPreviewName": "Jouw magazine",
-      "fontPreviewHeadline": "Een ander perspectief."
+      "fontPreviewHeadline": "Een ander perspectief.",
+      "themeLabel": "Uiterlijk",
+      "themeHint": "Het lettertype en het accent op de openbare pagina’s van het magazine, het nummer en het artikel.",
+      "fontPairLabel": "Lettertype",
+      "accentLabel": "Accentkleur",
+      "accentSwatch": "Accentstaal",
+      "accentHint": "Een hexkleur, zoals #9A3412. Die moet leesbaar zijn op wit of op de donkere pagina.",
+      "accentInvalid": "Gebruik een hexkleur met genoeg contrast op wit of op de donkere pagina.",
+      "fontPairs": {
+        "journal": "Journal — Newsreader en Geist",
+        "broadsheet": "Broadsheet — Libre Baskerville en Source Sans 3",
+        "fashion": "Fashion — Fraunces en Outfit",
+        "literary": "Literary — Source Serif 4 en DM Sans"
+      }
     },
     "tab": {
       "metaTitle": "Magazine",

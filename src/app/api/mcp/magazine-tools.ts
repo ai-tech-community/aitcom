@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 
 import { MAGAZINE_ROLES } from "@/lib/magazines/roles";
+import { MAGAZINE_FONT_PAIR_IDS } from "@/lib/magazines/theme";
 import {
   ISSUE_VISIBILITIES,
   MAGAZINE_SLUG_PATTERN,
@@ -69,6 +70,34 @@ const httpUrl = z
     "Use an http(s) image URL",
   );
 
+const editorialImage = z.object({
+  src: httpUrl,
+  alt: z.string().trim().min(1).max(200),
+  caption: z.string().trim().max(300).optional(),
+});
+
+/** Same editorial blocks the article editor stores. Alt text is required. */
+const editorialBlock = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("pullQuote"),
+    quote: z.string().trim().min(1).max(600),
+    attribution: z.string().trim().max(160).optional(),
+  }),
+  z.object({
+    type: z.literal("captionedImage"),
+    image: editorialImage,
+  }),
+  z.object({
+    type: z.literal("gallery"),
+    images: z.array(editorialImage).min(2).max(8),
+  }),
+  z.object({
+    type: z.literal("spread"),
+    left: editorialImage,
+    right: editorialImage,
+  }),
+]);
+
 export function registerMagazineTools(
   server: McpServer,
   caller: ReturnType<typeof createCaller>,
@@ -126,7 +155,7 @@ export function registerMagazineTools(
     "save-magazine-article",
     {
       description:
-        "Create or edit your magazine article draft: title, markdown body and an optional cover image URL from upload-image. Optional videoUrl is stored as a video block: YouTube and Vimeo play inline, and Schooltv or any other page becomes a link card. Markdown links [text](https://...) and emphasis (*italic*, **bold**) are stored as real links and marks. A heading line (# or ##) is stored as an H2, and ### as an H3, so the article dialog can see the outline. Requires contribute scope and a claimed owner. The article stays a draft. This tool cannot publish it or approve it. Omit articleId to create; send articleId to edit your own open draft. A published article of yours is saved as a draft until you or the community owner approves it. An article in an issue that is still waiting for review cannot change until that review is approved or rejected. The response includes the read-time byline, a plain body preview, and the article's videos. articleId is the stable document id returned by this tool and by browse-magazines, not a draft version id. Do not invent facts the owner did not supply.",
+        'Create or edit your magazine article draft: title, markdown body and an optional cover image URL from upload-image. Optional videoUrl is stored as a video block: YouTube and Vimeo play inline, and Schooltv or any other page becomes a link card. Markdown links [text](https://...) and emphasis (*italic*, **bold**) are stored as real links and marks. A heading line (# or ##) is stored as an H2, and ### as an H3, so the article dialog can see the outline. A :::pullquote fence, a :::gallery fence, a :::spread fence, or a line that is only ![alt](https://… "caption") becomes an editorial block. blocks appends the same pull quote, gallery, spread, and captioned image shapes. Every photo needs alt text. Requires contribute scope and a claimed owner. The article stays a draft. This tool cannot publish it or approve it. Omit articleId to create; send articleId to edit your own open draft. A published article of yours is saved as a draft until you or the community owner approves it. An article in an issue that is still waiting for review cannot change until that review is approved or rejected. The response includes the read-time byline, a plain body preview, and the article\'s videos. articleId is the stable document id returned by this tool and by browse-magazines, not a draft version id. Do not invent facts the owner did not supply.',
       inputSchema: {
         magazineSlug: z.string().min(1).max(80),
         articleId: z.number().int().positive().optional(),
@@ -150,6 +179,13 @@ export function registerMagazineTools(
           .optional()
           .describe(
             "Page URL stored as a video block. YouTube and Vimeo play inline. Schooltv and other pages become a link card.",
+          ),
+        blocks: z
+          .array(editorialBlock)
+          .max(30)
+          .optional()
+          .describe(
+            "Pull quotes, captioned images, galleries, and spreads appended after the body. Alt text is required on every photo.",
           ),
       },
       annotations: DRAFT_FOR_REVIEW,
@@ -352,5 +388,20 @@ export function registerMagazineTools(
       annotations: DESTRUCTIVE_WRITE,
     },
     async (input) => textResult(await caller.agent.assignMagazineAgent(input)),
+  );
+
+  server.registerTool(
+    "propose-magazine-theme",
+    {
+      description:
+        "Propose the magazine's type pair and accent color. Requires contribute scope, a claimed owner, and the edit capability (an editor, an editor-in-chief, or a community owner or admin). fontPair is journal, broadsheet, fashion, or literary. accent is a hex color that meets WCAG AA contrast on white or on the dark page. The change is stored as a pending agent draft. It does not change the live magazine until that draft is approved. This cannot publish an issue.",
+      inputSchema: {
+        magazineSlug: z.string().min(1).max(80),
+        fontPair: z.enum(MAGAZINE_FONT_PAIR_IDS),
+        accent: z.string().trim().max(7),
+      },
+      annotations: DRAFT_FOR_REVIEW,
+    },
+    async (input) => textResult(await caller.agent.proposeMagazineTheme(input)),
   );
 }

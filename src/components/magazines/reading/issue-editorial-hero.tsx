@@ -1,5 +1,7 @@
 import { useFormatter, useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { LexicalRenderer } from "@/lib/lexical";
+import { magazinePath } from "@/lib/magazines/paths";
 import { EDITOR_NOTE_ANCHOR } from "./anchors";
 import { hasEditorNote, type IssueHeroIssue } from "./issue-hero";
 import { issueNumberText } from "./issue-dateline";
@@ -18,9 +20,12 @@ export function IssueEditorialHero({
   const format = useFormatter();
   return (
     <header className="magazine-issue-hero">
-      <div className="magazine-masthead magazine-display" aria-hidden="true">
+      <Link
+        href={magazinePath(issue.magazine)}
+        className="magazine-masthead magazine-display"
+      >
         {issue.magazine.name}
-      </div>
+      </Link>
       <div className="magazine-dateline">
         <span>{t("number", { number: issueNumberText(issue.number) })}</span>
         <span>{t("byCommunity", { community: issue.community.name })}</span>

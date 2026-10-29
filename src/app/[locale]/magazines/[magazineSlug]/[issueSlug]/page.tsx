@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { cache } from "react";
 
 import { IssueReader } from "@/components/magazines/reading/issue-reader";
+import { MagazineFontScope } from "@/components/magazines/reading/magazine-font-scope";
 import { resolveLocale, type AppLocale } from "@/i18n/messages";
 import { isIssueIndexable } from "@/lib/magazines/indexing";
 import { issuePath, issueShareImagePath } from "@/lib/magazines/paths";
@@ -94,10 +95,15 @@ export default async function IssuePage({ params }: { params: Params }) {
   const data = await loadPage(magazineSlug, issueSlug, locale);
   if (!data) notFound();
   return (
-    <IssueReader
-      data={data}
-      locale={locale}
-      url={absoluteLocaleUrl(locale, issuePath(data.magazine, data.issue))}
-    />
+    <MagazineFontScope
+      fontPair={data.magazine.themeFontPair}
+      accent={data.magazine.themeAccent}
+    >
+      <IssueReader
+        data={data}
+        locale={locale}
+        url={absoluteLocaleUrl(locale, issuePath(data.magazine, data.issue))}
+      />
+    </MagazineFontScope>
   );
 }

@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 
+import { magazineThemeIssue, normalizeHexColor } from "@/lib/magazines/theme";
 import type { IssueVisibility } from "@/lib/magazines/values";
 import { MAX_MAGAZINE_TOPICS } from "@/lib/magazines/values";
 import {
@@ -32,6 +33,8 @@ export type MagazineSettingsInput = {
   topics: string[];
   defaultVisibility: IssueVisibility;
   confirmUnlistedPublic?: boolean;
+  themeFontPair?: string;
+  themeAccent?: string;
 };
 
 export type MagazineCommunity = {
@@ -143,6 +146,22 @@ export async function ensureMagazineSpace(
   await assertMagazineSpaceFree(database, communityId);
 }
 
+/** Both fields together, or neither. A half theme is refused. */
+function themePatch(
+  input: Pick<MagazineSettingsInput, "themeFontPair" | "themeAccent">,
+): { themeFontPair: string; themeAccent: string } | Record<string, never> {
+  if (input.themeFontPair === undefined && input.themeAccent === undefined) {
+    return {};
+  }
+  const fontPair = input.themeFontPair ?? "";
+  const accent = input.themeAccent ?? "";
+  if (magazineThemeIssue(fontPair, accent))
+    throw magazineError("THEME_INVALID");
+  const hex = normalizeHexColor(accent);
+  if (!hex) throw magazineError("THEME_INVALID");
+  return { themeFontPair: fontPair, themeAccent: hex };
+}
+
 function currentDefault(magazine: Magazine | null): VisibilityRecord {
   return {
     visibility: magazine?.defaultVisibility ?? "members",
@@ -193,6 +212,7 @@ export async function saveMagazineSettings(
   });
   if (!plan.ok) throw magazineError(plan.code);
 
+  const theme = themePatch(input);
   const data = {
     name: input.name,
     slug: input.slug,
@@ -214,6 +234,7 @@ export async function saveMagazineSettings(
     defaultVisibility: plan.record.visibility,
     publicConfirmedBy: plan.record.publicConfirmedBy,
     publicConfirmedAt: plan.record.publicConfirmedAt,
+    ...theme,
   };
 
   await assertMagazineSpaceFree(deps.db, community.id);

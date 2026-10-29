@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   saveIssue: vi.fn(),
   submit: vi.fn(),
   upload: vi.fn(),
+  proposeTheme: vi.fn(),
 }));
 vi.mock("@/server/db", () => ({
   db: { update: () => ({ set: () => ({ where: async () => undefined }) }) },
@@ -42,6 +43,9 @@ vi.mock("@/server/magazines/agent-magazine", () => ({
 }));
 vi.mock("@/server/magazines/agent-image", () => ({
   uploadMagazineImage: state.upload,
+}));
+vi.mock("@/server/magazines/magazine-theme-draft", () => ({
+  proposeMagazineTheme: state.proposeTheme,
 }));
 import { createTRPCRouter } from "@/server/api/trpc";
 import { db } from "@/server/db";
@@ -82,6 +86,7 @@ it("exposes no procedure that publishes an issue", () => {
     "deleteMagazineArticle",
     "deleteMagazineIssue",
     "markArticleReady",
+    "proposeMagazineTheme",
     "readMagazineArticle",
     "saveMagazineArticle",
     "saveMagazineIssue",

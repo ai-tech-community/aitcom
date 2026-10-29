@@ -2,7 +2,9 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
+import type { EditorialBlock } from "@/lib/articles/editorial-blocks";
 import { MAGAZINE_ROLES } from "@/lib/magazines/roles";
+import { MAGAZINE_FONT_PAIR_IDS } from "@/lib/magazines/theme";
 import {
   ISSUE_VISIBILITIES,
   MAGAZINE_SLUG_PATTERN,
@@ -19,6 +21,7 @@ import {
   saveMagazineIssue,
   submitAgentIssue,
 } from "@/server/magazines/agent-magazine";
+import { proposeMagazineTheme } from "@/server/magazines/magazine-theme-draft";
 import {
   loadMagazineEditorship,
   requireCapability,
@@ -53,6 +56,33 @@ const httpUrl = z
       message: "Use an http(s) image URL",
     },
   );
+
+const editorialImage = z.object({
+  src: httpUrl,
+  alt: z.string().trim().min(1).max(200),
+  caption: z.string().trim().max(300).optional(),
+});
+
+const editorialBlock = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("pullQuote"),
+    quote: z.string().trim().min(1).max(600),
+    attribution: z.string().trim().max(160).optional(),
+  }),
+  z.object({
+    type: z.literal("captionedImage"),
+    image: editorialImage,
+  }),
+  z.object({
+    type: z.literal("gallery"),
+    images: z.array(editorialImage).min(2).max(8),
+  }),
+  z.object({
+    type: z.literal("spread"),
+    left: editorialImage,
+    right: editorialImage,
+  }),
+]);
 
 async function depsOf(ctx: {
   db: Parameters<typeof browseMagazines>[0]["db"];
@@ -110,6 +140,7 @@ export const agentMagazineRouter = {
           .describe(
             "Page URL stored as a video block. YouTube and Vimeo play inline. Schooltv and other pages become a link card.",
           ),
+        blocks: z.array(editorialBlock).max(30).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -118,7 +149,10 @@ export const agentMagazineRouter = {
       return saveMagazineArticle(
         await depsOf(ctx),
         { agentId: ctx.agent.agentId, ownerId },
-        input,
+        {
+          ...input,
+          blocks: input.blocks as EditorialBlock[] | undefined,
+        },
       );
     }),
 
@@ -474,6 +508,25 @@ export const agentMagazineRouter = {
         },
       );
     }),
+
+  proposeMagazineTheme: agentProcedure
+    .input(
+      z.object({
+        magazineSlug: z.string().min(1).max(80),
+        fontPair: z.enum(MAGAZINE_FONT_PAIR_IDS),
+        accent: z.string().trim().max(7),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      return proposeMagazineTheme(
+        await depsOf(ctx),
+        { agentId: ctx.agent.agentId, ownerId },
+        input,
+      );
+    }),
+
 
   assignMagazineAgent: agentProcedure
     .input(

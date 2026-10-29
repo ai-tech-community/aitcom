@@ -435,7 +435,7 @@ describe("IssueReader", () => {
     expect(container.querySelectorAll("#from-the-editor")).toHaveLength(1);
   });
 
-  it("typesets the cover when the issue has no cover image", () => {
+  it("typesets the masthead when the issue has no cover image", () => {
     renderWithIntl(
       <IssueReader
         url="https://example.test/en/magazines/agents-weekly/issue-4"
@@ -448,6 +448,15 @@ describe("IssueReader", () => {
     const typeset = hero.querySelector(".magazine-cover-typeset");
     expect(typeset).toHaveTextContent("The month agents learned to say no");
     expect(within(hero).getByText(/Issue 04/)).toBeInTheDocument();
+    expect(
+      within(hero).getByRole("link", { name: "Agents Weekly" }),
+    ).toBeInTheDocument();
+    expect(within(hero).getByText("Issue 04")).toBeInTheDocument();
+    expect(
+      within(hero).getByRole("heading", {
+        name: "The month agents learned to say no",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("links to the magazine's shelf from every issue, the first one included", () => {
@@ -458,10 +467,11 @@ describe("IssueReader", () => {
         locale="en"
       />,
     );
-    expect(screen.getByRole("link", { name: "Agents Weekly" })).toHaveAttribute(
-      "href",
-      "/magazines/agents-weekly",
-    );
+    const shelfLinks = screen.getAllByRole("link", { name: "Agents Weekly" });
+    expect(shelfLinks.length).toBeGreaterThan(0);
+    for (const link of shelfLinks) {
+      expect(link).toHaveAttribute("href", "/magazines/agents-weekly");
+    }
   });
 
   it("draft notice and Edit link appear only for editors", () => {

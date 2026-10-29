@@ -8,6 +8,7 @@ export const ARTICLE_BLOCKING_MESSAGE = {
   missing_content: "Add content",
   missing_h2: "Add at least one H2 heading",
   missing_intro: "Add an intro paragraph before first heading",
+  missing_image_alt: "Add alt text to every photo",
 } as const;
 
 export const ARTICLE_WARNING_MESSAGE = {
@@ -72,6 +73,34 @@ function hasCodeNode(nodes: unknown): boolean {
   });
 }
 
+function altText(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+/** Captioned photos, galleries, and spreads store alt on the block, not as text. */
+function imageAltMissing(node: Node): boolean {
+  if (node.type !== "block" || !node.fields) return false;
+  const fields = node.fields as {
+    blockType?: unknown;
+    alt?: unknown;
+    leftAlt?: unknown;
+    rightAlt?: unknown;
+    images?: unknown;
+  };
+  if (fields.blockType === "CaptionedImage") return !altText(fields.alt);
+  if (fields.blockType === "Spread") {
+    return !altText(fields.leftAlt) || !altText(fields.rightAlt);
+  }
+  if (fields.blockType === "Gallery") {
+    if (!Array.isArray(fields.images) || fields.images.length === 0)
+      return true;
+    return fields.images.some(
+      (image) => !altText((image as { alt?: unknown } | null)?.alt),
+    );
+  }
+  return false;
+}
+
 function outlineOf(nodes: Node[]): ArticleOutlineItem[] {
   return nodes
     .filter((node) => {
@@ -112,6 +141,7 @@ export function articleReadiness(input: {
       );
     });
   if (!introBeforeHeading) blocking.push("missing_intro");
+  if (nodes.some(imageAltMissing)) blocking.push("missing_image_alt");
 
   const warnings: ArticleWarningCode[] = [];
   const containsCode = hasCodeNode(nodes) || plainText.includes("```");

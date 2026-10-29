@@ -5,9 +5,11 @@ import { Link } from "@/i18n/navigation";
 import { LexicalRenderer } from "@/lib/lexical";
 import { lexicalHasText } from "@/lib/lexical-text";
 import { magazinePath } from "@/lib/magazines/paths";
+import { cn } from "@/lib/utils";
 
 import { EDITOR_NOTE_ANCHOR } from "./anchors";
-import { type CoverArtIssue, IssueCoverArt } from "./issue-cover-card";
+import { EditorialImage } from "./editorial-image";
+import { type CoverArtIssue } from "./issue-cover-card";
 import { issueNumberText } from "./issue-dateline";
 
 /**
@@ -31,14 +33,9 @@ export type IssueHeroIssue = CoverArtIssue & {
 };
 
 /**
- * The opening of an issue (mockup screen 2): one card with the large cover
- * beside the masthead, the issue title, its community and publish date and
- * the editor's note with its signature. Without a cover image the cover is
- * typeset (issue number, masthead, title). Side by side from the card's own
- * `3xl` width; stacked, cover first, below it.
- *
- * The masthead links to the magazine's shelf, so every issue, the first one
- * included, leads back to the magazine.
+ * The opening of an issue: a full-bleed cover with the serif masthead over
+ * the photograph, then the editor's note. Without a cover the masthead is
+ * typeset on the page. The masthead links to the magazine's shelf.
  */
 export function IssueHero({
   issue,
@@ -54,74 +51,103 @@ export function IssueHero({
   const format = useFormatter();
   const showNote = hasEditorNote(issue.editorNote);
   const noteLabelId = `${EDITOR_NOTE_ANCHOR}-label`;
+  const cover = issue.coverImageUrl;
 
   return (
-    <header className="bg-card text-card-foreground @container overflow-hidden rounded-xl border">
-      <div className="grid @3xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <div className="p-5 pb-0 @3xl:p-0">
-          <IssueCoverArt
-            issue={issue}
-            size="hero"
-            className="max-w-72 @3xl:aspect-auto @3xl:h-full @3xl:min-h-96 @3xl:max-w-none @3xl:rounded-none @3xl:border-0"
-          />
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-6 p-5 @3xl:p-8">
-          <div className="flex flex-col gap-2">
-            <Link
-              href={magazinePath(issue.magazine)}
-              className="self-start text-sm font-semibold break-words underline-offset-4 hover:underline"
-            >
-              {issue.magazine.name}
-            </Link>
-            <p className="text-muted-foreground font-mono text-xs">
-              {t("number", { number: issueNumberText(issue.number) })}
-            </p>
-            <Title
-              id={titleId}
-              tabIndex={titleId ? -1 : undefined}
-              className="text-3xl leading-tight font-semibold tracking-tight text-balance break-words @3xl:text-4xl"
-            >
-              {issue.title}
-            </Title>
-            <p className="text-muted-foreground text-sm">
-              {t("byCommunity", { community: issue.community.name })}
-              {issue.publishedAt && (
-                <>
-                  {" · "}
-                  <time dateTime={issue.publishedAt}>
-                    {t("published", {
-                      date: format.dateTime(new Date(issue.publishedAt), {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      }),
-                    })}
-                  </time>
-                </>
-              )}
-            </p>
-          </div>
-
-          {showNote && (
-            <section
-              id={EDITOR_NOTE_ANCHOR}
-              aria-labelledby={noteLabelId}
-              className="flex scroll-mt-24 flex-col gap-3"
-            >
-              <SectionLabel id={noteLabelId}>{t("fromTheEditor")}</SectionLabel>
-              <div className="min-w-0">
-                <LexicalRenderer content={issue.editorNote} />
-              </div>
-              {issue.signedBy && (
-                <p className="text-muted-foreground text-sm">
-                  {t("signature", { name: issue.signedBy })}
-                </p>
-              )}
-            </section>
+    <header className="flex flex-col gap-8">
+      <div
+        className={cn(
+          "relative",
+          cover ? "min-h-[28rem] sm:min-h-[36rem]" : "border-b",
+        )}
+      >
+        {cover ? (
+          <>
+            <EditorialImage
+              src={cover}
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/25"
+            />
+          </>
+        ) : null}
+        <div
+          className={cn(
+            "relative z-10 flex min-h-[28rem] flex-col justify-end gap-4 px-4 py-10 sm:min-h-[36rem] sm:px-8 sm:py-14",
+            cover ? "text-white" : "text-foreground min-h-0 sm:min-h-0",
           )}
+        >
+          <Link
+            href={magazinePath(issue.magazine)}
+            className="font-magazine-serif max-w-[16ch] text-5xl leading-[0.9] font-medium tracking-tight break-words underline-offset-4 hover:underline sm:text-7xl lg:text-8xl"
+          >
+            {issue.magazine.name}
+          </Link>
+          <p
+            className={cn(
+              "font-mono text-xs tracking-[0.18em] uppercase",
+              cover
+                ? "text-white/80"
+                : "text-[color:var(--magazine-accent-ink)]",
+            )}
+          >
+            {t("number", { number: issueNumberText(issue.number) })}
+          </p>
+          <Title
+            id={titleId}
+            tabIndex={titleId ? -1 : undefined}
+            className="font-magazine-serif max-w-[22ch] text-3xl leading-tight font-medium text-balance break-words sm:text-5xl"
+          >
+            {issue.title}
+          </Title>
+          <p
+            className={cn(
+              "text-sm",
+              cover ? "text-white/85" : "text-muted-foreground",
+            )}
+          >
+            {t("byCommunity", { community: issue.community.name })}
+            {issue.publishedAt && (
+              <>
+                {" · "}
+                <time dateTime={issue.publishedAt}>
+                  {t("published", {
+                    date: format.dateTime(new Date(issue.publishedAt), {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    }),
+                  })}
+                </time>
+              </>
+            )}
+          </p>
         </div>
       </div>
+
+      {showNote && (
+        <section
+          id={EDITOR_NOTE_ANCHOR}
+          aria-labelledby={noteLabelId}
+          className="flex scroll-mt-24 flex-col gap-3"
+        >
+          <SectionLabel id={noteLabelId}>{t("fromTheEditor")}</SectionLabel>
+          <div className="font-magazine-serif max-w-[68ch] min-w-0 text-lg leading-relaxed">
+            <LexicalRenderer content={issue.editorNote} />
+          </div>
+          {issue.signedBy && (
+            <p className="text-muted-foreground text-sm">
+              {t("signature", { name: issue.signedBy })}
+            </p>
+          )}
+        </section>
+      )}
     </header>
   );
 }

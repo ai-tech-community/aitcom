@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { routing } from "@/i18n/routing";
+import { MAGAZINE_FONT_PAIR_IDS } from "@/lib/magazines/theme";
 import { MAGAZINE_FONTS } from "@/lib/magazines/typography";
 import {
   autoDraftSettingsInput,
@@ -118,6 +119,8 @@ const settingsInput = z.object({
     .default([]),
   defaultVisibility: visibilitySchema,
   confirmUnlistedPublic: z.boolean().optional(),
+  themeFontPair: z.enum(MAGAZINE_FONT_PAIR_IDS).optional(),
+  themeAccent: z.string().trim().max(7).optional(),
 });
 
 const issueRef = z.object({ slug: z.string(), issueId: issueIdSchema });
@@ -326,6 +329,8 @@ export const magazinesRouter = createTRPCRouter({
           topics: input.topics,
           defaultVisibility: input.defaultVisibility,
           confirmUnlistedPublic: input.confirmUnlistedPublic,
+          themeFontPair: input.themeFontPair,
+          themeAccent: input.themeAccent,
         },
         ctx.session.user.id,
         ctx.standing.leadsCommunity,

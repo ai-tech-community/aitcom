@@ -5,32 +5,54 @@ import { SectionLabel } from "@/components/ui/section-label";
 
 import { itemTitle } from "../items/registry";
 import { EDITOR_NOTE_ANCHOR, itemAnchorId } from "./anchors";
+import { EditorialImage } from "./editorial-image";
 
 function ordinal(n: number): string {
   return String(n).padStart(2, "0");
 }
 
+function itemThumbnail(view: EditorItemView): string | null {
+  if ("unavailable" in view) return null;
+  if (view.kind === "article" && view.article.imageUrl)
+    return view.article.imageUrl;
+  return null;
+}
+
 function ContentsEntry({
   anchor,
   number,
+  thumbnail,
   children,
 }: {
   anchor: string;
   number: string;
+  thumbnail: string | null;
   children: React.ReactNode;
 }) {
   return (
     <li className="border-border border-b last:border-b-0">
       <a
         href={`#${anchor}`}
-        className="hover:text-foreground flex gap-3 py-2.5 text-sm leading-snug underline-offset-4 hover:underline"
+        className="hover:text-foreground flex items-center gap-3 py-2.5 text-sm leading-snug underline-offset-4 hover:underline"
       >
-        <span
-          aria-hidden="true"
-          className="text-muted-foreground shrink-0 pt-px font-mono text-xs"
-        >
-          {number}
-        </span>
+        {thumbnail ? (
+          <span className="bg-secondary relative block h-14 w-10 shrink-0 overflow-hidden">
+            <EditorialImage
+              src={thumbnail}
+              alt=""
+              fill
+              sizes="40px"
+              className="object-cover"
+            />
+          </span>
+        ) : (
+          <span
+            aria-hidden="true"
+            className="text-muted-foreground w-10 shrink-0 pt-px text-center font-mono text-xs"
+          >
+            {number}
+          </span>
+        )}
         <span className="min-w-0 break-words">{children}</span>
       </a>
     </li>
@@ -56,7 +78,11 @@ export function IssueContents({
       <SectionLabel as="p">{t("issue.contents")}</SectionLabel>
       <ol>
         {hasEditorNote && (
-          <ContentsEntry anchor={EDITOR_NOTE_ANCHOR} number={ordinal(0)}>
+          <ContentsEntry
+            anchor={EDITOR_NOTE_ANCHOR}
+            number={ordinal(0)}
+            thumbnail={null}
+          >
             {t("issue.fromTheEditor")}
           </ContentsEntry>
         )}
@@ -65,6 +91,7 @@ export function IssueContents({
             key={view.itemId}
             anchor={itemAnchorId(view.itemId)}
             number={ordinal(index + 1)}
+            thumbnail={itemThumbnail(view)}
           >
             {itemTitle(view) ??
               ("unavailable" in view

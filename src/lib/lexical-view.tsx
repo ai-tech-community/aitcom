@@ -2,6 +2,7 @@ import React from "react";
 import { slugify } from "@/lib/text-utils";
 
 import { VideoFrame } from "@/components/article-editor/nodes/video-frame";
+import { renderEditorialBlock } from "@/components/magazines/reading/editorial-figures";
 import {
   hasInlineMarkdown,
   parseInlineMarkdown,
@@ -149,6 +150,7 @@ type RenderContext = {
   slugMap: Map<string, number>;
   blockRenderers?: BlockRenderers;
   renderCode?: (code: string, language: string | undefined) => React.ReactNode;
+  editorial: boolean;
 };
 
 function renderAdmonition(
@@ -369,7 +371,21 @@ function renderNode(
       ) {
         const videoUrl = node.fields.url;
         if (!videoUrl.trim()) return null;
-        return <VideoFrame key={idx} url={videoUrl} />;
+        return (
+          <VideoFrame
+            key={idx}
+            url={videoUrl}
+            presentation={ctx.editorial ? "editorial" : "plain"}
+          />
+        );
+      }
+      if (node.fields) {
+        const editorial = renderEditorialBlock(
+          node.fields as Record<string, unknown>,
+        );
+        if (editorial) {
+          return <React.Fragment key={idx}>{editorial}</React.Fragment>;
+        }
       }
       if (node.fields?.blockType === "Image" && node.fields.src) {
         const imgSrc = node.fields.src;
@@ -445,6 +461,8 @@ export type LexicalViewOptions = {
    * leaves this out and gets a plain `<pre>`.
    */
   renderCode?: (code: string, language: string | undefined) => React.ReactNode;
+  /** Magazine article: serif columns, drop cap, and editorial figures. */
+  editorial?: boolean;
 };
 
 /**
@@ -472,9 +490,16 @@ export function renderLexicalDocument(
     slugMap: new Map<string, number>(),
     blockRenderers: options.blockRenderers,
     renderCode: options.renderCode,
+    editorial: options.editorial === true,
   };
   return (
-    <div className="text-foreground leading-7">
+    <div
+      className={
+        options.editorial
+          ? "editorial-body font-magazine-serif text-foreground text-[1.0625rem] leading-8"
+          : "text-foreground leading-7"
+      }
+    >
       {children.map((node, i) => renderNode(node, i, ctx))}
     </div>
   );

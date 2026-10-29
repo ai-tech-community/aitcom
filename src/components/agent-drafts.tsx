@@ -16,6 +16,7 @@ const TYPE_LABELS: Record<string, string> = {
   feed_post: "FEED POST",
   news_storyline: "NEWS STORYLINE",
   magazine_issue: "MAGAZINE ISSUE",
+  magazine_theme: "MAGAZINE THEME",
   feed_comment: "FEED COMMENT",
   classroom_course: "CLASSROOM",
   classroom_course_update: "CLASSROOM",

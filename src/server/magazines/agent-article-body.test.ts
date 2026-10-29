@@ -106,6 +106,35 @@ it("stores an https markdown image as an image block and leaves http as text", (
   );
 });
 
+it("stores a pull quote and captioned photo in reading order", () => {
+  const lexical = articleBodyToLexical(
+    'The season opened.\n\n:::pullquote\nCloth remembers.\n— Mira\n:::\n\n![Evening coat](https://cdn.example.test/coat.jpg "Wool")\n\n## The fitting',
+  );
+  expect(lexical.root.children.map((node) => node.type)).toEqual([
+    "paragraph",
+    "block",
+    "block",
+    "heading",
+  ]);
+  expect(lexical.root.children[1]).toMatchObject({
+    fields: {
+      blockType: "PullQuote",
+      quote: "Cloth remembers.",
+      attribution: "Mira",
+    },
+  });
+  expect(lexical.root.children[2]).toMatchObject({
+    fields: {
+      blockType: "CaptionedImage",
+      alt: "Evening coat",
+      caption: "Wool",
+    },
+  });
+  expect(() =>
+    articleBodyToLexical("![](https://cdn.example.test/coat.jpg)"),
+  ).toThrow(/Alt text/);
+});
+
 it("stores a YouTube line and videoUrl as one embed block", () => {
   const lexical = articleBodyToLexical(
     "Sam eats breakfast.\n\nhttps://youtu.be/dQw4w9WgXcQ",

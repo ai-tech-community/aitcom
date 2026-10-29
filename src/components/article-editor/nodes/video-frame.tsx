@@ -50,15 +50,25 @@ function cardFrom(video: ArticleVideo): {
 }
 
 /** Player for an allowlisted embed, or a link card for every other http(s) page. */
-export function VideoFrame({ url }: { url: string }) {
+export function VideoFrame({
+  url,
+  presentation = "plain",
+}: {
+  url: string;
+  presentation?: "plain" | "editorial";
+}) {
   const video = resolveArticleVideo(url);
   if (!video) return null;
   if (video.kind === "embed" && isAllowedEmbedSrc(video.embedSrc)) {
-    return (
+    const player = (
       <div
         data-video="embed"
         data-video-provider={video.provider}
-        className="border-border relative my-6 aspect-video w-full overflow-hidden rounded-lg border"
+        className={
+          presentation === "editorial"
+            ? "relative aspect-video w-full overflow-hidden border border-[color:var(--magazine-accent-ink)]"
+            : "border-border relative my-6 aspect-video w-full overflow-hidden rounded-lg border"
+        }
       >
         <iframe
           src={video.embedSrc}
@@ -72,7 +82,23 @@ export function VideoFrame({ url }: { url: string }) {
         />
       </div>
     );
+    if (presentation !== "editorial") return player;
+    return (
+      <figure className="editorial-span my-8">
+        {player}
+        <figcaption className="text-muted-foreground font-magazine-sans mt-2 text-xs tracking-[0.14em] uppercase">
+          {video.label}
+        </figcaption>
+      </figure>
+    );
   }
   const card = cardFrom(video);
+  if (presentation === "editorial") {
+    return (
+      <div className="editorial-span">
+        <VideoLinkCard {...card} />
+      </div>
+    );
+  }
   return <VideoLinkCard {...card} />;
 }

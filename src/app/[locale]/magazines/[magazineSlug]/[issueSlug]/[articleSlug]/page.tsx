@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { cache } from "react";
 
 import { MagazineArticle } from "@/components/magazines/reading/magazine-article";
+import { MagazineFontScope } from "@/components/magazines/reading/magazine-font-scope";
 import { resolveLocale, type AppLocale } from "@/i18n/messages";
 import {
   isMagazineArticleIndexable,
@@ -133,14 +134,19 @@ export default async function MagazineArticlePage({
       break;
   }
   return (
-    <MagazineArticle
-      data={data}
-      url={absoluteLocaleUrl(
-        locale,
-        magazineArticlePath(data.magazine, data.issue, data.article),
-      )}
-      comments={comments}
-      currentUserId={viewerId ?? undefined}
-    />
+    <MagazineFontScope
+      fontPair={data.magazine.themeFontPair}
+      accent={data.magazine.themeAccent}
+    >
+      <MagazineArticle
+        data={data}
+        url={absoluteLocaleUrl(
+          locale,
+          magazineArticlePath(data.magazine, data.issue, data.article),
+        )}
+        comments={comments}
+        currentUserId={viewerId ?? undefined}
+      />
+    </MagazineFontScope>
   );
 }
