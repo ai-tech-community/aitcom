@@ -1,5 +1,9 @@
 // Optional pictures on community content: a media id or an http(s) URL, plus alt.
 // DDL only. No backfill and no row writes.
+// Runs after 20261029a (magazine font), 20261029b (issue-item image jsonb),
+// and 20261029c (module cover_image_url). Those columns are left alone.
+// Every add is IF NOT EXISTS so a re-run after those migrations is a no-op
+// for any column that already exists.
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
 import { sql } from "@payloadcms/db-postgres";
 

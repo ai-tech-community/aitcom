@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { renderBuilderItemEditor } from "./items/registry";
+import { ItemImageEditor } from "./item-image-editor";
 import type { BuilderItem } from "./items-model";
 
 /** The same limit the server's item input enforces. */
@@ -23,11 +24,17 @@ export function ItemDetailsPanel({
   kindLabel,
   onChange,
   onDone,
+  sourceImageUrl,
+  onUploadingChange,
+  imageUploading = false,
 }: {
   item: BuilderItem;
   kindLabel: string;
   onChange: (patch: Partial<BuilderItem>) => void;
   onDone: () => void;
+  sourceImageUrl?: string | null;
+  onUploadingChange?: (uploading: boolean) => void;
+  imageUploading?: boolean;
 }) {
   const t = useTranslations("magazineEditor.builder.details");
   const labelId = useId();
@@ -62,6 +69,14 @@ export function ItemDetailsPanel({
       {renderBuilderItemEditor(item, {
         onChange: (patch) => onChange(patch as Partial<BuilderItem>),
       })}
+      <ItemImageEditor
+        disabled={imageUploading}
+        key={item.key}
+        value={item.image ?? null}
+        sourceImageUrl={sourceImageUrl}
+        onChange={(image) => onChange({ image })}
+        onUploadingChange={onUploadingChange}
+      />
       <Button
         type="button"
         variant="outline"

@@ -5008,6 +5008,12 @@
       "issueLine": "{magazine} · Issue {number}",
       "byCommunity": "A magazine by {community}",
       "byAuthor": "By {author}"
+    },
+    "shell": {
+      "backToCommunity": "Back to community",
+      "contents": "Contents",
+      "byCommunity": "By {community}",
+      "allIssues": "All issues"
     }
   },
   "magazineEditor": {
@@ -5256,7 +5262,12 @@
         "teaser": "Everyone sees the cover, the contents and the start of each article. Members read everything.",
         "public": "Everyone can read all of it."
       },
-      "visibilityTeaser": "Preview for everyone"
+      "visibilityTeaser": "Preview for everyone",
+      "fontLabel": "Magazine font",
+      "fontHint": "Used for the masthead and story headings in every issue. Article text stays easy to read.",
+      "fontPreview": "Font preview",
+      "fontPreviewName": "Your magazine",
+      "fontPreviewHeadline": "A different perspective."
     },
     "tab": {
       "metaTitle": "Magazine",
@@ -5563,7 +5574,28 @@
         "unscheduledLead": "The issue is a draft again.",
         "audienceTeaser": "Everyone can see the cover, the contents and the start of each article. Only members of your community read all of it. It will show on the Magazines page."
       },
-      "goesOut": "Goes out <timestamp>{time}</timestamp>"
+      "goesOut": "Goes out <timestamp>{time}</timestamp>",
+      "image": {
+        "label": "Item image",
+        "hint": "Optional. This image and its crop belong to this item in this issue. Removing a custom image restores the original presentation.",
+        "upload": "Upload image",
+        "replace": "Replace image",
+        "remove": "Remove custom image",
+        "uploading": "Uploading…",
+        "failed": "Could not upload the image. Try again.",
+        "useSource": "Use article image",
+        "shape": "Image shape",
+        "landscape": "Landscape",
+        "portrait": "Portrait",
+        "square": "Square",
+        "horizontal": "Horizontal focal point",
+        "vertical": "Vertical focal point",
+        "focalHint": "Move the focus toward the part of the image you want to keep in the crop.",
+        "caption": "Caption (optional)",
+        "credit": "Image credit (optional)",
+        "alt": "Alt text",
+        "altHint": "Describe what the image adds to the story. Leave blank if it is decorative."
+      }
     },
     "roles": {
       "editor_in_chief": {

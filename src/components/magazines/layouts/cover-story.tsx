@@ -16,7 +16,7 @@ export function CoverStoryLayout({ items, href, teaser }: LayoutProps) {
         <div
           id={itemAnchorId(lead.itemId)}
           data-testid="issue-lead"
-          className="scroll-mt-24"
+          className="issue-lead scroll-mt-24"
         >
           <IssueItem view={lead} size="lead" href={href} teaser={teaser} />
         </div>
@@ -24,7 +24,7 @@ export function CoverStoryLayout({ items, href, teaser }: LayoutProps) {
       {rest.length > 0 && (
         <div
           data-testid="issue-grid"
-          className="grid gap-6 @xl:grid-cols-2 @5xl:grid-cols-3"
+          className="issue-grid grid gap-6 @xl:grid-cols-2 @5xl:grid-cols-3"
         >
           {rest.map((view) => (
             <div

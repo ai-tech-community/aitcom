@@ -1,6 +1,7 @@
 import { sql } from "@payloadcms/db-postgres";
 
 import { routing } from "@/i18n/routing";
+import { readItemImage } from "@/lib/magazines/item-image";
 import type { ScheduleFailure } from "@/lib/magazines/issue-history";
 import {
   ITEM_PROBLEM_CODES,
@@ -215,16 +216,18 @@ function keepOwnBlockIds(
   current: StoredBlock[],
 ): IssueItemInput[] {
   const own = new Map(
-    current.flatMap((block) =>
-      block.id ? [[block.id, block.blockType] as const] : [],
-    ),
+    current.flatMap((block) => (block.id ? [[block.id, block] as const] : [])),
   );
   const used = new Set<string>();
   return items.map((item) => {
     if (!item.id) return item;
-    if (own.get(item.id) === item.kind && !used.has(item.id)) {
+    const previous = own.get(item.id);
+    if (previous?.blockType === item.kind && !used.has(item.id)) {
       used.add(item.id);
-      return item;
+      // Older clients may reorder an item without knowing about its image.
+      const image =
+        item.image === undefined ? readItemImage(previous.image) : null;
+      return image ? { ...item, image } : item;
     }
     return { ...item, id: undefined };
   });

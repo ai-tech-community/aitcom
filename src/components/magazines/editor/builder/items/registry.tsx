@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { EditorItemView, ItemKindId } from "@/lib/magazines/item-views";
+import { readItemImage } from "@/lib/magazines/item-image";
 
 import type { BuilderItem } from "../items-model";
 import { storylineBuilderKind } from "./storyline";
@@ -81,7 +82,9 @@ export function builderPreviewView<K extends ItemKindId>(
   item: BuilderItemOf<K>,
   saved: EditorItemView | undefined,
 ): EditorItemView | null {
-  return kindOf(item).previewView(item, saved);
+  const view = kindOf(item).previewView(item, saved);
+  if (!view || "unavailable" in view) return view;
+  return { ...view, image: readItemImage(item.image) ?? undefined };
 }
 
 /** The content the item references (at most once per issue), or null. */

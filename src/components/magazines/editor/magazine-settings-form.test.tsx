@@ -96,6 +96,28 @@ beforeEach(() => {
 });
 
 describe("MagazineSettingsForm", () => {
+  it("previews and saves the editor's font choice", () => {
+    trpc.settings = {
+      magazine: existingMagazine({ font: "cormorant" }),
+      communityIsPrivate: false,
+      community: { ...UNLISTED, isListedInDirectory: true },
+    };
+    renderWithIntl(<MagazineSettingsForm slug="night-owls" />);
+    const font = screen.getByRole("combobox", { name: "Magazine font" });
+    expect(font).toHaveValue("cormorant");
+    expect(
+      screen.getByTestId("magazine-font-preview").style.fontFamily,
+    ).toContain("cormorant");
+    fireEvent.change(font, { target: { value: "bodoni" } });
+    expect(screen.getByTestId("magazine-font-preview")).toHaveTextContent(
+      "Agents Weekly",
+    );
+    expect(
+      screen.getByTestId("magazine-font-preview").style.fontFamily,
+    ).toContain("bodoni");
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(trpc.saveCalls[0]).toMatchObject({ font: "bodoni" });
+  });
   it("offers preview and asks an unlisted community to confirm it", () => {
     trpc.settings = {
       magazine: existingMagazine(),
@@ -217,6 +239,7 @@ describe("MagazineSettingsForm", () => {
       name: "Night Owls Journal",
       magazineSlug: "night-owls-journal",
       logoUrl: null,
+      font: "italiana",
       topics: [],
       defaultVisibility: "public",
       confirmUnlistedPublic: true,

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 describe("content image migration", () => {
   const source = readFileSync(
-    join(process.cwd(), "src/migrations/20261029c_content_images.ts"),
+    join(process.cwd(), "src/migrations/20261029d_content_images.ts"),
     "utf8",
   );
 
@@ -23,10 +23,17 @@ describe("content image migration", () => {
       'ADD COLUMN IF NOT EXISTS "image_media_id" numeric',
     );
     expect(source).not.toMatch(/\b(UPDATE|INSERT|DELETE)\b/);
+    expect(source).not.toMatch(/"image" jsonb/);
+    const modules = source.split('ALTER TABLE "modules"')[1]?.split("ALTER TABLE")[0] ?? "";
+    expect(modules).toContain("image_url");
+    expect(modules).not.toContain("cover_image_url");
     const index = readFileSync(
       join(process.cwd(), "src/migrations/index.ts"),
       "utf8",
     );
-    expect(index).toContain('name: "20261029c_content_images"');
+    expect(index).toContain('name: "20261029d_content_images"');
+    expect(index.indexOf('name: "20261029b_magazine_item_images"')).toBeLessThan(
+      index.indexOf('name: "20261029d_content_images"'),
+    );
   });
 });

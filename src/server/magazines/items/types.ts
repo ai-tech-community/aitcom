@@ -2,6 +2,7 @@ import type { z } from "zod";
 
 import type { AppLocale } from "@/i18n/messages";
 import type { IssueReaderAccess } from "@/lib/magazines/access";
+import type { ItemImage } from "@/lib/magazines/item-image";
 import type {
   ItemKindId,
   ItemProblem,
@@ -114,7 +115,7 @@ export type ItemViewOf<K extends ItemKindId> = Extract<
  */
 export interface IssueItemKind<
   K extends ItemKindId,
-  Input extends { kind: K; id?: string },
+  Input extends { kind: K; id?: string; image?: ItemImage | null },
   Stored extends { id?: string | null; intro?: string | null },
 > {
   readonly kind: K;

@@ -2,6 +2,7 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { IssueLayout } from "@/lib/magazines/values";
+import { newItemImage } from "@/lib/magazines/item-image";
 
 import type { EditorItemView } from "@/lib/magazines/item-views";
 
@@ -33,7 +34,7 @@ describe("LivePreview", () => {
   it("the layout choice changes the preview", () => {
     const article = articleView(1);
     const props = {
-      magazine: { name: "Gazette", slug: "gazette" },
+      magazine: { name: "Gazette", slug: "gazette", font: "bodoni" as const },
       community: { name: "Night Owls", slug: "night-owls" },
       issue: { number: 1, publishedAt: null },
       details: {
@@ -44,7 +45,14 @@ describe("LivePreview", () => {
         visibility: "teaser" as const,
         layout: "cover-story" as const,
       },
-      items: [{ kind: "article" as const, articleId: 1, key: article.itemId }],
+      items: [
+        {
+          kind: "article" as const,
+          articleId: 1,
+          key: article.itemId,
+          image: newItemImage("https://example.test/live.jpg"),
+        },
+      ],
       savedViews: new Map([[article.itemId, article]]),
       audience: "teaser" as const,
     };
@@ -52,6 +60,26 @@ describe("LivePreview", () => {
       <LivePreview {...props} details={{ ...props.details, layout }} />
     );
     const { rerender } = renderWithIntl(picture("cover-story"));
+    expect(
+      screen
+        .getByTestId("issue-preview")
+        .querySelector(".issue-item-image img"),
+    ).toHaveStyle({ objectPosition: "50% 50%" });
+    props.items[0]!.image.focalX = 80;
+    rerender(picture("cover-story"));
+    expect(
+      screen
+        .getByTestId("issue-preview")
+        .querySelector(".issue-item-image img"),
+    ).toHaveStyle({ objectPosition: "80% 50%" });
+    expect(
+      screen.getByTestId("issue-preview").querySelector("[inert]"),
+    ).toHaveAttribute("data-font", "bodoni");
+    expect(
+      screen
+        .getByTestId("issue-preview")
+        .querySelector(".magazine-cover-typeset"),
+    ).toHaveTextContent("Picks");
     expect(screen.getByTestId("issue-lead")).toHaveTextContent(
       "Excerpt of article 1.",
     );

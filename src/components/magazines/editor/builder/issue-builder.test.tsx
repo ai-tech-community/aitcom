@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EditorItemView, ItemProblem } from "@/lib/magazines/item-views";
 import type { MagazineIssue } from "@/payload-types";
 import { localDateTimeToIso } from "@/lib/magazines/schedule";
+import { newItemImage } from "@/lib/magazines/item-image";
 
 import {
   automaticDraft,
@@ -42,6 +43,10 @@ const trpc = vi.hoisted(() => ({
   unscheduleIssue: vi.fn(),
   invalidate: vi.fn(),
   removeItem: null as ((key: string) => void) | null,
+  upload: vi.fn(),
+}));
+vi.mock("@/lib/upload-shared-image", () => ({
+  uploadSharedImage: trpc.upload,
 }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -272,6 +277,7 @@ async function openRowMenu(title: string) {
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   trpc.pending = false;
+  trpc.upload.mockReset();
   trpc.editing = twoArticles();
   trpc.candidates = [];
   trpc.refetch.mockReset();
@@ -305,6 +311,97 @@ afterEach(() => {
 });
 
 describe("IssueBuilder", () => {
+  it("keeps an item's image controls locked when its uploader is reopened", async () => {
+    let complete!: (url: string) => void;
+    trpc.upload.mockReturnValue(
+      new Promise<string>((resolve) => {
+        complete = resolve;
+      }),
+    );
+    const data = twoArticles();
+    data.storedItems[0] = {
+      ...(data.storedItems[0] as object),
+      image: newItemImage("https://example.test/previous.jpg"),
+    };
+    trpc.editing = data;
+    renderBuilder();
+    const edit = within(
+      within(screen.getByRole("list", { name: "In this issue" })).getAllByRole(
+        "listitem",
+      )[0]!,
+    ).getByRole("button", { name: /^First story/ });
+    fireEvent.click(edit);
+    fireEvent.change(
+      screen
+        .getByRole("region", { name: "Article" })
+        .querySelector('input[type="file"]')!,
+      {
+        target: {
+          files: [new File(["image"], "first.png", { type: "image/png" })],
+        },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(edit);
+    const panel = screen.getByRole("region", { name: "Article" });
+    expect(
+      within(panel).getByRole("button", { name: /Uploading/ }),
+    ).toBeDisabled();
+    expect(
+      within(panel).getByRole("button", { name: "Remove custom image" }),
+    ).toBeDisabled();
+    expect(within(panel).getByLabelText("Alt text")).toBeDisabled();
+    fireEvent.change(panel.querySelector('input[type="file"]')!, {
+      target: {
+        files: [new File(["image"], "second.png", { type: "image/png" })],
+      },
+    });
+    expect(trpc.upload).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+    await act(async () => complete("https://example.test/completed.jpg"));
+    await settleSaves();
+    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+  });
+  it("waits for an item image upload before publishing and autosaves the result", async () => {
+    let complete!: (url: string) => void;
+    trpc.upload.mockReturnValue(
+      new Promise<string>((resolve) => {
+        complete = resolve;
+      }),
+    );
+    renderBuilder();
+    const row = within(
+      screen.getByRole("list", { name: "In this issue" }),
+    ).getAllByRole("listitem")[0]!;
+    fireEvent.click(within(row).getByRole("button", { name: /^First story/ }));
+    const panel = screen.getByRole("region", { name: "Article" });
+    fireEvent.change(panel.querySelector('input[type="file"]')!, {
+      target: {
+        files: [new File(["image"], "photo.png", { type: "image/png" })],
+      },
+    });
+    expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
+    await settleSaves();
+    expect(trpc.setIssueItems).not.toHaveBeenCalled();
+    await act(async () => complete("https://example.test/uploaded.jpg"));
+    await settleSaves();
+    expect(trpc.setIssueItems).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            id: "blk-1",
+            image: expect.objectContaining({
+              url: "https://example.test/uploaded.jpg",
+              focalX: 50,
+              focalY: 50,
+            }),
+          }),
+          expect.anything(),
+        ],
+      }),
+    );
+    expect(screen.getByRole("button", { name: "Publish" })).toBeEnabled();
+  });
   it("shows a skeleton while the issue query has not settled", () => {
     trpc.pending = true;
     renderBuilder();

@@ -14,6 +14,7 @@ export function ArticleItem({
   size,
   href,
   teaser,
+  suppressSourceImage = false,
 }: ItemRendererProps<"article">) {
   const t = useTranslations("magazines.item");
   const { article } = view;
@@ -60,7 +61,7 @@ export function ArticleItem({
       data-item-kind="article"
       className="bg-card text-card-foreground flex h-full flex-col overflow-hidden rounded-xl border"
     >
-      {isLead && article.imageUrl && (
+      {!suppressSourceImage && isLead && article.imageUrl && (
         // Any host an editor links to: next/image only serves listed hosts.
         // eslint-disable-next-line @next/next/no-img-element
         <img

@@ -3,6 +3,10 @@ import { and, desc, eq } from "drizzle-orm";
 import type { IssueVisibility } from "@/lib/magazines/values";
 import { MAX_MAGAZINE_TOPICS } from "@/lib/magazines/values";
 import {
+  resolveMagazineFont,
+  type MagazineFont,
+} from "@/lib/magazines/typography";
+import {
   planVisibilityChange,
   type VisibilityRecord,
 } from "@/lib/magazines/visibility";
@@ -24,6 +28,7 @@ export type MagazineSettingsInput = {
   coverMediaId?: number | null;
   coverImageUrl?: string | null;
   coverAlt?: string | null;
+  font?: MagazineFont;
   topics: string[];
   defaultVisibility: IssueVisibility;
   confirmUnlistedPublic?: boolean;
@@ -204,6 +209,7 @@ export async function saveMagazineSettings(
       ? { coverImageUrl: input.coverImageUrl }
       : {}),
     ...(input.coverAlt !== undefined ? { coverAlt: input.coverAlt } : {}),
+    font: resolveMagazineFont(input.font ?? existing?.font),
     topics: normalizeTopics(input.topics).map((topic) => ({ topic })),
     defaultVisibility: plan.record.visibility,
     publicConfirmedBy: plan.record.publicConfirmedBy,

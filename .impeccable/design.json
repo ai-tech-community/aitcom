@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-28T16:14:04.219Z",
+  "generatedAt": "2026-10-29T19:26:54.475Z",
   "title": "Design System: AIT Community",
   "extensions": {
     "colorMeta": {
@@ -310,6 +310,22 @@
       "label": {
         "displayName": "Label / Mono",
         "purpose": "The signature / SECTION_NAME marker, stats, timestamps, IDs. Monospace, muted, often uppercase."
+      },
+      "magazine-masthead": {
+        "displayName": "Magazine Masthead",
+        "purpose": "Publication-only display typography; editor-selected, default Italiana. Up to 11rem. Greg approved 29 October 2026."
+      },
+      "magazine-bodoni": {
+        "displayName": "Magazine Bodoni",
+        "purpose": "Optional editor-selected Bodoni Moda display face. Publication headlines up to 6rem."
+      },
+      "magazine-cormorant": {
+        "displayName": "Magazine Cormorant",
+        "purpose": "Optional editor-selected Cormorant Garamond display face. Publication headlines up to 6rem."
+      },
+      "magazine-reading": {
+        "displayName": "Magazine Reading",
+        "purpose": "Georgia long-form prose at a readable measure; 1.125rem desktop, 1.0625rem mobile, line height 1.9."
       }
     },
     "shadows": [
@@ -362,6 +378,10 @@
       {
         "name": "xl",
         "value": "1280px"
+      },
+      {
+        "name": "magazine-container",
+        "value": "750px"
       }
     ]
   },
@@ -516,6 +536,16 @@
       {
         "name": "The No-Silent-Failure Rule",
         "body": "Every data fetch handles three states explicitly: loading → `<Skeleton>`; error → `<ErrorState onRetry>` (or hide, for purely supplementary widgets); empty → `<EmptyState>` (or hide). **Never** `if (!data) return null` as the only branch — a failed load must be distinguishable from \"nothing here.\" Errored core sections show the error + retry; only optional/supplementary widgets may stay quietly absent.",
+        "section": "components"
+      },
+      {
+        "name": "Magazine Publication Exception",
+        "body": "Approved editorial shell for issue/article reading and the inert builder preview. Dedicated community return, shelf and contents navigation; large selected display type, a cover readability scrim, flowing stories, and publication information below. Font setting stays magazine-wide; global site UI retains Geist.",
+        "section": "typography"
+      },
+      {
+        "name": "Issue Item Imagery",
+        "body": "Optional issue-owned image figures on all item kinds; landscape, portrait or square crops with shared focal-point positioning, alt text, caption and credit. Custom lead images replace source images. Compact rows keep a thumbnail. Upload state persists across editor remounts and blocks publication.",
         "section": "components"
       }
     ],
