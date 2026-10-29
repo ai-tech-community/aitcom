@@ -64,6 +64,7 @@ import {
   Link2,
   Image as ImageIcon,
   Minus,
+  Video,
 } from "lucide-react";
 import { $setBlocksType } from "@payloadcms/richtext-lexical/lexical/selection";
 import {
@@ -75,8 +76,11 @@ import { CheckListPlugin } from "@payloadcms/richtext-lexical/lexical/react/Lexi
 import { LinkPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalLinkPlugin";
 
 import { cn } from "@/lib/utils";
+import { $insertVideoBlock } from "./article-paste";
+import { ArticlePastePlugin } from "./article-paste-plugin";
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
+import { VideoNode } from "./nodes/video-node";
 import { $createAdmonitionNode, AdmonitionNode } from "./nodes/admonition-node";
 import { $insertTopLevel } from "./insert-top-level";
 import type { SlashGroup, SlashCommand } from "./types";
@@ -242,6 +246,12 @@ function EditorToolbar({
       run: () => onBlock("image"),
     },
     {
+      key: "video",
+      title: "Video",
+      icon: <Video className="size-4" />,
+      run: () => onBlock("video"),
+    },
+    {
       key: "divider",
       title: "Divider",
       icon: <Minus className="size-4" />,
@@ -378,6 +388,7 @@ export function RichTextEditor({
         HorizontalRuleNode,
         CodeBlockNode,
         ImageNode,
+        VideoNode,
         AdmonitionNode,
         ...extensions.map((e) => e.node),
       ],
@@ -503,6 +514,14 @@ export function RichTextEditor({
       if (id === "image") {
         editorRef.update(() => {
           $insertTopLevel([$createImageNode("", "")]);
+        });
+        slashDispatch({ type: "CLOSE" });
+        return;
+      }
+      if (id === "video") {
+        editorRef.focus();
+        editorRef.update(() => {
+          $insertVideoBlock("");
         });
         slashDispatch({ type: "CLOSE" });
         return;
@@ -692,6 +711,7 @@ export function RichTextEditor({
           <HorizontalRulePlugin />
           <CheckListPlugin />
           <LinkPlugin />
+          <ArticlePastePlugin />
           <OnChangePlugin onChange={handleEditorChange} />
           <BlockHandles editor={editorRef} anchorElem={editorAnchor} />
         </LexicalComposer>

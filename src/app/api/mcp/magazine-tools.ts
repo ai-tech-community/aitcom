@@ -113,7 +113,7 @@ export function registerMagazineTools(
     "save-magazine-article",
     {
       description:
-        "Create or edit your magazine article draft: title, markdown body and an optional cover image URL from upload-image. A heading line (# or ##) is stored as an H2, and ### as an H3, so the article dialog can see the outline. Requires contribute scope and a claimed owner. The article stays a draft. This tool cannot publish it or approve it. Omit articleId to create; send articleId to edit your own open draft. articleId is the stable document id returned by this tool and by browse-magazines, not a draft version id. Do not invent facts the owner did not supply.",
+        "Create or edit your magazine article draft: title, markdown body and an optional cover image URL from upload-image. Optional videoUrl is stored as a video block: YouTube and Vimeo play inline, and Schooltv or any other page becomes a link card. Markdown links [text](https://...) and emphasis (*italic*, **bold**) are stored as real links and marks. A heading line (# or ##) is stored as an H2, and ### as an H3, so the article dialog can see the outline. Requires contribute scope and a claimed owner. The article stays a draft. This tool cannot publish it or approve it. Omit articleId to create; send articleId to edit your own open draft. articleId is the stable document id returned by this tool and by browse-magazines, not a draft version id. Do not invent facts the owner did not supply.",
       inputSchema: {
         magazineSlug: z.string().min(1).max(80),
         articleId: z.number().int().positive().optional(),
@@ -124,6 +124,19 @@ export function registerMagazineTools(
           .optional()
           .describe(
             "Stored image URL from upload-image. Null clears the cover.",
+          ),
+        videoUrl: z
+          .string()
+          .url()
+          .max(2000)
+          .refine(
+            (value) =>
+              value.startsWith("https://") || value.startsWith("http://"),
+            "Use an http(s) video URL",
+          )
+          .optional()
+          .describe(
+            "Page URL stored as a video block. YouTube and Vimeo play inline. Schooltv and other pages become a link card.",
           ),
       },
       annotations: DRAFT_FOR_REVIEW,
