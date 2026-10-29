@@ -31,6 +31,11 @@ import {
   REFRESH_2026_07_CAPEX,
   REFRESH_2026_07_SUPPLIERS,
 } from "./refresh-2026-07";
+import {
+  REFRESH_2026_10_DATACENTERS,
+  REFRESH_2026_10_BRANDS,
+  REFRESH_2026_10_PERMITS,
+} from "./refresh-2026-10";
 import { PERMITS } from "./permits";
 import { SUBSIDIES } from "./subsidies";
 import { CAPEX_UPDATES } from "./capex";
@@ -44,6 +49,7 @@ const SOURCES: Array<{ file: string; records: SeedDatacenter[] }> = [
   { file: "apac.ts", records: APAC_ME_AF_LATAM },
   { file: "ai-native.ts", records: AI_NATIVE },
   { file: "refresh-2026-07.ts", records: REFRESH_2026_07_DATACENTERS },
+  { file: "refresh-2026-10.ts", records: REFRESH_2026_10_DATACENTERS },
 ];
 
 const ALL_DATACENTERS = SOURCES.flatMap((s) =>
@@ -58,6 +64,7 @@ const ALL_BRAND_SLUGS = new Set(
     APAC_BRANDS,
     AI_NATIVE_BRANDS,
     REFRESH_2026_07_BRANDS,
+    REFRESH_2026_10_BRANDS,
   ]
     .flat()
     .map((b) => normalize(b.slug)),
@@ -186,9 +193,11 @@ describe("investigation records attach to a real datacenter", () => {
   const CHILDREN: Array<{ kind: string; slugs: string[] }> = [
     {
       kind: "permits",
-      slugs: [...PERMITS, ...REFRESH_2026_07_PERMITS].map(
-        (p) => p.datacenterSlug,
-      ),
+      slugs: [
+        ...PERMITS,
+        ...REFRESH_2026_07_PERMITS,
+        ...REFRESH_2026_10_PERMITS,
+      ].map((p) => p.datacenterSlug),
     },
     {
       kind: "subsidies",
