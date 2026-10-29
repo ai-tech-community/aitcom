@@ -4391,6 +4391,9 @@ export const datacenters = appSchema.table(
       .$type<DatacenterSource[]>()
       .notNull()
       .default(sql`'[]'::jsonb`),
+    // Nullable so existing rows stay. Editor and agent writes require both.
+    sourceUrl: text("source_url"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
 
     submittedByUserId: text("submitted_by_user_id").references(() => user.id, {
       onDelete: "set null",

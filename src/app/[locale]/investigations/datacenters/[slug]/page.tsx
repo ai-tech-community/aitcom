@@ -13,6 +13,7 @@ import { PeerComparison } from "@/components/datacenters/peer-comparison";
 import { OwnershipChain } from "@/components/datacenters/ownership-chain";
 import { SubsidiesPanel } from "@/components/datacenters/subsidies-panel";
 import { PermitsTimeline } from "@/components/datacenters/permits-timeline";
+import { FacilityProvenance } from "@/components/datacenters/facility-provenance";
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +122,15 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
             updated {timeAgo(dc.updatedAt)}
           </span>
         </p>
+        <FacilityProvenance
+          sourceUrl={
+            dc.sourceUrl ??
+            dc.sources?.find((source) => source.url.startsWith("https://"))
+              ?.url ??
+            null
+          }
+          checkedAt={dc.checkedAt}
+        />
         {dc.description && (
           <p className="max-w-3xl text-sm leading-relaxed">{dc.description}</p>
         )}

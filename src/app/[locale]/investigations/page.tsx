@@ -2,21 +2,26 @@ import type { Metadata } from "next";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
 import { AWESOME_AI_OSS_PATH } from "@/lib/investigations/awesome-ai-oss";
+import {
+  INVESTIGATIONS_PATH,
+  INVESTIGATIONS_TITLE,
+} from "@/lib/investigations/datacenter-facilities";
 import { STARTUPS_H1, STARTUPS_PATH } from "@/lib/investigations/startups";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { MissionDialog } from "@/components/datacenters/mission-dialog";
+import { InvestigationsUpdated } from "@/components/datacenters/investigations-updated";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Investigations",
+    title: INVESTIGATIONS_TITLE,
     description:
       "Community-driven investigations into the AI economy — datacenter ecosystems, supply chains, energy deals, and the companies behind them.",
     ...buildOgMeta(
-      "Investigations",
+      INVESTIGATIONS_TITLE,
       "Community-driven investigations into the AI economy.",
-      "Investigations",
+      "AI Datacenters",
     ),
-    alternates: await localeAlternates("/investigations"),
+    alternates: await localeAlternates(INVESTIGATIONS_PATH),
   };
 }
 
@@ -30,7 +35,7 @@ export default async function InvestigationsPage() {
       <header className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">
-            Investigations
+            {INVESTIGATIONS_TITLE}
           </h1>
           <MissionDialog label="Why this matters" variant="outline" />
         </div>
@@ -40,9 +45,7 @@ export default async function InvestigationsPage() {
           infrastructure that powers AI. Open data, sourced facts, member
           verification.
         </p>
-        <p className="text-muted-foreground font-mono text-xs">
-          <time dateTime="2026-10-29">Updated 2026.10.29</time>
-        </p>
+        <InvestigationsUpdated updatedAt={stats.updatedAt} />
       </header>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
