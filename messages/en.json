@@ -5002,6 +5002,12 @@
       "issueLine": "{magazine} · Issue {number}",
       "byCommunity": "A magazine by {community}",
       "byAuthor": "By {author}"
+    },
+    "shell": {
+      "backToCommunity": "Back to community",
+      "contents": "Contents",
+      "byCommunity": "By {community}",
+      "allIssues": "All issues"
     }
   },
   "magazineEditor": {
@@ -5250,7 +5256,12 @@
         "teaser": "Everyone sees the cover, the contents and the start of each article. Members read everything.",
         "public": "Everyone can read all of it."
       },
-      "visibilityTeaser": "Preview for everyone"
+      "visibilityTeaser": "Preview for everyone",
+      "fontLabel": "Magazine font",
+      "fontHint": "Used for the masthead and story headings in every issue. Article text stays easy to read.",
+      "fontPreview": "Font preview",
+      "fontPreviewName": "Your magazine",
+      "fontPreviewHeadline": "A different perspective."
     },
     "tab": {
       "metaTitle": "Magazine",

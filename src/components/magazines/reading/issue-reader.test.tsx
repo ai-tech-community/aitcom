@@ -74,6 +74,27 @@ import { IssueReader } from "./issue-reader";
 import { itemAnchorId } from "./anchors";
 
 describe("IssueReader", () => {
+  it("uses the magazine font and provides its own publication navigation", () => {
+    const data = issuePage();
+    data.magazine.font = "bodoni";
+    const { container } = renderWithIntl(
+      <IssueReader url="https://example.test/issue" data={data} locale="en" />,
+    );
+    expect(container.querySelector(".magazine-publication")).toHaveAttribute(
+      "data-font",
+      "bodoni",
+    );
+    expect(
+      screen.getByRole("link", { name: "Back to community" }),
+    ).toHaveAttribute("href", "/communities/amsterdam-ai");
+    expect(screen.getByRole("link", { name: "Contents" })).toHaveAttribute(
+      "href",
+      "/magazines/agents-weekly/issue-4#issue-contents",
+    );
+    expect(container.querySelector("#issue-contents")).toContainElement(
+      screen.getByRole("navigation", { name: "Contents" }),
+    );
+  });
   it.each(["teaser", "full", "editor"] as const)(
     "tracks issue views for %s readers and passes the subscription source",
     (access) => {
@@ -166,7 +187,7 @@ describe("IssueReader", () => {
     expect(document.activeElement).toBe(title);
   });
 
-  it("places complementary responsive join panels after the hero and before the layout", () => {
+  it("places one join panel after the hero and before the stories", () => {
     const { container } = renderWithIntl(
       <IssueReader
         url="https://example.test/en/magazines/agents-weekly/issue-4"
@@ -175,16 +196,13 @@ describe("IssueReader", () => {
       />,
     );
     const panels = screen.getAllByTestId("join-panel");
-    expect(panels).toHaveLength(2);
-    const [mobile, rail] = panels.map((panel) => panel.parentElement!);
-    expect(mobile).toHaveClass("xl:hidden");
-    expect(mobile).not.toHaveClass("hidden");
-    expect(rail).toHaveClass("hidden", "xl:block");
-    expect(rail).not.toHaveClass("xl:hidden");
+    expect(panels).toHaveLength(1);
+    const mobile = panels[0]!.parentElement!;
+    expect(mobile).toHaveClass("magazine-join-panel");
     const hero = screen.getByRole("heading", { level: 1 }).closest("header")!;
     expect(hero.nextElementSibling).toBe(mobile);
     expect(
-      mobile!.compareDocumentPosition(screen.getByTestId("issue-lead")) &
+      mobile.compareDocumentPosition(screen.getByTestId("issue-lead")) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     for (const panel of panels) {
@@ -382,7 +400,7 @@ describe("IssueReader", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens on the hero: cover beside the title, community, date and the signed note", () => {
+  it("opens on the editorial cover, followed by the signed editor note", () => {
     const { container } = renderWithIntl(
       <IssueReader
         url="https://example.test/en/magazines/agents-weekly/issue-4"
@@ -427,10 +445,9 @@ describe("IssueReader", () => {
     );
     const hero = screen.getByRole("heading", { level: 1 }).closest("header")!;
     expect(hero.querySelector("img")).toBeNull();
-    const typeset = hero.querySelector('[aria-hidden="true"]');
-    expect(typeset).toHaveTextContent("04");
-    expect(typeset).toHaveTextContent("Agents Weekly");
+    const typeset = hero.querySelector(".magazine-cover-typeset");
     expect(typeset).toHaveTextContent("The month agents learned to say no");
+    expect(within(hero).getByText(/Issue 04/)).toBeInTheDocument();
   });
 
   it("links to the magazine's shelf from every issue, the first one included", () => {

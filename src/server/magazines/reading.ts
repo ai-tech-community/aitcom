@@ -3,6 +3,10 @@ import type { Where } from "payload";
 
 import type { AppLocale } from "@/i18n/messages";
 import {
+  resolveMagazineFont,
+  type MagazineFont,
+} from "@/lib/magazines/typography";
+import {
   articleTextModeFor,
   readingModeOf,
   type IssueReaderAccess,
@@ -80,6 +84,8 @@ export type MagazineSummary = {
   description: string | null;
   topics: string[];
   staffHidden: boolean;
+  /** Older summary consumers fall back to the default display face. */
+  font?: MagazineFont;
 };
 
 /** One issue as a cover card on any listing. */
@@ -200,6 +206,7 @@ function toMagazineSummary(
     | "description"
     | "topics"
     | "listingHidden"
+    | "font"
   >,
 ): MagazineSummary {
   return {
@@ -210,6 +217,7 @@ function toMagazineSummary(
     description: magazine.description ?? null,
     topics: magazineTopicsOf(magazine),
     staffHidden: isHiddenByStaff(magazine),
+    font: resolveMagazineFont(magazine.font),
   };
 }
 
@@ -371,6 +379,7 @@ export async function loadHomepageMagazines(
         name: true,
         slug: true,
         logoUrl: true,
+        font: true,
         description: true,
         topics: true,
         listingHidden: true,

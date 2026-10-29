@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { useId, useState, type CSSProperties } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -12,11 +12,16 @@ import {
 } from "@/lib/magazines/item-views";
 import { magazineArticlePath } from "@/lib/magazines/paths";
 import type { IssueVisibility } from "@/lib/magazines/values";
+import {
+  MAGAZINE_FONT_OPTIONS,
+  resolveMagazineFont,
+  type MagazineFont,
+} from "@/lib/magazines/typography";
 import { cn } from "@/lib/utils";
 
 import { isUnavailableItem } from "../../items/registry";
 import { LAYOUTS } from "../../layouts/registry";
-import { IssueHero } from "../../reading/issue-hero";
+import { IssueEditorialHero } from "../../reading/issue-editorial-hero";
 import { MagazineJoinPromptView } from "../../reading/magazine-join-prompt";
 import { builderPreviewView } from "./items/registry";
 import type { BuilderItem } from "./items-model";
@@ -73,7 +78,7 @@ export function LivePreview({
   savedViews,
   audience,
 }: {
-  magazine: { name: string; slug: string };
+  magazine: { name: string; slug: string; font?: MagazineFont | null };
   community: { name: string; slug: string };
   /** The saved issue's number and publish date (null for a draft). */
   issue: { number: number; publishedAt: string | null };
@@ -86,6 +91,7 @@ export function LivePreview({
   const t = useTranslations("magazineEditor.builder.preview");
   const labelId = useId();
   const [mode, setMode] = useState<PreviewMode>("member");
+  const font = resolveMagazineFont(magazine.font);
 
   const Layout = LAYOUTS[details.layout];
   const { views: loadedViews, waiting } = previewViews(items, savedViews);
@@ -149,8 +155,17 @@ export function LivePreview({
           />
         ) : (
           <div className="flex flex-col gap-6">
-            <div inert className="@container flex flex-col gap-6">
-              <IssueHero
+            <div
+              inert
+              className="magazine-publication magazine-preview @container flex flex-col gap-6"
+              data-font={font}
+              style={
+                {
+                  "--magazine-display": MAGAZINE_FONT_OPTIONS[font].family,
+                } as CSSProperties
+              }
+            >
+              <IssueEditorialHero
                 titleAs="h2"
                 issue={{
                   number: issue.number,
@@ -163,7 +178,9 @@ export function LivePreview({
                   signedBy: null,
                 }}
               />
-              <Layout items={views} href={href} teaser={teaser} />
+              <div className="magazine-stories w-full">
+                <Layout items={views} href={href} teaser={teaser} />
+              </div>
               {teaser && (
                 <MagazineJoinPromptView
                   tone="preview"

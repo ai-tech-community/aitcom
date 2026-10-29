@@ -106,6 +106,25 @@ function jsonLd(container: HTMLElement): Record<string, unknown>[] {
 }
 
 describe("MagazineArticle", () => {
+  it("keeps the publication font and a route back to the issue contents", () => {
+    const data = articlePage();
+    data.magazine.font = "cormorant";
+    const { container } = renderWithIntl(
+      <MagazineArticle
+        url="https://example.test/article"
+        data={data}
+        comments={[]}
+      />,
+    );
+    expect(container.querySelector(".magazine-publication")).toHaveAttribute(
+      "data-font",
+      "cormorant",
+    );
+    expect(screen.getByRole("link", { name: "Contents" })).toHaveAttribute(
+      "href",
+      "/magazines/agents-weekly/issue-4#issue-contents",
+    );
+  });
   it.each(["teaser", "full", "editor"] as const)(
     "tracks article reads for %s readers and passes the subscription source",
     (access) => {

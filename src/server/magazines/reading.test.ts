@@ -12,6 +12,9 @@ import { loadMagazineEditorship } from "./editorship";
 import { buildIssueReadScope, loadIssueReadScope } from "./readable-issues";
 import { loadCommunityMagazineTab, loadMagazineShelf } from "./reading";
 
+// Reader dependencies are supplied by the fixture; never initialize a real DB.
+vi.mock("@/server/db", () => ({ db: {} }));
+
 vi.mock("./editorship", async (importOriginal) => {
   const actual = await importOriginal<typeof EditorshipModule>();
   return {
@@ -218,7 +221,7 @@ describe("magazine reading standing", () => {
   });
 
   it("still loads a standalone shelf's scope once and respects it", async () => {
-    const fx = fixture();
+    const fx = fixture({ magazine: { ...magazine, font: "bodoni" } });
     vi.mocked(loadIssueReadScope).mockResolvedValue(
       buildIssueReadScope({ editorCommunityIds: [], memberCommunityIds: [] }, [
         { ...community, deletedAt: null },
@@ -231,7 +234,7 @@ describe("magazine reading standing", () => {
     });
     expect(result).toMatchObject({
       viewerIsEditor: false,
-      magazine: { id: 42 },
+      magazine: { id: 42, font: "bodoni" },
     });
     expect(result!.issues.map((row) => row.id)).toEqual([1]);
     expect(result!.unpublishedForEditor).toBe(false);

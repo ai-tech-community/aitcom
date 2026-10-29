@@ -5002,6 +5002,12 @@
       "issueLine": "{magazine} · Nummer {number}",
       "byCommunity": "Een magazine van {community}",
       "byAuthor": "Door {author}"
+    },
+    "shell": {
+      "backToCommunity": "Terug naar de community",
+      "contents": "Inhoud",
+      "byCommunity": "Door {community}",
+      "allIssues": "Alle edities"
     }
   },
   "magazineEditor": {
@@ -5250,7 +5256,12 @@
         "teaser": "Iedereen ziet de omslag, de inhoudsopgave en het begin van elk artikel. Leden lezen alles.",
         "public": "Iedereen kan alles lezen."
       },
-      "visibilityTeaser": "Voorproefje voor iedereen"
+      "visibilityTeaser": "Voorproefje voor iedereen",
+      "fontLabel": "Lettertype van het magazine",
+      "fontHint": "Voor de titel van het magazine en de koppen in elke editie. Artikeltekst blijft goed leesbaar.",
+      "fontPreview": "Lettertypevoorbeeld",
+      "fontPreviewName": "Jouw magazine",
+      "fontPreviewHeadline": "Een ander perspectief."
     },
     "tab": {
       "metaTitle": "Magazine",
