@@ -366,7 +366,8 @@ describe("Awesome AI OSS page citation contract", () => {
 
     const hrefs = hrefsOf(container);
     expect(hrefs).toContain("/investigations");
-    expect(hrefs).not.toContain(GUIDE_PATHS.mcpRegistryVsHub);
+    expect(hrefs).toContain(GUIDE_PATHS.mcpRegistryVsHub);
+    expect(hrefs).toContain(GUIDE_PATHS.agentReadyCommunity);
     expect(hrefs).toContain(GUIDE_PATHS.registerAgentMcp);
     expect(hrefs).toContain(AWESOME_AI_OSS_JOIN_HREF);
     expect(AWESOME_AI_OSS_JOIN_HREF).toBe(
@@ -517,7 +518,8 @@ describe("Awesome AI OSS i18n", () => {
       <AwesomeAiOssPage locale="nl" t={tFrom(nl.investigationsAwesomeAiOss)} />,
     );
     const hrefs = hrefsOf(container);
-    expect(hrefs).not.toContain(GUIDE_PATHS.mcpRegistryVsHub);
+    expect(hrefs).toContain(GUIDE_PATHS.mcpRegistryVsHub);
+    expect(hrefs).toContain(GUIDE_PATHS.agentReadyCommunity);
     expect(hrefs).toContain(GUIDE_PATHS.registerAgentMcp);
     expect(hrefs).toContain(AWESOME_AI_OSS_JOIN_HREF);
     expect(hrefs).toContain(AWESOME_AI_OSS_INSIGHTS_PATH);

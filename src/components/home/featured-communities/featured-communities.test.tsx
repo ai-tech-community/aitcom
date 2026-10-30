@@ -172,14 +172,12 @@ describe("FeaturedCommunities", () => {
     expect(classes).not.toContain("mx-auto");
   });
 
-  it("uses the system card surface: full border and the resting shadow-sm", () => {
+  it("uses the system card surface: full border without a resting shadow", () => {
     renderIn(THREE);
     for (const card of cardLinks()) {
       const classes = card.className.split(/\s+/);
-      expect(classes).toEqual(
-        expect.arrayContaining(["border", "rounded-xl", "shadow-sm"]),
-      );
-      expect(classes.filter((c) => /(^|:)shadow-(?!sm$)/.test(c))).toEqual([]);
+      expect(classes).toEqual(expect.arrayContaining(["border", "rounded-xl"]));
+      expect(classes.some((c) => /(^|:)shadow/.test(c))).toBe(false);
     }
   });
 
@@ -232,6 +230,23 @@ describe("FeaturedCommunities art", () => {
   });
   afterEach(() => {
     for (const s of spies.splice(0)) s.mockRestore();
+  });
+
+  it("draws the compact mobile artwork at its real 64px height", () => {
+    const previous = { ...box };
+    box.width = 156;
+    box.height = 64;
+    try {
+      renderIn([NL_CARD]);
+      const art = screen.getByTestId("community-art-ait-community-netherlands");
+      expect(
+        within(art)
+          .getAllByText((_, el) => el?.tagName === "PRE")
+          .some((pre) => pre.textContent?.trim()),
+      ).toBe(true);
+    } finally {
+      Object.assign(box, previous);
+    }
   });
 
   it("draws each card's own house from its slug and real member count", () => {

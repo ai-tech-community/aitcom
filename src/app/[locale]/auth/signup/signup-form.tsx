@@ -73,7 +73,9 @@ export function SignUpForm({
             {t("signUp")}
           </h1>
           <p className="text-muted-foreground text-sm">
-            Join AIT<span className="text-primary">.</span> Community
+            {t.rich("signUpTagline", {
+              dot: (chunks) => <span className="text-primary">{chunks}</span>,
+            })}
           </p>
         </div>
 

@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
@@ -8,7 +9,6 @@ import { SectionLabel } from "@/components/ui/section-label";
 import {
   AWESOME_AI_OSS_PATH,
   AWESOME_AI_OSS_REVIEW_PATH,
-  type AwesomeLocale,
 } from "@/lib/investigations/awesome-ai-oss";
 import { getSession } from "@/server/better-auth/server";
 import { userIsHubOperator } from "@/server/awesome-ai-oss/operator";
@@ -49,9 +49,7 @@ export default async function AwesomeAiOssReviewPage() {
         {t("queueTitle")}
       </h1>
       <div className="mt-10">
-        <AwesomeAiOssReviewQueue
-          locale={(locale === "nl" ? "nl" : "en") as AwesomeLocale}
-        />
+        <AwesomeAiOssReviewQueue locale={resolveLocale(locale)} />
       </div>
     </main>
   );

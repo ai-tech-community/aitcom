@@ -1,5 +1,7 @@
 import type { SerializedEditorState } from "@payloadcms/richtext-lexical/lexical";
 
+import type { ArticleDestination } from "./destination";
+
 export interface ArticleEditorProps {
   initialData?: {
     id: number;
@@ -13,6 +15,8 @@ export interface ArticleEditorProps {
     reviewNote?: string;
   };
   isTrustedAuthor: boolean;
+  /** Where the article is written for; the blog when left out. */
+  destination?: ArticleDestination;
 }
 
 export type SaveState = "idle" | "unsaved" | "saving" | "saved" | "error";
@@ -145,6 +149,12 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     label: "Image",
     group: "Basic",
     keywords: ["image", "picture", "photo", "img"],
+  },
+  {
+    id: "video",
+    label: "Video",
+    group: "Basic",
+    keywords: ["video", "youtube", "vimeo", "embed", "schooltv"],
   },
   {
     id: "code",

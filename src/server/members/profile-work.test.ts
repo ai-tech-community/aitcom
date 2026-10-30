@@ -19,8 +19,25 @@ const readable = {
 };
 
 describe("Work queries", () => {
-  it("lists only the author's public articles (the blog rule)", () => {
-    expect(profileArticlesWhere("u1")).toEqual({
+  it("lists the author's public articles and their articles in public issues", () => {
+    expect(profileArticlesWhere("u1", [7])).toEqual({
+      and: [
+        { authorId: { equals: "u1" } },
+        {
+          or: [
+            publicArticleWhere(),
+            {
+              and: [
+                { status: { equals: "published" } },
+                { magazineIssue: { in: [7] } },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    // No public issue: the blog rule alone.
+    expect(profileArticlesWhere("u1", [])).toEqual({
       and: [{ authorId: { equals: "u1" } }, publicArticleWhere()],
     });
   });

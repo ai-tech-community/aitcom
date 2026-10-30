@@ -4,7 +4,13 @@ import { MoreLink } from "@/components/ui/more-link";
 import { SectionLabel } from "@/components/ui/section-label";
 import type { HomeNewsItem } from "@/server/news/home";
 
-export function LatestNews({ items }: { items: readonly HomeNewsItem[] }) {
+export function LatestNews({
+  items,
+  embedded = false,
+}: {
+  items: readonly HomeNewsItem[];
+  embedded?: boolean;
+}) {
   const t = useTranslations("homeNews");
   const locale = useLocale();
   if (!items.length) return null;
@@ -14,15 +20,26 @@ export function LatestNews({ items }: { items: readonly HomeNewsItem[] }) {
     timeZone: "UTC",
   });
   return (
-    <section aria-labelledby="home-news-title" className="px-6 py-12 sm:px-12">
+    <section
+      aria-labelledby="home-news-title"
+      className={embedded ? "min-w-0" : "px-6 py-12 sm:px-12"}
+    >
       <SectionLabel id="home-news-title" className="pb-4">
         {t("title")}
       </SectionLabel>
       <ol className="divide-border border-border divide-y border-b">
         {items.map((item) => (
           <li key={`${item.kind}-${item.id}`} className="py-5">
-            <article className="grid gap-2 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-6">
-              <div className="text-muted-foreground flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs sm:flex-col sm:gap-2">
+            <article
+              className={
+                embedded
+                  ? "grid gap-2"
+                  : "grid gap-2 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-6"
+              }
+            >
+              <div
+                className={`text-muted-foreground flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs ${embedded ? "" : "sm:flex-col sm:gap-2"}`}
+              >
                 <span className="text-foreground font-medium">
                   {t(item.kind)}
                 </span>
@@ -32,7 +49,7 @@ export function LatestNews({ items }: { items: readonly HomeNewsItem[] }) {
               </div>
               <div className="min-w-0">
                 <h3
-                  className="text-base leading-snug font-semibold sm:text-lg"
+                  className={`text-base leading-snug font-semibold ${embedded ? "" : "sm:text-lg"}`}
                   lang={item.englishFallback ? "en" : undefined}
                 >
                   {item.kind === "story" ? (
@@ -52,12 +69,14 @@ export function LatestNews({ items }: { items: readonly HomeNewsItem[] }) {
                     </a>
                   )}
                 </h3>
-                <p
-                  className="text-muted-foreground mt-1 line-clamp-2 max-w-prose text-sm leading-relaxed"
-                  lang={item.englishFallback ? "en" : undefined}
-                >
-                  {item.summary}
-                </p>
+                {!embedded && (
+                  <p
+                    className="text-muted-foreground mt-1 line-clamp-2 max-w-prose text-sm leading-relaxed"
+                    lang={item.englishFallback ? "en" : undefined}
+                  >
+                    {item.summary}
+                  </p>
+                )}
                 {item.source ? (
                   <p className="text-muted-foreground mt-2 text-xs">
                     {item.source}

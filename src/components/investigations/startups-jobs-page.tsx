@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import { Link } from "@/i18n/navigation";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -104,7 +105,7 @@ export function StartupsJobsPage({
   newRoles?: StartupJobsNewRole[];
   trackedRoleIds?: readonly string[];
 }) {
-  const copyLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale = resolveLocale(locale);
   const filtered = applyStartupJobsQuery(roles, query, textMatches);
   const pagination = paginateStartupRoles(filtered, query.page);
   const facets = startupJobsFacets(roles);

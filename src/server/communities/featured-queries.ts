@@ -1,9 +1,8 @@
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 
 import {
-  FEATURED_COMMUNITY_SLUGS,
   asMemberCount,
-  pickFeaturedCommunities,
+  pickHomeCommunities,
   type FeaturedCommunityCard,
 } from "@/server/communities/featured";
 import { HUB_SLUG } from "@/server/communities/hub";
@@ -13,16 +12,12 @@ import { communities, communityMemberships } from "@/server/db/schema";
 type DB = typeof _db;
 
 /**
- * Live cards for the homepage strip: name / blurb / logo / member count.
- * Includes the unlisted Hub. Drops every other unlisted community, so a
- * test room on the editorial slug list still stays off the strip. Does not
- * invent activity or thread counts.
+ * Live homepage gallery: curated communities, then other listed communities.
+ * Includes the existing unlisted Hub exception; never invents activity counts.
  */
 export async function loadFeaturedCommunities(
   db: DB,
 ): Promise<FeaturedCommunityCard[]> {
-  const slugs: string[] = [...FEATURED_COMMUNITY_SLUGS];
-
   const memberCountSq = db
     .select({
       communityId: communityMemberships.communityId,
@@ -49,7 +44,6 @@ export async function loadFeaturedCommunities(
     .leftJoin(memberCountSq, eq(communities.id, memberCountSq.communityId))
     .where(
       and(
-        inArray(communities.slug, slugs),
         isNull(communities.deletedAt),
         or(
           eq(communities.isListedInDirectory, true),
@@ -58,8 +52,10 @@ export async function loadFeaturedCommunities(
       ),
     );
 
-  return pickFeaturedCommunities(rows).map((row) => ({
-    ...row,
-    memberCount: asMemberCount(row.memberCount),
-  }));
+  return pickHomeCommunities(
+    rows.map((row) => ({
+      ...row,
+      memberCount: asMemberCount(row.memberCount),
+    })),
+  );
 }

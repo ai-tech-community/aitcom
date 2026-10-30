@@ -77,6 +77,18 @@ describe("AI Engineer New York recap", () => {
     expect(recap?.description).not.toMatch(/2027/);
   });
 
+  it("uses a French recap title and description", () => {
+    const recap = aiEngineerNewYorkRecap(AI_ENGINEER_NEW_YORK_SLUG, "fr");
+    expect(recap?.title).toMatch(/rétrospective/i);
+    expect(recap?.title).toContain("AI Engineer New York 2026");
+    expect(recap?.description.length).toBeLessThanOrEqual(160);
+    expect(recap?.description).not.toMatch(BANNED_META);
+    expect(recap?.description).not.toMatch(/2027/);
+    expect(eventSeoTitle(AI_ENGINEER_NEW_YORK_SLUG, "fr", "stored")).toBe(
+      recap?.title,
+    );
+  });
+
   it("points the rendered note at the official site", () => {
     render(<EventRecapNote slug={AI_ENGINEER_NEW_YORK_SLUG} locale="en" />);
     expect(screen.getByRole("link", { name: "official site" })).toHaveAttribute(

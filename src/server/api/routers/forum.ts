@@ -1,3 +1,4 @@
+import { routing } from "@/i18n/routing";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import type { Where } from "payload";
@@ -33,44 +34,10 @@ import {
   viewerCanReadContentOf,
 } from "@/server/communities/content-visibility-queries";
 import { buildIdeasWhere } from "./ideas-filter";
-
-async function requireRulesAcceptance(userId: string, communityId?: string) {
-  if (!communityId) return;
-
-  const payload = await getPayloadClient();
-  const { docs } = await payload.find({
-    collection: "community-rules",
-    where: { communityId: { equals: communityId } },
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  });
-
-  if (docs.length === 0) return;
-
-  const rules = docs[0]!;
-
-  const { docs: acceptanceDocs } = await payload.find({
-    collection: "rules-acceptance",
-    where: {
-      and: [
-        { userId: { equals: userId } },
-        { rulesVersion: { equals: rules.version } },
-        { communityId: { equals: communityId } },
-      ],
-    },
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  });
-
-  if (acceptanceDocs.length === 0) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "RULES_NOT_ACCEPTED",
-    });
-  }
-}
+import { createForumThread } from "@/server/communities/create-forum-thread";
+import { pinForumThread } from "@/server/communities/pin-forum-thread";
+import { requireRulesAcceptance } from "@/server/communities/rules-acceptance";
+import { roleCanModerateThreads } from "@/lib/communities/thread-moderation";
 
 export const forumRouter = createTRPCRouter({
   // ── Rules ──────────────────────────────────────────────────────────────────
@@ -79,7 +46,7 @@ export const forumRouter = createTRPCRouter({
     .input(
       z.object({
         communitySlug: z.string(),
-        locale: z.enum(["en", "nl"]).optional(),
+        locale: z.enum(routing.locales).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -511,63 +478,15 @@ export const forumRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      let communityId: string | undefined;
-      if (input.communitySlug) {
-        const community = await ctx.db.query.communities.findFirst({
-          where: and(
-            eq(communities.slug, input.communitySlug),
-            isNull(communities.deletedAt),
-          ),
-          columns: { id: true },
-        });
-        communityId = community?.id;
-      }
-      await requireRulesAcceptance(ctx.session.user.id, communityId);
-      const payload = await getPayloadClient();
-      const userName = ctx.session.user.name ?? "member";
-
-      const baseSlug = input.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 80);
-      const slug = `${baseSlug}-${Date.now()}`;
-
-      const thread = await payload.create({
-        collection: "forum-threads",
-        data: {
-          title: input.title,
-          slug,
-          content: plainTextToLexical(input.content),
-          category: input.category,
-          authorId: ctx.session.user.id,
-          authorName: userName,
-          authorRole: "member",
-          isPinned: false,
-          isLocked: false,
-          replyCount: 0,
-          lastActivityAt: new Date().toISOString(),
-          ...(communityId ? { communityId } : {}),
-        },
-      });
-
-      await logActivity(ctx.db, {
-        actorId: ctx.session.user.id,
-        actorType: "member",
-        action: "thread.create",
-        targetType: "forum-threads",
-        targetId: String(thread.id),
-        communityId: communityId ?? undefined,
-        metadata: { title: input.title, category: input.category, slug },
-      });
-
-      await awardXp(
+      return createForumThread(
         ctx.db,
-        ctx.session.user.id,
-        XP_AMOUNTS.FORUM_THREAD_CREATE,
+        { id: ctx.session.user.id, type: "member" },
+        {
+          id: ctx.session.user.id,
+          name: ctx.session.user.name ?? "member",
+        },
+        input,
       );
-
-      return thread;
     }),
 
   // ── Replies ────────────────────────────────────────────────────────────────
@@ -738,44 +657,12 @@ export const forumRouter = createTRPCRouter({
   pinThread: protectedProcedure
     .input(z.object({ threadId: z.number(), isPinned: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      const payload = await getPayloadClient();
-      const thread = await payload.findByID({
-        collection: "forum-threads",
-        id: input.threadId,
-        depth: 0,
+      // Hub threads have no community role in the UI. This procedure still
+      // allows a signed-in member to pin them, as it did before.
+      const pinned = await pinForumThread(ctx.db, ctx.session.user.id, input, {
+        allowHubThread: true,
       });
-
-      if (!thread || thread.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
-      }
-
-      if (thread.communityId) {
-        const membership = await ctx.db.query.communityMemberships.findFirst({
-          where: and(
-            eq(communityMemberships.communityId, thread.communityId),
-            eq(communityMemberships.userId, ctx.session.user.id),
-            eq(communityMemberships.status, "active"),
-          ),
-        });
-        if (
-          !membership ||
-          (membership.role !== "owner" &&
-            membership.role !== "admin" &&
-            membership.role !== "moderator")
-        ) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Only moderators can pin threads",
-          });
-        }
-      }
-
-      await payload.update({
-        collection: "forum-threads",
-        id: input.threadId,
-        data: { isPinned: input.isPinned },
-      });
-      return { ok: true };
+      return { ok: pinned.ok };
     }),
 
   lockThread: protectedProcedure
@@ -800,12 +687,7 @@ export const forumRouter = createTRPCRouter({
             eq(communityMemberships.status, "active"),
           ),
         });
-        if (
-          !membership ||
-          (membership.role !== "owner" &&
-            membership.role !== "admin" &&
-            membership.role !== "moderator")
-        ) {
+        if (!roleCanModerateThreads(membership?.role)) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "Only moderators can lock threads",

@@ -1,5 +1,7 @@
 "use client";
 
+import type { AppLocale } from "@/i18n/messages";
+
 import {
   ArrowRight,
   ArrowUpRight,
@@ -64,7 +66,7 @@ export function StartupsJobsBoardCard({
   role: StartupRolePublic;
   status: TrackingStatus;
   trackedAt: string;
-  locale: "en" | "nl";
+  locale: AppLocale;
   help: readonly RoleHelpRequest[];
   onMove: (status: TrackingStatus) => void;
   onAsk: () => void;

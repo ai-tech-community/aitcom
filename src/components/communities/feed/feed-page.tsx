@@ -46,9 +46,9 @@ export function FeedPage({
   const isMember = !!memberRole;
 
   return (
-    <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-      {/* Left column: composer + feed */}
-      <div className="min-w-0 flex-1 space-y-4">
+    <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      {/* Main column: composer + feed */}
+      <div className="min-w-0 space-y-4">
         {isAuthenticated && isMember && (
           <HubFirstSessionPath slug={slug} isMember={isMember} />
         )}
@@ -81,10 +81,8 @@ export function FeedPage({
                 {t("signInDescription")}
               </p>
             </div>
-            <Button
-              onClick={() => promptAuth("Sign in to see the community feed")}
-            >
-              <LogIn className="h-4 w-4" /> Sign in
+            <Button onClick={() => promptAuth(t("signInTitle"))}>
+              <LogIn className="h-4 w-4" /> {t("signIn")}
             </Button>
           </div>
         ) : !isMember ? (
@@ -110,13 +108,12 @@ export function FeedPage({
         )}
       </div>
 
-      {/* Right column: sidebar (desktop) — sticks below the community nav */}
-      <div className="hidden w-80 shrink-0 lg:sticky lg:top-24 lg:block lg:self-start">
-        <CommunitySidebar slug={slug} />
-      </div>
-
-      {/* Sidebar (mobile, below feed) */}
-      <div className="lg:hidden">
+      {/* Side panel: beside the feed from `xl` (the community rail takes the
+          left), below it on narrower screens. */}
+      <div
+        data-feed-side-panel=""
+        className="xl:sticky xl:top-24 xl:max-h-[calc(100dvh-7rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain xl:[scrollbar-width:thin]"
+      >
         <CommunitySidebar slug={slug} />
       </div>
     </div>

@@ -1,0 +1,214 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import { useId, useState, type CSSProperties } from "react";
+
+import { EmptyState } from "@/components/ui/empty-state";
+import { SectionLabel } from "@/components/ui/section-label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import {
+  isMembersOnlyView,
+  type EditorItemView,
+} from "@/lib/magazines/item-views";
+import { magazineArticlePath } from "@/lib/magazines/paths";
+import type { IssueVisibility } from "@/lib/magazines/values";
+import {
+  MAGAZINE_FONT_OPTIONS,
+  resolveMagazineFont,
+  type MagazineFont,
+} from "@/lib/magazines/typography";
+import { cn } from "@/lib/utils";
+
+import { isUnavailableItem } from "../../items/registry";
+import { LAYOUTS } from "../../layouts/registry";
+import { IssueEditorialHero } from "../../reading/issue-editorial-hero";
+import { MagazineJoinPromptView } from "../../reading/magazine-join-prompt";
+import { builderPreviewView } from "./items/registry";
+import type { BuilderItem } from "./items-model";
+import type { IssueDetailsDraft } from "./use-issue-save";
+
+type PreviewMode = "member" | "phone" | "visitor";
+
+/** A public issue still follows each item's own availability and audience. */
+export function visibleToVisitors(view: EditorItemView): boolean {
+  return !isUnavailableItem(view) && !isMembersOnlyView(view);
+}
+
+/**
+ * The views the preview renders, in the builder's order (preflight F32).
+ * Each kind decides (`previewView`): an editorial block is derived from
+ * what the editor typed, so it shows at once; an article shows its last
+ * saved view, so an article added a moment ago appears after its first
+ * save. Unavailable markers show as they do for editors on the reading
+ * page.
+ */
+export function previewViews(
+  items: BuilderItem[],
+  savedViews: ReadonlyMap<string, EditorItemView>,
+): { views: EditorItemView[]; waiting: boolean } {
+  const views: EditorItemView[] = [];
+  let waiting = false;
+  for (const item of items) {
+    const view = builderPreviewView(item, savedViews.get(item.key));
+    if (view) views.push(view);
+    else waiting = true;
+  }
+  return { views, waiting };
+}
+
+/**
+ * The live preview: the issue's hero and its real layout
+ * (`LAYOUTS[details.layout]`), as a member sees it, in a phone-sized frame, or as a
+ * visitor from outside the community sees it (nothing for a members-only
+ * issue, openings and a join prompt for preview, the full issue for public).
+ *
+ * The preview is a picture of the page, not the page: it is `inert`, so its
+ * links and any control an item kind renders can be neither clicked nor
+ * focused, and keyboard users go from the mode switch straight on. Inert
+ * also takes it out of the accessibility tree; the item list says the same
+ * in words. The note is unsigned here: an issue is signed by the editor who
+ * publishes it.
+ */
+export function LivePreview({
+  magazine,
+  community,
+  issue,
+  details,
+  items,
+  savedViews,
+  audience,
+}: {
+  magazine: { name: string; slug: string; font?: MagazineFont | null };
+  community: { name: string; slug: string };
+  /** The saved issue's number and publish date (null for a draft). */
+  issue: { number: number; publishedAt: string | null };
+  details: IssueDetailsDraft;
+  items: BuilderItem[];
+  savedViews: ReadonlyMap<string, EditorItemView>;
+  /** Who will be able to read the issue (its effective visibility). */
+  audience: IssueVisibility;
+}) {
+  const t = useTranslations("magazineEditor.builder.preview");
+  const labelId = useId();
+  const [mode, setMode] = useState<PreviewMode>("member");
+  const font = resolveMagazineFont(magazine.font);
+
+  const Layout = LAYOUTS[details.layout];
+  const { views: loadedViews, waiting } = previewViews(items, savedViews);
+  const views =
+    mode === "visitor" ? loadedViews.filter(visibleToVisitors) : loadedViews;
+  const href = (articleSlug: string) =>
+    magazineArticlePath(
+      magazine,
+      { slug: details.slug },
+      { slug: articleSlug },
+    );
+  const hiddenFromVisitors = mode === "visitor" && audience === "members";
+  const teaser =
+    mode === "visitor" && audience === "teaser"
+      ? {
+          inlinePrompt: (
+            <MagazineJoinPromptView
+              tone="preview"
+              community={{ ...community, joinPolicy: "open" }}
+              variant="inline"
+              action={{ kind: "join" }}
+              onRun={() => undefined}
+              busy={false}
+            />
+          ),
+        }
+      : null;
+  const visitorNoneVisible =
+    mode === "visitor" && loadedViews.length > 0 && views.length === 0;
+
+  return (
+    <section aria-labelledby={labelId} className="flex min-w-0 flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SectionLabel id={labelId} bordered={false}>
+          {t("label")}
+        </SectionLabel>
+        <SegmentedControl<PreviewMode>
+          size="sm"
+          aria-label={t("mode")}
+          value={mode}
+          onValueChange={setMode}
+          options={[
+            { value: "member", label: t("member") },
+            { value: "phone", label: t("phone") },
+            { value: "visitor", label: t("visitor") },
+          ]}
+        />
+      </div>
+
+      <div
+        data-testid="issue-preview"
+        className={cn(
+          "bg-background rounded-xl border",
+          mode === "phone" ? "mx-auto w-full max-w-[390px] p-4" : "p-4 sm:p-6",
+        )}
+      >
+        {hiddenFromVisitors ? (
+          <EmptyState
+            title={t("visitorNothingTitle")}
+            description={t("visitorNothing")}
+          />
+        ) : (
+          <div className="flex flex-col gap-6">
+            <div
+              inert
+              className="magazine-publication magazine-preview @container flex flex-col gap-6"
+              data-font={font}
+              style={
+                {
+                  "--magazine-display": MAGAZINE_FONT_OPTIONS[font].family,
+                } as CSSProperties
+              }
+            >
+              <IssueEditorialHero
+                titleAs="h2"
+                issue={{
+                  number: issue.number,
+                  title: details.title.trim() || t("untitled"),
+                  coverImageUrl: details.coverImageUrl,
+                  publishedAt: issue.publishedAt,
+                  magazine,
+                  community,
+                  editorNote: details.editorNote,
+                  signedBy: null,
+                }}
+              />
+              <div className="magazine-stories w-full">
+                <Layout items={views} href={href} teaser={teaser} />
+              </div>
+              {teaser && (
+                <MagazineJoinPromptView
+                  tone="preview"
+                  community={{ ...community, joinPolicy: "open" }}
+                  variant="panel"
+                  action={{ kind: "join" }}
+                  onRun={() => undefined}
+                  busy={false}
+                />
+              )}
+            </div>
+            {/* Outside the inert picture: these say what the preview is waiting for. */}
+            {visitorNoneVisible && (
+              <p className="text-muted-foreground text-sm">
+                {t("visitorNoneVisible")}
+              </p>
+            )}
+            {views.length === 0 && !waiting && !visitorNoneVisible && (
+              <p className="text-muted-foreground text-sm">{t("empty")}</p>
+            )}
+            {waiting && (
+              <p className="text-muted-foreground text-sm">
+                {t("unsavedItems")}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}

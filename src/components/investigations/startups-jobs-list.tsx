@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { ArrowUpRight } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
@@ -52,7 +53,7 @@ export function StartupsJobsList({
 }: {
   roles: readonly StartupRoleListing[];
   grouped: boolean;
-  locale: "en" | "nl";
+  locale: AppLocale;
   /** Matching roles per company across all pages, for group headers. */
   companyTotals: ReadonlyMap<string, number>;
   newSlugs: ReadonlySet<string>;
@@ -149,7 +150,7 @@ function RoleRow({
 }: {
   role: StartupRoleListing;
   showCompany: boolean;
-  locale: "en" | "nl";
+  locale: AppLocale;
   newSlugs: ReadonlySet<string>;
   trackedIds: ReadonlySet<string>;
   canTrack: boolean;

@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 
@@ -13,7 +14,6 @@ import {
   buildAwesomeDirectoryPath,
   paginateAwesomeCards,
   parseAwesomeDirectoryQuery,
-  type AwesomeLocale,
 } from "@/lib/investigations/awesome-ai-oss";
 import { isAwesomeInsightsTab } from "@/lib/investigations/awesome-ai-oss-insights";
 import { redirect } from "@/i18n/navigation";
@@ -58,7 +58,7 @@ export async function generateMetadata({
   const filtered = applyAwesomeDirectoryQuery(
     await listApprovedPublicCards(),
     query,
-    (locale === "nl" ? "nl" : "en") as AwesomeLocale,
+    resolveLocale(locale),
   );
   const pagination = paginateAwesomeCards(filtered, query.page);
   const canonicalPath = awesomeDirectoryCanonicalPath({

@@ -9,20 +9,28 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/trpc/react";
 
-/** The owner's pending news storyline drafts, including rows stored before this screen existed. */
+/** Pending agent drafts the viewer may approve: stories, courses, threads, issues, and the rest. */
 export function StorylineDraftsAwaiting({
   hideWhenEmpty = false,
+  heading = true,
 }: {
   hideWhenEmpty?: boolean;
+  heading?: boolean;
 }) {
   const t = useTranslations("newsStories.draftReview");
-  const drafts = api.news.listMyStorylineDrafts.useQuery();
+  const drafts = api.agentManagement.listApprovalQueue.useQuery();
+  const label = heading ? (
+    <SectionLabel id="drafts-awaiting-heading">{t("section")}</SectionLabel>
+  ) : null;
 
   if (drafts.isPending) {
     if (hideWhenEmpty) return null;
     return (
-      <section aria-labelledby="drafts-awaiting-heading" className="space-y-4">
-        <SectionLabel id="drafts-awaiting-heading">{t("section")}</SectionLabel>
+      <section
+        aria-labelledby={heading ? "drafts-awaiting-heading" : undefined}
+        className="space-y-4"
+      >
+        {label}
         <Skeleton className="h-16 w-full" />
       </section>
     );
@@ -30,8 +38,11 @@ export function StorylineDraftsAwaiting({
 
   if (drafts.isError) {
     return (
-      <section aria-labelledby="drafts-awaiting-heading" className="space-y-4">
-        <SectionLabel id="drafts-awaiting-heading">{t("section")}</SectionLabel>
+      <section
+        aria-labelledby={heading ? "drafts-awaiting-heading" : undefined}
+        className="space-y-4"
+      >
+        {label}
         <ErrorState
           title={t("actionFailed")}
           onRetry={() => void drafts.refetch()}
@@ -43,15 +54,21 @@ export function StorylineDraftsAwaiting({
   if (!drafts.data.length && hideWhenEmpty) return null;
 
   return (
-    <section aria-labelledby="drafts-awaiting-heading" className="space-y-4">
-      <SectionLabel id="drafts-awaiting-heading">{t("section")}</SectionLabel>
+    <section
+      aria-labelledby={heading ? "drafts-awaiting-heading" : undefined}
+      className="space-y-4"
+    >
+      {label}
       {drafts.data.length === 0 ? (
         <EmptyState title={t("empty")} description={t("emptyHelp")} />
       ) : (
         <ul className="divide-y border-t">
           {drafts.data.map((draft) => (
             <li key={draft.id} className="py-4">
-              <p className="text-sm font-medium">{draft.title}</p>
+              <p className="text-muted-foreground font-mono text-xs tracking-wider">
+                {draft.kind}
+              </p>
+              <p className="mt-1 text-sm font-medium">{draft.title}</p>
               <p className="text-muted-foreground mt-1 text-sm">
                 {t("proposedBy", { agent: draft.agentName })}
               </p>

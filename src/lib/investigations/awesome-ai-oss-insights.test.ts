@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -38,6 +41,21 @@ describe("Awesome AI OSS insights paths", () => {
     );
     expect(AWESOME_AI_OSS_INSIGHTS_META).not.toMatch(
       /curated list|star-sorted|only/i,
+    );
+    const messagesDir = join(
+      dirname(fileURLToPath(import.meta.url)),
+      "../../../messages",
+    );
+    const en = readFileSync(join(messagesDir, "en.json"), "utf8");
+    expect(en).not.toContain("not a star-sorted dump");
+    expect(en).not.toMatch(/star-sorted|awesome dump|awesome-dump/i);
+    const nl = readFileSync(join(messagesDir, "nl.json"), "utf8");
+    expect(nl).not.toMatch(/awesome-dump|sterren-gesorteerde/i);
+    const enMessages = JSON.parse(en) as {
+      investigationsAwesomeAiOss: { insightsLead: string };
+    };
+    expect(enMessages.investigationsAwesomeAiOss.insightsLead).toBe(
+      AWESOME_AI_OSS_INSIGHTS_META,
     );
     expect(AWESOME_INSIGHTS_CAPTION).toBe(
       "from our curated list · refreshed daily",

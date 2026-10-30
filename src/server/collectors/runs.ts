@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { and, asc, desc, eq, gt, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -125,12 +126,12 @@ export type FieldHintSummary = {
 function localiseHint(
   name: string,
   hint: FieldHint,
-  locale: "en" | "nl",
+  locale: AppLocale,
 ): FieldHintSummary {
   return {
     name,
-    label: hint.label[locale],
-    help: hint.help?.[locale] ?? null,
+    label: hint.label[locale] ?? hint.label.en,
+    help: hint.help?.[locale] ?? hint.help?.en ?? null,
     placeholder: hint.placeholder ?? null,
   };
 }
@@ -187,7 +188,7 @@ export type CatalogTitles = {
 /** Field hints as the start form reads them, in the member's language. */
 function fieldSummaries(
   hints: Record<string, FieldHint>,
-  locale: "en" | "nl",
+  locale: AppLocale,
 ): CollectorSummary["fields"] {
   return Object.entries(hints).map(([name, hint]) => ({
     ...localiseHint(name, hint, locale),
@@ -325,12 +326,12 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
       };
     },
 
-    listCollectors(locale: "en" | "nl"): CollectorSummary[] {
+    listCollectors(locale: AppLocale): CollectorSummary[] {
       return deps.catalog.all().map((c) => ({
         id: c.id,
         kind: c.kind,
-        title: c.title[locale],
-        description: c.description[locale],
+        title: c.title[locale] ?? c.title.en,
+        description: c.description[locale] ?? c.description.en,
         fields: fieldSummaries(
           c.fieldHints as Record<string, FieldHint>,
           locale,
@@ -341,7 +342,7 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
       }));
     },
 
-    listPresets(locale: "en" | "nl"): PresetSummary[] {
+    listPresets(locale: AppLocale): PresetSummary[] {
       return availablePresets().map((p) => {
         const collector = deps.catalog.get(p.collectorId)!;
         const hints = {
@@ -355,8 +356,8 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
         return {
           id: p.id,
           group: p.group,
-          title: p.title[locale],
-          summary: p.summary[locale],
+          title: p.title[locale] ?? p.title.en,
+          summary: p.summary[locale] ?? p.summary.en,
           collectorId: p.collectorId,
           base: { ...(p.base as Record<string, unknown>) },
           ask: [...p.ask],
@@ -369,13 +370,15 @@ export function createCollectorRuns(deps: CollectorRunsDeps) {
      * Names for runs, from the full catalogs (not the enabled lists), so a
      * run of a switched-off collector is still named, never shown as an id.
      */
-    listTitles(locale: "en" | "nl"): CatalogTitles {
+    listTitles(locale: AppLocale): CatalogTitles {
       return {
         presets: Object.fromEntries(
-          deps.presets.all().map((p) => [p.id, p.title[locale]]),
+          deps.presets.all().map((p) => [p.id, p.title[locale] ?? p.title.en]),
         ),
         collectors: Object.fromEntries(
-          deps.catalog.everything().map((c) => [c.id, c.title[locale]]),
+          deps.catalog
+            .everything()
+            .map((c) => [c.id, c.title[locale] ?? c.title.en]),
         ),
       };
     },

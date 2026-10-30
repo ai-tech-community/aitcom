@@ -4,6 +4,12 @@ import { expect, it, vi } from "vitest";
 import en from "../../messages/en.json";
 import { AgentDrafts } from "./agent-drafts";
 
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
+}));
+
 const review = vi.hoisted(() => vi.fn());
 vi.mock("@/trpc/react", () => ({
   api: {

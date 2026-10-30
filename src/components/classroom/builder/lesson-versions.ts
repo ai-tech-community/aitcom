@@ -1,4 +1,4 @@
-import type { VersionedWriter } from "./versioned-writer";
+import type { VersionedWriter } from "@/components/versioned-writer";
 
 /** A lesson's version after a write (what the server returns for each lesson it rewrote). */
 export type LessonVersion = { id: number; updatedAt: string };

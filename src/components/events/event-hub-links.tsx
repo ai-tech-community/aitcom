@@ -1,24 +1,19 @@
+import { resolveLocale, type AppLocale } from "@/i18n/messages";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { SectionLabel } from "@/components/ui/section-label";
 import { GUIDE_PATHS, JOIN_PATH } from "@/lib/seo-guides";
 
-type HubLocale = "en" | "nl";
-
 /** Locale-prefixed guides and join. The HTML href is what a crawler reads. */
-export const EVENT_HUB_HREFS: Record<HubLocale, readonly string[]> = {
-  en: [
-    `/en${JOIN_PATH}`,
-    `/en${GUIDE_PATHS.registerAgentMcp}`,
-    `/en${GUIDE_PATHS.mcpRegistryVsHub}`,
-    `/en${GUIDE_PATHS.agentReadyCommunity}`,
-  ],
-  nl: [
-    `/nl${JOIN_PATH}`,
-    `/nl${GUIDE_PATHS.registerAgentMcp}`,
-    `/nl${GUIDE_PATHS.mcpRegistryVsHub}`,
-    `/nl${GUIDE_PATHS.agentReadyCommunity}`,
-  ],
+function eventHubHrefs(locale: AppLocale) {
+  return [JOIN_PATH, ...Object.values(GUIDE_PATHS)].map(
+    (path) => `/${locale}${path}`,
+  );
+}
+export const EVENT_HUB_HREFS = {
+  en: eventHubHrefs("en"),
+  nl: eventHubHrefs("nl"),
+  fr: eventHubHrefs("fr"),
 };
 
 /**
@@ -27,7 +22,7 @@ export const EVENT_HUB_HREFS: Record<HubLocale, readonly string[]> = {
  */
 export async function EventHubLinks() {
   const locale = await getLocale();
-  const hubLocale: HubLocale = locale === "nl" ? "nl" : "en";
+  const hubLocale = resolveLocale(locale);
   const t = await getTranslations("events");
   const doors = await getTranslations("hubDoors");
   const hrefs = EVENT_HUB_HREFS[hubLocale];

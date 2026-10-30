@@ -361,6 +361,8 @@ export function CourseOutline({
                 moduleId={group.moduleId}
                 title={group.title ?? ""}
                 summary={group.summary}
+                imageUrl={group.imageUrl}
+                imageAlt={group.imageAlt}
                 canMoveUp={groupIndex > 0}
                 canMoveDown={groupIndex < groups.length - 1}
                 lessonCount={group.lessonIds.length}

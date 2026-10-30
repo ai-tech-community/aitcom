@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 
-import { StorylineDraftQueue } from "@/components/news/storyline-draft-queue";
+import { StorylineDraftsAwaiting } from "@/components/news/storyline-drafts-awaiting";
 import { Link } from "@/i18n/navigation";
 import { STORYLINE_DRAFT_QUEUE_PATH } from "@/lib/news/storyline-draft-review";
 import { getSession } from "@/server/better-auth/server";
-import { isNewsStaff } from "@/server/news/staff";
 
 export const metadata: Metadata = {
   title: "Drafts awaiting approval",
@@ -21,7 +20,6 @@ export default async function StorylineDraftQueuePage() {
       `/${locale}/auth/signin?redirect=/${locale}${STORYLINE_DRAFT_QUEUE_PATH}`,
     );
   }
-  if (!(await isNewsStaff(session.user.email))) notFound();
   const t = await getTranslations("newsStories");
   return (
     <main className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
@@ -35,7 +33,7 @@ export default async function StorylineDraftQueuePage() {
         {t("draftReview.section")}
       </h1>
       <div className="mt-8">
-        <StorylineDraftQueue heading={false} />
+        <StorylineDraftsAwaiting heading={false} />
       </div>
     </main>
   );

@@ -8,15 +8,20 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { stripIncompleteMaterials } from "@/lib/classroom/lesson-body";
 import type { ExamQuestion } from "@/lib/classroom";
-import { builderErrorKey, type BuilderErrorKey } from "./builder-errors";
+import {
+  builderErrorKey,
+  type BuilderErrorKey,
+  CLASSROOM_CONFLICT_CODES,
+  isClassroomConflict,
+} from "./builder-errors";
 import type { PaneSaveState } from "./course-builder";
 import { LessonPane, type LessonDraft } from "./lesson-pane";
 import { LessonSettingsPane } from "./lesson-settings-pane";
 import type { LessonVersionRegistry } from "./lesson-versions";
 import { hasUnsavableResources, savableResources } from "./resources-editor";
-import { CONFLICT_CODES, useAutosave } from "./use-autosave";
+import { useAutosave } from "@/components/use-autosave";
 import { usePaneReport } from "./use-pane-report";
-import { createVersionedWriter } from "./versioned-writer";
+import { createVersionedWriter } from "@/components/versioned-writer";
 
 /** The lesson fields the builder loads (a `classrooms.get` lesson). */
 export type LessonLike = {
@@ -154,7 +159,7 @@ export function LessonEditorScope({
       } catch (err) {
         const code = err instanceof Error ? err.message : undefined;
         // A conflict is shown once, by the top bar's reload banner.
-        if (!code || !CONFLICT_CODES.has(code)) {
+        if (!isClassroomConflict(code)) {
           setSaveError(builderErrorKey(code));
         }
         throw err;
@@ -168,6 +173,7 @@ export function LessonEditorScope({
   const autosave = useAutosave({
     value: draft,
     save,
+    conflictCodes: CLASSROOM_CONFLICT_CODES,
     enabled: !readOnly && titleValid,
   });
   // Declared after the autosave: on close, its last save is queued in the

@@ -10,67 +10,67 @@
  */
 export const siteRedirects = [
   {
-    source: "/:locale(en|nl)/investigations/startups/jobs",
+    source: "/:locale(en|nl|fr)/investigations/startups/jobs",
     destination: "/:locale/jobs",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/investigations/startups/jobs/:path*",
+    source: "/:locale(en|nl|fr)/investigations/startups/jobs/:path*",
     destination: "/:locale/jobs/:path*",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/startups/jobs",
+    source: "/:locale(en|nl|fr)/startups/jobs",
     destination: "/:locale/jobs",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/startups/jobs/:path*",
+    source: "/:locale(en|nl|fr)/startups/jobs/:path*",
     destination: "/:locale/jobs/:path*",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/communities/:slug/jobs",
+    source: "/:locale(en|nl|fr)/communities/:slug/jobs",
     destination: "/:locale/jobs",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/investigations/startups",
+    source: "/:locale(en|nl|fr)/investigations/startups",
     destination: "/:locale/startups",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/investigations/startups/:path*",
+    source: "/:locale(en|nl|fr)/investigations/startups/:path*",
     destination: "/:locale/startups/:path*",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/benchmark",
+    source: "/:locale(en|nl|fr)/benchmark",
     destination: "/:locale/agents",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/benchmark/:path*",
+    source: "/:locale(en|nl|fr)/benchmark/:path*",
     destination: "/:locale/agents",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/challenges",
+    source: "/:locale(en|nl|fr)/challenges",
     destination: "/:locale/communities",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/challenges/:path*",
+    source: "/:locale(en|nl|fr)/challenges/:path*",
     destination: "/:locale/communities",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/impact",
+    source: "/:locale(en|nl|fr)/impact",
     destination: "/:locale",
     permanent: true,
   },
   {
-    source: "/:locale(en|nl)/impact/:path*",
+    source: "/:locale(en|nl|fr)/impact/:path*",
     destination: "/:locale",
     permanent: true,
   },

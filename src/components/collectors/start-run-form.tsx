@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/messages";
+
 import * as React from "react";
 import { ChevronDownIcon, CircleAlertIcon, InfoIcon } from "lucide-react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
@@ -123,7 +125,7 @@ function PresetStart({
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
   const router = useRouter();
-  const locale = useLocale() === "nl" ? "nl" : "en";
+  const locale = resolveLocale(useLocale());
   const overview = api.collectors.overview.useQuery({ locale });
   const data = overview.data;
   const preset = data?.presets.find((p) => p.id === presetId);

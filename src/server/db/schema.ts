@@ -1,11 +1,36 @@
 import type { RegistrationSource } from "@/lib/events/registration-source";
 import { relations, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import type { UiProducerTrust, UiResource } from "@/lib/chat/types";
+import type { MagazineRole } from "@/lib/magazines/roles";
+import type {
+  AutoDraftCadence,
+  AutoDraftLookBack,
+  AutoDraftSource,
+  AutoDraftSourceId,
+  AutoDraftWhenReady,
+} from "@/lib/magazines/auto-draft";
+import type {
+  AutoDraftRunStatus,
+  AutoDraftSkipReason,
+  AutoDraftTrigger,
+  IssueHistoryActorKind,
+  IssueHistoryDetail,
+  IssueHistoryEvent,
+} from "@/lib/magazines/issue-history";
+import type { SuggestionReason } from "@/lib/magazines/suggestions";
+import type {
+  IssueLayout,
+  IssueVisibility,
+  PublishOrigin,
+} from "@/lib/magazines/values";
+import type { AppLocale } from "@/i18n/messages";
 import type {
   OccurrenceStatus,
   RitualMode,
   RitualStatus,
 } from "../communities/rituals";
+import type { BuiltinSurface } from "../communities/space-defaults";
 import type { FailureDetail } from "../collectors/errors";
 import type { RunStatus, StopReason } from "../collectors/run-status";
 import {
@@ -708,7 +733,7 @@ export const notifications = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "event_conflict" | "introduction_request" | "referral_credited" | "webhook_proposed" | "community_invite" | "badge_earned" | "news_storyline_draft"
+    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "event_conflict" | "introduction_request" | "referral_credited" | "webhook_proposed" | "community_invite" | "badge_earned" | "news_storyline_draft" | "magazine_role_assigned" | "magazine_article_submitted" | "magazine_article_reviewed" | "magazine_issue_published" | "magazine_issue_schedule_failed" | "magazine_auto_draft_ready" | "magazine_auto_draft_skipped"
     title: d.varchar({ length: 255 }).notNull(),
     content: d.text().notNull(),
     metadata: d.json().$type<Record<string, unknown>>().default({}).notNull(),
@@ -1251,6 +1276,425 @@ export const referralCredits = appSchema.table(
   (t) => [
     uniqueIndex("referral_credit_referred_uidx").on(t.referredUserId),
     index("referral_credit_referrer_idx").on(t.referrerId),
+  ],
+);
+
+/**
+ * The exactly-once credit claim for a magazine article (ADR-0043): one row
+ * per article whose author was credited for its publication in an issue,
+ * inserted in the same transaction as the credit. Kept out of Payload's
+ * `articles` columns, which every Payload save rewrites from the version it
+ * read and a duplicate copies. `article_id` references `public.articles`
+ * (ON DELETE cascade, in migration 20261026a).
+ */
+export const magazineArticleCredits = appSchema.table(
+  "magazine_article_credit",
+  (d) => ({
+    articleId: d.integer().primaryKey(),
+    creditedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+);
+
+/**
+ * Site-owned team assignments (ADR-0045). Membership gates whether a row
+ * grants anything; leaving never removes it. The magazine FK crosses into
+ * Payload's public schema and lives in migration 20261027a.
+ */
+export const magazineStaff = appSchema.table(
+  "magazine_staff",
+  (d) => ({
+    magazineId: d.integer().notNull(),
+    communityId: d.varchar({ length: 255 }).notNull(),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: d.varchar({ length: 20 }).$type<MagazineRole>().notNull(),
+    assignedBy: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.magazineId, t.userId] }),
+    index("magazine_staff_user_idx").on(t.userId),
+    check(
+      "magazine_staff_role_check",
+      sql`${t.role} IN ('editor_in_chief', 'editor', 'contributor')`,
+    ),
+  ],
+);
+
+/**
+ * A member's agent on a magazine team (migration 20261028c). The human's
+ * own job stays on `magazine_staff`. The magazine FK is in that migration.
+ */
+export const magazineAgentStaff = appSchema.table(
+  "magazine_agent_staff",
+  (d) => ({
+    magazineId: d.integer().notNull(),
+    communityId: d.varchar({ length: 255 }).notNull(),
+    agentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => agentProfiles.id, { onDelete: "cascade" }),
+    ownerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: d.varchar({ length: 20 }).$type<MagazineRole>().notNull(),
+    assignedBy: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.magazineId, t.agentId] }),
+    index("magazine_agent_staff_owner_idx").on(t.ownerId),
+    check(
+      "magazine_agent_staff_role_check",
+      sql`${t.role} IN ('editor_in_chief', 'editor', 'contributor')`,
+    ),
+  ],
+);
+
+/** Site-owned subscribers (ADR-0046); Payload magazine FKs live in the migration. */
+export const magazineSubscriptions = appSchema.table(
+  "magazine_subscription",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    magazineId: d.integer().notNull(),
+    userId: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "cascade" }),
+    email: d.varchar({ length: 255 }),
+    locale: d.varchar({ length: 5 }).$type<AppLocale>().notNull().default("en"),
+    sourceIssueId: d.integer(),
+    confirmTokenHash: d.varchar({ length: 64 }),
+    confirmSentAt: d.timestamp({ withTimezone: true }),
+    confirmSendCount: d.integer().notNull().default(0),
+    confirmedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("magazine_subscription_source_issue_idx").on(t.sourceIssueId),
+    index("magazine_subscription_user_idx").on(t.userId),
+    index("magazine_subscription_magazine_idx").on(t.magazineId),
+    uniqueIndex("magazine_subscription_magazine_user_idx")
+      .on(t.magazineId, t.userId)
+      .where(sql`${t.userId} IS NOT NULL`),
+    uniqueIndex("magazine_subscription_magazine_email_idx")
+      .on(t.magazineId, t.email)
+      .where(sql`${t.email} IS NOT NULL`),
+    uniqueIndex("magazine_subscription_confirm_token_idx")
+      .on(t.confirmTokenHash)
+      .where(sql`${t.confirmTokenHash} IS NOT NULL`),
+    index("magazine_subscription_email_confirm_sent_idx")
+      .on(t.email, t.confirmSentAt)
+      .where(sql`${t.email} IS NOT NULL`),
+    check(
+      "magazine_subscription_one_subscriber_check",
+      sql`(${t.userId} IS NOT NULL) <> (${t.email} IS NOT NULL)`,
+    ),
+    check(
+      "magazine_subscription_locale_check",
+      sql`${t.locale} IN ('en', 'nl', 'fr')`,
+    ),
+  ],
+);
+
+/** Reading counts (ADR-0048); Payload foreign keys live in the migration. */
+export const magazineReads = appSchema.table(
+  "magazine_read",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    magazineId: d.integer().notNull(),
+    issueId: d.integer().notNull(),
+    articleId: d.integer(),
+    readerKey: d.varchar({ length: 64 }).notNull(),
+    views: d.integer().notNull().default(0),
+    readToEndAt: d.timestamp({ withTimezone: true }),
+    firstSeenAt: d.timestamp({ withTimezone: true }).notNull(),
+    lastSeenAt: d.timestamp({ withTimezone: true }).notNull(),
+  }),
+  (t) => [
+    uniqueIndex("magazine_read_issue_reader_idx")
+      .on(t.issueId, t.readerKey)
+      .where(sql`${t.articleId} IS NULL`),
+    uniqueIndex("magazine_read_article_reader_idx")
+      .on(t.issueId, t.articleId, t.readerKey)
+      .where(sql`${t.articleId} IS NOT NULL`),
+    index("magazine_read_magazine_idx").on(t.magazineId),
+  ],
+);
+
+/** One durable publication announcement per issue, outside Payload's saves. */
+export const magazineIssueAnnouncements = appSchema.table(
+  "magazine_issue_announcement",
+  (d) => ({
+    issueId: d.integer().primaryKey(),
+    magazineId: d.integer().notNull(),
+    publishedAt: d.timestamp({ withTimezone: true }).notNull(),
+    completedAt: d.timestamp({ withTimezone: true }),
+    lastAttemptedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("magazine_issue_announcement_open_idx")
+      .on(t.lastAttemptedAt, t.createdAt)
+      .where(sql`${t.completedAt} IS NULL`),
+  ],
+);
+
+/** Delivery claims prevent overlapping runs from telling a subscriber twice. */
+export const magazineIssueDeliveries = appSchema.table(
+  "magazine_issue_delivery",
+  (d) => ({
+    issueId: d.integer().notNull(),
+    subscriptionId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => magazineSubscriptions.id, { onDelete: "cascade" }),
+    channel: d.varchar({ length: 10 }).$type<"inbox" | "email">().notNull(),
+    deliveredAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.issueId, t.subscriptionId] }),
+    check(
+      "magazine_issue_delivery_channel_check",
+      sql`${t.channel} IN ('inbox', 'email')`,
+    ),
+  ],
+);
+
+/** Automatic draft settings (ADR-0047); Payload FKs live only in the migration. */
+export const magazineAutoDraftSettings = appSchema.table(
+  "magazine_auto_draft_settings",
+  (d) => ({
+    magazineId: d.integer().primaryKey(),
+    enabled: d.boolean().notNull().default(false),
+    cadence: d
+      .varchar({ length: 16 })
+      .$type<AutoDraftCadence>()
+      .notNull()
+      .default("monthly"),
+    monthDay: d.smallint().notNull().default(1),
+    weekday: d.smallint().notNull().default(1),
+    lookBack: d
+      .varchar({ length: 20 })
+      .$type<AutoDraftLookBack>()
+      .notNull()
+      .default("since_last_issue"),
+    layout: d
+      .varchar({ length: 32 })
+      .$type<IssueLayout>()
+      .notNull()
+      .default("cover-story"),
+    visibility: d.varchar({ length: 16 }).$type<IssueVisibility>(),
+    publicConfirmedBy: d.varchar({ length: 255 }),
+    publicConfirmedAt: d.timestamp({ withTimezone: true }),
+    sources: d
+      .jsonb()
+      .$type<Partial<Record<AutoDraftSourceId, AutoDraftSource>>>()
+      .notNull()
+      .default({}),
+    neverReuse: d.boolean().notNull().default(true),
+    whenReady: d
+      .varchar({ length: 16 })
+      .$type<AutoDraftWhenReady>()
+      .notNull()
+      .default("notify"),
+    autoPublishDays: d.smallint().notNull().default(3),
+    scheduleStartsAt: d.timestamp({ withTimezone: true }),
+    updatedBy: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    check(
+      "magazine_auto_draft_settings_cadence_check",
+      sql`${t.cadence} IN ('monthly', 'biweekly', 'weekly', 'after_event', 'on_demand')`,
+    ),
+    check(
+      "magazine_auto_draft_settings_month_day_check",
+      sql`${t.monthDay} BETWEEN 1 AND 28`,
+    ),
+    check(
+      "magazine_auto_draft_settings_weekday_check",
+      sql`${t.weekday} BETWEEN 1 AND 7`,
+    ),
+    check(
+      "magazine_auto_draft_settings_look_back_check",
+      sql`${t.lookBack} IN ('since_last_issue', 'days_30', 'days_7')`,
+    ),
+    check(
+      "magazine_auto_draft_settings_layout_check",
+      sql`${t.layout} IN ('cover-story', 'long-read', 'digest')`,
+    ),
+    check(
+      "magazine_auto_draft_settings_visibility_check",
+      sql`${t.visibility} IS NULL OR ${t.visibility} IN ('members', 'teaser', 'public')`,
+    ),
+    check(
+      "magazine_auto_draft_settings_when_ready_check",
+      sql`${t.whenReady} IN ('notify', 'auto_publish')`,
+    ),
+    check(
+      "magazine_auto_draft_settings_publish_days_check",
+      sql`${t.autoPublishDays} BETWEEN 1 AND 14`,
+    ),
+  ],
+);
+
+/** A period claim and retry record, with one running claim per magazine. */
+export const magazineAutoDraftRuns = appSchema.table(
+  "magazine_auto_draft_run",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    magazineId: d.integer().notNull(),
+    periodKey: d.varchar({ length: 80 }).notNull(),
+    trigger: d.varchar({ length: 16 }).$type<AutoDraftTrigger>().notNull(),
+    status: d.varchar({ length: 16 }).$type<AutoDraftRunStatus>().notNull(),
+    skipReason: d.varchar({ length: 32 }).$type<AutoDraftSkipReason>(),
+    foundCount: d.integer(),
+    issueId: d.integer(),
+    requestedBy: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    attempts: d.smallint().notNull().default(1),
+    claimedAt: d.timestamp({ withTimezone: true }).notNull(),
+    finishedAt: d.timestamp({ withTimezone: true }),
+    /** Timestamp returned by the last automatic issue write; null means unknown. */
+    lastWriteAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("magazine_auto_draft_run_period_idx").on(
+      t.magazineId,
+      t.periodKey,
+    ),
+    uniqueIndex("magazine_auto_draft_run_running_idx")
+      .on(t.magazineId)
+      .where(sql`${t.status} = 'running'`),
+    index("magazine_auto_draft_run_issue_idx").on(t.issueId),
+    check(
+      "magazine_auto_draft_run_trigger_check",
+      sql`${t.trigger} IN ('schedule', 'event', 'manual')`,
+    ),
+    check(
+      "magazine_auto_draft_run_status_check",
+      sql`${t.status} IN ('running', 'made', 'skipped', 'failed')`,
+    ),
+    check(
+      "magazine_auto_draft_run_skip_reason_check",
+      sql`${t.skipReason} IS NULL OR ${t.skipReason} IN ('too_few', 'draft_open', 'no_rights')`,
+    ),
+  ],
+);
+
+/** Editor-only suggestion reasons, keyed by each saved block's stable id. */
+export const magazineAutoPicks = appSchema.table(
+  "magazine_auto_pick",
+  (d) => ({
+    issueId: d.integer().notNull(),
+    itemId: d.varchar({ length: 255 }).notNull(),
+    reason: d.jsonb().$type<SuggestionReason>().notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [primaryKey({ columns: [t.issueId, t.itemId] })],
+);
+
+/** History survives issue deletion with number/title snapshots (ADR-0047). */
+export const magazineIssueHistory = appSchema.table(
+  "magazine_issue_history",
+  (d) => ({
+    id: d.bigserial({ mode: "number" }).primaryKey(),
+    magazineId: d.integer().notNull(),
+    issueId: d.integer(),
+    issueNumber: d.integer(),
+    issueTitle: d.text(),
+    event: d.varchar({ length: 32 }).$type<IssueHistoryEvent>().notNull(),
+    origin: d.varchar({ length: 16 }).$type<PublishOrigin>(),
+    actorId: d
+      .varchar({ length: 255 })
+      .references(() => user.id, { onDelete: "set null" }),
+    actorKind: d
+      .varchar({ length: 16 })
+      .$type<IssueHistoryActorKind>()
+      .notNull(),
+    detail: d.jsonb().$type<IssueHistoryDetail>().notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("magazine_issue_history_magazine_idx").on(t.magazineId, t.createdAt),
+    index("magazine_issue_history_issue_idx").on(t.issueId, t.createdAt),
+    check(
+      "magazine_issue_history_event_check",
+      sql`${t.event} IN ('draft_made', 'draft_skipped', 'items_changed', 'auto_publish_stopped', 'published', 'deleted')`,
+    ),
+    check(
+      "magazine_issue_history_origin_check",
+      sql`${t.origin} IS NULL OR ${t.origin} IN ('button', 'schedule', 'auto')`,
+    ),
+    check(
+      "magazine_issue_history_actor_kind_check",
+      sql`${t.actorKind} IN ('person', 'automatic')`,
+    ),
   ],
 );
 
@@ -2424,12 +2868,10 @@ export const messages = appSchema.table(
     senderType: d.varchar({ length: 10 }).notNull().default("human"), // "human" | "agent"
     content: d.text().notNull(),
     metadata: d.json().$type<Record<string, unknown>>(),
-    uiResource: d
-      .jsonb("ui_resource")
-      .$type<import("@/lib/chat/types").UiResource>(),
+    uiResource: d.jsonb("ui_resource").$type<UiResource>(),
     uiProducerTrust: d
       .varchar("ui_producer_trust", { length: 20 })
-      .$type<import("@/lib/chat/types").UiProducerTrust>(),
+      .$type<UiProducerTrust>(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -3291,6 +3733,12 @@ export const communities = appSchema.table(
     slug: d.text().notNull().unique(),
     description: d.text(),
     logoUrl: d.text(),
+    /** Wide image on the community page. Null until an admin sets one. */
+    bannerUrl: d.text(),
+    /** Media id for the banner, when the picture lives in shared media. */
+    bannerMediaId: d.integer("banner_media_id"),
+    /** Alt text for the banner. Empty when the picture is decorative. */
+    bannerAlt: d.text("banner_alt"),
     joinPolicy: d
       .varchar({ length: 30 })
       .notNull()
@@ -3630,7 +4078,8 @@ export const communityMemberships = appSchema.table(
 
 // Community Spaces — composable navigation surfaces + rooms (Slice 3, Plan 1).
 // kind="builtin": a configurable pointer to an existing community surface
-// (forum/events/classroom/ideas/members); the surface's data stays community-level.
+// (forum/events/classroom/ideas/members, plus the optional magazine); the
+// surface's data stays community-level.
 // kind="room": (Plan 2) a real container with its own membership + chat/posts.
 // `name` is an optional display override — for builtins, null means "use the
 // default i18n label"; rooms set it at creation (enforced in the app layer).
@@ -3653,7 +4102,7 @@ export const spaces = appSchema.table(
       .$type<"builtin" | "room">(),
     builtinSurface: d
       .varchar("builtin_surface", { length: 20 })
-      .$type<"forum" | "events" | "classroom" | "ideas" | "members">(),
+      .$type<BuiltinSurface>(),
     visibility: d.varchar({ length: 10 }).$type<"public" | "private">(),
     name: d.text(),
     purpose: d.text(),

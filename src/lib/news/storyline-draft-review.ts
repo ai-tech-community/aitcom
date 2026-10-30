@@ -1,33 +1,16 @@
 /** Shared copy, paths, and gates for a news storyline draft waiting on a human. */
 
+export {
+  MAIL_TEST_RECIPIENT as STORYLINE_TEST_RECIPIENT,
+  gatedMailRecipient as storylineMailRecipient,
+  type MailEnv as StorylineMailEnv,
+} from "@/lib/email/recipient-gate";
+
 export const STORYLINE_DRAFT_NOTIFICATION = "news_storyline_draft";
 export const STORYLINE_DRAFT_QUEUE_PATH = "/news/stories/drafts";
-/** The only address a test or preview send may use. Not configurable. */
-export const STORYLINE_TEST_RECIPIENT = "greg@klevox.com";
 
 export function storylineDraftReviewPath(draftId: string): string {
   return `${STORYLINE_DRAFT_QUEUE_PATH}/${encodeURIComponent(draftId)}`;
-}
-
-export type StorylineMailEnv = {
-  VERCEL_ENV?: string;
-  NODE_ENV?: string;
-};
-
-/**
- * Production (Vercel production + Node production) may email the real person.
- * Tests, previews, and local runs may email only the allowlisted address.
- */
-export function storylineMailRecipient(
-  to: string,
-  env: StorylineMailEnv,
-): string | null {
-  const email = to.trim().toLowerCase();
-  if (!email.includes("@") || email.includes(" ")) return null;
-  const production =
-    env.VERCEL_ENV === "production" && env.NODE_ENV === "production";
-  if (production) return email;
-  return email === STORYLINE_TEST_RECIPIENT ? STORYLINE_TEST_RECIPIENT : null;
 }
 
 export type StorylineNotice = {

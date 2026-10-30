@@ -599,14 +599,13 @@ describe("news page", () => {
     ).toHaveAttribute("href", "/auth/signin");
   });
 
-  it("keeps News in the primary nav and omits the retired sections", () => {
+  it("keeps News in the header nav and omits the retired sections", () => {
     const navbar = readFileSync(
-      join(process.cwd(), "src/components/navbar.tsx"),
+      join(process.cwd(), "src/components/site-nav.ts"),
       "utf8",
     );
-    expect(navbar).toMatch(
-      /href: "\/news", key: "news", shortcut: "N", primary: true/,
-    );
+    expect(navbar).toMatch(/href: "\/news", key: "news", shortcut: "N"/);
+    expect(navbar).toMatch(/key: "read"[\s\S]*href: "\/news"/);
     expect(navbar).not.toMatch(/href: "\/challenges"/);
     expect(navbar).not.toMatch(/href: "\/benchmark"/);
     expect(navbar).not.toMatch(/href: "\/impact"/);

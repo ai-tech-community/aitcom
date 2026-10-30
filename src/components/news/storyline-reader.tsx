@@ -112,7 +112,7 @@ function TimelineEntry({
 }) {
   const t = useTranslations("newsStories");
   const locale = useLocale();
-  const fallback = locale === "nl" && !m.noteNl;
+  const fallback = locale !== "en" && (locale !== "nl" || !m.noteNl);
   const publisher = newsSourceFromUrl(m.article.url).label;
   return (
     <li
@@ -198,13 +198,21 @@ export function StorylineReader({
       <header className="mt-8 max-w-3xl">
         <h1
           className="text-3xl leading-tight font-semibold tracking-tight text-balance sm:text-5xl"
-          lang={locale === "nl" && !story.titleNl ? "en" : locale}
+          lang={
+            locale !== "en" && (locale !== "nl" || !story.titleNl)
+              ? "en"
+              : locale
+          }
         >
           {copy.title}
         </h1>
         <p
           className="text-muted-foreground mt-6 text-lg leading-relaxed"
-          lang={locale === "nl" && !story.overviewNl ? "en" : locale}
+          lang={
+            locale !== "en" && (locale !== "nl" || !story.overviewNl)
+              ? "en"
+              : locale
+          }
         >
           {copy.overview}
         </p>
@@ -298,7 +306,11 @@ export function StorylineReader({
           <h2 className="text-2xl font-semibold">{t("questions")}</h2>
           <ul
             className="mt-4 list-disc space-y-3 pl-5 leading-relaxed"
-            lang={locale === "nl" && !story.questionsNl.length ? "en" : locale}
+            lang={
+              locale !== "en" && (locale !== "nl" || !story.questionsNl.length)
+                ? "en"
+                : locale
+            }
           >
             {copy.questions.map((q) => (
               <li key={q}>{q}</li>
@@ -334,17 +346,22 @@ export function StorylineReader({
                     </summary>
                     <p
                       className="mt-3 max-w-prose leading-relaxed"
-                      lang={locale === "nl" && !c.explanationNl ? "en" : locale}
+                      lang={
+                        locale !== "en" && (locale !== "nl" || !c.explanationNl)
+                          ? "en"
+                          : locale
+                      }
                     >
                       {locale === "nl" && c.explanationNl
                         ? c.explanationNl
                         : c.explanationEn}
                     </p>
-                    {locale === "nl" && !c.explanationNl && (
-                      <p className="text-muted-foreground mt-2 text-xs">
-                        {t("fallback")}
-                      </p>
-                    )}
+                    {locale !== "en" &&
+                      (locale !== "nl" || !c.explanationNl) && (
+                        <p className="text-muted-foreground mt-2 text-xs">
+                          {t("fallback")}
+                        </p>
+                      )}
                     <p className="text-muted-foreground mt-3 text-xs">
                       {t("reviewed")}
                     </p>

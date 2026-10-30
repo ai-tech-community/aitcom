@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/messages";
+
 import * as React from "react";
 import { ChevronDownIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -178,7 +180,7 @@ export function CollectorWorkspace({
   children: React.ReactNode;
 }) {
   const t = useTranslations("collectors");
-  const locale = useLocale() === "nl" ? "nl" : "en";
+  const locale = resolveLocale(useLocale());
   const pathname = usePathname();
   const active = activeEntry(pathname);
   const overview = api.collectors.overview.useQuery({ locale });

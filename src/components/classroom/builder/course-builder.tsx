@@ -30,7 +30,7 @@ import { BuilderTopBar } from "./builder-top-bar";
 import { CourseDetailsPane } from "./course-details-pane";
 import { useCourseDetails } from "./use-course-details";
 import { builderErrorKey } from "./builder-errors";
-import { createVersionedWriter } from "./versioned-writer";
+import { createVersionedWriter } from "@/components/versioned-writer";
 import { CourseOutline } from "./course-outline";
 import { buildOutline, readingOrder } from "./outline-model";
 import { LessonEditorScope } from "./lesson-editor-scope";
@@ -39,7 +39,7 @@ import {
   type RewriteLessons,
 } from "./lesson-versions";
 import { PublishDialog } from "./publish-dialog";
-import type { AutosaveStatus } from "./use-autosave";
+import type { AutosaveStatus } from "@/components/use-autosave";
 import { useLeaveGuard } from "./use-leave-guard";
 import { usePersistedFlag } from "./use-persisted-flag";
 

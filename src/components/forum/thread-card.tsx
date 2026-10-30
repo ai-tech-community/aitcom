@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { RoleBadge } from "./role-badge";
 import type { ForumThread } from "@/payload-types";
+import { roleCanModerateThreads } from "@/lib/communities/thread-moderation";
 import { api } from "@/trpc/react";
 import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/ui/relative-time";
@@ -31,10 +32,7 @@ export function ThreadCard({
 }: ThreadCardProps) {
   const t = useTranslations("forum");
   const utils = api.useUtils();
-  const canModerate =
-    memberRole === "owner" ||
-    memberRole === "admin" ||
-    memberRole === "moderator";
+  const canModerate = roleCanModerateThreads(memberRole);
 
   const pinMutation = api.forum.pinThread.useMutation({
     onSuccess: () => void utils.forum.getThreads.invalidate(),
@@ -58,6 +56,16 @@ export function ThreadCard({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: index * 0.03 }}
         >
+          {thread.imageUrl ? (
+            // Uploaded hosts are not limited to next/image's allow list.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={thread.imageUrl}
+              alt={thread.imageAlt ?? ""}
+              data-thread-image=""
+              className="border-border mb-2 aspect-[2/1] w-full rounded-md border object-cover"
+            />
+          ) : null}
           <div className="flex items-start justify-between gap-2">
             <p className="text-foreground text-sm leading-snug font-medium">
               {thread.isPinned && (

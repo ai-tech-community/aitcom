@@ -81,7 +81,7 @@ export async function loadHomeNews(
         href: `/news/stories/${item.slug}`,
         source: null,
         date: new Date(item.date).toISOString(),
-        englishFallback: locale === "nl" && !translated,
+        englishFallback: locale !== "en" && !translated,
       };
     }),
   ];

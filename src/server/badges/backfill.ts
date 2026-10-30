@@ -1,19 +1,19 @@
 /**
  * The badge backfill (ADR-0039): gives every member the track tiers they
- * already qualify for, and moves free-text prize rows out of
- * `member_badge` into `member_award`. The CLI is `scripts/backfill-badges.ts`;
- * this is its core, so it is tested against the test database.
+ * already qualify for and milestones found in data, and moves free-text
+ * prize rows out of `member_badge` into `member_award`. The CLI is
+ * `scripts/backfill-badges.ts`; this core is tested against the test database.
  *
  * - Dry-run by default: reads only, and reports what `apply` would write.
  * - Idempotent: earning skips held badges, and a moved prize row is gone
  *   from `member_badge`, so a re-run writes nothing.
  * - Retroactive: backfilled badges and moved awards are recorded as seen,
  *   with no XP bonus, activity event, notification or earning moment (see
- *   `recordRetroactiveTiers`).
+ *   `recordRetroactiveTiers` and `recordRetroactiveMilestone`).
  * - Never deletes a stored badge row it cannot match to a challenge.
- * - Reports every failure (a metric read, a badge write, a prize move),
- *   continues with the rest, and `backfillSucceeded` is then false, so the
- *   CLI exits non-zero.
+ * - Reports every failure (a metric read, a badge or milestone write, a
+ *   prize move), continues with the rest, and `backfillSucceeded` is then
+ *   false, so the CLI exits non-zero.
  */
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import type { Payload } from "payload";
@@ -23,6 +23,7 @@ import {
   isBadgeSlug,
   reachedTiers,
   type BadgeTrackId,
+  type MilestoneSlug,
 } from "@/lib/badges/catalog";
 import type { db as appDb } from "@/server/db";
 import {
@@ -31,12 +32,23 @@ import {
   memberBadges,
   memberProfiles,
 } from "@/server/db/schema";
+import { creditedMagazineAuthorIds } from "@/server/magazines/article-publication";
 
 import { awardLabel } from "./awards";
-import { recordRetroactiveTiers } from "./engine";
+import { recordRetroactiveMilestone, recordRetroactiveTiers } from "./engine";
 import { TRACK_METRICS, type BadgeSources } from "./metrics";
 
 type Db = typeof appDb;
+
+/** Milestones earned from data: who in this batch qualifies, by slug. */
+const DERIVED_MILESTONES: Partial<
+  Record<
+    MilestoneSlug,
+    (db: Db, userIds: readonly string[]) => Promise<Set<string>>
+  >
+> = {
+  magazine_published: creditedMagazineAuthorIds,
+};
 
 export interface BackfillOptions {
   /** Write. Without it the run only reads and reports. */
@@ -67,6 +79,7 @@ export interface OffCatalogSlug {
 export type BackfillFailure =
   | { kind: "metrics"; userId: string; error: string }
   | { kind: "badges"; userId: string; track: BadgeTrackId; error: string }
+  | { kind: "milestone"; userId: string; slug: MilestoneSlug; error: string }
   | { kind: "award"; userId: string; slug: string; error: string };
 
 export interface BackfillReport {
@@ -74,6 +87,8 @@ export interface BackfillReport {
   members: number;
   /** Per track, per tier: members who reach the tier but do not hold it. */
   newTiers: Record<BadgeTrackId, Record<string, number>>;
+  /** Per derived milestone: qualifying members who do not hold it. */
+  newMilestones: Partial<Record<MilestoneSlug, number>>;
   /** Badge rows written (apply only). */
   inserted: number;
   /** Stored badge rows whose slug is not in the catalog, by slug. */
@@ -120,14 +135,11 @@ async function memberBatch(
   return rows.map((row) => row.userId);
 }
 
-/** Evaluates every track for one batch of members. */
-async function backfillTracks(
+/** Loads the batch's held badges once for tracks and derived milestones. */
+async function loadHeldBadges(
   db: Db,
-  payload: () => Promise<Payload>,
   userIds: readonly string[],
-  options: BackfillOptions,
-  report: BackfillReport,
-): Promise<void> {
+): Promise<Map<string, Set<string>>> {
   const held = await db
     .select({ userId: memberBadges.userId, slug: memberBadges.badgeSlug })
     .from(memberBadges)
@@ -138,7 +150,18 @@ async function backfillTracks(
     set.add(row.slug);
     heldBy.set(row.userId, set);
   }
+  return heldBy;
+}
 
+/** Evaluates every track for one batch of members. */
+async function backfillTracks(
+  db: Db,
+  payload: () => Promise<Payload>,
+  userIds: readonly string[],
+  heldBy: Map<string, Set<string>>,
+  options: BackfillOptions,
+  report: BackfillReport,
+): Promise<void> {
   const sources: BadgeSources = { db, payload };
   for (const userId of userIds) {
     const holds = heldBy.get(userId) ?? new Set<string>();
@@ -187,6 +210,57 @@ async function backfillTracks(
             `  ! ${userId}: ${track} badges not written: ${errorText(err)}`,
           );
         }
+      }
+    }
+  }
+}
+
+/** Finds derived milestones and records missing ones without celebration. */
+async function backfillDerivedMilestones(
+  db: Db,
+  userIds: readonly string[],
+  heldBy: Map<string, Set<string>>,
+  options: BackfillOptions,
+  report: BackfillReport,
+): Promise<void> {
+  for (const slug of Object.keys(DERIVED_MILESTONES) as MilestoneSlug[]) {
+    const qualifies = DERIVED_MILESTONES[slug]!;
+    const missing = userIds.filter((userId) => !heldBy.get(userId)?.has(slug));
+    if (missing.length === 0) continue;
+    let eligible: Set<string>;
+    try {
+      eligible = await qualifies(db, missing);
+    } catch (err) {
+      for (const userId of missing) {
+        report.failures.push({
+          kind: "milestone",
+          userId,
+          slug,
+          error: errorText(err),
+        });
+        options.log?.(
+          `  ! ${userId}: ${slug} milestone not read: ${errorText(err)}`,
+        );
+      }
+      continue;
+    }
+    for (const userId of missing) {
+      if (!eligible.has(userId)) continue;
+      report.newMilestones[slug] = (report.newMilestones[slug] ?? 0) + 1;
+      if (!options.apply) continue;
+      try {
+        if (await recordRetroactiveMilestone(db, userId, slug))
+          report.inserted += 1;
+      } catch (err) {
+        report.failures.push({
+          kind: "milestone",
+          userId,
+          slug,
+          error: errorText(err),
+        });
+        options.log?.(
+          `  ! ${userId}: ${slug} milestone not written: ${errorText(err)}`,
+        );
       }
     }
   }
@@ -322,6 +396,7 @@ export async function runBadgeBackfill(
     apply: options.apply,
     members: 0,
     newTiers: emptyNewTiers(),
+    newMilestones: {},
     inserted: 0,
     offCatalog: [],
     awardsMoved: 0,
@@ -366,7 +441,9 @@ export async function runBadgeBackfill(
   for (;;) {
     const batch = await memberBatch(db, after, batchSize, options.userIds);
     if (batch.length === 0) break;
-    await backfillTracks(db, payload, batch, options, report);
+    const heldBy = await loadHeldBadges(db, batch);
+    await backfillTracks(db, payload, batch, heldBy, options, report);
+    await backfillDerivedMilestones(db, batch, heldBy, options, report);
     report.members += batch.length;
     after = batch[batch.length - 1]!;
     options.log?.(`  … ${report.members} members evaluated`);
@@ -393,6 +470,10 @@ export function formatBackfillReport(report: BackfillReport): string[] {
       }`,
     );
   }
+  lines.push("", "Milestones members qualify for but do not hold yet:");
+  for (const slug of Object.keys(DERIVED_MILESTONES) as MilestoneSlug[]) {
+    lines.push(`  ${slug}: ${report.newMilestones[slug] ?? 0}`);
+  }
   if (report.apply) lines.push(`Badge rows written: ${report.inserted}`);
   lines.push("", "Stored badge rows not in the catalog:");
   if (report.offCatalog.length === 0) lines.push("  none");
@@ -413,7 +494,9 @@ export function formatBackfillReport(report: BackfillReport): string[] {
         ? "metrics not read (member skipped)"
         : failure.kind === "badges"
           ? `${failure.track} badges not written`
-          : `prize ${JSON.stringify(failure.slug)} not moved`;
+          : failure.kind === "milestone"
+            ? `${failure.slug} milestone not recorded`
+            : `prize ${JSON.stringify(failure.slug)} not moved`;
     lines.push(`  ${failure.userId}: ${what} — ${failure.error}`);
   }
   if (!backfillSucceeded(report)) {

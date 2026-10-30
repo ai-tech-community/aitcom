@@ -14,7 +14,12 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => {
+    const t = (key: string) => key;
+    t.rich = (key: string) =>
+      key === "signUpTagline" ? "Join AIT. Community" : key;
+    return t;
+  },
   useLocale: () => "en",
 }));
 

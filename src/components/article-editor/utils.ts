@@ -1,6 +1,12 @@
 import type { SlashCommand } from "./types";
 import { SLASH_COMMANDS } from "./types";
 import type { SerializedEditorState } from "@payloadcms/richtext-lexical/lexical";
+import {
+  flattenAdmonition,
+  liftAdmonitionParagraph,
+  stripStrayEmptyParagraphs,
+  type LexicalLikeNode,
+} from "@/lib/lexical-blocks";
 import { slugify } from "@/lib/text-utils";
 
 /** A Payload block stored as `{type:"block", fields.blockType}` that the editor handles as its own node type. */
@@ -144,11 +150,13 @@ export function preprocessEditorState(
       id?: string;
       src?: string;
       alt?: string;
+      url?: string;
       blockName?: string;
     };
     children?: MutableSerializedNode[];
     src?: string;
     alt?: string;
+    url?: string;
   };
   type MutableSerializedState = {
     root?: {
@@ -166,6 +174,9 @@ export function preprocessEditorState(
       if (node.type === "block" && node.fields?.blockType === "Image") {
         node.type = "image"; // remap for our ImageNode
       }
+      if (node.type === "block" && node.fields?.blockType === "Video") {
+        node.type = "video";
+      }
       const mapped =
         node.type === "block"
           ? extra.find((e) => e.blockType === node.fields?.blockType)
@@ -176,7 +187,15 @@ export function preprocessEditorState(
     }
   }
 
-  if (Array.isArray(json.root?.children)) walkNodes(json.root.children);
+  const loadedRoot = json.root;
+  if (loadedRoot && Array.isArray(loadedRoot.children)) {
+    walkNodes(loadedRoot.children);
+    loadedRoot.children = stripStrayEmptyParagraphs(
+      loadedRoot.children.map((node) =>
+        liftAdmonitionParagraph(node as LexicalLikeNode),
+      ),
+    ) as NonNullable<typeof loadedRoot.children>;
+  }
   return JSON.stringify(json);
 }
 
@@ -191,11 +210,13 @@ export function postprocessEditorState(
       id?: string;
       src?: string;
       alt?: string;
+      url?: string;
       blockName?: string;
     };
     children?: MutableSerializedNode[];
     src?: string;
     alt?: string;
+    url?: string;
   };
   type MutableSerializedState = {
     root?: {
@@ -227,12 +248,34 @@ export function postprocessEditorState(
           delete node.alt;
         }
       }
+      if (node.type === "video") {
+        node.type = "block";
+        if (!node.fields?.blockType) {
+          node.fields = {
+            id:
+              node.fields?.id ??
+              crypto.randomUUID().replace(/-/g, "").substring(0, 12),
+            blockType: "Video",
+            url: node.fields?.url ?? node.url ?? "",
+            blockName: "",
+          };
+          delete node.url;
+        }
+      }
       if (extra.some((e) => e.nodeType === node.type)) node.type = "block";
       linkToStored(node as SerializedLinkLike);
       if (Array.isArray(node.children)) walkNodes(node.children);
     }
   }
 
-  if (Array.isArray(json.root?.children)) walkNodes(json.root.children);
+  const savedRoot = json.root;
+  if (savedRoot && Array.isArray(savedRoot.children)) {
+    walkNodes(savedRoot.children);
+    savedRoot.children = stripStrayEmptyParagraphs(
+      savedRoot.children.flatMap((node) =>
+        flattenAdmonition(node as LexicalLikeNode),
+      ),
+    ) as NonNullable<typeof savedRoot.children>;
+  }
   return json as SerializedEditorState;
 }

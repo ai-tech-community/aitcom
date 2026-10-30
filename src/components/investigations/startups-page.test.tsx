@@ -168,7 +168,7 @@ const QUERIES_FILE = join(dir, "../../server/startups/queries.ts");
 const PAGINATION_FILE = join(dir, "startups-pagination.tsx");
 const SUBMIT_FILE = join(dir, "startups-submit-dialog.tsx");
 const OPS_DOC = join(dir, "../../../docs/ops/startups.md");
-const NAV_FILE = join(dir, "../navbar.tsx");
+const NAV_FILE = join(dir, "../site-nav.ts");
 const FOOTER_FILE = join(dir, "../footer.tsx");
 const CV_MIGRATION_FILE = join(
   dir,
@@ -2430,11 +2430,11 @@ describe("Startups site integration", () => {
       join(dir, "../../lib/site-redirects.js"),
       "utf8",
     );
-    expect(nav).toMatch(/href: "\/startups",[\s\S]*?primary: true/);
+    expect(nav).toMatch(/href: "\/startups", key: "startups", shortcut: "U"/);
     expect(nav).toContain('key: "startups"');
     expect(nav).toContain('shortcut: "U"');
-    expect(nav).toMatch(/href: "\/jobs",[\s\S]*?primary: true/);
-    expect(nav).toMatch(/href: "\/roles",[\s\S]*?primary: true/);
+    expect(nav).toMatch(/href: "\/jobs", key: "jobs", shortcut: "W"/);
+    expect(nav).toMatch(/href: "\/roles", key: "roles", shortcut: "R"/);
     expect(nav).not.toMatch(/href: "\/startups\/jobs"/);
     expect(readFileSync(JOBS_FILE, "utf8")).toContain("listPublicStartupRoles");
     expect(readFileSync(JOBS_FILE, "utf8")).not.toContain('collection: "jobs"');
