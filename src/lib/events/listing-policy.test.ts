@@ -412,8 +412,10 @@ describe("event meta description", () => {
         "Cambridge",
         "Den Haag",
         "Edinburgh",
+        "Eindhoven",
         "Helsinki",
         "Jersey City",
+        "Las Vegas",
         "Lisbon",
         "London",
         "Munich",
@@ -426,6 +428,7 @@ describe("event meta description", () => {
         "The Hague",
         "Utrecht",
         "Vienna",
+        "Vilnius",
         "Warsaw",
       ].sort(),
     );
