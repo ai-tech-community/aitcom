@@ -33,6 +33,7 @@ import {
   facilityWhere,
   supplierCountSql,
 } from "@/server/datacenters/facility-query";
+import { readFacilityCapacity } from "@/lib/investigations/facility-capacity";
 import { defaultSortDir } from "@/lib/investigations/facilities-query";
 import { isReservedDatacenterSlug } from "@/lib/investigations/datacenter-investigation-routes";
 
@@ -1080,9 +1081,13 @@ export const datacentersRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      const facMw =
-        Number(dc.capacityMw ?? 0) + Number(dc.capacityMwPlanned ?? 0);
+      const capacity = readFacilityCapacity(
+        dc.capacityMw,
+        dc.capacityMwPlanned,
+      );
 
+      // Bands use operating MW only. Planned capacity is the build-out target,
+      // not an amount to add to capacity_mw.
       const peers = await ctx.db.execute<{
         peer_count: number;
         median_mw: number;
@@ -1093,7 +1098,7 @@ export const datacentersRouter = createTRPCRouter({
       }>(sql`
         WITH peer_pool AS (
           SELECT
-            COALESCE(capacity_mw,0) + COALESCE(capacity_mw_planned,0) AS mw,
+            COALESCE(capacity_mw, 0) AS mw,
             (online_date - announced_date) AS lag_days,
             ai_dedicated::int AS ai
           FROM "app"."datacenter"
@@ -1158,7 +1163,8 @@ export const datacentersRouter = createTRPCRouter({
         country: dc.country,
         peerCount: peerStats.peer_count,
         thisFacility: {
-          mw: facMw,
+          currentMw: capacity.currentMw,
+          plannedMw: capacity.plannedMw,
           lagDays,
           supplierCount: supStats.this_count ?? 0,
           aiDedicated: dc.aiDedicated,
