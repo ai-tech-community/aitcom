@@ -116,7 +116,7 @@ export type IssueCard = {
   community: ReadingCommunity;
 };
 
-/** One magazine on the `/magazines` home, with its newest public issue. */
+/** One magazine on the `/magazines` home, with its newest readable issue. */
 export type MagazineCard = MagazineSummary & {
   community: ReadingCommunity;
   latest: IssueCard;
@@ -449,22 +449,22 @@ function commonTopics(magazines: Magazine[], count: number): string[] {
 }
 
 /**
- * The `/magazines` home: the newest public issue with a cover as featured,
- * the next newest as "Just published", and every magazine with a public
- * issue (newest first), optionally narrowed to one topic. Always the
- * anonymous scope, whoever asks: the home is the public face (Decision 10),
- * so a member never sees members-only issues here.
+ * The `/magazines` home: the newest readable issue with a cover as featured,
+ * the next newest as "Just published", and every magazine with a readable
+ * issue (newest first), optionally narrowed to one topic. Members also see
+ * their communities' private issues. Published issues only, even for editors.
+ * Callers without a viewer keep the anonymous public listing.
  */
 export async function loadMagazinesHome(
   deps: Deps,
-  opts: { locale: AppLocale; topic?: string },
+  opts: { locale: AppLocale; topic?: string; viewerId?: string | null },
 ): Promise<{
   featured: IssueCard | null;
   justPublished: IssueCard[];
   magazines: MagazineCard[];
   topics: string[];
 }> {
-  const scope = await loadIssueReadScope(deps.db, null);
+  const scope = await loadIssueReadScope(deps.db, opts.viewerId ?? null);
   const hidden = await hiddenMagazineIds(deps.payload);
 
   // Pass 1: every listed issue, light columns only, newest first.
