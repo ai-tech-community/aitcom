@@ -29,3 +29,5 @@ Use fake timers and mocked requests to verify focus/visibility/idle pauses, acti
 ## Delivery evidence
 
 Implemented the timer, guarded endpoint, cumulative upsert, additive migration and Insights duration totals/averages. All 51 tests across eight added/touched unit-test files pass. The tests exposed and verified a correction preventing timer reactivation between `pagehide` and `pageshow`. Workspace typecheck and targeted ESLint pass. Independent review approved the extension with no findings. Test requests, access checks and writes use mocks; the migration was not applied. No database or deployment was touched.
+
+After implementation, Greg explicitly requested the migration. Applied `20261030a_magazine_reading_time` to the database configured in `.env` on 2026-10-30, recorded as batch 148. Read-only verification confirmed all seven columns, three cascading foreign keys, primary key, bounded seconds check, magazine index and migration record. No application deployment was performed in that step.
