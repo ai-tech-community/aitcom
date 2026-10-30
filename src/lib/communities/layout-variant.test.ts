@@ -17,6 +17,20 @@ describe("resolveCommunityLayoutVariant", () => {
     );
     expect(isWorkspacePath("/communities/hub/events/new")).toBe(true);
   });
+  it("uses the workspace layout for the issue builder", () => {
+    expect(
+      resolveCommunityLayoutVariant(["magazine", "issues", "5", "edit"]),
+    ).toBe("workspace");
+    expect(isWorkspacePath("/communities/hub/magazine/issues/5/edit")).toBe(
+      true,
+    );
+  });
+  it("keeps the standard layout on the Magazine tab", () => {
+    expect(resolveCommunityLayoutVariant(["magazine"])).toBe("standard");
+    expect(resolveCommunityLayoutVariant(["magazine", "issues", "5"])).toBe(
+      "standard",
+    );
+  });
   it("keeps the standard layout everywhere else", () => {
     for (const segs of [
       [],

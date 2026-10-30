@@ -25,14 +25,14 @@ export function absoluteLocaleUrl(locale: string, path: string) {
 
 export function buildAlternates(path: string, locale: string) {
   const resolved = resolveLocale(locale);
-  return {
-    canonical: absoluteLocaleUrl(resolved, path),
-    languages: {
-      en: absoluteLocaleUrl("en", path),
-      nl: absoluteLocaleUrl("nl", path),
-      "x-default": absoluteLocaleUrl(routing.defaultLocale, path),
-    },
-  };
+  const languages: Record<string, string> = Object.fromEntries(
+    routing.locales.map((supported) => [
+      supported,
+      absoluteLocaleUrl(supported, path),
+    ]),
+  );
+  languages["x-default"] = absoluteLocaleUrl(routing.defaultLocale, path);
+  return { canonical: absoluteLocaleUrl(resolved, path), languages };
 }
 
 export async function localeAlternates(path: string) {

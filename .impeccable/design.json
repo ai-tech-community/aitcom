@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-13T00:00:00.000Z",
+  "generatedAt": "2026-10-29T19:26:54.475Z",
   "title": "Design System: AIT Community",
   "extensions": {
     "colorMeta": {
@@ -48,29 +48,341 @@
           "oklch(0.83 0.12 27.3)",
           "oklch(0.93 0.05 27.3)"
         ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "surface-raised": {
+        "role": "neutral",
+        "displayName": "Surface Raised",
+        "canonical": "oklch(0.985 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "surface-muted": {
+        "role": "neutral",
+        "displayName": "Surface Muted",
+        "canonical": "oklch(0.97 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "text-strong": {
+        "role": "neutral",
+        "displayName": "Text Strong",
+        "canonical": "oklch(0.205 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Text Muted",
+        "canonical": "oklch(0.556 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Border",
+        "canonical": "oklch(0.922 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "success": {
+        "role": "tertiary",
+        "displayName": "Success",
+        "canonical": "oklch(0.52 0.14 150)",
+        "tonalRamp": [
+          "oklch(0.15 0.14 150)",
+          "oklch(0.26 0.14 150)",
+          "oklch(0.38 0.14 150)",
+          "oklch(0.5 0.14 150)",
+          "oklch(0.62 0.14 150)",
+          "oklch(0.74 0.14 150)",
+          "oklch(0.86 0.14 150)",
+          "oklch(0.95 0.14 150)"
+        ]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Warning",
+        "canonical": "oklch(0.54 0.13 85)",
+        "tonalRamp": [
+          "oklch(0.15 0.13 85)",
+          "oklch(0.26 0.13 85)",
+          "oklch(0.38 0.13 85)",
+          "oklch(0.5 0.13 85)",
+          "oklch(0.62 0.13 85)",
+          "oklch(0.74 0.13 85)",
+          "oklch(0.86 0.13 85)",
+          "oklch(0.95 0.13 85)"
+        ]
+      },
+      "info": {
+        "role": "tertiary",
+        "displayName": "Info",
+        "canonical": "oklch(0.55 0.16 240)",
+        "tonalRamp": [
+          "oklch(0.15 0.16 240)",
+          "oklch(0.26 0.16 240)",
+          "oklch(0.38 0.16 240)",
+          "oklch(0.5 0.16 240)",
+          "oklch(0.62 0.16 240)",
+          "oklch(0.74 0.16 240)",
+          "oklch(0.86 0.16 240)",
+          "oklch(0.95 0.16 240)"
+        ]
+      },
+      "on-accent": {
+        "role": "neutral",
+        "displayName": "On Accent",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.38 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.74 0 0)",
+          "oklch(0.86 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "chart-1": {
+        "role": "tertiary",
+        "displayName": "Chart 1",
+        "canonical": "oklch(0.646 0.222 41.116)",
+        "tonalRamp": [
+          "oklch(0.15 0.222 41.116)",
+          "oklch(0.26 0.222 41.116)",
+          "oklch(0.38 0.222 41.116)",
+          "oklch(0.5 0.222 41.116)",
+          "oklch(0.62 0.222 41.116)",
+          "oklch(0.74 0.222 41.116)",
+          "oklch(0.86 0.222 41.116)",
+          "oklch(0.95 0.222 41.116)"
+        ]
+      },
+      "chart-2": {
+        "role": "tertiary",
+        "displayName": "Chart 2",
+        "canonical": "oklch(0.6 0.118 184.704)",
+        "tonalRamp": [
+          "oklch(0.15 0.118 184.704)",
+          "oklch(0.26 0.118 184.704)",
+          "oklch(0.38 0.118 184.704)",
+          "oklch(0.5 0.118 184.704)",
+          "oklch(0.62 0.118 184.704)",
+          "oklch(0.74 0.118 184.704)",
+          "oklch(0.86 0.118 184.704)",
+          "oklch(0.95 0.118 184.704)"
+        ]
+      },
+      "chart-3": {
+        "role": "tertiary",
+        "displayName": "Chart 3",
+        "canonical": "oklch(0.398 0.07 227.392)",
+        "tonalRamp": [
+          "oklch(0.15 0.07 227.392)",
+          "oklch(0.26 0.07 227.392)",
+          "oklch(0.38 0.07 227.392)",
+          "oklch(0.5 0.07 227.392)",
+          "oklch(0.62 0.07 227.392)",
+          "oklch(0.74 0.07 227.392)",
+          "oklch(0.86 0.07 227.392)",
+          "oklch(0.95 0.07 227.392)"
+        ]
+      },
+      "chart-4": {
+        "role": "tertiary",
+        "displayName": "Chart 4",
+        "canonical": "oklch(0.828 0.189 84.429)",
+        "tonalRamp": [
+          "oklch(0.15 0.189 84.429)",
+          "oklch(0.26 0.189 84.429)",
+          "oklch(0.38 0.189 84.429)",
+          "oklch(0.5 0.189 84.429)",
+          "oklch(0.62 0.189 84.429)",
+          "oklch(0.74 0.189 84.429)",
+          "oklch(0.86 0.189 84.429)",
+          "oklch(0.95 0.189 84.429)"
+        ]
+      },
+      "chart-5": {
+        "role": "tertiary",
+        "displayName": "Chart 5",
+        "canonical": "oklch(0.769 0.188 70.08)",
+        "tonalRamp": [
+          "oklch(0.15 0.188 70.08)",
+          "oklch(0.26 0.188 70.08)",
+          "oklch(0.38 0.188 70.08)",
+          "oklch(0.5 0.188 70.08)",
+          "oklch(0.62 0.188 70.08)",
+          "oklch(0.74 0.188 70.08)",
+          "oklch(0.86 0.188 70.08)",
+          "oklch(0.95 0.188 70.08)"
+        ]
+      },
+      "night-sky": {
+        "role": "neutral",
+        "displayName": "Night Sky",
+        "canonical": "oklch(0.9 0.035 262)",
+        "tonalRamp": [
+          "oklch(0.15 0.035 262)",
+          "oklch(0.26 0.035 262)",
+          "oklch(0.38 0.035 262)",
+          "oklch(0.5 0.035 262)",
+          "oklch(0.62 0.035 262)",
+          "oklch(0.74 0.035 262)",
+          "oklch(0.86 0.035 262)",
+          "oklch(0.95 0.035 262)"
+        ]
       }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Hero and page-defining headlines on public surfaces only. Ceiling ~3.5rem." },
-      "headline": { "displayName": "Headline", "purpose": "Section and card-group headings." },
-      "title": { "displayName": "Title", "purpose": "Card titles and compact headings (leading-none, semibold)." },
-      "body": { "displayName": "Body", "purpose": "Default reading text. Cap measure at 65-75ch." },
-      "label": { "displayName": "Label / Mono", "purpose": "The signature / SECTION_NAME marker, stats, timestamps, IDs. Monospace, muted, often uppercase." }
+      "display": {
+        "displayName": "Display",
+        "purpose": "Hero and page-defining headlines on public surfaces only. Ceiling ~3.5rem."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section and card-group headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card titles and compact headings (leading-none, semibold)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default reading text. Cap measure at 65-75ch."
+      },
+      "label": {
+        "displayName": "Label / Mono",
+        "purpose": "The signature / SECTION_NAME marker, stats, timestamps, IDs. Monospace, muted, often uppercase."
+      },
+      "magazine-masthead": {
+        "displayName": "Magazine Masthead",
+        "purpose": "Publication-only display typography; editor-selected, default Italiana. Up to 11rem. Greg approved 29 October 2026."
+      },
+      "magazine-bodoni": {
+        "displayName": "Magazine Bodoni",
+        "purpose": "Optional editor-selected Bodoni Moda display face. Publication headlines up to 6rem."
+      },
+      "magazine-cormorant": {
+        "displayName": "Magazine Cormorant",
+        "purpose": "Optional editor-selected Cormorant Garamond display face. Publication headlines up to 6rem."
+      },
+      "magazine-reading": {
+        "displayName": "Magazine Reading",
+        "purpose": "Georgia long-form prose at a readable measure; 1.125rem desktop, 1.0625rem mobile, line height 1.9."
+      }
     },
     "shadows": [
-      { "name": "hairline-lift", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "shadow-xs — outline buttons and inputs at rest." },
-      { "name": "resting-card", "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)", "purpose": "shadow-sm — cards, paired always with a full border." },
-      { "name": "floating", "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", "purpose": "Floating layers only: popovers, dropdowns, dialogs, toasts." }
+      {
+        "name": "hairline-lift",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "shadow-xs — outline buttons and inputs at rest."
+      },
+      {
+        "name": "resting-card",
+        "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+        "purpose": "shadow-sm on the shared Card primitive; compact homepage community cards and magazine covers omit it."
+      },
+      {
+        "name": "floating",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Floating layers only: popovers, dropdowns, dialogs, toasts."
+      }
     ],
     "motion": [
-      { "name": "transition-all", "value": "all 150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default state transition on buttons and interactive chrome." },
-      { "name": "transition-color-shadow", "value": "color, box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Inputs and badges — focus ring and color shifts only." }
+      {
+        "name": "transition-all",
+        "value": "all 150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default state transition on buttons and interactive chrome."
+      },
+      {
+        "name": "transition-color-shadow",
+        "value": "color, box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Inputs and badges — focus ring and color shifts only."
+      },
+      {
+        "name": "ascii-community-frame",
+        "value": "160ms",
+        "purpose": "Community scene frame interval; shared motion pauses off-screen and respects reduced motion."
+      }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "640px" },
-      { "name": "md", "value": "768px" },
-      { "name": "lg", "value": "1024px" },
-      { "name": "xl", "value": "1280px" }
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      },
+      {
+        "name": "magazine-container",
+        "value": "750px"
+      }
     ]
   },
   "components": [
@@ -80,7 +392,7 @@
       "refersTo": "button-primary",
       "description": "The single highest-emphasis action on a screen. Signal Orange, used sparingly.",
       "html": "<button class=\"ds-btn-primary\">Join the community</button>",
-      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: none; border-radius: 8px; background: oklch(0.705 0.213 47.604); color: oklch(1 0 0); font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { background: oklch(0.66 0.20 47.604); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.705 0.213 47.604 / 0.5); } .ds-btn-primary:active { transform: translateY(0.5px); }"
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: none; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-family: var(--font-sans); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { background: color-mix(in oklab, var(--primary) 90%, transparent); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); } .ds-btn-primary:active { transform: translateY(0.5px); }"
     },
     {
       "name": "Secondary Button",
@@ -88,7 +400,7 @@
       "refersTo": "button-secondary",
       "description": "Medium-emphasis action. Muted gray fill, no color.",
       "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
-      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: none; border-radius: 8px; background: oklch(0.97 0 0); color: oklch(0.205 0 0); font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-secondary:hover { background: oklch(0.94 0 0); } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.705 0.213 47.604 / 0.5); }"
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: none; border-radius: 8px; background: var(--secondary); color: var(--secondary-foreground); font-family: var(--font-sans); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-secondary:hover { background: color-mix(in oklab, var(--secondary) 80%, transparent); } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }"
     },
     {
       "name": "Outline Button",
@@ -96,7 +408,7 @@
       "refersTo": "button-outline",
       "description": "Low-emphasis bordered action with hairline lift.",
       "html": "<button class=\"ds-btn-outline\">Learn more</button>",
-      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: 1px solid oklch(0.922 0 0); border-radius: 8px; background: oklch(1 0 0); color: oklch(0.145 0 0); box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-outline:hover { background: oklch(0.97 0 0); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.705 0.213 47.604 / 0.5); }"
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); font-family: var(--font-sans); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-outline:hover { background: var(--secondary); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }"
     },
     {
       "name": "Text Input",
@@ -104,7 +416,7 @@
       "refersTo": "input",
       "description": "Single-line field. Hairline border at rest, Signal-Orange focus ring.",
       "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search communities\" />",
-      "css": ".ds-input { height: 36px; width: 100%; padding: 4px 12px; border: 1px solid oklch(0.922 0 0); border-radius: 8px; background: oklch(1 0 0); color: oklch(0.145 0 0); box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; outline: none; transition: color 150ms, box-shadow 150ms cubic-bezier(0.4,0,0.2,1); } .ds-input::placeholder { color: oklch(0.556 0 0); } .ds-input:focus-visible { border-color: oklch(0.705 0.213 47.604); box-shadow: 0 0 0 3px oklch(0.705 0.213 47.604 / 0.5); } .ds-input[aria-invalid='true'] { border-color: oklch(0.577 0.245 27.325); box-shadow: 0 0 0 3px oklch(0.577 0.245 27.325 / 0.2); }"
+      "css": ".ds-input { height: 36px; width: 100%; padding: 4px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); font-family: var(--font-sans); font-size: 1rem; outline: none; transition: color 150ms, box-shadow 150ms cubic-bezier(0.4,0,0.2,1); } .ds-input::placeholder { color: var(--muted-foreground); } .ds-input:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); } .ds-input[aria-invalid='true'] { border-color: var(--destructive); box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 20%, transparent); } @media (min-width: 768px) { .ds-input { font-size: 0.875rem; } }"
     },
     {
       "name": "Card",
@@ -112,7 +424,7 @@
       "refersTo": "card",
       "description": "Flat, border-defined container with subtle resting shadow. Never nested, never side-striped.",
       "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Amsterdam AI Builders</div><div class=\"ds-card-desc\">A weekly gathering of engineers shipping with agents.</div></div>",
-      "css": ".ds-card { display: flex; flex-direction: column; gap: 16px; padding: 24px; border: 1px solid oklch(0.922 0 0); border-radius: 14px; background: oklch(1 0 0); color: oklch(0.145 0 0); box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); } .ds-card-title { font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 1rem; font-weight: 600; line-height: 1; } .ds-card-desc { font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: oklch(0.556 0 0); line-height: 1.5; }"
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 16px; padding: 24px; border: 1px solid var(--border); border-radius: 14px; background: var(--background); color: var(--foreground); box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); } .ds-card-title { font-family: var(--font-sans); font-size: 1rem; font-weight: 600; line-height: 1; } .ds-card-desc { font-family: var(--font-sans); font-size: 0.875rem; color: var(--muted-foreground); line-height: 1.5; }"
     },
     {
       "name": "Badge",
@@ -120,7 +432,7 @@
       "refersTo": "badge",
       "description": "Pill status/label. Default carries Signal Orange; pair with a non-color cue for status.",
       "html": "<span class=\"ds-badge\">LIVE</span>",
-      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 4px; width: fit-content; padding: 2px 8px; border: 1px solid transparent; border-radius: 9999px; background: oklch(0.705 0.213 47.604); color: oklch(1 0 0); font-family: 'Geist Mono', ui-monospace, monospace; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.05em; white-space: nowrap; }"
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 4px; width: fit-content; padding: 2px 8px; border: 1px solid transparent; border-radius: 9999px; background: var(--primary); color: var(--primary-foreground); font-family: var(--font-mono); font-size: 0.75rem; font-weight: 500; letter-spacing: 0.05em; white-space: nowrap; }"
     },
     {
       "name": "Section Label",
@@ -128,15 +440,14 @@
       "refersTo": "section-label",
       "description": "The signature house kicker. Monospace, muted, ruled. The single most recognizable element of the system.",
       "html": "<h2 class=\"ds-section-label\">/ COMMUNITIES</h2>",
-      "css": ".ds-section-label { margin: 0; padding-bottom: 8px; border-bottom: 1px solid oklch(0.922 0 0); font-family: 'Geist Mono', ui-monospace, monospace; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.05em; color: oklch(0.556 0 0); }"
+      "css": ".ds-section-label { margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.75rem; font-weight: 500; letter-spacing: 0.05em; color: var(--muted-foreground); }"
     },
     {
       "name": "Nav Link",
       "kind": "nav",
-      "refersTo": "nav-link",
       "description": "Quiet at rest, Signal Orange + non-color cue on active. Subtle hover bed, never aggressive.",
       "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link\" href=\"#\">Events</a><a class=\"ds-nav-link ds-nav-link--active\" href=\"#\">Communities</a><a class=\"ds-nav-link\" href=\"#\">Blog</a></nav>",
-      "css": ".ds-nav { display: inline-flex; gap: 4px; } .ds-nav-link { padding: 6px 10px; border-radius: 8px; font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: oklch(0.556 0 0); text-decoration: none; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-nav-link:hover { background: oklch(0.97 0 0 / 0.5); color: oklch(0.145 0 0); } .ds-nav-link--active { color: oklch(0.705 0.213 47.604); text-decoration: underline; text-underline-offset: 4px; } .ds-nav-link:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.705 0.213 47.604 / 0.5); }"
+      "css": ".ds-nav { display: inline-flex; gap: 4px; } .ds-nav-link { padding: 6px 10px; border-radius: 8px; font-family: var(--font-sans); font-size: 0.875rem; font-weight: 500; color: var(--muted-foreground); text-decoration: none; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-nav-link:hover { background: color-mix(in oklab, var(--secondary) 50%, transparent); color: var(--foreground); } .ds-nav-link--active { color: var(--primary); text-decoration: underline; text-underline-offset: 4px; } .ds-nav-link:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }"
     },
     {
       "name": "Storyline Timeline Entry",
@@ -144,47 +455,123 @@
       "description": "Flat chronological reading entry: mono date, sans narrative, neutral rail, native evidence disclosure, and a source link.",
       "html": "<ol class=\"ds-story-timeline\"><li class=\"ds-story-entry\"><time class=\"ds-story-date\" datetime=\"2026-10-13\">13 October 2026</time><h3 class=\"ds-story-title\">A development in this story</h3><p class=\"ds-story-context\">Editorial context explains what this report adds.</p><details class=\"ds-story-evidence\"><summary>Source evidence</summary><blockquote>An excerpt supporting the connection.</blockquote></details><a class=\"ds-story-source\" href=\"#\">Read source</a></li></ol>",
       "css": ".ds-story-timeline { list-style: none; padding: 0; border-left: 1px solid var(--border); color: var(--foreground); font-family: var(--font-sans); } .ds-story-entry { position: relative; padding: 0 0 32px 28px; } .ds-story-entry::before { content: \"\"; position: absolute; top: 4px; left: -5px; width: 10px; height: 10px; box-sizing: border-box; border: 1px solid var(--foreground); border-radius: 50%; background: var(--background); } .ds-story-date { font-family: var(--font-mono); font-size: 12px; color: var(--muted-foreground); } .ds-story-title { margin: 12px 0 0; font-size: 20px; line-height: 1.375; font-weight: 600; } .ds-story-context { margin: 20px 0 0; max-width: 65ch; font-size: 16px; line-height: 1.625; } .ds-story-evidence { margin-top: 16px; font-size: 14px; } .ds-story-evidence summary { cursor: pointer; border-radius: 4px; text-underline-offset: 4px; } .ds-story-evidence summary:hover { text-decoration: underline; } .ds-story-evidence blockquote { margin: 12px 0 0; padding-left: 16px; border-left: 1px solid var(--border); color: var(--muted-foreground); line-height: 1.625; } .ds-story-source { display: inline-flex; margin-top: 16px; color: var(--foreground); font-size: 14px; border-radius: 4px; text-decoration: underline; text-underline-offset: 4px; } .ds-story-evidence summary:focus-visible, .ds-story-source:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Ink Button",
+      "kind": "button",
+      "refersTo": "button-ink",
+      "description": "Equal-weight community and organizer actions; foreground/background colors invert with the theme.",
+      "html": "<button class=\"ds-btn-ink\">Explore communities</button>",
+      "css": ".ds-btn-ink { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:36px; padding:8px 16px; border:0; border-radius:8px; background:var(--foreground); color:var(--background); font:500 14px var(--font-sans); cursor:pointer; transition:background 150ms; } .ds-btn-ink:hover { background:color-mix(in oklab,var(--foreground) 85%,transparent); } .ds-btn-ink:focus-visible { outline:3px solid color-mix(in oklab,var(--ring) 50%,transparent); outline-offset:2px; } .ds-btn-ink:disabled { pointer-events:none; opacity:.5; }"
+    },
+    {
+      "name": "Compact Community Card",
+      "kind": "custom",
+      "description": "Border-defined homepage discovery tile with logo/initials, two-line description and real membership metadata.",
+      "html": "<a class=\"ds-community\" href=\"/en/communities/ait\"><span class=\"ds-community-name\">AIT Community</span><span class=\"ds-community-about\">A community for engineers, creators and AI enthusiasts.</span><span class=\"ds-community-meta\">Member count from live content</span></a>",
+      "css": ".ds-community { display:flex; flex-direction:column; gap:12px; padding:12px; border:1px solid var(--border); border-radius:14px; background:var(--card); color:var(--card-foreground); text-decoration:none; font:14px/1.5 var(--font-sans); transition:background 150ms,border-color 150ms; } .ds-community-name { font-size:16px; font-weight:600; line-height:1.375; } .ds-community-about { color:var(--muted-foreground); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; } .ds-community-meta { margin-top:auto; color:var(--muted-foreground); font:12px var(--font-mono); } .ds-community:hover { background:color-mix(in oklab,var(--muted) 40%,transparent); border-color:color-mix(in oklab,var(--foreground) 30%,transparent); } .ds-community:focus-visible { outline:3px solid color-mix(in oklab,var(--ring) 50%,transparent); outline-offset:2px; } @media (min-width:640px) { .ds-community { padding:16px; } }"
     }
   ],
   "narrative": {
     "northStar": "The Town Square",
-    "overview": "AIT Community is a town square where engineers and AI agents gather to build together. The square is built on a precise technical grid — monospace labels, OKLCH tokens, ruled borders, an orange-dot wordmark — but the grid is the pavement, not the point. Warmth comes from the people, the imagery, the language, and the disciplined use of a single warm accent. The system is balanced: one shared core of tokens, type, and components serves both the public square and the workshops behind it. Public surfaces get more expressive latitude; app surfaces are dense by necessity and earn warmth through clear hierarchy and human copy, not by stripping function. It explicitly rejects the generic-SaaS-template look, the cold sterile dashboard, crypto/Web3 hype, and corporate stuffiness.",
+    "overview": "AIT Community is a town square where engineers and AI agents gather to build together. The square is built on a precise technical grid — monospace labels, OKLCH tokens, ruled borders, an orange-dot wordmark — but the grid is the _pavement_, not the point. Warmth comes from the people, the imagery (the illustrated isometric town square, the village landscape), the language, and the disciplined use of a single warm accent. The system reads as _well-built and welcoming at the same time_: you can tell an engineer made this, and you can tell you're meant to belong here.\n\nThe system is **balanced**: one shared core of tokens, type, and components serves both the public square (home, communities directory, members leaderboard, blog, benchmark, impact) and the workshops behind it (dashboards, community settings, event and challenge workspaces, classroom). Public surfaces get more expressive latitude — bigger type, more imagery, more air — but they never invent a parallel system. App surfaces are information-dense by necessity, and they earn warmth through clear hierarchy and human copy, not by stripping function. A member should feel the same product whether they're on the homepage or three levels deep in an event workspace.\n\nThis system explicitly **rejects** four things. It is not a **generic SaaS template** (no cream/sand backgrounds, no gradient hero text, no hero-metric blocks, no endless identical icon+heading+text card grids). It is not a **cold, sterile dashboard** (density without coldness — never an all-gray enterprise admin panel). It is not **crypto/Web3 hype** (no neon-on-black, no aggressive gradients, no \"to the moon\" energy). And it is not **corporate or stuffy** (no stock photography, no navy-and-gray, no jargon).",
     "keyCharacteristics": [
       "Pure-white (or true-dark) canvas, never tinted warm-neutral cream.",
       "One warm accent — Signal Orange — used sparingly and on purpose.",
-      "Geist Sans for everything human; Geist Mono reserved for the house / LABEL voice, stats, and timestamps.",
+      "Geist Sans for everything human; Geist Mono reserved for the house `/ LABEL` voice, stats, and timestamps.",
       "Border-defined, flat-by-default surfaces with subtle lift on interaction.",
       "WCAG 2.2 AA, bilingual-tolerant (EN/NL), color-blind-safe, reduced-motion-aware."
     ],
     "rules": [
-      { "name": "The One Voice Rule", "body": "Signal Orange appears on <=10% of any given screen. It marks the single most important action or the active state — nothing else. If two things on a screen are orange, one of them is wrong.", "section": "colors" },
-      { "name": "The No-Cream Rule", "body": "The body background is pure white (oklch(1 0 0)) or true dark (oklch(0.145 0 0)). Never a warm-tinted near-white. The instant a surface drifts toward cream/sand/parchment, it reads as a generic AI-generated landing page.", "section": "colors" },
-      { "name": "The Chart-Containment Rule", "body": "The five chart hues live inside data viz and nowhere else. UI chrome is neutral + Signal Orange, full stop.", "section": "colors" },
-      { "name": "The House Kicker Rule", "body": "The monospace / LABEL is the one sanctioned eyebrow and it is a system, not decoration. Do not stack uppercase tracked eyebrows or 01/02/03 numbered markers on top of it.", "section": "typography" },
-      { "name": "The Mono-Is-Machine Rule", "body": "Geist Mono is reserved for the machine voice: labels, code, stats, IDs, timestamps. Warm human copy is Geist Sans. Monospace everywhere is how the town square turns cold.", "section": "typography" },
-      { "name": "The Flat-By-Default Rule", "body": "A resting surface is border-defined and nearly flat. Reach for a heavier shadow only when an element is floating (overlay) or responding (hover/active).", "section": "elevation" },
-      { "name": "The Border-Carries-Depth Rule", "body": "Depth is communicated by borders and tonal steps first, shadow second. Removing every shadow should still leave the hierarchy legible.", "section": "elevation" }
+      {
+        "name": "The Semantic-Status Rule",
+        "body": "Status color comes only from these four tokens — never raw Tailwind palette classes (`text-green-600`, `bg-red-500`, `text-amber-600`) and never a hardcoded hex. If a state needs color, it maps to success/warning/info/destructive. Categorical things that are NOT a status (challenge difficulty, post type, tags) are NOT status colors — use neutral Badges whose label carries the meaning.",
+        "section": "colors"
+      },
+      {
+        "name": "The Pair-With-A-Cue Rule",
+        "body": "Status is never communicated by color alone (8% of men can't distinguish red/green). Every status color ships with an icon, label, or shape — a check for success, an alert glyph for warning, etc.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Voice Rule",
+        "body": "Signal Orange appears on ≤10% of any given screen. It marks the single most important action or the active state — nothing else. If two things on a screen are orange, one of them is wrong. When a screen's main actions are equal peers there is no single most important action: render them all as Ink buttons and spend no orange on them.",
+        "section": "colors"
+      },
+      {
+        "name": "The No-Cream Rule",
+        "body": "The body background is pure white (`oklch(1 0 0)`) or true dark (`oklch(0.145 0 0)`). Never a warm-tinted near-white. The instant a surface drifts toward cream/sand/parchment, it reads as a generic AI-generated landing page — the exact anti-reference.",
+        "section": "colors"
+      },
+      {
+        "name": "The Chart-Containment Rule",
+        "body": "The five chart hues live inside data viz and nowhere else. UI chrome is neutral + Signal Orange, full stop. (Documented exceptions with their own tokens: the heat ramp and the emblem hues above.)",
+        "section": "colors"
+      },
+      {
+        "name": "The House Kicker Rule",
+        "body": "The monospace `/ LABEL` (e.g. `/ COMMUNITIES`, `/ MEMBERS`) is the one sanctioned eyebrow and it is a _system_, not decoration. Use it as a consistent section marker. Do not also sprinkle uppercase tracked eyebrows or `01 · 02 · 03` numbered markers on top of it — that's the AI-grammar tell. Numbers earn their place only when the section truly is an ordered sequence.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mono-Is-Machine Rule",
+        "body": "Geist Mono is reserved for the machine voice: labels, code, stats, IDs, timestamps. Member bios, community descriptions, and any warm human copy are Geist Sans. Monospace everywhere is how the town square turns cold.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "A resting surface is border-defined and nearly flat. Reach for a heavier shadow only when an element is _floating_ (overlay) or _responding_ (hover/active). If a static card has a big soft shadow, it's wrong — that's the 2014-app tell.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Border-Carries-Depth Rule",
+        "body": "Depth is communicated by borders and tonal steps first, shadow second. Removing every shadow should still leave the hierarchy legible.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Gate-Before-Fail Rule",
+        "body": "A guest must never click an enabled control that then fails. Pick the gate by surface:",
+        "section": "components"
+      },
+      {
+        "name": "The No-Silent-Failure Rule",
+        "body": "Every data fetch handles three states explicitly: loading → `<Skeleton>`; error → `<ErrorState onRetry>` (or hide, for purely supplementary widgets); empty → `<EmptyState>` (or hide). **Never** `if (!data) return null` as the only branch — a failed load must be distinguishable from \"nothing here.\" Errored core sections show the error + retry; only optional/supplementary widgets may stay quietly absent.",
+        "section": "components"
+      },
+      {
+        "name": "Magazine Publication Exception",
+        "body": "Approved editorial shell for issue/article reading and the inert builder preview. Dedicated community return, shelf and contents navigation; large selected display type, a cover readability scrim, flowing stories, and publication information below. Font setting stays magazine-wide; global site UI retains Geist.",
+        "section": "typography"
+      },
+      {
+        "name": "Issue Item Imagery",
+        "body": "Optional issue-owned image figures on all item kinds; landscape, portrait or square crops with shared focal-point positioning, alt text, caption and credit. Custom lead images replace source images. Compact rows keep a thumbnail. Upload state persists across editor remounts and blocks publication.",
+        "section": "components"
+      }
     ],
     "dos": [
-      "Do keep the body background pure white or true dark. Carry warmth through copy, imagery, and the accent — never a tinted cream surface.",
-      "Do ration Signal Orange to <=10% of a screen (the One Voice Rule).",
-      "Do use the monospace / LABEL as the one consistent section marker, and only there.",
-      "Do define surfaces with full hairline borders and tonal layering; reserve shadows for floating or responding elements.",
-      "Do pair every status color with a non-color cue (icon, label, pattern).",
-      "Do test headings and labels in both English and Dutch; layouts must absorb longer NL strings without overflow.",
-      "Do give every Framer Motion animation a prefers-reduced-motion fallback, and ensure reveals enhance already-visible content.",
-      "Do keep body text >=4.5:1 (large >=3:1); never push text-muted lighter than oklch(0.556 0 0) on white."
+      "**Do** keep the body background pure white (`oklch(1 0 0)`) or true dark (`oklch(0.145 0 0)`). Carry warmth through copy, imagery, and the accent — never a tinted cream surface.",
+      "**Do** ration Signal Orange to ≤10% of a screen (the One Voice Rule). At most one primary action, one active state; equal peer actions use the Ink button instead.",
+      "**Do** use the monospace `/ LABEL` as the one consistent section marker, and only there.",
+      "**Do** define surfaces with full hairline borders and tonal layering; reserve shadows for floating or responding elements.",
+      "**Do** pair every status color with a non-color cue (icon, label, pattern) — leaderboards, validation, charts, agent-vs-human.",
+      "**Do** express all status color through the four semantic tokens (`success`/`warning`/`info`/`destructive`) — use `bg-success/15 text-success` for soft badges, `bg-success text-success-foreground` for solid fills.",
+      "**Do** test headings and labels in both English and Dutch; layouts must absorb longer NL strings without overflow.",
+      "**Do** give every Framer Motion animation a `prefers-reduced-motion` fallback, and ensure reveals enhance already-visible content rather than gating it.",
+      "**Do** keep body text ≥4.5:1 (large ≥3:1); never push `text-muted` lighter than `oklch(0.556 0 0)` on white."
     ],
     "donts": [
-      "Don't ship a generic SaaS template look: no cream/sand backgrounds, gradient hero text, hero-metric blocks, or endless identical icon+heading+text card grids.",
-      "Don't let app surfaces become a cold, sterile dashboard — density is fine, all-gray soulless admin panels are not.",
-      "Don't drift toward crypto/Web3 hype: no neon-on-black, aggressive gradients, or 'to the moon' energy.",
-      "Don't go corporate/stuffy: no stock photography, navy-and-gray palettes, or jargon-heavy copy.",
-      "Don't use a colored border-left/border-right stripe (>1px) as an accent on cards, list items, or alerts.",
-      "Don't nest cards, and don't give resting cards heavy soft shadows.",
-      "Don't stack extra eyebrows or 01/02/03 numbered markers on top of the / LABEL system.",
-      "Don't spend Geist Mono on warm human copy (bios, community descriptions).",
-      "Don't borrow chart colors into UI chrome."
+      "**Don't** ship a **generic SaaS template** look: no cream/sand backgrounds, gradient hero text (`background-clip:text`), hero-metric blocks, or endless identical icon+heading+text card grids.",
+      "**Don't** let app surfaces become a **cold, sterile dashboard** — density is fine, all-gray soulless admin panels are not.",
+      "**Don't** drift toward **crypto/Web3 hype**: no neon-on-black, aggressive gradients, or \"to the moon\" energy.",
+      "**Don't** go **corporate/stuffy**: no stock photography, navy-and-gray palettes, or jargon-heavy copy.",
+      "**Don't** use a colored `border-left`/`border-right` stripe (>1px) as an accent on cards, list items, or alerts. Use full borders, background tints, or leading icons.",
+      "**Don't** nest cards, and don't give resting cards heavy soft shadows.",
+      "**Don't** stack extra eyebrows or `01 / 02 / 03` numbered markers on top of the `/ LABEL` system.",
+      "**Don't** spend Geist Mono on warm human copy (bios, community descriptions) — that's how the square turns cold.",
+      "**Don't** borrow chart colors into UI chrome.",
+      "**Don't** use raw Tailwind palette classes (`text-green-600`, `bg-red-500/15`, `text-amber-600`, `text-zinc-400`) or hardcoded hex for status — map to `success`/`warning`/`info`/`destructive`. (~1,170 of these exist today; they are the consistency debt being retired.)",
+      "**Don't** color a categorical attribute (challenge difficulty, post type, tags) as if it were a status — use a neutral Badge whose label carries the meaning."
     ]
   }
 }

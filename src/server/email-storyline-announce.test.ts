@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const send = vi.hoisted(() => vi.fn());
 
@@ -21,6 +21,25 @@ const message = {
 beforeEach(() => {
   send.mockReset();
   send.mockResolvedValue({ error: null });
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
+
+it("still throws its existing rejection message after a refused rate-limit retry", async () => {
+  vi.useFakeTimers();
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  send.mockResolvedValue({ error: { name: "rate_limit_exceeded" } });
+  const result = expect(
+    sendStorylineAnnounceEmail("greg@klevox.com", message, {
+      VERCEL_ENV: "preview",
+      NODE_ENV: "production",
+    }),
+  ).rejects.toThrow("Resend rejected the storyline announcement");
+  await vi.advanceTimersByTimeAsync(1000);
+  await result;
+  expect(send).toHaveBeenCalledTimes(2);
 });
 
 it("refuses a member address from a test process even when the env says production", async () => {

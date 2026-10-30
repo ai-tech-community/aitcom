@@ -1,32 +1,11 @@
-import type { Block, CollectionConfig } from "payload";
-import {
-  BlocksFeature,
-  CodeBlock,
-  lexicalEditor,
-} from "@payloadcms/richtext-lexical";
+import type { CollectionConfig } from "payload";
 
-const ImageBlock: Block = {
-  slug: "Image",
-  fields: [
-    { name: "src", type: "text", required: true },
-    { name: "alt", type: "text" },
-  ],
-};
-// Add bash to the language list (not in Monaco defaults, but Shiki supports it)
-const codeLanguages = {
-  bash: "Bash",
-  css: "CSS",
-  html: "HTML",
-  javascript: "JavaScript",
-  json: "JSON",
-  markdown: "Markdown",
-  plaintext: "Plain Text",
-  python: "Python",
-  shell: "Shell",
-  sql: "SQL",
-  typescript: "TypeScript",
-  yaml: "YAML",
-};
+import {
+  assertMagazineUnchanged,
+  channelFor,
+} from "@/server/articles/channels";
+
+import { articleRichTextEditor } from "./shared/article-rich-text";
 
 export const Articles: CollectionConfig = {
   slug: "articles",
@@ -43,27 +22,51 @@ export const Articles: CollectionConfig = {
   },
   versions: { drafts: true },
   hooks: {
+    beforeDelete: [
+      async ({ id, req }) => {
+        // An issue's article block keeps a required reference: refuse the
+        // delete with ARTICLE_PLACED (every path: site, admin, scripts)
+        // instead of a raw foreign-key error.
+        const { assertArticleNotPlaced } =
+          await import("@/server/magazines/article-placement");
+        await assertArticleNotPlaced(req.payload, Number(id), req);
+      },
+    ],
     beforeChange: [
-      async ({ data, originalDoc }) => {
-        if (data?.authorType === "member") {
-          if (
-            data.reviewStatus === "approved" &&
-            originalDoc?.reviewStatus !== "approved"
-          ) {
-            data.status = "published";
-            data.publishedAt = data.publishedAt ?? new Date().toISOString();
-          } else if (
-            (data.reviewStatus === "rejected" ||
-              data.reviewStatus === "changes_requested") &&
-            originalDoc?.reviewStatus !== data.reviewStatus
-          ) {
-            data.status = "draft";
-            data.publishedAt = null;
-          } else if (data.reviewStatus === "pending_review") {
-            data.status = "draft";
-            data.publishedAt = null;
-          }
+      async ({ data, operation, originalDoc, req }) => {
+        // By now Payload's field beforeValidate has filled every field the
+        // update left out from the saved doc, so `data` is the whole
+        // article, `magazine` included.
+        // On create `originalDoc` is `{}` (or the source of a duplicate):
+        // only an update can move an article between channels.
+        assertMagazineUnchanged(
+          data,
+          operation === "update" ? originalDoc : undefined,
+        );
+        if (data.authorType === "member") {
+          channelFor(data).onReviewChange(data, originalDoc);
         }
+        // A duplicate is a create whose `originalDoc` is its source (Payload
+        // strips the source's id; a plain create gets `{}`).
+        if (
+          operation === "create" &&
+          originalDoc &&
+          Object.keys(originalDoc).length > 0
+        ) {
+          channelFor(data).onDuplicate(data);
+        }
+        // Placement belongs to the issue service (ADR-0043): every save
+        // writes the row's current value, read under a row lock, so a save
+        // racing a placement cannot put a stale one back, and a create (or
+        // a duplicate) is never placed.
+        const { placementForSave } =
+          await import("@/server/magazines/article-placement");
+        data.magazineIssue = await placementForSave(
+          req,
+          operation === "update" && originalDoc?.id != null
+            ? Number(originalDoc.id)
+            : null,
+        );
         return data;
       },
     ],
@@ -80,33 +83,27 @@ export const Articles: CollectionConfig = {
         const { db } = await import("@/server/db");
         const { logActivity } = await import("@/server/agent/activity");
 
-        // Award XP and badges when admin approves a member article
+        // The blog publishes and credits on approval; a magazine credits
+        // when an issue holding the article is published.
         if (
           doc.reviewStatus === "approved" &&
-          previousDoc?.reviewStatus !== "approved"
+          previousDoc?.reviewStatus !== "approved" &&
+          channelFor(doc).creditsOnApproval
         ) {
-          const { awardXp, XP_AMOUNTS } = await import("@/lib/gamification");
-          const { onArticleApprovedAfterSave } =
-            await import("@/server/badges/article-approved");
-
-          // The one place approval XP is granted: an admin approval and a
-          // trusted author's direct publish both pass through here.
-          await awardXp(db, doc.authorId, XP_AMOUNTS.ARTICLE_PUBLISHED);
-
-          await onArticleApprovedAfterSave(
+          const { creditArticlePublication } =
+            await import("@/server/articles/credit");
+          // The one place blog approval XP is granted: an admin approval
+          // and a trusted author's direct publish both pass through here.
+          await creditArticlePublication(
             db,
-            { authorId: doc.authorId, type: doc.type },
-            req,
+            {
+              id: doc.id,
+              authorId: doc.authorId,
+              type: doc.type,
+              title: doc.title,
+            },
+            { action: "article.approved", req },
           );
-
-          await logActivity(db, {
-            actorId: doc.authorId,
-            actorType: "member",
-            action: "article.approved",
-            targetType: "articles",
-            targetId: String(doc.id),
-            metadata: { title: doc.title, type: doc.type },
-          });
         }
 
         // Notify member when changes are requested
@@ -149,14 +146,7 @@ export const Articles: CollectionConfig = {
       type: "richText",
       required: true,
       localized: true,
-      editor: lexicalEditor({
-        features: ({ defaultFeatures }) => [
-          ...defaultFeatures,
-          BlocksFeature({
-            blocks: [CodeBlock({ languages: codeLanguages }), ImageBlock],
-          }),
-        ],
-      }),
+      editor: articleRichTextEditor,
     },
     {
       name: "type",
@@ -210,5 +200,29 @@ export const Articles: CollectionConfig = {
       admin: { position: "sidebar" },
     },
     { name: "publishedAt", type: "date", admin: { position: "sidebar" } },
+    {
+      name: "magazine",
+      type: "relationship",
+      relationTo: "magazines",
+      index: true,
+      // Fixed at create: the hook refuses a change (ARTICLE_MAGAZINE_LOCKED),
+      // so the admin panel shows it read-only on an existing article.
+      access: { update: () => false },
+      admin: {
+        position: "sidebar",
+        description: "Set for articles written for a community magazine.",
+      },
+    },
+    {
+      name: "magazineIssue",
+      type: "relationship",
+      relationTo: "magazine-issues",
+      index: true,
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description: "Set by the issue builder",
+      },
+    },
   ],
 };

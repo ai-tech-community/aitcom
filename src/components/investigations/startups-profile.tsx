@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import { ArrowLeft } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
@@ -10,6 +11,7 @@ import {
   StartupsProfileLocation,
 } from "@/components/investigations/startups-profile-facts";
 import { StartupsProfileSections } from "@/components/investigations/startups-profile-sections";
+import { StartupSourcedAnswer } from "@/components/investigations/startup-sourced-answer";
 import {
   STARTUPS_JOIN_HREF,
   STARTUPS_PATH,
@@ -22,6 +24,7 @@ import {
 } from "@/lib/investigations/startups";
 import type { StartupNewsMention } from "@/lib/news/startup-match";
 import type { StartupRolePublic } from "@/lib/investigations/startup-roles";
+import { startupSourcedAnswer } from "@/lib/investigations/startup-sourced-answers";
 
 export type StartupsProfileKey =
   | "kicker"
@@ -64,13 +67,14 @@ export function StartupsProfilePage({
   mentions?: readonly StartupNewsMention[];
   promoteJoin?: boolean;
 }) {
-  const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: StartupLocale = resolveLocale(locale);
   const baseSections = startupProfileSections(card);
   const sections =
     mentions.length > 0 && !baseSections.includes("news")
       ? [...baseSections, "news" as const]
       : baseSections;
   const pin = verifiedStartupPin(card);
+  const answer = startupSourcedAnswer(card.slug);
 
   const facts = (
     <StartupsProfileFacts
@@ -134,6 +138,10 @@ export function StartupsProfilePage({
           }}
         />
       </div>
+
+      {answer ? (
+        <StartupSourcedAnswer answer={answer} locale={copyLocale} />
+      ) : null}
 
       <div className="border-border mt-12 border-t pt-12">
         {sections.length > 0 ? (

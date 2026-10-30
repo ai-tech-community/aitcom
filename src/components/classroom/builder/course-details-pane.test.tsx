@@ -4,7 +4,7 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import en from "../../../../messages/en.json";
-import { createVersionedWriter } from "./versioned-writer";
+import { createVersionedWriter } from "@/components/versioned-writer";
 import type { PaneSaveState } from "./course-builder";
 
 const trpc = vi.hoisted(() => ({

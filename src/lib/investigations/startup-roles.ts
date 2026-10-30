@@ -9,6 +9,7 @@ import {
   STARTUPS_PAGE_SIZE,
   parseStartupSlug,
   presentText,
+  type StartupLocale,
 } from "./startups";
 
 export const STARTUP_ROLE_TITLE_MAX = 200;
@@ -145,13 +146,13 @@ export type StartupWorkType = (typeof STARTUP_WORK_TYPES)[number];
 
 export const STARTUP_WORK_TYPE_LABELS: Record<
   StartupWorkType,
-  Record<"en" | "nl", string>
+  Record<StartupLocale, string>
 > = {
-  "full-time": { en: "Full-time", nl: "Voltijd" },
-  "part-time": { en: "Part-time", nl: "Deeltijd" },
-  contract: { en: "Contract", nl: "Contract" },
-  internship: { en: "Internship", nl: "Stage" },
-  temporary: { en: "Temporary", nl: "Tijdelijk" },
+  "full-time": { en: "Full-time", nl: "Voltijd", fr: "Temps plein" },
+  "part-time": { en: "Part-time", nl: "Deeltijd", fr: "Temps partiel" },
+  contract: { en: "Contract", nl: "Contract", fr: "Prestation" },
+  internship: { en: "Internship", nl: "Stage", fr: "Stage" },
+  temporary: { en: "Temporary", nl: "Tijdelijk", fr: "Temporaire" },
 };
 
 /**

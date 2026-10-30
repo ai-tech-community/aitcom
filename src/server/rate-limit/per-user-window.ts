@@ -10,6 +10,8 @@ export type PerUserLimitResult = {
   retryAfterSecs: number;
 };
 
+const PRUNE_ABOVE = 1_000;
+
 export function createPerUserLimit({
   windowMs,
   max,
@@ -18,11 +20,16 @@ export function createPerUserLimit({
   windowMs: number;
   max: number;
   now?: () => number;
-}): (userId: string) => PerUserLimitResult {
+}): ((userId: string) => PerUserLimitResult) & { size(): number } {
   const windows = new Map<string, { count: number; resetAt: number }>();
 
-  return (userId) => {
+  const check = (userId: string): PerUserLimitResult => {
     const at = now();
+    if (windows.size > PRUNE_ABOVE) {
+      for (const [key, window] of windows) {
+        if (at > window.resetAt) windows.delete(key);
+      }
+    }
     const window = windows.get(userId);
 
     if (!window || at > window.resetAt) {
@@ -41,4 +48,6 @@ export function createPerUserLimit({
     window.count++;
     return { allowed: true, remaining: max - window.count, retryAfterSecs: 0 };
   };
+  // An observation seam for the pruning test; callers still use the function.
+  return Object.assign(check, { size: () => windows.size });
 }

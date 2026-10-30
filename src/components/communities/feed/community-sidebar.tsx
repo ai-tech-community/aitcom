@@ -24,8 +24,9 @@ interface CommunitySidebarProps {
 }
 
 /**
- * Supporting context beside the feed: who is here, links, what is coming
- * up, and the ideas members back most. Discussions live in the feed itself.
+ * Supporting context beside the feed: sector news, links, what is coming
+ * up, and the ideas members back most. Who is here lives in the community
+ * rail (`CommunityIdentity`), so it is not repeated here. Discussions live in the feed itself.
  * Sections with nothing to show are left out rather than saying "none".
  */
 export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
@@ -41,7 +42,6 @@ export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
     sort: "votes",
   });
   const { data: links } = api.links.list.useQuery({ communitySlug: slug });
-  const { data: community } = api.communities.getBySlug.useQuery({ slug });
 
   // Same rows as the community's events page, in their compact form.
   const eventRows = presentEventRows(
@@ -59,27 +59,9 @@ export function CommunitySidebar({ slug, now }: CommunitySidebarProps) {
   const ideas = (ideasData ?? [])
     .filter((idea) => (idea.voteCount ?? 0) > 0)
     .slice(0, 3);
-  const active = community?.liveness?.activeContributors ?? 0;
 
   return (
     <div className="flex flex-col gap-8">
-      {community ? (
-        <section data-sidebar-section="about">
-          <SectionHeader title={t("members")} />
-          <p className="mt-3 text-sm">
-            <span className="font-medium">
-              {t("membersSentence", { count: community.memberCount })}
-            </span>
-            {active > 0 ? (
-              <span className="text-muted-foreground">
-                {" · "}
-                {t("activeSentence", { count: active })}
-              </span>
-            ) : null}
-          </p>
-        </section>
-      ) : null}
-
       <CommunitySectorNews slug={slug} />
 
       {links && links.length > 0 ? (

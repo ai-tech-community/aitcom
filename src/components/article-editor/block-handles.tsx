@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   $createParagraphNode,
   $getNearestNodeFromDOMNode,
   type LexicalEditor,
 } from "@payloadcms/richtext-lexical/lexical";
 import { DraggableBlockPlugin_EXPERIMENTAL } from "@payloadcms/richtext-lexical/lexical/react/LexicalDraggableBlockPlugin";
+
+import { placeBlockMenu } from "./block-menu-position";
 
 function BlockMenu({
   menuRef,
@@ -117,6 +119,18 @@ export function BlockHandles({
   const isOnMenu = useCallback((element: HTMLElement) => {
     return menuRef.current?.contains(element) ?? false;
   }, []);
+
+  // The plugin translates the menu to the left of the block, which clips the
+  // add button off a narrow screen. Pull it back whenever that transform changes.
+  useEffect(() => {
+    const menu = menuRef.current;
+    if (!menu || !anchorElem) return;
+    const place = () => placeBlockMenu(menu, anchorElem);
+    place();
+    const observer = new MutationObserver(place);
+    observer.observe(menu, { attributes: true, attributeFilter: ["style"] });
+    return () => observer.disconnect();
+  }, [anchorElem, editor]);
 
   if (!editor || !anchorElem) return null;
 

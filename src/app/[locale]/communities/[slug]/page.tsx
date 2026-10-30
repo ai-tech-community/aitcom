@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { api } from "@/trpc/server";
 import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 import { CommunityOverviewPageClient } from "./_overview-client";
@@ -11,11 +12,12 @@ export async function generateMetadata({
   params: Promise<{ slug: string; locale: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const t = await getTranslations("communities");
   try {
     const c = await api.communities.getBySlug({ slug });
-    const title = `${c.name} · AI Tech Community`;
+    const title = t("detailTitle", { name: c.name });
     const description =
-      c.description ?? `Join ${c.name} on the AI Tech Community Hub.`;
+      c.description ?? t("detailDescription", { name: c.name });
     return {
       title,
       description,
@@ -28,7 +30,7 @@ export async function generateMetadata({
       twitter: { card: "summary", title, description },
     };
   } catch {
-    return { title: "Community · AI Tech Community" };
+    return { title: t("detailMissing") };
   }
 }
 

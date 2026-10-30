@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { COMMUNITY_DESCRIPTION_MAX } from "@/lib/communities/description";
 import { NEWS_SECTORS, type NewsSector } from "@/lib/news/sectors";
 
 interface SettingsFormProps {
@@ -27,6 +28,7 @@ interface SettingsFormProps {
     name: string;
     description: string | null;
     logoUrl: string | null;
+    bannerUrl: string | null;
     joinPolicy: "open" | "invite_only" | "approval_required";
     isListedInDirectory: boolean;
     feedPostPolicy: "all_members" | "admins_only";
@@ -39,11 +41,14 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
   const sectors = useTranslations("newsSectors");
   const utils = api.useUtils();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(initialData.name);
   const [description, setDescription] = useState(initialData.description ?? "");
   const [logoUrl, setLogoUrl] = useState(initialData.logoUrl);
+  const [bannerUrl, setBannerUrl] = useState(initialData.bannerUrl);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [joinPolicy, setJoinPolicy] = useState<
     "open" | "invite_only" | "approval_required"
   >(initialData.joinPolicy);
@@ -67,32 +72,46 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
     },
   });
 
+  const uploadImage = async (file: File, alt: string) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("alt", alt);
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Upload failed");
+    const data = (await res.json()) as { url: string };
+    return data.url;
+  };
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("alt", `${name} logo`);
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error("Upload failed");
-      }
-
-      const data = (await res.json()) as { url: string };
-      setLogoUrl(data.url);
+      setLogoUrl(await uploadImage(file, `${name} logo`));
     } catch {
       toast.error(t("logoUploadError"));
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingBanner(true);
+    try {
+      setBannerUrl(await uploadImage(file, `${name} banner`));
+    } catch {
+      toast.error(t("bannerUploadError"));
+    } finally {
+      setIsUploadingBanner(false);
+      if (bannerInputRef.current) bannerInputRef.current.value = "";
     }
   };
 
@@ -103,6 +122,7 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
       name,
       description: description || undefined,
       logoUrl: logoUrl ?? null,
+      bannerUrl: bannerUrl ?? null,
       joinPolicy,
       isListedInDirectory,
       feedPostPolicy,
@@ -114,6 +134,61 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-2">
+        <Label>{t("banner")}</Label>
+        <p className="text-muted-foreground text-sm">
+          {t("bannerDescription")}
+        </p>
+        {bannerUrl ? (
+          // Editors can link any uploaded host. next/image only serves listed hosts.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={bannerUrl}
+            alt=""
+            className="border-border aspect-[3/1] w-full max-w-xl rounded-lg border object-cover"
+          />
+        ) : null}
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isUploadingBanner}
+            onClick={() => bannerInputRef.current?.click()}
+          >
+            {isUploadingBanner ? (
+              <>
+                <Loader2 className="mr-1.5 size-4 animate-spin" />
+                {t("bannerUploading")}
+              </>
+            ) : (
+              <>
+                <Upload className="mr-1.5 size-4" />
+                {t("bannerUpload")}
+              </>
+            )}
+          </Button>
+          {bannerUrl && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setBannerUrl(null)}
+            >
+              <X className="mr-1.5 size-4" />
+              {t("bannerRemove")}
+            </Button>
+          )}
+        </div>
+        <input
+          ref={bannerInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleBannerUpload}
+        />
+      </div>
+
       {/* Logo Upload */}
       <div className="space-y-2">
         <Label>{t("logo")}</Label>
@@ -185,9 +260,16 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          maxLength={500}
+          maxLength={COMMUNITY_DESCRIPTION_MAX}
           rows={4}
+          aria-describedby="community-description-hint"
         />
+        <p
+          id="community-description-hint"
+          className="text-muted-foreground text-sm"
+        >
+          {t("descriptionHint", { max: COMMUNITY_DESCRIPTION_MAX })}
+        </p>
       </div>
 
       <div className="space-y-2">

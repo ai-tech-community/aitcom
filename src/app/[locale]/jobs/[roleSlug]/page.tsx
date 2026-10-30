@@ -23,25 +23,30 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { roleSlug } = await params;
+  const t = await getTranslations("investigationsStartups");
   const role = await findPublicStartupRoleBySlug(roleSlug);
   if (!role) {
-    return { title: "Position not found" };
+    return { title: t("roleNotFound") };
   }
+  const title = `${role.title} — ${role.startupName}`;
   const description = role.location
-    ? `${role.title} at ${role.startupName} — ${role.location}. Sourced from the company careers page.`
-    : `${role.title} at ${role.startupName}. Sourced from the company careers page.`;
+    ? t("roleMeta", {
+        title: role.title,
+        startup: role.startupName,
+        location: role.location,
+      })
+    : t("roleMetaNoPlace", {
+        title: role.title,
+        startup: role.startupName,
+      });
   return {
-    title: `${role.title} — ${role.startupName}`,
+    title,
     description,
     robots: openJobRobots({
       ...role,
       descriptionAlreadySanitized: true,
     }),
-    ...buildOgMeta(
-      `${role.title} — ${role.startupName}`,
-      description,
-      "Startups",
-    ),
+    ...buildOgMeta(title, description, t("kicker")),
     alternates: await localeAlternates(buildStartupRolePath(role.slug)),
   };
 }

@@ -64,7 +64,7 @@ export function toWorkEntries(
       key: `article-${article.id}`,
       kind: "article",
       title: article.title,
-      href: `/blog/${article.slug}`,
+      href: article.href,
       date: article.publishedAt,
       detail: null,
     })),

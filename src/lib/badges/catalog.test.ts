@@ -71,6 +71,7 @@ describe("badge catalog", () => {
     expect(catalogBadge("profile_complete")?.kind).toBe("milestone");
     expect(catalogBadge("onboarding_complete")?.kind).toBe("milestone");
     expect(catalogBadge("tutorial_creator")?.kind).toBe("milestone");
+    expect(catalogBadge("magazine_published")?.kind).toBe("milestone");
     const early = catalogBadge("early_adopter");
     expect(early?.kind).toBe("limitedEdition");
     expect(early?.kind === "limitedEdition" && early.editionSize).toBe(100);

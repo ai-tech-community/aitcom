@@ -17,9 +17,11 @@ import {
 export function UpcomingEvents({
   events,
   now,
+  embedded = false,
 }: {
   events: readonly EventRowInput[];
   now?: Date;
+  embedded?: boolean;
 }) {
   const locale = useLocale();
   const t = useTranslations("events");
@@ -31,7 +33,7 @@ export function UpcomingEvents({
   return (
     <section
       aria-labelledby="upcoming-events-title"
-      className="px-6 py-12 sm:px-12"
+      className={embedded ? "min-w-0" : "px-6 py-12 sm:px-12"}
     >
       <SectionLabel id="upcoming-events-title" className="pb-4">
         {t("title")}

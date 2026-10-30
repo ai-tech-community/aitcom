@@ -14,6 +14,7 @@ describe("public article rule", () => {
             { reviewStatus: { equals: "approved" } },
           ],
         },
+        { magazine: { exists: false } },
       ],
     });
   });
@@ -34,6 +35,16 @@ describe("public article rule", () => {
     ],
     [{ status: "published", authorType: "member", reviewStatus: null }, false],
     [{ status: "draft", authorType: "admin" }, false],
+    [
+      {
+        status: "published",
+        authorType: "member",
+        reviewStatus: "approved",
+        magazine: 4,
+      },
+      false,
+    ],
+    [{ status: "published", authorType: "admin", magazine: { id: 4 } }, false],
     [
       { status: "draft", authorType: "member", reviewStatus: "approved" },
       false,

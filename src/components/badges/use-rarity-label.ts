@@ -28,6 +28,9 @@ export function useRarityLabel(
         size: rarity.editionSize,
       });
     }
+    // 0 means nobody has it, or the member count is unknown. Either way
+    // "Earned by 0% of members" is not a useful fact.
+    if (rarity.share <= 0) return null;
     if (rarity.share < RARE_SHARE) return t("fewerThanOnePercent");
     return t("share", {
       percent: format.number(rarity.share, {

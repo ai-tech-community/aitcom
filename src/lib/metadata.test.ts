@@ -26,6 +26,21 @@ function pointsToAnotherHreflang(
 }
 
 describe("buildAlternates", () => {
+  it("keeps French canonical URLs and advertises all supported languages", () => {
+    const alternates = buildAlternates("/events", "fr");
+    expect(alternates.canonical).toBe(
+      `${CANONICAL_PRODUCTION_ORIGIN}/fr/events`,
+    );
+    expect(alternates.languages).toEqual({
+      en: `${CANONICAL_PRODUCTION_ORIGIN}/en/events`,
+      nl: `${CANONICAL_PRODUCTION_ORIGIN}/nl/events`,
+      fr: `${CANONICAL_PRODUCTION_ORIGIN}/fr/events`,
+      "x-default": `${CANONICAL_PRODUCTION_ORIGIN}/en/events`,
+    });
+    expect(pointsToAnotherHreflang(alternates.canonical, alternates)).toBe(
+      false,
+    );
+  });
   it("uses a self-canonical on the English homepage, not a different hreflang", () => {
     const alternates = buildAlternates("", "en");
     const pageUrl = `${CANONICAL_PRODUCTION_ORIGIN}/en`;

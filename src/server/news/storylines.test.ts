@@ -81,6 +81,7 @@ import {
   articleStorylineLinks,
   findStoryline,
   listStorylines,
+  loadStorylineCards,
   relatedStorylines,
   saveStoryline,
   searchStorylineArticles,
@@ -463,5 +464,48 @@ it("links a public contributor by the name stored on their profile", async () =>
   expect(result?.contributor).toEqual({
     name: "Ada Lovelace",
     profilePath: "/members/member-1",
+  });
+});
+
+describe("storyline cards by id", () => {
+  it("does not query for an empty batch", async () => {
+    expect(await loadStorylineCards([])).toEqual(new Map());
+    expect(mock.selects).toEqual([]);
+  });
+
+  it("loads cards of any status in one query with qualified computed columns", async () => {
+    const cards = [
+      {
+        id: "s1",
+        titleEn: "Public story",
+        articleCount: 14,
+        latestAt: new Date("2026-10-24"),
+        isPublic: true,
+      },
+      {
+        id: "s2",
+        titleEn: "Draft story",
+        articleCount: 0,
+        latestAt: null,
+        isPublic: false,
+      },
+    ];
+    mock.rows = [cards];
+    expect(await loadStorylineCards(["s1", "s2"])).toEqual(
+      new Map(cards.map((card) => [card.id, card])),
+    );
+    expect(mock.selects).toHaveLength(1);
+    const dialect = new PgDialect({ casing: "snake_case" });
+    const where = dialect.sqlToQuery(mock.conditions[0] as never);
+    expect(where.params).toEqual(["s1", "s2"]);
+    const selected = mock.selects[0] as Record<string, unknown>;
+    for (const key of ["articleCount", "latestAt", "isPublic"]) {
+      const query = dialect.sqlToQuery(selected[key] as never);
+      expect(query.sql).toContain('"news_storyline"."id"');
+      expect(query.sql).toContain('"news_item"."id"');
+    }
+    const publicQuery = dialect.sqlToQuery(selected.isPublic as never);
+    expect(publicQuery.params).toContain("published");
+    expect(publicQuery.sql).toContain(">= 2");
   });
 });

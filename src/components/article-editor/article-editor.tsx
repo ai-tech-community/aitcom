@@ -9,6 +9,12 @@ import {
   useReducer,
 } from "react";
 import { useTranslations } from "next-intl";
+import {
+  articleReadiness,
+  type ArticleBlockingCode,
+  type ArticleWarningCode,
+} from "@/lib/articles/readiness";
+import { SectionLabel } from "@/components/ui/section-label";
 import { api } from "@/trpc/react";
 import { useRouter } from "@/i18n/navigation";
 
@@ -54,8 +60,15 @@ import { HorizontalRulePlugin } from "@payloadcms/richtext-lexical/lexical/react
 import { CheckListPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalCheckListPlugin";
 import { LinkPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalLinkPlugin";
 
+import { $insertVideoBlock } from "./article-paste";
+import { ArticlePastePlugin } from "./article-paste-plugin";
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
+import { VideoNode } from "./nodes/video-node";
+import { $createAdmonitionNode, AdmonitionNode } from "./nodes/admonition-node";
+import { $insertTopLevel } from "./insert-top-level";
+import { httpsImageUrl } from "@/lib/articles/markdown-image";
+import { renderLexicalDocument } from "@/lib/lexical-view";
 import type {
   ArticleEditorProps,
   SaveState,
@@ -65,8 +78,6 @@ import type {
 import { editorReducer, slashMenuReducer } from "./reducers";
 import {
   extractPlainText,
-  hasCodeNode,
-  getHeadingOutline,
   filterSlashCommands,
   generateSlug,
   preprocessEditorState,
@@ -76,6 +87,33 @@ import { SlashCommandMenu } from "./slash-command-menu";
 import { FloatingToolbar } from "./floating-toolbar";
 import { BlockHandles } from "./block-handles";
 import { PrePublishDialog } from "./pre-publish-dialog";
+import { destinationBehaviour, type ArticleDestination } from "./destination";
+
+const BLOG_DESTINATION: ArticleDestination = { kind: "blog" };
+
+function blockingMessageKey(code: ArticleBlockingCode) {
+  switch (code) {
+    case "missing_title":
+      return "checkMissingTitle" as const;
+    case "missing_content":
+      return "checkMissingContent" as const;
+    case "missing_h2":
+      return "checkMissingH2" as const;
+    case "missing_intro":
+      return "checkMissingIntro" as const;
+  }
+}
+
+function warningMessageKey(code: ArticleWarningCode) {
+  switch (code) {
+    case "tutorial_no_code":
+      return "checkTutorialNoCode" as const;
+    case "mermaid":
+      return "checkMermaidLikelyInvalid" as const;
+    case "too_short":
+      return "checkTooShort" as const;
+  }
+}
 
 function EditorBridge({
   onReady,
@@ -94,9 +132,20 @@ function EditorBridge({
 export function ArticleEditor({
   initialData,
   isTrustedAuthor,
+  destination = BLOG_DESTINATION,
 }: ArticleEditorProps) {
   const t = useTranslations("articleEditor");
+  const tErrors = useTranslations("magazineEditor.errors");
   const router = useRouter();
+  // Every difference between the blog and a magazine comes from here.
+  const behaviour = useMemo(
+    () => destinationBehaviour(destination),
+    [destination],
+  );
+  const publishesDirectly = behaviour.showTrustedPublish && isTrustedAuthor;
+  const submitLabel = publishesDirectly
+    ? t("publish")
+    : t(behaviour.submitLabelKey);
 
   const [state, dispatch] = useReducer(editorReducer, {
     title: initialData?.title ?? "",
@@ -138,11 +187,22 @@ export function ArticleEditor({
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [editorRef, setEditorRef] = useState<LexicalEditor | null>(null);
   const [editorAnchor, setEditorAnchor] = useState<HTMLDivElement | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [imageFormOpen, setImageFormOpen] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [imageAltInput, setImageAltInput] = useState("");
+  const [imageUrlError, setImageUrlError] = useState(false);
 
   const autosaveTimer = useRef<NodeJS.Timeout | null>(null);
   const serializeTimer = useRef<NodeJS.Timeout | null>(null);
   const messageTimer = useRef<NodeJS.Timeout | null>(null);
   const initialized = useRef(false);
+  // Lexical reports the loaded document once. That echo is not an edit, so
+  // opening an article does not write the normalized body back.
+  const skipLoadEcho = useRef(initialData?.id != null);
+  const bodyTouched = useRef(false);
+  const initialDataRef = useRef(initialData);
+  initialDataRef.current = initialData;
   const savingRef = useRef(false);
   const submittingRef = useRef(false);
   savingRef.current = saving;
@@ -150,6 +210,7 @@ export function ArticleEditor({
 
   const createMutation = api.articles.create.useMutation();
   const updateMutation = api.articles.update.useMutation();
+  const utils = api.useUtils();
   const submitMutation = api.articles.submit.useMutation();
 
   const initialConfig = useMemo(
@@ -187,6 +248,8 @@ export function ArticleEditor({
         HorizontalRuleNode,
         CodeBlockNode,
         ImageNode,
+        VideoNode,
+        AdmonitionNode,
       ],
       editorState: initialData?.content
         ? preprocessEditorState(initialData.content)
@@ -203,6 +266,16 @@ export function ArticleEditor({
       messageTimer.current = setTimeout(() => setMessage(null), 3500);
     },
     [],
+  );
+
+  /** A failed call as the writer reads it; `fallback` when it says nothing. */
+  const errorText = useCallback(
+    (err: unknown, fallback: string) => {
+      const key = behaviour.errorKey(err);
+      if (key !== null) return tErrors(key);
+      return err instanceof Error ? err.message : fallback;
+    },
+    [behaviour, tErrors],
   );
 
   const saveDraftInternal = useCallback(
@@ -254,6 +327,7 @@ export function ArticleEditor({
           type,
           tags: tags.map((tag) => ({ tag })),
           mediaUrl: mediaUrl || undefined,
+          ...behaviour.createExtras,
         });
 
         const createdId = Number(created.id);
@@ -276,19 +350,14 @@ export function ArticleEditor({
           window.history.replaceState(
             null,
             "",
-            `/${locale}/blog/edit/${createdSlug}`,
+            `/${locale}${behaviour.editPath(createdSlug)}`,
           );
         }
 
         return createdId;
       } catch (err) {
         dispatch({ type: "SAVE_ERROR" });
-        if (showToast) {
-          showMessage(
-            err instanceof Error ? err.message : t("failedToSave"),
-            "error",
-          );
-        }
+        if (showToast) showMessage(errorText(err, t("failedToSave")), "error");
         return null;
       } finally {
         dispatch({ type: "SAVE_END" });
@@ -296,8 +365,10 @@ export function ArticleEditor({
     },
     [
       articleId,
+      behaviour,
       createMutation,
       editorState,
+      errorText,
       initialData?.id,
       mediaUrl,
       showMessage,
@@ -331,68 +402,17 @@ export function ArticleEditor({
     return Math.max(1, Math.ceil(wordCount / 220));
   }, [wordCount]);
 
-  const contentNodes = useMemo(() => {
-    return (
-      (editorState as { root?: { children?: unknown[] } } | null)?.root
-        ?.children ?? []
-    );
-  }, [editorState]);
-
-  const outline = useMemo(
-    () => getHeadingOutline(contentNodes),
-    [contentNodes],
+  const readiness = useMemo(
+    () => articleReadiness({ title, content: editorState, type }),
+    [editorState, title, type],
   );
-
-  const blockingChecks = useMemo(() => {
-    const results: string[] = [];
-    if (!title.trim()) results.push(t("checkMissingTitle"));
-    if (!plainText.trim()) results.push(t("checkMissingContent"));
-
-    const hasH2 = Array.isArray(contentNodes)
-      ? contentNodes.some((node) => {
-          if (!node || typeof node !== "object") return false;
-          const n = node as Record<string, unknown>;
-          return n.type === "heading" && n.tag === "h2";
-        })
-      : false;
-    if (!hasH2) results.push(t("checkMissingH2"));
-
-    let introBeforeHeading = false;
-    if (Array.isArray(contentNodes)) {
-      const firstHeadingIndex = contentNodes.findIndex((node) => {
-        if (!node || typeof node !== "object") return false;
-        const n = node as Record<string, unknown>;
-        return n.type === "heading";
-      });
-
-      if (firstHeadingIndex > 0) {
-        introBeforeHeading = contentNodes
-          .slice(0, firstHeadingIndex)
-          .some((node) => {
-            if (!node || typeof node !== "object") return false;
-            const n = node as Record<string, unknown>;
-            return (
-              n.type === "paragraph" &&
-              extractPlainText(n.children).trim().length > 0
-            );
-          });
-      }
-    }
-
-    if (!introBeforeHeading) results.push(t("checkMissingIntro"));
-    return results;
-  }, [contentNodes, plainText, t, title]);
-
-  const warningChecks = useMemo(() => {
-    const results: string[] = [];
-    const containsCode = hasCodeNode(contentNodes) || plainText.includes("```");
-    if (type === "tutorial" && !containsCode)
-      results.push(t("checkTutorialNoCode"));
-    if (plainText.includes("[MERMAID]") && !/graph\s+[A-Z]{2}/.test(plainText))
-      results.push(t("checkMermaidLikelyInvalid"));
-    if (wordCount > 0 && wordCount < 120) results.push(t("checkTooShort"));
-    return results;
-  }, [contentNodes, plainText, t, type, wordCount]);
+  const outline = readiness.outline;
+  const blockingChecks = readiness.blocking.map((code) =>
+    t(blockingMessageKey(code)),
+  );
+  const warningChecks = readiness.warnings.map((code) =>
+    t(warningMessageKey(code)),
+  );
 
   // --- Handlers ---
 
@@ -400,40 +420,52 @@ export function ArticleEditor({
     if (blockingChecks.length > 0) return;
 
     dispatch({ type: "SUBMIT_START" });
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
     try {
-      let id = articleId;
-      if (!id) id = await saveDraftInternal(false);
-      else await saveDraftInternal(false);
-
-      if (!id) {
-        showMessage(t("failedToSubmit"), "error");
-        return;
-      }
+      const id = await saveDraftInternal(true);
+      if (id === null) return;
 
       await submitMutation.mutateAsync({ id });
+      if (behaviour.communitySlug) {
+        const magazineSlug = behaviour.communitySlug;
+        void utils.magazines.pickerCandidates.invalidate({
+          slug: magazineSlug,
+        });
+        void utils.magazines.availableArticles.invalidate({
+          slug: magazineSlug,
+        });
+        void utils.magazines.myDraftArticles.invalidate({
+          slug: magazineSlug,
+        });
+        void utils.magazines.myMagazineArticles.invalidate({
+          slug: magazineSlug,
+        });
+      }
       setPublishDialogOpen(false);
       showMessage(
-        isTrustedAuthor ? t("publishedSuccess") : t("submitted"),
+        publishesDirectly ? t("publishedSuccess") : t(behaviour.submittedKey),
         "success",
       );
-      setTimeout(() => router.push("/blog/my-articles"), 1400);
+      setTimeout(() => router.push(behaviour.afterSubmitHref), 1400);
     } catch (err) {
-      showMessage(
-        err instanceof Error ? err.message : t("failedToSubmit"),
-        "error",
-      );
+      showMessage(errorText(err, t("failedToSubmit")), "error");
     } finally {
       dispatch({ type: "SUBMIT_END" });
     }
   }, [
-    articleId,
+    behaviour,
     blockingChecks,
-    isTrustedAuthor,
+    errorText,
+    publishesDirectly,
     router,
     saveDraftInternal,
     showMessage,
     submitMutation,
     t,
+    utils,
   ]);
 
   useEffect(() => {
@@ -449,6 +481,13 @@ export function ArticleEditor({
       savingRef.current
     )
       return;
+    const loaded = initialDataRef.current;
+    const metaDirty =
+      title !== (loaded?.title ?? "") ||
+      mediaUrl !== (loaded?.mediaUrl ?? "") ||
+      type !== (loaded?.type ?? "article") ||
+      tags.join("\0") !== (loaded?.tags ?? []).map((tag) => tag.tag).join("\0");
+    if (!bodyTouched.current && !metaDirty) return;
     dispatch({ type: "MARK_UNSAVED" });
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
 
@@ -472,6 +511,8 @@ export function ArticleEditor({
   }, [tagInput, tags]);
 
   const handleEditorChange = useCallback((edState: EditorState) => {
+    if (skipLoadEcho.current) skipLoadEcho.current = false;
+    else bodyTouched.current = true;
     if (serializeTimer.current) clearTimeout(serializeTimer.current);
     serializeTimer.current = setTimeout(() => {
       dispatch({
@@ -487,13 +528,13 @@ export function ArticleEditor({
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) return;
 
-        const lines = text.split("\n");
-        const nodes = lines.map((line) => {
-          const p = $createParagraphNode();
-          p.append($createTextNode(line));
-          return p;
-        });
-        selection.insertNodes(nodes);
+        $insertTopLevel(
+          text.split("\n").map((line) => {
+            const p = $createParagraphNode();
+            if (line.length > 0) p.append($createTextNode(line));
+            return p;
+          }),
+        );
       });
     },
     [],
@@ -546,43 +587,55 @@ export function ArticleEditor({
       }
       if (id === "code") {
         editorRef.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            const codeBlock = $createCodeBlockNode("", "typescript");
-            const trailingParagraph = $createParagraphNode();
-            selection.insertNodes([codeBlock, trailingParagraph]);
-          }
+          $insertTopLevel([$createCodeBlockNode("", "typescript")]);
         });
         slashDispatch({ type: "CLOSE" });
         return;
       }
       if (id === "image") {
         editorRef.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            const imageNode = $createImageNode("", "");
-            const trailingParagraph = $createParagraphNode();
-            selection.insertNodes([imageNode, trailingParagraph]);
-          }
+          $insertTopLevel([$createImageNode("", "")]);
         });
         slashDispatch({ type: "CLOSE" });
         return;
       }
-      if (id === "admonition-info")
-        insertParagraphText(
-          editorRef,
-          "[!INFO] Short info title\nExplain the context and expected behavior.",
-        );
-      if (id === "admonition-warning")
-        insertParagraphText(
-          editorRef,
-          "[!WARNING] Important warning\nDescribe risk, impact, and mitigation steps.",
-        );
-      if (id === "admonition-success")
-        insertParagraphText(
-          editorRef,
-          "[!SUCCESS] Good practice\nExplain what success looks like and why it works.",
-        );
+      if (id === "video") {
+        editorRef.focus();
+        editorRef.update(() => {
+          $insertVideoBlock("");
+        });
+        slashDispatch({ type: "CLOSE" });
+        return;
+      }
+      if (id === "admonition-info") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode("Explain the context and expected behavior."),
+          );
+          $insertTopLevel([$createAdmonitionNode("INFO"), body]);
+        });
+      }
+      if (id === "admonition-warning") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode("Describe risk, impact, and mitigation steps."),
+          );
+          $insertTopLevel([$createAdmonitionNode("WARNING"), body]);
+        });
+      }
+      if (id === "admonition-success") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode(
+              "Explain what success looks like and why it works.",
+            ),
+          );
+          $insertTopLevel([$createAdmonitionNode("SUCCESS"), body]);
+        });
+      }
       if (id === "mermaid")
         insertParagraphText(
           editorRef,
@@ -599,6 +652,22 @@ export function ArticleEditor({
     },
     [editorRef, insertParagraphText],
   );
+
+  const insertImage = useCallback(() => {
+    const url = httpsImageUrl(imageUrlInput);
+    if (!url || !editorRef) {
+      setImageUrlError(true);
+      return;
+    }
+    editorRef.focus();
+    editorRef.update(() => {
+      $insertTopLevel([$createImageNode(url, imageAltInput.trim())]);
+    });
+    setImageFormOpen(false);
+    setImageUrlInput("");
+    setImageAltInput("");
+    setImageUrlError(false);
+  }, [editorRef, imageAltInput, imageUrlInput]);
 
   const filteredSlashCommands = useMemo(
     () => filterSlashCommands(slash.query),
@@ -705,13 +774,17 @@ export function ArticleEditor({
   return (
     <div>
       {/* Changes-requested banner */}
-      {initialData?.reviewStatus === "changes_requested" &&
-        initialData.reviewNote && (
-          <div className="mb-6 rounded border border-orange-500/30 bg-orange-500/10 px-4 py-3">
-            <p className="font-mono text-xs font-medium tracking-wider text-orange-400">
-              {t("changesRequested").toUpperCase()}
+      {initialData?.reviewNote &&
+        (initialData.reviewStatus === "changes_requested" ||
+          (behaviour.keepReviewNoteWhileWriting &&
+            initialData.reviewStatus == null)) && (
+          <div className="border-border text-foreground mb-6 rounded border px-4 py-3">
+            <SectionLabel bordered={false}>
+              {t("changesRequested")}
+            </SectionLabel>
+            <p className="mt-1 text-sm whitespace-pre-wrap">
+              {initialData.reviewNote}
             </p>
-            <p className="mt-1 text-sm">{initialData.reviewNote}</p>
           </div>
         )}
 
@@ -725,10 +798,16 @@ export function ArticleEditor({
       )}
 
       {/* Sticky top bar */}
-      <div className="bg-background/70 border-border/50 sticky top-14 z-10 -mx-6 border-b px-6 py-2.5 backdrop-blur sm:-mx-12 sm:px-12">
-        <div className="flex items-center justify-between">
+      <div className="bg-background/95 border-border/50 sticky top-28 z-30 -mx-6 border-b px-6 py-2.5 backdrop-blur sm:-mx-12 sm:px-12 lg:top-14">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3 text-xs">
-            <span className="font-mono">{saveStateLabel}</span>
+            <span
+              role="status"
+              aria-live="polite"
+              className="border-border text-foreground bg-background inline-flex h-6 items-center rounded-full border px-2 font-mono"
+            >
+              {saveStateLabel}
+            </span>
             <span className="text-muted-foreground">
               {t("wordsCount", { count: wordCount })}
             </span>
@@ -739,44 +818,163 @@ export function ArticleEditor({
               {t("slashHint")}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setPublishDialogOpen(true)}
-            className="bg-foreground text-background hover:bg-foreground/90 rounded px-4 py-1.5 font-mono text-xs tracking-wider transition-colors"
-          >
-            {isTrustedAuthor
-              ? t("publish").toUpperCase()
-              : t("submitForReview").toUpperCase()}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                setImageFormOpen((open) => !open);
+                setImageUrlError(false);
+              }}
+              disabled={!editorRef || previewing}
+              aria-expanded={imageFormOpen}
+              className="border-border hover:bg-accent rounded border px-3 py-1.5 font-mono text-xs tracking-wider transition-colors disabled:opacity-40"
+            >
+              {t("insertImage")}
+            </button>
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => executeSlashCommand("video")}
+              disabled={!editorRef || previewing}
+              className="border-border hover:bg-accent rounded border px-3 py-1.5 font-mono text-xs tracking-wider transition-colors disabled:opacity-40"
+            >
+              {t("insertVideo")}
+            </button>
+            <button
+              type="button"
+              aria-pressed={previewing}
+              onClick={() => setPreviewing((on) => !on)}
+              className="border-border hover:bg-accent rounded border px-3 py-1.5 font-mono text-xs tracking-wider transition-colors"
+            >
+              {previewing ? t("backToEditing") : t("preview")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPublishDialogOpen(true)}
+              className="bg-foreground text-background hover:bg-foreground/90 rounded px-4 py-1.5 font-mono text-xs tracking-wider transition-colors"
+            >
+              {submitLabel.toUpperCase()}
+            </button>
+          </div>
         </div>
       </div>
 
+      {imageFormOpen && !previewing && (
+        <form
+          className="border-border mt-3 flex flex-wrap items-end gap-2 border-b pb-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            insertImage();
+          }}
+        >
+          <label className="flex min-w-48 flex-1 flex-col gap-1">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
+              {t("imageUrl")}
+            </span>
+            <input
+              aria-label={t("imageUrl")}
+              value={imageUrlInput}
+              onChange={(event) => {
+                setImageUrlInput(event.target.value);
+                setImageUrlError(false);
+              }}
+              placeholder="https://..."
+              className="border-border rounded border bg-transparent px-2 py-1.5 text-sm focus:outline-none"
+            />
+          </label>
+          <label className="flex w-48 flex-col gap-1">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
+              {t("imageAlt")}
+            </span>
+            <input
+              aria-label={t("imageAlt")}
+              value={imageAltInput}
+              onChange={(event) => setImageAltInput(event.target.value)}
+              className="border-border rounded border bg-transparent px-2 py-1.5 text-sm focus:outline-none"
+            />
+          </label>
+          <button
+            type="submit"
+            className="border-border hover:bg-accent rounded border px-3 py-1.5 font-mono text-xs tracking-wider"
+          >
+            {t("insertImageConfirm")}
+          </button>
+          {imageUrlError && (
+            <p className="w-full text-xs text-red-400">
+              {t("imageUrlInvalid")}
+            </p>
+          )}
+        </form>
+      )}
+
       {/* Borderless title */}
-      <input
-        type="text"
-        value={title}
-        onChange={(e) =>
-          dispatch({
-            type: "SET_FIELD",
-            field: "title",
-            payload: e.target.value,
-          })
-        }
-        placeholder={t("articleTitlePlaceholder")}
-        className="placeholder:text-muted-foreground/40 mt-8 w-full bg-transparent text-3xl leading-tight font-semibold tracking-tight focus:outline-none"
-      />
+      {previewing ? (
+        <h1 className="mt-8 text-3xl leading-tight font-semibold tracking-tight">
+          {title.trim() || t("previewUntitled")}
+        </h1>
+      ) : (
+        <input
+          type="text"
+          value={title}
+          onChange={(e) =>
+            dispatch({
+              type: "SET_FIELD",
+              field: "title",
+              payload: e.target.value,
+            })
+          }
+          placeholder={t("articleTitlePlaceholder")}
+          className="placeholder:text-muted-foreground/40 mt-8 w-full bg-transparent text-3xl leading-tight font-semibold tracking-tight focus:outline-none"
+        />
+      )}
+
+      {!previewing && (
+        <label className="mt-4 flex flex-col gap-1">
+          <span className="text-muted-foreground font-mono text-xs tracking-wider">
+            {t("coverImage")}
+          </span>
+          <input
+            aria-label={t("coverImage")}
+            value={mediaUrl}
+            onChange={(event) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "mediaUrl",
+                payload: event.target.value,
+              })
+            }
+            placeholder="https://..."
+            className="border-border rounded border bg-transparent px-2 py-1.5 text-sm focus:outline-none"
+          />
+        </label>
+      )}
+      {previewing && httpsImageUrl(mediaUrl) && (
+        // eslint-disable-next-line @next/next/no-img-element -- arbitrary cover hosts
+        <img
+          src={httpsImageUrl(mediaUrl) ?? ""}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="mt-8 h-auto w-full rounded"
+        />
+      )}
 
       {/* Subtle separator */}
       <div className="border-border my-4 border-b" />
 
       {/* Borderless content editor */}
-      <div className="editor-anchor relative" ref={setEditorAnchor}>
+      <div
+        className="editor-anchor relative"
+        ref={setEditorAnchor}
+        hidden={previewing}
+      >
         <LexicalComposer initialConfig={initialConfig}>
           <EditorBridge onReady={setEditorRef} />
           <RichTextPlugin
             contentEditable={
               <ContentEditable
-                className="min-h-[60vh] pl-4 text-sm leading-relaxed focus:outline-none sm:pl-14"
+                className="min-h-[60vh] pl-14 text-sm leading-relaxed focus:outline-none"
                 onKeyDown={handleEditorKeyDown}
               />
             }
@@ -787,6 +985,7 @@ export function ArticleEditor({
           <HorizontalRulePlugin />
           <CheckListPlugin />
           <LinkPlugin />
+          <ArticlePastePlugin />
           <OnChangePlugin onChange={handleEditorChange} />
           <BlockHandles editor={editorRef} anchorElem={editorAnchor} />
         </LexicalComposer>
@@ -802,12 +1001,24 @@ export function ArticleEditor({
         />
       </div>
 
+      {previewing && (
+        <article aria-label={t("previewLabel")} className="mt-4">
+          {editorState ? (
+            renderLexicalDocument(editorState)
+          ) : (
+            <p className="text-muted-foreground text-sm">{t("previewEmpty")}</p>
+          )}
+        </article>
+      )}
+
       <PrePublishDialog
         open={publishDialogOpen}
         onClose={() => setPublishDialogOpen(false)}
         onSubmit={handleSubmit}
         submitting={submitting}
-        isTrustedAuthor={isTrustedAuthor}
+        submitLabel={submitLabel}
+        title={t(behaviour.prePublishTitleKey)}
+        subtitle={t(behaviour.prePublishSubtitleKey)}
         blockingChecks={blockingChecks}
         warningChecks={warningChecks}
         outline={outline}

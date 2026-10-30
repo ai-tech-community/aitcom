@@ -1,5 +1,7 @@
 import { HUB_FORUM_PATH } from "@/server/communities/forum-scope";
 import { HUB_SLUG } from "@/server/communities/hub";
+import { routing } from "@/i18n/routing";
+import { localeFromPathname, stripLocalePrefix } from "@/i18n/locale-path";
 
 /** Locale-free Hub community path. Middleware prefixes `/en` or `/nl`. */
 export const HUB_COMMUNITY_PATH = `/communities/${HUB_SLUG}`;
@@ -23,7 +25,7 @@ export function getHubCommunityPath(locale?: string): string {
 /** Marketing homepage paths — never a post-auth landing. */
 export function isMarketingHomePath(value: string): boolean {
   const path = (value.split("?")[0] ?? value).replace(/\/+$/, "") || "/";
-  return path === "/" || path === "/en" || path === "/nl";
+  return stripLocalePrefix(path) === "/";
 }
 
 /**
@@ -41,10 +43,10 @@ export function getAuthAliasRedirect(
   pathname: string,
   search = "",
 ): string | null {
-  const pathWithoutLocale = pathname.replace(/^\/(en|nl)/, "") || "/";
+  const pathWithoutLocale = stripLocalePrefix(pathname);
   const alias = resolveAuthAlias(pathWithoutLocale);
   if (!alias) return null;
-  const locale = pathname.startsWith("/nl") ? "nl" : "en";
+  const locale = localeFromPathname(pathname) ?? routing.defaultLocale;
   return `/${locale}${alias}${search}`;
 }
 
@@ -78,10 +80,9 @@ export function getJoinDoorRedirect(
   hasSession: boolean,
   search = "",
 ): string | null {
-  const localeMatch = /^\/(en|nl)(?=\/|$)/.exec(pathname);
-  if (!localeMatch) return null;
-  const locale = localeMatch[1]!;
-  const pathWithoutLocale = pathname.slice(locale.length + 1) || "/";
+  const locale = localeFromPathname(pathname);
+  if (!locale) return null;
+  const pathWithoutLocale = stripLocalePrefix(pathname);
   const joinDoor = pathWithoutLocale.replace(/\/+$/, "") || "/";
   if (joinDoor !== "/join") return null;
   const dest = getJoinPageRedirect({ hasSession, locale });

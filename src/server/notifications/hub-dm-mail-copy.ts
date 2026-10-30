@@ -1,8 +1,17 @@
 import { escapeHtml } from "@/server/email-template";
+import { resolveLocale, type AppLocale } from "@/i18n/messages";
+import { routing } from "@/i18n/routing";
 
-export type HubMailLocale = "en" | "nl";
+export type HubMailLocale = AppLocale;
 
 export function hubDmMailCopy(locale: HubMailLocale) {
+  if (locale === "fr") {
+    return {
+      subject: "Vous avez un message dans la communauté",
+      body: "Vous avez un message dans la communauté.",
+      cta: "Ouvrir le Hub",
+    };
+  }
   if (locale === "nl") {
     return {
       subject: "Je hebt een bericht in de community",
@@ -40,12 +49,12 @@ export function renderHubDmPingHtml(
 export function isHubMailLocale(
   value: string | null | undefined,
 ): value is HubMailLocale {
-  return value === "en" || value === "nl";
+  return routing.locales.some((locale) => locale === value);
 }
 
 export function localeFromCookieHeader(
   cookie: string | null | undefined,
 ): HubMailLocale {
-  if (cookie && /(?:^|;\s*)NEXT_LOCALE=nl(?:;|$)/.test(cookie)) return "nl";
-  return "en";
+  const value = /(?:^|;\s*)NEXT_LOCALE=([^;]*)/.exec(cookie ?? "")?.[1];
+  return resolveLocale(value);
 }

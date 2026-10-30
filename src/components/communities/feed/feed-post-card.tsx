@@ -38,6 +38,7 @@ interface FeedPost {
   id: number;
   content: string;
   imageUrl?: string | null;
+  imageAlt?: string | null;
   authorId: string;
   authorName?: string | null;
   authorImage?: string | null;
@@ -332,7 +333,9 @@ export function FeedPostCard({
         <FeedImageGallery images={post.images} />
       ) : post.imageUrl ? (
         // A legacy post shows its one picture by URL, with no description.
-        <FeedImageGallery images={[{ url: post.imageUrl, alt: "" }]} />
+        <FeedImageGallery
+          images={[{ url: post.imageUrl, alt: post.imageAlt ?? "" }]}
+        />
       ) : post.poll ? (
         <FeedPoll
           postId={post.id}

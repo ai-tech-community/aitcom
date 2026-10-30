@@ -1,4 +1,19 @@
 import * as migration_20261023a_six_public_events from "./20261023a_six_public_events";
+import * as migration_20261029d_content_images from "./20261029d_content_images";
+import * as migration_20261029c_module_cover from "./20261029c_module_cover";
+import * as migration_20261029b_magazine_item_images from "./20261029b_magazine_item_images";
+import * as migration_20261029a_magazine_font from "./20261029a_magazine_font";
+import * as migration_20261028e_french_locale from "./20261028e_french_locale";
+import * as migration_20261028d_community_banner from "./20261028d_community_banner";
+import * as migration_20261028c_magazine_agent_staff from "./20261028c_magazine_agent_staff";
+import * as migration_20261028b_magazine_image_prefix from "./20261028b_magazine_image_prefix";
+import * as migration_20261028a_magazine_growth from "./20261028a_magazine_growth";
+import * as migration_20261027d_magazine_auto_draft_followups from "./20261027d_magazine_auto_draft_followups";
+import * as migration_20261027a_magazine_staff from "./20261027a_magazine_staff";
+import * as migration_20261027b_magazine_subscriptions from "./20261027b_magazine_subscriptions";
+import * as migration_20261027c_magazine_auto_draft from "./20261027c_magazine_auto_draft";
+import * as migration_20261026b_magazine_platform_items from "./20261026b_magazine_platform_items";
+import * as migration_20261026a_magazines from "./20261026a_magazines";
 import * as migration_20261022a_seven_public_events from "./20261022a_seven_public_events";
 import * as migration_20261021a_ten_public_events from "./20261021a_ten_public_events";
 import * as migration_20261019a_five_public_events from "./20261019a_five_public_events";
@@ -1020,6 +1035,81 @@ export const migrations = [
     up: migration_20261022a_seven_public_events.up,
     down: migration_20261022a_seven_public_events.down,
     name: "20261022a_seven_public_events",
+  },
+  {
+    up: migration_20261026a_magazines.up,
+    down: migration_20261026a_magazines.down,
+    name: "20261026a_magazines",
+  },
+  {
+    up: migration_20261026b_magazine_platform_items.up,
+    down: migration_20261026b_magazine_platform_items.down,
+    name: "20261026b_magazine_platform_items",
+  },
+  {
+    up: migration_20261027a_magazine_staff.up,
+    down: migration_20261027a_magazine_staff.down,
+    name: "20261027a_magazine_staff",
+  },
+  {
+    up: migration_20261027b_magazine_subscriptions.up,
+    down: migration_20261027b_magazine_subscriptions.down,
+    name: "20261027b_magazine_subscriptions",
+  },
+  {
+    up: migration_20261027c_magazine_auto_draft.up,
+    down: migration_20261027c_magazine_auto_draft.down,
+    name: "20261027c_magazine_auto_draft",
+  },
+  {
+    up: migration_20261027d_magazine_auto_draft_followups.up,
+    down: migration_20261027d_magazine_auto_draft_followups.down,
+    name: "20261027d_magazine_auto_draft_followups",
+  },
+  {
+    up: migration_20261028a_magazine_growth.up,
+    down: migration_20261028a_magazine_growth.down,
+    name: "20261028a_magazine_growth",
+  },
+  {
+    up: migration_20261028b_magazine_image_prefix.up,
+    down: migration_20261028b_magazine_image_prefix.down,
+    name: "20261028b_magazine_image_prefix",
+  },
+  {
+    up: migration_20261028c_magazine_agent_staff.up,
+    down: migration_20261028c_magazine_agent_staff.down,
+    name: "20261028c_magazine_agent_staff",
+  },
+  {
+    up: migration_20261028d_community_banner.up,
+    down: migration_20261028d_community_banner.down,
+    name: "20261028d_community_banner",
+  },
+  {
+    up: migration_20261028e_french_locale.up,
+    down: migration_20261028e_french_locale.down,
+    name: "20261028e_french_locale",
+  },
+  {
+    up: migration_20261029a_magazine_font.up,
+    down: migration_20261029a_magazine_font.down,
+    name: "20261029a_magazine_font",
+  },
+  {
+    up: migration_20261029b_magazine_item_images.up,
+    down: migration_20261029b_magazine_item_images.down,
+    name: "20261029b_magazine_item_images",
+  },
+  {
+    up: migration_20261029c_module_cover.up,
+    down: migration_20261029c_module_cover.down,
+    name: "20261029c_module_cover",
+  },
+  {
+    up: migration_20261029d_content_images.up,
+    down: migration_20261029d_content_images.down,
+    name: "20261029d_content_images",
   },
   {
     up: migration_20261023a_six_public_events.up,

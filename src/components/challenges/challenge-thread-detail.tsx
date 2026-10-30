@@ -160,7 +160,7 @@ export function ChallengeThreadDetail({
       {/* Replies list */}
       {replies.length === 0 ? (
         <p className="text-muted-foreground mt-4 text-sm">
-          No replies yet. Be the first to respond.
+          {t("noRepliesYet")}
         </p>
       ) : (
         <div className="mt-4 space-y-4">

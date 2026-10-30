@@ -1,0 +1,102 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  articleShareImagePath,
+  issueShareImagePath,
+  communityMagazinePath,
+  issueBuilderPath,
+  issueStatsPath,
+  issuePath,
+  magazineArticleEditPath,
+  magazineArticlePath,
+  magazineAutoDraftPath,
+  magazinePath,
+  magazineReviewPath,
+  magazineSettingsPath,
+  magazinesTopicPath,
+  magazineTeamPath,
+  magazineWritePath,
+} from "./paths";
+
+const magazine = { slug: "agents-weekly" };
+const issue = { slug: "the-tools-issue-3" };
+const article = { slug: "why-evals-matter" };
+
+describe("magazine paths", () => {
+  it("share images live outside the reading path and include the locale", () => {
+    expect(issueShareImagePath("nl", magazine, issue)).toBe(
+      "/nl/og/magazine/agents-weekly/the-tools-issue-3",
+    );
+    expect(articleShareImagePath("en", magazine, issue, article)).toBe(
+      "/en/og/magazine/agents-weekly/the-tools-issue-3/why-evals-matter",
+    );
+  });
+  it("magazinesTopicPath filters the home by an encoded topic", () => {
+    expect(magazinesTopicPath(null)).toBe("/magazines");
+    expect(magazinesTopicPath("agents")).toBe("/magazines?topic=agents");
+    expect(magazinesTopicPath("data & ai")).toBe(
+      "/magazines?topic=data%20%26%20ai",
+    );
+  });
+
+  it("magazinePath is the public shelf", () => {
+    expect(magazinePath(magazine)).toBe("/magazines/agents-weekly");
+  });
+
+  it("issuePath is the issue reading page under its magazine", () => {
+    expect(issuePath(magazine, issue)).toBe(
+      "/magazines/agents-weekly/the-tools-issue-3",
+    );
+  });
+
+  it("magazineArticlePath is the long-read under its issue", () => {
+    expect(magazineArticlePath(magazine, issue, article)).toBe(
+      "/magazines/agents-weekly/the-tools-issue-3/why-evals-matter",
+    );
+  });
+
+  it("communityMagazinePath is the community's Magazine tab", () => {
+    expect(communityMagazinePath("builders")).toBe(
+      "/communities/builders/magazine",
+    );
+  });
+
+  it("issueBuilderPath is the issue builder in the community", () => {
+    expect(issueBuilderPath("builders", 42)).toBe(
+      "/communities/builders/magazine/issues/42/edit",
+    );
+  });
+
+  it("issueStatsPath opens the issue's numbers", () => {
+    expect(issueStatsPath("builders", 42)).toBe(
+      "/communities/builders/magazine/issues/42/stats",
+    );
+  });
+
+  it("magazineReviewPath opens the article for the editors", () => {
+    expect(magazineReviewPath("c", "a")).toBe(
+      "/communities/c/magazine/review/a",
+    );
+  });
+
+  it("editor paths live under the community", () => {
+    expect(magazineSettingsPath("builders")).toBe(
+      "/communities/builders/magazine/settings",
+    );
+    expect(magazineTeamPath("builders")).toBe(
+      "/communities/builders/magazine/team",
+    );
+    expect(magazineWritePath("builders")).toBe(
+      "/communities/builders/magazine/write",
+    );
+    expect(magazineArticleEditPath("builders", "why-evals-matter")).toBe(
+      "/communities/builders/magazine/articles/why-evals-matter/edit",
+    );
+  });
+
+  it("magazineAutoDraftPath opens automatic draft settings", () => {
+    expect(magazineAutoDraftPath("night-owls")).toBe(
+      "/communities/night-owls/magazine/auto-draft",
+    );
+  });
+});

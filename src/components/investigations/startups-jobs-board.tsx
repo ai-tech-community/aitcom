@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveLocale } from "@/i18n/messages";
+
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -60,7 +62,7 @@ export function StartupsJobsBoard({
 }) {
   const t = useTranslations("jobsBoard");
   const { refresh, refreshing } = useServerRefresh();
-  const copyLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale = resolveLocale(locale);
   const [rows, setRows] = useState(tracked);
   const [help, setHelp] = useState<RoleHelpRequest[]>(helpRequests);
   const [askingId, setAskingId] = useState<string | null>(null);

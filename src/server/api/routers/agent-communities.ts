@@ -3,9 +3,10 @@
 // Community procedures for the Agent API (v0.4.0).
 // Exported as a plain object to be spread into the main agent router.
 
+import { publicImageUrlSchema } from "@/server/agent/public-image-url";
 import { z } from "zod";
 import { escapeLike } from "@/server/db/escape-like";
-import { and, eq, isNull, ilike, sql, desc, count } from "drizzle-orm";
+import { and, asc, eq, isNull, ilike, sql, desc, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { agentProcedure, requireScope, requireOwner } from "@/server/api/trpc";
@@ -14,9 +15,11 @@ import {
   communityMemberships,
   communityInvites,
   agentSuggestions,
+  spaces,
   user,
 } from "@/server/db/schema";
 import { generateSlug } from "@/server/communities/slug-utils";
+import { seedDefaultSpaces } from "@/server/communities/seed-default-spaces";
 import {
   canManageRole,
   type CommunityRole,
@@ -26,6 +29,32 @@ import { activateMembership } from "@/server/communities/activate-membership";
 import { consumeInviteUse } from "@/server/communities/invite-uses";
 import { canRedeemInvite } from "@/server/communities/invite-policy";
 import { canAdvise } from "@/server/agents/advisory";
+import {
+  communityDescriptionSchema,
+  presentCommunityDescription,
+} from "@/lib/communities/description";
+import { communityLogoChoice } from "@/server/communities/logo-choice";
+import {
+  findMediaIdsByUrl,
+  mediaIdsForUrls,
+  isUnknownSharedImageError,
+  sharedMediaUrl,
+} from "@/server/communities/shared-media-url";
+import {
+  loadMagazineEditorship,
+  requireCapability,
+} from "@/server/magazines/editorship";
+import {
+  getMagazineForCommunity,
+  setMagazineLogoUrl,
+} from "@/server/magazines/magazine-service";
+import { resolveContentImage } from "@/server/magazines/magazine-issue-update";
+import {
+  missingMagazineLogoWarning,
+  unknownMagazineLogoWarning,
+  type SettingsFieldWarning,
+} from "@/server/communities/settings-field-warnings";
+import { getPayloadClient } from "@/server/payload";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -187,8 +216,45 @@ export const agentCommunityRouter = {
         },
       );
 
+      const description = presentCommunityDescription(community.description);
+      const payload = await getPayloadClient();
+      const imageIds = mediaIdsForUrls(
+        community,
+        await findMediaIdsByUrl(payload, [
+          community.logoUrl,
+          community.bannerUrl,
+        ]),
+      );
+      const spaceRows = await ctx.db
+        .select({
+          kind: spaces.kind,
+          builtinSurface: spaces.builtinSurface,
+          slug: spaces.slug,
+          archivedAt: spaces.archivedAt,
+        })
+        .from(spaces)
+        .where(eq(spaces.communityId, community.id))
+        .orderBy(asc(spaces.position));
+      const magazine = await getMagazineForCommunity(payload, community.id);
       return {
         ...community,
+        ...imageIds,
+        bannerMediaId: community.bannerMediaId ?? imageIds.bannerMediaId,
+        bannerAlt: community.bannerAlt ?? null,
+        magazine: magazine
+          ? {
+              id: magazine.id,
+              slug: magazine.slug,
+              logoMediaId: magazine.logoMediaId ?? null,
+              logoUrl: magazine.logoUrl ?? null,
+              logoAlt: magazine.logoAlt ?? null,
+              coverMediaId: magazine.coverMediaId ?? null,
+              coverImageUrl: magazine.coverImageUrl ?? null,
+              coverAlt: magazine.coverAlt ?? null,
+            }
+          : null,
+        description: description.description,
+        descriptionTruncated: description.descriptionTruncated,
         memberCount: memberCountResult?.count ?? 0,
         ownerMembership: ownerMembership
           ? {
@@ -197,6 +263,11 @@ export const agentCommunityRouter = {
               joinedAt: ownerMembership.joinedAt,
             }
           : null,
+        spaces: spaceRows.map((row) => ({
+          type: row.kind === "room" ? "room" : (row.builtinSurface ?? row.kind),
+          enabled: row.archivedAt === null,
+          slug: row.slug,
+        })),
       };
     }),
 
@@ -531,11 +602,12 @@ export const agentCommunityRouter = {
     .input(
       z.object({
         name: z.string().min(2).max(100),
-        description: z.string().max(500).optional(),
+        description: communityDescriptionSchema.optional(),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
           .default("open"),
         isListedInDirectory: z.boolean().default(false),
+        logoUrl: publicImageUrlSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -554,24 +626,29 @@ export const agentCommunityRouter = {
         });
       }
 
-      const [community] = await ctx.db
-        .insert(communities)
-        .values({
-          name: input.name,
-          slug,
-          description: input.description,
-          joinPolicy: input.joinPolicy,
-          isListedInDirectory: input.isListedInDirectory,
-          createdBy: ownerId,
-        })
-        .returning();
+      const community = await ctx.db.transaction(async (tx) => {
+        const [created] = await tx
+          .insert(communities)
+          .values({
+            name: input.name,
+            slug,
+            description: input.description,
+            joinPolicy: input.joinPolicy,
+            isListedInDirectory: input.isListedInDirectory,
+            logoUrl: input.logoUrl,
+            createdBy: ownerId,
+          })
+          .returning();
 
-      // Owner becomes community owner
-      await ctx.db.insert(communityMemberships).values({
-        communityId: community!.id,
-        userId: ownerId,
-        role: "owner",
-        status: "active",
+        // Owner becomes community owner. Same default spaces as the UI form.
+        await tx.insert(communityMemberships).values({
+          communityId: created!.id,
+          userId: ownerId,
+          role: "owner",
+          status: "active",
+        });
+        await seedDefaultSpaces(tx, created!.id);
+        return created!;
       });
 
       await logActivity(ctx.db, {
@@ -579,11 +656,11 @@ export const agentCommunityRouter = {
         actorType: "agent",
         action: "community.created",
         targetType: "community",
-        targetId: community!.id,
+        targetId: community.id,
         metadata: { name: input.name, slug, onBehalfOf: ownerId },
       });
 
-      return community!;
+      return community;
     }),
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -596,12 +673,20 @@ export const agentCommunityRouter = {
       z.object({
         slug: z.string(),
         name: z.string().min(2).max(100).optional(),
-        description: z.string().max(500).optional(),
+        description: communityDescriptionSchema.optional(),
         logoUrl: z.string().url().optional().nullable(),
+        logoMediaId: z.number().int().positive().nullable().optional(),
+        bannerUrl: z.string().max(2000).nullable().optional(),
+        bannerMediaId: z.number().int().positive().nullable().optional(),
+        bannerAlt: z.string().max(200).nullable().optional(),
+        magazineLogoMediaId: z.number().int().positive().nullable().optional(),
         joinPolicy: z
           .enum(["open", "invite_only", "approval_required"])
           .optional(),
         isListedInDirectory: z.boolean().optional(),
+        classroomCreatePolicy: z
+          .enum(["all_members", "admins_only"])
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -609,40 +694,147 @@ export const agentCommunityRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      await requireAdmin(ctx.db, community.id, ownerId);
-
-      const updates: Record<string, unknown> = {};
-      if (input.name !== undefined) updates.name = input.name;
-      if (input.description !== undefined)
-        updates.description = input.description;
-      if (input.logoUrl !== undefined) updates.logoUrl = input.logoUrl;
-      if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
-      if (input.isListedInDirectory !== undefined)
-        updates.isListedInDirectory = input.isListedInDirectory;
-
-      if (Object.keys(updates).length === 0) {
+      const bannerMediaId = input.bannerMediaId;
+      const bannerUrl = input.bannerUrl;
+      const bannerAlt = input.bannerAlt;
+      const magazineLogoMediaId = input.magazineLogoMediaId;
+      const logo = communityLogoChoice(input);
+      const touchesCommunity =
+        input.name !== undefined ||
+        input.description !== undefined ||
+        logo.kind !== "skip" ||
+        input.joinPolicy !== undefined ||
+        input.isListedInDirectory !== undefined ||
+        input.classroomCreatePolicy !== undefined ||
+        bannerMediaId !== undefined ||
+        bannerUrl !== undefined ||
+        bannerAlt !== undefined;
+      const touchesMagazineLogo = magazineLogoMediaId !== undefined;
+      if (!touchesCommunity && !touchesMagazineLogo) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "No settings to update",
         });
       }
 
-      const [updated] = await ctx.db
-        .update(communities)
-        .set(updates)
-        .where(eq(communities.id, community.id))
-        .returning();
+      // Community settings, including the banner, are the general settings
+      // page: owner or admin.
+      if (touchesCommunity) await requireAdmin(ctx.db, community.id, ownerId);
 
-      await logActivity(ctx.db, {
-        actorId: ctx.agent.agentId,
-        actorType: "agent",
-        action: "community.settings_updated",
-        targetType: "community",
-        targetId: community.id,
-        metadata: updates,
-      });
+      const updates: Record<string, unknown> = {};
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.description !== undefined)
+        updates.description = input.description;
+      if (logo.kind === "url") updates.logoUrl = logo.logoUrl;
+      if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
+      if (input.isListedInDirectory !== undefined)
+        updates.isListedInDirectory = input.isListedInDirectory;
+      if (input.classroomCreatePolicy !== undefined)
+        updates.classroomCreatePolicy = input.classroomCreatePolicy;
+      // A magazine logo lives on the magazine row. Touch the community too
+      // so settings updatedAt moves when that logo is the only change.
 
-      return updated!;
+      // The magazine logo is the magazine settings form: manage capability
+      // (community owner/admin, or a magazine editor-in-chief). A community
+      // with no magazine yet does not fail the rest of the save.
+      let magazineLogoUrl: string | null | undefined;
+      let saveMagazineLogo: (() => Promise<void>) | undefined;
+      const warnings: SettingsFieldWarning[] = [];
+      if (
+        bannerMediaId !== undefined ||
+        bannerUrl !== undefined ||
+        bannerAlt !== undefined
+      ) {
+        const banner = await resolveContentImage(
+          await getPayloadClient(),
+          ownerId,
+          {
+            mediaId: bannerMediaId,
+            url: bannerUrl,
+            alt: bannerAlt,
+          },
+        );
+        if (banner?.mediaId !== undefined)
+          updates.bannerMediaId = banner.mediaId;
+        if (banner?.url !== undefined) updates.bannerUrl = banner.url;
+        if (banner?.alt !== undefined) updates.bannerAlt = banner.alt;
+      }
+
+      if (magazineLogoMediaId !== undefined || logo.kind === "media") {
+        const payload = await getPayloadClient();
+        if (logo.kind === "media") {
+          updates.logoUrl =
+            logo.mediaId === null
+              ? null
+              : await sharedMediaUrl(payload, logo.mediaId, ownerId);
+        }
+        if (magazineLogoMediaId !== undefined) {
+          const magazine = await getMagazineForCommunity(payload, community.id);
+          if (!magazine) {
+            warnings.push(missingMagazineLogoWarning());
+          } else {
+            const standing = await loadMagazineEditorship(
+              ctx.db,
+              { communityId: community.id, magazineId: magazine.id },
+              ownerId,
+            );
+            requireCapability(standing, "manage");
+            if (magazineLogoMediaId === null) {
+              magazineLogoUrl = null;
+            } else {
+              try {
+                magazineLogoUrl = await sharedMediaUrl(
+                  payload,
+                  magazineLogoMediaId,
+                  ownerId,
+                );
+              } catch (error) {
+                if (!isUnknownSharedImageError(error)) throw error;
+                warnings.push(unknownMagazineLogoWarning());
+              }
+            }
+            if (magazineLogoUrl !== undefined) {
+              const logoUrl = magazineLogoUrl;
+              saveMagazineLogo = async () => {
+                await setMagazineLogoUrl(payload, magazine.id, logoUrl);
+              };
+            }
+          }
+        }
+      }
+
+      if (magazineLogoUrl !== undefined) updates.updatedAt = new Date();
+
+      const [updated] =
+        Object.keys(updates).length > 0
+          ? await ctx.db
+              .update(communities)
+              .set(updates)
+              .where(eq(communities.id, community.id))
+              .returning()
+          : [community];
+
+      if (saveMagazineLogo) await saveMagazineLogo();
+
+      if (Object.keys(updates).length > 0 || magazineLogoUrl !== undefined) {
+        await logActivity(ctx.db, {
+          actorId: ctx.agent.agentId,
+          actorType: "agent",
+          action: "community.settings_updated",
+          targetType: "community",
+          targetId: community.id,
+          metadata:
+            magazineLogoUrl !== undefined
+              ? { ...updates, magazineLogoUrl }
+              : updates,
+        });
+      }
+
+      return {
+        ...updated!,
+        ...(magazineLogoUrl !== undefined ? { magazineLogoUrl } : {}),
+        warnings,
+      };
     }),
 
   /** Create an invite link (admin+ only). */

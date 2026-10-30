@@ -240,6 +240,7 @@ export function startupCountryCodeOf(
 const LABELS: Record<StartupLocale, Intl.DisplayNames> = {
   en: new Intl.DisplayNames(["en"], { type: "region" }),
   nl: new Intl.DisplayNames(["nl"], { type: "region" }),
+  fr: new Intl.DisplayNames(["fr"], { type: "region" }),
 };
 
 /** Country name in the page language. */

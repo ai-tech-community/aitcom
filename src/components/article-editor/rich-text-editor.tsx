@@ -64,6 +64,7 @@ import {
   Link2,
   Image as ImageIcon,
   Minus,
+  Video,
 } from "lucide-react";
 import { $setBlocksType } from "@payloadcms/richtext-lexical/lexical/selection";
 import {
@@ -75,8 +76,13 @@ import { CheckListPlugin } from "@payloadcms/richtext-lexical/lexical/react/Lexi
 import { LinkPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalLinkPlugin";
 
 import { cn } from "@/lib/utils";
+import { $insertVideoBlock } from "./article-paste";
+import { ArticlePastePlugin } from "./article-paste-plugin";
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
+import { VideoNode } from "./nodes/video-node";
+import { $createAdmonitionNode, AdmonitionNode } from "./nodes/admonition-node";
+import { $insertTopLevel } from "./insert-top-level";
 import type { SlashGroup, SlashCommand } from "./types";
 import { slashMenuReducer } from "./reducers";
 import {
@@ -240,6 +246,12 @@ function EditorToolbar({
       run: () => onBlock("image"),
     },
     {
+      key: "video",
+      title: "Video",
+      icon: <Video className="size-4" />,
+      run: () => onBlock("video"),
+    },
+    {
       key: "divider",
       title: "Divider",
       icon: <Minus className="size-4" />,
@@ -299,6 +311,13 @@ export interface RichTextEditorProps {
   extensions?: readonly RichTextEditorExtension[];
   /** Extra classes for the writing surface, e.g. a taller minimum height. */
   contentClassName?: string;
+  /**
+   * Id of the visible label that names the writing surface (its textbox).
+   * Without it a screen reader announces only "edit text".
+   */
+  ariaLabelledBy?: string;
+  /** Id of hint text that describes the writing surface. */
+  ariaDescribedBy?: string;
 }
 
 /**
@@ -315,6 +334,8 @@ export function RichTextEditor({
   placeholder,
   extensions = NO_EXTENSIONS,
   contentClassName,
+  ariaLabelledBy,
+  ariaDescribedBy,
 }: RichTextEditorProps) {
   const [slash, slashDispatch] = useReducer(slashMenuReducer, {
     open: false,
@@ -367,6 +388,8 @@ export function RichTextEditor({
         HorizontalRuleNode,
         CodeBlockNode,
         ImageNode,
+        VideoNode,
+        AdmonitionNode,
         ...extensions.map((e) => e.node),
       ],
       editorState: initialValue
@@ -415,13 +438,13 @@ export function RichTextEditor({
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) return;
 
-        const lines = text.split("\n");
-        const nodes = lines.map((line) => {
-          const p = $createParagraphNode();
-          p.append($createTextNode(line));
-          return p;
-        });
-        selection.insertNodes(nodes);
+        $insertTopLevel(
+          text.split("\n").map((line) => {
+            const p = $createParagraphNode();
+            if (line.length > 0) p.append($createTextNode(line));
+            return p;
+          }),
+        );
       });
     },
     [],
@@ -434,10 +457,7 @@ export function RichTextEditor({
       const extension = extensions.find((e) => e.command?.id === id);
       if (extension) {
         editorRef.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            selection.insertNodes([extension.create(), $createParagraphNode()]);
-          }
+          $insertTopLevel([extension.create()]);
         });
         slashDispatch({ type: "CLOSE" });
         return;
@@ -486,43 +506,55 @@ export function RichTextEditor({
       }
       if (id === "code") {
         editorRef.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            const codeBlock = $createCodeBlockNode("", "typescript");
-            const trailingParagraph = $createParagraphNode();
-            selection.insertNodes([codeBlock, trailingParagraph]);
-          }
+          $insertTopLevel([$createCodeBlockNode("", "typescript")]);
         });
         slashDispatch({ type: "CLOSE" });
         return;
       }
       if (id === "image") {
         editorRef.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            const imageNode = $createImageNode("", "");
-            const trailingParagraph = $createParagraphNode();
-            selection.insertNodes([imageNode, trailingParagraph]);
-          }
+          $insertTopLevel([$createImageNode("", "")]);
         });
         slashDispatch({ type: "CLOSE" });
         return;
       }
-      if (id === "admonition-info")
-        insertParagraphText(
-          editorRef,
-          "[!INFO] Short info title\nExplain the context and expected behavior.",
-        );
-      if (id === "admonition-warning")
-        insertParagraphText(
-          editorRef,
-          "[!WARNING] Important warning\nDescribe risk, impact, and mitigation steps.",
-        );
-      if (id === "admonition-success")
-        insertParagraphText(
-          editorRef,
-          "[!SUCCESS] Good practice\nExplain what success looks like and why it works.",
-        );
+      if (id === "video") {
+        editorRef.focus();
+        editorRef.update(() => {
+          $insertVideoBlock("");
+        });
+        slashDispatch({ type: "CLOSE" });
+        return;
+      }
+      if (id === "admonition-info") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode("Explain the context and expected behavior."),
+          );
+          $insertTopLevel([$createAdmonitionNode("INFO"), body]);
+        });
+      }
+      if (id === "admonition-warning") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode("Describe risk, impact, and mitigation steps."),
+          );
+          $insertTopLevel([$createAdmonitionNode("WARNING"), body]);
+        });
+      }
+      if (id === "admonition-success") {
+        editorRef.update(() => {
+          const body = $createParagraphNode();
+          body.append(
+            $createTextNode(
+              "Explain what success looks like and why it works.",
+            ),
+          );
+          $insertTopLevel([$createAdmonitionNode("SUCCESS"), body]);
+        });
+      }
       if (id === "mermaid")
         insertParagraphText(
           editorRef,
@@ -656,7 +688,7 @@ export function RichTextEditor({
         <LexicalComposer initialConfig={initialConfig}>
           <EditorBridge onReady={setEditorRef} />
           {placeholder && isEmpty ? (
-            <div className="text-muted-foreground/40 pointer-events-none absolute top-3 left-4 text-sm sm:left-14">
+            <div className="text-muted-foreground/40 pointer-events-none absolute top-3 left-14 text-sm">
               {placeholder}
             </div>
           ) : null}
@@ -664,9 +696,11 @@ export function RichTextEditor({
             contentEditable={
               <ContentEditable
                 className={cn(
-                  "min-h-48 px-4 py-3 text-sm leading-relaxed focus:outline-none sm:px-14",
+                  "min-h-48 py-3 pr-4 pl-14 text-sm leading-relaxed focus:outline-none sm:pr-14",
                   contentClassName,
                 )}
+                ariaLabelledBy={ariaLabelledBy}
+                ariaDescribedBy={ariaDescribedBy}
                 onKeyDown={handleEditorKeyDown}
               />
             }
@@ -677,6 +711,7 @@ export function RichTextEditor({
           <HorizontalRulePlugin />
           <CheckListPlugin />
           <LinkPlugin />
+          <ArticlePastePlugin />
           <OnChangePlugin onChange={handleEditorChange} />
           <BlockHandles editor={editorRef} anchorElem={editorAnchor} />
         </LexicalComposer>

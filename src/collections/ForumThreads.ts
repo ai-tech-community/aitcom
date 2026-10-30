@@ -24,7 +24,7 @@ export const ForumThreads: CollectionConfig = {
       unique: true,
       admin: {
         description:
-          "Auto-generated from title + timestamp. Do not edit manually.",
+          "Generated from the title. A short number is added only when that address is taken.",
       },
     },
     {
@@ -112,6 +112,21 @@ export const ForumThreads: CollectionConfig = {
       index: true,
       admin: { position: "sidebar" },
     },
+    {
+      name: "imageMediaId",
+      type: "number",
+      admin: {
+        description: "Shared media id. Leave empty when using imageUrl.",
+      },
+    },
+    {
+      name: "imageUrl",
+      type: "text",
+      admin: {
+        description: "http(s) image, or the URL resolved from imageMediaId.",
+      },
+    },
+    { name: "imageAlt", type: "text", maxLength: 200 },
     {
       name: "isDeleted",
       type: "checkbox",

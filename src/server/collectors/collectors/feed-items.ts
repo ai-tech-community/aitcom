@@ -24,19 +24,21 @@ export const feedItems: Collector<z.infer<typeof inputSchema>, FeedEntry> = {
   version: 1,
   author: "platform",
   kind: "feed",
-  title: { en: "Feed items", nl: "Feeditems" },
+  title: { en: "Feed items", nl: "Feeditems", fr: "Éléments d’un flux" },
   description: {
     en: "The latest items of an RSS or Atom feed: title, link, date, author and a short summary.",
     nl: "De nieuwste items van een RSS- of Atom-feed: titel, link, datum, auteur en een korte samenvatting.",
+    fr: "Les derniers éléments d’un flux RSS ou Atom : titre, lien, date, auteur et court résumé.",
   },
   inputSchema,
   itemSchema,
   fieldHints: {
     url: {
-      label: { en: "Feed address", nl: "Feedadres" },
+      label: { en: "Feed address", nl: "Feedadres", fr: "Adresse du flux" },
       help: {
         en: "The web address of the RSS or Atom feed.",
         nl: "Het webadres van de RSS- of Atom-feed.",
+        fr: "L’adresse web du flux RSS ou Atom.",
       },
       placeholder: "https://example.com/feed.xml",
     },

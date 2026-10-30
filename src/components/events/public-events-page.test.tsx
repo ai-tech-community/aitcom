@@ -20,7 +20,7 @@ const SLUG_PAGE_FILE = join(appLocale, "events/[slug]/page.tsx");
 const INVESTIGATION_FILE = join(appLocale, "investigations/ai-events/page.tsx");
 const SITEMAP_FILE = join(dir, "../../app/sitemap.ts");
 const SITEMAP_TEST_FILE = join(dir, "../../app/sitemap.test.ts");
-const NAV_FILE = join(dir, "../navbar.tsx");
+const NAV_FILE = join(dir, "../site-nav.ts");
 const SCHEMA_FILE = join(dir, "../../server/db/schema.ts");
 const MIGRATION_FILE = join(
   dir,
@@ -50,7 +50,10 @@ describe("public events route", () => {
 
   it("restores the fat CMS listing (filters / map / cards), not the thin bar", () => {
     const src = readFileSync(PAGE_FILE, "utf8");
-    expect(src).toContain("EventsFilterBar");
+    expect(src).toContain("EventsListingToolbar");
+    expect(
+      readFileSync(join(dir, "../events-listing-toolbar.tsx"), "utf8"),
+    ).toContain("EventsFilterBar");
     expect(src).toContain("EventsMap");
     expect(src).toContain('collection: "events"');
     expect(src).toContain("discoverySource");
@@ -82,7 +85,9 @@ describe("Join chrome", () => {
     expect(src).toContain('t("listingMemberLead")');
     expect(src).toContain("eventAiRobots(aiFilter)");
     expect(src).toContain("eventListingEmitsJsonLd(aiFilter)");
-    expect(src).toContain("title: PUBLIC_EVENTS_H1");
+    expect(src).toContain('getTranslations("publicEvents")');
+    expect(src).toContain('tPublic("title")');
+    expect(src).toContain('tEvents("listingMemberLead")');
     expect(src).toContain("localeAlternates(PUBLIC_EVENTS_PATH)");
     const filter = readFileSync(join(dir, "../events-filter-bar.tsx"), "utf8");
     expect(filter).toContain('t("filterAi")');
@@ -123,9 +128,9 @@ describe("public events site integration", () => {
     expect(sitemap).not.toContain("/investigations/ai-events");
   });
 
-  it("keeps Events in the primary nav", () => {
+  it("keeps Events in the header nav", () => {
     const navbar = readFileSync(NAV_FILE, "utf8");
-    expect(navbar).toMatch(/href:\s*"\/events"[\s\S]*primary:\s*true/);
+    expect(navbar).toMatch(/type: "link", href: "\/events", key: "events"/);
     expect(en.nav.events).toBe("Events");
     expect(nl.nav.events).toBe("Evenementen");
   });
@@ -153,6 +158,8 @@ describe("public events site integration", () => {
   it("locks page metadata to the fat listing without invented counts", () => {
     expect(PUBLIC_EVENTS_PATH).toBe("/events");
     expect(PUBLIC_EVENTS_H1.length).toBeGreaterThan(0);
+    expect(en.publicEvents.title).toBe(PUBLIC_EVENTS_H1);
+    expect(en.events.listingMemberLead).toBe(PUBLIC_EVENTS_META);
     expect(PUBLIC_EVENTS_META).not.toMatch(COUNT_COPY);
     expect(en.events.listingLead).not.toMatch(COUNT_COPY);
     expect(nl.events.listingLead).not.toMatch(COUNT_COPY);

@@ -12,6 +12,8 @@ const WORKSPACE_ROUTES: ReadonlyArray<ReadonlyArray<string | null>> = [
   // The event editor: events/new and events/<eventSlug>/edit
   ["events", "new"],
   ["events", null, "edit"],
+  // The issue builder: magazine/issues/<issueId>/edit
+  ["magazine", "issues", null, "edit"],
 ];
 
 export function resolveCommunityLayoutVariant(

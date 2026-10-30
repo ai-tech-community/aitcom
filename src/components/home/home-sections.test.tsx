@@ -59,6 +59,32 @@ const FULL: HomeSectionsProps = {
       memberCount: 4,
     },
   ],
+  magazines: [
+    {
+      id: 1,
+      name: "Builders Journal",
+      slug: "builders",
+      logoUrl: null,
+      description: null,
+      topics: [],
+      staffHidden: false,
+      community: { name: "AIT Community", slug: "ait" },
+      latest: {
+        id: 10,
+        number: 2,
+        title: "Making useful agents",
+        slug: "useful-agents",
+        coverImageUrl: null,
+        publishedAt: "2026-10-20T12:00:00Z",
+        status: "published",
+        visibility: "public",
+        effectiveVisibility: "public",
+        outsiderReach: "full",
+        magazine: { name: "Builders Journal", slug: "builders", logoUrl: null },
+        community: { name: "AIT Community", slug: "ait" },
+      },
+    },
+  ],
   upcomingEvents: [UPCOMING],
   latestNews: [
     {
@@ -77,7 +103,6 @@ const FULL: HomeSectionsProps = {
     { id: 1, name: "Acme", href: "https://acme.ai/", logoUrl: null },
     { id: 2, name: "Beta", href: null, logoUrl: null },
   ],
-  signedIn: false,
   now: NOW,
 };
 
@@ -102,6 +127,7 @@ function renderIn(
   return render(
     <NextIntlClientProvider
       locale={locale}
+      timeZone="Europe/Amsterdam"
       messages={locale === "en" ? en : nl}
     >
       <HomeSections {...FULL} {...props} />
@@ -116,71 +142,67 @@ function renderedOrder(container: HTMLElement): string[] {
 }
 
 describe("HomeSections", () => {
-  it("renders communities → events → news → start → what we do → proof → sponsors → closing square", () => {
+  it("keeps the mobile reading order: communities, events, news, magazines, proof, sponsors, organizers", () => {
     const { container } = renderIn();
-    expect(renderedOrder(container)).toEqual([...HOME_SECTION_ORDER]);
-    expect(HOME_SECTION_ORDER).toEqual([
-      "featured-communities",
-      "upcoming-events",
-      "latest-news",
-      "start-here",
-      "what-we-do",
-      "recent-gatherings",
-      "sponsors",
-      "closing-square",
-    ]);
+    expect(renderedOrder(container)).toEqual(HOME_SECTION_ORDER);
+    expect(
+      screen.queryByRole("region", { name: en.whatWeDo.kicker }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: en.homeDiscovery.organizers }),
+    ).toBeInTheDocument();
   });
 
-  it("puts upcoming events straight under featured communities", () => {
+  it("pairs communities with news on desktop and leaves events full-width", () => {
     const { container } = renderIn();
-    const order = renderedOrder(container);
-    expect(order.indexOf("upcoming-events")).toBe(
-      order.indexOf("featured-communities") + 1,
-    );
-  });
-
-  it("puts daily news and stories immediately after upcoming events", () => {
-    const { container } = renderIn();
-    const order = renderedOrder(container);
-    expect(order.indexOf("latest-news")).toBe(
-      order.indexOf("upcoming-events") + 1,
-    );
-  });
-
-  it("wrappers add no box, so an empty section leaves no gap", () => {
-    const { container } = renderIn({
-      featuredCommunities: [],
-      latestNews: [],
-      recentEvents: [],
-      signedIn: true,
-    });
-    for (const wrapper of container.querySelectorAll("[data-section]")) {
-      expect(wrapper).toHaveClass("contents");
-    }
-    expect(renderedOrder(container)).toEqual([
-      "upcoming-events",
-      "what-we-do",
-      "sponsors",
-      "closing-square",
-    ]);
-  });
-
-  it("ends on the town square with the hero's actions, not the old CTA cards", () => {
-    const { container } = renderIn();
-    const wrappers = container.querySelectorAll<HTMLElement>("[data-section]");
-    expect(wrappers[wrappers.length - 1]!.dataset.section).toBe(
-      "closing-square",
+    expect(
+      container.querySelector('[data-section="featured-communities"]'),
+    ).toHaveClass("lg:col-span-8", "lg:row-start-1");
+    expect(container.querySelector('[data-section="latest-news"]')).toHaveClass(
+      "lg:col-span-4",
+      "lg:row-start-1",
     );
     expect(
-      screen.queryByText(/Host Your Community|Take a Challenge|Build With AI/),
-    ).toBeNull();
-    // The only link to /sponsors is "Become a sponsor".
-    const sponsorLinks = screen
-      .getAllByRole("link")
-      .filter((a) => a.getAttribute("href") === "/sponsors");
-    expect(sponsorLinks.map((a) => a.textContent)).toEqual([
-      en.homeSponsors.become,
+      container.querySelector('[data-section="upcoming-events"]'),
+    ).toHaveClass("lg:col-span-12", "lg:row-start-2");
+  });
+
+  it("removes absent sections and expands the remaining discovery column", () => {
+    const { container } = renderIn({
+      featuredCommunities: [],
+      magazines: [],
+      recentEvents: [],
+    });
+    expect(renderedOrder(container)).toEqual([
+      "upcoming-events",
+      "latest-news",
+      "sponsors",
+      "organizers",
     ]);
+    expect(container.querySelector('[data-section="latest-news"]')).toHaveClass(
+      "lg:col-span-12",
+    );
+  });
+
+  it("does not leave empty columns when news is missing", () => {
+    const { container } = renderIn({ latestNews: [] });
+    expect(container.querySelector('[data-section="latest-news"]')).toBeNull();
+    expect(
+      container.querySelector('[data-section="featured-communities"]'),
+    ).toHaveClass("lg:col-span-12");
+  });
+
+  it("limits the news rail to four headlines", () => {
+    const { container } = renderIn({
+      latestNews: Array.from({ length: 6 }, (_, i) => ({
+        ...FULL.latestNews![0]!,
+        id: String(i),
+        title: `News ${i}`,
+      })),
+    });
+    expect(
+      container.querySelectorAll('[data-section="latest-news"] li'),
+    ).toHaveLength(4);
   });
 
   it("never links to a placeholder #", () => {
@@ -201,7 +223,7 @@ describe("HomeSections", () => {
   it("uses the shared house kicker for every section label", () => {
     const { container } = renderIn();
     for (const heading of container.querySelectorAll("h2")) {
-      if (heading.id === "home-closing-title") continue; // a Sans headline
+      if (heading.id === "home-organizers-title") continue; // a Sans headline
       expect(heading, heading.textContent ?? "").toHaveAttribute(
         "data-slot",
         "section-label",
@@ -215,7 +237,7 @@ describe("HomeSections", () => {
       screen.getByRole("region", { name: nl.homeRecent.title }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: nl.homeClosing.title }),
+      screen.getByRole("heading", { name: nl.homeDiscovery.organizers }),
     ).toBeInTheDocument();
   });
 });
@@ -249,6 +271,7 @@ describe("homepage messages", () => {
       : [prefix];
 
   it.each([
+    "homeDiscovery",
     "homeStats",
     "homeNews",
     "homeRecent",
