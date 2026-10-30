@@ -22,6 +22,7 @@ import {
 } from "@/server/classroom/course-access";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
 import { hiddenContentCommunityIds } from "@/server/communities/content-visibility-queries";
+import { loadHiddenEventCommunityIds } from "@/server/events/public-event-access";
 import { loadIssueReadScope } from "@/server/magazines/readable-issues";
 
 type Db = typeof appDb;
@@ -155,9 +156,13 @@ export function profileProjectsWhere(
  */
 export function profileEventsWhere(
   userId: string,
-  hiddenCommunityIds: readonly string[],
+  hiddenCommunityIds: readonly string[] | null,
   { startedBy }: { startedBy?: string } = {},
 ): Where {
+  const readable =
+    hiddenCommunityIds === null
+      ? { communityId: { exists: false } }
+      : communityContentReadableWhere(hiddenCommunityIds);
   return withReadable(
     [
       { organizerId: { equals: userId } },
@@ -165,7 +170,7 @@ export function profileEventsWhere(
       { discoverySource: { not_equals: "luma" } },
       ...(startedBy ? [{ date: { less_than_equal: startedBy } }] : []),
     ],
-    communityContentReadableWhere(hiddenCommunityIds),
+    readable,
   );
 }
 
@@ -313,32 +318,38 @@ export async function loadProfileWork(
   const { db: database, payload } = deps;
   const listLimit = limit + 1;
 
-  const [hidden, publicIssueIds, hackathonRows, courseCertRows] =
-    await Promise.all([
-      hiddenContentCommunityIds(database, viewerId),
-      loadIssueReadScope(database, null).then((scope) =>
-        readableArticleIssueIds(payload, scope),
-      ),
-      database
-        .select({
-          id: hackathonCertificates.id,
-          challengeId: hackathonCertificates.challengeId,
-          kind: hackathonCertificates.kind,
-          issuedAt: hackathonCertificates.issuedAt,
-        })
-        .from(hackathonCertificates)
-        .where(eq(hackathonCertificates.userId, userId))
-        .orderBy(desc(hackathonCertificates.issuedAt)),
-      database
-        .select({
-          id: courseCertificates.id,
-          courseId: courseCertificates.courseId,
-          issuedAt: courseCertificates.issuedAt,
-        })
-        .from(courseCertificates)
-        .where(eq(courseCertificates.userId, userId))
-        .orderBy(desc(courseCertificates.issuedAt)),
-    ]);
+  const [
+    hidden,
+    hiddenEventCommunityIds,
+    publicIssueIds,
+    hackathonRows,
+    courseCertRows,
+  ] = await Promise.all([
+    hiddenContentCommunityIds(database, viewerId),
+    loadHiddenEventCommunityIds(database, viewerId),
+    loadIssueReadScope(database, null).then((scope) =>
+      readableArticleIssueIds(payload, scope),
+    ),
+    database
+      .select({
+        id: hackathonCertificates.id,
+        challengeId: hackathonCertificates.challengeId,
+        kind: hackathonCertificates.kind,
+        issuedAt: hackathonCertificates.issuedAt,
+      })
+      .from(hackathonCertificates)
+      .where(eq(hackathonCertificates.userId, userId))
+      .orderBy(desc(hackathonCertificates.issuedAt)),
+    database
+      .select({
+        id: courseCertificates.id,
+        courseId: courseCertificates.courseId,
+        issuedAt: courseCertificates.issuedAt,
+      })
+      .from(courseCertificates)
+      .where(eq(courseCertificates.userId, userId))
+      .orderBy(desc(courseCertificates.issuedAt)),
+  ]);
   const hiddenSet = new Set(hidden);
 
   const challengeIds = [...new Set(hackathonRows.map((r) => r.challengeId))];
@@ -364,7 +375,9 @@ export async function loadProfileWork(
       }),
       payload.find({
         collection: "events",
-        where: profileEventsWhere(userId, hidden, { startedBy }),
+        where: profileEventsWhere(userId, hiddenEventCommunityIds, {
+          startedBy,
+        }),
         sort: "-date",
         limit: listLimit,
         locale,

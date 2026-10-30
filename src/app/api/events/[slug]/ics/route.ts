@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getPayloadClient } from "@/server/payload";
 import { env } from "@/env";
 import { buildEventIcs, eventIcsContentType } from "@/lib/events/event-ics";
+import { getSession } from "@/server/better-auth/server";
+import { db } from "@/server/db";
+import { viewerMaySeeEvent } from "@/server/events/public-event-access";
 
 export async function GET(
   _req: Request,
@@ -20,6 +23,15 @@ export async function GET(
   if (!event) {
     return new NextResponse("Not found", { status: 404 });
   }
+  const session = await getSession();
+  const visible = await viewerMaySeeEvent(
+    db,
+    event.communityId ?? null,
+    session?.user?.id ?? null,
+  );
+  if (!visible) {
+    return new NextResponse("Not found", { status: 404 });
+  }
 
   const ics = buildEventIcs(event, {
     method: "publish",
@@ -31,7 +43,7 @@ export async function GET(
     headers: {
       "Content-Type": eventIcsContentType("publish"),
       "Content-Disposition": `attachment; filename="${event.slug}.ics"`,
-      "Cache-Control": "public, max-age=300",
+      "Cache-Control": "private, no-store",
     },
   });
 }

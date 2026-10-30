@@ -68,8 +68,9 @@ export function useEventSave({
     if (mode === "resubmit" && eventId)
       resubmit.mutate({ eventId, ...payload });
     else if (mode === "edit" && eventId) update.mutate({ eventId, ...payload });
-    else if (canPublish) create.mutate(payload);
-    else submit.mutate(payload);
+    else if (canPublish)
+      create.mutate({ ...payload, description: form.description.trim() });
+    else submit.mutate({ ...payload, description: form.description.trim() });
   }
 
   return {
