@@ -151,12 +151,18 @@ manager`, not-found on `none`). We follow its shape.
    they become members-only for outsiders on every surface at once, until a
    community leader confirms them.
 
-7. **Public listings use the anonymous scope.** The sitemap, the `/magazines`
-   home, agent/MCP article search and magazine articles on an author's public
-   profile read with `loadIssueReadScope(db, null)`. The home includes previews;
-   the sitemap, search and profile require full outsider reading access,
-   regardless of the viewer's own membership. A preview grants no article
-   access through search or profile work. The per-magazine shelf, the
+7. **Public discovery uses the anonymous scope; the magazine directory uses the viewer.**
+   The sitemap, homepage magazine strip, agent/MCP article search and magazine
+   articles on an author's public profile read with `loadIssueReadScope(db, null)`.
+   The homepage strip includes previews; the sitemap, search and profile require
+   full outsider reading access, regardless of the viewer's own membership.
+   A preview grants no article access through search or profile work.
+   Amended 30 October 2026 following Greg's report: the `/magazines` directory
+   uses the signed-in viewer's scope, so active community members can discover
+   their published members-only issues there. Anonymous visitors still see only
+   outsider-readable issues. Drafts and scheduled issues remain excluded for
+   everyone, and staff-hidden magazines remain excluded from the directory.
+   The per-magazine shelf, the
    community's Magazine tab, the issue page, the article page and comments
    use the viewer's own scope or `loadMagazineIssueAccess`.
 
@@ -192,9 +198,10 @@ manager`, not-found on `none`). We follow its shape.
 
 - **Access never lags; the sitemap may.** The resolver and
   `readableIssueWhere` run on every request with no cache in between, so an
-  issue switched from preview or public to members leaves the issue page, `/magazines`,
-  the shelf, the author's profile, agent search and comment reads on the next
-  request. `src/app/sitemap.ts` is regenerated on its `revalidate` window
+  issue switched from preview or public to members leaves the issue page,
+  `/magazines`, the shelf, the author's profile, agent search and comment reads
+  for outsiders on the next request. Members retain their reading access.
+  `src/app/sitemap.ts` is regenerated on its `revalidate` window
   (3600 s), so a sitemap may still list a URL for up to an hour after the
   switch. That URL then answers 404: the sitemap is a hint to crawlers, not an
   access path. Tests assert the sitemap's data function, not the cached file.

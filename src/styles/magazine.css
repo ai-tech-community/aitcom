@@ -397,5 +397,5 @@
 .magazine-cover > .magazine-masthead {
   align-self: stretch;
   padding-top: 0;
-  font-size: clamp(3rem, 9cqw, 9rem);
+  font-size: clamp(3rem, 9cqw, 11rem);
 }

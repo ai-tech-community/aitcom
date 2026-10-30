@@ -5,13 +5,14 @@ import { MagazinesHome } from "@/components/magazines/reading/magazines-home";
 import { resolveLocale } from "@/i18n/messages";
 import { MAGAZINES_HOME_PATH } from "@/lib/magazines/paths";
 import { buildOgMeta, localeAlternates } from "@/lib/metadata";
+import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
 import { normalizeTopics } from "@/server/magazines/magazine-service";
 import { loadMagazinesHome } from "@/server/magazines/reading";
 import { getPayloadClient } from "@/server/payload";
 
-// Only public issues are listed, decided per request: an issue switched to
-// members-only leaves this page on the next request (ADR-0042).
+// Published issues are listed using the viewer's current access on every
+// request, so membership and visibility changes take effect immediately.
 export const dynamic = "force-dynamic";
 
 type Params = Promise<{ locale: string }>;
@@ -48,16 +49,18 @@ export default async function MagazinesHomePage({
   params: Params;
   searchParams: SearchParams;
 }) {
-  const [{ locale: rawLocale }, query, payload] = await Promise.all([
+  const [{ locale: rawLocale }, query, payload, session] = await Promise.all([
     params,
     searchParams,
     getPayloadClient(),
+    getSession(),
   ]);
   const activeTopic = activeTopicOf(query.topic);
   const data = await loadMagazinesHome(
     { db, payload },
     {
       locale: resolveLocale(rawLocale),
+      viewerId: session?.user?.id ?? null,
       ...(activeTopic ? { topic: activeTopic } : {}),
     },
   );

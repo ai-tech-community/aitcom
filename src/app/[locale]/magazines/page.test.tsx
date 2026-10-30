@@ -6,7 +6,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../../../../messages/en.json";
 import { homeData } from "@/components/magazines/test-fixtures";
 
-const state = vi.hoisted(() => ({ calls: [] as unknown[] }));
+const state = vi.hoisted(() => ({
+  calls: [] as unknown[],
+  viewerId: "member-1" as string | null,
+}));
 
 vi.mock("server-only", () => ({}));
 vi.mock("next-intl/server", () => ({
@@ -19,6 +22,10 @@ vi.mock("next-intl/server", () => ({
   getLocale: async () => "en",
 }));
 vi.mock("@/server/db", () => ({ db: {} }));
+vi.mock("@/server/better-auth/server", () => ({
+  getSession: async () =>
+    state.viewerId ? { user: { id: state.viewerId } } : null,
+}));
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
     <a href={href}>{children}</a>
@@ -38,6 +45,7 @@ const params = Promise.resolve({ locale: "nl" });
 
 beforeEach(() => {
   state.calls = [];
+  state.viewerId = "member-1";
 });
 
 describe("magazines home page", () => {
@@ -50,7 +58,9 @@ describe("magazines home page", () => {
       params,
       searchParams: Promise.resolve({ topic: "  Agents " }),
     });
-    expect(state.calls).toEqual([{ locale: "nl", topic: "agents" }]);
+    expect(state.calls).toEqual([
+      { locale: "nl", topic: "agents", viewerId: "member-1" },
+    ]);
     expect(page.props.activeTopic).toBe("agents");
   });
 
@@ -59,8 +69,14 @@ describe("magazines home page", () => {
       params,
       searchParams: Promise.resolve({ topic: "   " }),
     });
-    expect(state.calls).toEqual([{ locale: "nl" }]);
+    expect(state.calls).toEqual([{ locale: "nl", viewerId: "member-1" }]);
     expect(page.props.activeTopic).toBeNull();
+  });
+
+  it("uses anonymous access when signed out", async () => {
+    state.viewerId = null;
+    await MagazinesHomePage({ params, searchParams: Promise.resolve({}) });
+    expect(state.calls).toEqual([{ locale: "nl", viewerId: null }]);
   });
 
   it("has one canonical URL for every topic view", async () => {
