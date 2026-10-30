@@ -213,6 +213,11 @@ vi.mock("@/trpc/server", () => ({
   HydrateClient: ({ children }: { children: ReactNode }) => children,
 }));
 
+// Metadata assertions do not need to execute the font-loading presentation wrapper.
+vi.mock("@/components/magazines/reading/magazine-font-scope", () => ({
+  MagazineFontScope: ({ children }: { children: ReactNode }) => children,
+}));
+
 vi.mock("@/components/investigations/startups-profile", () => ({
   StartupsProfilePage: () => null,
 }));
