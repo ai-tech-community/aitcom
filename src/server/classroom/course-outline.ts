@@ -4,6 +4,9 @@ export type OutlineModule = {
   title: string;
   order?: number | null;
   summary?: string | null;
+  imageMediaId?: number | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
 };
 
 export type OutlineLesson = {
@@ -22,23 +25,38 @@ function lessonCard(lesson: OutlineLesson) {
   };
 }
 
+/**
+ * Payload number columns are numeric. Some reads return them as strings,
+ * and "14" !== 14 would drop lessons 26–33 off the course.
+ */
+function sameId(left: unknown, right: unknown): boolean {
+  const a = typeof left === "number" ? left : Number(left);
+  const b = typeof right === "number" ? right : Number(right);
+  return Number.isFinite(a) && a === b;
+}
+
 /** Modules with their lessons, plus lessons that are not in a module. */
 export function presentClassroomCourse<T extends { id: number }>(
   course: T,
   modules: readonly OutlineModule[],
   lessons: readonly OutlineLesson[],
 ) {
-  const courseLessons = lessons.filter((lesson) => lesson.course === course.id);
+  const courseLessons = lessons.filter((lesson) =>
+    sameId(lesson.course, course.id),
+  );
   return {
     modules: modules
-      .filter((mod) => mod.course === course.id)
+      .filter((mod) => sameId(mod.course, course.id))
       .map((mod) => ({
         id: mod.id,
         title: mod.title,
         order: mod.order ?? 0,
         summary: mod.summary ?? null,
+        imageMediaId: mod.imageMediaId ?? null,
+        imageUrl: mod.imageUrl ?? null,
+        imageAlt: mod.imageAlt ?? null,
         lessons: courseLessons
-          .filter((lesson) => lesson.module === mod.id)
+          .filter((lesson) => sameId(lesson.module, mod.id))
           .map(lessonCard),
       })),
     lessons: courseLessons

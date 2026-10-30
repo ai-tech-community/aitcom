@@ -174,6 +174,18 @@ describe("FeedPostCard video and moderation", () => {
   });
 });
 
+describe("FeedPostCard image", () => {
+  it("uses the post alt text for a picture stored by URL", () => {
+    renderCard({
+      imageUrl: "https://cdn.example.test/post.png",
+      imageAlt: "The town square",
+    });
+    expect(
+      screen.getByRole("img", { name: "The town square" }),
+    ).toHaveAttribute("src", "https://cdn.example.test/post.png");
+  });
+});
+
 describe("FeedPostCard links", () => {
   const LINK = "https://claude.ai/artifact/QfGAfn6EPmuJngAgwsZoa9";
   const content = `Grok Bot cheat sheet ${LINK}`;

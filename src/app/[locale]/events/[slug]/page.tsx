@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import type { Where } from "payload";
 import Image from "next/image";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
@@ -39,7 +39,6 @@ import {
   type EventDetailDay,
 } from "@/components/events/detail/event-detail-when";
 import { EventTimeDisplay } from "@/components/event-time-display";
-import { getTranslations } from "next-intl/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -129,11 +128,11 @@ export async function generateMetadata({
   const event = docs[0];
   if (!event) return {};
 
-  const summaryLine = eventSummaryLine(
-    event,
-    locale,
-    await getEventRowLabels(),
-  );
+  const [labels, tEvents] = await Promise.all([
+    getEventRowLabels(),
+    getTranslations("events"),
+  ]);
+  const summaryLine = eventSummaryLine(event, locale, labels);
   const builtDescription = eventMetaDescription(
     {
       title: event.title,
@@ -146,6 +145,7 @@ export async function generateMetadata({
       description: lexicalToPlainText(event.description),
     },
     locale,
+    tEvents("online"),
   );
   const description = eventSeoDescription(slug, locale) ?? builtDescription;
   const title = eventSeoTitle(slug, locale, event.title);
@@ -165,8 +165,10 @@ export default async function EventDetailPage({
 }) {
   const { slug } = await params;
   const locale = await getLocale();
-  const tEvents = await getTranslations("events");
-  const labels = await getEventRowLabels();
+  const [tEvents, labels] = await Promise.all([
+    getTranslations("events"),
+    getEventRowLabels(),
+  ]);
 
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
@@ -202,6 +204,7 @@ export default async function EventDetailPage({
       description: lexicalToPlainText(event.description),
     },
     locale,
+    tEvents("online"),
   );
   const metaDescription = eventSeoDescription(slug, locale) ?? builtDescription;
   const pageTitle = eventSeoTitle(slug, locale, event.title);

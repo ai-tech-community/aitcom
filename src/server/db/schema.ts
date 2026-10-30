@@ -3728,6 +3728,10 @@ export const communities = appSchema.table(
     logoUrl: d.text(),
     /** Wide image on the community page. Null until an admin sets one. */
     bannerUrl: d.text(),
+    /** Media id for the banner, when the picture lives in shared media. */
+    bannerMediaId: d.integer("banner_media_id"),
+    /** Alt text for the banner. Empty when the picture is decorative. */
+    bannerAlt: d.text("banner_alt"),
     joinPolicy: d
       .varchar({ length: 30 })
       .notNull()

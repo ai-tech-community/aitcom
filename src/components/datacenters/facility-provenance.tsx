@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import {
   formatCheckedAt,
   httpsSourceUrl,
@@ -10,9 +11,10 @@ export function FacilityProvenance({
   sourceUrl: string | null;
   checkedAt: Date | string | null;
 }) {
+  const t = useTranslations("datacenterFacility");
   const href = httpsSourceUrl(sourceUrl);
   if (!href) return null;
-  const checked = formatCheckedAt(checkedAt);
+  const checked = formatCheckedAt(checkedAt, t("checkedLabel"));
   const dateTime =
     checkedAt instanceof Date
       ? checkedAt.toISOString()

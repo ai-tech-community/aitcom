@@ -34,6 +34,12 @@ const AI_ENGINEER_NEW_YORK_RECAP = {
       "Terugblik op AI Engineer New York 2026. 12–14 okt 2026. New York. Toekomstige edities staan op de officiële site.",
     body: "Terugblik op AI Engineer New York, 12–14 oktober 2026 in New York. De officiële site noemt geen volgende editie.",
   },
+  fr: {
+    title: "AI Engineer New York 2026 : rétrospective",
+    description:
+      "Rétrospective d’AI Engineer New York 2026. 12–14 oct. 2026. New York. Les prochaines éditions sont sur le site officiel.",
+    body: "Rétrospective d’AI Engineer New York, du 12 au 14 octobre 2026 à New York. Le site officiel n’annonce pas de prochaine édition.",
+  },
 } as const;
 
 export function nvidiaNlEnglishLinks(
@@ -51,9 +57,9 @@ export function aiEngineerNewYorkRecap(
   | (typeof AI_ENGINEER_NEW_YORK_RECAP)[keyof typeof AI_ENGINEER_NEW_YORK_RECAP]
   | null {
   if (slug !== AI_ENGINEER_NEW_YORK_SLUG) return null;
-  return locale === "nl"
-    ? AI_ENGINEER_NEW_YORK_RECAP.nl
-    : AI_ENGINEER_NEW_YORK_RECAP.en;
+  if (locale === "nl") return AI_ENGINEER_NEW_YORK_RECAP.nl;
+  if (locale === "fr") return AI_ENGINEER_NEW_YORK_RECAP.fr;
+  return AI_ENGINEER_NEW_YORK_RECAP.en;
 }
 
 /** Stored title, unless this slug has a recap title. */

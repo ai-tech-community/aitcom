@@ -1,3 +1,5 @@
+import { createTranslator, NextIntlClientProvider } from "next-intl";
+import en from "../../../../messages/en.json";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -12,6 +14,12 @@ vi.mock("@/trpc/server", () => ({
 
 vi.mock("next-intl/server", () => ({
   getLocale: async () => "en",
+  getTranslations: async () =>
+    createTranslator({
+      locale: "en",
+      messages: en,
+      namespace: "datacenterFacility",
+    }),
 }));
 
 vi.mock("@/i18n/navigation", () => ({
@@ -46,13 +54,18 @@ describe("investigations hub", () => {
   it("titles the page for datacenters and keeps /investigations", async () => {
     const meta = await generateMetadata();
     expect(meta.title).toBe("AI Datacenter Investigations");
+    expect(meta.openGraph?.title).toBe("AI Datacenter Investigations");
     expect(meta.alternates).toMatchObject({
       canonical: "https://www.aitcommunity.org/en/investigations",
     });
   });
 
   it("shows the latest facility updated date", async () => {
-    render(await InvestigationsPage());
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        {await InvestigationsPage()}
+      </NextIntlClientProvider>,
+    );
     expect(
       screen.getByRole("heading", { name: "AI Datacenter Investigations" }),
     ).toBeInTheDocument();

@@ -60,6 +60,16 @@ const WRITTEN = {
         children: [{ type: "text", text: "Why night owls read magazines." }],
       },
       {
+        type: "paragraph",
+        version: 1,
+        children: [
+          {
+            type: "text",
+            text: "![Breakfast](https://aitcommunity.s3.amazonaws.com/day.jpg)",
+          },
+        ],
+      },
+      {
         type: "heading",
         tag: "h2",
         version: 1,
@@ -143,15 +153,51 @@ const savedArticle: NonNullable<ArticleEditorProps["initialData"]> = {
 };
 
 describe("ArticleEditor writing for a magazine", () => {
+  it("inserts an image from a URL and alt, and edits the cover", async () => {
+    renderWithIntl(
+      <ArticleEditor isTrustedAuthor={false} destination={destination} />,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Image" })).toBeEnabled(),
+    );
+    expect(screen.getByRole("textbox", { name: "Cover image" })).toHaveValue(
+      "",
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Cover image" }), {
+      target: { value: "https://cdn.example.test/cover.jpg" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Image" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Image URL" }), {
+      target: { value: "http://cdn.example.test/a.jpg" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Alt text" }), {
+      target: { value: "The square" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Insert" }));
+    expect(screen.getByText("Use an https image URL.")).toBeInTheDocument();
+    fireEvent.change(screen.getByRole("textbox", { name: "Image URL" }), {
+      target: { value: "https://cdn.example.test/square.jpg" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Insert" }));
+    expect(screen.queryByRole("textbox", { name: "Image URL" })).toBeNull();
+  });
+
   it("shows a save state and a preview of the article", async () => {
     renderWithIntl(
       <ArticleEditor isTrustedAuthor={false} destination={destination} />,
     );
     expect(screen.getByRole("status")).toHaveTextContent("Draft");
+    await act(() => new Promise((resolve) => setTimeout(resolve, 200)));
     fireEvent.click(screen.getByRole("button", { name: "Preview" }));
     expect(
       screen.getByRole("article", { name: "Article preview" }),
     ).toBeInTheDocument();
+    const previewImage = screen.getByRole("img", { name: "Breakfast" });
+    expect(previewImage).toHaveAttribute(
+      "src",
+      "https://aitcommunity.s3.amazonaws.com/day.jpg",
+    );
+    expect(previewImage).toHaveAttribute("loading", "lazy");
     expect(
       screen.getByRole("button", { name: "Back to editing" }),
     ).toHaveAttribute("aria-pressed", "true");

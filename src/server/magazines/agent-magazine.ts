@@ -7,7 +7,6 @@ import { HUB_SLUG } from "@/server/communities/hub";
 import { isContentPublic } from "@/server/communities/content-visibility";
 import { agentDrafts, agentProfiles, communities } from "@/server/db/schema";
 import {
-  authorBylineAtReadTime,
   memberDisplayName,
   memberNamesByUserId,
   withAuthorBylines,
@@ -23,7 +22,11 @@ import type { Article, Magazine, MagazineIssue } from "@/payload-types";
 
 import {
   agentArticleAuthorName,
+  articleBlocksOf,
+  articleBodyPreview,
   articleBodyToLexical,
+  articleVideosOf,
+  magazineAgentByline,
   magazineArticleCreateData,
   magazineArticlePatch,
 } from "./agent-article-body";
@@ -64,11 +67,28 @@ import {
 import type { StoredBlock } from "./items/registry";
 import { notifyAgentIssueSubmitted } from "./notifications";
 import { inPayloadTransaction } from "./payload-writes";
+import { planIssueEdit } from "./issue-edit-plan";
+import {
+  proposePublishedIssueEdit,
+  resolveContentImage,
+} from "./magazine-issue-update";
+import type { ContentImageColumns } from "@/server/content/content-image";
 import {
   mergeCommunityMagazineBrowse,
   submissionsAreVisible,
 } from "./agent-magazine-browse";
 import { articleDocumentId, articleIdForTool } from "./article-document-id";
+import {
+  ARTICLE_WITH_EDITOR_MESSAGE,
+  ISSUE_WAITING_MESSAGE,
+  issueReviewHold,
+  NOT_OWN_ARTICLE_MESSAGE,
+  OPEN_DRAFT_MESSAGE,
+  PUBLISHED_ARTICLE_READY_MESSAGE,
+  PUBLISHED_ARTICLE_UPDATE_MESSAGE,
+} from "./article-review-lock";
+import { closePendingIssueDrafts } from "./close-issue-drafts";
+import { MAGAZINE_ARTICLE_UPDATE_DRAFT_TYPE } from "./magazine-article-update";
 import { relationIdOrNull, requireRelationId } from "./relation-id";
 
 export const MAGAZINE_ARTICLE_DRAFT_TYPE = "magazine_article";
@@ -498,9 +518,13 @@ async function articleHeldForReview(
   deps: Deps,
   agentId: string,
   articleId: number,
-): Promise<boolean> {
+): Promise<string | null> {
   const rows = await deps.db
-    .select({ metadata: agentDrafts.metadata, status: agentDrafts.status })
+    .select({
+      id: agentDrafts.id,
+      targetId: agentDrafts.targetId,
+      metadata: agentDrafts.metadata,
+    })
     .from(agentDrafts)
     .where(
       and(
@@ -509,9 +533,49 @@ async function articleHeldForReview(
         eq(agentDrafts.status, "pending"),
       ),
     );
-  return rows.some((row) =>
+  const matching = rows.filter((row) =>
     metaOf(row.metadata).articleIds?.includes(articleId),
   );
+  if (matching.length === 0) return null;
+  const issueIds = [
+    ...new Set(
+      matching
+        .map((row) => Number(row.targetId))
+        .filter((id) => Number.isInteger(id)),
+    ),
+  ];
+  const { docs } =
+    issueIds.length === 0
+      ? { docs: [] }
+      : await deps.payload.find({
+          collection: "magazine-issues",
+          where: { id: { in: issueIds } },
+          depth: 0,
+          limit: issueIds.length,
+          pagination: false,
+        });
+  const statusById = new Map(docs.map((issue) => [issue.id, issue.status]));
+  let blocked = false;
+  const publishedIssueIds: number[] = [];
+  for (const row of matching) {
+    const issueId = Number(row.targetId);
+    const issueStatus = statusById.get(issueId) ?? null;
+    const hold = issueReviewHold({
+      pending: true,
+      issueStatus:
+        issueStatus === "draft" ||
+        issueStatus === "scheduled" ||
+        issueStatus === "published"
+          ? issueStatus
+          : null,
+    });
+    if (hold.blocked) blocked = true;
+    if (issueStatus === "published") publishedIssueIds.push(issueId);
+  }
+  for (const issueId of publishedIssueIds) {
+    await closePendingIssueDrafts(deps.db, issueId);
+  }
+  return blocked ? ISSUE_WAITING_MESSAGE : null;
 }
 
 function magazineMeta(
@@ -526,6 +590,75 @@ function magazineMeta(
     communitySlug: community.slug,
     destinationLabel: `${magazine.name} · editorial review`,
     ...extra,
+  };
+}
+
+async function queuePublishedArticleUpdate(
+  deps: Deps,
+  identity: MagazineAgent,
+  magazine: Magazine,
+  community: LiveCommunity,
+  article: Article,
+  input: {
+    title?: string;
+    body?: string;
+    coverImageUrl?: string | null;
+    videoUrl?: string;
+  },
+) {
+  const nextTitle = input.title?.trim() ? input.title.trim() : article.title;
+  const metadata = {
+    ...magazineMeta(magazine, community, {
+      title: nextTitle,
+      slug: article.slug,
+    }),
+    articleId: article.id,
+    ...(input.title !== undefined ? { title: input.title.trim() } : {}),
+    ...(input.body !== undefined ? { body: input.body } : {}),
+    ...(input.coverImageUrl !== undefined
+      ? { coverImageUrl: input.coverImageUrl }
+      : {}),
+    ...(input.videoUrl !== undefined ? { videoUrl: input.videoUrl } : {}),
+    destinationPath: `/communities/${community.slug}/magazine`,
+  };
+  const pending = await findOwnedDraft(
+    deps,
+    identity.agentId,
+    MAGAZINE_ARTICLE_UPDATE_DRAFT_TYPE,
+    String(article.id),
+  );
+  if (pending) {
+    await deps.db
+      .update(agentDrafts)
+      .set({
+        status: "pending",
+        content: nextTitle,
+        metadata,
+      })
+      .where(eq(agentDrafts.id, pending.id));
+  } else {
+    await deps.db.insert(agentDrafts).values({
+      agentId: identity.agentId,
+      ownerId: identity.ownerId,
+      type: MAGAZINE_ARTICLE_UPDATE_DRAFT_TYPE,
+      targetType: "articles",
+      targetId: String(article.id),
+      status: "pending",
+      content: nextTitle,
+      metadata,
+    });
+  }
+  const result = await articleResult(
+    deps,
+    article,
+    article.reviewStatus ?? null,
+    input.body ?? null,
+    article.id,
+  );
+  return {
+    ...result,
+    awaitingApproval: true as const,
+    message: PUBLISHED_ARTICLE_UPDATE_MESSAGE,
   };
 }
 
@@ -594,18 +727,6 @@ export async function saveMagazineArticle(
     MAGAZINE_ARTICLE_DRAFT_TYPE,
     String(input.articleId),
   );
-  if (owned?.status !== "draft") {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "You can only edit your own open article draft.",
-    });
-  }
-  if (await articleHeldForReview(deps, identity.agentId, input.articleId)) {
-    throw new TRPCError({
-      code: "CONFLICT",
-      message: "This article is in an issue waiting for review.",
-    });
-  }
   const existing = await deps.payload.findByID({
     collection: "articles",
     id: input.articleId,
@@ -614,15 +735,45 @@ export async function saveMagazineArticle(
   });
   if (
     existing.authorId !== identity.ownerId ||
-    relationIdOrNull(existing.magazine) !== magazine.id ||
-    existing.status === "published" ||
+    relationIdOrNull(existing.magazine) !== magazine.id
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: NOT_OWN_ARTICLE_MESSAGE,
+    });
+  }
+  const held = await articleHeldForReview(
+    deps,
+    identity.agentId,
+    input.articleId,
+  );
+  if (held) {
+    throw new TRPCError({ code: "CONFLICT", message: held });
+  }
+  if (existing.status === "published") {
+    return queuePublishedArticleUpdate(
+      deps,
+      identity,
+      magazine,
+      community,
+      existing,
+      input,
+    );
+  }
+  if (owned?.status !== "draft") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: OPEN_DRAFT_MESSAGE,
+    });
+  }
+  if (
     existing.reviewStatus === "approved" ||
     existing.reviewStatus === "pending_review" ||
     existing.reviewStatus === "rejected"
   ) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "This article can no longer be edited by the agent.",
+      message: ARTICLE_WITH_EDITOR_MESSAGE,
     });
   }
   const updated = await deps.payload.update({
@@ -691,10 +842,14 @@ export async function markArticleReady(
       message: "You can only mark your own article draft ready.",
     });
   }
-  if (await articleHeldForReview(deps, identity.agentId, articleId)) {
+  const held = await articleHeldForReview(deps, identity.agentId, articleId);
+  if (held) {
+    throw new TRPCError({ code: "CONFLICT", message: held });
+  }
+  if (existing.status === "published") {
     throw new TRPCError({
       code: "CONFLICT",
-      message: "This article is in an issue waiting for review.",
+      message: PUBLISHED_ARTICLE_READY_MESSAGE,
     });
   }
   const report = articleReadiness({
@@ -783,13 +938,17 @@ async function articleResult(
       message: "The article was saved but its id could not be read back.",
     });
   }
+  const [card] = await presentArticles(deps, [{ ...article, id: articleId }]);
   return {
     articleId,
     slug: article.slug,
     title: article.title,
-    status: "draft" as const,
+    status: card?.status ?? article.status,
     reviewStatus,
     mediaUrl: article.mediaUrl ?? null,
+    authorName: card?.authorName ?? null,
+    bodyPreview: card?.bodyPreview ?? "",
+    videos: card?.videos ?? [],
     updatedAt: article.updatedAt,
     body,
   };
@@ -864,6 +1023,19 @@ function agentIssueItems(items: IssueItemInput[]): IssueItemInput[] {
   );
 }
 
+function issueCoverData(columns: ContentImageColumns | undefined): {
+  coverImageUrl?: string | null;
+  coverMediaId?: number | null;
+  coverAlt?: string | null;
+} {
+  if (!columns) return {};
+  return {
+    ...(columns.url !== undefined ? { coverImageUrl: columns.url } : {}),
+    ...(columns.mediaId !== undefined ? { coverMediaId: columns.mediaId } : {}),
+    ...(columns.alt !== undefined ? { coverAlt: columns.alt } : {}),
+  };
+}
+
 async function writeDraftIssue(
   deps: Deps,
   issue: MagazineIssue,
@@ -871,6 +1043,8 @@ async function writeDraftIssue(
   patch: {
     title?: string;
     coverImageUrl?: string | null;
+    coverMediaId?: number | null;
+    coverAlt?: string | null;
     articleIds?: number[];
     blocks?: StoredBlock[];
     editorNote?: MagazineIssue["editorNote"] | null;
@@ -885,12 +1059,16 @@ async function writeDraftIssue(
   const data: {
     title?: string;
     coverImageUrl?: string | null;
+    coverMediaId?: number | null;
+    coverAlt?: string | null;
     items?: MagazineIssue["items"];
     editorNote?: MagazineIssue["editorNote"];
   } = {};
   if (patch.title !== undefined) data.title = patch.title;
   if (patch.coverImageUrl !== undefined)
     data.coverImageUrl = patch.coverImageUrl;
+  if (patch.coverMediaId !== undefined) data.coverMediaId = patch.coverMediaId;
+  if (patch.coverAlt !== undefined) data.coverAlt = patch.coverAlt;
   if (patch.editorNote !== undefined) data.editorNote = patch.editorNote;
   let blocks: StoredBlock[] | null = null;
   if (patch.blocks !== undefined) {
@@ -966,12 +1144,21 @@ export async function saveMagazineIssue(
     issueId?: number;
     title?: string;
     coverImageUrl?: string | null;
+    coverMediaId?: number | null;
+    coverAlt?: string | null;
     articleIds?: number[];
     items?: IssueItemInput[];
     editorNote?: unknown;
     expectedUpdatedAt?: string;
   },
 ) {
+  const cover = issueCoverData(
+    await resolveContentImage(deps.payload, identity.ownerId, {
+      mediaId: input.coverMediaId,
+      url: input.coverImageUrl,
+      alt: input.coverAlt,
+    }),
+  );
   const { magazine, community } = await requireMagazine(
     deps,
     input.magazineSlug,
@@ -1047,6 +1234,8 @@ export async function saveMagazineIssue(
           const data: {
             items?: MagazineIssue["items"];
             coverImageUrl?: string | null;
+            coverMediaId?: number | null;
+            coverAlt?: string | null;
             editorNote?: MagazineIssue["editorNote"];
           } = {};
           const stored =
@@ -1068,9 +1257,11 @@ export async function saveMagazineIssue(
             );
             data.items = stored as MagazineIssue["items"];
           }
-          if (input.coverImageUrl !== undefined) {
-            data.coverImageUrl = input.coverImageUrl;
-          }
+          if (cover.coverImageUrl !== undefined)
+            data.coverImageUrl = cover.coverImageUrl;
+          if (cover.coverMediaId !== undefined)
+            data.coverMediaId = cover.coverMediaId;
+          if (cover.coverAlt !== undefined) data.coverAlt = cover.coverAlt;
           if (editorNote !== undefined) data.editorNote = editorNote;
           if (Object.keys(data).length === 0) return;
           const updated = await deps.payload.update({
@@ -1109,18 +1300,6 @@ export async function saveMagazineIssue(
       String(issue.id),
     );
   } else {
-    if (draft?.status !== "draft") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "You can only edit your own open issue draft.",
-      });
-    }
-    if (!input.expectedUpdatedAt) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Send the issue's updatedAt when you edit it.",
-      });
-    }
     const loaded = await deps.payload.findByID({
       collection: "magazine-issues",
       id: input.issueId,
@@ -1128,6 +1307,73 @@ export async function saveMagazineIssue(
     });
     if (requireRelationId(loaded.magazine) !== magazine.id) {
       throw new TRPCError({ code: "NOT_FOUND", message: "Issue not found" });
+    }
+    if (draft?.status !== "draft") {
+      const standing = await loadMagazineEditorship(
+        deps.db,
+        { communityId: community.id, magazineId: magazine.id },
+        identity.ownerId,
+      );
+      const plan = planIssueEdit({
+        ownDraftStatus: draft?.status ?? null,
+        issueStatus: loaded.status,
+        canEdit: standingCan(standing, "edit"),
+        changesItems:
+          input.items !== undefined || input.articleIds !== undefined,
+        changesCoverOrMetadata:
+          input.title !== undefined ||
+          input.coverImageUrl !== undefined ||
+          input.coverMediaId !== undefined ||
+          input.coverAlt !== undefined ||
+          input.editorNote !== undefined,
+      });
+      if (!plan.ok) {
+        throw new TRPCError({ code: plan.code, message: plan.message });
+      }
+      const proposed = await proposePublishedIssueEdit(
+        deps,
+        identity,
+        magazine,
+        community,
+        loaded,
+        {
+          issueId: loaded.id,
+          ...(input.title !== undefined ? { title: input.title.trim() } : {}),
+          ...cover,
+          ...(input.editorNote === undefined
+            ? {}
+            : {
+                editorNote:
+                  typeof input.editorNote === "string" ||
+                  input.editorNote === null
+                    ? input.editorNote
+                    : undefined,
+              }),
+        },
+      );
+      return {
+        issueId: loaded.id,
+        slug: loaded.slug,
+        number: Number(loaded.number),
+        title: input.title?.trim() ? input.title.trim() : loaded.title,
+        status: loaded.status,
+        coverImageUrl: cover.coverImageUrl ?? loaded.coverImageUrl ?? null,
+        coverMediaId: cover.coverMediaId ?? loaded.coverMediaId ?? null,
+        coverAlt: cover.coverAlt ?? loaded.coverAlt ?? null,
+        editorNote: loaded.editorNote ?? null,
+        articleIds: articleIdsOf(loaded),
+        items: toItemInputs((loaded.items ?? []) as StoredBlock[]),
+        updatedAt: loaded.updatedAt,
+        body: input.title?.trim() ? input.title.trim() : loaded.title,
+        review: "pending" as const,
+        draftId: proposed.draftId,
+      };
+    }
+    if (!input.expectedUpdatedAt) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Send the issue's updatedAt when you edit it.",
+      });
     }
     issue = loaded;
     await validateBlocks(issue.id, (issue.items ?? []) as StoredBlock[]);
@@ -1144,7 +1390,7 @@ export async function saveMagazineIssue(
           {
             title:
               input.issueId === undefined ? undefined : input.title?.trim(),
-            coverImageUrl: input.coverImageUrl,
+            ...cover,
             articleIds: input.articleIds,
             blocks,
             editorNote:
@@ -1179,12 +1425,63 @@ export async function saveMagazineIssue(
     title: written.title,
     status: "draft" as const,
     coverImageUrl: written.coverImageUrl ?? null,
+    coverMediaId: written.coverMediaId ?? null,
+    coverAlt: written.coverAlt ?? null,
     editorNote: written.editorNote ?? null,
     articleIds,
     items: toItemInputs((written.items ?? []) as StoredBlock[]),
     updatedAt: written.updatedAt,
     body: written.title,
     review: "draft" as const,
+  };
+}
+
+/**
+ * The stored article, for an agent who can already see it: their own draft,
+ * or a published article in an issue they may read. The byline is composed
+ * at read time. This does not publish or change the article.
+ */
+export async function readMagazineArticle(
+  deps: Deps,
+  viewer: { agentId: string; ownerId: string | null },
+  articleId: number,
+) {
+  const owned = await findOwnedDraft(
+    deps,
+    viewer.agentId,
+    MAGAZINE_ARTICLE_DRAFT_TYPE,
+    String(articleId),
+  );
+  const article = await deps.payload.findByID({
+    collection: "articles",
+    id: articleId,
+    draft: owned !== null,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!article) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+  }
+  if (!owned) {
+    const issueId = relationIdOrNull(article.magazineIssue);
+    const scope = await loadIssueReadScope(deps.db, viewer.ownerId);
+    const readable =
+      article.status === "published" && issueId !== null
+        ? await readableIssueIds(deps.payload, scope, "full", {
+            id: { equals: issueId },
+          })
+        : [];
+    if (!readable.includes(issueId ?? -1)) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+    }
+  }
+  const [card] = await presentArticles(deps, [article]);
+  if (!card) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+  }
+  return {
+    ...card,
+    blocks: articleBlocksOf(article.content),
   };
 }
 
@@ -1293,6 +1590,12 @@ function magazineSummary(magazine: Magazine) {
     name: magazine.name,
     communityId: magazine.communityId,
     description: magazine.description ?? null,
+    logoMediaId: magazine.logoMediaId ?? null,
+    logoUrl: magazine.logoUrl ?? null,
+    logoAlt: magazine.logoAlt ?? null,
+    coverMediaId: magazine.coverMediaId ?? null,
+    coverImageUrl: magazine.coverImageUrl ?? null,
+    coverAlt: magazine.coverAlt ?? null,
   };
 }
 
@@ -1446,6 +1749,8 @@ export function presentBrowsedIssue(
     status: issue.status,
     visibility: issue.visibility,
     coverImageUrl: issue.coverImageUrl ?? null,
+    coverMediaId: issue.coverMediaId ?? null,
+    coverAlt: issue.coverAlt ?? null,
     publishedAt: issue.publishedAt ?? null,
     articleIds: articleIdsOf(issue),
     updatedAt: issue.updatedAt,
@@ -1516,20 +1821,7 @@ async function listArticles(
           })
         ).docs;
   const presentedDrafts = await presentArticles(deps, drafts);
-  const publishedNames = await liveAuthorNames(deps, published);
-  const presentedPublished = published.flatMap((doc) => {
-    const id = articleDocumentId(doc.id);
-    if (id === null) return [];
-    return [
-      articleSummary(
-        { ...doc, id },
-        authorBylineAtReadTime(
-          doc.authorName,
-          doc.authorId ? (publishedNames.get(doc.authorId) ?? null) : null,
-        ),
-      ),
-    ];
-  });
+  const presentedPublished = await presentArticles(deps, published);
   const seen = new Set(presentedPublished.map((article) => article.id));
   return [
     ...presentedPublished,
@@ -1537,27 +1829,71 @@ async function listArticles(
   ].sort((a, b) => a.id - b.id);
 }
 
+async function writingAgentsByArticle(
+  deps: Deps,
+  articleIds: readonly number[],
+) {
+  const ids = [...new Set(articleIds.filter((id) => Number.isInteger(id)))];
+  const agents = new Map<
+    number,
+    { name: string | null; visibilityMode: string | null }
+  >();
+  if (ids.length === 0) return agents;
+  const rows = await deps.db
+    .select({
+      targetId: agentDrafts.targetId,
+      name: agentProfiles.name,
+      visibilityMode: agentProfiles.visibilityMode,
+    })
+    .from(agentDrafts)
+    .innerJoin(agentProfiles, eq(agentProfiles.id, agentDrafts.agentId))
+    .where(
+      and(
+        eq(agentDrafts.type, MAGAZINE_ARTICLE_DRAFT_TYPE),
+        inArray(
+          agentDrafts.targetId,
+          ids.map((id) => String(id)),
+        ),
+      ),
+    );
+  for (const row of rows) {
+    const articleId = Number(row.targetId);
+    if (!Number.isInteger(articleId) || agents.has(articleId)) continue;
+    agents.set(articleId, {
+      name: row.name,
+      visibilityMode: row.visibilityMode,
+    });
+  }
+  return agents;
+}
+
 async function presentArticles(deps: Deps, docs: Article[]) {
   const bySlug = await mainArticleIdsBySlug(
     deps,
     docs.map((doc) => doc.slug),
   );
-  const names = await liveAuthorNames(deps, docs);
-  const presented = [];
-  for (const doc of docs) {
-    const id = articleIdForTool(doc, bySlug);
-    if (id === null) continue;
-    presented.push(
-      articleSummary(
-        { ...doc, id },
-        authorBylineAtReadTime(
-          doc.authorName,
-          doc.authorId ? (names.get(doc.authorId) ?? null) : null,
-        ),
-      ),
-    );
-  }
-  return presented;
+  const resolved = docs.flatMap((doc) => {
+    const id = articleIdForTool(doc, bySlug) ?? articleDocumentId(doc.id);
+    return id === null ? [] : [{ doc, id }];
+  });
+  const names = await liveAuthorNames(
+    deps,
+    resolved.map((item) => item.doc),
+  );
+  const agents = await writingAgentsByArticle(
+    deps,
+    resolved.map((item) => item.id),
+  );
+  return resolved.map(({ doc, id }) =>
+    articleSummary(
+      { ...doc, id },
+      magazineAgentByline({
+        stored: doc.authorName,
+        owner: doc.authorId ? (names.get(doc.authorId) ?? null) : null,
+        agent: agents.get(id) ?? null,
+      }),
+    ),
+  );
 }
 
 async function liveAuthorNames(deps: Deps, articles: readonly Article[]) {
@@ -1578,6 +1914,8 @@ function articleSummary(article: Article, authorName: string | null) {
     reviewStatus: article.reviewStatus ?? null,
     mediaUrl: article.mediaUrl ?? null,
     authorName,
+    bodyPreview: articleBodyPreview(article.content),
+    videos: articleVideosOf(article.content),
   };
 }
 

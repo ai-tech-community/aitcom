@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import { formatInvestigationsUpdated } from "@/lib/investigations/datacenter-facilities";
 
 export function InvestigationsUpdated({
@@ -5,7 +6,8 @@ export function InvestigationsUpdated({
 }: {
   updatedAt: Date | string | null | undefined;
 }) {
-  const formatted = formatInvestigationsUpdated(updatedAt);
+  const t = useTranslations("datacenterFacility");
+  const formatted = formatInvestigationsUpdated(updatedAt, t("updatedLabel"));
   if (!formatted) return null;
   return (
     <p className="text-muted-foreground font-mono text-xs">

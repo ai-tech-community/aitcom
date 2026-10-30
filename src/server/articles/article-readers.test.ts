@@ -23,6 +23,8 @@ const READERS: Record<string, string> = {
     "isPublicArticle on the page; publicArticleWhere for related articles",
   "src/app/[locale]/blog/edit/[slug]/page.tsx":
     "the author's own blog article; a magazine article is not found",
+  "src/server/api/routers/agent-magazines.ts":
+    "delete draft: an editor reads one article's title to queue a delete the community owner approves; the article is not returned to a reader",
   "src/server/api/routers/articles.ts":
     "the author's own articles (editing); My articles leaves out magazine articles",
   "src/server/api/routers/comments.ts": "canReadArticle",
@@ -38,6 +40,8 @@ const READERS: Record<string, string> = {
     "resolveMagazineIssueAccess for the issue that holds the article",
   "src/server/magazines/sitemap-paths.ts":
     "readableMagazineArticleWhere, anonymous issue scope",
+  "src/server/magazines/magazine-article-update.ts":
+    "writer: applies an approved agent edit to that agent's own published article; the review page already checked the agent owner or community owner",
   "src/server/magazines/agent-magazine.ts":
     "browse: published articles only in issues readableIssueIds allows at full reach, plus the calling agent's own drafts; submissions are the editor queue or that viewer's own pending articles; draft reads that surface a version id are reported as the main-row id looked up by slug; writes touch the agent's own drafts and mark those drafts ready only when a person approves the issue",
   "src/server/magazines/article-publication.ts":

@@ -6,6 +6,10 @@ import {
   hasInlineMarkdown,
   parseInlineMarkdown,
 } from "@/lib/articles/inline-markdown";
+import {
+  markdownImagesOnly,
+  splitMarkdownImages,
+} from "@/lib/articles/markdown-image";
 
 import { extractPlainText } from "./lexical-text";
 import {
@@ -59,11 +63,30 @@ function applyFormat(text: string, fmt: number): React.ReactNode {
  * Stored agent markdown (`[text](url)`, `*italic*`) renders as a link or
  * mark. The document is not rewritten.
  */
-function renderText(node: LexicalNode): React.ReactNode {
-  const fmt = node.format ?? 0;
-  const raw = node.text ?? "";
-  if ((fmt & 16) === 0 && raw && hasInlineMarkdown(raw)) {
-    return parseInlineMarkdown(raw).map((piece, index) => {
+/** The image block and markdown `![alt](url)` share this picture. */
+function renderArticleImage(src: string, alt: string, key: number) {
+  return (
+    <figure key={key} className="my-6">
+      {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs */}
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        className="h-auto w-full rounded"
+      />
+      {alt ? (
+        <figcaption className="text-muted-foreground mt-2 text-center text-sm">
+          {alt}
+        </figcaption>
+      ) : null}
+    </figure>
+  );
+}
+
+function renderInlinePiece(text: string, fmt: number): React.ReactNode {
+  if ((fmt & 16) === 0 && text && hasInlineMarkdown(text)) {
+    return parseInlineMarkdown(text).map((piece, index) => {
       if (piece.kind === "link") {
         return (
           <a
@@ -84,7 +107,36 @@ function renderText(node: LexicalNode): React.ReactNode {
       );
     });
   }
-  return applyFormat(raw, fmt);
+  return applyFormat(text, fmt);
+}
+
+function renderText(node: LexicalNode): React.ReactNode {
+  const fmt = node.format ?? 0;
+  const raw = node.text ?? "";
+  const segments = (fmt & 16) === 0 ? splitMarkdownImages(raw) : null;
+  if (segments?.some((segment) => segment.kind === "image")) {
+    return segments.map((segment, index) => {
+      if (segment.kind === "image") {
+        return (
+          // eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs
+          <img
+            key={index}
+            src={segment.url}
+            alt={segment.alt}
+            loading="lazy"
+            decoding="async"
+            className="my-2 h-auto max-w-full rounded"
+          />
+        );
+      }
+      return (
+        <React.Fragment key={index}>
+          {renderInlinePiece(segment.text, fmt)}
+        </React.Fragment>
+      );
+    });
+  }
+  return renderInlinePiece(raw, fmt);
 }
 
 /** Renderers for Payload blocks this renderer doesn't know (keyed by blockType). */
@@ -181,6 +233,22 @@ function renderNode(
           >
             Tabs/Snippets Block
           </div>
+        );
+      }
+
+      const onlyImages = markdownImagesOnly(plain);
+      if (
+        onlyImages &&
+        (node.children ?? []).every((child) => child.type === "text")
+      ) {
+        return (
+          <React.Fragment key={idx}>
+            {onlyImages.map((image, imageIndex) =>
+              image.kind === "image"
+                ? renderArticleImage(image.url, image.alt, imageIndex)
+                : null,
+            )}
+          </React.Fragment>
         );
       }
 
@@ -307,17 +375,7 @@ function renderNode(
         const imgSrc = node.fields.src;
         const imgAlt = node.fields.alt ?? "";
         if (!isHttpUrl(imgSrc)) return null;
-        return (
-          <figure key={idx} className="my-6">
-            {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs */}
-            <img src={imgSrc} alt={imgAlt} className="w-full rounded" />
-            {imgAlt && (
-              <figcaption className="text-muted-foreground mt-2 text-center text-sm">
-                {imgAlt}
-              </figcaption>
-            )}
-          </figure>
-        );
+        return renderArticleImage(imgSrc, imgAlt, idx);
       }
       const blockType = node.fields?.blockType;
       const custom = blockType ? ctx.blockRenderers?.[blockType] : undefined;
@@ -365,17 +423,7 @@ function renderNode(
       const src = node.src ?? "";
       const alt = node.alt ?? "";
       if (!src || !isHttpUrl(src)) return null;
-      return (
-        <figure key={idx} className="my-6">
-          {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs, next/image requires configured remotePatterns */}
-          <img src={src} alt={alt} className="w-full rounded" />
-          {alt && (
-            <figcaption className="text-muted-foreground mt-2 text-center text-sm">
-              {alt}
-            </figcaption>
-          )}
-        </figure>
-      );
+      return renderArticleImage(src, alt, idx);
     }
 
     default:

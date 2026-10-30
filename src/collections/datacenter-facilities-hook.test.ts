@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-const publishDatacenterFacility = vi.hoisted(() => vi.fn());
+const publishDatacenterFacilityFromRequest = vi.hoisted(() => vi.fn());
 
 vi.mock("@/server/datacenters/publish-facility", () => ({
-  publishDatacenterFacility,
+  publishDatacenterFacilityFromRequest,
 }));
 
 import { publishFacilityBeforeChange } from "./DatacenterFacilities";
@@ -22,8 +22,9 @@ const published = {
 
 describe("publishFacilityBeforeChange", () => {
   it("publishes the merged facility and stores the live slug", async () => {
-    publishDatacenterFacility.mockResolvedValue(published);
+    publishDatacenterFacilityFromRequest.mockResolvedValue(published);
     const result = await publishFacilityBeforeChange({
+      req: { transactionID: "save-tx" },
       data: { capacityMw: 12 },
       originalDoc: {
         name: "Fairwater",
@@ -33,7 +34,7 @@ describe("publishFacilityBeforeChange", () => {
         checkedAt: "2026-10-28T00:00:00.000Z",
       },
     } as never);
-    expect(publishDatacenterFacility).toHaveBeenCalledWith(
+    expect(publishDatacenterFacilityFromRequest).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "Fairwater",
         operator: "Microsoft",
@@ -41,6 +42,7 @@ describe("publishFacilityBeforeChange", () => {
         capacityMw: 12,
         sourceUrl: "https://example.com/filing",
       }),
+      expect.objectContaining({ transactionID: "save-tx" }),
     );
     expect(result).toMatchObject({
       slug: "fairwater",
@@ -50,7 +52,7 @@ describe("publishFacilityBeforeChange", () => {
   });
 
   it("refuses a save that has no https source", async () => {
-    publishDatacenterFacility.mockResolvedValue({
+    publishDatacenterFacilityFromRequest.mockResolvedValue({
       ok: false,
       error: "source_url must be an https URL.",
     });

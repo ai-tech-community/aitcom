@@ -115,6 +115,22 @@ export const FeedPosts: CollectionConfig = {
       },
     },
     {
+      name: "imageMediaId",
+      type: "number",
+      admin: {
+        description:
+          "Shared media id when the picture was chosen by id. The gallery still holds feed pictures.",
+      },
+    },
+    {
+      name: "imageAlt",
+      type: "text",
+      maxLength: 200,
+      admin: {
+        description: "Alt text for a picture attached by URL or media id.",
+      },
+    },
+    {
       name: "authorId",
       type: "text",
       required: true,

@@ -1,3 +1,5 @@
+import type { PostgresAdapter } from "@payloadcms/db-postgres";
+import type { PayloadRequest } from "payload";
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -31,6 +33,27 @@ export async function publishDatacenterFacility(
 ): Promise<FacilityPublishResult> {
   const result = await db.transaction(async (tx) =>
     publishFacilityWithRepo(input, repoFor(tx), now),
+  );
+  if (result.ok) revalidatePublishedFacility(result.slug);
+  return result;
+}
+
+/** Publish on the CMS save's connection so a failed save rolls back both rows. */
+export async function publishDatacenterFacilityFromRequest(
+  input: unknown,
+  req: PayloadRequest,
+  now: Date = new Date(),
+): Promise<FacilityPublishResult> {
+  const adapter = req.payload.db as unknown as PostgresAdapter;
+  const session = req.transactionID
+    ? adapter.sessions[await req.transactionID]?.db
+    : undefined;
+  if (!session)
+    throw new Error("Facility editor requires an active database transaction");
+  const result = await publishFacilityWithRepo(
+    input,
+    repoFor(session as unknown as Tx),
+    now,
   );
   if (result.ok) revalidatePublishedFacility(result.slug);
   return result;

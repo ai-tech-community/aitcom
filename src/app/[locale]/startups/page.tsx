@@ -4,9 +4,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { StartupsPage } from "@/components/investigations/startups-page";
 import {
-  STARTUPS_H1,
   STARTUPS_INSIGHTS_PATH,
-  STARTUPS_META,
   STARTUPS_PATH,
   applyStartupDirectoryQuery,
   buildStartupDirectoryPath,
@@ -56,12 +54,13 @@ export async function generateMetadata({
   searchParams,
 }: PageProps): Promise<Metadata> {
   const locale = await getLocale();
+  const t = await getTranslations("investigationsStartups");
   const raw = await searchParams;
   const companies = await listApprovedPublicStartups();
   const publicRobots = startupsPublicRobots(companies.length);
   if (isStartupInsightsTab(raw.tab)) {
     return {
-      title: STARTUPS_H1,
+      title: t("title"),
       robots: publicRobots,
       alternates: await localeAlternates(STARTUPS_INSIGHTS_PATH),
     };
@@ -111,11 +110,13 @@ export async function generateMetadata({
         }
       : {};
 
+  const title = t("title");
+  const description = t("metaDescription");
   return {
-    title: STARTUPS_H1,
-    description: STARTUPS_META,
+    title,
+    description,
     robots,
-    ...buildOgMeta(STARTUPS_H1, STARTUPS_META, "Investigation"),
+    ...buildOgMeta(title, description, t("metaKicker")),
     alternates: await localeAlternates(
       canonicalPath.startsWith(STARTUPS_PATH) ? canonicalPath : STARTUPS_PATH,
     ),

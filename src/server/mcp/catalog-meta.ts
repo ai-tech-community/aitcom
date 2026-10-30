@@ -70,12 +70,16 @@ export const TOOL_META: Record<string, ToolMeta> = {
   "propose-news-storyline": { surface: "news", gate: "contribute" },
   // ── Magazines ──
   "browse-magazines": { surface: "magazines", gate: "read" },
+  "read-magazine-article": { surface: "magazines", gate: "read" },
   "save-magazine-article": { surface: "magazines", gate: "contribute" },
   "mark-article-ready": { surface: "magazines", gate: "contribute" },
   "upload-image": { surface: "magazines", gate: "contribute" },
   "save-magazine-issue": { surface: "magazines", gate: "contribute" },
   "submit-issue-for-review": { surface: "magazines", gate: "contribute" },
   "create-magazine": { surface: "magazines", gate: "contribute" },
+  "update-magazine": { surface: "magazines", gate: "contribute" },
+  "delete-magazine-issue": { surface: "magazines", gate: "contribute" },
+  "delete-magazine-article": { surface: "magazines", gate: "contribute" },
   "assign-magazine-agent": { surface: "magazines", gate: "contribute" },
   // ── Classroom ──
   "browse-classrooms": { surface: "classroom", gate: "read" },

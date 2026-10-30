@@ -24,6 +24,8 @@ import {
   type ClassroomModuleDraft,
 } from "@/server/classroom/agent-course-draft";
 import { agentDraftResponse } from "@/server/agent/draft-result";
+import { resolveContentImage } from "@/server/magazines/magazine-issue-update";
+import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { agentProcedure, requireOwner, requireScope } from "@/server/api/trpc";
 import {
@@ -39,15 +41,16 @@ import {
   updateCourseModule,
 } from "@/server/classroom/course-writes";
 import { lessonMarkdownToLexical } from "@/lib/classroom/lesson-markdown";
+import { publicImageUrlSchema } from "@/server/agent/public-image-url";
 import {
   agentDrafts,
   communities,
   communityMemberships,
 } from "@/server/db/schema";
 import { uniqueClassroomCourseSlug } from "@/server/classroom/course-slug";
+import { classroomBrowseStatus } from "@/server/classroom/course-read-status";
 import { presentClassroomCourse } from "@/server/classroom/course-outline";
 import { memberDisplayName } from "@/server/members/display-name";
-import { getPayloadClient } from "@/server/payload";
 
 export {
   CLASSROOM_COURSE_DRAFT_TYPE,
@@ -151,11 +154,27 @@ export async function publishClassroomModule(
     return createCourseModule(payload, draft.courseId, {
       title: draft.title,
       summary: draft.summary,
+      ...(draft.imageMediaId !== undefined
+        ? { imageMediaId: draft.imageMediaId }
+        : {}),
+      ...(draft.imageUrl !== undefined ? { imageUrl: draft.imageUrl } : {}),
+      ...(draft.imageAlt !== undefined ? { imageAlt: draft.imageAlt } : {}),
+      ...(draft.coverImageUrl !== undefined
+        ? { coverImageUrl: draft.coverImageUrl }
+        : {}),
     });
   }
   await updateCourseModule(payload, draft.moduleId!, {
     title: draft.title,
     ...(draft.summary !== undefined ? { summary: draft.summary } : {}),
+    ...(draft.imageMediaId !== undefined
+      ? { imageMediaId: draft.imageMediaId }
+      : {}),
+    ...(draft.imageUrl !== undefined ? { imageUrl: draft.imageUrl } : {}),
+    ...(draft.imageAlt !== undefined ? { imageAlt: draft.imageAlt } : {}),
+    ...(draft.coverImageUrl !== undefined
+      ? { coverImageUrl: draft.coverImageUrl }
+      : {}),
   });
   return { id: draft.moduleId! };
 }
@@ -370,7 +389,8 @@ export const agentClassroomRouter = {
             title: course.title,
             slug: course.slug,
             summary: course.summary ?? null,
-            status: course.status,
+            status: classroomBrowseStatus(course),
+            publicationStatus: course.status,
             authorId: course.authorId,
             authorName: course.authorName ?? null,
             isPublic: course.isPublic === true,
@@ -554,6 +574,10 @@ export const agentClassroomRouter = {
         courseId: z.number().int().positive(),
         title: z.string().min(1).max(200),
         summary: z.string().max(500).optional(),
+        imageMediaId: z.number().int().positive().nullable().optional(),
+        imageUrl: z.string().max(2000).nullable().optional(),
+        imageAlt: z.string().max(200).nullable().optional(),
+        coverImageUrl: publicImageUrlSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -566,6 +590,18 @@ export const agentClassroomRouter = {
         input.communitySlug,
         course.communityId,
       );
+      const image = await resolveContentImage(payload, ownerId, {
+        mediaId: input.imageMediaId,
+        url: input.imageUrl,
+        alt: input.imageAlt,
+      });
+      const imageFields = image
+        ? {
+            imageMediaId: image.mediaId ?? null,
+            imageUrl: image.url ?? null,
+            imageAlt: image.alt ?? null,
+          }
+        : {};
       if (classroomWriteNeedsApproval(course.status)) {
         return holdClassroomDraft(ctx, {
           ownerId,
@@ -579,12 +615,23 @@ export const agentClassroomRouter = {
             courseId: course.id,
             title: input.title,
             ...(input.summary !== undefined ? { summary: input.summary } : {}),
+            ...imageFields,
+            ...(input.coverImageUrl !== undefined
+              ? { coverImageUrl: input.coverImageUrl }
+              : {}),
             destinationLabel: course.title,
             destinationPath: `/communities/${input.communitySlug}/classroom/${course.slug}`,
           },
         });
       }
-      const created = await createCourseModule(payload, course.id, input);
+      const created = await createCourseModule(payload, course.id, {
+        title: input.title,
+        summary: input.summary,
+        ...imageFields,
+        ...(input.coverImageUrl !== undefined
+          ? { coverImageUrl: input.coverImageUrl }
+          : {}),
+      });
       return {
         mode: "created" as const,
         moduleId: created.id,
@@ -600,12 +647,21 @@ export const agentClassroomRouter = {
         moduleId: z.number().int().positive(),
         title: z.string().min(1).max(200).optional(),
         summary: z.string().max(500).nullable().optional(),
+        imageMediaId: z.number().int().positive().nullable().optional(),
+        imageUrl: z.string().max(2000).nullable().optional(),
+        imageAlt: z.string().max(200).nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
-      if (input.title === undefined && input.summary === undefined) {
+      if (
+        input.title === undefined &&
+        input.summary === undefined &&
+        input.imageMediaId === undefined &&
+        input.imageUrl === undefined &&
+        input.imageAlt === undefined
+      ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "No module fields to update",
@@ -624,6 +680,20 @@ export const agentClassroomRouter = {
         course.communityId,
       );
       const title = input.title ?? moduleDoc.title;
+      const image = await resolveContentImage(payload, ownerId, {
+        mediaId: input.imageMediaId,
+        url: input.imageUrl,
+        alt: input.imageAlt,
+      });
+      const imageFields = image
+        ? {
+            ...(image.mediaId !== undefined
+              ? { imageMediaId: image.mediaId }
+              : {}),
+            ...(image.url !== undefined ? { imageUrl: image.url } : {}),
+            ...(image.alt !== undefined ? { imageAlt: image.alt } : {}),
+          }
+        : {};
       if (classroomWriteNeedsApproval(course.status)) {
         return holdClassroomDraft(ctx, {
           ownerId,
@@ -638,6 +708,7 @@ export const agentClassroomRouter = {
             moduleId: moduleDoc.id,
             ...(input.title !== undefined ? { title: input.title } : {}),
             ...(input.summary !== undefined ? { summary: input.summary } : {}),
+            ...imageFields,
             destinationLabel: course.title,
             destinationPath: `/communities/${input.communitySlug}/classroom/${course.slug}`,
           },
@@ -646,6 +717,7 @@ export const agentClassroomRouter = {
       await updateCourseModule(payload, moduleDoc.id, {
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.summary !== undefined ? { summary: input.summary } : {}),
+        ...imageFields,
       });
       return {
         mode: "updated" as const,

@@ -49,7 +49,7 @@ export function CommunityIdentity({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={community.bannerUrl}
-          alt=""
+          alt={community.bannerAlt ?? ""}
           data-community-banner=""
           className="border-border aspect-[3/1] w-full rounded-lg border object-cover"
         />

@@ -14,9 +14,6 @@ import {
 /** Hub URL. Stays `/investigations` (locale prefix is added by routing). */
 export const INVESTIGATIONS_PATH = "/investigations";
 
-/** Document title. The root layout appends " - AIT Community". */
-export const INVESTIGATIONS_TITLE = "AI Datacenter Investigations";
-
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export type FacilityPermit = {
@@ -166,6 +163,7 @@ export function formatDotDate(
 
 export function formatInvestigationsUpdated(
   value: Date | string | null | undefined,
+  label = "Updated",
 ): { dateTime: string; label: string } | null {
   const date = asDate(value);
   if (!date) return null;
@@ -173,15 +171,16 @@ export function formatInvestigationsUpdated(
   const day = String(date.getUTCDate()).padStart(2, "0");
   return {
     dateTime: `${date.getUTCFullYear()}-${month}-${day}`,
-    label: `Updated ${date.getUTCFullYear()}.${month}.${day}`,
+    label: `${label} ${date.getUTCFullYear()}.${month}.${day}`,
   };
 }
 
 export function formatCheckedAt(
   value: Date | string | null | undefined,
+  label = "Checked",
 ): string | null {
   const dot = formatDotDate(value);
-  return dot ? `Checked ${dot}` : null;
+  return dot ? `${label} ${dot}` : null;
 }
 
 type FacilityPage = { path: string; updatedAt?: Date };

@@ -1,7 +1,7 @@
 import type { CollectionBeforeChangeHook, CollectionConfig } from "payload";
 
 import { httpsSourceUrl } from "@/lib/investigations/datacenter-facilities";
-import { publishDatacenterFacility } from "@/server/datacenters/publish-facility";
+import { publishDatacenterFacilityFromRequest } from "@/server/datacenters/publish-facility";
 import {
   DATACENTER_STATUS,
   PERMIT_KINDS,
@@ -25,6 +25,7 @@ const STATUS_LABELS: Record<DatacenterStatus, string> = {
 export const publishFacilityBeforeChange: CollectionBeforeChangeHook = async ({
   data,
   originalDoc,
+  req,
 }) => {
   const merged: Record<string, unknown> = {
     ...(originalDoc ?? {}),
@@ -36,7 +37,7 @@ export const publishFacilityBeforeChange: CollectionBeforeChangeHook = async ({
   if (typeof merged.slug === "string" && merged.slug.trim() === "") {
     delete merged.slug;
   }
-  const result = await publishDatacenterFacility(merged);
+  const result = await publishDatacenterFacilityFromRequest(merged, req);
   if (!result.ok) throw new Error(result.error);
   return {
     ...(data ?? {}),

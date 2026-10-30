@@ -57,6 +57,11 @@ export async function createForumThread(
       replyCount: 0,
       lastActivityAt: new Date().toISOString(),
       ...(communityId ? { communityId } : {}),
+      ...(input.imageMediaId !== undefined
+        ? { imageMediaId: input.imageMediaId }
+        : {}),
+      ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
+      ...(input.imageAlt !== undefined ? { imageAlt: input.imageAlt } : {}),
     },
   });
 

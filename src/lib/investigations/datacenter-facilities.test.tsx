@@ -1,3 +1,5 @@
+import { NextIntlClientProvider } from "next-intl";
+import en from "../../../messages/en.json";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
@@ -233,10 +235,12 @@ describe("saved facility publication", () => {
     expect(hub?.lastModified).toEqual(new Date(saved.updatedAt));
 
     render(
-      <FacilityProvenance
-        sourceUrl={saved.sourceUrl}
-        checkedAt={saved.checkedAt}
-      />,
+      <NextIntlClientProvider locale="en" messages={en}>
+        <FacilityProvenance
+          sourceUrl={saved.sourceUrl}
+          checkedAt={saved.checkedAt}
+        />
+      </NextIntlClientProvider>,
     );
     expect(screen.getByRole("link", { name: SOURCE })).toHaveAttribute(
       "href",

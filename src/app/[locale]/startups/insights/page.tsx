@@ -4,8 +4,6 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { StartupsPage } from "@/components/investigations/startups-page";
 import {
-  STARTUPS_INSIGHTS_H1,
-  STARTUPS_INSIGHTS_META,
   STARTUPS_INSIGHTS_PATH,
   startupsInsightsShareUrl,
   startupsPublicRobots,
@@ -37,10 +35,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const ogSpec = startupInsightsOgSpec(facts);
   const title = ogSpec
     ? t(ogSpec.titleKey, ogSpec.titleValues)
-    : STARTUPS_INSIGHTS_H1;
+    : t("insightsTitle");
   const description = ogSpec
     ? t(ogSpec.descriptionKey, ogSpec.descriptionValues)
-    : STARTUPS_INSIGHTS_META;
+    : t("insightsLead");
   const shareUrl = startupsInsightsShareUrl(copyLocale);
   const og = buildOgMeta(title, description, t("shareOgKicker"));
   return {

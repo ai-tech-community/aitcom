@@ -62,6 +62,19 @@ export const Magazines: CollectionConfig = {
     { name: "description", type: "textarea", maxLength: 500 },
     { name: "logoUrl", type: "text" },
     {
+      name: "logoMediaId",
+      type: "number",
+      admin: { description: "Shared media id for the logo." },
+    },
+    { name: "logoAlt", type: "text", maxLength: 200 },
+    {
+      name: "coverMediaId",
+      type: "number",
+      admin: { description: "Shared media id for the magazine cover." },
+    },
+    { name: "coverImageUrl", type: "text" },
+    { name: "coverAlt", type: "text", maxLength: 200 },
+    {
       name: "font",
       type: "select",
       defaultValue: DEFAULT_MAGAZINE_FONT,
