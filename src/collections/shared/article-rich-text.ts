@@ -1,3 +1,7 @@
+import {
+  ARTICLE_GALLERY_MIN_IMAGES,
+  ARTICLE_GALLERY_MAX_IMAGES,
+} from "@/lib/articles/editorial-limits";
 import type { Block } from "payload";
 import {
   BlocksFeature,
@@ -52,8 +56,8 @@ export const ArticleGalleryBlock: Block = {
     {
       name: "images",
       type: "array",
-      minRows: 2,
-      maxRows: 8,
+      minRows: ARTICLE_GALLERY_MIN_IMAGES,
+      maxRows: ARTICLE_GALLERY_MAX_IMAGES,
       fields: editorialPhotoFields,
     },
   ],

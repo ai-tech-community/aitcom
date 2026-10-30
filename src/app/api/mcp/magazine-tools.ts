@@ -394,7 +394,7 @@ export function registerMagazineTools(
     "propose-magazine-theme",
     {
       description:
-        "Propose the magazine's type pair and accent color. Requires contribute scope, a claimed owner, and the edit capability (an editor, an editor-in-chief, or a community owner or admin). fontPair is journal, broadsheet, fashion, or literary. accent is a hex color that meets WCAG AA contrast on white or on the dark page. The change is stored as a pending agent draft. It does not change the live magazine until that draft is approved. This cannot publish an issue.",
+        "Propose the magazine's article body type pair and accent color. Requires contribute scope, a claimed owner, and the manage capability (an editor-in-chief or an active community owner or admin). fontPair is journal, broadsheet, fashion, or literary. accent is a hex color that meets WCAG AA contrast on white or on the dark page. The change is stored as a pending agent draft. It does not change the live magazine until that draft is approved. This cannot publish an issue.",
       inputSchema: {
         magazineSlug: z.string().min(1).max(80),
         fontPair: z.enum(MAGAZINE_FONT_PAIR_IDS),

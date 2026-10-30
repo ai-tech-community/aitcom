@@ -1,0 +1,2 @@
+export const ARTICLE_GALLERY_MIN_IMAGES = 2;
+export const ARTICLE_GALLERY_MAX_IMAGES = 8;

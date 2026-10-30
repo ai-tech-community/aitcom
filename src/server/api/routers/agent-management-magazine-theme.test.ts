@@ -1,9 +1,11 @@
 import { beforeEach, expect, it, vi } from "vitest";
+import type * as Editorship from "@/server/magazines/editorship";
 
 const state = vi.hoisted(() => ({
   rows: [] as unknown[][],
   updates: [] as unknown[],
   themes: [] as unknown[],
+  role: "editor_in_chief" as "editor_in_chief" | "editor" | null,
 }));
 
 vi.mock("@/server/db", () => {
@@ -23,6 +25,7 @@ vi.mock("@/server/db", () => {
   };
   return {
     db: {
+      query: { communities: { findFirst: async () => ({ id: "community" }) } },
       select: () => query(() => state.rows.shift() ?? []),
       update: () => ({
         set: (value: unknown) =>
@@ -46,11 +49,21 @@ vi.mock("@/server/better-auth", () => ({
 }));
 vi.mock("@/server/payload", () => ({
   getPayloadClient: async () => ({
+    findByID: async () => ({ id: 7, communityId: "community" }),
     update: async (args: unknown) => {
       state.themes.push(args);
     },
   }),
 }));
+
+vi.mock("@/server/magazines/editorship", async (importOriginal) => {
+  const actual = await importOriginal<typeof Editorship>();
+  return {
+    ...actual,
+    loadMagazineEditorship: async () =>
+      actual.standingOf(state.role ? "member" : null, state.role),
+  };
+});
 
 import { agentManagementRouter } from "./agent-management";
 import { db } from "@/server/db";
@@ -83,6 +96,7 @@ beforeEach(() => {
     accent: "#9A3412",
   };
   state.rows = [[draft], [], [{ ...draft, status: "approved" }]];
+  state.role = "editor_in_chief";
   state.updates = [];
   state.themes = [];
 });
@@ -109,3 +123,15 @@ it("leaves an invalid theme draft pending", async () => {
   expect(state.updates).toEqual([]);
   expect(state.themes).toEqual([]);
 });
+
+it.each(["editor", null] as const)(
+  "refuses theme approval after manage capability is lost (%s)",
+  async (role) => {
+    state.role = role;
+    await expect(
+      caller().reviewDraft({ draftId: "theme-1", action: "approved" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(state.updates).toEqual([]);
+    expect(state.themes).toEqual([]);
+  },
+);

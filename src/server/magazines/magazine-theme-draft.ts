@@ -59,6 +59,35 @@ export function magazineThemeFromDraft(
   };
 }
 
+/** Re-check live membership and settings capability before accepting a draft. */
+export async function assertMagazineThemeManageable(
+  deps: Deps,
+  userId: string,
+  theme: MagazineThemeDraft,
+): Promise<void> {
+  const magazine = await deps.payload.findByID({
+    collection: "magazines",
+    id: theme.magazineId,
+    depth: 0,
+    disableErrors: true,
+  });
+  if (!magazine) throw new TRPCError({ code: "NOT_FOUND" });
+  const community = await deps.db.query.communities.findFirst({
+    where: and(
+      eq(communities.id, magazine.communityId),
+      isNull(communities.deletedAt),
+    ),
+    columns: { id: true },
+  });
+  if (!community) throw new TRPCError({ code: "FORBIDDEN" });
+  const standing = await loadMagazineEditorship(
+    deps.db,
+    { communityId: magazine.communityId, magazineId: magazine.id },
+    userId,
+  );
+  requireCapability(standing, "manage");
+}
+
 export async function applyMagazineTheme(
   payload: PayloadClient,
   theme: MagazineThemeDraft,
@@ -93,7 +122,7 @@ export async function proposeMagazineTheme(
     { communityId: magazine.communityId, magazineId: magazine.id },
     identity.ownerId,
   );
-  requireCapability(standing, "edit");
+  requireCapability(standing, "manage");
   const community = await deps.db.query.communities.findFirst({
     where: and(
       eq(communities.id, magazine.communityId),

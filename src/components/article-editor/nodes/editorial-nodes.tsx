@@ -1,6 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
+import {
+  ARTICLE_GALLERY_MIN_IMAGES,
+  ARTICLE_GALLERY_MAX_IMAGES,
+} from "@/lib/articles/editorial-limits";
 import {
   DecoratorNode,
   type LexicalEditor,
@@ -29,12 +34,13 @@ function PhotoFields({
   onChange: (photo: Photo) => void;
   prefix: string;
 }) {
+  const t = useTranslations("articleEditorial");
   return (
     <div className="flex flex-col gap-1">
       <input
         type="url"
         value={photo.src}
-        aria-label={`${prefix} image URL`}
+        aria-label={t("imageUrl", { name: prefix })}
         placeholder="https://"
         className={fieldClass()}
         onChange={(event) => onChange({ ...photo, src: event.target.value })}
@@ -44,16 +50,16 @@ function PhotoFields({
         value={photo.alt}
         required
         aria-invalid={!photo.alt.trim()}
-        aria-label={`${prefix} alt text`}
-        placeholder="Alt text (required)"
+        aria-label={t("altText", { name: prefix })}
+        placeholder={t("altRequired")}
         className={fieldClass()}
         onChange={(event) => onChange({ ...photo, alt: event.target.value })}
       />
       <input
         type="text"
         value={photo.caption}
-        aria-label={`${prefix} caption`}
-        placeholder="Caption"
+        aria-label={t("captionLabel", { name: prefix })}
+        placeholder={t("caption")}
         className={fieldClass()}
         onChange={(event) =>
           onChange({ ...photo, caption: event.target.value })
@@ -63,7 +69,16 @@ function PhotoFields({
   );
 }
 
-function shell(title: string, onRemove: () => void, children: React.ReactNode) {
+function EditorialShell({
+  title,
+  onRemove,
+  children,
+}: {
+  title: string;
+  onRemove: () => void;
+  children: React.ReactNode;
+}) {
+  const t = useTranslations("articleEditorial");
   return (
     <div className="border-border my-4 rounded border">
       <div className="border-border flex items-center justify-between border-b px-3 py-1.5">
@@ -75,7 +90,7 @@ function shell(title: string, onRemove: () => void, children: React.ReactNode) {
           onClick={onRemove}
           className="text-muted-foreground hover:text-destructive text-xs"
         >
-          Remove
+          {t("remove")}
         </button>
       </div>
       <div className="flex flex-col gap-3 px-3 py-2">{children}</div>
@@ -194,6 +209,7 @@ function PullQuoteEditor({
   nodeKey: NodeKey;
   editor: LexicalEditor;
 }) {
+  const t = useTranslations("articleEditorial");
   const [currentQuote, setQuote] = useState(quote);
   const [currentAttribution, setAttribution] = useState(attribution);
   const remove = useRemove(editor, nodeKey);
@@ -207,32 +223,32 @@ function PullQuoteEditor({
       }
     });
   };
-  return shell(
-    "PULL QUOTE",
-    remove,
-    <>
-      <textarea
-        value={currentQuote}
-        aria-label="Pull quote"
-        rows={3}
-        className="w-full bg-transparent text-sm focus:outline-none"
-        onChange={(event) => {
-          setQuote(event.target.value);
-          write(event.target.value, currentAttribution);
-        }}
-      />
-      <input
-        type="text"
-        value={currentAttribution}
-        aria-label="Attribution"
-        placeholder="Attribution"
-        className={fieldClass()}
-        onChange={(event) => {
-          setAttribution(event.target.value);
-          write(currentQuote, event.target.value);
-        }}
-      />
-    </>,
+  return (
+    <EditorialShell title={t("pullQuote")} onRemove={remove}>
+      <>
+        <textarea
+          value={currentQuote}
+          aria-label={t("pullQuote")}
+          rows={3}
+          className="w-full bg-transparent text-sm focus:outline-none"
+          onChange={(event) => {
+            setQuote(event.target.value);
+            write(event.target.value, currentAttribution);
+          }}
+        />
+        <input
+          type="text"
+          value={currentAttribution}
+          aria-label={t("attribution")}
+          placeholder={t("attribution")}
+          className={fieldClass()}
+          onChange={(event) => {
+            setAttribution(event.target.value);
+            write(currentQuote, event.target.value);
+          }}
+        />
+      </>
+    </EditorialShell>
   );
 }
 
@@ -324,22 +340,23 @@ function CaptionedImageEditor({
   nodeKey: NodeKey;
   editor: LexicalEditor;
 }) {
+  const t = useTranslations("articleEditorial");
   const [current, setCurrent] = useState(photo);
   const remove = useRemove(editor, nodeKey);
-  return shell(
-    "CAPTIONED IMAGE",
-    remove,
-    <PhotoFields
-      photo={current}
-      prefix="Photo"
-      onChange={(next) => {
-        setCurrent(next);
-        editor.update(() => {
-          const node = $getNodeByKey(nodeKey);
-          if (node instanceof CaptionedImageNode) node.setPhoto(next);
-        });
-      }}
-    />,
+  return (
+    <EditorialShell title={t("captionedImage")} onRemove={remove}>
+      <PhotoFields
+        photo={current}
+        prefix={t("photo")}
+        onChange={(next) => {
+          setCurrent(next);
+          editor.update(() => {
+            const node = $getNodeByKey(nodeKey);
+            if (node instanceof CaptionedImageNode) node.setPhoto(next);
+          });
+        }}
+      />
+    </EditorialShell>
   );
 }
 
@@ -430,6 +447,7 @@ function GalleryEditor({
   nodeKey: NodeKey;
   editor: LexicalEditor;
 }) {
+  const t = useTranslations("articleEditorial");
   const [current, setCurrent] = useState(photos);
   const remove = useRemove(editor, nodeKey);
   const write = (next: Photo[]) => {
@@ -439,30 +457,43 @@ function GalleryEditor({
       if (node instanceof GalleryNode) node.setPhotos(next);
     });
   };
-  return shell(
-    "GALLERY",
-    remove,
-    <>
-      {current.map((photo, index) => (
-        <PhotoFields
-          key={index}
-          photo={photo}
-          prefix={`Photo ${index + 1}`}
-          onChange={(next) => {
-            const copy = current.slice();
-            copy[index] = next;
-            write(copy);
+  return (
+    <EditorialShell title={t("gallery")} onRemove={remove}>
+      <>
+        {current.map((photo, index) => (
+          <div key={index} className="flex flex-col gap-2">
+            <PhotoFields
+              photo={photo}
+              prefix={t("photoNumber", { number: index + 1 })}
+              onChange={(next) => {
+                const copy = current.slice();
+                copy[index] = next;
+                write(copy);
+              }}
+            />
+            <button
+              type="button"
+              disabled={current.length <= ARTICLE_GALLERY_MIN_IMAGES}
+              onClick={() => write(current.filter((_, i) => i !== index))}
+              className="text-muted-foreground self-start text-xs disabled:opacity-50"
+            >
+              {t("removePhoto", { number: index + 1 })}
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="text-muted-foreground self-start text-xs"
+          disabled={current.length >= ARTICLE_GALLERY_MAX_IMAGES}
+          onClick={() => {
+            if (current.length < ARTICLE_GALLERY_MAX_IMAGES)
+              write([...current, { ...EMPTY_PHOTO }]);
           }}
-        />
-      ))}
-      <button
-        type="button"
-        className="text-muted-foreground self-start text-xs"
-        onClick={() => write([...current, { ...EMPTY_PHOTO }])}
-      >
-        Add photo
-      </button>
-    </>,
+        >
+          {t("addPhoto")}
+        </button>
+      </>
+    </EditorialShell>
   );
 }
 
@@ -571,6 +602,7 @@ function SpreadEditor({
   nodeKey: NodeKey;
   editor: LexicalEditor;
 }) {
+  const t = useTranslations("articleEditorial");
   const [sides, setSides] = useState({ left, right });
   const remove = useRemove(editor, nodeKey);
   const write = (next: { left: Photo; right: Photo }) => {
@@ -580,21 +612,21 @@ function SpreadEditor({
       if (node instanceof SpreadNode) node.setSides(next.left, next.right);
     });
   };
-  return shell(
-    "SPREAD",
-    remove,
-    <>
-      <PhotoFields
-        photo={sides.left}
-        prefix="Left"
-        onChange={(photo) => write({ ...sides, left: photo })}
-      />
-      <PhotoFields
-        photo={sides.right}
-        prefix="Right"
-        onChange={(photo) => write({ ...sides, right: photo })}
-      />
-    </>,
+  return (
+    <EditorialShell title={t("spread")} onRemove={remove}>
+      <>
+        <PhotoFields
+          photo={sides.left}
+          prefix={t("left")}
+          onChange={(photo) => write({ ...sides, left: photo })}
+        />
+        <PhotoFields
+          photo={sides.right}
+          prefix={t("right")}
+          onChange={(photo) => write({ ...sides, right: photo })}
+        />
+      </>
+    </EditorialShell>
   );
 }
 

@@ -1,3 +1,8 @@
+import {
+  ARTICLE_GALLERY_MIN_IMAGES,
+  ARTICLE_GALLERY_MAX_IMAGES,
+} from "./editorial-limits";
+
 /**
  * Editorial blocks stored in article rich text: a pull quote, a captioned
  * photo, a gallery, and a side-by-side spread. Agents send them as markdown
@@ -169,10 +174,10 @@ function galleryFrom(lines: string[]): EditorialBlock {
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .map(imageFromLine);
-  if (images.length < 2) {
+  if (images.length < ARTICLE_GALLERY_MIN_IMAGES) {
     throw new EditorialSyntaxError("A gallery needs at least two photos.");
   }
-  if (images.length > 8) {
+  if (images.length > ARTICLE_GALLERY_MAX_IMAGES) {
     throw new EditorialSyntaxError("A gallery can have at most eight photos.");
   }
   return { type: "gallery", images };

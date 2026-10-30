@@ -2303,6 +2303,26 @@
       "hybrid": "Hybride"
     }
   },
+  "articleEditorial": {
+    "imageUrl": "Afbeeldings-URL van {name}",
+    "altText": "Alternatieve tekst van {name}",
+    "captionLabel": "Bijschrift van {name}",
+    "altRequired": "Alternatieve tekst (verplicht)",
+    "caption": "Bijschrift",
+    "remove": "Verwijderen",
+    "pullQuote": "Uitgelicht citaat",
+    "captionedImage": "Afbeelding met bijschrift",
+    "gallery": "Galerij",
+    "spread": "Afbeeldingen naast elkaar",
+    "attribution": "Naamsvermelding",
+    "photo": "Foto",
+    "photoNumber": "Foto {number}",
+    "left": "Links",
+    "right": "Rechts",
+    "addPhoto": "Foto toevoegen",
+    "group": "Redactioneel",
+    "removePhoto": "Foto {number} verwijderen"
+  },
   "articleEditor": {
     "writeArticle": "Artikel Schrijven",
     "editArticle": "Artikel Bewerken",
@@ -5290,8 +5310,8 @@
       "fontPreviewName": "Jouw magazine",
       "fontPreviewHeadline": "Een ander perspectief.",
       "themeLabel": "Uiterlijk",
-      "themeHint": "Het lettertype en het accent op de openbare pagina’s van het magazine, het nummer en het artikel.",
-      "fontPairLabel": "Lettertype",
+      "themeHint": "Typografie voor artikeltekst en bijschriften, en accenten op leespagina’s. Het weergavelettertype hieronder bepaalt de mastkop en koppen.",
+      "fontPairLabel": "Teksttypografie",
       "accentLabel": "Accentkleur",
       "accentSwatch": "Accentstaal",
       "accentHint": "Een hexkleur, zoals #9A3412. Die moet leesbaar zijn op wit of op de donkere pagina.",

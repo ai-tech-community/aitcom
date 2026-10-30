@@ -293,7 +293,7 @@ export function MagazineArticle({
             <h1
               id={titleId}
               tabIndex={-1}
-              className="magazine-article-title magazine-display font-magazine-serif text-4xl leading-[1.05] font-medium tracking-tight text-balance break-words sm:text-6xl"
+              className="magazine-article-title magazine-display text-4xl leading-[1.05] font-medium tracking-tight text-balance break-words sm:text-6xl"
             >
               {article.title}
             </h1>

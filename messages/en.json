@@ -2303,6 +2303,26 @@
       "hybrid": "Hybrid"
     }
   },
+  "articleEditorial": {
+    "imageUrl": "{name} image URL",
+    "altText": "{name} alt text",
+    "captionLabel": "{name} caption",
+    "altRequired": "Alt text (required)",
+    "caption": "Caption",
+    "remove": "Remove",
+    "pullQuote": "Pull quote",
+    "captionedImage": "Captioned image",
+    "gallery": "Gallery",
+    "spread": "Side-by-side spread",
+    "attribution": "Attribution",
+    "photo": "Photo",
+    "photoNumber": "Photo {number}",
+    "left": "Left",
+    "right": "Right",
+    "addPhoto": "Add photo",
+    "group": "Editorial",
+    "removePhoto": "Remove photo {number}"
+  },
   "articleEditor": {
     "writeArticle": "Write Article",
     "editArticle": "Edit Article",
@@ -5290,8 +5310,8 @@
       "fontPreviewName": "Your magazine",
       "fontPreviewHeadline": "A different perspective.",
       "themeLabel": "Look",
-      "themeHint": "The type and accent on the public magazine, issue, and article pages.",
-      "fontPairLabel": "Type",
+      "themeHint": "Article text and caption typography, plus reading-page accents. The display font below controls mastheads and headlines.",
+      "fontPairLabel": "Body typography",
       "accentLabel": "Accent color",
       "accentSwatch": "Accent swatch",
       "accentHint": "A hex color, such as #9A3412. It must be readable on white or on the dark page.",

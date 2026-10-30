@@ -86,7 +86,7 @@ function MagazineIdentity({ data }: { data: MagazineShelfData }) {
               alt={magazine.logoAlt ?? null}
             />
             <div className="flex min-w-0 flex-col gap-3">
-              <h1 className="font-magazine-serif text-5xl leading-[0.9] font-medium tracking-tight text-balance break-words sm:text-7xl lg:text-8xl">
+              <h1 className="magazine-display text-5xl leading-[0.9] font-medium tracking-tight text-balance break-words sm:text-7xl lg:text-8xl">
                 {magazine.name}
               </h1>
               <p

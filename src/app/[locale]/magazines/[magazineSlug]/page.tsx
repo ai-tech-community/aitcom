@@ -73,6 +73,7 @@ export default async function MagazineShelfPage({
   if (!data) notFound();
   return (
     <MagazineFontScope
+      font={data.magazine.font}
       fontPair={data.magazine.themeFontPair}
       accent={data.magazine.themeAccent}
     >

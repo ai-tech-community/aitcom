@@ -85,7 +85,7 @@ export function IssueHero({
         >
           <Link
             href={magazinePath(issue.magazine)}
-            className="font-magazine-serif max-w-[16ch] text-5xl leading-[0.9] font-medium tracking-tight break-words underline-offset-4 hover:underline sm:text-7xl lg:text-8xl"
+            className="magazine-display max-w-[16ch] text-5xl leading-[0.9] font-medium tracking-tight break-words underline-offset-4 hover:underline sm:text-7xl lg:text-8xl"
           >
             {issue.magazine.name}
           </Link>
@@ -102,7 +102,7 @@ export function IssueHero({
           <Title
             id={titleId}
             tabIndex={titleId ? -1 : undefined}
-            className="font-magazine-serif max-w-[22ch] text-3xl leading-tight font-medium text-balance break-words sm:text-5xl"
+            className="magazine-display max-w-[22ch] text-3xl leading-tight font-medium text-balance break-words sm:text-5xl"
           >
             {issue.title}
           </Title>

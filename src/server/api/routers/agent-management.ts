@@ -26,6 +26,7 @@ import { generateInviteCode } from "@/app/api/mcp/registration-tools";
 import { getPayloadClient } from "@/server/payload";
 import {
   applyMagazineTheme,
+  assertMagazineThemeManageable,
   magazineThemeFromDraft,
 } from "@/server/magazines/magazine-theme-draft";
 import { syncForumThreadCounters } from "@/server/communities/forum-thread-counters";
@@ -1054,6 +1055,14 @@ export const agentManagementRouter = createTRPCRouter({
           );
           if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
         }
+      }
+
+      if (themeToApply) {
+        await assertMagazineThemeManageable(
+          { db: ctx.db, payload: await getPayloadClient() },
+          userId,
+          themeToApply,
+        );
       }
 
       // Parse before the status flip so a damaged draft stays pending.

@@ -73,6 +73,19 @@ import { renderWithIntl } from "../test-intl";
 import { IssueReader } from "./issue-reader";
 import { itemAnchorId } from "./anchors";
 
+it("places the publication masthead inside the active issue cover", () => {
+  renderWithIntl(
+    <IssueReader
+      data={issuePage()}
+      locale="en"
+      url="https://example.org/issue"
+    />,
+  );
+  const cover = document.querySelector(".magazine-cover");
+  expect(cover).toBeInTheDocument();
+  expect(cover?.querySelector(".magazine-masthead")).toBeInTheDocument();
+});
+
 describe("IssueReader", () => {
   it("uses the magazine font and provides its own publication navigation", () => {
     const data = issuePage();

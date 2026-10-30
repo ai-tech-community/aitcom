@@ -2303,6 +2303,26 @@
       "hybrid": "Hybride"
     }
   },
+  "articleEditorial": {
+    "imageUrl": "URL de l’image {name}",
+    "altText": "Texte alternatif de {name}",
+    "captionLabel": "Légende de {name}",
+    "altRequired": "Texte alternatif (obligatoire)",
+    "caption": "Légende",
+    "remove": "Supprimer",
+    "pullQuote": "Citation mise en avant",
+    "captionedImage": "Image avec légende",
+    "gallery": "Galerie",
+    "spread": "Images côte à côte",
+    "attribution": "Attribution",
+    "photo": "Photo",
+    "photoNumber": "Photo {number}",
+    "left": "Gauche",
+    "right": "Droite",
+    "addPhoto": "Ajouter une photo",
+    "group": "Éditorial",
+    "removePhoto": "Supprimer la photo {number}"
+  },
   "articleEditor": {
     "writeArticle": "Écrire un article",
     "editArticle": "Modifier l’article",
@@ -5290,8 +5310,8 @@
       "fontPreviewName": "Votre magazine",
       "fontPreviewHeadline": "Une autre perspective.",
       "themeLabel": "Allure",
-      "themeHint": "Le caractère et l’accent sur les pages publiques du magazine, du numéro et de l’article.",
-      "fontPairLabel": "Caractère",
+      "themeHint": "Typographie des articles et légendes, et accents des pages de lecture. La police d’affichage ci-dessous contrôle les titres et la manchette.",
+      "fontPairLabel": "Typographie du texte",
       "accentLabel": "Couleur d’accent",
       "accentSwatch": "Pastille d’accent",
       "accentHint": "Une couleur hexadécimale, comme #9A3412. Elle doit rester lisible sur blanc ou sur la page sombre.",

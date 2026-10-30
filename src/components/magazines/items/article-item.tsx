@@ -91,7 +91,7 @@ export function ArticleItem({
           className={cn(
             "text-balance",
             isLead
-              ? "font-magazine-serif text-4xl leading-[1.05] font-medium @xl:text-5xl"
+              ? "magazine-display text-4xl leading-[1.05] font-medium @xl:text-5xl"
               : "text-lg leading-snug font-semibold",
           )}
         >

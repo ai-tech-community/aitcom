@@ -135,6 +135,7 @@ export default async function MagazineArticlePage({
   }
   return (
     <MagazineFontScope
+      font={data.magazine.font}
       fontPair={data.magazine.themeFontPair}
       accent={data.magazine.themeAccent}
     >

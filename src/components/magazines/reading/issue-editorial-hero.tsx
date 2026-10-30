@@ -20,12 +20,6 @@ export function IssueEditorialHero({
   const format = useFormatter();
   return (
     <header className="magazine-issue-hero">
-      <Link
-        href={magazinePath(issue.magazine)}
-        className="magazine-masthead magazine-display"
-      >
-        {issue.magazine.name}
-      </Link>
       <div className="magazine-dateline">
         <span>{t("number", { number: issueNumberText(issue.number) })}</span>
         <span>{t("byCommunity", { community: issue.community.name })}</span>
@@ -49,6 +43,12 @@ export function IssueEditorialHero({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={issue.coverImageUrl} alt="" fetchPriority="high" />
         )}
+        <Link
+          href={magazinePath(issue.magazine)}
+          className="magazine-masthead magazine-display"
+        >
+          {issue.magazine.name}
+        </Link>
         <Title
           id={titleId}
           tabIndex={titleId ? -1 : undefined}

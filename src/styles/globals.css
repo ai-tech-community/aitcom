@@ -256,6 +256,7 @@
 
 /* Magazine reading pages. The type pair is loaded per magazine. */
 .magazine-theme {
+  font-family: var(--magazine-sans);
   --magazine-serif:
     var(--font-magazine-serif-face), Georgia, "Iowan Old Style", Palatino, serif;
   --magazine-sans:
@@ -265,10 +266,12 @@
 }
 
 .dark .magazine-theme {
+  font-family: var(--magazine-sans);
   --magazine-accent-ink: var(--magazine-accent-on-dark, currentColor);
 }
 
 .editorial-body {
+  font-family: var(--magazine-serif);
   column-count: 1;
   column-gap: 2.75rem;
 }

@@ -7,6 +7,15 @@ import {
   type SlashMenuState,
 } from "./types";
 
+const EDITORIAL_LABELS: Partial<
+  Record<string, "pullQuote" | "captionedImage" | "gallery" | "spread">
+> = {
+  "pull-quote": "pullQuote",
+  "captioned-image": "captionedImage",
+  gallery: "gallery",
+  spread: "spread",
+};
+
 interface SlashCommandMenuProps {
   slash: SlashMenuState;
   slashDispatch: React.Dispatch<SlashMenuAction>;
@@ -23,6 +32,7 @@ export function SlashCommandMenu({
   onExecute,
 }: SlashCommandMenuProps) {
   const t = useTranslations("articleEditor");
+  const editorial = useTranslations("articleEditorial");
 
   if (!slash.open) return null;
 
@@ -43,13 +53,16 @@ export function SlashCommandMenu({
           return (
             <div key={groupName} className="mb-2 last:mb-0">
               <p className="text-muted-foreground mb-1 px-1 font-mono text-xs tracking-wider">
-                {groupName.toUpperCase()}
+                {groupName === "Editorial"
+                  ? editorial("group")
+                  : groupName.toUpperCase()}
               </p>
               {items.map((command) => {
                 const itemIndex = filteredCommands.findIndex(
                   (c) => c.id === command.id,
                 );
                 const active = slash.activeIndex === itemIndex;
+                const label = EDITORIAL_LABELS[command.id];
                 return (
                   <button
                     key={command.id}
@@ -66,7 +79,7 @@ export function SlashCommandMenu({
                       onExecute(command.id);
                     }}
                   >
-                    {command.label}
+                    {label ? editorial(label) : command.label}
                   </button>
                 );
               })}

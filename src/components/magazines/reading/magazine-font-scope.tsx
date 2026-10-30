@@ -1,4 +1,8 @@
 import {
+  MAGAZINE_FONT_OPTIONS,
+  resolveMagazineFont,
+} from "@/lib/magazines/typography";
+import {
   DM_Sans,
   Fraunces,
   Libre_Baskerville,
@@ -78,10 +82,12 @@ const FACE: Record<MagazineFontPairId, string> = {
 /** Loads the magazine's type pair and sets its accent inks. */
 export function MagazineFontScope({
   fontPair,
+  font,
   accent,
   children,
 }: {
   fontPair?: string | null;
+  font?: string | null;
   accent?: string | null;
   children: ReactNode;
 }) {
@@ -90,6 +96,8 @@ export function MagazineFontScope({
     <div
       className={cn("magazine-theme overflow-x-clip", FACE[theme.fontPair])}
       style={{
+        ["--magazine-display" as string]:
+          MAGAZINE_FONT_OPTIONS[resolveMagazineFont(font)].family,
         ["--magazine-accent" as string]: theme.accent,
         ["--magazine-accent-on-light" as string]: theme.inkOnLight,
         ["--magazine-accent-on-dark" as string]: theme.inkOnDark,
