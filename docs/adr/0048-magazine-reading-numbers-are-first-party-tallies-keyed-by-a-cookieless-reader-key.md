@@ -73,6 +73,29 @@ for subscriptions.
    A request counts when its requester is now an active member. There is
    no magazine-specific membership column or second join record.
 
+## Active reading time extension (2026-10-30)
+
+Community Insights also reports forward-looking active reading time. The existing
+opening tallies remain unchanged. A separate `app.magazine_reading_session` row
+holds a random in-memory page-session UUID, magazine/issue/optional article IDs,
+cumulative active seconds and server timestamps. No reader key, account ID, IP,
+user agent, cookie or browser storage identifies these duration sessions.
+
+The client counts visible, focused time until 60 seconds without interaction,
+reports every 15 seconds and flushes best effort on leaving. Hidden, unfocused
+and suspended intervals are excluded. Page sessions are capped at two active
+hours. The same-origin endpoint reuses the opening access/article-placement gate,
+including readable previews and excluding editor visits. Cumulative upserts retain
+the greatest accepted time, bound the value by server elapsed time and preserve
+the original UUID's magazine/issue/article identity. Retries cannot add time twice.
+
+Insights aggregates only positive-duration sessions of currently published issues
+scoped to the authorized community and magazine. Average time divides total
+active seconds by measured page sessions, not historical openings or readers.
+Each page/tab is a separate session. Coverage starts with this tracking release;
+historical durations cannot be reconstructed. Migration
+`20261030a_magazine_reading_time` supplies the additional table.
+
 ## Considered options
 
 - **Reading events in `activity_event`:** rejected. It requires an actor id

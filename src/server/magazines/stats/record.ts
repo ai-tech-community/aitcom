@@ -19,22 +19,20 @@ function mayRecord(access: MagazineIssueAccess, event: ReadEvent): boolean {
   return exhaustive;
 }
 
-/** Re-checks access and article placement; true when a row was written. */
-export async function recordReadFor(
+/** Shared access and placement gate for openings, completion and duration. */
+export async function loadRecordablePage(
   deps: Deps,
   input: {
     issueId: number;
     articleId: number | null;
     event: ReadEvent;
     viewerId: string | null;
-    readerKey: string;
-    now: Date;
   },
-): Promise<boolean> {
-  if (input.event === "read_end" && input.articleId === null) return false;
+) {
+  if (input.event === "read_end" && input.articleId === null) return null;
   const loaded = await loadIssueAccessById(deps, input.issueId, input.viewerId);
   if (!loaded?.issue.magazineId || !mayRecord(loaded.access, input.event))
-    return false;
+    return null;
   if (input.articleId !== null) {
     const { docs } = await deps.payload.find({
       collection: "articles",
@@ -51,11 +49,28 @@ export async function recordReadFor(
         ],
       },
     });
-    if (!docs.length) return false;
+    if (!docs.length) return null;
   }
+  return loaded.issue;
+}
+
+/** Re-checks access and article placement; true when a row was written. */
+export async function recordReadFor(
+  deps: Deps,
+  input: {
+    issueId: number;
+    articleId: number | null;
+    event: ReadEvent;
+    viewerId: string | null;
+    readerKey: string;
+    now: Date;
+  },
+): Promise<boolean> {
+  const issue = await loadRecordablePage(deps, input);
+  if (!issue?.magazineId) return false;
   await recordMagazineRead(deps.db, {
-    magazineId: loaded.issue.magazineId,
-    issueId: loaded.issue.id,
+    magazineId: issue.magazineId,
+    issueId: issue.id,
     articleId: input.articleId,
     readerKey: input.readerKey,
     event: input.event,

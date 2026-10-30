@@ -17,6 +17,12 @@ const observe = vi.fn();
 const disconnect = vi.fn();
 
 beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ recorded: true }) }),
+  );
   mutate.mockReset();
   useMutation.mockReset().mockImplementation(() => ({ mutate }));
   observe.mockClear();
@@ -51,6 +57,14 @@ describe("ReadTracker", () => {
       { onError: expect.any(Function) },
     );
     expect(container).toBeEmptyDOMElement();
+    const ids = vi
+      .mocked(fetch)
+      .mock.calls.map(
+        ([, options]) =>
+          (JSON.parse(options!.body as string) as { sessionId: string })
+            .sessionId,
+      );
+    expect(new Set(ids).size).toBe(1);
     expect(observe).not.toHaveBeenCalled();
   });
 
@@ -94,6 +108,7 @@ describe("ReadTracker", () => {
     );
     expect(mutate).not.toHaveBeenCalled();
     expect(observe).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
     expect(container).toBeEmptyDOMElement();
   });
 

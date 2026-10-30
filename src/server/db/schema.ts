@@ -1456,6 +1456,27 @@ export const magazineReads = appSchema.table(
   ],
 );
 
+/** Cumulative duration per ephemeral page session; no stored reader identity. */
+export const magazineReadingSessions = appSchema.table(
+  "magazine_reading_session",
+  (d) => ({
+    id: d.uuid().primaryKey(),
+    magazineId: d.integer().notNull(),
+    issueId: d.integer().notNull(),
+    articleId: d.integer(),
+    activeSeconds: d.integer().notNull().default(0),
+    firstSeenAt: d.timestamp({ withTimezone: true }).notNull(),
+    lastSeenAt: d.timestamp({ withTimezone: true }).notNull(),
+  }),
+  (t) => [
+    index("magazine_reading_session_magazine_idx").on(t.magazineId),
+    check(
+      "magazine_reading_session_seconds_check",
+      sql`${t.activeSeconds} BETWEEN 0 AND 7200`,
+    ),
+  ],
+);
+
 /** One durable publication announcement per issue, outside Payload's saves. */
 export const magazineIssueAnnouncements = appSchema.table(
   "magazine_issue_announcement",

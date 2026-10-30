@@ -189,6 +189,8 @@ import * as migration_20261013c_news_feeds from "./20261013c_news_feeds";
 import * as migration_20261013d_drop_e27_feed from "./20261013d_drop_e27_feed";
 import * as migration_20261013e_news_table_indexes from "./20261013e_news_table_indexes";
 
+import * as migration_20261030a_magazine_reading_time from "./20261030a_magazine_reading_time";
+
 export const migrations = [
   {
     up: migration_20260223_tags_array.up,
@@ -1139,5 +1141,10 @@ export const migrations = [
     up: migration_20261029e_datacenter_facility_editor.up,
     down: migration_20261029e_datacenter_facility_editor.down,
     name: "20261029e_datacenter_facility_editor",
+  },
+  {
+    up: migration_20261030a_magazine_reading_time.up,
+    down: migration_20261030a_magazine_reading_time.down,
+    name: "20261030a_magazine_reading_time",
   },
 ];

@@ -28,6 +28,11 @@ vi.mock("./statistics-dashboard", () => ({
     <div>Statistics for {slug}</div>
   ),
 }));
+vi.mock("./magazine-performance", () => ({
+  MagazinePerformance: ({ slug }: { slug: string }) => (
+    <div>Magazine statistics for {slug}</div>
+  ),
+}));
 vi.mock("./health-pulse", () => ({
   HealthPulse: () => <div>Existing health pulse</div>,
 }));
@@ -84,6 +89,9 @@ describe("Insights composition", () => {
       show();
       expect(screen.getByText("Statistics for builders")).toBeInTheDocument();
       expect(
+        screen.getByText("Magazine statistics for builders"),
+      ).toBeInTheDocument();
+      expect(
         screen.queryByText("Existing health pulse"),
       ).not.toBeInTheDocument();
       expect(screen.getByText("Activation funnel")).toBeInTheDocument();
@@ -105,6 +113,9 @@ describe("Insights composition", () => {
       screen.queryByText("Statistics for builders"),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Existing health pulse")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Magazine statistics for builders"),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("At-risk list")).toBeInTheDocument();
   });
 
@@ -116,6 +127,9 @@ describe("Insights composition", () => {
     show();
     expect(
       screen.queryByText("Statistics for builders"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Magazine statistics for builders"),
     ).not.toBeInTheDocument();
   });
 });

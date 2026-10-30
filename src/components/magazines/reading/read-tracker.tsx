@@ -3,6 +3,10 @@
 import { useEffect, useRef } from "react";
 
 import { api } from "@/trpc/react";
+import {
+  startActiveReadingTime,
+  type ReadingSession,
+} from "./active-reading-time";
 
 /** Reading is never interrupted by a failed tally. No visible content. */
 export function ReadTracker({
@@ -22,6 +26,21 @@ export function ReadTracker({
   const viewed = useRef(false);
   const ended = useRef(false);
   const sentinel = useRef<HTMLDivElement>(null);
+  const readingSession = useRef<(ReadingSession & { page: string }) | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!enabled || typeof crypto.randomUUID !== "function") return;
+    const page = `${issueId}:${articleId ?? "issue"}`;
+    if (readingSession.current?.page !== page) {
+      readingSession.current = { id: crypto.randomUUID(), activeMs: 0, page };
+    }
+    return startActiveReadingTime(
+      { issueId, ...(articleId === undefined ? {} : { articleId }) },
+      readingSession.current,
+    );
+  }, [enabled, issueId, articleId]);
 
   useEffect(() => {
     if (!enabled || viewed.current) return;

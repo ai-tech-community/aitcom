@@ -27,6 +27,9 @@ import {
   loadUnactivatedInputs,
 } from "@/server/communities/insights-queries";
 import { loadCommunityStatistics } from "@/server/communities/statistics-queries";
+import { routing } from "@/i18n/routing";
+import { getPayloadClient } from "@/server/payload";
+import { loadCommunityMagazineStats } from "@/server/magazines/stats/community-stats";
 
 type DB = typeof _db;
 
@@ -40,6 +43,11 @@ function requireManager(role: string | null) {
   if (role !== "owner" && role !== "admin" && role !== "moderator") {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
+}
+
+function requireStatisticsAccess(role: string | null) {
+  if (role !== "owner" && role !== "admin")
+    throw new TRPCError({ code: "FORBIDDEN" });
 }
 
 /** Fetch display-name + avatar for a list of user IDs. Returns an empty map for empty input. */
@@ -68,6 +76,24 @@ async function hydrateProfiles(
 }
 
 export const insightsRouter = createTRPCRouter({
+  magazinePerformance: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        locale: z.enum(routing.locales).default("en"),
+        page: z.number().int().min(1).max(100_000).default(1),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      requireStatisticsAccess(ctx.communityRole);
+      return loadCommunityMagazineStats(
+        { db: ctx.db, payload: await getPayloadClient() },
+        ctx.community.id,
+        input.locale,
+        input.page,
+      );
+    }),
+
   statistics: communityProcedure
     .input(
       z.object({
@@ -76,9 +102,7 @@ export const insightsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      requireStatisticsAccess(ctx.communityRole);
       return loadCommunityStatistics(
         ctx.db,
         ctx.community.id,
