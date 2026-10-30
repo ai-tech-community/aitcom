@@ -31,6 +31,7 @@ const KEYS = {
   ARTICLE_NOT_PENDING: "articleNotPending",
   REVIEW_NOTE_REQUIRED: "reviewNoteRequired",
   UNLISTED_PUBLIC_LEADERS_ONLY: "unlistedPublicLeadersOnly",
+  THEME_INVALID: "themeInvalid",
 } as const satisfies Record<MagazineErrorCode, string>;
 
 /** A key under `magazineEditor.errors`. */

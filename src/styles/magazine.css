@@ -85,7 +85,10 @@
 .magazine-cover {
   position: relative;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
   isolation: isolate;
   min-height: 33rem;
   padding: clamp(1.5rem, 4cqw, 4rem);
@@ -389,4 +392,10 @@
 
 .magazine-preview {
   min-height: 0;
+}
+
+.magazine-cover > .magazine-masthead {
+  align-self: stretch;
+  padding-top: 0;
+  font-size: clamp(3rem, 9cqw, 9rem);
 }

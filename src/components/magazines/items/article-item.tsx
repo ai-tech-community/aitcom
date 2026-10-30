@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
+import { EditorialImage } from "../reading/editorial-image";
+
 import { FactSeparator } from "./fact-separator";
 import { ItemRow } from "./item-row";
 import type { ItemRendererProps, ItemTitle } from "./types";
@@ -59,29 +61,38 @@ export function ArticleItem({
   return (
     <article
       data-item-kind="article"
-      className="bg-card text-card-foreground flex h-full flex-col overflow-hidden rounded-xl border"
+      className={cn(
+        "flex h-full flex-col",
+        isLead
+          ? "gap-5"
+          : "bg-card text-card-foreground overflow-hidden rounded-xl border",
+      )}
     >
       {!suppressSourceImage && isLead && article.imageUrl && (
-        // Any host an editor links to: next/image only serves listed hosts.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={article.imageUrl}
-          alt=""
-          className="aspect-[2/1] w-full border-b object-cover"
-        />
+        <div className="bg-secondary relative aspect-[3/2] w-full overflow-hidden">
+          <EditorialImage
+            src={article.imageUrl}
+            alt=""
+            fill
+            sizes="(max-width: 1024px) 100vw, 70vw"
+            className="aspect-[2/1] object-cover"
+          />
+        </div>
       )}
       <div
-        className={cn(
-          "flex flex-1 flex-col gap-2 p-5",
-          isLead && "gap-3 @xl:p-8",
-        )}
+        className={cn("flex flex-1 flex-col gap-2", isLead ? "gap-4" : "p-5")}
       >
+        {isLead && (
+          <p className="font-mono text-xs tracking-[0.16em] text-[color:var(--magazine-accent-ink)] uppercase">
+            {t("articleKind")}
+          </p>
+        )}
         <h2
           className={cn(
-            "font-semibold tracking-tight text-balance",
+            "text-balance",
             isLead
-              ? "text-2xl leading-tight @xl:text-3xl"
-              : "text-lg leading-snug",
+              ? "magazine-display text-4xl leading-[1.05] font-medium @xl:text-5xl"
+              : "text-lg leading-snug font-semibold",
           )}
         >
           <Link

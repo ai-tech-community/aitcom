@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { cache } from "react";
 
+import { MagazineFontScope } from "@/components/magazines/reading/magazine-font-scope";
 import { MagazineShelf } from "@/components/magazines/reading/magazine-shelf";
 import { resolveLocale, type AppLocale } from "@/i18n/messages";
 import { isShelfIndexable } from "@/lib/magazines/indexing";
@@ -70,5 +71,13 @@ export default async function MagazineShelfPage({
   const { locale: rawLocale, magazineSlug } = await params;
   const data = await loadPage(magazineSlug, resolveLocale(rawLocale));
   if (!data) notFound();
-  return <MagazineShelf data={data} />;
+  return (
+    <MagazineFontScope
+      font={data.magazine.font}
+      fontPair={data.magazine.themeFontPair}
+      accent={data.magazine.themeAccent}
+    >
+      <MagazineShelf data={data} />
+    </MagazineFontScope>
+  );
 }

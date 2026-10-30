@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { MagazineShelfData } from "@/server/magazines/reading";
 
+import { EditorialImage } from "./editorial-image";
 import { IssueCoverCard } from "./issue-cover-card";
 import { READING_FRAME } from "./frame";
 import { IssueVisibilityBadge } from "./issue-visibility-badge";
@@ -44,28 +45,73 @@ function MagazineLogo({
 
 function MagazineIdentity({ data }: { data: MagazineShelfData }) {
   const t = useTranslations("magazines.shelf");
-  const { magazine, community, viewerIsEditor } = data;
+  const { magazine, community, viewerIsEditor, issues } = data;
+  const issueCover =
+    issues.find((issue) => issue.coverImageUrl)?.coverImageUrl ?? null;
   return (
-    <header className="flex flex-col gap-4">
-      <div className="flex items-start gap-4">
-        <MagazineLogo url={magazine.logoUrl} alt={magazine.logoAlt ?? null} />
-        <div className="flex min-w-0 flex-col gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight text-balance break-words sm:text-4xl">
-            {magazine.name}
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            {t.rich("byCommunity", {
-              community: community.name,
-              link: (chunks) => (
-                <Link
-                  href={communityPath(community.slug)}
-                  className="text-foreground font-medium underline-offset-4 hover:underline"
-                >
-                  {chunks}
-                </Link>
-              ),
-            })}
-          </p>
+    <header className="flex flex-col gap-8">
+      <div
+        className={cn(
+          "relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2",
+          issueCover && "min-h-[24rem] sm:min-h-[32rem]",
+        )}
+      >
+        {issueCover ? (
+          <>
+            <EditorialImage
+              src={issueCover}
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20"
+            />
+          </>
+        ) : null}
+        <div
+          className={cn(
+            "relative z-10 flex flex-col gap-4",
+            issueCover
+              ? "min-h-[24rem] justify-end px-4 py-10 text-white sm:min-h-[32rem] sm:px-8 sm:py-14"
+              : "text-foreground",
+          )}
+        >
+          <div className="flex items-end gap-4">
+            <MagazineLogo
+              url={magazine.logoUrl}
+              alt={magazine.logoAlt ?? null}
+            />
+            <div className="flex min-w-0 flex-col gap-3">
+              <h1 className="magazine-display text-5xl leading-[0.9] font-medium tracking-tight text-balance break-words sm:text-7xl lg:text-8xl">
+                {magazine.name}
+              </h1>
+              <p
+                className={cn(
+                  "text-sm",
+                  issueCover ? "text-white/85" : "text-muted-foreground",
+                )}
+              >
+                {t.rich("byCommunity", {
+                  community: community.name,
+                  link: (chunks) => (
+                    <Link
+                      href={communityPath(community.slug)}
+                      className={cn(
+                        "font-medium underline-offset-4 hover:underline",
+                        issueCover ? "text-white" : "text-foreground",
+                      )}
+                    >
+                      {chunks}
+                    </Link>
+                  ),
+                })}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
       {magazine.coverImageUrl ? (

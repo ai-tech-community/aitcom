@@ -65,6 +65,14 @@ import { ArticlePastePlugin } from "./article-paste-plugin";
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
 import { VideoNode } from "./nodes/video-node";
+import {
+  $createEditorialBlock,
+  CaptionedImageNode,
+  GalleryNode,
+  isEditorialSlash,
+  PullQuoteNode,
+  SpreadNode,
+} from "./nodes/editorial-nodes";
 import { $createAdmonitionNode, AdmonitionNode } from "./nodes/admonition-node";
 import { $insertTopLevel } from "./insert-top-level";
 import { httpsImageUrl } from "@/lib/articles/markdown-image";
@@ -75,6 +83,7 @@ import type {
   SlashGroup,
   SlashCommand,
 } from "./types";
+import { emptySlashGroups } from "./types";
 import { editorReducer, slashMenuReducer } from "./reducers";
 import {
   extractPlainText,
@@ -101,6 +110,12 @@ function blockingMessageKey(code: ArticleBlockingCode) {
       return "checkMissingH2" as const;
     case "missing_intro":
       return "checkMissingIntro" as const;
+    case "missing_image_alt":
+      return "checkMissingImageAlt" as const;
+    default: {
+      const unreachable: never = code;
+      return unreachable;
+    }
   }
 }
 
@@ -250,6 +265,10 @@ export function ArticleEditor({
         ImageNode,
         VideoNode,
         AdmonitionNode,
+        PullQuoteNode,
+        CaptionedImageNode,
+        GalleryNode,
+        SpreadNode,
       ],
       editorState: initialData?.content
         ? preprocessEditorState(initialData.content)
@@ -544,6 +563,15 @@ export function ArticleEditor({
     (id: string) => {
       if (!editorRef) return;
 
+      if (isEditorialSlash(id)) {
+        editorRef.update(() => {
+          const block = $createEditorialBlock(id);
+          if (block) $insertTopLevel([block]);
+        });
+        slashDispatch({ type: "CLOSE" });
+        return;
+      }
+
       if (id === "h2" || id === "h3") {
         editorRef.update(() => {
           const selection = $getSelection();
@@ -754,7 +782,7 @@ export function ArticleEditor({
         acc[command.group].push(command);
         return acc;
       },
-      { Basic: [], Technical: [], Structure: [] },
+      emptySlashGroups(),
     );
   }, [filteredSlashCommands]);
 

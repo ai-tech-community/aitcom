@@ -50,6 +50,8 @@ describe("magazines collection", () => {
       "coverImageUrl",
       "coverAlt",
       "font",
+      "themeFontPair",
+      "themeAccent",
       "topics",
       "defaultVisibility",
       "publicConfirmedBy",
@@ -327,5 +329,25 @@ describe("magazine auto-draft migration", () => {
     ).toBeGreaterThan(
       index.indexOf('name: "20261027b_magazine_subscriptions"'),
     );
+  });
+});
+
+describe("magazine theme migration", () => {
+  it("adds nullable theme columns and writes no rows", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/migrations/20261029f_magazine_theme.ts"),
+      "utf8",
+    );
+    expect(source).toContain(
+      'ADD COLUMN IF NOT EXISTS "theme_font_pair" varchar',
+    );
+    expect(source).toContain('ADD COLUMN IF NOT EXISTS "theme_accent" varchar');
+    expect(source).toContain('DROP COLUMN IF EXISTS "theme_font_pair"');
+    expect(source).not.toMatch(/\b(UPDATE|INSERT INTO)\b/);
+    const index = readFileSync(
+      join(process.cwd(), "src/migrations/index.ts"),
+      "utf8",
+    );
+    expect(index).toContain('name: "20261029f_magazine_theme"');
   });
 });

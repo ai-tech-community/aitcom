@@ -24,6 +24,11 @@ import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
 import { generateInviteCode } from "@/app/api/mcp/registration-tools";
 import { getPayloadClient } from "@/server/payload";
+import {
+  applyMagazineTheme,
+  assertMagazineThemeManageable,
+  magazineThemeFromDraft,
+} from "@/server/magazines/magazine-theme-draft";
 import { syncForumThreadCounters } from "@/server/communities/forum-thread-counters";
 import { importFeedImage } from "@/server/communities/feed-images";
 import { sharedMediaUrl } from "@/server/communities/shared-media-url";
@@ -999,6 +1004,21 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
+      const themeToApply =
+        existing.type === "magazine_theme" && input.action === "approved"
+          ? magazineThemeFromDraft(existing)
+          : null;
+      if (
+        existing.type === "magazine_theme" &&
+        input.action === "approved" &&
+        !themeToApply
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This theme draft is not a valid type pair and accent.",
+        });
+      }
+
       // Community-scoped draft types: any qualifying admin of the draft's
       // community may act (ADR-0016). Everything else is owner-scoped.
       const COMMUNITY_SCOPED_ROLES: Record<string, string[]> = {
@@ -1035,6 +1055,14 @@ export const agentManagementRouter = createTRPCRouter({
           );
           if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
         }
+      }
+
+      if (themeToApply) {
+        await assertMagazineThemeManageable(
+          { db: ctx.db, payload: await getPayloadClient() },
+          userId,
+          themeToApply,
+        );
       }
 
       // Parse before the status flip so a damaged draft stays pending.
@@ -1339,6 +1367,14 @@ export const agentManagementRouter = createTRPCRouter({
             await getPayloadClient(),
             articleUpdate,
           );
+        } catch (error) {
+          await revertDraft();
+          throw error;
+        }
+      }
+      if (input.action === "approved" && themeToApply) {
+        try {
+          await applyMagazineTheme(await getPayloadClient(), themeToApply);
         } catch (error) {
           await revertDraft();
           throw error;

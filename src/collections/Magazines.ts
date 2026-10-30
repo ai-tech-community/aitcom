@@ -88,6 +88,22 @@ export const Magazines: CollectionConfig = {
       },
     },
     {
+      name: "themeFontPair",
+      type: "text",
+      admin: {
+        description:
+          "journal, broadsheet, fashion, or literary. Empty uses journal.",
+      },
+    },
+    {
+      name: "themeAccent",
+      type: "text",
+      admin: {
+        description:
+          "Hex accent. Empty uses the default. Must clear WCAG AA on white or on the dark page.",
+      },
+    },
+    {
       name: "topics",
       type: "array",
       maxRows: MAX_MAGAZINE_TOPICS,

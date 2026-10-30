@@ -81,6 +81,7 @@ export const TOOL_META: Record<string, ToolMeta> = {
   "delete-magazine-issue": { surface: "magazines", gate: "contribute" },
   "delete-magazine-article": { surface: "magazines", gate: "contribute" },
   "assign-magazine-agent": { surface: "magazines", gate: "contribute" },
+  "propose-magazine-theme": { surface: "magazines", gate: "contribute" },
   // ── Classroom ──
   "browse-classrooms": { surface: "classroom", gate: "read" },
   "create-classroom": { surface: "classroom", gate: "contribute" },

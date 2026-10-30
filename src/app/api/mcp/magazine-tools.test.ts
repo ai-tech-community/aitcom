@@ -58,6 +58,7 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
     "delete-magazine-issue",
     "delete-magazine-article",
     "assign-magazine-agent",
+    "propose-magazine-theme",
   ]);
   expect(tools.has("publish-issue")).toBe(false);
   for (const name of tools.keys()) {
@@ -101,6 +102,12 @@ it("registers read and draft-only magazine tools that cannot publish", async () 
     articleId: 58,
   });
   expect(tools.get("save-magazine-article")!.config.annotations).toEqual(
+    DRAFT_FOR_REVIEW,
+  );
+  expect(
+    String(tools.get("save-magazine-article")!.config.description),
+  ).toContain("pull quote");
+  expect(tools.get("propose-magazine-theme")!.config.annotations).toEqual(
     DRAFT_FOR_REVIEW,
   );
   expect(

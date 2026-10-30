@@ -12,6 +12,10 @@ import {
   withAuthorBylines,
 } from "@/server/members/display-name";
 import {
+  EditorialSyntaxError,
+  type EditorialBlock,
+} from "@/lib/articles/editorial-blocks";
+import {
   ARTICLE_BLOCKING_MESSAGE,
   ARTICLE_WARNING_MESSAGE,
   articleReadiness,
@@ -662,6 +666,17 @@ async function queuePublishedArticleUpdate(
   };
 }
 
+function editorialOrThrow<T>(build: () => T): T {
+  try {
+    return build();
+  } catch (error) {
+    if (error instanceof EditorialSyntaxError) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+    }
+    throw error;
+  }
+}
+
 export async function saveMagazineArticle(
   deps: Deps,
   identity: MagazineAgent,
@@ -672,6 +687,7 @@ export async function saveMagazineArticle(
     body?: string;
     coverImageUrl?: string | null;
     videoUrl?: string;
+    blocks?: EditorialBlock[];
   },
 ) {
   const { magazine, community } = await requireMagazine(
@@ -679,29 +695,34 @@ export async function saveMagazineArticle(
     input.magazineSlug,
   );
   if (input.articleId === undefined) {
-    if (!input.title?.trim() || !input.body?.trim()) {
+    const title = input.title?.trim() ?? "";
+    const body = input.body ?? "";
+    if (!title || !body.trim()) {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: "A new article needs a title and a body.",
       });
     }
+    const [slug, authorName] = await Promise.all([
+      uniqueMagazineArticleSlug(deps.payload, magazine.id, title),
+      articleAuthorName(deps, identity),
+    ]);
     const created = await deps.payload.create({
       collection: "articles",
       draft: true,
-      data: magazineArticleCreateData({
-        title: input.title.trim(),
-        slug: await uniqueMagazineArticleSlug(
-          deps.payload,
-          magazine.id,
-          input.title,
-        ),
-        body: input.body,
-        mediaUrl: input.coverImageUrl,
-        videoUrl: input.videoUrl,
-        authorId: identity.ownerId,
-        authorName: await articleAuthorName(deps, identity),
-        magazineId: magazine.id,
-      }),
+      data: editorialOrThrow(() =>
+        magazineArticleCreateData({
+          title,
+          slug,
+          body,
+          mediaUrl: input.coverImageUrl,
+          videoUrl: input.videoUrl,
+          blocks: input.blocks,
+          authorId: identity.ownerId,
+          authorName,
+          magazineId: magazine.id,
+        }),
+      ),
     });
     const draftId = crypto.randomUUID();
     await deps.db.insert(agentDrafts).values({
@@ -781,13 +802,16 @@ export async function saveMagazineArticle(
     id: existing.id,
     draft: true,
     depth: 0,
-    data: magazineArticlePatch({
-      title: input.title?.trim(),
-      body: input.body,
-      mediaUrl: input.coverImageUrl,
-      videoUrl: input.videoUrl,
-      existingContent: existing.content,
-    }),
+    data: editorialOrThrow(() =>
+      magazineArticlePatch({
+        title: input.title?.trim(),
+        body: input.body,
+        mediaUrl: input.coverImageUrl,
+        videoUrl: input.videoUrl,
+        blocks: input.blocks,
+        existingContent: existing.content,
+      }),
+    ),
   });
   await deps.db
     .update(agentDrafts)

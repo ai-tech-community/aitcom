@@ -2325,6 +2325,26 @@
       "hybrid": "Hybrid"
     }
   },
+  "articleEditorial": {
+    "imageUrl": "{name} image URL",
+    "altText": "{name} alt text",
+    "captionLabel": "{name} caption",
+    "altRequired": "Alt text (required)",
+    "caption": "Caption",
+    "remove": "Remove",
+    "pullQuote": "Pull quote",
+    "captionedImage": "Captioned image",
+    "gallery": "Gallery",
+    "spread": "Side-by-side spread",
+    "attribution": "Attribution",
+    "photo": "Photo",
+    "photoNumber": "Photo {number}",
+    "left": "Left",
+    "right": "Right",
+    "addPhoto": "Add photo",
+    "group": "Editorial",
+    "removePhoto": "Remove photo {number}"
+  },
   "articleEditor": {
     "writeArticle": "Write Article",
     "editArticle": "Edit Article",
@@ -2379,6 +2399,7 @@
     "checkMissingH2": "Add at least one H2 heading",
     "allBlockingClear": "All blocking checks passed",
     "checkMissingIntro": "Add an intro paragraph before first heading",
+    "checkMissingImageAlt": "Add alt text to every photo",
     "saveStateError": "Save failed",
     "saveStateIdle": "Draft",
     "checkTooShort": "Article is very short",
@@ -5253,7 +5274,8 @@
       "articleLocked": "The editors have this article now, so it cannot be changed.",
       "articleNotPending": "Someone already decided on this article. Reload to see what changed.",
       "reviewNoteRequired": "Tell the writer what to change.",
-      "unlistedPublicLeadersOnly": "This community is unlisted. Only its owners and admins can make this public."
+      "unlistedPublicLeadersOnly": "This community is unlisted. Only its owners and admins can make this public.",
+      "themeInvalid": "Pick a type pair from the list and an accent color with enough contrast."
     },
     "publicOptIn": {
       "warning": "Your community is private. If you show this to everyone, anyone on the internet will see your community's name and a link to it. Your members, posts and other pages stay private.",
@@ -5308,7 +5330,20 @@
       "fontHint": "Used for the masthead and story headings in every issue. Article text stays easy to read.",
       "fontPreview": "Font preview",
       "fontPreviewName": "Your magazine",
-      "fontPreviewHeadline": "A different perspective."
+      "fontPreviewHeadline": "A different perspective.",
+      "themeLabel": "Look",
+      "themeHint": "Article text and caption typography, plus reading-page accents. The display font below controls mastheads and headlines.",
+      "fontPairLabel": "Body typography",
+      "accentLabel": "Accent color",
+      "accentSwatch": "Accent swatch",
+      "accentHint": "A hex color, such as #9A3412. It must be readable on white or on the dark page.",
+      "accentInvalid": "Use a hex color with enough contrast on white or on the dark page.",
+      "fontPairs": {
+        "journal": "Journal — Newsreader and Geist",
+        "broadsheet": "Broadsheet — Libre Baskerville and Source Sans 3",
+        "fashion": "Fashion — Fraunces and Outfit",
+        "literary": "Literary — Source Serif 4 and DM Sans"
+      }
     },
     "tab": {
       "metaTitle": "Magazine",

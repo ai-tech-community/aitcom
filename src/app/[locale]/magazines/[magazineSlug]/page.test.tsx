@@ -37,6 +37,9 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 vi.mock("@/server/payload", () => ({ getPayloadClient: async () => ({}) }));
+vi.mock("@/components/magazines/reading/magazine-font-scope", () => ({
+  MagazineFontScope: ({ children }: { children: React.ReactNode }) => children,
+}));
 vi.mock("@/server/magazines/reading", () => ({
   loadMagazineShelf: async (_deps: unknown, opts: unknown) => {
     state.calls.push(opts);

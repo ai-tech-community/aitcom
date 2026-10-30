@@ -104,6 +104,14 @@ describe("MagazineSettingsForm", () => {
     };
     renderWithIntl(<MagazineSettingsForm slug="night-owls" />);
     const font = screen.getByRole("combobox", { name: "Magazine font" });
+    expect(
+      screen.getByRole("combobox", { name: "Body typography" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /The display font below controls mastheads and headlines/,
+      ),
+    ).toBeInTheDocument();
     expect(font).toHaveValue("cormorant");
     expect(
       screen.getByTestId("magazine-font-preview").style.fontFamily,
@@ -243,6 +251,8 @@ describe("MagazineSettingsForm", () => {
       topics: [],
       defaultVisibility: "public",
       confirmUnlistedPublic: true,
+      themeFontPair: "journal",
+      themeAccent: "#9A3412",
     });
 
     fireEvent.click(screen.getByRole("radio", { name: "Members only" }));

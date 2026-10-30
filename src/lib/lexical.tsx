@@ -120,12 +120,16 @@ async function HighlightedCode({
 export function LexicalRenderer({
   content,
   blockRenderers,
+  editorial = false,
 }: {
   content: unknown;
   blockRenderers?: BlockRenderers;
+  /** Magazine article body: columns, drop cap, and editorial figures. */
+  editorial?: boolean;
 }) {
   return renderLexicalDocument(content, {
     blockRenderers,
+    editorial,
     renderCode: (code, language) => (
       <HighlightedCode code={code} language={language} />
     ),

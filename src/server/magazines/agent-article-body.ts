@@ -1,3 +1,9 @@
+import {
+  editorialBlockNode,
+  segmentEditorialBody,
+  type EditorialBlock,
+  type EditorialLexicalBlock,
+} from "@/lib/articles/editorial-blocks";
 import { parseInlineMarkdown } from "@/lib/articles/inline-markdown";
 import { splitMarkdownImages } from "@/lib/articles/markdown-image";
 import {
@@ -22,6 +28,10 @@ import {
  * same marks the editor stores when someone pastes them. A line that is only
  * a YouTube, Vimeo, or Schooltv URL becomes a video block, and so does
  * `videoUrl` when the agent sends one.
+ *
+ * `:::pullquote`, `:::gallery`, and `:::spread` fences, and a line that is
+ * only `![alt](url "caption")`, become editorial blocks. A photo without
+ * alt text is refused. Structured blocks are appended after that body.
  *
  * A blank line in markdown only separates blocks. Storing it as an empty
  * paragraph is what filled the editor with empty `<p>`s around lists and
@@ -132,7 +142,8 @@ type ArticleChild =
   | ReturnType<typeof paragraphNode>
   | ReturnType<typeof headingNode>
   | ReturnType<typeof videoBlockNode>
-  | ReturnType<typeof imageBlockNode>;
+  | ReturnType<typeof imageBlockNode>
+  | EditorialLexicalBlock;
 
 function videoIdentity(url: string): string {
   const resolved = resolveArticleVideo(url);
@@ -144,9 +155,8 @@ function blockUrl(node: {
   type?: string;
   fields?: Record<string, unknown>;
 }): string | null {
-  if (node.type !== "block" || typeof node.fields?.url !== "string")
-    return null;
-  return node.fields.url;
+  if (node.type !== "block" || node.fields?.blockType !== "Video") return null;
+  return typeof node.fields.url === "string" ? node.fields.url : null;
 }
 
 /** A line that is only a YouTube, Vimeo, or Schooltv address. */
@@ -190,22 +200,37 @@ function pushVideo(children: ArticleChild[], url: string) {
   if (!already) children.push(videoBlockNode(trimmed));
 }
 
-export function articleBodyToLexical(body: string, videoUrl?: string) {
-  const lines = body.split("\n").filter((line) => line.trim().length > 0);
+function proseLine(children: ArticleChild[], line: string) {
+  const trimmed = line.trim();
+  if (!trimmed) return;
+  const heading = ATX_HEADING.exec(trimmed);
+  if (heading) {
+    children.push(headingNode(heading[1]!, heading[2]!));
+    return;
+  }
+  const video = standaloneVideoLine(trimmed);
+  if (video) {
+    pushVideo(children, video);
+    return;
+  }
+  children.push(...nodesForLine(line));
+}
+
+export function articleBodyToLexical(
+  body: string,
+  videoUrl?: string,
+  extraBlocks?: readonly EditorialBlock[],
+) {
   const children: ArticleChild[] = [];
-  for (const line of lines) {
-    const trimmed = line.trim();
-    const heading = ATX_HEADING.exec(trimmed);
-    if (heading) {
-      children.push(headingNode(heading[1]!, heading[2]!));
+  for (const segment of segmentEditorialBody(body)) {
+    if (segment.kind === "block") {
+      children.push(editorialBlockNode(segment.block));
       continue;
     }
-    const video = standaloneVideoLine(trimmed);
-    if (video) {
-      pushVideo(children, video);
-      continue;
-    }
-    children.push(...nodesForLine(line));
+    proseLine(children, segment.text);
+  }
+  for (const block of extraBlocks ?? []) {
+    children.push(editorialBlockNode(block));
   }
   if (videoUrl) pushVideo(children, videoUrl);
   if (children.length === 0) children.push(paragraphNode(""));
@@ -214,6 +239,31 @@ export function articleBodyToLexical(body: string, videoUrl?: string) {
       type: "root" as const,
       direction: "ltr" as const,
       format: "" as const,
+      indent: 0,
+      version: 1,
+      children,
+    },
+  };
+}
+
+/** Add editorial blocks after the article's current blocks. */
+export function appendEditorialBlocks(
+  content: unknown,
+  blocks: readonly EditorialBlock[],
+): ReturnType<typeof articleBodyToLexical> {
+  const root = (
+    content && typeof content === "object"
+      ? (content as { root?: { children?: ArticleChild[] } }).root
+      : undefined
+  )?.children;
+  const children: ArticleChild[] = Array.isArray(root) ? [...root] : [];
+  for (const block of blocks) children.push(editorialBlockNode(block));
+  if (children.length === 0) children.push(paragraphNode(""));
+  return {
+    root: {
+      type: "root",
+      direction: "ltr",
+      format: "",
       indent: 0,
       version: 1,
       children,
@@ -372,6 +422,7 @@ export function magazineArticleCreateData(input: {
   body: string;
   mediaUrl?: string | null;
   videoUrl?: string;
+  blocks?: readonly EditorialBlock[];
   authorId: string;
   authorName: string;
   magazineId: number;
@@ -379,7 +430,7 @@ export function magazineArticleCreateData(input: {
   return {
     title: input.title,
     slug: input.slug,
-    content: articleBodyToLexical(input.body, input.videoUrl),
+    content: articleBodyToLexical(input.body, input.videoUrl, input.blocks),
     type: "article" as const,
     status: "draft" as const,
     authorId: input.authorId,
@@ -396,14 +447,21 @@ export function magazineArticlePatch(input: {
   body?: string;
   mediaUrl?: string | null;
   videoUrl?: string;
+  blocks?: readonly EditorialBlock[];
   existingContent?: unknown;
 }) {
-  const content =
+  let content =
     input.body !== undefined
-      ? articleBodyToLexical(input.body, input.videoUrl)
+      ? articleBodyToLexical(input.body, input.videoUrl, input.blocks)
       : input.videoUrl
         ? appendArticleVideo(input.existingContent, input.videoUrl)
         : undefined;
+  if (input.body === undefined && input.blocks && input.blocks.length > 0) {
+    content = appendEditorialBlocks(
+      content ?? input.existingContent,
+      input.blocks,
+    );
+  }
   return {
     ...(input.title !== undefined ? { title: input.title } : {}),
     ...(content !== undefined ? { content } : {}),
@@ -413,11 +471,24 @@ export function magazineArticlePatch(input: {
   };
 }
 
-function nestedText(node: { text?: string; children?: unknown }): string {
+function nestedText(node: {
+  text?: string;
+  children?: unknown;
+  fields?: { quote?: unknown };
+}): string {
   if (typeof node.text === "string") return node.text;
+  if (typeof node.fields?.quote === "string") return node.fields.quote;
   if (!Array.isArray(node.children)) return "";
   return node.children
-    .map((child) => nestedText(child as { text?: string; children?: unknown }))
+    .map((child) =>
+      nestedText(
+        child as {
+          text?: string;
+          children?: unknown;
+          fields?: { quote?: unknown };
+        },
+      ),
+    )
     .join("");
 }
 

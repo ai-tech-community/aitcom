@@ -89,6 +89,8 @@ export type MagazineSummary = {
   staffHidden: boolean;
   /** Older summary consumers fall back to the default display face. */
   font?: MagazineFont;
+  themeFontPair?: string | null;
+  themeAccent?: string | null;
 };
 
 /** One issue as a cover card on any listing. */
@@ -214,6 +216,8 @@ function toMagazineSummary(
     | "topics"
     | "listingHidden"
     | "font"
+    | "themeFontPair"
+    | "themeAccent"
   >,
 ): MagazineSummary {
   return {
@@ -224,6 +228,8 @@ function toMagazineSummary(
     logoAlt: magazine.logoAlt ?? null,
     coverImageUrl: magazine.coverImageUrl ?? null,
     coverAlt: magazine.coverAlt ?? null,
+    themeFontPair: magazine.themeFontPair ?? null,
+    themeAccent: magazine.themeAccent ?? null,
     description: magazine.description ?? null,
     topics: magazineTopicsOf(magazine),
     staffHidden: isHiddenByStaff(magazine),

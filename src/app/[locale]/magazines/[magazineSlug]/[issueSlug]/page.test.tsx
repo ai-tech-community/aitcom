@@ -13,6 +13,9 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/components/magazines/reading/magazine-font-scope", () => ({
+  MagazineFontScope: ({ children }: { children: React.ReactNode }) => children,
+}));
 vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
@@ -61,9 +64,10 @@ describe("issue page", () => {
   it("hands the server's absolute canonical URL to sharing", async () => {
     state.data = issuePage();
     const page = await IssuePage({ params });
+    const reader = page.props.children as { props: { url: string } };
     const metadata = await generateMetadata({ params });
-    expect(page.props.url).toBe(metadata.alternates?.canonical);
-    expect(page.props.url).toMatch(
+    expect(reader.props.url).toBe(metadata.alternates?.canonical);
+    expect(reader.props.url).toMatch(
       /^https:\/\/.*\/en\/magazines\/agents-weekly\/issue-4$/,
     );
   });

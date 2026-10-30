@@ -19,6 +19,9 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/components/magazines/reading/magazine-font-scope", () => ({
+  MagazineFontScope: ({ children }: { children: React.ReactNode }) => children,
+}));
 vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND");
@@ -63,12 +66,12 @@ const params = Promise.resolve({
   articleSlug: "agents-that-know-when-to-stop",
 });
 
-/** The props the page hands the long-read. */
+/** The props the page hands the long-read, inside the type-pair wrapper. */
 async function renderedProps() {
   const element = (await MagazineArticlePage({ params })) as {
-    props: { comments: unknown[]; url: string };
+    props: { children: { props: { comments: unknown[]; url: string } } };
   };
-  return element.props;
+  return element.props.children.props;
 }
 
 beforeEach(() => {

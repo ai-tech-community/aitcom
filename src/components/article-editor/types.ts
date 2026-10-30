@@ -20,7 +20,18 @@ export interface ArticleEditorProps {
 }
 
 export type SaveState = "idle" | "unsaved" | "saving" | "saved" | "error";
-export type SlashGroup = "Basic" | "Technical" | "Structure";
+export const SLASH_GROUPS = [
+  "Basic",
+  "Technical",
+  "Structure",
+  "Editorial",
+] as const;
+
+export type SlashGroup = (typeof SLASH_GROUPS)[number];
+
+export function emptySlashGroups(): Record<SlashGroup, SlashCommand[]> {
+  return { Basic: [], Technical: [], Structure: [], Editorial: [] };
+}
 
 export type SlashCommand = {
   id: string;
@@ -149,6 +160,30 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     label: "Image",
     group: "Basic",
     keywords: ["image", "picture", "photo", "img"],
+  },
+  {
+    id: "pull-quote",
+    label: "Pull quote",
+    group: "Editorial",
+    keywords: ["pull", "quote", "pullquote"],
+  },
+  {
+    id: "captioned-image",
+    label: "Captioned image",
+    group: "Editorial",
+    keywords: ["caption", "photo", "image", "figure"],
+  },
+  {
+    id: "gallery",
+    label: "Image gallery",
+    group: "Editorial",
+    keywords: ["gallery", "photos", "images"],
+  },
+  {
+    id: "spread",
+    label: "Side-by-side spread",
+    group: "Editorial",
+    keywords: ["spread", "diptych", "side"],
   },
   {
     id: "video",

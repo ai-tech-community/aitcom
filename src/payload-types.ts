@@ -519,6 +519,14 @@ export interface Magazine {
    * Display font for the magazine masthead and story headings.
    */
   font?: ('italiana' | 'bodoni' | 'cormorant' | 'geist') | null;
+  /**
+   * journal, broadsheet, fashion, or literary. Empty uses journal.
+   */
+  themeFontPair?: string | null;
+  /**
+   * Hex accent. Empty uses the default. Must clear WCAG AA on white or on the dark page.
+   */
+  themeAccent?: string | null;
   topics?:
     | {
         topic?: string | null;

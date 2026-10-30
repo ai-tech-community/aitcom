@@ -15,6 +15,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Link, useRouter } from "@/i18n/navigation";
 import { communityMagazinePath, magazinePath } from "@/lib/magazines/paths";
 import {
+  DEFAULT_MAGAZINE_ACCENT,
+  DEFAULT_MAGAZINE_FONT_PAIR,
+  MAGAZINE_FONT_PAIRS,
+  magazineThemeIssue,
+  normalizeHexColor,
+  type MagazineFontPairId,
+} from "@/lib/magazines/theme";
+import {
   type IssueVisibility,
   MAGAZINE_SLUG_PATTERN,
   MAX_MAGAZINE_TOPICS,
@@ -60,6 +68,8 @@ type Draft = {
   topics: string[];
   defaultVisibility: IssueVisibility;
   font: MagazineFont;
+  fontPair: MagazineFontPairId;
+  accent: string;
 };
 
 function draftOf(magazine: Magazine | null): Draft {
@@ -73,6 +83,13 @@ function draftOf(magazine: Magazine | null): Draft {
     ),
     defaultVisibility: magazine?.defaultVisibility ?? "members",
     font: resolveMagazineFont(magazine?.font),
+    fontPair:
+      magazine?.themeFontPair &&
+      MAGAZINE_FONT_PAIRS.some((pair) => pair.id === magazine.themeFontPair)
+        ? (magazine.themeFontPair as MagazineFontPairId)
+        : DEFAULT_MAGAZINE_FONT_PAIR,
+    accent:
+      normalizeHexColor(magazine?.themeAccent ?? "") ?? DEFAULT_MAGAZINE_ACCENT,
   };
 }
 
@@ -195,6 +212,9 @@ function SettingsEditor({
   const topicsId = useId();
   const topicsHintId = useId();
   const visibilityHintId = useId();
+  const fontPairId = useId();
+  const accentId = useId();
+  const accentHintId = useId();
 
   const remove = api.magazines.deleteMagazine.useMutation({
     onSuccess: () => {
@@ -239,9 +259,11 @@ function SettingsEditor({
     focusTopicInput.current = false;
     topicInputRef.current?.focus();
   }, [draft.topics]);
+  const themeIssue = magazineThemeIssue(draft.fontPair, draft.accent);
   const canSave =
     nameValid &&
     slugValid &&
+    !themeIssue &&
     !isUploading &&
     !save.isPending &&
     (!optInRequired || confirmed);
@@ -284,6 +306,8 @@ function SettingsEditor({
       topics: draft.topics,
       defaultVisibility: draft.defaultVisibility,
       font: draft.font,
+      themeFontPair: draft.fontPair,
+      themeAccent: normalizeHexColor(draft.accent) ?? draft.accent,
       // Sent only when the editor ticked the opt-in this save asks for.
       ...(optInRequired && confirmed ? { confirmUnlistedPublic: true } : {}),
     });
@@ -385,6 +409,60 @@ function SettingsEditor({
           />
         )}
       />
+
+      <fieldset className="flex flex-col gap-4">
+        <legend className="text-sm font-medium">{t("themeLabel")}</legend>
+        <p className="text-muted-foreground text-sm">{t("themeHint")}</p>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={fontPairId}>{t("fontPairLabel")}</Label>
+          <select
+            id={fontPairId}
+            value={draft.fontPair}
+            onChange={(event) =>
+              update({ fontPair: event.target.value as MagazineFontPairId })
+            }
+            className="border-input bg-background h-10 rounded-md border px-3 text-sm"
+          >
+            {MAGAZINE_FONT_PAIRS.map((pair) => (
+              <option key={pair.id} value={pair.id}>
+                {t(`fontPairs.${pair.id}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={accentId}>{t("accentLabel")}</Label>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              aria-label={t("accentSwatch")}
+              value={normalizeHexColor(draft.accent) ?? DEFAULT_MAGAZINE_ACCENT}
+              onChange={(event) => update({ accent: event.target.value })}
+              className="size-10 cursor-pointer border bg-transparent p-0"
+            />
+            <Input
+              id={accentId}
+              value={draft.accent}
+              onChange={(event) => update({ accent: event.target.value })}
+              maxLength={7}
+              spellCheck={false}
+              aria-invalid={themeIssue ? true : undefined}
+              aria-describedby={accentHintId}
+              className="font-mono"
+            />
+          </div>
+          <p
+            id={accentHintId}
+            className={
+              themeIssue
+                ? "text-destructive text-sm"
+                : "text-muted-foreground text-sm"
+            }
+          >
+            {themeIssue ? t("accentInvalid") : t("accentHint")}
+          </p>
+        </div>
+      </fieldset>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor={topicsId}>{t("topicsLabel")}</Label>

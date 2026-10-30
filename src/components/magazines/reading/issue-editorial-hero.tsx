@@ -1,5 +1,7 @@
 import { useFormatter, useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { LexicalRenderer } from "@/lib/lexical";
+import { magazinePath } from "@/lib/magazines/paths";
 import { EDITOR_NOTE_ANCHOR } from "./anchors";
 import { hasEditorNote, type IssueHeroIssue } from "./issue-hero";
 import { issueNumberText } from "./issue-dateline";
@@ -18,9 +20,6 @@ export function IssueEditorialHero({
   const format = useFormatter();
   return (
     <header className="magazine-issue-hero">
-      <div className="magazine-masthead magazine-display" aria-hidden="true">
-        {issue.magazine.name}
-      </div>
       <div className="magazine-dateline">
         <span>{t("number", { number: issueNumberText(issue.number) })}</span>
         <span>{t("byCommunity", { community: issue.community.name })}</span>
@@ -44,6 +43,12 @@ export function IssueEditorialHero({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={issue.coverImageUrl} alt="" fetchPriority="high" />
         )}
+        <Link
+          href={magazinePath(issue.magazine)}
+          className="magazine-masthead magazine-display"
+        >
+          {issue.magazine.name}
+        </Link>
         <Title
           id={titleId}
           tabIndex={titleId ? -1 : undefined}

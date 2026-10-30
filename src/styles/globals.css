@@ -9,6 +9,11 @@
     var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-magazine-serif:
+    var(--magazine-serif), Georgia, "Iowan Old Style", Palatino, serif;
+  --font-magazine-sans:
+    var(--magazine-sans), var(--font-geist-sans), ui-sans-serif, system-ui,
+    sans-serif;
 
   /* The earning moment (BadgeCelebration): the one entrance. The emblem
      arrives and its ring is drawn once; use only behind motion-safe:, so
@@ -247,4 +252,48 @@
   top: 0;
   left: 0;
   z-index: 10;
+}
+
+/* Magazine reading pages. The type pair is loaded per magazine. */
+.magazine-theme {
+  font-family: var(--magazine-sans);
+  --magazine-serif:
+    var(--font-magazine-serif-face), Georgia, "Iowan Old Style", Palatino, serif;
+  --magazine-sans:
+    var(--font-magazine-sans-face, var(--font-geist-sans)), ui-sans-serif,
+    system-ui, sans-serif;
+  --magazine-accent-ink: var(--magazine-accent-on-light, currentColor);
+}
+
+.dark .magazine-theme {
+  font-family: var(--magazine-sans);
+  --magazine-accent-ink: var(--magazine-accent-on-dark, currentColor);
+}
+
+.editorial-body {
+  font-family: var(--magazine-serif);
+  column-count: 1;
+  column-gap: 2.75rem;
+}
+
+@media (min-width: 1024px) {
+  .editorial-body {
+    column-count: 2;
+  }
+}
+
+.editorial-body > p:first-of-type::first-letter {
+  float: left;
+  padding-right: 0.55rem;
+  font-family: var(--magazine-serif), Georgia, serif;
+  font-size: 4.6rem;
+  font-weight: 500;
+  line-height: 0.8;
+  color: var(--magazine-accent-ink);
+}
+
+.editorial-body
+  :is(h2, h3, h4, figure, blockquote, pre, aside, ul, ol, .editorial-span) {
+  column-span: all;
+  break-inside: avoid;
 }
