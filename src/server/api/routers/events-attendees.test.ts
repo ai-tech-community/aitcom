@@ -47,6 +47,7 @@ vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/env", () => ({
   env: {
     NODE_ENV: "test",
+    BETTER_AUTH_SECRET: "test-source-secret",
     DATABASE_URL: "postgres://localhost:5432/test",
     NEXT_PUBLIC_APP_URL: "https://app.test",
   },
@@ -355,5 +356,44 @@ describe("events.setCheckedIn", () => {
         checkedIn: true,
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("events.registrationSourceLinks", () => {
+  it("gives the organizer opaque localized links for a published free native event", async () => {
+    payload.findByID.mockResolvedValue({ ...EVENT, status: "published" });
+    const links = await caller("org-1").events.registrationSourceLinks({
+      eventId: 7,
+      locale: "nl",
+    });
+    expect(links.map((link) => link.source)).toEqual([
+      "luma",
+      "eventbrite",
+      "meetup",
+    ]);
+    const { readSourceToken } =
+      await import("@/server/events/registration-source-token");
+    for (const link of links) {
+      const url = new URL(link.url);
+      expect(url.origin).toBe("https://app.test");
+      expect(url.searchParams.get("locale")).toBe("nl");
+      expect(
+        readSourceToken(url.pathname.split("/").at(-1), "test-source-secret"),
+      ).toMatchObject({ eventId: 7, source: link.source, purpose: "link" });
+    }
+  });
+  it("does not expose links to another member", async () => {
+    await expect(
+      caller("u1").events.registrationSourceLinks({ eventId: 7 }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+  it.each([
+    { status: "draft", price: 0 },
+    { status: "published", price: 100 },
+  ])("omits links for ineligible events: %j", async (changes) => {
+    payload.findByID.mockResolvedValue({ ...EVENT, ...changes });
+    expect(
+      await caller("org-1").events.registrationSourceLinks({ eventId: 7 }),
+    ).toEqual([]);
   });
 });

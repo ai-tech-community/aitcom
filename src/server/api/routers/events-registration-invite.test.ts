@@ -38,6 +38,12 @@ const fakeDb = {
   update: vi.fn(() => chain()),
 };
 
+vi.mock("@/server/events/registration-attribution", () => ({
+  resolveRegistrationAttribution: vi.fn(async () => ({
+    registrationSource: "direct_or_unknown",
+    attributedAt: null,
+  })),
+}));
 vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/env", () => ({
   env: {
@@ -125,6 +131,8 @@ describe("events.register", () => {
     // The member saw the sharing notice on the register button.
     expect(inserted[0]).toMatchObject({
       status: "registered",
+      registrationSource: "direct_or_unknown",
+      attributedAt: null,
       organizerNoticeAt: expect.any(Date),
     });
   });
@@ -267,5 +275,27 @@ describe("events.cancelRegistration", () => {
     expect(fakeDb.update).not.toHaveBeenCalled();
     await new Promise((r) => setTimeout(r, 0));
     expect(sendCancellationConfirmation).not.toHaveBeenCalled();
+  });
+});
+
+it("stores source attribution supplied by the server resolver", async () => {
+  const { resolveRegistrationAttribution } =
+    await import("@/server/events/registration-attribution");
+  vi.mocked(resolveRegistrationAttribution).mockResolvedValueOnce({
+    registrationSource: "luma",
+    attributedAt: new Date("2026-10-14T10:00:00Z"),
+  });
+  payload.findByID.mockResolvedValue(NATIVE_EVENT);
+  dbResults.push(
+    [],
+    [{ firstName: "Ada", lastName: "Lovelace" }],
+    [{ count: 0 }],
+    [{ id: "r1", status: "registered" }],
+    [],
+  );
+  await memberCaller().events.register({ eventId: 7 });
+  expect(inserted[0]).toMatchObject({
+    registrationSource: "luma",
+    attributedAt: new Date("2026-10-14T10:00:00Z"),
   });
 });

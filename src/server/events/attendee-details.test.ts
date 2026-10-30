@@ -115,3 +115,11 @@ describe("toAttendeeDetails", () => {
     ).toBeNull();
   });
 });
+
+it("returns tracked sources and keeps historical rows direct/unknown", () => {
+  expect(
+    toAttendeeDetails({ ...ROW, registrationSource: "meetup" })
+      .registrationSource,
+  ).toBe("meetup");
+  expect(toAttendeeDetails(ROW).registrationSource).toBe("direct_or_unknown");
+});

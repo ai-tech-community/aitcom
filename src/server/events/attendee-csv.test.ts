@@ -10,6 +10,13 @@ import {
 import type { AttendeeDetails } from "./attendee-details";
 
 const LABELS: AttendeeCsvLabels = {
+  source: "Registration source",
+  sources: {
+    luma: "Luma",
+    eventbrite: "Eventbrite",
+    meetup: "Meetup",
+    direct_or_unknown: "Direct / unknown",
+  },
   name: "Name",
   firstName: "First name",
   lastName: "Last name",
@@ -117,10 +124,10 @@ describe("toAttendeesCsv", () => {
       }),
     );
     expect(header).toBe(
-      "Name,First name,Last name,Email,Status,Registered at (Europe/Amsterdam),Waitlist place,Payment status,Checked in at (Europe/Amsterdam),Member since,Earlier events attended,Company,LinkedIn,GitHub,Website,Experience,Skills,Interests",
+      "Name,First name,Last name,Email,Status,Registered at (Europe/Amsterdam),Waitlist place,Payment status,Checked in at (Europe/Amsterdam),Member since,Earlier events attended,Company,LinkedIn,GitHub,Website,Experience,Skills,Interests,Registration source",
     );
     expect(ada).toBe(
-      'Ada Lovelace,Ada,Lovelace,ada@example.com,Registered,2026-10-01 12:05,,,2026-10-05 20:04,2026-01-16,2,"Analytical Engines, Ltd",https://linkedin.com/in/ada,,,advanced,math; poetry,',
+      'Ada Lovelace,Ada,Lovelace,ada@example.com,Registered,2026-10-01 12:05,,,2026-10-05 20:04,2026-01-16,2,"Analytical Engines, Ltd",https://linkedin.com/in/ada,,,advanced,math; poetry,,Direct / unknown',
     );
   });
 
@@ -141,7 +148,7 @@ describe("toAttendeesCsv", () => {
       ),
     );
     expect(old).toBe(
-      "Ada Lovelace,Ada,Lovelace,,Waitlist,2026-10-01 12:05,3,,2026-10-05 20:04,2026-01-16,2,,,,,,,",
+      "Ada Lovelace,Ada,Lovelace,,Waitlist,2026-10-01 12:05,3,,2026-10-05 20:04,2026-01-16,2,,,,,,,,Direct / unknown",
     );
   });
 
@@ -166,9 +173,21 @@ describe("toAttendeesCsv", () => {
       }),
     );
     expect(header).toMatch(
-      /,Interests,Topics,Dietary needs,What do you hope to learn\?$/,
+      /,Interests,Topics,Dietary needs,What do you hope to learn\?,Registration source$/,
     );
-    expect(ada).toMatch(/,RAG; Agents,,"Ship an agent, then evals"$/);
+    expect(ada).toMatch(
+      /,RAG; Agents,,"Ship an agent, then evals",Direct \/ unknown$/,
+    );
+  });
+
+  it("exports the tracked source label", () => {
+    const [, line] = parse(
+      toAttendeesCsv([{ ...ADA, registrationSource: "luma" }], {
+        timezone: "UTC",
+        labels: LABELS,
+      }),
+    );
+    expect(line).toMatch(/,Luma$/);
   });
 
   it("writes only the header for an empty list", () => {
