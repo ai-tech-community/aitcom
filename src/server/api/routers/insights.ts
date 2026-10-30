@@ -26,6 +26,7 @@ import {
   loadAtRiskInputs,
   loadUnactivatedInputs,
 } from "@/server/communities/insights-queries";
+import { loadCommunityStatistics } from "@/server/communities/statistics-queries";
 
 type DB = typeof _db;
 
@@ -67,6 +68,25 @@ async function hydrateProfiles(
 }
 
 export const insightsRouter = createTRPCRouter({
+  statistics: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        days: z.union([z.literal(7), z.literal(30), z.literal(90)]).default(30),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      return loadCommunityStatistics(
+        ctx.db,
+        ctx.community.id,
+        new Date(),
+        input.days,
+      );
+    }),
+
   healthPulse: communityProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
