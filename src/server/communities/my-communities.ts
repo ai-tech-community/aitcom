@@ -24,7 +24,7 @@ type Enroll = (db: DB, userId: string) => Promise<boolean>;
 /**
  * Memberships for My Communities. Does **not** hide the unlisted Hub root —
  * `ait` is an anchor (ADR-0019), so a Hub-only member must still see it here
- * even though public `/communities` omits it.
+ * as well as the root's public `/communities` browse card.
  */
 export async function queryMyCommunities(
   db: DB,

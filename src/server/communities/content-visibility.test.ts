@@ -59,10 +59,10 @@ describe("public directory and featured strip", () => {
     { slug: HUB_SLUG, isListedInDirectory: false },
   ];
 
-  it("hides unlisted communities from the public directory", () => {
+  it("includes the AIT Hub in the directory while hiding other unlisted communities", () => {
     expect(
       rows.filter(isPublicDirectoryCommunity).map((row) => row.slug),
-    ).toEqual(["ait-community-netherlands"]);
+    ).toEqual(["ait-community-netherlands", HUB_SLUG]);
   });
 
   it("keeps the unlisted Hub on the featured strip and drops other unlisted rooms", () => {

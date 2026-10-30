@@ -150,7 +150,7 @@ async function findOpenInvitation(
 
 export const communitiesRouter = createTRPCRouter({
   /**
-   * The public directory (Explore page): listed communities with their
+   * The public directory (Explore page): listed communities and the Hub with their
    * public signals — recent activity, next event, join policy, what they
    * offer — searched by name or description, filtered by the place of
    * their events and by what the visitor wants, sorted (also by distance),
@@ -196,10 +196,11 @@ export const communitiesRouter = createTRPCRouter({
       const ip = near && !input.near ? ipOriginFromHeaders(ctx.headers) : null;
       const origin = near ? (input.near ?? ip?.point ?? null) : null;
       const page = queryDirectory(all, { ...input, origin });
-      // One extra query for the whole page (no N+1): leadership-first faces.
+      // The Hub's browse exception does not make its roster public. Its card
+      // keeps the aggregate count, without reading or returning member faces.
       const faces = await loadStackFacesForCommunities(
         ctx.db,
-        page.items.map((c) => c.id),
+        page.items.filter((c) => c.slug !== HUB_SLUG).map((c) => c.id),
       );
       return {
         total: page.total,
@@ -211,7 +212,7 @@ export const communitiesRouter = createTRPCRouter({
           : null,
         items: page.items.map((c) => ({
           ...toPublicDirectoryCommunity(c),
-          faces: faces.get(c.id) ?? [],
+          faces: c.slug === HUB_SLUG ? [] : (faces.get(c.id) ?? []),
         })),
       };
     }),
