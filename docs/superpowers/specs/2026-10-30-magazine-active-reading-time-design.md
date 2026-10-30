@@ -25,3 +25,7 @@ Show total active reading time and average per measured page session, with local
 ## Verification
 
 Use fake timers and mocked requests to verify focus/visibility/idle pauses, activity resume, suspension, cumulative retry and cleanup behavior, disabled trackers and Strict Mode. Mock server access and writes to prove authorization, article placement, validation, rate limiting, cumulative upsert and token/page binding. Compile aggregate SQL to verify publication/community scope, positive-session denominator and full-summary totals independent of pagination. Run only new/touched tests, workspace typecheck, targeted lint/format and independent review. No full suite, integration/Chromium tiers, database writes or push.
+
+## Delivery evidence
+
+Implemented the timer, guarded endpoint, cumulative upsert, additive migration and Insights duration totals/averages. All 51 tests across eight added/touched unit-test files pass. The tests exposed and verified a correction preventing timer reactivation between `pagehide` and `pageshow`. Workspace typecheck and targeted ESLint pass. Independent review approved the extension with no findings. Test requests, access checks and writes use mocks; the migration was not applied. No database or deployment was touched.

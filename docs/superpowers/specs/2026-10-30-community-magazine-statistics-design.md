@@ -56,4 +56,4 @@ Implemented the scoped read module, owner/admin endpoint, independent Magazine p
 
 All 44 tests in the four new/touched test files passed with mocked data and no database access. Workspace `pnpm typecheck`, targeted ESLint and formatting checks passed. Independent review found no issues. A synthetic preview of the actual components was inspected at desktop width and at 400px with Dutch copy and the dark theme; long titles, the scrollable table and pagination fit as intended.
 
-Greg also asked about impressions and time spent during implementation. Issue openings use existing data. Card appearances and active reading time require new tracking and are not included in this implementation; the clarification questions about those additions remain pending. Historical reading duration is unavailable.
+Greg clarified that impressions mean actual openings, and approved forward-looking active reading-time tracking. The extension is defined in [Magazine active reading time](2026-10-30-magazine-active-reading-time-design.md). It adds measured duration totals and averages while preserving the distinction from historical openings. Historical reading duration is unavailable.

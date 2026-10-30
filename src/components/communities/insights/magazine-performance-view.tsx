@@ -24,6 +24,16 @@ export function MagazinePerformanceView({
 }) {
   const t = useTranslations("communities.insights.magazine");
   const format = useFormatter();
+  const duration = (seconds: number) => {
+    const n = Math.round(seconds);
+    const unit = (value: number, name: "hour" | "minute" | "second") =>
+      format.number(value, { style: "unit", unit: name, unitDisplay: "short" });
+    if (n >= 3600)
+      return `${unit(Math.floor(n / 3600), "hour")} ${unit(Math.floor((n % 3600) / 60), "minute")}`;
+    if (n >= 60)
+      return `${unit(Math.floor(n / 60), "minute")} ${unit(n % 60, "second")}`;
+    return unit(n, "second");
+  };
   if (!data.magazine)
     return (
       <EmptyState
@@ -73,6 +83,41 @@ export function MagazinePerformanceView({
       <p className="text-muted-foreground text-sm">
         {t("joinsSummary", { count: data.summary.joins })}
       </p>
+      <div className="space-y-3 border-b pb-5">
+        <dl className="grid gap-4 @lg:grid-cols-2">
+          {[
+            {
+              label: t("activeTime"),
+              value: data.summary.readingSessions
+                ? duration(data.summary.activeSeconds)
+                : "—",
+            },
+            {
+              label: t("averageTime"),
+              value: data.summary.readingSessions
+                ? duration(
+                    data.summary.activeSeconds / data.summary.readingSessions,
+                  )
+                : "—",
+            },
+          ].map((metric) => (
+            <div key={metric.label}>
+              <dt className="text-muted-foreground text-sm">{metric.label}</dt>
+              <dd className="mt-1 text-xl font-semibold tabular-nums">
+                {metric.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <p className="text-muted-foreground max-w-prose text-xs">
+          {data.summary.readingSessions
+            ? t("measuredSessions", { count: data.summary.readingSessions })
+            : t("noReadingTime")}
+        </p>
+        <p className="text-muted-foreground max-w-prose text-xs">
+          {t("readingTimeCoverage")}
+        </p>
+      </div>
       {data.summary.publishedIssues === 0 ? (
         <EmptyState
           title={t("noIssues")}
@@ -96,24 +141,28 @@ export function MagazinePerformanceView({
             tabIndex={0}
             className="focus-visible:ring-ring/50 min-w-0 overflow-x-auto rounded-sm outline-none focus-visible:ring-[3px]"
           >
-            <table className="w-full min-w-160 text-left text-sm tabular-nums">
+            <table className="w-full min-w-200 text-left text-sm tabular-nums">
               <caption className="sr-only">{t("tableLabel")}</caption>
               <thead>
                 <tr className="text-muted-foreground border-b text-xs">
                   <th scope="col" className="w-2/5 py-3 pr-4 font-medium">
                     {t("issue")}
                   </th>
-                  {["views", "readers", "issueSubscribers", "joins"].map(
-                    (key) => (
-                      <th
-                        scope="col"
-                        key={key}
-                        className="px-3 py-3 text-right font-medium"
-                      >
-                        {t(key)}
-                      </th>
-                    ),
-                  )}
+                  {[
+                    "views",
+                    "readers",
+                    "issueSubscribers",
+                    "joins",
+                    "averageTime",
+                  ].map((key) => (
+                    <th
+                      scope="col"
+                      key={key}
+                      className="px-3 py-3 text-right font-medium"
+                    >
+                      {t(key)}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -143,6 +192,11 @@ export function MagazinePerformanceView({
                         {format.number(value)}
                       </td>
                     ))}
+                    <td className="px-3 py-4 text-right">
+                      {issue.readingSessions
+                        ? duration(issue.activeSeconds / issue.readingSessions)
+                        : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -185,6 +239,7 @@ export function MagazinePerformanceView({
           <p>{t("readersHelp")}</p>
           <p>{t("subscribersHelp")}</p>
           <p>{t("joinsHelp")}</p>
+          <p>{t("readingTimeHelp")}</p>
         </div>
       </details>
     </div>

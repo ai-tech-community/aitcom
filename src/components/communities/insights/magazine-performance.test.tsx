@@ -32,6 +32,8 @@ function fixture(page = 1): PerformanceData {
       readers: 7,
       subscribers: 13,
       joins: 6,
+      activeSeconds: 900,
+      readingSessions: 10,
     },
     issues: [
       {
@@ -43,6 +45,8 @@ function fixture(page = 1): PerformanceData {
         readers: 5,
         subscribers: 4,
         joins: 2,
+        activeSeconds: 60,
+        readingSessions: 2,
       },
     ],
     page,
@@ -87,6 +91,15 @@ describe("magazine performance in Insights", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(/community date filter does not apply/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("15 min 0 sec")).toBeInTheDocument();
+    expect(screen.getByText("1 min 30 sec")).toBeInTheDocument();
+    expect(screen.getByText("30 sec")).toBeInTheDocument();
+    expect(
+      screen.getByText("Based on 10 measured page sessions."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Earlier openings have no duration/),
     ).toBeInTheDocument();
     expect(screen.getByText("100")).toBeInTheDocument();
     expect(screen.getByText("13")).toBeInTheDocument();
@@ -198,7 +211,7 @@ describe("magazine performance in Insights", () => {
       expect(fake.intlError).not.toHaveBeenCalled();
       expect(
         within(screen.getByRole("table")).getAllByRole("columnheader"),
-      ).toHaveLength(5);
+      ).toHaveLength(6);
     },
   );
 
@@ -208,4 +221,17 @@ describe("magazine performance in Insights", () => {
     expect(keys(nl)).toEqual(keys(en));
     expect(keys(fr)).toEqual(keys(en));
   });
+});
+
+it("shows no historic duration estimate when there are no measured sessions", () => {
+  const data = fixture();
+  data.summary.activeSeconds = 0;
+  data.summary.readingSessions = 0;
+  data.issues[0]!.activeSeconds = 0;
+  data.issues[0]!.readingSessions = 0;
+  fake.query.mockReturnValue({ data, isLoading: false, isFetching: false });
+  render(content());
+  expect(screen.getByText("No reading time measured yet.")).toBeInTheDocument();
+  expect(screen.getAllByText("—")).toHaveLength(3);
+  expect(screen.getByText("100")).toBeInTheDocument();
 });

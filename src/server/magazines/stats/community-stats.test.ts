@@ -15,7 +15,10 @@ const issue = {
 };
 const find = vi.fn();
 let calls: { sql: string; params: unknown[] }[];
-let reads: unknown[], subscriptions: unknown[], joins: unknown[];
+let reads: unknown[],
+  subscriptions: unknown[],
+  joins: unknown[],
+  durations: unknown[];
 const execute = vi.fn(async (statement: SQL) => {
   const compiled = new PgDialect({ casing: "snake_case" }).sqlToQuery(
     statement,
@@ -26,7 +29,9 @@ const execute = vi.fn(async (statement: SQL) => {
       ? reads
       : compiled.sql.includes('"magazine_subscription"')
         ? subscriptions
-        : joins,
+        : compiled.sql.includes('"magazine_reading_session"')
+          ? durations
+          : joins,
   };
 });
 const deps = { payload: { find }, db: { execute } } as unknown as Deps;
@@ -36,6 +41,10 @@ beforeEach(() => {
   reads = [
     { issueId: null, isTotal: 1, views: "100", readers: "7" },
     { issueId: 21, isTotal: 0, views: "20", readers: "5" },
+  ];
+  durations = [
+    { issueId: null, isTotal: 1, activeSeconds: "900", readingSessions: "10" },
+    { issueId: 21, isTotal: 0, activeSeconds: "60", readingSessions: "2" },
   ];
   subscriptions = [
     { issueId: null, isTotal: 1, total: "13" },
@@ -70,6 +79,8 @@ describe("community magazine performance", () => {
       readers: 7,
       subscribers: 13,
       joins: 6,
+      activeSeconds: 900,
+      readingSessions: 10,
     });
     expect(data.issues).toEqual([
       {
@@ -79,6 +90,8 @@ describe("community magazine performance", () => {
         readers: 5,
         subscribers: 4,
         joins: 2,
+        activeSeconds: 60,
+        readingSessions: 2,
       },
     ]);
     expect(data).toMatchObject({ page: 1, totalPages: 2, pageSize: 10 });
@@ -105,7 +118,7 @@ describe("community magazine performance", () => {
         },
       }),
     );
-    expect(execute).toHaveBeenCalledTimes(3);
+    expect(execute).toHaveBeenCalledTimes(4);
     expect(JSON.stringify(data)).not.toContain("readerKey");
     expect(JSON.stringify(data)).not.toContain("email");
   });
@@ -123,6 +136,7 @@ describe("community magazine performance", () => {
     );
     for (const query of [
       readQuery,
+      calls.find((call) => call.sql.includes('"magazine_reading_session"'))!,
       calls.find((call) => call.sql.includes('"activity_event"'))!,
     ]) {
       expect(query.sql).toContain("FROM public.magazine_issues");
@@ -134,6 +148,11 @@ describe("community magazine performance", () => {
       expect(query.params).toContain(21);
       expect(query.sql).not.toMatch(/\bLIMIT\b/);
     }
+    const durationQuery = calls.find((call) =>
+      call.sql.includes('"magazine_reading_session"'),
+    )!;
+    expect(durationQuery.sql).toContain('"active_seconds" > 0');
+    expect(durationQuery.sql).toContain('COUNT(*) AS "readingSessions"');
     const subscriptionQuery = calls.find((call) =>
       call.sql.includes('"magazine_subscription"'),
     )!;
@@ -169,6 +188,7 @@ describe("community magazine performance", () => {
         ? { docs: [magazine] }
         : { docs: [], totalDocs: 0, totalPages: 1 },
     );
+    durations = [];
     reads = [];
     joins = [];
     const data = await loadCommunityMagazineStats(deps, "c1", "en", 1);
@@ -178,6 +198,8 @@ describe("community magazine performance", () => {
       readers: 0,
       subscribers: 13,
       joins: 0,
+      activeSeconds: 0,
+      readingSessions: 0,
     });
     expect(data.issues).toEqual([]);
   });
@@ -189,7 +211,7 @@ describe("community magazine performance", () => {
       expect.objectContaining({ collection: "magazine-issues", page: 2 }),
     );
     expect(data.summary.views).toBe(100);
-    expect(execute).toHaveBeenCalledTimes(3);
+    expect(execute).toHaveBeenCalledTimes(4);
   });
 
   it("propagates read errors instead of manufacturing zeros", async () => {

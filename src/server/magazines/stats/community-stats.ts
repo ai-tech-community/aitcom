@@ -3,6 +3,7 @@ import type { AppLocale } from "@/i18n/messages";
 import {
   activityEvents,
   magazineReads,
+  magazineReadingSessions,
   magazineSubscriptions,
 } from "@/server/db/schema";
 import type { Deps } from "../deps";
@@ -15,6 +16,8 @@ type Counts = {
   readers: number;
   subscribers: number;
   joins: number;
+  activeSeconds: number;
+  readingSessions: number;
 };
 export type MagazineIssuePerformance = Counts & {
   id: number;
@@ -41,6 +44,23 @@ type CountAggregate = {
   isTotal: number;
   total: string | number;
 };
+type DurationAggregate = {
+  issueId: number | null;
+  isTotal: number;
+  activeSeconds: string | number;
+  readingSessions: string | number;
+};
+function durationCount(rows: DurationAggregate[], id: number | null) {
+  const row = rows.find((row) =>
+    id === null
+      ? Number(row.isTotal) === 1
+      : Number(row.isTotal) === 0 && Number(row.issueId) === id,
+  );
+  return {
+    activeSeconds: Number(row?.activeSeconds ?? 0),
+    readingSessions: Number(row?.readingSessions ?? 0),
+  };
+}
 
 function pageCount(rows: CountAggregate[], id: number | null) {
   return Number(
@@ -84,6 +104,8 @@ export async function loadCommunityMagazineStats(
       readers: 0,
       subscribers: 0,
       joins: 0,
+      activeSeconds: 0,
+      readingSessions: 0,
     },
     issues: [],
     page: 1,
@@ -117,9 +139,13 @@ export async function loadCommunityMagazineStats(
   // Payload owns this table. Its schema and FK are recorded in migration 20261026a.
   const published = sql`SELECT id FROM public.magazine_issues
     WHERE magazine_id = ${magazineId} AND community_id = ${communityId} AND status = 'published'`;
-  const [{ rows: reads }, { rows: subscriptions }, { rows: joins }] =
-    await Promise.all([
-      deps.db.execute<ReadAggregate>(sql`
+  const [
+    { rows: reads },
+    { rows: subscriptions },
+    { rows: joins },
+    { rows: durations },
+  ] = await Promise.all([
+    deps.db.execute<ReadAggregate>(sql`
       WITH published AS (${published})
       SELECT ${magazineReads.issueId} AS "issueId", GROUPING(${magazineReads.issueId}) AS "isTotal",
         COALESCE(SUM(${magazineReads.views}) FILTER (WHERE ${magazineReads.articleId} IS NULL), 0) AS views,
@@ -130,14 +156,14 @@ export async function loadCommunityMagazineStats(
       GROUP BY GROUPING SETS ((${magazineReads.issueId}), ())
       HAVING GROUPING(${magazineReads.issueId}) = 1 OR ${inArray(magazineReads.issueId, ids)}
     `),
-      deps.db.execute<CountAggregate>(sql`
+    deps.db.execute<CountAggregate>(sql`
       SELECT ${magazineSubscriptions.sourceIssueId} AS "issueId", GROUPING(${magazineSubscriptions.sourceIssueId}) AS "isTotal", COUNT(*) AS total
       FROM ${magazineSubscriptions}
       WHERE ${magazineSubscriptions.magazineId} = ${magazineId} AND ${magazineSubscriptions.confirmedAt} IS NOT NULL
       GROUP BY GROUPING SETS ((${magazineSubscriptions.sourceIssueId}), ())
       HAVING GROUPING(${magazineSubscriptions.sourceIssueId}) = 1 OR ${inArray(magazineSubscriptions.sourceIssueId, ids)}
     `),
-      deps.db.execute<CountAggregate>(sql`
+    deps.db.execute<CountAggregate>(sql`
       WITH published AS (${published})
       SELECT published.id AS "issueId", GROUPING(published.id) AS "isTotal", COUNT(DISTINCT ${activityEvents.actorId}) AS total
       FROM ${activityEvents}
@@ -146,12 +172,23 @@ export async function loadCommunityMagazineStats(
       GROUP BY GROUPING SETS ((published.id), ())
       HAVING GROUPING(published.id) = 1 OR ${inArray(sql`published.id`, ids)}
     `),
-    ]);
+    deps.db.execute<DurationAggregate>(sql`
+      WITH published AS (${published})
+      SELECT ${magazineReadingSessions.issueId} AS "issueId", GROUPING(${magazineReadingSessions.issueId}) AS "isTotal",
+        COALESCE(SUM(${magazineReadingSessions.activeSeconds}), 0) AS "activeSeconds", COUNT(*) AS "readingSessions"
+      FROM ${magazineReadingSessions}
+      INNER JOIN published ON published.id = ${magazineReadingSessions.issueId}
+      WHERE ${magazineReadingSessions.magazineId} = ${magazineId} AND ${magazineReadingSessions.activeSeconds} > 0
+      GROUP BY GROUPING SETS ((${magazineReadingSessions.issueId}), ())
+      HAVING GROUPING(${magazineReadingSessions.issueId}) = 1 OR ${inArray(magazineReadingSessions.issueId, ids)}
+    `),
+  ]);
   return {
     magazine: { id: magazineId, name: magazine.name },
     summary: {
       publishedIssues: issuePage.totalDocs,
       ...readCount(reads, null),
+      ...durationCount(durations, null),
       subscribers: pageCount(subscriptions, null),
       joins: pageCount(joins, null),
     },
@@ -163,6 +200,7 @@ export async function loadCommunityMagazineStats(
         ? new Date(issue.publishedAt).toISOString()
         : null,
       ...readCount(reads, Number(issue.id)),
+      ...durationCount(durations, Number(issue.id)),
       subscribers: pageCount(subscriptions, Number(issue.id)),
       joins: pageCount(joins, Number(issue.id)),
     })),

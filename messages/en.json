@@ -3646,7 +3646,13 @@
         "viewsHelp": "Openings count recorded visits to issue pages, including repeat visits. Article-page visits are separate. All time means the available recorded history; it is not guaranteed coverage since publication.",
         "readersHelp": "Readers are distinct recorded reader keys across issue and article pages. Signed-in keys are stable; signed-out keys rotate daily and may be shared. This is not an exact count of people. Overall readers are deduplicated across issues and do not equal the sum of issue rows.",
         "subscribersHelp": "Current subscribers include confirmed account and email subscriptions. Pending confirmations are excluded. Subscribers from an issue are subscriptions attributed to that issue that remain confirmed today; unsubscribed records are not retained.",
-        "joinsHelp": "Attributed joins use the recorded magazine source for currently published issues. A join request counts once the requester is an active member. Overall joins deduplicate recorded actors across issues; this is source attribution, not a conversion rate."
+        "joinsHelp": "Attributed joins use the recorded magazine source for currently published issues. A join request counts once the requester is an active member. Overall joins deduplicate recorded actors across issues; this is source attribution, not a conversion rate.",
+        "activeTime": "Total active reading time",
+        "averageTime": "Average time per measured page session",
+        "measuredSessions": "{count, plural, one {Based on # measured page session.} other {Based on # measured page sessions.}}",
+        "noReadingTime": "No reading time measured yet.",
+        "readingTimeCoverage": "Recorded from the reading-time tracking release onward, across issue and article pages. Earlier openings have no duration.",
+        "readingTimeHelp": "Active time counts while a readable page is visible and focused, until 60 seconds without interaction. Total time includes issue and article pages, including previews. The average divides total active time by page sessions with measured time, not by historical openings or unique readers. Separate pages and tabs are separate sessions. Editor visits are excluded. Reports are best effort and each page session is capped at two active hours."
       }
     },
     "activation": {

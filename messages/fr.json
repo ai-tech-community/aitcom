@@ -3646,7 +3646,13 @@
         "viewsHelp": "Les ouvertures comptent les visites enregistrées des pages des numéros, y compris les visites répétées. Les visites des articles sont distinctes. Les totaux couvrent l’historique enregistré disponible, sans garantie de couverture depuis la publication.",
         "readersHelp": "Les lecteurs correspondent à des identifiants de lecture distincts sur les pages des numéros et articles. Ceux des lecteurs connectés sont stables ; ceux des visiteurs déconnectés changent chaque jour et peuvent être partagés. Ce n’est pas un décompte exact de personnes. Le total déduplique les lecteurs entre les numéros et n’est pas la somme des lignes.",
         "subscribersHelp": "Les abonnés actuels comprennent les abonnements confirmés par compte et par e-mail. Les confirmations en attente sont exclues. Les abonnés via un numéro sont les abonnements qui lui sont attribués et restent confirmés aujourd’hui ; les désabonnements ne sont pas conservés.",
-        "joinsHelp": "Les adhésions attribuées utilisent la source magazine enregistrée pour les numéros actuellement publiés. Une demande d’adhésion compte lorsque son auteur est membre actif. Le total déduplique les acteurs enregistrés entre les numéros ; il s’agit d’une attribution de source, pas d’un taux de conversion."
+        "joinsHelp": "Les adhésions attribuées utilisent la source magazine enregistrée pour les numéros actuellement publiés. Une demande d’adhésion compte lorsque son auteur est membre actif. Le total déduplique les acteurs enregistrés entre les numéros ; il s’agit d’une attribution de source, pas d’un taux de conversion.",
+        "activeTime": "Temps de lecture actif total",
+        "averageTime": "Temps moyen par session de page mesurée",
+        "measuredSessions": "{count, plural, one {Sur la base de # session de page mesurée.} other {Sur la base de # sessions de page mesurées.}}",
+        "noReadingTime": "Aucun temps de lecture mesuré pour le moment.",
+        "readingTimeCoverage": "Mesuré depuis le lancement du suivi du temps de lecture, sur les pages des numéros et des articles. Les ouvertures antérieures n’ont pas de durée.",
+        "readingTimeHelp": "Le temps actif est compté lorsqu’une page accessible est visible et possède le focus, jusqu’à 60 secondes sans interaction. Le total comprend les pages des numéros et des articles, y compris les aperçus. La moyenne divise le temps actif total par les sessions de page avec du temps mesuré, et non par les ouvertures historiques ou les lecteurs uniques. Chaque page et onglet constitue une session distincte. Les visites des rédacteurs sont exclues. Les rapports sont transmis dans la mesure du possible et chaque session est limitée à deux heures actives."
       }
     },
     "activation": {
