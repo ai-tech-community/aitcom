@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
 import type { Payload } from "payload";
 import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
-import { buildEventPayloadData, eventUpsertSchema } from "./event-upsert-data";
+import {
+  buildEventPayloadData,
+  eventCreateSchema,
+  eventUpsertSchema,
+} from "./event-upsert-data";
 
 // None of these cases pass `audience`, so resolveAudienceIds short-circuits
 // before ever touching `payload.find` — an unimplemented stub is enough.
@@ -71,8 +75,27 @@ describe("eventUpsertSchema timezone validation", () => {
     expect(parsed.success).toBe(true);
   });
 
+  it("rejects a missing or blank description", () => {
+    expect(eventCreateSchema.safeParse(base).success).toBe(false);
+    const blank = eventCreateSchema.safeParse({
+      ...base,
+      description: "   ",
+    });
+    expect(blank.success).toBe(false);
+    if (!blank.success) {
+      expect(
+        blank.error.issues.some((issue) => issue.path[0] === "description"),
+      ).toBe(true);
+    }
+  });
+
   it("accepts a missing timezone", () => {
-    expect(eventUpsertSchema.safeParse(base).success).toBe(true);
+    expect(
+      eventUpsertSchema.safeParse({
+        ...base,
+        description: "A night for builders.",
+      }).success,
+    ).toBe(true);
   });
 
   it("rejects a non-IANA timezone", () => {

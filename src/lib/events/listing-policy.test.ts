@@ -8,6 +8,7 @@ import {
   stripEventCopyBeforeChange,
   stripListingPolicyLexical,
 } from "@/server/events/listing-policy-copy";
+import { BUILDER_PUBLIC_EVENTS } from "./builder-public-events";
 import {
   eventMetaDescription,
   eventWhereLabel,
@@ -260,7 +261,7 @@ describe("event meta description", () => {
       "nl",
     );
     expect(meta).toBe(
-      "AIxIA 2026. 22 okt 2026. Palais de la Musique et des Congrès, Strasbourg.",
+      "AIxIA 2026. 22 okt 2026. Palais de la Musique et des Congrès, Straatsburg.",
     );
     expect(meta.length).toBeLessThanOrEqual(160);
   });
@@ -303,6 +304,190 @@ describe("event meta description", () => {
       "Microsoft Ignite. 17–20 nov 2026. Moscone Center, San Francisco.",
     );
     expect(meta).not.toMatch(/officiële pagina|https?:/i);
+  });
+
+  it("preserves the translated online label after localizing city fields", () => {
+    const meta = eventMetaDescription(
+      {
+        title: "Online meetup",
+        date: "2026-11-16",
+        format: "online",
+        city: "Paris",
+        description: "En ligne sessions cover practical examples.",
+      },
+      "fr",
+      "En ligne",
+    );
+    expect(meta).toContain("En ligne.");
+    expect(meta).not.toContain("Online.");
+    expect(meta).not.toContain("sessions cover");
+  });
+
+  it("uses München for the Dutch Handelsblatt meta and Munich in English", () => {
+    const event = {
+      title: "Handelsblatt AI Summit 2026",
+      date: "2026-11-16",
+      endDate: "2026-11-17",
+      city: "Munich",
+      location: "House of Communication, Friedenstr. 24, Munich",
+      format: "in-person" as const,
+      description: "Sessions on production agents in München.",
+    };
+    expect(eventMetaDescription(event, "nl")).toBe(
+      "Handelsblatt AI Summit 2026. 16–17 nov 2026. House of Communication, Friedenstr. 24, München.",
+    );
+    expect(eventMetaDescription(event, "en")).toBe(
+      "Handelsblatt AI Summit 2026. 16–17 Nov 2026. House of Communication, Friedenstr. 24, Munich. Sessions on production agents in München.",
+    );
+    expect(
+      eventMetaDescription(
+        { ...event, description: "Sessions on production agents in Munich." },
+        "nl",
+      ),
+    ).toBe(
+      "Handelsblatt AI Summit 2026. 16–17 nov 2026. House of Communication, Friedenstr. 24, München.",
+    );
+    const topical = eventMetaDescription(
+      {
+        ...event,
+        description: "Sessions cover production agents and evaluation.",
+      },
+      "nl",
+    );
+    expect(topical).toBe(
+      "Handelsblatt AI Summit 2026. 16–17 nov 2026. House of Communication, Friedenstr. 24, München. Sessions cover production agents and evaluation.",
+    );
+    expect(topical.length).toBeLessThanOrEqual(160);
+  });
+
+  it("uses confirmed Dutch city names and leaves the other seeded cities unchanged", () => {
+    const dutchCity: Record<string, string> = {
+      Munich: "München",
+      Vienna: "Wenen",
+      Lisbon: "Lissabon",
+      "The Hague": "Den Haag",
+      Warsaw: "Warschau",
+      Belgrade: "Belgrado",
+      Strasbourg: "Straatsburg",
+      Berlin: "Berlijn",
+      Paris: "Parijs",
+      London: "Londen",
+    };
+    const seen = new Set<string>();
+
+    for (const event of BUILDER_PUBLIC_EVENTS) {
+      seen.add(event.city);
+      const source = {
+        title: event.title,
+        date: event.date,
+        endDate: event.endDate,
+        city: event.city,
+        location: event.location,
+        format: event.format ?? "in-person",
+        description: "",
+      };
+      const nl = eventMetaDescription(source, "nl");
+      const en = eventMetaDescription(source, "en");
+      const nlPlace = nl.split(". ").at(-1);
+      const enPlace = en.split(". ").at(-1);
+      const dutch = dutchCity[event.city];
+      if (dutch) {
+        expect(nlPlace).toContain(dutch);
+        expect(enPlace).toContain(event.city);
+        expect(en).not.toContain(dutch);
+      } else {
+        expect(nlPlace).toBe(enPlace);
+      }
+    }
+
+    expect([...seen].sort()).toEqual(
+      [
+        "Amsterdam",
+        "Austin",
+        "Barcelona",
+        "Belgrade",
+        "Berlin",
+        "Boston",
+        "Brooklyn",
+        "Cambridge",
+        "Den Haag",
+        "Edinburgh",
+        "Helsinki",
+        "Jersey City",
+        "Lisbon",
+        "London",
+        "Munich",
+        "New York",
+        "Paris",
+        "Potsdam",
+        "San Francisco",
+        "San Jose",
+        "Strasbourg",
+        "The Hague",
+        "Utrecht",
+        "Vienna",
+        "Warsaw",
+      ].sort(),
+    );
+
+    expect(
+      eventMetaDescription(
+        {
+          title: "DSC Europe 2026",
+          date: "2026-11-23",
+          endDate: "2026-11-27",
+          city: "Belgrade",
+          location: "Belgrade Fair, Hall 3, Belgrade",
+          description: "",
+        },
+        "nl",
+      ),
+    ).toBe("DSC Europe 2026. 23–27 nov 2026. Belgrade Fair, Hall 3, Belgrado.");
+    expect(
+      eventMetaDescription(
+        {
+          title: "Generative AI Summit London",
+          date: "2026-12-01",
+          city: "London",
+          location:
+            "InterContinental London - The O2, 1 Waterview Drive, London",
+          description: "",
+        },
+        "nl",
+      ),
+    ).toBe(
+      "Generative AI Summit London. 01 dec 2026. InterContinental London - The O2, 1 Waterview Drive, Londen.",
+    );
+    expect(
+      eventMetaDescription(
+        {
+          title: "NVIDIA GTC Berlin 2026",
+          date: "2026-10-20",
+          endDate: "2026-10-22",
+          city: "Berlin",
+          location: "Tempodrom + STATION-Berlin",
+          description: "",
+        },
+        "en",
+      ),
+    ).toBe(
+      "NVIDIA GTC Berlin 2026. 20–22 Oct 2026. Tempodrom + STATION-Berlin.",
+    );
+    expect(
+      eventMetaDescription(
+        {
+          title: "NVIDIA GTC Berlin 2026",
+          date: "2026-10-20",
+          endDate: "2026-10-22",
+          city: "Berlin",
+          location: "Tempodrom + STATION-Berlin",
+          description: "",
+        },
+        "nl",
+      ),
+    ).toBe(
+      "NVIDIA GTC Berlin 2026. 20–22 okt 2026. Tempodrom + STATION-Berlin, Berlijn.",
+    );
   });
 
   it("omits a date or place that was not stored", () => {

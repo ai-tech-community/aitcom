@@ -510,7 +510,8 @@
         "audience": "Le public concerné",
         "date": "Une date",
         "location": "Le lieu",
-        "questions": "Des questions complètes"
+        "questions": "Des questions complètes",
+        "description": "Description"
       },
       "previewTitle": "Aperçu",
       "previewUntitled": "Votre événement",
@@ -518,8 +519,10 @@
       "previewExternal": "Les inscriptions se font sur l’autre site.",
       "previewSeats": "{count, plural, one {# place} other {# places}}",
       "previewNoLimit": "Pas de limite de places",
-      "previewQuestions": "{count, plural, =0 {Aucune question pour les inscrits} one {# question pour les inscrits} other {# questions pour les inscrits}}"
-    }
+      "previewQuestions": "{count, plural, =0 {Aucune question pour les inscrits} one {# question pour les inscrits} other {# questions pour les inscrits}}",
+      "descriptionRequired": "Ajoutez une description."
+    },
+    "cancelledLabel": "Annulé"
   },
   "blog": {
     "title": "Blog",

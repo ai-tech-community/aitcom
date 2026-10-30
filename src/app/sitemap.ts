@@ -19,6 +19,7 @@ import {
   forumThreadSitemapPath,
 } from "@/server/communities/forum-scope";
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
+import { publishedEventsVisibleWhere } from "@/lib/events/public-event-access";
 import {
   docBelongsToHiddenCommunity,
   hiddenCommunitySlugs,
@@ -65,6 +66,7 @@ const STATIC_PAGES = [
 
 type SitemapDoc = {
   slug?: string | null;
+  status?: string | null;
   communityId?: string | null;
   updatedAt?: string | Date | null;
 };
@@ -146,20 +148,14 @@ function uniqueLocaleEntries(
  * around, not attended through" (CONTEXT.md [[discovered-event]]) — omit
  * them from the public sitemap; they stay in the conflict corpus.
  * When visibility is unknown, keep only events with no community. Otherwise
- * drop events of unlisted communities and keep unscoped events.
+ * drop events of private, unlisted, or invite-only communities and keep
+ * unscoped events. Cancelled events are not published, and a returned
+ * cancelled row is dropped again below.
  */
 function publishedEventsWhere(
   hiddenCommunityIds: readonly string[] | null,
 ): Where {
-  const published: Where = {
-    status: { equals: "published" },
-    discoverySource: { not_equals: "luma" },
-  };
-  if (hiddenCommunityIds === null) {
-    return { and: [published, { communityId: { exists: false } }] };
-  }
-  const readable = communityContentReadableWhere(hiddenCommunityIds);
-  return readable ? { and: [published, readable] } : published;
+  return publishedEventsVisibleWhere(hiddenCommunityIds);
 }
 
 function docsFromSettled(
@@ -197,6 +193,14 @@ async function defaultHiddenCommunityIds(): Promise<string[]> {
   const { hiddenContentCommunityIds } =
     await import("@/server/communities/content-visibility-queries");
   return hiddenContentCommunityIds(db, null);
+}
+
+/** Communities whose events a signed-out visitor may not see. */
+async function defaultHiddenEventCommunityIds(): Promise<string[]> {
+  const { db } = await import("@/server/db");
+  const { hiddenEventCommunityIds } =
+    await import("@/server/events/public-event-access");
+  return hiddenEventCommunityIds(db, null);
 }
 
 /** `updated_at` for startup profiles and open roles, keyed by public path. */
@@ -287,6 +291,9 @@ export async function buildSitemapEntries(
     ReadonlyMap<string, Date>
   > = defaultPathUpdatedAt,
   getMagazinePaths: () => Promise<string[]> = defaultMagazinePaths,
+  getHiddenEventCommunityIds: () => Promise<
+    readonly string[]
+  > = defaultHiddenEventCommunityIds,
   getDatacenterFacilityPages: () => Promise<
     readonly { path: string; updatedAt?: Date }[]
   > = defaultDatacenterFacilityPages,
@@ -341,9 +348,9 @@ export async function buildSitemapEntries(
     return staticEntries;
   }
 
-  // Fail closed: if we cannot tell which communities are members-only, list
-  // no community threads or community events rather than risk publishing an
-  // unlisted community's URLs.
+  // Fail closed for forum threads: if we cannot tell which communities are
+  // members-only, list no community threads. Events use their own lookup
+  // below and fail closed only when that lookup throws.
   let hiddenCommunityIds: readonly string[] | null = null;
   try {
     hiddenCommunityIds = await getHiddenCommunityIds();
@@ -351,11 +358,24 @@ export async function buildSitemapEntries(
     console.error("[sitemap] hidden community lookup failed", error);
   }
 
+  // Events use a wider gate than forum threads: invite-only as well as
+  // unlisted. A failed lookup fails closed (no community events).
+  let hiddenEventCommunityIds: readonly string[] | null = null;
+  try {
+    const eventHidden = await getHiddenEventCommunityIds();
+    hiddenEventCommunityIds =
+      hiddenCommunityIds === null
+        ? eventHidden
+        : [...new Set([...hiddenCommunityIds, ...eventHidden])];
+  } catch (error) {
+    console.error("[sitemap] hidden event community lookup failed", error);
+  }
+
   const [eventsResult, articlesResult, threadsResult, magazineResult] =
     await Promise.allSettled([
       payload.find({
         collection: "events",
-        where: publishedEventsWhere(hiddenCommunityIds),
+        where: publishedEventsWhere(hiddenEventCommunityIds),
         limit: 1000,
         depth: 0,
       }),
@@ -389,7 +409,14 @@ export async function buildSitemapEntries(
     !docBelongsToHiddenCommunity(doc.communityId, hiddenCommunityIds);
 
   const eventEntries = docsFromSettled(eventsResult, "events")
-    .filter(visible)
+    .filter((event) => event.status !== "cancelled")
+    .filter(
+      (event) =>
+        !docBelongsToHiddenCommunity(
+          event.communityId,
+          hiddenEventCommunityIds,
+        ),
+    )
     .map((event) =>
       localeEntries(`/events/${event.slug}`, safeDate(event.updatedAt)),
     );

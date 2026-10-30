@@ -8,6 +8,8 @@ import { HackathonHeader } from "@/components/hackathon/hub/hackathon-header";
 import { HackathonTabBar } from "@/components/hackathon/hub/hackathon-tab-bar";
 import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
 
+export const dynamic = "force-dynamic";
+
 export default async function EventLayout({
   children,
   params,

@@ -224,6 +224,7 @@ describe("saved facility publication", () => {
       async () => [],
       async () => new Map(),
       async () => [],
+      async () => [],
       async () => [{ path: saved.path, updatedAt: new Date(saved.updatedAt) }],
     );
     const facilityEntry = entries.find((entry) => entry.url === saved.url);
