@@ -18,9 +18,11 @@ level, never the bare word "community".
 The root `ait` row is an **anchor, not a tenant**: it exists so the platform
 can address, digest, and rate-limit a member ([[notification-ceiling]],
 [[hub-digest]]), but it is **exempt from the [[community-admin]] growth
-machinery** — it has no community organizer, it is **not directory-listed and
-not a [[community-discovery]] candidate** (you cannot "join" the platform you
-are already in), and the [[activation-funnel]], [[at-risk-member]],
+machinery** — it has no community organizer, and it is **not a
+[[community-discovery]] recommendation** (you cannot "join" the platform you
+are already in). It has a **public browse card** in the community directory,
+while retaining the unlisted privacy policy for its roster. The
+[[activation-funnel]], [[at-risk-member]],
 [[un-activated-newcomer]], [[greeter]], and [[ritual]] loops all **skip the
 root** and operate only on tenant [[Community]]s. This is
 [[adr-0013-hub-invariant-vs-community-policy]] applied to the root row itself.

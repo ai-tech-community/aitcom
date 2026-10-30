@@ -1,6 +1,6 @@
 /** Loads discovery candidates with windowed liveness signals. Thin DB glue. */
 
-import { and, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 import {
   communities,
@@ -17,6 +17,7 @@ import {
 import { isPublicDirectoryCommunity } from "@/server/communities/content-visibility";
 import type { CommunityCandidate } from "@/server/communities/discovery";
 import type { db as _db } from "@/server/db";
+import { HUB_SLUG } from "./hub";
 
 type DB = typeof _db;
 
@@ -24,14 +25,13 @@ export const DISCOVERY_WINDOW_DAYS = 14;
 export const PUBLIC_LIVENESS_WINDOW_DAYS = 7;
 const CONTRIBUTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
 
-/** Listed communities (optionally only those opted into cross-promotion) with
- *  liveness signals computed over the standard window. */
-export async function loadDiscoveryCandidates(
+/** Shared public signals; browsing can include the Hub, recommendations cannot. */
+async function loadCommunityCandidates(
   db: DB,
   now: Date,
-  opts: { crossPromoteOnly?: boolean } = {},
+  opts: { crossPromoteOnly?: boolean; includeHub: boolean },
 ): Promise<CommunityCandidate[]> {
-  // Listed, non-deleted communities + their acquire config (default crossPromote=true).
+  // The browse exception never changes the stored listing/roster privacy flag.
   const rows = await db
     .select({
       id: communities.id,
@@ -49,7 +49,15 @@ export async function loadDiscoveryCandidates(
     )
     .where(
       and(
-        eq(communities.isListedInDirectory, true),
+        opts.includeHub
+          ? or(
+              eq(communities.isListedInDirectory, true),
+              eq(communities.slug, HUB_SLUG),
+            )
+          : and(
+              eq(communities.isListedInDirectory, true),
+              ne(communities.slug, HUB_SLUG),
+            ),
         isNull(communities.deletedAt),
       ),
     );
@@ -57,6 +65,7 @@ export async function loadDiscoveryCandidates(
   const eligible = rows.filter(
     (r) =>
       isPublicDirectoryCommunity(r) &&
+      (opts.includeHub || r.slug !== HUB_SLUG) &&
       (opts.crossPromoteOnly ? (r.crossPromote ?? true) : true),
   );
   if (eligible.length === 0) return [];
@@ -141,6 +150,23 @@ export async function loadDiscoveryCandidates(
       newJoins: health.newJoins,
     };
   });
+}
+
+/** Listed tenant communities eligible for recommendations and cross-promotion. */
+export function loadDiscoveryCandidates(
+  db: DB,
+  now: Date,
+  opts: { crossPromoteOnly?: boolean } = {},
+): Promise<CommunityCandidate[]> {
+  return loadCommunityCandidates(db, now, { ...opts, includeHub: false });
+}
+
+/** Public browsing includes the existing AIT root alongside listed communities. */
+export function loadDirectoryCandidates(
+  db: DB,
+  now: Date,
+): Promise<CommunityCandidate[]> {
+  return loadCommunityCandidates(db, now, { includeHub: true });
 }
 
 export type PublicLiveness = {

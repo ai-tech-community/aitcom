@@ -6,7 +6,7 @@ import type { Payload, Where } from "payload";
 
 import { communities, spaces } from "@/server/db/schema";
 import type { db as _db } from "@/server/db";
-import { loadDiscoveryCandidates } from "@/server/communities/discovery-queries";
+import { loadDirectoryCandidates } from "@/server/communities/discovery-queries";
 import {
   buildDirectory,
   type DirectoryCommunity,
@@ -156,14 +156,14 @@ async function loadOfferings(
   return { learn, build, work };
 }
 
-/** Every listed community with its public signals and next event. */
+/** Listed communities and the AIT root with public signals and their next event. */
 async function loadDirectory(
   db: DB,
   payload: Payload,
   opts: { now: Date; locale: AppLocale },
 ): Promise<DirectoryCommunity[]> {
   const [candidates, hiddenEventIds] = await Promise.all([
-    loadDiscoveryCandidates(db, opts.now),
+    loadDirectoryCandidates(db, opts.now),
     loadHiddenEventCommunityIds(db, null),
   ]);
   const ids = candidates.map((c) => c.communityId);

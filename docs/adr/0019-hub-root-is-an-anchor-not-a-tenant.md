@@ -15,9 +15,12 @@ Concretely:
   member of the platform *is* holding the `ait` row.
 - **No human organizer.** `ait` has no owner/admin acting as a community
   organizer; the organizer dashboards and growth queues never render for it.
-- **Not listed, not discoverable.** `ait` is not directory-listed and is never a
-  [[community-discovery]] candidate — you cannot "join" the platform you are
-  already in.
+- **Public browse card, not a join recommendation.** `ait` appears in the
+  public community directory as an explicit browse exception, while its
+  stored listing flag remains false and its roster remains members-only.
+  It is never a [[community-discovery]] recommendation — platform members are
+  already enrolled. This browse exception was requested by Greg on 2026-10-30;
+  it supersedes the original decision to omit the root from the directory.
 - **Exempt from the growth loops.** The [[activation-funnel]],
   [[at-risk-member]], [[un-activated-newcomer]], [[greeter]], and [[ritual]]
   machinery all skip the root and operate only on tenant [[Community]]s.
@@ -77,9 +80,11 @@ and presents "join AIT" to members already in it.
 - Signup enrols into `ait`; a one-time backfill covers post-seed orphans; the
   seed's first-user `owner` of `ait` is demoted — `ait` carries no human
   organizer.
-- All tenant-community queries (discovery candidates, activation, at-risk,
+- All tenant-community queries (discovery recommendations, activation, at-risk,
   greeter, rituals, organizer dashboards) must **exclude the root `ait` row**.
-  A missed exclusion re-pollutes those surfaces with the whole userbase.
+  A missed exclusion re-pollutes those surfaces with the whole userbase. Public
+  directory browsing has its own explicit exception for `ait`; it must not
+  broaden roster access or list other unlisted communities.
 - Hub-only members are reachable: a dedicated Hub-only [[hub-digest]] composition
   (Hub-wide highlights + interest-matched [[community-discovery]] line) carries
   the first-join nudge, riding the existing digest cadence and opt-out, and
