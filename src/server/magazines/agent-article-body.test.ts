@@ -89,6 +89,23 @@ it("stores markdown links and emphasis as links and marks", () => {
   expect(articleBodyText(lexical)).toBe("Watch Sam eat ontbijt and brood.");
 });
 
+it("stores an https markdown image as an image block and leaves http as text", () => {
+  const lexical = articleBodyToLexical(
+    "![Breakfast](https://cdn.example.test/a.jpg)\nSam eats.\n![Nope](http://cdn.example.test/a.jpg)",
+  );
+  expect(lexical.root.children[0]).toMatchObject({
+    type: "block",
+    fields: {
+      blockType: "Image",
+      src: "https://cdn.example.test/a.jpg",
+      alt: "Breakfast",
+    },
+  });
+  expect(articleBodyText(lexical)).toContain(
+    "![Nope](http://cdn.example.test/a.jpg)",
+  );
+});
+
 it("stores a YouTube line and videoUrl as one embed block", () => {
   const lexical = articleBodyToLexical(
     "Sam eats breakfast.\n\nhttps://youtu.be/dQw4w9WgXcQ",

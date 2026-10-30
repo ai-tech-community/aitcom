@@ -144,6 +144,47 @@ describe("LexicalRenderer admonitions, links and empty paragraphs", () => {
   });
 });
 
+describe("markdown images", () => {
+  it("renders an https image with its alt, sized and lazy, on the article page", () => {
+    const { getByRole, queryByRole } = render(
+      <LexicalRenderer
+        content={{
+          root: {
+            children: [
+              {
+                type: "paragraph",
+                children: [
+                  {
+                    type: "text",
+                    text: "![Breakfast](https://aitcommunity.s3.amazonaws.com/day.jpg)",
+                  },
+                ],
+              },
+              {
+                type: "paragraph",
+                children: [
+                  {
+                    type: "text",
+                    text: "![Nope](http://cdn.example.test/a.jpg)",
+                  },
+                ],
+              },
+            ],
+          },
+        }}
+      />,
+    );
+    const image = getByRole("img", { name: "Breakfast" });
+    expect(image).toHaveAttribute(
+      "src",
+      "https://aitcommunity.s3.amazonaws.com/day.jpg",
+    );
+    expect(image).toHaveAttribute("loading", "lazy");
+    expect(image.className).toContain("w-full");
+    expect(queryByRole("img", { name: "Nope" })).toBeNull();
+  });
+});
+
 describe("LexicalRenderer block renderers", () => {
   it("renders nothing for an Embed block when no renderers are passed (forum, launchpad)", () => {
     const { container } = render(<LexicalRenderer content={content} />);

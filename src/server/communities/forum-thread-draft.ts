@@ -24,6 +24,9 @@ export type ForumThreadDraft = {
   communityId?: string;
   /** Address reserved when the draft was saved. Used on approval when still free. */
   slug?: string;
+  imageMediaId?: number | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
 };
 
 const THREAD_SLUG_MAX = 80;
@@ -113,6 +116,11 @@ export function forumThreadDraftMeta(
     ...(input.slug ? { slug: input.slug } : {}),
     ...(input.communityId ? { communityId: input.communityId } : {}),
     ...(communitySlug ? { communitySlug } : {}),
+    ...(input.imageMediaId !== undefined
+      ? { imageMediaId: input.imageMediaId }
+      : {}),
+    ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
+    ...(input.imageAlt !== undefined ? { imageAlt: input.imageAlt } : {}),
     destinationLabel,
     destinationPath,
   };
@@ -170,6 +178,39 @@ export function forumThreadFromDraft(draft: {
       message: "This thread draft has no usable address.",
     });
   }
+  const imageMediaId = meta?.imageMediaId;
+  const imageUrl = meta?.imageUrl;
+  const imageAlt = meta?.imageAlt;
+  if (
+    imageMediaId !== undefined &&
+    imageMediaId !== null &&
+    typeof imageMediaId !== "number"
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This thread draft has no usable image.",
+    });
+  }
+  if (
+    imageUrl !== undefined &&
+    imageUrl !== null &&
+    typeof imageUrl !== "string"
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This thread draft has no usable image.",
+    });
+  }
+  if (
+    imageAlt !== undefined &&
+    imageAlt !== null &&
+    typeof imageAlt !== "string"
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This thread draft has no usable image.",
+    });
+  }
   return {
     title,
     content,
@@ -178,5 +219,10 @@ export function forumThreadFromDraft(draft: {
       ? { communitySlug }
       : {}),
     ...(typeof slug === "string" && slug.length > 0 ? { slug } : {}),
+    ...(typeof imageMediaId === "number" || imageMediaId === null
+      ? { imageMediaId }
+      : {}),
+    ...(typeof imageUrl === "string" || imageUrl === null ? { imageUrl } : {}),
+    ...(typeof imageAlt === "string" || imageAlt === null ? { imageAlt } : {}),
   };
 }

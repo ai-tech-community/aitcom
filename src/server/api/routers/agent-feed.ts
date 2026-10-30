@@ -17,6 +17,7 @@ import {
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { agentDraftResponse } from "@/server/agent/draft-result";
+import { resolveContentImage } from "@/server/magazines/magazine-issue-update";
 import { toggleFeedPostLike } from "@/server/communities/feed-post-counters";
 import {
   canPostToFeed,
@@ -194,6 +195,8 @@ export const agentFeedRouter = {
           id: p.id,
           content: p.content ?? "",
           imageUrl: p.imageUrl ?? null,
+          imageMediaId: p.imageMediaId ?? null,
+          imageAlt: p.imageAlt ?? null,
           authorId: p.authorId ?? null,
           authorName: p.authorName ?? null,
           likeCount: p.likeCount ?? 0,
@@ -258,7 +261,9 @@ export const agentFeedRouter = {
       z.object({
         communitySlug: z.string(),
         content: z.string().min(1).max(2000),
-        imageUrl: z.string().url().optional(),
+        imageUrl: z.string().max(2000).nullable().optional(),
+        imageMediaId: z.number().int().positive().nullable().optional(),
+        imageAlt: z.string().max(200).nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -288,6 +293,15 @@ export const agentFeedRouter = {
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const destinationPath = `/communities/${community.slug}`;
       const destinationLabel = `${community.name} feed`;
+      const image = await resolveContentImage(
+        await getPayloadClient(),
+        ownerId,
+        {
+          mediaId: input.imageMediaId,
+          url: input.imageUrl,
+          alt: input.imageAlt,
+        },
+      );
       const [draft] = await ctx.db
         .insert(agentDrafts)
         .values({
@@ -303,7 +317,13 @@ export const agentFeedRouter = {
             communitySlug: community.slug,
             destinationLabel,
             destinationPath,
-            imageUrl: input.imageUrl,
+            ...(image
+              ? {
+                  imageMediaId: image.mediaId ?? null,
+                  imageUrl: image.url ?? null,
+                  imageAlt: image.alt ?? null,
+                }
+              : {}),
           },
         })
         .returning();

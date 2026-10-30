@@ -66,12 +66,15 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
     "create-module",
     {
       description:
-        "Add a module to a classroom the owner authored. Requires contribute scope. The first module on a course wraps its existing lessons, the same as the classroom builder. On an unpublished course the module is created immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it, so members do not see it first. The response status is draft until that approval. coverImageUrl is an optional http(s) cover image.",
+        "Add a module to a classroom the owner authored. Requires contribute scope. The first module on a course wraps its existing lessons, the same as the classroom builder. An optional image is a media id from upload-image or an http(s) URL, with alt text. Send one of those, not both. coverImageUrl is an optional http(s) cover image. On an unpublished course the module is created immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it, so members do not see it first. The response status is draft until that approval.",
       inputSchema: {
         communitySlug: z.string().min(1),
         courseId: z.number().int().positive(),
         title: z.string().min(1).max(200),
         summary: z.string().max(500).optional(),
+        imageMediaId: z.number().int().positive().nullable().optional(),
+        imageUrl: z.string().url().max(2000).nullable().optional(),
+        imageAlt: z.string().max(200).nullable().optional(),
         coverImageUrl: z.string().url().max(1000).optional(),
       },
       annotations: DRAFT_FOR_REVIEW,
@@ -83,12 +86,15 @@ export function registerClassroomTools(server: McpServer, caller: Caller) {
     "update-module",
     {
       description:
-        "Update a module title or summary on a classroom the owner authored. Requires contribute scope. On an unpublished course the change is saved immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it. The response status is draft until that approval.",
+        "Update a module title, summary, or image on a classroom the owner authored. Requires contribute scope. An image is a media id from upload-image or an http(s) URL, with alt text. Send one of those, not both. On an unpublished course the change is saved immediately and the response status is draft. On a published course it is saved as a draft until the owner approves it. The response status is draft until that approval.",
       inputSchema: {
         communitySlug: z.string().min(1),
         moduleId: z.number().int().positive(),
         title: z.string().min(1).max(200).optional(),
         summary: z.string().max(500).nullable().optional(),
+        imageMediaId: z.number().int().positive().nullable().optional(),
+        imageUrl: z.string().url().max(2000).nullable().optional(),
+        imageAlt: z.string().max(200).nullable().optional(),
       },
       annotations: DRAFT_FOR_REVIEW,
     },

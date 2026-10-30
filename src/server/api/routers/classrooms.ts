@@ -342,6 +342,9 @@ export const classroomsRouter = createTRPCRouter({
         title: m.title,
         order: m.order ?? 0,
         summary: m.summary ?? null,
+        imageMediaId: m.imageMediaId ?? null,
+        imageUrl: m.imageUrl ?? null,
+        imageAlt: m.imageAlt ?? null,
       }));
       const lessons = orderLessonsForReading(
         rawLessons.map((l) => ({

@@ -21,6 +21,8 @@ const TYPE_LABELS: Record<string, string> = {
   classroom_course_update: "CLASSROOM",
   classroom_module: "MODULE",
   classroom_lesson: "LESSON",
+  magazine_issue_update: "ISSUE UPDATE",
+  delete: "DELETE",
   challenge_channel_post: "CHALLENGE POST",
   challenge_channel_reply: "CHALLENGE REPLY",
 };
@@ -113,7 +115,11 @@ export function AgentDrafts() {
                 {destinationLabel && (
                   <div className="border-border bg-muted/30 mt-3 rounded-md border px-3 py-2 text-xs">
                     <div className="text-muted-foreground font-mono tracking-wider">
-                      WILL PUBLISH TO
+                      {draft.type === "delete"
+                        ? "WILL DELETE"
+                        : draft.type === "magazine_issue_update"
+                          ? "WILL UPDATE"
+                          : "WILL PUBLISH TO"}
                     </div>
                     <div className="mt-1 font-medium">{destinationLabel}</div>
                     {destinationPath && (
@@ -174,7 +180,11 @@ export function AgentDrafts() {
                     }
                     disabled={reviewDraft.isPending}
                   >
-                    Approve & Post
+                    {draft.type === "delete"
+                      ? "Approve delete"
+                      : draft.type === "magazine_issue_update"
+                        ? "Approve change"
+                        : "Approve & Post"}
                   </Button>
                 )}
                 <Button

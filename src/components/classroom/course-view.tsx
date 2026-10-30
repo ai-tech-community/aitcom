@@ -368,6 +368,16 @@ export function CourseView({
                         {group.module ? (
                           <div className="flex items-baseline justify-between">
                             <div>
+                              {group.module.imageUrl ? (
+                                // Uploaded hosts are not limited to next/image's allow list.
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={group.module.imageUrl}
+                                  alt={group.module.imageAlt ?? ""}
+                                  data-module-image=""
+                                  className="border-border mb-2 aspect-[3/1] w-full rounded-md border object-cover"
+                                />
+                              ) : null}
                               <h3 className="font-semibold">
                                 {group.module.title}
                               </h3>

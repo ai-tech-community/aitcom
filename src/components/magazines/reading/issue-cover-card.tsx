@@ -11,6 +11,7 @@ import { issueNumberText, useIssueDateline } from "./issue-dateline";
 export type CoverArtIssue = Pick<IssueCard, "number" | "coverImageUrl"> & {
   title: string;
   magazine: { name: string };
+  coverAlt?: string | null;
 };
 
 /**
@@ -25,10 +26,8 @@ export type CoverArtSize = "thumb" | "card" | "hero";
  * The cover art of an issue: its cover image, or a typeset stand-in with the
  * magazine name and issue number.
  *
- * The image is decorative (`alt=""`): every cover sits beside or inside text
- * that already names the issue or the magazine (a card's title, the page
- * heading, a tile's magazine name), so alt text would only make screen
- * readers say that name twice.
+ * Alt text is the cover's own description when an editor wrote one. An empty
+ * alt stays decorative: the card or page heading already names the issue.
  */
 export function IssueCoverArt({
   issue,
@@ -51,7 +50,7 @@ export function IssueCoverArt({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={issue.coverImageUrl}
-          alt=""
+          alt={issue.coverAlt ?? ""}
           className="size-full object-cover"
         />
       ) : size === "thumb" ? (

@@ -23,6 +23,11 @@ export type MagazineSettingsInput = {
   slug: string;
   description?: string;
   logoUrl?: string | null;
+  logoMediaId?: number | null;
+  logoAlt?: string | null;
+  coverMediaId?: number | null;
+  coverImageUrl?: string | null;
+  coverAlt?: string | null;
   font?: MagazineFont;
   topics: string[];
   defaultVisibility: IssueVisibility;
@@ -193,6 +198,17 @@ export async function saveMagazineSettings(
     slug: input.slug,
     description: input.description ?? null,
     logoUrl: input.logoUrl ?? null,
+    ...(input.logoMediaId !== undefined
+      ? { logoMediaId: input.logoMediaId }
+      : {}),
+    ...(input.logoAlt !== undefined ? { logoAlt: input.logoAlt } : {}),
+    ...(input.coverMediaId !== undefined
+      ? { coverMediaId: input.coverMediaId }
+      : {}),
+    ...(input.coverImageUrl !== undefined
+      ? { coverImageUrl: input.coverImageUrl }
+      : {}),
+    ...(input.coverAlt !== undefined ? { coverAlt: input.coverAlt } : {}),
     font: resolveMagazineFont(input.font ?? existing?.font),
     topics: normalizeTopics(input.topics).map((topic) => ({ topic })),
     defaultVisibility: plan.record.visibility,
@@ -227,6 +243,27 @@ export async function saveMagazineSettings(
 /** Logo write plus a new settings timestamp. The settings form remounts on it. */
 export function magazineLogoData(logoUrl: string | null, now = new Date()) {
   return { logoUrl, updatedAt: now.toISOString() };
+}
+
+/** Logo, cover, and their alt text. Other settings stay as they were saved. */
+export async function updateMagazineImages(
+  payload: PayloadClient,
+  magazineId: number,
+  images: {
+    logoUrl?: string | null;
+    logoMediaId?: number | null;
+    logoAlt?: string | null;
+    coverImageUrl?: string | null;
+    coverMediaId?: number | null;
+    coverAlt?: string | null;
+  },
+): Promise<Magazine> {
+  return payload.update({
+    collection: "magazines",
+    id: magazineId,
+    data: { ...images, updatedAt: new Date().toISOString() },
+    depth: 0,
+  });
 }
 
 /** Sets the magazine logo only. Other settings stay as they were saved. */

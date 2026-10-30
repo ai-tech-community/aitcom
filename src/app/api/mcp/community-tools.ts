@@ -60,7 +60,7 @@ export function registerCommunityTools(
     "get-community-info",
     {
       description:
-        "Get detailed information about a specific community by slug. Returns settings, member count, the owner's membership status/role, spaces, and the full stored description. spaces lists each space with type (forum, events, classroom, ideas, members, magazine, or room), enabled (false when the space is hidden), and slug. logoUrl and bannerUrl are the stored image URLs. logoMediaId and bannerMediaId are the media ids for those URLs when the image is in shared media, or null. descriptionTruncated is false: this tool does not shorten the text. A row saved under an older 500-character limit is returned as stored.",
+        "Get detailed information about a specific community by slug. Returns settings, member count, the owner's membership status/role, spaces, the community magazine's logo and cover when it has one, and the full stored description. spaces lists each space with type (forum, events, classroom, ideas, members, magazine, or room), enabled (false when the space is hidden), and slug. logoUrl and bannerUrl are the stored image URLs. logoMediaId and bannerMediaId are the media ids for those URLs when the image is in shared media, or null. bannerAlt is the banner's alt text. The magazine object includes logo and cover media id, URL, and alt text. descriptionTruncated is false: this tool does not shorten the text. A row saved under an older 500-character limit is returned as stored.",
       inputSchema: {
         slug: z.string().describe("The community slug."),
       },
@@ -236,7 +236,7 @@ export function registerCommunityTools(
     "update-community-settings",
     {
       description:
-        "Update community settings. Name, description, logo, banner, join policy, directory listing, and who can create classrooms require the owner's admin or owner role, the same as the settings pages. logoUrl is a logo URL (null removes it) and remains for compatibility. logoMediaId is a media id from upload-image (null removes the logo); send logoUrl or logoMediaId, not both. bannerMediaId is a media id from upload-image (null removes the banner). magazineLogoMediaId is a media id from upload-image (null removes the logo) and requires the same manage permission as the magazine settings page. If the community has no magazine yet, or the media id is unknown, that field is skipped and the response includes a warning for magazineLogoMediaId; the other fields are still saved. A saved magazine logo bumps updatedAt. The description limit matches the settings form.",
+        "Update community settings. Name, description, logo, banner, join policy, directory listing, and who can create classrooms require the owner's admin or owner role, the same as the settings pages. logoUrl is a logo URL (null removes it) and remains for compatibility. logoMediaId is a media id from upload-image (null removes the logo); send logoUrl or logoMediaId, not both. bannerUrl is an http(s) banner URL and bannerMediaId is a media id from upload-image; send one of them, not both. Null removes the banner. bannerAlt is the banner's alt text. magazineLogoMediaId is a media id from upload-image (null removes the logo) and requires the same manage permission as the magazine settings page. Magazine logo and cover are also written by update-magazine. If the community has no magazine yet, or the media id is unknown, that field is skipped and the response includes a warning for magazineLogoMediaId; the other fields are still saved. A saved magazine logo bumps updatedAt. The description limit matches the settings form.",
       inputSchema: {
         slug: z.string().describe("The community slug to update."),
         name: z
@@ -269,6 +269,14 @@ export function registerCommunityTools(
           .describe(
             "Media id from upload-image for the community logo. Null removes it. Requires admin or owner. Omit this when you send logoUrl.",
           ),
+        bannerUrl: z
+          .string()
+          .url()
+          .nullable()
+          .optional()
+          .describe(
+            "http(s) banner URL. Null removes the banner. Send bannerUrl or bannerMediaId, not both.",
+          ),
         bannerMediaId: z
           .number()
           .int()
@@ -278,6 +286,12 @@ export function registerCommunityTools(
           .describe(
             "Media id from upload-image for the community banner. Null removes it. Requires admin or owner.",
           ),
+        bannerAlt: z
+          .string()
+          .max(200)
+          .nullable()
+          .optional()
+          .describe("Alt text for the banner. Null clears it."),
         magazineLogoMediaId: z
           .number()
           .int()
@@ -310,7 +324,9 @@ export function registerCommunityTools(
       description,
       logoUrl,
       logoMediaId,
+      bannerUrl,
       bannerMediaId,
+      bannerAlt,
       magazineLogoMediaId,
       joinPolicy,
       isListedInDirectory,
@@ -322,7 +338,9 @@ export function registerCommunityTools(
         description,
         logoUrl,
         logoMediaId,
+        ...(bannerUrl !== undefined ? { bannerUrl } : {}),
         bannerMediaId,
+        ...(bannerAlt !== undefined ? { bannerAlt } : {}),
         magazineLogoMediaId,
         joinPolicy,
         isListedInDirectory,
@@ -340,7 +358,7 @@ export function registerCommunityTools(
     "create-thread",
     {
       description:
-        "Create a forum thread. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015). Same rules as the forum form: title 3–255 characters, body up to 10000 characters, category general, question, showcase, or job. Pass communitySlug or communityId to post in that community (it must exist). When both are sent they must name the same community. The owner must have accepted that community's rules. Requires contribute scope. Nothing is public until the owner approves the draft. The response includes the stored body and the slug the thread would publish at.",
+        "Create a forum thread. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015). Same rules as the forum form: title 3–255 characters, body up to 10000 characters, category general, question, showcase, or job. An optional image is a media id from upload-image or an http(s) URL, with alt text. Send one of those, not both. Pass communitySlug or communityId to post in that community (it must exist). When both are sent they must name the same community. The owner must have accepted that community's rules. Requires contribute scope. Nothing is public until the owner approves the draft. The response includes the stored body and the slug the thread would publish at.",
       inputSchema: {
         title: z
           .string()
@@ -372,16 +390,48 @@ export function registerCommunityTools(
           .describe(
             "Community id to post in. Omit both this and communitySlug for a hub-wide thread.",
           ),
+        imageMediaId: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            "Media id from upload-image. Send imageMediaId or imageUrl, not both.",
+          ),
+        imageUrl: z
+          .string()
+          .url()
+          .optional()
+          .describe(
+            "http(s) image URL. Send imageMediaId or imageUrl, not both.",
+          ),
+        imageAlt: z
+          .string()
+          .max(200)
+          .optional()
+          .describe("Alt text for the image."),
       },
       annotations: DRAFT_FOR_REVIEW,
     },
-    async ({ title, content, category, communitySlug, communityId }) => {
+    async ({
+      title,
+      content,
+      category,
+      communitySlug,
+      communityId,
+      imageMediaId,
+      imageUrl,
+      imageAlt,
+    }) => {
       const result = await caller.agent.createThread({
         title,
         content,
         category,
         ...(communitySlug !== undefined ? { communitySlug } : {}),
         ...(communityId !== undefined ? { communityId } : {}),
+        ...(imageMediaId !== undefined ? { imageMediaId } : {}),
+        ...(imageUrl !== undefined ? { imageUrl } : {}),
+        ...(imageAlt !== undefined ? { imageAlt } : {}),
       });
       return {
         content: [

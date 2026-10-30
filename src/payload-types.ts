@@ -508,6 +508,11 @@ export interface Magazine {
   communityId: string;
   description?: string | null;
   logoUrl?: string | null;
+  logoMediaId?: number | null;
+  logoAlt?: string | null;
+  coverMediaId?: number | null;
+  coverImageUrl?: string | null;
+  coverAlt?: string | null;
   /**
    * Display font for the magazine masthead and story headings.
    */
@@ -555,6 +560,8 @@ export interface MagazineIssue {
   title: string;
   slug: string;
   coverImageUrl?: string | null;
+  coverMediaId?: number | null;
+  coverAlt?: string | null;
   editorNote?: {
     root: {
       type: string;
@@ -819,6 +826,9 @@ export interface ForumThread {
   replyCount?: number | null;
   lastActivityAt?: string | null;
   communityId?: string | null;
+  imageMediaId?: number | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   isDeleted?: boolean | null;
   isEdited?: boolean | null;
   editedAt?: string | null;
@@ -1017,6 +1027,8 @@ export interface FeedPost {
    * Public URL of the first picture, written by the server so older readers (agents, MCP) get one picture without a join.
    */
   imageUrl?: string | null;
+  imageMediaId?: number | null;
+  imageAlt?: string | null;
   /**
    * Better Auth user ID (UUID).
    */
@@ -1814,6 +1826,9 @@ export interface Module {
   coverImageUrl?: string | null;
   order?: number | null;
   summary?: string | null;
+  imageMediaId?: number | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -2246,6 +2261,9 @@ export interface ForumThreadsSelect<T extends boolean = true> {
   replyCount?: T;
   lastActivityAt?: T;
   communityId?: T;
+  imageMediaId?: T;
+  imageUrl?: T;
+  imageAlt?: T;
   isDeleted?: T;
   isEdited?: T;
   editedAt?: T;
@@ -2374,6 +2392,8 @@ export interface FeedPostsSelect<T extends boolean = true> {
         closesAt?: T;
       };
   imageUrl?: T;
+  imageMediaId?: T;
+  imageAlt?: T;
   authorId?: T;
   authorName?: T;
   communityId?: T;
@@ -2875,6 +2895,9 @@ export interface ModulesSelect<T extends boolean = true> {
   coverImageUrl?: T;
   order?: T;
   summary?: T;
+  imageMediaId?: T;
+  imageUrl?: T;
+  imageAlt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2910,6 +2933,11 @@ export interface MagazinesSelect<T extends boolean = true> {
   communityId?: T;
   description?: T;
   logoUrl?: T;
+  logoMediaId?: T;
+  logoAlt?: T;
+  coverMediaId?: T;
+  coverImageUrl?: T;
+  coverAlt?: T;
   font?: T;
   topics?:
     | T
@@ -2938,6 +2966,8 @@ export interface MagazineIssuesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
   coverImageUrl?: T;
+  coverMediaId?: T;
+  coverAlt?: T;
   editorNote?: T;
   layout?: T;
   visibility?: T;

@@ -24,11 +24,16 @@ import {
   requireCapability,
 } from "@/server/magazines/editorship";
 import { magazineError } from "@/server/magazines/errors";
+import { findMagazineBySlug } from "@/server/magazines/reading";
+import { requireRelationId } from "@/server/magazines/relation-id";
 import { issueItemInputSchema } from "@/server/magazines/items/registry";
 import {
   getMagazineForCommunity,
   saveMagazineSettings,
+  updateMagazineImages,
 } from "@/server/magazines/magazine-service";
+import { proposeMagazineDelete } from "@/server/magazines/magazine-delete";
+import { resolveContentImage } from "@/server/magazines/magazine-issue-update";
 import { assignMagazineRole } from "@/server/magazines/staff-service";
 import { getPayloadClient } from "@/server/payload";
 
@@ -151,6 +156,8 @@ export const agentMagazineRouter = {
         issueId: z.number().int().positive().optional(),
         title: z.string().trim().min(1).max(200).optional(),
         coverImageUrl: httpUrl.nullable().optional(),
+        coverMediaId: z.number().int().positive().nullable().optional(),
+        coverAlt: z.string().max(200).nullable().optional(),
         articleIds: z.array(z.number().int().positive()).max(50).optional(),
         items: z.array(issueItemInputSchema).max(50).optional(),
         editorNote: z.unknown().nullable().optional(),
@@ -175,6 +182,11 @@ export const agentMagazineRouter = {
         magazineSlug: magazineSlugSchema,
         description: z.string().max(500).optional(),
         logoUrl: httpUrl.nullable().optional(),
+        logoMediaId: z.number().int().positive().nullable().optional(),
+        logoAlt: z.string().max(200).nullable().optional(),
+        coverImageUrl: httpUrl.nullable().optional(),
+        coverMediaId: z.number().int().positive().nullable().optional(),
+        coverAlt: z.string().max(200).nullable().optional(),
         topics: z
           .array(z.string().max(40))
           .max(MAX_MAGAZINE_TOPICS * 4)
@@ -216,6 +228,16 @@ export const agentMagazineRouter = {
         ownerId,
       );
       requireCapability(standing, "manage");
+      const logo = await resolveContentImage(deps.payload, ownerId, {
+        mediaId: input.logoMediaId,
+        url: input.logoUrl,
+        alt: input.logoAlt,
+      });
+      const cover = await resolveContentImage(deps.payload, ownerId, {
+        mediaId: input.coverMediaId,
+        url: input.coverImageUrl,
+        alt: input.coverAlt,
+      });
       const magazine = await saveMagazineSettings(
         deps,
         {
@@ -227,7 +249,20 @@ export const agentMagazineRouter = {
           name: input.name,
           slug: input.magazineSlug,
           description: input.description,
-          logoUrl: input.logoUrl,
+          logoUrl: logo?.url ?? input.logoUrl ?? null,
+          ...(logo
+            ? {
+                logoMediaId: logo.mediaId ?? null,
+                logoAlt: logo.alt ?? null,
+              }
+            : {}),
+          ...(cover
+            ? {
+                coverImageUrl: cover.url ?? null,
+                coverMediaId: cover.mediaId ?? null,
+                coverAlt: cover.alt ?? null,
+              }
+            : {}),
           topics: input.topics,
           defaultVisibility: input.defaultVisibility,
           confirmUnlistedPublic: input.confirmUnlistedPublic,
@@ -240,7 +275,204 @@ export const agentMagazineRouter = {
         slug: magazine.slug,
         name: magazine.name,
         communityId: magazine.communityId,
+        logoUrl: magazine.logoUrl ?? null,
+        logoMediaId: magazine.logoMediaId ?? null,
+        logoAlt: magazine.logoAlt ?? null,
+        coverImageUrl: magazine.coverImageUrl ?? null,
+        coverMediaId: magazine.coverMediaId ?? null,
+        coverAlt: magazine.coverAlt ?? null,
       };
+    }),
+
+  updateMagazine: agentProcedure
+    .input(
+      z.object({
+        magazineSlug: z.string().min(1).max(80),
+        logoUrl: httpUrl.nullable().optional(),
+        logoMediaId: z.number().int().positive().nullable().optional(),
+        logoAlt: z.string().max(200).nullable().optional(),
+        coverImageUrl: httpUrl.nullable().optional(),
+        coverMediaId: z.number().int().positive().nullable().optional(),
+        coverAlt: z.string().max(200).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const deps = await depsOf(ctx);
+      const magazine = await findMagazineBySlug(
+        deps.payload,
+        input.magazineSlug,
+      );
+      if (!magazine) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Magazine not found",
+        });
+      }
+      const logo = await resolveContentImage(deps.payload, ownerId, {
+        mediaId: input.logoMediaId,
+        url: input.logoUrl,
+        alt: input.logoAlt,
+      });
+      const cover = await resolveContentImage(deps.payload, ownerId, {
+        mediaId: input.coverMediaId,
+        url: input.coverImageUrl,
+        alt: input.coverAlt,
+      });
+      if (!logo && !cover) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Send a logo or a cover.",
+        });
+      }
+      const standing = await loadMagazineEditorship(
+        ctx.db,
+        { communityId: magazine.communityId, magazineId: magazine.id },
+        ownerId,
+      );
+      requireCapability(standing, "manage");
+      const saved = await updateMagazineImages(deps.payload, magazine.id, {
+        ...(logo?.url !== undefined ? { logoUrl: logo.url } : {}),
+        ...(logo?.mediaId !== undefined ? { logoMediaId: logo.mediaId } : {}),
+        ...(logo?.alt !== undefined ? { logoAlt: logo.alt } : {}),
+        ...(cover?.url !== undefined ? { coverImageUrl: cover.url } : {}),
+        ...(cover?.mediaId !== undefined
+          ? { coverMediaId: cover.mediaId }
+          : {}),
+        ...(cover?.alt !== undefined ? { coverAlt: cover.alt } : {}),
+      });
+      return {
+        id: saved.id,
+        slug: saved.slug,
+        logoUrl: saved.logoUrl ?? null,
+        logoMediaId: saved.logoMediaId ?? null,
+        logoAlt: saved.logoAlt ?? null,
+        coverImageUrl: saved.coverImageUrl ?? null,
+        coverMediaId: saved.coverMediaId ?? null,
+        coverAlt: saved.coverAlt ?? null,
+      };
+    }),
+
+  deleteMagazineIssue: agentProcedure
+    .input(
+      z.object({
+        magazineSlug: z.string().min(1).max(80),
+        issueId: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const deps = await depsOf(ctx);
+      const magazine = await findMagazineBySlug(
+        deps.payload,
+        input.magazineSlug,
+      );
+      if (!magazine) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Magazine not found",
+        });
+      }
+      const issue = await deps.payload.findByID({
+        collection: "magazine-issues",
+        id: input.issueId,
+        depth: 0,
+      });
+      if (requireRelationId(issue.magazine) !== magazine.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Issue not found" });
+      }
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.id, magazine.communityId),
+          isNull(communities.deletedAt),
+        ),
+        columns: { id: true, slug: true },
+      });
+      if (!community) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
+      }
+      return proposeMagazineDelete(
+        deps,
+        { agentId: ctx.agent.agentId, ownerId },
+        {
+          collection: "magazine-issues",
+          id: issue.id,
+          magazineId: magazine.id,
+          magazineSlug: magazine.slug,
+          communityId: community.id,
+          communitySlug: community.slug,
+          title: issue.title,
+        },
+      );
+    }),
+
+  deleteMagazineArticle: agentProcedure
+    .input(
+      z.object({
+        magazineSlug: z.string().min(1).max(80),
+        articleId: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const deps = await depsOf(ctx);
+      const magazine = await findMagazineBySlug(
+        deps.payload,
+        input.magazineSlug,
+      );
+      if (!magazine) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Magazine not found",
+        });
+      }
+      const article = await deps.payload.findByID({
+        collection: "articles",
+        id: input.articleId,
+        depth: 0,
+      });
+      const articleMagazine =
+        typeof article.magazine === "number"
+          ? article.magazine
+          : (article.magazine?.id ?? null);
+      if (articleMagazine !== magazine.id) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Article not found",
+        });
+      }
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.id, magazine.communityId),
+          isNull(communities.deletedAt),
+        ),
+        columns: { id: true, slug: true },
+      });
+      if (!community) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
+      }
+      return proposeMagazineDelete(
+        deps,
+        { agentId: ctx.agent.agentId, ownerId },
+        {
+          collection: "articles",
+          id: article.id,
+          magazineId: magazine.id,
+          magazineSlug: magazine.slug,
+          communityId: community.id,
+          communitySlug: community.slug,
+          title: article.title,
+        },
+      );
     }),
 
   assignMagazineAgent: agentProcedure
