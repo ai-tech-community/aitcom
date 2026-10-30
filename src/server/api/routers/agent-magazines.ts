@@ -527,7 +527,6 @@ export const agentMagazineRouter = {
       );
     }),
 
-
   assignMagazineAgent: agentProcedure
     .input(
       z.object({
