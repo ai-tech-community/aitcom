@@ -9,7 +9,7 @@
  * row is still missing one. That migration is already recorded on
  * production, so `20261019a` writes the five November points with the same
  * null guard. `20261021a` writes the next ten the same way. `20261022a`
- * writes the next seven the same way. `20261026b` writes the next five
+ * writes the next seven the same way. `20261023a` writes the next six and `20261026b` the next five
  * the same way. A fresh database
  * inserts those rows in `20260925a`, before `20261013b`, and the later write
  * leaves the stored points alone.
@@ -235,6 +235,39 @@ export const EVENT_COORDINATE_BACKFILL: readonly EventCoordinate[] = [
     slug: "the-ai-summit-new-york-2026",
     latitude: 40.7583595,
     longitude: -74.0022114,
+  },
+  {
+    slug: "the-amsterdam-ai-summit-2026",
+    latitude: 52.3702917,
+    longitude: 4.8997993,
+  },
+  {
+    slug: "say-hello-eindhoven-2026",
+    latitude: 51.4129677,
+    longitude: 5.4547781,
+  },
+  {
+    slug: "tedxamsterdam-2026",
+    latitude: 52.3768571,
+    longitude: 4.9220756,
+  },
+  {
+    slug: "ai-data-science-day-2026",
+    latitude: 52.3682658,
+    longitude: 4.8949341,
+  },
+  {
+    // Nominatim for Forum Cinemas Vingis, the 25–27 Nov conference hall.
+    // Workshops on 24 Nov are at SIMBIOCITY Nova, a second address.
+    slug: "big-data-conference-europe-2026",
+    latitude: 54.6782324,
+    longitude: 25.2554805,
+  },
+  {
+    // Nominatim for the city. The official page names Las Vegas and no hall.
+    slug: "aws-reinvent-2026",
+    latitude: 36.1674263,
+    longitude: -115.1484131,
   },
   {
     slug: "big-data-ai-world-madrid-2026",
