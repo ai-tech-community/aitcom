@@ -7,6 +7,9 @@ vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/server/communities/content-visibility-queries", () => ({
   hiddenContentCommunityIds: vi.fn(async () => []),
 }));
+vi.mock("@/server/events/public-event-access", () => ({
+  hiddenEventCommunityIds: vi.fn(async () => []),
+}));
 
 import { buildSitemapEntries } from "./sitemap";
 

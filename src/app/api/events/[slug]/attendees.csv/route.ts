@@ -1,3 +1,7 @@
+import {
+  filterSourceAttendees,
+  sourceFilter,
+} from "@/lib/events/registration-source";
 import { NextResponse } from "next/server";
 import { createTranslator } from "next-intl";
 
@@ -42,11 +46,23 @@ export async function GET(
   });
 
   const csv = toAttendeesCsv(
-    data.rows.filter((row) => VIEW_STATUSES[view].includes(row.status)),
+    filterSourceAttendees(
+      data.rows,
+      VIEW_STATUSES[view],
+      sourceFilter(url.searchParams.get("source")),
+      url.searchParams.get("search") ?? "",
+    ),
     {
       timezone: data.event.timezone,
       questions: data.questions,
       labels: {
+        source: t("sourceFilter"),
+        sources: {
+          luma: t("sources.luma"),
+          eventbrite: t("sources.eventbrite"),
+          meetup: t("sources.meetup"),
+          direct_or_unknown: t("sources.direct_or_unknown"),
+        },
         name: t("csv.name"),
         firstName: t("csv.firstName"),
         lastName: t("csv.lastName"),

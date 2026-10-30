@@ -1,3 +1,6 @@
+import { REGISTRATION_PROVIDERS } from "@/lib/events/registration-source";
+import { createSourceToken } from "@/server/events/registration-source-token";
+import { resolveRegistrationAttribution } from "@/server/events/registration-attribution";
 import { z } from "zod";
 import { eq, and, isNull, sql, asc, ilike, inArray, or } from "drizzle-orm";
 
@@ -36,10 +39,12 @@ import {
   lexicalToPlainText,
 } from "@/server/challenge-engine/lexical";
 import {
+  eventCreateSchema,
   eventUpsertSchema,
   normalizeOptionalString,
   buildEventPayloadData,
 } from "./event-upsert-data";
+import { viewerMaySeeEvent } from "@/server/events/public-event-access";
 import { resolveAudienceIds } from "./audience-resolve";
 import { runEventImport } from "@/server/events/import-from-url";
 import { checkEventImportRateLimit } from "@/server/events/import-rate-limit";
@@ -108,6 +113,20 @@ async function getEvent(eventId: number) {
   return payload.findByID({ collection: "events", id: eventId });
 }
 
+/** False when the event is missing or its community is hidden from this viewer. */
+async function viewerMaySeeEventById(
+  db: typeof Db,
+  eventId: number,
+  userId: string | null,
+): Promise<boolean> {
+  try {
+    const event = await getEvent(eventId);
+    return viewerMaySeeEvent(db, event.communityId ?? null, userId);
+  } catch {
+    return false;
+  }
+}
+
 function getAppUrl(): string {
   return env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
@@ -174,6 +193,12 @@ export const eventsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      const event = await getEvent(input.eventId);
+      if (
+        !(await viewerMaySeeEvent(ctx.db, event.communityId ?? null, userId))
+      ) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
 
       const existing = await ctx.db
         .select()
@@ -194,8 +219,6 @@ export const eventsRouter = createTRPCRouter({
           checkoutUrl: null,
         };
       }
-
-      const event = await getEvent(input.eventId);
 
       if (externalEventUrl(event) !== null) {
         throw new TRPCError({
@@ -271,6 +294,15 @@ export const eventsRouter = createTRPCRouter({
         };
       }
 
+      const attribution = !isPaid
+        ? await resolveRegistrationAttribution(
+            ctx.db,
+            userId,
+            input.eventId,
+            ctx.headers,
+            env.BETTER_AUTH_SECRET,
+          )
+        : {};
       const status = isFull ? "waitlisted" : "registered";
 
       const [registration] = await ctx.db
@@ -279,6 +311,7 @@ export const eventsRouter = createTRPCRouter({
           eventId: input.eventId,
           userId,
           status,
+          ...attribution,
           // The register button showed the sharing notice (ADR-0038).
           organizerNoticeAt: new Date(),
           answers: checked.answers,
@@ -547,6 +580,11 @@ export const eventsRouter = createTRPCRouter({
         collection: "events",
         id: input.eventId,
       });
+      if (
+        !(await viewerMaySeeEvent(ctx.db, event.communityId ?? null, userId))
+      ) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
 
       if (externalEventUrl(event) === null) {
         throw new TRPCError({
@@ -619,6 +657,13 @@ export const eventsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const visible = await viewerMaySeeEventById(
+        ctx.db,
+        input.eventId,
+        ctx.session?.user?.id ?? null,
+      );
+      if (!visible) return 0;
+
       const statusFilter = input.includeIntent
         ? sql`${eventRegistrations.status} IN ('registered', 'attended', 'intent')`
         : sql`${eventRegistrations.status} IN ('registered', 'attended')`;
@@ -642,6 +687,13 @@ export const eventsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const visible = await viewerMaySeeEventById(
+        ctx.db,
+        input.eventId,
+        ctx.session?.user?.id ?? null,
+      );
+      if (!visible) return [];
+
       const statusFilter = input.includeIntent
         ? sql`${eventRegistrations.status} IN ('registered', 'attended', 'intent')`
         : sql`${eventRegistrations.status} IN ('registered', 'attended')`;
@@ -680,6 +732,13 @@ export const eventsRouter = createTRPCRouter({
         columns: { id: true },
       });
       if (!community) return [];
+
+      const maySee = await viewerMaySeeEvent(
+        ctx.db,
+        community.id,
+        ctx.session?.user?.id ?? null,
+      );
+      if (!maySee) return [];
 
       const payload = await getPayloadClient();
       const { docs } = await payload.find({
@@ -782,7 +841,7 @@ export const eventsRouter = createTRPCRouter({
 
   createEvent: protectedProcedure
     .input(
-      z.object({ communitySlug: z.string() }).extend(eventUpsertSchema.shape),
+      z.object({ communitySlug: z.string() }).extend(eventCreateSchema.shape),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
@@ -1140,10 +1199,31 @@ export const eventsRouter = createTRPCRouter({
       }));
     }),
 
-  /**
-   * The attendee list for the event's organizer (ADR-0038). NOT_FOUND for
-   * everyone else, so the list's existence is never revealed.
-   */
+  /** Tracked sharing links, restricted to the active event organizer. */
+  registrationSourceLinks: protectedProcedure
+    .input(
+      z.object({
+        eventId: z.number(),
+        locale: z.enum(["en", "nl"]).default("en"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const resolved = await resolveOrganizerEvent(
+        ctx.db,
+        ctx.session.user.id,
+        { id: input.eventId },
+      );
+      if (!resolved)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      const { event } = resolved;
+      if (event.status !== "published" || (event.price ?? 0) > 0) return [];
+      return REGISTRATION_PROVIDERS.map((source) => ({
+        source,
+        url: `${getAppUrl()}/api/events/ref/${createSourceToken(event.id, source, "link", env.BETTER_AUTH_SECRET)}?locale=${input.locale}`,
+      }));
+    }),
+
+  /** The organizer-only attendee list (ADR-0038). */
   attendees: protectedProcedure
     .input(z.object({ eventId: z.number() }))
     .query(async ({ ctx, input }) => {
@@ -1407,7 +1487,7 @@ export const eventsRouter = createTRPCRouter({
 
   submitEvent: protectedProcedure
     .input(
-      z.object({ communitySlug: z.string() }).extend(eventUpsertSchema.shape),
+      z.object({ communitySlug: z.string() }).extend(eventCreateSchema.shape),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;

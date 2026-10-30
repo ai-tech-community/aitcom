@@ -9,6 +9,9 @@ vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/server/communities/content-visibility-queries", () => ({
   hiddenContentCommunityIds: vi.fn(async () => []),
 }));
+vi.mock("@/server/events/public-event-access", () => ({
+  hiddenEventCommunityIds: vi.fn(async () => []),
+}));
 
 import { isUnlistedNewsGamePath } from "@/lib/news/indexability";
 import { publicArticleWhere } from "@/server/articles/public-articles";
@@ -408,6 +411,114 @@ describe("buildSitemapEntries", () => {
           or: [
             { communityId: { exists: false } },
             { communityId: { not_in: ["unlisted-id"] } },
+          ],
+        },
+      }),
+    );
+  });
+
+  it("omits a cancelled event even if the query returns one", async () => {
+    const find = vi.fn(async ({ collection }: { collection: string }) => {
+      if (collection === "events") {
+        return {
+          docs: [
+            {
+              slug: "still-on",
+              status: "published",
+              communityId: null,
+              updatedAt: "2026-04-01",
+            },
+            {
+              slug: "called-off",
+              status: "cancelled",
+              communityId: null,
+              updatedAt: "2026-04-01",
+            },
+          ],
+        };
+      }
+      return { docs: [] };
+    });
+    mockGetPayloadClient.mockResolvedValue({
+      find,
+    } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [],
+      async () => [],
+    );
+    const urls = urlsOf(entries);
+    expect(urls).toContain("https://www.aitcommunity.org/en/events/still-on");
+    expect(urls).not.toContain(
+      "https://www.aitcommunity.org/en/events/called-off",
+    );
+  });
+
+  it("omits events of a listed invite-only community that forum rules would keep", async () => {
+    const find = vi.fn(async ({ collection }: { collection: string }) => {
+      if (collection === "events") {
+        return {
+          docs: [
+            {
+              slug: "public-night",
+              status: "published",
+              communityId: "public-id",
+              updatedAt: "2026-04-01",
+            },
+            {
+              slug: "closed-night",
+              status: "published",
+              communityId: "invite-id",
+              updatedAt: "2026-04-01",
+            },
+          ],
+        };
+      }
+      return { docs: [] };
+    });
+    mockGetPayloadClient.mockResolvedValue({
+      find,
+    } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () =>
+        new Map([
+          ["public-id", "builders"],
+          ["invite-id", "closed-circle"],
+        ]),
+      async () => [],
+      async () => [],
+      async () => [],
+      async () => new Map(),
+      async () => [],
+      async () => ["invite-id"],
+    );
+    const urls = urlsOf(entries);
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/events/public-night",
+    );
+    expect(urls).not.toContain(
+      "https://www.aitcommunity.org/en/events/closed-night",
+    );
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "events",
+        where: {
+          and: [
+            {
+              status: { equals: "published" },
+              discoverySource: { not_equals: "luma" },
+            },
+            {
+              or: [
+                { communityId: { exists: false } },
+                { communityId: { not_in: ["invite-id"] } },
+              ],
+            },
           ],
         },
       }),

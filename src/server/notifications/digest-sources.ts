@@ -1,6 +1,8 @@
 import { and, eq, gte, isNull, or, sql } from "drizzle-orm";
 
 import { forumThreadCommunitiesWhere } from "@/server/communities/forum-scope";
+import { publishedEventsVisibleWhere } from "@/lib/events/public-event-access";
+import { loadHiddenEventCommunityIds } from "@/server/events/public-event-access";
 import { db } from "@/server/db";
 import { newsItems, startupRoles, startups } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
@@ -102,12 +104,12 @@ export async function loadDigestEvents(now: Date): Promise<DigestEventItem[]> {
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
     );
     const horizon = new Date(start.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const hiddenEventCommunityIds = await loadHiddenEventCommunityIds(db, null);
     const found = await payload.find({
       collection: "events",
       where: {
         and: [
-          { status: { equals: "published" } },
-          { discoverySource: { not_equals: "luma" } },
+          publishedEventsVisibleWhere(hiddenEventCommunityIds),
           { date: { greater_than_equal: start.toISOString() } },
           { date: { less_than: horizon.toISOString() } },
         ],

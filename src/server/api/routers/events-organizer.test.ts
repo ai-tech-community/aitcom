@@ -277,6 +277,7 @@ describe("create paths record the organizer", () => {
   const INPUT = {
     communitySlug: "builders",
     title: "Builders night",
+    description: "A night for builders.",
     type: "meetup" as const,
     date: "2026-11-02",
     location: "Amsterdam",

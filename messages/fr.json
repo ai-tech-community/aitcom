@@ -439,7 +439,26 @@
       "checkIn": "Confirmer la présence",
       "checkedInAt": "Présence confirmée à {time}",
       "undoCheckIn": "Annuler",
-      "checkInError": "Impossible d’enregistrer la présence. Veuillez réessayer."
+      "checkInError": "Impossible d’enregistrer la présence. Veuillez réessayer.",
+      "sourceFilter": "Source des inscriptions",
+      "allSources": "Toutes les sources",
+      "sources": {
+        "luma": "Luma",
+        "eventbrite": "Eventbrite",
+        "meetup": "Meetup",
+        "direct_or_unknown": "Directe / inconnue"
+      },
+      "sourceTotals": "Inscriptions par source",
+      "sourceCounts": "{registrations} inscrits · {checkedIn} présents",
+      "sourceHint": "La source indique le lien de suivi utilisé avant l’inscription, et non le premier endroit où la personne a découvert l’événement. Les totaux incluent la liste d’attente et excluent les annulations.",
+      "sourceLinks": "Liens d’inscription avec suivi",
+      "sourceLinksHint": "Copiez un lien pour suivre les inscriptions provenant de cette plateforme. Ces liens ne publient pas d’événements. Partagez-les uniquement si la plateforme autorise les inscriptions sur AIT Community.",
+      "sourceLinkCopy": "Copier le lien {source}",
+      "sourceLinkCopied": "Lien d’inscription copié",
+      "sourceLinkCopyError": "Impossible de copier le lien. Vérifiez les autorisations du presse-papiers et réessayez.",
+      "sourceLinksLoading": "Chargement des liens d’inscription…",
+      "sourceLinksError": "Impossible de charger les liens d’inscription.",
+      "sourceLinksRetry": "Réessayer"
     },
     "editor": {
       "sectionsNav": "Sections du formulaire d’événement",
@@ -510,7 +529,8 @@
         "audience": "Le public concerné",
         "date": "Une date",
         "location": "Le lieu",
-        "questions": "Des questions complètes"
+        "questions": "Des questions complètes",
+        "description": "Description"
       },
       "previewTitle": "Aperçu",
       "previewUntitled": "Votre événement",
@@ -518,8 +538,10 @@
       "previewExternal": "Les inscriptions se font sur l’autre site.",
       "previewSeats": "{count, plural, one {# place} other {# places}}",
       "previewNoLimit": "Pas de limite de places",
-      "previewQuestions": "{count, plural, =0 {Aucune question pour les inscrits} one {# question pour les inscrits} other {# questions pour les inscrits}}"
-    }
+      "previewQuestions": "{count, plural, =0 {Aucune question pour les inscrits} one {# question pour les inscrits} other {# questions pour les inscrits}}",
+      "descriptionRequired": "Ajoutez une description."
+    },
+    "cancelledLabel": "Annulé"
   },
   "blog": {
     "title": "Blog",

@@ -13,6 +13,8 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { teams } from "@/server/db/schema";
+import { getSession } from "@/server/better-auth/server";
+import { viewerMaySeeEvent } from "@/server/events/public-event-access";
 import { getPayloadClient } from "@/server/payload";
 import { hackathonPhase, type HackathonPhase } from "@/server/hackathon/phase";
 import type { Challenge, Event } from "@/payload-types";
@@ -36,7 +38,15 @@ export const findPublicEvent = cache(
       limit: 1,
       depth: 0,
     });
-    return docs[0] ?? null;
+    const event = docs[0];
+    if (!event) return null;
+    const session = await getSession();
+    const visible = await viewerMaySeeEvent(
+      db,
+      event.communityId ?? null,
+      session?.user?.id ?? null,
+    );
+    return visible ? event : null;
   },
 );
 
