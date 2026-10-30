@@ -33,6 +33,8 @@ function row(overrides: Record<string, unknown>) {
     communityMemberSince: null,
     pastEventsAttended: 0,
     profile: null,
+    answers: [],
+    checkedInAt: null,
     ...overrides,
   };
 }
@@ -143,4 +145,21 @@ describe("GET /api/events/[slug]/attendees.csv", () => {
     const [header] = await lines(res);
     expect(header).toMatch(/^Name,First name/);
   });
+});
+
+it("exports only the chosen source and search, with a translated source column", async () => {
+  m.session = { user: { id: "organizer" } };
+  m.read.mockResolvedValue({
+    ...DATA,
+    rows: [
+      row({ registrationSource: "luma" }),
+      row({ displayName: "Grace Hopper", registrationSource: "meetup" }),
+    ],
+  });
+  const response = await get("?source=luma&search=Ada&locale=en");
+  const output = await lines(response);
+  expect(output).toHaveLength(2);
+  expect(output[0]).toContain("Registration source");
+  expect(output[1]).toContain("Ada Lovelace");
+  expect(output[1]).toMatch(/,Luma$/);
 });

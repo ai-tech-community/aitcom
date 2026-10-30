@@ -1,3 +1,4 @@
+import * as migration_20261026a_event_registration_source from "./20261026a_event_registration_source";
 import * as migration_20261029d_content_images from "./20261029d_content_images";
 import * as migration_20261029c_module_cover from "./20261029c_module_cover";
 import * as migration_20261029b_magazine_item_images from "./20261029b_magazine_item_images";
@@ -1109,5 +1110,10 @@ export const migrations = [
     up: migration_20261029d_content_images.up,
     down: migration_20261029d_content_images.down,
     name: "20261029d_content_images",
+  },
+  {
+    up: migration_20261026a_event_registration_source.up,
+    down: migration_20261026a_event_registration_source.down,
+    name: "20261026a_event_registration_source",
   },
 ];

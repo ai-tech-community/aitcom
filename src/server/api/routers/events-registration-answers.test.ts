@@ -32,6 +32,12 @@ const fakeDb = {
   update: () => chain(),
 };
 
+vi.mock("@/server/events/registration-attribution", () => ({
+  resolveRegistrationAttribution: vi.fn(async () => ({
+    registrationSource: "direct_or_unknown",
+    attributedAt: null,
+  })),
+}));
 vi.mock("@/server/db", () => ({ db: {} }));
 vi.mock("@/env", () => ({
   env: {

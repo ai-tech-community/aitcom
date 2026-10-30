@@ -5,6 +5,15 @@ import { useLocale, useTranslations } from "next-intl";
 import { Check, Download, Mail, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  REGISTRATION_SOURCES,
+  filterSourceAttendees,
+  registrationSource,
+  registrationSourceTotals,
+  sourceFilter,
+  type SourceFilter,
+} from "@/lib/events/registration-source";
+import { RegistrationSourceLinks } from "./registration-source-links";
 import { api, type RouterOutputs } from "@/trpc/react";
 import {
   VIEW_STATUSES,
@@ -16,6 +25,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type AttendeesData = RouterOutputs["events"]["attendees"];
@@ -45,24 +61,12 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
   const query = api.events.attendees.useQuery({ eventId });
   const [view, setView] = useState<View>("active");
   const [search, setSearch] = useState("");
+  const [source, setSource] = useState<SourceFilter>("all");
 
   const shown = useMemo(() => {
     const rows = query.data?.rows ?? [];
-    const needle = search.trim().toLowerCase();
-    return rows.filter(
-      (row) =>
-        VIEW_STATUSES[view].includes(row.status) &&
-        (!needle ||
-          [
-            row.displayName,
-            row.email,
-            row.profile?.company,
-            ...row.answers.flatMap((a) => a.value),
-          ]
-            .filter(Boolean)
-            .some((text) => text!.toLowerCase().includes(needle))),
-    );
-  }, [query.data, view, search]);
+    return filterSourceAttendees(rows, VIEW_STATUSES[view], source, search);
+  }, [query.data, view, source, search]);
 
   if (query.isLoading) {
     return (
@@ -85,7 +89,12 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
 
   const { counts, event, rows } = query.data;
   if (rows.length === 0) {
-    return <EmptyState title={t("emptyTitle")} description={t("emptyHint")} />;
+    return (
+      <div className="space-y-6">
+        <RegistrationSourceLinks eventId={eventId} />
+        <EmptyState title={t("emptyTitle")} description={t("emptyHint")} />
+      </div>
+    );
   }
 
   const count = (v: View) =>
@@ -113,6 +122,32 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
 
   return (
     <div className="space-y-4">
+      <RegistrationSourceLinks eventId={eventId} />
+      <section
+        aria-label={t("sourceTotals")}
+        className="space-y-2 border-t pt-4"
+      >
+        <h3 className="text-sm font-medium">{t("sourceTotals")}</h3>
+        <p className="text-muted-foreground max-w-prose text-sm">
+          {t("sourceHint")}
+        </p>
+        <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+          {registrationSourceTotals(shown).map((total) => (
+            <div
+              key={total.source}
+              className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
+            >
+              <dt>{t(`sources.${total.source}`)}</dt>
+              <dd className="text-muted-foreground tabular-nums">
+                {t("sourceCounts", {
+                  registrations: total.registrations,
+                  checkedIn: total.checkedIn,
+                })}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
       <p className="text-muted-foreground font-mono text-xs tracking-wider tabular-nums">
         {[
           t("summary.registered", { count: counts.registered }),
@@ -134,6 +169,22 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
           />
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Select
+            value={source}
+            onValueChange={(value) => setSource(sourceFilter(value))}
+          >
+            <SelectTrigger aria-label={t("sourceFilter")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("allSources")}</SelectItem>
+              {REGISTRATION_SOURCES.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {t(`sources.${value}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Input
             type="search"
             aria-label={t("search")}
@@ -145,7 +196,7 @@ export function OrganizerAttendeeList({ eventId }: { eventId: number }) {
           {/* The page's one primary action: the view on screen, as a file. */}
           <Button asChild>
             <a
-              href={`/api/events/${encodeURIComponent(event.slug)}/attendees.csv?view=${view}&locale=${locale}`}
+              href={`/api/events/${encodeURIComponent(event.slug)}/attendees.csv?view=${view}&locale=${locale}&source=${source}&search=${encodeURIComponent(search)}`}
               download
             >
               <Download aria-hidden="true" />
@@ -199,6 +250,9 @@ function AttendeeRow({ row, eventId }: { row: Attendee; eventId: number }) {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline">
+            {t(`sources.${registrationSource(row.registrationSource)}`)}
+          </Badge>
           <Badge variant={STATUS_BADGE[row.status]}>
             {t(`status.${row.status}`)}
             {row.waitlistPosition !== null ? ` #${row.waitlistPosition}` : ""}

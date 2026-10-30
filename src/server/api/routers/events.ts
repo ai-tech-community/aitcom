@@ -1,3 +1,6 @@
+import { REGISTRATION_PROVIDERS } from "@/lib/events/registration-source";
+import { createSourceToken } from "@/server/events/registration-source-token";
+import { resolveRegistrationAttribution } from "@/server/events/registration-attribution";
 import { z } from "zod";
 import { eq, and, isNull, sql, asc, ilike, inArray, or } from "drizzle-orm";
 
@@ -291,6 +294,15 @@ export const eventsRouter = createTRPCRouter({
         };
       }
 
+      const attribution = !isPaid
+        ? await resolveRegistrationAttribution(
+            ctx.db,
+            userId,
+            input.eventId,
+            ctx.headers,
+            env.BETTER_AUTH_SECRET,
+          )
+        : {};
       const status = isFull ? "waitlisted" : "registered";
 
       const [registration] = await ctx.db
@@ -299,6 +311,7 @@ export const eventsRouter = createTRPCRouter({
           eventId: input.eventId,
           userId,
           status,
+          ...attribution,
           // The register button showed the sharing notice (ADR-0038).
           organizerNoticeAt: new Date(),
           answers: checked.answers,
@@ -1186,10 +1199,31 @@ export const eventsRouter = createTRPCRouter({
       }));
     }),
 
-  /**
-   * The attendee list for the event's organizer (ADR-0038). NOT_FOUND for
-   * everyone else, so the list's existence is never revealed.
-   */
+  /** Tracked sharing links, restricted to the active event organizer. */
+  registrationSourceLinks: protectedProcedure
+    .input(
+      z.object({
+        eventId: z.number(),
+        locale: z.enum(["en", "nl"]).default("en"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const resolved = await resolveOrganizerEvent(
+        ctx.db,
+        ctx.session.user.id,
+        { id: input.eventId },
+      );
+      if (!resolved)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      const { event } = resolved;
+      if (event.status !== "published" || (event.price ?? 0) > 0) return [];
+      return REGISTRATION_PROVIDERS.map((source) => ({
+        source,
+        url: `${getAppUrl()}/api/events/ref/${createSourceToken(event.id, source, "link", env.BETTER_AUTH_SECRET)}?locale=${input.locale}`,
+      }));
+    }),
+
+  /** The organizer-only attendee list (ADR-0038). */
   attendees: protectedProcedure
     .input(z.object({ eventId: z.number() }))
     .query(async ({ ctx, input }) => {
