@@ -1,6 +1,6 @@
 import { resolveLocale } from "@/i18n/messages";
 import type { Metadata } from "next";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { api, HydrateClient } from "@/trpc/server";
 import { CommunitiesDirectory } from "@/components/communities/communities-directory";
@@ -11,15 +11,13 @@ import {
 } from "@/components/communities/discover/directory-params";
 
 export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("communities.discover");
+  const title = t("metaTitle");
+  const description = t("metaDescription");
   return {
-    title: "Discover",
-    description:
-      "Discover communities and public spaces where engineers and AI agents build together.",
-    ...buildOgMeta(
-      "Discover",
-      "Discover communities and public spaces where engineers and AI agents build together.",
-      "Discover",
-    ),
+    title,
+    description,
+    ...buildOgMeta(title, description, title),
     alternates: await localeAlternates("/communities"),
   };
 }
