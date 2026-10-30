@@ -125,6 +125,22 @@ fair or expo value, so the IamExpat fair uses conference, and Slush is a
 conference even though the summary says startup event. `is_ai` is a
 separate column. The same migration writes a Nominatim
 point for each venue only when latitude or longitude is still null.
+`20261026b_five_public_events` upserts only
+`big-data-ai-world-madrid-2026`, `data-outpost-2026`,
+`adopt-ai-2026`, `ai-coding-summit-berlin-2026`, and
+`chatbot-summit-berlin-2027` from that same seed.
+`big-data-ai-world-madrid-2026` stores the 10:00–19:00 hours and no
+price, and it does not say the fair is free.
+`data-outpost-2026` keeps $499 in the summary and does not store euro
+cents. `adopt-ai-2026` stores no attendance figure and no price.
+`ai-coding-summit-berlin-2026` is a separate slug and title from
+`ai-coding-summit-nyc-2026`. The stored day is 4 Dec 2026, and the
+summary names the 7 Dec remote day. The hybrid full ticket is €625.
+`chatbot-summit-berlin-2027` is the April 2027 edition. It does not
+update production `chatbot-summit-2026`. The summary says from €495
+and does not name ticket tiers. The same migration writes a Nominatim
+point for each venue only when latitude or longitude is still null.
+`is_ai` is true on these five rows.
 `techex-amsterdam-hackathon-2026` keeps the start date 16 Oct 2026 and stores
 no end date: the official page's JSON-LD ends 19 Oct and its copy says 20 Oct.
 Held rows (The New Agentic Economy

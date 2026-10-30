@@ -418,6 +418,7 @@ describe("event meta description", () => {
         "Las Vegas",
         "Lisbon",
         "London",
+        "Madrid",
         "Munich",
         "New York",
         "Paris",

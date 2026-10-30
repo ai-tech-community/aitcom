@@ -11,6 +11,7 @@ import * as migration_20261028c_magazine_agent_staff from "./20261028c_magazine_
 import * as migration_20261028b_magazine_image_prefix from "./20261028b_magazine_image_prefix";
 import * as migration_20261028a_magazine_growth from "./20261028a_magazine_growth";
 import * as migration_20261027d_magazine_auto_draft_followups from "./20261027d_magazine_auto_draft_followups";
+import * as migration_20261026b_five_public_events from "./20261026b_five_public_events";
 import * as migration_20261027a_magazine_staff from "./20261027a_magazine_staff";
 import * as migration_20261027b_magazine_subscriptions from "./20261027b_magazine_subscriptions";
 import * as migration_20261027c_magazine_auto_draft from "./20261027c_magazine_auto_draft";
@@ -1052,6 +1053,11 @@ export const migrations = [
     up: migration_20261026b_magazine_platform_items.up,
     down: migration_20261026b_magazine_platform_items.down,
     name: "20261026b_magazine_platform_items",
+  },
+  {
+    up: migration_20261026b_five_public_events.up,
+    down: migration_20261026b_five_public_events.down,
+    name: "20261026b_five_public_events",
   },
   {
     up: migration_20261027a_magazine_staff.up,
