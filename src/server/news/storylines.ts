@@ -7,9 +7,11 @@ import {
   sql,
   ilike,
   count,
+  gte,
 } from "drizzle-orm";
 import { newsTableSearchRegex } from "@/lib/news/table-query";
 import { db } from "@/server/db";
+import { escapeLike } from "@/server/db/escape-like";
 import { storylineVoteChoice } from "@/lib/news/storyline-vote";
 import {
   storylineCredit,
@@ -62,7 +64,163 @@ export const publicStoryline = and(
   sql`${articleCount} >= 2`,
 );
 
+/** Live story cards, including unpublished stories for editor markers. */
+export type StorylineCard = {
+  id: string;
+  slug: string;
+  titleEn: string;
+  titleNl: string;
+  overviewEn: string;
+  overviewNl: string;
+  articleCount: number;
+  latestAt: Date | null;
+  isPublic: boolean;
+};
+
+/** One query for all referenced stories; publication uses the story page's rule. */
+export async function loadStorylineCards(
+  ids: readonly string[],
+  database: typeof db = db,
+): Promise<Map<string, StorylineCard>> {
+  if (ids.length === 0) return new Map();
+  // Keep every computed SQL column wrapped, as in listStorylines below:
+  // otherwise Drizzle drops the table names inside correlated subqueries.
+  const rows = await database
+    .select({
+      id: stories.id,
+      slug: stories.slug,
+      titleEn: stories.titleEn,
+      titleNl: stories.titleNl,
+      overviewEn: stories.overviewEn,
+      overviewNl: stories.overviewNl,
+      articleCount: sql<number>`${articleCount}`,
+      latestAt: sql<Date | null>`${latestAt}`,
+      isPublic: sql<boolean>`(${publicStoryline!})`,
+    })
+    .from(stories)
+    .where(inArray(stories.id, [...ids]));
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      {
+        ...row,
+        latestAt: row.latestAt ? new Date(row.latestAt) : null,
+      },
+    ]),
+  );
+}
+
 const storylineScore = sql<number>`(select coalesce(sum(${newsStorylineVotes.value}), 0)::int from ${newsStorylineVotes} where ${newsStorylineVotes.storyId} = ${stories.id})`;
+
+function storylineTextWhere(query: string) {
+  const q = query.trim().slice(0, 200);
+  const escaped = escapeLike(q);
+  return q
+    ? or(
+        ilike(stories.titleEn, `%${escaped}%`),
+        ilike(stories.titleNl, `%${escaped}%`),
+        ilike(stories.overviewEn, `%${escaped}%`),
+        ilike(stories.overviewNl, `%${escaped}%`),
+      )
+    : undefined;
+}
+
+/** One bounded public search for pickers, without archive pagination or credits. */
+export async function searchPublicStorylines(
+  query: string,
+  limit: number,
+  database: typeof db = db,
+  exclude: readonly string[] = [],
+): Promise<StorylineCard[]> {
+  const rows = await database
+    .select({
+      id: stories.id,
+      slug: stories.slug,
+      titleEn: stories.titleEn,
+      titleNl: stories.titleNl,
+      overviewEn: stories.overviewEn,
+      overviewNl: stories.overviewNl,
+      articleCount: sql<number>`${articleCount}`,
+      latestAt: sql<Date | null>`${latestAt}`,
+    })
+    .from(stories)
+    .where(
+      and(
+        publicStoryline,
+        storylineTextWhere(query),
+        exclude.length ? notInArray(stories.id, [...exclude]) : undefined,
+      ),
+    )
+    .orderBy(
+      sql`${storylineScore} desc`,
+      sql`${latestAt} desc nulls last`,
+      stories.slug,
+    )
+    .limit(limit);
+  return rows.map((row) => ({
+    ...row,
+    latestAt: row.latestAt ? new Date(row.latestAt) : null,
+    isPublic: true,
+  }));
+}
+
+/** Public topic matches, newest valid source first, then score and slug. */
+export async function suggestPublicStorylines(
+  input: {
+    topics: readonly string[];
+    since: Date;
+    limit: number;
+    exclude: readonly string[];
+  },
+  database: typeof db = db,
+): Promise<(StorylineCard & { matchedTopic: string })[]> {
+  if (input.topics.length === 0 || input.limit <= 0) return [];
+  const matches = input.topics.map((topic) => {
+    const pattern = `%${escapeLike(topic)}%`;
+    return or(
+      ilike(stories.titleEn, pattern),
+      ilike(stories.titleNl, pattern),
+      ilike(stories.overviewEn, pattern),
+      ilike(stories.overviewNl, pattern),
+    )!;
+  });
+  const matchedTopic = sql<string>`case ${sql.join(
+    matches.map(
+      (match, index) => sql`when ${match} then ${input.topics[index]}`,
+    ),
+    sql` `,
+  )} end`;
+  const rows = await database
+    .select({
+      id: stories.id,
+      slug: stories.slug,
+      titleEn: stories.titleEn,
+      titleNl: stories.titleNl,
+      overviewEn: stories.overviewEn,
+      overviewNl: stories.overviewNl,
+      articleCount: sql<number>`${articleCount}`,
+      latestAt: sql<Date | null>`${latestAt}`,
+      matchedTopic,
+    })
+    .from(stories)
+    .where(
+      and(
+        publicStoryline,
+        or(...matches),
+        gte(latestAt, input.since),
+        input.exclude.length
+          ? notInArray(stories.id, [...input.exclude])
+          : undefined,
+      ),
+    )
+    .orderBy(sql`${latestAt} desc`, sql`${storylineScore} desc`, stories.slug)
+    .limit(input.limit);
+  return rows.map((row) => ({
+    ...row,
+    latestAt: row.latestAt ? new Date(row.latestAt) : null,
+    isPublic: true,
+  }));
+}
 
 export async function listStorylines(
   input: {
@@ -73,18 +231,9 @@ export async function listStorylines(
     viewerId?: string;
   } = {},
 ) {
-  const q = (input.q ?? "").trim().slice(0, 200);
-  const escaped = q.replace(/[\\%_]/g, "\\$&");
   const where = and(
     input.staff ? undefined : publicStoryline,
-    q
-      ? or(
-          ilike(stories.titleEn, `%${escaped}%`),
-          ilike(stories.titleNl, `%${escaped}%`),
-          ilike(stories.overviewEn, `%${escaped}%`),
-          ilike(stories.overviewNl, `%${escaped}%`),
-        )
-      : undefined,
+    storylineTextWhere(input.q ?? ""),
   );
   const [totalRow] = await db
     .select({ total: count() })

@@ -102,6 +102,8 @@ export interface Config {
     lessons: Lesson;
     modules: Module;
     'hosted-materials': HostedMaterial;
+    magazines: Magazine;
+    'magazine-issues': MagazineIssue;
     'email-templates': EmailTemplate;
     users: User;
     'payload-kv': PayloadKv;
@@ -146,6 +148,8 @@ export interface Config {
     lessons: LessonsSelect<false> | LessonsSelect<true>;
     modules: ModulesSelect<false> | ModulesSelect<true>;
     'hosted-materials': HostedMaterialsSelect<false> | HostedMaterialsSelect<true>;
+    magazines: MagazinesSelect<false> | MagazinesSelect<true>;
+    'magazine-issues': MagazineIssuesSelect<false> | MagazineIssuesSelect<true>;
     'email-templates': EmailTemplatesSelect<false> | EmailTemplatesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -156,10 +160,10 @@ export interface Config {
   db: {
     defaultIDType: number;
   };
-  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'nl') | ('en' | 'nl')[];
+  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'nl' | 'fr') | ('en' | 'nl' | 'fr')[];
   globals: {};
   globalsSelect: {};
-  locale: 'en' | 'nl';
+  locale: 'en' | 'nl' | 'fr';
   user: User;
   jobs: {
     tasks: unknown;
@@ -261,6 +265,9 @@ export interface Event {
   latitude?: number | null;
   longitude?: number | null;
   geocodedAt?: string | null;
+  /**
+   * First calendar day.
+   */
   date: string;
   /**
    * Last calendar day, when the event runs more than one day. Leave empty for a single day.
@@ -374,6 +381,11 @@ export interface Media {
    * What it was uploaded for. A feed post image belongs to one post and is deleted when the post stops using it. Empty for shared images (covers, logos).
    */
   purpose?: 'feed-post' | null;
+  /**
+   * S3 key prefix. Magazine uploads use `magazines/<id>`; empty keeps the
+   * object at the bucket root.
+   */
+  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -473,9 +485,299 @@ export interface Article {
   reviewNote?: string | null;
   status: 'draft' | 'published';
   publishedAt?: string | null;
+  /**
+   * Set for articles written for a community magazine.
+   */
+  magazine?: (number | null) | Magazine;
+  /**
+   * Set by the issue builder
+   */
+  magazineIssue?: (number | null) | MagazineIssue;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "magazines".
+ */
+export interface Magazine {
+  id: number;
+  name: string;
+  slug: string;
+  communityId: string;
+  description?: string | null;
+  logoUrl?: string | null;
+  logoMediaId?: number | null;
+  logoAlt?: string | null;
+  coverMediaId?: number | null;
+  coverImageUrl?: string | null;
+  coverAlt?: string | null;
+  /**
+   * Display font for the magazine masthead and story headings.
+   */
+  font?: ('italiana' | 'bodoni' | 'cormorant' | 'geist') | null;
+  topics?:
+    | {
+        topic?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Copied to each new issue.
+   */
+  defaultVisibility?: ('members' | 'teaser' | 'public') | null;
+  /**
+   * Who confirmed showing it outside an unlisted community (preview or public).
+   */
+  publicConfirmedBy?: string | null;
+  publicConfirmedAt?: string | null;
+  /**
+   * Better Auth user ID.
+   */
+  createdBy: string;
+  /**
+   * Hide this magazine from the Magazines page and from search engines. Its pages still open by link.
+   */
+  listingHidden?: boolean | null;
+  listingHiddenAt?: string | null;
+  /**
+   * Payload admin user who hid it
+   */
+  listingHiddenBy?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "magazine-issues".
+ */
+export interface MagazineIssue {
+  id: number;
+  magazine: number | Magazine;
+  communityId: string;
+  number: number;
+  title: string;
+  slug: string;
+  coverImageUrl?: string | null;
+  coverMediaId?: number | null;
+  coverAlt?: string | null;
+  editorNote?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  layout?: ('cover-story' | 'long-read' | 'digest') | null;
+  visibility: 'members' | 'teaser' | 'public';
+  /**
+   * Who confirmed showing it outside an unlisted community (preview or public).
+   */
+  publicConfirmedBy?: string | null;
+  publicConfirmedAt?: string | null;
+  status: 'draft' | 'scheduled' | 'published';
+  publishedAt?: string | null;
+  /**
+   * Better Auth user ID.
+   */
+  publishedBy?: string | null;
+  scheduledFor?: string | null;
+  /**
+   * Who scheduled it (Better Auth user ID). The scheduled publish runs as this person.
+   */
+  scheduledBy?: string | null;
+  /**
+   * Who set the schedule: a person, or automatic drafts. A person's change stops an automatic schedule.
+   */
+  scheduledVia?: ('schedule' | 'auto') | null;
+  /**
+   * How it was published: the Publish button, a schedule, or automatically.
+   */
+  publishedVia?: ('button' | 'schedule' | 'auto') | null;
+  items?:
+    | (
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
+            article: number | Article;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'article';
+          }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
+            heading?: string | null;
+            body: {
+              root: {
+                type: string;
+                children: {
+                  type: any;
+                  version: number;
+                  [k: string]: unknown;
+                }[];
+                direction: ('ltr' | 'rtl') | null;
+                format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+                indent: number;
+                version: number;
+              };
+              [k: string]: unknown;
+            };
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'editorial';
+          }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
+            storylineId: string;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'storyline';
+          }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
+            newsItemId: string;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'newsItem';
+          }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
+            eventId: number;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'event';
+          }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
+            threadId: number;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'forumThread';
+          }
+        | {
+            /**
+             * Optional line shown above the item in the issue.
+             */
+            intro?: string | null;
+            /**
+             * Image, crop, focal point, caption, credit and alt text for this item in this issue.
+             */
+            image?:
+              | {
+                  [k: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | null;
+            projectId: number;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'launchpadProject';
+          }
+      )[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * Community discussion threads. Pin important threads, lock spam, delete abuse.
@@ -524,6 +826,9 @@ export interface ForumThread {
   replyCount?: number | null;
   lastActivityAt?: string | null;
   communityId?: string | null;
+  imageMediaId?: number | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   isDeleted?: boolean | null;
   isEdited?: boolean | null;
   editedAt?: string | null;
@@ -722,6 +1027,8 @@ export interface FeedPost {
    * Public URL of the first picture, written by the server so older readers (agents, MCP) get one picture without a join.
    */
   imageUrl?: string | null;
+  imageMediaId?: number | null;
+  imageAlt?: string | null;
   /**
    * Better Auth user ID (UUID).
    */
@@ -1515,8 +1822,13 @@ export interface Module {
    */
   course: number;
   title: string;
+  /** Optional http(s) cover image URL. */
+  coverImageUrl?: string | null;
   order?: number | null;
   summary?: string | null;
+  imageMediaId?: number | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1746,6 +2058,14 @@ export interface PayloadLockedDocument {
         value: number | HostedMaterial;
       } | null)
     | ({
+        relationTo: 'magazines';
+        value: number | Magazine;
+      } | null)
+    | ({
+        relationTo: 'magazine-issues';
+        value: number | MagazineIssue;
+      } | null)
+    | ({
         relationTo: 'email-templates';
         value: number | EmailTemplate;
       } | null)
@@ -1917,6 +2237,8 @@ export interface ArticlesSelect<T extends boolean = true> {
   reviewNote?: T;
   status?: T;
   publishedAt?: T;
+  magazine?: T;
+  magazineIssue?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1939,6 +2261,9 @@ export interface ForumThreadsSelect<T extends boolean = true> {
   replyCount?: T;
   lastActivityAt?: T;
   communityId?: T;
+  imageMediaId?: T;
+  imageUrl?: T;
+  imageAlt?: T;
   isDeleted?: T;
   isEdited?: T;
   editedAt?: T;
@@ -2067,6 +2392,8 @@ export interface FeedPostsSelect<T extends boolean = true> {
         closesAt?: T;
       };
   imageUrl?: T;
+  imageMediaId?: T;
+  imageAlt?: T;
   authorId?: T;
   authorName?: T;
   communityId?: T;
@@ -2280,6 +2607,7 @@ export interface MediaSelect<T extends boolean = true> {
   alt?: T;
   uploadedBy?: T;
   purpose?: T;
+  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -2564,8 +2892,12 @@ export interface LessonsSelect<T extends boolean = true> {
 export interface ModulesSelect<T extends boolean = true> {
   course?: T;
   title?: T;
+  coverImageUrl?: T;
   order?: T;
   summary?: T;
+  imageMediaId?: T;
+  imageUrl?: T;
+  imageAlt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2588,6 +2920,134 @@ export interface HostedMaterialsSelect<T extends boolean = true> {
   bytes?: T;
   storageKey?: T;
   uploadId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "magazines_select".
+ */
+export interface MagazinesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  communityId?: T;
+  description?: T;
+  logoUrl?: T;
+  logoMediaId?: T;
+  logoAlt?: T;
+  coverMediaId?: T;
+  coverImageUrl?: T;
+  coverAlt?: T;
+  font?: T;
+  topics?:
+    | T
+    | {
+        topic?: T;
+        id?: T;
+      };
+  defaultVisibility?: T;
+  publicConfirmedBy?: T;
+  publicConfirmedAt?: T;
+  createdBy?: T;
+  listingHidden?: T;
+  listingHiddenAt?: T;
+  listingHiddenBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "magazine-issues_select".
+ */
+export interface MagazineIssuesSelect<T extends boolean = true> {
+  magazine?: T;
+  communityId?: T;
+  number?: T;
+  title?: T;
+  slug?: T;
+  coverImageUrl?: T;
+  coverMediaId?: T;
+  coverAlt?: T;
+  editorNote?: T;
+  layout?: T;
+  visibility?: T;
+  publicConfirmedBy?: T;
+  publicConfirmedAt?: T;
+  status?: T;
+  publishedAt?: T;
+  publishedBy?: T;
+  scheduledFor?: T;
+  scheduledBy?: T;
+  scheduledVia?: T;
+  publishedVia?: T;
+  items?:
+    | T
+    | {
+        article?:
+          | T
+          | {
+              intro?: T;
+              image?: T;
+              article?: T;
+              id?: T;
+              blockName?: T;
+            };
+        editorial?:
+          | T
+          | {
+              intro?: T;
+              image?: T;
+              heading?: T;
+              body?: T;
+              id?: T;
+              blockName?: T;
+            };
+        storyline?:
+          | T
+          | {
+              intro?: T;
+              image?: T;
+              storylineId?: T;
+              id?: T;
+              blockName?: T;
+            };
+        newsItem?:
+          | T
+          | {
+              intro?: T;
+              image?: T;
+              newsItemId?: T;
+              id?: T;
+              blockName?: T;
+            };
+        event?:
+          | T
+          | {
+              intro?: T;
+              image?: T;
+              eventId?: T;
+              id?: T;
+              blockName?: T;
+            };
+        forumThread?:
+          | T
+          | {
+              intro?: T;
+              image?: T;
+              threadId?: T;
+              id?: T;
+              blockName?: T;
+            };
+        launchpadProject?:
+          | T
+          | {
+              intro?: T;
+              image?: T;
+              projectId?: T;
+              id?: T;
+              blockName?: T;
+            };
+      };
   updatedAt?: T;
   createdAt?: T;
 }

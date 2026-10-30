@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const send = vi.hoisted(() => vi.fn());
 
@@ -18,6 +18,22 @@ const reviewUrl =
 beforeEach(() => {
   send.mockReset();
   send.mockResolvedValue({ error: null });
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+it("still throws the draft-review rejection message when Resend refuses", async () => {
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  send.mockResolvedValue({ error: { name: "validation_error" } });
+  await expect(
+    sendStorylineDraftReviewEmail(
+      "greg@klevox.com",
+      { title: "Local AI", reviewUrl },
+      { VERCEL_ENV: "preview", NODE_ENV: "production" },
+    ),
+  ).rejects.toThrow("Resend rejected the storyline draft email");
+  expect(send).toHaveBeenCalledTimes(1);
 });
 
 it("never emails a member from a test, even if the caller claims production", async () => {

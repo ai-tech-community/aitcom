@@ -108,6 +108,38 @@ afterEach(() => {
 });
 
 describe("BadgeCelebrationDialog", () => {
+  it("does not block the page and hides a zero or unknown share", () => {
+    render(
+      wrap(
+        <BadgeCelebrationDialog
+          userId={USER}
+          earnings={earnings({
+            items: [
+              {
+                kind: "badge",
+                id: "b0",
+                slug: "article_author",
+                earnedAt: "2026-06-02T12:00:00.000Z",
+                rarity: {
+                  slug: "article_author",
+                  measure: "share",
+                  holders: 0,
+                  share: 0,
+                },
+              },
+            ],
+            moreIds: [],
+          })}
+          onDone={() => undefined}
+        />,
+      ),
+    );
+    const dialog = screen.getByRole("dialog", { name: "You earned Writer I" });
+    expect(dialog).toHaveAttribute("aria-modal", "false");
+    expect(dialog).not.toHaveTextContent(/Earned by 0%/);
+    expect(dialog).not.toHaveTextContent("Earned by");
+  });
+
   it("shows the unseen earnings one at a time, with name, kind, description and rarity", () => {
     render(
       wrap(

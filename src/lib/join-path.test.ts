@@ -16,6 +16,19 @@ import {
 } from "./join-path";
 
 describe("join path landing", () => {
+  it("keeps French auth aliases and join redirects in French", () => {
+    expect(getAuthAliasRedirect("/fr/sign-in", "?redirect=/fr/dashboard")).toBe(
+      "/fr/auth/signin?redirect=/fr/dashboard",
+    );
+    expect(getJoinDoorRedirect("/fr/join", true, "?utm=x")).toBe(
+      "/fr/communities/ait?utm=x",
+    );
+    expect(getJoinDoorRedirect("/fr/join", false)).toBeNull();
+    expect(isMarketingHomePath("/fr/")).toBe(true);
+    expect(getAuthAliasRedirect("/france/sign-in")).toBeNull();
+    expect(getJoinDoorRedirect("/french/join", true)).toBeNull();
+    expect(isMarketingHomePath("/france")).toBe(false);
+  });
   it("names the Hub community surface, not the marketing homepage", () => {
     expect(HUB_COMMUNITY_PATH).toBe(`/communities/${HUB_SLUG}`);
     expect(HUB_COMMUNITY_PATH).not.toBe("/");

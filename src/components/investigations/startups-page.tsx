@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -59,7 +60,7 @@ export function StartupsPage({
   insights?: StartupsInsightsStats;
   promoteJoin?: boolean;
 }) {
-  const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: StartupLocale = resolveLocale(locale);
   const isInsights = tab === "insights";
   const insightStats =
     insights ??

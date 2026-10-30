@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { eventSchemaDates } from "@/lib/event-time";
 import { stripListingPolicy } from "@/lib/events/listing-policy";
 import { HUB_OPEN_HREF } from "@/lib/join-path";
@@ -133,7 +134,7 @@ export function mergePublicEvents(
 
 export function hostedEventUrl(
   event: Pick<HostedEventInput, "slug" | "sourceUrl">,
-  locale: PublicEventLocale,
+  locale: AppLocale,
 ): string | null {
   if (event.sourceUrl && isPublicEventUrl(event.sourceUrl)) {
     return event.sourceUrl;
@@ -145,7 +146,7 @@ export function hostedEventUrl(
 
 export function publicEventFromHosted(
   event: HostedEventInput,
-  locale: PublicEventLocale,
+  locale: AppLocale,
 ): PublicEventCard | null {
   const date = toPublicEventDate(event.date);
   const url = hostedEventUrl(event, locale);
@@ -228,7 +229,7 @@ export function sourcedListingEventPlace(
 
 export function listingEventJsonLd(
   event: HostedEventInput,
-  locale: PublicEventLocale,
+  locale: AppLocale,
 ): Record<string, unknown> | null {
   const name = event.title.trim();
   const day = toPublicEventDate(event.date);
@@ -266,7 +267,7 @@ export function listingEventJsonLd(
 
 export function listingEventsJsonLd(
   events: readonly HostedEventInput[],
-  locale: PublicEventLocale,
+  locale: AppLocale,
 ): Record<string, unknown>[] {
   return events.flatMap((event) => {
     const data = listingEventJsonLd(event, locale);

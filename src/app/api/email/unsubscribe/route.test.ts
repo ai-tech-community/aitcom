@@ -2,6 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const recordGlobalDigestOptOut = vi.hoisted(() => vi.fn());
 const recordStoryEmailOptOut = vi.hoisted(() => vi.fn());
+const removeSubscription = vi.hoisted(() => vi.fn());
+const db = vi.hoisted(() => ({}));
+
+vi.mock("@/server/db", () => ({ db }));
+vi.mock("@/server/magazines/subscriptions/service", () => ({
+  removeSubscription,
+}));
 
 vi.mock("@/server/notifications/digest-optout", () => ({
   recordGlobalDigestOptOut,
@@ -29,6 +36,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   recordGlobalDigestOptOut.mockResolvedValue(undefined);
   recordStoryEmailOptOut.mockResolvedValue(undefined);
+  removeSubscription.mockResolvedValue(undefined);
   vi.stubEnv("DIGEST_UNSUBSCRIBE_SECRET", SECRET);
   vi.stubEnv("BETTER_AUTH_SECRET", "");
 });
@@ -38,6 +46,39 @@ afterEach(() => {
 });
 
 describe("POST /api/email/unsubscribe", () => {
+  it("a magazine link removes that subscription", async () => {
+    const token = signUnsubscribeToken(
+      { subscriptionId: "subscription-1", scope: "magazine" },
+      SECRET,
+    );
+    const res = await POST(post("List-Unsubscribe=One-Click", token));
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true });
+    expect(removeSubscription).toHaveBeenCalledExactlyOnceWith(
+      db,
+      "subscription-1",
+    );
+    expect(recordGlobalDigestOptOut).not.toHaveBeenCalled();
+    expect(recordStoryEmailOptOut).not.toHaveBeenCalled();
+  });
+
+  it("redirects a confirmed magazine unsubscribe to the done page", async () => {
+    const token = signUnsubscribeToken(
+      { subscriptionId: "subscription-2", scope: "magazine" },
+      SECRET,
+    );
+    const res = await POST(
+      post(`t=${encodeURIComponent(token)}&confirm=unsubscribe&locale=nl`),
+    );
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toBe(
+      "https://www.aitcommunity.org/nl/unsubscribe?done=1&kind=magazine",
+    );
+    expect(removeSubscription).toHaveBeenCalledWith(db, "subscription-2");
+    expect(recordGlobalDigestOptOut).not.toHaveBeenCalled();
+    expect(recordStoryEmailOptOut).not.toHaveBeenCalled();
+  });
+
   it("writes a global digest opt-out for a one-click post", async () => {
     const token = signUnsubscribeToken(
       { userId: "user-1", scope: "digest" },

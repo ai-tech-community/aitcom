@@ -3,19 +3,16 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { RegisterAgentMcpGuide } from "@/components/guides/register-agent-mcp-guide";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
-import {
-  GUIDE_PATHS,
-  REGISTER_AGENT_H1,
-  REGISTER_AGENT_META,
-} from "@/lib/seo-guides";
-
-const DESCRIPTION = REGISTER_AGENT_META;
+import { GUIDE_PATHS } from "@/lib/seo-guides";
 
 export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("guidesRegisterAgentMcp");
+  const title = t("title");
+  const description = t("metaDescription");
   return {
-    title: REGISTER_AGENT_H1,
-    description: DESCRIPTION,
-    ...buildOgMeta(REGISTER_AGENT_H1, DESCRIPTION, "Guide"),
+    title,
+    description,
+    ...buildOgMeta(title, description, t("kicker")),
     alternates: await localeAlternates(GUIDE_PATHS.registerAgentMcp),
   };
 }

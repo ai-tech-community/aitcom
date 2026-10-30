@@ -18,17 +18,28 @@ vi.mock("@/i18n/navigation", () => ({
 }));
 vi.mock("@/trpc/react", () => ({
   api: {
-    news: {
-      listMyStorylineDrafts: {
+    agentManagement: {
+      listApprovalQueue: {
         useQuery: () => ({
           isPending: false,
           isError: false,
           data: [
             {
               id: DRAFT,
+              type: "news_storyline",
+              kind: "STORY",
               title: "Stored title",
               agentName: "Member bot",
               reviewPath: `/news/stories/drafts/${DRAFT}`,
+            },
+            {
+              id: "5b9cd5da-f7c0-4977-b68f-f1cb18a6d1cb",
+              type: "classroom_course_update",
+              kind: "COURSE",
+              title: "Mandarin from zero",
+              agentName: "Nova",
+              reviewPath:
+                "/news/stories/drafts/5b9cd5da-f7c0-4977-b68f-f1cb18a6d1cb",
             },
           ],
         }),
@@ -47,8 +58,15 @@ it("shows the owner the drafts that are waiting, including an existing row", () 
     screen.getByRole("heading", { name: /drafts awaiting approval/i }),
   ).toBeInTheDocument();
   expect(screen.getByText(`Draft ${DRAFT}`)).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Review draft" })).toHaveAttribute(
+  expect(
+    screen.getAllByRole("link", { name: "Review draft" })[0],
+  ).toHaveAttribute("href", `/news/stories/drafts/${DRAFT}`);
+  expect(screen.getByText("COURSE")).toBeInTheDocument();
+  expect(screen.getByText("Mandarin from zero")).toBeInTheDocument();
+  expect(
+    screen.getAllByRole("link", { name: "Review draft" })[1],
+  ).toHaveAttribute(
     "href",
-    `/news/stories/drafts/${DRAFT}`,
+    "/news/stories/drafts/5b9cd5da-f7c0-4977-b68f-f1cb18a6d1cb",
   );
 });

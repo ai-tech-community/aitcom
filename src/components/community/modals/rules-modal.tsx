@@ -1,5 +1,7 @@
 "use client";
 
+import type { AppLocale } from "@/i18n/messages";
+
 import { useTranslations, useLocale } from "next-intl";
 import { api } from "@/trpc/react";
 import { LexicalRenderer } from "@/lib/lexical";
@@ -34,7 +36,7 @@ export function RulesModal({
   communitySlug,
 }: RulesModalProps) {
   const t = useTranslations("community.rules");
-  const locale = useLocale() as "en" | "nl";
+  const locale = useLocale() as AppLocale;
   const { data, isLoading, isError, refetch } = api.forum.getRules.useQuery(
     { communitySlug: communitySlug ?? "ait", locale },
     { enabled: isOpen, staleTime: 5 * 60 * 1000 },

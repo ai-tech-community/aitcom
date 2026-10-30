@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { HeroTitle } from "@/components/hero-title";
@@ -35,7 +36,12 @@ import { RECENT_GATHERINGS_SHOWN } from "@/components/home/recent-gatherings/rec
 import { HomeStats } from "@/components/home/home-stats";
 import { loadHomeNews } from "@/server/news/home";
 import { HomeSections } from "@/components/home/home-sections";
+import { loadHomepageMagazines } from "@/server/magazines/reading";
+import { resolveLocale } from "@/i18n/messages";
 import { toHomeSponsor } from "@/components/home/sponsors/home-sponsor";
+
+// Community listing and magazine visibility changes apply on the next request.
+export const dynamic = "force-dynamic";
 
 /**
  * Rows fetched for the upcoming-events block. The block shows 5; the rest
@@ -52,17 +58,14 @@ const UPCOMING_EVENT_CANDIDATES = 50;
  */
 const RECENT_EVENT_CANDIDATES = 12;
 
-const HOME_DESCRIPTION =
-  "A sports club, an expat group, a local business. You bring the people. AI takes the busywork.";
-
 export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("hero");
+  const title = t("metaTitle");
+  const description = t("description");
   return {
-    title: { absolute: "AIT Community - Where any community gathers" },
-    description: HOME_DESCRIPTION,
-    ...buildOgMeta(
-      "AIT Community - Where any community gathers",
-      HOME_DESCRIPTION,
-    ),
+    title: { absolute: title },
+    description,
+    ...buildOgMeta(title, description),
     alternates: await localeAlternates(""),
   };
 }
@@ -93,6 +96,7 @@ export default async function Home() {
     { docs: recentCandidates },
     { docs: featuredSponsors },
     latestNews,
+    magazines,
   ] = await Promise.all([
     payload.find({
       collection: "events",
@@ -108,7 +112,7 @@ export default async function Home() {
       // completeUpcomingCandidates(), which drops the last fetched days of a
       // full page so ranking by start instant cannot skip an unfetched event.
       limit: UPCOMING_EVENT_CANDIDATES,
-      locale: locale as "en" | "nl",
+      locale: locale as AppLocale,
       draft: false,
     }),
     // Proof for "Recently on the square": the latest gatherings that took
@@ -126,7 +130,7 @@ export default async function Home() {
       },
       sort: "-date",
       limit: RECENT_EVENT_CANDIDATES,
-      locale: locale as "en" | "nl",
+      locale: locale as AppLocale,
       draft: false,
     }),
     payload.find({
@@ -139,6 +143,7 @@ export default async function Home() {
       depth: 1,
     }),
     loadHomeNews(db, locale),
+    loadHomepageMagazines({ db, payload }, resolveLocale(locale)),
   ]);
   const recentEvents = pastEvents(recentCandidates, now).slice(
     0,
@@ -254,16 +259,16 @@ export default async function Home() {
           name: "AIT Community",
           url: "https://aitcommunity.org",
           logo: "https://aitcommunity.org/logo.png",
-          description: HOME_DESCRIPTION,
+          description: t("hero.description"),
         }}
       />
       {/* Hero: the town square */}
       <HomeHeroPlaza board={noticeBoard} boardLink={boardLink}>
         <HeroTitle title={t("hero.title")} tagline={t("hero.subtitle")} />
-        <p className="text-muted-foreground mt-5 max-w-xl text-base leading-relaxed text-pretty sm:text-lg">
+        <p className="text-muted-foreground mt-4 max-w-xl text-base leading-relaxed text-pretty sm:text-lg">
           {t("hero.description")}
         </p>
-        <div className="mt-8 grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:flex sm:flex-wrap">
           <Button asChild variant="ink" size="lg">
             <Link href="/communities">{t("hero.cta")}</Link>
           </Button>
@@ -290,6 +295,7 @@ export default async function Home() {
         recentEvents={recentEventRows}
         latestNews={latestNews}
         sponsors={featuredSponsors.map(toHomeSponsor)}
+        magazines={magazines}
         signedIn={!!session?.user}
         now={now}
       />

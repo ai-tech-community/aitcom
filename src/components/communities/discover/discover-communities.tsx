@@ -1,5 +1,7 @@
 "use client";
 
+import type { AppLocale } from "@/i18n/messages";
+
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, MapPin, X } from "lucide-react";
@@ -252,7 +254,7 @@ export function DiscoverCommunities({
   className?: string;
 }) {
   const t = useTranslations("communities.discover");
-  const locale = useLocale() as "en" | "nl";
+  const locale = useLocale() as AppLocale;
   const placeLabel = usePlaceLabel();
 
   // The box updates at once; the URL (and the query) after a short pause.

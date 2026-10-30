@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -21,7 +22,7 @@ const LABEL_KEY: Record<TimelineMilestone["key"], string> = {
 export default async function TimelineTabPage({
   params,
 }: {
-  params: Promise<{ locale: "en" | "nl"; slug: string }>;
+  params: Promise<{ locale: AppLocale; slug: string }>;
 }) {
   const { locale, slug } = await params;
   const t = await getTranslations("hackathon");

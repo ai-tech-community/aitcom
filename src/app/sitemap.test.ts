@@ -14,6 +14,7 @@ vi.mock("@/server/events/public-event-access", () => ({
 }));
 
 import { isUnlistedNewsGamePath } from "@/lib/news/indexability";
+import { publicArticleWhere } from "@/server/articles/public-articles";
 import { getPayloadClient } from "@/server/payload";
 import * as sitemapModule from "./sitemap";
 import {
@@ -45,6 +46,7 @@ const STATIC_PATHS = [
   "/investigations/awesome-ai-oss/insights",
   "/startups",
   "/startups/insights",
+  "/startups/ai-tools-list",
   "/roles",
 ] as const;
 
@@ -59,6 +61,7 @@ function localeFor(path: string) {
     languages: {
       en: `https://www.aitcommunity.org/en${suffix}`,
       nl: `https://www.aitcommunity.org/nl${suffix}`,
+      fr: `https://www.aitcommunity.org/fr${suffix}`,
     },
   };
 }
@@ -148,6 +151,7 @@ describe("buildSitemapEntries", () => {
     ).toEqual({
       en: "https://www.aitcommunity.org/en/events/ai-night",
       nl: "https://www.aitcommunity.org/nl/events/ai-night",
+      fr: "https://www.aitcommunity.org/fr/events/ai-night",
     });
 
     const eventQuery = find.mock.calls.find(
@@ -381,6 +385,7 @@ describe("buildSitemapEntries", () => {
     ).toEqual({
       en: "https://www.aitcommunity.org/en/startups",
       nl: "https://www.aitcommunity.org/nl/startups",
+      fr: "https://www.aitcommunity.org/fr/startups",
     });
   });
   it("asks Payload only for threads of publicly readable communities", async () => {
@@ -489,6 +494,7 @@ describe("buildSitemapEntries", () => {
       async () => [],
       async () => [],
       async () => new Map(),
+      async () => [],
       async () => ["invite-id"],
     );
     const urls = urlsOf(entries);
@@ -701,6 +707,78 @@ describe("buildSitemapEntries", () => {
         }
       }
     }
+  });
+});
+
+describe("magazine entries", () => {
+  function clientWithArticles(docs: unknown[] = []) {
+    const find = vi.fn(async ({ collection }: { collection: string }) => ({
+      docs: collection === "articles" ? docs : [],
+    }));
+    mockGetPayloadClient.mockResolvedValue({
+      find,
+    } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
+    return find;
+  }
+
+  function withMagazinePaths(getMagazinePaths: () => Promise<string[]>) {
+    return buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [],
+      async () => [],
+      async () => new Map(),
+      getMagazinePaths,
+    );
+  }
+
+  it("lists magazine paths from the injected source", async () => {
+    clientWithArticles();
+    const paths = [
+      "/magazines",
+      "/magazines/agents-weekly",
+      "/magazines/agents-weekly/issue-1",
+      "/magazines/agents-weekly/issue-1/why-evals",
+    ];
+
+    const entries = await withMagazinePaths(async () => paths);
+
+    for (const path of paths) {
+      const loc = localeFor(path);
+      const entry = entries.find((item) => item.url === loc.url);
+      expect(entry?.alternates?.languages).toEqual(loc.languages);
+    }
+  });
+
+  it("magazine path lookup failure still returns the other entries", async () => {
+    clientWithArticles([{ slug: "hello" }]);
+
+    const entries = await withMagazinePaths(async () => {
+      throw new Error("db down");
+    });
+    const urls = urlsOf(entries);
+
+    expect(urls).toContain("https://www.aitcommunity.org/en/blog/hello");
+    expect(urls).toContain("https://www.aitcommunity.org/en/events");
+    expect(urls.some((url) => url.includes("/magazines"))).toBe(false);
+    expect(console.error).toHaveBeenCalledWith(
+      "[sitemap] magazine path lookup failed",
+      expect.any(Error),
+    );
+  });
+
+  it("uses the public article rule for /blog entries", async () => {
+    const find = clientWithArticles();
+
+    await withMagazinePaths(async () => []);
+
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "articles",
+        where: publicArticleWhere(),
+      }),
+    );
   });
 });
 

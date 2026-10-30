@@ -2,7 +2,7 @@ import type { z } from "zod";
 
 import type { ExtractResult, ExtractSpec } from "./extract/protocol";
 
-export type LocalizedText = { en: string; nl: string };
+export type LocalizedText = { en: string; nl: string; fr?: string };
 
 export type FieldHint = {
   label: LocalizedText;

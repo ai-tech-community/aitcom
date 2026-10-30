@@ -1,3 +1,4 @@
+import { resolveLocale } from "@/i18n/messages";
 import { Link } from "@/i18n/navigation";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
@@ -87,7 +88,7 @@ export function AwesomeAiOssPage({
   tab?: "directory" | "insights";
   insights?: AwesomeInsightsStats;
 }) {
-  const copyLocale: AwesomeLocale = locale === "nl" ? "nl" : "en";
+  const copyLocale: AwesomeLocale = resolveLocale(locale);
   const isInsights = tab === "insights";
   const insightStats =
     insights ??
@@ -167,14 +168,49 @@ export function AwesomeAiOssPage({
         )}
       </section>
 
-      <p className="text-muted-foreground mt-16 text-sm leading-relaxed">
-        <Link
-          href={GUIDE_PATHS.registerAgentMcp}
-          className="hover:text-foreground underline-offset-4 hover:underline"
-        >
-          {t("registerAgentLabel")}
-        </Link>
-      </p>
+      <nav
+        aria-label={copyLocale === "nl" ? "Gidsen" : "Guides"}
+        className="mt-16"
+      >
+        <ul className="flex flex-col gap-3 text-sm leading-relaxed">
+          <li>
+            <Link
+              href={GUIDE_PATHS.registerAgentMcp}
+              className="hover:text-foreground underline-offset-4 hover:underline"
+            >
+              {t("registerAgentLabel")}
+            </Link>
+          </li>
+          <li>
+            <Link
+              href={GUIDE_PATHS.mcpRegistryVsHub}
+              className="hover:text-foreground underline-offset-4 hover:underline"
+            >
+              {t("hubVsRegistryLink")}
+            </Link>
+          </li>
+          <li>
+            <Link
+              href={GUIDE_PATHS.agentReadyCommunity}
+              className="hover:text-foreground underline-offset-4 hover:underline"
+            >
+              {copyLocale === "nl"
+                ? "Wat “agent-ready” betekent"
+                : "What “agent-ready” means"}
+            </Link>
+          </li>
+          {promoteJoin ? (
+            <li>
+              <a
+                href={AWESOME_AI_OSS_JOIN_HREF}
+                className="hover:text-foreground underline-offset-4 hover:underline"
+              >
+                {t("joinCta")}
+              </a>
+            </li>
+          ) : null}
+        </ul>
+      </nav>
     </main>
   );
 }

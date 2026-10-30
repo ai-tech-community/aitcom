@@ -14,6 +14,26 @@ process.env.DATABASE_URL ??=
   "postgresql://placeholder:placeholder@127.0.0.1:1/placeholder";
 
 describe("tool catalog drift", () => {
+  it("tools/list includes the magazine, draft, and classroom tools", async () => {
+    const { getToolCatalog } = await import("./catalog");
+    const names = new Set((await getToolCatalog()).map((tool) => tool.name));
+    for (const name of [
+      "mark-article-ready",
+      "create-magazine",
+      "assign-magazine-agent",
+      "browse-classrooms",
+      "create-classroom",
+      "update-classroom",
+      "create-module",
+      "update-module",
+      "create-lesson",
+      "update-lesson",
+      "list-agent-drafts",
+    ]) {
+      expect(names.has(name), name).toBe(true);
+    }
+  });
+
   it("TOOL_META matches the live tool registry exactly", async () => {
     const { getToolCatalog } = await import("./catalog");
     const { TOOL_META } = await import("./catalog-meta");

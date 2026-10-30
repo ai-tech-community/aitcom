@@ -173,11 +173,11 @@ export function HomeHeroPlaza({
   return (
     <section
       ref={sectionRef}
-      className="relative isolate overflow-hidden sm:min-h-[34rem] lg:min-h-[36rem]"
+      className="relative isolate overflow-hidden sm:min-h-[26rem] lg:min-h-[28rem]"
     >
       <div
         ref={copyRef}
-        className="relative z-10 px-6 pt-10 pb-6 sm:max-w-[44rem] sm:px-12 sm:pt-16 sm:pb-12"
+        className="relative z-10 px-6 pt-10 pb-6 sm:max-w-[44rem] sm:px-12 sm:pt-10 sm:pb-8"
       >
         {children}
       </div>
@@ -186,7 +186,7 @@ export function HomeHeroPlaza({
         aria-hidden="true"
         data-testid="town-square-scene"
         {...pointer}
-        className="relative h-48 font-mono text-[10px] leading-3 select-none sm:absolute sm:inset-0 sm:h-auto sm:[mask-image:linear-gradient(to_right,transparent,black_28%)] sm:text-xs sm:leading-[14px]"
+        className="relative h-32 font-mono text-[10px] leading-3 select-none sm:absolute sm:inset-0 sm:h-auto sm:[mask-image:linear-gradient(to_right,transparent,black_28%)] sm:text-xs sm:leading-[14px]"
       >
         {/* Night sky: only above the street and right of the copy's
             keep-clear zone (never under the hero text), soft on its left

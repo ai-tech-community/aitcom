@@ -44,10 +44,15 @@ function sqlText(node: unknown): string {
   return parts.join("");
 }
 
-function queryDb(withMemberSubquery: boolean) {
+function queryDb(withMemberSubquery: boolean, orphanIds: string[] = []) {
   let calls = 0;
   let where: unknown;
+  let orphanQuery: unknown;
   const db = {
+    async execute(query: unknown) {
+      orphanQuery = query;
+      return { rows: orphanIds.map((id) => ({ id })) };
+    },
     select() {
       const chain = {
         from() {
@@ -68,6 +73,7 @@ function queryDb(withMemberSubquery: boolean) {
   return {
     db: db as never,
     sql: () => sqlText(where),
+    orphanSql: () => sqlText(orphanQuery),
   };
 }
 
@@ -105,6 +111,15 @@ describe("hiddenEventCommunityIds", () => {
     expect(sql).toContain("not in");
     expect(sql).toContain(HUB_SLUG);
     expect(sql).not.toContain("userId");
+  });
+
+  it("hides events whose community row no longer exists", async () => {
+    const query = queryDb(false, ["deleted-community"]);
+    await expect(hiddenEventCommunityIds(query.db, null)).resolves.toEqual([
+      "deleted-community",
+    ]);
+    expect(query.orphanSql()).toContain("community_id");
+    expect(query.orphanSql()).toContain("is null");
   });
 
   it("leaves out communities the viewer already belongs to", async () => {

@@ -1,3 +1,4 @@
+import { routing } from "@/i18n/routing";
 import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -637,7 +638,7 @@ export const startupsRouter = createTRPCRouter({
         communitySlug: z.string().trim().min(1).max(120),
         note: z.string().trim().min(1).max(2000),
         classroom: z.string().trim().max(200).optional().default(""),
-        locale: z.enum(["en", "nl"]).optional().default("en"),
+        locale: z.enum(routing.locales).optional().default("en"),
       }),
     )
     .mutation(async ({ ctx, input }) => {

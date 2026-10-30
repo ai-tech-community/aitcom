@@ -37,6 +37,8 @@ export function OutlineModuleHeader({
   moduleId,
   title: savedTitle,
   summary: savedSummary,
+  imageUrl,
+  imageAlt,
   canMoveUp,
   canMoveDown,
   lessonCount,
@@ -48,6 +50,8 @@ export function OutlineModuleHeader({
   moduleId: number;
   title: string;
   summary: string | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
   canMoveUp: boolean;
   canMoveDown: boolean;
   lessonCount: number;
@@ -87,6 +91,16 @@ export function OutlineModuleHeader({
 
   return (
     <div data-testid={`outline-module-${moduleId}`} className="space-y-1">
+      {imageUrl ? (
+        // Uploaded hosts are not limited to next/image's allow list.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt={imageAlt ?? ""}
+          data-module-image=""
+          className="border-border aspect-[3/1] w-full rounded-md border object-cover"
+        />
+      ) : null}
       <div className="flex min-h-8 items-center gap-1">
         {editingTitle ? (
           <TitleInput initial={title} onDone={finishTitle} />

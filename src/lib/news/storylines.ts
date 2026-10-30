@@ -152,10 +152,11 @@ export function storylineCopy(copy: StorylineCopy, locale: string) {
     questions:
       nl && copy.questionsNl.length ? copy.questionsNl : copy.questionsEn,
     fallback:
-      nl &&
-      (!copy.titleNl ||
-        !copy.overviewNl ||
-        (!!copy.questionsEn.length && !copy.questionsNl.length)),
+      locale === "fr" ||
+      (nl &&
+        (!copy.titleNl ||
+          !copy.overviewNl ||
+          (!!copy.questionsEn.length && !copy.questionsNl.length))),
   };
 }
 

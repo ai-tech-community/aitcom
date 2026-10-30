@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { getTranslations } from "next-intl/server";
 
 import { resolvePublicHackathonPage } from "@/server/hackathon/resolve-public-hackathon";
@@ -14,7 +15,7 @@ export default async function EventLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ locale: "en" | "nl"; slug: string }>;
+  params: Promise<{ locale: AppLocale; slug: string }>;
 }) {
   const { locale, slug } = await params;
   const resolved = await resolvePublicHackathonPage(slug, locale);

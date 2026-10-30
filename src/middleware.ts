@@ -1,6 +1,7 @@
 import createMiddleware from "next-intl/middleware";
 import { type NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
+import { localeFromPathname, stripLocalePrefix } from "./i18n/locale-path";
 import { getAuthAliasRedirect, getJoinDoorRedirect } from "./lib/join-path";
 import { getApexToWwwRedirectUrl } from "./server/better-auth/base-url";
 
@@ -27,7 +28,7 @@ export default function middleware(request: NextRequest) {
     );
   }
 
-  const pathWithoutLocale = pathname.replace(/^\/(en|nl)/, "") || "/";
+  const pathWithoutLocale = stripLocalePrefix(pathname);
   const authAlias = getAuthAliasRedirect(pathname, request.nextUrl.search);
   if (authAlias) {
     return NextResponse.redirect(new URL(authAlias, request.url));
@@ -53,7 +54,7 @@ export default function middleware(request: NextRequest) {
   );
 
   if (isProtected && !sessionToken) {
-    const locale = pathname.startsWith("/nl") ? "nl" : "en";
+    const locale = localeFromPathname(pathname) ?? routing.defaultLocale;
     const signInUrl = new URL(`/${locale}/auth/signin`, request.url);
     signInUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(signInUrl);

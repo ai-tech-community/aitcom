@@ -577,10 +577,12 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
         locale: "en",
       });
       expect(sorted(work!.articles)).toEqual(["hasMore", "items"]);
+      // `href`, not `slug`: an article's page is the blog or its magazine
+      // issue, decided on the server.
       expect(sorted(work!.articles.items[0]!)).toEqual([
+        "href",
         "id",
         "publishedAt",
-        "slug",
         "title",
       ]);
       expect(sorted(work!.projects.items[0]!)).toEqual([
@@ -656,7 +658,11 @@ describe.skipIf(!RUN_DB)("profile frame procedures [DB integration]", () => {
         expect(byCollection("challenges")).toHaveLength(1);
         // Authored courses, plus the certificates' courses.
         expect(byCollection("courses")).toHaveLength(2);
-        expect(calls).toHaveLength(6);
+        // The public issue ids the article rule needs (a Payload `where`
+        // cannot hold a subquery). No magazine article is listed here, so
+        // no issue places are loaded.
+        expect(byCollection("magazine-issues")).toHaveLength(1);
+        expect(calls).toHaveLength(7);
 
         const [events] = byCollection("events");
         expect(events).toMatchObject({

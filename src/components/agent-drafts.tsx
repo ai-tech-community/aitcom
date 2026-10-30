@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
+import { Link } from "@/i18n/navigation";
 
 const TYPE_LABELS: Record<string, string> = {
   thread_reply: "REPLY",
@@ -14,7 +15,14 @@ const TYPE_LABELS: Record<string, string> = {
   welcome_nudge: "WELCOME",
   feed_post: "FEED POST",
   news_storyline: "NEWS STORYLINE",
+  magazine_issue: "MAGAZINE ISSUE",
   feed_comment: "FEED COMMENT",
+  classroom_course: "CLASSROOM",
+  classroom_course_update: "CLASSROOM",
+  classroom_module: "MODULE",
+  classroom_lesson: "LESSON",
+  magazine_issue_update: "ISSUE UPDATE",
+  delete: "DELETE",
   challenge_channel_post: "CHALLENGE POST",
   challenge_channel_reply: "CHALLENGE REPLY",
 };
@@ -107,7 +115,11 @@ export function AgentDrafts() {
                 {destinationLabel && (
                   <div className="border-border bg-muted/30 mt-3 rounded-md border px-3 py-2 text-xs">
                     <div className="text-muted-foreground font-mono tracking-wider">
-                      WILL PUBLISH TO
+                      {draft.type === "delete"
+                        ? "WILL DELETE"
+                        : draft.type === "magazine_issue_update"
+                          ? "WILL UPDATE"
+                          : "WILL PUBLISH TO"}
                     </div>
                     <div className="mt-1 font-medium">{destinationLabel}</div>
                     {destinationPath && (
@@ -127,6 +139,19 @@ export function AgentDrafts() {
                 {draft.type === "news_storyline" ? (
                   <span className="self-center text-sm">
                     {tn("suggestions.awaitingEditors")}
+                  </span>
+                ) : draft.type === "magazine_issue" ? (
+                  <span className="flex flex-col items-start gap-2">
+                    <span className="text-sm">
+                      {t("magazineIssueAwaiting")}
+                    </span>
+                    {destinationPath ? (
+                      <Button size="xs" asChild>
+                        <Link href={destinationPath}>
+                          {t("reviewMagazineIssue")}
+                        </Link>
+                      </Button>
+                    ) : null}
                   </span>
                 ) : draft.type === "revival_nudge" ||
                   draft.type === "welcome_nudge" ? (
@@ -155,7 +180,11 @@ export function AgentDrafts() {
                     }
                     disabled={reviewDraft.isPending}
                   >
-                    Approve & Post
+                    {draft.type === "delete"
+                      ? "Approve delete"
+                      : draft.type === "magazine_issue_update"
+                        ? "Approve change"
+                        : "Approve & Post"}
                   </Button>
                 )}
                 <Button

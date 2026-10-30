@@ -159,62 +159,85 @@ export function buildStartupRoleCopyPrompt(
   },
 ): string {
   const nl = options.locale === "nl";
+  const fr = options.locale === "fr";
   const chunks: string[] = [];
   chunks.push(
-    nl
-      ? "Je helpt me solliciteren op deze geverifieerde vacature. Verzin geen werkgevers, titels, data of vaardigheden die niet in mijn CV staan."
-      : "You are helping me apply to this sourced job posting. Do not invent employers, titles, dates, or skills I did not list.",
+    fr
+      ? "Vous m’aidez à postuler à cette offre d’emploi issue d’une source identifiée. N’inventez pas d’employeurs, d’intitulés de poste, de dates ou de compétences que je n’ai pas mentionnés."
+      : nl
+        ? "Je helpt me solliciteren op deze geverifieerde vacature. Verzin geen werkgevers, titels, data of vaardigheden die niet in mijn CV staan."
+        : "You are helping me apply to this sourced job posting. Do not invent employers, titles, dates, or skills I did not list.",
   );
   chunks.push("");
   chunks.push(
-    nl
-      ? `Rol: ${brief.title} bij ${brief.company}`
-      : `Role: ${brief.title} at ${brief.company}`,
+    fr
+      ? `Poste : ${brief.title} chez ${brief.company}`
+      : nl
+        ? `Rol: ${brief.title} bij ${brief.company}`
+        : `Role: ${brief.title} at ${brief.company}`,
   );
   chunks.push(
-    nl
-      ? `Originele vacature: ${brief.sourceUrl}`
-      : `Original posting: ${brief.sourceUrl}`,
+    fr
+      ? `Offre d’origine : ${brief.sourceUrl}`
+      : nl
+        ? `Originele vacature: ${brief.sourceUrl}`
+        : `Original posting: ${brief.sourceUrl}`,
   );
   if (brief.location) {
     chunks.push(
-      nl ? `Locatie: ${brief.location}` : `Location: ${brief.location}`,
+      fr
+        ? `Lieu : ${brief.location}`
+        : nl
+          ? `Locatie: ${brief.location}`
+          : `Location: ${brief.location}`,
     );
   }
   if (brief.workType) {
     chunks.push(
-      nl ? `Dienstverband: ${brief.workType}` : `Work type: ${brief.workType}`,
+      fr
+        ? `Type de contrat : ${brief.workType}`
+        : nl
+          ? `Dienstverband: ${brief.workType}`
+          : `Work type: ${brief.workType}`,
     );
   }
   if (brief.seniority) {
     chunks.push(
-      nl
-        ? `Senioriteit in de titel: ${brief.seniority}`
-        : `Seniority in the title: ${brief.seniority}`,
+      fr
+        ? `Niveau d’expérience dans l’intitulé : ${brief.seniority}`
+        : nl
+          ? `Senioriteit in de titel: ${brief.seniority}`
+          : `Seniority in the title: ${brief.seniority}`,
     );
   }
   if (brief.languages.length > 0) {
     chunks.push(
-      nl
-        ? `Talen in de vacature: ${brief.languages.join(", ")}`
-        : `Languages mentioned: ${brief.languages.join(", ")}`,
+      fr
+        ? `Langues mentionnées : ${brief.languages.join(", ")}`
+        : nl
+          ? `Talen in de vacature: ${brief.languages.join(", ")}`
+          : `Languages mentioned: ${brief.languages.join(", ")}`,
     );
   }
   if (brief.mustHaves.length > 0) {
     chunks.push("");
     chunks.push(
-      nl
-        ? "Must-haves (gekopieerd uit de vacature):"
-        : "Must-haves (copied from the posting):",
+      fr
+        ? "Prérequis indispensables (copiés de l’offre) :"
+        : nl
+          ? "Must-haves (gekopieerd uit de vacature):"
+          : "Must-haves (copied from the posting):",
     );
     chunks.push(lines(brief.mustHaves));
   }
   if (brief.niceToHaves.length > 0) {
     chunks.push("");
     chunks.push(
-      nl
-        ? "Nice-to-haves (gekopieerd uit de vacature):"
-        : "Nice-to-haves (copied from the posting):",
+      fr
+        ? "Atouts appréciés (copiés de l’offre) :"
+        : nl
+          ? "Nice-to-haves (gekopieerd uit de vacature):"
+          : "Nice-to-haves (copied from the posting):",
     );
     chunks.push(lines(brief.niceToHaves));
   }
@@ -222,19 +245,29 @@ export function buildStartupRoleCopyPrompt(
   chunks.push("");
   if (cv) {
     chunks.push(
-      nl
-        ? "Mijn CV (geüpload op AIT, alleen voor startup-sollicitaties):"
-        : "My CV (uploaded on AIT for startup applications only):",
+      fr
+        ? "Mon CV (importé sur AIT, uniquement pour les candidatures auprès de startups) :"
+        : nl
+          ? "Mijn CV (geüpload op AIT, alleen voor startup-sollicitaties):"
+          : "My CV (uploaded on AIT for startup applications only):",
     );
     chunks.push(cv);
   } else {
-    chunks.push(nl ? "Plak hieronder mijn CV." : "Paste my CV below.");
+    chunks.push(
+      fr
+        ? "Collez mon CV ci-dessous."
+        : nl
+          ? "Plak hieronder mijn CV."
+          : "Paste my CV below.",
+    );
   }
   chunks.push("");
   chunks.push(
-    nl
-      ? "Schrijf een Role Brief die ik kan hergebruiken, daarna een CV-herschrijving die alleen herschikt en benadrukt wat al in mijn CV staat. Voeg nooit banen of skills toe."
-      : "Write a Role Brief I can reuse, then a CV rewrite that only reorders and emphasizes what is already in my CV. Never add jobs or skills.",
+    fr
+      ? "Rédigez une fiche de poste réutilisable, puis une nouvelle version du CV qui se limite à réorganiser et à mettre en valeur les éléments déjà présents. N’ajoutez jamais d’emploi ni de compétence."
+      : nl
+        ? "Schrijf een Role Brief die ik kan hergebruiken, daarna een CV-herschrijving die alleen herschikt en benadrukt wat al in mijn CV staat. Voeg nooit banen of skills toe."
+        : "Write a Role Brief I can reuse, then a CV rewrite that only reorders and emphasizes what is already in my CV. Never add jobs or skills.",
   );
   return chunks.join("\n");
 }

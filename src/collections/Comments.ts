@@ -7,7 +7,12 @@ export const Comments: CollectionConfig = {
     defaultColumns: ["content", "articleId", "authorName", "createdAt"],
   },
   access: {
-    read: () => true,
+    // Comments are as private as their article (ADR-0042), and only the app
+    // knows who may read which article: it reads comments through the
+    // Local API after `canReadArticle`. Payload's own REST and GraphQL
+    // reads are for signed-in Payload admins only, so a members-only
+    // article's comments never leak through /api/comments.
+    read: ({ req }) => Boolean(req.user),
   },
   fields: [
     { name: "articleId", type: "number", required: true, index: true },

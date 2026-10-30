@@ -16,8 +16,22 @@ export const Modules: CollectionConfig = {
       admin: { description: "courses.id" },
     },
     { name: "title", type: "text", required: true, maxLength: 200 },
+    {
+      name: "coverImageUrl",
+      type: "text",
+      admin: { description: "Optional http(s) cover image URL." },
+    },
     { name: "order", type: "number", defaultValue: 0, index: true },
     { name: "summary", type: "text", maxLength: 500 },
+    {
+      name: "imageMediaId",
+      type: "number",
+      admin: {
+        description: "Shared media id. Leave empty when using imageUrl.",
+      },
+    },
+    { name: "imageUrl", type: "text" },
+    { name: "imageAlt", type: "text", maxLength: 200 },
   ],
   timestamps: true,
 };

@@ -28,6 +28,15 @@ export function postAnnouncementCopy(
       .trim(),
   );
   const lead = firstLine ? clipText(firstLine, MAX_SUBJECT_TEXT) : "";
+  if (locale === "fr") {
+    return {
+      subject: lead
+        ? `${author} dans ${community} : ${lead}`
+        : `${author} a publié dans ${community}`,
+      why: `Vous recevez ce message car vous êtes membre de ${community}. Vous pouvez désactiver les annonces de cette communauté dans vos paramètres de notification.`,
+      cta: post.isVideo ? "Voir la vidéo" : "Ouvrir le fil",
+    };
+  }
   if (locale === "nl") {
     return {
       subject: lead

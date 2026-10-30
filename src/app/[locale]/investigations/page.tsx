@@ -40,6 +40,9 @@ export default async function InvestigationsPage() {
           infrastructure that powers AI. Open data, sourced facts, member
           verification.
         </p>
+        <p className="text-muted-foreground font-mono text-xs">
+          <time dateTime="2026-10-29">Updated 2026.10.29</time>
+        </p>
       </header>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">

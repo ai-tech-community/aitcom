@@ -9,6 +9,7 @@ import {
 import { routing } from "@/i18n/routing";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import { isUnlistedNewsGamePath } from "@/lib/news/indexability";
+import { publicArticleWhere } from "@/server/articles/public-articles";
 import {
   HUB_FORUM_PATH,
   forumThreadSitemapPath,
@@ -54,6 +55,7 @@ const STATIC_PAGES = [
   "/investigations/awesome-ai-oss/insights",
   "/startups",
   "/startups/insights",
+  "/startups/ai-tools-list",
   "/roles",
 ] as const;
 
@@ -112,10 +114,12 @@ function localeEntries(
     url: absoluteLocaleUrl("en", path),
     ...(lastModified ? { lastModified } : {}),
     alternates: {
-      languages: {
-        en: absoluteLocaleUrl("en", path),
-        nl: absoluteLocaleUrl("nl", path),
-      },
+      languages: Object.fromEntries(
+        routing.locales.map((locale) => [
+          locale,
+          absoluteLocaleUrl(locale, path),
+        ]),
+      ),
     },
   };
 }
@@ -242,6 +246,19 @@ async function defaultStartupPagePaths(): Promise<string[]> {
   }
 }
 
+/**
+ * Magazine URLs a signed-out visitor may open (public issues only). Like
+ * every entry here it is cached for the revalidate window above, so a
+ * visibility change may take that long to leave the sitemap; the pages
+ * themselves answer 404 on the next request (ADR-0042).
+ */
+async function defaultMagazinePaths(): Promise<string[]> {
+  const { db } = await import("@/server/db");
+  const { magazineSitemapPaths } =
+    await import("@/server/magazines/sitemap-paths");
+  return magazineSitemapPaths({ db, payload: await getPayloadClient() });
+}
+
 export async function buildSitemapEntries(
   getClient: () => Promise<SitemapClient> = getPayloadClient,
   getCommunitySlugById: () => Promise<
@@ -255,6 +272,7 @@ export async function buildSitemapEntries(
   getPathUpdatedAt: () => Promise<
     ReadonlyMap<string, Date>
   > = defaultPathUpdatedAt,
+  getMagazinePaths: () => Promise<string[]> = defaultMagazinePaths,
   getHiddenEventCommunityIds: () => Promise<
     readonly string[]
   > = defaultHiddenEventCommunityIds,
@@ -319,7 +337,7 @@ export async function buildSitemapEntries(
     console.error("[sitemap] hidden event community lookup failed", error);
   }
 
-  const [eventsResult, articlesResult, threadsResult] =
+  const [eventsResult, articlesResult, threadsResult, magazineResult] =
     await Promise.allSettled([
       payload.find({
         collection: "events",
@@ -327,9 +345,10 @@ export async function buildSitemapEntries(
         limit: 1000,
         depth: 0,
       }),
+      // The blog rule: magazine articles are listed under their issue.
       payload.find({
         collection: "articles",
-        where: { status: { equals: "published" } },
+        where: publicArticleWhere(),
         limit: 1000,
         depth: 0,
       }),
@@ -342,6 +361,7 @@ export async function buildSitemapEntries(
             limit: 1000,
             depth: 0,
           }),
+      getMagazinePaths(),
     ]);
 
   let communitySlugById: ReadonlyMap<string, string> = new Map();
@@ -372,6 +392,17 @@ export async function buildSitemapEntries(
       localeEntries(`/blog/${article.slug}`, safeDate(article.updatedAt)),
     );
 
+  let magazinePaths: string[] = [];
+  if (magazineResult.status === "fulfilled") {
+    magazinePaths = magazineResult.value;
+  } else {
+    console.error(
+      "[sitemap] magazine path lookup failed",
+      magazineResult.reason,
+    );
+  }
+  const magazineEntries = uniqueLocaleEntries(magazinePaths);
+
   const threadEntries = docsFromSettled(threadsResult, "forum-threads")
     .filter(visible)
     .flatMap((thread) => {
@@ -389,7 +420,13 @@ export async function buildSitemapEntries(
 
   return withoutRetiredSectionUrls(
     withoutHiddenCommunityUrls(
-      [...staticEntries, ...eventEntries, ...articleEntries, ...threadEntries],
+      [
+        ...staticEntries,
+        ...eventEntries,
+        ...articleEntries,
+        ...magazineEntries,
+        ...threadEntries,
+      ],
       hiddenSlugs,
     ).filter((entry) => !isUnlistedNewsGamePath(entry.url)),
   );

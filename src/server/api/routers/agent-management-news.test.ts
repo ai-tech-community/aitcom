@@ -48,15 +48,23 @@ const draft = {
   id: "d1",
   ownerId: "owner",
   agentId: "agent",
-  type: "news_storyline",
+  type: "news_storyline" as string,
   status: "pending",
   metadata: {},
 };
 beforeEach(() => {
+  draft.type = "news_storyline";
   state.rows = [[draft]];
   state.updates = [];
 });
 it("prevents generic approval from consuming a news proposal without editorial review", async () => {
+  await expect(
+    caller().reviewDraft({ draftId: "d1", action: "approved" }),
+  ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  expect(state.updates).toEqual([]);
+});
+it("prevents generic approval from publishing a magazine issue", async () => {
+  draft.type = "magazine_issue";
   await expect(
     caller().reviewDraft({ draftId: "d1", action: "approved" }),
   ).rejects.toMatchObject({ code: "BAD_REQUEST" });

@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/article-editor/rich-text-editor";
-import { LexicalRenderer } from "@/lib/lexical";
+import { LessonBody } from "@/components/classroom/lesson-body";
 import {
   classroomEditorExtensions,
   classroomEditorExtensionsWithUploads,
@@ -99,7 +99,7 @@ export function LessonPane({
         {readOnly ? (
           // The shared editor has no read-only mode: show what learners see.
           draft.body ? (
-            <LexicalRenderer
+            <LessonBody
               content={draft.body}
               blockRenderers={classroomBlockRenderers}
             />

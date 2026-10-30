@@ -9,7 +9,10 @@ interface PrePublishDialogProps {
   onClose: () => void;
   onSubmit: () => void;
   submitting: boolean;
-  isTrustedAuthor: boolean;
+  /** The hand-in action as the destination names it (publish, submit, mark ready). */
+  submitLabel: string;
+  title: string;
+  subtitle: string;
   blockingChecks: string[];
   warningChecks: string[];
   outline: Array<{ tag: string; text: string }>;
@@ -30,7 +33,9 @@ export function PrePublishDialog({
   onClose,
   onSubmit,
   submitting,
-  isTrustedAuthor,
+  submitLabel,
+  title,
+  subtitle,
   blockingChecks,
   warningChecks,
   outline,
@@ -59,10 +64,8 @@ export function PrePublishDialog({
         className="bg-background border-border mx-4 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg border p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold">{t("prePublishTitle")}</h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {t("prePublishSubtitle")}
-        </p>
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <p className="text-muted-foreground mt-1 text-sm">{subtitle}</p>
 
         {/* Readiness checks */}
         <div className="mt-6">
@@ -232,9 +235,7 @@ export function PrePublishDialog({
           >
             {submitting
               ? t("submitting").toUpperCase()
-              : isTrustedAuthor
-                ? t("publish").toUpperCase()
-                : t("submitForReview").toUpperCase()}
+              : submitLabel.toUpperCase()}
           </button>
         </div>
       </div>

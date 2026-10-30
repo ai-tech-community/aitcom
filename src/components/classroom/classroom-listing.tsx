@@ -40,7 +40,7 @@ export function ClassroomListing({ slug }: { slug: string }) {
   const mayCreate = canCreateCourse(policy, role);
 
   return (
-    <div className="space-y-6">
+    <div className="@container space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-semibold">{t("title")}</h1>
@@ -56,7 +56,7 @@ export function ClassroomListing({ slug }: { slug: string }) {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-64 rounded-xl" />
           ))}
@@ -68,7 +68,7 @@ export function ClassroomListing({ slug }: { slug: string }) {
           {t("noCourses")}
         </p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
           {courses.map((c) => {
             const progress = c.progressPercent ?? 0;
             return (

@@ -96,7 +96,9 @@ export function StartupsInsights({
     );
   }
 
-  const numbers = new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-US");
+  const numbers = new Intl.NumberFormat(
+    locale === "fr" ? "fr-FR" : locale === "nl" ? "nl-NL" : "en-US",
+  );
   const format = (value: number) => numbers.format(value);
   const exitCount = stats.exits.acquired + stats.exits.ipo;
   const notYet = [
@@ -451,10 +453,13 @@ function countOf(
 
 /** Whole-percent share; a non-zero share under 0.5% reads "<1%", not "0%". */
 function formatShare(share: number, locale: StartupLocale): string {
-  const percent = new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-US", {
-    style: "percent",
-    maximumFractionDigits: 0,
-  });
+  const percent = new Intl.NumberFormat(
+    locale === "fr" ? "fr-FR" : locale === "nl" ? "nl-NL" : "en-US",
+    {
+      style: "percent",
+      maximumFractionDigits: 0,
+    },
+  );
   return share > 0 && share < 0.005
     ? `<${percent.format(0.01)}`
     : percent.format(share);

@@ -23,7 +23,7 @@ import {
   pgEnum,
 } from "@payloadcms/db-postgres/drizzle/pg-core";
 import { sql, relations } from "@payloadcms/db-postgres/drizzle";
-export const enum__locales = pgEnum("enum__locales", ["en", "nl"]);
+export const enum__locales = pgEnum("enum__locales", ["en", "nl", "fr"]);
 export const enum_audiences_preferred_slots_weekdays = pgEnum(
   "enum_audiences_preferred_slots_weekdays",
   ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
@@ -93,7 +93,7 @@ export const enum__events_v_version_status = pgEnum(
 );
 export const enum__events_v_published_locale = pgEnum(
   "enum__events_v_published_locale",
-  ["en", "nl"],
+  ["en", "nl", "fr"],
 );
 export const enum_articles_type = pgEnum("enum_articles_type", [
   "article",
@@ -130,7 +130,7 @@ export const enum__articles_v_version_status = pgEnum(
 );
 export const enum__articles_v_published_locale = pgEnum(
   "enum__articles_v_published_locale",
-  ["en", "nl"],
+  ["en", "nl", "fr"],
 );
 export const enum_forum_threads_category = pgEnum(
   "enum_forum_threads_category",
@@ -229,7 +229,7 @@ export const enum__pages_v_version_status = pgEnum(
 );
 export const enum__pages_v_published_locale = pgEnum(
   "enum__pages_v_published_locale",
-  ["en", "nl"],
+  ["en", "nl", "fr"],
 );
 export const enum_sponsors_tier = pgEnum("enum_sponsors_tier", [
   "gold",
@@ -1080,6 +1080,9 @@ export const forum_threads = pgTable(
       precision: 3,
     }),
     communityId: varchar("community_id"),
+    imageMediaId: numeric("image_media_id", { mode: "number" }),
+    imageUrl: varchar("image_url"),
+    imageAlt: varchar("image_alt"),
     isDeleted: boolean("is_deleted").default(false),
     isEdited: boolean("is_edited").default(false),
     editedAt: timestamp("edited_at", {
@@ -1347,6 +1350,8 @@ export const feed_posts = pgTable(
     id: serial("id").primaryKey(),
     content: varchar("content").notNull(),
     imageUrl: varchar("image_url"),
+    imageMediaId: numeric("image_media_id", { mode: "number" }),
+    imageAlt: varchar("image_alt"),
     authorId: varchar("author_id").notNull(),
     authorName: varchar("author_name"),
     communityId: varchar("community_id"),
@@ -1819,6 +1824,7 @@ export const media = pgTable(
       .notNull(),
     url: varchar("url"),
     thumbnailURL: varchar("thumbnail_u_r_l"),
+    prefix: varchar("prefix"),
     filename: varchar("filename"),
     mimeType: varchar("mime_type"),
     filesize: numeric("filesize", { mode: "number" }),
@@ -2531,8 +2537,12 @@ export const modules = pgTable(
     id: serial("id").primaryKey(),
     course: numeric("course", { mode: "number" }).notNull(),
     title: varchar("title").notNull(),
+    coverImageUrl: varchar("cover_image_url"),
     order: numeric("order", { mode: "number" }).default(0),
     summary: varchar("summary"),
+    imageMediaId: numeric("image_media_id", { mode: "number" }),
+    imageUrl: varchar("image_url"),
+    imageAlt: varchar("image_alt"),
     updatedAt: timestamp("updated_at", {
       mode: "string",
       withTimezone: true,

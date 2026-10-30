@@ -67,7 +67,7 @@ export function LaunchpadListing() {
   const isEmpty = !isLoading && projects.length === 0;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-12 sm:px-12">
+    <div className="@container mx-auto max-w-6xl px-6 py-12 sm:px-12">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-foreground text-2xl font-semibold tracking-tight">
@@ -135,7 +135,7 @@ export function LaunchpadListing() {
 
       {/* Grid / Loading / Error / Empty */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-48 rounded-lg" />
           ))}
@@ -147,7 +147,7 @@ export function LaunchpadListing() {
           {t("noProjects")}
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
           {projects.map((project, i) => (
             <LaunchpadCard key={project.id} project={project} index={i} />
           ))}

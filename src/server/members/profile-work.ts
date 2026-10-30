@@ -1,3 +1,4 @@
+import type { AppLocale } from "@/i18n/messages";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { Payload, Where } from "payload";
 
@@ -10,7 +11,11 @@ import {
   courseCertificates,
   hackathonCertificates,
 } from "@/server/db/schema";
-import { publicArticleWhere } from "@/server/articles/public-articles";
+import {
+  articleHrefs,
+  readableArticleIssueIds,
+  readableArticleWhere,
+} from "@/server/articles/article-access";
 import {
   resolveCourseAccess,
   type CourseAccessMembership,
@@ -18,9 +23,10 @@ import {
 import { communityContentReadableWhere } from "@/server/communities/content-visibility";
 import { hiddenContentCommunityIds } from "@/server/communities/content-visibility-queries";
 import { loadHiddenEventCommunityIds } from "@/server/events/public-event-access";
+import { loadIssueReadScope } from "@/server/magazines/readable-issues";
 
 type Db = typeof appDb;
-type Locale = "en" | "nl";
+type Locale = AppLocale;
 
 /** How many items each Work list shows. */
 export const WORK_LIST_LIMIT = 6;
@@ -44,7 +50,8 @@ export interface WorkList<T> {
 export interface ProfileWorkArticle {
   id: number;
   title: string;
-  slug: string;
+  /** Locale-less: the blog page, or the magazine page under its issue. */
+  href: string;
   publishedAt: string | null;
 }
 
@@ -113,9 +120,21 @@ function withReadable(conditions: Where[], readable: Where | null): Where {
   return { and: readable ? [...conditions, readable] : conditions };
 }
 
-/** Published articles the public may read (the blog rule), by this author. */
-export function profileArticlesWhere(userId: string): Where {
-  return { and: [{ authorId: { equals: userId } }, publicArticleWhere()] };
+/**
+ * This author's articles the public may read: the blog rule, plus
+ * published magazine articles in public issues (spec Decision 8: a profile
+ * uses the anonymous scope, whoever looks).
+ */
+export function profileArticlesWhere(
+  userId: string,
+  publicIssueIds: readonly number[],
+): Where {
+  return {
+    and: [
+      { authorId: { equals: userId } },
+      readableArticleWhere(publicIssueIds),
+    ],
+  };
 }
 
 /** Published launchpad projects in communities the viewer may read. */
@@ -271,7 +290,8 @@ async function loadCourseCommunityContext(
  * Load a member's Work as this viewer may see it. The caller checks the
  * profile is visible to the viewer first.
  *
- * Every visibility rule is the shared one: the blog rule for articles,
+ * Every visibility rule is the shared one: the article rule (blog, or a
+ * public magazine issue) for articles,
  * community content readability for projects, events and both kinds of
  * certificate and courses, and the course rule for courses and course
  * certificates. Payload is queried once per collection (no per-item reads).
@@ -298,30 +318,38 @@ export async function loadProfileWork(
   const { db: database, payload } = deps;
   const listLimit = limit + 1;
 
-  const [hidden, hiddenEventCommunityIds, hackathonRows, courseCertRows] =
-    await Promise.all([
-      hiddenContentCommunityIds(database, viewerId),
-      loadHiddenEventCommunityIds(database, viewerId),
-      database
-        .select({
-          id: hackathonCertificates.id,
-          challengeId: hackathonCertificates.challengeId,
-          kind: hackathonCertificates.kind,
-          issuedAt: hackathonCertificates.issuedAt,
-        })
-        .from(hackathonCertificates)
-        .where(eq(hackathonCertificates.userId, userId))
-        .orderBy(desc(hackathonCertificates.issuedAt)),
-      database
-        .select({
-          id: courseCertificates.id,
-          courseId: courseCertificates.courseId,
-          issuedAt: courseCertificates.issuedAt,
-        })
-        .from(courseCertificates)
-        .where(eq(courseCertificates.userId, userId))
-        .orderBy(desc(courseCertificates.issuedAt)),
-    ]);
+  const [
+    hidden,
+    hiddenEventCommunityIds,
+    publicIssueIds,
+    hackathonRows,
+    courseCertRows,
+  ] = await Promise.all([
+    hiddenContentCommunityIds(database, viewerId),
+    loadHiddenEventCommunityIds(database, viewerId),
+    loadIssueReadScope(database, null).then((scope) =>
+      readableArticleIssueIds(payload, scope),
+    ),
+    database
+      .select({
+        id: hackathonCertificates.id,
+        challengeId: hackathonCertificates.challengeId,
+        kind: hackathonCertificates.kind,
+        issuedAt: hackathonCertificates.issuedAt,
+      })
+      .from(hackathonCertificates)
+      .where(eq(hackathonCertificates.userId, userId))
+      .orderBy(desc(hackathonCertificates.issuedAt)),
+    database
+      .select({
+        id: courseCertificates.id,
+        courseId: courseCertificates.courseId,
+        issuedAt: courseCertificates.issuedAt,
+      })
+      .from(courseCertificates)
+      .where(eq(courseCertificates.userId, userId))
+      .orderBy(desc(courseCertificates.issuedAt)),
+  ]);
   const hiddenSet = new Set(hidden);
 
   const challengeIds = [...new Set(hackathonRows.map((r) => r.challengeId))];
@@ -331,7 +359,7 @@ export async function loadProfileWork(
     await Promise.all([
       payload.find({
         collection: "articles",
-        where: profileArticlesWhere(userId),
+        where: profileArticlesWhere(userId, publicIssueIds),
         sort: "-publishedAt",
         limit: listLimit,
         locale,
@@ -383,14 +411,17 @@ export async function loadProfileWork(
         : null,
     ]);
 
-  const courseContext = await loadCourseCommunityContext(
-    database,
-    { viewerId, hiddenCommunityIds: hiddenSet },
-    [
-      ...authored.docs.map((course) => course.communityId),
-      ...(certCourses?.docs ?? []).map((course) => course.communityId),
-    ],
-  );
+  const [hrefById, courseContext] = await Promise.all([
+    articleHrefs(payload, articles.docs),
+    loadCourseCommunityContext(
+      database,
+      { viewerId, hiddenCommunityIds: hiddenSet },
+      [
+        ...authored.docs.map((course) => course.communityId),
+        ...(certCourses?.docs ?? []).map((course) => course.communityId),
+      ],
+    ),
+  ]);
 
   const courses = authored.docs.flatMap((course) => {
     const communitySlug = readableCourseCommunitySlug(course, courseContext);
@@ -451,12 +482,19 @@ export async function loadProfileWork(
 
   return {
     articles: capped(
-      articles.docs.map((article) => ({
-        id: article.id,
-        title: article.title,
-        slug: article.slug,
-        publishedAt: article.publishedAt ?? null,
-      })),
+      articles.docs.flatMap((article) => {
+        const href = hrefById.get(article.id);
+        return href
+          ? [
+              {
+                id: article.id,
+                title: article.title,
+                href,
+                publishedAt: article.publishedAt ?? null,
+              },
+            ]
+          : [];
+      }),
       limit,
     ),
     projects: capped(

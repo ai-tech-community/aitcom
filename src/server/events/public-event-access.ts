@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { and, eq, ne, notInArray, or } from "drizzle-orm";
+import { and, eq, ne, notInArray, or, sql } from "drizzle-orm";
 
 import {
   eventCommunityIsPublic,
@@ -46,7 +46,21 @@ export const hiddenEventCommunityIds = cache(
       .select({ id: communities.id })
       .from(communities)
       .where(and(...conditions));
-    return rows.map((row) => row.id);
+    // Event community IDs are text rather than foreign keys. Orphaned IDs
+    // must join the deny-list as well, so deleting a community cannot make
+    // its events public through listings or the sitemap.
+    const orphaned = await db.execute<{ id: string }>(sql`
+      select distinct events.community_id as id
+      from public.events
+      left join ${communities} on ${communities.id} = events.community_id
+      where events.community_id is not null and ${communities.id} is null
+    `);
+    return [
+      ...new Set([
+        ...rows.map((row) => row.id),
+        ...orphaned.rows.map((row) => row.id),
+      ]),
+    ];
   },
 );
 

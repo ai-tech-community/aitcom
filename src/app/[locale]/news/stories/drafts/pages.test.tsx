@@ -14,6 +14,17 @@ const state = vi.hoisted(() => ({
     agentName: string;
     status: string;
   } | null,
+  review: null as {
+    id: string;
+    type: string;
+    kind: string;
+    title: string;
+    body: string;
+    agentName: string;
+    destinationLabel: string | null;
+    destinationPath: string | null;
+    publishesOnThisPage: boolean;
+  } | null,
 }));
 const redirect = vi.hoisted(() => vi.fn());
 vi.mock("next-intl/server", () => ({
@@ -55,8 +66,21 @@ vi.mock("@/server/news/staff", () => ({
 vi.mock("@/server/news/storyline-drafts", () => ({
   readStorylineDraft: async () => state.draft,
 }));
-vi.mock("@/components/news/storyline-draft-queue", () => ({
-  StorylineDraftQueue: () => <div>Draft queue</div>,
+vi.mock("@/components/news/storyline-drafts-awaiting", () => ({
+  StorylineDraftsAwaiting: () => <div>Draft queue</div>,
+}));
+vi.mock("@/server/db", () => ({ db: {} }));
+vi.mock("@/server/agent/approval-queue", () => ({
+  loadDraftReview: async () => state.review,
+}));
+vi.mock("@/components/news/agent-draft-review", () => ({
+  AgentDraftReview: ({ draft }: { draft: { title: string; kind: string } }) => (
+    <div>
+      <p>{draft.kind}</p>
+      <button type="button">Approve and publish</button>
+      <button type="button">Reject</button>
+    </div>
+  ),
 }));
 vi.mock("@/components/news/storyline-draft-review-actions", () => ({
   StorylineDraftReviewActions: ({ canApprove }: { canApprove: boolean }) => (
@@ -75,6 +99,7 @@ beforeEach(() => {
   state.staff = false;
   state.session = null;
   state.draft = null;
+  state.review = null;
   redirect.mockClear();
 });
 
@@ -90,14 +115,12 @@ it("keeps the queue and the review page out of search indexes", () => {
   expect(reviewMetadata.robots).toEqual({ index: false, follow: false });
 });
 
-it("sends anonymous editors to sign in and hides the queue from members", async () => {
+it("sends anonymous editors to sign in and shows the queue to signed-in members", async () => {
   await expect(QueuePage()).rejects.toThrow("NEXT_REDIRECT");
   expect(redirect).toHaveBeenCalledWith(
     "/en/auth/signin?redirect=/en/news/stories/drafts",
   );
   state.session = { user: { id: "member", email: "member@example.org" } };
-  await expect(QueuePage()).rejects.toThrow("NEXT_NOT_FOUND");
-  state.staff = true;
   show(await QueuePage());
   expect(screen.getByText("Draft queue")).toBeInTheDocument();
   expect(
@@ -140,4 +163,34 @@ it("shows an existing draft to its owner and to an editor, and hides it from oth
   expect(
     screen.getAllByRole("button", { name: "Approve and publish" }).length,
   ).toBeGreaterThan(0);
+});
+
+it("reviews a course draft on its own page", async () => {
+  state.session = { user: { id: "owner", email: "owner@example.org" } };
+  state.review = {
+    id: "5b9cd5da-f7c0-4977-b68f-f1cb18a6d1cb",
+    type: "classroom_course_update",
+    kind: "COURSE",
+    title: "Mandarin from zero",
+    body: "Publish the course",
+    agentName: "Nova",
+    destinationLabel: "Mandarin from zero",
+    destinationPath:
+      "/communities/chinese-together/classroom/mandarin-from-zero",
+    publishesOnThisPage: true,
+  };
+  show(
+    await ReviewPage({
+      params: Promise.resolve({
+        draftId: "5b9cd5da-f7c0-4977-b68f-f1cb18a6d1cb",
+      }),
+    }),
+  );
+  expect(
+    screen.getByRole("heading", { name: "Mandarin from zero" }),
+  ).toBeInTheDocument();
+  expect(screen.getByText("COURSE")).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Approve and publish" }),
+  ).toBeInTheDocument();
 });

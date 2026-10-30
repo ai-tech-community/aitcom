@@ -1,26 +1,34 @@
-// Verifies messages/en.json and messages/nl.json have identical key structure.
-// Exits non-zero on any key present in one catalog but not the other.
-import { readFileSync } from "node:fs";
+// Check every locale catalogue against the English key structure.
+import { readFileSync, readdirSync } from "node:fs";
 
 function paths(obj, prefix = "") {
-  const out = [];
-  for (const [k, v] of Object.entries(obj)) {
-    const p = prefix ? `${prefix}.${k}` : k;
-    if (v && typeof v === "object" && !Array.isArray(v)) out.push(...paths(v, p));
-    else out.push(p);
+  return Object.entries(obj).flatMap(([key, value]) => {
+    const path = prefix ? `${prefix}.${key}` : key;
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? paths(value, path)
+      : [path];
+  });
+}
+
+const directory = new URL("../messages/", import.meta.url);
+const read = (file) =>
+  JSON.parse(readFileSync(new URL(file, directory), "utf8"));
+const english = new Set(paths(read("en.json")));
+let failed = false;
+for (const file of readdirSync(directory).filter((file) =>
+  file.endsWith(".json"),
+)) {
+  const keys = new Set(paths(read(file)));
+  const missing = [...english].filter((key) => !keys.has(key));
+  const extra = [...keys].filter((key) => !english.has(key));
+  if (missing.length || extra.length) {
+    failed = true;
+    if (missing.length)
+      console.error(`Missing in ${file}:\n  ${missing.join("\n  ")}`);
+    if (extra.length)
+      console.error(`Extra in ${file}:\n  ${extra.join("\n  ")}`);
+  } else {
+    console.log(`i18n parity OK — ${english.size} keys in ${file}.`);
   }
-  return out;
 }
-
-const en = new Set(paths(JSON.parse(readFileSync("messages/en.json", "utf8"))));
-const nl = new Set(paths(JSON.parse(readFileSync("messages/nl.json", "utf8"))));
-
-const missingNl = [...en].filter((p) => !nl.has(p));
-const missingEn = [...nl].filter((p) => !en.has(p));
-
-if (missingNl.length || missingEn.length) {
-  if (missingNl.length) console.error(`Missing in nl.json (${missingNl.length}):\n  ${missingNl.join("\n  ")}`);
-  if (missingEn.length) console.error(`Missing in en.json (${missingEn.length}):\n  ${missingEn.join("\n  ")}`);
-  process.exit(1);
-}
-console.log(`i18n parity OK — ${en.size} keys in both catalogs.`);
+if (failed) process.exitCode = 1;

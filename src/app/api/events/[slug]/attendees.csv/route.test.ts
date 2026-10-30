@@ -127,8 +127,16 @@ describe("GET /api/events/[slug]/attendees.csv", () => {
     expect(ada).toContain(",Aangemeld,");
   });
 
+  it("writes French headers and statuses when asked", async () => {
+    const [header, ada] = await lines(await get("?locale=fr"));
+    expect(header).toMatch(
+      /^Nom,Prénom,Nom,E-mail,Statut,Inscription le \(Europe\/Amsterdam\)/,
+    );
+    expect(ada).toContain(",Inscrit,");
+  });
+
   it("falls back to English and the default view for unknown values", async () => {
-    const res = await get("?locale=fr&view=everything");
+    const res = await get("?locale=de&view=everything");
     expect(res.headers.get("Content-Disposition")).toContain(
       '"builders-night-attendees.csv"',
     );

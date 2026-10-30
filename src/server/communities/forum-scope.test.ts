@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { HUB_SLUG } from "./hub";
 import {
+  communityContentWhere,
+  communityContentMatches,
   forumThreadCommunitiesWhere,
   forumThreadCommunityOf,
   forumThreadCommunityWhere,
@@ -140,5 +142,25 @@ describe("forumThreadCommunityOf", () => {
   it("gives unscoped threads to the Hub, and to no one without it", () => {
     expect(forumThreadCommunityOf(null, [NETHERLANDS, HUB])).toBe(HUB);
     expect(forumThreadCommunityOf(null, [NETHERLANDS])).toBeNull();
+  });
+});
+
+describe("shared community content scope", () => {
+  it("the Hub also gets content with no community; other communities only their own", () => {
+    expect(communityContentWhere(HUB)).toEqual({
+      or: [
+        { communityId: { equals: HUB.id } },
+        { communityId: { exists: false } },
+      ],
+    });
+    expect(communityContentWhere(NETHERLANDS)).toEqual({
+      communityId: { equals: NETHERLANDS.id },
+    });
+    for (const id of [null, undefined, HUB.id]) {
+      expect(communityContentMatches(id, HUB)).toBe(true);
+      expect(communityContentMatches(id, NETHERLANDS)).toBe(false);
+    }
+    expect(communityContentMatches(NETHERLANDS.id, HUB)).toBe(false);
+    expect(communityContentMatches(NETHERLANDS.id, NETHERLANDS)).toBe(true);
   });
 });
