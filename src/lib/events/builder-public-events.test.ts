@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { upsertBuilderEvent } from "../../migrations/20260925a_builder_public_events";
 import { eventMetaDescription } from "./listing-policy";
+import { publishedEventsVisibleWhere } from "./public-event-access";
 import { PUBLIC_EVENTS_WHY_MAX } from "./public-events";
 import {
   BUILDER_PUBLIC_EVENTS,
@@ -1228,7 +1229,10 @@ describe("builder public events", () => {
     expect(detail).toContain("localeAlternates(`/events/${slug}`)");
     const sitemap = readFileSync(join(dir, "../../app/sitemap.ts"), "utf8");
     expect(sitemap).toContain("`/events/${event.slug}`");
-    expect(sitemap).toContain('discoverySource: { not_equals: "luma" }');
+    expect(publishedEventsVisibleWhere([])).toMatchObject({
+      discoverySource: { not_equals: "luma" },
+      status: { equals: "published" },
+    });
 
     const docs = readFileSync(
       join(dir, "../../../docs/ops/curated-public-events.md"),

@@ -4,4 +4,5 @@ import type { EventFormData } from "../event-form-model";
 export interface SectionProps {
   form: EventFormData;
   update: (patch: Partial<EventFormData>) => void;
+  descriptionError?: string | null;
 }

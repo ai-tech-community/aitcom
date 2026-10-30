@@ -39,10 +39,12 @@ import {
   lexicalToPlainText,
 } from "@/server/challenge-engine/lexical";
 import {
+  eventCreateSchema,
   eventUpsertSchema,
   normalizeOptionalString,
   buildEventPayloadData,
 } from "./event-upsert-data";
+import { viewerMaySeeEvent } from "@/server/events/public-event-access";
 import { resolveAudienceIds } from "./audience-resolve";
 import { runEventImport } from "@/server/events/import-from-url";
 import { checkEventImportRateLimit } from "@/server/events/import-rate-limit";
@@ -111,6 +113,20 @@ async function getEvent(eventId: number) {
   return payload.findByID({ collection: "events", id: eventId });
 }
 
+/** False when the event is missing or its community is hidden from this viewer. */
+async function viewerMaySeeEventById(
+  db: typeof Db,
+  eventId: number,
+  userId: string | null,
+): Promise<boolean> {
+  try {
+    const event = await getEvent(eventId);
+    return viewerMaySeeEvent(db, event.communityId ?? null, userId);
+  } catch {
+    return false;
+  }
+}
+
 function getAppUrl(): string {
   return env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
@@ -177,6 +193,12 @@ export const eventsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      const event = await getEvent(input.eventId);
+      if (
+        !(await viewerMaySeeEvent(ctx.db, event.communityId ?? null, userId))
+      ) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
 
       const existing = await ctx.db
         .select()
@@ -197,8 +219,6 @@ export const eventsRouter = createTRPCRouter({
           checkoutUrl: null,
         };
       }
-
-      const event = await getEvent(input.eventId);
 
       if (externalEventUrl(event) !== null) {
         throw new TRPCError({
@@ -560,6 +580,11 @@ export const eventsRouter = createTRPCRouter({
         collection: "events",
         id: input.eventId,
       });
+      if (
+        !(await viewerMaySeeEvent(ctx.db, event.communityId ?? null, userId))
+      ) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
 
       if (externalEventUrl(event) === null) {
         throw new TRPCError({
@@ -632,6 +657,13 @@ export const eventsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const visible = await viewerMaySeeEventById(
+        ctx.db,
+        input.eventId,
+        ctx.session?.user?.id ?? null,
+      );
+      if (!visible) return 0;
+
       const statusFilter = input.includeIntent
         ? sql`${eventRegistrations.status} IN ('registered', 'attended', 'intent')`
         : sql`${eventRegistrations.status} IN ('registered', 'attended')`;
@@ -655,6 +687,13 @@ export const eventsRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const visible = await viewerMaySeeEventById(
+        ctx.db,
+        input.eventId,
+        ctx.session?.user?.id ?? null,
+      );
+      if (!visible) return [];
+
       const statusFilter = input.includeIntent
         ? sql`${eventRegistrations.status} IN ('registered', 'attended', 'intent')`
         : sql`${eventRegistrations.status} IN ('registered', 'attended')`;
@@ -693,6 +732,13 @@ export const eventsRouter = createTRPCRouter({
         columns: { id: true },
       });
       if (!community) return [];
+
+      const maySee = await viewerMaySeeEvent(
+        ctx.db,
+        community.id,
+        ctx.session?.user?.id ?? null,
+      );
+      if (!maySee) return [];
 
       const payload = await getPayloadClient();
       const { docs } = await payload.find({
@@ -795,7 +841,7 @@ export const eventsRouter = createTRPCRouter({
 
   createEvent: protectedProcedure
     .input(
-      z.object({ communitySlug: z.string() }).extend(eventUpsertSchema.shape),
+      z.object({ communitySlug: z.string() }).extend(eventCreateSchema.shape),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
@@ -1441,7 +1487,7 @@ export const eventsRouter = createTRPCRouter({
 
   submitEvent: protectedProcedure
     .input(
-      z.object({ communitySlug: z.string() }).extend(eventUpsertSchema.shape),
+      z.object({ communitySlug: z.string() }).extend(eventCreateSchema.shape),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;

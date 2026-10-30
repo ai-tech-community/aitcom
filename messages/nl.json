@@ -168,6 +168,7 @@
     "cancelEvent": "Evenement annuleren",
     "cancelEventConfirm": "Dit evenement annuleren? Alle registraties worden geannuleerd.",
     "eventUpdated": "Evenement bijgewerkt",
+    "cancelledLabel": "Geannuleerd",
     "eventCancelled": "Evenement geannuleerd",
     "eventApproved": "Evenement goedgekeurd en gepubliceerd",
     "eventApproveError": "Goedkeuren van evenement mislukt",
@@ -524,8 +525,10 @@
       "checklistRemaining": "Nog {count, plural, one {# ding} other {# dingen}} te doen voordat je kunt opslaan.",
       "checklistDone": "(klaar)",
       "checklistTodo": "(te doen)",
+      "descriptionRequired": "Voeg een beschrijving toe.",
       "checklist": {
         "title": "Een titel",
+        "description": "Een beschrijving",
         "audience": "Voor wie",
         "date": "Een datum",
         "location": "Waar het is",
