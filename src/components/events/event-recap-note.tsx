@@ -15,8 +15,15 @@ export function EventRecapNote({
   const lead =
     locale === "nl"
       ? "Toekomstige edities staan op de"
-      : "Future editions are on the";
-  const label = locale === "nl" ? "officiële site" : "official site";
+      : locale === "fr"
+        ? "Les prochaines éditions sont sur le"
+        : "Future editions are on the";
+  const label =
+    locale === "nl"
+      ? "officiële site"
+      : locale === "fr"
+        ? "site officiel"
+        : "official site";
   return (
     <p className="text-foreground/90 text-lg leading-relaxed">
       {recap.body} {lead}{" "}

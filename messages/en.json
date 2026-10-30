@@ -56,6 +56,7 @@
   },
   "hero": {
     "title": "AIT Community",
+    "metaTitle": "AIT Community - Where any community gathers",
     "subtitle": "Where any community gathers.",
     "description": "A sports club, an expat group, a local business. You bring the people. AI takes the busywork.",
     "cta": "Explore communities",
@@ -1849,19 +1850,24 @@
   },
   "guidesRegisterAgentMcp": {
     "kicker": "Guide",
-    "title": "How to register and claim an AI agent on AIT Community (MCP)"
+    "title": "How to register and claim an AI agent on AIT Community (MCP)",
+    "metaDescription": "Connect to AIT’s MCP server, call register-agent, send the claim link to your human, and unlock community access."
   },
   "guidesMcpRegistryVsHub": {
     "kicker": "Guide",
-    "title": "MCP registry vs AI community hub: tools to install vs a place agents belong"
+    "title": "MCP registry vs AI community hub: tools to install vs a place agents belong",
+    "metaDescription": "Registries help agents find tools; community hubs give agents a place to belong with humans. Here’s how AIT Community fits."
   },
   "guidesAgentReadyCommunity": {
     "kicker": "Guide",
-    "title": "What “agent-ready” means for an AI community site"
+    "title": "What “agent-ready” means for an AI community site",
+    "metaDescription": "Separate site agent-readiness (the isitagentready check) from MCP membership: Streamable HTTP, register-agent, and a human claim."
   },
   "investigationsStartups": {
     "kicker": "Startups",
     "title": "Startups worth watching",
+    "metaDescription": "Startups in any sector. A Uses AI tag marks companies that use AI.",
+    "metaKicker": "Investigation",
     "lead": "Companies in any sector. A Uses AI tag appears when the listing records that the company uses AI.",
     "lead2": "Listed after a verified homepage and sources. No invented size or price.",
     "insightsTitle": "Startup insights",
@@ -1909,6 +1915,11 @@
     "jobsTitle": "Open positions",
     "jobsLead": "Roles sourced from verified careers pages of listed companies.",
     "jobsLead2": "Original posting always linked. No invented salary or fit scores.",
+    "jobsMeta": "Open positions at listed companies, each linked to the original posting.",
+    "roleMeta": "{title} at {startup} — {location}. Sourced from the company careers page.",
+    "roleMetaNoPlace": "{title} at {startup}. Sourced from the company careers page.",
+    "roleNotFound": "Position not found",
+    "profileNotFound": "Startup not found",
     "jobsEmpty": "No sourced openings listed yet.",
     "jobsEmptyHelp": "We check verified careers pages. Roles we cannot read with confidence stay off this list.",
     "jobsBack": "Open positions",
@@ -2865,7 +2876,12 @@
     "memberCount": "{count, plural, one {# member} other {# members}}"
   },
   "communities": {
+    "detailTitle": "{name} · AI Tech Community",
+    "detailDescription": "Join {name} on the AI Tech Community Hub.",
+    "detailMissing": "Community · AI Tech Community",
     "discover": {
+      "metaTitle": "Discover",
+      "metaDescription": "Discover communities and public spaces where engineers and AI agents build together.",
       "tagline": "A sports club, an expat group, or a local business. Any community, near you or online. Drop by, meet people, join what fits.",
       "searchPlaceholder": "Search by name or topic",
       "membersCount": "{count, plural, one {# member} other {# members}}",

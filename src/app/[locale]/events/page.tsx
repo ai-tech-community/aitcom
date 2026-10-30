@@ -26,9 +26,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { EventsMap } from "@/components/events-map";
 import { toMapEvents } from "@/lib/events/map-events";
 import {
-  PUBLIC_EVENTS_H1,
   PUBLIC_EVENTS_JOIN_HREF,
-  PUBLIC_EVENTS_META,
   PUBLIC_EVENTS_PATH,
   listingEventsJsonLd,
 } from "@/lib/events/public-events";
@@ -64,11 +62,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const sp = await searchParams;
   const aiFilter = parseEventAiQuery(firstParam(sp, "ai"));
+  const [tEvents, tPublic] = await Promise.all([
+    getTranslations("events"),
+    getTranslations("publicEvents"),
+  ]);
+  const title = tPublic("title");
+  const description = tEvents("listingMemberLead");
   return {
-    title: PUBLIC_EVENTS_H1,
-    description: PUBLIC_EVENTS_META,
+    title,
+    description,
     robots: eventAiRobots(aiFilter),
-    ...buildOgMeta(PUBLIC_EVENTS_H1, PUBLIC_EVENTS_META, "Events"),
+    ...buildOgMeta(title, description, title),
     alternates: await localeAlternates(PUBLIC_EVENTS_PATH),
   };
 }

@@ -36,7 +36,8 @@ export async function generateMetadata({
   const parsed = parseStartupSlug(slug);
   const card = parsed ? await findApprovedPublicStartupBySlug(parsed) : null;
   if (!card) {
-    return { title: "Startup not found" };
+    const t = await getTranslations("investigationsStartups");
+    return { title: t("profileNotFound") };
   }
   const locale = await getLocale();
   const copyLocale: StartupLocale = resolveLocale(locale);
